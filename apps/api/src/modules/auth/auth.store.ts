@@ -10,8 +10,25 @@ export type StoredUser = LoginUser & {
   nickname?: string;
   email?: string;
   phone?: string;
+  /** Confirmed authenticator secret; only meaningful while twoFactorEnabled is true. */
+  twoFactorSecret?: string | null;
+  /** Secret issued by setup and not yet proven with a code. */
+  pendingTwoFactorSecret?: string | null;
 };
-export type UserPatch = Partial<Pick<StoredUser, 'nickname' | 'email' | 'phone' | 'passwordHash' | 'mustChangePassword'>>;
+export type UserPatch = Partial<
+  Pick<
+    StoredUser,
+    | 'nickname'
+    | 'email'
+    | 'phone'
+    | 'passwordHash'
+    | 'mustChangePassword'
+    | 'twoFactorEnabled'
+    | 'twoFactorExempt'
+    | 'twoFactorSecret'
+    | 'pendingTwoFactorSecret'
+  >
+>;
 export type SessionScope = 'full' | 'password_change' | 'two_factor';
 export type SessionKind = 'account' | 'impersonation';
 export type FullSessionRow = {
@@ -40,6 +57,7 @@ export interface AuthStore {
   clearFailures(loginName: string): Promise<void>;
   findByLogin(loginName: string): Promise<StoredUser | null>;
   policy(): Promise<Record<Layer, boolean>>;
+  setPolicy(layer: Layer, required: boolean): Promise<void>;
   listFullSessions(userId: string): Promise<FullSessionRow[]>;
   saveSession(input: { userId: string; scope: SessionScope; userAgent: string; ip: string }): Promise<string>;
   revokeSessions(ids: string[]): Promise<void>;
@@ -107,6 +125,10 @@ export class MemoryAuthStore implements AuthStore {
     return { ...this.layerPolicy };
   }
 
+  async setPolicy(layer: Layer, required: boolean): Promise<void> {
+    this.layerPolicy[layer] = required;
+  }
+
   async listFullSessions(userId: string): Promise<FullSessionRow[]> {
     return this.sessions
       .filter((s) => s.userId === userId && s.scope === 'full' && s.kind === 'account')
@@ -158,7 +180,15 @@ export class MemoryAuthStore implements AuthStore {
     if (!session) return null;
     const user = this.userById(session.userId);
     if (!user) return null;
-    const { passwordHash: _passwordHash, nickname: _n, email: _e, phone: _p, ...rest } = user;
+    const {
+      passwordHash: _passwordHash,
+      nickname: _n,
+      email: _e,
+      phone: _p,
+      twoFactorSecret: _s,
+      pendingTwoFactorSecret: _ps,
+      ...rest
+    } = user;
     return rest;
   }
 

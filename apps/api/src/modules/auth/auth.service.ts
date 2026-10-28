@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { decideLogin } from './decide-login';
+import { Layer, decideLogin } from './decide-login';
 import { AUTH_STORE, AuthStore, SessionRow, StoredUser } from './auth.store';
 import { hashPassword, passwordMatches } from './password';
 import { idsToRevoke, isListedAccountSession } from './sessions';
+import { createTotpSecret, totpKeyUri, totpMatches } from './totp';
 import { RATE_LIMIT_MESSAGE, loginBlocked, validateNewPassword, validateNickname } from './validators';
 
 export type LoginResult =
@@ -21,6 +22,9 @@ export const WRONG_CURRENT_PASSWORD = 'كلمة السر الحالية غير �
 export const EMAIL_ERROR = 'البريد الإلكتروني غير صحيح';
 export const PHONE_ERROR = 'رقم الهاتف غير صحيح';
 export const INVALID_BODY = 'بيانات غير صالحة';
+export const WRONG_CODE = 'الرمز غير صحيح';
+const TOTP_ISSUER = 'SmileSim';
+const LAYERS: readonly Layer[] = ['branch', 'main_agent', 'agent', 'pos'];
 
 const fail = (status: Failure['status'], message: string): Failure => ({ kind: 'error', status, message });
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -195,5 +199,124 @@ export class AuthService {
     if (!rows.some((row) => row.id === targetId)) return fail(404, NOT_FOUND);
     await this.store.revokeSessions([targetId]);
     return { kind: 'ok', current: targetId === authed.session.id };
+  }
+
+  /** Replaces a two-factor session with a full one, applying the session limit before the new one is kept. */
+  private async promoteToFull(session: SessionRow, user: StoredUser, meta: Meta): Promise<string> {
+    await this.store.revokeSessions([session.id]);
+    const existing = await this.store.listFullSessions(user.id);
+    await this.store.revokeSessions(idsToRevoke(existing, true));
+    return this.store.saveSession({ userId: user.id, scope: 'full', userAgent: meta.userAgent, ip: meta.ip });
+  }
+
+  /** Two-factor enrollment is open to a two-factor session (forced enrollment) or a full one (voluntary). */
+  private async enrollmentSession(sessionId: string | undefined): Promise<Outcome<Authed>> {
+    const authed = await this.authenticate(sessionId);
+    if (!authed) return fail(401, NOT_SIGNED_IN);
+    if (authed.session.scope !== 'two_factor' && authed.session.scope !== 'full') return fail(403, FORBIDDEN);
+    // An account that already has two-factor on must switch it off before enrolling again.
+    // Otherwise a password-only (two_factor scope) session could swap the secret and skip the code.
+    if (authed.user.twoFactorEnabled) return fail(403, FORBIDDEN);
+    return { kind: 'ok', ...authed };
+  }
+
+  async setupTwoFactor(sessionId: string | undefined): Promise<Outcome<{ otpauth: string }>> {
+    const enrolling = await this.enrollmentSession(sessionId);
+    if (enrolling.kind === 'error') return enrolling;
+    const secret = createTotpSecret();
+    await this.store.updateUser(enrolling.user.id, { pendingTwoFactorSecret: secret });
+    return { kind: 'ok', otpauth: totpKeyUri(secret, enrolling.user.loginName, TOTP_ISSUER) };
+  }
+
+  async confirmTwoFactor(
+    sessionId: string | undefined,
+    body: { code?: unknown },
+    meta: Meta,
+  ): Promise<Outcome<{ sessionId?: string }>> {
+    const enrolling = await this.enrollmentSession(sessionId);
+    if (enrolling.kind === 'error') return enrolling;
+    const { session, user } = enrolling;
+    if (typeof body?.code !== 'string') return fail(400, INVALID_BODY);
+    if (!user.pendingTwoFactorSecret) return fail(400, INVALID_BODY);
+    if (!totpMatches(user.pendingTwoFactorSecret, body.code)) return fail(401, WRONG_CODE);
+    await this.store.updateUser(user.id, {
+      twoFactorEnabled: true,
+      twoFactorSecret: user.pendingTwoFactorSecret,
+      pendingTwoFactorSecret: null,
+    });
+    if (session.scope === 'full') return { kind: 'ok' };
+    return { kind: 'ok', sessionId: await this.promoteToFull(session, user, meta) };
+  }
+
+  async verifyTwoFactor(
+    sessionId: string | undefined,
+    body: { code?: unknown },
+    meta: Meta,
+  ): Promise<Outcome<{ sessionId: string }>> {
+    const authed = await this.authenticate(sessionId);
+    if (!authed) return fail(401, NOT_SIGNED_IN);
+    const { session, user } = authed;
+    if (session.scope !== 'two_factor') return fail(403, FORBIDDEN);
+    if (typeof body?.code !== 'string') return fail(400, INVALID_BODY);
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) return fail(403, FORBIDDEN);
+    if (!totpMatches(user.twoFactorSecret, body.code)) return fail(401, WRONG_CODE);
+    return { kind: 'ok', sessionId: await this.promoteToFull(session, user, meta) };
+  }
+
+  private async clearTwoFactor(userId: string): Promise<void> {
+    await this.store.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null, pendingTwoFactorSecret: null });
+  }
+
+  async disableOwnTwoFactor(sessionId: string | undefined): Promise<Outcome<unknown>> {
+    const authed = await this.authenticate(sessionId);
+    if (!authed) return fail(401, NOT_SIGNED_IN);
+    if (authed.session.scope !== 'full') return fail(403, FORBIDDEN);
+    const { user } = authed;
+    const required = (await this.store.policy())[user.layer];
+    if (required && !user.twoFactorExempt) return fail(403, FORBIDDEN);
+    await this.clearTwoFactor(user.id);
+    return { kind: 'ok' };
+  }
+
+  private async ownerSession(sessionId: string | undefined): Promise<Outcome<Authed>> {
+    const authed = await this.authenticate(sessionId);
+    if (!authed) return fail(401, NOT_SIGNED_IN);
+    if (authed.session.scope !== 'full' || !authed.user.isBranchOwner) return fail(403, FORBIDDEN);
+    return { kind: 'ok', ...authed };
+  }
+
+  async clearUserTwoFactor(sessionId: string | undefined, loginName: string): Promise<Outcome<unknown>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    const target = await this.store.findByLogin(loginName);
+    if (!target) return fail(404, NOT_FOUND);
+    await this.clearTwoFactor(target.id);
+    return { kind: 'ok' };
+  }
+
+  async setPolicy(
+    sessionId: string | undefined,
+    body: { layer?: unknown; required?: unknown },
+  ): Promise<Outcome<{ policy: Record<Layer, boolean> }>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    const layer = LAYERS.find((candidate) => candidate === body?.layer);
+    if (!layer || typeof body?.required !== 'boolean') return fail(400, INVALID_BODY);
+    await this.store.setPolicy(layer, body.required);
+    return { kind: 'ok', policy: await this.store.policy() };
+  }
+
+  async setExemption(
+    sessionId: string | undefined,
+    loginName: string,
+    body: { exempt?: unknown },
+  ): Promise<Outcome<{ twoFactorExempt: boolean }>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    if (typeof body?.exempt !== 'boolean') return fail(400, INVALID_BODY);
+    const target = await this.store.findByLogin(loginName);
+    if (!target) return fail(404, NOT_FOUND);
+    await this.store.updateUser(target.id, { twoFactorExempt: body.exempt });
+    return { kind: 'ok', twoFactorExempt: body.exempt };
   }
 }

@@ -10,3 +10,9 @@ export function createTotpSecret(): string {
 export function totpMatches(secret: string, code: string): boolean {
   return totp.verify({ token: code, secret });
 }
+
+export function totpKeyUri(secret: string, account: string, issuer: string): string {
+  const label = `${encodeURIComponent(issuer)}:${encodeURIComponent(account)}`;
+  const query = new URLSearchParams({ secret, issuer, algorithm: 'SHA1', digits: '6', period: '30' });
+  return `otpauth://totp/${label}?${query.toString()}`;
+}

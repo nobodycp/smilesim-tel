@@ -121,4 +121,83 @@ export class AuthController {
     if (result.current) res.clearCookie('sid', cookieBase());
     return { ok: true };
   }
+
+  @Post('two-factor/setup')
+  @HttpCode(200)
+  async setupTwoFactor(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.setupTwoFactor(sessionIdOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return { otpauth: result.otpauth };
+  }
+
+  @Post('two-factor/confirm')
+  @HttpCode(200)
+  async confirmTwoFactor(
+    @Body() body: { code?: unknown },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.confirmTwoFactor(sessionIdOf(req), body ?? {}, metaOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    if (result.sessionId) setSessionCookie(res, result.sessionId);
+    return { next: 'app' };
+  }
+
+  @Post('two-factor/verify')
+  @HttpCode(200)
+  async verifyTwoFactor(
+    @Body() body: { code?: unknown },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.verifyTwoFactor(sessionIdOf(req), body ?? {}, metaOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    setSessionCookie(res, result.sessionId);
+    return { next: 'app' };
+  }
+
+  @Delete('two-factor')
+  @HttpCode(200)
+  async disableTwoFactor(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.disableOwnTwoFactor(sessionIdOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return { ok: true };
+  }
+
+  @Delete('two-factor/:loginName')
+  @HttpCode(200)
+  async clearTwoFactor(
+    @Param('loginName') loginName: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.clearUserTwoFactor(sessionIdOf(req), loginName);
+    if (result.kind === 'error') return failWith(res, result);
+    return { ok: true };
+  }
+
+  @Patch('policy')
+  @HttpCode(200)
+  async policy(
+    @Body() body: { layer?: unknown; required?: unknown },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.setPolicy(sessionIdOf(req), body ?? {});
+    if (result.kind === 'error') return failWith(res, result);
+    return { policy: result.policy };
+  }
+
+  @Patch('exemptions/:loginName')
+  @HttpCode(200)
+  async exemption(
+    @Param('loginName') loginName: string,
+    @Body() body: { exempt?: unknown },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.setExemption(sessionIdOf(req), loginName, body ?? {});
+    if (result.kind === 'error') return failWith(res, result);
+    return { twoFactorExempt: result.twoFactorExempt };
+  }
 }
