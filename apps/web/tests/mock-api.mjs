@@ -19,7 +19,24 @@ createServer((req, res) => {
     const json = { 'content-type': 'application/json; charset=utf-8' };
     const route = `${req.method} ${req.url}`;
     if (route === 'GET /auth/sessions') {
-      res.writeHead(200, json).end(JSON.stringify({ sessions: [] }));
+      res.writeHead(200, json).end(
+        JSON.stringify({
+          sessions: [
+            {
+              id: 's1',
+              userAgent: 'اختبار',
+              ip: '127.0.0.1',
+              createdAt: '2026-10-28T00:00:00.000Z',
+              lastSeenAt: '2026-10-28T00:00:00.000Z',
+              current: true,
+            },
+          ],
+        }),
+      );
+      return;
+    }
+    if (req.method === 'DELETE' && (req.url ?? '').startsWith('/auth/sessions/')) {
+      res.writeHead(200, json).end(JSON.stringify({ ok: true }));
       return;
     }
     if (route === 'POST /auth/two-factor/setup') {

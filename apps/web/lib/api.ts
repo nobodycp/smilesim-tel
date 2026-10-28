@@ -35,6 +35,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = typeof data?.message === 'string' ? data.message : 'حدث خطأ';
+    if (
+      response.status === 401 &&
+      message === 'يلزم تسجيل الدخول' &&
+      typeof window !== 'undefined' &&
+      window.location.pathname !== '/login'
+    ) {
+      window.location.assign('/login');
+    }
     return { ok: false, status: response.status, message };
   }
   return { ok: true, status: response.status, data: data as T };
