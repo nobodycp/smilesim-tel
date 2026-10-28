@@ -22,10 +22,22 @@ export default function SettingsPage() {
     else setError(result.message);
   }, []);
 
+  const loadProfile = useCallback(async () => {
+    const result = await api.getProfile();
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    setLoginName(result.data.loginName);
+    setNickname(result.data.nickname ?? '');
+    setEmail(result.data.email ?? '');
+    setPhone(result.data.phone ?? '');
+  }, []);
+
   useEffect(() => {
-    setLoginName(sessionStorage.getItem('loginName') ?? '');
+    loadProfile();
     loadSessions();
-  }, [loadSessions]);
+  }, [loadProfile, loadSessions]);
 
   async function saveProfile(patch: Parameters<typeof api.updateProfile>[0], done: string) {
     setError('');

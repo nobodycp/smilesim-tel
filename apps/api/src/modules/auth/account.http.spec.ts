@@ -57,6 +57,21 @@ describe('account endpoints', () => {
     await app.close();
   });
 
+  it('returns the login name and contact details of a full session from GET /auth/profile', async () => {
+    store.users.get('pos')!.email = 'pos@example.com';
+    const response = await request(app.getHttpServer()).get('/auth/profile').set('Cookie', fullCookie);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ loginName: 'pos', nickname: 'الكاشير', email: 'pos@example.com' });
+  });
+
+  it('refuses GET /auth/profile without a session and for a password-change session', async () => {
+    const none = await request(app.getHttpServer()).get('/auth/profile');
+    expect(none.status).toBe(401);
+    const forced = await login('newpos', '12345678');
+    const response = await request(app.getHttpServer()).get('/auth/profile').set('Cookie', cookieOf(forced));
+    expect(response.status).toBe(403);
+  });
+
   it('returns 403 when a password-change session calls the profile', async () => {
     const forced = await login('newpos', '12345678');
     const response = await request(app.getHttpServer()).patch('/auth/profile').set('Cookie', cookieOf(forced)).send({ nickname: 'محل' });

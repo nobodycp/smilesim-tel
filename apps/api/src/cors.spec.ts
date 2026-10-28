@@ -3,13 +3,17 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from './app.module';
+import { AUTH_STORE, MemoryAuthStore } from './modules/auth/auth.store';
 import { enableWebCors } from './cors';
 
 describe('web CORS', () => {
   let app: INestApplication;
 
   async function boot() {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(AUTH_STORE)
+      .useValue(new MemoryAuthStore())
+      .compile();
     app = moduleRef.createNestApplication();
     enableWebCors(app);
     await app.init();

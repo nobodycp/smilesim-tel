@@ -8,6 +8,7 @@ export type ApiResult<T> =
   | { ok: false; status: number; message: string };
 
 export type Profile = { nickname?: string; email?: string; phone?: string };
+export type AccountProfile = Profile & { loginName: string };
 
 export type SessionInfo = {
   id: string;
@@ -55,6 +56,7 @@ export const api = {
     request<{ next: Next }>('POST', '/auth/login', { loginName, password }),
   changePassword: (password: string, nextPassword: string) =>
     request<{ next: Next }>('POST', '/auth/password', { password, nextPassword }),
+  getProfile: () => request<AccountProfile>('GET', '/auth/profile'),
   updateProfile: (patch: {
     nickname?: string;
     email?: string;

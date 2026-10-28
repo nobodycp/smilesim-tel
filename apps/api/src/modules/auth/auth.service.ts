@@ -103,6 +103,16 @@ export class AuthService {
     return { kind: 'ok', body: { next: decision.next }, sessionId: newSessionId };
   }
 
+  async getProfile(
+    sessionId: string | undefined,
+  ): Promise<Outcome<{ profile: { loginName: string; nickname?: string; email?: string; phone?: string } }>> {
+    const authed = await this.authenticate(sessionId);
+    if (!authed) return fail(401, NOT_SIGNED_IN);
+    if (authed.session.scope !== 'full') return fail(403, FORBIDDEN);
+    const { loginName, nickname, email, phone } = authed.user;
+    return { kind: 'ok', profile: { loginName, nickname, email, phone } };
+  }
+
   async updateProfile(
     sessionId: string | undefined,
     body: { nickname?: unknown; email?: unknown; phone?: unknown; nextPassword?: unknown; currentPassword?: unknown },

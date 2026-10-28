@@ -46,3 +46,11 @@ test('settings starts authenticator enrollment and confirms it', async ({ page }
   await page.getByRole('button', { name: 'تأكيد التفعيل' }).click();
   await expect(page.getByText('تم تفعيل التحقق بخطوتين', { exact: true })).toBeVisible();
 });
+
+test('settings reads the login name and details from the profile, not from sessionStorage', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('loginName', 'stale-name'));
+  await page.goto('/settings');
+  await expect(page.getByLabel('اسم الدخول')).toHaveValue('pos');
+  await expect(page.getByLabel('النيك نيم')).toHaveValue('الكاشير');
+  await expect(page.getByLabel('البريد')).toHaveValue('pos@example.com');
+});

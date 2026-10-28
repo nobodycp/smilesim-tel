@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Layer, LoginUser } from './decide-login';
 import { SESSION_TTL_SECONDS } from './sessions';
+import { failureWindowExpired } from './validators';
 
 export const AUTH_STORE = Symbol('AUTH_STORE');
 
@@ -94,7 +95,8 @@ export class MemoryAuthStore implements AuthStore {
   private readonly liveSessionKeys = new Set<string>();
   /** Login names that still own at least one live session key. */
   readonly liveKeys = new Set<string>();
-  private readonly failures = new Map<string, number>();
+  /** Failed attempts per login name; the window opens at the first failure and closes after LOGIN_FAIL_WINDOW_SECONDS. */
+  private readonly failures = new Map<string, { count: number; startedAt: Date }>();
   private readonly layerPolicy: Record<Layer, boolean> = {
     branch: false,
     main_agent: false,
@@ -106,16 +108,29 @@ export class MemoryAuthStore implements AuthStore {
     this.users.set(user.loginName, user);
   }
 
-  setFailedCount(loginName: string, count: number): void {
-    this.failures.set(loginName, count);
+  /** Seeds a failure count whose window opened at `startedAt` (default: now). */
+  setFailedCount(loginName: string, count: number, startedAt: Date = new Date()): void {
+    this.failures.set(loginName, { count, startedAt });
+  }
+
+  private openFailures(loginName: string): { count: number; startedAt: Date } | null {
+    const entry = this.failures.get(loginName);
+    if (!entry) return null;
+    if (failureWindowExpired(entry.startedAt)) {
+      this.failures.delete(loginName);
+      return null;
+    }
+    return entry;
   }
 
   async failedCount(loginName: string): Promise<number> {
-    return this.failures.get(loginName) ?? 0;
+    return this.openFailures(loginName)?.count ?? 0;
   }
 
   async recordFailure(loginName: string): Promise<void> {
-    this.failures.set(loginName, (this.failures.get(loginName) ?? 0) + 1);
+    const entry = this.openFailures(loginName);
+    if (entry) entry.count += 1;
+    else this.failures.set(loginName, { count: 1, startedAt: new Date() });
   }
 
   async clearFailures(loginName: string): Promise<void> {

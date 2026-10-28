@@ -20,7 +20,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     image: smilesim-api
-    command: ["node", "dist/main.js"]
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
     ports:
       - "3001:3001"
     environment:

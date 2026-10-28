@@ -81,6 +81,13 @@ export class AuthController {
     return result.body;
   }
 
+  @Get('profile')
+  async getProfile(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.getProfile(sessionIdOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return result.profile;
+  }
+
   @Patch('profile')
   @HttpCode(200)
   async profile(

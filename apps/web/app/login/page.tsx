@@ -21,7 +21,6 @@ export default function LoginPage() {
       setMessage(result.message);
       return;
     }
-    sessionStorage.setItem('loginName', loginName);
     router.push(routeFor(result.data.next));
   }
 

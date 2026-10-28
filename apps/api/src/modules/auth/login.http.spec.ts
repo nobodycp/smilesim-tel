@@ -102,4 +102,23 @@ describe('POST /auth/login', () => {
     expect(response.status).toBe(429);
     expect(response.body).toEqual({ message: 'محاولات كثيرة. أعد المحاولة بعد قليل' });
   });
+
+  it('still blocks a count of ten whose window opened inside the last 900 seconds', async () => {
+    store.setFailedCount('pos', 10, new Date(Date.now() - 899_000));
+    const response = await request(app.getHttpServer()).post('/auth/login').send({ loginName: 'pos', password: '123456' });
+    expect(response.status).toBe(429);
+  });
+
+  it('lets a count of ten log in again once its 900 second window has passed', async () => {
+    store.setFailedCount('pos', 10, new Date(Date.now() - 900_000));
+    expect(await store.failedCount('pos')).toBe(0);
+    const response = await request(app.getHttpServer()).post('/auth/login').send({ loginName: 'pos', password: '123456' });
+    expect(response.status).toBe(200);
+  });
+
+  it('starts a fresh window at the first failure after the old one ended', async () => {
+    store.setFailedCount('pos', 9, new Date(Date.now() - 901_000));
+    await request(app.getHttpServer()).post('/auth/login').send({ loginName: 'pos', password: '00000000' });
+    expect(await store.failedCount('pos')).toBe(1);
+  });
 });

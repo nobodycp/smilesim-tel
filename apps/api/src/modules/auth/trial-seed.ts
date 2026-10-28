@@ -1,5 +1,7 @@
 import { Layer } from './decide-login';
 
+export const TRIAL_PASSWORD = '123456';
+
 export type TrialAccount = {
   loginName: string;
   layer: Layer;

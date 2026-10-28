@@ -1,5 +1,5 @@
 // Test double for the backend: answers every login with 401 and the Arabic message,
-// and plays the voluntary authenticator enrollment used by the settings page.
+// serves the account profile, and plays the voluntary authenticator enrollment used by the settings page.
 import { createServer } from 'node:http';
 
 const port = Number(process.env.MOCK_API_PORT ?? 3911);
@@ -18,6 +18,10 @@ createServer((req, res) => {
   req.on('end', () => {
     const json = { 'content-type': 'application/json; charset=utf-8' };
     const route = `${req.method} ${req.url}`;
+    if (route === 'GET /auth/profile') {
+      res.writeHead(200, json).end(JSON.stringify({ loginName: 'pos', nickname: 'الكاشير', email: 'pos@example.com' }));
+      return;
+    }
     if (route === 'GET /auth/sessions') {
       res.writeHead(200, json).end(
         JSON.stringify({

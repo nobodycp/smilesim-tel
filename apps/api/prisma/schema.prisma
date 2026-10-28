@@ -8,23 +8,24 @@ datasource db {
 }
 
 model User {
-  id                 String    @id @default(uuid())
-  loginName          String    @unique
-  nickname           String
-  email              String?
-  phone              String?
-  passwordHash       String
-  mustChangePassword Boolean   @default(false)
-  layer              String
-  parentId           String?
-  parent             User?     @relation("UserTree", fields: [parentId], references: [id])
-  children           User[]    @relation("UserTree")
-  isBranchOwner      Boolean   @default(false)
-  disabledAt         DateTime?
-  twoFactorExempt    Boolean   @default(false)
-  twoFactorEnabled   Boolean   @default(false)
-  twoFactorSecret    String?
-  sessions           Session[]
+  id                     String    @id @default(uuid())
+  loginName              String    @unique
+  nickname               String
+  email                  String?
+  phone                  String?
+  passwordHash           String
+  mustChangePassword     Boolean   @default(false)
+  layer                  String
+  parentId               String?
+  parent                 User?     @relation("UserTree", fields: [parentId], references: [id])
+  children               User[]    @relation("UserTree")
+  isBranchOwner          Boolean   @default(false)
+  disabledAt             DateTime?
+  twoFactorExempt        Boolean   @default(false)
+  twoFactorEnabled       Boolean   @default(false)
+  twoFactorSecret        String?
+  pendingTwoFactorSecret String?
+  sessions               Session[]
 }
 
 model Session {
@@ -37,6 +38,7 @@ model Session {
   kind       String
   createdAt  DateTime  @default(now())
   lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
   revokedAt  DateTime?
 }
 
