@@ -1,2 +1,4 @@
 // apps/api/src/modules/registry.ts
-export const featureModules: any[] = [];
+import { AuthModule } from './auth/auth.module';
+
+export const featureModules: any[] = [AuthModule];

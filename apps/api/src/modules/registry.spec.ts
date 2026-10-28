@@ -1,8 +1,9 @@
 // apps/api/src/modules/registry.spec.ts
+import { AuthModule } from './auth/auth.module';
 import { featureModules } from './registry';
 
 describe('featureModules', () => {
-  it('starts empty until AuthModule is registered', () => {
-    expect(featureModules).toEqual([]);
+  it('registers AuthModule', () => {
+    expect(featureModules).toEqual([AuthModule]);
   });
 });
