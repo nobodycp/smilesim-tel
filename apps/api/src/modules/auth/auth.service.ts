@@ -161,13 +161,19 @@ export class AuthService {
     return { kind: 'ok' };
   }
 
+  /** Full account sessions that are not revoked and have not expired. */
+  private async listedSessions(userId: string): Promise<SessionRow[]> {
+    const now = Date.now();
+    return (await this.store.listSessions(userId)).filter((row) => isListedAccountSession(row) && row.expiresAt.getTime() > now);
+  }
+
   async listSessions(
     sessionId: string | undefined,
   ): Promise<Outcome<{ sessions: { id: string; userAgent: string; ip: string; createdAt: Date; lastSeenAt: Date; current: boolean }[] }>> {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, NOT_SIGNED_IN);
     if (authed.session.scope !== 'full') return fail(403, FORBIDDEN);
-    const rows = (await this.store.listSessions(authed.user.id)).filter(isListedAccountSession);
+    const rows = await this.listedSessions(authed.user.id);
     return {
       kind: 'ok',
       sessions: rows.map((row) => ({
@@ -185,7 +191,7 @@ export class AuthService {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, NOT_SIGNED_IN);
     if (authed.session.scope !== 'full') return fail(403, FORBIDDEN);
-    const rows = (await this.store.listSessions(authed.user.id)).filter(isListedAccountSession);
+    const rows = await this.listedSessions(authed.user.id);
     if (!rows.some((row) => row.id === targetId)) return fail(404, NOT_FOUND);
     await this.store.revokeSessions([targetId]);
     return { kind: 'ok', current: targetId === authed.session.id };

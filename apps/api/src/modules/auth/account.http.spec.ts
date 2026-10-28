@@ -187,6 +187,16 @@ describe('account endpoints', () => {
     expect(current.id).toBe(second.split('=')[1]);
   });
 
+  it('omits an expired full session from the list', async () => {
+    const second = cookieOf(await login('pos', '123456'));
+    const secondId = second.split('=')[1];
+    store.sessions.find((s) => s.id === secondId)!.expiresAt = new Date(Date.now() - 1000);
+    const listed = await request(app.getHttpServer()).get('/auth/sessions').set('Cookie', fullCookie);
+    expect(listed.status).toBe(200);
+    expect(listed.body.sessions.map((s: { id: string }) => s.id)).not.toContain(secondId);
+    expect(listed.body.sessions).toHaveLength(1);
+  });
+
   it('revokes another session without clearing the cookie', async () => {
     await login('pos', '123456');
     const listed = await request(app.getHttpServer()).get('/auth/sessions').set('Cookie', fullCookie);

@@ -30,6 +30,7 @@ export type SessionRow = {
   ip: string;
   createdAt: Date;
   lastSeenAt: Date;
+  expiresAt: Date;
   revokedAt: Date | null;
 };
 
@@ -166,8 +167,7 @@ export class MemoryAuthStore implements AuthStore {
     if (!session) return null;
     const user = this.userById(session.userId);
     if (!user) return null;
-    const { expiresAt: _expiresAt, ...row } = session;
-    return { session: row, user };
+    return { session: { ...session }, user };
   }
 
   async touchSession(sessionId: string): Promise<void> {
@@ -181,7 +181,7 @@ export class MemoryAuthStore implements AuthStore {
   async listSessions(userId: string): Promise<SessionRow[]> {
     return this.sessions
       .filter((s) => s.userId === userId)
-      .map(({ expiresAt: _expiresAt, ...row }) => row);
+      .map((row) => ({ ...row }));
   }
 
   async updateUser(userId: string, patch: UserPatch): Promise<void> {
