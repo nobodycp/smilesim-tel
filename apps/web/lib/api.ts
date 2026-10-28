@@ -62,15 +62,20 @@ export const api = {
   disableTwoFactor: () => request<{ ok: true }>('DELETE', '/auth/two-factor'),
 };
 
-// Route on the `next` field only.
+export const TWO_FACTOR_STEP_KEY = 'twoFactorStep';
+
+// Route on the `next` field only. Both authenticator steps go to `/two-factor` with no
+// query string; which step it is travels in sessionStorage.
 export function routeFor(next: Next): string {
   switch (next) {
     case 'password':
       return '/password';
     case 'two_factor_enroll':
-      return '/two-factor?step=enroll';
+      sessionStorage.setItem(TWO_FACTOR_STEP_KEY, 'enroll');
+      return '/two-factor';
     case 'two_factor_code':
-      return '/two-factor?step=code';
+      sessionStorage.setItem(TWO_FACTOR_STEP_KEY, 'code');
+      return '/two-factor';
     case 'app':
       return '/settings';
   }

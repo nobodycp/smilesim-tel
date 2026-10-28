@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, routeFor } from '../../lib/api';
+import { api, routeFor, TWO_FACTOR_STEP_KEY } from '../../lib/api';
 
 export default function TwoFactorPage() {
   const router = useRouter();
@@ -13,8 +13,8 @@ export default function TwoFactorPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    // `step` is set by the login/password pages from the API's `next` field.
-    const isEnroll = new URLSearchParams(window.location.search).get('step') === 'enroll';
+    // The step is stored by `routeFor` from the API's `next` field.
+    const isEnroll = sessionStorage.getItem(TWO_FACTOR_STEP_KEY) === 'enroll';
     setEnrolling(isEnroll);
     if (!isEnroll) return;
     api.setupTwoFactor().then((result) => {
