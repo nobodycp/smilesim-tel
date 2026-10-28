@@ -41,6 +41,7 @@ model Session {
 }
 
 model LayerPolicy {
-  layer    String  @id
+  id       String  @id @default(uuid())
+  layer    String  @unique
   required Boolean @default(false)
 }
