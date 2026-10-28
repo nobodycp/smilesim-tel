@@ -1,2 +1,2 @@
 // apps/api/src/modules/registry.ts
-export const featureModules: unknown[] = [];
+export const featureModules: any[] = [];

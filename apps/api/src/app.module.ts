@@ -3,7 +3,7 @@ import { HealthController } from './health.controller';
 import { featureModules } from './modules/registry';
 
 @Module({
-  imports: featureModules as any[],
+  imports: featureModules,
   controllers: [HealthController],
 })
 export class AppModule {}
