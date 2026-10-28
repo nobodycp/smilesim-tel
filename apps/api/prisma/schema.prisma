@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String    @id @default(uuid())
+  loginName          String    @unique
+  nickname           String
+  email              String?
+  phone              String?
+  passwordHash       String
+  mustChangePassword Boolean   @default(false)
+  layer              String
+  parentId           String?
+  parent             User?     @relation("UserTree", fields: [parentId], references: [id])
+  children           User[]    @relation("UserTree")
+  isBranchOwner      Boolean   @default(false)
+  disabledAt         DateTime?
+  twoFactorExempt    Boolean   @default(false)
+  twoFactorEnabled   Boolean   @default(false)
+  twoFactorSecret    String?
+  sessions           Session[]
+}
+
+model Session {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  userAgent  String
+  ip         String
+  scope      String
+  kind       String
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
+}
+
+model LayerPolicy {
+  layer    String  @id
+  required Boolean @default(false)
+}
