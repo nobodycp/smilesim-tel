@@ -5,7 +5,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "jest --watchman=false",
     "start": "node dist/main.js",
-    "start:worker": "node dist/worker.js"
+    "start:worker": "node dist/worker.js",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
@@ -20,15 +21,19 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@nestjs/testing": "^10.4.15",
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",
     "@types/supertest": "^6.0.2",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
     "jest": "^29.7.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.72.1"
   }
 }

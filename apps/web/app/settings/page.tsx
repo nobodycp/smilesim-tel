@@ -13,6 +13,8 @@ export default function SettingsPage() {
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  const [otpauth, setOtpauth] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   const loadSessions = useCallback(async () => {
     const result = await api.listSessions();
@@ -58,6 +60,32 @@ export default function SettingsPage() {
       setCurrentPassword('');
       setNextPassword('');
     }
+  }
+
+  async function startTwoFactor() {
+    setError('');
+    setNote('');
+    const result = await api.setupTwoFactor();
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    setTwoFactorCode('');
+    setOtpauth(result.data.otpauth);
+  }
+
+  async function confirmTwoFactor(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    setNote('');
+    const result = await api.confirmTwoFactor(twoFactorCode);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    setOtpauth('');
+    setTwoFactorCode('');
+    setNote('تم تفعيل التحقق بخطوتين');
   }
 
   async function revoke(id: string) {
@@ -118,6 +146,22 @@ export default function SettingsPage() {
         </label>
         <button type="submit">تغيير كلمة السر</button>
       </form>
+
+      <h2>التحقق بخطوتين</h2>
+      {!otpauth && (
+        <button type="button" onClick={startTwoFactor}>تفعيل التحقق بخطوتين</button>
+      )}
+      {otpauth && (
+        <form onSubmit={confirmTwoFactor}>
+          <p className="lede">أضف الرابط التالي إلى تطبيق المصادقة ثم أدخل الرمز.</p>
+          <p className="code" dir="ltr">{otpauth}</p>
+          <label>
+            الرمز
+            <input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required />
+          </label>
+          <button type="submit">تأكيد التفعيل</button>
+        </form>
+      )}
 
       <h2>الجلسات</h2>
       <ul className="sessions">

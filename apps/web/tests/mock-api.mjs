@@ -1,4 +1,5 @@
-// Test double for the backend: answers every login with 401 and the Arabic message.
+// Test double for the backend: answers every login with 401 and the Arabic message,
+// and plays the voluntary authenticator enrollment used by the settings page.
 import { createServer } from 'node:http';
 
 const port = Number(process.env.MOCK_API_PORT ?? 3911);
@@ -15,6 +16,20 @@ createServer((req, res) => {
   }
   req.resume();
   req.on('end', () => {
+    const json = { 'content-type': 'application/json; charset=utf-8' };
+    const route = `${req.method} ${req.url}`;
+    if (route === 'GET /auth/sessions') {
+      res.writeHead(200, json).end(JSON.stringify({ sessions: [] }));
+      return;
+    }
+    if (route === 'POST /auth/two-factor/setup') {
+      res.writeHead(200, json).end(JSON.stringify({ otpauth: 'otpauth://totp/Smilesim:pos?secret=MOCKSECRET' }));
+      return;
+    }
+    if (route === 'POST /auth/two-factor/confirm') {
+      res.writeHead(200, json).end(JSON.stringify({ next: 'app' }));
+      return;
+    }
     res.writeHead(401, { 'content-type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ message: 'بيانات الدخول غير صحيحة' }));
   });

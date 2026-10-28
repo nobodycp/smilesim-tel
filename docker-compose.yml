@@ -1,6 +1,7 @@
 # One file for Coolify and for local runs. Coolify overrides the environment:
 #   the cookie domain = the parent domain shared by web and api (never set locally)
 #   COOKIE_SECURE = true
+#   WEB_ORIGIN = the public web URL (the one browser origin the api allows, with cookies)
 #   NEXT_PUBLIC_API_URL = the public api URL (a build argument of web)
 services:
   web:
@@ -26,6 +27,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://smilesim:smilesim@postgres:5432/smilesim}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
     depends_on:
       - postgres
       - redis

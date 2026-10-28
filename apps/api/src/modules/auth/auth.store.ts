@@ -201,16 +201,16 @@ export class MemoryAuthStore implements AuthStore {
     if (!session) return null;
     const user = this.userById(session.userId);
     if (!user) return null;
-    const {
-      passwordHash: _passwordHash,
-      nickname: _n,
-      email: _e,
-      phone: _p,
-      twoFactorSecret: _s,
-      pendingTwoFactorSecret: _ps,
-      ...rest
-    } = user;
-    return rest;
+    return {
+      id: user.id,
+      loginName: user.loginName,
+      disabledAt: user.disabledAt,
+      mustChangePassword: user.mustChangePassword,
+      layer: user.layer,
+      twoFactorExempt: user.twoFactorExempt,
+      twoFactorEnabled: user.twoFactorEnabled,
+      isBranchOwner: user.isBranchOwner,
+    };
   }
 
   async liveSession(sessionId: string): Promise<{ session: SessionRow; user: StoredUser } | null> {
