@@ -64,7 +64,7 @@ export class AuthService {
   private async authenticate(sessionId: string | undefined): Promise<Authed | null> {
     if (!sessionId) return null;
     const found = await this.store.liveSession(sessionId);
-    if (!found) return null;
+    if (!found || found.user.disabledAt) return null;
     await this.store.touchSession(sessionId);
     return found;
   }
@@ -318,5 +318,15 @@ export class AuthService {
     if (!target) return fail(404, NOT_FOUND);
     await this.store.updateUser(target.id, { twoFactorExempt: body.exempt });
     return { kind: 'ok', twoFactorExempt: body.exempt };
+  }
+
+  async disableUser(sessionId: string | undefined, loginName: string): Promise<Outcome<unknown>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    const target = await this.store.findByLogin(loginName);
+    if (!target) return fail(404, NOT_FOUND);
+    await this.store.updateUser(target.id, { disabledAt: new Date() });
+    await this.store.dropLiveSessions(target.id);
+    return { kind: 'ok' };
   }
 }

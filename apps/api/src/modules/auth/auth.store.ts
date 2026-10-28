@@ -27,6 +27,7 @@ export type UserPatch = Partial<
     | 'twoFactorExempt'
     | 'twoFactorSecret'
     | 'pendingTwoFactorSecret'
+    | 'disabledAt'
   >
 >;
 export type SessionScope = 'full' | 'password_change' | 'two_factor';
@@ -68,6 +69,8 @@ export interface AuthStore {
   touchSession(sessionId: string): Promise<void>;
   listSessions(userId: string): Promise<SessionRow[]>;
   updateUser(userId: string, patch: UserPatch): Promise<void>;
+  /** Revokes every session of the user, whatever its scope, and deletes their live keys. */
+  dropLiveSessions(userId: string): Promise<void>;
 }
 
 export type MemorySession = {
@@ -88,7 +91,9 @@ export class MemoryAuthStore implements AuthStore {
   readonly users = new Map<string, StoredUser>();
   readonly sessions: MemorySession[] = [];
   /** Stands in for the live session keys: a session is usable only while its key is present. */
-  private readonly liveKeys = new Set<string>();
+  private readonly liveSessionKeys = new Set<string>();
+  /** Login names that still own at least one live session key. */
+  readonly liveKeys = new Set<string>();
   private readonly failures = new Map<string, number>();
   private readonly layerPolicy: Record<Layer, boolean> = {
     branch: false,
@@ -150,7 +155,9 @@ export class MemoryAuthStore implements AuthStore {
       expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000),
       revokedAt: null,
     });
-    this.liveKeys.add(id);
+    this.liveSessionKeys.add(id);
+    const owner = this.userById(input.userId);
+    if (owner) this.liveKeys.add(owner.loginName);
     return id;
   }
 
@@ -159,7 +166,21 @@ export class MemoryAuthStore implements AuthStore {
     for (const session of this.sessions) {
       if (ids.includes(session.id) && !session.revokedAt) session.revokedAt = now;
     }
-    for (const id of ids) this.liveKeys.delete(id);
+    for (const id of ids) this.liveSessionKeys.delete(id);
+    this.refreshLiveOwners();
+  }
+
+  async dropLiveSessions(userId: string): Promise<void> {
+    await this.revokeSessions(this.sessions.filter((s) => s.userId === userId).map((s) => s.id));
+  }
+
+  private refreshLiveOwners(): void {
+    this.liveKeys.clear();
+    for (const session of this.sessions) {
+      if (!this.liveSessionKeys.has(session.id)) continue;
+      const owner = this.userById(session.userId);
+      if (owner) this.liveKeys.add(owner.loginName);
+    }
   }
 
   private userById(userId: string): StoredUser | null {
@@ -171,7 +192,7 @@ export class MemoryAuthStore implements AuthStore {
 
   private liveRow(sessionId: string): MemorySession | null {
     const session = this.sessions.find((s) => s.id === sessionId);
-    if (!session || !this.liveKeys.has(sessionId) || session.revokedAt || session.expiresAt.getTime() <= Date.now()) return null;
+    if (!session || !this.liveSessionKeys.has(sessionId) || session.revokedAt || session.expiresAt.getTime() <= Date.now()) return null;
     return session;
   }
 

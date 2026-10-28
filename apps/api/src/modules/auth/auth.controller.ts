@@ -176,6 +176,18 @@ export class AuthController {
     return { ok: true };
   }
 
+  @Post('users/:loginName/disable')
+  @HttpCode(200)
+  async disableUser(
+    @Param('loginName') loginName: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.disableUser(sessionIdOf(req), loginName);
+    if (result.kind === 'error') return failWith(res, result);
+    return { ok: true };
+  }
+
   @Patch('policy')
   @HttpCode(200)
   async policy(
