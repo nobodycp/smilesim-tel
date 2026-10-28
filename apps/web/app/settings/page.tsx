@@ -1,11 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, type SessionInfo } from '../../lib/api';
 
 export default function SettingsPage() {
-  const router = useRouter();
   const [loginName, setLoginName] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
@@ -92,14 +90,9 @@ export default function SettingsPage() {
 
   async function revoke(id: string) {
     setError('');
-    const current = sessions.find((session) => session.id === id)?.current ?? false;
     const result = await api.revokeSession(id);
     if (!result.ok) {
       setError(result.message);
-      return;
-    }
-    if (current) {
-      router.push('/login');
       return;
     }
     await loadSessions();

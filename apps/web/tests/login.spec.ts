@@ -10,6 +10,17 @@ test('login page is Arabic and sends the entered password', async ({ page }) => 
 });
 
 test('ending the current session returns to login', async ({ page }) => {
+  let listCalls = 0;
+  await page.route('**/auth/sessions', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    listCalls += 1;
+    if (listCalls === 1) return route.fallback();
+    return route.fulfill({
+      status: 401,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'يلزم تسجيل الدخول' }),
+    });
+  });
   await page.goto('/settings');
   await page.getByRole('button', { name: 'إنهاء' }).click();
   await expect(page).toHaveURL(/\/login$/);
