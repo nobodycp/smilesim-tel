@@ -1,0 +1,64 @@
+# One file for Coolify and for local runs. Coolify overrides the environment:
+#   the cookie domain = the parent domain shared by web and api (never set locally)
+#   COOKIE_SECURE = true
+#   NEXT_PUBLIC_API_URL = the public api URL (a build argument of web)
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: smilesim-api
+    command: ["node", "dist/main.js"]
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://smilesim:smilesim@postgres:5432/smilesim}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    depends_on:
+      - postgres
+      - redis
+
+  worker:
+    # Built from the api Dockerfile under the same tag as api, so the web image is never involved.
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: smilesim-api
+    command: ["node", "dist/worker.js"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://smilesim:smilesim@postgres:5432/smilesim}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    depends_on:
+      - api
+      - redis
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: smilesim
+      POSTGRES_PASSWORD: smilesim
+      POSTGRES_DB: smilesim
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    volumes:
+      - redis-data:/data
+
+volumes:
+  postgres-data:
+  redis-data:

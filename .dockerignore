@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.next
+.git
+.superpowers
+docs
+four-layers.html
+**/coverage
+**/playwright-report
+**/test-results
+**/*.tsbuildinfo
+**/*.log
