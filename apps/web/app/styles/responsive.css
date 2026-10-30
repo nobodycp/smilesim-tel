@@ -1,0 +1,40 @@
+/* Shell and layout breakpoints, then the 44px touch-target block. */
+@media (max-width: 767px) {
+  .stat-row { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .menu-btn.shell-icon, .topbar-brand { display: inline-flex; }
+  .hello { display: none; }
+  .shell-search-placeholder, .shell-search-toggle kbd { display: none; }
+  .shell-search-toggle, .shell-search.open { width: 2.6rem; justify-content: center; padding: 0; }
+  .topbar-brand { display: block; }
+  .user-copy, .user-btn > svg { display: none; }
+  .pair, .field-row { grid-template-columns: 1fr; }
+  .field-row > button { justify-self: start; }
+}
+@media (min-width: 768px) {
+  .canvas-inner { padding: 22px 28px 56px; }
+  .drawer, .backdrop { display: none; }
+}
+@media (min-width: 960px) {
+  .settings-page > .settings-grid { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
+  .settings-grid { grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr); align-items: stretch; }
+  .settings-col { grid-template-rows: auto minmax(180px, 1fr); align-content: stretch; }
+  .home-grid { grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.75fr); align-items: stretch; }
+}
+/* Touch targets: 44px under 720px. The topbar, sidebar and drawer are frozen and stay outside this block. */
+@media (max-width: 720px) {
+  .auth input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  .auth select,
+  .auth .btn,
+  .auth form > button,
+  .canvas input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  .canvas select { height: 44px; }
+  .canvas button,
+  .canvas .check,
+  .canvas .shortcut,
+  .dialog .check,
+  .dialog .seg button,
+  .row-menu-panel button,
+  .toast button { min-height: 44px; }
+  .toast button { min-width: 44px; }
+}

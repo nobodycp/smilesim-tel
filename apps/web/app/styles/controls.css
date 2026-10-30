@@ -1,0 +1,13 @@
+/* Native checkbox and radio size. Last on purpose: it must beat every `input` height rule above. */
+input[type='checkbox'],
+input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  max-width: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--rd-primary-bg);
+  vertical-align: middle;
+}

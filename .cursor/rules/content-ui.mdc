@@ -19,6 +19,6 @@ Inner pages live in `.canvas` and use the shared pieces:
 - Row actions: `RowMenu` from `components/row-menu.tsx` is the only per-row trigger. Pass a label that names the record. Destructive items use `danger` and an icon. Page-level actions, such as creating a record, stay visible. An inline price field keeps its own save control.
 - Status: `.badge`, `.badge.pending`, `.badge.cancelled`, with a text label.
 - Dialog: `Dialog` from `components/dialog.tsx`. Sizes are `confirm`, `form` (default, about 600px), and `wide`. Put fields in the children and actions in `footer` (`secondary` cancel, `primary` save). Permission lists use `.perm-grid`. A dialog with several independent operations uses `.op-blocks` and keeps destructive actions in the footer. Checkboxes use `label.check`; do not give them text-field dimensions. Do not build a second overlay.
-- Empty: `.empty` inside the pane.
+- Empty: `.empty` inside the pane. It already has 14px padding; never add `style={{ padding }}`.
 
-Tokens stay `--rd-*` in `globals.css`. Body font stays Tajawal. Hebrew stays IBM Plex Sans Hebrew. No new font and no raw hex.
+Tokens stay `--rd-*` in `app/styles/tokens.css`. Arabic and Latin text stays Tajawal, Hebrew stays IBM Plex Sans Hebrew, and numbers use `font-variant-numeric: tabular-nums` on the same font. No new font and no raw hex.

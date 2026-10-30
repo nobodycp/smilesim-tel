@@ -1,0 +1,28 @@
+/* Door picker on the bare host. */
+.doors {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 22px;
+  min-height: 100vh;
+  padding: 32px 20px;
+}
+.doors-copy { display: grid; gap: 6px; width: min(520px, 100%); text-align: center; }
+.doors-copy h1 { margin: 0; font-size: 28px; }
+.door-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: min(520px, 100%); }
+.door-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px 16px;
+  border: 1px solid var(--rd-line);
+  border-radius: 16px;
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-card);
+  color: var(--rd-ink);
+  text-decoration: none;
+}
+.door-card span { color: var(--rd-muted); font-size: 12px; }
+.door-card:hover { border-color: var(--rd-ink); }
+@media (max-width: 560px) {
+  .door-grid { grid-template-columns: 1fr; }
+}

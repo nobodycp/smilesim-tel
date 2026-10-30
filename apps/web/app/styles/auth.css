@@ -1,0 +1,29 @@
+/* Sign-in frame. */
+.auth {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 72px 16px 32px;
+  background: var(--rd-bg);
+}
+.auth-tools {
+  position: fixed;
+  top: 16px;
+  inset-inline-end: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.auth-card {
+  width: min(440px, 100%);
+  padding: 28px 24px 24px;
+  border: 1px solid var(--rd-line);
+  border-radius: 16px;
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-pop);
+  text-align: center;
+}
+.auth-card .brand-mark { margin: 0 auto 12px; }
+.auth-card .eyebrow, .auth-card h1, .auth-card .lede { text-align: start; }
+.auth-card form { text-align: start; }

@@ -1,0 +1,81 @@
+/* Reset, element defaults, shared icon button, language switch, brand mark, and the motion opt-in. */
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  background: var(--rd-bg);
+  color: var(--rd-ink);
+  font-family: var(--font-sans), var(--font-he), Tahoma, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, .brand-name {
+  font-family: var(--font-sans), var(--font-he), Tahoma, sans-serif;
+}
+.money, .line-number, .data td.msisdn, .tabular {
+  font-variant-numeric: tabular-nums;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.icon-btn, .lang button, .user-btn, .nav-link, .menu button, .menu a {
+  border: 0;
+  background: transparent;
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  color: var(--rd-muted);
+}
+.icon-btn:hover, .lang button:hover, .user-btn:hover { background: var(--rd-surface-3); }
+.icon-btn:focus-visible, .lang button:focus-visible, .nav-link:focus-visible, .user-btn:focus-visible, .btn:focus-visible, .menu a:focus-visible, .menu button:focus-visible {
+  outline: 2px solid var(--rd-focus);
+  outline-offset: 1px;
+}
+/* The 16% ring above stays on the frozen shell controls. Page-level controls get a solid ink ring. */
+.btn:focus-visible,
+.auth-tools .icon-btn:focus-visible,
+.dialog > header .icon-btn:focus-visible { outline-color: var(--rd-ink); }
+.lang { position: relative; }
+.lang > button {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--rd-line);
+  border-radius: 8px;
+  background: var(--rd-surface);
+  color: var(--rd-ink-2);
+  font-size: 12px;
+  font-weight: 800;
+}
+.lang > button:hover { background: var(--rd-surface-3); }
+.lang .menu { min-width: 148px; }
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--rd-primary-bg);
+  color: var(--rd-primary-fg);
+  box-shadow: var(--rd-shadow-card);
+}
+.brand-mark svg { width: 22px; height: 22px; stroke: var(--rd-primary-fg); }
+.brand-name { margin: 0; font-size: 14px; font-weight: 700; color: var(--rd-ink); }
+.brand-sub { margin: 2px 0 0; font-size: 12px; color: var(--rd-muted); }
+.brand-rule { display: block; width: 40px; height: 2px; margin-top: 8px; border-radius: 99px; background: var(--rd-accent); }
+/* Motion is opt-in: nothing moves unless the user allows it, so no forced reset is needed. */
+@media (prefers-reduced-motion: no-preference) {
+  .sidebar { transition: width 180ms ease; }
+  .drawer { transition: transform 180ms ease; }
+  .notice-btn.is-active svg { animation: shell-bell 2.4s ease-in-out infinite; }
+  .spinner { animation: spin 0.7s linear infinite; }
+  .skeleton::after { animation: shimmer 1.6s infinite; }
+}

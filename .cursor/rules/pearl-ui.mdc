@@ -7,10 +7,11 @@ alwaysApply: true
 
 Source of truth: `DESIGN.md`. Identity comes from account manager's Pearl system, adapted to this Next.js app. Do not invent a second look.
 
-- Colours are `--rd-*` tokens in `apps/web/app/globals.css`, both light and dark. No raw hex in components or new CSS. A new colour is a new token in both themes.
+- Colours are `--rd-*` tokens in `apps/web/app/styles/tokens.css` (imported through `apps/web/app/globals.css`), both light and dark. No raw hex or `rgba()` in components or in any other CSS file. A new colour is a new token in both themes, listed in `DESIGN.md`.
 - Primary action is ink (`--rd-primary-bg`). Logo red (`--rd-accent`) is one accent per screen, never an error. Errors use `--rd-danger`.
 - Status is a badge with a label: paid / pending / danger / neutral. Do not signal status by colour alone.
-- Type: IBM Plex Sans Arabic for body, Noto Kufi Arabic for headings, Inter Tight tabular figures for numbers and money. No new Google Font link.
+- Type: Tajawal for Arabic and Latin text, IBM Plex Sans Hebrew for Hebrew, both loaded in `layout.tsx` with `next/font`. Numbers, money, and dates are Latin digits in the same font with `font-variant-numeric: tabular-nums`. No Inter Tight, no Noto Kufi, no new font, no Google Font link.
 - Reuse the shell, page header, card, table, and button classes in `DESIGN.md`. Do not add a new card, button, or table style for one page.
 - RTL first: logical properties (`margin-inline`, `text-align: start`). Touch targets at least 44px. Motion 150–450ms, transform and opacity only.
-- The existing `--bg` / `--accent` blue tokens are legacy. New and touched UI uses `--rd-*` only. Do not extend the blue set.
+- The old `--bg` / `--accent` / `--ink-*` names are removed. Use `--rd-*` only and do not add another blue.
+- `globals.css` only `@import`s `app/styles/*.css`. Add a rule to the file that owns that surface and do not reorder the imports.
