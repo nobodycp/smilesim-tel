@@ -102,7 +102,7 @@ export default function TasksPage() {
                       <td>
                         {actionName(t, row.action)} · {row.packageName}
                       </td>
-                      <td dir="ltr">{row.msisdn ?? '—'}</td>
+                      <td><bdi dir="ltr">{row.msisdn ?? '—'}</bdi></td>
                       <td>{row.posLogin}</td>
                       <td>
                         <Money value={row.posDelta} />
