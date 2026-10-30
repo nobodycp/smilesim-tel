@@ -95,7 +95,7 @@ export default function ReportPage() {
                 <tbody>
                   {payload.lines.map((line) => (
                     <tr key={line.id}>
-                      <td dir="ltr">{line.msisdn}</td>
+                      <td><bdi dir="ltr">{line.msisdn}</bdi></td>
                       <td>{line.packageName}</td>
                       <td>{line.posLogin}</td>
                       <td>{lineStatus(t, line.status)}</td>
@@ -123,7 +123,7 @@ export default function ReportPage() {
                     <tr key={row.id}>
                       <td>{taskStatus(t, row.status)}</td>
                       <td>{actionName(t, row.action)} · {row.packageName}</td>
-                      <td dir="ltr">{row.msisdn ?? '—'}</td>
+                      <td><bdi dir="ltr">{row.msisdn ?? '—'}</bdi></td>
                       <td>{row.posLogin}</td>
                       <td>{row.assigneeLogin ?? row.submitterLogin}</td>
                     </tr>

@@ -73,6 +73,7 @@ export default function ProviderPackagesPage() {
     <Desk title={provider?.name ?? ''} lede="" error={error} note={note}>
       <Link className="back-link" href="/providers">{t.providersTitle}</Link>
       <section className="pane">
+        <div className="sheet">
           {!loaded ? <TableSkeleton rows={4} columns={3} /> : provider?.companies.map((company) => (
             <div key={company.name} className="stack">
               <div className="company-head">
@@ -107,6 +108,7 @@ export default function ProviderPackagesPage() {
               </table>
             </div>
           ))}
+        </div>
       </section>
     </Desk>
   );

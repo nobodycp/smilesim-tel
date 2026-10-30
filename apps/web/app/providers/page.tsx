@@ -40,26 +40,28 @@ export default function ProvidersPage() {
   return (
     <Desk title={allowed ? t.providersTitle : ''} lede="" error={error} note="">
       <section className="pane">
-        {!loaded ? <TableSkeleton rows={5} columns={3} /> : (
-          <table className="data">
-            <thead>
-              <tr>
-                <th>{t.provider}</th>
-                <th>{t.company}</th>
-                <th>{t.navPlans}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((provider) => (
-                <tr key={provider.code}>
-                  <td><Link className="row-link" href={`/providers/${provider.code}`}>{provider.name}</Link></td>
-                  <td>{provider.companies.length}</td>
-                  <td>{provider.companies.reduce((sum, company) => sum + company.packages.length, 0)}</td>
+        <div className="sheet">
+          {!loaded ? <TableSkeleton rows={5} columns={3} /> : (
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>{t.provider}</th>
+                  <th>{t.company}</th>
+                  <th>{t.navPlans}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody>
+                {rows.map((provider) => (
+                  <tr key={provider.code}>
+                    <td><Link className="row-link" href={`/providers/${provider.code}`}>{provider.name}</Link></td>
+                    <td>{provider.companies.length}</td>
+                    <td>{provider.companies.reduce((sum, company) => sum + company.packages.length, 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </section>
     </Desk>
   );
