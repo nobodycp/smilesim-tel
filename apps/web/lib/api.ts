@@ -1,14 +1,16 @@
 // Every call goes to the backend with the session cookie. No login policy lives here:
 // the backend decides, and the pages display what it returns.
 
-export type Next = 'password' | 'two_factor_enroll' | 'two_factor_code' | 'app';
+type Next = 'password' | 'two_factor_enroll' | 'two_factor_code' | 'app';
 
-export type ApiResult<T> =
+// A failure carries the Arabic `message` the API sent and, from an API that has the error contract,
+// the stable `code` (see apps/api/src/errors.ts). Decisions and translations go by `code`.
+type ApiResult<T> =
   | { ok: true; status: number; data: T }
-  | { ok: false; status: number; message: string };
+  | { ok: false; status: number; message: string; code?: string };
 
 export type Profile = { nickname?: string; email?: string; phone?: string };
-export type AccountProfile = Profile & { loginName: string };
+type AccountProfile = Profile & { loginName: string };
 
 export type SessionInfo = {
   id: string;
@@ -22,6 +24,16 @@ export type SessionInfo = {
 import { doorFromHost } from './doors';
 
 const base = () => (typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3001' : '/api');
+
+const NETWORK_MESSAGE = 'تعذّر الاتصال بالخادم';
+const GENERIC_MESSAGE = 'حدث خطأ';
+
+// The session is gone, or belongs to another door: back to /login. The code decides. The Arabic
+// sentence is kept as a fallback for an API that does not send a code yet.
+function endsSession(status: number, code: string | undefined, message: string): boolean {
+  if (code) return code === 'LOGIN_REQUIRED' || code === 'DOOR_MISMATCH';
+  return (status === 401 && message === 'يلزم تسجيل الدخول') || (status === 403 && message === 'هذا الحساب ليس لهذا المدخل');
+}
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<ApiResult<T>> {
   let response: Response;
@@ -37,20 +49,17 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    return { ok: false, status: 0, message: 'تعذّر الاتصال بالخادم' };
+    return { ok: false, status: 0, message: NETWORK_MESSAGE, code: 'NETWORK' };
   }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = typeof data?.message === 'string' ? data.message : 'حدث خطأ';
-    if (
-      typeof window !== 'undefined' &&
-      window.location.pathname !== '/login' &&
-      ((response.status === 401 && message === 'يلزم تسجيل الدخول') ||
-        (response.status === 403 && message === 'هذا الحساب ليس لهذا المدخل'))
-    ) {
+    const hasMessage = typeof data?.message === 'string';
+    const message = hasMessage ? data.message : GENERIC_MESSAGE;
+    const code = typeof data?.code === 'string' ? data.code : hasMessage ? undefined : 'GENERIC';
+    if (typeof window !== 'undefined' && window.location.pathname !== '/login' && endsSession(response.status, code, message)) {
       window.location.assign('/login');
     }
-    return { ok: false, status: response.status, message };
+    return { ok: false, status: response.status, message, ...(code ? { code } : {}) };
   }
   return { ok: true, status: response.status, data: data as T };
 }
@@ -85,11 +94,9 @@ export const api = {
   setupTwoFactor: () => request<{ otpauth: string }>('POST', '/auth/two-factor/setup'),
   confirmTwoFactor: (code: string) => request<{ next: Next }>('POST', '/auth/two-factor/confirm', { code }),
   verifyTwoFactor: (code: string) => request<{ next: Next }>('POST', '/auth/two-factor/verify', { code }),
-  disableTwoFactor: () => request<{ ok: true }>('DELETE', '/auth/two-factor'),
   officeMe: () => request<OfficeMe>('GET', '/office/me'),
   officeHome: () => request<HomePayload>('GET', '/office/home'),
   postAnnouncement: (body: string) => request<{ ok: true }>('POST', '/office/announcements', { body }),
-  officeWallets: () => request<{ wallets: WalletRow[] }>('GET', '/office/wallets'),
   fundWallet: (loginName: string, amount: number, note: string) =>
     request<{ ok: true }>('POST', `/office/wallets/${segment(loginName)}/fund`, { amount, note }),
   setCeiling: (loginName: string, ceiling: number) =>
@@ -109,7 +116,6 @@ export const api = {
     request<{ entries: AccountingRow[]; nextCursor: string | null }>('GET', `/office/accounting${queryString(query)}`),
   officeLedger: (scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string | null }) =>
     request<{ entries: LedgerRow[]; nextCursor: string | null }>('GET', `/office/ledger/${segment(scope)}${queryString(query)}`),
-  chargeLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/charge`, { outcome }),
   extendLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/extend`, { outcome }),
   reactivateLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/reactivate`, { outcome }),
   renameLine: (id: string, msisdn: string, outcome: Outcome) =>
@@ -178,16 +184,6 @@ export type HomePayload = {
   canPost: boolean;
   operations: { id: string; at: string; kind: string; amount: number; note: string | null; loginName: string }[];
   announcements: { id: string; body: string; at: string; authorName: string; authorLayer: string }[];
-};
-export type WalletRow = {
-  loginName: string;
-  nickname: string;
-  layer: string;
-  balance: number;
-  ceiling: number;
-  parentLogin: string | null;
-  self: boolean;
-  directChild: boolean;
 };
 export type PackageRow = {
   code: string;
@@ -279,7 +275,7 @@ export type LineHistory = {
   actorName: string;
 };
 export type PosChoice = { loginName: string; nickname: string };
-export type ActivateBody = { packageCode: string; posLogin: string; esim: boolean; iccid: string; msisdn: string; outcome: Outcome };
+type ActivateBody = { packageCode: string; posLogin: string; esim: boolean; iccid: string; msisdn: string; outcome: Outcome };
 export type LedgerRow = {
   id: string;
   at: string;
@@ -340,7 +336,7 @@ export type TaskRow = {
   canWork: boolean;
   canCancel: boolean;
 };
-export type ReportRow = {
+type ReportRow = {
   id: string;
   at: string;
   loginName: string;

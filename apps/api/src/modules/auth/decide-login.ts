@@ -1,3 +1,5 @@
+import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
+
 export type Layer = 'branch' | 'main_agent' | 'agent' | 'pos';
 export type LoginUser = {
   id: string;
@@ -11,14 +13,14 @@ export type LoginUser = {
 };
 
 export type LoginDecision =
-  | { kind: 'error'; message: string; status: 401 | 403 }
+  | { kind: 'error'; message: string; code: ErrorCode; status: 401 | 403 }
   | {
       kind: 'session';
       next: 'app' | 'password' | 'two_factor_enroll' | 'two_factor_code';
       scope: 'full' | 'password_change' | 'two_factor';
     };
 
-const BAD = { kind: 'error' as const, status: 401 as const, message: 'بيانات الدخول غير صحيحة' };
+const BAD = { kind: 'error' as const, status: 401 as const, message: ERROR_MESSAGES.BAD_CREDENTIALS, code: 'BAD_CREDENTIALS' as const };
 
 export function trialUser(layer: Layer): LoginUser {
   return {
@@ -40,7 +42,7 @@ export function decideLogin(input: {
 }): LoginDecision {
   const { user, passwordMatches, policy } = input;
   if (!user || !passwordMatches) return BAD;
-  if (user.disabledAt) return { kind: 'error' as const, status: 403 as const, message: 'الحساب موقوف' };
+  if (user.disabledAt) return { kind: 'error' as const, status: 403 as const, message: ERROR_MESSAGES.ACCOUNT_DISABLED, code: 'ACCOUNT_DISABLED' as const };
   if (user.mustChangePassword) return { kind: 'session' as const, next: 'password' as const, scope: 'password_change' as const };
   const required = user.twoFactorEnabled || (!user.twoFactorExempt && policy[user.layer]);
   if (required && !user.twoFactorEnabled) {

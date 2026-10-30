@@ -1,8 +1,7 @@
+import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
+
 export const LOGIN_FAIL_LIMIT = 10;
 export const LOGIN_FAIL_WINDOW_SECONDS = 900;
-export const RATE_LIMIT_MESSAGE = 'محاولات كثيرة. أعد المحاولة بعد قليل';
-export const NICKNAME_ERROR = 'النيك نيم من حرفين إلى أربعين حرفاً';
-export const PASSWORD_ERROR = 'كلمة السر ثمانية أحرف على الأقل';
 
 export function loginBlocked(failedCount: number): boolean {
   return failedCount >= LOGIN_FAIL_LIMIT;
@@ -13,13 +12,23 @@ export function failureWindowExpired(startedAt: Date, now: Date = new Date()): b
   return now.getTime() - startedAt.getTime() >= LOGIN_FAIL_WINDOW_SECONDS * 1000;
 }
 
-export function validateNickname(value: string): string | null {
+/** The error code of a bad nickname, or null when it is fine. */
+export function nicknameProblem(value: string): ErrorCode | null {
   const length = Array.from(value.trim()).length;
-  if (length < 2 || length > 40) return NICKNAME_ERROR;
-  return null;
+  return length < 2 || length > 40 ? 'NICKNAME_INVALID' : null;
+}
+
+/** The error code of a bad new password, or null when it is fine. */
+export function newPasswordProblem(value: string): ErrorCode | null {
+  return value.length < 8 ? 'PASSWORD_TOO_SHORT' : null;
+}
+
+export function validateNickname(value: string): string | null {
+  const problem = nicknameProblem(value);
+  return problem ? ERROR_MESSAGES[problem] : null;
 }
 
 export function validateNewPassword(value: string): string | null {
-  if (value.length < 8) return PASSWORD_ERROR;
-  return null;
+  const problem = newPasswordProblem(value);
+  return problem ? ERROR_MESSAGES[problem] : null;
 }

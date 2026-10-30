@@ -26,6 +26,7 @@ jobs:
       # The Prisma client is typed from the schema; typecheck and the api build need it generated.
       - run: npm run prisma:generate
       - run: npm run lint
+      - run: npm run check:copy
       - run: npm run typecheck
       - run: npm run test:api
       - run: npm run build

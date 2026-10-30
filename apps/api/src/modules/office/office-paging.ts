@@ -30,24 +30,25 @@ export function idCursorArgs(cursor: string | undefined, size: number) {
 export type LineFilter = { q?: string; status?: string; packageCode?: string };
 
 /**
- * The where clause of the numbers list. `q` has its spaces removed and, when it is all digits,
- * matches the number alone; any other text matches the package or company name.
+ * The where clause of the numbers list. `q` always searches three places at once: the number
+ * (with the spaces of `q` removed, so "055 024" finds 055024), the package name and the company
+ * name. A match in any of them keeps the row, so a search for "400" finds the numbers that
+ * contain 400 and the packages named 400.
  */
 export function linesWhere(posIds: string[], filter: LineFilter): Prisma.LineWhereInput {
   const status = oneOf(LINE_STATUSES, filter.status);
   const packageCode = (filter.packageCode ?? '').trim();
   const text = (filter.q ?? '').trim();
   const digits = text.replace(/\s/g, '');
-  const search: Prisma.LineWhereInput = !digits
+  const search: Prisma.LineWhereInput = !text
     ? {}
-    : /^\+?\d+$/.test(digits)
-      ? { msisdn: { contains: digits } }
-      : {
-          OR: [
-            { package: { name: { contains: text, mode: 'insensitive' } } },
-            { package: { company: { name: { contains: text, mode: 'insensitive' } } } },
-          ],
-        };
+    : {
+        OR: [
+          { msisdn: { contains: digits } },
+          { package: { name: { contains: text, mode: 'insensitive' } } },
+          { package: { company: { name: { contains: text, mode: 'insensitive' } } } },
+        ],
+      };
   return {
     posId: { in: posIds },
     ...(status ? { status } : {}),

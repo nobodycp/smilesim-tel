@@ -1,6 +1,7 @@
 import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
-import { expectedLayer, WRONG_DOOR } from './doors';
+import { expectedLayer } from './doors';
+import { errorBody } from './errors';
 import { AUTH_STORE, AuthStore } from './modules/auth/auth.store';
 
 function readCookie(req: Request, name: string): string | undefined {
@@ -30,7 +31,7 @@ export class DoorMiddleware implements NestMiddleware {
       door: typeof header === 'string' ? header : undefined,
     });
     if (expected === 'conflict') {
-      res.status(403).json({ message: WRONG_DOOR });
+      res.status(403).json(errorBody('DOOR_MISMATCH'));
       return;
     }
     if (!expected) return next();
@@ -45,7 +46,7 @@ export class DoorMiddleware implements NestMiddleware {
       if (home) layer = home.user.layer;
     }
     if (layer !== expected) {
-      res.status(403).json({ message: WRONG_DOOR });
+      res.status(403).json(errorBody('DOOR_MISMATCH'));
       return;
     }
     next();

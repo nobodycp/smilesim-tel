@@ -44,7 +44,7 @@ describe('POST /auth/login', () => {
       .set('x-door', 'admin')
       .send({ loginName: 'pos', password: '123456' });
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ message: 'هذا الحساب ليس لهذا المدخل' });
+    expect(response.body).toEqual({ message: 'هذا الحساب ليس لهذا المدخل', code: 'DOOR_MISMATCH' });
     expect(response.headers['set-cookie']).toBeUndefined();
     expect(store.sessions).toHaveLength(0);
   });
@@ -104,6 +104,8 @@ describe('POST /auth/login', () => {
     expect(unknown.status).toBe(401);
     expect(unknown.body).toEqual(wrong.body);
     expect(unknown.body.message).toBe('بيانات الدخول غير صحيحة');
+    expect(unknown.body.code).toBe('BAD_CREDENTIALS');
+    expect(wrong.body.code).toBe('BAD_CREDENTIALS');
     expect(await store.failedCount('missing')).toBe(1);
     expect(await store.failedCount('pos')).toBe(1);
   });
@@ -112,7 +114,7 @@ describe('POST /auth/login', () => {
     store.users.get('pos')!.disabledAt = new Date();
     const response = await request(app.getHttpServer()).post('/auth/login').send({ loginName: 'pos', password: '123456' });
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ message: 'الحساب موقوف' });
+    expect(response.body).toEqual({ message: 'الحساب موقوف', code: 'ACCOUNT_DISABLED' });
     expect(await store.failedCount('pos')).toBe(0);
   });
 
@@ -120,7 +122,7 @@ describe('POST /auth/login', () => {
     store.setFailedCount('pos', 10);
     const response = await request(app.getHttpServer()).post('/auth/login').send({ loginName: 'pos', password: '123456' });
     expect(response.status).toBe(429);
-    expect(response.body).toEqual({ message: 'محاولات كثيرة. أعد المحاولة بعد قليل' });
+    expect(response.body).toEqual({ message: 'محاولات كثيرة. أعد المحاولة بعد قليل', code: 'RATE_LIMITED' });
   });
 
   it('still blocks a count of ten whose window opened inside the last 900 seconds', async () => {

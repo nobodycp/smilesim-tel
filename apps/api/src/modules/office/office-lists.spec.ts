@@ -189,16 +189,44 @@ describe('numbers list paging', () => {
     expect(pages.flat().sort()).toEqual(Array.from({ length: 10 }, (_, i) => `ln-${pad(60 + i)}`));
   });
 
-  it('keeps a digit search on the number and sends other text to the package and company names', () => {
-    expect(linesWhere(['p'], { q: '055 024' })).toEqual({ posId: { in: ['p'] }, msisdn: { contains: '055024' } });
-    expect(linesWhere(['p'], { q: 'سلكوم' })).toEqual({
-      posId: { in: ['p'] },
+  it('searches the number, the package name and the company name together', () => {
+    const search = (text: string) => ({
       OR: [
-        { package: { name: { contains: 'سلكوم', mode: 'insensitive' } } },
-        { package: { company: { name: { contains: 'سلكوم', mode: 'insensitive' } } } },
+        { msisdn: { contains: text.replace(/\s/g, '') } },
+        { package: { name: { contains: text, mode: 'insensitive' } } },
+        { package: { company: { name: { contains: text, mode: 'insensitive' } } } },
       ],
     });
+    expect(linesWhere(['p'], { q: '055 024' })).toEqual({ posId: { in: ['p'] }, ...search('055 024') });
+    expect(linesWhere(['p'], { q: '400' })).toEqual({ posId: { in: ['p'] }, ...search('400') });
+    expect(linesWhere(['p'], { q: 'سلكوم' })).toEqual({ posId: { in: ['p'] }, ...search('سلكوم') });
     expect(linesWhere(['p'], { q: '   ', status: 'bogus', packageCode: ' ' })).toEqual({ posId: { in: ['p'] } });
+  });
+
+  it('finds a package by its digits and a number that holds the same digits, as the top bar search needs', async () => {
+    const mixed: Row[] = [
+      { ...lines[0], id: 'by-package', msisdn: '0550000001', package: pkgA, packageId: 'pa' },
+      { ...lines[1], id: 'by-number', msisdn: '0540012345', package: pkgB, packageId: 'pb' },
+      { ...lines[2], id: 'neither', msisdn: '0550000003', package: pkgB, packageId: 'pb' },
+    ];
+    const { service, gate } = await serviceWith({ line: table(mixed) });
+    const found = await service.lines(gate, { q: '400' });
+    expect(found.lines.map((line) => line.id).sort()).toEqual(['by-number', 'by-package']);
+    const spaced = await service.lines(gate, { q: '054 0012' });
+    expect(spaced.lines.map((line) => line.id)).toEqual(['by-number']);
+  });
+
+  it('finds lines by company name and by package name', async () => {
+    const byCompany = await walk({ q: 'بيلفون' });
+    expect(byCompany.pages.flat().sort()).toEqual(lines.filter((line) => (line.package as typeof pkgB).company.name === 'بيلفون').map((line) => line.id).sort());
+    const byPackage = await walk({ q: '400' });
+    expect(byPackage.pages.flat().sort()).toEqual(lines.filter((line) => (line.package as typeof pkgA).code === 'pk-a').map((line) => line.id).sort());
+  });
+
+  it('keeps the search together with the status and package filters', async () => {
+    const { pages } = await walk({ q: '400', status: 'active', packageCode: 'pk-a' });
+    const expected = lines.filter((line) => line.status === 'active' && (line.package as typeof pkgA).code === 'pk-a').map((line) => line.id);
+    expect(pages.flat().sort()).toEqual(expected.sort());
   });
 });
 

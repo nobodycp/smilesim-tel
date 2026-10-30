@@ -1,7 +1,5 @@
 import type { Layer } from './modules/auth/decide-login';
 
-export const WRONG_DOOR = 'هذا الحساب ليس لهذا المدخل';
-
 export const DOOR_HOSTS = [
   { host: 'admin', layer: 'branch' },
   { host: 'main', layer: 'main_agent' },

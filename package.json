@@ -7,6 +7,7 @@
   },
   "scripts": {
     "lint": "npm run lint --workspaces",
+    "check:copy": "npm run check:copy --workspace web",
     "typecheck": "npm run typecheck:api && npm run typecheck:web",
     "typecheck:api": "tsc --noEmit -p apps/api/tsconfig.json",
     "typecheck:web": "tsc --noEmit -p apps/web/tsconfig.json",

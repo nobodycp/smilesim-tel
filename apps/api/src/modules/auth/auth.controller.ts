@@ -2,9 +2,8 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, Res }
 import type { CookieOptions, Request, Response } from 'express';
 import { AuthService, Failure } from './auth.service';
 import { SESSION_TTL_SECONDS } from './sessions';
-import { expectedLayer, WRONG_DOOR } from '../../doors';
-
-const BAD_CREDENTIALS = 'بيانات الدخول غير صحيحة';
+import { expectedLayer } from '../../doors';
+import { errorBody } from '../../errors';
 
 function cookieBase(): CookieOptions {
   return {
@@ -41,7 +40,7 @@ function metaOf(req: Request) {
 
 function failWith(res: Response, failure: Failure) {
   res.status(failure.status);
-  return { message: failure.message };
+  return { message: failure.message, code: failure.code };
 }
 
 @Controller('auth')
@@ -57,7 +56,7 @@ export class AuthController {
   ) {
     if (typeof body?.loginName !== 'string' || typeof body?.password !== 'string') {
       res.status(401);
-      return { message: BAD_CREDENTIALS };
+      return errorBody('BAD_CREDENTIALS');
     }
     const header = req.headers['x-door'];
     const door = expectedLayer({
@@ -66,12 +65,12 @@ export class AuthController {
     });
     if (door === 'conflict') {
       res.status(403);
-      return { message: WRONG_DOOR };
+      return errorBody('DOOR_MISMATCH');
     }
     const result = await this.auth.login({ loginName: body.loginName, password: body.password }, metaOf(req), door);
     if (result.kind === 'error') {
       res.status(result.status);
-      return { message: result.message };
+      return { message: result.message, code: result.code };
     }
     setSessionCookie(res, result.sessionId);
     res.status(200);

@@ -2,8 +2,8 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
-import { validateNewPassword, validateNickname } from '../auth/validators';
-import { NOT_SIGNED_IN } from '../auth/auth.service';
+import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
+import { newPasswordProblem, nicknameProblem } from '../auth/validators';
 import { catalog, packageCode, packageName } from './office-catalog';
 import {
   FEED_PAGE,
@@ -32,20 +32,7 @@ import {
   withinCeiling,
 } from './office-rules';
 
-const FORBIDDEN = 'غير مسموح';
-const INVALID = 'بيانات غير صالحة';
-const NO_FUNDS = 'الرصيد لا يكفي ضمن السقف';
-const PRICE_LOW = 'سعر البيع أقل من المسموح';
-const NOT_FOUND = 'غير موجود';
-const REPORTS_ONLY = 'التقارير للفرع فقط';
-const NOTE_REQUIRED = 'أضف ملاحظة للتمويل';
 
-const HAS_HISTORY = 'لا يُحذف حساب فيه سجل. جمّده.';
-const NUMBER_TAKEN = 'الرقم مستخدم';
-const LOGIN_TAKEN = 'اسم الدخول مستخدم';
-const CLEAR_WALLET = 'صفّر المحفظة قبل النقل';
-const PACKAGE_OFF = 'الرزمة متوقفة';
-const ACTION_OFF = 'متوقف على هذه الرزمة';
 const MODE_FIELDS: Record<string, { auto: string; allow: string }> = {
   activate: { auto: 'autoActivate', allow: 'allowActivate' },
   charge: { auto: 'autoCharge', allow: 'allowCharge' },
@@ -56,7 +43,6 @@ const MODE_FIELDS: Record<string, { auto: string; allow: string }> = {
   rename: { auto: 'autoRename', allow: 'allowRename' },
   sim: { auto: 'autoSim', allow: 'allowSim' },
 };
-const SWITCH_FIRST = 'بدّل الرزمة أولاً';
 const ALL_GRANTS = ['read', 'edit', 'accounting', 'tasks', 'reports', 'staff', 'enter'];
 
 type Gate = { sessionId?: string; homeId?: string };
@@ -75,18 +61,18 @@ type Action = 'activate' | 'charge' | 'extend' | 'reactivate' | 'disconnect' | '
 type Sale = { msisdn: string; lineId: string; companyName: string; packageName: string; packagePrice: number };
 
 export class OfficeFailure extends Error {
-  constructor(readonly status: number, message: string) {
-    super(message);
+  constructor(readonly status: number, readonly code: ErrorCode) {
+    super(ERROR_MESSAGES[code]);
   }
 }
 
-function fail(status: number, message: string): never {
-  throw new OfficeFailure(status, message);
+function fail(status: number, code: ErrorCode): never {
+  throw new OfficeFailure(status, code);
 }
 
 function feedPosition(raw: string | undefined) {
   const position = decodeFeedCursor(raw);
-  if (position === null) fail(400, INVALID);
+  if (position === null) fail(400, 'INVALID');
   return position;
 }
 
@@ -173,9 +159,9 @@ export class OfficeService implements OnModuleInit {
 
   async postAnnouncement(gate: Gate, body: { body?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.layer === 'pos') fail(403, FORBIDDEN);
+    if (actor.layer === 'pos') fail(403, 'FORBIDDEN');
     const text = typeof body.body === 'string' ? body.body.trim() : '';
-    if (!text || text.length > 400) fail(400, INVALID);
+    if (!text || text.length > 400) fail(400, 'INVALID');
     await this.prisma.announcement.create({ data: { authorId: actor.id, body: text } });
     return { ok: true };
   }
@@ -207,18 +193,18 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     const amount = positive(body.amount);
     const note = typeof body.note === 'string' ? body.note.trim() : '';
-    if (!amount) fail(400, INVALID);
+    if (!amount) fail(400, 'INVALID');
     const accounts = await this.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
-    if (!target) fail(404, NOT_FOUND);
+    if (!target) fail(404, 'NOT_FOUND');
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    if (!visible.has(target.id)) fail(403, FORBIDDEN);
+    if (!visible.has(target.id)) fail(403, 'FORBIDDEN');
     const self = target.id === actor.id;
     if (self) {
-      if (actor.layer !== 'branch') fail(403, FORBIDDEN);
-      if (!note) fail(400, NOTE_REQUIRED);
+      if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+      if (!note) fail(400, 'NOTE_REQUIRED');
     } else if (actor.layer !== 'branch' && target.parentId !== actor.id) {
-      fail(403, FORBIDDEN);
+      fail(403, 'FORBIDDEN');
     }
     await this.prisma.$transaction(async (tx) => {
       if (!self) await this.move(tx, actor.id, -amount, actor.operatorId, 'fund', note);
@@ -230,10 +216,10 @@ export class OfficeService implements OnModuleInit {
   async setCeiling(gate: Gate, loginName: string, body: { ceiling?: unknown }) {
     const actor = await this.actor(gate);
     const ceiling = nonNegative(body.ceiling);
-    if (ceiling === null || ceiling > 1_000_000) fail(400, INVALID);
+    if (ceiling === null || ceiling > 1_000_000) fail(400, 'INVALID');
     const accounts = await this.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
-    if (!target || target.parentId !== actor.id) fail(403, FORBIDDEN);
+    if (!target || target.parentId !== actor.id) fail(403, 'FORBIDDEN');
     await this.prisma.wallet.update({ where: { userId: target.id }, data: { ceiling } });
     return { ok: true };
   }
@@ -279,12 +265,12 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     const field = editableField(actor.layer);
     const price = nonNegative(body.price);
-    if (!field || price === null) fail(400, INVALID);
+    if (!field || price === null) fail(400, 'INVALID');
     const row = await this.prisma.package.findUnique({ where: { code } });
-    if (!row) fail(404, NOT_FOUND);
+    if (!row) fail(404, 'NOT_FOUND');
     const next = withPrice(pricesOf(row), field, price);
     if (field === 'pos') next.subscriberPrice = next.posPrice;
-    if (!chainHolds(next)) fail(400, PRICE_LOW);
+    if (!chainHolds(next)) fail(400, 'PRICE_BELOW_FLOOR');
     await this.prisma.package.update({
       where: { id: row.id },
       data: { mainPrice: next.mainPrice, agentPrice: next.agentPrice, posPrice: next.posPrice, subscriberPrice: next.subscriberPrice },
@@ -294,17 +280,17 @@ export class OfficeService implements OnModuleInit {
 
   async setCompanyImage(gate: Gate, body: { name?: unknown; image?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.layer !== 'branch' || actor.impersonating) fail(403, FORBIDDEN);
+    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'FORBIDDEN');
     const name = typeof body.name === 'string' ? body.name.trim() : '';
-    if (!name) fail(400, INVALID);
+    if (!name) fail(400, 'INVALID');
     const found = await this.prisma.company.count({ where: { name } });
-    if (!found) fail(404, NOT_FOUND);
+    if (!found) fail(404, 'NOT_FOUND');
     let image: string | null = null;
     if (typeof body.image === 'string' && body.image) {
       const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(body.image);
-      if (!match) fail(400, INVALID);
+      if (!match) fail(400, 'INVALID');
       const bytes = Buffer.from(match[2], 'base64');
-      if (bytes.length < 32 || bytes.length > 150_000) fail(400, INVALID);
+      if (bytes.length < 32 || bytes.length > 150_000) fail(400, 'INVALID');
       image = `data:image/${match[1]};base64,${match[2]}`;
     }
     await this.prisma.company.updateMany({ where: { name }, data: { image } });
@@ -313,7 +299,7 @@ export class OfficeService implements OnModuleInit {
 
   async providers(gate: Gate) {
     const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, FORBIDDEN);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const rows = await this.prisma.provider.findMany({
       where: { companies: { some: {} } },
       include: { companies: { include: { packages: true }, orderBy: { name: 'asc' } } },
@@ -388,9 +374,9 @@ export class OfficeService implements OnModuleInit {
       where: { id },
       include: { package: { include: { company: true } }, pos: true },
     });
-    if (!line) fail(404, NOT_FOUND);
+    if (!line) fail(404, 'NOT_FOUND');
     const accounts = await this.accounts();
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, FORBIDDEN);
+    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
     const [tasks, entries] = await Promise.all([
       this.prisma.officeTask.findMany({
         where: { lineId: line.id },
@@ -470,20 +456,20 @@ export class OfficeService implements OnModuleInit {
     const packageCode = typeof body.packageCode === 'string' ? body.packageCode : '';
     const posLogin = typeof body.posLogin === 'string' ? body.posLogin : '';
     const requested = typeof body.msisdn === 'string' ? body.msisdn.trim() : '';
-    if (!outcome || !packageCode || !posLogin || (!esim && !iccid)) fail(400, INVALID);
-    if (requested && !/^05\d{8}$/.test(requested)) fail(400, INVALID);
+    if (!outcome || !packageCode || !posLogin || (!esim && !iccid)) fail(400, 'INVALID');
+    if (requested && !/^05\d{8}$/.test(requested)) fail(400, 'INVALID');
     const accounts = await this.accounts();
     const pos = accounts.find((account) => account.loginName === posLogin && account.layer === 'pos');
-    if (!pos || !canActivateFor(actor, pos, accounts)) fail(403, FORBIDDEN);
+    if (!pos || !canActivateFor(actor, pos, accounts)) fail(403, 'FORBIDDEN');
     const pkg = await this.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true } });
-    if (!pkg) fail(404, NOT_FOUND);
+    if (!pkg) fail(404, 'NOT_FOUND');
     this.assertRunnable(pkg, 'activate');
     const unit = await this.buyPrice(pkg.id, pos.id, pkg.posPrice);
     const posDelta = -(unit + (esim ? ESIM_FEE : 0));
     const msisdn = requested || (await this.freshMsisdn());
     if (requested) {
       const existing = await this.prisma.line.findUnique({ where: { msisdn } });
-      if (existing) fail(400, NUMBER_TAKEN);
+      if (existing) fail(400, 'NUMBER_TAKEN');
     }
     if (outcome === 'fail' || !isAutomatic(pkg, 'activate')) {
       const task = await this.openTask({
@@ -518,14 +504,14 @@ export class OfficeService implements OnModuleInit {
   async operate(gate: Gate, lineId: string, action: Exclude<Action, 'activate' | 'switch'>, body: { outcome?: unknown }) {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
-    if (!outcome) fail(400, INVALID);
+    if (!outcome) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
-    if (line.opsLocked) fail(400, SWITCH_FIRST);
+    if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     this.assertRunnable(line.package, action);
-    if (line.status === 'disconnected') fail(400, INVALID);
-    if (action === 'charge' && line.status !== 'active') fail(400, INVALID);
-    if (action === 'freeze' && line.status !== 'active') fail(400, INVALID);
-    if (action === 'unfreeze' && line.status !== 'frozen') fail(400, INVALID);
+    if (line.status === 'disconnected') fail(400, 'INVALID');
+    if (action === 'charge' && line.status !== 'active') fail(400, 'INVALID');
+    if (action === 'freeze' && line.status !== 'active') fail(400, 'INVALID');
+    if (action === 'unfreeze' && line.status !== 'frozen') fail(400, 'INVALID');
     const charged = action === 'charge' ? await this.buyPrice(line.packageId, line.posId, line.package.posPrice) : 0;
     const posDelta = action === 'charge' ? -charged : 0;
     if (outcome === 'fail' || !isAutomatic(line.package, action)) {
@@ -548,11 +534,11 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
     const packageCode = typeof body.packageCode === 'string' ? body.packageCode : '';
-    if (!outcome || !packageCode) fail(400, INVALID);
+    if (!outcome || !packageCode) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
-    if (!line.opsLocked && line.status !== 'active') fail(400, INVALID);
+    if (!line.opsLocked && line.status !== 'active') fail(400, 'INVALID');
     const next = await this.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true } });
-    if (!next || next.id === line.packageId) fail(400, INVALID);
+    if (!next || next.id === line.packageId) fail(400, 'INVALID');
     this.assertRunnable(next, 'switch');
     const nextPrice = await this.buyPrice(next.id, line.posId, next.posPrice);
     const currentPrice = await this.buyPrice(line.packageId, line.posId, line.package.posPrice);
@@ -574,10 +560,10 @@ export class OfficeService implements OnModuleInit {
   async extend(gate: Gate, lineId: string, body: { outcome?: unknown }) {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
-    if (!outcome) fail(400, INVALID);
+    if (!outcome) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
-    if (line.opsLocked) fail(400, SWITCH_FIRST);
-    if (line.status !== 'active') fail(400, INVALID);
+    if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
+    if (line.status !== 'active') fail(400, 'INVALID');
     this.assertRunnable(line.package, 'extend');
     const posDelta = -(await this.buyPrice(line.packageId, line.posId, line.package.posPrice));
     if (outcome === 'fail' || !isAutomatic(line.package, 'extend')) {
@@ -598,10 +584,10 @@ export class OfficeService implements OnModuleInit {
   async reactivate(gate: Gate, lineId: string, body: { outcome?: unknown }) {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
-    if (!outcome) fail(400, INVALID);
+    if (!outcome) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
-    if (line.opsLocked) fail(400, SWITCH_FIRST);
-    if (line.status !== 'disconnected') fail(400, INVALID);
+    if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
+    if (line.status !== 'disconnected') fail(400, 'INVALID');
     this.assertRunnable(line.package, 'reactivate');
     const posDelta = -(await this.buyPrice(line.packageId, line.posId, line.package.posPrice));
     if (outcome === 'fail' || !isAutomatic(line.package, 'activate')) {
@@ -625,14 +611,14 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
     const msisdn = typeof body.msisdn === 'string' ? body.msisdn.trim() : '';
-    if (!outcome || !/^05\d{8}$/.test(msisdn)) fail(400, INVALID);
+    if (!outcome || !/^05\d{8}$/.test(msisdn)) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
-    if (line.opsLocked) fail(400, SWITCH_FIRST);
+    if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     this.assertRunnable(line.package, 'rename');
-    if (line.status !== 'active') fail(400, INVALID);
-    if (msisdn === line.msisdn) fail(400, INVALID);
+    if (line.status !== 'active') fail(400, 'INVALID');
+    if (msisdn === line.msisdn) fail(400, 'INVALID');
     const taken = await this.prisma.line.findUnique({ where: { msisdn } });
-    if (taken) fail(400, NUMBER_TAKEN);
+    if (taken) fail(400, 'NUMBER_TAKEN');
     if (outcome === 'success' && isAutomatic(line.package, 'rename')) {
       await this.prisma.line.update({ where: { id: line.id }, data: { msisdn } });
       return { applied: true as const };
@@ -648,11 +634,11 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
     const iccid = typeof body.iccid === 'string' ? body.iccid.trim() : '';
-    if (!outcome || iccid.length < 8) fail(400, INVALID);
+    if (!outcome || iccid.length < 8) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
-    if (line.opsLocked) fail(400, SWITCH_FIRST);
+    if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     this.assertRunnable(line.package, 'sim');
-    if (line.status !== 'active') fail(400, INVALID);
+    if (line.status !== 'active') fail(400, 'INVALID');
     if (outcome === 'success' && isAutomatic(line.package, 'sim')) {
       await this.prisma.line.update({ where: { id: line.id }, data: { iccid, esim: false } });
       return { applied: true as const };
@@ -708,36 +694,36 @@ export class OfficeService implements OnModuleInit {
 
   async takeTask(gate: Gate, id: string) {
     const actor = await this.branchActor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, FORBIDDEN);
+    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
     const current = await this.prisma.officeTask.findUnique({ where: { id } });
-    if (!current || current.status !== 'pending') fail(400, INVALID);
+    if (!current || current.status !== 'pending') fail(400, 'INVALID');
     const updated = await this.prisma.officeTask.updateMany({
       where: { id, status: 'pending' },
       data: { status: 'working', assigneeId: actor.id, log: this.noteLog(current.log, `أخذها ${actor.nickname}`) },
     });
-    if (updated.count !== 1) fail(400, INVALID);
+    if (updated.count !== 1) fail(400, 'INVALID');
     return { ok: true };
   }
 
   async releaseTask(gate: Gate, id: string) {
     const actor = await this.branchActor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, FORBIDDEN);
+    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
     const current = await this.prisma.officeTask.findUnique({ where: { id } });
-    if (!current || current.status !== 'working' || current.assigneeId !== actor.id) fail(400, INVALID);
+    if (!current || current.status !== 'working' || current.assigneeId !== actor.id) fail(400, 'INVALID');
     const updated = await this.prisma.officeTask.updateMany({
       where: { id, status: 'working', assigneeId: actor.id },
       data: { status: 'pending', assigneeId: null, log: this.noteLog(current.log, `أرجعها ${actor.nickname}`) },
     });
-    if (updated.count !== 1) fail(400, INVALID);
+    if (updated.count !== 1) fail(400, 'INVALID');
     return { ok: true };
   }
 
   async completeTask(gate: Gate, id: string, body: { note?: unknown }) {
     const actor = await this.branchActor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, FORBIDDEN);
+    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
     const note = typeof body.note === 'string' ? body.note.trim() : '';
     const task = await this.prisma.officeTask.findUnique({ where: { id } });
-    if (!task || task.status !== 'working' || task.assigneeId !== actor.id) fail(400, INVALID);
+    if (!task || task.status !== 'working' || task.assigneeId !== actor.id) fail(400, 'INVALID');
     await this.prisma.$transaction(async (tx) => {
       let sale: Sale | undefined;
       if (task.action === 'activate') {
@@ -807,15 +793,15 @@ export class OfficeService implements OnModuleInit {
 
   async rejectTask(gate: Gate, id: string, body: { reason?: unknown }) {
     const actor = await this.branchActor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, FORBIDDEN);
+    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
     const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
-    if (!reason) fail(400, INVALID);
+    if (!reason) fail(400, 'INVALID');
     const task = await this.prisma.officeTask.findUnique({ where: { id } });
     const updated = await this.prisma.officeTask.updateMany({
       where: { id, status: 'working', assigneeId: actor.id },
       data: { status: 'cancelled', resultNote: reason },
     });
-    if (updated.count !== 1) fail(400, INVALID);
+    if (updated.count !== 1) fail(400, 'INVALID');
     if (task && task.submitterId !== actor.id) {
       await this.notifyUsers([task.submitterId], {
         kind: 'task_reply',
@@ -834,7 +820,7 @@ export class OfficeService implements OnModuleInit {
       where: { id, submitterId: actor.id, status: { in: ['pending', 'working'] } },
       data: { status: 'cancelled', resultNote: null, assigneeId: null },
     });
-    if (updated.count !== 1) fail(400, INVALID);
+    if (updated.count !== 1) fail(400, 'INVALID');
     return { ok: true };
   }
 
@@ -872,16 +858,16 @@ export class OfficeService implements OnModuleInit {
 
   async createAccount(gate: Gate, body: { loginName?: unknown; nickname?: unknown; password?: unknown; layer?: unknown; parentLogin?: unknown; roleId?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.impersonating || actor.layer === 'pos') fail(403, FORBIDDEN);
+    if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
     const loginName = typeof body.loginName === 'string' ? body.loginName.trim().toLowerCase() : '';
     const nickname = typeof body.nickname === 'string' ? body.nickname.trim() : '';
     const password = typeof body.password === 'string' ? body.password : '';
     const layer = typeof body.layer === 'string' ? body.layer : '';
     const parentLogin = typeof body.parentLogin === 'string' ? body.parentLogin.trim() : '';
-    if (!/^[a-z0-9._-]{3,32}$/.test(loginName)) fail(400, INVALID);
-    const nickError = validateNickname(nickname);
+    if (!/^[a-z0-9._-]{3,32}$/.test(loginName)) fail(400, 'INVALID');
+    const nickError = nicknameProblem(nickname);
     if (nickError) fail(400, nickError);
-    const passError = validateNewPassword(password);
+    const passError = newPasswordProblem(password);
     if (passError) fail(400, passError);
     const allowed: Record<string, string[]> = {
       branch: ['main_agent', 'agent', 'pos'],
@@ -889,14 +875,14 @@ export class OfficeService implements OnModuleInit {
       agent: ['pos'],
     };
     if (layer === 'staff') {
-      if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('staff'))) fail(403, FORBIDDEN);
+      if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('staff'))) fail(403, 'FORBIDDEN');
       const roleId = typeof body.roleId === 'string' ? body.roleId : '';
       const role = roleId ? await this.prisma.role.findUnique({ where: { id: roleId } }) : null;
-      if (!role || (role.staff && !actor.isBranchOwner)) fail(403, FORBIDDEN);
+      if (!role || (role.staff && !actor.isBranchOwner)) fail(403, 'FORBIDDEN');
       const owner = await this.prisma.user.findFirst({ where: { isBranchOwner: true } });
-      if (!owner) fail(400, INVALID);
+      if (!owner) fail(400, 'INVALID');
       const existing = await this.prisma.user.findUnique({ where: { loginName } });
-      if (existing) fail(400, LOGIN_TAKEN);
+      if (existing) fail(400, 'LOGIN_TAKEN');
       await this.prisma.user.create({
         data: {
           loginName,
@@ -911,7 +897,7 @@ export class OfficeService implements OnModuleInit {
       });
       return { ok: true as const };
     }
-    if (!allowed[actor.layer]?.includes(layer)) fail(403, FORBIDDEN);
+    if (!allowed[actor.layer]?.includes(layer)) fail(403, 'FORBIDDEN');
     const accounts = await this.accounts();
     const direct: Record<string, string> = { branch: 'main_agent', main_agent: 'agent', agent: 'pos' };
     let parent = accounts.find((account) => account.id === actor.id) ?? null;
@@ -921,9 +907,9 @@ export class OfficeService implements OnModuleInit {
       const parentLayer = layer === 'agent' ? 'main_agent' : 'agent';
       parent = chosen && chosen.id !== actor.id && visible.has(chosen.id) && chosen.layer === parentLayer ? chosen : null;
     }
-    if (!parent) fail(400, INVALID);
+    if (!parent) fail(400, 'INVALID');
     const existing = await this.prisma.user.findUnique({ where: { loginName } });
-    if (existing) fail(400, LOGIN_TAKEN);
+    if (existing) fail(400, 'LOGIN_TAKEN');
     await this.prisma.user.create({
       data: {
         loginName,
@@ -940,18 +926,18 @@ export class OfficeService implements OnModuleInit {
 
   async setAccountPassword(gate: Gate, loginName: string, body: { password?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.impersonating || actor.layer === 'pos') fail(403, FORBIDDEN);
+    if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
     const password = typeof body.password === 'string' ? body.password : '';
-    const passError = validateNewPassword(password);
+    const passError = newPasswordProblem(password);
     if (passError) fail(400, passError);
     const target = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!target || target.isBranchOwner || target.id === actor.id) fail(403, FORBIDDEN);
+    if (!target || target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
     const accounts = await this.accounts();
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(403, FORBIDDEN);
+    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(403, 'FORBIDDEN');
     const rank: Record<string, number> = { branch: 0, main_agent: 1, agent: 2, pos: 3 };
     if (target.roleId) {
-      if (!actor.isBranchOwner && !actor.grants.includes('staff')) fail(403, FORBIDDEN);
-    } else if ((rank[target.layer] ?? 9) <= (rank[actor.layer] ?? 9)) fail(403, FORBIDDEN);
+      if (!actor.isBranchOwner && !actor.grants.includes('staff')) fail(403, 'FORBIDDEN');
+    } else if ((rank[target.layer] ?? 9) <= (rank[actor.layer] ?? 9)) fail(403, 'FORBIDDEN');
     await this.prisma.user.update({
       where: { id: target.id },
       data: { passwordHash: await hashPassword(password), mustChangePassword: true },
@@ -961,16 +947,16 @@ export class OfficeService implements OnModuleInit {
 
   async roles(gate: Gate) {
     const actor = await this.actor(gate);
-    if (!actor.isBranchOwner) fail(403, FORBIDDEN);
+    if (!actor.isBranchOwner) fail(403, 'FORBIDDEN');
     const roles = await this.prisma.role.findMany({ orderBy: { name: 'asc' } });
     return { roles };
   }
 
   async saveRole(gate: Gate, body: { id?: unknown; name?: unknown; read?: unknown; edit?: unknown; accounting?: unknown; tasks?: unknown; reports?: unknown; staff?: unknown; enter?: unknown }) {
     const actor = await this.actor(gate);
-    if (!actor.isBranchOwner || actor.impersonating) fail(403, FORBIDDEN);
+    if (!actor.isBranchOwner || actor.impersonating) fail(403, 'FORBIDDEN');
     const name = typeof body.name === 'string' ? body.name.trim() : '';
-    if (name.length < 2) fail(400, INVALID);
+    if (name.length < 2) fail(400, 'INVALID');
     const flags = {
       name,
       read: body.read === true,
@@ -989,16 +975,16 @@ export class OfficeService implements OnModuleInit {
 
   async transferPos(gate: Gate, loginName: string, body: { parentLogin?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.impersonating || (actor.layer !== 'branch' && actor.layer !== 'main_agent')) fail(403, FORBIDDEN);
+    if (actor.impersonating || (actor.layer !== 'branch' && actor.layer !== 'main_agent')) fail(403, 'FORBIDDEN');
     const parentLogin = typeof body.parentLogin === 'string' ? body.parentLogin : '';
     const accounts = await this.accounts();
     const pos = accounts.find((account) => account.loginName === loginName && account.layer === 'pos');
     const next = accounts.find((account) => account.loginName === parentLogin && account.layer === 'agent');
-    if (!pos || !next || pos.parentId === next.id) fail(400, INVALID);
+    if (!pos || !next || pos.parentId === next.id) fail(400, 'INVALID');
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    if (!visible.has(pos.id) || !visible.has(next.id)) fail(403, FORBIDDEN);
+    if (!visible.has(pos.id) || !visible.has(next.id)) fail(403, 'FORBIDDEN');
     const wallet = await this.prisma.wallet.findUnique({ where: { userId: pos.id } });
-    if (!wallet || wallet.balance !== 0) fail(400, CLEAR_WALLET);
+    if (!wallet || wallet.balance !== 0) fail(400, 'ZERO_WALLET_FIRST');
     await this.prisma.$transaction(async (tx) => {
       await tx.line.updateMany({ where: { posId: pos.id, originAgentId: null }, data: { originAgentId: pos.parentId } });
       await tx.user.update({ where: { id: pos.id }, data: { parentId: next.id } });
@@ -1008,13 +994,13 @@ export class OfficeService implements OnModuleInit {
 
   async transferLine(gate: Gate, lineId: string, body: { posLogin?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.layer === 'pos' || actor.impersonating) fail(403, FORBIDDEN);
+    if (actor.layer === 'pos' || actor.impersonating) fail(403, 'FORBIDDEN');
     const posLogin = typeof body.posLogin === 'string' ? body.posLogin : '';
     const line = await this.visibleLine(actor, lineId);
     const accounts = await this.accounts();
     const next = accounts.find((account) => account.loginName === posLogin && account.layer === 'pos');
-    if (!next || next.id === line.posId) fail(400, INVALID);
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(next.id)) fail(403, FORBIDDEN);
+    if (!next || next.id === line.posId) fail(400, 'INVALID');
+    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(next.id)) fail(403, 'FORBIDDEN');
     const locked = !line.package.companyId;
     await this.prisma.line.update({
       where: { id: line.id },
@@ -1025,9 +1011,9 @@ export class OfficeService implements OnModuleInit {
 
   async setPackageMode(gate: Gate, code: string, body: Record<string, unknown>) {
     const actor = await this.actor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, FORBIDDEN);
+    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
     const pkg = await this.prisma.package.findUnique({ where: { code } });
-    if (!pkg) fail(404, NOT_FOUND);
+    if (!pkg) fail(404, 'NOT_FOUND');
     const keys = ['autoActivate', 'autoCharge', 'autoDisconnect', 'autoFreeze', 'autoSwitch', 'autoExtend', 'autoRename', 'autoSim', 'allowActivate', 'allowCharge', 'allowDisconnect', 'allowFreeze', 'allowSwitch', 'allowExtend', 'allowRename', 'allowSim', 'enabled'] as const;
     const data: Record<string, boolean> = {};
     for (const key of keys) if (typeof body[key] === 'boolean') data[key] = body[key] as boolean;
@@ -1039,16 +1025,16 @@ export class OfficeService implements OnModuleInit {
       data[pair.auto] = flags.auto;
       data[pair.allow] = flags.allow;
     }
-    if (Object.keys(data).length === 0) fail(400, INVALID);
+    if (Object.keys(data).length === 0) fail(400, 'INVALID');
     await this.prisma.package.update({ where: { code }, data: data as { autoActivate?: boolean } });
     return { ok: true as const };
   }
 
   async packageSheet(gate: Gate, code: string) {
     const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, FORBIDDEN);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const pkg = await this.prisma.package.findUnique({ where: { code }, include: { provider: true, company: true, offers: { include: { user: true } } } });
-    if (!pkg) fail(404, NOT_FOUND);
+    if (!pkg) fail(404, 'NOT_FOUND');
     return {
       code: pkg.code,
       name: pkg.name,
@@ -1082,30 +1068,30 @@ export class OfficeService implements OnModuleInit {
 
   async setChain(gate: Gate, code: string, body: Record<string, unknown>) {
     const actor = await this.actor(gate);
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, FORBIDDEN);
+    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
     const pkg = await this.prisma.package.findUnique({ where: { code } });
-    if (!pkg) fail(404, NOT_FOUND);
+    if (!pkg) fail(404, 'NOT_FOUND');
     const next = { ...pricesOf(pkg) };
     for (const key of ['branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice'] as const) {
       if (body[key] === undefined) continue;
       const price = nonNegative(body[key]);
-      if (price === null) fail(400, INVALID);
+      if (price === null) fail(400, 'INVALID');
       next[key] = price;
     }
-    if (!chainHolds(next)) fail(400, PRICE_LOW);
+    if (!chainHolds(next)) fail(400, 'PRICE_BELOW_FLOOR');
     await this.prisma.package.update({ where: { id: pkg.id }, data: next });
     return { ok: true as const };
   }
 
   async saveOffer(gate: Gate, code: string, body: { loginName?: unknown; price?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, FORBIDDEN);
+    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
     const loginName = typeof body.loginName === 'string' ? body.loginName : '';
     const price = nonNegative(body.price);
-    if (!loginName || price === null) fail(400, INVALID);
+    if (!loginName || price === null) fail(400, 'INVALID');
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     const user = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!pkg || !user || user.layer === 'branch') fail(400, INVALID);
+    if (!pkg || !user || user.layer === 'branch') fail(400, 'INVALID');
     await this.prisma.packageOffer.upsert({
       where: { packageId_userId: { packageId: pkg.id, userId: user.id } },
       update: { price },
@@ -1116,21 +1102,21 @@ export class OfficeService implements OnModuleInit {
 
   async removeOffer(gate: Gate, code: string, loginName: string) {
     const actor = await this.actor(gate);
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, FORBIDDEN);
+    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     const user = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!pkg || !user) fail(404, NOT_FOUND);
+    if (!pkg || !user) fail(404, 'NOT_FOUND');
     await this.prisma.packageOffer.deleteMany({ where: { packageId: pkg.id, userId: user.id } });
     return { ok: true as const };
   }
 
   async setFrozen(gate: Gate, loginName: string, frozen: boolean) {
     const actor = await this.branchActor(gate);
-    if (actor.impersonating) fail(403, FORBIDDEN);
+    if (actor.impersonating) fail(403, 'FORBIDDEN');
     const target = await this.prisma.user.findUnique({ where: { loginName }, include: { role: true } });
-    if (!target || target.isBranchOwner) fail(403, FORBIDDEN);
-    if (!actor.isBranchOwner && !actor.grants.includes('staff')) fail(403, FORBIDDEN);
-    if (target.role?.staff && !actor.isBranchOwner) fail(403, FORBIDDEN);
+    if (!target || target.isBranchOwner) fail(403, 'FORBIDDEN');
+    if (!actor.isBranchOwner && !actor.grants.includes('staff')) fail(403, 'FORBIDDEN');
+    if (target.role?.staff && !actor.isBranchOwner) fail(403, 'FORBIDDEN');
     await this.prisma.user.update({ where: { id: target.id }, data: { disabledAt: frozen ? new Date() : null } });
     if (frozen) {
       const held = await this.prisma.officeTask.findMany({ where: { assigneeId: target.id, status: 'working' } });
@@ -1152,16 +1138,16 @@ export class OfficeService implements OnModuleInit {
 
   async removeUser(gate: Gate, loginName: string) {
     const actor = await this.branchActor(gate);
-    if (actor.impersonating) fail(403, FORBIDDEN);
+    if (actor.impersonating) fail(403, 'FORBIDDEN');
     const target = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!target || target.isBranchOwner || target.id === actor.id) fail(403, FORBIDDEN);
+    if (!target || target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
     const [children, lines, tasks, entries] = await Promise.all([
       this.prisma.user.count({ where: { parentId: target.id } }),
       this.prisma.line.count({ where: { posId: target.id } }),
       this.prisma.officeTask.count({ where: { OR: [{ submitterId: target.id }, { posId: target.id }, { assigneeId: target.id }] } }),
       this.prisma.walletEntry.count({ where: { OR: [{ userId: target.id }, { actorId: target.id }] } }),
     ]);
-    if (children + lines + tasks + entries > 0) fail(400, HAS_HISTORY);
+    if (children + lines + tasks + entries > 0) fail(400, 'HAS_HISTORY');
     await this.auth.dropLiveSessions(target.id);
     await this.prisma.session.deleteMany({ where: { userId: target.id } });
     await this.prisma.wallet.deleteMany({ where: { userId: target.id } });
@@ -1171,10 +1157,10 @@ export class OfficeService implements OnModuleInit {
 
   async enter(gate: Gate, loginName: string, meta: { userAgent: string; ip: string }) {
     const actor = await this.actor(gate);
-    if (actor.impersonating || actor.layer !== 'branch') fail(403, FORBIDDEN);
-    if (!actor.isBranchOwner && !actor.grants.includes('enter')) fail(403, FORBIDDEN);
+    if (actor.impersonating || actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    if (!actor.isBranchOwner && !actor.grants.includes('enter')) fail(403, 'FORBIDDEN');
     const target = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!target || target.disabledAt || target.id === actor.id) fail(400, INVALID);
+    if (!target || target.disabledAt || target.id === actor.id) fail(400, 'INVALID');
     await this.prisma.accessLog.create({ data: { actorId: actor.operatorId, targetLogin: target.loginName, ip: meta.ip } });
     const sessionId = await this.auth.saveImpersonation({ userId: target.id, userAgent: meta.userAgent, ip: meta.ip });
     return { sessionId };
@@ -1182,7 +1168,7 @@ export class OfficeService implements OnModuleInit {
 
   async leave(gate: Gate) {
     const live = gate.sessionId ? await this.auth.liveSession(gate.sessionId) : null;
-    if (!live || live.session.kind !== 'impersonation') fail(400, INVALID);
+    if (!live || live.session.kind !== 'impersonation') fail(400, 'INVALID');
     await this.auth.revokeSessions([live.session.id]);
     return { ok: true };
   }
@@ -1191,7 +1177,7 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     const operationKinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim'];
     const auditKinds = [...operationKinds, 'fund', 'self_fund'];
-    if (scope !== 'operations' && scope !== 'audit') fail(404, NOT_FOUND);
+    if (scope !== 'operations' && scope !== 'audit') fail(404, 'NOT_FOUND');
     const allowed = scope === 'operations' ? operationKinds : auditKinds;
     const kind = query.kind && allowed.includes(query.kind) ? query.kind : '';
     const from = query.from ? new Date(query.from) : null;
@@ -1376,8 +1362,8 @@ export class OfficeService implements OnModuleInit {
 
   async report(gate: Gate, kind: string, cursor?: string) {
     const actor = await this.actor(gate);
-    if (actor.layer !== 'branch' || actor.impersonating) fail(403, REPORTS_ONLY);
-    if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, REPORTS_ONLY);
+    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
+    if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, 'REPORTS_BRANCH_ONLY');
     if (kind === 'providers') return this.providerReport();
     if (kind === 'consumption') return this.entryReport(cursor);
     if (kind === 'funding') return this.entryReport(cursor, ['fund', 'self_fund']);
@@ -1390,14 +1376,14 @@ export class OfficeService implements OnModuleInit {
       const listed = await this.lines(gate, { cursor });
       return { lines: listed.lines, nextCursor: listed.nextCursor };
     }
-    fail(404, NOT_FOUND);
+    fail(404, 'NOT_FOUND');
   }
 
   private async actor(gate: Gate): Promise<Actor> {
     const sessionId = gate.sessionId;
-    if (!sessionId) fail(401, NOT_SIGNED_IN);
+    if (!sessionId) fail(401, 'LOGIN_REQUIRED');
     const live = await this.auth.liveSession(sessionId);
-    if (!live || live.session.scope !== 'full' || live.user.disabledAt) fail(401, NOT_SIGNED_IN);
+    if (!live || live.session.scope !== 'full' || live.user.disabledAt) fail(401, 'LOGIN_REQUIRED');
     await this.auth.touchSession(sessionId);
     const impersonating = live.session.kind === 'impersonation';
     let operatorId = live.user.id;
@@ -1431,7 +1417,7 @@ export class OfficeService implements OnModuleInit {
     allowSim: boolean;
   }, action: string) {
     const selling = action === 'activate' || action === 'charge' || action === 'extend' || action === 'reactivate' || action === 'switch';
-    if (!pkg.enabled && selling) fail(400, PACKAGE_OFF);
+    if (!pkg.enabled && selling) fail(400, 'PACKAGE_DISABLED');
     const allow: Record<string, boolean> = {
       activate: pkg.allowActivate,
       reactivate: pkg.allowActivate,
@@ -1444,7 +1430,7 @@ export class OfficeService implements OnModuleInit {
       rename: pkg.allowRename,
       sim: pkg.allowSim,
     };
-    if (allow[action] === false) fail(400, ACTION_OFF);
+    if (allow[action] === false) fail(400, 'OPERATION_DISABLED');
   }
 
   private async buyPrice(packageId: string, posId: string, fallback: number) {
@@ -1458,7 +1444,7 @@ export class OfficeService implements OnModuleInit {
 
   private async branchActor(gate: Gate): Promise<Actor> {
     const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, FORBIDDEN);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     return actor;
   }
 
@@ -1484,9 +1470,9 @@ export class OfficeService implements OnModuleInit {
 
   private async visibleLine(actor: Actor, lineId: string) {
     const line = await this.prisma.line.findUnique({ where: { id: lineId }, include: { package: { include: { company: true } } } });
-    if (!line) fail(404, NOT_FOUND);
+    if (!line) fail(404, 'NOT_FOUND');
     const accounts = await this.accounts();
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, FORBIDDEN);
+    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
     return line;
   }
 
@@ -1573,9 +1559,9 @@ export class OfficeService implements OnModuleInit {
   private async move(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, kind: string, note: string, sale?: Sale) {
     const wallet = await tx.wallet.findUnique({ where: { userId } });
     const user = await tx.user.findUnique({ where: { id: userId } });
-    if (!wallet || !user) fail(404, NOT_FOUND);
+    if (!wallet || !user) fail(404, 'NOT_FOUND');
     const debit = amount < 0 ? -amount : 0;
-    if (!withinCeiling(user.layer, wallet.balance, wallet.ceiling, debit)) fail(400, NO_FUNDS);
+    if (!withinCeiling(user.layer, wallet.balance, wallet.ceiling, debit)) fail(400, 'BALANCE_CEILING');
     const balanceAfter = wallet.balance + amount;
     await tx.wallet.update({ where: { userId }, data: { balance: balanceAfter } });
     await tx.walletEntry.create({
@@ -1601,7 +1587,7 @@ export class OfficeService implements OnModuleInit {
       const existing = await this.prisma.line.findUnique({ where: { msisdn } });
       if (!existing) return msisdn;
     }
-    throw new OfficeFailure(400, INVALID);
+    throw new OfficeFailure(400, 'INVALID');
   }
 
   private async providerReport() {

@@ -12,13 +12,13 @@ describe('decideLogin', () => {
     const missing = decideLogin({ user: null, passwordMatches: false, policy: openPolicy });
     const wrong = decideLogin({ user: trialUser('pos'), passwordMatches: false, policy: openPolicy });
     expect(missing).toEqual(wrong);
-    expect(missing).toEqual({ kind: 'error', status: 401, message: 'بيانات الدخول غير صحيحة' });
+    expect(missing).toEqual({ kind: 'error', status: 401, message: 'بيانات الدخول غير صحيحة', code: 'BAD_CREDENTIALS' });
   });
 
   it('rejects a disabled account after the password matches', () => {
     const user = { ...trialUser('agent'), disabledAt: new Date('2026-10-28') };
     expect(decideLogin({ user, passwordMatches: true, policy: openPolicy }))
-      .toEqual({ kind: 'error', status: 403, message: 'الحساب موقوف' });
+      .toEqual({ kind: 'error', status: 403, message: 'الحساب موقوف', code: 'ACCOUNT_DISABLED' });
   });
 
   it('stops a new account on password change before two-factor', () => {

@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback, useSyncExternalStore, useMemo } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { copy, translateApi, type Locale } from './copy';
 
-export const THEME_KEY = 'smilesim-theme';
-export const LOCALE_KEY = 'smilesim-locale';
+type ApiError = string | { message: string; code?: string };
 
-export type Theme = 'light' | 'dark';
+const THEME_KEY = 'smilesim-theme';
+const LOCALE_KEY = 'smilesim-locale';
+
+type Theme = 'light' | 'dark';
 
 const listeners = new Set<() => void>();
 
@@ -74,11 +76,13 @@ export function usePrefs() {
     emit();
   }, []);
 
+  // Pages pass `result.message`; a caller that has the whole failure may pass it to use its code.
   const apiText = useCallback(
-    (message: string) => translateApi(activeLocale, message),
+    (error: ApiError) =>
+      typeof error === 'string' ? translateApi(activeLocale, error) : translateApi(activeLocale, error.message, error.code),
     [activeLocale],
   );
-  const t = useMemo(() => copy[activeLocale], [activeLocale]);
+  const t = copy[activeLocale];
 
   return { theme: activeTheme, locale: activeLocale, setLocale, toggleTheme, t, apiText };
 }

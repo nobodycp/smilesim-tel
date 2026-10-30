@@ -387,7 +387,7 @@ export class OfficeController {
     } catch (error) {
       if (error instanceof OfficeFailure) {
         res.status(error.status);
-        return { message: error.message };
+        return { message: error.message, code: error.code };
       }
       throw error;
     }
