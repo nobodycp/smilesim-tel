@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Desk, Money, layerName } from '../../../../components/desk';
 import { TableSkeleton } from '../../../../components/loading';
+import { RowMenu } from '../../../../components/row-menu';
 import { api, type PackageSheet, type UserRow } from '../../../../lib/api';
 import { useDoor } from '../../../../lib/door-context';
 import { useOffice } from '../../../../lib/office-session';
@@ -167,7 +168,7 @@ export default function PackageSheetPage() {
                       <input inputMode="numeric" value={prices[key]} onChange={(event) => setPrices((current) => ({ ...current, [key]: event.target.value }))} />
                     </label>
                   ))}
-                  <button type="button" onClick={() => void saveChain()}>{t.save}</button>
+                  <button type="button" className="secondary" onClick={() => void saveChain()}>{t.save}</button>
                 </div>
               )}
               {tab === 'offers' && (
@@ -198,7 +199,16 @@ export default function PackageSheetPage() {
                           <td>{offer.nickname}</td>
                           <td>{layerName(t, offer.layer)}</td>
                           <td><Money value={offer.price} /></td>
-                          <td><button type="button" onClick={() => void api.removeOffer(sheet.code, offer.loginName).then(() => load())}>{t.deleteAccount}</button></td>
+                          <td>
+                            <RowMenu
+                              label={t.lineOps}
+                              items={[{
+                                label: t.deleteAccount,
+                                danger: true,
+                                onClick: () => void api.removeOffer(sheet.code, offer.loginName).then(() => load()),
+                              }]}
+                            />
+                          </td>
                         </tr>
                       ))}
                     </tbody>

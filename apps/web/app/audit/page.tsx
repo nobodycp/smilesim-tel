@@ -40,15 +40,17 @@ export default function AuditPage() {
   return (
     <Desk title={t.navAudit} lede="" error={error} note="">
       <div className="filter-bar">
-        <label>
-          {t.kind}
-          <select value={kind} onChange={(event) => setKind(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            {kinds.map((value) => (
-              <option key={value} value={value}>{actionName(t, value)}</option>
-            ))}
-          </select>
-        </label>
+        <div className="filter-panel">
+          <label>
+            {t.kind}
+            <select value={kind} onChange={(event) => setKind(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {kinds.map((value) => (
+                <option key={value} value={value}>{actionName(t, value)}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
       <section className="pane">
         <div className="sheet">

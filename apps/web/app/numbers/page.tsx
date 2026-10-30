@@ -143,7 +143,7 @@ export default function NumbersPage() {
                 ))}
               </select>
             </label>
-            <button type="button" className="quiet" onClick={() => { setQuery(''); setStatus(''); setPack(''); }}>
+            <button type="button" className="secondary" onClick={() => { setQuery(''); setStatus(''); setPack(''); }}>
               {t.clearFilters}
             </button>
           </div>

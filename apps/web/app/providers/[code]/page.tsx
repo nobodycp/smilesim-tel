@@ -93,7 +93,7 @@ export default function ProviderPackagesPage() {
                   <tr>
                     <th>{t.packageName}</th>
                     <th>{t.status}</th>
-                    <th>{t.branchCost}</th>
+                    <th className="num">{t.branchCost}</th>
                   </tr>
                 </thead>
                 <tbody>

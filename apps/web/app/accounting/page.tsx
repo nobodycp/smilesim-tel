@@ -35,10 +35,12 @@ export default function AccountingPage() {
   return (
     <Desk title={t.navAccounting} lede="" error={error} note="">
       <div className="filter-bar">
-        <label>
-          {t.numberSearch}
-          <input value={query} dir="ltr" onChange={(event) => setQuery(event.target.value)} />
-        </label>
+        <div className="filter-panel">
+          <label>
+            {t.numberSearch}
+            <input value={query} dir="ltr" onChange={(event) => setQuery(event.target.value)} />
+          </label>
+        </div>
       </div>
       <section className="pane">
         <div className="sheet">
@@ -52,9 +54,9 @@ export default function AccountingPage() {
                   <th>{t.number}</th>
                   <th>{t.company}</th>
                   <th>{t.packageName}</th>
-                  <th>{t.packagePrice}</th>
-                  <th>{t.balanceBefore}</th>
-                  <th>{t.balanceAfter}</th>
+                  <th className="num">{t.packagePrice}</th>
+                  <th className="num">{t.balanceBefore}</th>
+                  <th className="num">{t.balanceAfter}</th>
                 </tr>
               </thead>
               <tbody>

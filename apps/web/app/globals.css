@@ -692,7 +692,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   font-weight: 700;
 }
 .canvas-inner { width: min(1080px, 100%); padding: 20px 16px 48px; }
-.canvas-inner.wide { display: flex; flex: 1; flex-direction: column; width: 100%; max-width: none; }
+.canvas-inner.wide { display: flex; flex: 1; flex-direction: column; width: 100%; max-width: none; min-height: 0; }
 .page-head { margin-bottom: 14px; }
 .page-head h1 { font-size: 22px; }
 .page-head .lede { margin: 4px 0 0; max-width: 36rem; font-size: 13px; }
@@ -813,7 +813,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   gap: 8px;
   align-items: end;
 }
-.field-row > button, .pane form > button, .pane .btn-sm {
+.field-row > button:not(.secondary), .pane form > button, .pane .btn-sm {
   height: 34px;
   padding: 0 12px;
   border: 0;
@@ -824,7 +824,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   font-weight: 700;
   justify-self: start;
 }
-.field-row > button:hover, .pane form > button:hover, .pane .btn-sm:hover { background: var(--accent-2); }
+.field-row > button:not(.secondary):hover, .pane form > button:hover, .pane .btn-sm:hover { background: var(--accent-2); }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
 .sessions { display: grid; margin: 0; padding: 0; list-style: none; }
@@ -1120,7 +1120,7 @@ button.quiet:hover { background: var(--bad-bg); color: var(--bad); }
   bottom: 0;
   height: 2px;
   border-radius: 2px;
-  background: var(--rd-accent);
+  background: var(--rd-ink);
 }
 .steps button:disabled { opacity: 0.4; cursor: default; }
 .company-logo { width: 64px; height: 64px; object-fit: contain; border-radius: 16px; background: var(--surface-2); }

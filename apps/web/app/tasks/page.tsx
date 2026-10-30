@@ -49,16 +49,18 @@ export default function TasksPage() {
   return (
     <Desk title={t.tasksTitle} lede="" error={error} note={note}>
       <div className="filter-bar">
-        <label>
-          {t.status}
-          <select value={focus} onChange={(event) => setFocus(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            <option value="pending">{taskStatus(t, 'pending')}</option>
-            <option value="working">{taskStatus(t, 'working')}</option>
-            <option value="done">{taskStatus(t, 'done')}</option>
-            <option value="cancelled">{taskStatus(t, 'cancelled')}</option>
-          </select>
-        </label>
+        <div className="filter-panel">
+          <label>
+            {t.status}
+            <select value={focus} onChange={(event) => setFocus(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              <option value="pending">{taskStatus(t, 'pending')}</option>
+              <option value="working">{taskStatus(t, 'working')}</option>
+              <option value="done">{taskStatus(t, 'done')}</option>
+              <option value="cancelled">{taskStatus(t, 'cancelled')}</option>
+            </select>
+          </label>
+        </div>
       </div>
       <section className="pane">
         {!loaded ? <TableSkeleton rows={5} columns={6} /> : shown.length === 0 ? (

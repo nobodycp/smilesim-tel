@@ -134,7 +134,7 @@ export default function LineCardPage() {
                         {posChoices.map((row) => <option key={row.loginName} value={row.loginName}>{row.nickname}</option>)}
                       </select>
                     </label>
-                    <button type="button" disabled={!posLogin} onClick={async () => {
+                    <button type="button" className="secondary" disabled={!posLogin} onClick={async () => {
                       const result = await api.transferLine(line.id, posLogin);
                       if (!result.ok) setError(apiText(result.message));
                       else { setNote(t.transfer); await load(); }
@@ -149,6 +149,7 @@ export default function LineCardPage() {
                     </label>
                     <button
                       type="button"
+                      className="secondary"
                       disabled={!/^05\d{8}$/.test(nextNumber)}
                       onClick={() => run(() => api.renameLine(line.id, nextNumber, verdict))}
                     >
@@ -164,6 +165,7 @@ export default function LineCardPage() {
                     </label>
                     <button
                       type="button"
+                      className="secondary"
                       disabled={nextIccid.trim().length < 8}
                       onClick={() => run(() => api.swapSim(line.id, nextIccid.trim(), verdict))}
                     >
@@ -186,7 +188,7 @@ export default function LineCardPage() {
                           ))}
                       </select>
                     </label>
-                    <button type="button" disabled={!switchTo} onClick={() => run(() => api.switchLine(line.id, switchTo, verdict))}>
+                    <button type="button" className="secondary" disabled={!switchTo} onClick={() => run(() => api.switchLine(line.id, switchTo, verdict))}>
                       {t.actSwitch}
                     </button>
                   </div>

@@ -225,7 +225,7 @@ export default function SettingsPage() {
                       </strong>
                       <small>{session.ip} · {when(session.lastSeenAt)}</small>
                     </span>
-                    <button type="button" className="quiet" onClick={() => revoke(session.id)}>{t.endSession}</button>
+                    <button type="button" className="danger" onClick={() => revoke(session.id)}>{t.endSession}</button>
                   </li>
                 ))}
               </ul>

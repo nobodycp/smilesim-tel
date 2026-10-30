@@ -63,7 +63,7 @@ export default function ReportPage() {
                   <th>{t.provider}</th>
                   <th>{t.company}</th>
                   <th>{t.packageName}</th>
-                  <th>{t.branchCost}</th>
+                  <th className="num">{t.branchCost}</th>
                   <th>{t.linesCount}</th>
                 </tr>
               </thead>
@@ -142,7 +142,7 @@ export default function ReportPage() {
                     <th>{t.accountName}</th>
                     <th>{t.movement}</th>
                     <th className="num">{t.amount}</th>
-                    <th>{t.balance}</th>
+                    <th className="num">{t.balance}</th>
                     <th>{t.note}</th>
                   </tr>
                 </thead>

@@ -242,12 +242,12 @@ export default function PlansPage() {
         <thead>
           <tr>
             <th>{t.packageName}</th>
-            <th>{t.branchCost}</th>
-            <th>{t.mainPrice}</th>
-            <th>{t.agentPrice}</th>
-            <th>{t.posPrice}</th>
-            <th>{t.subscriberPrice}</th>
-            <th>{t.yourPrice}</th>
+            <th className="num">{t.branchCost}</th>
+            <th className="num">{t.mainPrice}</th>
+            <th className="num">{t.agentPrice}</th>
+            <th className="num">{t.posPrice}</th>
+            <th className="num">{t.subscriberPrice}</th>
+            <th className="num">{t.yourPrice}</th>
           </tr>
         </thead>
         <tbody>
@@ -268,7 +268,7 @@ export default function PlansPage() {
                       inputMode="numeric"
                       onChange={(event) => setPrices((current) => ({ ...current, [row.code]: event.target.value }))}
                     />
-                    <button type="button" onClick={() => save(row)}>{t.save}</button>
+                    <button type="button" className="secondary" onClick={() => save(row)}>{t.save}</button>
                   </div>
                 )}
               </td>

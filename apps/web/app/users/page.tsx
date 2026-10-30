@@ -238,8 +238,8 @@ export default function UsersPage() {
                   <th>{t.accountName}</th>
                   <th>{t.layer}</th>
                   <th>{t.parent}</th>
-                  <th>{t.balance}</th>
-                  <th>{t.ceiling}</th>
+                  <th className="num">{t.balance}</th>
+                  <th className="num">{t.ceiling}</th>
                   <th>{t.status}</th>
                   <th>{t.lineOps}</th>
                 </tr>
