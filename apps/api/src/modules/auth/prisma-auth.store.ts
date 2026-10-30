@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import IORedis, { Redis } from 'ioredis';
 import {
@@ -13,7 +13,7 @@ import {
 import { Layer, LoginUser } from './decide-login';
 import { hashPassword } from './password';
 import { SESSION_TTL_SECONDS } from './sessions';
-import { TRIAL_PASSWORD, buildTrialSeed } from './trial-seed';
+import { TRIAL_PASSWORD, buildTrialSeed, trialSeedDecision } from './trial-seed';
 import { LOGIN_FAIL_WINDOW_SECONDS } from './validators';
 
 /** Optional injection point so a test can hand the store its own clients. */
@@ -79,6 +79,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   private readonly prisma: PrismaClient;
   private readonly redis: Redis;
   private readonly ownsClients: boolean;
+  private readonly logger = new Logger(PrismaAuthStore.name);
 
   constructor(@Optional() @Inject(AUTH_STORE_CLIENTS) clients?: AuthStoreClients) {
     this.ownsClients = !clients;
@@ -87,7 +88,33 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   }
 
   async onModuleInit(): Promise<void> {
-    await this.seedTrialAccountsIfEmpty();
+    await this.seedTrialAccountsIfAllowed();
+  }
+
+  /**
+   * Boot-time entry for the trial accounts. They are created only when the environment asks for it
+   * (see trialSeedDecision). When it does not, an empty users table is reported, never filled.
+   */
+  async seedTrialAccountsIfAllowed(env: Record<string, string | undefined> = process.env): Promise<boolean> {
+    const decision = trialSeedDecision(env);
+    if (!decision.allowed) {
+      if (decision.reason === 'production-blocked') {
+        this.logger.warn(
+          'TRIAL_SEED=true is ignored because NODE_ENV=production. Set TRIAL_SEED_ALLOW_PRODUCTION=true only if you really want accounts with a published password.',
+        );
+      }
+      if ((await this.prisma.user.count()) === 0) {
+        this.logger.warn(
+          'The users table is empty and trial seeding is off: there are no accounts and no way to sign in. Create the first branch owner out of band, or set TRIAL_SEED=true for local development.',
+        );
+      }
+      return false;
+    }
+    const seeded = await this.seedTrialAccountsIfEmpty();
+    if (seeded && decision.production) {
+      this.logger.warn('Trial accounts (branch, main, agent, pos) were created in PRODUCTION with the published password. Change or disable them now.');
+    }
+    return seeded;
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -96,7 +123,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     this.redis.disconnect();
   }
 
-  /** An empty users table gets the four trial accounts (password 123456, no forced change, 2FA exempt). */
+  /** The raw seeder: an empty users table gets the four trial accounts (password 123456, no forced change, 2FA exempt). Boot goes through seedTrialAccountsIfAllowed. */
   async seedTrialAccountsIfEmpty(): Promise<boolean> {
     if ((await this.prisma.user.count()) > 0) return false;
     const passwordHash = await hashPassword(TRIAL_PASSWORD);

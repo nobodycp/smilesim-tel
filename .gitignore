@@ -1,7 +1,7 @@
 node_modules
 dist
 .next
-.next-e2e
+.next-*
 .superpowers
 coverage
 playwright-report
@@ -9,4 +9,7 @@ test-results
 *.log
 .env
 .env.*
+!.env.example
 dump.rdb
+*.tsbuildinfo
+.DS_Store

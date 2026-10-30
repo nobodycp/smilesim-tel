@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import type { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
@@ -109,6 +110,11 @@ class FakePrisma {
       return row;
     },
     findUnique: async ({ where }: { where: Row }) => this.users.find((row) => this.matches(row, where)) ?? null,
+    update: async ({ where, data }: { where: Row; data: Row }) => {
+      const row = this.users.find((candidate) => this.matches(candidate, where));
+      if (!row) throw new Error('record not found');
+      return Object.assign(row, data);
+    },
     updateMany: async ({ where, data }: { where: Row; data: Row }) => {
       for (const row of this.users.filter((candidate) => this.matches(candidate, where))) Object.assign(row, data);
     },
@@ -175,10 +181,80 @@ describe('PrismaAuthStore', () => {
       expect(prisma.users).toHaveLength(1);
     });
 
-    it('seeds on module init and finds the account afterwards', async () => {
-      await store.onModuleInit();
-      const pos = await store.findByLogin('pos');
-      expect(pos).toMatchObject({ loginName: 'pos', layer: 'pos', twoFactorExempt: true, isBranchOwner: false });
+    describe('boot gate', () => {
+      const keys = ['NODE_ENV', 'TRIAL_SEED', 'TRIAL_SEED_ALLOW_PRODUCTION'] as const;
+      const saved = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+      let warn: jest.SpyInstance;
+
+      beforeEach(() => {
+        delete process.env.TRIAL_SEED;
+        delete process.env.TRIAL_SEED_ALLOW_PRODUCTION;
+        process.env.NODE_ENV = 'test';
+        warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+      });
+
+      afterEach(() => {
+        warn.mockRestore();
+        for (const key of keys) {
+          if (saved[key] === undefined) delete process.env[key];
+          else process.env[key] = saved[key];
+        }
+      });
+
+      it('seeds on module init when TRIAL_SEED=true, and the account can be found', async () => {
+        process.env.TRIAL_SEED = 'true';
+        await store.onModuleInit();
+        const pos = await store.findByLogin('pos');
+        expect(pos).toMatchObject({ loginName: 'pos', layer: 'pos', twoFactorExempt: true, isBranchOwner: false });
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      it.each([undefined, '', 'false', '1', 'yes'])('creates nothing when TRIAL_SEED=%p, and says the table is empty', async (value) => {
+        if (value !== undefined) process.env.TRIAL_SEED = value;
+        await store.onModuleInit();
+        expect(prisma.users).toHaveLength(0);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(String(warn.mock.calls[0][0])).toMatch(/users table is empty/);
+      });
+
+      it('stays quiet when the seed is off but accounts already exist', async () => {
+        prisma.users.push({ id: 'u1', loginName: 'owner' });
+        await store.onModuleInit();
+        expect(prisma.users).toHaveLength(1);
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      it('creates nothing in production with only TRIAL_SEED=true, and warns about both reasons', async () => {
+        process.env.NODE_ENV = 'production';
+        process.env.TRIAL_SEED = 'true';
+        await store.onModuleInit();
+        expect(prisma.users).toHaveLength(0);
+        const messages = warn.mock.calls.map((call) => String(call[0]));
+        expect(messages.some((m) => /NODE_ENV=production/.test(m))).toBe(true);
+        expect(messages.some((m) => /users table is empty/.test(m))).toBe(true);
+      });
+
+      it('creates nothing in production when only the second flag is set', async () => {
+        process.env.NODE_ENV = 'production';
+        process.env.TRIAL_SEED_ALLOW_PRODUCTION = 'true';
+        await store.onModuleInit();
+        expect(prisma.users).toHaveLength(0);
+      });
+
+      it('seeds in production only with both flags, and warns loudly', async () => {
+        process.env.NODE_ENV = 'production';
+        process.env.TRIAL_SEED = 'true';
+        process.env.TRIAL_SEED_ALLOW_PRODUCTION = 'true';
+        await store.onModuleInit();
+        expect(prisma.users.map((u) => u.loginName)).toEqual(['branch', 'main', 'agent', 'pos']);
+        expect(String(warn.mock.calls[0][0])).toMatch(/PRODUCTION/);
+      });
+
+      it('takes the environment as an argument, so a caller can decide without touching process.env', async () => {
+        expect(await store.seedTrialAccountsIfAllowed({ TRIAL_SEED: 'true', NODE_ENV: 'production' })).toBe(false);
+        expect(await store.seedTrialAccountsIfAllowed({ TRIAL_SEED: 'true', NODE_ENV: 'development' })).toBe(true);
+        expect(prisma.users).toHaveLength(4);
+      });
     });
   });
 

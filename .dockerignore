@@ -10,3 +10,7 @@ four-layers.html
 **/test-results
 **/*.tsbuildinfo
 **/*.log
+**/.next-*
+.env
+.env.*
+.github

@@ -3,6 +3,11 @@
 #   COOKIE_SECURE = true
 #   WEB_ORIGIN = the public web URL (the one browser origin the api allows, with cookies)
 #   NEXT_PUBLIC_API_URL = the public api URL (a build argument of web)
+#
+# Trial accounts (branch/main/agent/pos with the published password 123456) are OFF here.
+# TRIAL_SEED and TRIAL_SEED_ALLOW_PRODUCTION default to false, so a deployment that reads
+# only this file (Coolify) never creates them. Local `docker compose up` turns them on through
+# docker-compose.override.yml, which Compose loads by itself and Coolify does not.
 services:
   web:
     build:
@@ -28,6 +33,9 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      TRIAL_SEED: ${TRIAL_SEED:-false}
+      TRIAL_SEED_ALLOW_PRODUCTION: ${TRIAL_SEED_ALLOW_PRODUCTION:-false}
     depends_on:
       - postgres
       - redis

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Smile Sim</title>
+  <rect width="64" height="64" rx="16" fill="#0a0a0a"/>
+  <path d="M22 14h14l10 10v26a4 4 0 0 1-4 4H22a4 4 0 0 1-4-4V18a4 4 0 0 1 4-4z" fill="none" stroke="#fafaf8" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="38" cy="42" r="6" fill="#d00000"/>
+</svg>

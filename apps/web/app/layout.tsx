@@ -27,12 +27,15 @@ const hebrew = IBM_Plex_Sans_Hebrew({
 export const metadata = { title: 'سمايل سيم' };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const host = (await headers()).get('host') ?? '';
+  const requestHeaders = await headers();
+  const host = requestHeaders.get('host') ?? '';
+  // Set per request by middleware.ts; the CSP only lets the bootstrap script run with this nonce.
+  const nonce = requestHeaders.get('x-nonce') ?? undefined;
   const door = doorFromHost(host);
   return (
     <html lang="ar" dir="rtl" className={`${sans.variable} ${hebrew.variable}`} suppressHydrationWarning>
       <body>
-        <Bootstrap />
+        <Bootstrap nonce={nonce} />
         <Preferences>
           <Toasts>
           {door ? (

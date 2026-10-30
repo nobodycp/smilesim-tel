@@ -1,5 +1,19 @@
 {
   "name": "smilesim-tel",
   "private": true,
-  "workspaces": ["apps/api", "apps/web"]
+  "workspaces": ["apps/api", "apps/web"],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck:api && npm run typecheck:web",
+    "typecheck:api": "tsc --noEmit -p apps/api/tsconfig.json",
+    "typecheck:web": "tsc --noEmit -p apps/web/tsconfig.json",
+    "test": "npm run test:api",
+    "test:api": "npm test --workspace api",
+    "test:e2e": "npm test --workspace web",
+    "build": "npm run build --workspaces",
+    "prisma:generate": "prisma generate --schema apps/api/prisma/schema.prisma"
+  }
 }
