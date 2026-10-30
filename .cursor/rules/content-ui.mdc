@@ -1,0 +1,24 @@
+---
+description: Inner-page visual system. Read this before editing any page inside the office canvas.
+alwaysApply: true
+---
+
+# Content UI
+
+The header and sidebar are finished. Do not restyle `.topbar`, `.sidebar`, `.drawer`, or `.shell-*`.
+
+Inner pages live in `.canvas` and use the shared pieces:
+
+- Page title: `.page-head` with one `h1` and an optional `.lede`. Do not repeat the header greeting.
+- Section: `.pane` and `.pane-head`. One card style.
+- Tabs: `.steps`.
+- Workbench: a `.filter-bar` that is a direct child of `.desk`, followed by `.pane`, is one surface. The bar is the head; the pane is the body. Do not give the bar its own card shadow.
+- Filters: `.filter-bar` > `.filter-panel`, above the table, never inside the table head. Filters apply as the user changes them.
+- Table: `.data` inside `.sheet`. The sheet scrolls; the page does not. Text and status align to the start. Numeric columns use `class="num"` on the header and the cell, values use `Money` when they are money, and the figures are tabular. Phone numbers, logins, and other Latin identifiers stay in `<bdi dir="ltr">`. The operations header and cell use `class="row-actions"`, centered with the trigger. Do not reuse `.ops` on a table cell; that class is a flex row and pulls the cell out of the table. Do not clip names or amounts.
+- Line operations: immediate actions are rows in `.command-list`. Forms that need a value stay in `.command-forms`, one field and its button per row. Do not put those actions back into a card grid.
+- Row actions: `RowMenu` from `components/row-menu.tsx` is the only per-row trigger. Pass a label that names the record. Destructive items use `danger` and an icon. Page-level actions, such as creating a record, stay visible. An inline price field keeps its own save control.
+- Status: `.badge`, `.badge.pending`, `.badge.cancelled`, with a text label.
+- Dialog: `Dialog` from `components/dialog.tsx`. Sizes are `confirm`, `form` (default, about 600px), and `wide`. Put fields in the children and actions in `footer` (`secondary` cancel, `primary` save). Permission lists use `.perm-grid`. A dialog with several independent operations uses `.op-blocks` and keeps destructive actions in the footer. Checkboxes use `label.check`; do not give them text-field dimensions. Do not build a second overlay.
+- Empty: `.empty` inside the pane.
+
+Tokens stay `--rd-*` in `globals.css`. Body font stays Tajawal. Hebrew stays IBM Plex Sans Hebrew. No new font and no raw hex.

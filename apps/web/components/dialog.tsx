@@ -32,6 +32,8 @@ export function Dialog({
   onClose,
   error = '',
   children,
+  footer,
+  size = 'form',
 }: {
   open: boolean;
   title: string;
@@ -39,6 +41,8 @@ export function Dialog({
   onClose: () => void;
   error?: string;
   children: ReactNode;
+  footer?: ReactNode;
+  size?: 'confirm' | 'form' | 'wide';
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const holdAlert = useContext(DialogAlert);
@@ -54,7 +58,8 @@ export function Dialog({
     const previous = document.activeElement as HTMLElement | null;
     const root = panel.current;
     const nodes = () => [...(root?.querySelectorAll<HTMLElement>(focusable) ?? [])].filter((node) => !node.hasAttribute('disabled'));
-    nodes()[0]?.focus();
+    const field = root?.querySelector<HTMLElement>('.dialog-body input:not([type="checkbox"]):not([type="radio"]), .dialog-body select, .dialog-body textarea');
+    (field ?? nodes()[0])?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
@@ -86,13 +91,14 @@ export function Dialog({
   if (!open || typeof document === 'undefined') return null;
   return createPortal(
     <div className="dialog-scrim" onClick={onClose}>
-      <div ref={panel} className="dialog" role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
+      <div ref={panel} className="dialog" data-size={size} role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
         <header>
           <h2>{title}</h2>
           <button type="button" className="icon-btn" onClick={onClose} aria-label={closeLabel}>×</button>
         </header>
         {error ? <p className="error" role="alert">{error}</p> : null}
-        {children}
+        <div className="dialog-body">{children}</div>
+        {footer ? <footer className="dialog-foot">{footer}</footer> : null}
       </div>
     </div>,
     document.body,

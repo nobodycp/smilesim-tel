@@ -20,12 +20,25 @@ model User {
   parent                 User?     @relation("UserTree", fields: [parentId], references: [id])
   children               User[]    @relation("UserTree")
   isBranchOwner          Boolean   @default(false)
+  roleId                 String?
+  role                   Role?     @relation(fields: [roleId], references: [id])
+  liveGrants             String    @default("")
   disabledAt             DateTime?
   twoFactorExempt        Boolean   @default(false)
   twoFactorEnabled       Boolean   @default(false)
   twoFactorSecret        String?
   pendingTwoFactorSecret String?
   sessions               Session[]
+  wallet                 Wallet?
+  walletEntries          WalletEntry[] @relation("WalletOwner")
+  actedEntries           WalletEntry[] @relation("WalletActor")
+  posLines               Line[]        @relation("LinePos")
+  submittedTasks         OfficeTask[]  @relation("TaskSubmitter")
+  assignedTasks          OfficeTask[]  @relation("TaskAssignee")
+  announcements          Announcement[]
+  notices                Notice[]
+  accessLogs             AccessLog[]
+  packageOffers          PackageOffer[]
 }
 
 model Session {
@@ -42,8 +55,197 @@ model Session {
   revokedAt  DateTime?
 }
 
+model Role {
+  id         String   @id @default(uuid())
+  name       String
+  read       Boolean  @default(true)
+  edit       Boolean  @default(false)
+  accounting Boolean  @default(false)
+  tasks      Boolean  @default(false)
+  reports    Boolean  @default(false)
+  staff      Boolean  @default(false)
+  enter      Boolean  @default(false)
+  users      User[]
+  updatedAt  DateTime @updatedAt
+}
+
 model LayerPolicy {
   id       String  @id @default(uuid())
   layer    String  @unique
   required Boolean @default(false)
+}
+
+model Wallet {
+  userId  String @id
+  user    User   @relation(fields: [userId], references: [id])
+  balance Int    @default(0)
+  ceiling Int    @default(0)
+}
+
+model WalletEntry {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation("WalletOwner", fields: [userId], references: [id])
+  actorId      String
+  actor        User     @relation("WalletActor", fields: [actorId], references: [id])
+  amount       Int
+  balanceAfter Int
+  kind         String
+  note         String?
+  msisdn       String?
+  lineId       String?
+  companyName  String?
+  packageName  String?
+  packagePrice Int?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([lineId])
+}
+
+model Provider {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  name      String
+  companies Company[]
+  packages  Package[]
+}
+
+model Company {
+  id         String    @id @default(uuid())
+  code       String    @unique
+  name       String
+  image      String?
+  providerId String
+  provider   Provider  @relation(fields: [providerId], references: [id])
+  packages   Package[]
+}
+
+model Package {
+  id                String   @id @default(uuid())
+  code              String   @unique
+  name              String
+  providerId        String
+  provider          Provider @relation(fields: [providerId], references: [id])
+  companyId         String?
+  company           Company? @relation(fields: [companyId], references: [id])
+  dataGb            Int?
+  months            Int      @default(1)
+  branchCost        Int
+  mainPrice         Int
+  agentPrice        Int
+  posPrice          Int
+  subscriberPrice   Int
+  autoActivate      Boolean
+  autoCharge        Boolean
+  autoDisconnect    Boolean
+  autoFreeze        Boolean
+  autoSwitch        Boolean
+  autoExtend        Boolean  @default(false)
+  autoRename        Boolean  @default(false)
+  autoSim           Boolean  @default(false)
+  allowActivate     Boolean  @default(true)
+  allowCharge       Boolean  @default(true)
+  allowDisconnect   Boolean  @default(true)
+  allowFreeze       Boolean  @default(true)
+  allowSwitch       Boolean  @default(true)
+  allowExtend       Boolean  @default(true)
+  allowRename       Boolean  @default(true)
+  allowSim          Boolean  @default(true)
+  enabled           Boolean  @default(true)
+  lines             Line[]
+  offers            PackageOffer[]
+}
+
+model PackageOffer {
+  id        String  @id @default(uuid())
+  packageId String
+  package   Package @relation(fields: [packageId], references: [id])
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  price     Int
+
+  @@unique([packageId, userId])
+}
+
+model Line {
+  id        String       @id @default(uuid())
+  msisdn    String       @unique
+  iccid     String?
+  esim      Boolean      @default(false)
+  status    String
+  endsAt        DateTime
+  opsLocked     Boolean  @default(false)
+  originAgentId String?
+  packageId     String
+  package   Package      @relation(fields: [packageId], references: [id])
+  posId     String
+  pos       User         @relation("LinePos", fields: [posId], references: [id])
+  createdAt DateTime     @default(now())
+  tasks     OfficeTask[]
+
+  @@index([posId, createdAt])
+}
+
+model OfficeTask {
+  id            String   @id @default(uuid())
+  action        String
+  status        String
+  posId         String
+  packageId     String
+  lineId        String?
+  line          Line?    @relation(fields: [lineId], references: [id])
+  submitterId   String
+  submitter     User     @relation("TaskSubmitter", fields: [submitterId], references: [id])
+  assigneeId    String?
+  assignee      User?    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  posDelta      Int
+  msisdn        String?
+  iccid         String?
+  esim          Boolean  @default(false)
+  nextPackageId String?
+  note          String?
+  resultNote    String?
+  log           String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([submitterId, createdAt])
+}
+
+model AccessLog {
+  id          String   @id @default(uuid())
+  actorId     String
+  actor       User     @relation(fields: [actorId], references: [id])
+  targetLogin String
+  ip          String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([actorId, createdAt])
+}
+
+model Notice {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  kind      String
+  action    String
+  msisdn    String?
+  refId     String
+  href      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([authorId, createdAt])
 }

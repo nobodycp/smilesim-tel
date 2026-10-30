@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { OfficeShell } from '../../components/office-shell';
+import { RowMenu } from '../../components/row-menu';
 import { api, type SessionInfo } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 
 export default function SettingsPage() {
-  const { t, locale, apiText } = usePrefs();
+  const { t, apiText } = usePrefs();
   const [loginName, setLoginName] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
@@ -113,7 +114,11 @@ export default function SettingsPage() {
     await loadSessions();
   }
 
-  const when = (value: string) => new Date(value).toLocaleString(locale === 'en' ? 'en' : locale);
+  const when = (value: string) => {
+    const date = new Date(value);
+    const pad = (part: number) => String(part).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
   const shownName = nickname || loginName;
   const initial = (shownName || t.brand).trim().charAt(0);
 
@@ -223,9 +228,12 @@ export default function SettingsPage() {
                         <span>{deviceLabel(session.userAgent)}</span>
                         {session.current && <span className="badge">{t.currentSession}</span>}
                       </strong>
-                      <small>{session.ip} · {when(session.lastSeenAt)}</small>
+                      <small className="session-meta" dir="ltr">{session.ip} · {when(session.lastSeenAt)}</small>
                     </span>
-                    <button type="button" className="danger" onClick={() => revoke(session.id)}>{t.endSession}</button>
+                    <RowMenu
+                      label={`${t.endSession} ${deviceLabel(session.userAgent)}`}
+                      items={[{ label: t.endSession, icon: 'ban', danger: true, onClick: () => revoke(session.id) }]}
+                    />
                   </li>
                 ))}
               </ul>

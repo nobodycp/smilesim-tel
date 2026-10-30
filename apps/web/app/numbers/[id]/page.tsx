@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { Desk, Money, OutcomePick, actionName, lineStatus } from '../../../components/desk';
+import { Desk, Money, OutcomePick, actionName, latinWhen, lineStatus } from '../../../components/desk';
 import { TableSkeleton } from '../../../components/loading';
 import { api, type ApplyResult, type LineHistory, type LineRow, type Outcome, type PackageRow } from '../../../lib/api';
 import { useDoor } from '../../../lib/door-context';
@@ -13,7 +13,7 @@ const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
 
 export default function LineCardPage() {
-  const { t, apiText, locale } = usePrefs();
+  const { t, apiText } = usePrefs();
   const params = useParams<{ id: string }>();
   const door = useDoor();
   const isPos = door.layer === 'pos';
@@ -71,7 +71,6 @@ export default function LineCardPage() {
   }
 
   const names: Record<Tab, string> = { ops: t.lineOps, details: t.lineDetails, log: t.lineLog };
-  const stamp = (value: string) => new Date(value).toLocaleString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar');
 
   return (
     <Desk title={t.lineCard} lede="" error={error} note={note}>
@@ -98,33 +97,36 @@ export default function LineCardPage() {
             {tab === 'ops' && (
               <div className="pane-body">
                 {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
-                {!line.opsLocked && <div className="op-grid">
-                  {line.status === 'active' && (
-                    <button type="button" className="op-card" onClick={() => run(() => api.extendLine(line.id, verdict))}>
-                      {t.extend}
-                    </button>
-                  )}
-                  {line.status === 'disconnected' && (
-                    <button type="button" className="op-card" onClick={() => run(() => api.reactivateLine(line.id, verdict))}>
-                      {t.actActivate}
-                    </button>
-                  )}
-                  {line.status === 'active' && (
-                    <button type="button" className="op-card" onClick={() => run(() => api.freezeLine(line.id, verdict))}>
-                      {t.freeze}
-                    </button>
-                  )}
-                  {line.status === 'frozen' && (
-                    <button type="button" className="op-card" onClick={() => run(() => api.unfreezeLine(line.id, verdict))}>
-                      {t.unfreeze}
-                    </button>
-                  )}
-                  {line.status !== 'disconnected' && (
-                    <button type="button" className="op-card" onClick={() => run(() => api.disconnectLine(line.id, verdict))}>
-                      {t.disconnect}
-                    </button>
-                  )}
-                </div>}
+                {!line.opsLocked && (
+                  <div className="command-list">
+                    {line.status === 'active' && (
+                      <button type="button" className="op-card" onClick={() => run(() => api.extendLine(line.id, verdict))}>
+                        {t.extend}
+                      </button>
+                    )}
+                    {line.status === 'disconnected' && (
+                      <button type="button" className="op-card" onClick={() => run(() => api.reactivateLine(line.id, verdict))}>
+                        {t.actActivate}
+                      </button>
+                    )}
+                    {line.status === 'active' && (
+                      <button type="button" className="op-card" onClick={() => run(() => api.freezeLine(line.id, verdict))}>
+                        {t.freeze}
+                      </button>
+                    )}
+                    {line.status === 'frozen' && (
+                      <button type="button" className="op-card" onClick={() => run(() => api.unfreezeLine(line.id, verdict))}>
+                        {t.unfreeze}
+                      </button>
+                    )}
+                    {line.status !== 'disconnected' && (
+                      <button type="button" className="op-card danger" onClick={() => run(() => api.disconnectLine(line.id, verdict))}>
+                        {t.disconnect}
+                      </button>
+                    )}
+                  </div>
+                )}
+                <div className="command-forms">
                 {!isPos && (
                   <div className="switch-row">
                     <label>
@@ -193,6 +195,7 @@ export default function LineCardPage() {
                     </button>
                   </div>
                 )}
+                </div>
               </div>
             )}
             {tab === 'details' && (
@@ -201,8 +204,8 @@ export default function LineCardPage() {
                 <div><dt>{t.packageName}</dt><dd>{line.packageName}</dd></div>
                 <div><dt>{t.price}</dt><dd><Money value={line.posPrice} /></dd></div>
                 <div><dt>{line.esim ? t.esim : t.iccid}</dt><dd dir="ltr">{line.esim ? t.esim : line.iccid || '—'}</dd></div>
-                <div><dt>{t.started}</dt><dd>{stamp(line.createdAt)}</dd></div>
-                <div><dt>{t.endsOn}</dt><dd>{stamp(line.endsAt)}</dd></div>
+                <div><dt>{t.started}</dt><dd><bdi dir="ltr">{latinWhen(line.createdAt)}</bdi></dd></div>
+                <div><dt>{t.endsOn}</dt><dd><bdi dir="ltr">{latinWhen(line.endsAt)}</bdi></dd></div>
                 <div><dt>{t.status}</dt><dd>{lineStatus(t, line.status)}</dd></div>
                 {!isPos && line.posLogin && <div><dt>{t.pointOfSale}</dt><dd>{line.posLogin}</dd></div>}
               </dl>
@@ -227,7 +230,7 @@ export default function LineCardPage() {
                       {history.map((row) => (
                         <tr key={row.id}>
                           <td>{actionName(t, row.action)}</td>
-                          <td>{stamp(row.at)}</td>
+                          <td className="when"><bdi dir="ltr">{latinWhen(row.at)}</bdi></td>
                           <td>{row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—'}</td>
                           <td>{row.companyName || '—'}</td>
                           <td>{row.packageName || '—'}</td>

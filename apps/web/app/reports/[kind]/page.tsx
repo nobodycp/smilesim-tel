@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { Desk, Money, actionName, lineStatus, taskStatus } from '../../../components/desk';
+import { Desk, Money, actionName, latinWhen, lineStatus, taskStatus } from '../../../components/desk';
 import { api, type ReportPayload } from '../../../lib/api';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
@@ -20,7 +20,7 @@ const kinds = {
 type Kind = keyof typeof kinds;
 
 export default function ReportPage() {
-  const { t, apiText, locale } = usePrefs();
+  const { t, apiText } = usePrefs();
   const params = useParams<{ kind: string }>();
   const kind = typeof params.kind === 'string' && params.kind in kinds ? (params.kind as Kind) : '';
   const [payload, setPayload] = useState<ReportPayload | null>(null);
@@ -50,7 +50,6 @@ export default function ReportPage() {
 
   const titleKey = kind ? kinds[kind] : 'navReports';
   const title = t[titleKey];
-  const when = (value: string) => new Date(value).toLocaleString(locale === 'en' ? 'en' : locale);
 
   return (
     <Desk title={allowed ? title : ''} lede="" error={error} note="">
@@ -64,7 +63,7 @@ export default function ReportPage() {
                   <th>{t.company}</th>
                   <th>{t.packageName}</th>
                   <th className="num">{t.branchCost}</th>
-                  <th>{t.linesCount}</th>
+                  <th className="num">{t.linesCount}</th>
                 </tr>
               </thead>
               <tbody>
@@ -73,8 +72,8 @@ export default function ReportPage() {
                     <td>{row.providerName}</td>
                     <td>{row.companyName}</td>
                     <td>{row.packageName}</td>
-                    <td><Money value={row.price} /></td>
-                    <td>{row.lines}</td>
+                    <td className="num"><Money value={row.price} /></td>
+                    <td className="num">{row.lines}</td>
                   </tr>
                 ))}
               </tbody>
@@ -95,7 +94,7 @@ export default function ReportPage() {
                 <tbody>
                   {payload.lines.map((line) => (
                     <tr key={line.id}>
-                      <td><bdi dir="ltr">{line.msisdn}</bdi></td>
+                      <td className="msisdn"><bdi dir="ltr">{line.msisdn}</bdi></td>
                       <td>{line.packageName}</td>
                       <td>{line.posLogin}</td>
                       <td>{lineStatus(t, line.status)}</td>
@@ -149,7 +148,7 @@ export default function ReportPage() {
                 <tbody>
                   {payload.entries.map((row) => (
                     <tr key={row.id}>
-                      <td>{when(row.at)}</td>
+                      <td className="when"><bdi dir="ltr">{latinWhen(row.at)}</bdi></td>
                       <td>
                         {row.loginName}
                         <div className="hint">{row.actorLogin}</div>

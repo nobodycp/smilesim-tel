@@ -5,6 +5,7 @@ import { hashPassword, passwordMatches } from './password';
 import { idsToRevoke, isListedAccountSession } from './sessions';
 import { createTotpSecret, totpKeyUri, totpMatches } from './totp';
 import { RATE_LIMIT_MESSAGE, loginBlocked, validateNewPassword, validateNickname } from './validators';
+import { WRONG_DOOR } from '../../doors';
 
 export type LoginResult =
   | { kind: 'error'; status: number; message: string }
@@ -34,7 +35,11 @@ const PHONE_PATTERN = /^\+?[0-9 ()-]{6,20}$/;
 export class AuthService {
   constructor(@Inject(AUTH_STORE) private readonly store: AuthStore) {}
 
-  async login(body: { loginName: string; password: string }, meta: { userAgent: string; ip: string }): Promise<LoginResult> {
+  async login(
+    body: { loginName: string; password: string },
+    meta: { userAgent: string; ip: string },
+    door: Layer | null = null,
+  ): Promise<LoginResult> {
     if (loginBlocked(await this.store.failedCount(body.loginName))) {
       return { kind: 'error', status: 429, message: RATE_LIMIT_MESSAGE };
     }
@@ -46,6 +51,7 @@ export class AuthService {
       return { kind: 'error', status: decision.status, message: decision.message };
     }
     const user = found!;
+    if (door && user.layer !== door) return { kind: 'error', status: 403, message: WRONG_DOOR };
     await this.store.clearFailures(body.loginName);
     if (decision.scope === 'full') {
       const existing = await this.store.listFullSessions(user.id);

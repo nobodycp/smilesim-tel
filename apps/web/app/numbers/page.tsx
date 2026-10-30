@@ -150,8 +150,20 @@ export default function NumbersPage() {
         </div>
         <section className="pane" id="lines">
           {ready && me && me.layer !== 'pos' && (
-            <Dialog open={activateOpen} title={t.activateLine} closeLabel={t.closeMenu} error={error} onClose={() => setActivateOpen(false)}>
-              <form className="dialog-form" onSubmit={activate}>
+            <Dialog
+              open={activateOpen}
+              title={t.activateLine}
+              closeLabel={t.closeMenu}
+              error={error}
+              onClose={() => setActivateOpen(false)}
+              footer={(
+                <>
+                  <button type="button" className="secondary" onClick={() => setActivateOpen(false)}>{t.cancel}</button>
+                  <button type="submit" form="activate-line" className="primary">{t.actActivate}</button>
+                </>
+              )}
+            >
+              <form id="activate-line" className="dialog-form" onSubmit={activate}>
                 <div className="pair">
                   <label>
                     {t.pointOfSale}
@@ -185,7 +197,6 @@ export default function NumbersPage() {
                   </label>
                 )}
                 <OutcomePick value={outcome} onChange={setOutcome} />
-                <button type="submit">{t.actActivate}</button>
               </form>
             </Dialog>
           )}
@@ -204,19 +215,17 @@ export default function NumbersPage() {
                     {!isPos && <th>{t.pointOfSale}</th>}
                     <th>{t.status}</th>
                     <th>{t.endsOn}</th>
-                    <th>{t.lineOps}</th>
+                    <th className="row-actions">{t.lineOps}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {shown.map((line) => {
                     const items = [
-                      ...(line.status === 'active' ? [{ label: t.extend, onClick: () => run(line.id, () => api.extendLine(line.id, verdict)) }] : []),
-                      ...(line.status === 'frozen' ? [{ label: t.unfreeze, onClick: () => run(line.id, () => api.unfreezeLine(line.id, verdict)) }] : []),
-                      ...(line.status === 'disconnected' ? [{ label: t.actActivate, onClick: () => run(line.id, () => api.reactivateLine(line.id, verdict)) }] : []),
-                      ...(line.status !== 'disconnected' ? [{ label: t.disconnect, danger: true, onClick: () => run(line.id, () => api.disconnectLine(line.id, verdict)) }] : []),
+                      ...(line.status === 'active' ? [{ label: t.extend, icon: 'extend' as const, onClick: () => run(line.id, () => api.extendLine(line.id, verdict)) }] : []),
+                      ...(line.status === 'frozen' ? [{ label: t.unfreeze, icon: 'undo' as const, onClick: () => run(line.id, () => api.unfreezeLine(line.id, verdict)) }] : []),
+                      ...(line.status === 'disconnected' ? [{ label: t.actActivate, icon: 'check' as const, onClick: () => run(line.id, () => api.reactivateLine(line.id, verdict)) }] : []),
+                      ...(line.status !== 'disconnected' ? [{ label: t.disconnect, icon: 'ban' as const, danger: true, onClick: () => run(line.id, () => api.disconnectLine(line.id, verdict)) }] : []),
                     ];
-                    const visible = items.find((item) => !item.danger);
-                    const rest = items.filter((item) => item !== visible);
                     return (
                       <tr key={line.id}>
                         <td className="msisdn">
@@ -224,16 +233,13 @@ export default function NumbersPage() {
                         </td>
                         <td>{line.companyName || '—'}</td>
                         <td>{line.packageName}</td>
-                        {!isPos && <td>{line.posLogin}</td>}
+                        {!isPos && <td><bdi dir="ltr">{line.posLogin}</bdi></td>}
                         <td>
                           <span className={line.status === 'active' ? 'badge' : line.status === 'frozen' ? 'badge pending' : 'badge cancelled'}>{lineStatus(t, line.status)}</span>
                         </td>
                         <td>{new Date(line.endsAt).toLocaleDateString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar')}</td>
-                        <td>
-                          {visible && (
-                            <button type="button" className="secondary" onClick={visible.onClick}>{visible.label}</button>
-                          )}
-                          {rest.length > 0 && <RowMenu label={t.lineOps} items={rest} />}
+                        <td className="row-actions">
+                          <RowMenu label={`${t.lineOps} ${line.msisdn}`} items={items} />
                         </td>
                       </tr>
                     );

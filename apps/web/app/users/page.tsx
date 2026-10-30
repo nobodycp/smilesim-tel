@@ -1,9 +1,10 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Desk, Money, layerName, whole } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
 import { TableSkeleton } from '../../components/loading';
+import { RowMenu, type RowAction } from '../../components/row-menu';
 import { api, type UserRow } from '../../lib/api';
 import { useDoor } from '../../lib/door-context';
 import { useOffice } from '../../lib/office-session';
@@ -15,7 +16,8 @@ export default function UsersPage() {
   const { t, apiText } = usePrefs();
   const [rows, setRows] = useState<UserRow[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [open, setOpen] = useState<string | null>(null);
+  const [op, setOp] = useState<{ login: string; kind: 'fund' | 'ceiling' | 'transfer' | 'password' | 'freeze' | 'enter' | 'delete' } | null>(null);
+  const [busy, setBusy] = useState(false);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [ceilings, setCeilings] = useState<Record<string, string>>({});
@@ -80,7 +82,13 @@ export default function UsersPage() {
     return row.directChild;
   }
 
+  function choose(login: string, kind: NonNullable<typeof op>['kind']) {
+    setError('');
+    setOp({ login, kind });
+  }
+
   async function fund(row: UserRow) {
+    if (busy) return;
     setError('');
     setNote('');
     const amount = whole(amounts[row.loginName] ?? '');
@@ -88,7 +96,9 @@ export default function UsersPage() {
       setError(apiText(row.self ? 'أضف ملاحظة للتمويل' : 'بيانات غير صالحة'));
       return;
     }
+    setBusy(true);
     const result = await api.fundWallet(row.loginName, amount, notes[row.loginName] ?? '');
+    setBusy(false);
     if (!result.ok) {
       setError(apiText(result.message));
       return;
@@ -96,10 +106,12 @@ export default function UsersPage() {
     setAmounts((current) => ({ ...current, [row.loginName]: '' }));
     setNotes((current) => ({ ...current, [row.loginName]: '' }));
     setNote(t.funded);
+    setOp(null);
     await load();
   }
 
   async function saveCeiling(row: UserRow) {
+    if (busy) return;
     setError('');
     setNote('');
     const ceiling = whole(ceilings[row.loginName] ?? '');
@@ -107,17 +119,22 @@ export default function UsersPage() {
       setError(apiText('بيانات غير صالحة'));
       return;
     }
+    setBusy(true);
     const result = await api.setCeiling(row.loginName, ceiling);
+    setBusy(false);
     if (!result.ok) setError(apiText(result.message));
     else {
       setNote(t.save);
+      setOp(null);
       await load();
     }
   }
 
   async function createAccount() {
+    if (busy) return;
     setError('');
     setNote('');
+    setBusy(true);
     const result = await api.createUser({
       loginName: draft.loginName.trim(),
       nickname: draft.nickname.trim(),
@@ -126,6 +143,7 @@ export default function UsersPage() {
       parentLogin: draft.parentLogin || undefined,
       roleId: draft.roleId || undefined,
     });
+    setBusy(false);
     if (!result.ok) {
       setError(apiText(result.message));
       return;
@@ -137,11 +155,17 @@ export default function UsersPage() {
   }
 
   async function run(work: () => Promise<{ ok: boolean; message?: string }>) {
+    if (busy) return;
     setError('');
     setNote('');
+    setBusy(true);
     const result = await work();
+    setBusy(false);
     if (!result.ok) setError(apiText(result.message ?? 'حدث خطأ'));
-    else await load();
+    else {
+      setOp(null);
+      await load();
+    }
   }
 
   const shown = [...rows]
@@ -152,6 +176,31 @@ export default function UsersPage() {
       return row.nickname.includes(needle) || row.loginName.includes(needle);
     })
     .sort((a, b) => layerOrder.indexOf(a.layer) - layerOrder.indexOf(b.layer) || a.loginName.localeCompare(b.loginName));
+  const active = op ? rows.find((row) => row.loginName === op.login) : undefined;
+
+  function actions(row: UserRow): RowAction[] {
+    const fundable = canFund(row);
+    const ceilingEditable = row.directChild && row.layer !== 'branch';
+    const items: RowAction[] = [];
+    if (fundable) items.push({ label: t.fund, icon: 'fund', onClick: () => choose(row.loginName, 'fund') });
+    if (ceilingEditable) items.push({ label: t.ceiling, icon: 'edit', onClick: () => choose(row.loginName, 'ceiling') });
+    if (row.layer === 'pos' && (me?.layer === 'branch' || me?.layer === 'main_agent')) {
+      items.push({ label: t.transfer, icon: 'move', onClick: () => choose(row.loginName, 'transfer') });
+    }
+    if (!row.self && row.layer !== 'branch' && creatable.length > 0) {
+      items.push({ label: t.newPassword, icon: 'key', onClick: () => choose(row.loginName, 'password') });
+    }
+    if (row.canFreeze) {
+      items.push({
+        label: row.frozen ? t.restoreAccount : t.freezeAccount,
+        icon: row.frozen ? 'undo' : 'ban',
+        onClick: () => choose(row.loginName, 'freeze'),
+      });
+    }
+    if (row.canEnter) items.push({ label: t.enterAccount, icon: 'enter', onClick: () => choose(row.loginName, 'enter') });
+    if (row.canDelete) items.push({ label: t.deleteAccount, icon: 'trash', danger: true, onClick: () => choose(row.loginName, 'delete') });
+    return items;
+  }
 
   if (!allowed) return <Desk title="" lede="" error="" note=""><span /></Desk>;
 
@@ -183,8 +232,20 @@ export default function UsersPage() {
         </div>
       </div>
       <section className="pane">
-        <Dialog open={creating} title={t.openAccount} closeLabel={t.closeMenu} error={error} onClose={() => setCreating(false)}>
-          <div className="account-ops">
+        <Dialog
+          open={creating}
+          title={t.openAccount}
+          closeLabel={t.closeMenu}
+          error={error}
+          onClose={() => setCreating(false)}
+          footer={(
+            <>
+              <button type="button" className="secondary" onClick={() => setCreating(false)}>{t.cancel}</button>
+              <button type="button" className="primary" disabled={busy || !draft.loginName.trim() || !draft.nickname.trim() || !draft.password || ((draft.layer || creatable[0]) === 'staff' && !draft.roleId)} onClick={createAccount}>{t.save}</button>
+            </>
+          )}
+        >
+          <div className="dialog-form">
             <label>
               {t.loginName}
               <input value={draft.loginName} dir="ltr" onChange={(event) => setDraft((current) => ({ ...current, loginName: event.target.value }))} />
@@ -225,7 +286,6 @@ export default function UsersPage() {
                 </select>
               </label>
             )}
-            <button type="button" onClick={createAccount}>{t.save}</button>
           </div>
         </Dialog>
         {!loaded ? (
@@ -236,152 +296,121 @@ export default function UsersPage() {
               <thead>
                 <tr>
                   <th>{t.accountName}</th>
-                  <th>{t.layer}</th>
-                  <th>{t.parent}</th>
+                  <th className="fit">{t.layer}</th>
+                  <th className="fit">{t.parent}</th>
                   <th className="num">{t.balance}</th>
                   <th className="num">{t.ceiling}</th>
-                  <th>{t.status}</th>
-                  <th>{t.lineOps}</th>
+                  <th className="fit">{t.status}</th>
+                  <th className="row-actions">{t.lineOps}</th>
                 </tr>
               </thead>
               <tbody>
-                {shown.map((row) => {
-                  const opened = open === row.loginName;
-                  const fundable = canFund(row);
-                  const ceilingEditable = row.directChild && row.layer !== 'branch';
-                  return (
-                    <Fragment key={row.loginName}>
-                      <tr>
-                        <td>
-                          <strong>{row.nickname}</strong>
-                          <div className="hint">{row.loginName}</div>
-                        </td>
-                        <td>{layerName(t, row.layer)}</td>
-                        <td>{row.parentLogin ?? '—'}</td>
-                        <td><Money value={row.balance} /></td>
-                        <td>{row.layer === 'branch' ? '—' : <Money value={row.ceiling} />}</td>
-                        <td>
-                          <span className={row.frozen ? 'badge pending' : 'badge'}>{row.frozen ? t.frozen : t.accountOpen}</span>
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="row-menu-btn"
-                            aria-label={t.lineOps}
-                            aria-expanded={opened}
-                            onClick={() => setOpen(opened ? null : row.loginName)}
-                          >
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                              <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" />
-                              <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
-                              <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                      {opened && (
-                        <Dialog open title={row.nickname} closeLabel={t.closeMenu} error={error} onClose={() => setOpen(null)}>
-                            <div className="account-ops">
-                              {fundable && (
-                                <div className="account-fund">
-                                  <label>
-                                    {t.amount}
-                                    <input
-                                      inputMode="numeric"
-                                      value={amounts[row.loginName] ?? ''}
-                                      onChange={(event) => setAmounts((current) => ({ ...current, [row.loginName]: event.target.value }))}
-                                    />
-                                  </label>
-                                  <label>
-                                    {t.note}
-                                    <input
-                                      value={notes[row.loginName] ?? ''}
-                                      onChange={(event) => setNotes((current) => ({ ...current, [row.loginName]: event.target.value }))}
-                                    />
-                                  </label>
-                                  <button type="button" onClick={() => fund(row)}>{t.fund}</button>
-                                </div>
-                              )}
-                              {ceilingEditable && (
-                                <div className="account-fund">
-                                  <label>
-                                    {t.ceiling}
-                                    <input
-                                      inputMode="numeric"
-                                      value={ceilings[row.loginName] ?? ''}
-                                      onChange={(event) => setCeilings((current) => ({ ...current, [row.loginName]: event.target.value }))}
-                                    />
-                                  </label>
-                                  <button type="button" onClick={() => saveCeiling(row)}>{t.save}</button>
-                                </div>
-                              )}
-                              {row.layer === 'pos' && (me?.layer === 'branch' || me?.layer === 'main_agent') && (
-                                <div className="account-fund">
-                                  <label>
-                                    {t.transfer}
-                                    <select value={dest[row.loginName] ?? ''} onChange={(event) => setDest((current) => ({ ...current, [row.loginName]: event.target.value }))}>
-                                      <option value="">—</option>
-                                      {rows.filter((item) => item.layer === 'agent').map((item) => (
-                                        <option key={item.loginName} value={item.loginName}>{item.nickname}</option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                  <button type="button" disabled={!dest[row.loginName]} onClick={() => run(() => api.transferPos(row.loginName, dest[row.loginName] ?? ''))}>{t.transfer}</button>
-                                </div>
-                              )}
-                              {!row.self && row.layer !== 'branch' && creatable.length > 0 && (
-                                <div className="account-fund">
-                                  <label>
-                                    {t.newPassword}
-                                    <input
-                                      type="password"
-                                      value={passwords[row.loginName] ?? ''}
-                                      onChange={(event) => setPasswords((current) => ({ ...current, [row.loginName]: event.target.value }))}
-                                    />
-                                  </label>
-                                  <button type="button" onClick={() => run(() => api.setUserPassword(row.loginName, passwords[row.loginName] ?? ''))}>{t.save}</button>
-                                </div>
-                              )}
-                              <div className="ops">
-                                {row.canFreeze && (
-                                  <button type="button" onClick={() => run(() => (row.frozen ? api.restoreUser(row.loginName) : api.freezeUser(row.loginName)))}>
-                                    {row.frozen ? t.restoreAccount : t.freezeAccount}
-                                  </button>
-                                )}
-                                {row.canEnter && (
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      const result = await api.enterUser(row.loginName);
-                                      if (!result.ok) setError(apiText(result.message));
-                                      else window.location.assign('/numbers');
-                                    }}
-                                  >
-                                    {t.enterAccount}
-                                  </button>
-                                )}
-                                {row.canDelete && (
-                                  <button
-                                    type="button"
-                                    className="danger"
-                                    onClick={() => {
-                                      if (window.confirm(`${t.deleteAccount} ${row.loginName}`)) run(() => api.removeUser(row.loginName));
-                                    }}
-                                  >
-                                    {t.deleteAccount}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                        </Dialog>
-                      )}
-                    </Fragment>
-                  );
-                })}
+                {shown.map((row) => (
+                  <tr key={row.loginName}>
+                    <td>
+                      <strong>{row.nickname}</strong>
+                      <div className="hint"><bdi dir="ltr">{row.loginName}</bdi></div>
+                    </td>
+                    <td className="fit">{layerName(t, row.layer)}</td>
+                    <td className="fit">{row.parentLogin ? <bdi dir="ltr">{row.parentLogin}</bdi> : '—'}</td>
+                    <td className="num"><Money value={row.balance} /></td>
+                    <td className="num">{row.layer === 'branch' ? '—' : <Money value={row.ceiling} />}</td>
+                    <td className="fit">
+                      <span className={row.frozen ? 'badge pending' : 'badge'}>{row.frozen ? t.frozen : t.accountOpen}</span>
+                    </td>
+                    <td className="row-actions">
+                      <RowMenu label={`${t.lineOps} ${row.nickname}`} items={actions(row)} />
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
+        {active && op ? (
+          <Dialog
+            open
+            size={op.kind === 'fund' || op.kind === 'ceiling' || op.kind === 'transfer' || op.kind === 'password' ? 'form' : 'confirm'}
+            title={op.kind === 'fund' ? t.fund : op.kind === 'ceiling' ? t.ceiling : op.kind === 'transfer' ? t.transfer : op.kind === 'password' ? t.newPassword : op.kind === 'enter' ? t.enterAccount : op.kind === 'delete' ? t.deleteAccount : active.frozen ? t.restoreAccount : t.freezeAccount}
+            closeLabel={t.closeMenu}
+            error={error}
+            onClose={() => { if (!busy) setOp(null); }}
+            footer={(
+              <>
+                <button type="button" className="secondary" disabled={busy} onClick={() => setOp(null)}>{t.cancel}</button>
+                {op.kind === 'fund' ? <button type="button" className="primary" disabled={busy} onClick={() => fund(active)}>{t.fund}</button> : null}
+                {op.kind === 'ceiling' ? <button type="button" className="primary" disabled={busy} onClick={() => saveCeiling(active)}>{t.save}</button> : null}
+                {op.kind === 'transfer' ? <button type="button" className="primary" disabled={busy || !dest[active.loginName]} onClick={() => run(() => api.transferPos(active.loginName, dest[active.loginName] ?? ''))}>{t.transfer}</button> : null}
+                {op.kind === 'password' ? <button type="button" className="primary" disabled={busy} onClick={() => run(() => api.setUserPassword(active.loginName, passwords[active.loginName] ?? ''))}>{t.save}</button> : null}
+                {op.kind === 'freeze' ? <button type="button" className="primary" disabled={busy} onClick={() => run(() => (active.frozen ? api.restoreUser(active.loginName) : api.freezeUser(active.loginName)))}>{active.frozen ? t.restoreAccount : t.freezeAccount}</button> : null}
+                {op.kind === 'enter' ? (
+                  <button
+                    type="button"
+                    className="primary"
+                    disabled={busy}
+                    onClick={async () => {
+                      if (busy) return;
+                      setBusy(true);
+                      setError('');
+                      const result = await api.enterUser(active.loginName);
+                      if (!result.ok) {
+                        setBusy(false);
+                        setError(apiText(result.message));
+                        return;
+                      }
+                      window.location.assign('/numbers');
+                    }}
+                  >
+                    {t.enterAccount}
+                  </button>
+                ) : null}
+                {op.kind === 'delete' ? <button type="button" className="danger" disabled={busy} onClick={() => run(() => api.removeUser(active.loginName))}>{t.deleteAccount}</button> : null}
+              </>
+            )}
+          >
+            <div className="dialog-form">
+              <p className="dialog-who">
+                {active.nickname}
+                {active.loginName !== active.nickname ? <bdi dir="ltr">{active.loginName}</bdi> : null}
+              </p>
+              {op.kind === 'fund' ? (
+                <>
+                  <label>
+                    {t.amount}
+                    <input inputMode="numeric" value={amounts[active.loginName] ?? ''} onChange={(event) => setAmounts((current) => ({ ...current, [active.loginName]: event.target.value }))} />
+                  </label>
+                  <label>
+                    {t.note}
+                    <input value={notes[active.loginName] ?? ''} onChange={(event) => setNotes((current) => ({ ...current, [active.loginName]: event.target.value }))} />
+                  </label>
+                </>
+              ) : null}
+              {op.kind === 'ceiling' ? (
+                <label>
+                  {t.ceiling}
+                  <input inputMode="numeric" value={ceilings[active.loginName] ?? ''} onChange={(event) => setCeilings((current) => ({ ...current, [active.loginName]: event.target.value }))} />
+                </label>
+              ) : null}
+              {op.kind === 'transfer' ? (
+                <label>
+                  {t.transfer}
+                  <select value={dest[active.loginName] ?? ''} onChange={(event) => setDest((current) => ({ ...current, [active.loginName]: event.target.value }))}>
+                    <option value="">—</option>
+                    {rows.filter((item) => item.layer === 'agent').map((item) => (
+                      <option key={item.loginName} value={item.loginName}>{item.nickname}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {op.kind === 'password' ? (
+                <label>
+                  {t.newPassword}
+                  <input type="password" value={passwords[active.loginName] ?? ''} onChange={(event) => setPasswords((current) => ({ ...current, [active.loginName]: event.target.value }))} />
+                </label>
+              ) : null}
+            </div>
+          </Dialog>
+        ) : null}
       </section>
     </Desk>
   );

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Money, actionName, layerName } from '../components/desk';
+import { Money, actionName, latinWhen, layerName } from '../components/desk';
 import { Spinner, TableSkeleton } from '../components/loading';
 import { OfficeShell } from '../components/office-shell';
 import { api, type HomePayload } from '../lib/api';
@@ -11,7 +11,7 @@ import { useOffice } from '../lib/office-session';
 import { usePrefs } from '../lib/prefs';
 
 export default function HomePage() {
-  const { t, locale, apiText } = usePrefs();
+  const { t, apiText } = usePrefs();
   const saved = useIdentity();
   const { me } = useOffice();
   const account = me ? me.nickname || me.loginName : saved.account;
@@ -66,14 +66,6 @@ export default function HomePage() {
         { href: '/tasks', label: t.navTasks },
         ...(layer === 'branch' ? [{ href: '/providers', label: t.navProviders }] : []),
       ];
-
-  const stamp = (value: string) =>
-    new Intl.DateTimeFormat(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(value));
 
   return (
     <OfficeShell account={account} hint={hint} wide>
@@ -152,7 +144,7 @@ export default function HomePage() {
                   <tbody>
                     {home.operations.map((row) => (
                       <tr key={row.id}>
-                        <td>{stamp(row.at)}</td>
+                        <td className="when"><bdi dir="ltr">{latinWhen(row.at)}</bdi></td>
                         <td>{actionName(t, row.kind)}{row.note ? ` · ${row.note}` : ''}</td>
                         <td>{row.loginName}</td>
                         <td><Money value={row.amount} /></td>
@@ -186,7 +178,7 @@ export default function HomePage() {
                     <li key={row.id}>
                       <p>{row.body}</p>
                       <small>
-                        {row.authorName} · {layerName(t, row.authorLayer)} · {stamp(row.at)}
+                        {row.authorName} · {layerName(t, row.authorLayer)} · <bdi dir="ltr">{latinWhen(row.at)}</bdi>
                       </small>
                     </li>
                   ))}

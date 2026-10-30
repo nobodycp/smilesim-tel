@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سلم البيع — أربع طبقات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #e8e0d2;
+    --sheet: #f6f1e7;
+    --ink: #1b1714;
+    --muted: #6f675e;
+    --line: #c9bfb0;
+    --teal: #1d5c56;
+    --teal-soft: #d7ebe6;
+    --copper: #9a4630;
+    --copper-soft: #f3ddd4;
+    --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans Arabic", "Geeza Pro", "SF Arabic", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  main {
+    width: min(1120px, calc(100% - 48px));
+    margin: 0 auto;
+    padding: 36px 0 64px;
+    border-inline-start: 1px solid var(--copper);
+    padding-inline-start: 28px;
+  }
+  header { margin-bottom: 28px; }
+  .kicker {
+    margin: 0 0 8px;
+    color: var(--copper);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+  }
+  h1 {
+    margin: 0;
+    font-family: Amiri, "Geeza Pro", serif;
+    font-size: clamp(40px, 6vw, 68px);
+    font-weight: 700;
+    line-height: 1.05;
+  }
+  .lede {
+    max-width: 38rem;
+    margin: 12px 0 0;
+    color: var(--muted);
+  }
+  .modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 28px 0 22px;
+  }
+  .modes button, .layer {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+  }
+  .modes button {
+    border: 1px solid var(--ink);
+    background: transparent;
+    padding: 8px 14px;
+  }
+  .modes button[aria-pressed="true"] {
+    background: var(--ink);
+    color: var(--sheet);
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.75fr);
+    gap: 22px;
+    align-items: start;
+  }
+  .ladder, .panel {
+    background: var(--sheet);
+    border: 1px solid var(--ink);
+  }
+  .ladder { padding: 18px 18px 8px; }
+  .hop, .bridge { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; }
+  .num {
+    font-family: Amiri, serif;
+    font-size: 28px;
+    line-height: 1;
+    text-align: center;
+  }
+  .vline {
+    width: 1px;
+    height: 56px;
+    background: var(--ink);
+    justify-self: center;
+  }
+  .layer {
+    display: block;
+    width: 100%;
+    text-align: right;
+    border: 1px solid var(--line);
+    background: #fffdf8;
+    padding: 14px 16px 12px;
+  }
+  .layer.selected {
+    border-color: var(--teal);
+    background: var(--teal-soft);
+  }
+  .layer .name { display: block; font-weight: 600; font-size: 18px; }
+  .layer .job { display: block; color: var(--muted); font-size: 14px; }
+  .bridge-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 8px 0;
+  }
+  .down, .up { font-size: 14px; }
+  .down { color: var(--teal); }
+  .up { color: var(--copper); }
+  .panel {
+    position: sticky;
+    top: 16px;
+    padding: 20px 20px 16px;
+  }
+  .panel h2 {
+    margin: 0 0 8px;
+    font-family: Amiri, serif;
+    font-size: 32px;
+    font-weight: 700;
+  }
+  .panel p { margin: 0 0 12px; }
+  .facts { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .facts li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+  }
+  .facts span { color: var(--muted); }
+  .note {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid var(--ink);
+    color: var(--muted);
+    font-size: 13px;
+  }
+  @media (max-width: 800px) {
+    body { background: var(--paper); }
+    main { width: min(100% - 28px, 1120px); }
+    .layout { grid-template-columns: 1fr; }
+    .panel { position: static; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">نموذج التوزيع</p>
+    <h1>سلم البيع</h1>
+    <p class="lede">أربع طبقات. كل درجة تشتري بسعر، وتبيع للدرجة التي تحتها. المشترك يدفع عند آخر درجة، وهو خارج السلم.</p>
+  </header>
+
+  <div class="modes" role="radiogroup" aria-label="نوع العلاقة">
+    <button type="button" data-mode="tree" aria-pressed="true">التبعية</button>
+    <button type="button" data-mode="money" aria-pressed="false">الرصيد</button>
+    <button type="button" data-mode="price" aria-pressed="false">السعر</button>
+    <button type="button" data-mode="stock" aria-pressed="false">المخزون</button>
+  </div>
+
+  <div class="layout">
+    <section class="ladder" id="ladder" aria-label="الطبقات الأربع"></section>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+</main>
+<script>
+const layers = [
+  { id: "branch", num: "01", name: "الفرع", job: "صاحب الشبكة" },
+  { id: "main", num: "02", name: "الوكيل الرئيسي", job: "جملة لمنطقته" },
+  { id: "agent", num: "03", name: "الوكيل", job: "يدير المحلات" },
+  { id: "pos", num: "04", name: "نقطة البيع", job: "تواجه المشترك" }
+];
+
+const bridges = {
+  tree: [
+    { down: "يفتح وكلاء رئيسيين", up: "" },
+    { down: "يفتح وكلاء", up: "" },
+    { down: "يفتح نقاط بيع", up: "" }
+  ],
+  money: [
+    { down: "تمويل ينزل درجة", up: "الطلب لا يقفز للفرع" },
+    { down: "يموّل وكلاءه", up: "طلب الشحن يرجع له" },
+    { down: "يموّل نقطة البيع", up: "الدين يرجع للوكيل" }
+  ],
+  price: [
+    { down: "يشتري 25 ويبيع 30", up: "ربح الفرع 5" },
+    { down: "يشتري 30 ويبيع 35", up: "ربح الوكيل الرئيسي 5" },
+    { down: "يشتري 35 ويبيع 38", up: "ربح الوكيل 3" }
+  ],
+  stock: [
+    { down: "يسند الشرائح دفعة", up: "" },
+    { down: "ينزلها لوكلائه", up: "يمكن أن تقف عنده" },
+    { down: "يسلمها للمحل", up: "يمكن أن تقف عنده" }
+  ]
+};
+
+const panels = {
+  tree: {
+    title: "من يفتح من",
+    body: "كل درجة تفتح الدرجة التي تحتها مباشرة. نقطة البيع آخر درجة، والمشترك ليس مستخدماً في النظام.",
+    facts: [
+      ["الفرع", "وكلاء رئيسيون"],
+      ["الوكيل الرئيسي", "وكلاء"],
+      ["الوكيل", "نقاط بيع"],
+      ["نقطة البيع", "المشترك فقط"]
+    ],
+    note: "البيع المباشر من الفرع ممكن، وعندها لا يمر الخط على الوكلاء."
+  },
+  money: {
+    title: "أين يتحرك المال",
+    body: "التمويل حركة مستقلة تنزل درجة واحدة. عند البيع تُخصم محفظة البائع وحده، بسعر شرائه. ربح من فوقه يُسجَّل فرقاً ولا يتحول في نفس اللحظة.",
+    facts: [
+      ["خصم البيع", "محفظة البائع"],
+      ["تمويل", "من الأعلى لدرجة واحدة"],
+      ["طلب الشحن", "للدرجة الأعلى مباشرة"],
+      ["رصيد سالب", "دين على الأب المباشر"]
+    ],
+    note: "يمكن للأب أن يسمح برصيد سالب بحد. الدين يبقى عنده، لا عند الفرع."
+  },
+  price: {
+    title: "سلم سعر واحد",
+    body: "الأرقام مثال لبيع يمر من نقطة البيع. سعر كل درجة أكبر من سعر الدرجة التي فوقها، أو يساويه.",
+    facts: [
+      ["الفرع", "25 ← 30"],
+      ["الوكيل الرئيسي", "30 ← 35"],
+      ["الوكيل", "35 ← 38"],
+      ["نقطة البيع", "38 ← 45"],
+      ["ربح السلم", "20"]
+    ],
+    note: "45 هو ما يدفعه المشترك. 25 تكلفة الفرع. العشرون بينهم تتوزع على الدرجات: 5 و5 و3 و7."
+  },
+  stock: {
+    title: "أين تقف الشريحة",
+    body: "المخزون ينزل من الفرع. الشريحة يجوز أن تنتظر عند أي درجة إلى أن يفعّلها البائع.",
+    facts: [
+      ["الإسناد الأول", "من الفرع للوكيل الرئيسي"],
+      ["بعدها", "للوكيل ثم لنقطة البيع"],
+      ["التفعيل", "يسحب شريحة من مكان البائع"],
+      ["الاستبدال", "من المخزون المتاح تحت نفس الشبكة"]
+    ],
+    note: "الوكيل الرئيسي مخزن لمجموعته. ليس مضطراً أن يمرر كل الشرائح في نفس اليوم."
+  }
+};
+
+const focusCopy = {
+  tree: {
+    branch: "يفتح الوكلاء الرئيسيين ويقدر يبيع للمشترك بنفسه.",
+    main: "يفتح وكلاء، ولا يفتح نقطة البيع. المحل يتبع الوكيل.",
+    agent: "يفتح نقاط البيع التابعة له، ويراها كمجموعة واحدة.",
+    pos: "لا تفتح درجة تحتها. تبيع للمشترك وتصدر الإيصال."
+  },
+  money: {
+    branch: "يموّل الوكيل الرئيسي من محفظته. بيعه المباشر يخصم تكلفته من محفظة الفرع.",
+    main: "يستلم التمويل من الفرع ويموّل وكلاءه. طلبات وكلائه تصل إليه.",
+    agent: "يموّل نقاط بيعه. إذا تأخر محل، الدين مسجّل على هذا الوكيل.",
+    pos: "عند البيع تُخصم محفظتها بسعر شرائها، لا بسعر المشترك."
+  },
+  price: {
+    branch: "يضع أسعار الدرجات الأربع. في المثال يشتري بـ 25 ويبيع بـ 30.",
+    main: "في المثال يشتري بـ 30 ويبيع للوكيل بـ 35. ربحه 5 عن كل بيع تحت شبكته.",
+    agent: "في المثال يشتري بـ 35 ويبيع لنقطة البيع بـ 38. ربحه 3.",
+    pos: "في المثال تشتري بـ 38 وتبيع للمشترك بـ 45. ربحها 7."
+  },
+  stock: {
+    branch: "يملك المخزون الأول، ويسنده دفعة إلى وكيل رئيسي.",
+    main: "تمسك الشرائح عنده حتى ينزلها لوكلائه.",
+    agent: "يستلم من وكيله الرئيسي ويسلم المحل ما يلزمه.",
+    pos: "تفعّل من الشرائح التي عندها. الاستبدال يكون من المتاح في شبكتها."
+  }
+};
+
+let mode = "tree";
+let selected = null;
+
+const ladder = document.getElementById("ladder");
+const panel = document.getElementById("panel");
+
+function renderLadder() {
+  const links = bridges[mode];
+  const parts = [];
+  layers.forEach((layer, index) => {
+    parts.push(
+      '<div class="hop">' +
+        '<div class="num">' + layer.num + '</div>' +
+        '<button type="button" class="layer' + (selected === layer.id ? ' selected' : '') + '" data-layer="' + layer.id + '">' +
+          '<span class="name">' + layer.name + '</span>' +
+          '<span class="job">' + layer.job + '</span>' +
+        '</button>' +
+      '</div>'
+    );
+    if (index < links.length) {
+      const link = links[index];
+      parts.push(
+        '<div class="bridge"><div class="vline"></div><div class="bridge-copy">' +
+          '<div class="down">' + link.down + '</div>' +
+          (link.up ? '<div class="up">' + link.up + '</div>' : '') +
+        '</div></div>'
+      );
+    }
+  });
+  ladder.innerHTML = parts.join("");
+}
+
+function renderPanel() {
+  const info = panels[mode];
+  const facts = info.facts.map((row) => '<li><span>' + row[0] + '</span><strong>' + row[1] + '</strong></li>').join("");
+  const extra = selected ? '<p>' + focusCopy[mode][selected] + '</p>' : '';
+  panel.innerHTML =
+    '<h2>' + info.title + '</h2>' +
+    '<p>' + info.body + '</p>' +
+    extra +
+    '<ul class="facts">' + facts + '</ul>' +
+    '<p class="note">' + info.note + '</p>';
+}
+
+document.querySelectorAll(".modes button").forEach((button) => {
+  button.addEventListener("click", () => {
+    mode = button.dataset.mode;
+    document.querySelectorAll(".modes button").forEach((item) => {
+      item.setAttribute("aria-pressed", item === button ? "true" : "false");
+    });
+    renderLadder();
+    renderPanel();
+  });
+});
+
+ladder.addEventListener("click", (event) => {
+  const button = event.target.closest(".layer");
+  if (!button) return;
+  selected = selected === button.dataset.layer ? null : button.dataset.layer;
+  renderLadder();
+  renderPanel();
+});
+
+renderLadder();
+renderPanel();
+</script>
+</body>
+</html>

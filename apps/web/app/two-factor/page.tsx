@@ -2,10 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
+import { AuthFrame } from '../../components/auth-frame';
 import { api, routeFor, TWO_FACTOR_STEP_KEY } from '../../lib/api';
+import { usePrefs } from '../../lib/prefs';
 
 export default function TwoFactorPage() {
   const router = useRouter();
+  const { t, apiText } = usePrefs();
   const [enrolling, setEnrolling] = useState(false);
   const [otpauth, setOtpauth] = useState('');
   const [code, setCode] = useState('');
@@ -13,15 +16,14 @@ export default function TwoFactorPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    // The step is stored by `routeFor` from the API's `next` field.
     const isEnroll = sessionStorage.getItem(TWO_FACTOR_STEP_KEY) === 'enroll';
     setEnrolling(isEnroll);
     if (!isEnroll) return;
     api.setupTwoFactor().then((result) => {
       if (result.ok) setOtpauth(result.data.otpauth);
-      else setMessage(result.message);
+      else setMessage(apiText(result.message));
     });
-  }, []);
+  }, [apiText]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -30,25 +32,27 @@ export default function TwoFactorPage() {
     const result = enrolling ? await api.confirmTwoFactor(code) : await api.verifyTwoFactor(code);
     setBusy(false);
     if (!result.ok) {
-      setMessage(result.message);
+      setMessage(apiText(result.message));
       return;
     }
     router.push(routeFor(result.data.next));
   }
 
   return (
-    <>
-      <h1>{enrolling ? 'تفعيل التحقق بخطوتين' : 'رمز التحقق'}</h1>
-      <p className="lede">{enrolling ? 'أضف الرابط التالي إلى تطبيق المصادقة ثم أدخل الرمز.' : 'أدخل الرمز من تطبيق المصادقة.'}</p>
+    <AuthFrame
+      kicker={t.verifyKicker}
+      title={enrolling ? t.enrollTitle : t.codeTitle}
+      lede={enrolling ? t.enrollLede : t.codeLede}
+    >
       {enrolling && otpauth && <p className="code" dir="ltr">{otpauth}</p>}
       <form onSubmit={submit}>
         <label>
-          الرمز
+          {t.code}
           <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required />
         </label>
         {message && <p className="error" role="alert">{message}</p>}
-        <button type="submit" disabled={busy}>تأكيد</button>
+        <button type="submit" disabled={busy}>{t.confirm}</button>
       </form>
-    </>
+    </AuthFrame>
   );
 }

@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, Res }
 import type { CookieOptions, Request, Response } from 'express';
 import { AuthService, Failure } from './auth.service';
 import { SESSION_TTL_SECONDS } from './sessions';
+import { expectedLayer, WRONG_DOOR } from '../../doors';
 
 const BAD_CREDENTIALS = 'بيانات الدخول غير صحيحة';
 
@@ -58,7 +59,16 @@ export class AuthController {
       res.status(401);
       return { message: BAD_CREDENTIALS };
     }
-    const result = await this.auth.login({ loginName: body.loginName, password: body.password }, metaOf(req));
+    const header = req.headers['x-door'];
+    const door = expectedLayer({
+      origin: typeof req.headers.origin === 'string' ? req.headers.origin : undefined,
+      door: typeof header === 'string' ? header : undefined,
+    });
+    if (door === 'conflict') {
+      res.status(403);
+      return { message: WRONG_DOOR };
+    }
+    const result = await this.auth.login({ loginName: body.loginName, password: body.password }, metaOf(req), door);
     if (result.kind === 'error') {
       res.status(result.status);
       return { message: result.message };

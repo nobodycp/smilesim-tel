@@ -78,24 +78,22 @@ export default function TasksPage() {
                   <th>{t.pointOfSale}</th>
                   <th className="num">{t.amount}</th>
                   <th>{t.note}</th>
-                  <th />
+                  <th className="row-actions">{t.lineOps}</th>
                 </tr>
               </thead>
               <tbody>
                 {shown.map((row) => {
                   const items = [
-                    ...(row.canTake ? [{ label: t.take, onClick: () => run(() => api.takeTask(row.id)) }] : []),
+                    ...(row.canTake ? [{ label: t.take, icon: 'enter' as const, onClick: () => run(() => api.takeTask(row.id)) }] : []),
                     ...(row.canWork
                       ? [
-                          { label: t.complete, onClick: () => run(() => api.completeTask(row.id, '')) },
-                          { label: t.reject, danger: true, onClick: () => run(() => api.rejectTask(row.id, reasons[row.id] ?? '')) },
-                          { label: t.release, onClick: () => run(() => api.releaseTask(row.id)) },
+                          { label: t.complete, icon: 'check' as const, onClick: () => run(() => api.completeTask(row.id, '')) },
+                          { label: t.reject, icon: 'ban' as const, danger: true, onClick: () => run(() => api.rejectTask(row.id, reasons[row.id] ?? '')) },
+                          { label: t.release, icon: 'undo' as const, onClick: () => run(() => api.releaseTask(row.id)) },
                         ]
                       : []),
-                    ...(row.canCancel ? [{ label: t.cancelTask, danger: true, onClick: () => run(() => api.cancelTask(row.id)) }] : []),
+                    ...(row.canCancel ? [{ label: t.cancelTask, icon: 'ban' as const, danger: true, onClick: () => run(() => api.cancelTask(row.id)) }] : []),
                   ];
-                  const visible = items.find((item) => !item.danger);
-                  const rest = items.filter((item) => item !== visible);
                   return (
                     <tr key={row.id}>
                       <td>
@@ -104,28 +102,23 @@ export default function TasksPage() {
                       <td>
                         {actionName(t, row.action)} · {row.packageName}
                       </td>
-                      <td><bdi dir="ltr">{row.msisdn ?? '—'}</bdi></td>
-                      <td>{row.posLogin}</td>
-                      <td>
+                      <td className="msisdn"><bdi dir="ltr">{row.msisdn ?? '—'}</bdi></td>
+                      <td><bdi dir="ltr">{row.posLogin}</bdi></td>
+                      <td className="num">
                         <Money value={row.posDelta} />
                       </td>
-                      <td>{[row.log, row.resultNote || row.note].filter(Boolean).join(' — ') || '—'}</td>
                       <td>
-                        <div className="ops">
-                          {visible && (
-                            <button type="button" className="secondary" onClick={visible.onClick}>
-                              {visible.label}
-                            </button>
-                          )}
-                          {row.canWork && (
-                            <input
-                              aria-label={t.reason}
-                              value={reasons[row.id] ?? ''}
-                              onChange={(event) => setReasons((current) => ({ ...current, [row.id]: event.target.value }))}
-                            />
-                          )}
-                          {rest.length > 0 && <RowMenu label={t.lineOps} items={rest} />}
-                        </div>
+                        {[row.log, row.resultNote || row.note].filter(Boolean).join(' — ') || '—'}
+                        {row.canWork && (
+                          <input
+                            aria-label={t.reason}
+                            value={reasons[row.id] ?? ''}
+                            onChange={(event) => setReasons((current) => ({ ...current, [row.id]: event.target.value }))}
+                          />
+                        )}
+                      </td>
+                      <td className="row-actions">
+                        <RowMenu label={`${t.lineOps} ${row.msisdn ?? row.id}`} items={items} />
                       </td>
                     </tr>
                   );

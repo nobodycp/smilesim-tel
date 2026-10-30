@@ -1,8 +1,12 @@
 node_modules
 dist
 .next
+.next-e2e
 .superpowers
 coverage
 playwright-report
 test-results
 *.log
+.env
+.env.*
+dump.rdb

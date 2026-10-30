@@ -202,6 +202,34 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
       },
     });
     await this.redis.set(sessionKey(row.id), input.userId, 'EX', SESSION_TTL_SECONDS);
+    if (input.scope === 'full') await this.freezeGrants(input.userId);
+    return row.id;
+  }
+
+  private async freezeGrants(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, include: { role: true } });
+    if (!user) return;
+    const grants = user.isBranchOwner
+      ? 'read,edit,accounting,tasks,reports,staff,enter'
+      : (['read', 'edit', 'accounting', 'tasks', 'reports', 'staff', 'enter'] as const).filter((key) => user.role?.[key]).join(',');
+    await this.prisma.user.update({ where: { id: userId }, data: { liveGrants: grants } });
+  }
+
+  async saveImpersonation(input: { userId: string; userAgent: string; ip: string }): Promise<string> {
+    const now = new Date();
+    const row = await this.prisma.session.create({
+      data: {
+        userId: input.userId,
+        scope: 'full',
+        kind: 'impersonation',
+        userAgent: input.userAgent,
+        ip: input.ip,
+        createdAt: now,
+        lastSeenAt: now,
+        expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000),
+      },
+    });
+    await this.redis.set(sessionKey(row.id), input.userId, 'EX', SESSION_TTL_SECONDS);
     return row.id;
   }
 

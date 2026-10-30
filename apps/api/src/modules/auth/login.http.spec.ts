@@ -38,6 +38,26 @@ describe('POST /auth/login', () => {
     delete process.env.COOKIE_DOMAIN;
   });
 
+  it('refuses a point of sale account at the admin door', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .set('x-door', 'admin')
+      .send({ loginName: 'pos', password: '123456' });
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ message: 'هذا الحساب ليس لهذا المدخل' });
+    expect(response.headers['set-cookie']).toBeUndefined();
+    expect(store.sessions).toHaveLength(0);
+  });
+
+  it('accepts the point of sale account at its own door', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .set('x-door', 'pos')
+      .send({ loginName: 'pos', password: '123456' });
+    expect(response.status).toBe(200);
+    expect(response.headers['set-cookie'][0]).toContain('sid=');
+  });
+
   it('sets a cookie and returns app for the trial POS', async () => {
     const response = await request(app.getHttpServer()).post('/auth/login').send({ loginName: 'pos', password: '123456' });
     expect(response.status).toBe(200);

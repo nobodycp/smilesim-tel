@@ -62,6 +62,8 @@ export interface AuthStore {
   setPolicy(layer: Layer, required: boolean): Promise<void>;
   listFullSessions(userId: string): Promise<FullSessionRow[]>;
   saveSession(input: { userId: string; scope: SessionScope; userAgent: string; ip: string }): Promise<string>;
+  /** A full session that does not take one of the account's three slots. */
+  saveImpersonation(input: { userId: string; userAgent: string; ip: string }): Promise<string>;
   revokeSessions(ids: string[]): Promise<void>;
   userBySession(sessionId: string): Promise<LoginUser | null>;
   /** The live session and its owner, or null when missing, revoked, or expired. */
@@ -173,6 +175,25 @@ export class MemoryAuthStore implements AuthStore {
     this.liveSessionKeys.add(id);
     const owner = this.userById(input.userId);
     if (owner) this.liveKeys.add(owner.loginName);
+    return id;
+  }
+
+  async saveImpersonation(input: { userId: string; userAgent: string; ip: string }): Promise<string> {
+    const now = new Date();
+    const id = randomUUID();
+    this.sessions.push({
+      id,
+      userId: input.userId,
+      scope: 'full',
+      kind: 'impersonation',
+      userAgent: input.userAgent,
+      ip: input.ip,
+      createdAt: now,
+      lastSeenAt: now,
+      expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000),
+      revokedAt: null,
+    });
+    this.liveSessionKeys.add(id);
     return id;
   }
 

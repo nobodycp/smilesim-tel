@@ -1,0 +1,14 @@
+---
+description: Spec then plan before any feature, one verified slice at a time
+alwaysApply: true
+---
+
+# Work plan
+
+Same discipline as account manager: a written spec, then a written plan, then one slice. Do not wander into the next idea mid-task.
+
+- A new capability, a behavior change, or a visual pass starts in `docs/superpowers/specs/YYYY-MM-DD-<slug>.md` (goal, decisions, non-goals) and `docs/superpowers/plans/YYYY-MM-DD-<slug>.md` (ordered tasks with the files each one touches).
+- Build only the current task. A follow-up the user names while you are in a slice goes into the spec as a later task, not into the code you are writing.
+- Finish a slice by verifying it (typecheck, and the browser for UI) before opening the next one.
+- A one-line copy or label fix does not need a spec. Anything that changes money, status, navigation, or layout does.
+- Do not restyle a screen with one-off classes. Visual work follows `DESIGN.md` and `.cursor/rules/pearl-ui.mdc`.

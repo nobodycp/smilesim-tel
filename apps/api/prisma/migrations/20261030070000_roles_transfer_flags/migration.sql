@@ -1,0 +1,26 @@
+ALTER TABLE "User" ADD COLUMN "roleId" TEXT;
+ALTER TABLE "User" ADD COLUMN "liveGrants" TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE "Role" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "read" BOOLEAN NOT NULL DEFAULT true,
+    "edit" BOOLEAN NOT NULL DEFAULT false,
+    "accounting" BOOLEAN NOT NULL DEFAULT false,
+    "tasks" BOOLEAN NOT NULL DEFAULT false,
+    "reports" BOOLEAN NOT NULL DEFAULT false,
+    "staff" BOOLEAN NOT NULL DEFAULT false,
+    "enter" BOOLEAN NOT NULL DEFAULT false,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "Role_pkey" PRIMARY KEY ("id")
+);
+
+ALTER TABLE "User" ADD CONSTRAINT "User_roleId_fkey" FOREIGN KEY ("roleId") REFERENCES "Role"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "Package" ADD COLUMN "autoExtend" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Package" ADD COLUMN "autoRename" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Package" ADD COLUMN "autoSim" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Package" ADD COLUMN "allowDisconnect" BOOLEAN NOT NULL DEFAULT true;
+
+ALTER TABLE "Line" ADD COLUMN "opsLocked" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Line" ADD COLUMN "originAgentId" TEXT;

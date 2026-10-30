@@ -32,6 +32,7 @@ export type Copy = {
   currentPassword: string;
   newPassword: string;
   save: string;
+  cancel: string;
   verifyKicker: string;
   enrollTitle: string;
   codeTitle: string;
@@ -298,6 +299,7 @@ export const copy: Record<Locale, Copy> = {
     currentPassword: 'كلمة السر الحالية',
     newPassword: 'كلمة السر الجديدة',
     save: 'حفظ',
+    cancel: 'إلغاء',
     verifyKicker: 'التحقق',
     enrollTitle: 'تفعيل التحقق بخطوتين',
     codeTitle: 'رمز التحقق',
@@ -562,6 +564,7 @@ export const copy: Record<Locale, Copy> = {
     currentPassword: 'Current password',
     newPassword: 'New password',
     save: 'Save',
+    cancel: 'Cancel',
     verifyKicker: 'Verification',
     enrollTitle: 'Turn on two-factor',
     codeTitle: 'Verification code',
@@ -826,6 +829,7 @@ export const copy: Record<Locale, Copy> = {
     currentPassword: 'סיסמה נוכחית',
     newPassword: 'סיסמה חדשה',
     save: 'שמירה',
+    cancel: 'ביטול',
     verifyKicker: 'אימות',
     enrollTitle: 'הפעלת אימות דו-שלבי',
     codeTitle: 'קוד אימות',

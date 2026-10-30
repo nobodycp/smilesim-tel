@@ -2,10 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { AuthFrame } from '../../components/auth-frame';
 import { api, routeFor } from '../../lib/api';
+import { usePrefs } from '../../lib/prefs';
 
 export default function PasswordPage() {
   const router = useRouter();
+  const { t, apiText } = usePrefs();
   const [password, setPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -18,28 +21,26 @@ export default function PasswordPage() {
     const result = await api.changePassword(password, nextPassword);
     setBusy(false);
     if (!result.ok) {
-      setMessage(result.message);
+      setMessage(apiText(result.message));
       return;
     }
     router.push(routeFor(result.data.next));
   }
 
   return (
-    <>
-      <h1>تغيير كلمة السر</h1>
-      <p className="lede">اختر كلمة سر جديدة قبل المتابعة.</p>
+    <AuthFrame kicker={t.passwordKicker} title={t.passwordTitle} lede={t.passwordLede}>
       <form onSubmit={submit}>
         <label>
-          كلمة السر الحالية
+          {t.currentPassword}
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
         </label>
         <label>
-          كلمة السر الجديدة
+          {t.newPassword}
           <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" required />
         </label>
         {message && <p className="error" role="alert">{message}</p>}
-        <button type="submit" disabled={busy}>حفظ</button>
+        <button type="submit" disabled={busy}>{t.save}</button>
       </form>
-    </>
+    </AuthFrame>
   );
 }

@@ -97,23 +97,37 @@ export default function RolesPage() {
       note={note}
     >
       <section className="pane">
-        <Dialog open={open} title={draft.name || t.role} closeLabel={t.closeMenu} error={error} onClose={() => setOpen(false)}>
+        <Dialog
+          open={open}
+          title={t.role}
+          closeLabel={t.closeMenu}
+          error={error}
+          onClose={() => setOpen(false)}
+          footer={(
+            <>
+              <button type="button" className="secondary" onClick={() => setOpen(false)}>{t.cancel}</button>
+              <button type="button" className="primary" disabled={!draft.name.trim()} onClick={save}>{t.save}</button>
+            </>
+          )}
+        >
           <div className="dialog-form">
             <label>
               {t.role}
               <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} />
             </label>
-            {grants.map(([key, label]) => (
-              <label key={key} className="check">
-                <input
-                  type="checkbox"
-                  checked={draft[key]}
-                  onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.checked }))}
-                />
-                {label}
-              </label>
-            ))}
-            <button type="button" onClick={save}>{t.save}</button>
+            <fieldset className="perm-grid">
+              <legend>{t.permissions}</legend>
+              {grants.map(([key, label]) => (
+                <label key={key} className="check">
+                  <input
+                    type="checkbox"
+                    checked={draft[key]}
+                    onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.checked }))}
+                  />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
           </div>
         </Dialog>
         {!loaded ? <TableSkeleton rows={3} columns={3} /> : rows.length === 0 ? (
@@ -125,7 +139,7 @@ export default function RolesPage() {
                 <tr>
                   <th>{t.role}</th>
                   <th>{t.permissions}</th>
-                  <th>{t.lineOps}</th>
+                  <th className="row-actions">{t.lineOps}</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,8 +147,8 @@ export default function RolesPage() {
                   <tr key={row.id}>
                     <td><strong>{row.name}</strong></td>
                     <td>{labels(row)}</td>
-                    <td>
-                      <RowMenu label={t.lineOps} items={[{ label: t.grantEdit, onClick: () => edit(row) }]} />
+                    <td className="row-actions">
+                      <RowMenu label={`${t.lineOps} ${row.name}`} items={[{ label: t.grantEdit, icon: 'edit', onClick: () => edit(row) }]} />
                     </td>
                   </tr>
                 ))}

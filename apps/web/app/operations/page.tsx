@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Desk, Money, actionName } from '../../components/desk';
+import { Desk, Money, actionName, latinWhen } from '../../components/desk';
 import { TableSkeleton } from '../../components/loading';
 import { api, type LedgerRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 
 export default function OperationsPage() {
-  const { t, locale, apiText } = usePrefs();
+  const { t, apiText } = usePrefs();
   const [entries, setEntries] = useState<LedgerRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
@@ -83,13 +83,13 @@ export default function OperationsPage() {
               <tbody>
                 {entries.map((row) => (
                   <tr key={row.id}>
-                    <td>{new Date(row.at).toLocaleString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar')}</td>
+                    <td className="when"><bdi dir="ltr">{latinWhen(row.at)}</bdi></td>
                     <td>{actionName(t, row.kind)}</td>
                     <td>{row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—'}</td>
                     <td>{row.packageName || row.note || ''}</td>
-                    <td><Money value={row.amount} /></td>
-                    <td><Money value={row.balanceBefore} /></td>
-                    <td><Money value={row.balanceAfter} /></td>
+                    <td className="num"><Money value={row.amount} /></td>
+                    <td className="num"><Money value={row.balanceBefore} /></td>
+                    <td className="num"><Money value={row.balanceAfter} /></td>
                   </tr>
                 ))}
               </tbody>

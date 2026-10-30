@@ -259,7 +259,7 @@ export default function PlansPage() {
               <td><Money value={row.agentPrice} /></td>
               <td><Money value={row.posPrice} /></td>
               <td><Money value={row.subscriberPrice} /></td>
-              <td>
+              <td className="num">
                 {row.editableField && (
                   <div className="field-row">
                     <input

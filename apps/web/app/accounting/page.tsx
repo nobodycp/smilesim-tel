@@ -1,13 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Desk, Money } from '../../components/desk';
+import { Desk, Money, latinWhen } from '../../components/desk';
 import { TableSkeleton } from '../../components/loading';
 import { api, type AccountingRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 
 export default function AccountingPage() {
-  const { t, locale, apiText } = usePrefs();
+  const { t, apiText } = usePrefs();
   const [entries, setEntries] = useState<AccountingRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
@@ -62,13 +62,13 @@ export default function AccountingPage() {
               <tbody>
                 {shown.map((row) => (
                   <tr key={row.id}>
-                    <td>{new Date(row.at).toLocaleString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar')}</td>
-                    <td><bdi dir="ltr">{row.msisdn}</bdi></td>
+                    <td className="when"><bdi dir="ltr">{latinWhen(row.at)}</bdi></td>
+                    <td className="fit"><bdi dir="ltr">{row.msisdn}</bdi></td>
                     <td>{row.companyName || '—'}</td>
                     <td>{row.packageName || '—'}</td>
-                    <td><Money value={row.packagePrice} /></td>
-                    <td><Money value={row.balanceBefore} /></td>
-                    <td><Money value={row.balanceAfter} /></td>
+                    <td className="num"><Money value={row.packagePrice} /></td>
+                    <td className="num"><Money value={row.balanceBefore} /></td>
+                    <td className="num"><Money value={row.balanceAfter} /></td>
                   </tr>
                 ))}
               </tbody>

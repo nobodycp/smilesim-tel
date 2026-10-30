@@ -16,7 +16,7 @@ const line = {
   endsAt: '2026-11-12T00:00:00.000Z',
 };
 
-test('numbers is a full table with extend outside the menu', async ({ page }) => {
+test('numbers row actions live in the menu', async ({ page }) => {
   await page.route('**/office/lines**', (route) =>
     route.fulfill({
       status: 200,
@@ -34,6 +34,8 @@ test('numbers is a full table with extend outside the menu', async ({ page }) =>
   await page.goto('/numbers');
   await expectFullTable(page, 'الأرقام');
   await expect(page.getByLabel('الرقم')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'تمديد' })).toBeVisible();
+  await page.getByRole('button', { name: /عمليات/ }).click();
+  await expect(page.getByRole('menuitem', { name: 'تمديد' })).toBeVisible();
+  await expect(page.locator('table.data button.secondary')).toHaveCount(0);
   await expect(page.locator('.lede')).toHaveCount(0);
 });

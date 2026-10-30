@@ -8,6 +8,6 @@ import { PrismaAuthStore } from './prisma-auth.store';
 @Module({
   controllers: [AuthController],
   providers: [AuthService, { provide: AUTH_STORE, useClass: PrismaAuthStore }],
-  exports: [AuthService],
+  exports: [AuthService, AUTH_STORE],
 })
 export class AuthModule {}

@@ -191,19 +191,25 @@ export default function PackageSheetPage() {
                   </div>
                   <table className="data">
                     <thead>
-                      <tr><th>{t.accountName}</th><th>{t.layer}</th><th>{t.price}</th><th></th></tr>
+                      <tr>
+                        <th>{t.accountName}</th>
+                        <th>{t.layer}</th>
+                        <th className="num">{t.price}</th>
+                        <th className="row-actions">{t.lineOps}</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {sheet.offers.map((offer) => (
                         <tr key={offer.loginName}>
                           <td>{offer.nickname}</td>
                           <td>{layerName(t, offer.layer)}</td>
-                          <td><Money value={offer.price} /></td>
-                          <td>
+                          <td className="num"><Money value={offer.price} /></td>
+                          <td className="row-actions">
                             <RowMenu
-                              label={t.lineOps}
+                              label={`${t.lineOps} ${offer.nickname}`}
                               items={[{
                                 label: t.deleteAccount,
+                                icon: 'trash',
                                 danger: true,
                                 onClick: () => void api.removeOffer(sheet.code, offer.loginName).then(() => load()),
                               }]}
