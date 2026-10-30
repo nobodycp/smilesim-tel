@@ -21,10 +21,12 @@ function PosCatalog({
   rows,
   marks,
   loginName,
+  loadError,
 }: {
   rows: PackageRow[];
   marks: { name: string; image: string }[];
   loginName: string;
+  loadError: string;
 }) {
   const { t, apiText } = usePrefs();
   const [step, setStep] = useState<'companies' | 'packages' | 'details'>('companies');
@@ -53,7 +55,7 @@ function PosCatalog({
 
   async function join(event: FormEvent) {
     event.preventDefault();
-    if (!picked) return;
+    if (!picked || !loginName.trim()) return;
     setError('');
     setNote('');
     if (!/^05\d{8}$/.test(msisdn) || (!esim && !iccid.trim())) {
@@ -77,8 +79,10 @@ function PosCatalog({
     setMsisdn('');
   }
 
+  const canActivate = loginName.trim().length > 0;
+
   return (
-    <Desk title={t.plansTitle} lede={t.plansPosLede} error={error} note={note}>
+    <Desk title={t.plansTitle} lede={t.plansPosLede} error={loadError || error} note={note}>
       <div className="stack">
         <div className="steps" role="tablist">
           <button type="button" role="tab" aria-selected={step === 'companies'} onClick={() => setStep('companies')}>{t.tabCompanies}</button>
@@ -129,7 +133,7 @@ function PosCatalog({
               </label>
             )}
             <OutcomePick value={outcome} onChange={setOutcome} />
-            <button type="submit">{t.actActivate}</button>
+            <button type="submit" disabled={!canActivate}>{t.actActivate}</button>
           </form>
         )}
       </div>
@@ -286,7 +290,7 @@ export default function PlansPage() {
     );
   }
   if (isPos) {
-    return <PosCatalog rows={rows} marks={marks} loginName={loginName} />;
+    return <PosCatalog rows={rows} marks={marks} loginName={loginName} loadError={error} />;
   }
   if (!me) {
     return (
@@ -302,15 +306,17 @@ export default function PlansPage() {
   return (
     <Desk title={t.plansTitle} lede="" error={error} note={note}>
       <div className="filter-bar">
-        <label>
-          {t.company}
-          <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            {companyNames.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-        </label>
+        <div className="filter-panel">
+          <label>
+            {t.company}
+            <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {companyNames.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
       <div className="stack">
         {showProvider
