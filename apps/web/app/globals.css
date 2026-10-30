@@ -729,7 +729,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   height: 34px;
   padding: 0 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--rd-radius-lg);
   background: var(--rd-primary-bg);
   color: var(--rd-primary-fg);
   font-weight: 700;
@@ -738,7 +738,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   height: 34px;
   padding: 0 12px;
   border: 1px solid var(--rd-line);
-  border-radius: 8px;
+  border-radius: var(--rd-radius-lg);
   background: transparent;
   color: var(--rd-ink);
   font-weight: 700;
