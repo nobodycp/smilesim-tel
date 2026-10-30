@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Desk, actionName, latinWhen, taskStatus } from '../../components/desk';
-import { TableSkeleton } from '../../components/loading';
+import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type AuditRow } from '../../lib/api';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
@@ -11,30 +11,43 @@ export default function AuditPage() {
   const { t, apiText } = usePrefs();
   const { me } = useOffice();
   const branch = me?.layer === 'branch';
-  const [entries, setEntries] = useState<AuditRow[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [page, setPage] = useState<{ key: string; entries: AuditRow[]; next: string | null } | null>(null);
+  const [more, setMore] = useState(false);
   const [error, setError] = useState('');
   const [kind, setKind] = useState('');
+  const ticket = useRef(0);
+  const kinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', ...(branch ? ['enter'] : [])];
+  const current = page?.key === kind ? page : null;
+  const shown = current?.entries ?? [];
 
   const load = useCallback(async () => {
-    const result = await api.officeAudit();
+    const mine = ++ticket.current;
+    const result = await api.officeAudit({ kind });
+    if (mine !== ticket.current) return;
     if (!result.ok) {
       setError(apiText(result.message));
-      setEntries([]);
-      setLoaded(true);
+      setPage({ key: kind, entries: [], next: null });
       return;
     }
     setError('');
-    setEntries(result.data.entries);
-    setLoaded(true);
-  }, [apiText]);
+    setPage({ key: kind, entries: result.data.entries, next: result.data.nextCursor });
+  }, [apiText, kind]);
+
+  async function loadMore() {
+    if (!current?.next || more) return;
+    setMore(true);
+    const result = await api.officeAudit({ kind, cursor: current.next });
+    setMore(false);
+    if (!result.ok) {
+      setError(apiText(result.message));
+      return;
+    }
+    setPage((now) => (now && now.key === kind ? { key: kind, entries: [...now.entries, ...result.data.entries], next: result.data.nextCursor } : now));
+  }
 
   useEffect(() => {
     load();
   }, [load]);
-
-  const kinds = [...new Set(entries.map((row) => row.action))];
-  const shown = kind ? entries.filter((row) => row.action === kind) : entries;
 
   return (
     <Desk title={t.navAudit} lede="" error={error} note="">
@@ -53,7 +66,7 @@ export default function AuditPage() {
       </div>
       <section className="pane">
         <div className="sheet">
-          {!loaded ? (
+          {!current ? (
             <TableSkeleton rows={6} columns={7} />
           ) : (
             <table className="data">
@@ -85,8 +98,17 @@ export default function AuditPage() {
               </tbody>
             </table>
           )}
-          {loaded && shown.length === 0 && <p className="empty">{t.noMovements}</p>}
+          {current && shown.length === 0 && <p className="empty">{t.noMovements}</p>}
         </div>
+        {current?.next && (
+          <div className="pane-body">
+            <div className="pane-tools">
+              <button type="button" className="secondary" disabled={more} onClick={loadMore}>{t.loadMore}</button>
+              {more && <Spinner size={18} />}
+              <span className="hint">{t.shownCount.replace('{n}', String(shown.length))}</span>
+            </div>
+          </div>
+        )}
       </section>
     </Desk>
   );

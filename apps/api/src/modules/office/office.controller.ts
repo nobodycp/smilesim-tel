@@ -29,6 +29,11 @@ function readCookie(req: Request, name: string): string | undefined {
   return undefined;
 }
 
+/** A query value is a string or nothing; a repeated or nested one is ignored. */
+function text(value: unknown): string | undefined {
+  return typeof value === 'string' && value ? value : undefined;
+}
+
 function gateOf(req: Request) {
   return { sessionId: readCookie(req, 'sid'), homeId: readCookie(req, 'home') };
 }
@@ -128,8 +133,15 @@ export class OfficeController {
   }
 
   @Get('lines')
-  lines(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Query('cursor') cursor?: string, @Query('q') q?: string) {
-    return this.run(res, () => this.office.lines(gateOf(req), cursor, q));
+  lines(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Query('cursor') cursor?: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('packageCode') packageCode?: string,
+  ) {
+    return this.run(res, () => this.office.lines(gateOf(req), { cursor: text(cursor), q: text(q), status: text(status), packageCode: text(packageCode) }));
   }
 
   @Get('lines/:id')
@@ -224,8 +236,8 @@ export class OfficeController {
   }
 
   @Get('tasks')
-  tasks(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.tasks(gateOf(req)));
+  tasks(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Query('cursor') cursor?: string, @Query('status') status?: string) {
+    return this.run(res, () => this.office.tasks(gateOf(req), { cursor: text(cursor), status: text(status) }));
   }
 
   @Post('tasks/:id/take')
@@ -341,13 +353,13 @@ export class OfficeController {
   }
 
   @Get('audit')
-  audit(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.audit(gateOf(req)));
+  audit(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Query('cursor') cursor?: string, @Query('kind') kind?: string) {
+    return this.run(res, () => this.office.audit(gateOf(req), { cursor: text(cursor), kind: text(kind) }));
   }
 
   @Get('accounting')
-  accounting(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.accounting(gateOf(req)));
+  accounting(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Query('cursor') cursor?: string, @Query('q') q?: string) {
+    return this.run(res, () => this.office.accounting(gateOf(req), { cursor: text(cursor), q: text(q) }));
   }
 
   @Get('ledger/:scope')
@@ -359,13 +371,14 @@ export class OfficeController {
     @Query('direction') direction?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('cursor') cursor?: string,
   ) {
-    return this.run(res, () => this.office.ledger(gateOf(req), scope, { kind, direction, from, to }));
+    return this.run(res, () => this.office.ledger(gateOf(req), scope, { kind, direction, from, to, cursor: text(cursor) }));
   }
 
   @Get('reports/:kind')
-  report(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('kind') kind: string) {
-    return this.run(res, () => this.office.report(gateOf(req), kind));
+  report(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('kind') kind: string, @Query('cursor') cursor?: string) {
+    return this.run(res, () => this.office.report(gateOf(req), kind, text(cursor)));
   }
 
   private async run(res: Response, work: () => Promise<unknown>) {

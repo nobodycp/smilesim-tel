@@ -1,8 +1,9 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Desk, Money, actionName, latinWhen, lineStatus, taskStatus } from '../../../components/desk';
+import { Spinner } from '../../../components/loading';
 import { api, type ReportPayload } from '../../../lib/api';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
@@ -24,14 +25,18 @@ export default function ReportPage() {
   const params = useParams<{ kind: string }>();
   const kind = typeof params.kind === 'string' && params.kind in kinds ? (params.kind as Kind) : '';
   const [payload, setPayload] = useState<ReportPayload | null>(null);
+  const [more, setMore] = useState(false);
   const [error, setError] = useState('');
+  const ticket = useRef(0);
   const { me } = useOffice();
   const door = useDoor();
   const allowed = door.layer === 'branch' && me?.layer === 'branch';
 
   const load = useCallback(async () => {
     if (!kind) return;
+    const mine = ++ticket.current;
     const result = await api.officeReport(kind);
+    if (mine !== ticket.current) return;
     if (!result.ok) {
       setError(apiText(result.message));
       setPayload(null);
@@ -39,6 +44,27 @@ export default function ReportPage() {
     }
     setPayload(result.data);
   }, [apiText, kind]);
+
+  async function loadMore() {
+    if (!kind || !payload?.nextCursor || more) return;
+    const mine = ticket.current;
+    setMore(true);
+    const result = await api.officeReport(kind, payload.nextCursor);
+    setMore(false);
+    if (mine !== ticket.current) return;
+    if (!result.ok) {
+      setError(apiText(result.message));
+      return;
+    }
+    const next = result.data;
+    setPayload((now) => (now ? {
+      ...now,
+      entries: now.entries ? [...now.entries, ...(next.entries ?? [])] : now.entries,
+      lines: now.lines ? [...now.lines, ...(next.lines ?? [])] : now.lines,
+      tasks: now.tasks ? [...now.tasks, ...(next.tasks ?? [])] : now.tasks,
+      nextCursor: next.nextCursor ?? null,
+    } : now));
+  }
 
   useEffect(() => {
     if (door.layer !== 'branch' || (me && me.layer !== 'branch')) window.location.replace('/');
@@ -163,6 +189,15 @@ export default function ReportPage() {
               </table>
             </div>
           )
+        )}
+        {payload?.nextCursor && !error && (
+          <div className="pane-body">
+            <div className="pane-tools">
+              <button type="button" className="secondary" disabled={more} onClick={loadMore}>{t.loadMore}</button>
+              {more && <Spinner size={18} />}
+              <span className="hint">{t.shownCount.replace('{n}', String((payload.entries ?? payload.lines ?? payload.tasks ?? []).length))}</span>
+            </div>
+          </div>
         )}
       </section>
     </Desk>

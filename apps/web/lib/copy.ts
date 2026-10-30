@@ -255,6 +255,8 @@ export type Copy = {
   clearFilters: string;
   numberSearch: string;
   noMatches: string;
+  loadMore: string;
+  shownCount: string;
   lineCard: string;
   lineOps: string;
   lineDetails: string;
@@ -522,6 +524,8 @@ export const copy: Record<Locale, Copy> = {
     clearFilters: 'مسح',
     numberSearch: 'الرقم',
     noMatches: 'لا نتائج لهذا التصفية',
+    loadMore: 'تحميل المزيد',
+    shownCount: 'المعروض {n}',
     lineCard: 'بطاقة الرقم',
     lineOps: 'العمليات',
     lineDetails: 'التفاصيل',
@@ -787,6 +791,8 @@ export const copy: Record<Locale, Copy> = {
     clearFilters: 'Clear',
     numberSearch: 'Number',
     noMatches: 'No matching lines',
+    loadMore: 'Load more',
+    shownCount: 'Showing {n}',
     lineCard: 'Number card',
     lineOps: 'Operations',
     lineDetails: 'Details',
@@ -1052,6 +1058,8 @@ export const copy: Record<Locale, Copy> = {
     clearFilters: 'ניקוי',
     numberSearch: 'מספר',
     noMatches: 'אין תוצאות',
+    loadMore: 'טעינת עוד',
+    shownCount: 'מוצגים {n}',
     lineCard: 'כרטיס מספר',
     lineOps: 'פעולות',
     lineDetails: 'פרטים',

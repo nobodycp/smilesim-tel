@@ -1,36 +1,57 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Desk, Money, actionName, taskStatus } from '../../components/desk';
-import { TableSkeleton } from '../../components/loading';
+import { Spinner, TableSkeleton } from '../../components/loading';
 import { RowMenu } from '../../components/row-menu';
 import { api, type TaskRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 
 export default function TasksPage() {
   const { t, apiText } = usePrefs();
-  const [rows, setRows] = useState<TaskRow[]>([]);
+  const [page, setPage] = useState<{ key: string; rows: TaskRow[]; next: string | null } | null>(null);
+  const [more, setMore] = useState(false);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [focus, setFocus] = useState('');
-  const [loaded, setLoaded] = useState(false);
+  const [urlRead, setUrlRead] = useState(false);
+  const ticket = useRef(0);
+  const current = page?.key === focus ? page : null;
+  const shown = current?.rows ?? [];
 
   const load = useCallback(async () => {
-    const result = await api.officeTasks();
+    const mine = ++ticket.current;
+    const result = await api.officeTasks({ status: focus });
+    if (mine !== ticket.current) return;
     if (!result.ok) {
       setError(apiText(result.message));
-      setLoaded(true);
+      setPage({ key: focus, rows: [], next: null });
       return;
     }
-    setRows(result.data.tasks);
-    setLoaded(true);
-  }, [apiText]);
+    setPage({ key: focus, rows: result.data.tasks, next: result.data.nextCursor });
+  }, [apiText, focus]);
+
+  async function loadMore() {
+    if (!current?.next || more) return;
+    setMore(true);
+    const result = await api.officeTasks({ status: focus, cursor: current.next });
+    setMore(false);
+    if (!result.ok) {
+      setError(apiText(result.message));
+      return;
+    }
+    setPage((now) => (now && now.key === focus ? { key: focus, rows: [...now.rows, ...result.data.tasks], next: result.data.nextCursor } : now));
+  }
 
   useEffect(() => {
     setFocus(new URLSearchParams(window.location.search).get('status') ?? '');
-    load();
-  }, [load]);
+    setUrlRead(true);
+  }, []);
+
+  useEffect(() => {
+    if (urlRead) load();
+  }, [urlRead, load]);
 
   async function run(work: () => Promise<{ ok: boolean; message?: string }>) {
     setError('');
@@ -43,8 +64,6 @@ export default function TasksPage() {
     setNote(t.save);
     await load();
   }
-
-  const shown = focus ? rows.filter((row) => row.status === focus) : rows;
 
   return (
     <Desk title={t.tasksTitle} lede="" error={error} note={note}>
@@ -63,7 +82,7 @@ export default function TasksPage() {
         </div>
       </div>
       <section className="pane">
-        {!loaded ? <TableSkeleton rows={5} columns={6} /> : shown.length === 0 ? (
+        {!current ? <TableSkeleton rows={5} columns={6} /> : shown.length === 0 ? (
           <p className="empty" style={{ padding: 14 }}>
             {t.noTasks}
           </p>
@@ -125,6 +144,15 @@ export default function TasksPage() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {current?.next && (
+          <div className="pane-body">
+            <div className="pane-tools">
+              <button type="button" className="secondary" disabled={more} onClick={loadMore}>{t.loadMore}</button>
+              {more && <Spinner size={18} />}
+              <span className="hint">{t.shownCount.replace('{n}', String(shown.length))}</span>
+            </div>
           </div>
         )}
       </section>

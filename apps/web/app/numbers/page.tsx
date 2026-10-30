@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Desk, OutcomePick, lineStatus } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
 import { RowMenu } from '../../components/row-menu';
-import { TableSkeleton } from '../../components/loading';
+import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type ApplyResult, type LineRow, type Outcome, type PackageRow, type PosChoice } from '../../lib/api';
 import { useDoor } from '../../lib/door-context';
 import { useOffice } from '../../lib/office-session';
@@ -13,7 +13,8 @@ import { usePrefs } from '../../lib/prefs';
 
 export default function NumbersPage() {
   const { t, apiText, locale } = usePrefs();
-  const [lines, setLines] = useState<LineRow[]>([]);
+  const [page, setPage] = useState<{ key: string; lines: LineRow[]; next: string | null } | null>(null);
+  const [more, setMore] = useState(false);
   const [poses, setPoses] = useState<PosChoice[]>([]);
   const [packages, setPackages] = useState<PackageRow[]>([]);
   const [posLogin, setPosLogin] = useState('');
@@ -23,41 +24,78 @@ export default function NumbersPage() {
   const [outcome, setOutcome] = useState<Outcome>('success');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const [ready, setReady] = useState(false);
+  const [packagesReady, setPackagesReady] = useState(false);
+  const [urlRead, setUrlRead] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [pack, setPack] = useState('');
+  const [needle, setNeedle] = useState('');
+  const ticket = useRef(0);
   const { me } = useOffice();
   const door = useDoor();
   const isPos = door.layer === 'pos' || me?.layer === 'pos';
   const verdict: Outcome = isPos ? 'success' : outcome;
 
-  const load = useCallback(async () => {
-    const [lineResult, packageResult] = await Promise.all([api.officeLines(), api.officePackages()]);
-    if (!lineResult.ok) {
-      setError(apiText(lineResult.message));
+  // The server filters and pages. Each filter set has a key; a page only shows while its key is current.
+  const filterKey = `${needle}|${status}|${pack}`;
+  const current = page?.key === filterKey ? page : null;
+  const shown = current?.lines ?? [];
+  const ready = packagesReady && page !== null;
+
+  const loadFirst = useCallback(async () => {
+    const mine = ++ticket.current;
+    const result = await api.officeLines({ q: needle, status, packageCode: pack });
+    if (mine !== ticket.current) return;
+    const key = `${needle}|${status}|${pack}`;
+    if (!result.ok) {
+      setError(apiText(result.message));
+      setPage({ key, lines: [], next: null });
       return;
     }
-    if (!packageResult.ok) {
-      setError(apiText(packageResult.message));
+    setPage({ key, lines: result.data.lines, next: result.data.nextCursor });
+    setPoses(result.data.poses);
+    setPosLogin((currentLogin) => currentLogin || result.data.poses[0]?.loginName || '');
+  }, [apiText, needle, status, pack]);
+
+  async function loadMore() {
+    if (!current?.next || more) return;
+    const key = current.key;
+    setMore(true);
+    const result = await api.officeLines({ q: needle, status, packageCode: pack, cursor: current.next });
+    setMore(false);
+    if (!result.ok) {
+      setError(apiText(result.message));
       return;
     }
-    setLines(lineResult.data.lines);
-    setPoses(lineResult.data.poses);
-    setPackages(packageResult.data.packages);
-    setPosLogin((current) => current || lineResult.data.poses[0]?.loginName || '');
-    setPackageCode((current) => current || packageResult.data.packages[0]?.code || '');
-    setReady(true);
-  }, [apiText]);
+    setPage((now) => (now && now.key === key ? { key, lines: [...now.lines, ...result.data.lines], next: result.data.nextCursor } : now));
+  }
 
   useEffect(() => {
     const initial = new URLSearchParams(window.location.search).get('status') ?? '';
     if (initial === 'active' || initial === 'frozen' || initial === 'disconnected') {
       setStatus(initial);
     }
-    load();
-  }, [load]);
+    setUrlRead(true);
+    api.officePackages().then((result) => {
+      if (!result.ok) {
+        setError(apiText(result.message));
+        return;
+      }
+      setPackages(result.data.packages);
+      setPackageCode((currentCode) => currentCode || result.data.packages[0]?.code || '');
+      setPackagesReady(true);
+    });
+  }, [apiText]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setNeedle(query.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    if (urlRead) loadFirst();
+  }, [urlRead, loadFirst]);
 
   function applied(result: { ok: true; data: ApplyResult } | { ok: false; message: string }) {
     if (!result.ok) {
@@ -76,32 +114,22 @@ export default function NumbersPage() {
     if (result.ok) {
       setIccid('');
       setActivateOpen(false);
-      await load();
+      await loadFirst();
     }
   }
 
-  const needle = query.replace(/\s/g, '');
-  const shown = lines.filter((line) => {
-    if (status && line.status !== status) return false;
-    if (pack && line.packageCode !== pack) return false;
-    if (needle && !line.msisdn.includes(needle)) return false;
-    return true;
-  });
-  const packageOptions = [...new Map(lines.map((line) => {
-    const row = packages.find((item) => item.code === line.packageCode);
-    const label = row
-      ? (row.providerName ? `${row.providerName} · ${row.companyName} · ${row.name}` : `${row.companyName} · ${row.name}`)
-      : line.packageName;
-    return [line.packageCode, { code: line.packageCode, label }] as const;
-  })).values()];
-  const activeFilters = Number(Boolean(needle)) + Number(Boolean(status)) + Number(Boolean(pack));
+  const packageOptions = packages.map((row) => ({
+    code: row.code,
+    label: row.providerName ? `${row.providerName} · ${row.companyName} · ${row.name}` : `${row.companyName} · ${row.name}`,
+  }));
+  const activeFilters = Number(Boolean(query.trim())) + Number(Boolean(status)) + Number(Boolean(pack));
 
   async function run(id: string, work: () => Promise<{ ok: true; data: ApplyResult } | { ok: false; message: string }>) {
     setError('');
     setNote('');
     const result = await work();
     applied(result);
-    if (result.ok) await load();
+    if (result.ok) await loadFirst();
   }
 
   return (
@@ -143,7 +171,7 @@ export default function NumbersPage() {
                 ))}
               </select>
             </label>
-            <button type="button" className="secondary" onClick={() => { setQuery(''); setStatus(''); setPack(''); }}>
+            <button type="button" className="secondary" onClick={() => { setQuery(''); setNeedle(''); setStatus(''); setPack(''); }}>
               {t.clearFilters}
             </button>
           </div>
@@ -201,7 +229,7 @@ export default function NumbersPage() {
             </Dialog>
           )}
           <div className="sheet">
-            {!ready ? <TableSkeleton rows={5} columns={isPos ? 5 : 6} /> : shown.length === 0 ? (
+            {!ready || !current ? <TableSkeleton rows={5} columns={isPos ? 5 : 6} /> : shown.length === 0 ? (
               <p className="empty" style={{ padding: 14 }}>
                 {activeFilters > 0 ? t.noMatches : t.noLines}
               </p>
@@ -248,6 +276,15 @@ export default function NumbersPage() {
               </table>
             )}
           </div>
+          {current?.next && (
+            <div className="pane-body">
+              <div className="pane-tools">
+                <button type="button" className="secondary" disabled={more} onClick={loadMore}>{t.loadMore}</button>
+                {more && <Spinner size={18} />}
+                <span className="hint">{t.shownCount.replace('{n}', String(shown.length))}</span>
+              </div>
+            </div>
+          )}
         </section>
     </Desk>
   );

@@ -6,6 +6,20 @@ import { validateNewPassword, validateNickname } from '../auth/validators';
 import { NOT_SIGNED_IN } from '../auth/auth.service';
 import { catalog, packageCode, packageName } from './office-catalog';
 import {
+  FEED_PAGE,
+  LINES_PAGE,
+  NEWEST_FIRST,
+  TASKS_PAGE,
+  afterFeed,
+  decodeFeedCursor,
+  idCursorArgs,
+  linesWhere,
+  mergeFeed,
+  pageOf,
+  taskStatusOf,
+  type LineFilter,
+} from './office-paging';
+import {
   ESIM_FEE,
   Prices,
   chainHolds,
@@ -68,6 +82,12 @@ export class OfficeFailure extends Error {
 
 function fail(status: number, message: string): never {
   throw new OfficeFailure(status, message);
+}
+
+function feedPosition(raw: string | undefined) {
+  const position = decodeFeedCursor(raw);
+  if (position === null) fail(400, INVALID);
+  return position;
 }
 
 @Injectable()
@@ -328,31 +348,18 @@ export class OfficeService implements OnModuleInit {
     };
   }
 
-  async lines(gate: Gate, cursor?: string, q?: string) {
+  async lines(gate: Gate, query: LineFilter & { cursor?: string } = {}) {
     const actor = await this.actor(gate);
     const accounts = await this.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
-    const needle = (q ?? '').trim();
     const rows = await this.prisma.line.findMany({
-      where: {
-        posId: { in: posIds },
-        ...(needle
-          ? {
-              OR: [
-                { msisdn: { contains: needle } },
-                { package: { name: { contains: needle, mode: 'insensitive' } } },
-                { package: { company: { name: { contains: needle, mode: 'insensitive' } } } },
-              ],
-            }
-          : {}),
-      },
+      where: linesWhere(posIds, query),
       include: { package: { include: { company: true } }, pos: true },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: 31,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      orderBy: [...NEWEST_FIRST],
+      ...idCursorArgs(query.cursor || undefined, LINES_PAGE),
     });
-    const page = rows.slice(0, 30);
+    const { page, nextCursor } = pageOf(rows, LINES_PAGE);
     return {
       lines: page.map((row) => ({
         id: row.id,
@@ -368,7 +375,7 @@ export class OfficeService implements OnModuleInit {
         createdAt: row.createdAt.toISOString(),
         endsAt: row.endsAt.toISOString(),
       })),
-      nextCursor: rows.length > 30 ? page[page.length - 1]?.id ?? null : null,
+      nextCursor,
       poses: accounts
         .filter((account) => account.layer === 'pos' && visible.has(account.id) && canActivateFor(actor, account, accounts))
         .map((account) => ({ loginName: account.loginName, nickname: account.nickname })),
@@ -657,16 +664,22 @@ export class OfficeService implements OnModuleInit {
     return { applied: false, taskId: task.id };
   }
 
-  async tasks(gate: Gate) {
+  async tasks(gate: Gate, query: { cursor?: string; status?: string } = {}) {
     const actor = await this.actor(gate);
     const seesTasks = actor.isBranchOwner || actor.grants.includes('tasks');
     const branch = actor.layer === 'branch' && seesTasks;
-    const rows = await this.prisma.officeTask.findMany({
-      where: branch ? {} : { submitterId: actor.id },
+    const status = taskStatusOf(query.status);
+    const read = await this.prisma.officeTask.findMany({
+      where: {
+        ...(branch ? {} : { submitterId: actor.id }),
+        ...(status ? { status } : {}),
+        AND: afterFeed(feedPosition(query.cursor)),
+      },
       include: { submitter: true, assignee: true },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
+      orderBy: [...NEWEST_FIRST],
+      take: TASKS_PAGE + 1,
     });
+    const { page: rows, nextCursor } = mergeFeed([read], TASKS_PAGE);
     const accounts = await this.accounts();
     const byId = new Map(accounts.map((account) => [account.id, account]));
     const packages = await this.prisma.package.findMany();
@@ -689,6 +702,7 @@ export class OfficeService implements OnModuleInit {
         canWork: branch && row.assigneeId === actor.id && row.status === 'working',
         canCancel: row.submitterId === actor.id && (row.status === 'pending' || row.status === 'working'),
       })),
+      nextCursor,
     };
   }
 
@@ -1173,7 +1187,7 @@ export class OfficeService implements OnModuleInit {
     return { ok: true };
   }
 
-  async ledger(gate: Gate, scope: string, query: { kind?: string; direction?: string; from?: string; to?: string }) {
+  async ledger(gate: Gate, scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string }) {
     const actor = await this.actor(gate);
     const operationKinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim'];
     const auditKinds = [...operationKinds, 'fund', 'self_fund'];
@@ -1186,18 +1200,20 @@ export class OfficeService implements OnModuleInit {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
       ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),
     };
-    const rows = await this.prisma.walletEntry.findMany({
+    const read = await this.prisma.walletEntry.findMany({
       where: {
         userId: actor.id,
         kind: { in: kind ? [kind] : allowed },
         ...(query.direction === 'in' ? { amount: { gt: 0 } } : {}),
         ...(query.direction === 'out' ? { amount: { lt: 0 } } : {}),
         ...(Object.keys(createdAt).length ? { createdAt } : {}),
+        AND: afterFeed(feedPosition(query.cursor)),
       },
       include: { actor: true },
-      orderBy: { createdAt: 'desc' },
-      take: 80,
+      orderBy: [...NEWEST_FIRST],
+      take: FEED_PAGE + 1,
     });
+    const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
     return {
       entries: rows.map((row) => ({
         id: row.id,
@@ -1211,34 +1227,72 @@ export class OfficeService implements OnModuleInit {
         msisdn: row.msisdn,
         actorLogin: row.actor.loginName,
       })),
+      nextCursor,
     };
   }
 
-  async audit(gate: Gate) {
+  async audit(gate: Gate, query: { cursor?: string; kind?: string } = {}) {
     const actor = await this.actor(gate);
     const accounts = await this.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
     const numberKinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim'];
-    if (posIds.length === 0) return { entries: [] };
-    const [entries, tasks] = await Promise.all([
-      this.prisma.walletEntry.findMany({
-        where: { userId: { in: posIds }, kind: { in: numberKinds } },
-        orderBy: { createdAt: 'desc' },
-        take: 80,
-        include: { actor: { select: { loginName: true, nickname: true } } },
-      }),
-      this.prisma.officeTask.findMany({
-        where: { posId: { in: posIds }, action: { in: numberKinds } },
-        orderBy: { createdAt: 'desc' },
-        take: 80,
-        include: {
-          submitter: { select: { loginName: true, nickname: true } },
-          assignee: { select: { loginName: true, nickname: true } },
-          line: { include: { package: { include: { company: true, provider: true } } } },
-        },
-      }),
+    if (posIds.length === 0) return { entries: [], nextCursor: null };
+    const showProvider = actor.layer === 'branch';
+    const after = afterFeed(feedPosition(query.cursor));
+    const kind = query.kind === 'enter' && showProvider ? 'enter' : numberKinds.find((item) => item === query.kind);
+    const size = FEED_PAGE + 1;
+    const [read1, read2, read3] = await Promise.all([
+      kind === 'enter'
+        ? []
+        : this.prisma.walletEntry.findMany({
+            where: { userId: { in: posIds }, kind: { in: kind ? [kind] : numberKinds }, AND: after },
+            orderBy: [...NEWEST_FIRST],
+            take: size,
+            include: { actor: { select: { loginName: true, nickname: true } } },
+          }),
+      kind === 'enter'
+        ? []
+        : this.prisma.officeTask.findMany({
+            // A done task that moved money is already shown by its wallet entry.
+            where: {
+              posId: { in: posIds },
+              action: { in: kind ? [kind] : numberKinds },
+              NOT: { status: 'done', posDelta: { not: 0 } },
+              AND: after,
+            },
+            orderBy: [...NEWEST_FIRST],
+            take: size,
+            include: {
+              submitter: { select: { loginName: true, nickname: true } },
+              assignee: { select: { loginName: true, nickname: true } },
+              line: { include: { package: { include: { company: true, provider: true } } } },
+            },
+          }),
+      showProvider && (!kind || kind === 'enter')
+        ? this.prisma.accessLog.findMany({
+            where: { AND: after },
+            orderBy: [...NEWEST_FIRST],
+            take: size,
+            include: { actor: { select: { nickname: true, loginName: true } } },
+          })
+        : [],
     ]);
+    const merged = mergeFeed<{ createdAt: Date; id: string; from: 'entry' | 'task' | 'visit' }>(
+      [
+        read1.map((row) => ({ createdAt: row.createdAt, id: row.id, from: 'entry' as const })),
+        read2.map((row) => ({ createdAt: row.createdAt, id: row.id, from: 'task' as const })),
+        read3.map((row) => ({ createdAt: row.createdAt, id: row.id, from: 'visit' as const })),
+      ],
+      FEED_PAGE,
+    );
+    const keep = (from: 'entry' | 'task' | 'visit') => new Set(merged.page.filter((row) => row.from === from).map((row) => row.id));
+    const entryIds = keep('entry');
+    const taskIds = keep('task');
+    const visitIds = keep('visit');
+    const entries = read1.filter((row) => entryIds.has(row.id));
+    const tasks = read2.filter((row) => taskIds.has(row.id));
+    const visits = read3.filter((row) => visitIds.has(row.id));
     const packageIds = [...new Set(tasks.flatMap((task) => [task.packageId, task.nextPackageId].filter((id): id is string => !!id)))];
     const packages = packageIds.length
       ? await this.prisma.package.findMany({ where: { id: { in: packageIds } }, include: { company: true, provider: true } })
@@ -1249,10 +1303,6 @@ export class OfficeService implements OnModuleInit {
       ? await this.prisma.line.findMany({ where: { id: { in: lineIds } }, include: { package: { include: { provider: true } } } })
       : [];
     const providerByLine = new Map(lines.map((row) => [row.id, row.package.provider.name]));
-    const showProvider = actor.layer === 'branch';
-    const visits = showProvider
-      ? await this.prisma.accessLog.findMany({ orderBy: { createdAt: 'desc' }, take: 40, include: { actor: { select: { nickname: true, loginName: true } } } })
-      : [];
     const rows = [
       ...entries.map((entry) => ({
         id: entry.id,
@@ -1265,24 +1315,22 @@ export class OfficeService implements OnModuleInit {
         providerName: showProvider ? providerByLine.get(entry.lineId ?? '') ?? '' : '',
         actorName: entry.actor.nickname || entry.actor.loginName,
       })),
-      ...tasks
-        .filter((task) => !(task.status === 'done' && task.posDelta !== 0))
-        .map((task) => {
-          const pkg = byPackage.get(task.nextPackageId || task.packageId);
-          const named = pkg?.company ? pkg : task.line?.package;
-          const who = task.status === 'done' && task.assignee ? task.assignee : task.submitter;
-          return {
-            id: task.id,
-            action: task.action,
-            status: task.status,
-            at: task.createdAt.toISOString(),
-            msisdn: task.msisdn ?? '',
-            companyName: named?.company?.name ?? '',
-            packageName: named?.name ?? '',
-            providerName: showProvider ? pkg?.provider?.name || task.line?.package.provider.name || '' : '',
-            actorName: who.nickname || who.loginName,
-          };
-        }),
+      ...tasks.map((task) => {
+        const pkg = byPackage.get(task.nextPackageId || task.packageId);
+        const named = pkg?.company ? pkg : task.line?.package;
+        const who = task.status === 'done' && task.assignee ? task.assignee : task.submitter;
+        return {
+          id: task.id,
+          action: task.action,
+          status: task.status,
+          at: task.createdAt.toISOString(),
+          msisdn: task.msisdn ?? '',
+          companyName: named?.company?.name ?? '',
+          packageName: named?.name ?? '',
+          providerName: showProvider ? pkg?.provider?.name || task.line?.package.provider.name || '' : '',
+          actorName: who.nickname || who.loginName,
+        };
+      }),
       ...visits.map((visit) => ({
         id: visit.id,
         action: 'enter',
@@ -1294,19 +1342,23 @@ export class OfficeService implements OnModuleInit {
         providerName: '',
         actorName: `${visit.actor.nickname || visit.actor.loginName}${visit.ip ? ` · ${visit.ip}` : ''}`,
       })),
-    ]
-      .sort((a, b) => (a.at < b.at ? 1 : -1))
-      .slice(0, 80);
-    return { entries: rows };
+    ].sort((a, b) => (a.at !== b.at ? (a.at < b.at ? 1 : -1) : a.id < b.id ? 1 : -1));
+    return { entries: rows, nextCursor: merged.nextCursor };
   }
 
-  async accounting(gate: Gate) {
+  async accounting(gate: Gate, query: { cursor?: string; q?: string } = {}) {
     const actor = await this.actor(gate);
-    const rows = await this.prisma.walletEntry.findMany({
-      where: { userId: actor.id, msisdn: { not: null } },
-      orderBy: { createdAt: 'desc' },
-      take: 80,
+    const digits = (query.q ?? '').replace(/\s/g, '');
+    const read = await this.prisma.walletEntry.findMany({
+      where: {
+        userId: actor.id,
+        msisdn: digits ? { contains: digits } : { not: null },
+        AND: afterFeed(feedPosition(query.cursor)),
+      },
+      orderBy: [...NEWEST_FIRST],
+      take: FEED_PAGE + 1,
     });
+    const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
     return {
       entries: rows.map((row) => ({
         id: row.id,
@@ -1318,21 +1370,25 @@ export class OfficeService implements OnModuleInit {
         balanceBefore: row.balanceAfter - row.amount,
         balanceAfter: row.balanceAfter,
       })),
+      nextCursor,
     };
   }
 
-  async report(gate: Gate, kind: string) {
+  async report(gate: Gate, kind: string, cursor?: string) {
     const actor = await this.actor(gate);
     if (actor.layer !== 'branch' || actor.impersonating) fail(403, REPORTS_ONLY);
     if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, REPORTS_ONLY);
     if (kind === 'providers') return this.providerReport();
-    if (kind === 'consumption') return { entries: await this.entryReport() };
-    if (kind === 'funding') return { entries: await this.entryReport(['fund', 'self_fund']) };
-    if (kind === 'operations') return { entries: await this.entryReport(['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim']) };
-    if (kind === 'tasks') return this.tasks(gate);
+    if (kind === 'consumption') return this.entryReport(cursor);
+    if (kind === 'funding') return this.entryReport(cursor, ['fund', 'self_fund']);
+    if (kind === 'operations') return this.entryReport(cursor, ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim']);
+    if (kind === 'tasks') {
+      const listed = await this.tasks(gate, { cursor });
+      return { tasks: listed.tasks, nextCursor: listed.nextCursor };
+    }
     if (kind === 'numbers') {
-      const listed = await this.lines(gate);
-      return { lines: listed.lines };
+      const listed = await this.lines(gate, { cursor });
+      return { lines: listed.lines, nextCursor: listed.nextCursor };
     }
     fail(404, NOT_FOUND);
   }
@@ -1565,23 +1621,27 @@ export class OfficeService implements OnModuleInit {
     };
   }
 
-  private async entryReport(kinds?: string[]) {
-    const rows = await this.prisma.walletEntry.findMany({
-      where: kinds ? { kind: { in: kinds } } : {},
+  private async entryReport(cursor: string | undefined, kinds?: string[]) {
+    const read = await this.prisma.walletEntry.findMany({
+      where: { ...(kinds ? { kind: { in: kinds } } : {}), AND: afterFeed(feedPosition(cursor)) },
       include: { user: true, actor: true },
-      orderBy: { createdAt: 'desc' },
-      take: 80,
+      orderBy: [...NEWEST_FIRST],
+      take: FEED_PAGE + 1,
     });
-    return rows.map((row) => ({
-      id: row.id,
-      at: row.createdAt.toISOString(),
-      loginName: row.user.loginName,
-      actorLogin: row.actor.loginName,
-      amount: row.amount,
-      balanceAfter: row.balanceAfter,
-      kind: row.kind,
-      note: row.note,
-    }));
+    const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
+    return {
+      entries: rows.map((row) => ({
+        id: row.id,
+        at: row.createdAt.toISOString(),
+        loginName: row.user.loginName,
+        actorLogin: row.actor.loginName,
+        amount: row.amount,
+        balanceAfter: row.balanceAfter,
+        kind: row.kind,
+        note: row.note,
+      })),
+      nextCursor,
+    };
   }
 
   private async ensureCatalog(): Promise<void> {

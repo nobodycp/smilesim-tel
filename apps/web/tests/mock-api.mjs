@@ -4,6 +4,22 @@ import { createServer } from 'node:http';
 
 const port = Number(process.env.MOCK_API_PORT ?? 3911);
 const origin = process.env.MOCK_WEB_ORIGIN ?? 'http://localhost:3910';
+const linesLog = [];
+
+const mockLine = (n, status) => ({
+  id: `ln${n}`,
+  msisdn: `055${String(n).padStart(7, '0')}`,
+  iccid: null,
+  esim: false,
+  status,
+  packageCode: 'cell-400',
+  packageName: '400 جيجا',
+  companyName: 'سلكوم',
+  posLogin: 'pos',
+  posPrice: 26,
+  createdAt: '2026-10-01T00:00:00.000Z',
+  endsAt: '2026-11-12T00:00:00.000Z',
+});
 
 createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', origin);
@@ -50,6 +66,65 @@ createServer((req, res) => {
     if (route === 'POST /auth/two-factor/confirm') {
       res.writeHead(200, json).end(JSON.stringify({ next: 'app' }));
       return;
+    }
+    // The paged numbers list. Only a browser carrying the `mock-branch` cookie gets a branch session,
+    // so the tests that expect the unsigned mock are untouched. The first page has 31 rows and a cursor,
+    // the page after it has 5, and a status filter answers with 3 rows. Every request is logged for the test.
+    const url = new URL(req.url ?? '/', 'http://mock');
+    if (url.pathname === '/__lines/log') {
+      res.writeHead(200, json).end(JSON.stringify(linesLog));
+      return;
+    }
+    if (url.pathname === '/__lines/reset') {
+      linesLog.length = 0;
+      res.writeHead(200, json).end(JSON.stringify({ ok: true }));
+      return;
+    }
+    if ((req.headers.cookie ?? '').includes('mock-branch=1') && req.method === 'GET') {
+      if (url.pathname === '/office/me') {
+        res.writeHead(200, json).end(
+          JSON.stringify({
+            loginName: 'admin',
+            nickname: 'الإدارة',
+            layer: 'branch',
+            isBranchOwner: true,
+            grants: ['edit', 'reports', 'staff'],
+            impersonating: false,
+            balance: 1000,
+            ceiling: 0,
+          }),
+        );
+        return;
+      }
+      if (url.pathname === '/office/packages') {
+        res.writeHead(200, json).end(
+          JSON.stringify({
+            packages: [
+              {
+                code: 'cell-400', name: '400 جيجا', providerName: 'سلكوم', companyName: 'سلكوم', dataGb: 400, months: 1,
+                branchCost: 20, mainPrice: 22, agentPrice: 24, posPrice: 26, subscriberPrice: 30, editableField: null,
+                autoActivate: true, autoCharge: true, autoDisconnect: false, autoFreeze: false, autoSwitch: false,
+              },
+            ],
+            companies: [],
+          }),
+        );
+        return;
+      }
+      if (url.pathname === '/office/lines') {
+        linesLog.push(Object.fromEntries(url.searchParams));
+        const status = url.searchParams.get('status');
+        const cursor = url.searchParams.get('cursor');
+        const [from, count, next] = status ? [100, 3, null] : cursor === 'c31' ? [32, 5, null] : [1, 31, 'c31'];
+        res.writeHead(200, json).end(
+          JSON.stringify({
+            lines: Array.from({ length: count }, (_, i) => mockLine(from + i, status || 'active')),
+            nextCursor: next,
+            poses: [{ loginName: 'pos', nickname: 'الكاشير' }],
+          }),
+        );
+        return;
+      }
     }
     res.writeHead(401, { 'content-type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ message: 'بيانات الدخول غير صحيحة' }));

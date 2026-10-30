@@ -57,6 +57,16 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 const segment = encodeURIComponent;
 
+// Empty values are left out, so a cleared filter sends nothing.
+function queryString(query?: Record<string, string | null | undefined>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (value) params.set(key, value);
+  }
+  const tail = params.toString();
+  return tail ? `?${tail}` : '';
+}
+
 export const api = {
   login: (loginName: string, password: string) =>
     request<{ next: Next }>('POST', '/auth/login', { loginName, password }),
@@ -89,25 +99,16 @@ export const api = {
   setPackagePrice: (code: string, price: number) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/price`, { price }),
   officeProviders: () => request<{ providers: ProviderRow[] }>('GET', '/office/providers'),
-  officeLines: (query?: { q?: string }) => {
-    const params = new URLSearchParams();
-    if (query?.q) params.set('q', query.q);
-    const suffix = params.size ? `?${params}` : '';
-    return request<{ lines: LineRow[]; poses: PosChoice[] }>('GET', `/office/lines${suffix}`);
-  },
+  officeLines: (query?: { q?: string; status?: string; packageCode?: string; cursor?: string | null }) =>
+    request<{ lines: LineRow[]; poses: PosChoice[]; nextCursor: string | null }>('GET', `/office/lines${queryString(query)}`),
   officeLine: (id: string) => request<{ line: LineRow; history: LineHistory[] }>('GET', `/office/lines/${segment(id)}`),
   activateLine: (body: ActivateBody) => request<ApplyResult>('POST', '/office/lines', body),
-  officeAudit: () => request<{ entries: AuditRow[] }>('GET', '/office/audit'),
-  officeAccounting: () => request<{ entries: AccountingRow[] }>('GET', '/office/accounting'),
-  officeLedger: (scope: string, query: { kind?: string; direction?: string; from?: string; to?: string }) => {
-    const params = new URLSearchParams();
-    if (query.kind) params.set('kind', query.kind);
-    if (query.direction) params.set('direction', query.direction);
-    if (query.from) params.set('from', query.from);
-    if (query.to) params.set('to', query.to);
-    const tail = params.toString();
-    return request<{ entries: LedgerRow[] }>('GET', `/office/ledger/${segment(scope)}${tail ? `?${tail}` : ''}`);
-  },
+  officeAudit: (query?: { kind?: string; cursor?: string | null }) =>
+    request<{ entries: AuditRow[]; nextCursor: string | null }>('GET', `/office/audit${queryString(query)}`),
+  officeAccounting: (query?: { q?: string; cursor?: string | null }) =>
+    request<{ entries: AccountingRow[]; nextCursor: string | null }>('GET', `/office/accounting${queryString(query)}`),
+  officeLedger: (scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string | null }) =>
+    request<{ entries: LedgerRow[]; nextCursor: string | null }>('GET', `/office/ledger/${segment(scope)}${queryString(query)}`),
   chargeLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/charge`, { outcome }),
   extendLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/extend`, { outcome }),
   reactivateLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/reactivate`, { outcome }),
@@ -123,7 +124,8 @@ export const api = {
     request<ApplyResult>('POST', `/office/lines/${segment(id)}/switch`, { packageCode, outcome }),
   officeNotices: () => request<{ unread: number; notices: NoticeRow[] }>('GET', '/office/notices'),
   readNotices: (id?: string) => request<{ ok: true }>('POST', '/office/notices/read', id ? { id } : {}),
-  officeTasks: () => request<{ tasks: TaskRow[] }>('GET', '/office/tasks'),
+  officeTasks: (query?: { status?: string; cursor?: string | null }) =>
+    request<{ tasks: TaskRow[]; nextCursor: string | null }>('GET', `/office/tasks${queryString(query)}`),
   takeTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/take`),
   releaseTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/release`),
   completeTask: (id: string, note: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/complete`, { note }),
@@ -154,7 +156,8 @@ export const api = {
   removeUser: (loginName: string) => request<{ ok: true }>('DELETE', `/office/users/${segment(loginName)}`),
   enterUser: (loginName: string) => request<{ sessionId: string }>('POST', `/office/users/${segment(loginName)}/enter`),
   leaveUser: () => request<{ ok: true }>('POST', '/office/leave'),
-  officeReport: (kind: string) => request<ReportPayload>('GET', `/office/reports/${segment(kind)}`),
+  officeReport: (kind: string, cursor?: string | null) =>
+    request<ReportPayload>('GET', `/office/reports/${segment(kind)}${queryString({ cursor })}`),
 };
 
 export type Outcome = 'success' | 'fail';
@@ -249,6 +252,7 @@ export type ReportPayload = {
   entries?: ReportRow[];
   lines?: LineRow[];
   tasks?: TaskRow[];
+  nextCursor?: string | null;
 };
 export type LineRow = {
   id: string;
