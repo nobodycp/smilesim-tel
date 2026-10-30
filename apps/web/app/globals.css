@@ -698,6 +698,10 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .page-head .lede { margin: 4px 0 0; max-width: 36rem; font-size: 13px; }
 
 .settings-page { display: flex; flex: 1; flex-direction: column; gap: 14px; min-height: 0; }
+.settings-page.desk { width: 100%; }
+.settings-page .pane { width: 100%; }
+.settings-page.desk > .settings-grid { align-content: start; grid-template-rows: none; }
+.settings-page.desk .settings-col { grid-template-rows: none; align-content: start; }
 .settings-page > .page-head,
 .settings-page > .error.banner,
 .settings-page > .note.banner { margin-bottom: 0; }
