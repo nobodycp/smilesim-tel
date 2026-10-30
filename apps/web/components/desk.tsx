@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import type { Copy } from '../lib/copy';
 import { type Outcome } from '../lib/api';
 import { useIdentity } from '../lib/identity';
 import { useOffice } from '../lib/office-session';
 import { usePrefs } from '../lib/prefs';
 import { OfficeShell } from './office-shell';
-import { useToasts } from './toast';
+import { PageAlert } from './dialog';
 
 export function Desk({
   title,
@@ -25,18 +25,6 @@ export function Desk({
   children: ReactNode;
 }) {
   const { me } = useOffice();
-  const { push } = useToasts();
-  const seen = useRef('');
-  useEffect(() => {
-    if (!error && !note) {
-      seen.current = '';
-      return;
-    }
-    const next = error ? `e:${error}` : `n:${note}`;
-    if (next === seen.current) return;
-    seen.current = next;
-    push(error || note, error ? 'error' : 'success');
-  }, [error, note, push]);
   const saved = useIdentity();
   const account = me ? me.nickname || me.loginName : saved.account;
   const hint = me ? (me.nickname ? me.loginName : undefined) : saved.hint || undefined;
@@ -49,7 +37,9 @@ export function Desk({
           {action}
           {lede ? <p className="lede">{lede}</p> : null}
         </header>
-        {children}
+        <PageAlert error={error} note={note}>
+          {children}
+        </PageAlert>
       </div>
     </OfficeShell>
   );

@@ -1387,6 +1387,7 @@ tr.ops-row td { padding: 0; background: var(--surface-2); }
 }
 .dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .dialog h2 { margin: 0; font-size: 18px; }
+.dialog > .error { margin-bottom: 12px; }
 .notice-wrap { position: relative; }
 .notice-btn { position: relative; }
 .notice-dot {

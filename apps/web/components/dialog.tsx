@@ -1,0 +1,100 @@
+'use client';
+
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+
+const focusable = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+const DialogAlert = createContext<(held: boolean) => void>(() => {});
+
+export function PageAlert({
+  error,
+  note,
+  children,
+}: {
+  error: string;
+  note: string;
+  children: ReactNode;
+}) {
+  const [held, setHeld] = useState(false);
+  return (
+    <DialogAlert.Provider value={setHeld}>
+      {error && !held ? <p className="error" role="alert">{error}</p> : null}
+      {note ? <p className="note" role="status">{note}</p> : null}
+      {children}
+    </DialogAlert.Provider>
+  );
+}
+
+export function Dialog({
+  open,
+  title,
+  closeLabel,
+  onClose,
+  error = '',
+  children,
+}: {
+  open: boolean;
+  title: string;
+  closeLabel: string;
+  onClose: () => void;
+  error?: string;
+  children: ReactNode;
+}) {
+  const panel = useRef<HTMLDivElement>(null);
+  const holdAlert = useContext(DialogAlert);
+
+  useEffect(() => {
+    if (!open || !error) return;
+    holdAlert(true);
+    return () => holdAlert(false);
+  }, [open, error, holdAlert]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const root = panel.current;
+    const nodes = () => [...(root?.querySelectorAll<HTMLElement>(focusable) ?? [])].filter((node) => !node.hasAttribute('disabled'));
+    nodes()[0]?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const list = nodes();
+      if (list.length === 0) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+      previous?.focus();
+    };
+  }, [open, onClose]);
+
+  if (!open || typeof document === 'undefined') return null;
+  return createPortal(
+    <div className="dialog-scrim" onClick={onClose}>
+      <div ref={panel} className="dialog" role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
+        <header>
+          <h2>{title}</h2>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label={closeLabel}>×</button>
+        </header>
+        {error ? <p className="error" role="alert">{error}</p> : null}
+        {children}
+      </div>
+    </div>,
+    document.body,
+  );
+}

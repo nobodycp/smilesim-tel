@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 const webPort = 3910;
 const apiPort = 3911;
-const webOrigin = `http://localhost:${webPort}`;
+const webOrigin = `http://pos.localhost:${webPort}`;
 
 export default defineConfig({
   testDir: './tests',
@@ -20,7 +20,10 @@ export default defineConfig({
       url: `${webOrigin}/login`,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { NEXT_PUBLIC_API_URL: `http://localhost:${apiPort}` },
+      env: {
+        NEXT_PUBLIC_API_URL: `http://localhost:${apiPort}`,
+        NEXT_DIST_DIR: '.next-e2e',
+      },
     },
   ],
 });
