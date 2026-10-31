@@ -36,8 +36,8 @@ import {
   withPrice,
   withinCeiling,
   type LineTerms,
-  type PackageTerms,
 } from './office-rules';
+import { packageTermsOf, type PackagePriceRow } from './office-terms';
 
 
 const MODE_FIELDS: Record<string, { auto: string; allow: string }> = {
@@ -468,8 +468,12 @@ export class OfficeService implements OnModuleInit {
     const accounts = await this.accounts();
     const pos = accounts.find((account) => account.loginName === posLogin && account.layer === 'pos');
     if (!pos || !canActivateFor(actor, pos, accounts)) fail(403, 'FORBIDDEN');
-    const pkg = await this.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true } });
+    const pkg = await this.prisma.package.findUnique({
+      where: { code: packageCode },
+      include: { company: true, provider: true },
+    });
     if (!pkg) fail(404, 'NOT_FOUND');
+    if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
     this.assertRunnable(pkg, 'activate');
     if (!pkg.forSale) fail(400, 'PACKAGE_HIDDEN');
     const pkgTerms = packageTermsOf(pkg);
@@ -746,8 +750,12 @@ export class OfficeService implements OnModuleInit {
     await this.prisma.$transaction(async (tx) => {
       let sale: Sale | undefined;
       if (task.action === 'activate') {
-        const pkg = await tx.package.findUnique({ where: { id: task.packageId }, include: { company: true } });
+        const pkg = await tx.package.findUnique({
+          where: { id: task.packageId },
+          include: { company: true, provider: true },
+        });
         if (!pkg) fail(404, 'NOT_FOUND');
+        if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
         const terms = captureTerms(packageTermsOf(pkg), []);
         const created = await tx.line.create({
           data: {
@@ -776,8 +784,12 @@ export class OfficeService implements OnModuleInit {
         await tx.line.update({ where: { id: task.lineId }, data: { packageId: task.nextPackageId, opsLocked: false } });
       }
       if (task.lineId && (task.action === 'extend' || task.action === 'reactivate')) {
-        const current = await tx.line.findUnique({ where: { id: task.lineId }, include: { package: true } });
+        const current = await tx.line.findUnique({
+          where: { id: task.lineId },
+          include: { package: { include: { company: true, provider: true } } },
+        });
         if (current) {
+          if (!current.package.company || !current.package.provider) fail(400, 'INVALID');
           const base = task.action === 'extend' && current.endsAt > new Date() ? current.endsAt : new Date();
           const renewal = task.action === 'extend'
             ? renewStay(lineTermsOf(current.terms, current.package), base)
@@ -1495,8 +1507,12 @@ export class OfficeService implements OnModuleInit {
   }
 
   private async visibleLine(actor: Actor, lineId: string) {
-    const line = await this.prisma.line.findUnique({ where: { id: lineId }, include: { package: { include: { company: true } } } });
+    const line = await this.prisma.line.findUnique({
+      where: { id: lineId },
+      include: { package: { include: { company: true, provider: true } } },
+    });
     if (!line) fail(404, 'NOT_FOUND');
+    if (!line.package.company || !line.package.provider) fail(400, 'INVALID');
     const accounts = await this.accounts();
     if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
     return line;
@@ -1729,37 +1745,6 @@ function pricesOf(row: Prices): Prices {
     agentPrice: row.agentPrice,
     posPrice: row.posPrice,
     subscriberPrice: row.subscriberPrice,
-  };
-}
-
-type PackagePriceRow = Prices & {
-  code: string;
-  providerId: string;
-  companyId: string | null;
-  months: number;
-  forSale: boolean;
-  renewalBranchCost: number;
-  renewalMainPrice: number;
-  renewalAgentPrice: number;
-  renewalPosPrice: number;
-  renewalSubscriberPrice: number;
-};
-
-function packageTermsOf(row: PackagePriceRow): PackageTerms {
-  return {
-    code: row.code,
-    companyCode: row.companyId ?? '',
-    providerCode: row.providerId,
-    months: row.months,
-    forSale: row.forSale,
-    subscription: pricesOf(row),
-    renewal: {
-      branchCost: row.renewalBranchCost,
-      mainPrice: row.renewalMainPrice,
-      agentPrice: row.renewalAgentPrice,
-      posPrice: row.renewalPosPrice,
-      subscriberPrice: row.renewalSubscriberPrice,
-    },
   };
 }
 

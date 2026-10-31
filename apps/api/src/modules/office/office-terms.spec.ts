@@ -1,5 +1,5 @@
 import { captureTerms, type LineTerms, type PackageTerms } from './office-rules';
-import { priced } from './office-terms';
+import { packageTermsOf, priced } from './office-terms';
 
 const subscription = {
   branchCost: 20,
@@ -26,6 +26,27 @@ const month: PackageTerms = {
 };
 
 describe('office line pricing', () => {
+  it('saves shelf codes instead of database ids', () => {
+    const terms = packageTermsOf({
+      code: 'lian-wecom-month',
+      providerId: 'provider-id',
+      provider: { code: 'lian' },
+      companyId: 'company-id',
+      company: { code: 'wecom' },
+      months: 1,
+      forSale: true,
+      ...subscription,
+      renewalBranchCost: renewal.branchCost,
+      renewalMainPrice: renewal.mainPrice,
+      renewalAgentPrice: renewal.agentPrice,
+      renewalPosPrice: renewal.posPrice,
+      renewalSubscriberPrice: renewal.subscriberPrice,
+    });
+
+    expect(terms.companyCode).toBe('wecom');
+    expect(terms.providerCode).toBe('lian');
+  });
+
   it('wraps the saved subscription and renewal prices with a point-of-sale offer', () => {
     const terms: LineTerms = captureTerms(month, []);
 
