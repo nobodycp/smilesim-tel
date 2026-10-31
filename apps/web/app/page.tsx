@@ -64,7 +64,7 @@ export default function HomePage() {
         { href: '/packages', label: t.navPlans },
         { href: '/numbers', label: t.navNumbers },
         { href: '/tasks', label: t.navTasks },
-        ...(layer === 'branch' ? [{ href: '/providers', label: t.navProviders }] : []),
+        ...(layer === 'branch' ? [{ href: '/companies', label: t.navCompanies }] : []),
       ];
 
   return (

@@ -152,7 +152,7 @@ export function OfficeShell({
     {
       title: t.navOps,
       items: [
-        { label: t.navProviders, href: '/providers', icon: 'providers', layers: ['branch'], grant: 'edit' },
+        { label: t.navCompanies, href: '/companies', icon: 'providers', layers: ['branch'], grant: 'edit' },
         { label: t.navTasks, href: '/tasks', icon: 'tasks' },
         { label: t.navOperations, href: '/operations', icon: 'plans' },
         { label: t.navAccounting, href: '/accounting', icon: 'wallet' },
