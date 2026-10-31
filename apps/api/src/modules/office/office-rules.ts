@@ -74,11 +74,29 @@ export function renewOnto(
   | { error: 'NOT_A_RENEWAL_TARGET' } {
   const saved = line.renewalTargets.find((item) => item.code === target.code);
   if (!saved) return { error: 'NOT_A_RENEWAL_TARGET' as const };
-  const renewal = { ...target.renewal };
+  const renewal = { ...saved.renewal };
   return {
-    endsAt: periodEnd(from, target.months),
+    endsAt: periodEnd(from, saved.months),
     debit: renewal.posPrice,
-    terms: captureTerms({ ...target, subscription: renewal, renewal }, []),
+    terms: captureTerms({ ...target, months: saved.months, subscription: renewal, renewal }, []),
+  };
+}
+
+export function repriceRenewal(
+  line: LineTerms,
+  which: { kind: 'stay' } | { kind: 'target'; code: string },
+  posPrice: number,
+): LineTerms | { error: 'NO_TARGET' } {
+  if (which.kind === 'stay') {
+    return { ...line, renewal: { ...line.renewal, posPrice } };
+  }
+  const found = line.renewalTargets.some((item) => item.code === which.code);
+  if (!found) return { error: 'NO_TARGET' };
+  return {
+    ...line,
+    renewalTargets: line.renewalTargets.map((item) =>
+      item.code === which.code ? { ...item, renewal: { ...item.renewal, posPrice } } : item,
+    ),
   };
 }
 
