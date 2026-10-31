@@ -4,7 +4,7 @@ import { AUTH_STORE, AuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
 import { newPasswordProblem, nicknameProblem } from '../auth/validators';
-import { catalog, packageCode, packageName } from './office-catalog';
+import { catalog, companies, packageCode, packageName } from './office-catalog';
 import {
   FEED_PAGE,
   LINES_PAGE,
@@ -1684,6 +1684,13 @@ export class OfficeService implements OnModuleInit {
     const seeded = await this.prisma.company.count();
     if (seeded > 0) return;
     const flags = { autoActivate: true, autoCharge: true, autoDisconnect: false, autoFreeze: false, autoSwitch: false };
+    for (const company of companies) {
+      await this.prisma.company.upsert({
+        where: { code: company.code },
+        update: { name: company.name },
+        create: { code: company.code, name: company.name },
+      });
+    }
     for (const provider of catalog) {
       const savedProvider = await this.prisma.provider.upsert({
         where: { code: provider.code },
@@ -1691,14 +1698,9 @@ export class OfficeService implements OnModuleInit {
         create: { code: provider.code, name: provider.name },
       });
       for (const company of provider.companies) {
-        const code = `${provider.code}-${company.code}`;
-        const savedCompany = await this.prisma.company.upsert({
-          where: { code },
-          update: { name: company.name },
-          create: { code, name: company.name, providerId: savedProvider.id },
-        });
+        const savedCompany = await this.prisma.company.findUnique({ where: { code: company.code } });
+        if (!savedCompany) continue;
         for (const item of company.packages) {
-          const price = item.price;
           await this.prisma.package.upsert({
             where: { code: packageCode(provider.code, company.code, item) },
             update: {},
@@ -1709,11 +1711,17 @@ export class OfficeService implements OnModuleInit {
               companyId: savedCompany.id,
               dataGb: item.gb,
               months: item.months,
-              branchCost: price,
-              mainPrice: price,
-              agentPrice: price,
-              posPrice: price,
-              subscriberPrice: price,
+              forSale: item.forSale,
+              branchCost: item.subscription.branchCost,
+              mainPrice: item.subscription.mainPrice,
+              agentPrice: item.subscription.agentPrice,
+              posPrice: item.subscription.posPrice,
+              subscriberPrice: item.subscription.subscriberPrice,
+              renewalBranchCost: item.renewal.branchCost,
+              renewalMainPrice: item.renewal.mainPrice,
+              renewalAgentPrice: item.renewal.agentPrice,
+              renewalPosPrice: item.renewal.posPrice,
+              renewalSubscriberPrice: item.renewal.subscriberPrice,
               ...flags,
             },
           });

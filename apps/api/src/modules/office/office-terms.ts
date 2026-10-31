@@ -6,8 +6,8 @@ export type PackagePriceRow = Prices & {
   companyId: string | null;
   months: number;
   forSale: boolean;
-  company: { code: string };
-  provider: { code: string };
+  company: { code: string } | null;
+  provider: { code: string } | null;
   renewalBranchCost: number;
   renewalMainPrice: number;
   renewalAgentPrice: number;
@@ -16,6 +16,7 @@ export type PackagePriceRow = Prices & {
 };
 
 export function packageTermsOf(row: PackagePriceRow): PackageTerms {
+  if (!row.company || !row.provider) throw new Error('INVALID');
   return {
     code: row.code,
     companyCode: row.company.code,

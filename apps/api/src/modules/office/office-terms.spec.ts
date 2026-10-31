@@ -47,6 +47,26 @@ describe('office line pricing', () => {
     expect(terms.providerCode).toBe('lian');
   });
 
+  it('rejects a package with no company on the shelf', () => {
+    expect(() =>
+      packageTermsOf({
+        code: 'lian-wecom-month',
+        providerId: 'provider-id',
+        provider: { code: 'lian' },
+        companyId: null,
+        company: null,
+        months: 1,
+        forSale: true,
+        ...subscription,
+        renewalBranchCost: renewal.branchCost,
+        renewalMainPrice: renewal.mainPrice,
+        renewalAgentPrice: renewal.agentPrice,
+        renewalPosPrice: renewal.posPrice,
+        renewalSubscriberPrice: renewal.subscriberPrice,
+      }),
+    ).toThrow('INVALID');
+  });
+
   it('wraps the saved subscription and renewal prices with a point-of-sale offer', () => {
     const terms: LineTerms = captureTerms(month, []);
 
