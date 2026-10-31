@@ -117,12 +117,18 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
       },
     }),
     'PUT /packages/lian-wecom-500/renewals': () => ({ body: { ok: true } }),
+    'POST /packages/lian-wecom-500/reprice-renewal': () => ({ body: { ok: true, lines: 1 } }),
   });
 
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
   await expect(page.getByText('عدد الأرقام:')).toBeVisible();
   await page.getByRole('tab', { name: 'الأسعار' }).click();
-  await expect(page.locator('.account-fund input')).toHaveCount(10);
+  await expect(page.locator('.account-fund').nth(0).locator('input')).toHaveCount(5);
+  await expect(page.locator('.account-fund').nth(1).locator('input')).toHaveCount(5);
+  const reprice = page.locator('.account-fund').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
+  await reprice.locator('input').fill('40');
+  await reprice.getByRole('button', { name: 'حفظ' }).click();
+  await expect.poll(() => calls).toContain('POST /packages/lian-wecom-500/reprice-renewal');
   await page.getByRole('tab', { name: 'التجديد' }).click();
   await page.getByLabel(/500 جيجا · 3 أشهر/).check();
   await page.getByRole('button', { name: 'حفظ', exact: true }).click();
