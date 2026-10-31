@@ -310,18 +310,37 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const rows = await this.prisma.provider.findMany({
-      where: { companies: { some: {} } },
-      include: { companies: { include: { packages: true }, orderBy: { name: 'asc' } } },
+      where: { packages: { some: { companyId: { not: null } } } },
+      include: { packages: { include: { company: true }, orderBy: { code: 'asc' } } },
       orderBy: { name: 'asc' },
     });
     return {
-      providers: rows.map((row) => ({
-        code: row.code,
-        name: row.name,
-        companies: row.companies.map((company) => ({
-          name: company.name,
-          image: company.image ?? '',
-          packages: company.packages.map((item) => ({
+      providers: rows.map((row) => {
+        const byCompany = new Map<string, { name: string; image: string; packages: Array<{
+          code: string;
+          name: string;
+          dataGb: number | null;
+          months: number;
+          price: number;
+          enabled: boolean;
+          autoActivate: boolean;
+          autoCharge: boolean;
+          autoDisconnect: boolean;
+          autoFreeze: boolean;
+          autoSwitch: boolean;
+          autoExtend: boolean;
+          autoRename: boolean;
+          autoSim: boolean;
+          allowDisconnect: boolean;
+        }> }>();
+        for (const item of row.packages) {
+          if (!item.company) continue;
+          const company = byCompany.get(item.company.id) ?? {
+            name: item.company.name,
+            image: item.company.image ?? '',
+            packages: [],
+          };
+          company.packages.push({
             code: item.code,
             name: item.name,
             dataGb: item.dataGb,
@@ -337,9 +356,15 @@ export class OfficeService implements OnModuleInit {
             autoRename: item.autoRename,
             autoSim: item.autoSim,
             allowDisconnect: item.allowDisconnect,
-          })),
-        })),
-      })),
+          });
+          byCompany.set(item.company.id, company);
+        }
+        return {
+          code: row.code,
+          name: row.name,
+          companies: [...byCompany.values()].sort((left, right) => left.name.localeCompare(right.name, 'ar')),
+        };
+      }),
     };
   }
 
@@ -622,7 +647,7 @@ export class OfficeService implements OnModuleInit {
     if (targetCode && (!target || !target.company || !target.provider)) fail(400, 'INVALID');
     const renewal = target ? renewOnto(terms, packageTermsOf(target), base) : renewStay(terms, base);
     if ('error' in renewal) fail(400, 'INVALID');
-    const posDelta = -(await this.buyPrice(line.packageId, line.posId, renewal.debit));
+    const posDelta = -(await this.buyPrice(target?.id ?? line.packageId, line.posId, renewal.debit));
     if (outcome === 'fail' || !isAutomatic(line.package, 'extend')) {
       const task = await this.openTask({
         action: 'extend', actor, posId: line.posId, packageId: line.packageId, nextPackageId: target?.id,
@@ -632,7 +657,15 @@ export class OfficeService implements OnModuleInit {
       return { applied: false, taskId: task.id };
     }
     await this.prisma.$transaction(async (tx) => {
-      await this.move(tx, line.posId, posDelta, actor.operatorId, 'extend', line.package.name, saleOf(line, undefined, -posDelta));
+      await this.move(
+        tx,
+        line.posId,
+        posDelta,
+        actor.operatorId,
+        'extend',
+        target?.name ?? line.package.name,
+        saleOf(line, target ?? undefined, -posDelta),
+      );
       await tx.line.update({
         where: { id: line.id },
         data: {
