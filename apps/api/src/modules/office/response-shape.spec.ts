@@ -23,6 +23,12 @@ const SHELF_KEYS = ['companies'];
 const SHELF_COMPANY_KEYS = ['code', 'name', 'providers'];
 const SHELF_PROVIDER_KEYS = ['code', 'name', 'packages'];
 const SHELF_PACKAGE_KEYS = ['code', 'name', 'months', 'forSale', 'lines', 'activeLines'];
+const PACKAGE_SHEET_KEYS = [
+  'code', 'name', 'providerCode', 'providerName', 'companyCode', 'companyName', 'enabled', 'forSale',
+  'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice',
+  'renewalBranchCost', 'renewalMainPrice', 'renewalAgentPrice', 'renewalPosPrice', 'renewalSubscriberPrice',
+  'lines', 'activeLines', 'renewals', 'switches', 'modes', 'offers',
+];
 
 const sorted = (list: string[]) => [...list].sort();
 const keysOf = (value: object) => sorted(Object.keys(value));
@@ -148,6 +154,105 @@ describe('office response shapes', () => {
     expect(wecom!.providers[0].packages[0]).toMatchObject({ forSale: false, lines: 2, activeLines: 1 });
     expect(shelf.companies.find((company) => company.code === 'kalam')?.providers).toEqual([]);
     expect(shelf.companies.find((company) => company.code === 'symphony')?.providers).toEqual([]);
+  });
+
+  it('answers the package sheet with both price ladders, counts, and saved targets', async () => {
+    const pkg = {
+      id: 'pkg-1',
+      code: 'lian-wecom-500',
+      name: '500 جيجا',
+      provider: { code: 'lian', name: 'ليان' },
+      company: { code: 'wecom', name: 'ويكوم' },
+      enabled: true,
+      forSale: false,
+      branchCost: 25,
+      mainPrice: 25,
+      agentPrice: 25,
+      posPrice: 25,
+      subscriberPrice: 25,
+      renewalBranchCost: 30,
+      renewalMainPrice: 30,
+      renewalAgentPrice: 30,
+      renewalPosPrice: 30,
+      renewalSubscriberPrice: 30,
+      autoActivate: true,
+      allowActivate: true,
+      autoCharge: true,
+      allowCharge: true,
+      autoExtend: true,
+      allowExtend: true,
+      autoDisconnect: true,
+      allowDisconnect: true,
+      autoFreeze: true,
+      allowFreeze: true,
+      autoSwitch: true,
+      allowSwitch: true,
+      autoRename: true,
+      allowRename: true,
+      autoSim: true,
+      allowSim: true,
+      lines: [{ status: 'active' }, { status: 'frozen' }],
+      renewals: [{ target: { code: 'lian-wecom-500-3m' } }],
+      switches: [{ target: { code: 'lian-wecom-500-5g' } }],
+      offers: [],
+    };
+    const { service, gate } = await serviceWith({ package: { findUnique: async () => pkg } });
+
+    const sheet = await service.packageSheet(gate, pkg.code);
+
+    expect(keysOf(sheet)).toEqual(sorted(PACKAGE_SHEET_KEYS));
+    expect(sheet).toMatchObject({
+      companyCode: 'wecom',
+      forSale: false,
+      lines: 2,
+      activeLines: 1,
+      renewals: ['lian-wecom-500-3m'],
+      switches: ['lian-wecom-500-5g'],
+      renewalPosPrice: 30,
+    });
+  });
+
+  it('validates subscription and renewal price ladders separately', async () => {
+    const pkg = {
+      id: 'pkg-1',
+      branchCost: 10,
+      mainPrice: 10,
+      agentPrice: 10,
+      posPrice: 10,
+      subscriberPrice: 10,
+      renewalBranchCost: 20,
+      renewalMainPrice: 20,
+      renewalAgentPrice: 20,
+      renewalPosPrice: 20,
+      renewalSubscriberPrice: 20,
+    };
+    let saved: unknown;
+    const { service, gate } = await serviceWith({
+      package: {
+        findUnique: async () => pkg,
+        update: async ({ data }: { data: unknown }) => {
+          saved = data;
+          return pkg;
+        },
+      },
+    });
+
+    await service.setChain(gate, 'lian-wecom-500', { subscriberPrice: 11, renewalSubscriberPrice: 21 });
+    expect(saved).toEqual({
+      branchCost: 10,
+      mainPrice: 10,
+      agentPrice: 10,
+      posPrice: 10,
+      subscriberPrice: 11,
+      renewalBranchCost: 20,
+      renewalMainPrice: 20,
+      renewalAgentPrice: 20,
+      renewalPosPrice: 20,
+      renewalSubscriberPrice: 21,
+    });
+
+    await expect(service.setChain(gate, 'lian-wecom-500', { renewalBranchCost: 21 }))
+      .rejects.toMatchObject({ status: 400, code: 'PRICE_BELOW_FLOOR' });
   });
 
   it('refuses the company shelf to a point of sale', async () => {

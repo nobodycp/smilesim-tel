@@ -150,7 +150,18 @@ export const api = {
   setPackageMode: (code: string, body: Record<string, boolean | string>) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/mode`, body),
   packageSheet: (code: string) => request<PackageSheet>('GET', `/office/packages/${segment(code)}/sheet`),
-  setChain: (code: string, body: { branchCost: number; mainPrice: number; agentPrice: number; posPrice: number; subscriberPrice: number }) =>
+  setChain: (code: string, body: Partial<{
+    branchCost: number;
+    mainPrice: number;
+    agentPrice: number;
+    posPrice: number;
+    subscriberPrice: number;
+    renewalBranchCost: number;
+    renewalMainPrice: number;
+    renewalAgentPrice: number;
+    renewalPosPrice: number;
+    renewalSubscriberPrice: number;
+  }>) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/chain`, body),
   setPackageRenewals: (code: string, targets: string[]) =>
     request<{ ok: true }>('PUT', `/office/packages/${segment(code)}/renewals`, { targets }),
@@ -241,13 +252,24 @@ export type PackageSheet = {
   name: string;
   providerCode: string;
   providerName: string;
+  companyCode: string;
   companyName: string;
   enabled: boolean;
+  forSale: boolean;
   branchCost: number;
   mainPrice: number;
   agentPrice: number;
   posPrice: number;
   subscriberPrice: number;
+  renewalBranchCost: number;
+  renewalMainPrice: number;
+  renewalAgentPrice: number;
+  renewalPosPrice: number;
+  renewalSubscriberPrice: number;
+  lines: number;
+  activeLines: number;
+  renewals: string[];
+  switches: string[];
   modes: Record<string, 'auto' | 'manual' | 'off'>;
   offers: { loginName: string; nickname: string; layer: string; price: number }[];
 };

@@ -1261,20 +1261,41 @@ export class OfficeService implements OnModuleInit {
   async packageSheet(gate: Gate, code: string) {
     const actor = await this.actor(gate);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.prisma.package.findUnique({ where: { code }, include: { provider: true, company: true, offers: { include: { user: true } } } });
+    const pkg = await this.prisma.package.findUnique({
+      where: { code },
+      include: {
+        provider: true,
+        company: true,
+        lines: { select: { status: true } },
+        renewals: { include: { target: { select: { code: true } } } },
+        switches: { include: { target: { select: { code: true } } } },
+        offers: { include: { user: true } },
+      },
+    });
     if (!pkg) fail(404, 'NOT_FOUND');
     return {
       code: pkg.code,
       name: pkg.name,
       providerCode: pkg.provider.code,
       providerName: pkg.provider.name,
+      companyCode: pkg.company?.code ?? '',
       companyName: pkg.company?.name ?? '',
       enabled: pkg.enabled,
+      forSale: pkg.forSale,
       branchCost: pkg.branchCost,
       mainPrice: pkg.mainPrice,
       agentPrice: pkg.agentPrice,
       posPrice: pkg.posPrice,
       subscriberPrice: pkg.subscriberPrice,
+      renewalBranchCost: pkg.renewalBranchCost,
+      renewalMainPrice: pkg.renewalMainPrice,
+      renewalAgentPrice: pkg.renewalAgentPrice,
+      renewalPosPrice: pkg.renewalPosPrice,
+      renewalSubscriberPrice: pkg.renewalSubscriberPrice,
+      lines: pkg.lines.length,
+      activeLines: pkg.lines.filter((line) => line.status === 'active').length,
+      renewals: pkg.renewals.map((renewal) => renewal.target.code),
+      switches: pkg.switches.map((item) => item.target.code),
       modes: {
         activate: actionMode(pkg.autoActivate, pkg.allowActivate),
         charge: actionMode(pkg.autoCharge, pkg.allowCharge),
@@ -1300,14 +1321,43 @@ export class OfficeService implements OnModuleInit {
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const next = { ...pricesOf(pkg) };
+    const renewal = {
+      branchCost: pkg.renewalBranchCost,
+      mainPrice: pkg.renewalMainPrice,
+      agentPrice: pkg.renewalAgentPrice,
+      posPrice: pkg.renewalPosPrice,
+      subscriberPrice: pkg.renewalSubscriberPrice,
+    };
     for (const key of ['branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice'] as const) {
       if (body[key] === undefined) continue;
       const price = nonNegative(body[key]);
       if (price === null) fail(400, 'INVALID');
       next[key] = price;
     }
-    if (!chainHolds(next)) fail(400, 'PRICE_BELOW_FLOOR');
-    await this.prisma.package.update({ where: { id: pkg.id }, data: next });
+    for (const [key, renewalKey] of [
+      ['branchCost', 'renewalBranchCost'],
+      ['mainPrice', 'renewalMainPrice'],
+      ['agentPrice', 'renewalAgentPrice'],
+      ['posPrice', 'renewalPosPrice'],
+      ['subscriberPrice', 'renewalSubscriberPrice'],
+    ] as const) {
+      if (body[renewalKey] === undefined) continue;
+      const price = nonNegative(body[renewalKey]);
+      if (price === null) fail(400, 'INVALID');
+      renewal[key] = price;
+    }
+    if (!chainHolds(next) || !chainHolds(renewal)) fail(400, 'PRICE_BELOW_FLOOR');
+    await this.prisma.package.update({
+      where: { id: pkg.id },
+      data: {
+        ...next,
+        renewalBranchCost: renewal.branchCost,
+        renewalMainPrice: renewal.mainPrice,
+        renewalAgentPrice: renewal.agentPrice,
+        renewalPosPrice: renewal.posPrice,
+        renewalSubscriberPrice: renewal.subscriberPrice,
+      },
+    });
     return { ok: true as const };
   }
 
