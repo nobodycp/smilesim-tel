@@ -1,6 +1,28 @@
-import { catalog, packageCode } from './office-catalog';
+import { catalog, companies, packageCode } from './office-catalog';
 
 describe('wholesale catalog', () => {
+  it('lists the eleven company shelf names', () => {
+    expect(companies.map((company) => company.name)).toEqual([
+      'سلكوم',
+      'ويكوم',
+      'الوها',
+      'بليفون',
+      'بارتنر',
+      'هوت موبايل',
+      'رامي ليفي',
+      '019',
+      'كلام',
+      'سيمفوني',
+      'سكاي',
+    ]);
+    expect(catalog.find((provider) => provider.code === 'lian')?.companies.find((company) => company.code === 'wecom')?.packages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ gb: 500, months: 1, price: 30 }),
+        expect.objectContaining({ gb: 500, months: 3, price: 80 }),
+      ]),
+    );
+  });
+
   it('keeps the five providers and a distinct package under each company', () => {
     expect(catalog.map((provider) => provider.name)).toEqual(['سكاي', 'ليان', 'عرين', 'كويك لاين', 'الوها']);
     const codes = catalog.flatMap((provider) =>
