@@ -1,5 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../db';
+import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
@@ -27,6 +28,7 @@ import {
   actionMode,
   flagsForMode,
   isAutomatic,
+  periodEnd,
   visibleAccountIds,
   withPrice,
   withinCeiling,
@@ -81,7 +83,7 @@ export class OfficeService implements OnModuleInit {
   private prismaClient: PrismaClient | null = null;
 
   private get prisma(): PrismaClient {
-    this.prismaClient ??= new PrismaClient();
+    this.prismaClient ??= createPrismaClient();
     return this.prismaClient;
   }
 
@@ -1694,12 +1696,6 @@ function saleOf(
     packageName: chosen.name,
     packagePrice: price ?? chosen.posPrice,
   };
-}
-
-function periodEnd(from: Date, months: number): Date {
-  const next = new Date(from.getTime());
-  next.setUTCMonth(next.getUTCMonth() + Math.max(1, months));
-  return next;
 }
 
 function pricesOf(row: Prices): Prices {
