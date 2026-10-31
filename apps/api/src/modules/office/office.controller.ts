@@ -87,6 +87,11 @@ export class OfficeController {
     return this.run(res, () => this.office.packages(gateOf(req)));
   }
 
+  @Get('companies')
+  companies(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    return this.run(res, () => this.office.companiesShelf(gateOf(req)));
+  }
+
   @Get('packages/:code/sheet')
   packageSheet(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('code') code: string) {
     return this.run(res, () => this.office.packageSheet(gateOf(req), code));

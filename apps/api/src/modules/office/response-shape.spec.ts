@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MemoryAuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
+import { companies } from './office-catalog';
 import { OfficeService } from './office.service';
 
 // The web app keeps its own copy of the shape of these answers (apps/web/lib/api.ts: OfficeMe,
@@ -18,6 +19,10 @@ const LINES_KEYS = ['lines', 'poses', 'nextCursor'];
 const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'packageCode', 'packageName', 'companyName', 'posLogin', 'posPrice', 'createdAt', 'endsAt'];
 const LINE_OPTIONAL_KEYS = ['opsLocked'];
 const POS_CHOICE_KEYS = ['loginName', 'nickname'];
+const SHELF_KEYS = ['companies'];
+const SHELF_COMPANY_KEYS = ['code', 'name', 'providers'];
+const SHELF_PROVIDER_KEYS = ['code', 'name', 'packages'];
+const SHELF_PACKAGE_KEYS = ['code', 'name', 'months', 'forSale', 'lines', 'activeLines'];
 
 const sorted = (list: string[]) => [...list].sort();
 const keysOf = (value: object) => sorted(Object.keys(value));
@@ -45,6 +50,29 @@ async function serviceWith(tables: Record<string, unknown>) {
   const service = new OfficeService(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: true }), findMany: async () => accounts },
+    ...tables,
+  };
+  return { service, gate: { sessionId } };
+}
+
+async function posServiceWith(tables: Record<string, unknown>) {
+  const auth = new MemoryAuthStore();
+  auth.addUser({
+    id: 'pos1',
+    loginName: 'pos1',
+    nickname: 'نقطة',
+    disabledAt: null,
+    mustChangePassword: false,
+    layer: 'pos',
+    twoFactorExempt: true,
+    twoFactorEnabled: false,
+    isBranchOwner: false,
+    passwordHash: await hashPassword('pointpass1'),
+  });
+  const sessionId = await auth.saveSession({ userId: 'pos1', scope: 'full', userAgent: '', ip: '' });
+  const service = new OfficeService(auth);
+  (service as unknown as { prismaClient: unknown }).prismaClient = {
+    user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: false }), findMany: async () => accounts },
     ...tables,
   };
   return { service, gate: { sessionId } };
@@ -94,6 +122,51 @@ describe('office response shapes', () => {
     expect(keysOf(listed.lines[0])).toEqual(sorted(LINE_KEYS));
     expect(listed.poses.length).toBeGreaterThan(0);
     expect(keysOf(listed.poses[0])).toEqual(sorted(POS_CHOICE_KEYS));
+  });
+
+  it('answers /office/companies with the fixed company shelf and package counts', async () => {
+    const packageRows = [
+      {
+        code: 'lian-wecom-500',
+        name: '500 جيجا',
+        months: 1,
+        forSale: false,
+        company: { code: 'wecom' },
+        provider: { code: 'lian', name: 'ليان' },
+        lines: [{ status: 'active' }, { status: 'frozen' }],
+      },
+    ];
+    const { service, gate } = await serviceWith({ package: { findMany: async () => packageRows } });
+    const shelf = await service.companiesShelf(gate);
+    const wecom = shelf.companies.find((company) => company.code === 'wecom');
+
+    expect(keysOf(shelf)).toEqual(sorted(SHELF_KEYS));
+    expect(shelf.companies.map((company) => company.code)).toEqual(companies.map((company) => company.code));
+    expect(keysOf(shelf.companies[0])).toEqual(sorted(SHELF_COMPANY_KEYS));
+    expect(keysOf(wecom!.providers[0])).toEqual(sorted(SHELF_PROVIDER_KEYS));
+    expect(keysOf(wecom!.providers[0].packages[0])).toEqual(sorted(SHELF_PACKAGE_KEYS));
+    expect(wecom!.providers[0].packages[0]).toMatchObject({ forSale: false, lines: 2, activeLines: 1 });
+    expect(shelf.companies.find((company) => company.code === 'kalam')?.providers).toEqual([]);
+    expect(shelf.companies.find((company) => company.code === 'symphony')?.providers).toEqual([]);
+  });
+
+  it('refuses the company shelf to a point of sale', async () => {
+    const { service, gate } = await posServiceWith({});
+    await expect(service.companiesShelf(gate)).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN' });
+  });
+
+  it('limits the point-of-sale package catalog to enabled packages for sale', async () => {
+    let where: unknown;
+    const { service, gate } = await serviceWith({
+      package: {
+        findMany: async (query: { where: unknown }) => {
+          where = query.where;
+          return [];
+        },
+      },
+    });
+    await service.packages(gate);
+    expect(where).toEqual({ companyId: { not: null }, enabled: true, forSale: true });
   });
 });
 

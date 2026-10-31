@@ -237,7 +237,7 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     const field = editableField(actor.layer);
     const rows = await this.prisma.package.findMany({
-      where: { companyId: { not: null }, enabled: true },
+      where: { companyId: { not: null }, enabled: true, forSale: true },
       include: { provider: true, company: true },
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
     });
@@ -266,6 +266,58 @@ export class OfficeService implements OnModuleInit {
         autoDisconnect: row.autoDisconnect,
         autoFreeze: row.autoFreeze,
         autoSwitch: row.autoSwitch,
+      })),
+    };
+  }
+
+  async companiesShelf(gate: Gate) {
+    const actor = await this.actor(gate);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    const rows = await this.prisma.package.findMany({
+      where: { companyId: { not: null } },
+      include: {
+        provider: true,
+        company: true,
+        lines: { select: { status: true } },
+      },
+      orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
+    });
+    const byCompany = new Map<string, Map<string, {
+      code: string;
+      name: string;
+      packages: Array<{
+        code: string;
+        name: string;
+        months: number;
+        forSale: boolean;
+        lines: number;
+        activeLines: number;
+      }>;
+    }>>();
+    for (const row of rows) {
+      if (!row.company) continue;
+      const providers = byCompany.get(row.company.code) ?? new Map();
+      const provider = providers.get(row.provider.code) ?? {
+        code: row.provider.code,
+        name: row.provider.name,
+        packages: [],
+      };
+      provider.packages.push({
+        code: row.code,
+        name: row.name,
+        months: row.months,
+        forSale: row.forSale,
+        lines: row.lines.length,
+        activeLines: row.lines.filter((line) => line.status === 'active').length,
+      });
+      providers.set(row.provider.code, provider);
+      byCompany.set(row.company.code, providers);
+    }
+    return {
+      companies: companies.map((company) => ({
+        code: company.code,
+        name: company.name,
+        providers: [...(byCompany.get(company.code)?.values() ?? [])],
       })),
     };
   }

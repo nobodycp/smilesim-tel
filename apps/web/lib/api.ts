@@ -102,6 +102,7 @@ export const api = {
   setCeiling: (loginName: string, ceiling: number) =>
     request<{ ok: true }>('PATCH', `/office/wallets/${segment(loginName)}/ceiling`, { ceiling }),
   officePackages: () => request<{ packages: PackageRow[]; companies: { name: string; image: string }[] }>('GET', '/office/packages'),
+  officeCompanies: () => request<Shelf>('GET', '/office/companies'),
   setCompanyImage: (name: string, image: string) => request<{ ok: true }>('POST', '/office/companies/image', { name, image }),
   setPackagePrice: (code: string, price: number) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/price`, { price }),
@@ -151,6 +152,10 @@ export const api = {
   packageSheet: (code: string) => request<PackageSheet>('GET', `/office/packages/${segment(code)}/sheet`),
   setChain: (code: string, body: { branchCost: number; mainPrice: number; agentPrice: number; posPrice: number; subscriberPrice: number }) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/chain`, body),
+  setPackageRenewals: (code: string, targets: string[]) =>
+    request<{ ok: true }>('PUT', `/office/packages/${segment(code)}/renewals`, { targets }),
+  setPackageSwitches: (code: string, targets: string[]) =>
+    request<{ ok: true }>('PUT', `/office/packages/${segment(code)}/switches`, { targets }),
   saveOffer: (code: string, loginName: string, price: number) =>
     request<{ ok: true }>('PUT', `/office/packages/${segment(code)}/offers`, { loginName, price }),
   removeOffer: (code: string, loginName: string) =>
@@ -211,6 +216,24 @@ export type ProviderRow = {
     name: string;
     image: string;
     packages: { code: string; name: string; dataGb: number | null; months: number; price: number; enabled: boolean }[];
+  }[];
+};
+export type Shelf = {
+  companies: {
+    code: string;
+    name: string;
+    providers: {
+      code: string;
+      name: string;
+      packages: {
+        code: string;
+        name: string;
+        months: number;
+        forSale: boolean;
+        lines: number;
+        activeLines: number;
+      }[];
+    }[];
   }[];
 };
 export type PackageSheet = {
