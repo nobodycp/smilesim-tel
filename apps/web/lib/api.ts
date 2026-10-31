@@ -163,6 +163,8 @@ export const api = {
     renewalSubscriberPrice: number;
   }>) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/chain`, body),
+  repriceRenewal: (code: string, which: string, posPrice: number) =>
+    request<{ ok: true; lines: number }>('POST', `/office/packages/${segment(code)}/reprice-renewal`, { which, posPrice }),
   setPackageRenewals: (code: string, targets: string[]) =>
     request<{ ok: true }>('PUT', `/office/packages/${segment(code)}/renewals`, { targets }),
   setPackageSwitches: (code: string, targets: string[]) =>

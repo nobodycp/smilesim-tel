@@ -32,6 +32,7 @@ import {
   periodEnd,
   renewOnto,
   renewStay,
+  repriceRenewal,
   subscriptionDebit,
   switchOnto,
   visibleAccountIds,
@@ -1359,6 +1360,35 @@ export class OfficeService implements OnModuleInit {
       },
     });
     return { ok: true as const };
+  }
+
+  async repriceActiveRenewal(gate: Gate, code: string, body: { which?: unknown; posPrice?: unknown }) {
+    const actor = await this.actor(gate);
+    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    const posPrice = nonNegative(body.posPrice);
+    if (typeof body.which !== 'string' || !body.which || posPrice === null) fail(400, 'INVALID');
+    const which = body.which === 'stay' ? { kind: 'stay' as const } : { kind: 'target' as const, code: body.which };
+    const pkg = await this.prisma.package.findUnique({
+      where: { code },
+      include: { company: true, provider: true, lines: { where: { status: 'active' } } },
+    });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const changes: { id: string; terms: LineTerms }[] = [];
+    for (const line of pkg.lines) {
+      const repriced = repriceRenewal(lineTermsOf(line.terms, pkg), which, posPrice);
+      if ('error' in repriced) continue;
+      changes.push({ id: line.id, terms: repriced });
+    }
+    if (which.kind === 'target' && changes.length === 0) fail(400, 'INVALID');
+    await this.prisma.$transaction(async (tx) => {
+      for (const change of changes) {
+        await tx.line.update({
+          where: { id: change.id },
+          data: { terms: change.terms as unknown as Prisma.InputJsonValue },
+        });
+      }
+    });
+    return { ok: true as const, lines: changes.length };
   }
 
   async setPackageTargets(

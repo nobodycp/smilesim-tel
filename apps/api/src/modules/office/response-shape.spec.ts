@@ -255,6 +255,67 @@ describe('office response shapes', () => {
       .rejects.toMatchObject({ status: 400, code: 'PRICE_BELOW_FLOOR' });
   });
 
+  it('reprices the saved renewal on active lines only', async () => {
+    const prices = (price: number) => ({ branchCost: price, mainPrice: price, agentPrice: price, posPrice: price, subscriberPrice: price });
+    const terms = (targets: string[]) => ({
+      packageCode: 'lian-wecom-500',
+      months: 1,
+      subscription: prices(25),
+      renewal: prices(30),
+      renewalTargets: targets.map((code) => ({ code, months: 3, renewal: prices(80) })),
+    });
+    let where: unknown;
+    const pkg = {
+      id: 'pkg-1',
+      code: 'lian-wecom-500',
+      lines: [
+        { id: 'ln-1', status: 'active', terms: terms(['lian-wecom-500-3m']) },
+        { id: 'ln-2', status: 'active', terms: terms([]) },
+      ],
+    };
+    const updates: { id: string; terms: ReturnType<typeof terms> }[] = [];
+    const tx = {
+      line: {
+        update: async ({ where: row, data }: { where: { id: string }; data: { terms: ReturnType<typeof terms> } }) => {
+          updates.push({ id: row.id, terms: data.terms });
+        },
+      },
+    };
+    const { service, gate } = await serviceWith({
+      package: {
+        findUnique: async (query: { where: { code: string }; include: { lines: { where: unknown } } }) => {
+          where = query.include.lines.where;
+          return query.where.code === pkg.code ? pkg : null;
+        },
+        update: async () => {
+          throw new Error('package prices must not change');
+        },
+      },
+      $transaction: async (work: (client: typeof tx) => Promise<void>) => work(tx),
+    });
+
+    await service.repriceActiveRenewal(gate, pkg.code, { which: 'lian-wecom-500-3m', posPrice: 70 });
+    expect(where).toEqual({ status: 'active' });
+    expect(updates.map((update) => update.id)).toEqual(['ln-1']);
+    expect(updates[0].terms.renewalTargets[0]).toEqual({ code: 'lian-wecom-500-3m', months: 3, renewal: { ...prices(80), posPrice: 70 } });
+    expect(updates[0].terms.renewal).toEqual(prices(30));
+    expect(updates[0].terms.months).toBe(1);
+
+    updates.length = 0;
+    await service.repriceActiveRenewal(gate, pkg.code, { which: 'stay', posPrice: 40 });
+    expect(updates.map((update) => update.id)).toEqual(['ln-1', 'ln-2']);
+    expect(updates.every((update) => update.terms.renewal.posPrice === 40 && update.terms.renewal.mainPrice === 30)).toBe(true);
+
+    await expect(service.repriceActiveRenewal(gate, pkg.code, { which: 'missing', posPrice: 1 }))
+      .rejects.toMatchObject({ status: 400, code: 'INVALID' });
+    await expect(service.repriceActiveRenewal(gate, pkg.code, { which: 'stay', posPrice: -1 }))
+      .rejects.toMatchObject({ status: 400, code: 'INVALID' });
+    await expect(service.repriceActiveRenewal(gate, pkg.code, { which: 'stay', posPrice: '5' }))
+      .rejects.toMatchObject({ status: 400, code: 'INVALID' });
+    await expect(service.repriceActiveRenewal(gate, 'nope', { which: 'stay', posPrice: 5 }))
+      .rejects.toMatchObject({ status: 404, code: 'NOT_FOUND' });
+  });
+
   it('refuses the company shelf to a point of sale', async () => {
     const { service, gate } = await posServiceWith({});
     await expect(service.companiesShelf(gate)).rejects.toMatchObject({ status: 403, code: 'FORBIDDEN' });

@@ -102,6 +102,16 @@ export class OfficeController {
     return this.run(res, () => this.office.setChain(gateOf(req), code, body));
   }
 
+  @Post('packages/:code/reprice-renewal')
+  repriceRenewal(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('code') code: string,
+    @Body() body: { which?: unknown; posPrice?: unknown },
+  ) {
+    return this.run(res, () => this.office.repriceActiveRenewal(gateOf(req), code, body));
+  }
+
   @Put('packages/:code/renewals')
   packageRenewals(
     @Req() req: Request,
