@@ -10,6 +10,100 @@ export type Prices = {
   subscriberPrice: number;
 };
 
+export type PackageTerms = {
+  code: string;
+  companyCode: string;
+  providerCode: string;
+  months: number;
+  forSale: boolean;
+  subscription: Prices;
+  renewal: Prices;
+};
+
+export type RenewalTarget = { code: string; months: number; renewal: Prices };
+
+export type LineTerms = {
+  packageCode: string;
+  months: number;
+  subscription: Prices;
+  renewal: Prices;
+  renewalTargets: RenewalTarget[];
+};
+
+export function periodEnd(from: Date, months: number): Date {
+  const next = new Date(from.getTime());
+  next.setUTCMonth(next.getUTCMonth() + Math.max(1, months));
+  return next;
+}
+
+export function captureTerms(pkg: PackageTerms, targets: PackageTerms[]): LineTerms {
+  return {
+    packageCode: pkg.code,
+    months: pkg.months,
+    subscription: { ...pkg.subscription },
+    renewal: { ...pkg.renewal },
+    renewalTargets: targets.map((target) => ({
+      code: target.code,
+      months: target.months,
+      renewal: { ...target.renewal },
+    })),
+  };
+}
+
+export function subscriptionDebit(pkg: PackageTerms): number {
+  return pkg.subscription.posPrice;
+}
+
+export function chargeDebit(line: LineTerms): number {
+  return line.renewal.posPrice;
+}
+
+export function renewStay(
+  line: LineTerms,
+  from: Date,
+): { endsAt: Date; debit: number; terms: LineTerms } {
+  return { endsAt: periodEnd(from, line.months), debit: line.renewal.posPrice, terms: line };
+}
+
+export function renewOnto(
+  line: LineTerms,
+  target: PackageTerms,
+  from: Date,
+):
+  | { endsAt: Date; debit: number; terms: LineTerms }
+  | { error: 'NOT_A_RENEWAL_TARGET' } {
+  const saved = line.renewalTargets.find((item) => item.code === target.code);
+  if (!saved) return { error: 'NOT_A_RENEWAL_TARGET' as const };
+  const renewal = { ...target.renewal };
+  return {
+    endsAt: periodEnd(from, target.months),
+    debit: renewal.posPrice,
+    terms: captureTerms({ ...target, subscription: renewal, renewal }, []),
+  };
+}
+
+export function switchOnto(
+  line: LineTerms,
+  current: PackageTerms,
+  target: PackageTerms,
+  allowedCodes: string[],
+  from: Date,
+):
+  | { endsAt: Date; debit: number; terms: LineTerms }
+  | { error: 'SAME_PACKAGE' | 'OTHER_SHELF' | 'NOT_ALLOWED' } {
+  if (target.code === line.packageCode) return { error: 'SAME_PACKAGE' as const };
+  if (target.companyCode !== current.companyCode || target.providerCode !== current.providerCode) {
+    return { error: 'OTHER_SHELF' as const };
+  }
+  if (!allowedCodes.includes(target.code)) return { error: 'NOT_ALLOWED' as const };
+  const renewal = { ...target.renewal };
+  return {
+    endsAt: periodEnd(from, target.months),
+    debit: renewal.posPrice,
+    terms: captureTerms({ ...target, subscription: renewal, renewal }, []),
+  };
+}
+
 export type AccountNode = { id: string; parentId: string | null; layer: string };
 
 export function withinCeiling(layer: string, balance: number, ceiling: number, debit: number): boolean {
