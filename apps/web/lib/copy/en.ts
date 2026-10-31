@@ -257,6 +257,7 @@ export const en: Copy = {
     LOGIN_TAKEN: 'This login name is already in use',
     ZERO_WALLET_FIRST: 'Set the wallet to zero before the transfer',
     PACKAGE_DISABLED: 'This plan is turned off',
+    PACKAGE_HIDDEN: 'This plan is not offered for sale',
     OPERATION_DISABLED: 'This action is turned off for this plan',
     SWITCH_PACKAGE_FIRST: 'Switch the plan first',
     NETWORK: 'Could not reach the server',

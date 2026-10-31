@@ -257,6 +257,7 @@ export const ar = {
     LOGIN_TAKEN: 'اسم الدخول مستخدم',
     ZERO_WALLET_FIRST: 'صفّر المحفظة قبل النقل',
     PACKAGE_DISABLED: 'الرزمة متوقفة',
+    PACKAGE_HIDDEN: 'الرزمة غير معروضة للبيع',
     OPERATION_DISABLED: 'متوقف على هذه الرزمة',
     SWITCH_PACKAGE_FIRST: 'بدّل الرزمة أولاً',
     NETWORK: 'تعذّر الاتصال بالخادم',

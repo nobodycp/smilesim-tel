@@ -22,15 +22,21 @@ import {
 import {
   ESIM_FEE,
   Prices,
+  captureTerms,
   chainHolds,
+  chargeDebit,
   editableField,
   actionMode,
   flagsForMode,
   isAutomatic,
   periodEnd,
+  renewStay,
+  subscriptionDebit,
   visibleAccountIds,
   withPrice,
   withinCeiling,
+  type LineTerms,
+  type PackageTerms,
 } from './office-rules';
 
 
@@ -465,7 +471,10 @@ export class OfficeService implements OnModuleInit {
     const pkg = await this.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true } });
     if (!pkg) fail(404, 'NOT_FOUND');
     this.assertRunnable(pkg, 'activate');
-    const unit = await this.buyPrice(pkg.id, pos.id, pkg.posPrice);
+    if (!pkg.forSale) fail(400, 'PACKAGE_HIDDEN');
+    const pkgTerms = packageTermsOf(pkg);
+    const terms = captureTerms(pkgTerms, []);
+    const unit = await this.buyPrice(pkg.id, pos.id, subscriptionDebit(pkgTerms));
     const posDelta = -(unit + (esim ? ESIM_FEE : 0));
     const msisdn = requested || (await this.freshMsisdn());
     if (requested) {
@@ -488,6 +497,7 @@ export class OfficeService implements OnModuleInit {
           status: 'active',
           packageId: pkg.id,
           posId: pos.id,
+          terms: terms as unknown as Prisma.InputJsonValue,
           endsAt: periodEnd(new Date(), pkg.months),
         },
       });
@@ -513,7 +523,10 @@ export class OfficeService implements OnModuleInit {
     if (action === 'charge' && line.status !== 'active') fail(400, 'INVALID');
     if (action === 'freeze' && line.status !== 'active') fail(400, 'INVALID');
     if (action === 'unfreeze' && line.status !== 'frozen') fail(400, 'INVALID');
-    const charged = action === 'charge' ? await this.buyPrice(line.packageId, line.posId, line.package.posPrice) : 0;
+    const charged =
+      action === 'charge'
+        ? await this.buyPrice(line.packageId, line.posId, chargeDebit(lineTermsOf(line.terms, line.package)))
+        : 0;
     const posDelta = action === 'charge' ? -charged : 0;
     if (outcome === 'fail' || !isAutomatic(line.package, action)) {
       const task = await this.openTask({
@@ -566,7 +579,10 @@ export class OfficeService implements OnModuleInit {
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active') fail(400, 'INVALID');
     this.assertRunnable(line.package, 'extend');
-    const posDelta = -(await this.buyPrice(line.packageId, line.posId, line.package.posPrice));
+    const terms = lineTermsOf(line.terms, line.package);
+    const base = line.endsAt > new Date() ? line.endsAt : new Date();
+    const renewal = renewStay(terms, base);
+    const posDelta = -(await this.buyPrice(line.packageId, line.posId, renewal.debit));
     if (outcome === 'fail' || !isAutomatic(line.package, 'extend')) {
       const task = await this.openTask({
         action: 'extend', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta, msisdn: line.msisdn,
@@ -574,10 +590,12 @@ export class OfficeService implements OnModuleInit {
       });
       return { applied: false, taskId: task.id };
     }
-    const base = line.endsAt > new Date() ? line.endsAt : new Date();
     await this.prisma.$transaction(async (tx) => {
       await this.move(tx, line.posId, posDelta, actor.operatorId, 'extend', line.package.name, saleOf(line, undefined, -posDelta));
-      await tx.line.update({ where: { id: line.id }, data: { endsAt: periodEnd(base, line.package.months) } });
+      await tx.line.update({
+        where: { id: line.id },
+        data: { endsAt: renewal.endsAt, terms: renewal.terms as unknown as Prisma.InputJsonValue },
+      });
     });
     return { applied: true };
   }
@@ -729,6 +747,8 @@ export class OfficeService implements OnModuleInit {
       let sale: Sale | undefined;
       if (task.action === 'activate') {
         const pkg = await tx.package.findUnique({ where: { id: task.packageId }, include: { company: true } });
+        if (!pkg) fail(404, 'NOT_FOUND');
+        const terms = captureTerms(packageTermsOf(pkg), []);
         const created = await tx.line.create({
           data: {
             msisdn: task.msisdn || (await this.freshMsisdn()),
@@ -737,15 +757,16 @@ export class OfficeService implements OnModuleInit {
             status: 'active',
             packageId: task.packageId,
             posId: task.posId,
-            endsAt: periodEnd(new Date(), pkg?.months ?? 1),
+            terms: terms as unknown as Prisma.InputJsonValue,
+            endsAt: periodEnd(new Date(), pkg.months),
           },
         });
         sale = {
           msisdn: created.msisdn,
           lineId: created.id,
-          companyName: pkg?.company?.name ?? '',
-          packageName: pkg?.name ?? '',
-          packagePrice: pkg ? await this.buyPrice(pkg.id, task.posId, pkg.posPrice) : 0,
+          companyName: pkg.company?.name ?? '',
+          packageName: pkg.name,
+          packagePrice: await this.buyPrice(pkg.id, task.posId, subscriptionDebit(packageTermsOf(pkg))),
         };
       }
       if (task.lineId && task.action === 'disconnect') await tx.line.update({ where: { id: task.lineId }, data: { status: 'disconnected' } });
@@ -758,11 +779,15 @@ export class OfficeService implements OnModuleInit {
         const current = await tx.line.findUnique({ where: { id: task.lineId }, include: { package: true } });
         if (current) {
           const base = task.action === 'extend' && current.endsAt > new Date() ? current.endsAt : new Date();
+          const renewal = task.action === 'extend'
+            ? renewStay(lineTermsOf(current.terms, current.package), base)
+            : null;
           await tx.line.update({
             where: { id: current.id },
             data: {
               status: task.action === 'reactivate' ? 'active' : current.status,
-              endsAt: periodEnd(base, current.package.months),
+              endsAt: renewal?.endsAt ?? periodEnd(base, current.package.months),
+              ...(renewal ? { terms: renewal.terms as unknown as Prisma.InputJsonValue } : {}),
             },
           });
         }
@@ -1705,6 +1730,76 @@ function pricesOf(row: Prices): Prices {
     posPrice: row.posPrice,
     subscriberPrice: row.subscriberPrice,
   };
+}
+
+type PackagePriceRow = Prices & {
+  code: string;
+  providerId: string;
+  companyId: string | null;
+  months: number;
+  forSale: boolean;
+  renewalBranchCost: number;
+  renewalMainPrice: number;
+  renewalAgentPrice: number;
+  renewalPosPrice: number;
+  renewalSubscriberPrice: number;
+};
+
+function packageTermsOf(row: PackagePriceRow): PackageTerms {
+  return {
+    code: row.code,
+    companyCode: row.companyId ?? '',
+    providerCode: row.providerId,
+    months: row.months,
+    forSale: row.forSale,
+    subscription: pricesOf(row),
+    renewal: {
+      branchCost: row.renewalBranchCost,
+      mainPrice: row.renewalMainPrice,
+      agentPrice: row.renewalAgentPrice,
+      posPrice: row.renewalPosPrice,
+      subscriberPrice: row.renewalSubscriberPrice,
+    },
+  };
+}
+
+function lineTermsOf(value: unknown, pkg: PackagePriceRow): LineTerms {
+  if (value === null) return captureTerms(packageTermsOf(pkg), []);
+  if (!isLineTerms(value)) throw new Error(`Invalid saved terms for package ${pkg.code}`);
+  return value;
+}
+
+function isLineTerms(value: unknown): value is LineTerms {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.packageCode === 'string' &&
+    isPositiveInteger(value.months) &&
+    isPrices(value.subscription) &&
+    isPrices(value.renewal) &&
+    Array.isArray(value.renewalTargets) &&
+    value.renewalTargets.every(
+      (target) =>
+        isRecord(target) &&
+        typeof target.code === 'string' &&
+        isPositiveInteger(target.months) &&
+        isPrices(target.renewal),
+    )
+  );
+}
+
+function isPrices(value: unknown): value is Prices {
+  if (!isRecord(value)) return false;
+  return ['branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice'].every(
+    (field) => typeof value[field] === 'number' && Number.isInteger(value[field]) && value[field] >= 0,
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
 }
 
 function positive(value: unknown): number | null {

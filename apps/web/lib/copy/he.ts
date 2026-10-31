@@ -257,6 +257,7 @@ export const he: Copy = {
     LOGIN_TAKEN: 'שם הכניסה כבר בשימוש',
     ZERO_WALLET_FIRST: 'אפס את הארנק לפני ההעברה',
     PACKAGE_DISABLED: 'החבילה מושבתת',
+    PACKAGE_HIDDEN: 'החבילה אינה מוצעת למכירה',
     OPERATION_DISABLED: 'הפעולה מושבתת בחבילה הזו',
     SWITCH_PACKAGE_FIRST: 'החלף חבילה קודם',
     NETWORK: 'לא ניתן להתחבר לשרת',
