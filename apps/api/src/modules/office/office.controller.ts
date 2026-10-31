@@ -97,6 +97,26 @@ export class OfficeController {
     return this.run(res, () => this.office.setChain(gateOf(req), code, body));
   }
 
+  @Put('packages/:code/renewals')
+  packageRenewals(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('code') code: string,
+    @Body() body: { targets?: unknown },
+  ) {
+    return this.run(res, () => this.office.setPackageTargets(gateOf(req), code, 'renewals', body));
+  }
+
+  @Put('packages/:code/switches')
+  packageSwitches(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('code') code: string,
+    @Body() body: { targets?: unknown },
+  ) {
+    return this.run(res, () => this.office.setPackageTargets(gateOf(req), code, 'switches', body));
+  }
+
   @Put('packages/:code/offers')
   saveOffer(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('code') code: string, @Body() body: { loginName?: unknown; price?: unknown }) {
     return this.run(res, () => this.office.saveOffer(gateOf(req), code, body));
@@ -175,7 +195,12 @@ export class OfficeController {
   }
 
   @Post('lines/:id/extend')
-  extend(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('id') id: string, @Body() body: { outcome?: unknown }) {
+  extend(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('id') id: string,
+    @Body() body: { outcome?: unknown; targetCode?: unknown },
+  ) {
     return this.run(res, () => this.office.extend(gateOf(req), id, body));
   }
 

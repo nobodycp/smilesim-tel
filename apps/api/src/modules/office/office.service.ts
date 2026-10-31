@@ -30,8 +30,10 @@ import {
   flagsForMode,
   isAutomatic,
   periodEnd,
+  renewOnto,
   renewStay,
   subscriptionDebit,
+  switchOnto,
   visibleAccountIds,
   withPrice,
   withinCeiling,
@@ -470,14 +472,19 @@ export class OfficeService implements OnModuleInit {
     if (!pos || !canActivateFor(actor, pos, accounts)) fail(403, 'FORBIDDEN');
     const pkg = await this.prisma.package.findUnique({
       where: { code: packageCode },
-      include: { company: true, provider: true },
+      include: {
+        company: true,
+        provider: true,
+        renewals: { include: { target: { include: { company: true, provider: true } } } },
+      },
     });
     if (!pkg) fail(404, 'NOT_FOUND');
     if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
+    if (pkg.renewals.some((renewal) => !renewal.target.company || !renewal.target.provider)) fail(400, 'INVALID');
     this.assertRunnable(pkg, 'activate');
     if (!pkg.forSale) fail(400, 'PACKAGE_HIDDEN');
     const pkgTerms = packageTermsOf(pkg);
-    const terms = captureTerms(pkgTerms, []);
+    const terms = captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target)));
     const unit = await this.buyPrice(pkg.id, pos.id, subscriptionDebit(pkgTerms));
     const posDelta = -(unit + (esim ? ESIM_FEE : 0));
     const msisdn = requested || (await this.freshMsisdn());
@@ -555,12 +562,26 @@ export class OfficeService implements OnModuleInit {
     if (!outcome || !packageCode) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (!line.opsLocked && line.status !== 'active') fail(400, 'INVALID');
-    const next = await this.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true } });
-    if (!next || next.id === line.packageId) fail(400, 'INVALID');
+    this.assertRunnable(line.package, 'switch');
+    const [next, allowed] = await Promise.all([
+      this.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true, provider: true } }),
+      this.prisma.packageSwitch.findMany({
+        where: { packageId: line.packageId },
+        include: { target: { select: { code: true } } },
+      }),
+    ]);
+    if (!next || !next.company || !next.provider) fail(400, 'INVALID');
+    const switched = switchOnto(
+      lineTermsOf(line.terms, line.package),
+      packageTermsOf(line.package),
+      packageTermsOf(next),
+      allowed.map((item) => item.target.code),
+      new Date(),
+    );
+    if ('error' in switched) fail(400, 'INVALID');
     this.assertRunnable(next, 'switch');
-    const nextPrice = await this.buyPrice(next.id, line.posId, next.posPrice);
-    const currentPrice = await this.buyPrice(line.packageId, line.posId, line.package.posPrice);
-    const posDelta = -(nextPrice - currentPrice);
+    const nextPrice = await this.buyPrice(next.id, line.posId, switched.debit);
+    const posDelta = -nextPrice;
     if (outcome === 'fail' || !isAutomatic(line.package, 'switch')) {
       const task = await this.openTask({
         action: 'switch', actor, posId: line.posId, packageId: line.packageId, nextPackageId: next.id, lineId: line.id,
@@ -570,26 +591,42 @@ export class OfficeService implements OnModuleInit {
     }
     await this.prisma.$transaction(async (tx) => {
       if (posDelta !== 0) await this.move(tx, line.posId, posDelta, actor.operatorId, 'switch', next.name, saleOf(line, next, nextPrice));
-      await tx.line.update({ where: { id: line.id }, data: { packageId: next.id, opsLocked: false } });
+      await tx.line.update({
+        where: { id: line.id },
+        data: {
+          endsAt: switched.endsAt,
+          terms: switched.terms as unknown as Prisma.InputJsonValue,
+          packageId: next.id,
+          opsLocked: false,
+        },
+      });
     });
     return { applied: true };
   }
 
-  async extend(gate: Gate, lineId: string, body: { outcome?: unknown }) {
+  async extend(gate: Gate, lineId: string, body: { outcome?: unknown; targetCode?: unknown }) {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
+    const targetCode = body.targetCode === undefined ? '' : typeof body.targetCode === 'string' ? body.targetCode : null;
     if (!outcome) fail(400, 'INVALID');
+    if (targetCode === null) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active') fail(400, 'INVALID');
     this.assertRunnable(line.package, 'extend');
     const terms = lineTermsOf(line.terms, line.package);
     const base = line.endsAt > new Date() ? line.endsAt : new Date();
-    const renewal = renewStay(terms, base);
+    const target = targetCode
+      ? await this.prisma.package.findUnique({ where: { code: targetCode }, include: { company: true, provider: true } })
+      : null;
+    if (targetCode && (!target || !target.company || !target.provider)) fail(400, 'INVALID');
+    const renewal = target ? renewOnto(terms, packageTermsOf(target), base) : renewStay(terms, base);
+    if ('error' in renewal) fail(400, 'INVALID');
     const posDelta = -(await this.buyPrice(line.packageId, line.posId, renewal.debit));
     if (outcome === 'fail' || !isAutomatic(line.package, 'extend')) {
       const task = await this.openTask({
-        action: 'extend', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta, msisdn: line.msisdn,
+        action: 'extend', actor, posId: line.posId, packageId: line.packageId, nextPackageId: target?.id,
+        lineId: line.id, posDelta, msisdn: line.msisdn,
         note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
@@ -598,7 +635,11 @@ export class OfficeService implements OnModuleInit {
       await this.move(tx, line.posId, posDelta, actor.operatorId, 'extend', line.package.name, saleOf(line, undefined, -posDelta));
       await tx.line.update({
         where: { id: line.id },
-        data: { endsAt: renewal.endsAt, terms: renewal.terms as unknown as Prisma.InputJsonValue },
+        data: {
+          endsAt: renewal.endsAt,
+          terms: renewal.terms as unknown as Prisma.InputJsonValue,
+          ...(target ? { packageId: target.id } : {}),
+        },
       });
     });
     return { applied: true };
@@ -752,11 +793,19 @@ export class OfficeService implements OnModuleInit {
       if (task.action === 'activate') {
         const pkg = await tx.package.findUnique({
           where: { id: task.packageId },
-          include: { company: true, provider: true },
+          include: {
+            company: true,
+            provider: true,
+            renewals: { include: { target: { include: { company: true, provider: true } } } },
+          },
         });
         if (!pkg) fail(404, 'NOT_FOUND');
         if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
-        const terms = captureTerms(packageTermsOf(pkg), []);
+        if (pkg.renewals.some((renewal) => !renewal.target.company || !renewal.target.provider)) fail(400, 'INVALID');
+        const terms = captureTerms(
+          packageTermsOf(pkg),
+          pkg.renewals.map((renewal) => packageTermsOf(renewal.target)),
+        );
         const created = await tx.line.create({
           data: {
             msisdn: task.msisdn || (await this.freshMsisdn()),
@@ -780,9 +829,6 @@ export class OfficeService implements OnModuleInit {
       if (task.lineId && task.action === 'disconnect') await tx.line.update({ where: { id: task.lineId }, data: { status: 'disconnected' } });
       if (task.lineId && task.action === 'freeze') await tx.line.update({ where: { id: task.lineId }, data: { status: 'frozen' } });
       if (task.lineId && task.action === 'unfreeze') await tx.line.update({ where: { id: task.lineId }, data: { status: 'active' } });
-      if (task.lineId && task.action === 'switch' && task.nextPackageId) {
-        await tx.line.update({ where: { id: task.lineId }, data: { packageId: task.nextPackageId, opsLocked: false } });
-      }
       if (task.lineId && (task.action === 'extend' || task.action === 'reactivate')) {
         const current = await tx.line.findUnique({
           where: { id: task.lineId },
@@ -791,18 +837,77 @@ export class OfficeService implements OnModuleInit {
         if (current) {
           if (!current.package.company || !current.package.provider) fail(400, 'INVALID');
           const base = task.action === 'extend' && current.endsAt > new Date() ? current.endsAt : new Date();
-          const renewal = task.action === 'extend'
-            ? renewStay(lineTermsOf(current.terms, current.package), base)
+          const target = task.action === 'extend' && task.nextPackageId
+            ? await tx.package.findUnique({
+                where: { id: task.nextPackageId },
+                include: { company: true, provider: true },
+              })
             : null;
+          if (task.action === 'extend' && task.nextPackageId && (!target || !target.company || !target.provider)) fail(400, 'INVALID');
+          const renewal = task.action === 'extend'
+            ? target
+              ? renewOnto(lineTermsOf(current.terms, current.package), packageTermsOf(target), base)
+              : renewStay(lineTermsOf(current.terms, current.package), base)
+            : null;
+          if (renewal && 'error' in renewal) fail(400, 'INVALID');
           await tx.line.update({
             where: { id: current.id },
             data: {
               status: task.action === 'reactivate' ? 'active' : current.status,
               endsAt: renewal?.endsAt ?? periodEnd(base, current.package.months),
               ...(renewal ? { terms: renewal.terms as unknown as Prisma.InputJsonValue } : {}),
+              ...(target ? { packageId: target.id } : {}),
             },
           });
         }
+      }
+      if (task.lineId && task.action === 'switch' && task.nextPackageId) {
+        const [current, source, target] = await Promise.all([
+          tx.line.findUnique({
+            where: { id: task.lineId },
+            include: { package: { include: { company: true, provider: true } } },
+          }),
+          tx.package.findUnique({
+            where: { id: task.packageId },
+            include: {
+              company: true,
+              provider: true,
+              switches: { include: { target: { select: { code: true } } } },
+            },
+          }),
+          tx.package.findUnique({
+            where: { id: task.nextPackageId },
+            include: { company: true, provider: true },
+          }),
+        ]);
+        if (
+          !current ||
+          !current.package.company ||
+          !current.package.provider ||
+          !source ||
+          !source.company ||
+          !source.provider ||
+          !target ||
+          !target.company ||
+          !target.provider
+        ) fail(400, 'INVALID');
+        const switched = switchOnto(
+          lineTermsOf(current.terms, current.package),
+          packageTermsOf(source),
+          packageTermsOf(target),
+          source.switches.map((item) => item.target.code),
+          new Date(),
+        );
+        if ('error' in switched) fail(400, 'INVALID');
+        await tx.line.update({
+          where: { id: current.id },
+          data: {
+            endsAt: switched.endsAt,
+            terms: switched.terms as unknown as Prisma.InputJsonValue,
+            packageId: target.id,
+            opsLocked: false,
+          },
+        });
       }
       if (task.lineId && task.action === 'rename' && task.msisdn) {
         await tx.line.update({ where: { id: task.lineId }, data: { msisdn: task.msisdn } });
@@ -1118,6 +1223,61 @@ export class OfficeService implements OnModuleInit {
     }
     if (!chainHolds(next)) fail(400, 'PRICE_BELOW_FLOOR');
     await this.prisma.package.update({ where: { id: pkg.id }, data: next });
+    return { ok: true as const };
+  }
+
+  async setPackageTargets(
+    gate: Gate,
+    code: string,
+    kind: 'renewals' | 'switches',
+    body: { targets?: unknown },
+  ) {
+    const actor = await this.actor(gate);
+    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    if (!Array.isArray(body.targets) || body.targets.some((target) => typeof target !== 'string' || !target)) {
+      fail(400, 'INVALID');
+    }
+    const targetCodes = body.targets as string[];
+    if (new Set(targetCodes).size !== targetCodes.length || targetCodes.includes(code)) fail(400, 'INVALID');
+    const [pkg, targets] = await Promise.all([
+      this.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } }),
+      targetCodes.length
+        ? this.prisma.package.findMany({
+            where: { code: { in: targetCodes } },
+            include: { company: true, provider: true },
+          })
+        : [],
+    ]);
+    if (!pkg) fail(404, 'NOT_FOUND');
+    if (
+      !pkg.company ||
+      !pkg.provider ||
+      targets.length !== targetCodes.length ||
+      targets.some(
+        (target) =>
+          !target.company ||
+          !target.provider ||
+          target.company.code !== pkg.company?.code ||
+          target.provider.code !== pkg.provider.code,
+      )
+    ) fail(400, 'INVALID');
+    await this.prisma.$transaction(async (tx) => {
+      if (kind === 'renewals') {
+        await tx.packageRenewal.deleteMany({ where: { packageId: pkg.id } });
+        if (targets.length) {
+          await tx.packageRenewal.createMany({
+            data: targets.map((target) => ({ packageId: pkg.id, targetPackageId: target.id })),
+          });
+        }
+      } else {
+        await tx.packageSwitch.deleteMany({ where: { packageId: pkg.id } });
+        if (targets.length) {
+          await tx.packageSwitch.createMany({
+            data: targets.map((target) => ({ packageId: pkg.id, targetPackageId: target.id })),
+          });
+        }
+      }
+    });
     return { ok: true as const };
   }
 
