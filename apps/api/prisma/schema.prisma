@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -104,21 +104,18 @@ model WalletEntry {
 }
 
 model Provider {
-  id        String    @id @default(uuid())
-  code      String    @unique
-  name      String
-  companies Company[]
-  packages  Package[]
+  id       String    @id @default(uuid())
+  code     String    @unique
+  name     String
+  packages Package[]
 }
 
 model Company {
-  id         String    @id @default(uuid())
-  code       String    @unique
-  name       String
-  image      String?
-  providerId String
-  provider   Provider  @relation(fields: [providerId], references: [id])
-  packages   Package[]
+  id       String    @id @default(uuid())
+  code     String    @unique
+  name     String
+  image    String?
+  packages Package[]
 }
 
 model Package {
@@ -136,6 +133,12 @@ model Package {
   agentPrice        Int
   posPrice          Int
   subscriberPrice   Int
+  forSale                Boolean  @default(true)
+  renewalBranchCost      Int
+  renewalMainPrice       Int
+  renewalAgentPrice      Int
+  renewalPosPrice        Int
+  renewalSubscriberPrice Int
   autoActivate      Boolean
   autoCharge        Boolean
   autoDisconnect    Boolean
@@ -155,6 +158,30 @@ model Package {
   enabled           Boolean  @default(true)
   lines             Line[]
   offers            PackageOffer[]
+  renewals          PackageRenewal[]
+  renewalTargets    PackageRenewal[] @relation("RenewalTarget")
+  switches           PackageSwitch[]
+  switchTargets     PackageSwitch[]  @relation("SwitchTarget")
+}
+
+model PackageRenewal {
+  id              String  @id @default(uuid())
+  packageId       String
+  package         Package @relation(fields: [packageId], references: [id])
+  targetPackageId String
+  target          Package @relation("RenewalTarget", fields: [targetPackageId], references: [id])
+
+  @@unique([packageId, targetPackageId])
+}
+
+model PackageSwitch {
+  id              String  @id @default(uuid())
+  packageId       String
+  package         Package @relation(fields: [packageId], references: [id])
+  targetPackageId String
+  target          Package @relation("SwitchTarget", fields: [targetPackageId], references: [id])
+
+  @@unique([packageId, targetPackageId])
 }
 
 model PackageOffer {
@@ -181,6 +208,7 @@ model Line {
   package   Package      @relation(fields: [packageId], references: [id])
   posId     String
   pos       User         @relation("LinePos", fields: [posId], references: [id])
+  terms     Json
   createdAt DateTime     @default(now())
   tasks     OfficeTask[]
 
