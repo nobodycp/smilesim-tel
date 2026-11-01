@@ -500,7 +500,7 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   display: block;
   position: relative;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 0.5rem;
   background: var(--rd-surface-3);
 }
 .skeleton::after {
@@ -508,7 +508,8 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rd-surface) 72%, transparent), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rd-surface) 55%, transparent), transparent);
+  animation: shimmer 1.6s infinite;
 }
 .sk-title { width: 168px; height: 22px; }
 .sk-lede { width: min(440px, 72%); height: 14px; margin-top: 10px; }
@@ -711,30 +712,32 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   line-height: 16px;
 }
 .filter-bar, .filters {
-  display: grid;
-  gap: 12px;
-  padding: 0.85rem 1rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
   border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-lg);
+  border-radius: 0.625rem;
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-card);
 }
 .filters { display: flex; flex-wrap: wrap; align-items: end; }
 .filter-panel {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 220px));
-  justify-content: start;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: end;
+  gap: 10px;
   padding: 0;
   border: 0;
   background: transparent;
 }
-.filter-panel label { display: grid; gap: 4px; color: var(--rd-muted); font-size: 11px; font-weight: 700; }
-.filter-panel input, .filter-panel select { height: 34px; background: var(--rd-surface); }
+.filter-panel label { display: grid; gap: 4px; min-width: 9rem; color: var(--rd-muted); font-size: 11px; font-weight: 700; }
+.filter-panel input, .filter-panel select { height: 34px; border-radius: 0.5rem; background: var(--rd-surface); }
 .filter-panel .quiet { height: 34px; }
 @media (max-width: 720px) {
-  .filter-panel { grid-template-columns: 1fr 1fr; }
+  .filter-panel { flex-direction: column; align-items: stretch; }
+  .filter-panel label { min-width: 0; }
 }
 .filters label { display: grid; gap: 4px; color: var(--rd-muted); font-size: 11px; font-weight: 600; }
 .filters select, .filters input { height: 34px; }
@@ -752,26 +755,25 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 .empty { margin: 0; color: var(--rd-muted); font-size: 13px; }
 .empty.empty-state {
   display: grid;
-  justify-items: start;
-  gap: 6px;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 100%;
+  padding: 24px 14px;
+  text-align: center;
 }
 .empty .empty-icon {
   display: grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
   background: var(--rd-surface-2);
-  color: var(--rd-muted);
+  color: var(--rd-faint);
 }
-.empty .empty-icon svg { width: 1rem; height: 1rem; }
-.empty .empty-title {
-  margin: 0;
-  color: var(--rd-ink);
-  font-size: 0.92rem;
-  font-weight: 700;
-}
-.empty .empty-text { margin: 0; color: var(--rd-muted); font-size: 13px; }
+.empty .empty-icon svg { width: 1.125rem; height: 1.125rem; }
+.empty .empty-title { margin: 0; color: var(--rd-ink); font-size: 0.9rem; font-weight: 600; }
+.empty .empty-text { margin: 0; color: var(--rd-muted); font-size: 12.5px; }
 .ops-toggle {
   height: 28px;
   padding: 0 10px;
