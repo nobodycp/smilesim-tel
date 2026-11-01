@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Desk, OutcomePick, lineStatus } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
+import { FilterBar } from '../../components/filter-bar';
 import { RowMenu } from '../../components/row-menu';
 import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type ApplyResult, type LineRow, type Outcome, type PackageRow, type PosChoice } from '../../lib/api';
@@ -142,40 +143,33 @@ export default function NumbersPage() {
       error={error}
       note={note}
     >
-      <div className="filter-bar">
-          <div className="pane-tools">
-            {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
-          </div>
-          <div className="filter-panel">
-            <label>
-              {t.numberSearch}
-              <input value={query} dir="ltr" onChange={(event) => setQuery(event.target.value)} />
-            </label>
-            <label>
-              {t.status}
-              <select value={status} onChange={(event) => setStatus(event.target.value)}>
-                <option value="">{t.allRows}</option>
-                <option value="active">{t.lineActive}</option>
-                <option value="frozen">{t.lineFrozen}</option>
-                <option value="disconnected">{t.lineDisconnected}</option>
-              </select>
-            </label>
-            <label>
-              {t.packageName}
-              <select value={pack} onChange={(event) => setPack(event.target.value)}>
-                <option value="">{t.allRows}</option>
-                {packageOptions.map((row) => (
-                  <option key={row.code} value={row.code}>
-                    {row.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="secondary" onClick={() => { setQuery(''); setNeedle(''); setStatus(''); setPack(''); }}>
-              {t.clearFilters}
-            </button>
-          </div>
-        </div>
+      <FilterBar onClear={() => { setQuery(''); setNeedle(''); setStatus(''); setPack(''); }} clearLabel={t.clearFilters}>
+        {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
+        <label>
+          {t.numberSearch}
+          <input value={query} dir="ltr" onChange={(event) => setQuery(event.target.value)} />
+        </label>
+        <label>
+          {t.status}
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            <option value="active">{t.lineActive}</option>
+            <option value="frozen">{t.lineFrozen}</option>
+            <option value="disconnected">{t.lineDisconnected}</option>
+          </select>
+        </label>
+        <label>
+          {t.packageName}
+          <select value={pack} onChange={(event) => setPack(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            {packageOptions.map((row) => (
+              <option key={row.code} value={row.code}>
+                {row.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </FilterBar>
         <section className="pane" id="lines">
           {ready && me && me.layer !== 'pos' && (
             <Dialog
