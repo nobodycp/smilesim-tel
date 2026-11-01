@@ -745,47 +745,6 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 @media (max-width: 720px) {
   .filter-panel { grid-template-columns: 1fr 1fr; }
 }
-.filter-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-lg);
-  background: var(--rd-surface);
-  box-shadow: var(--rd-shadow-card);
-}
-.filter-line label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  color: var(--rd-muted);
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.filter-line input,
-.filter-line select {
-  width: 8.5rem;
-  height: 34px;
-  background: var(--rd-surface);
-}
-.filter-line input { width: 11rem; }
-.filter-line .secondary { margin-inline-start: auto; }
-.filter-line > .stack {
-  display: inline-flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-}
-.filter-line .hint {
-  margin: 0;
-  color: var(--rd-muted);
-  font-size: 12px;
-  font-weight: 700;
-}
 .filters label { display: grid; gap: 4px; color: var(--rd-muted); font-size: 11px; font-weight: 600; }
 .filters select, .filters input { height: 34px; }
 .check {
