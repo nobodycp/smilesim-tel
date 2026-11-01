@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
 const focusable = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -94,7 +95,7 @@ export function Dialog({
       <div ref={panel} className="dialog" data-size={size} role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
         <header>
           <h2>{title}</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label={closeLabel}>×</button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label={closeLabel}><X size={18} aria-hidden="true" /></button>
         </header>
         {error ? <p className="error" role="alert">{error}</p> : null}
         <div className="dialog-body">{children}</div>
