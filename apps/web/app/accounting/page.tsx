@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Desk, Money, latinWhen } from '../../components/desk';
+import { FilterBar } from '../../components/filter-bar';
 import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type AccountingRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
@@ -53,14 +54,12 @@ export default function AccountingPage() {
 
   return (
     <Desk title={t.navAccounting} lede="" error={error} note="">
-      <div className="filter-bar">
-        <div className="filter-panel">
-          <label>
-            {t.numberSearch}
-            <input value={query} dir="ltr" onChange={(event) => setQuery(event.target.value)} />
-          </label>
-        </div>
-      </div>
+      <FilterBar onClear={() => { setQuery(''); setNeedle(''); }} clearLabel={t.clearFilters}>
+        <label>
+          {t.numberSearch}
+          <input value={query} dir="ltr" onChange={(event) => setQuery(event.target.value)} />
+        </label>
+      </FilterBar>
       <section className="pane">
         <div className="sheet">
           {!current ? (

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Desk, actionName, latinWhen, taskStatus } from '../../components/desk';
+import { FilterBar } from '../../components/filter-bar';
 import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type AuditRow } from '../../lib/api';
 import { useOffice } from '../../lib/office-session';
@@ -51,19 +52,17 @@ export default function AuditPage() {
 
   return (
     <Desk title={t.navAudit} lede="" error={error} note="">
-      <div className="filter-bar">
-        <div className="filter-panel">
-          <label>
-            {t.kind}
-            <select value={kind} onChange={(event) => setKind(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              {kinds.map((value) => (
-                <option key={value} value={value}>{actionName(t, value)}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+      <FilterBar onClear={() => setKind('')} clearLabel={t.clearFilters}>
+        <label>
+          {t.kind}
+          <select value={kind} onChange={(event) => setKind(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            {kinds.map((value) => (
+              <option key={value} value={value}>{actionName(t, value)}</option>
+            ))}
+          </select>
+        </label>
+      </FilterBar>
       <section className="pane">
         <div className="sheet">
           {!current ? (
