@@ -102,11 +102,12 @@ One of each. A new page uses these, it does not invent a sibling.
 
 ## Known gaps
 
-Shell gaps (Pearl rebuild phase 1 landed the header, sidebar, and drawer; two items remain):
+Shell gaps (Pearl rebuild phase 1 landed the header, sidebar, and drawer; four items remain):
 
 - `.sidebar` animates `width` (180ms), which is not transform or opacity.
 - At widths near 390px, the topbar's control row (search toggle, wallet chip, bell, theme, language, avatar) can approach the viewport width; not yet stress-tested below 390px.
-- `.shell-icon`, `.avatar-btn`, `.wallet-btn`, and `.shell-search-toggle` are not yet in the shared `:focus-visible` rule in `base.css` (every other interactive control is).
+- `.nav-link.locked` still uses `--rd-faint` for text (about 2.5:1 light, 3.4:1 dark); phase 1 fixed `.nav-label`'s contrast but not this selector.
+- Focus rings on shell controls are faint two ways: `.shell-icon`, `.avatar-btn`, `.wallet-btn`, and `.shell-search-toggle` are not in the shared `:focus-visible` rule in `base.css` at all, and the controls that are (`.icon-btn`, `.lang button`, `.nav-link`, `.user-btn`, `.menu a`/`.menu button`) still get the 16–20% `--rd-focus` halo there, not the solid `--rd-ink` outline `.btn` and the dialog header icons use.
 
 Outside the shell, left as is to keep the screens identical:
 
