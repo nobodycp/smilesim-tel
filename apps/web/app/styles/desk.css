@@ -985,3 +985,29 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
 .canvas .pane form > button:not(.secondary):not(.danger):hover {
   background: var(--rd-primary-bg);
 }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+}
+@media (max-width: 767px) {
+  .data-table--stack, .data-table--stack > tbody, .data-table--stack > tbody > tr { display: block; width: 100%; }
+  .data-table--stack > thead { display: none; }
+  .data-table--stack > tbody > tr { padding: 4px 2px; }
+  .data-table.data-table--stack > tbody > tr > td {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    width: 100%; max-width: none; padding: 3px 8px; text-align: end; white-space: normal; overflow-wrap: anywhere;
+  }
+  .data-table.data-table--stack > tbody > tr > td::before {
+    content: attr(data-label); flex-shrink: 0; color: var(--ink-4); font-size: 11px; font-weight: 500; text-align: start;
+  }
+  .data-table.data-table--stack > tbody > tr > td:not([data-label]) { justify-content: flex-end; }
+  .data-table.data-table--stack > tbody > tr > td[dir='ltr'] { flex-direction: row-reverse; }
+  .data-table.data-table--stack > tbody > tr > td:not([data-label]):empty { display: none; }
+  .data-table--stack > tbody > tr + tr { border-top: 1px solid var(--line-soft); }
+}
+.data-table th.num, .data-table td.num { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.data-table th.fit, .data-table td.fit { white-space: nowrap; }
+.data-table th.row-actions, .data-table td.row-actions { padding-inline: 8px; text-align: start; vertical-align: middle; white-space: nowrap; }
