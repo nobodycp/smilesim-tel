@@ -453,19 +453,26 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   background: var(--rd-surface-2);
   color: var(--rd-muted);
 }
+.stat-link { display: block; border-radius: var(--rd-radius-lg); color: inherit; }
+.stat-link:hover .stat { border-color: var(--rd-ink); }
 .shortcut-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .shortcut {
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   height: 36px;
-  padding: 0 14px;
+  padding-block: 0;
+  padding-inline: 12px 14px;
   border: 1px solid var(--rd-line);
   border-radius: 999px;
   background: var(--rd-surface);
   font-size: 13px;
   font-weight: 700;
+  white-space: nowrap;
 }
+.shortcut svg { flex: none; width: 1rem; height: 1rem; color: var(--rd-muted); }
 .shortcut:hover { border-color: var(--rd-ink); color: var(--rd-ink); }
+.shortcut:hover svg { color: var(--rd-ink); }
 .home-grid { display: grid; flex: 1; gap: 12px; min-height: 240px; }
 @media (min-width: 960px) {
   .home-grid { grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr); align-items: start; }

@@ -3,8 +3,10 @@
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Money, actionName, latinWhen, layerName } from '../components/desk';
+import { Icon, type IconName } from '../components/icon';
 import { Spinner, TableSkeleton } from '../components/loading';
 import { OfficeShell } from '../components/office-shell';
+import { Stat, StatRow } from '../components/stat';
 import { api, type HomePayload } from '../lib/api';
 import { useIdentity } from '../lib/identity';
 import { useOffice } from '../lib/office-session';
@@ -51,20 +53,20 @@ export default function HomePage() {
     await load();
   }
 
-  const shortcuts = layer === 'pos'
+  const shortcuts: { href: string; label: string; icon: IconName }[] = layer === 'pos'
     ? [
-        { href: '/numbers', label: t.navNumbers },
-        { href: '/packages', label: t.navPlans },
-        { href: '/tasks', label: t.navTasks },
-        { href: '/operations', label: t.navOperations },
+        { href: '/numbers', label: t.navNumbers, icon: 'numbers' },
+        { href: '/packages', label: t.navPlans, icon: 'plans' },
+        { href: '/tasks', label: t.navTasks, icon: 'tasks' },
+        { href: '/operations', label: t.navOperations, icon: 'plans' },
       ]
     : [
-        { href: '/users', label: t.navUsers },
-        ...(me?.isBranchOwner ? [{ href: '/roles', label: t.navRoles }] : []),
-        { href: '/packages', label: t.navPlans },
-        { href: '/numbers', label: t.navNumbers },
-        { href: '/tasks', label: t.navTasks },
-        ...(layer === 'branch' ? [{ href: '/companies', label: t.navCompanies }] : []),
+        { href: '/users', label: t.navUsers, icon: 'staff' },
+        ...(me?.isBranchOwner ? [{ href: '/roles', label: t.navRoles, icon: 'lock' as const }] : []),
+        { href: '/packages', label: t.navPlans, icon: 'plans' },
+        { href: '/numbers', label: t.navNumbers, icon: 'numbers' },
+        { href: '/tasks', label: t.navTasks, icon: 'tasks' },
+        ...(layer === 'branch' ? [{ href: '/companies', label: t.navCompanies, icon: 'providers' as const }] : []),
       ];
 
   return (
@@ -78,26 +80,18 @@ export default function HomePage() {
         </header>
         <section className="home-access">
           <p className="section-label">{t.quickAccess}</p>
-          <div className="stat-row">
-            <Link className="stat-card" href="/tasks?status=pending">
-              <span className="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg></span>
-              <span>{t.navTasks}</span>
-              <strong>{home ? home.pendingTasks : <span className="skeleton sk-num" />}</strong>
-              <small>{t.pending}</small>
+          {/* Stat stays presentational so non-link KPIs can reuse it; the link wraps it here. */}
+          <StatRow>
+            <Link className="stat-link" href="/tasks?status=pending">
+              <Stat icon="tasks" tone="warning" label={t.navTasks} value={home ? home.pendingTasks : <span className="skeleton sk-num" />} meta={t.pending} />
             </Link>
-            <Link className="stat-card" href="/numbers?status=active">
-              <span className="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 4h10v16H7zM10 18h4" /></svg></span>
-              <span>{t.activeLines}</span>
-              <strong>{home ? home.activeLines : <span className="skeleton sk-num" />}</strong>
-              <small>{t.lineActive}</small>
+            <Link className="stat-link" href="/numbers?status=active">
+              <Stat icon="numbers" tone="success" label={t.activeLines} value={home ? home.activeLines : <span className="skeleton sk-num" />} meta={t.lineActive} />
             </Link>
-            <Link className="stat-card" href="/numbers?status=disconnected">
-              <span className="stat-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h10" /></svg></span>
-              <span>{t.inactiveLines}</span>
-              <strong>{home ? home.inactiveLines : <span className="skeleton sk-num" />}</strong>
-              <small>{t.lineDisconnected}</small>
+            <Link className="stat-link" href="/numbers?status=disconnected">
+              <Stat icon="numbers" tone="danger" label={t.inactiveLines} value={home ? home.inactiveLines : <span className="skeleton sk-num" />} meta={t.lineDisconnected} />
             </Link>
-          </div>
+          </StatRow>
         </section>
         {me && (
           <section>
@@ -105,7 +99,8 @@ export default function HomePage() {
             <div className="shortcut-row">
               {shortcuts.map((item) => (
                 <Link key={item.label} className="shortcut" href={item.href}>
-                  {item.label}
+                  <Icon name={item.icon} />
+                  <span>{item.label}</span>
                 </Link>
               ))}
             </div>
