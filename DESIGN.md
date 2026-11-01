@@ -88,6 +88,7 @@ One of each. A new page uses these, it does not invent a sibling.
 - Primary button: ink fill. One per group. The single special action may be accent. Destructive is an outline in danger (border and text), not a filled red.
 - Badge: label plus a dot. Active, pending, danger, neutral.
 - KPI: `StatRow` wraps a row of `Stat` items. Each `Stat` takes an `icon` (`IconName` from `components/icon.tsx`), `tone` (`success`, `warning`, `danger`, or `muted`), `label`, a large tabular `value`, and optional `meta` below a hairline divider. The icon sits in `.stat-icon` with a tone tint. This is the only KPI pattern; do not use ad-hoc `.stat-card` markup.
+- Filter: `FilterBar` wraps `.filter-bar`/`.filter-panel` — a card of `<label>` fields above the table, with an optional trailing clear button (`onClear`/`clearLabel`). This is the only filter pattern; do not write a bare `.filter-line` or inline filter markup on a new page.
 - Empty: `EmptyState` inside `.empty` — muted icon in a small circle on `--rd-surface-2`, title (`children`), optional secondary `text`. Not a lone italic line.
 - Feedback: one alert line for an error, one for a success. No browser `alert` for success.
 
@@ -101,12 +102,11 @@ One of each. A new page uses these, it does not invent a sibling.
 
 ## Known gaps
 
-Shell gaps (Pearl rebuild phase 1 targets the header, sidebar, and drawer; until then):
+Shell gaps (Pearl rebuild phase 1 landed the header, sidebar, and drawer; two items remain):
 
 - `.sidebar` animates `width` (180ms), which is not transform or opacity.
-- `.nav-label` and `.nav-link.locked` use `--rd-faint` for text (about 2.5:1 light, 3.4:1 dark).
-- `.shell-icon` and `.avatar-btn` are 2.6rem (about 41.6px), under 44px, and the topbar has no 44px mode.
-- Focus rings on `.icon-btn` (inside the drawer), `.lang`, `.nav-link`, `.user-btn`, and `.menu` items are the 16% `--rd-focus` outline, which is faint.
+- At widths near 390px, the topbar's control row (search toggle, wallet chip, bell, theme, language, avatar) can approach the viewport width; not yet stress-tested below 390px.
+- `.shell-icon`, `.avatar-btn`, `.wallet-btn`, and `.shell-search-toggle` are not yet in the shared `:focus-visible` rule in `base.css` (every other interactive control is).
 
 Outside the shell, left as is to keep the screens identical:
 
