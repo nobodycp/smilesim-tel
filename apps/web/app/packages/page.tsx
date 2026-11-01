@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Desk, Money, OutcomePick, whole } from '../../components/desk';
+import { EmptyState } from '../../components/empty-state';
+import { FilterBar } from '../../components/filter-bar';
 import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type Outcome, type PackageRow } from '../../lib/api';
 import { useDoor } from '../../lib/door-context';
@@ -305,52 +307,56 @@ export default function PlansPage() {
 
   return (
     <Desk title={t.plansTitle} lede="" error={error} note={note}>
-      <div className="filter-bar">
-        <div className="filter-panel">
-          <label>
-            {t.company}
-            <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              {companyNames.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
-      <div className="stack">
-        {showProvider
-          ? sections.map((section) => (
-              <section className="pane" key={section.key}>
-                <header className="pane-head">
-                  <div>
-                    <p className="eyebrow">{t.provider}</p>
-                    <h2>{section.provider}</h2>
-                  </div>
-                </header>
-                {section.companies.map((company) => (
-                  <div className="pane-body" key={company.name}>
+      <FilterBar onClear={() => setCompanyFilter('')} clearLabel={t.clearFilters}>
+        <label>
+          {t.company}
+          <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            {companyNames.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+      </FilterBar>
+      {listed.length === 0 ? (
+        <section className="pane">
+          <EmptyState>{t.noLines}</EmptyState>
+        </section>
+      ) : (
+        <div className="stack">
+          {showProvider
+            ? sections.map((section) => (
+                <section className="pane" key={section.key}>
+                  <header className="pane-head">
+                    <div>
+                      <p className="eyebrow">{t.provider}</p>
+                      <h2>{section.provider}</h2>
+                    </div>
+                  </header>
+                  {section.companies.map((company) => (
+                    <div className="pane-body" key={company.name}>
+                      <div>
+                        <p className="eyebrow">{t.company}</p>
+                        <strong>{company.name}</strong>
+                      </div>
+                      {priceTable(company.rows)}
+                    </div>
+                  ))}
+                </section>
+              ))
+            : sections[0]?.companies.map((company) => (
+                <section className="pane" key={company.name}>
+                  <header className="pane-head">
                     <div>
                       <p className="eyebrow">{t.company}</p>
-                      <strong>{company.name}</strong>
+                      <h2>{company.name}</h2>
                     </div>
-                    {priceTable(company.rows)}
-                  </div>
-                ))}
-              </section>
-            ))
-          : sections[0]?.companies.map((company) => (
-              <section className="pane" key={company.name}>
-                <header className="pane-head">
-                  <div>
-                    <p className="eyebrow">{t.company}</p>
-                    <h2>{company.name}</h2>
-                  </div>
-                </header>
-                <div className="pane-body">{priceTable(company.rows)}</div>
-              </section>
-            ))}
-      </div>
+                  </header>
+                  <div className="pane-body">{priceTable(company.rows)}</div>
+                </section>
+              ))}
+        </div>
+      )}
     </Desk>
   );
 }
