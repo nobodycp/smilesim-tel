@@ -153,6 +153,7 @@ export const he: Copy = {
   packageLive: 'מצב לכולם',
   chainTab: 'השרשרת',
   offersTab: 'מחירים מיוחדים',
+  noOffers: 'אין מחירים מיוחדים עדיין.',
   runTab: 'הפעלה',
   overviewTab: 'סקירה',
   pricesTab: 'מחירים',

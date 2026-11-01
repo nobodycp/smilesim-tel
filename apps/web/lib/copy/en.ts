@@ -153,6 +153,7 @@ export const en: Copy = {
   packageLive: 'Status for everyone',
   chainTab: 'Chain',
   offersTab: 'Special prices',
+  noOffers: 'No special prices yet.',
   runTab: 'Running',
   overviewTab: 'Overview',
   pricesTab: 'Prices',

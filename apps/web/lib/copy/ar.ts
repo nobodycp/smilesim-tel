@@ -153,6 +153,7 @@ export const ar = {
   packageLive: 'الحالة عند الكل',
   chainTab: 'السلسلة',
   offersTab: 'المخصصون',
+  noOffers: 'لا تخصيصات بعد.',
   runTab: 'التشغيل',
   overviewTab: 'نظرة عامة',
   pricesTab: 'الأسعار',

@@ -419,7 +419,7 @@ export default function PackageSheetPage() {
                     </label>
                     <button type="button" disabled={!loginName || offerPrice === ''} onClick={() => void saveOffer()}>{t.save}</button>
                   </div>
-                  <DataTable bare columns={offerColumns} rows={sheet.offers} rowKey={(offer) => offer.loginName} />
+                  <DataTable bare columns={offerColumns} rows={sheet.offers} rowKey={(offer) => offer.loginName} empty={t.noOffers} />
                 </div>
               )}
             </>
