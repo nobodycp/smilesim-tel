@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Desk, Money, actionName, latinWhen } from '../../components/desk';
+import { FilterBar } from '../../components/filter-bar';
 import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type LedgerRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
@@ -54,35 +55,33 @@ export default function OperationsPage() {
 
   return (
     <Desk title={t.navOperations} lede="" error={error} note="">
-      <div className="filter-bar">
-        <div className="filter-panel">
-          <label>
-            {t.kind}
-            <select value={kind} onChange={(event) => setKind(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              {kinds.map((item) => (
-                <option key={item} value={item}>{actionName(t, item)}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {t.direction}
-            <select value={direction} onChange={(event) => setDirection(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              <option value="in">{t.increase}</option>
-              <option value="out">{t.decrease}</option>
-            </select>
-          </label>
-          <label>
-            {t.from}
-            <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-          </label>
-          <label>
-            {t.to}
-            <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-          </label>
-        </div>
-      </div>
+      <FilterBar onClear={() => { setKind(''); setDirection(''); setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
+        <label>
+          {t.kind}
+          <select value={kind} onChange={(event) => setKind(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            {kinds.map((item) => (
+              <option key={item} value={item}>{actionName(t, item)}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t.direction}
+          <select value={direction} onChange={(event) => setDirection(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            <option value="in">{t.increase}</option>
+            <option value="out">{t.decrease}</option>
+          </select>
+        </label>
+        <label>
+          {t.from}
+          <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+        </label>
+        <label>
+          {t.to}
+          <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+        </label>
+      </FilterBar>
       <section className="pane">
         <div className="sheet">
           {!current ? <TableSkeleton rows={6} columns={7} /> : (
