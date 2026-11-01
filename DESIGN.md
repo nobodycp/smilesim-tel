@@ -19,12 +19,12 @@ All CSS reads `--rd-*` tokens. The old blue set (`--bg`, `--accent`, `--ink-3`, 
 | Order | File | Holds |
 |---|---|---|
 | 1 | `tokens.css` | every `--rd-*` token, light and dark |
-| 2 | `base.css` | reset, element defaults, `.icon-btn`, language switch, brand mark, motion opt-in |
+| 2 | `base.css` | reset, element defaults, default SVG `stroke-width: 2.2`, `.icon-btn`, language switch, brand mark, motion opt-in |
 | 3 | `doors.css` | door picker on the bare host |
 | 4 | `auth.css` | sign-in frame |
 | 5 | `forms.css` | page type, fields, buttons, `.error` / `.note` |
-| 6 | `shell.css` | frozen: sidebar, drawer, topbar, shell panels, search, notices, wallet chip |
-| 7 | `desk.css` | canvas, `.page-head`, `.filter-bar`, `.pane`, `.steps`, `.data`, `.badge`, `.empty`, stats, skeletons, page compositions |
+| 6 | `shell.css` | sidebar, drawer, topbar, shell panels, search, notices, wallet chip |
+| 7 | `desk.css` | canvas, `.page-head`, `.filter-bar`, `.pane`, `.steps`, `.data`, `.badge`, `.empty`, `.stat`, skeletons, page compositions |
 | 8 | `dialog.css` | toast, `Dialog`, `.perm-grid`, `.op-blocks`, `RowMenu` |
 | 9 | `controls.css` | checkbox and radio size, last so it beats every `input` height rule |
 | 10 | `responsive.css` | shell and layout breakpoints, the 44px touch-target block |
@@ -76,7 +76,7 @@ Fonts come from `next/font` in `apps/web/app/layout.tsx`. No Google stylesheet l
 
 ## Inner pages
 
-The shell (sidebar and header) is outside this contract. New screens compose `.page-head`, `.filter-bar`, `.pane`, `.steps`, `.data`, `.badge`, `Dialog` (`components/dialog.tsx`), and `RowMenu` (`components/row-menu.tsx`). Spacing steps are 4, 8, 12, and 14. Control height inside a pane or filter is 34px. Under 720px every control on the canvas, in a dialog, in a row menu, and on the sign-in screen is at least 44px (sign-in fields and buttons are 42px and 40px above that). Tables keep text and status at the start and numeric columns at the end, with `class="num"` on both the header and the cell. Identifiers that are Latin digits stay in `<bdi dir="ltr">`. The operations column is `class="row-actions"`. Contextual row actions are only the horizontal ellipsis in `RowMenu`. Dialogs use a header, a scrolling body, and a footer; `size` is `confirm`, `form`, or `wide`. Checkboxes stay 16px inside `label.check` and never inherit text-field height. `.empty` inside a pane or sheet already carries 14px padding, so a page never sets it inline.
+New screens compose `.page-head`, `.filter-bar`, `.pane`, `.steps`, `.data`, `.badge`, `Stat` / `StatRow` (`components/stat.tsx`), `EmptyState` (`components/empty-state.tsx`), `Dialog` (`components/dialog.tsx`), and `RowMenu` (`components/row-menu.tsx`). Spacing steps are 4, 8, 12, and 14. Control height inside a pane or filter is 34px. Under 720px every control on the canvas, in a dialog, in a row menu, and on the sign-in screen is at least 44px (sign-in fields and buttons are 42px and 40px above that). Tables keep text and status at the start and numeric columns at the end, with `class="num"` on both the header and the cell. Identifiers that are Latin digits stay in `<bdi dir="ltr">`. The operations column is `class="row-actions"`. Contextual row actions are only the horizontal ellipsis in `RowMenu`. Dialogs use a header, a scrolling body, and a footer; `size` is `confirm`, `form`, or `wide`. Checkboxes stay 16px inside `label.check` and never inherit text-field height. `.empty` inside a pane or sheet already carries 14px padding, so a page never sets it inline.
 
 ## Components
 
@@ -87,19 +87,21 @@ One of each. A new page uses these, it does not invent a sibling.
 - Table: quiet header, hairline rows, text at the reading start, numbers tabular and aligned to the reading end.
 - Primary button: ink fill. One per group. The single special action may be accent. Destructive is an outline in danger (border and text), not a filled red.
 - Badge: label plus a dot. Active, pending, danger, neutral.
+- KPI: `StatRow` wraps a row of `Stat` items. Each `Stat` takes an `icon` (`IconName` from `components/icon.tsx`), `tone` (`success`, `warning`, `danger`, or `muted`), `label`, a large tabular `value`, and optional `meta` below a hairline divider. The icon sits in `.stat-icon` with a tone tint. This is the only KPI pattern; do not use ad-hoc `.stat-card` markup.
+- Empty: `EmptyState` inside `.empty` — muted icon in a small circle on `--rd-surface-2`, title (`children`), optional secondary `text`. Not a lone italic line.
 - Feedback: one alert line for an error, one for a success. No browser `alert` for success.
 
 ## Motion and access
 
 - Motion is 150–450ms, transform and opacity only, and exists only on the sidebar width, the drawer slide, the notification bell, the spinner, and the skeleton shimmer. All of it sits under `@media (prefers-reduced-motion: no-preference)` in `styles/base.css`, so there is no reduced-motion override and no `!important`. Dialogs, menus, and toasts appear without motion.
 - Targets at least 44px on touch widths.
-- Text contrast at least 4.5:1 in both themes. `--rd-faint` is the one token below that; it is never used for text outside the frozen shell.
+- Text contrast at least 4.5:1 in both themes. `--rd-faint` is the one token below that; it is never used for body text on the canvas.
 - Visible focus. Text inputs show an ink border plus the `--rd-focus` halo. Page-level buttons and links use a 2px solid `--rd-ink` outline.
 - Check light and dark.
 
 ## Known gaps
 
-Frozen shell, not changed (the header, sidebar, and drawer are finished; the owner decides):
+Shell gaps (Pearl rebuild phase 1 targets the header, sidebar, and drawer; until then):
 
 - `.sidebar` animates `width` (180ms), which is not transform or opacity.
 - `.nav-label` and `.nav-link.locked` use `--rd-faint` for text (about 2.5:1 light, 3.4:1 dark).

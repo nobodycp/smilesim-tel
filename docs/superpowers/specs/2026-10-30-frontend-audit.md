@@ -112,7 +112,7 @@
 
 ## قرارات تنتظر المالك
 
-1. **الخطوط:** نبقى على Tajawal (كما في الكود وفي `content-ui.mdc`) ونصحّح `DESIGN.md` و`pearl-ui.mdc`، أم ننتقل فعلاً إلى IBM Plex Sans Arabic + Noto Kufi + Inter Tight؟
+1. **الخطوط:** نبقى على Tajawal (كما في الكود وفي `content-ui.mdc`) ونصحّح `DESIGN.md` و`pearl-ui.mdc`، أم ننتقل فعلاً إلى IBM Plex Sans Arabic + Noto Kufi + Inter Tight؟ **— مُغلَق:** نبقى على Tajawal (مع IBM Plex Sans Hebrew للعبري)، حسب القرار ٣ في `docs/superpowers/specs/2026-11-01-pearl-rebuild-phase1-shell-home-design.md`.
 2. **أنواع الـ API:** حزمة `packages/contract` مشتركة، أم توليد من OpenAPI، أم نبقي النسخ اليدوي مع اختبار عقد؟
 3. **الرسائل:** الباك إند يعيد `code` ثابتاً (مثل `E_LOGIN_REQUIRED`) والواجهة تترجم، أم تبقى الرسائل العربية؟
 4. **الفرع الافتراضي:** نسمّي `main` وندمج `feature/login` عبر PR؟

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Content UI
 
-The header and sidebar are finished. Do not restyle `.topbar`, `.sidebar`, `.drawer`, or `.shell-*`.
+The shell (topbar, sidebar, drawer) is in active Pearl rebuild — see `docs/superpowers/specs/2026-11-01-pearl-rebuild-phase1-shell-home-design.md`. Work on this phase may restyle `.topbar`, `.sidebar`, `.drawer`, and `.shell-*`. Inner canvas pages still follow the patterns below.
 
 Inner pages live in `.canvas` and use the shared pieces:
 
