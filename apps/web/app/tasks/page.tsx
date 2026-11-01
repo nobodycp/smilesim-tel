@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Desk, Money, actionName, taskStatus } from '../../components/desk';
+import { FilterBar } from '../../components/filter-bar';
 import { Spinner, TableSkeleton } from '../../components/loading';
 import { RowMenu } from '../../components/row-menu';
 import { api, type TaskRow } from '../../lib/api';
@@ -67,20 +68,18 @@ export default function TasksPage() {
 
   return (
     <Desk title={t.tasksTitle} lede="" error={error} note={note}>
-      <div className="filter-bar">
-        <div className="filter-panel">
-          <label>
-            {t.status}
-            <select value={focus} onChange={(event) => setFocus(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              <option value="pending">{taskStatus(t, 'pending')}</option>
-              <option value="working">{taskStatus(t, 'working')}</option>
-              <option value="done">{taskStatus(t, 'done')}</option>
-              <option value="cancelled">{taskStatus(t, 'cancelled')}</option>
-            </select>
-          </label>
-        </div>
-      </div>
+      <FilterBar onClear={() => setFocus('')} clearLabel={t.clearFilters}>
+        <label>
+          {t.status}
+          <select value={focus} onChange={(event) => setFocus(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            <option value="pending">{taskStatus(t, 'pending')}</option>
+            <option value="working">{taskStatus(t, 'working')}</option>
+            <option value="done">{taskStatus(t, 'done')}</option>
+            <option value="cancelled">{taskStatus(t, 'cancelled')}</option>
+          </select>
+        </label>
+      </FilterBar>
       <section className="pane">
         {!current ? <TableSkeleton rows={5} columns={6} /> : shown.length === 0 ? (
           <p className="empty" style={{ padding: 14 }}>
