@@ -170,14 +170,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--rd-line);
-  border-radius: 8px;
-  background: var(--rd-surface);
-  color: var(--rd-ink-2);
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--rd-faint);
 }
-.row-menu-btn[aria-expanded='true'] { border-color: var(--rd-ink); color: var(--rd-ink); }
+.row-menu-btn:hover { background: var(--rd-surface-3); color: var(--rd-ink); }
+.row-menu-btn[aria-expanded='true'] { background: var(--rd-surface-3); color: var(--rd-ink); }
 .row-menu-btn svg { width: 16px; height: 16px; }
 .row-menu-panel {
   position: fixed;
@@ -187,11 +188,11 @@
   flex-direction: column;
   align-items: stretch;
   width: max-content;
-  min-width: 9.5rem;
+  min-width: 10rem;
   max-width: min(280px, calc(100vw - 16px));
-  padding: 4px;
-  border: 1px solid color-mix(in srgb, var(--rd-ink) 14%, var(--rd-line));
-  border-radius: 10px;
+  padding: 4px 0;
+  border: 1px solid var(--rd-line);
+  border-radius: 0.5rem;
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
 }
@@ -200,19 +201,17 @@
   align-items: center;
   gap: 8px;
   width: auto;
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: 32px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 8px;
   background: transparent;
-  color: var(--rd-ink);
+  color: var(--rd-ink-2);
   font-size: 13px;
   font-weight: 600;
   text-align: start;
   white-space: nowrap;
 }
-.row-menu-panel button svg { width: 16px; height: 16px; flex: none; }
-.row-menu-rule { display: block; height: 1px; margin: 4px 6px; background: var(--rd-line); }
-.row-menu-panel button:hover { background: var(--rd-surface-2); }
+.row-menu-panel button:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
 .row-menu-panel button.danger { color: var(--rd-danger); }
 .row-menu-panel button.danger:hover { background: var(--rd-danger-soft); }
+.row-menu-rule { display: block; height: 1px; margin: 4px 0; background: var(--rd-line); }

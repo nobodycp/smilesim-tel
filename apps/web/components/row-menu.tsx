@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { MoreHorizontal } from 'lucide-react';
 
 export type RowIcon = 'edit' | 'extend' | 'undo' | 'check' | 'ban' | 'trash' | 'enter' | 'key' | 'fund' | 'move';
 
@@ -118,11 +119,7 @@ export function RowMenu({ label, items }: { label: string; items: RowAction[] })
           setOpen((value) => !value);
         }}
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" />
-          <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
-          <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" />
-        </svg>
+        <MoreHorizontal size={16} aria-hidden="true" />
       </button>
       {open && createPortal(
         <div
