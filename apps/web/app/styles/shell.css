@@ -1,4 +1,4 @@
-/* Frozen: sidebar, drawer, topbar, shell panels, search, notices, wallet chip. Only variable names may change here. */
+/* Sidebar, drawer, topbar, shell panels, search, notices, wallet chip. */
 .office {
   display: flex;
   height: 100dvh;
@@ -36,43 +36,67 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 16px 12px 8px;
+  padding: 16px 12px 12px;
   text-align: center;
 }
 .brand-block.compact { padding-inline: 8px; }
 .brand-block.compact .brand-rule { width: 20px; }
 .drawer-close { position: absolute; top: 8px; inset-inline-end: 8px; }
-.side-nav { flex: 1; overflow: auto; padding: 4px 10px 8px; }
+.side-nav { flex: 1; overflow: auto; padding: 8px 10px; }
+/* The label and the link icons start on the same edge: 12px inside the nav padding. */
 .nav-label {
-  margin: 14px 8px 4px;
-  color: var(--rd-faint);
+  margin: 16px 0 4px;
+  padding-inline: 12px;
+  color: var(--rd-muted);
   font-size: 11px;
   font-weight: 700;
 }
+/* Tajawal loads 400, 500, 700 and 800, so the old 600 drew as 700 and rest looked as heavy as active. Rest is 500, active is 700. */
 .nav-link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
   min-height: 36px;
   margin-top: 2px;
-  padding: 0 10px;
+  padding: 0 12px;
   border-radius: 8px;
   color: var(--rd-ink-2);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   text-align: start;
 }
 .nav-link svg { flex: none; color: var(--rd-muted); }
+/* Hover is a lighter wash than the active fill (--rd-surface-2, about 4% ink). The popover items mix 8% ink, which is
+   darker than --rd-surface-2 and would make hover stronger than active, so the nav uses the same mix at 3%. */
+.nav-link:hover:not(.locked):not(.active) {
+  background: color-mix(in srgb, var(--rd-ink) 3%, var(--rd-surface));
+  color: var(--rd-ink);
+}
+.nav-link:hover:not(.locked):not(.active) svg { color: var(--rd-ink); }
 .nav-link.active {
   background: var(--rd-surface-2);
   color: var(--rd-ink);
   font-weight: 700;
 }
 .nav-link.active svg { color: var(--rd-ink); }
+/* The rail is ink, not the accent: the brand rule is the one accent on this screen. */
+.nav-link.active::before {
+  content: '';
+  position: absolute;
+  inset-block: 25%;
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--rd-ink);
+}
 .nav-link.locked { color: var(--rd-faint); cursor: default; }
 .nav-link.locked svg:last-child { width: 13px; height: 13px; margin-inline-start: auto; }
-.nav-link:hover:not(.locked) { background: var(--rd-surface-2); }
+/* Collapsed rail: the icon is the whole link, so it sits in the middle of the 40px tile. */
+.sidebar.collapsed .nav-link { justify-content: center; padding-inline: 0; }
+/* The drawer only shows on touch widths. */
+.drawer .nav-link { min-height: 44px; }
 .side-foot { border-top: 1px solid var(--rd-line-soft); padding: 8px; }
 .collapse-btn { display: none; }
 .sidebar .collapse-btn { display: flex; }
@@ -110,22 +134,39 @@
   white-space: nowrap;
 }
 .menu-btn { display: none; }
+/* One box for every topbar control; the touch size is at the end of this file. The language button is
+   .shell-icon.shell-lang, so it takes the same box. The avatar keeps its circle. DESIGN.md defines only
+   --rd-radius-lg (1.125rem), so the corner is three quarters of it (13.5px): a third of the 40px side,
+   the same ratio account manager uses for 0.85rem on 2.6rem. */
+.shell-icon,
+.avatar-btn,
+.wallet-btn,
+.shell-search-toggle,
+.shell-search.open {
+  min-width: 2.5rem;
+  height: 2.5rem;
+}
+.shell-icon,
+.avatar-btn { width: 2.5rem; }
+.shell-icon,
+.wallet-btn,
+.shell-search-toggle { border-radius: calc(var(--rd-radius-lg) * 0.75); }
+/* One hover fill for all of them. An open panel reads as pressed. */
+.shell-icon:hover,
+.shell-icon[aria-expanded='true'],
+.wallet-btn:hover,
+.wallet-btn[aria-expanded='true'],
+.shell-search-toggle:hover { background: var(--rd-surface-3); }
 .shell-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.6rem;
-  height: 2.6rem;
-  min-width: 2.6rem;
-  min-height: 2.6rem;
   padding: 0;
   border: 1px solid var(--rd-line);
-  border-radius: 0.85rem;
   background: var(--rd-surface);
   color: var(--rd-ink);
 }
 .menu-btn.shell-icon { display: none; }
-.shell-icon:hover { background: var(--rd-surface-2); }
 .shell-icon svg { width: 18px; height: 18px; }
 .topbar .shell-icon .shell-sun,
 .topbar .shell-icon .shell-moon { display: none; }
@@ -142,27 +183,26 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.6rem;
-  height: 2.6rem;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: transparent;
 }
 .avatar-btn:hover .avatar,
-.avatar-btn[aria-expanded='true'] .avatar { box-shadow: 0 0 0 3px var(--rd-line); }
+.avatar-btn[aria-expanded='true'] .avatar { box-shadow: 0 0 0 3px var(--rd-surface-3); }
 .avatar {
   display: grid;
   place-items: center;
-  width: 2.6rem;
-  height: 2.6rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   background: var(--rd-primary-bg);
   color: var(--rd-primary-fg);
   font-size: 1rem;
   font-weight: 700;
 }
-.shell-identity .avatar { width: 2.6rem; height: 2.6rem; }
+/* In the topbar the avatar fills its button, so it follows the touch size too. */
+.avatar-btn .avatar { width: 100%; height: 100%; }
 .shell-panel {
   position: absolute;
   z-index: 30;
@@ -226,7 +266,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .shell-item.unread { background: var(--rd-surface-2); }
 .shell-item small { color: var(--rd-muted); }
 .shell-search { position: relative; }
-.shell-search.open { width: clamp(8.5rem, 14vw, 15rem); height: 2.6rem; }
+.shell-search.open { width: clamp(8.5rem, 14vw, 15rem); }
 .notice-wrap .shell-panel { width: min(21rem, 80vw); max-height: 420px; overflow: auto; }
 .shell-search-toggle {
   display: inline-flex;
@@ -234,10 +274,8 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   justify-content: flex-start;
   gap: 0.55rem;
   width: clamp(8.5rem, 14vw, 15rem);
-  height: 2.6rem;
   padding-inline: 0.8rem 0.5rem;
   border: 1px solid var(--rd-line);
-  border-radius: 0.95rem;
   background: var(--rd-surface);
   color: var(--rd-muted);
   font-size: 0.88rem;
@@ -272,7 +310,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  min-height: 2.6rem;
+  min-height: 2.5rem;
   padding-inline: 0.8rem 0.5rem;
 }
 .shell-search-field svg { width: 18px; height: 18px; flex: none; color: var(--rd-muted); }
@@ -355,17 +393,15 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .wallet-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  height: 2.6rem;
   padding: 0 0.7rem;
   border: 1px solid var(--rd-line);
-  border-radius: 0.85rem;
   background: var(--rd-surface);
   color: var(--rd-ink);
   font-weight: 700;
 }
-.wallet-btn:hover { background: var(--rd-surface-3); }
-.wallet-btn svg { width: 16px; height: 16px; }
+.wallet-btn svg { width: 18px; height: 18px; }
 .wallet-pop {
   position: absolute;
   z-index: 30;
@@ -429,3 +465,20 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .notice-pop button.item.unread { background: var(--rd-accent-soft); }
 .notice-pop strong { font-size: 13px; }
 .notice-pop small { color: var(--rd-muted); }
+/* Touch: the shell turns to the drawer at 767px (responsive.css), so the topbar controls reach 44px there.
+   The .topbar prefix lifts the search selectors over the 2.6rem width responsive.css gives them at this width. */
+@media (max-width: 767px) {
+  .shell-icon,
+  .avatar-btn,
+  .wallet-btn,
+  .shell-search-toggle,
+  .shell-search.open {
+    min-width: 2.75rem;
+    height: 2.75rem;
+  }
+  .shell-icon,
+  .avatar-btn,
+  .topbar .shell-search-toggle,
+  .topbar .shell-search.open { width: 2.75rem; }
+  .shell-search-field { min-height: 2.75rem; }
+}
