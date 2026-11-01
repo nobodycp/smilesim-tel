@@ -85,15 +85,6 @@
 .desk > .stack.flow { flex: none; min-height: auto; overflow: visible; }
 .desk > .stack.flow > .pane,
 .desk > .stack.flow > .pane:last-child { flex: none; display: block; min-height: auto; }
-.account-facts {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px 24px;
-}
-.account-facts div { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
-.account-facts span { color: var(--rd-muted); font-size: 12px; font-weight: 700; }
-.account-facts b,
-.account-facts bdi { color: var(--rd-ink); font-size: 15px; font-weight: 700; }
 .grant-board {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -151,7 +142,6 @@
   border-block-start: 1px solid var(--rd-line);
 }
 @media (max-width: 960px) {
-  .account-facts,
   .grant-board,
   .grant-head { grid-template-columns: 1fr; }
   .grant-head .grant-line.head + .grant-line.head { display: none; }
