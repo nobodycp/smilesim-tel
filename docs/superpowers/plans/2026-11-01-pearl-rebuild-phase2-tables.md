@@ -646,9 +646,86 @@ This page has two separate filter call sites (`BranchPackages`, and the default 
 
 ---
 
+## Task 6b: Accounting and Audit filter swap (scope addendum)
+
+**Added 2026-11-01, after Task 6 landed.** Task 6's implementer found that Task 7's "no `.filter-line` left" precondition would fail: `apps/web/app/accounting/page.tsx` and `apps/web/app/audit/page.tsx` — two pages outside this plan's original 8-page scope, part of other unrelated owner WIP — also use `.filter-line`. Presented to the user as a three-way choice (defer Task 7, expand scope to convert these two pages too, or delete the CSS anyway and let those two pages break); user chose to expand scope. Both pages have a clean committed-HEAD baseline (`.filter-bar`/`.filter-panel`, single field each), same pattern as Tasks 2-5, so the standard git-hygiene reconstruction applies without complication.
+
+**Depends on:** Task 1.
+
+**Files:**
+- Modify: `apps/web/app/accounting/page.tsx`
+- Modify: `apps/web/app/audit/page.tsx`
+
+**Interfaces:**
+- Consumes: `FilterBar` from Task 1.
+
+- [ ] **Step 1: Read current state**
+  `git diff -- apps/web/app/accounting/page.tsx apps/web/app/audit/page.tsx` — both files have pre-existing owner changes; read before touching anything.
+
+- [ ] **Step 2: Accounting page**
+  Add `import { FilterBar } from '../../components/filter-bar';`. Find (in the working tree):
+  ```tsx
+      <div className="filter-line">
+        <label>
+          {t.numberSearch}
+          <input value={query} dir="ltr" onChange={(event) => setQuery(event.target.value)} />
+        </label>
+        <button type="button" className="secondary" onClick={() => { setQuery(''); setNeedle(''); }}>{t.clearFilters}</button>
+      </div>
+  ```
+  Replace with:
+  ```tsx
+      <FilterBar onClear={() => { setQuery(''); setNeedle(''); }} clearLabel={t.clearFilters}>
+        <label>
+          {t.numberSearch}
+          <input value={query} dir="ltr" onChange={(event) => setQuery(event.target.value)} />
+        </label>
+      </FilterBar>
+  ```
+
+- [ ] **Step 3: Audit page**
+  Add `import { FilterBar } from '../../components/filter-bar';`. Find (in the working tree):
+  ```tsx
+      <div className="filter-line">
+        <label>
+          {t.kind}
+          <select value={kind} onChange={(event) => setKind(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            {kinds.map((value) => (
+              <option key={value} value={value}>{actionName(t, value)}</option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className="secondary" onClick={() => setKind('')}>{t.clearFilters}</button>
+      </div>
+  ```
+  Replace with:
+  ```tsx
+      <FilterBar onClear={() => setKind('')} clearLabel={t.clearFilters}>
+        <label>
+          {t.kind}
+          <select value={kind} onChange={(event) => setKind(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            {kinds.map((value) => (
+              <option key={value} value={value}>{actionName(t, value)}</option>
+            ))}
+          </select>
+        </label>
+      </FilterBar>
+  ```
+
+- [ ] **Step 4: Verify**
+  `npx tsc --noEmit`. Confirm `grep -n "filter-line" apps/web/app/accounting/page.tsx apps/web/app/audit/page.tsx` returns nothing.
+
+- [ ] **Step 5: Commit**
+  Stage only these two files' task lines (same hash-object reconstruction process as other tasks in this plan, applied independently per file), then:
+  `git commit -m "style(web): move accounting and audit filters to FilterBar"`
+
+---
+
 ## Task 7: Delete dead `.filter-line` CSS
 
-**Depends on:** Tasks 2, 3, 4, 5, 6 (all must have landed — this removes CSS those tasks' old markup needed).
+**Depends on:** Tasks 2, 3, 4, 5, 6, 6b (all must have landed — this removes CSS those tasks' old markup needed).
 
 **Files:**
 - Modify: `apps/web/app/styles/desk.css`
