@@ -211,6 +211,7 @@
   text-align: start;
   white-space: nowrap;
 }
+.row-menu-panel button svg { flex: none; }
 .row-menu-panel button:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
 .row-menu-panel button.danger { color: var(--rd-danger); }
 .row-menu-panel button.danger:hover { background: var(--rd-danger-soft); }
