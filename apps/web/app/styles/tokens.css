@@ -30,6 +30,29 @@
   --rd-radius-lg: 1.125rem;
   --rd-shadow-card: 0 1px 2px rgba(10, 10, 10, 0.04), 0 1px 1px rgba(10, 10, 10, 0.02);
   --rd-shadow-pop: 0 24px 64px rgba(10, 10, 10, 0.16);
+  --bg: var(--rd-bg);
+  --surface: var(--rd-surface);
+  --surface-2: var(--rd-surface-2);
+  --surface-3: var(--rd-surface-3);
+  --line: var(--rd-line);
+  --line-soft: var(--rd-line-soft);
+  --ink: var(--rd-ink);
+  --ink-2: var(--rd-ink-2);
+  --ink-3: var(--rd-muted);
+  --ink-4: var(--rd-faint);
+  --accent: var(--rd-primary-bg);
+  --accent-2: var(--rd-primary-hover);
+  --accent-fg: var(--rd-primary-fg);
+  --accent-soft: color-mix(in srgb, var(--rd-primary-bg) 10%, transparent);
+  --good: var(--rd-success);
+  --good-bg: var(--rd-success-soft);
+  --warn: var(--rd-warning);
+  --warn-bg: var(--rd-warning-soft);
+  --bad: var(--rd-danger);
+  --bad-bg: var(--rd-danger-soft);
+  --focus-ring: var(--rd-focus);
+  --shadow-card: var(--rd-shadow-card);
+  --shadow-pop: var(--rd-shadow-pop);
   color-scheme: light;
 }
 .dark {
@@ -63,5 +86,28 @@
   --rd-radius-lg: 1.125rem;
   --rd-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
   --rd-shadow-pop: 0 24px 64px rgba(0, 0, 0, 0.5);
+  --bg: var(--rd-bg);
+  --surface: var(--rd-surface);
+  --surface-2: var(--rd-surface-2);
+  --surface-3: var(--rd-surface-3);
+  --line: var(--rd-line);
+  --line-soft: var(--rd-line-soft);
+  --ink: var(--rd-ink);
+  --ink-2: var(--rd-ink-2);
+  --ink-3: var(--rd-muted);
+  --ink-4: var(--rd-faint);
+  --accent: var(--rd-primary-bg);
+  --accent-2: var(--rd-primary-hover);
+  --accent-fg: var(--rd-primary-fg);
+  --accent-soft: color-mix(in srgb, var(--rd-primary-bg) 10%, transparent);
+  --good: var(--rd-success);
+  --good-bg: var(--rd-success-soft);
+  --warn: var(--rd-warning);
+  --warn-bg: var(--rd-warning-soft);
+  --bad: var(--rd-danger);
+  --bad-bg: var(--rd-danger-soft);
+  --focus-ring: var(--rd-focus);
+  --shadow-card: var(--rd-shadow-card);
+  --shadow-pop: var(--rd-shadow-pop);
   color-scheme: dark;
 }

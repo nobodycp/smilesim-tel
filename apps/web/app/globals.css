@@ -13,3 +13,7 @@
 @import './styles/dialog.css';
 @import './styles/controls.css';
 @import './styles/responsive.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
