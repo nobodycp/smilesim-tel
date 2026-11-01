@@ -677,17 +677,18 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   .switch-row { flex-direction: column; align-items: stretch; }
   .switch-row > label { max-width: none; }
 }
-.facts { display: grid; margin: 0; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 16px 24px; margin: 0; }
 .facts > div {
   display: flex;
-  align-items: baseline;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--rd-line-soft);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  padding-block-end: 12px;
+  border-block-end: 1px solid var(--rd-line-soft);
 }
 .facts dt { color: var(--rd-muted); font-size: 12px; font-weight: 700; }
-.facts dd { margin: 0; font-weight: 700; }
+.facts dd { margin: 0; font-weight: 700; font-size: 15px; color: var(--rd-ink); }
 .data td.msisdn { text-align: start; }
 .data td.msisdn bdi { unicode-bidi: isolate; }
 .pane-tools { display: flex; align-items: center; gap: 8px; }

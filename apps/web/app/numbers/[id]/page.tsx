@@ -199,16 +199,18 @@ export default function LineCardPage() {
               </div>
             )}
             {tab === 'details' && (
-              <dl className="facts">
-                <div><dt>{t.company}</dt><dd>{line.companyName || '—'}</dd></div>
-                <div><dt>{t.packageName}</dt><dd>{line.packageName}</dd></div>
-                <div><dt>{t.price}</dt><dd><Money value={line.posPrice} /></dd></div>
-                <div><dt>{line.esim ? t.esim : t.iccid}</dt><dd dir="ltr">{line.esim ? t.esim : line.iccid || '—'}</dd></div>
-                <div><dt>{t.started}</dt><dd><bdi dir="ltr">{latinWhen(line.createdAt)}</bdi></dd></div>
-                <div><dt>{t.endsOn}</dt><dd><bdi dir="ltr">{latinWhen(line.endsAt)}</bdi></dd></div>
-                <div><dt>{t.status}</dt><dd>{lineStatus(t, line.status)}</dd></div>
-                {!isPos && line.posLogin && <div><dt>{t.pointOfSale}</dt><dd>{line.posLogin}</dd></div>}
-              </dl>
+              <div className="pane-body">
+                <dl className="facts">
+                  <div><dt>{t.company}</dt><dd>{line.companyName || '—'}</dd></div>
+                  <div><dt>{t.packageName}</dt><dd>{line.packageName}</dd></div>
+                  <div><dt>{t.price}</dt><dd><Money value={line.posPrice} /></dd></div>
+                  <div><dt>{line.esim ? t.esim : t.iccid}</dt><dd>{line.esim ? t.esim : <bdi dir="ltr">{line.iccid || '—'}</bdi>}</dd></div>
+                  <div><dt>{t.started}</dt><dd><bdi dir="ltr">{latinWhen(line.createdAt)}</bdi></dd></div>
+                  <div><dt>{t.endsOn}</dt><dd><bdi dir="ltr">{latinWhen(line.endsAt)}</bdi></dd></div>
+                  <div><dt>{t.status}</dt><dd>{lineStatus(t, line.status)}</dd></div>
+                  {!isPos && line.posLogin && <div><dt>{t.pointOfSale}</dt><dd><bdi dir="ltr">{line.posLogin}</bdi></dd></div>}
+                </dl>
+              </div>
             )}
             {tab === 'log' && (
               history.length === 0 ? (
