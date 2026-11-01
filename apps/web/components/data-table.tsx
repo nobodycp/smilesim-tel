@@ -82,7 +82,7 @@ export function DataTable<Row>({
       </tbody>
     </table>
   );
-  if (bare) return table;
+  if (bare) return hollow ? (<>{table}<EmptyState>{empty}</EmptyState></>) : table;
   return (
     <div className="sheet">
       {table}
