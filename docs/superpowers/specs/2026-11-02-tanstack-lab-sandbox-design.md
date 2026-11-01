@@ -30,8 +30,9 @@ example instead of a guess.
 
 - **Route**: `apps/web/app/sandbox/tanstack-lab/page.tsx`, reachable only by
   typing the URL. Not added to any nav, sidebar, or topbar.
-- **Access**: gated with `useRequireLayer(['admin'])` — branch layer only,
-  since this is a developer/evaluation tool, not an office feature.
+- **Access**: gated with `useRequireLayer(['branch'])` — the branch layer
+  (the "admin" door in `README.md`'s table) only, since this is a
+  developer/evaluation tool, not an office feature.
 - **Data**: `api.officeLines` — the same endpoint `/numbers` already uses.
   Read-only: no activation form, no mutations. Using the same data keeps the
   comparison fair.
