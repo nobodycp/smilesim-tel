@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Desk, Money, layerName, whole } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
+import { FilterBar } from '../../components/filter-bar';
 import { TableSkeleton } from '../../components/loading';
 import { RowMenu, type RowAction } from '../../components/row-menu';
 import { api, type UserRow } from '../../lib/api';
@@ -214,23 +215,21 @@ export default function UsersPage() {
       error={error}
       note={note}
     >
-      <div className="filter-bar">
-        <div className="filter-panel">
-          <label>
-            {t.accountName}
-            <input value={query} onChange={(event) => setQuery(event.target.value)} />
-          </label>
-          <label>
-            {t.layer}
-            <select value={layerFilter} onChange={(event) => setLayerFilter(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              {layerOrder.map((value) => (
-                <option key={value} value={value}>{layerName(t, value)}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+      <FilterBar onClear={() => { setQuery(''); setLayerFilter(''); }} clearLabel={t.clearFilters}>
+        <label>
+          {t.accountName}
+          <input value={query} onChange={(event) => setQuery(event.target.value)} />
+        </label>
+        <label>
+          {t.layer}
+          <select value={layerFilter} onChange={(event) => setLayerFilter(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            {layerOrder.map((value) => (
+              <option key={value} value={value}>{layerName(t, value)}</option>
+            ))}
+          </select>
+        </label>
+      </FilterBar>
       <section className="pane">
         <Dialog
           open={creating}
