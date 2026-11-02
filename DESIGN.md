@@ -65,6 +65,35 @@ Both themes are defined in `apps/web/app/styles/tokens.css`. Use the token, neve
 
 Where the ink fills a button, use `--rd-primary-bg`. Where ink is a text, border, or link colour, use `--rd-ink`. They hold the same value today but mean different things.
 
+## Hotspot-store identity
+
+List chrome that has moved (`/users`, plus the shared dialog, row menu, filter bar, empty state, and skeleton) follows hotspot-store's layout. Colours stay the Pearl tokens above. `--rd-accent` (logo red) is not part of this and stays one accent per screen.
+
+Tailwind is on, with `darkMode: "class"` and `preflight` off, so `base.css` remains the reset. Icons are `lucide-react`. `cn` lives in `apps/web/lib/utils.ts`. New controls are `apps/web/components/ui/` (`Button`, `Select`, `Card`, `Badge`, `Table`, `Pagination`).
+
+Alias tokens in both `:root` and `.dark` let the ported classes read hotspot names:
+
+| Alias | Resolves to |
+|---|---|
+| `--bg` | `--rd-bg` |
+| `--surface`, `--surface-2`, `--surface-3` | `--rd-surface`, `--rd-surface-2`, `--rd-surface-3` |
+| `--line`, `--line-soft` | `--rd-line`, `--rd-line-soft` |
+| `--ink`, `--ink-2` | `--rd-ink`, `--rd-ink-2` |
+| `--ink-3`, `--ink-4` | `--rd-muted`, `--rd-faint` |
+| `--accent`, `--accent-2`, `--accent-fg` | `--rd-primary-bg`, `--rd-primary-hover`, `--rd-primary-fg` |
+| `--accent-soft` | `color-mix(in srgb, var(--rd-primary-bg) 10%, transparent)` |
+| `--good`, `--good-bg` | `--rd-success`, `--rd-success-soft` |
+| `--warn`, `--warn-bg` | `--rd-warning`, `--rd-warning-soft` |
+| `--bad`, `--bad-bg` | `--rd-danger`, `--rd-danger-soft` |
+| `--focus-ring` | `--rd-focus` |
+| `--shadow-card`, `--shadow-pop` | `--rd-shadow-card`, `--rd-shadow-pop` |
+
+`--accent` is the ink primary, not the logo red. Ported corners use `0.5rem` and `0.625rem`. `--rd-radius-lg` stays for controls that have not moved yet.
+
+`Badge` on an account: frozen is `warning`, open is `success`. That is the status mapping for later pages. `info` and `violet` are typed and unused until their tokens exist.
+
+The filter bar is its own card, one row, controls at 28px. It does not share a border with the table. PostCSS loads Tailwind and Autoprefixer from this file on disk, because the dev worker cannot see packages hoisted to the repo root.
+
 ## Type
 
 Fonts come from `next/font` in `apps/web/app/layout.tsx`. No Google stylesheet link, no new family.
