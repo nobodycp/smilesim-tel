@@ -44,18 +44,6 @@
 .settings-grid { display: grid; flex: 1; gap: 12px; align-content: start; }
 .settings-col { display: grid; gap: 12px; align-content: start; }
 .desk { display: flex; flex: 1; flex-direction: column; gap: 14px; min-height: 0; }
-.desk > .filter-bar {
-  border-end-start-radius: 0;
-  border-end-end-radius: 0;
-  border-bottom: 1px solid var(--rd-line);
-  box-shadow: none;
-}
-.desk > .filter-bar + .pane {
-  margin-top: -14px;
-  border-top: 0;
-  border-start-start-radius: 0;
-  border-start-end-radius: 0;
-}
 .desk > .page-head,
 .desk > .error.banner,
 .desk > .note.banner { margin-bottom: 0; }
@@ -713,10 +701,10 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 }
 .filter-bar, .filters {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 4px 8px;
   border: 1px solid var(--rd-line);
   border-radius: 0.625rem;
   background: var(--rd-surface);
@@ -725,20 +713,37 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 .filters { display: flex; flex-wrap: wrap; align-items: end; }
 .filter-panel {
   display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 10px;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
   padding: 0;
+  overflow-x: auto;
   border: 0;
   background: transparent;
 }
-.filter-panel label { display: grid; gap: 4px; min-width: 9rem; color: var(--rd-muted); font-size: 11px; font-weight: 700; }
-.filter-panel input, .filter-panel select { height: 34px; border-radius: 0.5rem; background: var(--rd-surface); }
-.filter-panel .quiet { height: 34px; }
-@media (max-width: 720px) {
-  .filter-panel { flex-direction: column; align-items: stretch; }
-  .filter-panel label { min-width: 0; }
+.filter-panel label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 28px;
+  color: var(--rd-muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
+.desk .filter-panel input:not([type='checkbox']):not([type='file']),
+.desk .filter-panel select,
+.desk .filter-bar button.secondary,
+.filter-panel .quiet {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 0.375rem;
+  font-size: 11px;
+}
+.filter-panel button.secondary { margin-inline-start: auto; }
 .filters label { display: grid; gap: 4px; color: var(--rd-muted); font-size: 11px; font-weight: 600; }
 .filters select, .filters input { height: 34px; }
 .check {
