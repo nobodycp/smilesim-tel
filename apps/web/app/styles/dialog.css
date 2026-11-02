@@ -166,20 +166,27 @@
 .dialog-form label:not(.check) { display: grid; gap: 4px; color: var(--rd-muted); font-size: 11px; font-weight: 700; text-align: start; }
 .dialog button:disabled { opacity: 0.45; cursor: not-allowed; }
 .row-menu { position: relative; display: inline-flex; }
-.row-menu-btn {
+/* `.row-menu .row-menu-btn` (two classes), not `.row-menu-btn` alone: the trigger sits inside a
+   `Table`'s `.card` wrapper (Task 3), and forms.css's `.card button` rule (one class + one type
+   selector) otherwise outranks a single-class selector and repaints the ghost trigger as a
+   filled primary button. */
+.row-menu .row-menu-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
+  padding: 0;
   border: 0;
   border-radius: 0.5rem;
   background: transparent;
   color: var(--rd-faint);
+  font-weight: 400;
+  justify-self: auto;
 }
-.row-menu-btn:hover { background: var(--rd-surface-3); color: var(--rd-ink); }
-.row-menu-btn[aria-expanded='true'] { background: var(--rd-surface-3); color: var(--rd-ink); }
-.row-menu-btn svg { width: 16px; height: 16px; }
+.row-menu .row-menu-btn:hover { background: var(--rd-surface-3); color: var(--rd-ink); }
+.row-menu .row-menu-btn[aria-expanded='true'] { background: var(--rd-surface-3); color: var(--rd-ink); }
+.row-menu .row-menu-btn svg { width: 16px; height: 16px; }
 .row-menu-panel {
   position: fixed;
   z-index: 80;
