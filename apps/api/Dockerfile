@@ -22,6 +22,6 @@ RUN npm run prisma:generate --workspace api
 COPY --from=build /app/apps/api/dist apps/api/dist
 WORKDIR /app/apps/api
 EXPOSE 3001
-# Start-up applies the committed migrations before the server opens.
-# The worker service reuses this image and overrides the command with `node dist/worker.js`.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# Same image for the API and the worker. APP_ROLE=worker skips migrations and runs the queue process.
+ENV APP_ROLE=api
+CMD ["sh", "-c", "if [ \"$APP_ROLE\" = worker ]; then exec node dist/worker.js; else npx prisma migrate deploy && exec node dist/main.js; fi"]
