@@ -1,9 +1,34 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, Res } from '@nestjs/common';
+import {
+  ApiBody,
+  ApiCookieAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { CookieOptions, Request, Response } from 'express';
 import { AuthService, Failure } from './auth.service';
 import { SESSION_TTL_SECONDS } from './sessions';
 import { expectedLayer } from '../../doors';
 import { errorBody } from '../../errors';
+import { ApiErrorResponse } from '../../openapi/responses';
+import {
+  ChangePasswordBodyDto,
+  ExemptionBodyDto,
+  LoginBodyDto,
+  NextAppDto,
+  OkDto,
+  OtpauthDto,
+  PolicyBodyDto,
+  ProfileDto,
+  SessionsListDto,
+  SetPasswordBodyDto,
+  TwoFactorCodeBodyDto,
+  TwoFactorExemptDto,
+  UpdateProfileBodyDto,
+} from './auth.dto';
 
 function cookieBase(): CookieOptions {
   return {
@@ -43,14 +68,19 @@ function failWith(res: Response, failure: Failure) {
   return { message: failure.message, code: failure.code };
 }
 
+@ApiTags('auth')
+@ApiSecurity('x-door')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('login')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Log in; sets `sid` cookie on success' })
+  @ApiBody({ type: LoginBodyDto })
+  @ApiErrorResponse(401, 403, 429)
   async login(
-    @Body() body: { loginName?: unknown; password?: unknown },
+    @Body() body: LoginBodyDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -79,8 +109,12 @@ export class AuthController {
 
   @Post('password')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Change password (forced or voluntary)' })
+  @ApiBody({ type: ChangePasswordBodyDto })
+  @ApiErrorResponse(401, 403, 400)
   async changePassword(
-    @Body() body: { password?: unknown; nextPassword?: unknown },
+    @Body() body: ChangePasswordBodyDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -91,6 +125,10 @@ export class AuthController {
   }
 
   @Get('profile')
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Current account profile' })
+  @ApiOkResponse({ type: ProfileDto })
+  @ApiErrorResponse(401)
   async getProfile(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.getProfile(sessionIdOf(req));
     if (result.kind === 'error') return failWith(res, result);
@@ -99,8 +137,13 @@ export class AuthController {
 
   @Patch('profile')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Update profile fields and/or password' })
+  @ApiBody({ type: UpdateProfileBodyDto })
+  @ApiOkResponse({ type: ProfileDto })
+  @ApiErrorResponse(401, 400)
   async profile(
-    @Body() body: { nickname?: unknown; email?: unknown; phone?: unknown; nextPassword?: unknown; currentPassword?: unknown },
+    @Body() body: UpdateProfileBodyDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -111,9 +154,15 @@ export class AuthController {
 
   @Post('users/:loginName/password')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Set another user password (privileged)' })
+  @ApiParam({ name: 'loginName' })
+  @ApiBody({ type: SetPasswordBodyDto })
+  @ApiOkResponse({ type: OkDto })
+  @ApiErrorResponse(401, 403, 404, 400)
   async setUserPassword(
     @Param('loginName') loginName: string,
-    @Body() body: { password?: unknown },
+    @Body() body: SetPasswordBodyDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -123,6 +172,10 @@ export class AuthController {
   }
 
   @Get('sessions')
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'List sessions for the current account' })
+  @ApiOkResponse({ type: SessionsListDto })
+  @ApiErrorResponse(401)
   async sessions(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.listSessions(sessionIdOf(req));
     if (result.kind === 'error') return failWith(res, result);
@@ -131,6 +184,11 @@ export class AuthController {
 
   @Delete('sessions/:id')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Revoke a session; clears cookie if current' })
+  @ApiParam({ name: 'id' })
+  @ApiOkResponse({ type: OkDto })
+  @ApiErrorResponse(401, 404)
   async revokeSession(@Param('id') id: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.revokeSession(sessionIdOf(req), id);
     if (result.kind === 'error') return failWith(res, result);
@@ -140,6 +198,10 @@ export class AuthController {
 
   @Post('two-factor/setup')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Begin 2FA enrollment; returns otpauth URI' })
+  @ApiOkResponse({ type: OtpauthDto })
+  @ApiErrorResponse(401, 403)
   async setupTwoFactor(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.setupTwoFactor(sessionIdOf(req));
     if (result.kind === 'error') return failWith(res, result);
@@ -148,8 +210,13 @@ export class AuthController {
 
   @Post('two-factor/confirm')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Confirm 2FA enrollment with a TOTP code' })
+  @ApiBody({ type: TwoFactorCodeBodyDto })
+  @ApiOkResponse({ type: NextAppDto })
+  @ApiErrorResponse(401, 400)
   async confirmTwoFactor(
-    @Body() body: { code?: unknown },
+    @Body() body: TwoFactorCodeBodyDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -161,8 +228,13 @@ export class AuthController {
 
   @Post('two-factor/verify')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Verify 2FA code during login challenge' })
+  @ApiBody({ type: TwoFactorCodeBodyDto })
+  @ApiOkResponse({ type: NextAppDto })
+  @ApiErrorResponse(401, 400)
   async verifyTwoFactor(
-    @Body() body: { code?: unknown },
+    @Body() body: TwoFactorCodeBodyDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -174,6 +246,10 @@ export class AuthController {
 
   @Delete('two-factor')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Disable own 2FA' })
+  @ApiOkResponse({ type: OkDto })
+  @ApiErrorResponse(401)
   async disableTwoFactor(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.disableOwnTwoFactor(sessionIdOf(req));
     if (result.kind === 'error') return failWith(res, result);
@@ -182,6 +258,11 @@ export class AuthController {
 
   @Delete('two-factor/:loginName')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Clear another user 2FA (privileged)' })
+  @ApiParam({ name: 'loginName' })
+  @ApiOkResponse({ type: OkDto })
+  @ApiErrorResponse(401, 403, 404)
   async clearTwoFactor(
     @Param('loginName') loginName: string,
     @Req() req: Request,
@@ -194,6 +275,11 @@ export class AuthController {
 
   @Post('users/:loginName/disable')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Disable a user account (auth-side)' })
+  @ApiParam({ name: 'loginName' })
+  @ApiOkResponse({ type: OkDto })
+  @ApiErrorResponse(401, 403, 404)
   async disableUser(
     @Param('loginName') loginName: string,
     @Req() req: Request,
@@ -206,8 +292,12 @@ export class AuthController {
 
   @Patch('policy')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Set 2FA policy for a layer' })
+  @ApiBody({ type: PolicyBodyDto })
+  @ApiErrorResponse(401, 403, 400)
   async policy(
-    @Body() body: { layer?: unknown; required?: unknown },
+    @Body() body: PolicyBodyDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -218,9 +308,15 @@ export class AuthController {
 
   @Patch('exemptions/:loginName')
   @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Set 2FA exemption for a login' })
+  @ApiParam({ name: 'loginName' })
+  @ApiBody({ type: ExemptionBodyDto })
+  @ApiOkResponse({ type: TwoFactorExemptDto })
+  @ApiErrorResponse(401, 403, 404)
   async exemption(
     @Param('loginName') loginName: string,
-    @Body() body: { exempt?: unknown },
+    @Body() body: ExemptionBodyDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {

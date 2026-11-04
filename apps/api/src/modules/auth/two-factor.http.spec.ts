@@ -1,12 +1,11 @@
 import 'reflect-metadata';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { authenticator } from 'otplib';
 import request from 'supertest';
 import { AuthModule } from './auth.module';
 import { AUTH_STORE, MemoryAuthStore, StoredUser } from './auth.store';
 import { hashPassword } from './password';
-import { createTotpSecret } from './totp';
+import { createTotpSecret, currentTotp } from './totp';
 
 const WRONG_CODE = 'الرمز غير صحيح';
 
@@ -101,7 +100,7 @@ describe('two-factor endpoints', () => {
     const response = await http()
       .post('/auth/two-factor/verify')
       .set('Cookie', twoFactorCookie)
-      .send({ code: authenticator.generate(secret) });
+      .send({ code: currentTotp(secret) });
     expect(response.status).toBe(200);
     expect(response.body.next).toBe('app');
 
@@ -188,7 +187,7 @@ describe('two-factor endpoints', () => {
     expect(setup.body.otpauth).toContain(pending);
     expect(stored('pos').twoFactorEnabled).toBe(false);
 
-    const currentCode = authenticator.generate(pending);
+    const currentCode = currentTotp(pending);
     const confirm = await http().post('/auth/two-factor/confirm').set('Cookie', posCookie).send({ code: currentCode });
     expect(confirm.status).toBe(200);
     expect(stored('pos').twoFactorEnabled).toBe(true);
@@ -216,7 +215,7 @@ describe('two-factor endpoints', () => {
     const enrollCookie = cookieOf(await login('employee', '12345678'));
     expect(fullSessions()).toHaveLength(0);
     await http().post('/auth/two-factor/setup').set('Cookie', enrollCookie);
-    const code = authenticator.generate(stored('employee').pendingTwoFactorSecret!);
+    const code = currentTotp(stored('employee').pendingTwoFactorSecret!);
     const confirm = await http().post('/auth/two-factor/confirm').set('Cookie', enrollCookie).send({ code });
     expect(confirm.status).toBe(200);
     expect(confirm.body.next).toBe('app');

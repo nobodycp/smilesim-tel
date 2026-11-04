@@ -1,5 +1,6 @@
 'use client';
 
+import { Moon, Sun } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { langLabel, langName, locales } from '../lib/copy';
 import { usePrefs } from '../lib/prefs';
@@ -10,14 +11,18 @@ export function ThemeToggle({ shell = false }: { shell?: boolean }) {
   if (shell) {
     return (
       <button type="button" className="shell-icon" onClick={toggleTheme} aria-label={label} title={label}>
-        <SunIcon />
-        <MoonIcon />
+        <Sun className="shell-sun" size={18} strokeWidth={2.2} aria-hidden="true" />
+        <Moon className="shell-moon" size={18} strokeWidth={2.2} aria-hidden="true" />
       </button>
     );
   }
   return (
     <button type="button" className="icon-btn" onClick={toggleTheme} aria-label={label} title={label}>
-      {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+      {theme === 'light' ? (
+        <Moon size={18} strokeWidth={2.2} aria-hidden="true" />
+      ) : (
+        <Sun size={18} strokeWidth={2.2} aria-hidden="true" />
+      )}
     </button>
   );
 }
@@ -91,22 +96,5 @@ export function LanguageSwitch({ shell = false }: { shell?: boolean }) {
         </div>
       )}
     </div>
-  );
-}
-
-function SunIcon() {
-  return (
-    <svg className="shell-sun" viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg className="shell-moon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </svg>
   );
 }

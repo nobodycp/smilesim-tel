@@ -20,9 +20,9 @@ const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'packageCode', 'pa
 const LINE_OPTIONAL_KEYS = ['opsLocked'];
 const POS_CHOICE_KEYS = ['loginName', 'nickname'];
 const SHELF_KEYS = ['companies'];
-const SHELF_COMPANY_KEYS = ['code', 'name', 'providers'];
+const SHELF_COMPANY_KEYS = ['code', 'name', 'image', 'providers'];
 const SHELF_PROVIDER_KEYS = ['code', 'name', 'packages'];
-const SHELF_PACKAGE_KEYS = ['code', 'name', 'months', 'forSale', 'lines', 'activeLines'];
+const SHELF_PACKAGE_KEYS = ['code', 'name', 'months', 'forSale', 'enabled', 'lines', 'activeLines', 'stoppedLines'];
 const PACKAGE_SHEET_KEYS = [
   'code', 'name', 'providerCode', 'providerName', 'companyCode', 'companyName', 'enabled', 'forSale',
   'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice',
@@ -137,12 +137,16 @@ describe('office response shapes', () => {
         name: '500 جيجا',
         months: 1,
         forSale: false,
+        enabled: true,
         company: { code: 'wecom' },
         provider: { code: 'lian', name: 'ليان' },
         lines: [{ status: 'active' }, { status: 'frozen' }],
       },
     ];
-    const { service, gate } = await serviceWith({ package: { findMany: async () => packageRows } });
+    const { service, gate } = await serviceWith({
+      package: { findMany: async () => packageRows },
+      company: { findMany: async () => [{ code: 'wecom', image: '' }] },
+    });
     const shelf = await service.companiesShelf(gate);
     const wecom = shelf.companies.find((company) => company.code === 'wecom');
 
@@ -151,7 +155,7 @@ describe('office response shapes', () => {
     expect(keysOf(shelf.companies[0])).toEqual(sorted(SHELF_COMPANY_KEYS));
     expect(keysOf(wecom!.providers[0])).toEqual(sorted(SHELF_PROVIDER_KEYS));
     expect(keysOf(wecom!.providers[0].packages[0])).toEqual(sorted(SHELF_PACKAGE_KEYS));
-    expect(wecom!.providers[0].packages[0]).toMatchObject({ forSale: false, lines: 2, activeLines: 1 });
+    expect(wecom!.providers[0].packages[0]).toMatchObject({ forSale: false, enabled: true, lines: 2, activeLines: 1, stoppedLines: 1 });
     expect(shelf.companies.find((company) => company.code === 'kalam')?.providers).toEqual([]);
     expect(shelf.companies.find((company) => company.code === 'symphony')?.providers).toEqual([]);
   });

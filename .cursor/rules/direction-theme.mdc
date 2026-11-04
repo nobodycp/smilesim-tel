@@ -1,0 +1,14 @@
+---
+description: Theme and writing direction are part of every screen
+alwaysApply: true
+---
+
+# Direction and theme
+
+A screen is unfinished until Arabic, English, and both themes have been checked. A new visual that ignores either one is a break, not a design.
+
+- `html` carries `dir`. Icons and the password reveal are items in a flex row, icon first and reveal last, so they move when the language changes. Do not pin them with absolute offsets.
+- Do not set `dir` or `unicode-bidi` on a field that has an icon beside it.
+- Language and theme controls stay in the corner (`inset-inline-end`). Their menu uses `inset-inline-end: 0`.
+- Colours come from tokens that change under `.dark`. A panel that keeps the same fill in both themes is unfinished.
+- Corner marks and borders use logical sides (`border-inline-start`, `border-block-start`), not physical `border-width` lists.

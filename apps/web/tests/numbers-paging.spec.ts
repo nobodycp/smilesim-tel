@@ -10,14 +10,14 @@ test('numbers list loads more, and filters go to the server', async ({ page, req
 
   await page.goto(`${desk}/numbers`);
   const rows = page.locator('table.data tbody tr');
-  const more = page.getByRole('button', { name: 'تحميل المزيد' });
+  const nextPage = page.getByRole('button', { name: '2', exact: true });
   await expect(rows).toHaveCount(31);
-  await expect(more).toBeVisible();
+  await expect(nextPage).toBeVisible();
   await expect(page.locator('.pane .hint')).toContainText('31');
 
-  await more.click();
-  await expect(rows).toHaveCount(36);
-  await expect(more).toHaveCount(0);
+  await nextPage.click();
+  await expect(rows).toHaveCount(5);
+  await expect(page.getByRole('button', { name: '3', exact: true })).toHaveCount(0);
   const served = await log();
   expect(served.at(-1)).toEqual({ cursor: 'c31' });
   expect(served.filter((query) => query.cursor)).toHaveLength(1);
@@ -25,7 +25,7 @@ test('numbers list loads more, and filters go to the server', async ({ page, req
   // A status filter resets the list and is sent to the server, with no cursor.
   await page.getByLabel('الحالة').selectOption('frozen');
   await expect(rows).toHaveCount(3);
-  await expect(more).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '2', exact: true })).toHaveCount(0);
   expect((await log()).at(-1)).toEqual({ status: 'frozen' });
 
   // The package options come from the catalog, not from the loaded rows.
@@ -37,6 +37,6 @@ test('numbers list loads more, and filters go to the server', async ({ page, req
   await expect(async () => expect((await log()).at(-1)).toEqual({ q: '055 0000', status: 'frozen', packageCode: 'cell-400' })).toPass();
   await page.getByRole('button', { name: 'مسح' }).click();
   await expect(rows).toHaveCount(31);
-  await expect(more).toBeVisible();
+  await expect(page.getByRole('button', { name: '2', exact: true })).toBeVisible();
   expect((await log()).at(-1)).toEqual({});
 });

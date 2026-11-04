@@ -31,6 +31,8 @@ export function useAction({ setError, setNote, onDone }: Options) {
   const flying = useRef(false);
   const live = useRef(true);
   const done = useRef(onDone);
+  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noteTicket = useRef(0);
 
   useEffect(() => {
     done.current = onDone;
@@ -40,6 +42,7 @@ export function useAction({ setError, setNote, onDone }: Options) {
     live.current = true;
     return () => {
       live.current = false;
+      if (noteTimer.current) clearTimeout(noteTimer.current);
     };
   }, []);
 
@@ -47,6 +50,8 @@ export function useAction({ setError, setNote, onDone }: Options) {
     async function run<T>(work: () => Promise<Fetched<T>>, step: Step<T> = {}): Promise<boolean> {
       if (flying.current) return false;
       flying.current = true;
+      noteTicket.current += 1;
+      if (noteTimer.current) clearTimeout(noteTimer.current);
       setError('');
       setNote('');
       setBusy(true);
@@ -57,7 +62,16 @@ export function useAction({ setError, setNote, onDone }: Options) {
           setError(apiText(result.message));
           return false;
         }
-        if (step.note !== undefined) setNote(typeof step.note === 'function' ? step.note(result.data) : step.note);
+        if (step.note !== undefined) {
+          const message = typeof step.note === 'function' ? step.note(result.data) : step.note;
+          const mine = ++noteTicket.current;
+          setNote(message);
+          if (message) {
+            noteTimer.current = setTimeout(() => {
+              if (live.current && noteTicket.current === mine) setNote('');
+            }, 4000);
+          }
+        }
         await step.then?.(result.data);
         if (step.reload !== false) await done.current?.();
         return true;

@@ -107,6 +107,10 @@ export const api = {
   setPackagePrice: (code: string, price: number) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/price`, { price }),
   officeProviders: () => request<{ providers: ProviderRow[] }>('GET', '/office/providers'),
+  providerSettings: (code: string) =>
+    request<ProviderSettings>('GET', `/office/providers/${segment(code)}/settings`),
+  setProviderMode: (code: string, action: string, mode: string) =>
+    request<{ ok: true }>('PATCH', `/office/providers/${segment(code)}/settings`, { action, mode }),
   officeLines: (query?: { q?: string; status?: string; packageCode?: string; cursor?: string | null }) =>
     request<{ lines: LineRow[]; poses: PosChoice[]; nextCursor: string | null }>('GET', `/office/lines${queryString(query)}`),
   officeLine: (id: string) => request<{ line: LineRow; history: LineHistory[] }>('GET', `/office/lines/${segment(id)}`),
@@ -131,18 +135,30 @@ export const api = {
     request<ApplyResult>('POST', `/office/lines/${segment(id)}/switch`, { packageCode, outcome }),
   officeNotices: () => request<{ unread: number; notices: NoticeRow[] }>('GET', '/office/notices'),
   readNotices: (id?: string) => request<{ ok: true }>('POST', '/office/notices/read', id ? { id } : {}),
-  officeTasks: (query?: { status?: string; cursor?: string | null }) =>
-    request<{ tasks: TaskRow[]; nextCursor: string | null }>('GET', `/office/tasks${queryString(query)}`),
+  officeTasks: (query?: {
+    q?: string;
+    status?: string;
+    action?: string;
+    packageCode?: string;
+    company?: string;
+    provider?: string;
+    cursor?: string | null;
+  }) => request<{ tasks: TaskRow[]; nextCursor: string | null }>('GET', `/office/tasks${queryString(query)}`),
+  officeTask: (id: string) => request<{ task: TaskDetail; events: TaskEvent[] }>('GET', `/office/tasks/${segment(id)}`),
+  addTaskNote: (id: string, text: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/notes`, { text }),
   takeTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/take`),
   releaseTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/release`),
   completeTask: (id: string, note: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/complete`, { note }),
   rejectTask: (id: string, reason: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/reject`, { reason }),
   cancelTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/cancel`),
   officeUsers: () => request<{ users: UserRow[] }>('GET', '/office/users'),
+  officeAccount: (loginName: string) => request<AccountAccess>('GET', `/office/users/${segment(loginName)}`),
+  saveAccountAccess: (loginName: string, body: { extraGrants: string[]; deniedGrants: string[]; extraRoleIds: string[]; roleId?: string }) =>
+    request<{ ok: true }>('PATCH', `/office/users/${segment(loginName)}/access`, body),
   createUser: (body: { loginName: string; nickname: string; password: string; layer: string; parentLogin?: string; roleId?: string }) =>
     request<{ ok: true }>('POST', '/office/users', body),
-  officeRoles: () => request<{ roles: { id: string; name: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean }[] }>('GET', '/office/roles'),
-  saveRole: (body: { id?: string; name: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean }) =>
+  officeRoles: () => request<{ roles: RoleRow[] }>('GET', '/office/roles'),
+  saveRole: (body: { id?: string; name: string; grants: string[]; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean }) =>
     request<{ ok: true }>('POST', '/office/roles', body),
   transferPos: (loginName: string, parentLogin: string) =>
     request<{ ok: true }>('POST', `/office/users/${segment(loginName)}/transfer`, { parentLogin }),
@@ -231,10 +247,16 @@ export type ProviderRow = {
     packages: { code: string; name: string; dataGb: number | null; months: number; price: number; enabled: boolean }[];
   }[];
 };
+export type ProviderSettings = {
+  code: string;
+  name: string;
+  modes: Record<string, 'auto' | 'manual' | 'off'>;
+};
 export type Shelf = {
   companies: {
     code: string;
     name: string;
+    image: string;
     providers: {
       code: string;
       name: string;
@@ -243,8 +265,10 @@ export type Shelf = {
         name: string;
         months: number;
         forSale: boolean;
+        enabled: boolean;
         lines: number;
         activeLines: number;
+        stoppedLines: number;
       }[];
     }[];
   }[];
@@ -274,6 +298,38 @@ export type PackageSheet = {
   switches: string[];
   modes: Record<string, 'auto' | 'manual' | 'off'>;
   offers: { loginName: string; nickname: string; layer: string; price: number }[];
+};
+export type RoleRow = {
+  id: string;
+  name: string;
+  kind?: 'layer' | 'job';
+  layer?: string;
+  grants?: string[];
+  read: boolean;
+  edit: boolean;
+  accounting: boolean;
+  tasks: boolean;
+  reports: boolean;
+  staff: boolean;
+  enter: boolean;
+};
+export type AccountAccess = {
+  loginName: string;
+  nickname: string;
+  layer: string;
+  parentLogin: string | null;
+  frozen: boolean;
+  isBranchOwner: boolean;
+  staff: boolean;
+  roleId: string;
+  roleName: string;
+  roleGrants: string[];
+  extraGrants: string[];
+  deniedGrants: string[];
+  extraRoleIds: string[];
+  grants: string[];
+  roles: { id: string; name: string; grants: string[] }[];
+  canEdit: boolean;
 };
 export type UserRow = {
   loginName: string;
@@ -376,12 +432,32 @@ export type TaskRow = {
   posDelta: number;
   msisdn: string | null;
   packageName: string;
+  companyName: string;
+  providerName: string;
   note: string | null;
   resultNote: string | null;
+  lastNote: string | null;
   log?: string;
   canTake: boolean;
   canWork: boolean;
   canCancel: boolean;
+};
+export type TaskDetail = TaskRow & {
+  createdAt: string;
+  updatedAt: string;
+  iccid: string | null;
+  esim: boolean;
+  lineStatus: string | null;
+  companyName: string;
+  providerName: string;
+  canNote: boolean;
+};
+export type TaskEvent = {
+  id: string;
+  kind: 'system' | 'note' | 'result';
+  body: string;
+  authorName: string | null;
+  at: string;
 };
 type ReportRow = {
   id: string;

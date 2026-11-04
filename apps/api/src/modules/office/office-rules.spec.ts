@@ -1,7 +1,12 @@
 import {
+  ACTION_KEYS,
   captureTerms,
   chargeDebit,
   chainHolds,
+  defaultActionModes,
+  flagsForMode,
+  normalizeActionModes,
+  packageFlagsFromModes,
   repriceRenewal,
   renewOnto,
   renewStay,
@@ -148,5 +153,38 @@ describe('subscription and renewal price rules', () => {
     expect(switchOnto(line, month, month, ['lian-wecom-500'], from)).toEqual({ error: 'SAME_PACKAGE' });
     const other = { ...three, providerCode: 'aren', code: 'aren-wecom-500' };
     expect(switchOnto(line, month, other, ['aren-wecom-500'], from)).toEqual({ error: 'OTHER_SHELF' });
+  });
+});
+
+describe('provider action mode defaults', () => {
+  it('fills every catalog action as manual when the map is empty', () => {
+    expect(normalizeActionModes({})).toEqual(defaultActionModes());
+    expect(normalizeActionModes(null)).toEqual(defaultActionModes());
+  });
+
+  it('keeps known modes and fills missing keys as manual', () => {
+    expect(normalizeActionModes({ activate: 'auto', switch: 'off', junk: 'auto' })).toEqual({
+      ...defaultActionModes(),
+      activate: 'auto',
+      switch: 'off',
+    });
+  });
+
+  it('maps modes to package auto/allow flags', () => {
+    const modes = normalizeActionModes({ activate: 'auto', charge: 'manual', disconnect: 'off' });
+    const flags = packageFlagsFromModes(modes);
+    expect(flags.autoActivate).toBe(true);
+    expect(flags.allowActivate).toBe(true);
+    expect(flags.autoCharge).toBe(false);
+    expect(flags.allowCharge).toBe(true);
+    expect(flags.autoDisconnect).toBe(false);
+    expect(flags.allowDisconnect).toBe(false);
+    for (const key of ACTION_KEYS) {
+      const pair = flagsForMode(modes[key]);
+      if (key === 'activate') {
+        expect(flags.autoActivate).toBe(pair.auto);
+        expect(flags.allowActivate).toBe(pair.allow);
+      }
+    }
   });
 });

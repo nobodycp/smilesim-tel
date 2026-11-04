@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
 
-export type RowIcon = 'edit' | 'extend' | 'undo' | 'check' | 'ban' | 'trash' | 'enter' | 'key' | 'fund' | 'move';
+type RowIcon = 'edit' | 'extend' | 'undo' | 'check' | 'ban' | 'trash' | 'enter' | 'key' | 'fund' | 'move' | 'image';
 
 export type RowAction = {
   label: string;
@@ -25,6 +25,7 @@ function Glyph({ name }: { name: RowIcon }) {
     key: <><circle cx="8" cy="14" r="3" /><path d="M11 14h8.5M16.5 14v2.5M19 14v2" /></>,
     fund: <><path d="M12 4v16" /><path d="M16.5 7.5c0-1.4-1.8-2.5-4.5-2.5S7.5 6.1 7.5 7.5 9.3 10 12 10s4.5 1.1 4.5 2.5S14.7 15 12 15s-4.5-1.1-4.5-2.5" /></>,
     move: <path d="M5 12h14M13 6l6 6-6 6" />,
+    image: <><rect x="4" y="5" width="16" height="14" rx="2" /><circle cx="9" cy="10" r="1.4" /><path d="M4 16.5 8.5 12l3 3 2.5-2.5L20 16.5" /></>,
   };
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -45,16 +46,16 @@ export function RowMenu({ label, items }: { label: string; items: RowAction[] })
     const place = () => {
       const rect = button.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = panel.current?.offsetWidth || 180;
+      const width = panel.current?.offsetWidth || 160;
       const height = panel.current?.offsetHeight || 40;
-      let left = rect.right - width;
-      if (left < 8) left = rect.left;
+      const rtl = document.documentElement.dir === 'rtl';
+      // Pin the menu to the trigger's inline end so it opens into the table.
+      let left = rtl ? rect.left : rect.right - width;
       if (left + width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - 8 - width);
       if (left < 8) left = 8;
       let top = rect.bottom + 4;
-      if (top + height > window.innerHeight - 8) top = rect.top - height - 4;
+      if (top + height > window.innerHeight - 8 && rect.top > height + 4) top = rect.top - height - 4;
       if (top < 8) top = 8;
-      if (top + height > window.innerHeight - 8) top = Math.max(8, window.innerHeight - 8 - height);
       setBox({ top, left });
     };
     place();

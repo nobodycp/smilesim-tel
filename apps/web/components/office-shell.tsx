@@ -3,6 +3,26 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Bell,
+  ClipboardList,
+  Home,
+  Layers,
+  LogOut,
+  Menu,
+  Package,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Phone,
+  Settings,
+  Shield,
+  Radio,
+  Users,
+  Wallet,
+  Wifi,
+  X,
+} from 'lucide-react';
 import { api, type NoticeRow } from '../lib/api';
 import { forgetIdentity, useIdentity } from '../lib/identity';
 import { useDoor } from '../lib/door-context';
@@ -10,25 +30,14 @@ import { useOffice } from '../lib/office-session';
 import { usePrefs } from '../lib/prefs';
 import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
-import { Icon, type IconName } from './icon';
+import { BackLink } from './back-link';
 import { PageSkeleton } from './loading';
+import { actionName } from './names';
 
 const COLLAPSE_KEY = 'smilesim-sidebar-collapsed';
+const glyph = { size: 18, strokeWidth: 2.2, 'aria-hidden': true as const };
 
-function noticeAction(t: ReturnType<typeof usePrefs>['t'], action: string) {
-  if (action === 'activate' || action === 'reactivate') return t.actActivate;
-  if (action === 'charge') return t.actCharge;
-  if (action === 'extend') return t.extend;
-  if (action === 'rename') return t.updateNumber;
-  if (action === 'sim') return t.swapSim;
-  if (action === 'disconnect') return t.actDisconnect;
-  if (action === 'freeze') return t.actFreeze;
-  if (action === 'unfreeze') return t.unfreeze;
-  if (action === 'switch') return t.actSwitch;
-  return action;
-}
-
-type NavItem = { label: string; href: string; icon: IconName; layers?: readonly string[]; grant?: string; owner?: boolean };
+type NavItem = { label: string; href: string; icon: LucideIcon; layers?: readonly string[]; grant?: string; owner?: boolean };
 
 export function OfficeShell({
   account,
@@ -50,10 +59,11 @@ export function OfficeShell({
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [notices, setNotices] = useState<NoticeRow[]>([]);
   const [unread, setUnread] = useState(0);
-  const { ready, me } = useOffice();
+  const { ready, me, initialName, initialBalance } = useOffice();
   const door = useDoor();
   const layer = door.layer;
   const balance = me ? me.balance : null;
+  const shownBalance = balance !== null ? balance : initialBalance;
   const ceiling = me?.ceiling ?? 0;
   const impersonating = me?.impersonating ?? false;
   const menuRef = useRef<HTMLDivElement>(null);
@@ -140,44 +150,63 @@ export function OfficeShell({
 
   const desk = ['branch', 'main_agent', 'agent'] as const;
   const groups: { title: string; items: NavItem[] }[] = [
-    { title: '', items: [{ label: t.homeTitle, href: '/', icon: 'home' }] },
+    {
+      title: '',
+      items: [
+        { label: t.homeTitle, href: '/', icon: Home },
+        { label: t.navTasks, href: '/tasks', icon: ClipboardList },
+      ],
+    },
     {
       title: t.navOffice,
       items: [
-        { label: t.navUsers, href: '/users', icon: 'staff', layers: desk },
-        { label: t.navRoles, href: '/roles', icon: 'lock', layers: ['branch'], owner: true },
-        { label: t.navPlans, href: '/packages', icon: 'plans' },
-        { label: t.navNumbers, href: '/numbers', icon: 'numbers' },
+        { label: t.navNumbers, href: '/numbers', icon: Phone },
+        { label: t.navUsers, href: '/users', icon: Users, layers: desk },
       ],
     },
     {
       title: t.navOps,
       items: [
-        { label: t.navCompanies, href: '/companies', icon: 'providers', layers: ['branch'], grant: 'edit' },
-        { label: t.navTasks, href: '/tasks', icon: 'tasks' },
-        { label: t.navOperations, href: '/operations', icon: 'plans' },
-        { label: t.navAccounting, href: '/accounting', icon: 'wallet' },
-        { label: t.navAudit, href: '/audit', icon: 'reports' },
+        { label: t.navPlans, href: '/packages', icon: Package },
+        { label: t.navCompanies, href: '/companies', icon: Layers, layers: ['branch'], grant: 'edit' },
+        { label: t.providersTitle, href: '/providers', icon: Radio, layers: ['branch'], grant: 'edit' },
       ],
     },
     {
-      title: t.navReports,
+      title: t.navAdmin,
+      items: [{ label: t.navRoles, href: '/roles', icon: Shield, layers: ['branch'], owner: true }],
+    },
+    {
+      title: t.navNotReady,
       items: [
-        { label: t.reportProviders, href: '/reports/providers', icon: 'reports', layers: ['branch'], grant: 'reports' },
-        { label: t.reportConsumption, href: '/reports/consumption', icon: 'reports', layers: ['branch'], grant: 'reports' },
-        { label: t.reportFunding, href: '/reports/funding', icon: 'wallet', layers: ['branch'], grant: 'reports' },
-        { label: t.reportTasks, href: '/reports/tasks', icon: 'tasks', layers: ['branch'], grant: 'reports' },
-        { label: t.reportNumbers, href: '/reports/numbers', icon: 'numbers', layers: ['branch'], grant: 'reports' },
-        { label: t.reportOperations, href: '/reports/operations', icon: 'plans', layers: ['branch'], grant: 'reports' },
+        { label: t.navOperations, href: '/operations', icon: Package },
+        { label: t.navAccounting, href: '/accounting', icon: Wallet },
+        { label: t.navAudit, href: '/audit', icon: ClipboardList },
+        { label: t.reportProviders, href: '/reports/providers', icon: ClipboardList, layers: ['branch'], grant: 'reports' },
+        { label: t.reportConsumption, href: '/reports/consumption', icon: ClipboardList, layers: ['branch'], grant: 'reports' },
+        { label: t.reportFunding, href: '/reports/funding', icon: Wallet, layers: ['branch'], grant: 'reports' },
+        { label: t.reportTasks, href: '/reports/tasks', icon: ClipboardList, layers: ['branch'], grant: 'reports' },
+        { label: t.reportNumbers, href: '/reports/numbers', icon: Phone, layers: ['branch'], grant: 'reports' },
+        { label: t.reportOperations, href: '/reports/operations', icon: Package, layers: ['branch'], grant: 'reports' },
       ],
     },
   ];
   const visibleGroups = groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => (!item.layers || item.layers.includes(layer)) && (!item.owner || me?.isBranchOwner) && (!item.grant || me?.isBranchOwner || me?.grants?.includes(item.grant))),
+      items: group.items.filter((item) => {
+        if (item.layers && !item.layers.includes(layer)) return false;
+        // The account arrives after the first paint. Dropping gated items before
+        // that paints half the menu, then snaps the rest in.
+        if (!ready) return true;
+        if (item.owner && !me?.isBranchOwner) return false;
+        if (item.grant && !me?.isBranchOwner && !me?.grants?.includes(item.grant)) return false;
+        return true;
+      }),
     }))
     .filter((group) => group.items.length > 0);
+  const roots = new Set(groups.flatMap((group) => group.items.map((item) => item.href)));
+  const backHref = roots.has(pathname) ? '' : pathname.split('/').slice(0, -1).join('/') || '/';
 
   const sidebar = (mobile: boolean) => {
     const compact = collapsed && !mobile;
@@ -186,11 +215,11 @@ export function OfficeShell({
         <div className={compact ? 'brand-block compact' : 'brand-block'}>
           {mobile && (
             <button type="button" className="icon-btn drawer-close" onClick={() => setMobileOpen(false)} aria-label={t.closeMenu}>
-              <Icon name="close" />
+              <X {...glyph} />
             </button>
           )}
           <div className="brand-mark" aria-hidden="true">
-            <Icon name="sim" />
+            <Wifi {...glyph} size={compact ? 20 : 28} />
           </div>
           {!compact && (
             <div className="brand-copy">
@@ -204,19 +233,23 @@ export function OfficeShell({
           {visibleGroups.map((group) => (
             <div key={group.title || 'home'}>
               {!compact && group.title && <p className="nav-label">{group.title}</p>}
-              {group.items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={pathname === item.href ? 'nav-link active' : 'nav-link'}
-                  title={item.label}
-                  aria-current={pathname === item.href ? 'page' : undefined}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Icon name={item.icon} />
-                  {!compact && <span>{item.label}</span>}
-                </Link>
-              ))}
+              {group.items.map((item) => {
+                const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
+                const ItemIcon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={active ? 'nav-link active' : 'nav-link'}
+                    title={item.label}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <ItemIcon {...glyph} />
+                    {!compact && <span>{item.label}</span>}
+                  </Link>
+                );
+              })}
             </div>
           ))}
         </nav>
@@ -228,7 +261,11 @@ export function OfficeShell({
             title={collapsed ? t.expand : t.collapse}
             aria-label={collapsed ? t.expand : t.collapse}
           >
-            <Icon name={collapsed ? 'expand' : 'collapse'} />
+            {collapsed ? (
+              <PanelLeftOpen {...glyph} className="ltr:-scale-x-100" />
+            ) : (
+              <PanelLeftClose {...glyph} className="ltr:-scale-x-100" />
+            )}
             {!compact && <span>{t.collapse}</span>}
           </button>
         </div>
@@ -236,19 +273,24 @@ export function OfficeShell({
     );
   };
 
-  const label = account || saved.account;
+  const label = account || saved.account || initialName;
   const sub = hint || (!account ? saved.hint : '');
   const shown = me?.nickname || label;
   const first = shown.trim().split(/\s+/)[0] || shown;
   const initial = first.charAt(0);
-  const now = new Date();
-  const hello = now.getHours() < 12 ? t.goodMorning : now.getHours() < 18 ? t.goodAfternoon : t.goodEvening;
+  const [clock, setClock] = useState<{ hello: string; today: string } | null>(null);
+  useEffect(() => {
+    const now = new Date();
+    const hello =
+      now.getHours() < 12 ? t.goodMorning : now.getHours() < 18 ? t.goodAfternoon : t.goodEvening;
+    const today = new Intl.DateTimeFormat(locale === 'en' ? 'en' : locale === 'he' ? 'he' : 'ar', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }).format(now);
+    setClock({ hello, today });
+  }, [locale, t.goodMorning, t.goodAfternoon, t.goodEvening]);
   const helloMark = locale === 'en' ? ',' : '،';
-  const today = new Intl.DateTimeFormat(locale === 'en' ? 'en' : locale === 'he' ? 'he' : 'ar', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  }).format(now);
   const role = me?.layer === 'branch' ? t.layerBranch : me?.layer === 'main_agent' ? t.layerMain : me?.layer === 'agent' ? t.layerAgent : me?.layer === 'pos' ? t.layerPos : me?.layer === 'staff' ? t.staffAccount : '';
 
   return (
@@ -260,31 +302,34 @@ export function OfficeShell({
         <header className="topbar">
           <div className="topbar-start">
             <button type="button" className="shell-icon menu-btn" onClick={() => setMobileOpen(true)} aria-label={t.openMenu}>
-              <Icon name="menu" />
+              <Menu {...glyph} />
             </button>
             <div className="hello">
-              <span className="hello-title">{hello}{helloMark} {first}</span>
-              <span className="hello-date">{today}</span>
+              <span className="hello-title">
+                {clock ? `${clock.hello}${helloMark} ${first}` : first}
+              </span>
+              <span className="hello-date">{clock?.today ?? '\u00a0'}</span>
             </div>
+            <ShellSearch />
           </div>
           <div className="topbar-tools">
-            <ShellSearch />
-            {balance !== null && (
-              <div className="wallet-chip" ref={walletRef}>
+            <div className="wallet-chip" ref={walletRef}>
                 <button
                   type="button"
                   className="wallet-btn"
                   aria-haspopup="dialog"
                   aria-expanded={walletOpen}
                   aria-label={t.walletMenu}
-                  onClick={() => setWalletOpen((open) => !open)}
+                  onClick={() => { if (balance !== null) setWalletOpen((open) => !open); }}
                 >
-                  <Icon name="wallet" />
-                  <span className={balance < 0 ? 'money neg' : balance > 0 ? 'money pos' : 'money'} dir="ltr">
-                    {balance}
-                  </span>
+                  <Wallet {...glyph} />
+                  {shownBalance !== null && (
+                    <span className={shownBalance < 0 ? 'money neg' : shownBalance > 0 ? 'money pos' : 'money'} dir="ltr">
+                      {shownBalance}
+                    </span>
+                  )}
                 </button>
-                {walletOpen && (
+                {walletOpen && balance !== null && (
                   <div className="wallet-pop" role="dialog" aria-label={t.walletMenu}>
                     <p>
                       <span>{t.balance}</span>
@@ -301,7 +346,6 @@ export function OfficeShell({
                   </div>
                 )}
               </div>
-            )}
             <div className="notice-wrap" ref={noticeRef}>
               <button
                 type="button"
@@ -310,7 +354,7 @@ export function OfficeShell({
                 aria-expanded={noticeOpen}
                 onClick={() => setNoticeOpen((open) => !open)}
               >
-                <Icon name="bell" />
+                <Bell {...glyph} />
                 {unread > 0 && <span className="notice-count">{unread > 9 ? '9+' : unread}</span>}
               </button>
               {noticeOpen && (
@@ -330,7 +374,7 @@ export function OfficeShell({
                       }}
                     >
                       <strong>{row.kind === 'task_reply' ? t.noticeReply : t.noticeTask}</strong>
-                      <small>{noticeAction(t, row.action)}{row.msisdn ? ` · ${row.msisdn}` : ''}</small>
+                      <small>{actionName(t, row.action)}{row.msisdn ? ` · ${row.msisdn}` : ''}</small>
                     </button>
                   ))}
                 </div>
@@ -359,12 +403,12 @@ export function OfficeShell({
                     </div>
                   </div>
                   <Link href="/settings" role="menuitem" onClick={() => setMenuOpen(false)}>
-                    <Icon name="settings" />
+                    <Settings {...glyph} />
                     {t.accountSettings}
                   </Link>
                   <span className="shell-rule" />
                   <button type="button" className="danger" role="menuitem" onClick={logout}>
-                    <Icon name="logout" />
+                    <LogOut {...glyph} />
                     {t.logout}
                   </button>
                 </div>
@@ -379,7 +423,10 @@ export function OfficeShell({
               <button type="button" onClick={leaveAccount}>{t.returnAccount}</button>
             </div>
           )}
-          <div className={wide ? 'canvas-inner wide' : 'canvas-inner'}>{ready ? children : <PageSkeleton />}</div>
+          <div className={wide ? 'canvas-inner wide' : 'canvas-inner'}>
+            {ready && backHref ? <BackLink href={backHref} /> : null}
+            {ready ? children : <PageSkeleton />}
+          </div>
         </main>
       </div>
     </div>

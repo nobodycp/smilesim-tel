@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Button } from './ui/button';
 
 /**
  * A thin wrapper over `.filter-bar` / `.filter-panel`. It writes the markup content-ui.mdc
@@ -20,9 +21,9 @@ export function FilterBar({
       <div className="filter-panel">
         {children}
         {onClear ? (
-          <button type="button" className="secondary" onClick={onClear}>
+          <Button type="button" variant="secondary" size="sm" className="filter-clear" onClick={onClear}>
             {clearLabel}
-          </button>
+          </Button>
         ) : null}
       </div>
     </div>

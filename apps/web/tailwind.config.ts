@@ -15,7 +15,7 @@ const config: Config = {
         good: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)',
       },
       borderRadius: { lg: '0.5rem', xl: '0.625rem' },
-      boxShadow: { card: 'var(--shadow-card)', pop: 'var(--shadow-pop)' },
+      boxShadow: { sm: 'var(--rd-shadow-sm)', card: 'var(--shadow-card)', pop: 'var(--shadow-pop)' },
     },
   },
   plugins: [],

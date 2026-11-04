@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { DataTable, type Column } from '../components/data-table';
 import { Money, actionName, latinWhen, layerName } from '../components/desk';
+import { EmptyState } from '../components/empty-state';
 import { Icon, type IconName } from '../components/icon';
 import { Spinner, TableSkeleton } from '../components/loading';
 import { OfficeShell } from '../components/office-shell';
@@ -11,47 +13,37 @@ import { api, type HomePayload } from '../lib/api';
 import { useIdentity } from '../lib/identity';
 import { useOffice } from '../lib/office-session';
 import { usePrefs } from '../lib/prefs';
+import { useAction } from '../lib/use-action';
+import { useLoad } from '../lib/use-load';
+
+type Movement = HomePayload['operations'][number];
 
 export default function HomePage() {
-  const { t, apiText } = usePrefs();
+  const { t } = usePrefs();
   const saved = useIdentity();
   const { me } = useOffice();
   const account = me ? me.nickname || me.loginName : saved.account;
   const hint = me && me.nickname ? me.loginName : saved.hint || undefined;
   const layer = me?.layer ?? '';
-  const [home, setHome] = useState<HomePayload | null>(null);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-
-  async function load() {
-    const board = await api.officeHome();
-    if (!board.ok) {
-      setError(apiText(board.message));
-      return;
-    }
-    setHome(board.data);
-  }
-
-  useEffect(() => {
-    load();
-    // The first paint loads the signed-in desk. Later refreshes go through load().
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const board = useLoad(() => api.officeHome());
+  const home = board.data;
+  const { run } = useAction({ setError, setNote, onDone: board.reload });
+  const failure = error || board.error;
 
   async function publish(event: FormEvent) {
     event.preventDefault();
-    setError('');
-    setNote('');
-    const result = await api.postAnnouncement(draft);
-    if (!result.ok) {
-      setError(apiText(result.message));
-      return;
-    }
-    setDraft('');
-    setNote(t.posted);
-    await load();
+    await run(() => api.postAnnouncement(draft), { note: t.posted, then: () => setDraft('') });
   }
+
+  const movementColumns: Column<Movement>[] = [
+    { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    { key: 'movement', header: t.movement, render: (row) => `${actionName(t, row.kind)}${row.note ? ` · ${row.note}` : ''}` },
+    { key: 'pos', header: t.pointOfSale, render: (row) => row.loginName },
+    { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} /> },
+  ];
 
   const shortcuts: { href: string; label: string; icon: IconName }[] = layer === 'pos'
     ? [
@@ -72,7 +64,7 @@ export default function HomePage() {
   return (
     <OfficeShell account={account} hint={hint} wide>
       <div className="home">
-        {error && <p className="error banner" role="alert">{error}</p>}
+        {failure && <p className="error banner" role="alert">{failure}</p>}
         {note && <p className="note banner" role="status">{note}</p>}
         <header className="page-head">
           <h1>{t.homeTitle}</h1>
@@ -123,32 +115,7 @@ export default function HomePage() {
             <header className="pane-head">
               <h2>{t.lastOps}</h2>
             </header>
-            {home.operations.length === 0 ? (
-              <p className="empty" style={{ padding: 14 }}>{t.noMovements}</p>
-            ) : (
-              <div className="sheet">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th>{t.when}</th>
-                      <th>{t.movement}</th>
-                      <th>{t.pointOfSale}</th>
-                      <th className="num">{t.amount}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {home.operations.map((row) => (
-                      <tr key={row.id}>
-                        <td className="when"><bdi dir="ltr">{latinWhen(row.at)}</bdi></td>
-                        <td>{actionName(t, row.kind)}{row.note ? ` · ${row.note}` : ''}</td>
-                        <td>{row.loginName}</td>
-                        <td><Money value={row.amount} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <DataTable columns={movementColumns} rows={home.operations} rowKey={(row) => row.id} empty={t.noMovements} />
           </section>
           <section className="pane">
             <header className="pane-head">
@@ -166,7 +133,7 @@ export default function HomePage() {
                 </form>
               )}
               {home.announcements.length === 0 ? (
-                <p className="empty">{t.noAnnouncements}</p>
+                <EmptyState>{t.noAnnouncements}</EmptyState>
               ) : (
                 <ul className="notices">
                   {home.announcements.map((row) => (

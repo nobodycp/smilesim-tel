@@ -177,6 +177,51 @@ export function visibleAccountIds(actorId: string, actorLayer: string, nodes: Ac
 
 export type ActionMode = 'auto' | 'manual' | 'off';
 
+export const ACTION_KEYS = [
+  'activate',
+  'charge',
+  'extend',
+  'disconnect',
+  'freeze',
+  'switch',
+  'rename',
+  'sim',
+] as const;
+
+export type ActionKey = (typeof ACTION_KEYS)[number];
+
+export type ActionModes = Record<ActionKey, ActionMode>;
+
+export type PackageActionFlags = {
+  autoActivate: boolean;
+  allowActivate: boolean;
+  autoCharge: boolean;
+  allowCharge: boolean;
+  autoExtend: boolean;
+  allowExtend: boolean;
+  autoDisconnect: boolean;
+  allowDisconnect: boolean;
+  autoFreeze: boolean;
+  allowFreeze: boolean;
+  autoSwitch: boolean;
+  allowSwitch: boolean;
+  autoRename: boolean;
+  allowRename: boolean;
+  autoSim: boolean;
+  allowSim: boolean;
+};
+
+const MODE_FLAG_FIELDS: Record<ActionKey, { auto: keyof PackageActionFlags; allow: keyof PackageActionFlags }> = {
+  activate: { auto: 'autoActivate', allow: 'allowActivate' },
+  charge: { auto: 'autoCharge', allow: 'allowCharge' },
+  extend: { auto: 'autoExtend', allow: 'allowExtend' },
+  disconnect: { auto: 'autoDisconnect', allow: 'allowDisconnect' },
+  freeze: { auto: 'autoFreeze', allow: 'allowFreeze' },
+  switch: { auto: 'autoSwitch', allow: 'allowSwitch' },
+  rename: { auto: 'autoRename', allow: 'allowRename' },
+  sim: { auto: 'autoSim', allow: 'allowSim' },
+};
+
 export function actionMode(auto: boolean, allow: boolean): ActionMode {
   if (!allow) return 'off';
   return auto ? 'auto' : 'manual';
@@ -186,6 +231,42 @@ export function flagsForMode(mode: ActionMode): { auto: boolean; allow: boolean 
   if (mode === 'off') return { auto: false, allow: false };
   if (mode === 'auto') return { auto: true, allow: true };
   return { auto: false, allow: true };
+}
+
+export function defaultActionModes(): ActionModes {
+  return {
+    activate: 'manual',
+    charge: 'manual',
+    extend: 'manual',
+    disconnect: 'manual',
+    freeze: 'manual',
+    switch: 'manual',
+    rename: 'manual',
+    sim: 'manual',
+  };
+}
+
+export function normalizeActionModes(raw: unknown): ActionModes {
+  const next = defaultActionModes();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return next;
+  const map = raw as Record<string, unknown>;
+  for (const key of ACTION_KEYS) {
+    const value = map[key];
+    if (value === 'auto' || value === 'manual' || value === 'off') next[key] = value;
+  }
+  return next;
+}
+
+/** One-time copy into Package auto/allow flags when creating a package under a provider. */
+export function packageFlagsFromModes(modes: ActionModes): PackageActionFlags {
+  const flags = {} as PackageActionFlags;
+  for (const key of ACTION_KEYS) {
+    const pair = MODE_FLAG_FIELDS[key];
+    const { auto, allow } = flagsForMode(modes[key]);
+    flags[pair.auto] = auto;
+    flags[pair.allow] = allow;
+  }
+  return flags;
 }
 
 export function isAutomatic(

@@ -1,23 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
+import { useEffect, useState, type FormEvent } from 'react';
+import { DataTable, type Column } from '../../components/data-table';
 import { Desk, Money, OutcomePick, whole } from '../../components/desk';
 import { EmptyState } from '../../components/empty-state';
 import { FilterBar } from '../../components/filter-bar';
+import { Button } from '../../components/ui/button';
 import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type Outcome, type PackageRow } from '../../lib/api';
+import { hueOf, markOf } from '../../lib/company-mark';
 import { useDoor } from '../../lib/door-context';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
-
-function markOf(name: string): string {
-  const parts = name.split(' ').filter(Boolean);
-  return (parts.length > 1 ? parts.map((part) => part[0]).join('') : name.slice(0, 2)).slice(0, 3);
-}
-
-function hueOf(name: string): number {
-  return [...name].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 360;
-}
+import { useAction } from '../../lib/use-action';
+import { useLoad } from '../../lib/use-load';
 
 function PosCatalog({
   rows,
@@ -40,6 +37,7 @@ function PosCatalog({
   const [outcome, setOutcome] = useState<Outcome>('success');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  const { run } = useAction({ setError, setNote });
   const names = [...new Set(rows.map((row) => row.companyName).filter(Boolean))];
   const imageOf = new Map(marks.map((mark) => [mark.name, mark.image]));
   const packs = rows.filter((row) => row.companyName === company);
@@ -58,27 +56,15 @@ function PosCatalog({
   async function join(event: FormEvent) {
     event.preventDefault();
     if (!picked || !loginName.trim()) return;
-    setError('');
-    setNote('');
     if (!/^05\d{8}$/.test(msisdn) || (!esim && !iccid.trim())) {
       setError(apiText('بيانات غير صالحة'));
+      setNote('');
       return;
     }
-    const result = await api.activateLine({
-      packageCode: picked.code,
-      posLogin: loginName,
-      esim,
-      iccid,
-      msisdn,
-      outcome,
-    });
-    if (!result.ok) {
-      setError(apiText(result.message));
-      return;
-    }
-    setNote(result.data.applied ? t.appliedNow : t.sentToBranch);
-    setIccid('');
-    setMsisdn('');
+    await run(
+      () => api.activateLine({ packageCode: picked.code, posLogin: loginName, esim, iccid, msisdn, outcome }),
+      { note: (data) => (data.applied ? t.appliedNow : t.sentToBranch), then: () => { setIccid(''); setMsisdn(''); } },
+    );
   }
 
   const canActivate = loginName.trim().length > 0;
@@ -97,9 +83,9 @@ function PosCatalog({
               const image = imageOf.get(name) ?? '';
               return (
                 <button className="company-card" key={name} type="button" onClick={() => openCompany(name)}>
-                  {image
-                    ? <img className="company-logo" src={image} alt="" />
-                    : <span className="company-mark" style={{ background: `hsl(${hueOf(name)} 42% 42%)` }}>{markOf(name)}</span>}
+                  {/* A data URL the browser already holds: next/image has nothing to optimise, so a plain img is right. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {image ? <img className="company-logo" src={image} alt="" /> : <span className="company-mark" style={{ background: `hsl(${hueOf(name)} 42% 42%)` }}>{markOf(name)}</span>}
                   <strong>{name}</strong>
                 </button>
               );
@@ -143,6 +129,124 @@ function PosCatalog({
   );
 }
 
+function CompanyTitle({ name, image, label, heading = false }: { name: string; image: string; label: string; heading?: boolean }) {
+  return (
+    <div className="company-head">
+      {image ? (
+        // A data URL the browser already holds: next/image has nothing to optimise, so a plain img is right.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img className="company-logo" src={image} alt="" />
+      ) : (
+        <span className="company-mark" style={{ background: `hsl(${hueOf(name)} 42% 42%)` }}>{markOf(name)}</span>
+      )}
+      <div>
+        <p className="eyebrow">{label}</p>
+        {heading ? <h2>{name}</h2> : <strong>{name}</strong>}
+      </div>
+    </div>
+  );
+}
+
+function BranchPackages({ error, note }: { error: string; note: string }) {
+  const { t } = usePrefs();
+  const shelf = useLoad(() => api.officeCompanies());
+  const [query, setQuery] = useState('');
+  const [company, setCompany] = useState('');
+  const [provider, setProvider] = useState('');
+  const [status, setStatus] = useState('');
+  const rows = (shelf.data?.companies ?? []).flatMap((companyRow) => companyRow.providers.flatMap((providerRow) => (
+    providerRow.packages.map((item) => ({
+      code: item.code,
+      name: item.name,
+      companyName: companyRow.name,
+      providerCode: providerRow.code,
+      providerName: providerRow.name,
+      activeLines: item.activeLines,
+      stoppedLines: item.stoppedLines,
+      enabled: item.enabled,
+    }))
+  )));
+  const companies = [...new Set(rows.map((row) => row.companyName))].sort((left, right) => left.localeCompare(right, 'ar'));
+  const providers = [...new Set(rows.filter((row) => !company || row.companyName === company).map((row) => row.providerName))].sort((left, right) => left.localeCompare(right, 'ar'));
+  const needle = query.trim();
+  const shown = rows.filter((row) => {
+    if (needle && !row.name.includes(needle)) return false;
+    if (company && row.companyName !== company) return false;
+    if (provider && row.providerName !== provider) return false;
+    if (status === 'on' && !row.enabled) return false;
+    if (status === 'off' && row.enabled) return false;
+    return true;
+  });
+  const filtering = Boolean(needle || company || provider || status);
+  const columns: Column<typeof rows[number]>[] = [
+    {
+      key: 'package',
+      header: t.packageName,
+      render: (row) => (
+        <Link className="row-link" href={`/providers/${row.providerCode}/${encodeURIComponent(row.code)}`}>{row.name}</Link>
+      ),
+    },
+    { key: 'company', header: t.company, render: (row) => row.companyName },
+    { key: 'provider', header: t.provider, render: (row) => row.providerName },
+    {
+      key: 'live',
+      header: t.status,
+      render: (row) => (
+        <span className={row.enabled ? 'badge' : 'badge cancelled'}>{row.enabled ? t.lineActive : t.stopped}</span>
+      ),
+    },
+    { key: 'active', header: t.activeNumbers, num: true, render: (row) => row.activeLines },
+    { key: 'stopped', header: t.stoppedLines, num: true, render: (row) => row.stoppedLines },
+  ];
+
+  return (
+    <Desk title={t.plansTitle} lede="" error={error || shelf.error} note={note}>
+      <FilterBar onClear={() => { setQuery(''); setCompany(''); setProvider(''); setStatus(''); }} clearLabel={t.clearFilters}>
+        <label>
+          {t.packageName}
+          <input value={query} onChange={(event) => setQuery(event.target.value)} />
+        </label>
+        <label>
+          {t.company}
+          <select value={company} onChange={(event) => {
+            const next = event.target.value;
+            setCompany(next);
+            if (next && provider && !rows.some((row) => row.companyName === next && row.providerName === provider)) setProvider('');
+          }}>
+            <option value="">{t.allRows}</option>
+            {companies.map((name) => <option key={name} value={name}>{name}</option>)}
+          </select>
+        </label>
+        <label>
+          {t.provider}
+          <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            {providers.map((name) => <option key={name} value={name}>{name}</option>)}
+          </select>
+        </label>
+        <label>
+          {t.status}
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            <option value="on">{t.lineActive}</option>
+            <option value="off">{t.stopped}</option>
+          </select>
+        </label>
+      </FilterBar>
+      <section className="pane fit">
+        <DataTable
+          columns={columns}
+          rows={shown}
+          rowKey={(row) => row.code}
+          loading={!shelf.loaded}
+          skeleton={{ rows: 8, columns: 6 }}
+          empty={filtering ? t.noMatches : t.noLines}
+        />
+      </section>
+    </Desk>
+  );
+}
+
 function shown(row: PackageRow): number {
   if (row.editableField === 'main') return row.mainPrice;
   if (row.editableField === 'agent') return row.agentPrice;
@@ -152,56 +256,42 @@ function shown(row: PackageRow): number {
 
 export default function PlansPage() {
   const { t, apiText } = usePrefs();
-  const [rows, setRows] = useState<PackageRow[]>([]);
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [companyFilter, setCompanyFilter] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const [marks, setMarks] = useState<{ name: string; image: string }[]>([]);
-  const [loaded, setLoaded] = useState(false);
   const { me } = useOffice();
   const door = useDoor();
   const layer = me?.layer ?? '';
   const isPos = door.layer === 'pos' || layer === 'pos';
   const loginName = me?.loginName ?? '';
+  const catalog = useLoad(() => api.officePackages());
+  const rows = catalog.data?.packages ?? [];
+  const marks = catalog.data?.companies ?? [];
+  const { run } = useAction({ setError, setNote, onDone: catalog.reload });
+  const failure = error || catalog.error;
 
-  const load = useCallback(async () => {
-    const result = await api.officePackages();
-    if (!result.ok) {
-      setError(apiText(result.message));
-      setLoaded(true);
-      return;
-    }
-    setRows(result.data.packages);
-    setMarks(result.data.companies ?? []);
+  // A price the user has not touched follows the catalog; one they typed stays until it is saved.
+  useEffect(() => {
+    if (!catalog.data) return;
     setPrices((current) => {
       const next = { ...current };
-      for (const row of result.data.packages) next[row.code] ??= String(shown(row));
+      for (const row of catalog.data?.packages ?? []) next[row.code] ??= String(shown(row));
       return next;
     });
-    setLoaded(true);
-  }, [apiText]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  }, [catalog.data]);
 
   async function save(row: PackageRow) {
-    setError('');
-    setNote('');
     const price = whole(prices[row.code] ?? '');
     if (price === null) {
       setError(apiText('بيانات غير صالحة'));
+      setNote('');
       return;
     }
-    const result = await api.setPackagePrice(row.code, price);
-    if (!result.ok) {
-      setError(apiText(result.message));
-      return;
-    }
-    setNote(t.save);
-    setPrices((current) => ({ ...current, [row.code]: String(price) }));
-    await load();
+    await run(() => api.setPackagePrice(row.code, price), {
+      note: t.save,
+      then: () => setPrices((current) => ({ ...current, [row.code]: String(price) })),
+    });
   }
 
   const listed = companyFilter ? rows.filter((row) => row.companyName === companyFilter) : rows;
@@ -238,52 +328,35 @@ export default function PlansPage() {
     sections.push({ key: 'companies', provider: '', companies: byCompany(listed) });
   }
 
-  const priceTable = (list: PackageRow[]) => (
-    <div className="sheet">
-      <table className="data">
-        <thead>
-          <tr>
-            <th>{t.packageName}</th>
-            <th className="num">{t.branchCost}</th>
-            <th className="num">{t.mainPrice}</th>
-            <th className="num">{t.agentPrice}</th>
-            <th className="num">{t.posPrice}</th>
-            <th className="num">{t.subscriberPrice}</th>
-            <th className="num">{t.yourPrice}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {list.map((row) => (
-            <tr key={row.code}>
-              <td>{row.name}</td>
-              <td><Money value={row.branchCost} /></td>
-              <td><Money value={row.mainPrice} /></td>
-              <td><Money value={row.agentPrice} /></td>
-              <td><Money value={row.posPrice} /></td>
-              <td><Money value={row.subscriberPrice} /></td>
-              <td className="num">
-                {row.editableField && (
-                  <div className="field-row">
-                    <input
-                      aria-label={t.yourPrice}
-                      value={prices[row.code] ?? ''}
-                      inputMode="numeric"
-                      onChange={(event) => setPrices((current) => ({ ...current, [row.code]: event.target.value }))}
-                    />
-                    <button type="button" className="secondary" onClick={() => save(row)}>{t.save}</button>
-                  </div>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  const columns: Column<PackageRow>[] = [
+    { key: 'package', header: t.packageName, render: (row) => row.name },
+    { key: 'cost', header: t.branchCost, num: true, render: (row) => <Money value={row.branchCost} /> },
+    { key: 'main', header: t.mainPrice, num: true, render: (row) => <Money value={row.mainPrice} /> },
+    { key: 'agent', header: t.agentPrice, num: true, render: (row) => <Money value={row.agentPrice} /> },
+    { key: 'pos', header: t.posPrice, num: true, render: (row) => <Money value={row.posPrice} /> },
+    { key: 'subscriber', header: t.subscriberPrice, num: true, render: (row) => <Money value={row.subscriberPrice} /> },
+    {
+      key: 'yours',
+      header: t.yourPrice,
+      num: true,
+      render: (row) => row.editableField && (
+        <div className="field-row">
+          <input
+            aria-label={t.yourPrice}
+            value={prices[row.code] ?? ''}
+            inputMode="numeric"
+            onChange={(event) => setPrices((current) => ({ ...current, [row.code]: event.target.value }))}
+          />
+          <Button type="button" variant="secondary" size="sm" onClick={() => save(row)}>{t.save}</Button>
+        </div>
+      ),
+    },
+  ];
+  const priceTable = (list: PackageRow[]) => <DataTable columns={columns} rows={list} rowKey={(row) => row.code} />;
 
-  if (!loaded) {
+  if (!catalog.loaded) {
     return (
-      <Desk title={t.plansTitle} lede="" error={error} note={note}>
+      <Desk title={t.plansTitle} lede="" error={failure} note={note}>
         <section className="pane">
           <header className="pane-head"><Spinner /></header>
           <TableSkeleton />
@@ -292,11 +365,14 @@ export default function PlansPage() {
     );
   }
   if (isPos) {
-    return <PosCatalog rows={rows} marks={marks} loginName={loginName} loadError={error} />;
+    return <PosCatalog rows={rows} marks={marks} loginName={loginName} loadError={failure} />;
+  }
+  if (door.layer === 'branch' || layer === 'branch') {
+    return <BranchPackages error={failure} note={note} />;
   }
   if (!me) {
     return (
-      <Desk title={t.plansTitle} lede="" error={error} note={note}>
+      <Desk title={t.plansTitle} lede="" error={failure} note={note}>
         <section className="pane">
           <header className="pane-head"><Spinner /></header>
           <TableSkeleton />
@@ -306,7 +382,7 @@ export default function PlansPage() {
   }
 
   return (
-    <Desk title={t.plansTitle} lede="" error={error} note={note}>
+    <Desk title={t.plansTitle} lede="" error={failure} note={note}>
       <FilterBar onClear={() => setCompanyFilter('')} clearLabel={t.clearFilters}>
         <label>
           {t.company}
@@ -335,10 +411,7 @@ export default function PlansPage() {
                   </header>
                   {section.companies.map((company) => (
                     <div className="pane-body" key={company.name}>
-                      <div>
-                        <p className="eyebrow">{t.company}</p>
-                        <strong>{company.name}</strong>
-                      </div>
+                      <CompanyTitle name={company.name} image={marks.find((mark) => mark.name === company.name)?.image ?? ''} label={t.company} />
                       {priceTable(company.rows)}
                     </div>
                   ))}
@@ -347,10 +420,7 @@ export default function PlansPage() {
             : sections[0]?.companies.map((company) => (
                 <section className="pane" key={company.name}>
                   <header className="pane-head">
-                    <div>
-                      <p className="eyebrow">{t.company}</p>
-                      <h2>{company.name}</h2>
-                    </div>
+                    <CompanyTitle name={company.name} image={marks.find((mark) => mark.name === company.name)?.image ?? ''} label={t.company} heading />
                   </header>
                   <div className="pane-body">{priceTable(company.rows)}</div>
                 </section>

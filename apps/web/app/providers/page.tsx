@@ -1,67 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { DataTable, type Column } from '../../components/data-table';
 import { Desk } from '../../components/desk';
-import { TableSkeleton } from '../../components/loading';
 import { api, type ProviderRow } from '../../lib/api';
-import { useDoor } from '../../lib/door-context';
-import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
+import { useLoad } from '../../lib/use-load';
+import { useRequireLayer } from '../../lib/use-require-layer';
+
+const BRANCH = ['branch'];
 
 export default function ProvidersPage() {
-  const { t, apiText } = usePrefs();
-  const [rows, setRows] = useState<ProviderRow[]>([]);
-  const [error, setError] = useState('');
-  const [loaded, setLoaded] = useState(false);
-  const { me } = useOffice();
-  const door = useDoor();
-  const allowed = door.layer === 'branch' && me?.layer === 'branch';
+  const { t } = usePrefs();
+  const allowed = useRequireLayer(BRANCH);
+  const providers = useLoad(() => api.officeProviders(), [], { enabled: allowed });
+  const shelf = useLoad(() => api.officeCompanies(), [], { enabled: allowed });
 
-  const load = useCallback(async () => {
-    const result = await api.officeProviders();
-    if (!result.ok) {
-      setError(apiText(result.message));
-      setLoaded(true);
-      return;
-    }
-    setRows(result.data.providers);
-    setLoaded(true);
-  }, [apiText]);
+  function census(code: string) {
+    const packages = (shelf.data?.companies ?? []).flatMap((company) => (
+      company.providers.filter((item) => item.code === code).flatMap((item) => item.packages)
+    ));
+    return {
+      active: packages.reduce((sum, item) => sum + item.activeLines, 0),
+      stopped: packages.reduce((sum, item) => sum + item.stoppedLines, 0),
+    };
+  }
 
-  useEffect(() => {
-    if (door.layer !== 'branch' || (me && me.layer !== 'branch')) window.location.replace('/');
-  }, [door.layer, me]);
-
-  useEffect(() => {
-    if (allowed) load();
-  }, [allowed, load]);
+  const columns: Column<ProviderRow>[] = [
+    { key: 'provider', header: t.provider, render: (provider) => <Link className="row-link" href={`/providers/${provider.code}`}>{provider.name}</Link> },
+    { key: 'companies', header: t.company, num: true, render: (provider) => provider.companies.length },
+    { key: 'packages', header: t.navPlans, num: true, render: (provider) => provider.companies.reduce((sum, company) => sum + company.packages.length, 0) },
+    { key: 'active', header: t.activeNumbers, num: true, render: (provider) => census(provider.code).active },
+    { key: 'stopped', header: t.stoppedLines, num: true, render: (provider) => census(provider.code).stopped },
+  ];
 
   return (
-    <Desk title={allowed ? t.providersTitle : ''} lede="" error={error} note="">
+    <Desk title={allowed ? t.providersTitle : ''} lede="" error={providers.error || shelf.error} note="">
       <section className="pane">
-        <div className="sheet">
-          {!loaded ? <TableSkeleton rows={5} columns={3} /> : (
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>{t.provider}</th>
-                  <th>{t.company}</th>
-                  <th>{t.navPlans}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((provider) => (
-                  <tr key={provider.code}>
-                    <td><Link className="row-link" href={`/providers/${provider.code}`}>{provider.name}</Link></td>
-                    <td>{provider.companies.length}</td>
-                    <td>{provider.companies.reduce((sum, company) => sum + company.packages.length, 0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <DataTable columns={columns} rows={providers.data?.providers ?? []} rowKey={(provider) => provider.code} loading={!providers.loaded} skeleton={{ rows: 5, columns: 5 }} />
       </section>
     </Desk>
   );

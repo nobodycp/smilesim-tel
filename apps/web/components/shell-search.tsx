@@ -22,6 +22,7 @@ export function ShellSearch() {
       if (event.key === '/' && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
         event.preventDefault();
         setOpen(true);
+        field.current?.focus();
       }
       if (event.key === 'Escape') setOpen(false);
     };
@@ -40,14 +41,14 @@ export function ShellSearch() {
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
     const needle = query.trim();
-    if (needle.length < 2) {
+    if (!open || needle.length < 2) {
       setHits([]);
       return;
     }
     let stop = false;
     const timer = window.setTimeout(async () => {
+      // Only the first page of numbers is read: the box shows at most 8 hits, so `nextCursor` is ignored on purpose.
       const [users, lines] = await Promise.all([api.officeUsers(), api.officeLines({ q: needle })]);
       if (stop) return;
       const next: Hit[] = [];
@@ -84,51 +85,70 @@ export function ShellSearch() {
   }, [open, query, t.navNumbers, t.navUsers]);
 
   const groups = [...new Set(hits.map((hit) => hit.group))];
+  const showResults = open && query.trim().length >= 2;
 
   return (
-    <div className={open ? 'shell-search open' : 'shell-search'} ref={box}>
+    <div className={open ? 'shell-search is-open' : 'shell-search'} ref={box}>
       <button
         type="button"
         className="shell-search-toggle"
         aria-expanded={open}
         aria-label={t.searchPlaceholder}
-        onClick={() => setOpen(true)}
+        onClick={() => setOpen((value) => !value)}
       >
         <SearchIcon />
-        <span className="shell-search-placeholder">{t.searchPlaceholder}</span>
-        <kbd>/</kbd>
       </button>
-      {open && (
-        <form className="shell-search-panel" role="search" onSubmit={(event) => event.preventDefault()}>
-          <div className="shell-search-field">
-            <SearchIcon />
-            <input
-              ref={field}
-              type="search"
-              value={query}
-              placeholder={t.searchPlaceholder}
-              aria-label={t.searchPlaceholder}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <kbd>Esc</kbd>
-          </div>
-          {query.trim().length >= 2 && (
-            <div className="shell-search-results">
-              {hits.length === 0 ? <p className="shell-search-empty">{t.searchEmpty}</p> : groups.map((group) => (
-                <div key={group}>
-                  <p className="shell-search-label">{group}</p>
-                  {hits.filter((hit) => hit.group === group).map((hit) => (
-                    <Link key={hit.key} href={hit.href} className="shell-search-item" onClick={() => setOpen(false)}>
-                      <strong>{hit.label}</strong>
-                      {hit.sub && <small>{hit.sub}</small>}
-                    </Link>
-                  ))}
-                </div>
-              ))}
-            </div>
+      <form className="shell-search-desk" role="search" onSubmit={(event) => event.preventDefault()}>
+        <div className="shell-search-field">
+          <SearchIcon />
+          <input
+            ref={field}
+            type="search"
+            value={query}
+            placeholder={t.searchPlaceholder}
+            aria-label={t.searchPlaceholder}
+            aria-expanded={showResults}
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            onFocus={() => setOpen(true)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setOpen(true);
+            }}
+          />
+          {query ? (
+            <button
+              type="button"
+              className="shell-search-clear"
+              aria-label={t.clearFilters}
+              onClick={() => {
+                setQuery('');
+                field.current?.focus();
+              }}
+            >
+              <ClearIcon />
+            </button>
+          ) : (
+            <kbd>/</kbd>
           )}
-        </form>
-      )}
+        </div>
+        {showResults && (
+          <div className="shell-search-results">
+            {hits.length === 0 ? <p className="shell-search-empty">{t.searchEmpty}</p> : groups.map((group) => (
+              <div key={group}>
+                <p className="shell-search-label">{group}</p>
+                {hits.filter((hit) => hit.group === group).map((hit) => (
+                  <Link key={hit.key} href={hit.href} className="shell-search-item" onClick={() => setOpen(false)}>
+                    <strong>{hit.label}</strong>
+                    {hit.sub && <small>{hit.sub}</small>}
+                  </Link>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </form>
     </div>
   );
 }
@@ -138,6 +158,14 @@ function SearchIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="11" cy="11" r="8" />
       <path d="M21 21l-4.35-4.35" />
+    </svg>
+  );
+}
+
+function ClearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 6l12 12M18 6 6 18" />
     </svg>
   );
 }

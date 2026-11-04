@@ -3,17 +3,35 @@
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, type OfficeMe } from './api';
-import { rememberIdentity } from './identity';
+import { rememberBalance, rememberIdentity } from './identity';
 
-type OfficeSessionValue = { ready: boolean; me: OfficeMe | null };
+type OfficeSessionValue = {
+  ready: boolean;
+  me: OfficeMe | null;
+  initialName: string;
+  initialBalance: number | null;
+};
 
-const OfficeContext = createContext<OfficeSessionValue>({ ready: false, me: null });
+const OfficeContext = createContext<OfficeSessionValue>({
+  ready: false,
+  me: null,
+  initialName: '',
+  initialBalance: null,
+});
 
 function authPath(pathname: string) {
   return pathname === '/login' || pathname === '/password' || pathname.startsWith('/two-factor');
 }
 
-export function OfficeSession({ children }: { children: ReactNode }) {
+export function OfficeSession({
+  children,
+  initialName = '',
+  initialBalance = null,
+}: {
+  children: ReactNode;
+  initialName?: string;
+  initialBalance?: number | null;
+}) {
   const pathname = usePathname();
   const skip = authPath(pathname);
   const [me, setMe] = useState<OfficeMe | null>(null);
@@ -27,6 +45,7 @@ export function OfficeSession({ children }: { children: ReactNode }) {
       if (result.ok) {
         const name = result.data.nickname || result.data.loginName;
         rememberIdentity(name, result.data.nickname ? result.data.loginName : '');
+        rememberBalance(result.data.balance);
         setMe(result.data);
       }
       setReady(true);
@@ -36,7 +55,11 @@ export function OfficeSession({ children }: { children: ReactNode }) {
     };
   }, [skip]);
 
-  return <OfficeContext.Provider value={{ ready: skip || ready, me }}>{children}</OfficeContext.Provider>;
+  return (
+    <OfficeContext.Provider value={{ ready: skip || ready, me, initialName, initialBalance }}>
+      {children}
+    </OfficeContext.Provider>
+  );
 }
 
 export function useOffice() {

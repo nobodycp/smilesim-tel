@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../generated/prisma/client';
 import type { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import { passwordMatches } from './password';

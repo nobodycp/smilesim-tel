@@ -1,10 +1,10 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -23,6 +23,9 @@ model User {
   roleId                 String?
   role                   Role?     @relation(fields: [roleId], references: [id])
   liveGrants             String    @default("")
+  extraGrants            String    @default("")
+  deniedGrants           String    @default("")
+  extraRoles             UserRole[]
   disabledAt             DateTime?
   twoFactorExempt        Boolean   @default(false)
   twoFactorEnabled       Boolean   @default(false)
@@ -35,6 +38,7 @@ model User {
   posLines               Line[]        @relation("LinePos")
   submittedTasks         OfficeTask[]  @relation("TaskSubmitter")
   assignedTasks          OfficeTask[]  @relation("TaskAssignee")
+  taskNotes              OfficeTaskNote[]
   announcements          Announcement[]
   notices                Notice[]
   accessLogs             AccessLog[]
@@ -65,8 +69,21 @@ model Role {
   reports    Boolean  @default(false)
   staff      Boolean  @default(false)
   enter      Boolean  @default(false)
+  kind       String   @default("job")
+  layer      String?  @unique
+  grants     String   @default("")
   users      User[]
+  holders    UserRole[]
   updatedAt  DateTime @updatedAt
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
 }
 
 model LayerPolicy {
@@ -104,10 +121,11 @@ model WalletEntry {
 }
 
 model Provider {
-  id       String    @id @default(uuid())
-  code     String    @unique
-  name     String
-  packages Package[]
+  id          String    @id @default(uuid())
+  code        String    @unique
+  name        String
+  actionModes Json      @default("{}")
+  packages    Package[]
 }
 
 model Company {
@@ -237,9 +255,22 @@ model OfficeTask {
   log           String   @default("")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  notes         OfficeTaskNote[]
 
   @@index([status, createdAt])
   @@index([submitterId, createdAt])
+}
+
+model OfficeTaskNote {
+  id        String     @id @default(uuid())
+  taskId    String
+  task      OfficeTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User       @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime   @default(now())
+
+  @@index([taskId, createdAt])
 }
 
 model AccessLog {

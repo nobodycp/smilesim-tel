@@ -1,161 +1,137 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Desk } from '../../components/desk';
+import { useState } from 'react';
+import { DataTable, type Column } from '../../components/data-table';
+import { Desk, layerName } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
 import { RowMenu } from '../../components/row-menu';
-import { TableSkeleton } from '../../components/loading';
-import { api } from '../../lib/api';
+import { Button } from '../../components/ui/button';
+import { api, type RoleRow } from '../../lib/api';
+import { GRANT_CODES, grantLabel } from '../../lib/grants';
 import { usePrefs } from '../../lib/prefs';
+import { useAction } from '../../lib/use-action';
+import { useLoad } from '../../lib/use-load';
 
-type RoleRow = {
-  id: string;
-  name: string;
-  read: boolean;
-  edit: boolean;
-  accounting: boolean;
-  tasks: boolean;
-  reports: boolean;
-  staff: boolean;
-  enter: boolean;
-};
+type RoleDraft = { id: string; name: string; kind: 'layer' | 'job'; layer: string; grants: string[] };
 
-type RoleDraft = Omit<RoleRow, 'id'> & { id: string };
+const FLAG_KEYS = ['read', 'edit', 'accounting', 'tasks', 'reports', 'staff', 'enter'] as const;
 
-const emptyDraft = (): RoleDraft => ({
-  id: '',
-  name: '',
-  read: true,
-  edit: false,
-  accounting: false,
-  tasks: false,
-  reports: false,
-  staff: false,
-  enter: false,
-});
+function codesOf(row: RoleRow) {
+  if (row.grants && row.grants.length > 0) return [...row.grants];
+  return FLAG_KEYS.filter((key) => row[key]);
+}
+
+const emptyDraft = (): RoleDraft => ({ id: '', name: '', kind: 'job', layer: '', grants: ['read'] });
 
 export default function RolesPage() {
-  const { t, apiText } = usePrefs();
-  const [rows, setRows] = useState<RoleRow[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const { t } = usePrefs();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<RoleDraft>(emptyDraft);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const grants = [
-    ['read', t.grantRead],
-    ['edit', t.grantEdit],
-    ['accounting', t.navAccounting],
-    ['tasks', t.navTasks],
-    ['reports', t.navReports],
-    ['staff', t.staffAccount],
-    ['enter', t.grantEnter],
-  ] as const;
-
-  const load = useCallback(async () => {
+  const roles = useLoad(async () => {
     const result = await api.officeRoles();
-    if (!result.ok) {
-      setError(apiText(result.message));
-      setLoaded(true);
-      return;
-    }
-    setRows(result.data.roles);
-    setLoaded(true);
-  }, [apiText]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+    return result.ok ? { ok: true as const, data: result.data.roles } : result;
+  });
+  const rows = roles.data ?? [];
+  const { run, busy } = useAction({ setError, setNote, onDone: roles.reload });
+  const failure = error || roles.error;
 
   function edit(row?: RoleRow) {
-    setDraft(row ? { ...row } : emptyDraft());
+    setDraft(row
+      ? { id: row.id, name: row.name, kind: row.kind === 'layer' ? 'layer' : 'job', layer: row.layer ?? '', grants: codesOf(row) }
+      : emptyDraft());
     setOpen(true);
   }
 
   async function save() {
-    setError('');
-    setNote('');
-    const result = await api.saveRole({ ...draft, id: draft.id || undefined });
-    if (!result.ok) {
-      setError(apiText(result.message));
-      return;
-    }
-    setOpen(false);
-    await load();
+    const flags = {
+      read: draft.grants.includes('read'),
+      edit: draft.grants.includes('edit'),
+      accounting: draft.grants.includes('accounting'),
+      tasks: draft.grants.includes('tasks'),
+      reports: draft.grants.includes('reports'),
+      staff: draft.grants.includes('staff'),
+      enter: draft.grants.includes('enter'),
+    };
+    await run(() => api.saveRole({ id: draft.id || undefined, name: draft.name, grants: draft.grants, ...flags }), { then: () => setOpen(false) });
+  }
+
+  function roleTitle(row: { kind?: string; layer?: string; name: string }) {
+    return row.kind === 'layer' && row.layer ? layerName(t, row.layer) : row.name;
   }
 
   function labels(row: RoleRow) {
-    return grants.filter(([key]) => row[key]).map(([, label]) => label).join(' · ') || '—';
+    return codesOf(row).map((code) => grantLabel(t, code)).join(' · ') || '—';
   }
+
+  const columns: Column<RoleRow>[] = [
+    { key: 'role', header: t.role, render: (row) => <strong>{roleTitle(row)}</strong> },
+    { key: 'kind', header: t.layer, render: (row) => row.kind === 'layer' ? t.layerRole : t.jobRole },
+    { key: 'permissions', header: t.permissions, render: (row) => labels(row) },
+    {
+      key: 'ops',
+      header: t.rowActions,
+      actions: true,
+      render: (row) => <RowMenu label={`${t.rowActions} ${roleTitle(row)}`} items={[{ label: t.grantEdit, icon: 'edit', onClick: () => edit(row) }]} />,
+    },
+  ];
 
   return (
     <Desk
       title={t.rolesTitle}
       lede=""
-      action={<button type="button" className="primary" onClick={() => edit()}>{t.role}</button>}
-      error={error}
+      action={<Button type="button" onClick={() => edit()}>{t.role}</Button>}
+      error={failure}
       note={note}
     >
-      <section className="pane">
+      <section className="pane fit">
+        <header className="pane-head">
+          <h2>{t.rolesList}{roles.loaded ? <span className="count">{rows.length}</span> : null}</h2>
+        </header>
         <Dialog
           open={open}
-          title={t.role}
+          title={draft.kind === 'layer' ? roleTitle(draft) : t.role}
+          lede={t.roleHint}
+          mark="shield"
           closeLabel={t.closeMenu}
-          error={error}
+          error={failure}
           onClose={() => setOpen(false)}
           footer={(
             <>
-              <button type="button" className="secondary" onClick={() => setOpen(false)}>{t.cancel}</button>
-              <button type="button" className="primary" disabled={!draft.name.trim()} onClick={save}>{t.save}</button>
+              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t.cancel}</Button>
+              <Button type="button" disabled={busy || (draft.kind === 'job' && !draft.name.trim())} onClick={save}>{t.save}</Button>
             </>
           )}
         >
           <div className="dialog-form">
-            <label>
-              {t.role}
-              <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} />
-            </label>
+            {draft.kind === 'job' && (
+              <label>
+                {t.role}
+                <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} />
+              </label>
+            )}
             <fieldset className="perm-grid">
               <legend>{t.permissions}</legend>
-              {grants.map(([key, label]) => (
-                <label key={key} className="check">
+              {GRANT_CODES.map((code) => (
+                <label key={code} className="check">
                   <input
                     type="checkbox"
-                    checked={draft[key]}
-                    onChange={(event) => setDraft((current) => ({ ...current, [key]: event.target.checked }))}
+                    checked={draft.grants.includes(code)}
+                    onChange={(event) => setDraft((current) => ({
+                      ...current,
+                      grants: event.target.checked
+                        ? [...current.grants, code]
+                        : current.grants.filter((item) => item !== code),
+                    }))}
                   />
-                  {label}
+                  {grantLabel(t, code)}
                 </label>
               ))}
             </fieldset>
           </div>
         </Dialog>
-        {!loaded ? <TableSkeleton rows={3} columns={3} /> : rows.length === 0 ? (
-          <p className="empty">{t.noMatches}</p>
-        ) : (
-          <div className="sheet">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>{t.role}</th>
-                  <th>{t.permissions}</th>
-                  <th className="row-actions">{t.lineOps}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td><strong>{row.name}</strong></td>
-                    <td>{labels(row)}</td>
-                    <td className="row-actions">
-                      <RowMenu label={`${t.lineOps} ${row.name}`} items={[{ label: t.grantEdit, icon: 'edit', onClick: () => edit(row) }]} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} loading={!roles.loaded} empty={t.noMatches} skeleton={{ rows: 4, columns: 4 }} />
       </section>
     </Desk>
   );

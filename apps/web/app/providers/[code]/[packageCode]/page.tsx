@@ -1,12 +1,12 @@
 'use client';
 
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DataTable, type Column } from '../../../../components/data-table';
 import { Desk, Money, layerName } from '../../../../components/desk';
 import { TableSkeleton } from '../../../../components/loading';
 import { RowMenu } from '../../../../components/row-menu';
+import { Button } from '../../../../components/ui/button';
 import { api, type LineRow, type PackageSheet, type Shelf } from '../../../../lib/api';
 import { usePrefs } from '../../../../lib/prefs';
 import { useAction } from '../../../../lib/use-action';
@@ -196,11 +196,11 @@ export default function PackageSheetPage() {
     { key: 'price', header: t.price, num: true, render: (offer) => <Money value={offer.price} /> },
     {
       key: 'ops',
-      header: t.lineOps,
+      header: t.rowActions,
       actions: true,
       render: (offer) => (
         <RowMenu
-          label={`${t.lineOps} ${offer.nickname}`}
+          label={`${t.rowActions} ${offer.nickname}`}
           items={[{
             label: t.deleteAccount,
             icon: 'trash',
@@ -252,7 +252,7 @@ export default function PackageSheetPage() {
   ];
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: t.overviewTab },
-    { key: 'run', label: t.runTab },
+    { key: 'run', label: t.packageActions },
     { key: 'prices', label: t.pricesTab },
     { key: 'renewals', label: t.renewalsTab },
     { key: 'switches', label: t.switchesTab },
@@ -285,7 +285,7 @@ export default function PackageSheetPage() {
   function targetList(kind: 'renewals' | 'switches', packages: ShelfPackage[]) {
     const selected = kind === 'renewals' ? renewals : switches;
     return (
-      <div className="pane-body">
+      <div className="pane-body target-list">
         {packages.length === 0 ? <p className="empty">{t.noTargetPackages}</p> : packages.map((pkg) => (
           <label className="check" key={pkg.code}>
             <input
@@ -297,21 +297,15 @@ export default function PackageSheetPage() {
             <span className={pkg.forSale ? 'badge' : 'badge cancelled'}>{pkg.forSale ? t.forSale : t.notForSale}</span>
           </label>
         ))}
-        <button type="button" className="secondary" onClick={() => void saveTargets(kind)}>{t.save}</button>
+        <Button type="button" variant="secondary" size="sm" onClick={() => void saveTargets(kind)}>{t.save}</Button>
       </div>
     );
   }
 
   return (
-    <Desk title={sheet ? `${sheet.companyName} · ${sheet.name}` : ''} lede={sheet?.providerName ?? ''} error={error || card.error} note={note}>
+    <Desk title={sheet ? `${sheet.companyName} · ${sheet.name}` : ''} lede="" error={error || card.error} note={note}>
       <div className="stack">
-        <Link
-          className="back-link"
-          href={sheet ? `/companies/${sheet.companyCode}/${sheet.providerCode}` : '/companies'}
-        >
-          {t.navPlans}
-        </Link>
-        <section className="pane">
+        <section className="pane package-sheet">
           {!card.loaded || !sheet ? <TableSkeleton rows={6} columns={2} /> : (
             <>
               <div className="steps" role="tablist">
@@ -323,24 +317,45 @@ export default function PackageSheetPage() {
               </div>
               {tab === 'overview' && (
                 <div className="pane-body">
-                  <p>{t.linesTotal}: <span className="num">{sheet.lines}</span></p>
-                  <p>{t.activeLines}: <span className="num">{sheet.activeLines}</span></p>
+                  <div className="sheet-stats">
+                    <div>
+                      <span>{t.linesTotal}</span>
+                      <strong className="num">{sheet.lines}</strong>
+                    </div>
+                    <div>
+                      <span>{t.activeLines}</span>
+                      <strong className="num">{sheet.activeLines}</strong>
+                    </div>
+                  </div>
+                  <div className="sheet-meta">
+                    <div>
+                      <span>{t.provider}</span>
+                      <strong>{sheet.providerName}</strong>
+                    </div>
+                    <div className="live-switch">
+                      <span id="package-live">{t.packageLive}</span>
+                      <b>{sheet.enabled ? t.lineActive : t.stopped}</b>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={sheet.enabled}
+                        aria-labelledby="package-live"
+                        onClick={() => void saveEnabled(!sheet.enabled)}
+                      >
+                        <span className="track"><span /></span>
+                      </button>
+                    </div>
+                  </div>
+                  <span className={sheet.forSale ? 'badge' : 'badge cancelled'}>{sheet.forSale ? t.forSale : t.notForSale}</span>
                 </div>
               )}
               {tab === 'run' && (
                 <div className="pane-body">
-                  <label className="switch-row">
-                    {t.packageLive}
-                    <select value={sheet.enabled ? 'on' : 'off'} onChange={(event) => void saveEnabled(event.target.value === 'on')}>
-                      <option value="on">{t.lineActive}</option>
-                      <option value="off">{t.stopped}</option>
-                    </select>
-                  </label>
                   <DataTable bare columns={modeColumns} rows={[...actions]} rowKey={(action) => action} />
                 </div>
               )}
               {tab === 'prices' && (
-                <div className="pane-body" aria-label={t.chainTab}>
+                <div className="pane-body price-board" aria-label={t.chainTab}>
                   {priceGroups.map((group) => (
                     <div className="account-fund" key={group.title}>
                       <h3>{group.title}</h3>
@@ -357,7 +372,7 @@ export default function PackageSheetPage() {
                       ))}
                     </div>
                   ))}
-                  <button type="button" className="secondary" onClick={() => void saveChain()}>{t.save}</button>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => void saveChain()}>{t.save}</Button>
                   <div className="account-fund">
                     <h3>{t.repriceTitle}</h3>
                     <label>

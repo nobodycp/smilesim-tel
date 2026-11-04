@@ -55,7 +55,7 @@ export const catalog: CatalogProvider[] = [
     name: 'سكاي',
     companies: [
       shelfCompany('cellcom', [seedPackage(300, 1, 35), seedPackage(400, 1, 41)]),
-      shelfCompany('hot', [seedPackage(300, 1, 35), seedPackage(150, 1, 30)]),
+      shelfCompany('hot', [seedPackage(300, 1, 35), seedPackage(200, 1, 40), seedPackage(150, 1, 38)]),
       shelfCompany('pelephone', [seedPackage(350, 1, 35), seedPackage(500, 1, 45)]),
     ],
   },

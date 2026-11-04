@@ -26,7 +26,7 @@ docker compose up --build
 
 يرفع web على 3000 وapi على 3001 وworker وpostgres وredis، ويطبّق الهجرات عند إقلاع الـ api. `docker-compose.override.yml` يُحمَّل تلقائياً محلياً ويفعّل حسابات التجربة `branch` و`main` و`agent` و`pos` بكلمة السر `123456` (للتطوير فقط، انظر `.env.example`). لا حاجة لملف `.env`؛ انسخ `.env.example` إلى `.env` فقط لتغيير قيمة.
 
-بلا docker: شغّل postgres وredis، ثم من الجذر `npm ci` و`npm run prisma:generate`، ثم `npm run build --workspace api` و`npm run start --workspace api` و`npm run dev --workspace web`. المطلوب Node 22 أو أحدث (`.nvmrc`).
+بلا docker: شغّل postgres وredis، ثم من الجذر `npm ci` و`npm run prisma:generate`، ثم `npm run build --workspace api` و`npm run start --workspace api` و`npm run dev --workspace web`. المطلوب Node 24 أو أحدث (`.nvmrc`).
 
 ## السكربتات (من الجذر)
 
@@ -62,7 +62,7 @@ DESIGN.md        نظام التصميم Pearl، مصدر الحقيقة الب�
 
 ## الأمان: headers وCSP
 
-`apps/web/next.config.mjs` يضيف `X-Content-Type-Options` و`Referrer-Policy` و`X-Frame-Options` و`Permissions-Policy` لكل المسارات. `Content-Security-Policy` يبنيه `apps/web/middleware.ts` لكل طلب مع nonce جديد، لأن السكربت المضمّن في `components/bootstrap.tsx` لا يعمل إلا بهذا الـ nonce (لا `unsafe-inline` للسكربتات). في التطوير يُضاف `unsafe-eval` وws لـ HMR فقط. لإضافة مصدر جديد (صور من مضيف، أو api على أصل آخر) عدّل التوجيه المناسب في دالة `contentSecurityPolicy` داخل `middleware.ts` (`img-src` أو `connect-src` أو `font-src`) واكتب سببه في تعليق.
+`apps/web/next.config.mjs` يضيف `X-Content-Type-Options` و`Referrer-Policy` و`X-Frame-Options` و`Permissions-Policy` لكل المسارات. `Content-Security-Policy` يبنيه `apps/web/proxy.ts` لكل طلب مع nonce جديد، لأن السكربت المضمّن في `components/bootstrap.tsx` لا يعمل إلا بهذا الـ nonce (لا `unsafe-inline` للسكربتات). في التطوير يُضاف `unsafe-eval` وws لـ HMR فقط. لإضافة مصدر جديد (صور من مضيف، أو api على أصل آخر) عدّل التوجيه المناسب في دالة `contentSecurityPolicy` داخل `proxy.ts` (`img-src` أو `connect-src` أو `font-src`) واكتب سببه في تعليق.
 
 ## النشر على Coolify
 

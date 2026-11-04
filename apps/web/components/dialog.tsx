@@ -1,8 +1,11 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, KeyRound, LogIn, Plus, Shield, Snowflake, Trash2, Wallet, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
+
+export type DialogMark = 'plus' | 'shield' | 'wallet' | 'transfer' | 'key' | 'freeze' | 'enter' | 'trash' | 'alert';
+export type DialogTone = 'neutral' | 'danger';
 
 const focusable = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 const DialogAlert = createContext<(held: boolean) => void>(() => {});
@@ -35,6 +38,9 @@ export function Dialog({
   children,
   footer,
   size = 'form',
+  lede = '',
+  mark,
+  tone = 'neutral',
 }: {
   open: boolean;
   title: string;
@@ -44,6 +50,9 @@ export function Dialog({
   children: ReactNode;
   footer?: ReactNode;
   size?: 'confirm' | 'form' | 'wide';
+  lede?: string;
+  mark?: DialogMark;
+  tone?: DialogTone;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const holdAlert = useContext(DialogAlert);
@@ -94,7 +103,11 @@ export function Dialog({
     <div className="dialog-scrim" onClick={onClose}>
       <div ref={panel} className="dialog" data-size={size} role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
         <header>
-          <h2>{title}</h2>
+          {mark ? <span className={tone === 'danger' ? 'dialog-mark danger' : 'dialog-mark'}><DialogGlyph name={mark} /></span> : null}
+          <div className="dialog-heading">
+            <h2>{title}</h2>
+            {lede ? <p className="dialog-lede">{lede}</p> : null}
+          </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label={closeLabel}><X size={18} aria-hidden="true" /></button>
         </header>
         {error ? <p className="error" role="alert">{error}</p> : null}
@@ -104,4 +117,19 @@ export function Dialog({
     </div>,
     document.body,
   );
+}
+
+function DialogGlyph({ name }: { name: DialogMark }) {
+  const Icon = {
+    plus: Plus,
+    shield: Shield,
+    wallet: Wallet,
+    transfer: ArrowRightLeft,
+    key: KeyRound,
+    freeze: Snowflake,
+    enter: LogIn,
+    trash: Trash2,
+    alert: AlertTriangle,
+  }[name];
+  return <Icon size={18} aria-hidden="true" />;
 }

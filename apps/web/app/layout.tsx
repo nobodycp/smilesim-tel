@@ -1,12 +1,15 @@
 import type { ReactNode } from 'react';
-import { headers } from 'next/headers';
+import type { Metadata } from 'next';
+import { cookies, headers } from 'next/headers';
 import { IBM_Plex_Sans_Hebrew, Tajawal } from 'next/font/google';
 import { Bootstrap } from '../components/bootstrap';
 import { Toasts } from '../components/toast';
 import { Doors } from '../components/doors';
 import { Preferences } from '../components/preferences';
+import { copy } from '../lib/copy';
 import { DoorProvider } from '../lib/door-context';
 import { doorFromHost } from '../lib/doors';
+import { BALANCE_COOKIE, dirFor, LOCALE_KEY, NAME_COOKIE, PAGE_SIZE_KEY, parseLocale, parsePageSize, parseTheme, THEME_KEY } from '../lib/document-prefs';
 import { OfficeSession } from '../lib/office-session';
 import './globals.css';
 
@@ -24,23 +27,39 @@ const hebrew = IBM_Plex_Sans_Hebrew({
   display: 'swap',
 });
 
-export const metadata = { title: 'سمايل سيم' };
+export async function generateMetadata(): Promise<Metadata> {
+  const jar = await cookies();
+  return { title: copy[parseLocale(jar.get(LOCALE_KEY)?.value)].brand };
+}
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const requestHeaders = await headers();
+  const jar = await cookies();
   const host = requestHeaders.get('host') ?? '';
-  // Set per request by middleware.ts; the CSP only lets the bootstrap script run with this nonce.
+  // Set per request by proxy.ts; the CSP only lets the bootstrap script run with this nonce.
   const nonce = requestHeaders.get('x-nonce') ?? undefined;
   const door = doorFromHost(host);
+  const locale = parseLocale(jar.get(LOCALE_KEY)?.value);
+  const theme = parseTheme(jar.get(THEME_KEY)?.value);
+  const initialName = jar.get(NAME_COOKIE)?.value ?? '';
+  const balanceCookie = jar.get(BALANCE_COOKIE)?.value;
+  const parsedBalance = balanceCookie === undefined || balanceCookie === '' ? null : Number(balanceCookie);
+  const initialBalance = parsedBalance !== null && Number.isFinite(parsedBalance) ? parsedBalance : null;
   return (
-    <html lang="ar" dir="rtl" className={`${sans.variable} ${hebrew.variable}`} suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={dirFor(locale)}
+      className={[sans.variable, hebrew.variable, theme === 'dark' ? 'dark' : ''].filter(Boolean).join(' ')}
+      style={{ colorScheme: theme }}
+      suppressHydrationWarning
+    >
       <body>
         <Bootstrap nonce={nonce} />
-        <Preferences>
+        <Preferences locale={locale} theme={theme} pageSize={parsePageSize(jar.get(PAGE_SIZE_KEY)?.value)}>
           <Toasts>
           {door ? (
             <DoorProvider door={door}>
-              <OfficeSession>{children}</OfficeSession>
+              <OfficeSession initialName={initialName} initialBalance={initialBalance}>{children}</OfficeSession>
             </DoorProvider>
           ) : (
             <Doors host={host} />

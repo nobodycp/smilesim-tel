@@ -27,18 +27,29 @@ export default function CompanyProvidersPage() {
       ),
     },
     { key: 'packages', header: t.navPlans, num: true, render: (provider) => provider.packages.length },
+    {
+      key: 'active',
+      header: t.activeNumbers,
+      num: true,
+      render: (provider) => provider.packages.reduce((sum, item) => sum + item.activeLines, 0),
+    },
+    {
+      key: 'stopped',
+      header: t.stoppedLines,
+      num: true,
+      render: (provider) => provider.packages.reduce((sum, item) => sum + item.stoppedLines, 0),
+    },
   ];
 
   return (
     <Desk title={company?.name ?? ''} lede="" error={shelf.error} note="">
-      <Link className="back-link" href="/companies">{t.companiesTitle}</Link>
       <section className="pane">
         <DataTable
           columns={columns}
           rows={company?.providers ?? []}
           rowKey={(provider) => provider.code}
           loading={!shelf.loaded}
-          skeleton={{ rows: 5, columns: 2 }}
+          skeleton={{ rows: 5, columns: 4 }}
           empty={t.noProviders}
         />
       </section>

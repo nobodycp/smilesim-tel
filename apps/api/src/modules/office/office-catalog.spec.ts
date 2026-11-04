@@ -29,7 +29,8 @@ describe('wholesale catalog', () => {
       provider.companies.flatMap((company) => company.packages.map((item) => packageCode(provider.code, company.code, item))),
     );
     expect(new Set(codes).size).toBe(codes.length);
-    expect(codes).toHaveLength(22);
+    expect(codes).toHaveLength(23);
+    expect(codes).toContain('sky-hot-200');
     expect(codes).toContain('sky-cellcom-300');
     expect(codes).toContain('lian-wecom-500-3m');
     expect(codes).toContain('quickline-cellcom-400-3m');

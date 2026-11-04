@@ -1,5 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../db';
+import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
@@ -19,6 +20,7 @@ import {
   taskStatusOf,
   type LineFilter,
 } from './office-paging';
+import { parseTaskLogLine, stampTaskLog } from './task-log';
 import {
   ESIM_FEE,
   Prices,
@@ -26,9 +28,12 @@ import {
   chainHolds,
   chargeDebit,
   editableField,
+  ACTION_KEYS,
   actionMode,
   flagsForMode,
   isAutomatic,
+  normalizeActionModes,
+  packageFlagsFromModes,
   periodEnd,
   renewOnto,
   renewStay,
@@ -38,9 +43,20 @@ import {
   visibleAccountIds,
   withPrice,
   withinCeiling,
+  type ActionKey,
+  type ActionMode,
   type LineTerms,
 } from './office-rules';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
+import {
+  FLAG_CODES,
+  GRANT_CODES,
+  LAYER_GRANTS,
+  effectiveGrantCodes,
+  flagsFor,
+  roleGrantCodes,
+  splitGrants,
+} from './office-grants';
 
 
 const MODE_FIELDS: Record<string, { auto: string; allow: string }> = {
@@ -53,7 +69,7 @@ const MODE_FIELDS: Record<string, { auto: string; allow: string }> = {
   rename: { auto: 'autoRename', allow: 'allowRename' },
   sim: { auto: 'autoSim', allow: 'allowSim' },
 };
-const ALL_GRANTS = ['read', 'edit', 'accounting', 'tasks', 'reports', 'staff', 'enter'];
+const LAYER_ORDER = ['branch', 'main_agent', 'agent', 'pos'];
 
 type Gate = { sessionId?: string; homeId?: string };
 type Actor = {
@@ -91,7 +107,7 @@ export class OfficeService implements OnModuleInit {
   private prismaClient: PrismaClient | null = null;
 
   private get prisma(): PrismaClient {
-    this.prismaClient ??= new PrismaClient();
+    this.prismaClient ??= createPrismaClient();
     return this.prismaClient;
   }
 
@@ -100,6 +116,7 @@ export class OfficeService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     if (process.env.NODE_ENV === 'test' || !process.env.DATABASE_URL) return;
     await this.ensureCatalog();
+    await this.ensureLayerRoles();
   }
 
   async me(gate: Gate) {
@@ -291,8 +308,10 @@ export class OfficeService implements OnModuleInit {
         name: string;
         months: number;
         forSale: boolean;
+        enabled: boolean;
         lines: number;
         activeLines: number;
+        stoppedLines: number;
       }>;
     }>>();
     for (const row of rows) {
@@ -303,21 +322,27 @@ export class OfficeService implements OnModuleInit {
         name: row.provider.name,
         packages: [],
       };
+      const activeLines = row.lines.filter((line) => line.status === 'active').length;
       provider.packages.push({
         code: row.code,
         name: row.name,
         months: row.months,
         forSale: row.forSale,
+        enabled: row.enabled,
         lines: row.lines.length,
-        activeLines: row.lines.filter((line) => line.status === 'active').length,
+        activeLines,
+        stoppedLines: row.lines.length - activeLines,
       });
       providers.set(row.provider.code, provider);
       byCompany.set(row.company.code, providers);
     }
+    const stored = await this.prisma.company.findMany({ select: { code: true, image: true } });
+    const imageOf = new Map(stored.map((row) => [row.code, row.image ?? '']));
     return {
       companies: companies.map((company) => ({
         code: company.code,
         name: company.name,
+        image: imageOf.get(company.code) ?? '',
         providers: [...(byCompany.get(company.code)?.values() ?? [])],
       })),
     };
@@ -357,6 +382,36 @@ export class OfficeService implements OnModuleInit {
     }
     await this.prisma.company.updateMany({ where: { name }, data: { image } });
     return { ok: true };
+  }
+
+  async providerSettings(gate: Gate, code: string) {
+    const actor = await this.actor(gate);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    const row = await this.prisma.provider.findUnique({ where: { code } });
+    if (!row) fail(404, 'NOT_FOUND');
+    return {
+      code: row.code,
+      name: row.name,
+      modes: normalizeActionModes(row.actionModes),
+    };
+  }
+
+  async setProviderMode(gate: Gate, code: string, body: Record<string, unknown>) {
+    const actor = await this.actor(gate);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
+    const row = await this.prisma.provider.findUnique({ where: { code } });
+    if (!row) fail(404, 'NOT_FOUND');
+    const action = typeof body.action === 'string' ? body.action : '';
+    const mode = body.mode === 'auto' || body.mode === 'manual' || body.mode === 'off' ? body.mode : '';
+    if (!(ACTION_KEYS as readonly string[]).includes(action) || !mode) fail(400, 'INVALID');
+    const modes = normalizeActionModes(row.actionModes);
+    modes[action as ActionKey] = mode as ActionMode;
+    await this.prisma.provider.update({
+      where: { code },
+      data: { actionModes: modes },
+    });
+    return { ok: true as const };
   }
 
   async providers(gate: Gate) {
@@ -800,28 +855,162 @@ export class OfficeService implements OnModuleInit {
     return { applied: false, taskId: task.id };
   }
 
-  async tasks(gate: Gate, query: { cursor?: string; status?: string } = {}) {
+  async tasks(
+    gate: Gate,
+    query: {
+      cursor?: string;
+      q?: string;
+      status?: string;
+      action?: string;
+      packageCode?: string;
+      company?: string;
+      provider?: string;
+    } = {},
+  ) {
     const actor = await this.actor(gate);
     const seesTasks = actor.isBranchOwner || actor.grants.includes('tasks');
     const branch = actor.layer === 'branch' && seesTasks;
     const status = taskStatusOf(query.status);
+    const action = typeof query.action === 'string' ? query.action.trim() : '';
+    const packageCode = typeof query.packageCode === 'string' ? query.packageCode.trim() : '';
+    const company = typeof query.company === 'string' ? query.company.trim() : '';
+    const provider = typeof query.provider === 'string' ? query.provider.trim() : '';
+    const digits = (typeof query.q === 'string' ? query.q : '').replace(/\s/g, '');
+    const packageFilterOn = Boolean(packageCode || company || provider);
+    const matchedPackages = packageFilterOn
+      ? await this.prisma.package.findMany({
+          where: {
+            ...(packageCode ? { code: packageCode } : {}),
+            ...(company ? { company: { name: company } } : {}),
+            ...(provider ? { provider: { name: provider } } : {}),
+          },
+          select: { id: true },
+        })
+      : null;
+    if (matchedPackages && matchedPackages.length === 0) {
+      return { tasks: [], nextCursor: null };
+    }
     const read = await this.prisma.officeTask.findMany({
       where: {
         ...(branch ? {} : { submitterId: actor.id }),
         ...(status ? { status } : {}),
+        ...(action ? { action } : {}),
+        ...(digits ? { msisdn: { contains: digits } } : {}),
+        ...(matchedPackages ? { packageId: { in: matchedPackages.map((row) => row.id) } } : {}),
         AND: afterFeed(feedPosition(query.cursor)),
       },
-      include: { submitter: true, assignee: true },
+      include: {
+        submitter: true,
+        assignee: true,
+        notes: { orderBy: { createdAt: 'desc' }, take: 1, select: { body: true } },
+      },
       orderBy: [...NEWEST_FIRST],
       take: TASKS_PAGE + 1,
     });
     const { page: rows, nextCursor } = mergeFeed([read], TASKS_PAGE);
     const accounts = await this.accounts();
     const byId = new Map(accounts.map((account) => [account.id, account]));
-    const packages = await this.prisma.package.findMany();
-    const byPackage = new Map(packages.map((row) => [row.id, row.name]));
+    const packages = await this.prisma.package.findMany({ include: { company: true, provider: true } });
+    const byPackage = new Map(packages.map((row) => [row.id, row]));
     return {
-      tasks: rows.map((row) => ({
+      tasks: rows.map((row) => {
+        const pkg = byPackage.get(row.packageId);
+        return {
+          id: row.id,
+          action: row.action,
+          status: row.status,
+          posLogin: byId.get(row.posId)?.loginName ?? '',
+          submitterLogin: row.submitter.loginName,
+          assigneeLogin: row.assignee?.loginName ?? null,
+          posDelta: row.posDelta,
+          msisdn: row.msisdn,
+          packageName: pkg?.name ?? '',
+          companyName: pkg?.company?.name ?? '',
+          providerName: pkg?.provider?.name ?? '',
+          note: row.note,
+          resultNote: row.status === 'pending' && !seesTasks ? null : row.resultNote,
+          lastNote: seesTasks || row.submitterId === actor.id ? row.notes[0]?.body ?? null : null,
+          log: seesTasks ? row.log : '',
+          canTake: branch && row.status === 'pending',
+          canWork: branch && row.assigneeId === actor.id && row.status === 'working',
+          canCancel: row.submitterId === actor.id && (row.status === 'pending' || row.status === 'working'),
+        };
+      }),
+      nextCursor,
+    };
+  }
+
+  async task(gate: Gate, id: string) {
+    const actor = await this.actor(gate);
+    const seesTasks = actor.isBranchOwner || actor.grants.includes('tasks');
+    const branch = actor.layer === 'branch' && seesTasks;
+    const row = await this.prisma.officeTask.findUnique({
+      where: { id },
+      include: {
+        submitter: true,
+        assignee: true,
+        notes: { include: { author: true }, orderBy: { createdAt: 'asc' } },
+        line: { include: { package: { include: { company: true, provider: true } } } },
+      },
+    });
+    if (!row) fail(404, 'NOT_FOUND');
+    if (!branch && row.submitterId !== actor.id) fail(403, 'FORBIDDEN');
+    const accounts = await this.accounts();
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    const pkg =
+      row.line?.package ??
+      (await this.prisma.package.findUnique({
+        where: { id: row.packageId },
+        include: { company: true, provider: true },
+      }));
+    const events: {
+      id: string;
+      kind: 'system' | 'note' | 'result';
+      body: string;
+      authorName: string | null;
+      at: string;
+    }[] = [];
+    if (seesTasks && row.log.trim()) {
+      row.log
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .forEach((line, index) => {
+          const parsed = parseTaskLogLine(line, row.createdAt.toISOString());
+          events.push({
+            id: `log-${String(index).padStart(4, '0')}`,
+            kind: 'system',
+            body: parsed.body,
+            authorName: null,
+            at: parsed.at,
+          });
+        });
+    }
+    if (seesTasks || row.submitterId === actor.id) {
+      for (const note of row.notes) {
+        events.push({
+          id: note.id,
+          kind: 'note',
+          body: note.body,
+          authorName: note.author.nickname || note.author.loginName,
+          at: note.createdAt.toISOString(),
+        });
+      }
+    }
+    const resultNote = row.status === 'pending' && !seesTasks ? null : row.resultNote;
+    if (resultNote) {
+      events.push({
+        id: 'result',
+        kind: 'result',
+        body: resultNote,
+        authorName: row.assignee?.nickname || row.assignee?.loginName || null,
+        at: row.updatedAt.toISOString(),
+      });
+    }
+    events.sort((left, right) => right.at.localeCompare(left.at) || right.id.localeCompare(left.id));
+    const open = row.status === 'pending' || row.status === 'working';
+    return {
+      task: {
         id: row.id,
         action: row.action,
         status: row.status,
@@ -829,17 +1018,39 @@ export class OfficeService implements OnModuleInit {
         submitterLogin: row.submitter.loginName,
         assigneeLogin: row.assignee?.loginName ?? null,
         posDelta: row.posDelta,
-        msisdn: row.msisdn,
-        packageName: byPackage.get(row.packageId) ?? '',
+        msisdn: row.line?.msisdn ?? row.msisdn,
+        iccid: row.line?.iccid ?? row.iccid,
+        esim: row.line?.esim ?? row.esim,
+        lineStatus: row.line?.status ?? null,
+        packageName: pkg?.name ?? '',
+        companyName: pkg?.company?.name ?? '',
+        providerName: pkg?.provider?.name ?? '',
         note: row.note,
-        resultNote: row.status === 'pending' && !seesTasks ? null : row.resultNote,
+        resultNote,
         log: seesTasks ? row.log : '',
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
         canTake: branch && row.status === 'pending',
         canWork: branch && row.assigneeId === actor.id && row.status === 'working',
-        canCancel: row.submitterId === actor.id && (row.status === 'pending' || row.status === 'working'),
-      })),
-      nextCursor,
+        canNote: branch && open,
+        canCancel: row.submitterId === actor.id && open,
+      },
+      events,
     };
+  }
+
+  async addTaskNote(gate: Gate, id: string, body: { text?: unknown }) {
+    const actor = await this.branchActor(gate);
+    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
+    const text = typeof body.text === 'string' ? body.text.trim() : '';
+    if (!text || text.length > 2000) fail(400, 'INVALID');
+    const current = await this.prisma.officeTask.findUnique({ where: { id } });
+    if (!current) fail(404, 'NOT_FOUND');
+    if (current.status !== 'pending' && current.status !== 'working') fail(400, 'INVALID');
+    await this.prisma.officeTaskNote.create({
+      data: { taskId: id, authorId: actor.id, body: text },
+    });
+    return { ok: true };
   }
 
   async takeTask(gate: Gate, id: string) {
@@ -1177,34 +1388,145 @@ export class OfficeService implements OnModuleInit {
   async roles(gate: Gate) {
     const actor = await this.actor(gate);
     if (!actor.isBranchOwner) fail(403, 'FORBIDDEN');
-    const roles = await this.prisma.role.findMany({ orderBy: { name: 'asc' } });
-    return { roles };
+    await this.ensureLayerRoles();
+    const roles = await this.prisma.role.findMany();
+    const rank = (role: { kind: string; layer: string | null; name: string }) =>
+      role.kind === 'layer' ? LAYER_ORDER.indexOf(role.layer ?? '') : LAYER_ORDER.length;
+    roles.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+    return {
+      roles: roles.map((role) => ({
+        id: role.id,
+        name: role.name,
+        kind: role.kind === 'layer' ? 'layer' : 'job',
+        layer: role.layer ?? '',
+        grants: roleGrantCodes(role),
+        read: role.read,
+        edit: role.edit,
+        accounting: role.accounting,
+        tasks: role.tasks,
+        reports: role.reports,
+        staff: role.staff,
+        enter: role.enter,
+      })),
+    };
   }
 
-  async saveRole(gate: Gate, body: { id?: unknown; name?: unknown; read?: unknown; edit?: unknown; accounting?: unknown; tasks?: unknown; reports?: unknown; staff?: unknown; enter?: unknown }) {
+  async saveRole(gate: Gate, body: { id?: unknown; name?: unknown; grants?: unknown; read?: unknown; edit?: unknown; accounting?: unknown; tasks?: unknown; reports?: unknown; staff?: unknown; enter?: unknown }) {
     const actor = await this.actor(gate);
     if (!actor.isBranchOwner || actor.impersonating) fail(403, 'FORBIDDEN');
-    const name = typeof body.name === 'string' ? body.name.trim() : '';
-    if (name.length < 2) fail(400, 'INVALID');
-    const flags = {
-      name,
-      read: body.read === true,
-      edit: body.edit === true,
-      accounting: body.accounting === true,
-      tasks: body.tasks === true,
-      reports: body.reports === true,
-      staff: body.staff === true,
-      enter: body.enter === true,
-    };
+    const listed = Array.isArray(body.grants)
+      ? splitGrants(body.grants.filter((code): code is string => typeof code === 'string').join(','))
+      : FLAG_CODES.filter((code) => body[code] === true);
+    const flags = flagsFor(listed);
     const id = typeof body.id === 'string' ? body.id : '';
-    if (id) await this.prisma.role.update({ where: { id }, data: flags });
-    else await this.prisma.role.create({ data: flags });
+    if (id) {
+      const existing = await this.prisma.role.findUnique({ where: { id } });
+      if (!existing) fail(404, 'NOT_FOUND');
+      const name = existing.kind === 'layer' ? existing.name : (typeof body.name === 'string' ? body.name.trim() : '');
+      if (name.length < 2) fail(400, 'INVALID');
+      await this.prisma.role.update({
+        where: { id },
+        data: { name, ...flags, grants: listed.join(',') },
+      });
+    } else {
+      const name = typeof body.name === 'string' ? body.name.trim() : '';
+      if (name.length < 2) fail(400, 'INVALID');
+      await this.prisma.role.create({ data: { name, kind: 'job', ...flags, grants: listed.join(',') } });
+    }
+    return { ok: true as const };
+  }
+
+  async account(gate: Gate, loginName: string) {
+    const actor = await this.actor(gate);
+    await this.ensureLayerRoles();
+    const target = await this.visibleAccount(actor, loginName);
+    const [layerRole, jobs, extra] = await Promise.all([
+      this.prisma.role.findUnique({ where: { layer: target.layer } }),
+      this.prisma.role.findMany({ where: { kind: 'job' }, orderBy: { name: 'asc' } }),
+      this.prisma.userRole.findMany({ where: { userId: target.id }, include: { role: true } }),
+    ]);
+    const staff = target.layer === 'branch' && Boolean(target.roleId) && !target.isBranchOwner;
+    const roleGrants = effectiveGrantCodes({
+      owner: false,
+      staff,
+      layer: target.layer,
+      layerRole,
+      roles: [target.role, ...extra.map((link) => link.role)],
+      extra: '',
+      denied: '',
+    });
+    const grants = target.isBranchOwner
+      ? [...GRANT_CODES]
+      : effectiveGrantCodes({
+        owner: false,
+        staff,
+        layer: target.layer,
+        layerRole,
+        roles: [target.role, ...extra.map((link) => link.role)],
+        extra: target.extraGrants,
+        denied: target.deniedGrants,
+      });
+    const parent = target.parentId
+      ? await this.prisma.user.findUnique({ where: { id: target.parentId }, select: { loginName: true } })
+      : null;
+    return {
+      loginName: target.loginName,
+      nickname: target.nickname,
+      layer: target.layer,
+      parentLogin: parent?.loginName ?? null,
+      frozen: target.disabledAt !== null,
+      isBranchOwner: target.isBranchOwner,
+      staff,
+      roleId: target.roleId ?? '',
+      roleName: target.role?.name ?? '',
+      roleGrants,
+      extraGrants: splitGrants(target.extraGrants),
+      deniedGrants: splitGrants(target.deniedGrants),
+      extraRoleIds: extra.map((link) => link.roleId),
+      grants,
+      roles: jobs.map((role) => ({ id: role.id, name: role.name, grants: roleGrantCodes(role) })),
+      canEdit: actor.isBranchOwner && !actor.impersonating && !target.isBranchOwner,
+    };
+  }
+
+  async saveAccess(gate: Gate, loginName: string, body: { extraGrants?: unknown; deniedGrants?: unknown; extraRoleIds?: unknown; roleId?: unknown }) {
+    const actor = await this.actor(gate);
+    if (!actor.isBranchOwner || actor.impersonating) fail(403, 'FORBIDDEN');
+    const target = await this.visibleAccount(actor, loginName);
+    if (target.isBranchOwner) fail(403, 'FORBIDDEN');
+    const extraGrants = splitGrants(Array.isArray(body.extraGrants) ? body.extraGrants.filter((code): code is string => typeof code === 'string').join(',') : '');
+    const denied = new Set(splitGrants(Array.isArray(body.deniedGrants) ? body.deniedGrants.filter((code): code is string => typeof code === 'string').join(',') : ''));
+    for (const code of extraGrants) denied.delete(code);
+    const wanted = Array.isArray(body.extraRoleIds) ? body.extraRoleIds.filter((id): id is string => typeof id === 'string' && id.length > 0) : [];
+    const jobs = wanted.length === 0
+      ? []
+      : await this.prisma.role.findMany({ where: { id: { in: wanted }, kind: 'job' }, select: { id: true } });
+    if (jobs.length !== new Set(wanted).size) fail(400, 'INVALID');
+    const staff = target.layer === 'branch' && Boolean(target.roleId);
+    let roleId = target.roleId;
+    if (staff) {
+      const next = typeof body.roleId === 'string' ? body.roleId : '';
+      const primary = next ? await this.prisma.role.findUnique({ where: { id: next } }) : null;
+      if (!primary || primary.kind === 'layer') fail(400, 'INVALID');
+      roleId = primary.id;
+    }
+    const extraIds = jobs.map((role) => role.id).filter((id) => id !== roleId);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: target.id },
+        data: { extraGrants: extraGrants.join(','), deniedGrants: [...denied].join(','), roleId },
+      });
+      await tx.userRole.deleteMany({ where: { userId: target.id } });
+      if (extraIds.length > 0) {
+        await tx.userRole.createMany({ data: extraIds.map((id) => ({ userId: target.id, roleId: id })) });
+      }
+    });
     return { ok: true as const };
   }
 
   async transferPos(gate: Gate, loginName: string, body: { parentLogin?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.impersonating || (actor.layer !== 'branch' && actor.layer !== 'main_agent')) fail(403, 'FORBIDDEN');
+    if (actor.impersonating || !actor.grants.includes('transferPos')) fail(403, 'FORBIDDEN');
     const parentLogin = typeof body.parentLogin === 'string' ? body.parentLogin : '';
     const accounts = await this.accounts();
     const pos = accounts.find((account) => account.loginName === loginName && account.layer === 'pos');
@@ -1223,7 +1545,7 @@ export class OfficeService implements OnModuleInit {
 
   async transferLine(gate: Gate, lineId: string, body: { posLogin?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.layer === 'pos' || actor.impersonating) fail(403, 'FORBIDDEN');
+    if (actor.impersonating || !actor.grants.includes('transferLines')) fail(403, 'FORBIDDEN');
     const posLogin = typeof body.posLogin === 'string' ? body.posLogin : '';
     const line = await this.visibleLine(actor, lineId);
     const accounts = await this.accounts();
@@ -1754,8 +2076,11 @@ export class OfficeService implements OnModuleInit {
       const home = await this.auth.liveSession(gate.homeId);
       if (home && home.session.scope === 'full' && home.user.layer === 'branch' && !home.user.disabledAt) operatorId = home.user.id;
     }
-    const stored = await this.prisma.user.findUnique({ where: { id: live.user.id }, select: { liveGrants: true, isBranchOwner: true } });
-    const grants = stored?.isBranchOwner ? ALL_GRANTS : (stored?.liveGrants ?? '').split(',').filter(Boolean);
+    const stored = await this.prisma.user.findUnique({
+      where: { id: live.user.id },
+      include: { role: true, extraRoles: { include: { role: true } } },
+    });
+    const grants = await this.grantsFor(stored);
     return {
       id: live.user.id,
       loginName: live.user.loginName,
@@ -1802,7 +2127,7 @@ export class OfficeService implements OnModuleInit {
   }
 
   private noteLog(current: string, line: string) {
-    return current ? `${current}\n${line}` : line;
+    return stampTaskLog(current, line);
   }
 
   private async branchActor(gate: Gate): Promise<Actor> {
@@ -1822,6 +2147,50 @@ export class OfficeService implements OnModuleInit {
       current = current.parentId ? byId.get(current.parentId) : undefined;
     }
     return ids;
+  }
+
+  private async grantsFor(stored: {
+    isBranchOwner?: boolean;
+    liveGrants?: string | null;
+    layer?: string;
+    roleId?: string | null;
+    extraGrants?: string | null;
+    deniedGrants?: string | null;
+    role?: { grants: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean } | null;
+    extraRoles?: { role: { grants: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean } }[];
+  } | null): Promise<string[]> {
+    if (stored?.isBranchOwner) return [...GRANT_CODES];
+    if (!stored?.layer || !this.prisma.role) return (stored?.liveGrants ?? '').split(',').filter(Boolean);
+    const staff = stored.layer === 'branch' && Boolean(stored.roleId);
+    const layerRole = staff ? null : await this.prisma.role.findUnique({ where: { layer: stored.layer } });
+    return effectiveGrantCodes({
+      owner: false,
+      staff,
+      layer: stored.layer,
+      layerRole,
+      roles: [stored.role, ...(stored.extraRoles ?? []).map((link) => link.role)],
+      extra: stored.extraGrants,
+      denied: stored.deniedGrants,
+    });
+  }
+
+  private async ensureLayerRoles() {
+    for (const layer of LAYER_ORDER) {
+      const existing = await this.prisma.role.findUnique({ where: { layer } });
+      if (existing) continue;
+      const grants = LAYER_GRANTS[layer] ?? [];
+      await this.prisma.role.create({
+        data: { name: layer, kind: 'layer', layer, grants: grants.join(','), ...flagsFor(grants) },
+      });
+    }
+  }
+
+  private async visibleAccount(actor: Actor, loginName: string) {
+    const target = await this.prisma.user.findUnique({ where: { loginName }, include: { role: true } });
+    if (!target) fail(404, 'NOT_FOUND');
+    const accounts = await this.accounts();
+    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(403, 'FORBIDDEN');
+    return target;
   }
 
   private async accounts(): Promise<Account[]> {
@@ -2008,7 +2377,6 @@ export class OfficeService implements OnModuleInit {
     }
     const seeded = await this.prisma.company.count();
     if (seeded > 0) return;
-    const flags = { autoActivate: true, autoCharge: true, autoDisconnect: false, autoFreeze: false, autoSwitch: false };
     for (const company of companies) {
       await this.prisma.company.upsert({
         where: { code: company.code },
@@ -2022,6 +2390,8 @@ export class OfficeService implements OnModuleInit {
         update: { name: provider.name },
         create: { code: provider.code, name: provider.name },
       });
+      // New packages copy provider defaults once; package rows stay independent after create.
+      const flags = packageFlagsFromModes(normalizeActionModes(savedProvider.actionModes));
       for (const company of provider.companies) {
         const savedCompany = await this.prisma.company.findUnique({ where: { code: company.code } });
         if (!savedCompany) continue;

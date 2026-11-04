@@ -1,18 +1,23 @@
-import { authenticator } from 'otplib';
+import { generateSecret, generateSync, generateURI, verifySync } from 'otplib';
 
-const totp = authenticator.clone();
-totp.options = { step: 30, digits: 6, window: 0 };
+const totp = { digits: 6 as const, period: 30, epochTolerance: 0 };
 
 export function createTotpSecret(): string {
-  return totp.generateSecret();
+  return generateSecret();
 }
 
 export function totpMatches(secret: string, code: string): boolean {
-  return totp.verify({ token: code, secret });
+  try {
+    return verifySync({ secret, token: code, ...totp }).valid;
+  } catch {
+    return false;
+  }
 }
 
 export function totpKeyUri(secret: string, account: string, issuer: string): string {
-  const label = `${encodeURIComponent(issuer)}:${encodeURIComponent(account)}`;
-  const query = new URLSearchParams({ secret, issuer, algorithm: 'SHA1', digits: '6', period: '30' });
-  return `otpauth://totp/${label}?${query.toString()}`;
+  return generateURI({ issuer, label: account, secret, algorithm: 'sha1', ...totp });
+}
+
+export function currentTotp(secret: string): string {
+  return generateSync({ secret, ...totp });
 }

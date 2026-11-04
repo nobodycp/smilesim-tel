@@ -39,7 +39,6 @@ export default function CompanyPackagesPage() {
 
   return (
     <Desk title={provider?.name ?? ''} lede={company?.name ?? ''} error={shelf.error} note="">
-      <Link className="back-link" href={`/companies/${params.code}`}>{company?.name ?? t.companiesTitle}</Link>
       <section className="pane">
         <DataTable
           columns={columns}

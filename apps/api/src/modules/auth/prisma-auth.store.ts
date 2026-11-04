@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../db';
+import { PrismaClient } from '../../generated/prisma/client';
 import IORedis, { Redis } from 'ioredis';
 import {
   AuthStore,
@@ -83,7 +84,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
 
   constructor(@Optional() @Inject(AUTH_STORE_CLIENTS) clients?: AuthStoreClients) {
     this.ownsClients = !clients;
-    this.prisma = clients?.prisma ?? new PrismaClient();
+    this.prisma = clients?.prisma ?? createPrismaClient();
     this.redis = clients?.redis ?? createRedis();
   }
 

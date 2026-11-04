@@ -36,7 +36,7 @@ function contentSecurityPolicy(nonce: string): string {
     .join('; ');
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const door = doorFromHost(request.headers.get('host') ?? '');
   const nonce = btoa(crypto.randomUUID());
   const csp = contentSecurityPolicy(nonce);

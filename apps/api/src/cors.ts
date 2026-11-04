@@ -18,7 +18,8 @@ function allowedOrigins(): string[] {
 export function enableWebCors(app: INestApplication): void {
   const allowed = new Set(allowedOrigins());
   app.enableCors({
-    origin: (origin, callback) => callback(null, !origin || allowed.has(origin)),
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) =>
+      callback(null, !origin || allowed.has(origin)),
     credentials: true,
   });
 }

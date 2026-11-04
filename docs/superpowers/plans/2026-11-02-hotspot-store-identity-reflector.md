@@ -616,7 +616,7 @@ The `FilterBar`'s layer `<select>`, the create-account dialog's layer/role/paren
 
 Keep every cell's existing children (the `Link`, `Money`, `layerName`, `<bdi>`, `RowMenu`) exactly as they are — only the wrapping `table`/`thead`/`tbody`/`tr`/`th`/`td` elements change to the component versions. Remove the now-unused `<div className="sheet">` wrapper (`Table`'s non-bare mode already provides its own scroll container via `Card`).
 
-- [ ] **Step 4: Replace the status `<span className={...badge...}>` with `Badge`**
+- [x] **Step 4: Replace the status `<span className={...badge...}>` with `Badge`**
 
 `<span className={row.frozen ? 'badge pending' : 'badge'}>{row.frozen ? t.frozen : t.accountOpen}</span>` becomes `<Badge variant={row.frozen ? 'warning' : 'success'}>{row.frozen ? t.frozen : t.accountOpen}</Badge>` (this is the status→variant mapping spec D10 asks to record in `DESIGN.md` — Task 8 records it).
 

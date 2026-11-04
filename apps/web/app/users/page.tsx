@@ -1,16 +1,16 @@
 'use client';
 
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { DataTable, type Column } from '../../components/data-table';
 import { Desk, Money, layerName, whole } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
 import { FilterBar } from '../../components/filter-bar';
-import { TableSkeleton } from '../../components/loading';
 import { RowMenu, type RowAction } from '../../components/row-menu';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
-import { Table, THead, TBody, Tr, Th, Td } from '../../components/ui/table';
 import { api, type UserRow } from '../../lib/api';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
@@ -164,14 +164,53 @@ export default function UsersPage() {
     return items;
   }
 
+  const columns: Column<UserRow>[] = [
+    {
+      key: 'account',
+      header: t.accountName,
+      render: (row) => (
+        <Link className="row-link account-cell" href={`/users/${row.loginName}`}>
+          <span className="account-mark" aria-hidden="true">{row.nickname.trim().charAt(0) || '?'}</span>
+          <span className="account-id">
+            <strong>{row.nickname}</strong>
+            <span className="hint"><bdi dir="ltr">{row.loginName}</bdi></span>
+          </span>
+        </Link>
+      ),
+    },
+    { key: 'layer', header: t.layer, fit: true, render: (row) => layerName(t, row.layer) },
+    { key: 'parent', header: t.parent, fit: true, render: (row) => (row.parentLogin ? <bdi dir="ltr">{row.parentLogin}</bdi> : '—') },
+    { key: 'balance', header: t.balance, num: true, render: (row) => <Money value={row.balance} /> },
+    { key: 'ceiling', header: t.ceiling, num: true, render: (row) => (row.layer === 'branch' ? '—' : <Money value={row.ceiling} />) },
+    {
+      key: 'status',
+      header: t.status,
+      fit: true,
+      render: (row) => (
+        <Badge variant={row.frozen ? 'warning' : 'success'} dot>
+          {row.frozen ? t.frozen : t.accountOpen}
+        </Badge>
+      ),
+    },
+    {
+      key: 'ops',
+      header: t.rowActions,
+      actions: true,
+      render: (row) => <RowMenu label={`${t.rowActions} ${row.nickname}`} items={actions(row)} />,
+    },
+  ];
+
   if (!allowed) return <Desk title="" lede="" error="" note=""><span /></Desk>;
 
   return (
     <Desk
       title={t.usersTitle}
-      lede=""
+      lede={t.usersLede}
       action={creatable.length > 0 ? (
-        <Button type="button" onClick={() => { setDraft((current) => ({ ...current, layer: creatable[0] })); setCreating(true); }}>{t.openAccount}</Button>
+        <Button type="button" onClick={() => { setDraft((current) => ({ ...current, layer: creatable[0] })); setCreating(true); }}>
+          <Plus size={16} aria-hidden="true" />
+          {t.openAccount}
+        </Button>
       ) : undefined}
       error={failure}
       note={note}
@@ -191,10 +230,15 @@ export default function UsersPage() {
           </Select>
         </label>
       </FilterBar>
-      <section className="pane">
+      <section className="pane fit">
+        <header className="pane-head">
+          <h2>{t.usersList}{accounts.loaded ? <span className="count">{shown.length}</span> : null}</h2>
+        </header>
         <Dialog
           open={creating}
           title={t.openAccount}
+          lede={t.openAccountHint}
+          mark="plus"
           closeLabel={t.closeMenu}
           error={failure}
           onClose={() => setCreating(false)}
@@ -248,48 +292,22 @@ export default function UsersPage() {
             )}
           </div>
         </Dialog>
-        {!accounts.loaded ? (
-          <TableSkeleton rows={4} columns={7} />
-        ) : (
-          <Table>
-            <THead>
-              <Tr>
-                <Th>{t.accountName}</Th>
-                <Th className="fit">{t.layer}</Th>
-                <Th className="fit">{t.parent}</Th>
-                <Th className="num">{t.balance}</Th>
-                <Th className="num">{t.ceiling}</Th>
-                <Th className="fit">{t.status}</Th>
-                <Th className="row-actions">{t.lineOps}</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {shown.map((row) => (
-                <Tr key={row.loginName}>
-                  <Td>
-                    <strong><Link className="row-link" href={`/users/${row.loginName}`}>{row.nickname}</Link></strong>
-                    <div className="hint"><bdi dir="ltr">{row.loginName}</bdi></div>
-                  </Td>
-                  <Td className="fit">{layerName(t, row.layer)}</Td>
-                  <Td className="fit">{row.parentLogin ? <bdi dir="ltr">{row.parentLogin}</bdi> : '—'}</Td>
-                  <Td className="num"><Money value={row.balance} /></Td>
-                  <Td className="num">{row.layer === 'branch' ? '—' : <Money value={row.ceiling} />}</Td>
-                  <Td className="fit">
-                    <Badge variant={row.frozen ? 'warning' : 'success'}>{row.frozen ? t.frozen : t.accountOpen}</Badge>
-                  </Td>
-                  <Td className="row-actions">
-                    <RowMenu label={`${t.lineOps} ${row.nickname}`} items={actions(row)} />
-                  </Td>
-                </Tr>
-              ))}
-            </TBody>
-          </Table>
-        )}
+        <DataTable
+          columns={columns}
+          rows={shown}
+          rowKey={(row) => row.loginName}
+          loading={!accounts.loaded}
+          skeleton={{ rows: 4, columns: 7 }}
+          empty={query.trim() || layerFilter ? t.noMatches : undefined}
+        />
         {active && op ? (
           <Dialog
             open
             size={op.kind === 'fund' || op.kind === 'ceiling' || op.kind === 'transfer' || op.kind === 'password' ? 'form' : 'confirm'}
             title={op.kind === 'fund' ? t.fund : op.kind === 'ceiling' ? t.ceiling : op.kind === 'transfer' ? t.transfer : op.kind === 'password' ? t.newPassword : op.kind === 'enter' ? t.enterAccount : op.kind === 'delete' ? t.deleteAccount : active.frozen ? t.restoreAccount : t.freezeAccount}
+            lede={op.kind === 'fund' ? t.fundHint : op.kind === 'ceiling' ? t.ceilingHint : op.kind === 'transfer' ? t.transferHint : op.kind === 'password' ? t.passwordHint : op.kind === 'enter' ? t.enterHint : op.kind === 'delete' ? t.deleteHint : active.frozen ? t.restoreHint : t.freezeHint}
+            mark={op.kind === 'fund' || op.kind === 'ceiling' ? 'wallet' : op.kind === 'transfer' ? 'transfer' : op.kind === 'password' ? 'key' : op.kind === 'enter' ? 'enter' : op.kind === 'delete' ? 'trash' : 'freeze'}
+            tone={op.kind === 'delete' || (op.kind === 'freeze' && !active.frozen) ? 'danger' : 'neutral'}
             closeLabel={t.closeMenu}
             error={failure}
             onClose={() => { if (!busy) setOp(null); }}

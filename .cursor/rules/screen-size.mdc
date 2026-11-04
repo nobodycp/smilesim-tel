@@ -1,0 +1,13 @@
+---
+description: Pages must fill every screen size, especially wide monitors
+alwaysApply: true
+---
+
+# Screen size
+
+The office is used on large monitors and on smaller ones. A layout checked on one viewport is unfinished.
+
+- Fill the width the screen gives the page. A card that keeps its content in a narrow strip and leaves the rest empty is a break.
+- Inner controls use that space. A wide screen gets more columns or wider fields. A narrow screen wraps. Do not lock a page to one content width.
+- The label and its value stay together. Fill the card by repeating that group across the width, not by pinning the control to the far edge.
+- Check a wide desktop, about 1440px of content, and a narrow window before calling a screen done.

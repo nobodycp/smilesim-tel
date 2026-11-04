@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": ["apps/api", "apps/web"],
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "lint": "npm run lint --workspaces",
@@ -15,6 +15,6 @@
     "test:api": "npm test --workspace api",
     "test:e2e": "npm test --workspace web",
     "build": "npm run build --workspaces",
-    "prisma:generate": "prisma generate --schema apps/api/prisma/schema.prisma"
+    "prisma:generate": "npm run prisma:generate --workspace api"
   }
 }

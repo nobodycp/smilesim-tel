@@ -2,7 +2,7 @@
 const api = process.env.API_PROXY_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
 
 // Static security headers for every route. The Content-Security-Policy is not here on purpose:
-// it needs a fresh nonce per request, so middleware.ts sets it.
+// it needs a fresh nonce per request, so proxy.ts sets it.
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

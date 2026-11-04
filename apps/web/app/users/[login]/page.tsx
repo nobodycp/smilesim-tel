@@ -1,9 +1,11 @@
 'use client';
 
+import { CircleCheck, KeyRound, Layers, Shield, Snowflake, Waypoints } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Desk, layerName } from '../../../components/desk';
 import { TableSkeleton } from '../../../components/loading';
+import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/api';
 import { GRANT_CODES, grantLabel } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
@@ -73,20 +75,31 @@ export default function AccountPage() {
         </section>
       ) : row && (
         <div className="stack flow">
-          <section className="pane">
-            <div className="pane-body">
-              <dl className="facts">
-                <div><dt>{t.loginName}</dt><dd><bdi dir="ltr">{row.loginName}</bdi></dd></div>
-                <div><dt>{t.layer}</dt><dd>{layerName(t, row.layer)}</dd></div>
-                <div><dt>{t.parent}</dt><dd>{row.parentLogin ? <bdi dir="ltr">{row.parentLogin}</bdi> : '—'}</dd></div>
-                <div><dt>{t.role}</dt><dd>{row.staff ? (row.roleName || '—') : layerName(t, row.layer)}</dd></div>
-                <div><dt>{t.status}</dt><dd>{row.frozen ? t.frozen : t.accountOpen}</dd></div>
-              </dl>
+          <dl className="fact-grid">
+            <div className="fact-card">
+              <div><dt>{t.loginName}</dt><dd><bdi dir="ltr">{row.loginName}</bdi></dd></div>
+              <span className="fact-mark" aria-hidden="true"><KeyRound /></span>
             </div>
-          </section>
+            <div className="fact-card">
+              <div><dt>{t.layer}</dt><dd>{layerName(t, row.layer)}</dd></div>
+              <span className="fact-mark" aria-hidden="true"><Layers /></span>
+            </div>
+            <div className="fact-card">
+              <div><dt>{t.parent}</dt><dd>{row.parentLogin ? <bdi dir="ltr">{row.parentLogin}</bdi> : '—'}</dd></div>
+              <span className="fact-mark" aria-hidden="true"><Waypoints /></span>
+            </div>
+            <div className="fact-card">
+              <div><dt>{t.role}</dt><dd>{row.staff ? (row.roleName || '—') : layerName(t, row.layer)}</dd></div>
+              <span className="fact-mark" aria-hidden="true"><Shield /></span>
+            </div>
+            <div className={row.frozen ? 'fact-card warn' : 'fact-card good'}>
+              <div><dt>{t.status}</dt><dd>{row.frozen ? t.frozen : t.accountOpen}</dd></div>
+              <span className="fact-mark" aria-hidden="true">{row.frozen ? <Snowflake /> : <CircleCheck />}</span>
+            </div>
+          </dl>
           <section className="pane">
             <header className="pane-head">
-              <h2>{t.accountAccess}</h2>
+              <h2><Shield aria-hidden="true" />{t.accountAccess}</h2>
             </header>
             <div className="pane-body access-sheet">
               <div className="grant-head">
@@ -158,7 +171,7 @@ export default function AccountPage() {
               )}
               {row.canEdit && (
                 <div className="form-save">
-                  <button type="button" className="primary" disabled={busy} onClick={save}>{t.save}</button>
+                  <Button type="button" disabled={busy} onClick={save}>{t.save}</Button>
                 </div>
               )}
             </div>

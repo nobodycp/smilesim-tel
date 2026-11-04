@@ -1,0 +1,9 @@
+---
+description: Reply in Arabic in chat; keep plans, architecture, design, and READMEs in English
+alwaysApply: true
+---
+
+# Chat language
+
+- Replies in the chat, and any question asked back to the user, are written in Arabic.
+- Written artifacts stay English-only: specs and plans under `docs/superpowers/`, architecture notes, `DESIGN.md`, and any `README`. Code, identifiers, and commit messages also stay English.

@@ -57,10 +57,12 @@ Both themes are defined in `apps/web/app/styles/tokens.css`. Use the token, neve
 | `--rd-warning` / `--rd-warning-soft` | `#c2410c` / `#fff0e9` | `#fbbf24` / `rgba(251,191,36,.12)` | pending |
 | `--rd-danger` / `--rd-danger-soft` | `#b91c1c` / `#fdecec` | `#f87171` / `rgba(248,113,113,.12)` | failed, destructive |
 | `--rd-focus` | `rgba(10,10,10,.16)` | `rgba(245,245,242,.20)` | focus halo around a field |
-| `--rd-scrim` | `rgba(10,10,10,.32)` | same | dialog backdrop |
+| `--rd-scrim` | `rgba(10,10,10,.48)` | `rgba(0,0,0,.72)` | dialog backdrop |
 | `--rd-scrim-strong` | `rgba(0,0,0,.50)` | same | drawer backdrop |
 | `--rd-radius-lg` | `1.125rem` | same | cards, panes, filter bars, primary and secondary buttons |
 | `--rd-shadow-card` | `0 1px 2px` ink at 4% | inset 1px hairline | cards |
+| `--rd-shadow-frame` | `0 1px 2px` slate at 5% | `0 1px 2px` black at 40% | the outer frame of a data table |
+| `--rd-shadow-sm` | `0 1px 2px` black at 5% | `0 1px 2px` black at 5% | page actions |
 | `--rd-shadow-pop` | `0 24px 64px` ink at 16% | `0 24px 64px` black at 50% | menus, dialogs, toasts, auth card |
 
 Where the ink fills a button, use `--rd-primary-bg`. Where ink is a text, border, or link colour, use `--rd-ink`. They hold the same value today but mean different things.
@@ -90,7 +92,7 @@ Alias tokens in both `:root` and `.dark` let the ported classes read hotspot nam
 
 `--accent` is the ink primary, not the logo red. Ported corners use `0.5rem` and `0.625rem`. `--rd-radius-lg` stays for controls that have not moved yet.
 
-`Badge` on an account: frozen is `warning`, open is `success`. That is the status mapping for later pages. `info` and `violet` are typed and unused until their tokens exist.
+`Badge` status mapping: account frozen → `warning`, open → `success`; line active → `success`, frozen → `warning`, else `danger`; task done → `success`, cancelled → `danger`, else `warning`. `info` and `violet` are typed and unused until their tokens exist. Shell chrome uses `lucide-react` (nav, wallet, bell, theme).
 
 The filter bar is its own card, one row, controls at 28px. It does not share a border with the table. PostCSS loads Tailwind and Autoprefixer from this file on disk, because the dev worker cannot see packages hoisted to the repo root.
 
@@ -105,7 +107,7 @@ Fonts come from `next/font` in `apps/web/app/layout.tsx`. No Google stylesheet l
 
 ## Inner pages
 
-New screens compose `.page-head`, `.filter-bar`, `.pane`, `.steps`, `.data`, `.badge`, `Stat` / `StatRow` (`components/stat.tsx`), `EmptyState` (`components/empty-state.tsx`), `Dialog` (`components/dialog.tsx`), and `RowMenu` (`components/row-menu.tsx`). Spacing steps are 4, 8, 12, and 14. Control height inside a pane or filter is 34px. Under 720px every control on the canvas, in a dialog, in a row menu, and on the sign-in screen is at least 44px (sign-in fields and buttons are 42px and 40px above that). Tables keep text and status at the start and numeric columns at the end, with `class="num"` on both the header and the cell. Identifiers that are Latin digits stay in `<bdi dir="ltr">`. The operations column is `class="row-actions"`. Contextual row actions are only the horizontal ellipsis in `RowMenu`. Dialogs use a header, a scrolling body, and a footer; `size` is `confirm`, `form`, or `wide`. Checkboxes stay 16px inside `label.check` and never inherit text-field height. `.empty` inside a pane or sheet already carries 14px padding, so a page never sets it inline.
+New screens compose `.page-head`, `.filter-bar`, `.pane`, `.steps`, `.data`, `.badge`, `Stat` / `StatRow` (`components/stat.tsx`), `EmptyState` (`components/empty-state.tsx`), `Dialog` (`components/dialog.tsx`), and `RowMenu` (`components/row-menu.tsx`). Spacing steps are 4, 8, 12, and 14. Control height inside a pane or filter is 34px. Under 720px every control on the canvas, in a dialog, in a row menu, and on the sign-in screen is at least 44px (sign-in fields and buttons are 42px and 40px above that). Tables keep text and status at the start and numeric columns at the end, with `class="num"` on both the header and the cell. Identifiers that are Latin digits stay in `<bdi dir="ltr">`. The actions column is `class="row-actions"`: it stays at the inline end, sized to its label, and does not grow with the table. Contextual row actions are only the 28px horizontal ellipsis in `RowMenu`. Its menu is 13px medium type, at least 160px wide, and opens from the trigger's inline end. Dialogs use a header, a scrolling body, and a footer; `size` is `confirm`, `form`, or `wide`. A dialog carries a hairline, sits on `--rd-scrim` with an 8px blur, and names its action with a round mark and a one-line lede. A confirm dialog centres that mark and stretches its two actions across the foot. Checkboxes stay 16px inside `label.check` and never inherit text-field height. `.empty` inside a pane or sheet already carries 14px padding, so a page never sets it inline.
 
 ## Components
 
@@ -119,7 +121,7 @@ One of each. A new page uses these, it does not invent a sibling.
 - KPI: `StatRow` wraps a row of `Stat` items. Each `Stat` takes an `icon` (`IconName` from `components/icon.tsx`), `tone` (`success`, `warning`, `danger`, or `muted`), `label`, a large tabular `value`, and optional `meta` below a hairline divider. The icon sits in `.stat-icon` with a tone tint. This is the only KPI pattern; do not use ad-hoc `.stat-card` markup.
 - Filter: `FilterBar` wraps `.filter-bar`/`.filter-panel` — a card of `<label>` fields above the table, with an optional trailing clear button (`onClear`/`clearLabel`). This is the only filter pattern; do not write a bare `.filter-line` or inline filter markup on a new page.
 - Facts: `.facts` — a `<dl>` grid of label/value pairs (`dt`/`dd`). Columns auto-fit to the available width and collapse to one without a breakpoint. Latin identifiers inside a value stay in `<bdi dir="ltr">`. This is the only key/value detail pattern; do not write a parallel grid (for example `.account-facts`) for the same purpose.
-- Empty: `EmptyState` inside `.empty` — muted icon in a small circle on `--rd-surface-2`, title (`children`), optional secondary `text`. Not a lone italic line.
+- Empty: `EmptyState` inside `.empty` — muted icon in a small circle on `--rd-surface-2`, title (`children`), optional secondary `text`, centered (both axes) in the available `.pane`/`.sheet` space, not pinned to the start edge. Not a lone italic line.
 - Feedback: one alert line for an error, one for a success. No browser `alert` for success.
 
 ## Motion and access

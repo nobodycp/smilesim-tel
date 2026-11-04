@@ -43,15 +43,17 @@
   place-items: center;
   padding: 16px;
   background: var(--rd-scrim);
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(8px);
 }
 .dialog {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: min(600px, 100%);
   max-height: min(720px, calc(100vh - 48px));
   overflow: hidden;
   padding: 0;
+  border: 1px solid var(--rd-line);
   border-radius: 0.625rem;
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
@@ -65,12 +67,45 @@
   display: flex;
   flex: none;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 12px;
   margin: 0;
-  padding: 14px 16px;
+  padding: 16px 16px 14px;
   border-bottom: 1px solid var(--rd-line);
 }
+.dialog-heading { flex: 1; min-width: 0; }
+.dialog-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+}
+.dialog-mark.danger { background: var(--rd-danger-soft); color: var(--rd-danger); }
+.dialog-mark svg { width: 18px; height: 18px; }
+.dialog-lede { margin: 4px 0 0; color: var(--rd-muted); font-size: 13px; font-weight: 500; line-height: 1.45; }
+.dialog[data-size='confirm'] > header {
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 44px 0;
+  border-bottom: 0;
+  text-align: center;
+}
+.dialog[data-size='confirm'] > header .icon-btn {
+  position: absolute;
+  inset-block-start: 10px;
+  inset-inline-end: 10px;
+}
+.dialog[data-size='confirm'] .dialog-heading,
+.dialog[data-size='confirm'] h2,
+.dialog[data-size='confirm'] .dialog-lede,
+.dialog[data-size='confirm'] .dialog-body { text-align: center; }
+.dialog[data-size='confirm'] .dialog-body { padding-top: 8px; }
+.dialog[data-size='confirm'] .dialog-foot { border-top: 0; padding: 4px 16px 16px; background: transparent; }
+.dialog[data-size='confirm'] .dialog-foot > * { flex: 1 1 0; }
 .dialog > header .icon-btn {
   width: 36px;
   height: 36px;
@@ -91,7 +126,7 @@
   gap: 8px;
   padding: 12px 16px;
   border-top: 1px solid var(--rd-line);
-  background: var(--rd-surface);
+  background: var(--rd-surface-2);
 }
 .dialog-foot .danger { margin-inline-end: auto; }
 .dialog button.primary,
@@ -196,29 +231,33 @@
   align-items: stretch;
   width: max-content;
   min-width: 10rem;
-  max-width: min(280px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
   padding: 4px 0;
   border: 1px solid var(--rd-line);
   border-radius: 0.5rem;
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
+  font-size: 13px;
+  line-height: 1.25;
 }
 .row-menu-panel button {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: auto;
-  min-height: 32px;
-  padding: 0 12px;
+  width: 100%;
+  min-height: 0;
+  padding: 6px 12px;
   border: 0;
+  border-radius: 0;
   background: transparent;
   color: var(--rd-ink-2);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.25;
   text-align: start;
   white-space: nowrap;
 }
-.row-menu-panel button svg { flex: none; }
+.row-menu-panel button svg { flex: none; width: 14px; height: 14px; }
 .row-menu-panel button:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
 .row-menu-panel button.danger { color: var(--rd-danger); }
 .row-menu-panel button.danger:hover { background: var(--rd-danger-soft); }

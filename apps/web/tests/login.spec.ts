@@ -22,7 +22,9 @@ test('ending the current session returns to login', async ({ page }) => {
     });
   });
   await page.goto('/settings');
-  await page.getByRole('button', { name: 'إنهاء' }).click();
+  // Ending a session lives in the row menu: open it for the session, then choose the item.
+  await page.getByRole('button', { name: /^إنهاء/ }).click();
+  await page.getByRole('menuitem', { name: 'إنهاء' }).click();
   await expect(page).toHaveURL(/\/login$/);
 });
 

@@ -1,57 +1,38 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { PagedTable, type Column } from '../../components/data-table';
 import { Desk, actionName, latinWhen, taskStatus } from '../../components/desk';
 import { FilterBar } from '../../components/filter-bar';
-import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type AuditRow } from '../../lib/api';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
+import { pick } from '../../lib/use-load';
+import { usePaged } from '../../lib/use-paged';
 
 export default function AuditPage() {
-  const { t, apiText } = usePrefs();
+  const { t } = usePrefs();
   const { me } = useOffice();
   const branch = me?.layer === 'branch';
-  const [page, setPage] = useState<{ key: string; entries: AuditRow[]; next: string | null } | null>(null);
-  const [more, setMore] = useState(false);
-  const [error, setError] = useState('');
   const [kind, setKind] = useState('');
-  const ticket = useRef(0);
   const kinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', ...(branch ? ['enter'] : [])];
-  const current = page?.key === kind ? page : null;
-  const shown = current?.entries ?? [];
+  const list = usePaged<AuditRow>(kind, async (cursor) =>
+    pick(await api.officeAudit({ kind, cursor }), (data) => ({ rows: data.entries, next: data.nextCursor })),
+  );
 
-  const load = useCallback(async () => {
-    const mine = ++ticket.current;
-    const result = await api.officeAudit({ kind });
-    if (mine !== ticket.current) return;
-    if (!result.ok) {
-      setError(apiText(result.message));
-      setPage({ key: kind, entries: [], next: null });
-      return;
-    }
-    setError('');
-    setPage({ key: kind, entries: result.data.entries, next: result.data.nextCursor });
-  }, [apiText, kind]);
-
-  async function loadMore() {
-    if (!current?.next || more) return;
-    setMore(true);
-    const result = await api.officeAudit({ kind, cursor: current.next });
-    setMore(false);
-    if (!result.ok) {
-      setError(apiText(result.message));
-      return;
-    }
-    setPage((now) => (now && now.key === kind ? { key: kind, entries: [...now.entries, ...result.data.entries], next: result.data.nextCursor } : now));
-  }
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const columns: Column<AuditRow>[] = [
+    { key: 'kind', header: t.kind, render: (row) => actionName(t, row.action) },
+    { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    { key: 'number', header: t.number, cell: 'fit', render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
+    { key: 'company', header: t.company, render: (row) => row.companyName || '—' },
+    { key: 'package', header: t.packageName, render: (row) => row.packageName || '—' },
+    ...(branch ? [{ key: 'provider', header: t.provider, render: (row: AuditRow) => row.providerName || '—' }] : []),
+    { key: 'actor', header: t.actedBy, render: (row) => row.actorName || '—' },
+    { key: 'status', header: t.status, render: (row) => taskStatus(t, row.status) },
+  ];
 
   return (
-    <Desk title={t.navAudit} lede="" error={error} note="">
+    <Desk title={t.navAudit} lede="" error={list.error} note="">
       <FilterBar onClear={() => setKind('')} clearLabel={t.clearFilters}>
         <label>
           {t.kind}
@@ -64,50 +45,7 @@ export default function AuditPage() {
         </label>
       </FilterBar>
       <section className="pane">
-        <div className="sheet">
-          {!current ? (
-            <TableSkeleton rows={6} columns={7} />
-          ) : (
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>{t.kind}</th>
-                  <th>{t.when}</th>
-                  <th>{t.number}</th>
-                  <th>{t.company}</th>
-                  <th>{t.packageName}</th>
-                  {branch && <th>{t.provider}</th>}
-                  <th>{t.actedBy}</th>
-                  <th>{t.status}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((row) => (
-                  <tr key={row.id}>
-                    <td>{actionName(t, row.action)}</td>
-                    <td className="when"><bdi dir="ltr">{latinWhen(row.at)}</bdi></td>
-                    <td className="fit">{row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—'}</td>
-                    <td>{row.companyName || '—'}</td>
-                    <td>{row.packageName || '—'}</td>
-                    {branch && <td>{row.providerName || '—'}</td>}
-                    <td>{row.actorName || '—'}</td>
-                    <td>{taskStatus(t, row.status)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {current && shown.length === 0 && <p className="empty">{t.noMovements}</p>}
-        </div>
-        {current?.next && (
-          <div className="pane-body">
-            <div className="pane-tools">
-              <button type="button" className="secondary" disabled={more} onClick={loadMore}>{t.loadMore}</button>
-              {more && <Spinner size={18} />}
-              <span className="hint">{t.shownCount.replace('{n}', String(shown.length))}</span>
-            </div>
-          </div>
-        )}
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 7 }} />
       </section>
     </Desk>
   );
