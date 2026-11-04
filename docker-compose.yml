@@ -14,9 +14,10 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
-    ports:
-      - "3000:3000"
+        # Browser calls same-origin /api; Next rewrites to the api service on the compose network.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api:3001}
+    expose:
+      - "3000"
     depends_on:
       - api
 
@@ -26,8 +27,8 @@ services:
       dockerfile: apps/api/Dockerfile
     image: smilesim-api
     command: ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://smilesim:smilesim@postgres:5432/smilesim}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}

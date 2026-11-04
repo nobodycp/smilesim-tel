@@ -5,7 +5,12 @@
 # database has a way in. The api image runs with NODE_ENV=production, so the second flag is
 # needed here too. Both can be overridden from .env (see .env.example).
 services:
+  web:
+    ports:
+      - "3000:3000"
   api:
+    ports:
+      - "3001:3001"
     environment:
       TRIAL_SEED: ${TRIAL_SEED:-true}
       TRIAL_SEED_ALLOW_PRODUCTION: ${TRIAL_SEED_ALLOW_PRODUCTION:-true}
