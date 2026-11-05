@@ -86,7 +86,7 @@ export default function AccountPage() {
   const showExtras = Boolean(row?.canEdit && (row.staff || jobRoles.length > 0));
   // The server is the judge; this only hides controls from accounts that can never pass it.
   const canEditTerms = Boolean(
-    row && !row.staff && me && !me.impersonating && (me.layer === 'branch' ? me.isBranchOwner || me.grants.includes('edit') : me.loginName === row.parentLogin),
+    row && !row.staff && row.layer !== 'branch' && me && !me.impersonating && (me.layer === 'branch' ? me.isBranchOwner || me.grants.includes('edit') : me.loginName === row.parentLogin),
   );
   // The API refuses to read the terms of an account the actor may not edit, so the two tabs
   // exist only for the direct parent and the branch; a hash to a hidden tab falls back to access.
