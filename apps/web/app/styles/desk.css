@@ -2005,3 +2005,7 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
 /* Custom prices tab on the package sheet: default figure beside the editable field. */
 .price-pair { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; }
 .price-pair > .money.muted { font-size: 12px; }
+
+/* Sell price cell on /packages: two short fields and their save control, aligned to the figure column. */
+.sell-cell { display: inline-flex; align-items: flex-end; justify-content: flex-end; gap: 8px; }
+.desk .pane .sell-cell .btn-sm { height: 32px; }

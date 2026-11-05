@@ -391,6 +391,7 @@ export const he: Copy = {
   stoppedBy: 'מושבת על ידי {login}',
   resetDefault: 'איפוס לברירת מחדל',
   renewalPrice: 'מחיר חידוש',
+  sellPrice: 'מחיר מכירה',
   difference: 'הפרש',
   customPricesHint: 'חשבונות שמחירם שונה ממחיר השכבה שלהם. השאירו שדה ריק כדי לחזור לברירת המחדל.',
   enableAll: 'הפעל הכל',

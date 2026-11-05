@@ -180,6 +180,18 @@ describe('catalog through user terms', () => {
     const plain = pos.packages.find((item) => item.code === 'alloha-400');
     expect(plain).toMatchObject({ price: 3500, renewalPrice: 3200, canActivate: false });
   });
+
+  it('shows an agent its own sell price and the layer default it replaces', async () => {
+    const { service, gates, sellPrices } = await tree();
+    sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ag1', price: 3700, renewalPrice: null });
+    const agent = await service.packages(gates.ag1);
+    const row = agent.packages.find((item) => item.code === 'alloha-150');
+    expect(row).toMatchObject({ sellPrice: 3700, sellRenewalPrice: null, sellDefault: 3500, sellRenewalDefault: 3200 });
+    const plain = agent.packages.find((item) => item.code === 'alloha-400');
+    expect(plain).toMatchObject({ sellPrice: null, sellRenewalPrice: null, sellDefault: 3500 });
+    const pos = await service.packages(gates.pos1);
+    expect(pos.packages.find((item) => item.code === 'alloha-150')).toMatchObject({ price: 3700, sellDefault: null });
+  });
 });
 
 describe('run path through user terms', () => {

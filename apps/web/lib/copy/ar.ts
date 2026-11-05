@@ -391,6 +391,7 @@ export const ar = {
   stoppedBy: 'موقوف من {login}',
   resetDefault: 'إرجاع للافتراضي',
   renewalPrice: 'سعر التجديد',
+  sellPrice: 'سعر البيع',
   difference: 'الفرق',
   customPricesHint: 'الحسابات التي يختلف سعرها عن سعر طبقتها. اتركه فارغاً ليعود إلى الافتراضي.',
   enableAll: 'تشغيل الكل',

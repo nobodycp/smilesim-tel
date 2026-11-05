@@ -281,6 +281,11 @@ export type PackageRow = {
   price: number;
   renewalPrice: number;
   canActivate: boolean;
+  /** The caller's own sell price to the layer below, and the layer column it replaces; null for branch and pos. */
+  sellPrice: number | null;
+  sellRenewalPrice: number | null;
+  sellDefault: number | null;
+  sellRenewalDefault: number | null;
 };
 export type UserPackagesSummary = { total: number; visible: number; custom: number };
 export type UserPackageRow = {

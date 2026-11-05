@@ -391,6 +391,7 @@ export const en: Copy = {
   stoppedBy: 'Stopped by {login}',
   resetDefault: 'Reset to default',
   renewalPrice: 'Renewal price',
+  sellPrice: 'Sell price',
   difference: 'Difference',
   customPricesHint: 'Accounts whose price differs from their layer price. Leave a field empty to fall back to the default.',
   enableAll: 'Turn all on',

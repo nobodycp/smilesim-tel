@@ -66,7 +66,7 @@ function PosCatalog({
 
   async function join(event: FormEvent) {
     event.preventDefault();
-    if (!picked || !loginName.trim()) return;
+    if (!picked || !picked.canActivate || !loginName.trim()) return;
     const missing = (!withEsim && !iccid.trim())
       || (activation === 'number' && !/^05\d{8}$/.test(givenNumber.trim()))
       || (activation === 'details' && !currentDetails.trim());
@@ -119,7 +119,7 @@ function PosCatalog({
             {packs.map((row) => (
               <button className="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
                 <strong>{row.name}</strong>
-                <p className="pack-price"><Money value={row.posPrice} /></p>
+                <p className="pack-price"><Money value={row.price} /></p>
               </button>
             ))}
           </div>
@@ -127,33 +127,34 @@ function PosCatalog({
         {step === 'details' && picked && (
           <form className="pane pane-body stack" onSubmit={join}>
             <h2>{picked.companyName} · {picked.name}</h2>
-            <p className="pack-price"><Money value={picked.posPrice + (withEsim ? picked.esimPrice : 0)} /></p>
-            {offersEsim && (
+            <p className="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
+            {!picked.canActivate && <p className="badge cancelled">{t.activationStopped}</p>}
+            {picked.canActivate && offersEsim && (
               <label className="check">
                 <input type="checkbox" checked={esim} onChange={(event) => setEsim(event.target.checked)} />
                 <span>{t.esim}</span>
               </label>
             )}
-            {activation === 'details' && (
+            {picked.canActivate && activation === 'details' && (
               <label>
                 {t.currentNumberDetails}
                 <input value={currentDetails} onChange={(event) => setCurrentDetails(event.target.value)} required />
               </label>
             )}
-            {activation === 'number' && (
+            {picked.canActivate && activation === 'number' && (
               <label>
                 {t.number}
                 <input value={givenNumber} inputMode="numeric" dir="ltr" onChange={(event) => setGivenNumber(event.target.value)} required />
               </label>
             )}
-            {!withEsim && (
+            {picked.canActivate && !withEsim && (
               <label>
                 {t.iccid}
                 <input value={iccid} onChange={(event) => setIccid(event.target.value)} inputMode="numeric" dir="ltr" required />
                 {hasSimRules(rules) && <span className="hint">{simHint(t, rules)}</span>}
               </label>
             )}
-            <Button type="submit" disabled={!canActivate}>{t.actActivate}</Button>
+            {picked.canActivate && <Button type="submit" disabled={!canActivate}>{t.actActivate}</Button>}
           </form>
         )}
       </div>
@@ -280,16 +281,11 @@ function BranchPackages({ error, note }: { error: string; note: string }) {
   );
 }
 
-function shown(row: PackageRow): number {
-  if (row.editableField === 'main') return row.mainPrice;
-  if (row.editableField === 'agent') return row.agentPrice;
-  if (row.editableField === 'pos') return row.posPrice;
-  return row.posPrice;
-}
+type SellDraft = { price: string; renewal: string };
 
 export default function PlansPage() {
   const { t, apiText } = usePrefs();
-  const [prices, setPrices] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, SellDraft>>({});
   const [companyFilter, setCompanyFilter] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -304,26 +300,40 @@ export default function PlansPage() {
   const { run } = useAction({ setError, setNote, onDone: catalog.reload });
   const failure = error || catalog.error;
 
-  // A price the user has not touched follows the catalog; one they typed stays until it is saved.
+  // A sell price the user has not touched follows the catalog; one they typed stays until it is saved.
   useEffect(() => {
     if (!catalog.data) return;
-    setPrices((current) => {
+    setDrafts((current) => {
       const next = { ...current };
-      for (const row of catalog.data?.packages ?? []) next[row.code] ??= shekelField(shown(row));
+      for (const row of catalog.data?.packages ?? []) {
+        next[row.code] ??= {
+          price: row.sellPrice === null ? '' : shekelField(row.sellPrice),
+          renewal: row.sellRenewalPrice === null ? '' : shekelField(row.sellRenewalPrice),
+        };
+      }
       return next;
     });
   }, [catalog.data]);
 
+  function setDraft(code: string, patch: Partial<SellDraft>) {
+    setDrafts((current) => {
+      const before = current[code] ?? { price: '', renewal: '' };
+      return { ...current, [code]: { ...before, ...patch } };
+    });
+  }
+
   async function save(row: PackageRow) {
-    const price = parseShekel(prices[row.code] ?? '');
-    if (price === null) {
+    const draft = drafts[row.code] ?? { price: '', renewal: '' };
+    const price = parseShekel(draft.price);
+    const renewalPrice = draft.renewal.trim() === '' ? null : parseShekel(draft.renewal);
+    if (price === null || renewalPrice === undefined) {
       setError(apiText('بيانات غير صالحة'));
       setNote('');
       return;
     }
-    await run(() => api.setSellPrice(row.code, price), {
-      note: t.save,
-      then: () => setPrices((current) => ({ ...current, [row.code]: shekelField(price) })),
+    await run(() => api.setSellPrice(row.code, price, renewalPrice), {
+      note: t.saved,
+      then: () => setDraft(row.code, { price: shekelField(price), renewal: renewalPrice === null ? '' : shekelField(renewalPrice) }),
     });
   }
 
@@ -361,25 +371,41 @@ export default function PlansPage() {
     sections.push({ key: 'companies', provider: '', companies: byCompany(listed) });
   }
 
+  const ladder: Column<PackageRow>[] = [
+    { key: 'agent', header: t.agentPrice, num: true, render: (row: PackageRow) => <Money value={row.agentPrice} muted /> },
+    { key: 'pos', header: t.posPrice, num: true, render: (row: PackageRow) => <Money value={row.posPrice} muted /> },
+    { key: 'subscriber', header: t.subscriberPrice, num: true, render: (row: PackageRow) => <Money value={row.subscriberPrice} muted /> },
+  ].filter((column) => layer === 'main_agent' || column.key !== 'agent');
   const columns: Column<PackageRow>[] = [
     { key: 'package', header: t.packageName, render: (row) => row.name },
-    { key: 'cost', header: t.branchCost, num: true, render: (row) => <Money value={row.branchCost} /> },
-    { key: 'main', header: t.mainPrice, num: true, render: (row) => <Money value={row.mainPrice} /> },
-    { key: 'agent', header: t.agentPrice, num: true, render: (row) => <Money value={row.agentPrice} /> },
-    { key: 'pos', header: t.posPrice, num: true, render: (row) => <Money value={row.posPrice} /> },
-    { key: 'subscriber', header: t.subscriberPrice, num: true, render: (row) => <Money value={row.subscriberPrice} /> },
+    { key: 'yours', header: t.yourPrice, num: true, render: (row) => <Money value={row.price} /> },
+    ...ladder,
     {
-      key: 'yours',
-      header: t.yourPrice,
+      key: 'sell',
+      header: t.sellPrice,
       num: true,
       render: (row) => row.editableField && (
-        <div className="field-row">
-          <input
-            aria-label={t.yourPrice}
-            value={prices[row.code] ?? ''}
-            inputMode="numeric"
-            onChange={(event) => setPrices((current) => ({ ...current, [row.code]: event.target.value }))}
-          />
+        <div className="sell-cell">
+          <label className="terms-price">
+            <span>{t.subscriptionShort}</span>
+            <input
+              aria-label={`${row.name} ${t.subscriptionShort}`}
+              value={drafts[row.code]?.price ?? ''}
+              placeholder={row.sellDefault === null ? '' : shekelField(row.sellDefault)}
+              inputMode="decimal"
+              onChange={(event) => setDraft(row.code, { price: event.target.value })}
+            />
+          </label>
+          <label className="terms-price">
+            <span>{t.renewalShort}</span>
+            <input
+              aria-label={`${row.name} ${t.renewalShort}`}
+              value={drafts[row.code]?.renewal ?? ''}
+              placeholder={row.sellRenewalDefault === null ? '' : shekelField(row.sellRenewalDefault)}
+              inputMode="decimal"
+              onChange={(event) => setDraft(row.code, { renewal: event.target.value })}
+            />
+          </label>
           <Button type="button" variant="secondary" size="sm" onClick={() => save(row)}>{t.save}</Button>
         </div>
       ),

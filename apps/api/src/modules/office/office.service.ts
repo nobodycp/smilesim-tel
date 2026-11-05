@@ -65,25 +65,7 @@ import {
 } from './office-rules';
 import { activityActorFilter, clampActivityRange } from './activity-log';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
-import {
-  buyPriceFor,
-  deniedAbove,
-  deniedOpsFor,
-  floorFor,
-  hiddenAbove,
-  isOpKey,
-  parseOps,
-  priceSource,
-  serializeOps,
-  visibleTo,
-  type LayerPrices,
-  type OpKey,
-  type PathNode,
-  type PriceKind,
-  type PriceSource,
-  type SellRow,
-  type TermRow,
-} from './user-terms';
+import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey, layerPrice, parseOps, priceSource, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type PriceSource, type SellRow, type TermRow } from './user-terms';
 import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { NoticeService, type WrittenNotice } from './notice.service';
@@ -422,6 +404,9 @@ export class OfficeService implements OnModuleInit {
     const termsOf = (packageId: string) => termRows.filter((row) => row.packageId === packageId);
     const sellsOf = (packageId: string) => sellRows.filter((row) => row.packageId === packageId);
     const rows = all.filter((row) => visibleTo(path, termsOf(row.id), row));
+    // The layer the actor sells to; null for the branch (no sell price) and the point of sale.
+    const sellsTo = actor.layer === 'main_agent' ? 'agent' : actor.layer === 'agent' ? 'pos' : null;
+    const ownSell = (packageId: string) => sellRows.find((row) => row.packageId === packageId && row.ownerId === actor.id) ?? null;
     const images = new Map<string, string>();
     for (const row of rows) {
       const name = row.company?.name ?? '';
@@ -433,6 +418,10 @@ export class OfficeService implements OnModuleInit {
         price: buyPriceFor(path, termsOf(row.id), sellsOf(row.id), row, 'subscription'),
         renewalPrice: buyPriceFor(path, termsOf(row.id), sellsOf(row.id), row, 'renewal'),
         canActivate,
+        sellPrice: ownSell(row.id)?.price ?? null,
+        sellRenewalPrice: ownSell(row.id)?.renewalPrice ?? null,
+        sellDefault: sellsTo ? layerPrice(sellsTo, row, 'subscription') : null,
+        sellRenewalDefault: sellsTo ? layerPrice(sellsTo, row, 'renewal') : null,
         code: row.code,
         name: row.name,
         providerCode: row.provider.code,
