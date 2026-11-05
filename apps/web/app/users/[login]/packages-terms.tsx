@@ -7,10 +7,11 @@ import { Money } from '../../../components/desk';
 import { EmptyState } from '../../../components/empty-state';
 import { LiveSwitch } from '../../../components/live-switch';
 import { TableSkeleton } from '../../../components/loading';
+import { PriceField } from '../../../components/price-field';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
 import { api, type UserPackageRow } from '../../../lib/api';
-import { parseShekel, shekelField } from '../../../lib/money';
+import { parseShekel } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useLoad } from '../../../lib/use-load';
@@ -264,52 +265,5 @@ function TermsRow({
         )}
       </div>
     </div>
-  );
-}
-
-/** A price field that saves on blur or Enter, only when the text changed. Empty text clears the price. */
-function PriceField({
-  label,
-  hint,
-  value,
-  placeholder,
-  disabled,
-  onSave,
-}: {
-  label: string;
-  hint: string;
-  value: number | null;
-  placeholder: number;
-  disabled: boolean;
-  onSave: (text: string) => void;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const saved = value === null ? '' : shekelField(value);
-  const shown = draft ?? saved;
-  function commit() {
-    if (draft !== null && draft.trim() !== saved) onSave(draft.trim());
-    setDraft(null);
-  }
-  return (
-    <label className="terms-price">
-      <span>{hint}</span>
-      <input
-        inputMode="decimal"
-        aria-label={label}
-        value={shown}
-        placeholder={shekelField(placeholder)}
-        disabled={disabled}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            commit();
-          } else if (event.key === 'Escape') {
-            setDraft(null);
-          }
-        }}
-      />
-    </label>
   );
 }

@@ -47,10 +47,13 @@ export function Desk({
   );
 }
 
-export function Money({ value }: { value: number }) {
+// `muted` renders a reference figure (a default beside a custom value); `signed` colours a
+// difference and prefixes the plus.
+export function Money({ value, muted, signed }: { value: number; muted?: boolean; signed?: boolean }) {
+  const tone = value < 0 ? ' neg' : signed && value > 0 ? ' pos' : '';
   return (
-    <span className={value < 0 ? 'money neg' : 'money'} dir="ltr">
-      {formatShekel(value)}
+    <span className={`money${tone}${muted ? ' muted' : ''}`} dir="ltr">
+      {signed && value > 0 ? '+' : ''}{formatShekel(value)}
     </span>
   );
 }

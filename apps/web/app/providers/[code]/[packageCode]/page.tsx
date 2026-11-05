@@ -7,6 +7,7 @@ import { DataTable, type Column } from '../../../../components/data-table';
 import { Desk, Money, layerName, lineBadgeClass, lineStatus } from '../../../../components/desk';
 import { LiveSwitch } from '../../../../components/live-switch';
 import { TableSkeleton } from '../../../../components/loading';
+import { PriceField } from '../../../../components/price-field';
 import { RowMenu } from '../../../../components/row-menu';
 import { Button } from '../../../../components/ui/button';
 import { api, type CustomPriceRow, type LineRow, type Shelf } from '../../../../lib/api';
@@ -17,6 +18,7 @@ import { useLoad } from '../../../../lib/use-load';
 import { useRequireLayer } from '../../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
+const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
 const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
 type ModeAction = (typeof actions)[number];
 type Tab = 'overview' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
@@ -57,6 +59,7 @@ export default function PackageSheetPage() {
   const [selectedLines, setSelectedLines] = useState<string[]>([]);
   const [loginName, setLoginName] = useState('');
   const [offerPrice, setOfferPrice] = useState('');
+  const [offerRenewal, setOfferRenewal] = useState('');
   const [repriceWhich, setRepriceWhich] = useState('stay');
   const [repricePrice, setRepricePrice] = useState('');
   const [error, setError] = useState('');
@@ -196,13 +199,36 @@ export default function PackageSheetPage() {
 
   async function saveOffer() {
     if (!sheet || !loginName) return;
-    const price = parseShekel(offerPrice);
-    if (price === null) {
+    const price = offerPrice.trim() === '' ? undefined : parseShekel(offerPrice);
+    const renewalPrice = offerRenewal.trim() === '' ? undefined : parseShekel(offerRenewal);
+    if (price === null || renewalPrice === null || (price === undefined && renewalPrice === undefined)) {
       setError(apiText('بيانات غير صالحة'));
       setNote('');
       return;
     }
-    await run(() => api.setCustomPrice(sheet.code, loginName, { price }), { note: t.save, then: () => setOfferPrice('') });
+    await run(() => api.setCustomPrice(sheet.code, loginName, { price, renewalPrice }), {
+      note: t.saved,
+      then: () => {
+        setOfferPrice('');
+        setOfferRenewal('');
+      },
+    });
+  }
+
+  async function saveCustomPrice(offer: CustomPriceRow, field: 'price' | 'renewalPrice', text: string) {
+    if (!sheet) return;
+    const value = text === '' ? null : parseShekel(text);
+    if (value === null && text !== '') {
+      setError(apiText('بيانات غير صالحة'));
+      setNote('');
+      return;
+    }
+    const next = { price: offer.price, renewalPrice: offer.renewalPrice, [field]: value };
+    if (next.price === null && next.renewalPrice === null) {
+      await run(() => api.clearCustomPrice(sheet.code, offer.loginName), { note: t.saved });
+      return;
+    }
+    await run(() => api.setCustomPrice(sheet.code, offer.loginName, { [field]: value }), { note: t.saved });
   }
 
   const modeColumns: Column<ModeAction>[] = [
@@ -221,8 +247,51 @@ export default function PackageSheetPage() {
   ];
   const offerColumns: Column<CustomPriceRow>[] = [
     { key: 'account', header: t.accountName, render: (offer) => <AccountName login={offer.loginName} name={offer.nickname} /> },
-    { key: 'layer', header: t.layer, render: (offer) => layerName(t, offer.layer) },
-    { key: 'price', header: t.price, num: true, render: (offer) => <Money value={offer.price ?? offer.defaultPrice} /> },
+    { key: 'layer', header: t.layer, fit: true, render: (offer) => layerName(t, offer.layer) },
+    { key: 'parent', header: t.parent, fit: true, render: (offer) => <bdi dir="ltr">{offer.parentLogin ?? '—'}</bdi> },
+    {
+      key: 'price',
+      header: t.subscriptionPrice,
+      num: true,
+      render: (offer) => (
+        <span className="price-pair">
+          <Money value={offer.defaultPrice} muted />
+          <PriceField
+            label={`${accountLabel(offer.loginName, offer.nickname)} ${t.subscriptionShort}`}
+            value={offer.price}
+            placeholder={offer.defaultPrice}
+            onSave={(text) => void saveCustomPrice(offer, 'price', text)}
+          />
+        </span>
+      ),
+    },
+    {
+      key: 'renewal',
+      header: t.renewalPrice,
+      num: true,
+      render: (offer) => (
+        <span className="price-pair">
+          <Money value={offer.defaultRenewalPrice} muted />
+          <PriceField
+            label={`${accountLabel(offer.loginName, offer.nickname)} ${t.renewalShort}`}
+            value={offer.renewalPrice}
+            placeholder={offer.defaultRenewalPrice}
+            onSave={(text) => void saveCustomPrice(offer, 'renewalPrice', text)}
+          />
+        </span>
+      ),
+    },
+    {
+      key: 'diff',
+      header: t.difference,
+      num: true,
+      render: (offer) => (
+        <span className="price-pair">
+          {offer.price === null ? <span className="hint">—</span> : <Money value={offer.price - offer.defaultPrice} signed />}
+          {offer.renewalPrice === null ? <span className="hint">—</span> : <Money value={offer.renewalPrice - offer.defaultRenewalPrice} signed />}
+        </span>
+      ),
+    },
     {
       key: 'ops',
       header: t.rowActions,
@@ -231,15 +300,17 @@ export default function PackageSheetPage() {
         <RowMenu
           label={`${t.rowActions} ${accountLabel(offer.loginName, offer.nickname)}`}
           items={[{
-            label: t.deleteAccount,
-            icon: 'trash',
-            danger: true,
-            onClick: () => void run(() => api.clearCustomPrice(sheet?.code ?? '', offer.loginName)),
+            label: t.resetDefault,
+            icon: 'undo',
+            onClick: () => void run(() => api.clearCustomPrice(sheet?.code ?? '', offer.loginName), { note: t.saved }),
           }]}
         />
       ),
     },
   ];
+  const sortedCustomPrices = [...customPrices].sort(
+    (a, b) => LAYER_ORDER.indexOf(a.layer) - LAYER_ORDER.indexOf(b.layer) || a.loginName.localeCompare(b.loginName),
+  );
   const allLinesSelected = lines.length > 0 && lines.every((line) => selectedLines.includes(line.id));
   const lineColumns: Column<LineRow>[] = [
     {
@@ -452,7 +523,7 @@ export default function PackageSheetPage() {
               )}
               {tab === 'offers' && (
                 <div className="pane-body">
-                  <div className="account-fund">
+                  <div className="account-fund custom-price-add">
                     <label>
                       {t.accountName}
                       <select value={loginName} onChange={(event) => setLoginName(event.target.value)}>
@@ -463,12 +534,19 @@ export default function PackageSheetPage() {
                       </select>
                     </label>
                     <label>
-                      {t.price}
-                      <input inputMode="numeric" value={offerPrice} onChange={(event) => setOfferPrice(event.target.value)} />
+                      {t.subscriptionPrice}
+                      <input inputMode="decimal" value={offerPrice} placeholder={shekelField(sheet.posPrice)} onChange={(event) => setOfferPrice(event.target.value)} />
                     </label>
-                    <button type="button" disabled={!loginName || offerPrice === ''} onClick={() => void saveOffer()}>{t.save}</button>
+                    <label>
+                      {t.renewalPrice}
+                      <input inputMode="decimal" value={offerRenewal} placeholder={shekelField(sheet.renewalPosPrice)} onChange={(event) => setOfferRenewal(event.target.value)} />
+                    </label>
+                    <button type="button" disabled={!loginName || (offerPrice === '' && offerRenewal === '')} onClick={() => void saveOffer()}>{t.save}</button>
                   </div>
-                  <DataTable bare columns={offerColumns} rows={customPrices} rowKey={(offer) => offer.loginName} empty={t.noOffers} />
+                  <p className="hint">{t.customPricesHint}</p>
+                  <div className="sheet">
+                    <DataTable bare columns={offerColumns} rows={sortedCustomPrices} rowKey={(offer) => offer.loginName} empty={t.noOffers} />
+                  </div>
                 </div>
               )}
             </>
