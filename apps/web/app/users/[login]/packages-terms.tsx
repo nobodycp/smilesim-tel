@@ -258,6 +258,8 @@ function TermsRow({
         ) : null}
         {locked ? (
           <span className="badge cancelled"><Lock aria-hidden="true" />{t.stoppedAbove}</span>
+        ) : row.hidden ? (
+          <span className="badge cancelled">{t.stopped}</span>
         ) : row.source === 'custom' ? (
           <span className="badge">{t.customPrice}</span>
         ) : (

@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-05-user-packages-and-operations-design.md`
 
+**Status:** Done on 2026-11-06 (Tasks 1–10). Rulings per task are in `.superpowers/sdd/2026-11-05-user-packages-and-operations/progress.md`. Deviations from the plan: `packages()` also returns the actor's own `sellPrice`/`sellRenewalPrice` and the layer defaults (Task 9); the sheet's custom-prices table sorts by layer instead of grouped sections (Task 8); `PriceField` is a shared component (Task 8). Pre-existing Playwright failures outside this work (`tools-pages`, `companies-shelf`, `lists-desk`, `users-desk`, `numbers-desk`, `login`, `packages-roles-desk`) were red on `main` before this branch; the mechanical ones were updated here, the rest are left for their own slice.
+
 ## Global Constraints
 
 - Money is agorot `Int`; the web renders it with `Money`. Prices never leave the API as decimals.
@@ -42,9 +44,9 @@
 **Interfaces:**
 - Produces Prisma models `UserPackage { id, userId, packageId, hidden: boolean, price: number | null, renewalPrice: number | null, setById: string, updatedAt }` with `@@unique([packageId, userId])`; `SellPrice { id, ownerId, packageId, price: number, renewalPrice: number | null }` with `@@unique([packageId, ownerId])`; `User.deniedOps: string` default `""`. Relations: `User.packageTerms UserPackage[]`, `User.sellPrices SellPrice[]`, `Package.userTerms UserPackage[]`, `Package.sellPrices SellPrice[]`.
 
-- [ ] **Step 1: Edit `schema.prisma`** — rename model `PackageOffer` → `UserPackage` and add `hidden Boolean @default(false)`, make `price Int?`, add `renewalPrice Int?`, `setById String`, `updatedAt DateTime @updatedAt`. Add model `SellPrice`. Add `deniedOps String @default("")` to `User`. Rename the relation field `User.packageOffers` → `packageTerms`.
+- [x] **Step 1: Edit `schema.prisma`** — rename model `PackageOffer` → `UserPackage` and add `hidden Boolean @default(false)`, make `price Int?`, add `renewalPrice Int?`, `setById String`, `updatedAt DateTime @updatedAt`. Add model `SellPrice`. Add `deniedOps String @default("")` to `User`. Rename the relation field `User.packageOffers` → `packageTerms`.
 
-- [ ] **Step 2: Write the migration by hand** (not `migrate dev`, so the copy is explicit):
+- [x] **Step 2: Write the migration by hand** (not `migrate dev`, so the copy is explicit):
 
 ```sql
 ALTER TABLE "PackageOffer" RENAME TO "UserPackage";
@@ -72,13 +74,13 @@ ALTER TABLE "User" ADD COLUMN "deniedOps" TEXT NOT NULL DEFAULT '';
 
 Check the existing constraint names with `\d "PackageOffer"` on the dev database before relying on the renames above; adjust names to what Postgres reports.
 
-- [ ] **Step 3: Apply and generate** — `cd apps/api && DATABASE_URL='postgresql://smilesim:smilesim@127.0.0.1:5432/smilesim' npx prisma migrate deploy && npm run prisma:generate`. Expected: `1 migration applied`, no drift warning from `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma`.
+- [x] **Step 3: Apply and generate** — `cd apps/api && DATABASE_URL='postgresql://smilesim:smilesim@127.0.0.1:5432/smilesim' npx prisma migrate deploy && npm run prisma:generate`. Expected: `1 migration applied`, no drift warning from `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma`.
 
-- [ ] **Step 4: Typecheck the API** — `npx tsc --noEmit -p .` will now fail on `packageOffer` usages in `office.service.ts` (lines ~1984, 2015, 2166, 2180, 2616). Rename them to `userPackage` keeping behaviour; `saveOffer` writes `{ price, renewalPrice: price, setById: actor.id }`. Expected: clean typecheck.
+- [x] **Step 4: Typecheck the API** — `npx tsc --noEmit -p .` will now fail on `packageOffer` usages in `office.service.ts` (lines ~1984, 2015, 2166, 2180, 2616). Rename them to `userPackage` keeping behaviour; `saveOffer` writes `{ price, renewalPrice: price, setById: actor.id }`. Expected: clean typecheck.
 
-- [ ] **Step 5: Run the full API suite** — `npm test`. Expected: all pass (no behaviour changed).
+- [x] **Step 5: Run the full API suite** — `npm test`. Expected: all pass (no behaviour changed).
 
-- [ ] **Step 6: Commit** — `git add apps/api/prisma && git add apps/api/src/modules/office/office.service.ts && git commit -m "feat(api): UserPackage, SellPrice, and User.deniedOps schema"`
+- [x] **Step 6: Commit** — `git add apps/api/prisma && git add apps/api/src/modules/office/office.service.ts && git commit -m "feat(api): UserPackage, SellPrice, and User.deniedOps schema"`
 
 ---
 
@@ -115,7 +117,7 @@ export function deniedAbove(path: PathNode[]): { op: OpKey; login: string }[];  
 
 `terms` is the list of `UserPackage` rows for one package across all users; `sells` the `SellPrice` rows for that package.
 
-- [ ] **Step 1: Write the failing tests** in `user-terms.spec.ts` with a fixed path `pos1 → ag1 → ma1 → branch` and prices `{branchCost:2000, mainPrice:2500, agentPrice:3000, posPrice:3500, renewal*: 1800/2200/2700/3200}`:
+- [x] **Step 1: Write the failing tests** in `user-terms.spec.ts` with a fixed path `pos1 → ag1 → ma1 → branch` and prices `{branchCost:2000, mainPrice:2500, agentPrice:3000, posPrice:3500, renewal*: 1800/2200/2700/3200}`:
   - `buyPriceFor` → 3500 with no rows; 3100 with `SellRow(ag1, 3100)`; 2900 with `TermRow(pos1, price 2900)`; renewal 3200 / 2650 / 2800 by the same ladder; for path `ma1 → branch` with no rows → 2500 (parent is branch, no sell level).
   - `priceSource` → `'layer' | 'parent' | 'custom'` for the three cases.
   - `floorFor(pos1 path)` = `buyPriceFor(ag1 path)` → 3000 with no rows; `floorFor(ma1 path)` → 2000.
@@ -124,10 +126,10 @@ export function deniedAbove(path: PathNode[]): { op: OpKey; login: string }[];  
   - `deniedOpsFor` with `ma1.deniedOps='charge'`, `pos1.deniedOps='sim,bogus'` → `Set{'charge','sim'}`; `deniedAbove` → `[{op:'charge', login:'ma1'}]`.
   - `parseOps('sim,bogus,charge')` → `['charge','sim']` (display order); `serializeOps(['sim','charge','sim'])` → `'charge,sim'`.
 
-- [ ] **Step 2: Run** `npm test -- user-terms` → FAIL (module not found).
-- [ ] **Step 3: Implement** the functions above. `buyPriceFor`: custom row for `path[0]` → `sells` row where `ownerId === path[1]?.id` and `path[1].layer !== 'branch'` → `layerPrice(path[0].layer)`. `renewal` on a sell row with `renewalPrice === null` falls to the layer column (spec: "`null` falls through to the global column").
-- [ ] **Step 4: Run** `npm test -- user-terms` → PASS.
-- [ ] **Step 5: Commit** — `git commit -m "feat(api): pure resolver for user package terms and operation stops"`
+- [x] **Step 2: Run** `npm test -- user-terms` → FAIL (module not found).
+- [x] **Step 3: Implement** the functions above. `buyPriceFor`: custom row for `path[0]` → `sells` row where `ownerId === path[1]?.id` and `path[1].layer !== 'branch'` → `layerPrice(path[0].layer)`. `renewal` on a sell row with `renewalPrice === null` falls to the layer column (spec: "`null` falls through to the global column").
+- [x] **Step 4: Run** `npm test -- user-terms` → PASS.
+- [x] **Step 5: Commit** — `git commit -m "feat(api): pure resolver for user package terms and operation stops"`
 
 ---
 
@@ -150,11 +152,11 @@ private canEditTerms(actor: Actor, target: Account): boolean;
 
 `Account` (the existing type returned by `accounts()`) must now also carry `deniedOps`; extend its `select`.
 
-- [ ] **Step 1: Add the error code** in `errors.ts` and the three copy files. Run `cd apps/web && node scripts/check-copy.mjs` → only the three pre-existing orphans.
-- [ ] **Step 2: Implement the four helpers.** `resolveBuyPrice` loads `accounts()`, `termsFor(pkg.id)`, and calls the pure `buyPriceFor` with `LayerPrices` taken from the package row. Delete the old `buyPrice()` and the unused `priced()` in `office-terms.ts` (and its test case in `office-terms.spec.ts` if present).
-- [ ] **Step 3: Replace the five callers** (`activate` ~805, `completeTask` activate ~1425, `extend` ~992, `restartDisconnected` ~2564, `switchQuote` ~2872) with `await this.resolveBuyPrice(posId, pkg, kind)` using the kind column from the spec table. The fallback argument disappears.
-- [ ] **Step 4: Typecheck + full suite** — `npx tsc --noEmit -p . && npm test`. Expected: pass; the esim-ops fixture needs `user.findMany`/`userPackage.findMany`/`sellPrice.findMany` stubs returning `[]` plus a `pos1` account with `parentId` — add them to `office()` in `esim-ops.spec.ts`.
-- [ ] **Step 5: Commit** — `git commit -m "feat(api): resolve buy price through user terms; add OPERATION_DENIED"`
+- [x] **Step 1: Add the error code** in `errors.ts` and the three copy files. Run `cd apps/web && node scripts/check-copy.mjs` → only the three pre-existing orphans.
+- [x] **Step 2: Implement the four helpers.** `resolveBuyPrice` loads `accounts()`, `termsFor(pkg.id)`, and calls the pure `buyPriceFor` with `LayerPrices` taken from the package row. Delete the old `buyPrice()` and the unused `priced()` in `office-terms.ts` (and its test case in `office-terms.spec.ts` if present).
+- [x] **Step 3: Replace the five callers** (`activate` ~805, `completeTask` activate ~1425, `extend` ~992, `restartDisconnected` ~2564, `switchQuote` ~2872) with `await this.resolveBuyPrice(posId, pkg, kind)` using the kind column from the spec table. The fallback argument disappears.
+- [x] **Step 4: Typecheck + full suite** — `npx tsc --noEmit -p . && npm test`. Expected: pass; the esim-ops fixture needs `user.findMany`/`userPackage.findMany`/`sellPrice.findMany` stubs returning `[]` plus a `pos1` account with `parentId` — add them to `office()` in `esim-ops.spec.ts`.
+- [x] **Step 5: Commit** — `git commit -m "feat(api): resolve buy price through user terms; add OPERATION_DENIED"`
 
 ---
 
@@ -168,7 +170,7 @@ private canEditTerms(actor: Actor, target: Account): boolean;
 - Consumes Task 2 and Task 3 helpers.
 - Produces: `packages()` rows gain `price: number`, `renewalPrice: number`, `canActivate: boolean`; `operationsFor(line, denied)`; `assertRunnable(pkg, action, denied)`.
 
-- [ ] **Step 1: Write failing service tests:**
+- [x] **Step 1: Write failing service tests:**
   - `packages()` for pos1 omits a package with `UserPackage(ag1, hidden)`; includes it for ma1.
   - `packages()` for pos1 returns `price` 2900 when `UserPackage(pos1, price 2900)`; `canActivate` false when `ma1.deniedOps='activate'`.
   - `activate` for pos1 of a package hidden on ag1 → `PACKAGE_HIDDEN` (400).
@@ -177,10 +179,10 @@ private canEditTerms(actor: Actor, target: Account): boolean;
   - Order: a package with `actionModes.charge='off'` **and** denied → `OPERATION_DENIED` (user stop checked before package mode).
   - `switchQuote` for pos1 does not list a target hidden on ag1.
   - `transferPos(pos1 → ag2)` deletes `UserPackage` rows where `userId = pos1`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** `packages()`: load accounts + path once, load all `UserPackage` and `SellPrice` rows in two queries, filter with `visibleTo`, compute `price`/`renewalPrice` via the pure `buyPriceFor`, `canActivate = !denied.has('activate')`. Keep the existing global columns in the response for the branch table. `assertRunnable(pkg, action, denied)`: after `PACKAGE_DISABLED`, `if (denied.has(opKeyOf(action))) fail(403, 'OPERATION_DENIED')` where `unfreeze → freeze`, `reactivate → charge`. Every caller passes `deniedOpsFor(path)` for the line's `posId` (the owner of the line, not the actor — the stop is on the selling account). `transferPos`: inside `runTx`, `tx.userPackage.deleteMany({ where: { userId: pos.id } })`.
-- [ ] **Step 4: Run** `npm test` → PASS.
-- [ ] **Step 5: Commit** — `git commit -m "feat(api): per-user package visibility and operation stops on the run path"`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** `packages()`: load accounts + path once, load all `UserPackage` and `SellPrice` rows in two queries, filter with `visibleTo`, compute `price`/`renewalPrice` via the pure `buyPriceFor`, `canActivate = !denied.has('activate')`. Keep the existing global columns in the response for the branch table. `assertRunnable(pkg, action, denied)`: after `PACKAGE_DISABLED`, `if (denied.has(opKeyOf(action))) fail(403, 'OPERATION_DENIED')` where `unfreeze → freeze`, `reactivate → charge`. Every caller passes `deniedOpsFor(path)` for the line's `posId` (the owner of the line, not the actor — the stop is on the selling account). `transferPos`: inside `runTx`, `tx.userPackage.deleteMany({ where: { userId: pos.id } })`.
+- [x] **Step 4: Run** `npm test` → PASS.
+- [x] **Step 5: Commit** — `git commit -m "feat(api): per-user package visibility and operation stops on the run path"`
 
 ---
 
@@ -225,7 +227,7 @@ Routes (controller): `GET users/:loginName/packages`, `PUT users/:loginName/pack
 
 One private writer `writeUserPackage(actor, target, pkg, patch)` is shared by `setUserPackage`, `setUserPackagesBulk`, `setCustomPrice`, `clearCustomPrice`: it checks `canEditTerms`, refuses unhiding when `hiddenAbove` (`FORBIDDEN`), checks each non-null price against `floorFor` (`PRICE_BELOW_FLOOR`), upserts, and deletes the row when `hidden=false && price==null && renewalPrice==null`.
 
-- [ ] **Step 1: Write failing tests:**
+- [x] **Step 1: Write failing tests:**
   - ag1 sets `price 2800` on pos1 while ag1's own buy is 3000 → `PRICE_BELOW_FLOOR`; `3000` passes (zero margin).
   - ma1 (grandparent) setting pos1 → `FORBIDDEN`; branch owner setting pos1 → ok.
   - ag1 unhiding a package hidden on ma1 → `FORBIDDEN`; branch clearing ma1's hide → ok.
@@ -236,10 +238,10 @@ One private writer `writeUserPackage(actor, target, pkg, patch)` is shared by `s
   - `setSellPrice` by ag1 below ag1's own buy → `PRICE_BELOW_FLOOR`; by pos1 → `FORBIDDEN`; by branch → `FORBIDDEN`.
   - ag1 `setUserOps({denied:['charge']})` on pos1 ok; ag1 trying to drop `charge` when `ma1.deniedOps='charge'` → `FORBIDDEN`; branch may.
   - An old offer row (`price 3100, renewalPrice 3100`) keeps `extend` debiting 3100 (Review Focus 2).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** service, DTOs, controller, activity actions. `ACTIVITY_ACTIONS` loses `'offer'`; grep the web for `'offer'` in `activity` copy/labels and rename accordingly.
-- [ ] **Step 4: Run** `npx tsc --noEmit -p . && npm test` → PASS. `cd apps/web && node scripts/check-copy.mjs` → no new problems.
-- [ ] **Step 5: Commit** — `git commit -m "feat(api): user package terms, operation stops, custom and sell price endpoints"`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** service, DTOs, controller, activity actions. `ACTIVITY_ACTIONS` loses `'offer'`; grep the web for `'offer'` in `activity` copy/labels and rename accordingly.
+- [x] **Step 4: Run** `npx tsc --noEmit -p . && npm test` → PASS. `cd apps/web && node scripts/check-copy.mjs` → no new problems.
+- [x] **Step 5: Commit** — `git commit -m "feat(api): user package terms, operation stops, custom and sell price endpoints"`
 
 ---
 
@@ -265,10 +267,10 @@ Copy keys (ar / en / he), add once in each file:
 `packagesPricesTab` «الرزم والأسعار» / Packages & prices / חבילות ומחירים · `lineOpsTab` «عمليات الأرقام» / Line operations / פעולות על מספרים · `yourBuy` «سعرك» / Your price / המחיר שלך · `hisPrice` «سعره» / Their price / המחיר שלו · `subscriptionShort` «اشتراك» / Subscription / מנוי · `renewalShort` «تجديد» / Renewal / חידוש · `margin` «الهامش» / Margin / רווח · `inherited` «موروث» / Inherited / בירושה · `customPrice` «سعر خاص» / Custom price / מחיר מיוחד · `stoppedAbove` «موقوف من فوق» / Stopped above / מושבת מלמעלה · `stoppedBy` «موقوف من {login}» / Stopped by {login} / מושבת על ידי {login} · `resetDefault` «إرجاع للافتراضي» / Reset to default / איפוס לברירת מחדל · `enableAll` «تشغيل الكل» / Turn all on / הפעל הכל · `disableAll` «إيقاف الكل» / Turn all off / כבה הכל · `termsSummary` «{total} رزمة · {visible} ظاهرة · {custom} بسعر خاص» / {total} packages · {visible} visible · {custom} custom priced / {total} חבילות · {visible} גלויות · {custom} במחיר מיוחד · `allowed` «مسموح» / Allowed / מותר · `stopped` already exists · `activationStopped` «التفعيل موقوف على هذا الحساب.» / Activation is stopped on this account. / ההפעלה מושבתת בחשבון זה. · `saved` exists? if not «تم الحفظ» / Saved / נשמר · nine `opDesc*` one-liners (`opDescActivate` «تفعيل رقم جديد على رزمة» …).
 Rename text of `offersTab` → «تخصيص سعر» / Custom prices / התאמת מחיר and `noOffers` → «لا أسعار مخصصة على هذه الرزمة.» / No custom prices on this package. / אין מחירים מיוחדים בחבילה זו.
 
-- [ ] **Step 1: Add types, calls, copy, and `lib/ops.ts`.** Operation labels reuse `actActivate, actCharge, extend, actSwitch, swapSim, requestEsim, freeze, actDisconnect, changeNumber`.
-- [ ] **Step 2: Typecheck** `cd apps/web && npx tsc --noEmit -p .` — expect errors only in the three pages Tasks 7–9 rewrite (`providers/[code]/[packageCode]/page.tsx`, `packages/page.tsx`). Leave them for those tasks; do not commit a red typecheck — instead do Step 3 first.
-- [ ] **Step 3: Minimal stubs** — in `providers/[code]/[packageCode]/page.tsx` replace `api.saveOffer`/`removeOffer`/`sheet.offers` with the new calls and an empty `customPrices` state loaded on tab open (full UI in Task 8). In `packages/page.tsx` replace `api.setPackagePrice(code, price)` with `api.setSellPrice(code, price)`. Typecheck → clean. `node scripts/check-copy.mjs` → new keys will be orphans until Tasks 7–9 use them; acceptable only inside this task's commit sequence, so **run check:copy at the end of Task 9**, not here.
-- [ ] **Step 4: Commit** — `git commit -m "feat(web): api calls and copy for user package terms and operation stops"`
+- [x] **Step 1: Add types, calls, copy, and `lib/ops.ts`.** Operation labels reuse `actActivate, actCharge, extend, actSwitch, swapSim, requestEsim, freeze, actDisconnect, changeNumber`.
+- [x] **Step 2: Typecheck** `cd apps/web && npx tsc --noEmit -p .` — expect errors only in the three pages Tasks 7–9 rewrite (`providers/[code]/[packageCode]/page.tsx`, `packages/page.tsx`). Leave them for those tasks; do not commit a red typecheck — instead do Step 3 first.
+- [x] **Step 3: Minimal stubs** — in `providers/[code]/[packageCode]/page.tsx` replace `api.saveOffer`/`removeOffer`/`sheet.offers` with the new calls and an empty `customPrices` state loaded on tab open (full UI in Task 8). In `packages/page.tsx` replace `api.setPackagePrice(code, price)` with `api.setSellPrice(code, price)`. Typecheck → clean. `node scripts/check-copy.mjs` → new keys will be orphans until Tasks 7–9 use them; acceptable only inside this task's commit sequence, so **run check:copy at the end of Task 9**, not here.
+- [x] **Step 4: Commit** — `git commit -m "feat(web): api calls and copy for user package terms and operation stops"`
 
 ---
 
@@ -294,12 +296,12 @@ Layout decisions the implementer cannot infer:
 - Bulk buttons open `Dialog size="confirm"` then call `setUserPackagesBulk` with the filtered codes.
 - Ops tab: `section.pane > div.op-grid` `grid-template-columns: repeat(auto-fill, minmax(260px, 1fr))`; `article.op-card` with icon (lucide: `Power, BatteryCharging, CalendarPlus, ArrowLeftRight, CreditCard, QrCode, Snowflake, PhoneOff, Hash`), `h3` label, `p.hint` description, `LiveSwitch` checked = allowed. Inherited stop: `disabled` + `badge cancelled` `stoppedBy(login)`.
 
-- [ ] **Step 1: Write the Playwright test** `user-terms.spec.ts`: mock `GET /office/users/pos1/packages` with two companies / three packages (one `hiddenAbove:'ma1'`, one `source:'custom'`); assert the three tabs exist, `#packages` shows the summary text, the locked row's switch is `disabled`, the custom row shows «سعر خاص»; toggling an enabled switch issues `PUT /office/users/pos1/packages/<code>` with `{hidden:true}`; `#ops` shows nine cards and the inherited one is disabled with «موقوف من ma1».
-- [ ] **Step 2: Run** `npx playwright test tests/user-terms.spec.ts` → FAIL.
-- [ ] **Step 3: Implement** the three files, `LiveSwitch`, and the CSS.
-- [ ] **Step 4: Run** the test → PASS; `npx tsc --noEmit -p .` clean; `npx eslint app/users components/live-switch.tsx` no errors.
-- [ ] **Step 5: Browser check** on `admin.localhost:3000/users/<pos login>#packages` and `#ops`: Arabic and English, light and dark, 1440px and ~900px. Fix wrap or contrast before continuing.
-- [ ] **Step 6: Commit** — `git commit -m "feat(web): user page tabs for packages, prices, and line operation stops"`
+- [x] **Step 1: Write the Playwright test** `user-terms.spec.ts`: mock `GET /office/users/pos1/packages` with two companies / three packages (one `hiddenAbove:'ma1'`, one `source:'custom'`); assert the three tabs exist, `#packages` shows the summary text, the locked row's switch is `disabled`, the custom row shows «سعر خاص»; toggling an enabled switch issues `PUT /office/users/pos1/packages/<code>` with `{hidden:true}`; `#ops` shows nine cards and the inherited one is disabled with «موقوف من ma1».
+- [x] **Step 2: Run** `npx playwright test tests/user-terms.spec.ts` → FAIL.
+- [x] **Step 3: Implement** the three files, `LiveSwitch`, and the CSS.
+- [x] **Step 4: Run** the test → PASS; `npx tsc --noEmit -p .` clean; `npx eslint app/users components/live-switch.tsx` no errors.
+- [x] **Step 5: Browser check** on `admin.localhost:3000/users/<pos login>#packages` and `#ops`: Arabic and English, light and dark, 1440px and ~900px. Fix wrap or contrast before continuing.
+- [x] **Step 6: Commit** — `git commit -m "feat(web): user page tabs for packages, prices, and line operation stops"`
 
 ---
 
@@ -310,12 +312,12 @@ Layout decisions the implementer cannot infer:
 
 **Interfaces:** consumes `api.customPrices`, `api.setCustomPrice`, `api.clearCustomPrice`; `LiveSwitch` not needed here.
 
-- [ ] **Step 1: Write a Playwright test** in `tests/package-custom-prices.spec.ts` (mock API): the tab label reads «تخصيص سعر»; the table shows the mocked row with default (muted) and custom prices; editing the subscription field and pressing Enter issues `PUT /office/packages/<code>/custom-prices/<login>` with `{price}`; the row menu item «إرجاع للافتراضي» issues `DELETE`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement**: add-row gets a second price field (`renewalShort`); table grouped by layer (`layerName`), columns: account, parent, default subscription/renewal (muted `Money`), two inline `input.terms-price`, difference `Money`, `RowMenu` with `{ label: t.resetDefault, icon: 'undo', onClick }`. Load `customPrices` when the tab opens and after every save.
-- [ ] **Step 4: Run** test → PASS; typecheck clean.
-- [ ] **Step 5: Browser check** both languages/themes on the sheet of one package that has a custom price (set one from Task 7's screen first, confirm it appears here, reset it here, confirm it disappears there).
-- [ ] **Step 6: Commit** — `git commit -m "feat(web): custom prices tab on the package sheet"`
+- [x] **Step 1: Write a Playwright test** in `tests/package-custom-prices.spec.ts` (mock API): the tab label reads «تخصيص سعر»; the table shows the mocked row with default (muted) and custom prices; editing the subscription field and pressing Enter issues `PUT /office/packages/<code>/custom-prices/<login>` with `{price}`; the row menu item «إرجاع للافتراضي» issues `DELETE`.
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement**: add-row gets a second price field (`renewalShort`); table grouped by layer (`layerName`), columns: account, parent, default subscription/renewal (muted `Money`), two inline `input.terms-price`, difference `Money`, `RowMenu` with `{ label: t.resetDefault, icon: 'undo', onClick }`. Load `customPrices` when the tab opens and after every save.
+- [x] **Step 4: Run** test → PASS; typecheck clean.
+- [x] **Step 5: Browser check** both languages/themes on the sheet of one package that has a custom price (set one from Task 7's screen first, confirm it appears here, reset it here, confirm it disappears there).
+- [x] **Step 6: Commit** — `git commit -m "feat(web): custom prices tab on the package sheet"`
 
 ---
 
@@ -325,12 +327,12 @@ Layout decisions the implementer cannot infer:
 - Modify: `apps/web/app/packages/page.tsx` — non-branch table (290–465): first price column becomes the actor's `price` («سعرك» = buy), the editable field writes `setSellPrice`, placeholder shows the layer column; `PosCatalog` (22–162) card price `row.price` (122), hide the activation form when `!row.canActivate` and show `t.activationStopped`
 - Test: extend `apps/web/tests/lists-desk.spec.ts` or new `tests/packages-terms.spec.ts`
 
-- [ ] **Step 1: Write the test**: as agent (mock `me.layer='agent'`), the table shows `price` and saving «سعرك» issues `PUT /office/sell-prices/<code>`; as pos, a package with `canActivate:false` shows «التفعيل موقوف على هذا الحساب.» and no activation button; the card shows `price`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** test → PASS. `npx tsc --noEmit -p . && npx eslint . && node scripts/check-copy.mjs` → only the three pre-existing orphans.
-- [ ] **Step 5: Browser check** as `agent` and `pos` (`agent.localhost:3000/packages`, `pos.localhost:3000/packages`), both themes.
-- [ ] **Step 6: Commit** — `git commit -m "feat(web): sell price per owner and effective price in the catalog"`
+- [x] **Step 1: Write the test**: as agent (mock `me.layer='agent'`), the table shows `price` and saving «سعرك» issues `PUT /office/sell-prices/<code>`; as pos, a package with `canActivate:false` shows «التفعيل موقوف على هذا الحساب.» and no activation button; the card shows `price`.
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** test → PASS. `npx tsc --noEmit -p . && npx eslint . && node scripts/check-copy.mjs` → only the three pre-existing orphans.
+- [x] **Step 5: Browser check** as `agent` and `pos` (`agent.localhost:3000/packages`, `pos.localhost:3000/packages`), both themes.
+- [x] **Step 6: Commit** — `git commit -m "feat(web): sell price per owner and effective price in the catalog"`
 
 ---
 
@@ -339,7 +341,7 @@ Layout decisions the implementer cannot infer:
 **Files:**
 - Modify: `docs/superpowers/plans/2026-11-05-user-packages-and-operations.md` (status line), `DESIGN.md` (add `.terms-row`, `.op-card`, `LiveSwitch` to the component list)
 
-- [ ] **Step 1: Full checks** — root: `npm run lint && npm run check:copy && npm run typecheck && npm run test:api && npm run build`. Expected: green except the three known orphans.
-- [ ] **Step 2: Live flow in the browser** (dev API with `TRIAL_SEED=true`): as `branch`, open `main` → hide one package and set `charge` stopped; log in as `pos` → the package is absent from the catalog, an active line's menu has no «شحن»; as `main`, open `agent` → the hidden package's switch is locked with «موقوف من فوق»; set a special price on another package for `agent` → `agent`'s `/packages` shows it as «سعرك»; `agent` sets «سعرك» → `pos`'s catalog price changes.
-- [ ] **Step 3: Update `DESIGN.md` and mark the plan done.**
-- [ ] **Step 4: Commit** — `git commit -m "docs: user packages and operations plan done; DESIGN.md components"`
+- [x] **Step 1: Full checks** — root: `npm run lint && npm run check:copy && npm run typecheck && npm run test:api && npm run build`. Expected: green except the three known orphans.
+- [x] **Step 2: Live flow in the browser** (dev API with `TRIAL_SEED=true`): as `branch`, open `main` → hide one package and set `charge` stopped; log in as `pos` → the package is absent from the catalog, an active line's menu has no «شحن»; as `main`, open `agent` → the hidden package's switch is locked with «موقوف من فوق»; set a special price on another package for `agent` → `agent`'s `/packages` shows it as «سعرك»; `agent` sets «سعرك» → `pos`'s catalog price changes.
+- [x] **Step 3: Update `DESIGN.md` and mark the plan done.**
+- [x] **Step 4: Commit** — `git commit -m "docs: user packages and operations plan done; DESIGN.md components"`

@@ -54,7 +54,7 @@ test.describe('DataTable and EmptyState', () => {
     await expect(page.locator('.sheet .table-skeleton')).toBeVisible();
     await expect(page.locator('table.data tbody tr')).toHaveCount(2);
     await expect(page.locator('.table-skeleton')).toHaveCount(0);
-    await expect(page.locator('table.data thead th')).toHaveCount(7);
+    await expect(page.locator('table.data thead th')).toHaveCount(10);
     await expect(page.locator('table.data th.num')).toHaveCount(1);
     await expect(page.locator('table.data td.num')).toHaveCount(2);
     await expect(page.locator('table.data th.row-actions')).toHaveCount(1);
@@ -164,9 +164,11 @@ test.describe('useAction and lineActions', () => {
     await page.goto(`${admin}/numbers/ln1`);
     const extend = page.getByRole('button', { name: 'تمديد', exact: true });
     await expect(extend).toBeVisible();
+    // The card reads once per load (the session answer can re-run the load once); the action adds exactly one reload.
+    const before = reads;
     await extend.dblclick();
     await expect(page.getByRole('status')).toHaveText('تم التنفيذ وخصم الرصيد.');
-    await expect.poll(() => reads).toBe(2);
+    await expect.poll(() => reads).toBe(before + 1);
     expect(calls.filter((call) => call.startsWith('POST /lines/ln1/extend'))).toHaveLength(1);
   });
 
@@ -301,7 +303,7 @@ test.describe('shell', () => {
     await page.goto(`${admin}/`);
     await page.getByRole('button', { name: 'الإشعارات' }).click();
     await expect(page.locator('.shell-item strong').first()).toHaveText('تمّت المهمة');
-    await expect(page.locator('.shell-item small').first()).toHaveText('تبديل الشريحة · 0550000001 · بواسطة الفرع');
-    await expect(page.locator('.shell-item small').nth(2)).toHaveText('تفعيل · بواسطة نقطة');
+    await expect(page.locator('.shell-item .notice-detail').first()).toHaveText('تبديل الشريحة · 0550000001 · بواسطة الفرع');
+    await expect(page.locator('.shell-item .notice-detail').nth(1)).toHaveText('تفعيل · بواسطة نقطة');
   });
 });

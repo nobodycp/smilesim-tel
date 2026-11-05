@@ -126,6 +126,10 @@ One of each. A new page uses these, it does not invent a sibling.
 - Facts: `.facts` — a `<dl>` grid of label/value pairs (`dt`/`dd`). Columns auto-fit to the available width and collapse to one without a breakpoint. Latin identifiers inside a value stay in `<bdi dir="ltr">`. This is the only key/value detail pattern; do not write a parallel grid (for example `.account-facts`) for the same purpose.
 - Empty: `EmptyState` inside `.empty` — muted icon in a small circle on `--rd-surface-2`, title (`children`), optional secondary `text`, centered (both axes) in the available `.pane`/`.sheet` space, not pinned to the start edge. Not a lone italic line.
 - Feedback: one alert line for an error, one for a success. No browser `alert` for success.
+- Switch: `LiveSwitch` (`components/live-switch.tsx`) — `role="switch"` button with a `.track` and a knob; `checked` is `true`, `false`, or `'mixed'` (half knob, blended track) for a group. The label and the state word sit beside it as `children`. This is the only on/off control; do not draw a second toggle.
+- Price field: `PriceField` (`components/price-field.tsx`) — a short inline shekel input (`.terms-price`, 6.5rem, tabular, LTR) that saves on blur or Enter when the text changed; empty means back to the default, Escape drops the draft. The default sits beside it as a muted `Money`.
+- Terms list: `.terms-sheet` → `.terms-group` (sticky `.terms-group-head` with a group `LiveSwitch`) → `.terms-row` grid of switch · name · figures (`.terms-figure` label/value pairs) · state badge. `.off` mutes and strikes the name; `.locked` adds the `Lock` glyph and «stopped above». Under 1100px the figures move under the name.
+- Operation cards: `.op-grid` of `.op-card` (hairline by `box-shadow`, `--rd-surface-2` when `.off`): a round `.op-mark` glyph, title and one-line description, an inherited-stop badge, and a `LiveSwitch` with the state word under it.
 
 ## Motion and access
 

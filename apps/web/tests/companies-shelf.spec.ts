@@ -41,6 +41,7 @@ test('the branch opens the company shelf', async ({ page }) => {
   await page.getByRole('button', { name: 'Switch to dark' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.getByRole('link', { name: 'ويكوم' }).click();
+  await page.getByRole('tab', { name: 'Providers' }).click();
   await expect(page.getByRole('link', { name: 'ليان' })).toBeVisible();
   await page.getByRole('link', { name: 'ليان' }).click();
   await expect(page.getByRole('link', { name: '500 جيجا', exact: true })).toHaveAttribute('href', '/providers/lian/lian-wecom-500');
@@ -121,7 +122,7 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
   });
 
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
-  await expect(page.getByText('عدد الأرقام:')).toBeVisible();
+  await expect(page.getByText('عدد الأرقام', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'الأسعار' }).click();
   await expect(page.locator('.account-fund').nth(0).locator('input')).toHaveCount(5);
   await expect(page.locator('.account-fund').nth(1).locator('input')).toHaveCount(5);
