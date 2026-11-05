@@ -30,7 +30,7 @@ const PACKAGE_SHEET_KEYS = [
   'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice',
   'renewalBranchCost', 'renewalMainPrice', 'renewalAgentPrice', 'renewalPosPrice', 'renewalSubscriberPrice',
   'esimPrice', 'esimPriceEffective', 'esimPriceSource',
-  'lines', 'activeLines', 'renewals', 'switches', 'modes', 'offers',
+  'lines', 'activeLines', 'renewals', 'switches', 'modes',
 ];
 
 const sorted = (list: string[]) => [...list].sort();
@@ -210,7 +210,6 @@ describe('office response shapes', () => {
       lines: [{ status: 'active' }, { status: 'frozen' }],
       renewals: [{ target: { code: 'lian-wecom-500-3m' } }],
       switches: [{ target: { code: 'lian-wecom-500-5g' } }],
-      userTerms: [],
     };
     const { service, gate } = await serviceWith({ package: { findUnique: async () => pkg } });
 

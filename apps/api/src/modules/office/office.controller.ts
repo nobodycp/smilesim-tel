@@ -20,18 +20,21 @@ import {
   CompanyImageBodyDto,
   CompanySimBodyDto,
   CreateUserBodyDto,
+  CustomPriceBodyDto,
   ExtendBodyDto,
   FundBodyDto,
   NoticeReadBodyDto,
-  OfferBodyDto,
   OutcomeBodyDto,
-  PackagePriceBodyDto,
   PackageTargetsBodyDto,
   ProviderModeBodyDto,
   RenameLineBodyDto,
   RepriceRenewalBodyDto,
+  SellPriceBodyDto,
   SetAccountPasswordBodyDto,
   SwapSimBodyDto,
+  UserOpsBodyDto,
+  UserPackageBodyDto,
+  UserPackagesBulkBodyDto,
   CompleteTaskBodyDto,
   ProviderEsimPriceBodyDto,
   SwitchPackageBodyDto,
@@ -227,32 +230,50 @@ export class OfficeController {
     return this.run(res, () => this.office.setPackageTargets(gateOf(req), code, 'switches', body));
   }
 
-  @Put('packages/:code/offers')
-  @ApiOperation({ summary: 'Save a special offer price for a login' })
+  @Get('packages/:code/custom-prices')
+  @ApiOperation({ summary: 'Accounts whose price for this package differs from their default' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ type: OfferBodyDto })
+  @ApiErrorResponse(401, 403, 404)
+  customPrices(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('code') code: string) {
+    return this.run(res, () => this.office.customPrices(gateOf(req), code));
+  }
+
+  @Put('packages/:code/custom-prices/:loginName')
+  @ApiOperation({ summary: 'Set a special price for one account on this package' })
+  @ApiParam({ name: 'code' })
+  @ApiParam({ name: 'loginName' })
+  @ApiBody({ type: CustomPriceBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
-  saveOffer(
+  setCustomPrice(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
-    @Body() body: OfferBodyDto,
+    @Param('loginName') loginName: string,
+    @Body() body: CustomPriceBodyDto,
   ) {
-    return this.run(res, () => this.office.saveOffer(gateOf(req), code, body), { action: 'offer', subjectKind: 'package', subjectRef: code });
+    return this.run(res, () => this.office.setCustomPrice(gateOf(req), code, loginName, body), {
+      action: 'user_package',
+      subjectKind: 'user',
+      subjectRef: `${loginName}:${code}`,
+    });
   }
 
-  @Delete('packages/:code/offers/:loginName')
-  @ApiOperation({ summary: 'Remove a special offer' })
+  @Delete('packages/:code/custom-prices/:loginName')
+  @ApiOperation({ summary: 'Return an account to the default price for this package' })
   @ApiParam({ name: 'code' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
-  removeOffer(
+  clearCustomPrice(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Param('loginName') loginName: string,
   ) {
-    return this.run(res, () => this.office.removeOffer(gateOf(req), code, loginName), { action: 'offer', subjectKind: 'package', subjectRef: code });
+    return this.run(res, () => this.office.clearCustomPrice(gateOf(req), code, loginName), {
+      action: 'user_package',
+      subjectKind: 'user',
+      subjectRef: `${loginName}:${code}`,
+    });
   }
 
   @Patch('packages/:code/mode')
@@ -269,18 +290,18 @@ export class OfficeController {
     return this.run(res, () => this.office.setPackageMode(gateOf(req), code, body), { action: 'package_mode', subjectKind: 'package', subjectRef: code });
   }
 
-  @Patch('packages/:code/price')
-  @ApiOperation({ summary: 'Set sell price for a package at this layer' })
+  @Put('sell-prices/:code')
+  @ApiOperation({ summary: "Set the caller's own sell price for a package (main agent or agent)" })
   @ApiParam({ name: 'code' })
-  @ApiBody({ type: PackagePriceBodyDto })
+  @ApiBody({ type: SellPriceBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
-  price(
+  setSellPrice(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
-    @Body() body: PackagePriceBodyDto,
+    @Body() body: SellPriceBodyDto,
   ) {
-    return this.run(res, () => this.office.setPrice(gateOf(req), code, body), { action: 'package_price', subjectKind: 'package', subjectRef: code });
+    return this.run(res, () => this.office.setSellPrice(gateOf(req), code, body), { action: 'sell_price', subjectKind: 'package', subjectRef: code });
   }
 
   @Post('companies/image')
@@ -746,12 +767,83 @@ export class OfficeController {
     return this.run(res, () => this.office.users(gateOf(req)));
   }
 
+  @Get('directory')
+  @ApiOperation({ summary: 'Login name → full name for the accounts the actor may meet on a screen' })
+  @ApiErrorResponse(401, 403)
+  directory(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    return this.run(res, () => this.office.directory(gateOf(req)));
+  }
+
   @Get('users/:loginName')
   @ApiOperation({ summary: 'Single account detail' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
   account(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('loginName') loginName: string) {
     return this.run(res, () => this.office.account(gateOf(req), loginName));
+  }
+
+  @Get('users/:loginName/packages')
+  @ApiOperation({ summary: 'Packages as this account sees and pays for them' })
+  @ApiParam({ name: 'loginName' })
+  @ApiErrorResponse(401, 403, 404)
+  userPackages(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('loginName') loginName: string) {
+    return this.run(res, () => this.office.userPackages(gateOf(req), loginName));
+  }
+
+  @Put('users/:loginName/packages')
+  @ApiOperation({ summary: 'Hide or show several packages for this account' })
+  @ApiParam({ name: 'loginName' })
+  @ApiBody({ type: UserPackagesBulkBodyDto })
+  @ApiErrorResponse(401, 403, 400, 404)
+  setUserPackagesBulk(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('loginName') loginName: string,
+    @Body() body: UserPackagesBulkBodyDto,
+  ) {
+    return this.run(res, () => this.office.setUserPackagesBulk(gateOf(req), loginName, body), { action: 'user_package', subjectKind: 'user', subjectRef: loginName });
+  }
+
+  @Put('users/:loginName/packages/:code')
+  @ApiOperation({ summary: 'Hide, show, or price one package for this account' })
+  @ApiParam({ name: 'loginName' })
+  @ApiParam({ name: 'code' })
+  @ApiBody({ type: UserPackageBodyDto })
+  @ApiErrorResponse(401, 403, 400, 404)
+  setUserPackage(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('loginName') loginName: string,
+    @Param('code') code: string,
+    @Body() body: UserPackageBodyDto,
+  ) {
+    return this.run(res, () => this.office.setUserPackage(gateOf(req), loginName, code, body), {
+      action: 'user_package',
+      subjectKind: 'user',
+      subjectRef: `${loginName}:${code}`,
+    });
+  }
+
+  @Get('users/:loginName/ops')
+  @ApiOperation({ summary: 'Line operations stopped on this account, own and inherited' })
+  @ApiParam({ name: 'loginName' })
+  @ApiErrorResponse(401, 403, 404)
+  userOps(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('loginName') loginName: string) {
+    return this.run(res, () => this.office.userOps(gateOf(req), loginName));
+  }
+
+  @Put('users/:loginName/ops')
+  @ApiOperation({ summary: 'Set the line operations stopped on this account' })
+  @ApiParam({ name: 'loginName' })
+  @ApiBody({ type: UserOpsBodyDto })
+  @ApiErrorResponse(401, 403, 400, 404)
+  setUserOps(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('loginName') loginName: string,
+    @Body() body: UserOpsBodyDto,
+  ) {
+    return this.run(res, () => this.office.setUserOps(gateOf(req), loginName, body), { action: 'user_ops', subjectKind: 'user', subjectRef: loginName });
   }
 
   @Patch('users/:loginName/access')

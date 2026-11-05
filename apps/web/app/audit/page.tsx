@@ -16,7 +16,7 @@ const ACTIONS = [
   'fund',
   'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim',
   'task_take', 'task_release', 'task_note', 'task_complete', 'task_reject', 'task_cancel',
-  'provider_mode', 'company_sim', 'package_mode', 'package_price', 'package_chain', 'offer',
+  'provider_mode', 'company_sim', 'package_mode', 'package_price', 'package_chain', 'user_package', 'user_ops', 'sell_price',
 ] as const;
 
 const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;

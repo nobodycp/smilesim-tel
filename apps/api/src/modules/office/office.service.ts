@@ -58,7 +58,6 @@ import {
   switchOver,
   windowMonthsOf,
   visibleAccountIds,
-  withPrice,
   withinCeiling,
   type ActionKey,
   type ActionMode,
@@ -66,7 +65,25 @@ import {
 } from './office-rules';
 import { activityActorFilter, clampActivityRange } from './activity-log';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
-import { buyPriceFor, deniedOpsFor, isOpKey, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type SellRow, type TermRow } from './user-terms';
+import {
+  buyPriceFor,
+  deniedAbove,
+  deniedOpsFor,
+  floorFor,
+  hiddenAbove,
+  isOpKey,
+  parseOps,
+  priceSource,
+  serializeOps,
+  visibleTo,
+  type LayerPrices,
+  type OpKey,
+  type PathNode,
+  type PriceKind,
+  type PriceSource,
+  type SellRow,
+  type TermRow,
+} from './user-terms';
 import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { NoticeService, type WrittenNotice } from './notice.service';
@@ -106,6 +123,34 @@ type Actor = {
   impersonating: boolean;
 };
 type Account = { id: string; loginName: string; nickname: string; layer: string; parentId: string | null; deniedOps: string };
+type PackageFacts = { code: string; name: string; dataGb: number | null; months: number; company?: { code: string } | null } & LayerPrices;
+type TermPatch = { hidden?: boolean; price?: number | null; renewalPrice?: number | null };
+export type UserPackageRow = {
+  code: string;
+  name: string;
+  dataGb: number | null;
+  months: number;
+  companyCode: string;
+  hidden: boolean;
+  hiddenAbove: string | null;
+  parentBuy: number;
+  parentRenewalBuy: number;
+  price: number | null;
+  renewalPrice: number | null;
+  effective: number;
+  renewalEffective: number;
+  source: PriceSource;
+};
+export type CustomPriceRow = {
+  loginName: string;
+  nickname: string;
+  layer: string;
+  parentLogin: string;
+  defaultPrice: number;
+  defaultRenewalPrice: number;
+  price: number | null;
+  renewalPrice: number | null;
+};
 type Action = 'activate' | 'charge' | 'extend' | 'reactivate' | 'disconnect' | 'freeze' | 'unfreeze' | 'switch' | 'rename' | 'sim' | 'esim' | 'refresh';
 type Sale = {
   msisdn: string;
@@ -477,21 +522,26 @@ export class OfficeService implements OnModuleInit {
     };
   }
 
-  async setPrice(gate: Gate, code: string, body: { price?: unknown }) {
+  /** A main agent's or agent's own sell price for a package. The floor is what the actor itself pays. */
+  async setSellPrice(gate: Gate, code: string, body: { price?: unknown; renewalPrice?: unknown }) {
     const actor = await this.actor(gate);
-    const field = editableField(actor.layer);
+    if (actor.layer !== 'main_agent' && actor.layer !== 'agent') fail(403, 'FORBIDDEN');
     const price = nonNegative(body.price);
-    if (!field || price === null) fail(400, 'INVALID');
-    const row = await this.prisma.package.findUnique({ where: { code } });
-    if (!row) fail(404, 'NOT_FOUND');
-    const next = withPrice(pricesOf(row), field, price);
-    if (field === 'pos') next.subscriberPrice = next.posPrice;
-    if (!chainHolds(next)) fail(400, 'PRICE_BELOW_FLOOR');
-    await this.prisma.package.update({
-      where: { id: row.id },
-      data: { mainPrice: next.mainPrice, agentPrice: next.agentPrice, posPrice: next.posPrice, subscriberPrice: next.subscriberPrice },
+    const renewalPrice = optionalPrice(body.renewalPrice);
+    if (price === null || renewalPrice === undefined) fail(400, 'INVALID');
+    const pkg = await this.prisma.package.findUnique({ where: { code } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const [accounts, { terms, sells }] = await Promise.all([this.accounts(), this.termsFor(pkg.id)]);
+    const path = this.pathOf(actor.id, accounts);
+    if (path.length === 0) fail(404, 'NOT_FOUND');
+    if (price < buyPriceFor(path, terms, sells, pkg, 'subscription')) fail(400, 'PRICE_BELOW_FLOOR');
+    if (renewalPrice !== null && renewalPrice < buyPriceFor(path, terms, sells, pkg, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
+    await this.prisma.sellPrice.upsert({
+      where: { packageId_ownerId: { packageId: pkg.id, ownerId: actor.id } },
+      update: { price, renewalPrice },
+      create: { packageId: pkg.id, ownerId: actor.id, price, renewalPrice },
     });
-    return { ok: true };
+    return { price, renewalPrice };
   }
 
   async setCompanySim(gate: Gate, code: string, body: { length?: unknown; prefix?: unknown; esim?: unknown; esimPrice?: unknown }) {
@@ -2015,7 +2065,6 @@ export class OfficeService implements OnModuleInit {
         lines: { select: { status: true } },
         renewals: { include: { target: { select: { code: true } } } },
         switches: { include: { target: { select: { code: true } } } },
-        userTerms: { where: { price: { not: null } }, include: { user: true } },
       },
     });
     if (!pkg) fail(404, 'NOT_FOUND');
@@ -2046,12 +2095,6 @@ export class OfficeService implements OnModuleInit {
       renewals: pkg.renewals.map((renewal) => renewal.target.code),
       switches: pkg.switches.map((item) => item.target.code),
       modes: Object.fromEntries(ACTION_KEYS.map((key) => [key, resolvePackageMode(pkg.actionModes, pkg, key)])),
-      offers: pkg.userTerms.map((offer) => ({
-        loginName: offer.user.loginName,
-        nickname: offer.user.nickname,
-        layer: offer.user.layer,
-        price: offer.price ?? 0,
-      })),
     };
   }
 
@@ -2188,31 +2231,191 @@ export class OfficeService implements OnModuleInit {
     return { ok: true as const };
   }
 
-  async saveOffer(gate: Gate, code: string, body: { loginName?: unknown; price?: unknown }) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
-    const loginName = typeof body.loginName === 'string' ? body.loginName : '';
-    const price = nonNegative(body.price);
-    if (!loginName || price === null) fail(400, 'INVALID');
+  // ---- Per-user package terms and operation stops -------------------------------------------
+
+  /** Every sellable package, grouped by company, with what `loginName` sees and pays. */
+  async userPackages(gate: Gate, loginName: string) {
+    const { path } = await this.termTarget(gate, loginName);
+    const [packages, terms, sells] = await Promise.all([
+      this.prisma.package.findMany({ where: { enabled: true, forSale: true }, include: { company: true }, orderBy: [{ company: { name: 'asc' } }, { name: 'asc' }] }),
+      this.prisma.userPackage.findMany({ where: { userId: { in: path.map((node) => node.id) } } }),
+      this.prisma.sellPrice.findMany({ where: { ownerId: { in: path.map((node) => node.id) } } }),
+    ]);
+    const rows = packages.map((pkg) => ({
+      pkg,
+      row: this.userPackageRow(pkg, path, terms.filter((term) => term.packageId === pkg.id), sells.filter((sell) => sell.packageId === pkg.id)),
+    }));
+    const companies = new Map<string, { code: string; name: string; packages: UserPackageRow[] }>();
+    for (const { pkg, row } of rows) {
+      const key = pkg.company?.code ?? '';
+      const group = companies.get(key) ?? { code: key, name: pkg.company?.name ?? '', packages: [] };
+      group.packages.push(row);
+      companies.set(key, group);
+    }
+    return { summary: summarize(rows.map((item) => item.row)), companies: [...companies.values()] };
+  }
+
+  async setUserPackage(gate: Gate, loginName: string, code: string, body: { hidden?: unknown; price?: unknown; renewalPrice?: unknown }) {
+    const patch = termPatch(body);
+    if (!patch) fail(400, 'INVALID');
+    const { actor, path } = await this.termTarget(gate, loginName);
     const pkg = await this.prisma.package.findUnique({ where: { code } });
-    const user = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!pkg || !user || user.layer === 'branch') fail(400, 'INVALID');
-    await this.prisma.userPackage.upsert({
-      where: { packageId_userId: { packageId: pkg.id, userId: user.id } },
-      update: { price, renewalPrice: price, setById: actor.id },
-      create: { packageId: pkg.id, userId: user.id, price, renewalPrice: price, setById: actor.id },
-    });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const { terms, sells } = await this.termsFor(pkg.id);
+    return this.writeUserPackage(actor, path, pkg, patch, terms, sells);
+  }
+
+  /** Hide or show several packages at once. Packages hidden higher up are left alone. */
+  async setUserPackagesBulk(gate: Gate, loginName: string, body: { codes?: unknown; hidden?: unknown }) {
+    if (!Array.isArray(body.codes) || body.codes.some((code) => typeof code !== 'string' || !code) || typeof body.hidden !== 'boolean') fail(400, 'INVALID');
+    const codes = new Set(body.codes as string[]);
+    const { actor, path } = await this.termTarget(gate, loginName);
+    const packages = (await this.prisma.package.findMany({ where: { enabled: true, forSale: true } })).filter((pkg) => codes.has(pkg.code));
+    for (const pkg of packages) {
+      const { terms, sells } = await this.termsFor(pkg.id);
+      if (hiddenAbove(path, terms)) continue;
+      await this.writeUserPackage(actor, path, pkg, { hidden: body.hidden }, terms, sells);
+    }
+    const { summary } = await this.userPackages(gate, loginName);
+    return { summary };
+  }
+
+  async userOps(gate: Gate, loginName: string) {
+    const { target, path } = await this.termTarget(gate, loginName);
+    return { denied: parseOps(target.deniedOps), deniedAbove: deniedAbove(path) };
+  }
+
+  async setUserOps(gate: Gate, loginName: string, body: { denied?: unknown }) {
+    if (!Array.isArray(body.denied) || body.denied.some((key) => typeof key !== 'string' || !isOpKey(key))) fail(400, 'INVALID');
+    const { target, path } = await this.termTarget(gate, loginName);
+    const deniedOps = serializeOps(body.denied as string[]);
+    await this.prisma.user.update({ where: { id: target.id }, data: { deniedOps } });
+    return { denied: parseOps(deniedOps), deniedAbove: deniedAbove(path) };
+  }
+
+  /** Users whose price for `code` differs from what they would pay by default. Branch only. */
+  async customPrices(gate: Gate, code: string): Promise<CustomPriceRow[]> {
+    await this.branchActor(gate);
+    const pkg = await this.prisma.package.findUnique({ where: { code } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const [accounts, { terms, sells }] = await Promise.all([this.accounts(), this.termsFor(pkg.id)]);
+    return terms
+      .filter((term) => term.price !== null || term.renewalPrice !== null)
+      .map((term) => this.customPriceRow(term.userId, pkg, accounts, terms, sells))
+      .filter((row): row is CustomPriceRow => row !== null)
+      .sort((a, b) => a.loginName.localeCompare(b.loginName));
+  }
+
+  async setCustomPrice(gate: Gate, code: string, loginName: string, body: { price?: unknown; renewalPrice?: unknown }) {
+    const patch = termPatch({ price: body.price, renewalPrice: body.renewalPrice });
+    if (!patch) fail(400, 'INVALID');
+    const { actor, target, accounts, path } = await this.termTarget(gate, loginName);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    const pkg = await this.prisma.package.findUnique({ where: { code } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const { terms, sells } = await this.termsFor(pkg.id);
+    await this.writeUserPackage(actor, path, pkg, patch, terms, sells);
+    const row = this.customPriceRow(target.id, pkg, accounts, terms, sells);
+    if (!row) fail(404, 'NOT_FOUND');
+    return row;
+  }
+
+  async clearCustomPrice(gate: Gate, code: string, loginName: string) {
+    const { actor, path } = await this.termTarget(gate, loginName);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    const pkg = await this.prisma.package.findUnique({ where: { code } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const { terms, sells } = await this.termsFor(pkg.id);
+    await this.writeUserPackage(actor, path, pkg, { price: null, renewalPrice: null }, terms, sells);
     return { ok: true as const };
   }
 
-  async removeOffer(gate: Gate, code: string, loginName: string) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
-    const pkg = await this.prisma.package.findUnique({ where: { code } });
-    const user = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!pkg || !user) fail(404, 'NOT_FOUND');
-    await this.prisma.userPackage.deleteMany({ where: { packageId: pkg.id, userId: user.id } });
-    return { ok: true as const };
+  /** Resolves the account whose terms are edited and checks the actor may edit them. */
+  private async termTarget(gate: Gate, loginName: string) {
+    const [actor, accounts] = await Promise.all([this.actor(gate), this.accounts()]);
+    const target = accounts.find((account) => account.loginName === loginName);
+    if (!target) fail(404, 'NOT_FOUND');
+    if (target.layer === 'branch') fail(400, 'INVALID');
+    if (!this.canEditTerms(actor, target)) fail(403, 'FORBIDDEN');
+    return { actor, target, accounts, path: this.pathOf(target.id, accounts) };
+  }
+
+  /**
+   * The one writer for a user's row on a package. Refuses to show what an ancestor hid, checks
+   * each price against the parent's own buy price, and deletes a row that is back on defaults.
+   * `terms` is updated in place so the caller can compute the returned row from it.
+   */
+  private async writeUserPackage(
+    actor: Actor,
+    path: PathNode[],
+    pkg: { id: string } & PackageFacts,
+    patch: TermPatch,
+    terms: TermRow[],
+    sells: SellRow[],
+  ): Promise<UserPackageRow> {
+    const userId = path[0].id;
+    const index = terms.findIndex((term) => term.userId === userId);
+    const own = index >= 0 ? terms[index] : null;
+    if (patch.hidden === false && hiddenAbove(path, terms)) fail(403, 'FORBIDDEN');
+    const next: TermRow = {
+      userId,
+      hidden: patch.hidden ?? own?.hidden ?? false,
+      price: patch.price === undefined ? (own?.price ?? null) : patch.price,
+      renewalPrice: patch.renewalPrice === undefined ? (own?.renewalPrice ?? null) : patch.renewalPrice,
+    };
+    if (next.price !== null && next.price < floorFor(path, terms, sells, pkg, 'subscription')) fail(400, 'PRICE_BELOW_FLOOR');
+    if (next.renewalPrice !== null && next.renewalPrice < floorFor(path, terms, sells, pkg, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
+    const where = { packageId_userId: { packageId: pkg.id, userId } };
+    if (!next.hidden && next.price === null && next.renewalPrice === null) {
+      if (own) {
+        await this.prisma.userPackage.delete({ where });
+        terms.splice(index, 1);
+      }
+    } else {
+      const data = { hidden: next.hidden, price: next.price, renewalPrice: next.renewalPrice, setById: actor.id };
+      await this.prisma.userPackage.upsert({ where, update: data, create: { packageId: pkg.id, userId, ...data } });
+      if (own) terms[index] = next;
+      else terms.push(next);
+    }
+    return this.userPackageRow(pkg, path, terms, sells);
+  }
+
+  private userPackageRow(pkg: PackageFacts, path: PathNode[], terms: TermRow[], sells: SellRow[]): UserPackageRow {
+    const own = terms.find((term) => term.userId === path[0].id);
+    return {
+      code: pkg.code,
+      name: pkg.name,
+      dataGb: pkg.dataGb,
+      months: pkg.months,
+      companyCode: pkg.company?.code ?? '',
+      hidden: own?.hidden ?? false,
+      hiddenAbove: hiddenAbove(path, terms),
+      parentBuy: floorFor(path, terms, sells, pkg, 'subscription'),
+      parentRenewalBuy: floorFor(path, terms, sells, pkg, 'renewal'),
+      price: own?.price ?? null,
+      renewalPrice: own?.renewalPrice ?? null,
+      effective: buyPriceFor(path, terms, sells, pkg, 'subscription'),
+      renewalEffective: buyPriceFor(path, terms, sells, pkg, 'renewal'),
+      source: priceSource(path, terms, sells, 'subscription'),
+    };
+  }
+
+  private customPriceRow(userId: string, pkg: LayerPrices, accounts: Account[], terms: TermRow[], sells: SellRow[]): CustomPriceRow | null {
+    const path = this.pathOf(userId, accounts);
+    if (path.length === 0) return null;
+    const account = accounts.find((item) => item.id === userId) as Account;
+    const own = terms.find((term) => term.userId === userId);
+    const without = terms.filter((term) => term.userId !== userId);
+    return {
+      loginName: account.loginName,
+      nickname: account.nickname,
+      layer: account.layer,
+      parentLogin: path[1]?.loginName ?? '',
+      defaultPrice: buyPriceFor(path, without, sells, pkg, 'subscription'),
+      defaultRenewalPrice: buyPriceFor(path, without, sells, pkg, 'renewal'),
+      price: own?.price ?? null,
+      renewalPrice: own?.renewalPrice ?? null,
+    };
   }
 
   async setFrozen(gate: Gate, loginName: string, frozen: boolean) {
@@ -3288,6 +3491,36 @@ function readQr(value: unknown): string | null | undefined {
 function nonNegative(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 100_000_000) return null;
   return value;
+}
+
+/** `undefined` means invalid; `null` means "clear". */
+function optionalPrice(value: unknown): number | null | undefined {
+  if (value === undefined || value === null) return null;
+  return nonNegative(value) ?? undefined;
+}
+
+/** Validates a user-package patch body. `null` when any field is malformed or nothing is set. */
+function termPatch(body: { hidden?: unknown; price?: unknown; renewalPrice?: unknown }): TermPatch | null {
+  const patch: TermPatch = {};
+  if (body.hidden !== undefined) {
+    if (typeof body.hidden !== 'boolean') return null;
+    patch.hidden = body.hidden;
+  }
+  for (const key of ['price', 'renewalPrice'] as const) {
+    if (body[key] === undefined) continue;
+    const price = optionalPrice(body[key]);
+    if (price === undefined) return null;
+    patch[key] = price;
+  }
+  return Object.keys(patch).length ? patch : null;
+}
+
+function summarize(rows: UserPackageRow[]) {
+  return {
+    total: rows.length,
+    visible: rows.filter((row) => !row.hidden && !row.hiddenAbove).length,
+    custom: rows.filter((row) => row.price !== null || row.renewalPrice !== null).length,
+  };
 }
 
 function asOutcome(value: unknown): 'success' | 'fail' | null {

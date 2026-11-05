@@ -31,17 +31,44 @@ export class RepriceRenewalBodyDto {
   posPrice?: number;
 }
 
-export class OfferBodyDto {
-  @ApiPropertyOptional()
-  loginName?: string;
+export class UserPackageBodyDto {
+  @ApiPropertyOptional({ description: 'Hide the package from this account and everyone below it' })
+  hidden?: boolean;
 
-  @ApiPropertyOptional()
-  price?: number;
+  @ApiPropertyOptional({ nullable: true, description: 'Special subscription price; null clears it' })
+  price?: number | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Special renewal price; null clears it' })
+  renewalPrice?: number | null;
 }
 
-export class PackagePriceBodyDto {
+export class UserPackagesBulkBodyDto {
+  @ApiPropertyOptional({ type: [String] })
+  codes?: string[];
+
+  @ApiPropertyOptional()
+  hidden?: boolean;
+}
+
+export class UserOpsBodyDto {
+  @ApiPropertyOptional({ type: [String], description: 'Line operations stopped on this account' })
+  denied?: string[];
+}
+
+export class CustomPriceBodyDto {
+  @ApiPropertyOptional({ nullable: true })
+  price?: number | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  renewalPrice?: number | null;
+}
+
+export class SellPriceBodyDto {
   @ApiPropertyOptional()
   price?: number;
+
+  @ApiPropertyOptional({ nullable: true })
+  renewalPrice?: number | null;
 }
 
 export class ProviderModeBodyDto {

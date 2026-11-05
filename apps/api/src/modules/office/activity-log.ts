@@ -34,7 +34,9 @@ export const ACTIVITY_ACTIONS = [
   'package_mode',
   'package_price',
   'package_chain',
-  'offer',
+  'user_package',
+  'user_ops',
+  'sell_price',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];

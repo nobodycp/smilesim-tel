@@ -62,7 +62,12 @@ export async function tree() {
   const service = new OfficeService(auth, notice);
 
   const whereMatch = (row: Row, where: Record<string, unknown> | undefined) =>
-    !where || Object.entries(where).every(([key, value]) => (value && typeof value === 'object' && 'not' in (value as object) ? row[key] !== (value as { not: unknown }).not : row[key] === value));
+    !where ||
+    Object.entries(where).every(([key, value]) => {
+      if (value && typeof value === 'object' && 'not' in value) return row[key] !== (value as { not: unknown }).not;
+      if (value && typeof value === 'object' && 'in' in value) return ((value as { in: unknown[] }).in).includes(row[key]);
+      return row[key] === value;
+    });
   const byId = (rows: Row[]) => ({
     findUnique: async ({ where }: { where: Record<string, unknown> }) => {
       if (where.packageId_userId) {
@@ -223,5 +228,101 @@ describe('run path through user terms', () => {
     await service.transferPos(gates.branch, 'pos1', { parentLogin: 'ag2' });
     expect(userPackages.map((row) => row.userId)).toEqual(['ag1']);
     expect((accounts.find((row) => row.id === 'pos1') as Row).parentId).toBe('ag2');
+  });
+});
+
+describe('writing user terms', () => {
+  const row = (userId: string, patch: Record<string, unknown> = {}) => ({ id: `x-${userId}`, packageId: 'pa', userId, hidden: false, price: null, renewalPrice: null, setById: '', ...patch });
+
+  it('the parent may not price below what it pays itself; zero margin passes', async () => {
+    const { service, gates, userPackages } = await tree();
+    await expect(service.setUserPackage(gates.ag1, 'pos1', 'alloha-150', { price: 2800 })).rejects.toMatchObject({ code: 'PRICE_BELOW_FLOOR' });
+    const saved = await service.setUserPackage(gates.ag1, 'pos1', 'alloha-150', { price: 3000 });
+    expect(saved).toMatchObject({ code: 'alloha-150', price: 3000, effective: 3000, source: 'custom', parentBuy: 3000 });
+    expect(userPackages).toHaveLength(1);
+    expect(userPackages[0]).toMatchObject({ userId: 'pos1', price: 3000, setById: 'ag1' });
+  });
+
+  it('only the direct parent or the branch may write', async () => {
+    const { service, gates } = await tree();
+    await expect(service.setUserPackage(gates.ma1, 'pos1', 'alloha-150', { hidden: true })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.setUserPackage(gates.pos1, 'pos1', 'alloha-150', { hidden: true })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.setUserPackage(gates.branch, 'pos1', 'alloha-150', { hidden: true })).resolves.toMatchObject({ hidden: true });
+  });
+
+  it('a parent cannot unhide what an ancestor hid; the branch can clear the ancestor row', async () => {
+    const { service, gates, userPackages } = await tree();
+    userPackages.push(row('ma1', { hidden: true }));
+    await expect(service.setUserPackage(gates.ag1, 'pos1', 'alloha-150', { hidden: false })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.setUserPackage(gates.branch, 'ma1', 'alloha-150', { hidden: false })).resolves.toMatchObject({ hidden: false });
+    expect(userPackages).toHaveLength(0);
+  });
+
+  it('a row back on its defaults is deleted, not kept', async () => {
+    const { service, gates, userPackages } = await tree();
+    userPackages.push(row('pos1', { price: 3100, renewalPrice: 3000 }));
+    await service.setUserPackage(gates.ag1, 'pos1', 'alloha-150', { price: null, renewalPrice: null });
+    expect(userPackages).toHaveLength(0);
+  });
+
+  it('bulk hide skips packages already hidden above and reports the summary', async () => {
+    const { service, gates, userPackages } = await tree();
+    userPackages.push({ ...row('ma1', { hidden: true }), packageId: 'pb' });
+    const out = await service.setUserPackagesBulk(gates.ag1, 'pos1', { codes: ['alloha-150', 'alloha-400'], hidden: true });
+    expect(userPackages.filter((item) => item.userId === 'pos1').map((item) => item.packageId)).toEqual(['pa']);
+    expect(out.summary).toEqual({ total: 2, visible: 0, custom: 0 });
+  });
+
+  it('lists the user packages grouped by company with the inherited state', async () => {
+    const { service, gates, userPackages, sellPrices } = await tree();
+    userPackages.push({ ...row('ma1', { hidden: true }), packageId: 'pb' });
+    sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ag1', price: 3100, renewalPrice: null });
+    const sheet = await service.userPackages(gates.ag1, 'pos1');
+    expect(sheet.summary).toEqual({ total: 2, visible: 1, custom: 0 });
+    expect(sheet.companies).toHaveLength(1);
+    const [a, b] = sheet.companies[0].packages;
+    expect(a).toMatchObject({ code: 'alloha-150', hidden: false, hiddenAbove: null, parentBuy: 3000, effective: 3100, renewalEffective: 3200, source: 'parent' });
+    expect(b).toMatchObject({ code: 'alloha-400', hidden: false, hiddenAbove: 'ma1' });
+  });
+
+  it('custom prices list the priced users only and clearing keeps a hide', async () => {
+    const { service, gates, userPackages } = await tree();
+    userPackages.push(row('pos1', { price: 2900 }));
+    userPackages.push(row('ag2', { hidden: true }));
+    const listed = await service.customPrices(gates.branch, 'alloha-150');
+    expect(listed.map((item) => item.loginName)).toEqual(['pos1']);
+    expect(listed[0]).toMatchObject({ layer: 'pos', parentLogin: 'ag1', defaultPrice: 3500, defaultRenewalPrice: 3200, price: 2900, renewalPrice: null });
+    await expect(service.customPrices(gates.ma1, 'alloha-150')).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await service.setCustomPrice(gates.branch, 'alloha-150', 'ag2', { price: 2950 });
+    expect(userPackages.find((item) => item.userId === 'ag2')).toMatchObject({ hidden: true, price: 2950 });
+    await service.clearCustomPrice(gates.branch, 'alloha-150', 'ag2');
+    expect(userPackages.find((item) => item.userId === 'ag2')).toMatchObject({ hidden: true, price: null, renewalPrice: null });
+  });
+
+  it('a sell price is owned by a main agent or agent and floored at its own buy', async () => {
+    const { service, gates, sellPrices } = await tree();
+    await expect(service.setSellPrice(gates.ag1, 'alloha-150', { price: 2999 })).rejects.toMatchObject({ code: 'PRICE_BELOW_FLOOR' });
+    await expect(service.setSellPrice(gates.pos1, 'alloha-150', { price: 4000 })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.setSellPrice(gates.branch, 'alloha-150', { price: 4000 })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.setSellPrice(gates.ag1, 'alloha-150', { price: 3000, renewalPrice: 2700 })).resolves.toEqual({ price: 3000, renewalPrice: 2700 });
+    expect(sellPrices[0]).toMatchObject({ ownerId: 'ag1', price: 3000, renewalPrice: 2700 });
+  });
+
+  it('operation stops: the parent writes, cannot lift an inherited stop, the branch can', async () => {
+    const { service, gates, accounts } = await tree();
+    (accounts.find((item) => item.id === 'ma1') as Row).deniedOps = 'charge';
+    await expect(service.userOps(gates.ag1, 'pos1')).resolves.toEqual({ denied: [], deniedAbove: [{ op: 'charge', login: 'ma1' }] });
+    await expect(service.setUserOps(gates.ag1, 'pos1', { denied: ['sim'] })).resolves.toMatchObject({ denied: ['sim'] });
+    expect((accounts.find((item) => item.id === 'pos1') as Row).deniedOps).toBe('sim');
+    await expect(service.setUserOps(gates.ag1, 'ma1', { denied: [] })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.setUserOps(gates.branch, 'ma1', { denied: [] })).resolves.toMatchObject({ denied: [] });
+  });
+
+  it('an old offer row keeps the renewal charge it had', async () => {
+    const { service, gates, userPackages, line, entries } = await tree();
+    userPackages.push(row('pos1', { price: 3100, renewalPrice: 3100 }));
+    line.endsAt = new Date(Date.now() + 10 * 24 * 3600 * 1000);
+    await service.extend(gates.pos1, 'ln1', { outcome: 'success' });
+    expect(entries[0]).toMatchObject({ kind: 'extend', amount: -3100 });
   });
 });
