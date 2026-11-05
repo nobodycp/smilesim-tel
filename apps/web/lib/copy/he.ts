@@ -496,6 +496,7 @@ export const he: Copy = {
     PACKAGE_DISABLED: 'החבילה מושבתת',
     PACKAGE_HIDDEN: 'החבילה אינה מוצעת למכירה',
     OPERATION_DISABLED: 'הפעולה מושבתת בחבילה הזו',
+    OPERATION_DENIED: 'הפעולה מושבתת בחשבון זה',
     SWITCH_PACKAGE_FIRST: 'החלף חבילה קודם',
     SIM_DIGITS: 'מספר הסים כולל ספרות בלבד',
     SIM_LENGTH: 'אורך מספר הסים אינו תואם לחברה',

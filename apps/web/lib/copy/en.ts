@@ -496,6 +496,7 @@ export const en: Copy = {
     PACKAGE_DISABLED: 'This plan is turned off',
     PACKAGE_HIDDEN: 'This plan is not offered for sale',
     OPERATION_DISABLED: 'This action is turned off for this plan',
+    OPERATION_DENIED: 'This operation is stopped on this account',
     SWITCH_PACKAGE_FIRST: 'Switch the plan first',
     SIM_DIGITS: 'The SIM number takes digits only',
     SIM_LENGTH: 'The SIM number length does not match this company',

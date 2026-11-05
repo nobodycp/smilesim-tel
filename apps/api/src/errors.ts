@@ -33,6 +33,7 @@ export const ERROR_MESSAGES = {
   PACKAGE_DISABLED: 'الرزمة متوقفة',
   PACKAGE_HIDDEN: 'الرزمة غير معروضة للبيع',
   OPERATION_DISABLED: 'متوقف على هذه الرزمة',
+  OPERATION_DENIED: 'العملية موقوفة على هذا الحساب',
   SWITCH_PACKAGE_FIRST: 'بدّل الرزمة أولاً',
   SIM_DIGITS: 'رقم الشريحة أرقام فقط',
   SIM_LENGTH: 'عدد خانات الشريحة لا يطابق الشركة',

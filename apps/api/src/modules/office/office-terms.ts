@@ -1,4 +1,4 @@
-import { chargeDebit, type LineTerms, type PackageTerms, type Prices } from './office-rules';
+import { type PackageTerms, type Prices } from './office-rules';
 
 export type PackagePriceRow = Prices & {
   code: string;
@@ -38,9 +38,4 @@ export function packageTermsOf(row: PackagePriceRow): PackageTerms {
       subscriberPrice: row.renewalSubscriberPrice,
     },
   };
-}
-
-export function priced(kind: 'subscription' | 'renewal', terms: LineTerms, offer: number | null): number {
-  const base = kind === 'subscription' ? terms.subscription.posPrice : chargeDebit(terms);
-  return offer ?? base;
 }
