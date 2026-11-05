@@ -4,7 +4,7 @@ import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
-import { newPasswordProblem, nicknameProblem } from '../auth/validators';
+import { newPasswordProblem, fullNameProblem } from '../auth/validators';
 import { catalog, companies, packageCode, packageName } from './office-catalog';
 import {
   FEED_PAGE,
@@ -66,7 +66,7 @@ import {
 } from './office-rules';
 import { activityActorFilter, clampActivityRange } from './activity-log';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
-import { buyPriceFor, type LayerPrices, type PathNode, type PriceKind, type SellRow, type TermRow } from './user-terms';
+import { buyPriceFor, deniedOpsFor, isOpKey, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type SellRow, type TermRow } from './user-terms';
 import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { NoticeService, type WrittenNotice } from './notice.service';
@@ -362,11 +362,21 @@ export class OfficeService implements OnModuleInit {
   async packages(gate: Gate) {
     const actor = await this.actor(gate);
     const field = editableField(actor.layer);
-    const rows = await this.prisma.package.findMany({
-      where: { companyId: { not: null }, enabled: true, forSale: true },
-      include: { provider: true, company: true },
-      orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
-    });
+    const [all, accounts, termRows, sellRows] = await Promise.all([
+      this.prisma.package.findMany({
+        where: { companyId: { not: null }, enabled: true, forSale: true },
+        include: { provider: true, company: true },
+        orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
+      }),
+      this.accounts(),
+      this.prisma.userPackage.findMany({ select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true } }),
+      this.prisma.sellPrice.findMany({ select: { packageId: true, ownerId: true, price: true, renewalPrice: true } }),
+    ]);
+    const path = this.pathOf(actor.id, accounts);
+    const canActivate = !deniedOpsFor(path).has('activate');
+    const termsOf = (packageId: string) => termRows.filter((row) => row.packageId === packageId);
+    const sellsOf = (packageId: string) => sellRows.filter((row) => row.packageId === packageId);
+    const rows = all.filter((row) => visibleTo(path, termsOf(row.id), row));
     const images = new Map<string, string>();
     for (const row of rows) {
       const name = row.company?.name ?? '';
@@ -375,6 +385,9 @@ export class OfficeService implements OnModuleInit {
     return {
       companies: [...images].map(([name, image]) => ({ name, image })),
       packages: rows.map((row) => ({
+        price: buyPriceFor(path, termsOf(row.id), sellsOf(row.id), row, 'subscription'),
+        renewalPrice: buyPriceFor(path, termsOf(row.id), sellsOf(row.id), row, 'renewal'),
+        canActivate,
         code: row.code,
         name: row.name,
         providerCode: row.provider.code,
@@ -654,7 +667,7 @@ export class OfficeService implements OnModuleInit {
         posPrice: row.package.posPrice,
         createdAt: row.createdAt.toISOString(),
         endsAt: row.endsAt.toISOString(),
-        operations: this.operationsFor(row),
+        operations: this.operationsFor({ ...row, denied: deniedOpsFor(this.pathOf(row.posId, accounts)) }),
       })),
       nextCursor,
       poses: accounts
@@ -672,6 +685,8 @@ export class OfficeService implements OnModuleInit {
     if (!line) fail(404, 'NOT_FOUND');
     const accounts = await this.accounts();
     if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
+    const posPath = this.pathOf(line.posId, accounts);
+    const denied = deniedOpsFor(posPath);
     const [tasks, entries] = await Promise.all([
       this.prisma.officeTask.findMany({
         where: { lineId: line.id },
@@ -750,14 +765,11 @@ export class OfficeService implements OnModuleInit {
         subscriberPrice: line.package.subscriberPrice,
         companyImage: line.package.company?.image ?? '',
         sim: simRulesOf(line.package.company),
-        switchTargets: (await this.prisma.packageSwitch.findMany({
-          where: { packageId: line.packageId },
-          select: { target: { select: { code: true } } },
-        })).map((item) => item.target.code),
+        switchTargets: await this.visibleSwitchTargets(line.packageId, posPath),
         opsLocked: line.opsLocked,
         createdAt: line.createdAt.toISOString(),
         endsAt: line.endsAt.toISOString(),
-        operations: this.operationsFor(line),
+        operations: this.operationsFor({ ...line, denied }),
       },
       history,
     };
@@ -777,6 +789,7 @@ export class OfficeService implements OnModuleInit {
     const accounts = await this.accounts();
     const pos = accounts.find((account) => account.loginName === posLogin && account.layer === 'pos');
     if (!pos || !canActivateFor(actor, pos, accounts)) fail(403, 'FORBIDDEN');
+    const posPath = this.pathOf(pos.id, accounts);
     const pkg = await this.prisma.package.findUnique({
       where: { code: packageCode },
       include: {
@@ -788,7 +801,7 @@ export class OfficeService implements OnModuleInit {
     if (!pkg) fail(404, 'NOT_FOUND');
     if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
     if (pkg.renewals.some((renewal) => !renewal.target.company || !renewal.target.provider)) fail(400, 'INVALID');
-    this.assertRunnable(pkg, 'activate');
+    this.assertRunnable(pkg, 'activate', deniedOpsFor(posPath));
     const inputs = activateInputs(pkg.provider.code);
     if (inputs === 'generated' && !esim && !iccid) fail(400, 'INVALID');
     if (inputs === 'current-details' && (!currentDetails || iccid.length < 8)) fail(400, 'INVALID');
@@ -799,7 +812,7 @@ export class OfficeService implements OnModuleInit {
       const refusal = simRefusal(sim, iccid);
       if (refusal) fail(400, refusal);
     }
-    if (!pkg.forSale) fail(400, 'PACKAGE_HIDDEN');
+    if (!visibleTo(posPath, (await this.termsFor(pkg.id)).terms, pkg)) fail(400, 'PACKAGE_HIDDEN');
     const pkgTerms = packageTermsOf(pkg);
     const terms = captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target)));
     const unit = await this.resolveBuyPrice(pos.id, pkg, 'subscription');
@@ -864,7 +877,7 @@ export class OfficeService implements OnModuleInit {
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (action === 'charge') return this.restartDisconnected(actor, line, outcome);
-    this.assertRunnable(line.package, action);
+    this.assertRunnable(line.package, action, line.denied);
     if (line.status === 'disconnected') fail(400, 'INVALID');
     if ((action === 'disconnect' || action === 'freeze') && line.status !== 'active') fail(400, 'INVALID');
     if (action === 'unfreeze' && line.status !== 'frozen') fail(400, 'INVALID');
@@ -913,7 +926,7 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
-    this.assertRunnable(line.package, 'disconnect');
+    this.assertRunnable(line.package, 'disconnect', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
     const settled = await this.disconnectSettlementFor(this.prisma, line, new Date());
     return { amount: settled?.amount ?? 0, runsNow: this.runsNow(line.package, 'disconnect') };
@@ -926,7 +939,7 @@ export class OfficeService implements OnModuleInit {
     if (!outcome || !packageCode) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (!line.opsLocked && line.status !== 'active') fail(400, 'INVALID');
-    this.assertRunnable(line.package, 'switch');
+    this.assertRunnable(line.package, 'switch', line.denied);
     const [next, allowed] = await Promise.all([
       this.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true, provider: true } }),
       this.prisma.packageSwitch.findMany({
@@ -942,7 +955,8 @@ export class OfficeService implements OnModuleInit {
       allowed.map((item) => item.target.code),
     );
     if ('error' in switched) fail(400, 'INVALID');
-    this.assertRunnable(next, 'switch');
+    if (!(await this.visibleFor(line.posId, next))) fail(400, 'PACKAGE_HIDDEN');
+    this.assertRunnable(next, 'switch', line.denied);
     if (outcome === 'fail' || !this.runsNow(line.package, 'switch')) {
       const quote = await this.switchQuote(this.prisma, line, next, new Date());
       const task = await this.openTask({
@@ -980,7 +994,7 @@ export class OfficeService implements OnModuleInit {
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active' || line.endsAt.getTime() <= Date.now()) fail(400, 'INVALID');
-    this.assertRunnable(line.package, 'extend');
+    this.assertRunnable(line.package, 'extend', line.denied);
     const terms = lineTermsOf(line.terms, line.package);
     const base = line.endsAt > new Date() ? line.endsAt : new Date();
     const target = targetCode
@@ -1059,7 +1073,7 @@ export class OfficeService implements OnModuleInit {
     if (!outcome || (msisdn && !/^05\d{8}$/.test(msisdn))) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
-    this.assertRunnable(line.package, 'rename');
+    this.assertRunnable(line.package, 'rename', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
     if (msisdn === line.msisdn) fail(400, 'INVALID');
     if (msisdn) {
@@ -1091,7 +1105,7 @@ export class OfficeService implements OnModuleInit {
     if (!outcome || iccid.length < 8) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
-    this.assertRunnable(line.package, 'sim');
+    this.assertRunnable(line.package, 'sim', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
     const rules = simRulesOf(line.package.company);
     if (esim && !rules.esim) fail(400, 'ESIM_UNSUPPORTED');
@@ -1117,6 +1131,7 @@ export class OfficeService implements OnModuleInit {
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active') fail(400, 'INVALID');
+    if (line.denied.has('esim')) fail(403, 'OPERATION_DENIED');
     if (!simRulesOf(line.package.company).esim) fail(400, 'ESIM_UNSUPPORTED');
     const { price } = esimPriceOf({ pkg: line.package, provider: line.package.provider, company: line.package.company });
     const task = await this.openTask({
@@ -1675,6 +1690,23 @@ export class OfficeService implements OnModuleInit {
     };
   }
 
+  /**
+   * Login name → full name for every account the actor may meet on a screen: the accounts it can
+   * see (its subtree), the chain above it, and the branch layer (staff act on every ledger).
+   */
+  async directory(gate: Gate) {
+    const actor = await this.actor(gate);
+    const accounts = await this.accounts();
+    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
+    const chain = new Set(this.chainIds(actor.id, accounts));
+    const names: Record<string, string> = {};
+    for (const account of accounts) {
+      if (!visible.has(account.id) && !chain.has(account.id) && account.layer !== 'branch') continue;
+      names[account.loginName] = account.nickname;
+    }
+    return { names };
+  }
+
   async createAccount(gate: Gate, body: { loginName?: unknown; nickname?: unknown; password?: unknown; layer?: unknown; parentLogin?: unknown; roleId?: unknown }) {
     const actor = await this.actor(gate);
     if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
@@ -1684,7 +1716,7 @@ export class OfficeService implements OnModuleInit {
     const layer = typeof body.layer === 'string' ? body.layer : '';
     const parentLogin = typeof body.parentLogin === 'string' ? body.parentLogin.trim() : '';
     if (!/^[a-z0-9._-]{3,32}$/.test(loginName)) fail(400, 'INVALID');
-    const nickError = nicknameProblem(nickname);
+    const nickError = fullNameProblem(nickname);
     if (nickError) fail(400, nickError);
     const passError = newPasswordProblem(password);
     if (passError) fail(400, passError);
@@ -1918,6 +1950,8 @@ export class OfficeService implements OnModuleInit {
     await this.runTx(async (tx) => {
       await tx.line.updateMany({ where: { posId: pos.id, originAgentId: null }, data: { originAgentId: pos.parentId } });
       await tx.user.update({ where: { id: pos.id }, data: { parentId: next.id } });
+      // The old parent's terms go with the old parent; the new one's defaults apply from here.
+      await tx.userPackage.deleteMany({ where: { userId: pos.id } });
     });
     return { ok: true as const };
   }
@@ -2548,7 +2582,9 @@ export class OfficeService implements OnModuleInit {
     endsAt: Date;
     opsLocked?: boolean;
     package: Parameters<OfficeService['assertRunnable']>[0] & { company?: { esim?: boolean } | null };
+    denied?: ReadonlySet<OpKey>;
   }): string[] {
+    const denied = line.denied ?? new Set<OpKey>();
     const keys: string[] = offeredOperations(
       { status: line.status, endsAt: line.endsAt, opsLocked: line.opsLocked ?? false },
       (action) => resolvePackageMode(line.package.actionModes, line.package, action),
@@ -2557,12 +2593,15 @@ export class OfficeService implements OnModuleInit {
     if (line.status === 'active' && !line.opsLocked && simRulesOf(line.package.company ?? null).esim) keys.push('esim');
     // A refresh is a provider operation on a live subscription: active numbers only, like the rest.
     if (line.status === 'active' && !line.opsLocked && refreshMode(line.package.actionModes) !== 'off') keys.push('refresh');
-    return keys;
+    return keys.filter((key) => {
+      const stop = opKeyOf(key);
+      return !stop || !denied.has(stop);
+    });
   }
 
   private async restartDisconnected(actor: Actor, line: Awaited<ReturnType<OfficeService['visibleLine']>>, outcome: 'success' | 'fail') {
     if (line.status !== 'disconnected') fail(400, 'INVALID');
-    this.assertRunnable(line.package, 'charge');
+    this.assertRunnable(line.package, 'charge', line.denied);
     const charged = await this.resolveBuyPrice(line.posId, line.package, 'subscription');
     const posDelta = -charged;
     if (outcome === 'fail' || !this.runsNow(line.package, 'charge')) {
@@ -2604,8 +2643,10 @@ export class OfficeService implements OnModuleInit {
     allowRename: boolean;
     allowSim: boolean;
     actionModes?: unknown;
-  }, action: string) {
+  }, action: string, denied: ReadonlySet<OpKey> = new Set()) {
     if (action === 'companySwitch') fail(400, 'INVALID');
+    const stopKey = opKeyOf(action);
+    if (stopKey && denied.has(stopKey)) fail(403, 'OPERATION_DENIED');
     const selling = action === 'activate' || action === 'charge' || action === 'extend' || action === 'reactivate' || action === 'switch';
     if (!pkg.enabled && selling) fail(400, 'PACKAGE_DISABLED');
     const mode = resolvePackageMode(pkg.actionModes, pkg, action as ActionKey | 'unfreeze');
@@ -2618,7 +2659,7 @@ export class OfficeService implements OnModuleInit {
     const path: PathNode[] = [];
     let current = byId.get(userId);
     while (current && path.length <= accounts.length) {
-      path.push({ id: current.id, loginName: current.loginName, layer: current.layer, deniedOps: current.deniedOps });
+      path.push({ id: current.id, loginName: current.loginName, layer: current.layer, deniedOps: current.deniedOps ?? '' });
       current = current.parentId ? byId.get(current.parentId) : undefined;
     }
     return path;
@@ -2630,6 +2671,25 @@ export class OfficeService implements OnModuleInit {
       this.prisma.sellPrice.findMany({ where: { packageId }, select: { ownerId: true, price: true, renewalPrice: true } }),
     ]);
     return { terms, sells };
+  }
+
+  private async visibleFor(userId: string, pkg: { id: string; enabled: boolean; forSale: boolean }): Promise<boolean> {
+    const [accounts, { terms }] = await Promise.all([this.accounts(), this.termsFor(pkg.id)]);
+    return visibleTo(this.pathOf(userId, accounts), terms, pkg);
+  }
+
+  /** Switch targets saved on the package that the selling account may see. */
+  private async visibleSwitchTargets(packageId: string, posPath: PathNode[]): Promise<string[]> {
+    const saved = await this.prisma.packageSwitch.findMany({
+      where: { packageId },
+      select: { target: { select: { id: true, code: true, enabled: true, forSale: true } } },
+    });
+    const out: string[] = [];
+    for (const item of saved) {
+      const { terms } = await this.termsFor(item.target.id);
+      if (visibleTo(posPath, terms, item.target)) out.push(item.target.code);
+    }
+    return out;
   }
 
   private canEditTerms(actor: Actor, target: Account): boolean {
@@ -2744,7 +2804,8 @@ export class OfficeService implements OnModuleInit {
     if (!line.package.company || !line.package.provider) fail(400, 'INVALID');
     const accounts = await this.accounts();
     if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
-    return line;
+    // The stop belongs to the selling account that owns the line, not to whoever clicks.
+    return Object.assign(line, { denied: deniedOpsFor(this.pathOf(line.posId, accounts)) });
   }
 
   private async openTask(input: {
@@ -3232,6 +3293,13 @@ function nonNegative(value: unknown): number | null {
 function asOutcome(value: unknown): 'success' | 'fail' | null {
   if (value === 'success' || value === 'fail') return value;
   return null;
+}
+
+/** The stop key an operation answers to. `unfreeze` follows `freeze`; a restart is a `charge`. */
+function opKeyOf(action: string): OpKey | null {
+  if (action === 'unfreeze') return 'freeze';
+  if (action === 'reactivate') return 'charge';
+  return isOpKey(action) ? action : null;
 }
 
 function canActivateFor(actor: Actor, pos: Account, accounts: Account[]): boolean {

@@ -31,8 +31,8 @@ export function isOpKey(value: string): value is OpKey {
   return OP_SET.has(value);
 }
 
-export function parseOps(stored: string): OpKey[] {
-  const present = new Set(stored.split(',').map((part) => part.trim()).filter(isOpKey));
+export function parseOps(stored: string | null | undefined): OpKey[] {
+  const present = new Set((stored ?? '').split(',').map((part) => part.trim()).filter(isOpKey));
   return OP_KEYS.filter((key) => present.has(key));
 }
 

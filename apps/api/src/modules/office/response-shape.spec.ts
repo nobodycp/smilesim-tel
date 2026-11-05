@@ -59,6 +59,8 @@ async function serviceWith(tables: Record<string, unknown>) {
   const service = new OfficeService(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: true }), findMany: async () => accounts },
+    userPackage: { findMany: async () => [] },
+    sellPrice: { findMany: async () => [] },
     ...tables,
   };
   return { service, gate: { sessionId } };
@@ -82,6 +84,8 @@ async function posServiceWith(tables: Record<string, unknown>) {
   const service = new OfficeService(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: false }), findMany: async () => accounts },
+    userPackage: { findMany: async () => [] },
+    sellPrice: { findMany: async () => [] },
     ...tables,
   };
   return { service, gate: { sessionId } };
