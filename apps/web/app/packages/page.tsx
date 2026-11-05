@@ -321,7 +321,7 @@ export default function PlansPage() {
       setNote('');
       return;
     }
-    await run(() => api.setPackagePrice(row.code, price), {
+    await run(() => api.setSellPrice(row.code, price), {
       note: t.save,
       then: () => setPrices((current) => ({ ...current, [row.code]: shekelField(price) })),
     });

@@ -9,8 +9,11 @@ type ApiResult<T> =
   | { ok: true; status: number; data: T }
   | { ok: false; status: number; message: string; code?: string };
 
-export type Profile = { nickname?: string; email?: string; phone?: string };
+/** `nickname` carries the full name; the field keeps its historical name. `city` is a key from lib/cities.ts. */
+export type Profile = { nickname?: string; email?: string; phone?: string; city?: string; address?: string };
 type AccountProfile = Profile & { loginName: string };
+/** Login name → full name for the accounts the viewer may meet on a screen. */
+export type Directory = Record<string, string>;
 
 export type SessionInfo = {
   id: string;
@@ -91,6 +94,8 @@ export const api = {
     nickname?: string;
     email?: string;
     phone?: string;
+    city?: string;
+    address?: string;
     nextPassword?: string;
     currentPassword?: string;
   }) => request<Profile>('PATCH', '/auth/profile', patch),
@@ -102,6 +107,7 @@ export const api = {
   branding: () => request<BrandingSummary>('GET', '/branding'),
   saveBranding: (body: BrandingBody) => request<BrandingSummary>('PUT', '/branding', body),
   officeMe: () => request<OfficeMe>('GET', '/office/me'),
+  officeDirectory: () => request<{ names: Directory }>('GET', '/office/directory'),
   officeHome: () => request<HomePayload>('GET', '/office/home'),
   postAnnouncement: (body: string) => request<{ ok: true }>('POST', '/office/announcements', { body }),
   fundWallet: (loginName: string, amount: number, note: string) =>
@@ -113,8 +119,8 @@ export const api = {
   setCompanyImage: (name: string, image: string) => request<{ ok: true }>('POST', '/office/companies/image', { name, image }),
   setCompanySim: (code: string, sim: SimRules & { esimPrice: number }) =>
     request<{ ok: true; sim: SimRules; esimPrice: number }>('PUT', `/office/companies/${segment(code)}/sim`, sim),
-  setPackagePrice: (code: string, price: number) =>
-    request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/price`, { price }),
+  setSellPrice: (code: string, price: number, renewalPrice?: number | null) =>
+    request<{ price: number; renewalPrice: number | null }>('PUT', `/office/sell-prices/${segment(code)}`, { price, renewalPrice }),
   officeProviders: () => request<{ providers: ProviderRow[] }>('GET', '/office/providers'),
   providerSettings: (code: string) =>
     request<ProviderSettings>('GET', `/office/providers/${segment(code)}/settings`),
@@ -207,10 +213,18 @@ export const api = {
     request<{ ok: true }>('PUT', `/office/packages/${segment(code)}/renewals`, { targets }),
   setPackageSwitches: (code: string, targets: string[]) =>
     request<{ ok: true }>('PUT', `/office/packages/${segment(code)}/switches`, { targets }),
-  saveOffer: (code: string, loginName: string, price: number) =>
-    request<{ ok: true }>('PUT', `/office/packages/${segment(code)}/offers`, { loginName, price }),
-  removeOffer: (code: string, loginName: string) =>
-    request<{ ok: true }>('DELETE', `/office/packages/${segment(code)}/offers/${segment(loginName)}`),
+  customPrices: (code: string) => request<CustomPriceRow[]>('GET', `/office/packages/${segment(code)}/custom-prices`),
+  setCustomPrice: (code: string, loginName: string, body: { price?: number | null; renewalPrice?: number | null }) =>
+    request<CustomPriceRow>('PUT', `/office/packages/${segment(code)}/custom-prices/${segment(loginName)}`, body),
+  clearCustomPrice: (code: string, loginName: string) =>
+    request<{ ok: true }>('DELETE', `/office/packages/${segment(code)}/custom-prices/${segment(loginName)}`),
+  userPackages: (loginName: string) => request<UserPackagesSheet>('GET', `/office/users/${segment(loginName)}/packages`),
+  setUserPackage: (loginName: string, code: string, body: { hidden?: boolean; price?: number | null; renewalPrice?: number | null }) =>
+    request<UserPackageRow>('PUT', `/office/users/${segment(loginName)}/packages/${segment(code)}`, body),
+  setUserPackagesBulk: (loginName: string, codes: string[], hidden: boolean) =>
+    request<{ summary: UserPackagesSummary }>('PUT', `/office/users/${segment(loginName)}/packages`, { codes, hidden }),
+  userOps: (loginName: string) => request<UserOps>('GET', `/office/users/${segment(loginName)}/ops`),
+  setUserOps: (loginName: string, denied: string[]) => request<UserOps>('PUT', `/office/users/${segment(loginName)}/ops`, { denied }),
   setUserPassword: (loginName: string, password: string) =>
     request<{ ok: true }>('POST', `/office/users/${segment(loginName)}/password`, { password }),
   freezeUser: (loginName: string) => request<{ ok: true }>('POST', `/office/users/${segment(loginName)}/freeze`),
@@ -263,6 +277,42 @@ export type PackageRow = {
   autoDisconnect: boolean;
   autoFreeze: boolean;
   autoSwitch: boolean;
+  /** What the caller pays for this package after its own custom price and its parent's sell price. */
+  price: number;
+  renewalPrice: number;
+  canActivate: boolean;
+};
+export type UserPackagesSummary = { total: number; visible: number; custom: number };
+export type UserPackageRow = {
+  code: string;
+  name: string;
+  dataGb: number | null;
+  months: number;
+  companyCode: string;
+  hidden: boolean;
+  hiddenAbove: string | null;
+  parentBuy: number;
+  parentRenewalBuy: number;
+  price: number | null;
+  renewalPrice: number | null;
+  effective: number;
+  renewalEffective: number;
+  source: 'custom' | 'parent' | 'layer';
+};
+export type UserPackagesSheet = {
+  summary: UserPackagesSummary;
+  companies: { code: string; name: string; packages: UserPackageRow[] }[];
+};
+export type UserOps = { denied: string[]; deniedAbove: { op: string; login: string }[] };
+export type CustomPriceRow = {
+  loginName: string;
+  nickname: string;
+  layer: string;
+  parentLogin: string;
+  defaultPrice: number;
+  defaultRenewalPrice: number;
+  price: number | null;
+  renewalPrice: number | null;
 };
 export type ProviderRow = {
   code: string;
@@ -329,7 +379,6 @@ export type PackageSheet = {
   renewals: string[];
   switches: string[];
   modes: Record<string, 'auto' | 'manual' | 'off'>;
-  offers: { loginName: string; nickname: string; layer: string; price: number }[];
 };
 export type RoleRow = {
   id: string;

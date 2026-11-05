@@ -7,7 +7,7 @@ import { Desk, Money, layerName, lineBadgeClass, lineStatus } from '../../../../
 import { TableSkeleton } from '../../../../components/loading';
 import { RowMenu } from '../../../../components/row-menu';
 import { Button } from '../../../../components/ui/button';
-import { api, type LineRow, type PackageSheet, type Shelf } from '../../../../lib/api';
+import { api, type CustomPriceRow, type LineRow, type Shelf } from '../../../../lib/api';
 import { formatShekel, parseShekel, shekelField } from '../../../../lib/money';
 import { usePrefs } from '../../../../lib/prefs';
 import { useAction } from '../../../../lib/use-action';
@@ -18,7 +18,6 @@ const BRANCH = ['branch'];
 const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
 type ModeAction = (typeof actions)[number];
 type Tab = 'overview' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
-type Offer = PackageSheet['offers'][number];
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
 type PriceKey =
   | 'branchCost'
@@ -63,11 +62,12 @@ export default function PackageSheetPage() {
   const allowed = useRequireLayer(BRANCH);
   const card = useLoad(
     async () => {
-      const [found, accounts, shelf, lines] = await Promise.all([
+      const [found, accounts, shelf, lines, customPrices] = await Promise.all([
         api.packageSheet(params.packageCode),
         api.officeUsers(),
         api.officeCompanies(),
         api.officeLines({ packageCode: params.packageCode }),
+        api.customPrices(params.packageCode),
       ]);
       if (!found.ok) return found;
       if (!shelf.ok) return shelf;
@@ -79,6 +79,7 @@ export default function PackageSheetPage() {
           shelf: shelf.data,
           lines: lines.data.lines.filter((line) => line.packageCode === params.packageCode),
           users: accounts.ok ? accounts.data.users.filter((row) => row.layer !== 'branch') : [],
+          customPrices: customPrices.ok ? customPrices.data : [],
         },
       };
     },
@@ -88,6 +89,7 @@ export default function PackageSheetPage() {
   const sheet = card.data?.sheet ?? null;
   const users = card.data?.users ?? [];
   const lines = card.data?.lines ?? [];
+  const customPrices = card.data?.customPrices ?? [];
   const company = card.data?.shelf.companies.find((item) => item.code === sheet?.companyCode);
   const provider = company?.providers.find((item) => item.code === sheet?.providerCode);
   const targetPackages = (provider?.packages ?? []).filter((item) => item.code !== sheet?.code);
@@ -198,7 +200,7 @@ export default function PackageSheetPage() {
       setNote('');
       return;
     }
-    await run(() => api.saveOffer(sheet.code, loginName, price), { note: t.save, then: () => setOfferPrice('') });
+    await run(() => api.setCustomPrice(sheet.code, loginName, { price }), { note: t.save, then: () => setOfferPrice('') });
   }
 
   const modeColumns: Column<ModeAction>[] = [
@@ -215,10 +217,10 @@ export default function PackageSheetPage() {
       ),
     },
   ];
-  const offerColumns: Column<Offer>[] = [
+  const offerColumns: Column<CustomPriceRow>[] = [
     { key: 'account', header: t.accountName, render: (offer) => offer.nickname },
     { key: 'layer', header: t.layer, render: (offer) => layerName(t, offer.layer) },
-    { key: 'price', header: t.price, num: true, render: (offer) => <Money value={offer.price} /> },
+    { key: 'price', header: t.price, num: true, render: (offer) => <Money value={offer.price ?? offer.defaultPrice} /> },
     {
       key: 'ops',
       header: t.rowActions,
@@ -230,7 +232,7 @@ export default function PackageSheetPage() {
             label: t.deleteAccount,
             icon: 'trash',
             danger: true,
-            onClick: () => void run(() => api.removeOffer(sheet?.code ?? '', offer.loginName)),
+            onClick: () => void run(() => api.clearCustomPrice(sheet?.code ?? '', offer.loginName)),
           }]}
         />
       ),
@@ -473,7 +475,7 @@ export default function PackageSheetPage() {
                     </label>
                     <button type="button" disabled={!loginName || offerPrice === ''} onClick={() => void saveOffer()}>{t.save}</button>
                   </div>
-                  <DataTable bare columns={offerColumns} rows={sheet.offers} rowKey={(offer) => offer.loginName} empty={t.noOffers} />
+                  <DataTable bare columns={offerColumns} rows={customPrices} rowKey={(offer) => offer.loginName} empty={t.noOffers} />
                 </div>
               )}
             </>
