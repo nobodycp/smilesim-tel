@@ -90,21 +90,24 @@ test.describe('usePaged', () => {
     ['audit', 'GET /audit', 'entries', 'سجل النشاط'],
     ['operations', 'GET /ledger/operations', 'entries', 'العمليات'],
   ] as const) {
-    test(`${path} loads the next page by cursor and appends it`, async ({ page }) => {
+    // The first answer fills one page of the saved size (10) and names a cursor; page 2 reads it.
+    test(`${path} counts its pages from the total and reads the next cursor for page 2`, async ({ page }) => {
       const row = (n: number) => ({
-        ...account(`r${n}`, `055000000${n}`), action: 'extend', status: 'done', kind: 'extend', amount: -26,
+        ...account(`r${n}`, `05500000${String(n).padStart(2, '0')}`), action: 'extend', status: 'done', kind: 'extend', amount: -26,
         providerName: 'مزود', actorName: 'الكاشير', note: null, actorLogin: 'pos',
       });
+      const first = Array.from({ length: 10 }, (_, index) => row(index + 1));
       const calls = await serveOffice(page, 'branch', {
         [route]: (url) => (url.searchParams.get('cursor') === 'c2'
-          ? { body: { [key]: [row(3)], nextCursor: null } }
-          : { body: { [key]: [row(1), row(2)], nextCursor: 'c2' } }),
+          ? { body: { [key]: [row(11)], nextCursor: null, total: 11 } }
+          : { body: { [key]: first, nextCursor: 'c2', total: 11 } }),
       });
       await page.goto(`${admin}/${path}`);
       await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
       const rows = page.locator('table.data tbody tr');
-      await expect(rows).toHaveCount(2);
-      await expect(page.locator('.pane .hint')).toContainText('2');
+      await expect(rows).toHaveCount(10);
+      await expect(page.locator('.table-pager')).toContainText('11');
+      expect(calls.filter((call) => call.includes('cursor=c2'))).toHaveLength(0);
       await page.getByRole('button', { name: '2', exact: true }).click();
       await expect(rows).toHaveCount(1);
       await expect(page.getByRole('button', { name: '3', exact: true })).toHaveCount(0);
@@ -253,13 +256,14 @@ test.describe('reports', () => {
 
   test('a report pages by cursor and keeps the table while it loads more', async ({ page }) => {
     const entry = (id: string) => ({ id, at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLogin: 'admin', kind: 'extend', amount: -26, balanceAfter: 74, note: null });
+    const first = Array.from({ length: 10 }, (_, index) => entry(`e${index + 1}`));
     await serveOffice(page, 'branch', {
-      'GET /finance': (url) => (url.searchParams.get('cursor') === 'c2'
-        ? { body: { entries: [entry('e3')], nextCursor: null } }
-        : { body: { entries: [entry('e1'), entry('e2')], nextCursor: 'c2' } }),
+      'GET /reports/operations': (url) => (url.searchParams.get('cursor') === 'c2'
+        ? { body: { entries: [entry('e11')], nextCursor: null, total: 11 } }
+        : { body: { entries: first, nextCursor: 'c2', total: 11 } }),
     });
-    await page.goto(`${admin}/finance`);
-    await expect(page.locator('table.data tbody tr')).toHaveCount(2);
+    await page.goto(`${admin}/reports/operations`);
+    await expect(page.locator('table.data tbody tr')).toHaveCount(10);
     await page.getByRole('button', { name: '2', exact: true }).click();
     await expect(page.locator('table.data tbody tr')).toHaveCount(1);
     await expect(page.getByRole('button', { name: '3', exact: true })).toHaveCount(0);

@@ -224,11 +224,13 @@ export function PagedTable<Row>({
     setSeen(list.key);
     setPage(1);
   }
-  const count = Math.max(list.total ?? 0, list.all.length);
+  // Without a server total, a pending cursor still counts as one more page so it can be asked for.
+  const held = list.all.length + (list.total === null && list.hasNext && pageSize !== 'all' ? pageSize : 0);
+  const count = Math.max(list.total ?? 0, held);
   const size = pageSize === 'all' ? Math.max(count, 1) : pageSize;
   const pageCount = Math.max(1, Math.ceil(count / size));
   const current = Math.min(list.key !== seen ? 1 : page, pageCount);
-  const wanted = pageSize === 'all' ? count : current * size;
+  const wanted = pageSize === 'all' ? Number.POSITIVE_INFINITY : current * size;
   // The rows of the asked page are not all in the book yet: read the next chunk, and again after it lands.
   const short = list.ready && list.all.length < wanted && list.hasNext;
   const { more, loadMore } = list;

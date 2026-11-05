@@ -1,0 +1,19 @@
+---
+description: Run the CI steps before a push and watch the GitHub run after it; a red run is part of the task
+alwaysApply: true
+---
+
+# After push
+
+A push is not done when `git push` returns. It is done when the GitHub Actions run for that commit is green.
+
+- Before pushing, run what CI runs (`.github/workflows/ci.yml`): `npm run lint`, `npm run check:copy`,
+  `npm run typecheck`, `npm run test:api`, `npm run build`. Lint errors and orphan copy keys fail CI; fix them
+  before the push, not after.
+- After pushing, watch the run: `gh run list --limit 3`, then `gh run watch <id>` or `gh run view <id> --log-failed`.
+  Do not end the turn while the run for your commit is still queued or running.
+- A red run on your commit is yours to fix in the same slice, even when the failing line is in a file you did not
+  touch: the push made it red. Read the failed step, fix the cause, push again, and watch again.
+- The Playwright job (`e2e`) is marked non-blocking in the workflow, but a test it breaks because of your change is
+  still your change. Update the test to the new behaviour or fix the code; do not leave it failing.
+- Report the final state in the chat with the run id and its conclusion. "Pushed" alone is not a report.

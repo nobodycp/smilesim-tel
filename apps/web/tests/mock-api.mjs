@@ -121,6 +121,7 @@ createServer((req, res) => {
           JSON.stringify({
             lines: Array.from({ length: count }, (_, i) => mockLine(from + i, status || 'active')),
             nextCursor: next,
+            total: status ? 3 : 36,
             poses: [{ loginName: 'pos', nickname: 'الكاشير' }],
           }),
         );

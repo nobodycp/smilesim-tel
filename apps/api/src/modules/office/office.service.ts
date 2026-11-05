@@ -70,7 +70,7 @@ import { packageTermsOf, type PackagePriceRow } from './office-terms';
 import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { NoticeService, type WrittenNotice } from './notice.service';
-import { excerpt, noticeGroupOf, NOTICE_GROUPS, type NoticeDraft, type TaskNoticePayload } from './notice-kinds';
+import { excerpt, noticeGroupOf, NOTICE_GROUPS, type TaskNoticePayload } from './notice-kinds';
 import {
   FLAG_CODES,
   GRANT_CODES,

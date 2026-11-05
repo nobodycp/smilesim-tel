@@ -36,7 +36,6 @@ import {
   ProviderEsimPriceBodyDto,
   SwitchPackageBodyDto,
   TaskInspectionNoteBodyDto,
-  TaskNoteBodyDto,
   TaskRejectBodyDto,
   TransferLineBodyDto,
   TransferPosBodyDto,

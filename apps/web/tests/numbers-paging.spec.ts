@@ -3,21 +3,29 @@ import { expect, test } from '@playwright/test';
 const mock = 'http://localhost:3911';
 const desk = 'http://admin.localhost:3910';
 
-test('numbers list loads more, and filters go to the server', async ({ page, request }) => {
+// The mock answers 31 lines and a cursor, then 5 more; it says 36 in total. The table pages by the
+// saved page size (10), counts its pages from the total, and reads the next cursor only when a page
+// asks for rows it does not hold yet.
+test('numbers list pages by the total, reads the next cursor on demand, and filters go to the server', async ({ page, request }) => {
   await page.context().addCookies([{ name: 'mock-branch', value: '1', url: desk }]);
   await request.post(`${mock}/__lines/reset`);
   const log = async () => (await (await request.get(`${mock}/__lines/log`)).json()) as Record<string, string>[];
 
   await page.goto(`${desk}/numbers`);
   const rows = page.locator('table.data tbody tr');
-  const nextPage = page.getByRole('button', { name: '2', exact: true });
-  await expect(rows).toHaveCount(31);
-  await expect(nextPage).toBeVisible();
-  await expect(page.locator('.pane .hint')).toContainText('31');
+  const pager = page.locator('.table-pager');
+  await expect(rows).toHaveCount(10);
+  await expect(pager).toContainText('36');
+  await expect(page.getByRole('button', { name: '4', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '5', exact: true })).toHaveCount(0);
+  expect((await log()).filter((query) => query.cursor)).toHaveLength(0);
 
-  await nextPage.click();
-  await expect(rows).toHaveCount(5);
-  await expect(page.getByRole('button', { name: '3', exact: true })).toHaveCount(0);
+  // Page 2 and 3 are already in hand; page 4 needs the second cursor.
+  await page.getByRole('button', { name: '3', exact: true }).click();
+  await expect(rows).toHaveCount(10);
+  expect((await log()).filter((query) => query.cursor)).toHaveLength(0);
+  await page.getByRole('button', { name: '4', exact: true }).click();
+  await expect(rows).toHaveCount(6);
   const served = await log();
   expect(served.at(-1)).toEqual({ cursor: 'c31' });
   expect(served.filter((query) => query.cursor)).toHaveLength(1);
@@ -37,7 +45,8 @@ test('numbers list loads more, and filters go to the server', async ({ page, req
   await page.locator('.filter-panel').getByLabel('الرقم أو السيريال').fill('055 0000');
   await expect(async () => expect((await log()).at(-1)).toEqual({ q: '055 0000', status: 'frozen', packageCode: 'cell-400' })).toPass();
   await page.getByRole('button', { name: 'مسح' }).click();
-  await expect(rows).toHaveCount(31);
-  await expect(page.getByRole('button', { name: '2', exact: true })).toBeVisible();
+  await expect(rows).toHaveCount(10);
+  await expect(page.getByRole('button', { name: '1', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('button', { name: '4', exact: true })).toBeVisible();
   expect((await log()).at(-1)).toEqual({});
 });
