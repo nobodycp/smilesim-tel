@@ -2,7 +2,7 @@
 
 import { CircleCheck, KeyRound, Layers, Shield, Snowflake, Waypoints } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { Desk, layerName } from '../../../components/desk';
 import { TableSkeleton } from '../../../components/loading';
@@ -12,16 +12,38 @@ import { GRANT_CODES, grantLabel } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useLoad } from '../../../lib/use-load';
+import { useOffice } from '../../../lib/office-session';
 import { useRequireLayer } from '../../../lib/use-require-layer';
+import { UserOpsTab } from './line-ops';
+import { UserPackagesTab } from './packages-terms';
 
 const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
 type Choice = 'role' | 'allow' | 'deny';
+type Tab = 'access' | 'packages' | 'ops';
+const TABS: readonly Tab[] = ['access', 'packages', 'ops'];
+
+function subscribeHash(onChange: () => void) {
+  window.addEventListener('hashchange', onChange);
+  return () => window.removeEventListener('hashchange', onChange);
+}
+
+/** The open tab lives in the URL hash so a link can open it. */
+function useHashTab(): [Tab, (next: Tab) => void] {
+  const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => '');
+  const tab = TABS.find((item) => `#${item}` === hash) ?? 'access';
+  return [tab, (next) => {
+    window.history.replaceState(null, '', `#${next}`);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  }];
+}
 
 export default function AccountPage() {
   const { t } = usePrefs();
   const params = useParams<{ login: string }>();
   const allowed = useRequireLayer(OFFICE_LAYERS);
+  const { me } = useOffice();
+  const [tab, setTab] = useHashTab();
   const [choices, setChoices] = useState<Record<string, Choice> | null>(null);
   const [extraRoleIds, setExtraRoleIds] = useState<string[] | null>(null);
   const [roleId, setRoleId] = useState<string | null>(null);
@@ -62,6 +84,15 @@ export default function AccountPage() {
   const title = row ? <AccountName login={row.loginName} name={row.nickname} /> : t.accountName;
   const jobRoles = (row?.roles ?? []).filter((role) => role.id !== primary);
   const showExtras = Boolean(row?.canEdit && (row.staff || jobRoles.length > 0));
+  // The server is the judge; this only hides controls from accounts that can never pass it.
+  const canEditTerms = Boolean(
+    row && !row.staff && me && !me.impersonating && (me.layer === 'branch' ? me.isBranchOwner || me.grants.includes('edit') : me.loginName === row.parentLogin),
+  );
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'access', label: t.accountAccess },
+    { key: 'packages', label: t.packagesPricesTab },
+    { key: 'ops', label: t.lineOpsTab },
+  ];
 
   return (
     <Desk
@@ -98,6 +129,14 @@ export default function AccountPage() {
               <span className="fact-mark" aria-hidden="true">{row.frozen ? <Snowflake /> : <CircleCheck />}</span>
             </div>
           </dl>
+          <div className="steps" role="tablist">
+            {tabs.map((item) => (
+              <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} disabled={item.key !== 'access' && row.staff} onClick={() => setTab(item.key)}>
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {tab === 'access' && (
           <section className="pane">
             <header className="pane-head">
               <h2><Shield aria-hidden="true" />{t.accountAccess}</h2>
@@ -177,6 +216,9 @@ export default function AccountPage() {
               )}
             </div>
           </section>
+          )}
+          {tab === 'packages' && !row.staff && <UserPackagesTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
+          {tab === 'ops' && !row.staff && <UserOpsTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
         </div>
       )}
     </Desk>

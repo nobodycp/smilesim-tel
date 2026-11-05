@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { AccountName, accountLabel } from '../../../../components/account-name';
 import { DataTable, type Column } from '../../../../components/data-table';
 import { Desk, Money, layerName, lineBadgeClass, lineStatus } from '../../../../components/desk';
+import { LiveSwitch } from '../../../../components/live-switch';
 import { TableSkeleton } from '../../../../components/loading';
 import { RowMenu } from '../../../../components/row-menu';
 import { Button } from '../../../../components/ui/button';
@@ -358,19 +359,10 @@ export default function PackageSheetPage() {
                       <span>{t.provider}</span>
                       <strong>{sheet.providerName}</strong>
                     </div>
-                    <div className="live-switch">
-                      <span id="package-live">{t.packageLive}</span>
+                    <LiveSwitch label={t.packageLive} checked={sheet.enabled} onChange={(next) => void saveEnabled(next)}>
+                      <span>{t.packageLive}</span>
                       <b>{sheet.enabled ? t.lineActive : t.stopped}</b>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={sheet.enabled}
-                        aria-labelledby="package-live"
-                        onClick={() => void saveEnabled(!sheet.enabled)}
-                      >
-                        <span className="track"><span /></span>
-                      </button>
-                    </div>
+                    </LiveSwitch>
                   </div>
                   <span className={sheet.forSale ? 'badge' : 'badge cancelled'}>{sheet.forSale ? t.forSale : t.notForSale}</span>
                 </div>
