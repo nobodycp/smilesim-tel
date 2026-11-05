@@ -60,6 +60,20 @@ export class CompanyImageBodyDto {
   image?: string;
 }
 
+export class CompanySimBodyDto {
+  @ApiPropertyOptional({ description: 'Exact ICCID length (10-22), or null for no check', nullable: true, type: Number })
+  length?: number | null;
+
+  @ApiPropertyOptional({ description: 'ICCID prefix, digits only, or empty for no check' })
+  prefix?: string;
+
+  @ApiPropertyOptional({ description: 'Whether the company takes eSIM' })
+  esim?: boolean;
+
+  @ApiPropertyOptional({ description: 'Default eSIM price for the company, agorot' })
+  esimPrice?: number;
+}
+
 export class OutcomeBodyDto {
   @ApiPropertyOptional({ description: 'Provider operation outcome token' })
   outcome?: string;
@@ -82,8 +96,14 @@ export class RenameLineBodyDto {
 }
 
 export class SwapSimBodyDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Serial of the SIM the branch already holds' })
   iccid?: string;
+
+  @ApiPropertyOptional({ description: 'The serial is an eSIM the branch already holds' })
+  esim?: boolean;
+
+  @ApiPropertyOptional({ description: 'QR picture of that eSIM as a data URL (png, jpeg, webp)', nullable: true })
+  qr?: string | null;
 
   @ApiPropertyOptional()
   outcome?: string;
@@ -110,6 +130,25 @@ export class NoticeReadBodyDto {
 export class TaskNoteBodyDto {
   @ApiPropertyOptional()
   note?: string;
+}
+
+export class CompleteTaskBodyDto {
+  @ApiPropertyOptional()
+  note?: string;
+
+  @ApiPropertyOptional({ description: 'eSIM serial the provider handed back (required on an eSIM request)' })
+  iccid?: string;
+
+  @ApiPropertyOptional({ description: 'eSIM QR picture as a data URL (required on an eSIM request)', nullable: true })
+  qr?: string | null;
+
+  @ApiPropertyOptional({ description: 'New number (required on a number change)' })
+  msisdn?: string;
+}
+
+export class ProviderEsimPriceBodyDto {
+  @ApiPropertyOptional({ description: 'eSIM price in agorot, or null to use the company price', nullable: true, type: Number })
+  price?: number | null;
 }
 
 export class TaskInspectionNoteBodyDto {

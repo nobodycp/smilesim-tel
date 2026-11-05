@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { DataTable, type Column } from '../../components/data-table';
-import { Desk, Money, layerName, whole } from '../../components/desk';
+import { Desk, Money, layerName } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
 import { FilterBar } from '../../components/filter-bar';
 import { RowMenu, type RowAction } from '../../components/row-menu';
@@ -12,6 +12,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
 import { api, type UserRow } from '../../lib/api';
+import { parseShekel } from '../../lib/money';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
@@ -84,7 +85,7 @@ export default function UsersPage() {
   }
 
   async function fund(row: UserRow) {
-    const amount = whole(amounts[row.loginName] ?? '');
+    const amount = parseShekel(amounts[row.loginName] ?? '');
     if (amount === null || amount < 1 || (row.self && !(notes[row.loginName] ?? '').trim())) {
       setError(apiText(row.self ? 'أضف ملاحظة للتمويل' : 'بيانات غير صالحة'));
       setNote('');
@@ -101,7 +102,7 @@ export default function UsersPage() {
   }
 
   async function saveCeiling(row: UserRow) {
-    const ceiling = whole(ceilings[row.loginName] ?? '');
+    const ceiling = parseShekel(ceilings[row.loginName] ?? '');
     if (ceiling === null) {
       setError(apiText('بيانات غير صالحة'));
       setNote('');
@@ -172,7 +173,7 @@ export default function UsersPage() {
         <Link className="row-link account-cell" href={`/users/${row.loginName}`}>
           <span className="account-mark" aria-hidden="true">{row.nickname.trim().charAt(0) || '?'}</span>
           <span className="account-id">
-            <strong>{row.nickname}</strong>
+            <strong><bdi>{row.nickname}</bdi></strong>
             <span className="hint"><bdi dir="ltr">{row.loginName}</bdi></span>
           </span>
         </Link>

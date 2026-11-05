@@ -3,18 +3,19 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DataTable, type Column } from '../../../../components/data-table';
-import { Desk, Money, layerName } from '../../../../components/desk';
+import { Desk, Money, layerName, lineBadgeClass, lineStatus } from '../../../../components/desk';
 import { TableSkeleton } from '../../../../components/loading';
 import { RowMenu } from '../../../../components/row-menu';
 import { Button } from '../../../../components/ui/button';
 import { api, type LineRow, type PackageSheet, type Shelf } from '../../../../lib/api';
+import { formatShekel, parseShekel, shekelField } from '../../../../lib/money';
 import { usePrefs } from '../../../../lib/prefs';
 import { useAction } from '../../../../lib/use-action';
 import { useLoad } from '../../../../lib/use-load';
 import { useRequireLayer } from '../../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
-const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim'] as const;
+const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
 type ModeAction = (typeof actions)[number];
 type Tab = 'overview' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
 type Offer = PackageSheet['offers'][number];
@@ -45,10 +46,11 @@ const EMPTY_PRICES: Record<PriceKey, string> = {
 };
 
 export default function PackageSheetPage() {
-  const { t } = usePrefs();
+  const { t, apiText } = usePrefs();
   const params = useParams<{ code: string; packageCode: string }>();
   const [tab, setTab] = useState<Tab>('overview');
   const [prices, setPrices] = useState(EMPTY_PRICES);
+  const [esimPrice, setEsimPrice] = useState('');
   const [renewals, setRenewals] = useState<string[]>([]);
   const [switches, setSwitches] = useState<string[]>([]);
   const [selectedLines, setSelectedLines] = useState<string[]>([]);
@@ -97,25 +99,27 @@ export default function PackageSheetPage() {
     disconnect: t.actDisconnect,
     freeze: `${t.freeze} / ${t.unfreeze}`,
     switch: t.actSwitch,
-    rename: t.updateNumber,
+    rename: t.changeNumber,
     sim: t.swapSim,
+    companySwitch: t.actCompanySwitch,
   };
 
   // Every reload brings the saved prices back into the form.
   useEffect(() => {
     if (!sheet) return;
     setPrices({
-      branchCost: String(sheet.branchCost),
-      mainPrice: String(sheet.mainPrice),
-      agentPrice: String(sheet.agentPrice),
-      posPrice: String(sheet.posPrice),
-      subscriberPrice: String(sheet.subscriberPrice),
-      renewalBranchCost: String(sheet.renewalBranchCost),
-      renewalMainPrice: String(sheet.renewalMainPrice),
-      renewalAgentPrice: String(sheet.renewalAgentPrice),
-      renewalPosPrice: String(sheet.renewalPosPrice),
-      renewalSubscriberPrice: String(sheet.renewalSubscriberPrice),
+      branchCost: shekelField(sheet.branchCost),
+      mainPrice: shekelField(sheet.mainPrice),
+      agentPrice: shekelField(sheet.agentPrice),
+      posPrice: shekelField(sheet.posPrice),
+      subscriberPrice: shekelField(sheet.subscriberPrice),
+      renewalBranchCost: shekelField(sheet.renewalBranchCost),
+      renewalMainPrice: shekelField(sheet.renewalMainPrice),
+      renewalAgentPrice: shekelField(sheet.renewalAgentPrice),
+      renewalPosPrice: shekelField(sheet.renewalPosPrice),
+      renewalSubscriberPrice: shekelField(sheet.renewalSubscriberPrice),
     });
+    setEsimPrice(sheet.esimPrice === null ? '' : shekelField(sheet.esimPrice));
     setRenewals(sheet.renewals);
     setSwitches(sheet.switches);
     setSelectedLines([]);
@@ -134,24 +138,39 @@ export default function PackageSheetPage() {
 
   async function saveChain() {
     if (!sheet) return;
-    const body = {
-      branchCost: Number(prices.branchCost),
-      mainPrice: Number(prices.mainPrice),
-      agentPrice: Number(prices.agentPrice),
-      posPrice: Number(prices.posPrice),
-      subscriberPrice: Number(prices.subscriberPrice),
-      renewalBranchCost: Number(prices.renewalBranchCost),
-      renewalMainPrice: Number(prices.renewalMainPrice),
-      renewalAgentPrice: Number(prices.renewalAgentPrice),
-      renewalPosPrice: Number(prices.renewalPosPrice),
-      renewalSubscriberPrice: Number(prices.renewalSubscriberPrice),
-    };
-    await run(() => api.setChain(sheet.code, body), { note: t.save });
+    const keys = Object.keys(prices) as PriceKey[];
+    const body: Partial<Record<PriceKey, number>> = {};
+    for (const key of keys) {
+      const price = parseShekel(prices[key]);
+      if (price === null) {
+        setError(apiText('بيانات غير صالحة'));
+        setNote('');
+        return;
+      }
+      body[key] = price;
+    }
+    const esim = esimPrice.trim() ? parseShekel(esimPrice) : null;
+    if (esimPrice.trim() && esim === null) {
+      setError(apiText('بيانات غير صالحة'));
+      setNote('');
+      return;
+    }
+    await run(() => api.setChain(sheet.code, { ...body, esimPrice: esim }), { note: t.save });
   }
+
+  const esimSourceName = sheet
+    ? sheet.esimPriceSource === 'package' ? t.esimSourcePackage : sheet.esimPriceSource === 'provider' ? t.esimSourceProvider : t.esimSourceCompany
+    : '';
 
   async function saveReprice() {
     if (!sheet || repricePrice === '') return;
-    await run(() => api.repriceRenewal(sheet.code, repriceWhich, Number(repricePrice)), {
+    const price = parseShekel(repricePrice);
+    if (price === null) {
+      setError(apiText('بيانات غير صالحة'));
+      setNote('');
+      return;
+    }
+    await run(() => api.repriceRenewal(sheet.code, repriceWhich, price), {
       note: t.save,
       then: () => setRepricePrice(''),
     });
@@ -173,7 +192,13 @@ export default function PackageSheetPage() {
 
   async function saveOffer() {
     if (!sheet || !loginName) return;
-    await run(() => api.saveOffer(sheet.code, loginName, Number(offerPrice)), { note: t.save, then: () => setOfferPrice('') });
+    const price = parseShekel(offerPrice);
+    if (price === null) {
+      setError(apiText('بيانات غير صالحة'));
+      setNote('');
+      return;
+    }
+    await run(() => api.saveOffer(sheet.code, loginName, price), { note: t.save, then: () => setOfferPrice('') });
   }
 
   const modeColumns: Column<ModeAction>[] = [
@@ -182,7 +207,7 @@ export default function PackageSheetPage() {
       key: 'run',
       header: t.runTab,
       render: (action) => (
-        <select className="mode-pick" value={sheet?.modes[action] ?? 'manual'} onChange={(event) => void saveMode(action, event.target.value)}>
+        <select className="mode-pick" aria-label={`${t.runTab} ${names[action]}`} value={sheet?.modes[action] ?? 'manual'} onChange={(event) => void saveMode(action, event.target.value)}>
           <option value="auto">{t.automatic}</option>
           <option value="manual">{t.manual}</option>
           <option value="off">{t.stopped}</option>
@@ -244,9 +269,7 @@ export default function PackageSheetPage() {
       key: 'status',
       header: t.status,
       render: (line) => (
-        <span className={line.status === 'active' ? 'badge' : line.status === 'frozen' ? 'badge pending' : 'badge cancelled'}>
-          {line.status === 'active' ? t.lineActive : line.status === 'frozen' ? t.lineFrozen : t.lineDisconnected}
-        </span>
+        <span className={lineBadgeClass(line.status)}>{lineStatus(t, line.status)}</span>
       ),
     },
   ];
@@ -372,6 +395,22 @@ export default function PackageSheetPage() {
                       ))}
                     </div>
                   ))}
+                  <div className="account-fund">
+                    <h3>{t.esimPrice}</h3>
+                    <label>
+                      {t.esimPrice}
+                      <input
+                        className="num"
+                        inputMode="decimal"
+                        value={esimPrice}
+                        placeholder={t.useInheritedPrice}
+                        onChange={(event) => setEsimPrice(event.target.value)}
+                      />
+                      <span className="hint">
+                        {t.esimPriceFrom.replace('{price}', formatShekel(sheet.esimPriceEffective)).replace('{source}', esimSourceName)}
+                      </span>
+                    </label>
+                  </div>
                   <Button type="button" variant="secondary" size="sm" onClick={() => void saveChain()}>{t.save}</Button>
                   <div className="account-fund">
                     <h3>{t.repriceTitle}</h3>

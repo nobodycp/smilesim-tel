@@ -6,8 +6,9 @@ import type { Prisma } from '../../generated/prisma/client';
 export const LINES_PAGE = 30;
 export const TASKS_PAGE = 50;
 export const FEED_PAGE = 80;
+export const NOTICES_PAGE = 40;
 
-export const LINE_STATUSES = ['active', 'frozen', 'disconnected'] as const;
+export const LINE_STATUSES = ['active', 'frozen', 'disconnected', 'suspended'] as const;
 export const TASK_STATUSES = ['pending', 'working', 'done', 'cancelled'] as const;
 
 export const NEWEST_FIRST = [{ createdAt: 'desc' }, { id: 'desc' }] as const;
@@ -27,17 +28,18 @@ export function idCursorArgs(cursor: string | undefined, size: number) {
   return { take: size + 1, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) };
 }
 
-export type LineFilter = { q?: string; status?: string; packageCode?: string };
+export type LineFilter = { q?: string; status?: string; packageCode?: string; provider?: string; company?: string };
 
 /**
- * The where clause of the numbers list. `q` always searches three places at once: the number
- * (with the spaces of `q` removed, so "055 024" finds 055024), the package name and the company
- * name. A match in any of them keeps the row, so a search for "400" finds the numbers that
- * contain 400 and the packages named 400.
+ * The where clause of the numbers list. `q` searches the number and the serial (spaces removed,
+ * so "055 024" finds 055024 and "899 720" finds that serial), plus the package name and the
+ * company name. Provider, company, and package narrow the same row together.
  */
 export function linesWhere(posIds: string[], filter: LineFilter): Prisma.LineWhereInput {
   const status = oneOf(LINE_STATUSES, filter.status);
   const packageCode = (filter.packageCode ?? '').trim();
+  const provider = (filter.provider ?? '').trim();
+  const company = (filter.company ?? '').trim();
   const text = (filter.q ?? '').trim();
   const digits = text.replace(/\s/g, '');
   const search: Prisma.LineWhereInput = !text
@@ -45,14 +47,20 @@ export function linesWhere(posIds: string[], filter: LineFilter): Prisma.LineWhe
     : {
         OR: [
           { msisdn: { contains: digits } },
+          { iccid: { contains: digits } },
           { package: { name: { contains: text, mode: 'insensitive' } } },
           { package: { company: { name: { contains: text, mode: 'insensitive' } } } },
         ],
       };
+  const pack: Prisma.PackageWhereInput = {
+    ...(packageCode ? { code: packageCode } : {}),
+    ...(provider ? { provider: { name: provider } } : {}),
+    ...(company ? { company: { name: company } } : {}),
+  };
   return {
     posId: { in: posIds },
     ...(status ? { status } : {}),
-    ...(packageCode ? { package: { code: packageCode } } : {}),
+    ...(Object.keys(pack).length ? { package: pack } : {}),
     ...search,
   };
 }

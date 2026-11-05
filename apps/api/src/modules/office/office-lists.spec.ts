@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
+import type { Layer } from '../auth/decide-login';
 import { hashPassword } from '../auth/password';
 import { OfficeFailure, OfficeService } from './office.service';
 import { afterFeed, decodeFeedCursor, encodeFeedCursor, linesWhere, mergeFeed } from './office-paging';
@@ -77,6 +78,7 @@ function table(rows: Row[], calls: FindArgs[] = []) {
       }
       return args.take === undefined ? list : list.slice(0, args.take);
     },
+    count: async (args: { where?: Where } = {}) => rows.filter((row) => matches(row, args.where ?? {})).length,
   };
 }
 
@@ -116,8 +118,8 @@ async function serviceWith(tables: Record<string, unknown>) {
 }
 
 describe('numbers list paging', () => {
-  const pkgA = { id: 'pa', code: 'pk-a', name: '400 جيجا', posPrice: 30, company: { name: 'سلكوم' } };
-  const pkgB = { id: 'pb', code: 'pk-b', name: '100 جيجا', posPrice: 20, company: { name: 'بيلفون' } };
+  const pkgA = { id: 'pa', code: 'pk-a', name: '400 جيجا', posPrice: 30, company: { name: 'سلكوم' }, provider: { name: 'سكاي' } };
+  const pkgB = { id: 'pb', code: 'pk-b', name: '100 جيجا', posPrice: 20, company: { name: 'بيلفون' }, provider: { name: 'الوها' } };
   const lines: Row[] = Array.from({ length: 70 }, (_, i) => ({
     id: `ln-${pad(i)}`,
     msisdn: `05500000${pad(i, 2)}`,
@@ -193,6 +195,7 @@ describe('numbers list paging', () => {
     const search = (text: string) => ({
       OR: [
         { msisdn: { contains: text.replace(/\s/g, '') } },
+        { iccid: { contains: text.replace(/\s/g, '') } },
         { package: { name: { contains: text, mode: 'insensitive' } } },
         { package: { company: { name: { contains: text, mode: 'insensitive' } } } },
       ],
@@ -201,6 +204,24 @@ describe('numbers list paging', () => {
     expect(linesWhere(['p'], { q: '400' })).toEqual({ posId: { in: ['p'] }, ...search('400') });
     expect(linesWhere(['p'], { q: 'سلكوم' })).toEqual({ posId: { in: ['p'] }, ...search('سلكوم') });
     expect(linesWhere(['p'], { q: '   ', status: 'bogus', packageCode: ' ' })).toEqual({ posId: { in: ['p'] } });
+    expect(linesWhere(['p'], { provider: 'سكاي', company: 'سلكوم', packageCode: 'pk-a' })).toEqual({
+      posId: { in: ['p'] },
+      package: { code: 'pk-a', provider: { name: 'سكاي' }, company: { name: 'سلكوم' } },
+    });
+  });
+
+  it('finds a line by its serial', async () => {
+    const serial = { ...lines[0], id: 'by-serial', msisdn: '0590000001', iccid: '8997200000000000001' };
+    const { service, gate } = await serviceWith({ line: table([serial, lines[1]]) });
+    const found = await service.lines(gate, { q: '899 7200' });
+    expect(found.lines.map((line) => line.id)).toEqual(['by-serial']);
+  });
+
+  it('filters by provider and company together', async () => {
+    const { pages, calls } = await walk({ provider: 'سكاي', company: 'سلكوم' });
+    const expected = lines.filter((line) => (line.package as typeof pkgA).provider.name === 'سكاي');
+    expect(pages.flat().sort()).toEqual(expected.map((line) => line.id).sort());
+    expect(calls[0].where).toMatchObject({ package: { provider: { name: 'سكاي' }, company: { name: 'سلكوم' } } });
   });
 
   it('finds a package by its digits and a number that holds the same digits, as the top bar search needs', async () => {
@@ -245,10 +266,11 @@ describe('time-ordered lists', () => {
     packagePrice: 10,
     createdAt: new Date(t0 + Math.floor(i / 3) * 1000),
     actor: { loginName: 'admin', nickname: 'الإدارة' },
+    user: { loginName: 'admin', layer: 'branch' },
     ...extra,
   });
 
-  it('pages accounting by position, with no repeat and no loss', async () => {
+  it('pages finance by position, with no repeat and no loss', async () => {
     const rows = Array.from({ length: 170 }, (_, i) => entry(i));
     const calls: FindArgs[] = [];
     const { service, gate } = await serviceWith({ walletEntry: table(rows, calls) });
@@ -256,7 +278,7 @@ describe('time-ordered lists', () => {
     const sizes: number[] = [];
     let cursor: string | undefined;
     do {
-      const result = await service.accounting(gate, { cursor });
+      const result = await service.finance(gate, { cursor });
       sizes.push(result.entries.length);
       seen.push(...result.entries.map((row) => row.id));
       cursor = result.nextCursor ?? undefined;
@@ -266,10 +288,20 @@ describe('time-ordered lists', () => {
     expect(calls.every((call) => call.take === 81)).toBe(true);
   });
 
-  it('filters accounting by number in the query', async () => {
+  it('hands the eSIM fee of a sale to the finance row, and null when there was none', async () => {
+    const rows = [entry(0, { amount: -15, esimPrice: 5 }), entry(1, { esimPrice: null }), entry(2)];
+    const { service, gate } = await serviceWith({ walletEntry: table(rows) });
+    const result = await service.finance(gate, {});
+    const byId = new Map(result.entries.map((row) => [row.id, row.esimPrice]));
+    expect(byId.get('en-000')).toBe(5);
+    expect(byId.get('en-001')).toBeNull();
+    expect(byId.get('en-002')).toBeNull();
+  });
+
+  it('filters finance by number in the query', async () => {
     const rows = Array.from({ length: 100 }, (_, i) => entry(i));
     const { service, gate } = await serviceWith({ walletEntry: table(rows) });
-    const result = await service.accounting(gate, { q: '055 000 007' });
+    const result = await service.finance(gate, { q: '055 000 007' });
     expect(result.entries.map((row) => row.msisdn).sort()).toEqual(Array.from({ length: 10 }, (_, i) => `05500000${70 + i}`));
     expect(result.nextCursor).toBeNull();
   });
@@ -290,61 +322,33 @@ describe('time-ordered lists', () => {
 
   it('refuses a cursor that is not ours', async () => {
     const { service, gate } = await serviceWith({ walletEntry: table([]) });
-    await expect(service.accounting(gate, { cursor: 'not-a-cursor' })).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.finance(gate, { cursor: 'not-a-cursor' })).rejects.toBeInstanceOf(OfficeFailure);
   });
 
-  it('merges entries, tasks and visits in the audit into one feed that pages cleanly', async () => {
-    const entries = Array.from({ length: 70 }, (_, i) => entry(i, { userId: 'pos1', createdAt: new Date(t0 + Math.floor(i / 5) * 1000) }));
-    const tasks: Row[] = Array.from({ length: 50 }, (_, i) => ({
-      id: `tk-${pad(i)}`,
-      posId: 'pos1',
-      action: 'extend',
-      status: i % 5 === 0 ? 'done' : 'pending',
-      posDelta: i % 5 === 0 ? -10 : 0,
-      packageId: 'pa',
-      nextPackageId: null,
-      msisdn: null,
-      createdAt: new Date(t0 + Math.floor(i / 4) * 1000),
-      submitter: { loginName: 'pos1', nickname: 'نقطة' },
-      assignee: null,
-      line: null,
-    }));
-    const visits: Row[] = Array.from({ length: 30 }, (_, i) => ({
-      id: `vs-${pad(i)}`,
-      targetLogin: 'pos1',
+  it('pages the activity log and filters by action', async () => {
+    const now = Date.now();
+    const rows: Row[] = Array.from({ length: 100 }, (_, i) => ({
+      id: `ev-${pad(i)}`,
+      at: new Date(now - i * 1000),
+      actorId: 'admin',
+      actorLogin: i % 2 ? 'pos1' : 'admin',
+      actorLayer: 'branch',
+      action: i % 2 ? 'enter' : 'extend',
+      result: 'ok',
+      reason: '',
       ip: '',
-      createdAt: new Date(t0 + Math.floor(i / 3) * 1000),
-      actor: { loginName: 'admin', nickname: 'الإدارة' },
+      subjectKind: '',
+      subjectRef: '',
     }));
-    const { service, gate } = await serviceWith({
-      walletEntry: table(entries),
-      officeTask: table(tasks),
-      accessLog: table(visits),
-      package: table([{ id: 'pa', name: '400', company: { name: 'سلكوم' }, provider: { name: 'مزود' } }]),
-      line: table([]),
-    });
-    const eligible = 70 + tasks.filter((task) => !(task.status === 'done' && task.posDelta !== 0)).length + 30;
-    const ids: string[] = [];
-    const sizes: number[] = [];
-    let cursor: string | undefined;
-    do {
-      const result = await service.audit(gate, { cursor });
-      sizes.push(result.entries.length);
-      ids.push(...result.entries.map((row) => row.id));
-      cursor = result.nextCursor ?? undefined;
-    } while (cursor);
-    expect(eligible).toBe(70 + 40 + 30);
-    expect(sizes).toEqual([80, 60]);
-    expect(new Set(ids).size).toBe(eligible);
-    expect(ids.some((id) => id.startsWith('en-'))).toBe(true);
-    expect(ids.some((id) => id.startsWith('tk-'))).toBe(true);
-    expect(ids.some((id) => id.startsWith('vs-'))).toBe(true);
-
-    const onlyVisits = await service.audit(gate, { kind: 'enter' });
-    expect(onlyVisits.entries.map((row) => row.action)).toEqual(Array(30).fill('enter'));
-    const onlyExtend = await service.audit(gate, { kind: 'extend' });
-    expect(onlyExtend.entries.every((row) => row.action === 'extend')).toBe(true);
-    expect(onlyExtend.entries).toHaveLength(40);
+    const { service, gate } = await serviceWith({ activityEvent: table(rows) });
+    const first = await service.audit(gate, {});
+    expect(first.entries).toHaveLength(80);
+    const second = await service.audit(gate, { cursor: first.nextCursor ?? undefined });
+    expect(second.entries).toHaveLength(20);
+    expect(new Set([...first.entries, ...second.entries].map((row) => row.id)).size).toBe(100);
+    const onlyEnter = await service.audit(gate, { action: 'enter' });
+    expect(onlyEnter.entries.every((row) => row.action === 'enter')).toBe(true);
+    expect(onlyEnter.entries).toHaveLength(50);
   });
 
   it('pages tasks by position and filters by status in the query', async () => {
@@ -364,6 +368,7 @@ describe('time-ordered lists', () => {
       createdAt: new Date(t0 + Math.floor(i / 3) * 1000),
       submitter: { loginName: 'admin' },
       assignee: null,
+      notes: [],
     }));
     const { service, gate } = await serviceWith({ officeTask: table(tasks), package: { findMany: async () => [{ id: 'pa', name: '400' }] } });
     const ids: string[] = [];
@@ -381,6 +386,88 @@ describe('time-ordered lists', () => {
     expect(done.tasks).toHaveLength(30);
     expect(done.tasks.every((task) => task.status === 'done')).toBe(true);
     expect(done.nextCursor).toBeNull();
+  });
+});
+
+describe('task reading follows the number', () => {
+  const chain = [
+    { id: 'admin', loginName: 'admin', nickname: 'الإدارة', layer: 'branch', parentId: null },
+    { id: 'clerk', loginName: 'clerk', nickname: 'موظف', layer: 'branch', parentId: null },
+    { id: 'main1', loginName: 'main1', nickname: 'رئيسي', layer: 'main_agent', parentId: 'admin' },
+    { id: 'agent1', loginName: 'agent1', nickname: 'وكيل', layer: 'agent', parentId: 'main1' },
+    { id: 'pos1', loginName: 'pos1', nickname: 'نقطة', layer: 'pos', parentId: 'agent1' },
+    { id: 'pos2', loginName: 'pos2', nickname: 'نقطة ٢', layer: 'pos', parentId: 'agent1' },
+  ];
+  const task = (id: string, submitterId: string, posId: string): Row => ({
+    id,
+    posId,
+    action: 'switch',
+    status: 'pending',
+    posDelta: 0,
+    packageId: 'pa',
+    msisdn: '0550000001',
+    note: null,
+    resultNote: null,
+    log: 'أخذها فلان',
+    submitterId,
+    assigneeId: null,
+    createdAt: new Date(t0),
+    submitter: { loginName: submitterId },
+    assignee: null,
+    notes: [{ body: 'ملاحظة' }],
+  });
+  const rows = [task('t-agent', 'agent1', 'pos1'), task('t-pos2', 'pos2', 'pos2')];
+
+  async function as(id: string, layer: Layer, grants: string, owner = false) {
+    const auth = new MemoryAuthStore();
+    auth.addUser({
+      id,
+      loginName: id,
+      nickname: id,
+      disabledAt: null,
+      mustChangePassword: false,
+      layer,
+      twoFactorExempt: true,
+      twoFactorEnabled: false,
+      isBranchOwner: owner,
+      passwordHash: await hashPassword('ownerpass1'),
+    });
+    const sessionId = await auth.saveSession({ userId: id, scope: 'full', userAgent: '', ip: '' });
+    const service = new OfficeService(auth);
+    (service as unknown as { prismaClient: unknown }).prismaClient = {
+      user: { findUnique: async () => ({ liveGrants: grants, isBranchOwner: owner }), findMany: async () => chain },
+      officeTask: table(rows),
+      package: { findMany: async () => [{ id: 'pa', name: '400' }] },
+    };
+    return { service, gate: { sessionId } };
+  }
+
+  it('shows the pos a task its agent opened on its number, without any grant', async () => {
+    const { service, gate } = await as('pos1', 'pos', 'read');
+    const list = await service.tasks(gate, {});
+    expect(list.tasks.map((row) => row.id)).toEqual(['t-agent']);
+    expect(list.tasks[0].lastNote).toBe('ملاحظة');
+    expect(list.tasks[0].canTake).toBe(false);
+  });
+
+  it('shows an agent every task under it and nothing from a sibling branch user', async () => {
+    const { service, gate } = await as('agent1', 'agent', 'read');
+    const list = await service.tasks(gate, {});
+    expect(list.tasks.map((row) => row.id).sort()).toEqual(['t-agent', 't-pos2']);
+  });
+
+  it('lets a branch user without the grant read everything but not take', async () => {
+    const { service, gate } = await as('clerk', 'branch', 'read');
+    const list = await service.tasks(gate, {});
+    expect(list.tasks).toHaveLength(2);
+    expect(list.tasks.every((row) => row.canTake === false && row.log === '')).toBe(true);
+    await expect(service.takeTask(gate, 't-agent')).rejects.toBeInstanceOf(OfficeFailure);
+  });
+
+  it('lets the branch owner take', async () => {
+    const { service, gate } = await as('admin', 'branch', '', true);
+    const list = await service.tasks(gate, {});
+    expect(list.tasks.every((row) => row.canTake && row.log !== '')).toBe(true);
   });
 });
 

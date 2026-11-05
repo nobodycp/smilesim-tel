@@ -4,11 +4,13 @@ import { Ban, Check, Hand, Undo2, X } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { Desk, Money, actionName, latinWhen, taskStatus } from '../../../components/desk';
+import { EsimDialog, EsimMark, QrPicker } from '../../../components/esim-qr';
 import { TableSkeleton } from '../../../components/loading';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
+import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { useLoad } from '../../../lib/use-load';
 
@@ -22,6 +24,11 @@ function taskBadge(status: string): 'success' | 'danger' | 'warning' {
 
 type CloseMode = null | 'complete' | 'reject';
 
+/** Timeline lines come composed from the server; login names inside them keep their own direction. */
+function isolateLatin(text: string) {
+  return text.split(/([A-Za-z0-9_.@-]+)/).map((part, index) => (index % 2 ? <bdi key={index} dir="ltr">{part}</bdi> : part));
+}
+
 export default function TaskTicketPage() {
   const { t } = usePrefs();
   const params = useParams<{ id: string }>();
@@ -31,16 +38,38 @@ export default function TaskTicketPage() {
   const [closeNote, setCloseNote] = useState('');
   const [reason, setReason] = useState('');
   const [closeMode, setCloseMode] = useState<CloseMode>(null);
+  const [closeIccid, setCloseIccid] = useState('');
+  const [closeQr, setCloseQr] = useState('');
+  const [closeNumber, setCloseNumber] = useState('');
+  const [qrOpen, setQrOpen] = useState(false);
 
   const card = useLoad(async () => api.officeTask(params.id), [params.id]);
   const task = card.data?.task ?? null;
   const events = card.data?.events ?? [];
+  // What closing this task hands back: an eSIM request needs the serial and the QR, a number change needs the number.
+  const simRules = task?.sim ?? OPEN_SIM;
+  const isEsimTask = task?.action === 'esim';
+  const takesSim = isEsimTask || (Boolean(task?.esim) && (task?.action === 'activate' || task?.action === 'sim'));
+  const takesNumber = task?.action === 'rename';
+  const serialOk = closeIccid.trim() === '' ? !isEsimTask : closeIccid.trim().length >= 8 && simFits(simRules, closeIccid.trim());
+  const qrOk = !isEsimTask || closeQr !== '';
+  const numberOk = !takesNumber || /^05\d{8}$/.test(closeNumber.trim());
+  const canClose = serialOk && qrOk && numberOk;
+  const closeBody = () => ({
+    note: closeNote,
+    ...(takesSim && closeIccid.trim() ? { iccid: closeIccid.trim() } : {}),
+    ...(takesSim && closeQr ? { qr: closeQr } : {}),
+    ...(takesNumber ? { msisdn: closeNumber.trim() } : {}),
+  });
   const { run } = useAction({
     setError,
     setNote,
     onDone: async () => {
       setCloseMode(null);
       setCloseNote('');
+      setCloseIccid('');
+      setCloseQr('');
+      setCloseNumber('');
       setReason('');
       await card.reload();
     },
@@ -75,9 +104,19 @@ export default function TaskTicketPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt>{task.esim ? t.esim : t.iccid}</dt>
-                  <dd>{task.esim ? t.esim : task.iccid ? <bdi dir="ltr">{task.iccid}</bdi> : '—'}</dd>
+                  <dt>{t.simType}</dt>
+                  <dd>{task.esim ? t.esim : t.physicalSim}</dd>
                 </div>
+                <div>
+                  <dt>{t.simSerial}</dt>
+                  <dd>{task.iccid ? <bdi dir="ltr">{task.iccid}</bdi> : '—'}</dd>
+                </div>
+                {task.esimQr ? (
+                  <div>
+                    <dt>{t.esimQr}</dt>
+                    <dd><EsimMark src={task.esimQr} label={t.esimQr} onOpen={() => setQrOpen(true)} /></dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt>{t.packageName}</dt>
                   <dd>{task.packageName || '—'}</dd>
@@ -175,17 +214,43 @@ export default function TaskTicketPage() {
               </div>
 
               {closeMode === 'complete' ? (
-                <div className="task-close-row">
-                  <input
-                    value={closeNote}
-                    onChange={(event) => setCloseNote(event.target.value)}
-                    placeholder={t.closeNote}
-                    aria-label={t.closeNote}
-                  />
-                  <button type="button" className="task-op task-op-complete is-on" onClick={() => run(() => api.completeTask(task.id, closeNote), { note: t.complete })}>
-                    <Check {...glyph} />
-                    {t.complete}
-                  </button>
+                <div className="task-close">
+                  {takesNumber ? (
+                    <label>
+                      {t.newNumber}
+                      <input value={closeNumber} inputMode="numeric" dir="ltr" onChange={(event) => setCloseNumber(event.target.value)} />
+                    </label>
+                  ) : null}
+                  {takesSim ? (
+                    <div className="task-close-sim">
+                      <label>
+                        {t.simSerial}
+                        <input value={closeIccid} inputMode="numeric" dir="ltr" onChange={(event) => setCloseIccid(event.target.value)} />
+                        {hasSimRules(simRules) ? <span className="hint">{simHint(t, simRules)}</span> : null}
+                      </label>
+                      <div className="stack">
+                        <span className="hint">{t.qrImage}</span>
+                        <QrPicker value={closeQr} onChange={setCloseQr} />
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="task-close-row">
+                    <input
+                      value={closeNote}
+                      onChange={(event) => setCloseNote(event.target.value)}
+                      placeholder={t.closeNote}
+                      aria-label={t.closeNote}
+                    />
+                    <button
+                      type="button"
+                      className="task-op task-op-complete is-on"
+                      disabled={!canClose}
+                      onClick={() => run(() => api.completeTask(task.id, closeBody()), { note: t.complete })}
+                    >
+                      <Check {...glyph} />
+                      {t.complete}
+                    </button>
+                  </div>
                 </div>
               ) : null}
               {closeMode === 'reject' ? (
@@ -224,7 +289,7 @@ export default function TaskTicketPage() {
                           <span className="task-tree-dot" aria-hidden="true" />
                           <div className="task-tree-card">
                             <div className="task-tree-meta">
-                              <strong>{event.authorName || t.taskSystem}</strong>
+                              <strong>{event.authorName ? <bdi>{event.authorName}</bdi> : t.taskSystem}</strong>
                               <bdi dir="ltr">{latinWhen(event.at, true)}</bdi>
                             </div>
                             <p>{event.body}</p>
@@ -234,7 +299,7 @@ export default function TaskTicketPage() {
                         <li key={event.id} className="task-tree-node task-tree-system">
                           <span className="task-tree-dot" aria-hidden="true" />
                           <p className="task-tree-system-line">
-                            <span>{event.body}</span>
+                            <span>{isolateLatin(event.body)}</span>
                             <bdi dir="ltr">{latinWhen(event.at, true)}</bdi>
                           </p>
                         </li>
@@ -279,6 +344,7 @@ export default function TaskTicketPage() {
           <p className="empty">{t.noTasks}</p>
         </section>
       )}
+      {task ? <EsimDialog line={qrOpen ? { msisdn: task.msisdn ?? '', iccid: task.iccid, esim: task.esim, esimQr: task.esimQr } : null} onClose={() => setQrOpen(false)} /> : null}
     </Desk>
   );
 }

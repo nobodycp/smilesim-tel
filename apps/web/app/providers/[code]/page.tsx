@@ -2,17 +2,18 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk } from '../../../components/desk';
 import { api } from '../../../lib/api';
+import { parseShekel, shekelField } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useLoad } from '../../../lib/use-load';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
-const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim'] as const;
+const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
 type ModeAction = (typeof actions)[number];
 type Tab = 'settings' | 'packages';
 
@@ -30,6 +31,7 @@ export default function ProviderPackagesPage() {
   const [tab, setTab] = useState<Tab>('settings');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  const [priceDraft, setPriceDraft] = useState<string | null>(null);
   const allowed = useRequireLayer(BRANCH);
   const providers = useLoad(() => api.officeProviders(), [], { enabled: allowed });
   const shelf = useLoad(() => api.officeCompanies(), [], { enabled: allowed });
@@ -72,12 +74,28 @@ export default function ProviderPackagesPage() {
     disconnect: t.actDisconnect,
     freeze: `${t.freeze} / ${t.unfreeze}`,
     switch: t.actSwitch,
-    rename: t.updateNumber,
+    rename: t.changeNumber,
     sim: t.swapSim,
+    companySwitch: t.actCompanySwitch,
   };
 
   async function saveMode(action: string, mode: string) {
     await run(() => api.setProviderMode(params.code, action, mode));
+  }
+
+  const storedPrice = settings.data?.esimPrice ?? null;
+  const priceField = priceDraft ?? (storedPrice === null ? '' : shekelField(storedPrice));
+
+  async function savePrice(event: FormEvent) {
+    event.preventDefault();
+    const text = priceField.trim();
+    const price = text ? parseShekel(text) : null;
+    if (text && price === null) {
+      setError(t.errors.INVALID);
+      setNote('');
+      return;
+    }
+    await run(() => api.setProviderEsimPrice(params.code, price), { note: t.save, then: () => setPriceDraft(null) });
   }
 
   const modeColumns: Column<ModeAction>[] = [
@@ -88,6 +106,7 @@ export default function ProviderPackagesPage() {
       render: (action) => (
         <select
           className="mode-pick"
+          aria-label={`${t.runTab} ${names[action]}`}
           value={settings.data?.modes[action] ?? 'manual'}
           onChange={(event) => void saveMode(action, event.target.value)}
         >
@@ -134,7 +153,22 @@ export default function ProviderPackagesPage() {
           ))}
         </div>
         {tab === 'settings' && (
-          <div className="pane-body">
+          <div className="pane-body stack">
+            <form className="switch-row" onSubmit={savePrice}>
+              <label>
+                {t.esimPrice}
+                <input
+                  value={priceField}
+                  inputMode="decimal"
+                  dir="ltr"
+                  placeholder={t.useInheritedPrice}
+                  disabled={!settings.loaded}
+                  onChange={(event) => setPriceDraft(event.target.value)}
+                />
+                <span className="hint">{t.esimPriceProviderHint}</span>
+              </label>
+              <button type="submit" disabled={!settings.loaded}>{t.save}</button>
+            </form>
             <DataTable
               bare
               columns={modeColumns}

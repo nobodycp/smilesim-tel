@@ -68,7 +68,7 @@ test.describe('DataTable and EmptyState', () => {
     await serveOffice(page, 'branch', {
       'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null } }),
       'GET /packages': () => ({ body: { packages: [], companies: [] } }),
-      'GET /accounting': () => ({ body: { entries: [], nextCursor: null } }),
+      'GET /finance': () => ({ body: { entries: [], nextCursor: null } }),
     });
     await page.goto(`${admin}/numbers`);
     const empty = page.locator('.pane > .empty');
@@ -76,17 +76,18 @@ test.describe('DataTable and EmptyState', () => {
     await expect(empty).not.toHaveAttribute('style', /./);
     await expect(page.locator('.pane table.data')).toHaveCount(0);
 
-    await page.goto(`${admin}/accounting`);
+    await page.goto(`${admin}/finance`);
     await expect(page.locator('.sheet > .empty')).toHaveText('لا حركات بعد.');
-    await expect(page.locator('.sheet > table.data thead th')).toHaveCount(7);
-    await expect(page.locator('.sheet > table.data thead th.num')).toHaveCount(3);
+    await expect(page.locator('.sheet > table.data thead th')).toHaveCount(13);
+    await expect(page.locator('.sheet > table.data thead th.num')).toHaveCount(4);
   });
 });
 
 test.describe('usePaged', () => {
   for (const [path, route, key, name] of [
-    ['accounting', 'GET /accounting', 'entries', 'المحاسبة'],
-    ['audit', 'GET /audit', 'entries', 'سجل التدقيق'],
+    ['finance', 'GET /finance', 'entries', 'المالية'],
+    ['provider-operations', 'GET /provider-operations', 'entries', 'عمليات المزودين'],
+    ['audit', 'GET /audit', 'entries', 'سجل النشاط'],
     ['operations', 'GET /ledger/operations', 'entries', 'العمليات'],
   ] as const) {
     test(`${path} loads the next page by cursor and appends it`, async ({ page }) => {
@@ -113,15 +114,15 @@ test.describe('usePaged', () => {
 
   test('an answer for an older filter set is dropped', async ({ page }) => {
     await serveOffice(page, 'branch', {
-      'GET /accounting': (url) => {
+      'GET /finance': (url) => {
         const q = url.searchParams.get('q');
         if (q === '111') return { body: { entries: [account('slow', '0551110000')], nextCursor: null }, delay: 1500 };
         if (q === '222') return { body: { entries: [account('fast', '0552220000')], nextCursor: null } };
         return { body: { entries: [], nextCursor: null } };
       },
     });
-    await page.goto(`${admin}/accounting`);
-    const search = page.getByLabel('الرقم');
+    await page.goto(`${admin}/finance`);
+    const search = page.getByLabel('الحساب أو الرقم');
     await search.fill('111');
     await page.waitForTimeout(450);
     await search.fill('222');
@@ -134,7 +135,7 @@ test.describe('usePaged', () => {
 
   test('a failed load shows the translated error and an empty table, then recovers on the next filter', async ({ page }) => {
     await serveOffice(page, 'branch', {
-      'GET /audit': (url) => (url.searchParams.get('kind') === 'extend'
+      'GET /audit': (url) => (url.searchParams.get('action') === 'extend'
         ? { body: { entries: [], nextCursor: null } }
         : { status: 400, body: { message: 'بيانات غير صالحة' } }),
     });
@@ -155,7 +156,7 @@ test.describe('useAction and lineActions', () => {
       'GET /lines/ln1': () => { reads += 1; return { body: card('active') }; },
       'GET /packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
-      'POST /lines/ln1/extend': () => ({ body: { applied: true }, delay: 400 }),
+      'POST /lines/ln1/extend': () => ({ body: { applied: true, debited: true }, delay: 400 }),
     });
     await page.goto(`${admin}/numbers/ln1`);
     const extend = page.getByRole('button', { name: 'تمديد', exact: true });
@@ -172,12 +173,20 @@ test.describe('useAction and lineActions', () => {
       'GET /lines/ln1': () => ({ body: card('active') }),
       'GET /packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
+      'GET /lines/ln1/disconnect-quote': () => ({ body: { amount: 2850, runsNow: true } }),
       'POST /lines/ln1/disconnect': () => { tries += 1; return { status: 400, body: { message: 'بيانات غير صالحة' } }; },
     });
     await page.goto(`${admin}/numbers/ln1`);
-    await page.getByRole('button', { name: 'فصل', exact: true }).click();
+    const disconnect = async () => {
+      await page.locator('.command-list').getByRole('button', { name: 'فصل', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: 'فصل الرقم' });
+      await expect(dialog.locator('.money')).toHaveText('28.50 ₪');
+      await dialog.getByRole('button', { name: 'فصل', exact: true }).click();
+      await expect(dialog).toHaveCount(0);
+    };
+    await disconnect();
     await expect(page.locator('p.error')).toHaveText('بيانات غير صالحة');
-    await page.getByRole('button', { name: 'فصل', exact: true }).click();
+    await disconnect();
     await expect.poll(() => tries).toBe(2);
   });
 
@@ -203,12 +212,12 @@ test.describe('useAction and lineActions', () => {
       await expect(page.locator('.line-number')).toBeVisible();
       return page.locator('.command-list .op-card').allTextContents();
     };
-    expect((await listItems(0)).map((text) => text.trim())).toEqual(['تمديد', 'فصل']);
-    expect((await cardItems('ln1')).map((text) => text.trim())).toEqual(['تمديد', 'تجميد', 'فصل']);
-    expect((await listItems(1)).map((text) => text.trim())).toEqual(['فك تجميد', 'فصل']);
-    expect((await cardItems('ln2')).map((text) => text.trim())).toEqual(['فك تجميد', 'فصل']);
-    expect((await listItems(2)).map((text) => text.trim())).toEqual(['تفعيل']);
-    expect((await cardItems('ln3')).map((text) => text.trim())).toEqual(['تفعيل']);
+    expect((await listItems(0)).map((text) => text.trim())).toEqual(['تمديد', 'تحديث الرقم', 'فصل']);
+    expect((await cardItems('ln1')).map((text) => text.trim())).toEqual(['تمديد', 'تحديث الرقم', 'تجميد', 'فصل']);
+    expect((await listItems(1)).map((text) => text.trim())).toEqual(['فك تجميد', 'تحديث الرقم', 'فصل']);
+    expect((await cardItems('ln2')).map((text) => text.trim())).toEqual(['فك تجميد', 'تحديث الرقم', 'فصل']);
+    expect((await listItems(2)).map((text) => text.trim())).toEqual(['شحن', 'تحديث الرقم']);
+    expect((await cardItems('ln3')).map((text) => text.trim())).toEqual(['شحن', 'تحديث الرقم']);
     // A number locked for a package switch has no immediate action on either screen.
     await page.goto(`${admin}/numbers`);
     await expect(page.locator('table.data tbody tr').nth(3).getByRole('button', { name: /إجراءات/ })).toHaveCount(0);
@@ -220,8 +229,6 @@ test.describe('useAction and lineActions', () => {
 test.describe('reports', () => {
   const kinds = {
     providers: { rows: [{ providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', price: 20, lines: 4 }] },
-    consumption: { entries: [{ id: 'e1', at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLogin: 'admin', kind: 'extend', amount: -26, balanceAfter: 74, note: null }] },
-    funding: { entries: [] },
     tasks: { tasks: [{ id: 't1', action: 'activate', status: 'done', posLogin: 'pos', submitterLogin: 'pos', assigneeLogin: null, posDelta: -26, msisdn: '0550000001', packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: false, canWork: false, canCancel: false }] },
     numbers: { lines: [line('ln1')] },
     operations: { entries: [] },
@@ -236,29 +243,22 @@ test.describe('reports', () => {
     await expect(head('thead th')).toHaveCount(5);
     await expect(head('thead th.num')).toHaveCount(2);
     await expect(head('tbody td.num')).toHaveCount(2);
-    await page.goto(`${admin}/reports/consumption`);
-    await expect(head('thead th')).toHaveCount(6);
-    await expect(head('thead th.num')).toHaveCount(2);
-    await expect(head('tbody td.when')).toHaveCount(1);
     await page.goto(`${admin}/reports/tasks`);
     await expect(head('thead th')).toHaveCount(5);
     await expect(head('thead th.num')).toHaveCount(0);
     await page.goto(`${admin}/reports/numbers`);
     await expect(head('thead th')).toHaveCount(4);
     await expect(head('tbody td.msisdn')).toHaveCount(1);
-    await page.goto(`${admin}/reports/funding`);
-    await expect(page.locator('.pane > .empty')).toHaveText('لا حركات بعد.');
-    await expect(page.locator('table.data')).toHaveCount(0);
   });
 
   test('a report pages by cursor and keeps the table while it loads more', async ({ page }) => {
     const entry = (id: string) => ({ id, at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLogin: 'admin', kind: 'extend', amount: -26, balanceAfter: 74, note: null });
     await serveOffice(page, 'branch', {
-      'GET /reports/consumption': (url) => (url.searchParams.get('cursor') === 'c2'
+      'GET /finance': (url) => (url.searchParams.get('cursor') === 'c2'
         ? { body: { entries: [entry('e3')], nextCursor: null } }
         : { body: { entries: [entry('e1'), entry('e2')], nextCursor: 'c2' } }),
     });
-    await page.goto(`${admin}/reports/consumption`);
+    await page.goto(`${admin}/finance`);
     await expect(page.locator('table.data tbody tr')).toHaveCount(2);
     await page.getByRole('button', { name: '2', exact: true }).click();
     await expect(page.locator('table.data tbody tr')).toHaveCount(1);
@@ -285,16 +285,18 @@ test.describe('shell', () => {
       'GET /notices': () => ({
         body: {
           unread: 2,
+          nextCursor: null,
           notices: [
-            { id: 'n1', kind: 'task_reply', action: 'sim', msisdn: '0550000001', href: '/tasks', read: false, createdAt: '2026-10-02T10:30:00.000Z' },
-            { id: 'n2', kind: 'task_reply', action: 'reactivate', msisdn: null, href: '/tasks', read: false, createdAt: '2026-10-02T10:30:00.000Z' },
+            { id: 'n1', kind: 'task.done', payload: { taskId: 't1', action: 'sim', msisdn: '0550000001', handlerName: 'الفرع' }, actorName: 'الفرع', href: '/tasks/t1', read: false, createdAt: '2026-10-02T10:30:00.000Z' },
+            { id: 'n2', kind: 'task.opened', payload: { taskId: 't2', action: 'reactivate', msisdn: null }, actorName: 'نقطة', href: '/tasks/t2', read: false, createdAt: '2026-10-02T10:30:00.000Z' },
           ],
         },
       }),
     });
     await page.goto(`${admin}/`);
     await page.getByRole('button', { name: 'الإشعارات' }).click();
-    await expect(page.locator('.shell-item small').first()).toHaveText('تبديل الشريحة · 0550000001');
-    await expect(page.locator('.shell-item small').nth(1)).toHaveText('تفعيل');
+    await expect(page.locator('.shell-item strong').first()).toHaveText('تمّت المهمة');
+    await expect(page.locator('.shell-item small').first()).toHaveText('تبديل الشريحة · 0550000001 · بواسطة الفرع');
+    await expect(page.locator('.shell-item small').nth(2)).toHaveText('تفعيل · بواسطة نقطة');
   });
 });

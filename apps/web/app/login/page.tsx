@@ -2,8 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useRef, useState, type FormEvent } from 'react';
+import { BrandLogo } from '../../components/brand-logo';
 import { LanguageSwitch, ThemeToggle } from '../../components/chrome';
 import { api, routeFor } from '../../lib/api';
+import { useBranding } from '../../lib/branding';
 import { useDoor } from '../../lib/door-context';
 import { usePrefs } from '../../lib/prefs';
 
@@ -11,6 +13,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { t, apiText } = usePrefs();
   const door = useDoor();
+  const branding = useBranding();
   const [loginName, setLoginName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -50,8 +53,9 @@ export default function LoginPage() {
         </div>
         <div className="login-lockrow">
           <div className="login-lockup">
-            <strong>{t.brand}</strong>
-            <small>{t.brandSub}</small>
+            <BrandLogo className="login-logo" onInk />
+            <strong>{branding.name}</strong>
+            <small>{branding.tagline}</small>
           </div>
           <Plate />
         </div>

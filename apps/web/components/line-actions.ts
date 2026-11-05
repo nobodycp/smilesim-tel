@@ -13,18 +13,32 @@ export type RunLine = (work: () => Promise<Fetched<ApplyResult>>) => unknown;
  * - active: extend, disconnect (and freeze, when the page asks for it)
  * - frozen: unfreeze, disconnect
  * - disconnected: activate again
+ * - suspended: nothing until its rules are decided
  * - locked for a package switch: nothing; the backend refuses them until the package is switched
  *
  * Operations that need a value (transfer, rename, swap the SIM, switch the package) are forms, not items.
- * The list leaves out freeze on purpose; the line card has it.
+ * The list leaves out freeze on purpose; the line card has it. Disconnect only asks: the page opens
+ * `DisconnectConfirm` and runs it from there.
  */
-export function lineActions(line: LineRow, verdict: Outcome, run: RunLine, t: Copy, { freeze = false }: { freeze?: boolean } = {}): RowAction[] {
-  if (line.opsLocked) return [];
+function offered(line: LineRow, key: string, fallback: boolean) {
+  return line.operations ? line.operations.includes(key) : fallback;
+}
+
+export function lineActions(
+  line: LineRow,
+  verdict: Outcome,
+  run: RunLine,
+  t: Copy,
+  { freeze = false, onDisconnect }: { freeze?: boolean; onDisconnect: (line: LineRow) => void },
+): RowAction[] {
+  if (line.opsLocked && !line.operations) return [];
   const items: RowAction[] = [];
-  if (line.status === 'active') items.push({ label: t.extend, icon: 'extend', onClick: () => run(() => api.extendLine(line.id, verdict)) });
-  if (line.status === 'disconnected') items.push({ label: t.actActivate, icon: 'check', onClick: () => run(() => api.reactivateLine(line.id, verdict)) });
-  if (freeze && line.status === 'active') items.push({ label: t.freeze, icon: 'ban', onClick: () => run(() => api.freezeLine(line.id, verdict)) });
-  if (line.status === 'frozen') items.push({ label: t.unfreeze, icon: 'undo', onClick: () => run(() => api.unfreezeLine(line.id, verdict)) });
-  if (line.status !== 'disconnected') items.push({ label: t.disconnect, icon: 'ban', danger: true, onClick: () => run(() => api.disconnectLine(line.id, verdict)) });
+  if (offered(line, 'extend', line.status === 'active')) items.push({ label: t.extend, icon: 'extend', onClick: () => run(() => api.extendLine(line.id, verdict)) });
+  if (offered(line, 'refresh', !line.opsLocked)) items.push({ label: t.updateNumber, icon: 'refresh', onClick: () => run(() => api.refreshLine(line.id, verdict)) });
+  if (offered(line, 'charge', false)) items.push({ label: t.actCharge, icon: 'check', onClick: () => run(() => api.chargeLine(line.id, verdict)) });
+  if (!line.operations && line.status === 'disconnected') items.push({ label: t.actCharge, icon: 'check', onClick: () => run(() => api.chargeLine(line.id, verdict)) });
+  if (freeze && offered(line, 'freeze', line.status === 'active')) items.push({ label: t.freeze, icon: 'ban', onClick: () => run(() => api.freezeLine(line.id, verdict)) });
+  if (offered(line, 'unfreeze', line.status === 'frozen')) items.push({ label: t.unfreeze, icon: 'undo', onClick: () => run(() => api.unfreezeLine(line.id, verdict)) });
+  if (offered(line, 'disconnect', line.status === 'active' || line.status === 'frozen')) items.push({ label: t.disconnect, icon: 'ban', danger: true, onClick: () => onDisconnect(line) });
   return items;
 }

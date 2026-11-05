@@ -36,7 +36,7 @@ const LEGACY_MESSAGES: Record<string, string> = {
 
 describe('error contract', () => {
   it('keeps every code on the Arabic message it always had', () => {
-    expect(ERROR_MESSAGES).toEqual(LEGACY_MESSAGES);
+    expect(ERROR_MESSAGES).toMatchObject(LEGACY_MESSAGES);
   });
 
   it('lists every code once, spelled in capitals, and maps each to itself', () => {

@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../db';
 import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
@@ -10,9 +10,11 @@ import {
   FEED_PAGE,
   LINES_PAGE,
   NEWEST_FIRST,
+  NOTICES_PAGE,
   TASKS_PAGE,
   afterFeed,
   decodeFeedCursor,
+  encodeFeedCursor,
   idCursorArgs,
   linesWhere,
   mergeFeed,
@@ -22,24 +24,40 @@ import {
 } from './office-paging';
 import { parseTaskLogLine, stampTaskLog } from './task-log';
 import {
-  ESIM_FEE,
+  AGOROT,
+  ESIM_PRICE_DEFAULT,
+  activationProviderCost,
+  esimPriceOf,
+  PERIOD_DAYS,
   Prices,
   captureTerms,
   chainHolds,
-  chargeDebit,
   editableField,
   ACTION_KEYS,
-  actionMode,
+  activateInputs,
   flagsForMode,
-  isAutomatic,
+  lastWindow,
   normalizeActionModes,
+  offeredOperations,
+  openPeriods,
   packageFlagsFromModes,
+  resolvePackageMode,
   periodEnd,
+  providerBranchCost,
   renewOnto,
+  refreshMode,
   renewStay,
   repriceRenewal,
+  readSimRules,
+  revalue,
+  settleDisconnect,
+  simRefusal,
+  issueSerial,
+  simRulesOf,
   subscriptionDebit,
   switchOnto,
+  switchOver,
+  windowMonthsOf,
   visibleAccountIds,
   withPrice,
   withinCeiling,
@@ -47,7 +65,12 @@ import {
   type ActionMode,
   type LineTerms,
 } from './office-rules';
+import { activityActorFilter, clampActivityRange } from './activity-log';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
+import { renderEsimQr } from './office-esim';
+import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
+import { NoticeService, type WrittenNotice } from './notice.service';
+import { excerpt, noticeGroupOf, NOTICE_GROUPS, type NoticeDraft, type TaskNoticePayload } from './notice-kinds';
 import {
   FLAG_CODES,
   GRANT_CODES,
@@ -83,8 +106,29 @@ type Actor = {
   impersonating: boolean;
 };
 type Account = { id: string; loginName: string; nickname: string; layer: string; parentId: string | null };
-type Action = 'activate' | 'charge' | 'extend' | 'reactivate' | 'disconnect' | 'freeze' | 'unfreeze' | 'switch' | 'rename' | 'sim';
-type Sale = { msisdn: string; lineId: string; companyName: string; packageName: string; packagePrice: number };
+type Action = 'activate' | 'charge' | 'extend' | 'reactivate' | 'disconnect' | 'freeze' | 'unfreeze' | 'switch' | 'rename' | 'sim' | 'esim' | 'refresh';
+type Sale = {
+  msisdn: string;
+  lineId: string;
+  companyName: string;
+  packageName: string;
+  packagePrice: number;
+  providerCost?: number;
+  /** The eSIM fee that is part of this entry's amount, so the finance row can explain amount − package price. */
+  esimPrice?: number;
+  /** The period a prepaid row bought. A switch has no end: it reprices the open periods. */
+  period?: { days: number; endsAt: Date | null };
+};
+
+const PREPAID_KINDS = ['activate', 'charge', 'extend', 'reactivate', 'switch'];
+/** Entries that put time on a line: the newest one is the last recharge shown on the card. */
+const RECHARGE_KINDS = ['activate', 'charge', 'extend', 'reactivate'];
+/** The largest QR data URL stored on a line. The client shrinks to about 300 KB first. */
+const QR_LIMIT = 400_000;
+
+function periodOf(months: number, endsAt: Date | null) {
+  return { days: PERIOD_DAYS * Math.max(1, months), endsAt };
+}
 
 export class OfficeFailure extends Error {
   constructor(readonly status: number, readonly code: ErrorCode) {
@@ -102,6 +146,52 @@ function feedPosition(raw: string | undefined) {
   return position;
 }
 
+const PROVIDER_OPERATION_KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'];
+
+type PricedPackage = {
+  id: string;
+  name: string;
+  dataGb: number | null;
+  months: number;
+  branchCost: number;
+  renewalBranchCost: number;
+  provider: { code: string; name: string };
+  company: { name: string } | null;
+};
+
+function packageLabel(item: { name: string; dataGb: number | null; months: number }): string {
+  if (item.dataGb == null) return item.name;
+  return item.months === 1 ? `${item.dataGb} جيجا` : `${item.dataGb} جيجا · ${item.months} أشهر`;
+}
+
+function samePackage(item: PricedPackage, packageName: string, companyName: string): boolean {
+  if ((item.company?.name ?? '') !== companyName) return false;
+  return item.name === packageName || packageLabel(item) === packageName;
+}
+
+function savedTerms(value: Prisma.JsonValue | null | undefined) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value as { subscription?: { branchCost?: number }; renewal?: { branchCost?: number } };
+}
+
+function pricedOp(
+  kind: string,
+  packageName: string,
+  companyName: string,
+  line: { terms: Prisma.JsonValue; package: PricedPackage } | undefined,
+  packages: PricedPackage[],
+) {
+  const named = packages.find((item) => samePackage(item, packageName, companyName));
+  const current = line?.package;
+  const chosen = named ?? current ?? null;
+  const same = chosen != null && current != null && chosen.id === current.id;
+  return {
+    cost: providerBranchCost(kind, same ? savedTerms(line?.terms) : null, chosen),
+    providerCode: chosen?.provider.code ?? '',
+    providerName: chosen?.provider.name ?? '',
+  };
+}
+
 @Injectable()
 export class OfficeService implements OnModuleInit {
   private prismaClient: PrismaClient | null = null;
@@ -111,7 +201,11 @@ export class OfficeService implements OnModuleInit {
     return this.prismaClient;
   }
 
-  constructor(@Inject(AUTH_STORE) private readonly auth: AuthStore) {}
+  private readonly notice: NoticeService;
+
+  constructor(@Inject(AUTH_STORE) private readonly auth: AuthStore, @Optional() notice?: NoticeService) {
+    this.notice = notice ?? new NoticeService();
+  }
 
   async onModuleInit(): Promise<void> {
     if (process.env.NODE_ENV === 'test' || !process.env.DATABASE_URL) return;
@@ -140,8 +234,7 @@ export class OfficeService implements OnModuleInit {
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
     const chain = this.chainIds(actor.id, accounts);
-    const seesTasks = actor.isBranchOwner || actor.grants.includes('tasks');
-    const taskWhere = actor.layer === 'branch' && seesTasks ? { status: 'pending' } : { submitterId: actor.id, status: 'pending' };
+    const taskWhere = { ...taskWhereFor(actor, accounts), status: 'pending' };
     const [pendingTasks, activeLines, inactiveLines, entries, notes] = await Promise.all([
       this.prisma.officeTask.count({ where: taskWhere }),
       posIds.length ? this.prisma.line.count({ where: { posId: { in: posIds }, status: 'active' } }) : 0,
@@ -172,6 +265,7 @@ export class OfficeService implements OnModuleInit {
         kind: row.kind,
         amount: row.amount,
         note: row.note,
+        packageName: row.packageName,
         loginName: row.user.loginName,
       })),
       announcements: notes.map((row) => ({
@@ -189,7 +283,15 @@ export class OfficeService implements OnModuleInit {
     if (actor.layer === 'pos') fail(403, 'FORBIDDEN');
     const text = typeof body.body === 'string' ? body.body.trim() : '';
     if (!text || text.length > 400) fail(400, 'INVALID');
-    await this.prisma.announcement.create({ data: { authorId: actor.id, body: text } });
+    const accounts = await this.accounts();
+    const audience = [...visibleAccountIds(actor.id, actor.layer, accounts)].filter((id) => id !== actor.id);
+    await this.runTx(async (tx) => {
+      const posted = await tx.announcement.create({ data: { authorId: actor.id, body: text } });
+      this.queueNotices(tx, await this.notice.write(tx, audience, actor, {
+        kind: 'announcement',
+        payload: { announcementId: posted.id, authorName: actor.nickname, excerpt: excerpt(text) },
+      }));
+    });
     return { ok: true };
   }
 
@@ -233,9 +335,15 @@ export class OfficeService implements OnModuleInit {
     } else if (actor.layer !== 'branch' && target.parentId !== actor.id) {
       fail(403, 'FORBIDDEN');
     }
-    await this.prisma.$transaction(async (tx) => {
+    await this.runTx(async (tx) => {
       if (!self) await this.move(tx, actor.id, -amount, actor.operatorId, 'fund', note);
       await this.move(tx, target.id, amount, actor.operatorId, self ? 'self_fund' : 'fund', note);
+      if (!self) {
+        this.queueNotices(tx, await this.notice.write(tx, [target.id], actor, {
+          kind: 'fund.received',
+          payload: { amount, senderName: actor.nickname, note },
+        }));
+      }
     });
     return { ok: true };
   }
@@ -243,7 +351,7 @@ export class OfficeService implements OnModuleInit {
   async setCeiling(gate: Gate, loginName: string, body: { ceiling?: unknown }) {
     const actor = await this.actor(gate);
     const ceiling = nonNegative(body.ceiling);
-    if (ceiling === null || ceiling > 1_000_000) fail(400, 'INVALID');
+    if (ceiling === null || ceiling > 100_000_000) fail(400, 'INVALID');
     const accounts = await this.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target || target.parentId !== actor.id) fail(403, 'FORBIDDEN');
@@ -269,8 +377,12 @@ export class OfficeService implements OnModuleInit {
       packages: rows.map((row) => ({
         code: row.code,
         name: row.name,
+        providerCode: row.provider.code,
         providerName: actor.layer === 'branch' ? row.provider.name : '',
+        activateMode: resolvePackageMode(row.actionModes, row, 'activate'),
         companyName: row.company?.name ?? '',
+        sim: simRulesOf(row.company),
+        esimPrice: esimPriceOf({ pkg: row, provider: row.provider, company: row.company }).price,
         dataGb: row.dataGb,
         months: row.months,
         branchCost: row.branchCost,
@@ -336,13 +448,17 @@ export class OfficeService implements OnModuleInit {
       providers.set(row.provider.code, provider);
       byCompany.set(row.company.code, providers);
     }
-    const stored = await this.prisma.company.findMany({ select: { code: true, image: true } });
-    const imageOf = new Map(stored.map((row) => [row.code, row.image ?? '']));
+    const stored = await this.prisma.company.findMany({
+      select: { code: true, image: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
+    });
+    const byCode = new Map(stored.map((row) => [row.code, row]));
     return {
       companies: companies.map((company) => ({
         code: company.code,
         name: company.name,
-        image: imageOf.get(company.code) ?? '',
+        image: byCode.get(company.code)?.image ?? '',
+        sim: simRulesOf(byCode.get(company.code) ?? null),
+        esimPrice: byCode.get(company.code)?.esimPrice ?? ESIM_PRICE_DEFAULT,
         providers: [...(byCompany.get(company.code)?.values() ?? [])],
       })),
     };
@@ -363,6 +479,23 @@ export class OfficeService implements OnModuleInit {
       data: { mainPrice: next.mainPrice, agentPrice: next.agentPrice, posPrice: next.posPrice, subscriberPrice: next.subscriberPrice },
     });
     return { ok: true };
+  }
+
+  async setCompanySim(gate: Gate, code: string, body: { length?: unknown; prefix?: unknown; esim?: unknown; esimPrice?: unknown }) {
+    const actor = await this.actor(gate);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
+    const rules = readSimRules(body);
+    if (!rules) fail(400, 'INVALID');
+    const esimPrice = body.esimPrice === undefined ? undefined : nonNegative(body.esimPrice);
+    if (esimPrice === null) fail(400, 'INVALID');
+    const row = await this.prisma.company.findUnique({ where: { code } });
+    if (!row) fail(404, 'NOT_FOUND');
+    const saved = await this.prisma.company.update({
+      where: { id: row.id },
+      data: { iccidLength: rules.length, iccidPrefix: rules.prefix || null, esim: rules.esim, ...(esimPrice === undefined ? {} : { esimPrice }) },
+    });
+    return { ok: true, sim: rules, esimPrice: saved.esimPrice };
   }
 
   async setCompanyImage(gate: Gate, body: { name?: unknown; image?: unknown }) {
@@ -393,7 +526,20 @@ export class OfficeService implements OnModuleInit {
       code: row.code,
       name: row.name,
       modes: normalizeActionModes(row.actionModes),
+      esimPrice: row.esimPrice,
     };
+  }
+
+  async setProviderEsimPrice(gate: Gate, code: string, body: { price?: unknown }) {
+    const actor = await this.actor(gate);
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
+    const row = await this.prisma.provider.findUnique({ where: { code } });
+    if (!row) fail(404, 'NOT_FOUND');
+    const price = body.price === null ? null : nonNegative(body.price);
+    if (price === null && body.price !== null) fail(400, 'INVALID');
+    await this.prisma.provider.update({ where: { code }, data: { esimPrice: price } });
+    return { ok: true as const, esimPrice: price };
   }
 
   async setProviderMode(gate: Gate, code: string, body: Record<string, unknown>) {
@@ -481,19 +627,25 @@ export class OfficeService implements OnModuleInit {
     const accounts = await this.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
-    const rows = await this.prisma.line.findMany({
-      where: linesWhere(posIds, query),
-      include: { package: { include: { company: true } }, pos: true },
-      orderBy: [...NEWEST_FIRST],
-      ...idCursorArgs(query.cursor || undefined, LINES_PAGE),
-    });
+    const where = linesWhere(posIds, query);
+    const [rows, total] = await Promise.all([
+      this.prisma.line.findMany({
+        where,
+        include: { package: { include: { company: true } }, pos: true },
+        orderBy: [...NEWEST_FIRST],
+        ...idCursorArgs(query.cursor || undefined, LINES_PAGE),
+      }),
+      this.prisma.line.count({ where }),
+    ]);
     const { page, nextCursor } = pageOf(rows, LINES_PAGE);
     return {
+      total,
       lines: page.map((row) => ({
         id: row.id,
         msisdn: row.msisdn,
         iccid: row.iccid,
         esim: row.esim,
+        esimQr: row.esimQr,
         status: row.status,
         packageCode: row.package.code,
         packageName: row.package.name,
@@ -502,6 +654,7 @@ export class OfficeService implements OnModuleInit {
         posPrice: row.package.posPrice,
         createdAt: row.createdAt.toISOString(),
         endsAt: row.endsAt.toISOString(),
+        operations: this.operationsFor(row),
       })),
       nextCursor,
       poses: accounts
@@ -514,7 +667,7 @@ export class OfficeService implements OnModuleInit {
     const actor = await this.actor(gate);
     const line = await this.prisma.line.findUnique({
       where: { id },
-      include: { package: { include: { company: true } }, pos: true },
+      include: { package: { include: { company: true, provider: true } }, pos: true },
     });
     if (!line) fail(404, 'NOT_FOUND');
     const accounts = await this.accounts();
@@ -552,7 +705,11 @@ export class OfficeService implements OnModuleInit {
         actorName: entry.actor.nickname || entry.actor.loginName,
       })),
       ...tasks
-        .filter((task) => !(task.status === 'done' && task.posDelta !== 0))
+        .filter((task) => {
+          if (task.status !== 'done') return true;
+          if (task.posDelta !== 0) return false;
+          return !entries.some((entry) => entry.kind === task.action && Math.abs(entry.createdAt.getTime() - task.updatedAt.getTime()) < 5000);
+        })
         .map((task) => {
           const pkg = byPackage.get(task.nextPackageId || task.packageId);
           const named = pkg?.company ? pkg : line.package;
@@ -570,21 +727,37 @@ export class OfficeService implements OnModuleInit {
     ]
       .sort((a, b) => (a.at < b.at ? 1 : -1))
       .slice(0, 40);
+    const recharge = entries.find((entry) => RECHARGE_KINDS.includes(entry.kind))
+      ?? (entries.length >= 40
+        ? await this.prisma.walletEntry.findFirst({ where: { lineId: line.id, kind: { in: RECHARGE_KINDS } }, orderBy: { createdAt: 'desc' }, select: { kind: true, createdAt: true } })
+        : null);
     return {
       line: {
         id: line.id,
         msisdn: line.msisdn,
         iccid: line.iccid,
         esim: line.esim,
+        esimQr: line.esimQr,
+        lastRechargeAt: recharge ? recharge.createdAt.toISOString() : null,
+        esimPrice: esimPriceOf({ pkg: line.package, provider: line.package.provider, company: line.package.company }).price,
         status: line.status,
         packageCode: line.package.code,
         packageName: line.package.name,
         companyName: line.package.company?.name ?? '',
         posLogin: actor.layer === 'pos' ? '' : line.pos.loginName,
         posPrice: line.package.posPrice,
+        dataGb: line.package.dataGb,
+        subscriberPrice: line.package.subscriberPrice,
+        companyImage: line.package.company?.image ?? '',
+        sim: simRulesOf(line.package.company),
+        switchTargets: (await this.prisma.packageSwitch.findMany({
+          where: { packageId: line.packageId },
+          select: { target: { select: { code: true } } },
+        })).map((item) => item.target.code),
         opsLocked: line.opsLocked,
         createdAt: line.createdAt.toISOString(),
         endsAt: line.endsAt.toISOString(),
+        operations: this.operationsFor(line),
       },
       history,
     };
@@ -598,7 +771,8 @@ export class OfficeService implements OnModuleInit {
     const packageCode = typeof body.packageCode === 'string' ? body.packageCode : '';
     const posLogin = typeof body.posLogin === 'string' ? body.posLogin : '';
     const requested = typeof body.msisdn === 'string' ? body.msisdn.trim() : '';
-    if (!outcome || !packageCode || !posLogin || (!esim && !iccid)) fail(400, 'INVALID');
+    const currentDetails = typeof body.currentDetails === 'string' ? body.currentDetails.trim() : '';
+    if (!outcome || !packageCode || !posLogin) fail(400, 'INVALID');
     if (requested && !/^05\d{8}$/.test(requested)) fail(400, 'INVALID');
     const accounts = await this.accounts();
     const pos = accounts.find((account) => account.loginName === posLogin && account.layer === 'pos');
@@ -615,29 +789,48 @@ export class OfficeService implements OnModuleInit {
     if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
     if (pkg.renewals.some((renewal) => !renewal.target.company || !renewal.target.provider)) fail(400, 'INVALID');
     this.assertRunnable(pkg, 'activate');
+    const inputs = activateInputs(pkg.provider.code);
+    if (inputs === 'generated' && !esim && !iccid) fail(400, 'INVALID');
+    if (inputs === 'current-details' && (!currentDetails || iccid.length < 8)) fail(400, 'INVALID');
+    if (inputs === 'number-and-sim' && (!requested || iccid.length < 8)) fail(400, 'INVALID');
+    const sim = simRulesOf(pkg.company);
+    if (esim && !sim.esim) fail(400, 'ESIM_UNSUPPORTED');
+    if (!(inputs === 'generated' && esim)) {
+      const refusal = simRefusal(sim, iccid);
+      if (refusal) fail(400, refusal);
+    }
     if (!pkg.forSale) fail(400, 'PACKAGE_HIDDEN');
     const pkgTerms = packageTermsOf(pkg);
     const terms = captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target)));
     const unit = await this.buyPrice(pkg.id, pos.id, subscriptionDebit(pkgTerms));
-    const posDelta = -(unit + (esim ? ESIM_FEE : 0));
-    const msisdn = requested || (await this.freshMsisdn());
+    const esimFee = esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price;
+    const posDelta = -(unit + (esim ? esimFee : 0));
+    const msisdn = inputs === 'number-and-sim' ? requested : requested || (await this.freshMsisdn());
     if (requested) {
       const existing = await this.prisma.line.findUnique({ where: { msisdn } });
       if (existing) fail(400, 'NUMBER_TAKEN');
     }
-    if (outcome === 'fail' || !isAutomatic(pkg, 'activate')) {
+    // A generated eSIM has no serial yet: the provider (or the branch, through a task) issues it.
+    // Providers that take the serial from the seller keep it; the line is still an eSIM and still pays the fee.
+    const generatesEsim = inputs === 'generated' && esim;
+    const storedIccid = generatesEsim ? null : iccid || null;
+    if (outcome === 'fail' || !this.runsNow(pkg, 'activate')) {
       const task = await this.openTask({
-        action: 'activate', actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: esim ? null : iccid, esim,
-        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        action: 'activate', actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: storedIccid, esim,
+        note: outcome === 'fail' ? 'فشل المزود' : currentDetails || 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
-    await this.prisma.$transaction(async (tx) => {
+    // Immediate activation: the provider hands the eSIM profile back now, so the line carries it from the start.
+    const issuedIccid = generatesEsim ? issueSerial(sim) : storedIccid;
+    const issuedQr = generatesEsim && issuedIccid ? await renderEsimQr(msisdn, issuedIccid) : null;
+    const created = await this.runTx(async (tx) => {
       const created = await tx.line.create({
         data: {
           msisdn,
-          iccid: esim ? null : iccid,
+          iccid: issuedIccid,
           esim,
+          esimQr: issuedQr,
           status: 'active',
           packageId: pkg.id,
           posId: pos.id,
@@ -645,47 +838,85 @@ export class OfficeService implements OnModuleInit {
           endsAt: periodEnd(new Date(), pkg.months),
         },
       });
-      await this.move(tx, pos.id, posDelta, actor.operatorId, 'activate', pkg.name, {
+      await this.move(tx, pos.id, posDelta, actor.operatorId, 'activate', '', {
         msisdn,
         lineId: created.id,
         companyName: pkg.company?.name ?? '',
         packageName: pkg.name,
         packagePrice: unit,
+        providerCost: activationProviderCost(pkgTerms.subscription.branchCost, esim, esimFee),
+        ...(esim ? { esimPrice: esimFee } : {}),
+        period: periodOf(pkg.months, created.endsAt),
       });
+      return created;
     });
-    return { applied: true };
+    return {
+      applied: true,
+      debited: posDelta < 0,
+      line: { id: created.id, msisdn: created.msisdn, iccid: created.iccid, esim: created.esim, esimQr: created.esimQr },
+    };
   }
 
-  async operate(gate: Gate, lineId: string, action: Exclude<Action, 'activate' | 'switch'>, body: { outcome?: unknown }) {
+  async operate(gate: Gate, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim'>, body: { outcome?: unknown }) {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
     if (!outcome) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
+    if (action === 'charge') return this.restartDisconnected(actor, line, outcome);
     this.assertRunnable(line.package, action);
     if (line.status === 'disconnected') fail(400, 'INVALID');
-    if (action === 'charge' && line.status !== 'active') fail(400, 'INVALID');
-    if (action === 'freeze' && line.status !== 'active') fail(400, 'INVALID');
+    if ((action === 'disconnect' || action === 'freeze') && line.status !== 'active') fail(400, 'INVALID');
     if (action === 'unfreeze' && line.status !== 'frozen') fail(400, 'INVALID');
-    const charged =
-      action === 'charge'
-        ? await this.buyPrice(line.packageId, line.posId, chargeDebit(lineTermsOf(line.terms, line.package)))
-        : 0;
-    const posDelta = action === 'charge' ? -charged : 0;
-    if (outcome === 'fail' || !isAutomatic(line.package, action)) {
+    if (action === 'disconnect') {
+      if (outcome === 'fail' || !this.runsNow(line.package, 'disconnect')) {
+        const task = await this.openTask({
+          action, actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn,
+          note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        });
+        return { applied: false, taskId: task.id };
+      }
+      await this.runTx(async (tx) => {
+        const settled = await this.disconnectSettlementFor(tx, line, new Date());
+        const sale = {
+          msisdn: line.msisdn,
+          lineId: line.id,
+          companyName: line.package.company?.name ?? '',
+          packageName: line.package.name,
+          packagePrice: settled?.posPrice ?? line.package.posPrice,
+          providerCost: settled?.providerCost,
+        };
+        if (settled) await this.move(tx, line.posId, settled.amount, actor.operatorId, 'disconnect', '', sale);
+        else await this.recordOp(tx, line.posId, actor.operatorId, 'disconnect', sale);
+        await tx.line.update({ where: { id: line.id }, data: { status: 'disconnected' } });
+      });
+      return { applied: true, debited: false };
+    }
+    const posDelta = 0;
+    if (outcome === 'fail' || !this.runsNow(line.package, action)) {
       const task = await this.openTask({
         action, actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta, msisdn: line.msisdn,
         note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
-    await this.prisma.$transaction(async (tx) => {
-      if (posDelta !== 0) await this.move(tx, line.posId, posDelta, actor.operatorId, action, line.package.name, saleOf(line, undefined, charged));
-      if (action === 'disconnect') await tx.line.update({ where: { id: line.id }, data: { status: 'disconnected' } });
+    await this.runTx(async (tx) => {
       if (action === 'freeze') await tx.line.update({ where: { id: line.id }, data: { status: 'frozen' } });
       if (action === 'unfreeze') await tx.line.update({ where: { id: line.id }, data: { status: 'active' } });
+      await this.recordOp(tx, line.posId, actor.operatorId, action, saleOf(line));
     });
-    return { applied: true };
+    return { applied: true, debited: false };
+  }
+
+  /** The amount a disconnect would credit now, by the same rule as the disconnect itself. Moves nothing. */
+  async disconnectQuote(gate: Gate, lineId: string) {
+    const actor = await this.actor(gate);
+    const line = await this.visibleLine(actor, lineId);
+    if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
+    this.assertRunnable(line.package, 'disconnect');
+    if (line.status !== 'active') fail(400, 'INVALID');
+    const settled = await this.disconnectSettlementFor(this.prisma, line, new Date());
+    return { amount: settled?.amount ?? 0, runsNow: this.runsNow(line.package, 'disconnect') };
   }
 
   async switchPackage(gate: Gate, lineId: string, body: { packageCode?: unknown; outcome?: unknown }) {
@@ -709,32 +940,35 @@ export class OfficeService implements OnModuleInit {
       packageTermsOf(line.package),
       packageTermsOf(next),
       allowed.map((item) => item.target.code),
-      new Date(),
     );
     if ('error' in switched) fail(400, 'INVALID');
     this.assertRunnable(next, 'switch');
-    const nextPrice = await this.buyPrice(next.id, line.posId, switched.debit);
-    const posDelta = -nextPrice;
-    if (outcome === 'fail' || !isAutomatic(line.package, 'switch')) {
+    if (outcome === 'fail' || !this.runsNow(line.package, 'switch')) {
+      const quote = await this.switchQuote(this.prisma, line, next, new Date());
       const task = await this.openTask({
         action: 'switch', actor, posId: line.posId, packageId: line.packageId, nextPackageId: next.id, lineId: line.id,
-        posDelta, msisdn: line.msisdn, note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        posDelta: -quote.difference, msisdn: line.msisdn, note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
-    await this.prisma.$transaction(async (tx) => {
-      if (posDelta !== 0) await this.move(tx, line.posId, posDelta, actor.operatorId, 'switch', next.name, saleOf(line, next, nextPrice));
+    let debited = false;
+    await this.runTx(async (tx) => {
+      const quote = await this.switchQuote(tx, line, next, new Date());
+      const posDelta = -quote.difference;
+      debited = posDelta < 0;
+      const sale = { ...saleOf(line, next, quote.newPrice), providerCost: quote.providerCost, period: periodOf(next.months, null) };
+      if (posDelta !== 0) await this.move(tx, line.posId, posDelta, actor.operatorId, 'switch', '', sale);
+      else await this.recordOp(tx, line.posId, actor.operatorId, 'switch', sale);
       await tx.line.update({
         where: { id: line.id },
         data: {
-          endsAt: switched.endsAt,
           terms: switched.terms as unknown as Prisma.InputJsonValue,
           packageId: next.id,
           opsLocked: false,
         },
       });
     });
-    return { applied: true };
+    return { applied: true, debited };
   }
 
   async extend(gate: Gate, lineId: string, body: { outcome?: unknown; targetCode?: unknown }) {
@@ -745,7 +979,7 @@ export class OfficeService implements OnModuleInit {
     if (targetCode === null) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
-    if (line.status !== 'active') fail(400, 'INVALID');
+    if (line.status !== 'active' || line.endsAt.getTime() <= Date.now()) fail(400, 'INVALID');
     this.assertRunnable(line.package, 'extend');
     const terms = lineTermsOf(line.terms, line.package);
     const base = line.endsAt > new Date() ? line.endsAt : new Date();
@@ -756,7 +990,7 @@ export class OfficeService implements OnModuleInit {
     const renewal = target ? renewOnto(terms, packageTermsOf(target), base) : renewStay(terms, base);
     if ('error' in renewal) fail(400, 'INVALID');
     const posDelta = -(await this.buyPrice(target?.id ?? line.packageId, line.posId, renewal.debit));
-    if (outcome === 'fail' || !isAutomatic(line.package, 'extend')) {
+    if (outcome === 'fail' || !this.runsNow(line.package, 'extend')) {
       const task = await this.openTask({
         action: 'extend', actor, posId: line.posId, packageId: line.packageId, nextPackageId: target?.id,
         lineId: line.id, posDelta, msisdn: line.msisdn,
@@ -764,15 +998,15 @@ export class OfficeService implements OnModuleInit {
       });
       return { applied: false, taskId: task.id };
     }
-    await this.prisma.$transaction(async (tx) => {
+    await this.runTx(async (tx) => {
       await this.move(
         tx,
         line.posId,
         posDelta,
         actor.operatorId,
         'extend',
-        target?.name ?? line.package.name,
-        saleOf(line, target ?? undefined, -posDelta),
+        '',
+        { ...saleOf(line, target ?? undefined, -posDelta), period: periodOf(windowMonthsOf(renewal.terms), renewal.endsAt) },
       );
       await tx.line.update({
         where: { id: line.id },
@@ -783,7 +1017,7 @@ export class OfficeService implements OnModuleInit {
         },
       });
     });
-    return { applied: true };
+    return { applied: true, debited: posDelta < 0 };
   }
 
   async reactivate(gate: Gate, lineId: string, body: { outcome?: unknown }) {
@@ -792,65 +1026,101 @@ export class OfficeService implements OnModuleInit {
     if (!outcome) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
-    if (line.status !== 'disconnected') fail(400, 'INVALID');
-    this.assertRunnable(line.package, 'reactivate');
-    const posDelta = -(await this.buyPrice(line.packageId, line.posId, line.package.posPrice));
-    if (outcome === 'fail' || !isAutomatic(line.package, 'activate')) {
+    return this.restartDisconnected(actor, line, outcome);
+  }
+
+  async refreshLine(gate: Gate, lineId: string, body: { outcome?: unknown }) {
+    const actor = await this.actor(gate);
+    const outcome = asOutcome(body.outcome);
+    if (!outcome) fail(400, 'INVALID');
+    const line = await this.visibleLine(actor, lineId);
+    if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
+    const mode = refreshMode(line.package.actionModes);
+    if (mode === 'off') fail(400, 'OPERATION_DISABLED');
+    if (outcome === 'fail' || mode !== 'auto') {
       const task = await this.openTask({
-        action: 'reactivate', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta, msisdn: line.msisdn,
+        action: 'refresh', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn,
         note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
-    await this.prisma.$transaction(async (tx) => {
-      await this.move(tx, line.posId, posDelta, actor.operatorId, 'reactivate', line.package.name, saleOf(line, undefined, -posDelta));
-      await tx.line.update({
-        where: { id: line.id },
-        data: { status: 'active', endsAt: periodEnd(new Date(), line.package.months) },
-      });
+    await this.runTx(async (tx) => {
+      await this.recordOp(tx, line.posId, actor.operatorId, 'refresh', saleOf(line));
     });
-    return { applied: true };
+    return { applied: true, debited: false };
   }
 
+  /** The new number may be unknown until the branch has it: a task takes it at completion. */
   async renameLine(gate: Gate, lineId: string, body: { msisdn?: unknown; outcome?: unknown }) {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
     const msisdn = typeof body.msisdn === 'string' ? body.msisdn.trim() : '';
-    if (!outcome || !/^05\d{8}$/.test(msisdn)) fail(400, 'INVALID');
+    if (!outcome || (msisdn && !/^05\d{8}$/.test(msisdn))) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     this.assertRunnable(line.package, 'rename');
     if (line.status !== 'active') fail(400, 'INVALID');
     if (msisdn === line.msisdn) fail(400, 'INVALID');
-    const taken = await this.prisma.line.findUnique({ where: { msisdn } });
-    if (taken) fail(400, 'NUMBER_TAKEN');
-    if (outcome === 'success' && isAutomatic(line.package, 'rename')) {
-      await this.prisma.line.update({ where: { id: line.id }, data: { msisdn } });
-      return { applied: true as const };
+    if (msisdn) {
+      const taken = await this.prisma.line.findUnique({ where: { msisdn } });
+      if (taken) fail(400, 'NUMBER_TAKEN');
+    }
+    if (outcome === 'success' && this.runsNow(line.package, 'rename')) {
+      if (!msisdn) fail(400, 'INVALID');
+      await this.runTx(async (tx) => {
+        await tx.line.update({ where: { id: line.id }, data: { msisdn } });
+        await this.recordOp(tx, line.posId, actor.operatorId, 'rename', saleOf({ ...line, msisdn }));
+      });
+      return { applied: true, debited: false };
     }
     const task = await this.openTask({
-      action: 'rename', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn,
+      action: 'rename', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: msisdn || null,
       note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
     });
     return { applied: false, taskId: task.id };
   }
 
-  async swapSim(gate: Gate, lineId: string, body: { iccid?: unknown; outcome?: unknown }) {
+  /** A SIM the branch already holds, physical or eSIM. Free. A new eSIM is `requestEsim`. */
+  async swapSim(gate: Gate, lineId: string, body: { iccid?: unknown; esim?: unknown; qr?: unknown; outcome?: unknown }) {
     const actor = await this.actor(gate);
     const outcome = asOutcome(body.outcome);
     const iccid = typeof body.iccid === 'string' ? body.iccid.trim() : '';
+    const esim = body.esim === true;
+    const qr = esim ? readQr(body.qr) ?? null : null;
     if (!outcome || iccid.length < 8) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     this.assertRunnable(line.package, 'sim');
     if (line.status !== 'active') fail(400, 'INVALID');
-    if (outcome === 'success' && isAutomatic(line.package, 'sim')) {
-      await this.prisma.line.update({ where: { id: line.id }, data: { iccid, esim: false } });
-      return { applied: true as const };
+    const rules = simRulesOf(line.package.company);
+    if (esim && !rules.esim) fail(400, 'ESIM_UNSUPPORTED');
+    const refusal = simRefusal(rules, iccid);
+    if (refusal) fail(400, refusal);
+    if (outcome === 'success' && this.runsNow(line.package, 'sim')) {
+      await this.runTx(async (tx) => {
+        await tx.line.update({ where: { id: line.id }, data: { iccid, esim, esimQr: qr } });
+        await this.recordOp(tx, line.posId, actor.operatorId, 'sim', saleOf(line));
+      });
+      return { applied: true, debited: false };
     }
     const task = await this.openTask({
-      action: 'sim', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn, iccid,
+      action: 'sim', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn, iccid, esim, esimQr: qr,
       note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+    });
+    return { applied: false, taskId: task.id };
+  }
+
+  /** The customer wants an eSIM issued (lost SIM, or plastic to eSIM). Always a branch task; the employee attaches the serial and the QR. */
+  async requestEsim(gate: Gate, lineId: string) {
+    const actor = await this.actor(gate);
+    const line = await this.visibleLine(actor, lineId);
+    if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
+    if (line.status !== 'active') fail(400, 'INVALID');
+    if (!simRulesOf(line.package.company).esim) fail(400, 'ESIM_UNSUPPORTED');
+    const { price } = esimPriceOf({ pkg: line.package, provider: line.package.provider, company: line.package.company });
+    const task = await this.openTask({
+      action: 'esim', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: -price, msisdn: line.msisdn, iccid: null, esim: true,
+      note: 'مهمة فرع',
     });
     return { applied: false, taskId: task.id };
   }
@@ -868,8 +1138,8 @@ export class OfficeService implements OnModuleInit {
     } = {},
   ) {
     const actor = await this.actor(gate);
-    const seesTasks = actor.isBranchOwner || actor.grants.includes('tasks');
-    const branch = actor.layer === 'branch' && seesTasks;
+    const handler = canHandleTasks(actor);
+    const accounts = await this.accounts();
     const status = taskStatusOf(query.status);
     const action = typeof query.action === 'string' ? query.action.trim() : '';
     const packageCode = typeof query.packageCode === 'string' ? query.packageCode.trim() : '';
@@ -888,33 +1158,36 @@ export class OfficeService implements OnModuleInit {
         })
       : null;
     if (matchedPackages && matchedPackages.length === 0) {
-      return { tasks: [], nextCursor: null };
+      return { tasks: [], nextCursor: null, total: 0 };
     }
-    const read = await this.prisma.officeTask.findMany({
-      where: {
-        ...(branch ? {} : { submitterId: actor.id }),
-        ...(status ? { status } : {}),
-        ...(action ? { action } : {}),
-        ...(digits ? { msisdn: { contains: digits } } : {}),
-        ...(matchedPackages ? { packageId: { in: matchedPackages.map((row) => row.id) } } : {}),
-        AND: afterFeed(feedPosition(query.cursor)),
-      },
-      include: {
-        submitter: true,
-        assignee: true,
-        notes: { orderBy: { createdAt: 'desc' }, take: 1, select: { body: true } },
-      },
-      orderBy: [...NEWEST_FIRST],
-      take: TASKS_PAGE + 1,
-    });
+    const where = {
+      ...taskWhereFor(actor, accounts),
+      ...(status ? { status } : {}),
+      ...(action ? { action } : {}),
+      ...(digits ? { msisdn: { contains: digits } } : {}),
+      ...(matchedPackages ? { packageId: { in: matchedPackages.map((row) => row.id) } } : {}),
+    };
+    const [read, total] = await Promise.all([
+      this.prisma.officeTask.findMany({
+        where: { ...where, AND: afterFeed(feedPosition(query.cursor)) },
+        include: {
+          submitter: true,
+          assignee: true,
+          notes: { orderBy: { createdAt: 'desc' }, take: 1, select: { body: true } },
+        },
+        orderBy: [...NEWEST_FIRST],
+        take: TASKS_PAGE + 1,
+      }),
+      this.prisma.officeTask.count({ where }),
+    ]);
     const { page: rows, nextCursor } = mergeFeed([read], TASKS_PAGE);
-    const accounts = await this.accounts();
     const byId = new Map(accounts.map((account) => [account.id, account]));
     const packages = await this.prisma.package.findMany({ include: { company: true, provider: true } });
     const byPackage = new Map(packages.map((row) => [row.id, row]));
     return {
       tasks: rows.map((row) => {
         const pkg = byPackage.get(row.packageId);
+        const open = row.status === 'pending' || row.status === 'working';
         return {
           id: row.id,
           action: row.action,
@@ -928,22 +1201,22 @@ export class OfficeService implements OnModuleInit {
           companyName: pkg?.company?.name ?? '',
           providerName: pkg?.provider?.name ?? '',
           note: row.note,
-          resultNote: row.status === 'pending' && !seesTasks ? null : row.resultNote,
-          lastNote: seesTasks || row.submitterId === actor.id ? row.notes[0]?.body ?? null : null,
-          log: seesTasks ? row.log : '',
-          canTake: branch && row.status === 'pending',
-          canWork: branch && row.assigneeId === actor.id && row.status === 'working',
-          canCancel: row.submitterId === actor.id && (row.status === 'pending' || row.status === 'working'),
+          resultNote: row.status === 'pending' && !handler ? null : row.resultNote,
+          lastNote: row.notes[0]?.body ?? null,
+          log: handler ? row.log : '',
+          canTake: handler && row.status === 'pending',
+          canWork: handler && row.assigneeId === actor.id && row.status === 'working',
+          canCancel: row.submitterId === actor.id && open,
         };
       }),
       nextCursor,
+      total,
     };
   }
 
   async task(gate: Gate, id: string) {
     const actor = await this.actor(gate);
-    const seesTasks = actor.isBranchOwner || actor.grants.includes('tasks');
-    const branch = actor.layer === 'branch' && seesTasks;
+    const handler = canHandleTasks(actor);
     const row = await this.prisma.officeTask.findUnique({
       where: { id },
       include: {
@@ -954,8 +1227,8 @@ export class OfficeService implements OnModuleInit {
       },
     });
     if (!row) fail(404, 'NOT_FOUND');
-    if (!branch && row.submitterId !== actor.id) fail(403, 'FORBIDDEN');
     const accounts = await this.accounts();
+    if (!taskReaders(row, accounts).has(actor.id)) fail(403, 'FORBIDDEN');
     const byId = new Map(accounts.map((account) => [account.id, account]));
     const pkg =
       row.line?.package ??
@@ -970,7 +1243,7 @@ export class OfficeService implements OnModuleInit {
       authorName: string | null;
       at: string;
     }[] = [];
-    if (seesTasks && row.log.trim()) {
+    if (handler && row.log.trim()) {
       row.log
         .split('\n')
         .map((line) => line.trim())
@@ -986,18 +1259,16 @@ export class OfficeService implements OnModuleInit {
           });
         });
     }
-    if (seesTasks || row.submitterId === actor.id) {
-      for (const note of row.notes) {
-        events.push({
-          id: note.id,
-          kind: 'note',
-          body: note.body,
-          authorName: note.author.nickname || note.author.loginName,
-          at: note.createdAt.toISOString(),
-        });
-      }
+    for (const note of row.notes) {
+      events.push({
+        id: note.id,
+        kind: 'note',
+        body: note.body,
+        authorName: note.author.nickname || note.author.loginName,
+        at: note.createdAt.toISOString(),
+      });
     }
-    const resultNote = row.status === 'pending' && !seesTasks ? null : row.resultNote;
+    const resultNote = row.status === 'pending' && !handler ? null : row.resultNote;
     if (resultNote) {
       events.push({
         id: 'result',
@@ -1021,18 +1292,20 @@ export class OfficeService implements OnModuleInit {
         msisdn: row.line?.msisdn ?? row.msisdn,
         iccid: row.line?.iccid ?? row.iccid,
         esim: row.line?.esim ?? row.esim,
+        esimQr: row.line?.esimQr ?? row.esimQr ?? null,
+        sim: simRulesOf(pkg?.company ?? null),
         lineStatus: row.line?.status ?? null,
         packageName: pkg?.name ?? '',
         companyName: pkg?.company?.name ?? '',
         providerName: pkg?.provider?.name ?? '',
         note: row.note,
         resultNote,
-        log: seesTasks ? row.log : '',
+        log: handler ? row.log : '',
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
-        canTake: branch && row.status === 'pending',
-        canWork: branch && row.assigneeId === actor.id && row.status === 'working',
-        canNote: branch && open,
+        canTake: handler && row.status === 'pending',
+        canWork: handler && row.assigneeId === actor.id && row.status === 'working',
+        canNote: open,
         canCancel: row.submitterId === actor.id && open,
       },
       events,
@@ -1040,53 +1313,85 @@ export class OfficeService implements OnModuleInit {
   }
 
   async addTaskNote(gate: Gate, id: string, body: { text?: unknown }) {
-    const actor = await this.branchActor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
+    const actor = await this.actor(gate);
     const text = typeof body.text === 'string' ? body.text.trim() : '';
     if (!text || text.length > 2000) fail(400, 'INVALID');
     const current = await this.prisma.officeTask.findUnique({ where: { id } });
     if (!current) fail(404, 'NOT_FOUND');
+    if (!taskReaders(current, await this.accounts()).has(actor.id)) fail(403, 'FORBIDDEN');
     if (current.status !== 'pending' && current.status !== 'working') fail(400, 'INVALID');
-    await this.prisma.officeTaskNote.create({
-      data: { taskId: id, authorId: actor.id, body: text },
+    const written = await this.runTx(async (tx) => {
+      await tx.officeTaskNote.create({ data: { taskId: id, authorId: actor.id, body: text } });
+      return this.taskNotice(tx, 'note', current, actor, { authorName: actor.nickname, excerpt: excerpt(text) });
     });
+    await this.publishQuietly(written);
     return { ok: true };
   }
 
   async takeTask(gate: Gate, id: string) {
     const actor = await this.branchActor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
+    if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
     const current = await this.prisma.officeTask.findUnique({ where: { id } });
     if (!current || current.status !== 'pending') fail(400, 'INVALID');
-    const updated = await this.prisma.officeTask.updateMany({
-      where: { id, status: 'pending' },
-      data: { status: 'working', assigneeId: actor.id, log: this.noteLog(current.log, `أخذها ${actor.nickname}`) },
+    const written = await this.runTx(async (tx) => {
+      const updated = await tx.officeTask.updateMany({
+        where: { id, status: 'pending' },
+        data: { status: 'working', assigneeId: actor.id, log: this.noteLog(current.log, `أخذها ${actor.nickname}`) },
+      });
+      if (updated.count !== 1) fail(400, 'INVALID');
+      return this.taskNotice(tx, 'taken', { ...current, assigneeId: actor.id }, actor, { handlerName: actor.nickname });
     });
-    if (updated.count !== 1) fail(400, 'INVALID');
+    await this.publishQuietly(written);
     return { ok: true };
   }
 
   async releaseTask(gate: Gate, id: string) {
     const actor = await this.branchActor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
+    if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
     const current = await this.prisma.officeTask.findUnique({ where: { id } });
     if (!current || current.status !== 'working' || current.assigneeId !== actor.id) fail(400, 'INVALID');
-    const updated = await this.prisma.officeTask.updateMany({
-      where: { id, status: 'working', assigneeId: actor.id },
-      data: { status: 'pending', assigneeId: null, log: this.noteLog(current.log, `أرجعها ${actor.nickname}`) },
+    const written = await this.runTx(async (tx) => {
+      const updated = await tx.officeTask.updateMany({
+        where: { id, status: 'working', assigneeId: actor.id },
+        data: { status: 'pending', assigneeId: null, log: this.noteLog(current.log, `أرجعها ${actor.nickname}`) },
+      });
+      if (updated.count !== 1) fail(400, 'INVALID');
+      return this.taskNotice(tx, 'released', { ...current, assigneeId: null }, actor);
     });
-    if (updated.count !== 1) fail(400, 'INVALID');
+    await this.publishQuietly(written);
     return { ok: true };
   }
 
-  async completeTask(gate: Gate, id: string, body: { note?: unknown }) {
+  /** Closing a task may carry what the provider handed back: an eSIM serial and QR, or the new number. */
+  async completeTask(gate: Gate, id: string, body: { note?: unknown; iccid?: unknown; qr?: unknown; msisdn?: unknown }) {
     const actor = await this.branchActor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
+    if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
     const note = typeof body.note === 'string' ? body.note.trim() : '';
+    const givenIccid = typeof body.iccid === 'string' ? body.iccid.trim() : '';
+    const givenQr = readQr(body.qr) ?? null;
+    const givenMsisdn = typeof body.msisdn === 'string' ? body.msisdn.trim() : '';
     const task = await this.prisma.officeTask.findUnique({ where: { id } });
     if (!task || task.status !== 'working' || task.assigneeId !== actor.id) fail(400, 'INVALID');
-    await this.prisma.$transaction(async (tx) => {
+    const handed: { iccid?: string; msisdn?: string } = {};
+    if (task.action === 'esim') {
+      if (!givenIccid || !givenQr) fail(400, 'INVALID');
+    }
+    if (task.action === 'rename') {
+      if (!/^05\d{8}$/.test(givenMsisdn)) fail(400, 'INVALID');
+      const taken = await this.prisma.line.findUnique({ where: { msisdn: givenMsisdn } });
+      if (taken && taken.id !== task.lineId) fail(400, 'NUMBER_TAKEN');
+      handed.msisdn = givenMsisdn;
+    }
+    if (givenIccid && (task.action === 'esim' || (task.esim && (task.action === 'activate' || task.action === 'sim')))) {
+      const taskPkg = await this.prisma.package.findUnique({ where: { id: task.packageId }, include: { company: true } });
+      const refusal = simRefusal(simRulesOf(taskPkg?.company ?? null), givenIccid);
+      if (refusal) fail(400, refusal);
+      handed.iccid = givenIccid;
+    }
+    const handedQr = task.action === 'esim' || task.esim ? givenQr ?? task.esimQr : null;
+    const written = await this.runTx(async (tx) => {
       let sale: Sale | undefined;
+      let posted = false;
       if (task.action === 'activate') {
         const pkg = await tx.package.findUnique({
           where: { id: task.packageId },
@@ -1106,8 +1411,9 @@ export class OfficeService implements OnModuleInit {
         const created = await tx.line.create({
           data: {
             msisdn: task.msisdn || (await this.freshMsisdn()),
-            iccid: task.esim ? null : task.iccid,
+            iccid: task.esim ? handed.iccid ?? null : task.iccid,
             esim: task.esim,
+            esimQr: task.esim ? handedQr : null,
             status: 'active',
             packageId: task.packageId,
             posId: task.posId,
@@ -1115,18 +1421,51 @@ export class OfficeService implements OnModuleInit {
             endsAt: periodEnd(new Date(), pkg.months),
           },
         });
+        const pkgTerms = packageTermsOf(pkg);
+        const packagePrice = await this.buyPrice(pkg.id, task.posId, subscriptionDebit(pkgTerms));
         sale = {
           msisdn: created.msisdn,
           lineId: created.id,
           companyName: pkg.company?.name ?? '',
           packageName: pkg.name,
-          packagePrice: await this.buyPrice(pkg.id, task.posId, subscriptionDebit(packageTermsOf(pkg))),
+          packagePrice,
+          providerCost: activationProviderCost(
+            pkgTerms.subscription.branchCost,
+            task.esim,
+            esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price,
+          ),
+          // The fee folded into the task's debit when it was opened: what the row's amount holds beyond the package price.
+          ...(task.esim ? { esimPrice: Math.max(0, -task.posDelta - packagePrice) } : {}),
+          period: periodOf(pkg.months, created.endsAt),
         };
       }
-      if (task.lineId && task.action === 'disconnect') await tx.line.update({ where: { id: task.lineId }, data: { status: 'disconnected' } });
+      let disconnectAmount: number | undefined;
+      let switchAmount: number | undefined;
+      if (task.lineId && task.action === 'disconnect') {
+        const current = await tx.line.findUnique({
+          where: { id: task.lineId },
+          include: { package: { include: { company: true, provider: true } } },
+        });
+        if (current) {
+          const settled = await this.disconnectSettlementFor(tx, current, new Date());
+          await tx.line.update({ where: { id: current.id }, data: { status: 'disconnected' } });
+          if (settled) {
+            await this.move(tx, task.posId, settled.amount, actor.operatorId, 'disconnect', note, {
+              msisdn: current.msisdn,
+              lineId: current.id,
+              companyName: current.package.company?.name ?? '',
+              packageName: current.package.name,
+              packagePrice: settled.posPrice,
+              providerCost: settled.providerCost,
+            });
+            disconnectAmount = settled.amount;
+            posted = true;
+          }
+        }
+      }
       if (task.lineId && task.action === 'freeze') await tx.line.update({ where: { id: task.lineId }, data: { status: 'frozen' } });
       if (task.lineId && task.action === 'unfreeze') await tx.line.update({ where: { id: task.lineId }, data: { status: 'active' } });
-      if (task.lineId && (task.action === 'extend' || task.action === 'reactivate')) {
+      if (task.lineId && (task.action === 'extend' || task.action === 'reactivate' || task.action === 'charge')) {
         const current = await tx.line.findUnique({
           where: { id: task.lineId },
           include: { package: { include: { company: true, provider: true } } },
@@ -1147,15 +1486,24 @@ export class OfficeService implements OnModuleInit {
               : renewStay(lineTermsOf(current.terms, current.package), base)
             : null;
           if (renewal && 'error' in renewal) fail(400, 'INVALID');
+          const openedMonths = current.package.months;
+          const openedTerms = renewal
+            ? renewal.terms
+            : { ...lineTermsOf(current.terms, current.package), windowMonths: openedMonths };
+          const endsAt = renewal?.endsAt ?? periodEnd(base, openedMonths);
           await tx.line.update({
             where: { id: current.id },
             data: {
-              status: task.action === 'reactivate' ? 'active' : current.status,
-              endsAt: renewal?.endsAt ?? periodEnd(base, current.package.months),
-              ...(renewal ? { terms: renewal.terms as unknown as Prisma.InputJsonValue } : {}),
+              status: task.action === 'reactivate' || task.action === 'charge' ? 'active' : current.status,
+              endsAt,
+              terms: openedTerms as unknown as Prisma.InputJsonValue,
               ...(target ? { packageId: target.id } : {}),
             },
           });
+          sale = {
+            ...saleOf(current, target ?? undefined, -task.posDelta),
+            period: periodOf(windowMonthsOf(openedTerms), endsAt),
+          };
         }
       }
       if (task.lineId && task.action === 'switch' && task.nextPackageId) {
@@ -1193,74 +1541,104 @@ export class OfficeService implements OnModuleInit {
           packageTermsOf(source),
           packageTermsOf(target),
           source.switches.map((item) => item.target.code),
-          new Date(),
         );
         if ('error' in switched) fail(400, 'INVALID');
+        const quote = await this.switchQuote(tx, current, target, new Date());
+        switchAmount = -quote.difference;
+        sale = {
+          msisdn: current.msisdn,
+          lineId: current.id,
+          companyName: target.company?.name ?? '',
+          packageName: target.name,
+          packagePrice: quote.newPrice,
+          providerCost: quote.providerCost,
+          period: periodOf(target.months, null),
+        };
+        if (switchAmount !== 0) await this.move(tx, task.posId, switchAmount, actor.operatorId, 'switch', note, sale);
+        else await this.recordOp(tx, task.posId, actor.operatorId, 'switch', sale);
+        posted = true;
         await tx.line.update({
           where: { id: current.id },
           data: {
-            endsAt: switched.endsAt,
             terms: switched.terms as unknown as Prisma.InputJsonValue,
             packageId: target.id,
             opsLocked: false,
           },
         });
       }
-      if (task.lineId && task.action === 'rename' && task.msisdn) {
-        await tx.line.update({ where: { id: task.lineId }, data: { msisdn: task.msisdn } });
+      if (task.lineId && task.action === 'rename' && handed.msisdn) {
+        await tx.line.update({ where: { id: task.lineId }, data: { msisdn: handed.msisdn } });
       }
       if (task.lineId && task.action === 'sim' && task.iccid) {
-        await tx.line.update({ where: { id: task.lineId }, data: { iccid: task.iccid, esim: false } });
+        await tx.line.update({ where: { id: task.lineId }, data: { iccid: task.iccid, esim: task.esim, esimQr: task.esim ? handedQr : null } });
+      }
+      if (task.lineId && task.action === 'esim' && handed.iccid) {
+        await tx.line.update({ where: { id: task.lineId }, data: { iccid: handed.iccid, esim: true, esimQr: handedQr } });
       }
       if (!sale && task.lineId) {
         const current = await tx.line.findUnique({ where: { id: task.lineId }, include: { package: { include: { company: true } } } });
-        if (current) sale = saleOf(current);
+        // An eSIM request's debit is the eSIM fee, and that fee is what the provider charges for it.
+        if (current) sale = task.action === 'esim' ? { ...saleOf(current), providerCost: -task.posDelta, esimPrice: -task.posDelta } : saleOf(current);
       }
-      if (task.posDelta !== 0) await this.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, note, sale);
-      await tx.officeTask.update({ where: { id }, data: { status: 'done', resultNote: note || null } });
-    });
-    if (task.submitterId !== actor.id) {
-      await this.notifyUsers([task.submitterId], {
-        kind: 'task_reply',
-        action: task.action,
-        msisdn: task.msisdn,
-        refId: task.id,
-        href: '/tasks',
+      if (task.action !== 'disconnect' && task.action !== 'switch' && task.posDelta !== 0) {
+        await this.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, note, sale);
+        posted = true;
+      }
+      if (!posted && sale) await this.recordOp(tx, task.posId, actor.operatorId, task.action, sale);
+      const postedAmount = switchAmount ?? disconnectAmount ?? task.posDelta;
+      await tx.officeTask.update({
+        where: { id },
+        data: {
+          status: 'done',
+          resultNote: note || null,
+          ...(handed.iccid ? { iccid: handed.iccid } : {}),
+          ...(handed.msisdn ? { msisdn: handed.msisdn } : {}),
+          ...(disconnectAmount !== undefined ? { posDelta: disconnectAmount } : {}),
+          ...(switchAmount !== undefined ? { posDelta: switchAmount } : {}),
+        },
       });
-    }
+      return this.taskNotice(tx, 'done', task, actor, {
+        packageName: sale?.packageName ?? '',
+        amount: postedAmount,
+        handlerName: actor.nickname,
+      });
+    });
+    await this.publishQuietly(written);
     return { ok: true };
   }
 
   async rejectTask(gate: Gate, id: string, body: { reason?: unknown }) {
     const actor = await this.branchActor(gate);
-    if (!actor.isBranchOwner && !actor.grants.includes('tasks')) fail(403, 'FORBIDDEN');
+    if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
     const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
     if (!reason) fail(400, 'INVALID');
     const task = await this.prisma.officeTask.findUnique({ where: { id } });
-    const updated = await this.prisma.officeTask.updateMany({
-      where: { id, status: 'working', assigneeId: actor.id },
-      data: { status: 'cancelled', resultNote: reason },
-    });
-    if (updated.count !== 1) fail(400, 'INVALID');
-    if (task && task.submitterId !== actor.id) {
-      await this.notifyUsers([task.submitterId], {
-        kind: 'task_reply',
-        action: task.action,
-        msisdn: task.msisdn,
-        refId: task.id,
-        href: '/tasks',
+    if (!task || task.status !== 'working' || task.assigneeId !== actor.id) fail(400, 'INVALID');
+    const written = await this.runTx(async (tx) => {
+      const updated = await tx.officeTask.updateMany({
+        where: { id, status: 'working', assigneeId: actor.id },
+        data: { status: 'cancelled', resultNote: reason },
       });
-    }
+      if (updated.count !== 1) fail(400, 'INVALID');
+      return this.taskNotice(tx, 'rejected', task, actor, { reason, handlerName: actor.nickname });
+    });
+    await this.publishQuietly(written);
     return { ok: true };
   }
 
   async cancelTask(gate: Gate, id: string) {
     const actor = await this.actor(gate);
-    const updated = await this.prisma.officeTask.updateMany({
-      where: { id, submitterId: actor.id, status: { in: ['pending', 'working'] } },
-      data: { status: 'cancelled', resultNote: null, assigneeId: null },
+    const task = await this.prisma.officeTask.findUnique({ where: { id } });
+    if (!task || task.submitterId !== actor.id || (task.status !== 'pending' && task.status !== 'working')) fail(400, 'INVALID');
+    const written = await this.runTx(async (tx) => {
+      const updated = await tx.officeTask.updateMany({
+        where: { id, submitterId: actor.id, status: { in: ['pending', 'working'] } },
+        data: { status: 'cancelled', resultNote: null, assigneeId: null },
+      });
+      if (updated.count !== 1) fail(400, 'INVALID');
+      return this.taskNotice(tx, 'cancelled', task, actor);
     });
-    if (updated.count !== 1) fail(400, 'INVALID');
+    await this.publishQuietly(written);
     return { ok: true };
   }
 
@@ -1511,7 +1889,7 @@ export class OfficeService implements OnModuleInit {
       roleId = primary.id;
     }
     const extraIds = jobs.map((role) => role.id).filter((id) => id !== roleId);
-    await this.prisma.$transaction(async (tx) => {
+    await this.runTx(async (tx) => {
       await tx.user.update({
         where: { id: target.id },
         data: { extraGrants: extraGrants.join(','), deniedGrants: [...denied].join(','), roleId },
@@ -1536,7 +1914,7 @@ export class OfficeService implements OnModuleInit {
     if (!visible.has(pos.id) || !visible.has(next.id)) fail(403, 'FORBIDDEN');
     const wallet = await this.prisma.wallet.findUnique({ where: { userId: pos.id } });
     if (!wallet || wallet.balance !== 0) fail(400, 'ZERO_WALLET_FIRST');
-    await this.prisma.$transaction(async (tx) => {
+    await this.runTx(async (tx) => {
       await tx.line.updateMany({ where: { posId: pos.id, originAgentId: null }, data: { originAgentId: pos.parentId } });
       await tx.user.update({ where: { id: pos.id }, data: { parentId: next.id } });
     });
@@ -1553,9 +1931,12 @@ export class OfficeService implements OnModuleInit {
     if (!next || next.id === line.posId) fail(400, 'INVALID');
     if (!visibleAccountIds(actor.id, actor.layer, accounts).has(next.id)) fail(403, 'FORBIDDEN');
     const locked = !line.package.companyId;
-    await this.prisma.line.update({
-      where: { id: line.id },
-      data: { posId: next.id, opsLocked: locked },
+    await this.runTx(async (tx) => {
+      await tx.line.update({
+        where: { id: line.id },
+        data: { posId: next.id, opsLocked: locked },
+      });
+      await this.recordOp(tx, line.posId, actor.operatorId, 'transfer', saleOf(line));
     });
     return { ok: true as const };
   }
@@ -1566,18 +1947,25 @@ export class OfficeService implements OnModuleInit {
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const keys = ['autoActivate', 'autoCharge', 'autoDisconnect', 'autoFreeze', 'autoSwitch', 'autoExtend', 'autoRename', 'autoSim', 'allowActivate', 'allowCharge', 'allowDisconnect', 'allowFreeze', 'allowSwitch', 'allowExtend', 'allowRename', 'allowSim', 'enabled'] as const;
-    const data: Record<string, boolean> = {};
+    const data: Record<string, boolean | Prisma.InputJsonValue> = {};
     for (const key of keys) if (typeof body[key] === 'boolean') data[key] = body[key] as boolean;
     const action = typeof body.action === 'string' ? body.action : '';
     const mode = body.mode === 'auto' || body.mode === 'manual' || body.mode === 'off' ? body.mode : '';
-    const pair = MODE_FIELDS[action];
-    if (pair && mode) {
-      const flags = flagsForMode(mode);
-      data[pair.auto] = flags.auto;
-      data[pair.allow] = flags.allow;
+    const known = (ACTION_KEYS as readonly string[]).includes(action);
+    if (known && mode) {
+      const modes = {} as Record<ActionKey, 'auto' | 'manual' | 'off'>;
+      for (const key of ACTION_KEYS) modes[key] = resolvePackageMode(pkg.actionModes, pkg, key);
+      modes[action as ActionKey] = mode;
+      data.actionModes = modes;
+      const pair = MODE_FIELDS[action];
+      if (pair) {
+        const flags = flagsForMode(mode);
+        data[pair.auto] = flags.auto;
+        data[pair.allow] = flags.allow;
+      }
     }
     if (Object.keys(data).length === 0) fail(400, 'INVALID');
-    await this.prisma.package.update({ where: { code }, data: data as { autoActivate?: boolean } });
+    await this.prisma.package.update({ where: { code }, data });
     return { ok: true as const };
   }
 
@@ -1615,20 +2003,14 @@ export class OfficeService implements OnModuleInit {
       renewalAgentPrice: pkg.renewalAgentPrice,
       renewalPosPrice: pkg.renewalPosPrice,
       renewalSubscriberPrice: pkg.renewalSubscriberPrice,
+      esimPrice: pkg.esimPrice,
+      esimPriceEffective: esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price,
+      esimPriceSource: esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).source,
       lines: pkg.lines.length,
       activeLines: pkg.lines.filter((line) => line.status === 'active').length,
       renewals: pkg.renewals.map((renewal) => renewal.target.code),
       switches: pkg.switches.map((item) => item.target.code),
-      modes: {
-        activate: actionMode(pkg.autoActivate, pkg.allowActivate),
-        charge: actionMode(pkg.autoCharge, pkg.allowCharge),
-        extend: actionMode(pkg.autoExtend, pkg.allowExtend),
-        disconnect: actionMode(pkg.autoDisconnect, pkg.allowDisconnect),
-        freeze: actionMode(pkg.autoFreeze, pkg.allowFreeze),
-        switch: actionMode(pkg.autoSwitch, pkg.allowSwitch),
-        rename: actionMode(pkg.autoRename, pkg.allowRename),
-        sim: actionMode(pkg.autoSim, pkg.allowSim),
-      },
+      modes: Object.fromEntries(ACTION_KEYS.map((key) => [key, resolvePackageMode(pkg.actionModes, pkg, key)])),
       offers: pkg.offers.map((offer) => ({
         loginName: offer.user.loginName,
         nickname: offer.user.nickname,
@@ -1670,10 +2052,13 @@ export class OfficeService implements OnModuleInit {
       renewal[key] = price;
     }
     if (!chainHolds(next) || !chainHolds(renewal)) fail(400, 'PRICE_BELOW_FLOOR');
+    const esimPrice = body.esimPrice === undefined ? undefined : body.esimPrice === null ? null : nonNegative(body.esimPrice);
+    if (esimPrice === null && body.esimPrice !== null) fail(400, 'INVALID');
     await this.prisma.package.update({
       where: { id: pkg.id },
       data: {
         ...next,
+        ...(esimPrice === undefined ? {} : { esimPrice }),
         renewalBranchCost: renewal.branchCost,
         renewalMainPrice: renewal.mainPrice,
         renewalAgentPrice: renewal.agentPrice,
@@ -1702,7 +2087,7 @@ export class OfficeService implements OnModuleInit {
       changes.push({ id: line.id, terms: repriced });
     }
     if (which.kind === 'target' && changes.length === 0) fail(400, 'INVALID');
-    await this.prisma.$transaction(async (tx) => {
+    await this.runTx(async (tx) => {
       for (const change of changes) {
         await tx.line.update({
           where: { id: change.id },
@@ -1748,7 +2133,7 @@ export class OfficeService implements OnModuleInit {
           target.provider.code !== pkg.provider.code,
       )
     ) fail(400, 'INVALID');
-    await this.prisma.$transaction(async (tx) => {
+    await this.runTx(async (tx) => {
       if (kind === 'renewals') {
         await tx.packageRenewal.deleteMany({ where: { packageId: pkg.id } });
         if (targets.length) {
@@ -1860,7 +2245,7 @@ export class OfficeService implements OnModuleInit {
 
   async ledger(gate: Gate, scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string }) {
     const actor = await this.actor(gate);
-    const operationKinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim'];
+    const operationKinds = PROVIDER_OPERATION_KINDS;
     const auditKinds = [...operationKinds, 'fund', 'self_fund'];
     if (scope !== 'operations' && scope !== 'audit') fail(404, 'NOT_FOUND');
     const allowed = scope === 'operations' ? operationKinds : auditKinds;
@@ -1871,19 +2256,22 @@ export class OfficeService implements OnModuleInit {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
       ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),
     };
-    const read = await this.prisma.walletEntry.findMany({
-      where: {
-        userId: actor.id,
-        kind: { in: kind ? [kind] : allowed },
-        ...(query.direction === 'in' ? { amount: { gt: 0 } } : {}),
-        ...(query.direction === 'out' ? { amount: { lt: 0 } } : {}),
-        ...(Object.keys(createdAt).length ? { createdAt } : {}),
-        AND: afterFeed(feedPosition(query.cursor)),
-      },
-      include: { actor: true },
-      orderBy: [...NEWEST_FIRST],
-      take: FEED_PAGE + 1,
-    });
+    const where = {
+      userId: actor.id,
+      kind: { in: kind ? [kind] : allowed },
+      ...(query.direction === 'in' ? { amount: { gt: 0 } } : {}),
+      ...(query.direction === 'out' ? { amount: { lt: 0 } } : {}),
+      ...(Object.keys(createdAt).length ? { createdAt } : {}),
+    };
+    const [read, total] = await Promise.all([
+      this.prisma.walletEntry.findMany({
+        where: { ...where, AND: afterFeed(feedPosition(query.cursor)) },
+        include: { actor: true },
+        orderBy: [...NEWEST_FIRST],
+        take: FEED_PAGE + 1,
+      }),
+      this.prisma.walletEntry.count({ where }),
+    ]);
     const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
     return {
       entries: rows.map((row) => ({
@@ -1899,149 +2287,204 @@ export class OfficeService implements OnModuleInit {
         actorLogin: row.actor.loginName,
       })),
       nextCursor,
+      total,
     };
   }
 
-  async audit(gate: Gate, query: { cursor?: string; kind?: string } = {}) {
+  async audit(gate: Gate, query: { cursor?: string; action?: string; result?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
     const actor = await this.actor(gate);
     const accounts = await this.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
-    const numberKinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim'];
-    if (posIds.length === 0) return { entries: [], nextCursor: null };
-    const showProvider = actor.layer === 'branch';
-    const after = afterFeed(feedPosition(query.cursor));
-    const kind = query.kind === 'enter' && showProvider ? 'enter' : numberKinds.find((item) => item === query.kind);
-    const size = FEED_PAGE + 1;
-    const [read1, read2, read3] = await Promise.all([
-      kind === 'enter'
-        ? []
-        : this.prisma.walletEntry.findMany({
-            where: { userId: { in: posIds }, kind: { in: kind ? [kind] : numberKinds }, AND: after },
-            orderBy: [...NEWEST_FIRST],
-            take: size,
-            include: { actor: { select: { loginName: true, nickname: true } } },
-          }),
-      kind === 'enter'
-        ? []
-        : this.prisma.officeTask.findMany({
-            // A done task that moved money is already shown by its wallet entry.
-            where: {
-              posId: { in: posIds },
-              action: { in: kind ? [kind] : numberKinds },
-              NOT: { status: 'done', posDelta: { not: 0 } },
-              AND: after,
-            },
-            orderBy: [...NEWEST_FIRST],
-            take: size,
-            include: {
-              submitter: { select: { loginName: true, nickname: true } },
-              assignee: { select: { loginName: true, nickname: true } },
-              line: { include: { package: { include: { company: true, provider: true } } } },
-            },
-          }),
-      showProvider && (!kind || kind === 'enter')
-        ? this.prisma.accessLog.findMany({
-            where: { AND: after },
-            orderBy: [...NEWEST_FIRST],
-            take: size,
-            include: { actor: { select: { nickname: true, loginName: true } } },
-          })
-        : [],
-    ]);
-    const merged = mergeFeed<{ createdAt: Date; id: string; from: 'entry' | 'task' | 'visit' }>(
-      [
-        read1.map((row) => ({ createdAt: row.createdAt, id: row.id, from: 'entry' as const })),
-        read2.map((row) => ({ createdAt: row.createdAt, id: row.id, from: 'task' as const })),
-        read3.map((row) => ({ createdAt: row.createdAt, id: row.id, from: 'visit' as const })),
-      ],
-      FEED_PAGE,
-    );
-    const keep = (from: 'entry' | 'task' | 'visit') => new Set(merged.page.filter((row) => row.from === from).map((row) => row.id));
-    const entryIds = keep('entry');
-    const taskIds = keep('task');
-    const visitIds = keep('visit');
-    const entries = read1.filter((row) => entryIds.has(row.id));
-    const tasks = read2.filter((row) => taskIds.has(row.id));
-    const visits = read3.filter((row) => visitIds.has(row.id));
-    const packageIds = [...new Set(tasks.flatMap((task) => [task.packageId, task.nextPackageId].filter((id): id is string => !!id)))];
-    const packages = packageIds.length
-      ? await this.prisma.package.findMany({ where: { id: { in: packageIds } }, include: { company: true, provider: true } })
-      : [];
-    const byPackage = new Map(packages.map((row) => [row.id, row]));
-    const lineIds = entries.map((entry) => entry.lineId).filter((id): id is string => !!id);
-    const lines = lineIds.length
-      ? await this.prisma.line.findMany({ where: { id: { in: lineIds } }, include: { package: { include: { provider: true } } } })
-      : [];
-    const providerByLine = new Map(lines.map((row) => [row.id, row.package.provider.name]));
-    const rows = [
-      ...entries.map((entry) => ({
-        id: entry.id,
-        action: entry.kind,
-        status: 'done',
-        at: entry.createdAt.toISOString(),
-        msisdn: entry.msisdn ?? '',
-        companyName: entry.companyName ?? '',
-        packageName: entry.packageName ?? '',
-        providerName: showProvider ? providerByLine.get(entry.lineId ?? '') ?? '' : '',
-        actorName: entry.actor.nickname || entry.actor.loginName,
-      })),
-      ...tasks.map((task) => {
-        const pkg = byPackage.get(task.nextPackageId || task.packageId);
-        const named = pkg?.company ? pkg : task.line?.package;
-        const who = task.status === 'done' && task.assignee ? task.assignee : task.submitter;
-        return {
-          id: task.id,
-          action: task.action,
-          status: task.status,
-          at: task.createdAt.toISOString(),
-          msisdn: task.msisdn ?? '',
-          companyName: named?.company?.name ?? '',
-          packageName: named?.name ?? '',
-          providerName: showProvider ? pkg?.provider?.name || task.line?.package.provider.name || '' : '',
-          actorName: who.nickname || who.loginName,
-        };
+    const position = feedPosition(query.cursor);
+    const from = query.from ? new Date(query.from) : null;
+    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999Z` : query.to) : null;
+    const range = clampActivityRange(from, to);
+    const needle = (query.q ?? '').trim();
+    const where: Prisma.ActivityEventWhereInput = {
+      ...activityActorFilter(actor.layer, [...visible]),
+      ...(query.action ? { action: query.action } : {}),
+      ...(query.result === 'ok' || query.result === 'fail' ? { result: query.result } : {}),
+      ...(query.layer ? { actorLayer: query.layer } : {}),
+      at: { gte: range.gte, lte: range.lte },
+      ...(needle
+        ? { OR: [{ actorLogin: { contains: needle, mode: 'insensitive' } }, { subjectRef: { contains: needle, mode: 'insensitive' } }] }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.activityEvent.findMany({
+        where: {
+          ...where,
+          ...(position
+            ? { AND: [{ OR: [{ at: { lt: position.at } }, { at: position.at, id: { lt: position.id } }] }] }
+            : {}),
+        },
+        orderBy: [{ at: 'desc' }, { id: 'desc' }],
+        take: FEED_PAGE + 1,
       }),
-      ...visits.map((visit) => ({
-        id: visit.id,
-        action: 'enter',
-        status: 'done',
-        at: visit.createdAt.toISOString(),
-        msisdn: '',
-        companyName: visit.targetLogin,
-        packageName: '',
-        providerName: '',
-        actorName: `${visit.actor.nickname || visit.actor.loginName}${visit.ip ? ` · ${visit.ip}` : ''}`,
+      this.prisma.activityEvent.count({ where }),
+    ]);
+    const page = rows.slice(0, FEED_PAGE);
+    const last = page[page.length - 1];
+    return {
+      total,
+      entries: page.map((row) => ({
+        id: row.id,
+        at: row.at.toISOString(),
+        action: row.action,
+        result: row.result,
+        reason: row.reason,
+        ip: row.ip,
+        actorLogin: row.actorLogin,
+        actorLayer: row.actorLayer,
+        subjectKind: row.subjectKind,
+        subjectRef: row.subjectRef,
       })),
-    ].sort((a, b) => (a.at !== b.at ? (a.at < b.at ? 1 : -1) : a.id < b.id ? 1 : -1));
-    return { entries: rows, nextCursor: merged.nextCursor };
+      nextCursor: rows.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.at, id: last.id }) : null,
+    };
   }
 
-  async accounting(gate: Gate, query: { cursor?: string; q?: string } = {}) {
+  async providerOperations(gate: Gate, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string } = {}) {
     const actor = await this.actor(gate);
-    const digits = (query.q ?? '').replace(/\s/g, '');
-    const read = await this.prisma.walletEntry.findMany({
+    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
+    if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, 'REPORTS_BRANCH_ONLY');
+    const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
+    const needle = (query.q ?? '').replace(/\s/g, '');
+    const from = query.from ? new Date(query.from) : null;
+    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999` : query.to) : null;
+    const rows = await this.prisma.walletEntry.findMany({
       where: {
-        userId: actor.id,
-        msisdn: digits ? { contains: digits } : { not: null },
-        AND: afterFeed(feedPosition(query.cursor)),
+        kind: { in: kind ? [kind] : PROVIDER_OPERATION_KINDS },
+        ...(needle ? { msisdn: { contains: needle } } : {}),
       },
       orderBy: [...NEWEST_FIRST],
-      take: FEED_PAGE + 1,
     });
-    const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
-    return {
-      entries: rows.map((row) => ({
+    const lineIds = [...new Set(rows.flatMap((row) => (row.lineId ? [row.lineId] : [])))];
+    const [lines, packages, providers] = await Promise.all([
+      lineIds.length
+        ? this.prisma.line.findMany({
+            where: { id: { in: lineIds } },
+            include: { package: { include: { provider: true, company: true } } },
+          })
+        : [],
+      this.prisma.package.findMany({ include: { provider: true, company: true } }),
+      this.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
+    ]);
+    const lineById = new Map(lines.map((line) => [line.id, line]));
+    const resolved = rows.map((row) => {
+      const priced = pricedOp(row.kind, row.packageName ?? '', row.companyName ?? '', row.lineId ? lineById.get(row.lineId) : undefined, packages);
+      return {
         id: row.id,
-        at: row.createdAt.toISOString(),
+        at: row.createdAt,
+        kind: row.kind,
         msisdn: row.msisdn ?? '',
         companyName: row.companyName ?? '',
         packageName: row.packageName ?? '',
-        packagePrice: row.packagePrice ?? 0,
+        ...priced,
+        cost: row.providerCost ?? priced.cost,
+        esimPrice: row.esimPrice ?? null,
+      };
+    });
+    const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
+    const ranged = chosen.filter((row) => {
+      if (from && !Number.isNaN(from.getTime()) && row.at < from) return false;
+      if (to && !Number.isNaN(to.getTime()) && row.at > to) return false;
+      return true;
+    });
+    const now = new Date();
+    const monthCost = chosen
+      .filter((row) => row.at.getFullYear() === now.getFullYear() && row.at.getMonth() === now.getMonth())
+      .reduce((sum, row) => sum + row.cost, 0);
+    const position = query.cursor ? feedPosition(query.cursor) : undefined;
+    const window = position
+      ? ranged.filter((row) => row.at < position.at || (row.at.getTime() === position.at.getTime() && row.id < position.id))
+      : ranged;
+    const page = window.slice(0, FEED_PAGE);
+    const last = page[page.length - 1];
+    return {
+      entries: page.map((row) => ({
+        id: row.id,
+        at: row.at.toISOString(),
+        kind: row.kind,
+        msisdn: row.msisdn,
+        providerCode: row.providerCode,
+        providerName: row.providerName,
+        companyName: row.companyName,
+        packageName: row.packageName,
+        cost: row.cost,
+        esimPrice: row.esimPrice,
+      })),
+      nextCursor: window.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.at, id: last.id }) : null,
+      total: ranged.length,
+      stats: { count: ranged.length, cost: ranged.reduce((sum, row) => sum + row.cost, 0), monthCost },
+      providers: providers.map((item) => ({ code: item.code, name: item.name })),
+    };
+  }
+
+  async finance(gate: Gate, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
+    const actor = await this.actor(gate);
+    const accounts = await this.accounts();
+    const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
+    const position = feedPosition(query.cursor);
+    const from = query.from ? new Date(query.from) : null;
+    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999` : query.to) : null;
+    const createdAt = {
+      ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
+      ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),
+    };
+    const needle = (query.q ?? '').trim();
+    const digits = needle.replace(/\s/g, '');
+    const where: Prisma.WalletEntryWhereInput = {
+      ...(actor.layer === 'branch' ? {} : { userId: { in: visible } }),
+      amount: { not: 0 },
+      ...(query.kind ? { kind: query.kind } : {}),
+      ...(query.layer ? { user: { layer: query.layer } } : {}),
+      ...(Object.keys(createdAt).length ? { createdAt } : {}),
+      ...(needle
+        ? {
+            OR: [
+              ...(digits ? [{ msisdn: { contains: digits } }] : []),
+              { note: { contains: needle, mode: 'insensitive' as const } },
+              { packageName: { contains: needle, mode: 'insensitive' as const } },
+              { companyName: { contains: needle, mode: 'insensitive' as const } },
+              { user: { loginName: { contains: needle, mode: 'insensitive' as const } } },
+            ],
+          }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.walletEntry.findMany({
+        where: {
+          ...where,
+          ...(position ? { AND: [{ OR: [{ createdAt: { lt: position.at } }, { createdAt: position.at, id: { lt: position.id } }] }] } : {}),
+        },
+        include: { user: true, actor: true },
+        orderBy: [...NEWEST_FIRST],
+        take: FEED_PAGE + 1,
+      }),
+      this.prisma.walletEntry.count({ where }),
+    ]);
+    const page = rows.slice(0, FEED_PAGE);
+    const last = page[page.length - 1];
+    return {
+      total,
+      entries: page.map((row) => ({
+        id: row.id,
+        at: row.createdAt.toISOString(),
+        loginName: row.user.loginName,
+        layer: row.user.layer,
+        actorLogin: row.actor.loginName,
+        kind: row.kind,
+        amount: row.amount,
         balanceBefore: row.balanceAfter - row.amount,
         balanceAfter: row.balanceAfter,
+        msisdn: row.msisdn ?? '',
+        companyName: row.companyName ?? '',
+        packageName: row.packageName ?? '',
+        packagePrice: row.packagePrice,
+        esimPrice: row.esimPrice ?? null,
+        note: row.note ?? '',
       })),
-      nextCursor,
+      nextCursor: rows.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.createdAt, id: last.id }) : null,
     };
   }
 
@@ -2050,16 +2493,14 @@ export class OfficeService implements OnModuleInit {
     if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, 'REPORTS_BRANCH_ONLY');
     if (kind === 'providers') return this.providerReport();
-    if (kind === 'consumption') return this.entryReport(cursor);
-    if (kind === 'funding') return this.entryReport(cursor, ['fund', 'self_fund']);
-    if (kind === 'operations') return this.entryReport(cursor, ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim']);
+    if (kind === 'operations') return this.entryReport(cursor, PROVIDER_OPERATION_KINDS);
     if (kind === 'tasks') {
       const listed = await this.tasks(gate, { cursor });
-      return { tasks: listed.tasks, nextCursor: listed.nextCursor };
+      return { tasks: listed.tasks, nextCursor: listed.nextCursor, total: listed.total };
     }
     if (kind === 'numbers') {
       const listed = await this.lines(gate, { cursor });
-      return { lines: listed.lines, nextCursor: listed.nextCursor };
+      return { lines: listed.lines, nextCursor: listed.nextCursor, total: listed.total };
     }
     fail(404, 'NOT_FOUND');
   }
@@ -2093,6 +2534,63 @@ export class OfficeService implements OnModuleInit {
     };
   }
 
+  async companySwitch() {
+    fail(400, 'INVALID');
+  }
+
+  private runsNow(pkg: Parameters<OfficeService['assertRunnable']>[0], action: ActionKey | 'unfreeze') {
+    return resolvePackageMode(pkg.actionModes, pkg, action) === 'auto';
+  }
+
+  private operationsFor(line: {
+    status: string;
+    endsAt: Date;
+    opsLocked?: boolean;
+    package: Parameters<OfficeService['assertRunnable']>[0] & { company?: { esim?: boolean } | null };
+  }): string[] {
+    const keys: string[] = offeredOperations(
+      { status: line.status, endsAt: line.endsAt, opsLocked: line.opsLocked ?? false },
+      (action) => resolvePackageMode(line.package.actionModes, line.package, action),
+    );
+    // An eSIM request is always a branch task: the employee attaches the serial and the QR picture.
+    if (line.status === 'active' && !line.opsLocked && simRulesOf(line.package.company ?? null).esim) keys.push('esim');
+    if (!line.opsLocked && refreshMode(line.package.actionModes) !== 'off') keys.push('refresh');
+    return keys;
+  }
+
+  private async restartDisconnected(actor: Actor, line: Awaited<ReturnType<OfficeService['visibleLine']>>, outcome: 'success' | 'fail') {
+    if (line.status !== 'disconnected') fail(400, 'INVALID');
+    this.assertRunnable(line.package, 'charge');
+    const charged = await this.buyPrice(line.packageId, line.posId, line.package.posPrice);
+    const posDelta = -charged;
+    if (outcome === 'fail' || !this.runsNow(line.package, 'charge')) {
+      const task = await this.openTask({
+        action: 'charge', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta, msisdn: line.msisdn,
+        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+      });
+      return { applied: false as const, taskId: task.id };
+    }
+    await this.runTx(async (tx) => {
+      const endsAt = periodEnd(new Date(), line.package.months);
+      await this.move(tx, line.posId, posDelta, actor.operatorId, 'charge', '', {
+        ...saleOf(line, undefined, charged),
+        period: periodOf(line.package.months, endsAt),
+      });
+      await tx.line.update({
+        where: { id: line.id },
+        data: {
+          status: 'active',
+          endsAt,
+          terms: {
+            ...lineTermsOf(line.terms, line.package),
+            windowMonths: line.package.months,
+          } as unknown as Prisma.InputJsonValue,
+        },
+      });
+    });
+    return { applied: true, debited: posDelta < 0 };
+  }
+
   private assertRunnable(pkg: {
     enabled: boolean;
     allowActivate: boolean;
@@ -2103,22 +2601,13 @@ export class OfficeService implements OnModuleInit {
     allowExtend: boolean;
     allowRename: boolean;
     allowSim: boolean;
+    actionModes?: unknown;
   }, action: string) {
+    if (action === 'companySwitch') fail(400, 'INVALID');
     const selling = action === 'activate' || action === 'charge' || action === 'extend' || action === 'reactivate' || action === 'switch';
     if (!pkg.enabled && selling) fail(400, 'PACKAGE_DISABLED');
-    const allow: Record<string, boolean> = {
-      activate: pkg.allowActivate,
-      reactivate: pkg.allowActivate,
-      charge: pkg.allowCharge,
-      extend: pkg.allowExtend,
-      disconnect: pkg.allowDisconnect,
-      freeze: pkg.allowFreeze,
-      unfreeze: pkg.allowFreeze,
-      switch: pkg.allowSwitch,
-      rename: pkg.allowRename,
-      sim: pkg.allowSim,
-    };
-    if (allow[action] === false) fail(400, 'OPERATION_DISABLED');
+    const mode = resolvePackageMode(pkg.actionModes, pkg, action as ActionKey | 'unfreeze');
+    if (mode === 'off') fail(400, 'OPERATION_DISABLED');
   }
 
   private async buyPrice(packageId: string, posId: string, fallback: number) {
@@ -2223,63 +2712,97 @@ export class OfficeService implements OnModuleInit {
     msisdn?: string | null;
     iccid?: string | null;
     esim?: boolean;
+    esimQr?: string | null;
     note: string;
   }) {
-    const task = await this.prisma.officeTask.create({
-      data: {
-        action: input.action,
-        status: 'pending',
-        posId: input.posId,
-        packageId: input.packageId,
-        lineId: input.lineId,
-        nextPackageId: input.nextPackageId,
-        submitterId: input.actor.id,
-        posDelta: input.posDelta,
-        msisdn: input.msisdn,
-        iccid: input.iccid,
-        esim: input.esim ?? false,
-        note: input.note,
-      },
+    const { task, written } = await this.runTx(async (tx) => {
+      const created = await tx.officeTask.create({
+        data: {
+          action: input.action,
+          status: 'pending',
+          posId: input.posId,
+          packageId: input.packageId,
+          lineId: input.lineId,
+          nextPackageId: input.nextPackageId,
+          submitterId: input.actor.id,
+          posDelta: input.posDelta,
+          msisdn: input.msisdn,
+          iccid: input.iccid,
+          esim: input.esim ?? false,
+          esimQr: input.esimQr ?? null,
+          note: input.note,
+        },
+      });
+      const named = await tx.package.findUnique({ where: { id: input.nextPackageId ?? input.packageId }, select: { name: true } });
+      const notices = await this.taskNotice(tx, 'opened', created, input.actor, {
+        packageName: named?.name ?? '',
+        amount: input.posDelta,
+      });
+      return { task: created, written: notices };
     });
-    const branch = await this.prisma.user.findMany({
-      where: { layer: 'branch', id: { not: input.actor.id } },
-      select: { id: true },
-    });
-    await this.notifyUsers(branch.map((row) => row.id), {
-      kind: 'task',
-      action: input.action,
-      msisdn: input.msisdn ?? null,
-      refId: task.id,
-      href: '/tasks',
-    });
+    await this.publishQuietly(written);
     return task;
   }
 
-  private async notifyUsers(userIds: string[], input: { kind: string; action: string; msisdn: string | null; refId: string; href: string }) {
-    if (userIds.length === 0) return;
-    await this.prisma.notice.createMany({
-      data: userIds.map((userId) => ({ userId, ...input })),
+  /** Branch users who may take a task: the owner and anyone holding the handling grant. */
+  private async handlerIds(): Promise<string[]> {
+    const users = await this.prisma.user.findMany({
+      where: { layer: 'branch', disabledAt: null },
+      include: { role: true, extraRoles: { include: { role: true } } },
     });
+    const ids: string[] = [];
+    for (const user of users) {
+      if (user.isBranchOwner || (await this.grantsFor(user)).includes('tasks')) ids.push(user.id);
+    }
+    return ids;
   }
 
-  async notices(gate: Gate) {
+  private async taskNotice(
+    tx: Prisma.TransactionClient,
+    event: TaskEvent,
+    task: { id: string; action: string; msisdn: string | null; submitterId: string; posId: string; assigneeId: string | null },
+    actor: Actor,
+    extra: Partial<TaskNoticePayload> = {},
+  ): Promise<WrittenNotice[]> {
+    const handlers = await this.handlerIds();
+    const audience = taskAudience(event, task, handlers, { id: actor.id, handler: canHandleTasks(actor) });
+    const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, ...extra };
+    return this.notice.write(tx, audience, actor, { kind: `task.${event}`, payload });
+  }
+
+  async notices(gate: Gate, query: { cursor?: string; group?: string; unread?: string } = {}) {
     const actor = await this.actor(gate);
-    const rows = await this.prisma.notice.findMany({
-      where: { userId: actor.id },
-      orderBy: { createdAt: 'desc' },
-      take: 30,
-    });
+    const group = noticeGroupOf(query.group);
+    const onlyUnread = query.unread === '1' || query.unread === 'true';
+    const position = query.cursor ? feedPosition(query.cursor) : undefined;
+    const where = {
+      userId: actor.id,
+      ...(group ? { kind: { in: [...NOTICE_GROUPS[group]] } } : {}),
+      ...(onlyUnread ? { readAt: null } : {}),
+    };
+    const [rows, unread, total] = await Promise.all([
+      this.prisma.notice.findMany({
+        where: { ...where, AND: afterFeed(position) },
+        orderBy: [...NEWEST_FIRST],
+        take: NOTICES_PAGE + 1,
+      }),
+      this.prisma.notice.count({ where: { userId: actor.id, readAt: null } }),
+      this.prisma.notice.count({ where }),
+    ]);
+    const { page, nextCursor } = mergeFeed([rows], NOTICES_PAGE);
     return {
-      unread: rows.filter((row) => !row.readAt).length,
-      notices: rows.map((row) => ({
+      unread,
+      total,
+      notices: page.map((row) => ({
         id: row.id,
         kind: row.kind,
-        action: row.action,
-        msisdn: row.msisdn,
+        payload: row.payload,
+        actorName: row.actorName,
         href: row.href,
         read: Boolean(row.readAt),
         createdAt: row.createdAt.toISOString(),
       })),
+      nextCursor,
     };
   }
 
@@ -2292,13 +2815,152 @@ export class OfficeService implements OnModuleInit {
     return { ok: true as const };
   }
 
+  /** One live channel per signed-in user. Resolves an unsubscribe function. */
+  async subscribeNotices(gate: Gate, handler: (message: string) => void) {
+    const actor = await this.actor(gate);
+    return this.notice.subscribe(actor.id, handler);
+  }
+
+  private async disconnectSettlementFor(
+    tx: Prisma.TransactionClient | PrismaClient,
+    line: {
+      id: string;
+      endsAt: Date;
+      terms: Prisma.JsonValue;
+      package: PackagePriceRow;
+    },
+    now: Date,
+  ) {
+    const { terms, periods, lastPrice } = await this.openPeriodsOf(tx, line, now);
+    const settled = settleDisconnect(periods, (renewal) => (renewal ? terms.renewal.branchCost : terms.subscription.branchCost));
+    return settled ? { ...settled, posPrice: lastPrice } : null;
+  }
+
+  /** The line's paid periods still open. Rows written before periods were stored fall back to the last window. */
+  private async openPeriodsOf(
+    db: Prisma.TransactionClient | PrismaClient,
+    line: { id: string; endsAt: Date; terms: Prisma.JsonValue; package: PackagePriceRow },
+    now: Date,
+  ) {
+    const terms = lineTermsOf(line.terms, line.package);
+    const rows = await db.walletEntry.findMany({
+      where: { lineId: line.id, kind: { in: PREPAID_KINDS } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { kind: true, packagePrice: true, periodDays: true, periodEndsAt: true },
+    });
+    const last = rows[0];
+    const renewal = Boolean(last && (last.kind === 'charge' || last.kind === 'extend' || last.kind === 'reactivate'));
+    const lastPrice = last?.packagePrice ?? (renewal ? terms.renewal.posPrice : terms.subscription.posPrice);
+    const periods = openPeriods(now, rows) ?? lastWindow(now, line.endsAt, windowMonthsOf(terms), lastPrice, renewal);
+    return { terms, periods, lastPrice };
+  }
+
+  private async switchQuote(
+    db: Prisma.TransactionClient | PrismaClient,
+    line: {
+      id: string;
+      endsAt: Date;
+      terms: Prisma.JsonValue;
+      posId: string;
+      package: PackagePriceRow;
+    },
+    target: PackagePriceRow & { id: string },
+    now: Date,
+  ) {
+    const { terms, periods } = await this.openPeriodsOf(db, line, now);
+    const nextTerms = packageTermsOf(target);
+    const newPrice = await this.buyPrice(target.id, line.posId, nextTerms.renewal.posPrice);
+    const money = switchOver(periods, newPrice, target.months);
+    // The branch side: each open period's cost, chosen like a disconnect, against the target's subscription cost.
+    const costs = revalue(periods, (period) => (period.renewal ? terms.renewal.branchCost : terms.subscription.branchCost));
+    const cost = switchOver(costs, nextTerms.subscription.branchCost, target.months);
+    return { ...money, newPrice, providerCost: cost.difference };
+  }
+
+  private async recordOp(tx: Prisma.TransactionClient, userId: string, actorId: string, kind: string, sale: Sale) {
+    const wallet = await tx.wallet.findUnique({ where: { userId } });
+    if (!wallet) fail(404, 'NOT_FOUND');
+    await tx.walletEntry.create({
+      data: {
+        userId,
+        actorId,
+        amount: 0,
+        balanceAfter: wallet.balance,
+        kind,
+        msisdn: sale.msisdn,
+        lineId: sale.lineId,
+        companyName: sale.companyName,
+        packageName: sale.packageName,
+        packagePrice: sale.packagePrice,
+        providerCost: sale.providerCost ?? 0,
+        periodDays: sale.period?.days ?? null,
+        periodEndsAt: sale.period?.endsAt ?? null,
+      },
+    });
+  }
+
+  /** Notices written inside a transaction wait here until that transaction commits. */
+  private readonly queued = new WeakMap<object, WrittenNotice[]>();
+
+  private queueNotices(tx: Prisma.TransactionClient, rows: WrittenNotice[]) {
+    if (rows.length === 0) return;
+    const list = this.queued.get(tx) ?? [];
+    list.push(...rows);
+    this.queued.set(tx, list);
+  }
+
+  /** Runs a transaction and publishes the notices it queued once it has committed. */
+  private async runTx<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    let inner: Prisma.TransactionClient | null = null;
+    const result = await this.prisma.$transaction(async (tx) => {
+      inner = tx;
+      return fn(tx);
+    });
+    const rows = inner ? this.queued.get(inner) ?? [] : [];
+    if (inner) this.queued.delete(inner);
+    if (rows.length > 0) await this.publishQuietly(rows);
+    return result;
+  }
+
+  // The row is committed; the live push is a courtesy. The 60s poll in the browser picks up what Redis missed.
+  private async publishQuietly(rows: WrittenNotice[]) {
+    try {
+      await this.notice.publish(rows);
+    } catch (error) {
+      console.warn('notice publish failed', error instanceof Error ? error.message : error);
+    }
+  }
+
+  private async actorName(id: string): Promise<string> {
+    const user = await this.prisma.user.findUnique({ where: { id }, select: { nickname: true, loginName: true } });
+    return user?.nickname || user?.loginName || '';
+  }
+
   private async move(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, kind: string, note: string, sale?: Sale) {
     const wallet = await tx.wallet.findUnique({ where: { userId } });
     const user = await tx.user.findUnique({ where: { id: userId } });
     if (!wallet || !user) fail(404, 'NOT_FOUND');
     const debit = amount < 0 ? -amount : 0;
-    if (!withinCeiling(user.layer, wallet.balance, wallet.ceiling, debit)) fail(400, 'BALANCE_CEILING');
+    if (!withinCeiling(user.layer, wallet.balance, wallet.ceiling, debit)) {
+      // The transaction rolls back, so this notice is written on its own and published at once.
+      const actor = { id: actorId, nickname: await this.actorName(actorId) };
+      const audience = [userId, ...(user.parentId ? [user.parentId] : [])];
+      const rows = await this.notice.write(this.prisma, audience, actor, {
+        kind: 'wallet.ceiling',
+        payload: { balance: wallet.balance, ceiling: wallet.ceiling, attempted: debit, loginName: user.loginName },
+      });
+      await this.publishQuietly(rows);
+      fail(400, 'BALANCE_CEILING');
+    }
     const balanceAfter = wallet.balance + amount;
+    if (wallet.balance >= 0 && balanceAfter < 0) {
+      const actor = { id: actorId, nickname: await this.actorName(actorId) };
+      const audience = [userId, ...(user.parentId ? [user.parentId] : [])];
+      this.queueNotices(tx, await this.notice.write(tx, audience, actor, {
+        kind: 'wallet.negative',
+        payload: { balance: balanceAfter, ceiling: wallet.ceiling, loginName: user.loginName },
+      }));
+    }
     await tx.wallet.update({ where: { userId }, data: { balance: balanceAfter } });
     await tx.walletEntry.create({
       data: {
@@ -2313,6 +2975,10 @@ export class OfficeService implements OnModuleInit {
         companyName: sale?.companyName,
         packageName: sale?.packageName,
         packagePrice: sale?.packagePrice,
+        providerCost: sale?.providerCost ?? null,
+        esimPrice: sale?.esimPrice ?? null,
+        periodDays: sale?.period?.days ?? null,
+        periodEndsAt: sale?.period?.endsAt ?? null,
       },
     });
   }
@@ -2333,6 +2999,7 @@ export class OfficeService implements OnModuleInit {
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' } ],
     });
     return {
+      total: rows.length,
       rows: rows.map((row) => ({
         providerName: row.provider.name,
         companyName: row.company?.name ?? '',
@@ -2344,14 +3011,19 @@ export class OfficeService implements OnModuleInit {
   }
 
   private async entryReport(cursor: string | undefined, kinds?: string[]) {
-    const read = await this.prisma.walletEntry.findMany({
-      where: { ...(kinds ? { kind: { in: kinds } } : {}), AND: afterFeed(feedPosition(cursor)) },
-      include: { user: true, actor: true },
-      orderBy: [...NEWEST_FIRST],
-      take: FEED_PAGE + 1,
-    });
+    const where = kinds ? { kind: { in: kinds } } : {};
+    const [read, total] = await Promise.all([
+      this.prisma.walletEntry.findMany({
+        where: { ...where, AND: afterFeed(feedPosition(cursor)) },
+        include: { user: true, actor: true },
+        orderBy: [...NEWEST_FIRST],
+        take: FEED_PAGE + 1,
+      }),
+      this.prisma.walletEntry.count({ where }),
+    ]);
     const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
     return {
+      total,
       entries: rows.map((row) => ({
         id: row.id,
         at: row.createdAt.toISOString(),
@@ -2375,7 +3047,8 @@ export class OfficeService implements OnModuleInit {
         create: { userId: user.id, balance: 0, ceiling: 0 },
       });
     }
-    const seeded = await this.prisma.company.count();
+    // Migrations insert companies on their own, so only providers say the catalog was seeded.
+    const seeded = await this.prisma.provider.count();
     if (seeded > 0) return;
     for (const company of companies) {
       await this.prisma.company.upsert({
@@ -2407,17 +3080,18 @@ export class OfficeService implements OnModuleInit {
               dataGb: item.gb,
               months: item.months,
               forSale: item.forSale,
-              branchCost: item.subscription.branchCost,
-              mainPrice: item.subscription.mainPrice,
-              agentPrice: item.subscription.agentPrice,
-              posPrice: item.subscription.posPrice,
-              subscriberPrice: item.subscription.subscriberPrice,
-              renewalBranchCost: item.renewal.branchCost,
-              renewalMainPrice: item.renewal.mainPrice,
-              renewalAgentPrice: item.renewal.agentPrice,
-              renewalPosPrice: item.renewal.posPrice,
-              renewalSubscriberPrice: item.renewal.subscriberPrice,
+              branchCost: item.subscription.branchCost * AGOROT,
+              mainPrice: item.subscription.mainPrice * AGOROT,
+              agentPrice: item.subscription.agentPrice * AGOROT,
+              posPrice: item.subscription.posPrice * AGOROT,
+              subscriberPrice: item.subscription.subscriberPrice * AGOROT,
+              renewalBranchCost: item.renewal.branchCost * AGOROT,
+              renewalMainPrice: item.renewal.mainPrice * AGOROT,
+              renewalAgentPrice: item.renewal.agentPrice * AGOROT,
+              renewalPosPrice: item.renewal.posPrice * AGOROT,
+              renewalSubscriberPrice: item.renewal.subscriberPrice * AGOROT,
               ...flags,
+              actionModes: normalizeActionModes(savedProvider.actionModes),
             },
           });
         }
@@ -2462,6 +3136,7 @@ function isLineTerms(value: unknown): value is LineTerms {
   return (
     typeof value.packageCode === 'string' &&
     isPositiveInteger(value.months) &&
+    (value.windowMonths === undefined || isPositiveInteger(value.windowMonths)) &&
     isPrices(value.subscription) &&
     isPrices(value.renewal) &&
     Array.isArray(value.renewalTargets) &&
@@ -2491,12 +3166,20 @@ function isPositiveInteger(value: unknown): value is number {
 }
 
 function positive(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 1_000_000) return null;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 100_000_000) return null;
+  return value;
+}
+
+/** A QR picture as a data URL. `undefined` when absent, `null` when cleared, otherwise the checked URL. */
+function readQr(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || value.length > QR_LIMIT || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) fail(400, 'QR_INVALID');
   return value;
 }
 
 function nonNegative(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 1_000_000) return null;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 100_000_000) return null;
   return value;
 }
 

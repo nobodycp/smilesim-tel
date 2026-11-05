@@ -25,6 +25,7 @@
   text-align: center;
 }
 .auth-card .brand-mark { margin: 0 auto 12px; }
+.auth-card .auth-logo { max-width: 200px; max-height: 56px; margin: 0 auto 12px; }
 .auth-card .eyebrow, .auth-card h1, .auth-card .lede { text-align: start; }
 .auth-card form { text-align: start; }
 
@@ -92,6 +93,9 @@
 .login-plate .heavy { stroke: currentColor; stroke-width: 2.6; opacity: 0.85; }
 .login-plate .light { stroke: currentColor; stroke-width: 0.9; opacity: 0.4; }
 .login-lockup { min-width: 0; }
+/* The saved logo sits above the name, on the ink banner (so the dark copy shows on the light theme). */
+.login-lockup .brand-logo-wrap { display: block; margin-bottom: 10px; }
+.login-lockup .login-logo { max-width: 220px; max-height: 56px; }
 .login-lockup strong {
   display: block;
   padding-block: 0.06em 0.12em;
@@ -228,6 +232,8 @@
   .login-plate { width: 64px; height: 80px; }
   .login-lockup strong { font-size: 28px; }
   .login-lockup small { margin-top: 4px; }
+  .login-lockup .login-logo { max-height: 40px; }
+  .login-lockup .brand-logo-wrap { margin-bottom: 6px; }
   .login-doc { padding-block: 16px; }
   .login-room h1 { font-size: 28px; }
   .login-room form { margin-top: 12px; }
@@ -247,6 +253,7 @@
   .login-plate { width: 168px; height: 210px; }
   .login-lockup strong { font-size: 52px; }
   .login-lockup small { margin-top: 12px; font-size: 16px; }
+  .login-lockup .login-logo { max-width: 280px; max-height: 72px; }
 }
 @media (min-width: 992px) {
   .login-room { flex-direction: row; height: 100dvh; min-height: 0; overflow: hidden; }

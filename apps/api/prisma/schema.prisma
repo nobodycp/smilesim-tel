@@ -8,41 +8,42 @@ datasource db {
 }
 
 model User {
-  id                     String    @id @default(uuid())
-  loginName              String    @unique
+  id                     String           @id @default(uuid())
+  loginName              String           @unique
   nickname               String
   email                  String?
   phone                  String?
   passwordHash           String
-  mustChangePassword     Boolean   @default(false)
+  mustChangePassword     Boolean          @default(false)
   layer                  String
   parentId               String?
-  parent                 User?     @relation("UserTree", fields: [parentId], references: [id])
-  children               User[]    @relation("UserTree")
-  isBranchOwner          Boolean   @default(false)
+  parent                 User?            @relation("UserTree", fields: [parentId], references: [id])
+  children               User[]           @relation("UserTree")
+  isBranchOwner          Boolean          @default(false)
   roleId                 String?
-  role                   Role?     @relation(fields: [roleId], references: [id])
-  liveGrants             String    @default("")
-  extraGrants            String    @default("")
-  deniedGrants           String    @default("")
+  role                   Role?            @relation(fields: [roleId], references: [id])
+  liveGrants             String           @default("")
+  extraGrants            String           @default("")
+  deniedGrants           String           @default("")
   extraRoles             UserRole[]
   disabledAt             DateTime?
-  twoFactorExempt        Boolean   @default(false)
-  twoFactorEnabled       Boolean   @default(false)
+  twoFactorExempt        Boolean          @default(false)
+  twoFactorEnabled       Boolean          @default(false)
   twoFactorSecret        String?
   pendingTwoFactorSecret String?
   sessions               Session[]
   wallet                 Wallet?
-  walletEntries          WalletEntry[] @relation("WalletOwner")
-  actedEntries           WalletEntry[] @relation("WalletActor")
-  posLines               Line[]        @relation("LinePos")
-  submittedTasks         OfficeTask[]  @relation("TaskSubmitter")
-  assignedTasks          OfficeTask[]  @relation("TaskAssignee")
+  walletEntries          WalletEntry[]    @relation("WalletOwner")
+  actedEntries           WalletEntry[]    @relation("WalletActor")
+  posLines               Line[]           @relation("LinePos")
+  submittedTasks         OfficeTask[]     @relation("TaskSubmitter")
+  assignedTasks          OfficeTask[]     @relation("TaskAssignee")
   taskNotes              OfficeTaskNote[]
   announcements          Announcement[]
   notices                Notice[]
   accessLogs             AccessLog[]
   packageOffers          PackageOffer[]
+  activityEvents         ActivityEvent[]
 }
 
 model Session {
@@ -60,21 +61,21 @@ model Session {
 }
 
 model Role {
-  id         String   @id @default(uuid())
+  id         String     @id @default(uuid())
   name       String
-  read       Boolean  @default(true)
-  edit       Boolean  @default(false)
-  accounting Boolean  @default(false)
-  tasks      Boolean  @default(false)
-  reports    Boolean  @default(false)
-  staff      Boolean  @default(false)
-  enter      Boolean  @default(false)
-  kind       String   @default("job")
-  layer      String?  @unique
-  grants     String   @default("")
+  read       Boolean    @default(true)
+  edit       Boolean    @default(false)
+  accounting Boolean    @default(false)
+  tasks      Boolean    @default(false)
+  reports    Boolean    @default(false)
+  staff      Boolean    @default(false)
+  enter      Boolean    @default(false)
+  kind       String     @default("job")
+  layer      String?    @unique
+  grants     String     @default("")
   users      User[]
   holders    UserRole[]
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime   @updatedAt
 }
 
 model UserRole {
@@ -100,11 +101,11 @@ model Wallet {
 }
 
 model WalletEntry {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   userId       String
-  user         User     @relation("WalletOwner", fields: [userId], references: [id])
+  user         User      @relation("WalletOwner", fields: [userId], references: [id])
   actorId      String
-  actor        User     @relation("WalletActor", fields: [actorId], references: [id])
+  actor        User      @relation("WalletActor", fields: [actorId], references: [id])
   amount       Int
   balanceAfter Int
   kind         String
@@ -114,7 +115,12 @@ model WalletEntry {
   companyName  String?
   packageName  String?
   packagePrice Int?
-  createdAt    DateTime @default(now())
+  providerCost Int?
+  /** The eSIM fee folded into `amount`, when this entry sold or issued one. */
+  esimPrice    Int?
+  periodDays   Int?
+  periodEndsAt DateTime?
+  createdAt    DateTime  @default(now())
 
   @@index([userId, createdAt])
   @@index([lineId])
@@ -125,61 +131,68 @@ model Provider {
   code        String    @unique
   name        String
   actionModes Json      @default("{}")
+  esimPrice   Int?
   packages    Package[]
 }
 
 model Company {
-  id       String    @id @default(uuid())
-  code     String    @unique
-  name     String
-  image    String?
-  packages Package[]
+  id          String    @id @default(uuid())
+  code        String    @unique
+  name        String
+  image       String?
+  iccidLength Int?
+  iccidPrefix String?
+  esim        Boolean   @default(true)
+  esimPrice   Int       @default(500)
+  packages    Package[]
 }
 
 model Package {
-  id                String   @id @default(uuid())
-  code              String   @unique
-  name              String
-  providerId        String
-  provider          Provider @relation(fields: [providerId], references: [id])
-  companyId         String?
-  company           Company? @relation(fields: [companyId], references: [id])
-  dataGb            Int?
-  months            Int      @default(1)
-  branchCost        Int
-  mainPrice         Int
-  agentPrice        Int
-  posPrice          Int
-  subscriberPrice   Int
-  forSale                Boolean  @default(true)
+  id                     String           @id @default(uuid())
+  code                   String           @unique
+  name                   String
+  providerId             String
+  provider               Provider         @relation(fields: [providerId], references: [id])
+  companyId              String?
+  company                Company?         @relation(fields: [companyId], references: [id])
+  dataGb                 Int?
+  months                 Int              @default(1)
+  branchCost             Int
+  mainPrice              Int
+  agentPrice             Int
+  posPrice               Int
+  subscriberPrice        Int
+  forSale                Boolean          @default(true)
   renewalBranchCost      Int
   renewalMainPrice       Int
   renewalAgentPrice      Int
   renewalPosPrice        Int
   renewalSubscriberPrice Int
-  autoActivate      Boolean
-  autoCharge        Boolean
-  autoDisconnect    Boolean
-  autoFreeze        Boolean
-  autoSwitch        Boolean
-  autoExtend        Boolean  @default(false)
-  autoRename        Boolean  @default(false)
-  autoSim           Boolean  @default(false)
-  allowActivate     Boolean  @default(true)
-  allowCharge       Boolean  @default(true)
-  allowDisconnect   Boolean  @default(true)
-  allowFreeze       Boolean  @default(true)
-  allowSwitch       Boolean  @default(true)
-  allowExtend       Boolean  @default(true)
-  allowRename       Boolean  @default(true)
-  allowSim          Boolean  @default(true)
-  enabled           Boolean  @default(true)
-  lines             Line[]
-  offers            PackageOffer[]
-  renewals          PackageRenewal[]
-  renewalTargets    PackageRenewal[] @relation("RenewalTarget")
-  switches           PackageSwitch[]
-  switchTargets     PackageSwitch[]  @relation("SwitchTarget")
+  autoActivate           Boolean
+  autoCharge             Boolean
+  autoDisconnect         Boolean
+  autoFreeze             Boolean
+  autoSwitch             Boolean
+  autoExtend             Boolean          @default(false)
+  autoRename             Boolean          @default(false)
+  autoSim                Boolean          @default(false)
+  allowActivate          Boolean          @default(true)
+  allowCharge            Boolean          @default(true)
+  allowDisconnect        Boolean          @default(true)
+  allowFreeze            Boolean          @default(true)
+  allowSwitch            Boolean          @default(true)
+  allowExtend            Boolean          @default(true)
+  allowRename            Boolean          @default(true)
+  allowSim               Boolean          @default(true)
+  enabled                Boolean          @default(true)
+  actionModes            Json             @default("{}")
+  esimPrice              Int?
+  lines                  Line[]
+  offers                 PackageOffer[]
+  renewals               PackageRenewal[]
+  renewalTargets         PackageRenewal[] @relation("RenewalTarget")
+  switches               PackageSwitch[]
+  switchTargets          PackageSwitch[]  @relation("SwitchTarget")
 }
 
 model PackageRenewal {
@@ -214,47 +227,49 @@ model PackageOffer {
 }
 
 model Line {
-  id        String       @id @default(uuid())
-  msisdn    String       @unique
-  iccid     String?
-  esim      Boolean      @default(false)
-  status    String
+  id            String       @id @default(uuid())
+  msisdn        String       @unique
+  iccid         String?
+  esim          Boolean      @default(false)
+  esimQr        String?
+  status        String
   endsAt        DateTime
-  opsLocked     Boolean  @default(false)
+  opsLocked     Boolean      @default(false)
   originAgentId String?
   packageId     String
-  package   Package      @relation(fields: [packageId], references: [id])
-  posId     String
-  pos       User         @relation("LinePos", fields: [posId], references: [id])
-  terms     Json
-  createdAt DateTime     @default(now())
-  tasks     OfficeTask[]
+  package       Package      @relation(fields: [packageId], references: [id])
+  posId         String
+  pos           User         @relation("LinePos", fields: [posId], references: [id])
+  terms         Json
+  createdAt     DateTime     @default(now())
+  tasks         OfficeTask[]
 
   @@index([posId, createdAt])
 }
 
 model OfficeTask {
-  id            String   @id @default(uuid())
+  id            String           @id @default(uuid())
   action        String
   status        String
   posId         String
   packageId     String
   lineId        String?
-  line          Line?    @relation(fields: [lineId], references: [id])
+  line          Line?            @relation(fields: [lineId], references: [id])
   submitterId   String
-  submitter     User     @relation("TaskSubmitter", fields: [submitterId], references: [id])
+  submitter     User             @relation("TaskSubmitter", fields: [submitterId], references: [id])
   assigneeId    String?
-  assignee      User?    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assignee      User?            @relation("TaskAssignee", fields: [assigneeId], references: [id])
   posDelta      Int
   msisdn        String?
   iccid         String?
-  esim          Boolean  @default(false)
+  esim          Boolean          @default(false)
+  esimQr        String?
   nextPackageId String?
   note          String?
   resultNote    String?
-  log           String   @default("")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  log           String           @default("")
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
   notes         OfficeTaskNote[]
 
   @@index([status, createdAt])
@@ -273,6 +288,25 @@ model OfficeTaskNote {
   @@index([taskId, createdAt])
 }
 
+model ActivityEvent {
+  id          String   @id @default(uuid())
+  at          DateTime @default(now())
+  actorId     String?
+  actor       User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorLogin  String   @default("")
+  actorLayer  String   @default("")
+  action      String
+  result      String
+  reason      String   @default("")
+  ip          String   @default("")
+  subjectKind String   @default("")
+  subjectRef  String   @default("")
+
+  @@index([at])
+  @@index([actorId, at])
+  @@index([action, at])
+}
+
 model AccessLog {
   id          String   @id @default(uuid())
   actorId     String
@@ -289,14 +323,15 @@ model Notice {
   userId    String
   user      User      @relation(fields: [userId], references: [id])
   kind      String
-  action    String
-  msisdn    String?
-  refId     String
+  payload   Json      @default("{}")
+  actorId   String?
+  actorName String    @default("")
   href      String
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
   @@index([userId, createdAt])
+  @@index([userId, readAt])
 }
 
 model Announcement {
@@ -307,4 +342,16 @@ model Announcement {
   createdAt DateTime @default(now())
 
   @@index([authorId, createdAt])
+}
+
+// Office identity: one row (id = 1) the branch owner edits from /branding.
+// Images are data URLs, the same storage as Company.image.
+model SiteBranding {
+  id        Int      @id @default(1)
+  siteName  String   @default("")
+  tagline   String   @default("")
+  logo      String?
+  logoDark  String?
+  favicon   String?
+  updatedAt DateTime @updatedAt
 }

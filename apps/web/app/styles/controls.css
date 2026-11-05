@@ -11,3 +11,15 @@ input[type='radio'] {
   accent-color: var(--rd-primary-bg);
   vertical-align: middle;
 }
+
+/* A button that reads as a table link: same colour as the text, underline on hover. */
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }

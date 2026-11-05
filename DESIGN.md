@@ -11,6 +11,8 @@ All CSS reads `--rd-*` tokens. The old blue set (`--bg`, `--accent`, `--ink-3`, 
 - Logo red is the accent: dots, the brand rule, and at most one special action on a screen. Errors are danger red, separate from the accent.
 - Dense and quiet. Hairline borders, light shadows, compact tables.
 - RTL first. Logical properties only.
+- The brand is data, not a drawing. A saved site identity (`/branding`, owner only) replaces the `SimMark` in the sidebar brand block, the drawer, and the sign-in lockup with `BrandLogo`, and sets the tab title and icon. Without one, the Smile Sim mark and name stay. The logo keeps a browser-derived dark copy (`.brand-logo-light` / `.brand-logo-dark`), so black lettering still reads on dark surfaces and on ink.
+- The sidebar nav may hold one collapsible group (`.nav-group`: a `.nav-group-head` button with a chevron, then indented `.nav-group-body` links). It opens without motion and holds the page that is current. The collapsed sidebar flattens it to icon links.
 
 ## Stylesheets
 
@@ -41,6 +43,7 @@ Both themes are defined in `apps/web/app/styles/tokens.css`. Use the token, neve
 | `--rd-surface-3` | `#ececea` | `#2a2a27` | skeletons, pressed or hovered icon buttons |
 | `--rd-line` | `#ececea` | `#2a2a27` | hairline borders |
 | `--rd-line-soft` | `#f3f3f1` | `#222220` | dividers inside a card |
+| `--rd-qr-tile` | `#ffffff` | `#ffffff` | the tile behind a QR picture; stays white in dark mode so the code scans |
 | `--rd-field` | `#8a8a86` | `#74746e` | input borders (3:1 against the surface) |
 | `--rd-ink` | `#0a0a0a` | `#f5f5f2` | text, links, active state, focus ring |
 | `--rd-ink-2` | `#3a3a38` | `#c8c8c2` | labels and nav text |

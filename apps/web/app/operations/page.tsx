@@ -10,7 +10,7 @@ import { usePrefs } from '../../lib/prefs';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
 
-const kinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim'];
+const kinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'refresh', 'transfer'];
 
 export default function OperationsPage() {
   const { t } = usePrefs();
@@ -19,7 +19,7 @@ export default function OperationsPage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const list = usePaged<LedgerRow>(`${kind}|${direction}|${from}|${to}`, async (cursor) =>
-    pick(await api.officeLedger('operations', { kind, direction, from, to, cursor }), (data) => ({ rows: data.entries, next: data.nextCursor })),
+    pick(await api.officeLedger('operations', { kind, direction, from, to, cursor }), (data) => ({ rows: data.entries, next: data.nextCursor, total: data.total })),
   );
 
   const columns: Column<LedgerRow>[] = [

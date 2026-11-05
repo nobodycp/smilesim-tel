@@ -18,7 +18,7 @@ const labels: Record<GrantCode, (t: Copy) => string> = {
   read: (t) => t.grantRead,
   edit: (t) => t.grantEdit,
   accounting: (t) => t.navAccounting,
-  tasks: (t) => t.navTasks,
+  tasks: (t) => t.grantTasks,
   reports: (t) => t.navReports,
   staff: (t) => t.staffAccount,
   enter: (t) => t.grantEnter,

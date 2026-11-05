@@ -9,6 +9,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { CookieOptions, Request, Response } from 'express';
+import { ActivityRecorder } from '../office/activity-recorder';
 import { AuthService, Failure } from './auth.service';
 import { SESSION_TTL_SECONDS } from './sessions';
 import { expectedLayer } from '../../doors';
@@ -72,7 +73,10 @@ function failWith(res: Response, failure: Failure) {
 @ApiSecurity('x-door')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly activity: ActivityRecorder,
+  ) {}
 
   @Post('login')
   @HttpCode(200)
@@ -99,9 +103,11 @@ export class AuthController {
     }
     const result = await this.auth.login({ loginName: body.loginName, password: body.password }, metaOf(req), door);
     if (result.kind === 'error') {
+      await this.activity.recordLogin({ loginName: body.loginName ?? '', ip: metaOf(req).ip, result: 'fail', reason: result.code });
       res.status(result.status);
       return { message: result.message, code: result.code };
     }
+    await this.activity.recordLogin({ loginName: body.loginName ?? '', ip: metaOf(req).ip, result: 'ok', reason: '' });
     setSessionCookie(res, result.sessionId);
     res.status(200);
     return result.body;
@@ -119,7 +125,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.changePassword(sessionIdOf(req), body ?? {}, metaOf(req));
-    if (result.kind === 'error') return failWith(res, result);
+    if (result.kind === 'error') {
+      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'password' }, 'fail', result.code);
+      return failWith(res, result);
+    }
+    await this.activity.recordOffice({ sessionId: result.sessionId }, metaOf(req).ip, { action: 'password' }, 'ok', '');
     setSessionCookie(res, result.sessionId);
     return result.body;
   }
@@ -191,7 +201,11 @@ export class AuthController {
   @ApiErrorResponse(401, 404)
   async revokeSession(@Param('id') id: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.revokeSession(sessionIdOf(req), id);
-    if (result.kind === 'error') return failWith(res, result);
+    if (result.kind === 'error') {
+      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'logout' }, 'fail', result.code);
+      return failWith(res, result);
+    }
+    await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'logout' }, 'ok', '');
     if (result.current) res.clearCookie('sid', cookieBase());
     return { ok: true };
   }
@@ -221,7 +235,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.confirmTwoFactor(sessionIdOf(req), body ?? {}, metaOf(req));
-    if (result.kind === 'error') return failWith(res, result);
+    if (result.kind === 'error') {
+      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
+      return failWith(res, result);
+    }
+    await this.activity.recordOffice({ sessionId: result.sessionId ?? sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'ok', '');
     if (result.sessionId) setSessionCookie(res, result.sessionId);
     return { next: 'app' };
   }
@@ -239,7 +257,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.verifyTwoFactor(sessionIdOf(req), body ?? {}, metaOf(req));
-    if (result.kind === 'error') return failWith(res, result);
+    if (result.kind === 'error') {
+      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
+      return failWith(res, result);
+    }
+    await this.activity.recordOffice({ sessionId: result.sessionId }, metaOf(req).ip, { action: 'two_factor' }, 'ok', '');
     setSessionCookie(res, result.sessionId);
     return { next: 'app' };
   }

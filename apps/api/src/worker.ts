@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
+import { createPrismaClient } from './db';
+import { purgeBefore } from './modules/office/activity-log';
 
 export type WorkerProcessor = { queue: string; handle: (data: unknown) => Promise<void> };
 
@@ -18,6 +20,21 @@ export async function run(): Promise<void> {
   const workers = backgroundProcessors.map(
     (processor) => new Worker(processor.queue, (job) => processor.handle(job.data), { connection }),
   );
+
+  const purge = async () => {
+    const prisma = createPrismaClient();
+    try {
+      const removed = await prisma.activityEvent.deleteMany({ where: { at: { lt: purgeBefore() } } });
+      if (removed.count > 0) console.log(`activity purge: ${removed.count}`);
+    } catch (error) {
+      console.error('activity purge:', error instanceof Error ? error.message : error);
+    } finally {
+      await prisma.$disconnect();
+    }
+  };
+  await purge();
+  const purgeTimer = setInterval(() => void purge(), 24 * 60 * 60 * 1000);
+  purgeTimer.unref?.();
 
   // The open Redis connection keeps the process alive, so the container does not restart.
   console.log(`worker ready: ${workers.length} processors`);

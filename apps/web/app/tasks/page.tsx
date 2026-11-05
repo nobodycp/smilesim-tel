@@ -52,7 +52,7 @@ export default function TasksPage() {
           provider,
           cursor,
         }),
-        (data) => ({ rows: data.tasks, next: data.nextCursor }),
+        (data) => ({ rows: data.tasks, next: data.nextCursor, total: data.total }),
       ),
     { enabled: urlRead },
   );

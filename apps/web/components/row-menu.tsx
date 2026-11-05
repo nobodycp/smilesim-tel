@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
 
-type RowIcon = 'edit' | 'extend' | 'undo' | 'check' | 'ban' | 'trash' | 'enter' | 'key' | 'fund' | 'move' | 'image';
+type RowIcon = 'edit' | 'extend' | 'undo' | 'check' | 'ban' | 'trash' | 'enter' | 'key' | 'fund' | 'move' | 'image' | 'refresh';
 
 export type RowAction = {
   label: string;
@@ -17,6 +17,7 @@ function Glyph({ name }: { name: RowIcon }) {
   const paths: Record<RowIcon, ReactNode> = {
     edit: <path d="M4 16.5V20h3.5L18 9.5 14.5 6 4 16.5z" />,
     extend: <path d="M12 5v14M5 12h14" />,
+    refresh: <><path d="M19 12a7 7 0 1 1-2-4.9" /><path d="M19 4.5V8h-3.5" /></>,
     undo: <path d="M8 8H4v4M4.6 8.4A7.5 7.5 0 1 1 6.2 17" />,
     check: <path d="M5 12.5 9.5 17 19 7" />,
     ban: <><circle cx="12" cy="12" r="7" /><path d="M7 17 17 7" /></>,

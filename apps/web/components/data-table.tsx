@@ -1,4 +1,4 @@
-import { isValidElement, useState, type ReactNode } from 'react';
+import { isValidElement, useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { EmptyState } from './empty-state';
 import { TableSkeleton } from './loading';
@@ -188,17 +188,19 @@ export function DataTable<Row>({
 
 // What a cursor-paged list (`usePaged`) hands to the table.
 export type PagedView<Row> = {
-  rows: Row[];
+  key: string;
+  all: Row[];
+  total: number | null;
   ready: boolean;
-  page: number;
-  pageCount: number;
   hasNext: boolean;
   more: boolean;
-  goTo: (page: number) => void;
+  loadMore: () => Promise<boolean>;
 };
 
 /**
- * A `DataTable` over a `usePaged` list, with the "load more" row under it while the server has another page.
+ * A `DataTable` over a `usePaged` list, paged the same way as every full list: the saved page size,
+ * the page numbers, previous and next. The server's `total` counts the pages; a page the book does
+ * not hold yet is read chunk by chunk when it is asked for, and "all" reads every chunk.
  * It writes no `.pane`: the page owns the pane, since a dialog or a head may live in it.
  * `waiting` keeps the skeleton up for something else the table needs (the package catalog of numbers).
  */
@@ -215,30 +217,40 @@ export function PagedTable<Row>({
   keepHead?: boolean;
   skeleton?: { rows?: number; columns?: number };
 }) {
-  const showPager = list.ready && (list.pageCount > 1 || list.hasNext);
+  const { pageSize, setPageSize } = usePrefs();
+  const [page, setPage] = useState(1);
+  const [seen, setSeen] = useState(list.key);
+  if (list.key !== seen) {
+    setSeen(list.key);
+    setPage(1);
+  }
+  const count = Math.max(list.total ?? 0, list.all.length);
+  const size = pageSize === 'all' ? Math.max(count, 1) : pageSize;
+  const pageCount = Math.max(1, Math.ceil(count / size));
+  const current = Math.min(list.key !== seen ? 1 : page, pageCount);
+  const wanted = pageSize === 'all' ? count : current * size;
+  // The rows of the asked page are not all in the book yet: read the next chunk, and again after it lands.
+  const short = list.ready && list.all.length < wanted && list.hasNext;
+  const { more, loadMore } = list;
+  useEffect(() => {
+    if (short && !more) void loadMore();
+  }, [short, more, loadMore]);
+
+  const filling = pageSize !== 'all' && short && list.all.length <= (current - 1) * size;
+  const rows = list.all.slice((current - 1) * size, current * size);
+  const choose = (next: typeof pageSize) => {
+    setPageSize(next);
+    setPage(1);
+  };
+  const pager = list.ready && shouldShowPagination({ count, pageSize, onPageSizeChange: choose }) ? (
+    <div className="table-pager">
+      <Pagination page={current} pageSize={pageSize} count={count} onPageChange={setPage} onPageSizeChange={choose} />
+    </div>
+  ) : null;
   return (
     <>
-      <DataTable {...table} rows={list.rows} loading={waiting || !list.ready} paginate={false} />
-      {showPager && <PageNav list={list} />}
+      <DataTable {...table} rows={rows} loading={waiting || !list.ready || filling} paginate={false} />
+      {pager}
     </>
-  );
-}
-
-function PageNav<Row>({ list }: { list: PagedView<Row> }) {
-  const { t } = usePrefs();
-  const numbers = Array.from({ length: list.pageCount }, (_, index) => index + 1);
-  const pending = list.hasNext && list.page === list.pageCount ? list.page + 1 : null;
-  return (
-    <nav className="page-nav" aria-label={t.pages}>
-      <button type="button" aria-label={t.pagePrev} disabled={list.more || list.page <= 1} onClick={() => void list.goTo(list.page - 1)}>‹</button>
-      {numbers.map((number) => (
-        <button key={number} type="button" aria-current={number === list.page ? 'page' : undefined} disabled={list.more} onClick={() => void list.goTo(number)}>{number}</button>
-      ))}
-      {pending !== null && (
-        <button type="button" disabled={list.more} onClick={() => void list.goTo(pending)}>{pending}</button>
-      )}
-      <button type="button" aria-label={t.pageNext} disabled={list.more || !list.hasNext} onClick={() => void list.goTo(list.page + 1)}>›</button>
-      <span className="hint">{t.shownCount.replace('{n}', String(list.rows.length))}</span>
-    </nav>
   );
 }

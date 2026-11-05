@@ -21,6 +21,11 @@ export type SessionInfo = {
   current: boolean;
 };
 
+// The office identity the branch owner edits on /branding. `version` is the row's updatedAt in
+// milliseconds and busts the image URLs (`/api/branding/<kind>?v=`).
+export type BrandingSummary = { siteName: string; tagline: string; hasLogo: boolean; hasFavicon: boolean; version: number };
+export type BrandingBody = { siteName: string; tagline: string; logo: string | null; logoDark: string | null; favicon: string | null };
+
 import { doorFromHost } from './doors';
 
 const base = () => (typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3001' : '/api');
@@ -94,6 +99,8 @@ export const api = {
   setupTwoFactor: () => request<{ otpauth: string }>('POST', '/auth/two-factor/setup'),
   confirmTwoFactor: (code: string) => request<{ next: Next }>('POST', '/auth/two-factor/confirm', { code }),
   verifyTwoFactor: (code: string) => request<{ next: Next }>('POST', '/auth/two-factor/verify', { code }),
+  branding: () => request<BrandingSummary>('GET', '/branding'),
+  saveBranding: (body: BrandingBody) => request<BrandingSummary>('PUT', '/branding', body),
   officeMe: () => request<OfficeMe>('GET', '/office/me'),
   officeHome: () => request<HomePayload>('GET', '/office/home'),
   postAnnouncement: (body: string) => request<{ ok: true }>('POST', '/office/announcements', { body }),
@@ -104,36 +111,50 @@ export const api = {
   officePackages: () => request<{ packages: PackageRow[]; companies: { name: string; image: string }[] }>('GET', '/office/packages'),
   officeCompanies: () => request<Shelf>('GET', '/office/companies'),
   setCompanyImage: (name: string, image: string) => request<{ ok: true }>('POST', '/office/companies/image', { name, image }),
+  setCompanySim: (code: string, sim: SimRules & { esimPrice: number }) =>
+    request<{ ok: true; sim: SimRules; esimPrice: number }>('PUT', `/office/companies/${segment(code)}/sim`, sim),
   setPackagePrice: (code: string, price: number) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/price`, { price }),
   officeProviders: () => request<{ providers: ProviderRow[] }>('GET', '/office/providers'),
   providerSettings: (code: string) =>
     request<ProviderSettings>('GET', `/office/providers/${segment(code)}/settings`),
+  setProviderEsimPrice: (code: string, price: number | null) =>
+    request<{ ok: true; esimPrice: number | null }>('PATCH', `/office/providers/${segment(code)}/esim-price`, { price }),
   setProviderMode: (code: string, action: string, mode: string) =>
     request<{ ok: true }>('PATCH', `/office/providers/${segment(code)}/settings`, { action, mode }),
-  officeLines: (query?: { q?: string; status?: string; packageCode?: string; cursor?: string | null }) =>
-    request<{ lines: LineRow[]; poses: PosChoice[]; nextCursor: string | null }>('GET', `/office/lines${queryString(query)}`),
+  officeLines: (query?: { q?: string; status?: string; packageCode?: string; provider?: string; company?: string; cursor?: string | null }) =>
+    request<{ lines: LineRow[]; poses: PosChoice[]; nextCursor: string | null; total: number }>('GET', `/office/lines${queryString(query)}`),
   officeLine: (id: string) => request<{ line: LineRow; history: LineHistory[] }>('GET', `/office/lines/${segment(id)}`),
   activateLine: (body: ActivateBody) => request<ApplyResult>('POST', '/office/lines', body),
-  officeAudit: (query?: { kind?: string; cursor?: string | null }) =>
-    request<{ entries: AuditRow[]; nextCursor: string | null }>('GET', `/office/audit${queryString(query)}`),
-  officeAccounting: (query?: { q?: string; cursor?: string | null }) =>
-    request<{ entries: AccountingRow[]; nextCursor: string | null }>('GET', `/office/accounting${queryString(query)}`),
+  officeAudit: (query?: { action?: string; result?: string; layer?: string; q?: string; from?: string; to?: string; cursor?: string | null }) =>
+    request<{ entries: ActivityRow[]; nextCursor: string | null; total: number }>('GET', `/office/audit${queryString(query)}`),
+  officeFinance: (query?: { kind?: string; layer?: string; q?: string; from?: string; to?: string; cursor?: string | null }) =>
+    request<{ entries: FinanceRow[]; nextCursor: string | null; total: number }>('GET', `/office/finance${queryString(query)}`),
+  officeProviderOperations: (query?: { kind?: string; provider?: string; q?: string; from?: string; to?: string; cursor?: string | null }) =>
+    request<{ entries: ProviderOpRow[]; nextCursor: string | null; total: number; stats: ProviderOpStats; providers: { code: string; name: string }[] }>('GET', `/office/provider-operations${queryString(query)}`),
   officeLedger: (scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string | null }) =>
-    request<{ entries: LedgerRow[]; nextCursor: string | null }>('GET', `/office/ledger/${segment(scope)}${queryString(query)}`),
+    request<{ entries: LedgerRow[]; nextCursor: string | null; total: number }>('GET', `/office/ledger/${segment(scope)}${queryString(query)}`),
   extendLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/extend`, { outcome }),
   reactivateLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/reactivate`, { outcome }),
+  chargeLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/charge`, { outcome }),
+  refreshLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/refresh`, { outcome }),
   renameLine: (id: string, msisdn: string, outcome: Outcome) =>
     request<ApplyResult>('POST', `/office/lines/${segment(id)}/rename`, { msisdn, outcome }),
-  swapSim: (id: string, iccid: string, outcome: Outcome) =>
-    request<ApplyResult>('POST', `/office/lines/${segment(id)}/sim`, { iccid, outcome }),
+  swapSim: (id: string, sim: { iccid: string; esim?: boolean; qr?: string | null }, outcome: Outcome) =>
+    request<ApplyResult>('POST', `/office/lines/${segment(id)}/sim`, { ...sim, outcome }),
+  requestEsim: (id: string) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/esim`),
+  disconnectQuote: (id: string) => request<DisconnectQuote>('GET', `/office/lines/${segment(id)}/disconnect-quote`),
   disconnectLine: (id: string, outcome: Outcome) =>
     request<ApplyResult>('POST', `/office/lines/${segment(id)}/disconnect`, { outcome }),
   freezeLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/freeze`, { outcome }),
   unfreezeLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/unfreeze`, { outcome }),
   switchLine: (id: string, packageCode: string, outcome: Outcome) =>
     request<ApplyResult>('POST', `/office/lines/${segment(id)}/switch`, { packageCode, outcome }),
-  officeNotices: () => request<{ unread: number; notices: NoticeRow[] }>('GET', '/office/notices'),
+  officeNotices: (query?: { cursor?: string | null; group?: string; unread?: boolean }) =>
+    request<{ unread: number; notices: NoticeRow[]; nextCursor: string | null; total: number }>(
+      'GET',
+      `/office/notices${queryString({ cursor: query?.cursor ?? undefined, group: query?.group, unread: query?.unread ? '1' : undefined })}`,
+    ),
   readNotices: (id?: string) => request<{ ok: true }>('POST', '/office/notices/read', id ? { id } : {}),
   officeTasks: (query?: {
     q?: string;
@@ -143,12 +164,12 @@ export const api = {
     company?: string;
     provider?: string;
     cursor?: string | null;
-  }) => request<{ tasks: TaskRow[]; nextCursor: string | null }>('GET', `/office/tasks${queryString(query)}`),
+  }) => request<{ tasks: TaskRow[]; nextCursor: string | null; total: number }>('GET', `/office/tasks${queryString(query)}`),
   officeTask: (id: string) => request<{ task: TaskDetail; events: TaskEvent[] }>('GET', `/office/tasks/${segment(id)}`),
   addTaskNote: (id: string, text: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/notes`, { text }),
   takeTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/take`),
   releaseTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/release`),
-  completeTask: (id: string, note: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/complete`, { note }),
+  completeTask: (id: string, body: CompleteTaskBody) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/complete`, body),
   rejectTask: (id: string, reason: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/reject`, { reason }),
   cancelTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/cancel`),
   officeUsers: () => request<{ users: UserRow[] }>('GET', '/office/users'),
@@ -177,6 +198,7 @@ export const api = {
     renewalAgentPrice: number;
     renewalPosPrice: number;
     renewalSubscriberPrice: number;
+    esimPrice: number | null;
   }>) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/chain`, body),
   repriceRenewal: (code: string, which: string, posPrice: number) =>
@@ -216,14 +238,18 @@ export type HomePayload = {
   activeLines: number;
   inactiveLines: number;
   canPost: boolean;
-  operations: { id: string; at: string; kind: string; amount: number; note: string | null; loginName: string }[];
+  operations: { id: string; at: string; kind: string; amount: number; note: string | null; packageName: string | null; loginName: string }[];
   announcements: { id: string; body: string; at: string; authorName: string; authorLayer: string }[];
 };
 export type PackageRow = {
   code: string;
   name: string;
+  providerCode?: string;
   providerName: string;
+  activateMode?: 'auto' | 'manual' | 'off';
   companyName: string;
+  sim: SimRules;
+  esimPrice: number;
   dataGb: number | null;
   months: number;
   branchCost: number;
@@ -251,12 +277,15 @@ export type ProviderSettings = {
   code: string;
   name: string;
   modes: Record<string, 'auto' | 'manual' | 'off'>;
+  esimPrice: number | null;
 };
 export type Shelf = {
   companies: {
     code: string;
     name: string;
     image: string;
+    sim: SimRules;
+    esimPrice: number;
     providers: {
       code: string;
       name: string;
@@ -292,6 +321,9 @@ export type PackageSheet = {
   renewalAgentPrice: number;
   renewalPosPrice: number;
   renewalSubscriberPrice: number;
+  esimPrice: number | null;
+  esimPriceEffective: number;
+  esimPriceSource: 'package' | 'provider' | 'company';
   lines: number;
   activeLines: number;
   renewals: string[];
@@ -352,12 +384,14 @@ export type ReportPayload = {
   lines?: LineRow[];
   tasks?: TaskRow[];
   nextCursor?: string | null;
+  total?: number;
 };
 export type LineRow = {
   id: string;
   msisdn: string;
   iccid: string | null;
   esim: boolean;
+  esimQr: string | null;
   status: string;
   packageCode: string;
   packageName: string;
@@ -366,7 +400,15 @@ export type LineRow = {
   posPrice: number;
   createdAt: string;
   endsAt: string;
+  operations: string[];
   opsLocked?: boolean;
+  dataGb?: number | null;
+  subscriberPrice?: number;
+  companyImage?: string;
+  lastRechargeAt?: string | null;
+  esimPrice?: number;
+  sim?: SimRules;
+  switchTargets?: string[];
 };
 export type LineHistory = {
   id: string;
@@ -378,7 +420,7 @@ export type LineHistory = {
   actorName: string;
 };
 export type PosChoice = { loginName: string; nickname: string };
-type ActivateBody = { packageCode: string; posLogin: string; esim: boolean; iccid: string; msisdn: string; outcome: Outcome };
+type ActivateBody = { packageCode: string; posLogin: string; esim: boolean; iccid: string; msisdn: string; currentDetails?: string; outcome: Outcome };
 export type LedgerRow = {
   id: string;
   at: string;
@@ -391,33 +433,86 @@ export type LedgerRow = {
   msisdn: string | null;
   actorLogin: string;
 };
-export type AuditRow = {
+export type ActivityRow = {
   id: string;
+  at: string;
   action: string;
-  status: string;
-  at: string;
-  msisdn: string;
-  companyName: string;
-  packageName: string;
-  providerName: string;
-  actorName: string;
+  result: string;
+  reason: string;
+  ip: string;
+  actorLogin: string;
+  actorLayer: string;
+  subjectKind: string;
+  subjectRef: string;
 };
-export type AccountingRow = {
+export type ProviderOpStats = { count: number; cost: number; monthCost: number };
+export type ProviderOpRow = {
   id: string;
   at: string;
+  kind: string;
   msisdn: string;
+  providerCode: string;
+  providerName: string;
   companyName: string;
   packageName: string;
-  packagePrice: number;
+  cost: number;
+  /** The eSIM fee inside this operation's cost, when it sold or issued an eSIM. */
+  esimPrice: number | null;
+};
+export type FinanceRow = {
+  id: string;
+  at: string;
+  loginName: string;
+  layer: string;
+  actorLogin: string;
+  kind: string;
+  amount: number;
   balanceBefore: number;
   balanceAfter: number;
+  msisdn: string;
+  companyName: string;
+  packageName: string;
+  packagePrice: number | null;
+  /** The eSIM fee inside `amount`, when the sale was an eSIM. */
+  esimPrice: number | null;
+  note: string;
 };
-export type ApplyResult = { applied: boolean; taskId?: string };
+/** What an immediate activation hands back: the line as the provider issued it. */
+export type IssuedLine = { id: string; msisdn: string; iccid: string | null; esim: boolean; esimQr: string | null };
+export type ApplyResult = { applied: boolean; debited?: boolean; taskId?: string; line?: IssuedLine };
+/** What a disconnect would return to the point of sale now (agorot, the fee already taken), and whether it runs at once. */
+export type DisconnectQuote = {
+  amount: number;
+  runsNow: boolean;
+};
+export type SimRules = {
+  length: number | null;
+  prefix: string;
+  esim: boolean;
+};
+export type NoticePayload = {
+  taskId?: string;
+  action?: string;
+  msisdn?: string | null;
+  packageName?: string;
+  amount?: number;
+  handlerName?: string;
+  authorName?: string;
+  excerpt?: string;
+  reason?: string;
+  senderName?: string;
+  note?: string;
+  balance?: number;
+  ceiling?: number;
+  attempted?: number;
+  loginName?: string;
+  announcementId?: string;
+};
 export type NoticeRow = {
   id: string;
   kind: string;
-  action: string;
-  msisdn: string | null;
+  payload: NoticePayload;
+  actorName: string;
   href: string;
   read: boolean;
   createdAt: string;
@@ -442,11 +537,14 @@ export type TaskRow = {
   canWork: boolean;
   canCancel: boolean;
 };
+export type CompleteTaskBody = { note: string; iccid?: string; qr?: string | null; msisdn?: string };
 export type TaskDetail = TaskRow & {
   createdAt: string;
   updatedAt: string;
   iccid: string | null;
   esim: boolean;
+  esimQr: string | null;
+  sim: SimRules;
   lineStatus: string | null;
   companyName: string;
   providerName: string;

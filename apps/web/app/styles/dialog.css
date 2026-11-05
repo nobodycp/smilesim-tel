@@ -85,6 +85,10 @@
   color: var(--rd-ink);
 }
 .dialog-mark.danger { background: var(--rd-danger-soft); color: var(--rd-danger); }
+.dialog-mark.success { background: var(--rd-success-soft); color: var(--rd-success); }
+/* The activation result: a hand-off the customer reads, so the check is large and the facts stay in one column. */
+.dialog-result .dialog-mark { width: 56px; height: 56px; }
+.dialog-result .dialog-mark svg { width: 28px; height: 28px; }
 .dialog-mark svg { width: 18px; height: 18px; }
 .dialog-lede { margin: 4px 0 0; color: var(--rd-muted); font-size: 13px; font-weight: 500; line-height: 1.45; }
 .dialog[data-size='confirm'] > header {
@@ -199,6 +203,7 @@
 .dialog-form { display: grid; gap: 12px; }
 .dialog-body label:not(.check),
 .dialog-form label:not(.check) { display: grid; gap: 4px; color: var(--rd-muted); font-size: 11px; font-weight: 700; text-align: start; }
+.dialog-body label .hint { font-size: 12px; font-weight: 500; }
 .dialog button:disabled { opacity: 0.45; cursor: not-allowed; }
 .row-menu { position: relative; display: inline-flex; }
 /* `.row-menu .row-menu-btn` (two classes), not `.row-menu-btn` alone: the trigger sits inside a

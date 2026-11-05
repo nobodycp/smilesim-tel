@@ -1,21 +1,46 @@
 'use client';
 
+import { ArrowRightLeft, CalendarPlus, Hash, Layers, PhoneOff, QrCode, RefreshCw, Smartphone, Snowflake, Sun, Zap } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
-import { Desk, Money, OutcomePick, actionName, latinWhen, lineStatus } from '../../../components/desk';
+import { Desk, Money, OutcomePick, actionName, applyNote, latinWhen, lineBadgeClass, lineStatus } from '../../../components/desk';
+import { Dialog } from '../../../components/dialog';
+import { DisconnectConfirm } from '../../../components/disconnect-confirm';
+import { EsimDialog, QrPicker } from '../../../components/esim-qr';
 import { lineActions, type RunLine } from '../../../components/line-actions';
 import { TableSkeleton } from '../../../components/loading';
+import type { RowAction } from '../../../components/row-menu';
 import { Button } from '../../../components/ui/button';
-import { api, type LineHistory, type Outcome } from '../../../lib/api';
+import { api, type LineHistory, type LineRow, type Outcome } from '../../../lib/api';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
+import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
+import { formatShekel } from '../../../lib/money';
 import { useLoad } from '../../../lib/use-load';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
+type DialogName = 'sim' | 'esim' | 'rename' | 'switch' | 'transfer' | 'qr' | null;
+
+const glyph = { size: 22, strokeWidth: 2, 'aria-hidden': true as const };
+
+function tileIcon(item: RowAction) {
+  if (item.danger) return <PhoneOff {...glyph} />;
+  if (item.icon === 'undo') return <Sun {...glyph} />;
+  if (item.icon === 'check') return <Zap {...glyph} />;
+  if (item.icon === 'refresh') return <RefreshCw {...glyph} />;
+  if (item.icon === 'ban') return <Snowflake {...glyph} />;
+  return <CalendarPlus {...glyph} />;
+}
+
+function daysLeft(endsAt: string): number {
+  const end = new Date(endsAt).getTime();
+  if (Number.isNaN(end)) return 0;
+  return Math.max(0, Math.ceil((end - Date.now()) / 86_400_000));
+}
 
 export default function LineCardPage() {
   const { t } = usePrefs();
@@ -26,9 +51,13 @@ export default function LineCardPage() {
   const canTransfer = Boolean(me?.grants.includes('transferLines'));
   const [tab, setTab] = useState<Tab>('ops');
   const [outcome, setOutcome] = useState<Outcome>('success');
+  const [dialog, setDialog] = useState<DialogName>(null);
+  const [ending, setEnding] = useState<LineRow | null>(null);
   const [switchTo, setSwitchTo] = useState('');
-  const [nextNumber, setNextNumber] = useState('');
   const [nextIccid, setNextIccid] = useState('');
+  const [nextEsim, setNextEsim] = useState(false);
+  const [nextQr, setNextQr] = useState('');
+  const [nextNumber, setNextNumber] = useState('');
   const [posLogin, setPosLogin] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -44,6 +73,7 @@ export default function LineCardPage() {
         line: found.data.line,
         history: found.data.history,
         packages: catalog.ok ? catalog.data.packages : [],
+        companies: catalog.ok ? catalog.data.companies : [],
         posChoices: users?.ok ? users.data.users.filter((row) => row.layer === 'pos').map((row) => ({ loginName: row.loginName, nickname: row.nickname })) : [],
       },
     };
@@ -51,20 +81,36 @@ export default function LineCardPage() {
   const line = card.data?.line ?? null;
   const history = card.data?.history ?? [];
   const packages = card.data?.packages ?? [];
+  const companies = card.data?.companies ?? [];
   const posChoices = card.data?.posChoices ?? [];
-  const { run: act } = useAction({ setError, setNote, onDone: card.reload });
-  const run: RunLine = (work) => act(work, { note: (data) => (data.applied ? t.appliedNow : t.sentToBranch) });
+  const { run: act, busy } = useAction({ setError, setNote, onDone: card.reload });
+  const run: RunLine = (work) => act(work, { note: (data) => applyNote(t, data) });
+  const closeDialog = () => {
+    setDialog(null);
+    setSwitchTo('');
+    setNextIccid('');
+    setNextEsim(false);
+    setNextQr('');
+    setNextNumber('');
+    setPosLogin('');
+  };
 
   const names: Record<Tab, string> = { ops: t.lineOps, details: t.lineDetails, log: t.lineLog };
-  const items = line ? lineActions(line, verdict, run, t, { freeze: true }) : [];
+  const items = line ? lineActions(line, verdict, run, t, { freeze: true, onDisconnect: setEnding }) : [];
+  const allows = (key: string, fallback: boolean) => (line?.operations ? line.operations.includes(key) : fallback);
+  const targets = new Set(line?.switchTargets ?? []);
+  const switchChoices = packages.filter((row) => targets.has(row.code));
   const logColumns: Column<LineHistory>[] = [
     { key: 'kind', header: t.kind, render: (row) => actionName(t, row.action) },
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
     { key: 'company', header: t.company, render: (row) => row.companyName || '—' },
     { key: 'package', header: t.packageName, render: (row) => row.packageName || '—' },
-    { key: 'actor', header: t.actedBy, render: (row) => row.actorName || '—' },
+    { key: 'actor', header: t.actedBy, render: (row) => (row.actorName ? <bdi>{row.actorName}</bdi> : '—') },
   ];
+  const internetCap = line?.dataGb == null ? '—' : String(line.dataGb);
+  const simRules = line?.sim ?? OPEN_SIM;
+  const simLabel = (row: LineRow) => (row.iccid ? <bdi dir="ltr">{row.iccid}</bdi> : row.esim ? t.esim : '—');
 
   return (
     <Desk title={t.lineCard} lede="" error={error || card.error} note={note}>
@@ -78,7 +124,7 @@ export default function LineCardPage() {
           <section className="pane">
             <header className="line-head">
               <p className="line-number"><bdi dir="ltr">{line.msisdn}</bdi></p>
-              <span className={line.status === 'active' ? 'badge' : line.status === 'frozen' ? 'badge pending' : 'badge cancelled'}>{lineStatus(t, line.status)}</span>
+              <span className={lineBadgeClass(line.status)}>{lineStatus(t, line.status)}</span>
             </header>
             <div className="steps" role="tablist">
               {tabs.map((item) => (
@@ -88,105 +134,282 @@ export default function LineCardPage() {
               ))}
             </div>
             {tab === 'ops' && (
-              <div className="pane-body">
+              <div className="pane-body line-ops">
                 {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
-                {items.length > 0 && (
-                  <div className="command-list">
-                    {items.map((item) => (
-                      <button key={item.label} type="button" className={item.danger ? 'op-card danger' : 'op-card'} onClick={item.onClick}>
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="command-forms">
+                <div className="op-board">
+                  {items.length > 0 && (
+                    <div className="command-list">
+                      {items.map((item) => (
+                        <button key={item.label} type="button" className={item.danger ? 'op-card danger' : 'op-card'} onClick={item.onClick}>
+                          {tileIcon(item)}
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {allows('sim', line.status === 'active' && !line.opsLocked) && (
+                    <button type="button" className="op-tile" onClick={() => { setNextIccid(simRules.prefix); setDialog('sim'); }}>
+                      <Smartphone {...glyph} />
+                      {t.swapSim}
+                    </button>
+                  )}
+                  {allows('esim', false) && (
+                    <button type="button" className="op-tile" onClick={() => setDialog('esim')}>
+                      <QrCode {...glyph} />
+                      {t.requestEsim}
+                    </button>
+                  )}
+                  {allows('rename', line.status === 'active' && !line.opsLocked) && (
+                    <button type="button" className="op-tile" onClick={() => setDialog('rename')}>
+                      <Hash {...glyph} />
+                      {t.changeNumber}
+                    </button>
+                  )}
+                  {allows('switch', line.status === 'active' || Boolean(line.opsLocked)) && (
+                    <button type="button" className="op-tile" onClick={() => setDialog('switch')}>
+                      <Layers {...glyph} />
+                      {t.actSwitch}
+                    </button>
+                  )}
                   {canTransfer && (
-                    <div className="switch-row">
-                      <label>
-                        {t.transfer}
-                        <select value={posLogin} onChange={(event) => setPosLogin(event.target.value)}>
-                          <option value="">—</option>
-                          {posChoices.map((row) => <option key={row.loginName} value={row.loginName}>{row.nickname}</option>)}
-                        </select>
-                      </label>
-                      <Button type="button" variant="secondary" size="sm" disabled={!posLogin} onClick={() => act(() => api.transferLine(line.id, posLogin), { note: t.transfer })}>{t.transfer}</Button>
-                    </div>
-                  )}
-                  {line.status === 'active' && !line.opsLocked && (
-                    <div className="switch-row">
-                      <label>
-                        {t.updateNumber}
-                        <input value={nextNumber} dir="ltr" onChange={(event) => setNextNumber(event.target.value)} />
-                      </label>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={!/^05\d{8}$/.test(nextNumber)}
-                        onClick={() => run(() => api.renameLine(line.id, nextNumber, verdict))}
-                      >
-                        {t.updateNumber}
-                      </Button>
-                    </div>
-                  )}
-                  {line.status === 'active' && !line.opsLocked && (
-                    <div className="switch-row">
-                      <label>
-                        {t.swapSim}
-                        <input value={nextIccid} dir="ltr" onChange={(event) => setNextIccid(event.target.value)} />
-                      </label>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={nextIccid.trim().length < 8}
-                        onClick={() => run(() => api.swapSim(line.id, nextIccid.trim(), verdict))}
-                      >
-                        {t.swapSim}
-                      </Button>
-                    </div>
-                  )}
-                  {(line.status === 'active' || line.opsLocked) && (
-                    <div className="switch-row">
-                      <label>
-                        {t.switchTo}
-                        <select value={switchTo} onChange={(event) => setSwitchTo(event.target.value)}>
-                          <option value="">{t.switchTo}</option>
-                          {packages
-                            .filter((row) => row.code !== line.packageCode)
-                            .map((row) => (
-                              <option key={row.code} value={row.code}>
-                                {row.providerName ? `${row.providerName} · ${row.companyName} · ${row.name}` : `${row.companyName} · ${row.name}`}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                      <Button type="button" variant="secondary" size="sm" disabled={!switchTo} onClick={() => run(() => api.switchLine(line.id, switchTo, verdict))}>
-                        {t.actSwitch}
-                      </Button>
-                    </div>
+                    <button type="button" className="op-tile" onClick={() => setDialog('transfer')}>
+                      <ArrowRightLeft {...glyph} />
+                      {t.transfer}
+                    </button>
                   )}
                 </div>
               </div>
             )}
             {tab === 'details' && (
-              <div className="pane-body">
-                <dl className="facts">
+              <div className="pane-body line-details">
+                <dl className="detail-rows">
                   <div><dt>{t.company}</dt><dd>{line.companyName || '—'}</dd></div>
                   <div><dt>{t.packageName}</dt><dd>{line.packageName}</dd></div>
-                  <div><dt>{t.price}</dt><dd><Money value={line.posPrice} /></dd></div>
-                  <div><dt>{line.esim ? t.esim : t.iccid}</dt><dd>{line.esim ? t.esim : <bdi dir="ltr">{line.iccid || '—'}</bdi>}</dd></div>
-                  <div><dt>{t.started}</dt><dd><bdi dir="ltr">{latinWhen(line.createdAt)}</bdi></dd></div>
-                  <div><dt>{t.endsOn}</dt><dd><bdi dir="ltr">{latinWhen(line.endsAt)}</bdi></dd></div>
-                  <div><dt>{t.status}</dt><dd>{lineStatus(t, line.status)}</dd></div>
+                  <div><dt>{t.simType}</dt><dd>{line.esim ? t.esim : t.physicalSim}</dd></div>
+                  <div><dt>{t.simSerial}</dt><dd>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</dd></div>
+                  {line.esim && line.esimQr && (
+                    <div><dt>{t.esimQr}</dt><dd><Button type="button" variant="secondary" size="icon" className="h-7 w-7" aria-label={t.showQr} title={t.showQr} onClick={() => setDialog('qr')}><QrCode size={16} strokeWidth={1.75} aria-hidden="true" /></Button></dd></div>
+                  )}
+                  <div><dt>{t.endsOn}</dt><dd><bdi dir="ltr">{latinWhen(line.endsAt).slice(0, 10)}</bdi></dd></div>
+                  <div><dt>{t.remainingDays}</dt><dd>{daysLeft(line.endsAt)} {t.dayUnit}</dd></div>
+                  <div><dt>{t.lastRecharge}</dt><dd>{line.lastRechargeAt ? <bdi dir="ltr">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</dd></div>
+                  <div><dt>{t.subscriptionPrice}</dt><dd><Money value={line.subscriberPrice ?? line.posPrice} /></dd></div>
                   {!isPos && line.posLogin && <div><dt>{t.pointOfSale}</dt><dd><bdi dir="ltr">{line.posLogin}</bdi></dd></div>}
                 </dl>
+                <section className="usage">
+                  <h2>{t.usage}</h2>
+                  <div className="usage-meters">
+                    <div className="usage-meter">
+                      <span className="usage-dial"><b>—</b></span>
+                      <span>{t.messages}</span>
+                      <span className="hint">—</span>
+                    </div>
+                    <div className="usage-meter">
+                      <span className="usage-dial"><b>—</b></span>
+                      <span>{t.minutes}</span>
+                      <span className="hint">—</span>
+                    </div>
+                    <div className="usage-meter">
+                      <span className="usage-dial"><b>—</b></span>
+                      <span>{t.internet}</span>
+                      <span className="hint"><bdi dir="ltr">— / {internetCap}</bdi></span>
+                    </div>
+                  </div>
+                </section>
               </div>
             )}
             {tab === 'log' && <DataTable columns={logColumns} rows={history} rowKey={(row) => row.id} empty={t.noHistory} />}
           </section>
         )}
       </div>
+      {line && (
+        <>
+          <DisconnectConfirm
+            line={ending}
+            busy={busy}
+            failing={verdict === 'fail'}
+            onClose={() => setEnding(null)}
+            onConfirm={(row) => act(() => api.disconnectLine(row.id, verdict), { note: (data) => applyNote(t, data) })}
+          />
+          <Dialog
+            open={dialog === 'sim'}
+            title={t.swapSim}
+            closeLabel={t.closeMenu}
+            onClose={closeDialog}
+            mark="key"
+            footer={(
+              <>
+                <Button type="button" variant="secondary" onClick={closeDialog}>{t.cancel}</Button>
+                <Button
+                  type="button"
+                  disabled={busy || nextIccid.trim().length < 8 || !simFits(simRules, nextIccid.trim())}
+                  onClick={() => act(
+                    () => api.swapSim(line.id, { iccid: nextIccid.trim(), esim: nextEsim, qr: nextEsim && nextQr ? nextQr : null }, verdict),
+                    { note: (data) => applyNote(t, data), then: closeDialog },
+                  )}
+                >
+                  {t.swapSim}
+                </Button>
+              </>
+            )}
+          >
+            <div className="stack">
+              <dl className="detail-rows">
+                <div><dt>{t.currentSim}</dt><dd>{simLabel(line)}</dd></div>
+              </dl>
+              <label>
+                {t.newSim}
+                <input value={nextIccid} inputMode="numeric" dir="ltr" onChange={(event) => setNextIccid(event.target.value)} />
+                {hasSimRules(simRules) && <span className="hint">{simHint(t, simRules)}</span>}
+              </label>
+              {simRules.esim && (
+                <label className="check">
+                  <input type="checkbox" checked={nextEsim} onChange={(event) => setNextEsim(event.target.checked)} />
+                  {t.esim}
+                </label>
+              )}
+              {nextEsim && (
+                <div className="stack">
+                  <span className="hint">{t.qrImage}</span>
+                  <QrPicker value={nextQr} onChange={setNextQr} disabled={busy} />
+                </div>
+              )}
+              <p className="hint">{t.swapEsimHint}</p>
+            </div>
+          </Dialog>
+          <Dialog
+            open={dialog === 'esim'}
+            title={t.requestEsim}
+            closeLabel={t.closeMenu}
+            onClose={closeDialog}
+            size="confirm"
+            mark="plus"
+            footer={(
+              <>
+                <Button type="button" variant="secondary" onClick={closeDialog}>{t.cancel}</Button>
+                <Button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => act(() => api.requestEsim(line.id), { note: (data) => applyNote(t, data), then: closeDialog })}
+                >
+                  {t.requestEsim}
+                </Button>
+              </>
+            )}
+          >
+            <div className="stack">
+              <dl className="detail-rows">
+                <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
+                <div><dt>{t.currentSim}</dt><dd>{simLabel(line)}</dd></div>
+                <div><dt>{t.esimPrice}</dt><dd><Money value={line.esimPrice ?? 0} /></dd></div>
+              </dl>
+              <p className="hint">{t.requestEsimHint.replace('{price}', formatShekel(line.esimPrice ?? 0))}</p>
+            </div>
+          </Dialog>
+          <Dialog
+            open={dialog === 'rename'}
+            title={t.changeNumber}
+            closeLabel={t.closeMenu}
+            onClose={closeDialog}
+            mark="key"
+            footer={(
+              <>
+                <Button type="button" variant="secondary" onClick={closeDialog}>{t.cancel}</Button>
+                <Button
+                  type="button"
+                  disabled={busy || (nextNumber.trim() !== '' && !/^05\d{8}$/.test(nextNumber.trim()))}
+                  onClick={() => act(() => api.renameLine(line.id, nextNumber.trim(), verdict), { note: (data) => applyNote(t, data), then: closeDialog })}
+                >
+                  {t.changeNumber}
+                </Button>
+              </>
+            )}
+          >
+            <div className="stack">
+              <dl className="detail-rows">
+                <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
+              </dl>
+              <label>
+                {t.newNumber}
+                <input value={nextNumber} inputMode="numeric" dir="ltr" onChange={(event) => setNextNumber(event.target.value)} />
+                <span className="hint">{t.newNumberLater}</span>
+              </label>
+            </div>
+          </Dialog>
+          <EsimDialog line={dialog === 'qr' ? line : null} onClose={closeDialog} />
+          <Dialog
+            open={dialog === 'switch'}
+            title={t.actSwitch}
+            closeLabel={t.closeMenu}
+            onClose={closeDialog}
+            size="wide"
+            mark="transfer"
+            footer={(
+              <>
+                <Button type="button" variant="secondary" onClick={closeDialog}>{t.cancel}</Button>
+                <Button
+                  type="button"
+                  disabled={busy || !switchTo}
+                  onClick={() => act(() => api.switchLine(line.id, switchTo, verdict), { note: (data) => applyNote(t, data), then: closeDialog })}
+                >
+                  {t.actSwitch}
+                </Button>
+              </>
+            )}
+          >
+            {switchChoices.length === 0 ? (
+              <p className="hint">{t.noSwitchTargets}</p>
+            ) : (
+              <div className="pack-picks">
+                {switchChoices.map((row) => {
+                  const image = companies.find((company) => company.name === row.companyName)?.image;
+                  return (
+                    <button key={row.code} type="button" className={switchTo === row.code ? 'pack-pick is-on' : 'pack-pick'} onClick={() => setSwitchTo(row.code)}>
+                      {image ? <img src={image} alt="" /> : <span>{row.companyName.slice(0, 1)}</span>}
+                      <b>{row.companyName}</b>
+                      <span>{row.name}</span>
+                      <Money value={row.subscriberPrice} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Dialog>
+          <Dialog
+            open={dialog === 'transfer'}
+            title={t.transfer}
+            closeLabel={t.closeMenu}
+            onClose={closeDialog}
+            mark="transfer"
+            footer={(
+              <>
+                <Button type="button" variant="secondary" onClick={closeDialog}>{t.cancel}</Button>
+                <Button
+                  type="button"
+                  disabled={busy || !posLogin}
+                  onClick={() => act(() => api.transferLine(line.id, posLogin), { note: t.transfer, then: closeDialog })}
+                >
+                  {t.transfer}
+                </Button>
+              </>
+            )}
+          >
+            <div className="stack">
+              <dl className="detail-rows">
+                <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
+                <div><dt>{t.pointOfSale}</dt><dd><bdi dir="ltr">{line.posLogin || '—'}</bdi></dd></div>
+              </dl>
+              <label>
+                {t.transfer}
+                <select value={posLogin} onChange={(event) => setPosLogin(event.target.value)}>
+                  <option value="">—</option>
+                  {posChoices.map((row) => <option key={row.loginName} value={row.loginName}>{row.nickname}</option>)}
+                </select>
+              </label>
+            </div>
+          </Dialog>
+        </>
+      )}
     </Desk>
   );
 }

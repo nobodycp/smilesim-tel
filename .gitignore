@@ -6,6 +6,7 @@ apps/api/src/generated
 .superpowers
 coverage
 playwright-report
+audit-output
 test-results
 *.log
 .env

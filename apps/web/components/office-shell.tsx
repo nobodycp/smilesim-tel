@@ -6,38 +6,50 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
+  ChevronDown,
   ClipboardList,
   Home,
   Layers,
   LogOut,
   Menu,
   Package,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Phone,
   Settings,
   Shield,
   Radio,
+  ListChecks,
   Users,
   Wallet,
   Wifi,
   X,
 } from 'lucide-react';
 import { api, type NoticeRow } from '../lib/api';
+import { useBranding } from '../lib/branding';
 import { forgetIdentity, useIdentity } from '../lib/identity';
 import { useDoor } from '../lib/door-context';
 import { useOffice } from '../lib/office-session';
+import { formatShekel } from '../lib/money';
 import { usePrefs } from '../lib/prefs';
+import { BrandLogo } from './brand-logo';
 import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
 import { BackLink } from './back-link';
 import { PageSkeleton } from './loading';
-import { actionName } from './names';
+import { useNotices, useUnreadTitle } from '../lib/use-notices';
+import { noticeAge, noticeDetail, noticeTitle } from '../lib/notice-text';
 
 const COLLAPSE_KEY = 'smilesim-sidebar-collapsed';
 const glyph = { size: 18, strokeWidth: 2.2, 'aria-hidden': true as const };
 
 type NavItem = { label: string; href: string; icon: LucideIcon; layers?: readonly string[]; grant?: string; owner?: boolean };
+// A collapsible run of items under one head (the Admin section's "Settings"). It opens when one
+// of its items is the page, or when clicked; the collapsed rail shows its items as plain icons.
+type NavGroup = { key: string; label: string; icon: LucideIcon; items: NavItem[] };
+type NavEntry = NavItem | NavGroup;
+const isGroup = (entry: NavEntry): entry is NavGroup => 'items' in entry;
 
 export function OfficeShell({
   account,
@@ -51,15 +63,17 @@ export function OfficeShell({
   children: ReactNode;
 }) {
   const { t, locale } = usePrefs();
+  const branding = useBranding();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [walletOpen, setWalletOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
-  const [notices, setNotices] = useState<NoticeRow[]>([]);
-  const [unread, setUnread] = useState(0);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { ready, me, initialName, initialBalance } = useOffice();
+  const { notices, unread, fresh, markRead, dismiss } = useNotices(ready);
+  useUnreadTitle(unread, pathname, locale);
   const door = useDoor();
   const layer = door.layer;
   const balance = me ? me.balance : null;
@@ -109,22 +123,12 @@ export function OfficeShell({
     return () => document.removeEventListener('mousedown', onPointer);
   }, [menuOpen, walletOpen, noticeOpen]);
 
-  useEffect(() => {
-    if (!ready) return;
-    let stop = false;
-    const pull = async () => {
-      const result = await api.officeNotices();
-      if (stop || !result.ok) return;
-      setNotices(result.data.notices);
-      setUnread(result.data.unread);
-    };
-    pull();
-    const timer = window.setInterval(pull, 20000);
-    return () => {
-      stop = true;
-      window.clearInterval(timer);
-    };
-  }, [ready]);
+  async function openNotice(row: NoticeRow) {
+    if (!row.read) await markRead(row.id);
+    setNoticeOpen(false);
+    dismiss();
+    window.location.assign(row.href);
+  }
 
   function toggleCollapsed() {
     setCollapsed((current) => {
@@ -149,12 +153,26 @@ export function OfficeShell({
   }
 
   const desk = ['branch', 'main_agent', 'agent'] as const;
-  const groups: { title: string; items: NavItem[] }[] = [
+  const posGroups: { title: string; items: NavItem[] }[] = [
+    {
+      title: '',
+      items: [
+        { label: t.homeTitle, href: '/', icon: Home },
+        { label: t.navNumbers, href: '/numbers', icon: Phone },
+        { label: t.navPlans, href: '/packages', icon: Package },
+        { label: t.navTasks, href: '/tasks', icon: ClipboardList },
+        { label: t.navFinance, href: '/finance', icon: Wallet },
+        { label: t.navAudit, href: '/audit', icon: ListChecks },
+      ],
+    },
+  ];
+  const officeGroups: { title: string; items: NavEntry[] }[] = [
     {
       title: '',
       items: [
         { label: t.homeTitle, href: '/', icon: Home },
         { label: t.navTasks, href: '/tasks', icon: ClipboardList },
+        { label: t.navNotices, href: '/notices', icon: Bell },
       ],
     },
     {
@@ -162,6 +180,7 @@ export function OfficeShell({
       items: [
         { label: t.navNumbers, href: '/numbers', icon: Phone },
         { label: t.navUsers, href: '/users', icon: Users, layers: desk },
+        { label: t.navFinance, href: '/finance', icon: Wallet },
       ],
     },
     {
@@ -170,43 +189,73 @@ export function OfficeShell({
         { label: t.navPlans, href: '/packages', icon: Package },
         { label: t.navCompanies, href: '/companies', icon: Layers, layers: ['branch'], grant: 'edit' },
         { label: t.providersTitle, href: '/providers', icon: Radio, layers: ['branch'], grant: 'edit' },
+        { label: t.reportProviders, href: '/reports/providers', icon: ClipboardList, layers: ['branch'], grant: 'reports' },
+        { label: t.navProviderOps, href: '/provider-operations', icon: ListChecks, layers: ['branch'], grant: 'reports' },
       ],
     },
     {
       title: t.navAdmin,
-      items: [{ label: t.navRoles, href: '/roles', icon: Shield, layers: ['branch'], owner: true }],
+      items: [
+        { label: t.navAudit, href: '/audit', icon: ClipboardList },
+        { label: t.navRoles, href: '/roles', icon: Shield, layers: ['branch'], owner: true },
+        {
+          key: 'settings',
+          label: t.navSettings,
+          icon: Settings,
+          items: [{ label: t.navBranding, href: '/branding', icon: Palette, layers: ['branch'], owner: true }],
+        },
+      ],
     },
     {
       title: t.navNotReady,
       items: [
         { label: t.navOperations, href: '/operations', icon: Package },
-        { label: t.navAccounting, href: '/accounting', icon: Wallet },
-        { label: t.navAudit, href: '/audit', icon: ClipboardList },
-        { label: t.reportProviders, href: '/reports/providers', icon: ClipboardList, layers: ['branch'], grant: 'reports' },
-        { label: t.reportConsumption, href: '/reports/consumption', icon: ClipboardList, layers: ['branch'], grant: 'reports' },
-        { label: t.reportFunding, href: '/reports/funding', icon: Wallet, layers: ['branch'], grant: 'reports' },
         { label: t.reportTasks, href: '/reports/tasks', icon: ClipboardList, layers: ['branch'], grant: 'reports' },
         { label: t.reportNumbers, href: '/reports/numbers', icon: Phone, layers: ['branch'], grant: 'reports' },
         { label: t.reportOperations, href: '/reports/operations', icon: Package, layers: ['branch'], grant: 'reports' },
       ],
     },
   ];
+  const groups: { title: string; items: NavEntry[] }[] = layer === 'pos' ? posGroups : officeGroups;
+  const allowed = (item: NavItem) => {
+    if (item.layers && !item.layers.includes(layer)) return false;
+    // The account arrives after the first paint. Dropping gated items before
+    // that paints half the menu, then snaps the rest in.
+    if (!ready) return true;
+    if (item.owner && !me?.isBranchOwner) return false;
+    if (item.grant && !me?.isBranchOwner && !me?.grants?.includes(item.grant)) return false;
+    return true;
+  };
   const visibleGroups = groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => {
-        if (item.layers && !item.layers.includes(layer)) return false;
-        // The account arrives after the first paint. Dropping gated items before
-        // that paints half the menu, then snaps the rest in.
-        if (!ready) return true;
-        if (item.owner && !me?.isBranchOwner) return false;
-        if (item.grant && !me?.isBranchOwner && !me?.grants?.includes(item.grant)) return false;
-        return true;
-      }),
+      items: group.items
+        .map((entry) => (isGroup(entry) ? { ...entry, items: entry.items.filter(allowed) } : entry))
+        .filter((entry) => (isGroup(entry) ? entry.items.length > 0 : allowed(entry))),
     }))
     .filter((group) => group.items.length > 0);
-  const roots = new Set(groups.flatMap((group) => group.items.map((item) => item.href)));
+  const flatItems = (entries: NavEntry[]) => entries.flatMap((entry) => (isGroup(entry) ? entry.items : [entry]));
+  const roots = new Set(groups.flatMap((group) => flatItems(group.items).map((item) => item.href)));
   const backHref = roots.has(pathname) ? '' : pathname.split('/').slice(0, -1).join('/') || '/';
+  const isActive = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
+
+  const navLink = (item: NavItem, compact: boolean) => {
+    const active = isActive(item.href);
+    const ItemIcon = item.icon;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={active ? 'nav-link active' : 'nav-link'}
+        title={item.label}
+        aria-current={active ? 'page' : undefined}
+        onClick={() => setMobileOpen(false)}
+      >
+        <ItemIcon {...glyph} />
+        {!compact && <span>{item.label}</span>}
+      </Link>
+    );
+  };
 
   const sidebar = (mobile: boolean) => {
     const compact = collapsed && !mobile;
@@ -218,12 +267,16 @@ export function OfficeShell({
               <X {...glyph} />
             </button>
           )}
-          <div className="brand-mark" aria-hidden="true">
-            <Wifi {...glyph} size={compact ? 20 : 28} />
-          </div>
+          {branding.logo ? (
+            <BrandLogo className="brand-block-logo" />
+          ) : (
+            <div className="brand-mark" aria-hidden="true">
+              <Wifi {...glyph} size={compact ? 20 : 28} />
+            </div>
+          )}
           {!compact && (
             <div className="brand-copy">
-              <p className="brand-name">{t.brand}</p>
+              <p className="brand-name">{branding.name}</p>
               <p className="brand-sub">{t[door.label]}</p>
             </div>
           )}
@@ -233,21 +286,31 @@ export function OfficeShell({
           {visibleGroups.map((group) => (
             <div key={group.title || 'home'}>
               {!compact && group.title && <p className="nav-label">{group.title}</p>}
-              {group.items.map((item) => {
-                const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
-                const ItemIcon = item.icon;
+              {group.items.map((entry) => {
+                if (!isGroup(entry)) return navLink(entry, compact);
+                if (compact) return entry.items.map((item) => navLink(item, compact));
+                const open = openGroups[entry.key] ?? entry.items.some((item) => isActive(item.href));
+                const HeadIcon = entry.icon;
+                const bodyId = `nav-group-${entry.key}${mobile ? '-drawer' : ''}`;
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={active ? 'nav-link active' : 'nav-link'}
-                    title={item.label}
-                    aria-current={active ? 'page' : undefined}
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    <ItemIcon {...glyph} />
-                    {!compact && <span>{item.label}</span>}
-                  </Link>
+                  <div key={entry.key} className="nav-group">
+                    <button
+                      type="button"
+                      className="nav-link nav-group-head"
+                      aria-expanded={open}
+                      aria-controls={bodyId}
+                      onClick={() => setOpenGroups((current) => ({ ...current, [entry.key]: !open }))}
+                    >
+                      <HeadIcon {...glyph} />
+                      <span>{entry.label}</span>
+                      <ChevronDown {...glyph} size={14} className={open ? 'nav-group-chevron open' : 'nav-group-chevron'} />
+                    </button>
+                    {open && (
+                      <div id={bodyId} className="nav-group-body">
+                        {entry.items.map((item) => navLink(item, compact))}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -306,13 +369,14 @@ export function OfficeShell({
             </button>
             <div className="hello">
               <span className="hello-title">
-                {clock ? `${clock.hello}${helloMark} ${first}` : first}
+                {clock ? `${clock.hello}${helloMark} ` : null}
+                <bdi>{first}</bdi>
               </span>
               <span className="hello-date">{clock?.today ?? '\u00a0'}</span>
             </div>
-            <ShellSearch />
           </div>
           <div className="topbar-tools">
+            <ShellSearch />
             <div className="wallet-chip" ref={walletRef}>
                 <button
                   type="button"
@@ -325,7 +389,7 @@ export function OfficeShell({
                   <Wallet {...glyph} />
                   {shownBalance !== null && (
                     <span className={shownBalance < 0 ? 'money neg' : shownBalance > 0 ? 'money pos' : 'money'} dir="ltr">
-                      {shownBalance}
+                      {formatShekel(shownBalance)}
                     </span>
                   )}
                 </button>
@@ -333,15 +397,15 @@ export function OfficeShell({
                   <div className="wallet-pop" role="dialog" aria-label={t.walletMenu}>
                     <p>
                       <span>{t.balance}</span>
-                      <strong className={balance < 0 ? 'money neg' : balance > 0 ? 'money pos' : 'money'} dir="ltr">{balance}</strong>
+                      <strong className={balance < 0 ? 'money neg' : balance > 0 ? 'money pos' : 'money'} dir="ltr">{formatShekel(balance)}</strong>
                     </p>
                     <p>
                       <span>{t.ceiling}</span>
-                      <strong dir="ltr">{layer === 'branch' ? t.noCeiling : ceiling}</strong>
+                      <strong dir="ltr">{layer === 'branch' ? t.noCeiling : formatShekel(ceiling)}</strong>
                     </p>
                     <p>
                       <span>{t.available}</span>
-                      <strong dir="ltr">{layer === 'branch' ? t.noCeiling : balance + ceiling}</strong>
+                      <strong dir="ltr">{layer === 'branch' ? t.noCeiling : formatShekel(balance + ceiling)}</strong>
                     </p>
                   </div>
                 )}
@@ -358,8 +422,15 @@ export function OfficeShell({
                 {unread > 0 && <span className="notice-count">{unread > 9 ? '9+' : unread}</span>}
               </button>
               {noticeOpen && (
-                <div className="shell-panel" role="menu">
-                  <p className="shell-panel-title">{t.notices}</p>
+                <div className="shell-panel notice-panel" role="menu">
+                  <div className="notice-panel-head">
+                    <p className="shell-panel-title">{t.notices}</p>
+                    {unread > 0 && (
+                      <button type="button" className="notice-mark-all" onClick={() => void markRead()}>
+                        {t.markAllRead}
+                      </button>
+                    )}
+                  </div>
                   {notices.length === 0 ? (
                     <p className="shell-empty">{t.noNotices}</p>
                   ) : notices.map((row) => (
@@ -367,16 +438,17 @@ export function OfficeShell({
                       key={row.id}
                       type="button"
                       className={row.read ? 'shell-item' : 'shell-item unread'}
-                      onClick={async () => {
-                        await api.readNotices(row.id);
-                        setNoticeOpen(false);
-                        window.location.assign(row.href);
-                      }}
+                      onClick={() => void openNotice(row)}
                     >
-                      <strong>{row.kind === 'task_reply' ? t.noticeReply : t.noticeTask}</strong>
-                      <small>{actionName(t, row.action)}{row.msisdn ? ` · ${row.msisdn}` : ''}</small>
+                      <strong>{noticeTitle(t, row)}</strong>
+                      <small className="notice-age">{noticeAge(t, row.createdAt)}</small>
+                      <small className="notice-detail">{noticeDetail(t, row)}</small>
                     </button>
                   ))}
+                  <span className="shell-rule" />
+                  <Link href="/notices" onClick={() => setNoticeOpen(false)}>
+                    {t.allNotices}
+                  </Link>
                 </div>
               )}
             </div>
@@ -429,6 +501,20 @@ export function OfficeShell({
           </div>
         </main>
       </div>
+      {fresh && (
+        <div className="notice-toast" role="status" aria-live="polite">
+          <button type="button" className="notice-toast-body" onClick={() => void openNotice(fresh)}>
+            <Bell {...glyph} />
+            <span>
+              <strong>{noticeTitle(t, fresh)}</strong>
+              <small>{noticeDetail(t, fresh)}</small>
+            </span>
+          </button>
+          <button type="button" className="notice-toast-close" aria-label={t.closeMenu} onClick={dismiss}>
+            <X {...glyph} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

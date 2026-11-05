@@ -56,9 +56,10 @@ const ledger = (id) => ({
   id, at: '2026-10-02T10:30:00.000Z', kind: 'extend', amount: -26, balanceBefore: 100, balanceAfter: 74, note: null,
   packageName: '400 جيجا', msisdn: '0550000001', actorLogin: 'pos',
 });
-const account = (id) => ({
-  id, at: '2026-10-02T10:30:00.000Z', msisdn: '0550000001', companyName: 'سلكوم', packageName: '400 جيجا',
-  packagePrice: 26, balanceBefore: 100, balanceAfter: 74,
+const finance = (id) => ({
+  id, at: '2026-10-02T10:30:00.000Z', loginName: 'pos', layer: 'pos', actorLogin: 'admin', kind: 'charge',
+  amount: -26, balanceBefore: 100, balanceAfter: 74, msisdn: '0550000001', companyName: 'سلكوم',
+  packageName: '400 جيجا', packagePrice: 26, note: '',
 });
 const audit = (id) => ({
   id, action: 'extend', status: 'done', at: '2026-10-02T10:30:00.000Z', msisdn: '0550000001', companyName: 'سلكوم',
@@ -82,8 +83,6 @@ const home = {
 };
 const reports = {
   providers: { rows: [{ providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', price: 20, lines: 4 }] },
-  consumption: { entries: [{ id: 'e1', at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLogin: 'admin', kind: 'extend', amount: -26, balanceAfter: 74, note: null }], nextCursor: 'c2' },
-  funding: { entries: [] },
   tasks: { tasks: [task('t1', 'done')], nextCursor: null },
   numbers: { lines, nextCursor: 'c2' },
   operations: { entries: [{ id: 'e2', at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLogin: 'admin', kind: 'activate', amount: -26, balanceAfter: 74, note: 'ن' }] },
@@ -104,7 +103,16 @@ function answer(path, layer, empty) {
   if (path === '/office/users') return { users: list(users) };
   if (path === '/office/roles') return { roles: list(roles) };
   if (path === '/office/audit') return { entries: list([audit('a1'), audit('a2')]), nextCursor: empty ? null : 'c2' };
-  if (path === '/office/accounting') return { entries: list([account('c1'), account('c2')]), nextCursor: empty ? null : 'c2' };
+  if (path === '/office/finance') return { entries: list([finance('c1'), finance('c2')]), nextCursor: empty ? null : 'c2' };
+  if (path === '/office/provider-operations') return {
+    entries: list([{
+      id: 'p1', at: '2026-10-02T10:30:00.000Z', kind: 'charge', msisdn: '0550000001',
+      providerCode: 'cell', providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', cost: 20,
+    }]),
+    nextCursor: empty ? null : 'c2',
+    stats: empty ? { count: 0, cost: 0, monthCost: 0 } : { count: 1, cost: 20, monthCost: 20 },
+    providers: [{ code: 'cell', name: 'مزود' }],
+  };
   if (path.startsWith('/office/ledger/')) return { entries: list([ledger('l1'), ledger('l2')]), nextCursor: empty ? null : 'c2' };
   if (path.startsWith('/office/reports/')) {
     const body = reports[path.split('/').pop()];
@@ -115,8 +123,10 @@ function answer(path, layer, empty) {
 
 const cases = [
   ['home', '/', 'branch'],
-  ['accounting', '/accounting', 'branch'],
-  ['accounting-empty', '/accounting', 'branch', true],
+  ['finance', '/finance', 'branch'],
+  ['provider-operations', '/provider-operations', 'branch'],
+  ['provider-operations-empty', '/provider-operations', 'branch', true],
+  ['finance-empty', '/finance', 'branch', true],
   ['audit', '/audit', 'branch'],
   ['audit-empty', '/audit', 'branch', true],
   ['operations', '/operations', 'branch'],
@@ -136,9 +146,6 @@ const cases = [
   ['provider', '/providers/cell', 'branch'],
   ['package-sheet', '/providers/cell/cell-400', 'branch'],
   ['report-providers', '/reports/providers', 'branch'],
-  ['report-consumption', '/reports/consumption', 'branch'],
-  ['report-funding', '/reports/funding', 'branch'],
-  ['report-funding-empty', '/reports/funding', 'branch', true],
   ['report-tasks', '/reports/tasks', 'branch'],
   ['report-tasks-empty', '/reports/tasks', 'branch', true],
   ['report-numbers', '/reports/numbers', 'branch'],

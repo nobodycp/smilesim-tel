@@ -1,8 +1,9 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { BrandLogo } from './brand-logo';
 import { LanguageSwitch, ThemeToggle } from './chrome';
-import { usePrefs } from '../lib/prefs';
+import { useBranding } from '../lib/branding';
 
 export function AuthFrame({
   kicker,
@@ -15,7 +16,7 @@ export function AuthFrame({
   lede: string;
   children: ReactNode;
 }) {
-  const { t } = usePrefs();
+  const branding = useBranding();
   return (
     <div className="auth">
       <div className="auth-tools">
@@ -23,11 +24,15 @@ export function AuthFrame({
         <ThemeToggle />
       </div>
       <main className="auth-card">
-        <div className="brand-mark" aria-hidden="true">
-          <SimMark />
-        </div>
-        <p className="brand-name">{t.brand}</p>
-        <p className="brand-sub">{t.brandSub}</p>
+        {branding.logo ? (
+          <BrandLogo className="auth-logo" />
+        ) : (
+          <div className="brand-mark" aria-hidden="true">
+            <SimMark />
+          </div>
+        )}
+        <p className="brand-name">{branding.name}</p>
+        <p className="brand-sub">{branding.tagline}</p>
         <p className="eyebrow">{kicker}</p>
         <h1>{title}</h1>
         <p className="lede">{lede}</p>

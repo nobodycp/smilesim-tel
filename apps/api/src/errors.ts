@@ -34,6 +34,11 @@ export const ERROR_MESSAGES = {
   PACKAGE_HIDDEN: 'الرزمة غير معروضة للبيع',
   OPERATION_DISABLED: 'متوقف على هذه الرزمة',
   SWITCH_PACKAGE_FIRST: 'بدّل الرزمة أولاً',
+  SIM_DIGITS: 'رقم الشريحة أرقام فقط',
+  SIM_LENGTH: 'عدد خانات الشريحة لا يطابق الشركة',
+  SIM_PREFIX: 'رقم الشريحة لا يبدأ بمقدّمة الشركة',
+  ESIM_UNSUPPORTED: 'الشركة لا تدعم eSIM',
+  QR_INVALID: 'صورة رمز QR غير صالحة',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;

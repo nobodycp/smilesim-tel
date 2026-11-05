@@ -3,16 +3,19 @@
 import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../components/data-table';
-import { Desk, Money, OutcomePick, whole } from '../../components/desk';
+import { ActivationResult } from '../../components/activation-result';
+import { Desk, Money } from '../../components/desk';
 import { EmptyState } from '../../components/empty-state';
 import { FilterBar } from '../../components/filter-bar';
 import { Button } from '../../components/ui/button';
 import { Spinner, TableSkeleton } from '../../components/loading';
-import { api, type Outcome, type PackageRow } from '../../lib/api';
+import { api, type ApplyResult, type PackageRow } from '../../lib/api';
+import { parseShekel, shekelField } from '../../lib/money';
 import { hueOf, markOf } from '../../lib/company-mark';
 import { useDoor } from '../../lib/door-context';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
+import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../lib/sim-rules';
 import { useAction } from '../../lib/use-action';
 import { useLoad } from '../../lib/use-load';
 
@@ -31,12 +34,13 @@ function PosCatalog({
   const [step, setStep] = useState<'companies' | 'packages' | 'details'>('companies');
   const [company, setCompany] = useState('');
   const [picked, setPicked] = useState<PackageRow | null>(null);
-  const [msisdn, setMsisdn] = useState('');
+  const [givenNumber, setGivenNumber] = useState('');
+  const [currentDetails, setCurrentDetails] = useState('');
   const [iccid, setIccid] = useState('');
   const [esim, setEsim] = useState(false);
-  const [outcome, setOutcome] = useState<Outcome>('success');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  const [result, setResult] = useState<ApplyResult | null>(null);
   const { run } = useAction({ setError, setNote });
   const names = [...new Set(rows.map((row) => row.companyName).filter(Boolean))];
   const imageOf = new Map(marks.map((mark) => [mark.name, mark.image]));
@@ -50,24 +54,42 @@ function PosCatalog({
 
   function openPackage(row: PackageRow) {
     setPicked(row);
+    setIccid(row.sim.prefix);
     setStep('details');
   }
+
+  const activation = picked?.providerCode === 'neod' ? 'details' : picked?.providerCode === 'tokman' ? 'number' : 'generated';
+  const rules = picked?.sim ?? OPEN_SIM;
+  const offersEsim = activation === 'generated' && rules.esim;
+  const withEsim = offersEsim && esim;
+  const simReady = withEsim || simFits(rules, iccid.trim());
 
   async function join(event: FormEvent) {
     event.preventDefault();
     if (!picked || !loginName.trim()) return;
-    if (!/^05\d{8}$/.test(msisdn) || (!esim && !iccid.trim())) {
+    const missing = (!withEsim && !iccid.trim())
+      || (activation === 'number' && !/^05\d{8}$/.test(givenNumber.trim()))
+      || (activation === 'details' && !currentDetails.trim());
+    if (missing) {
       setError(apiText('بيانات غير صالحة'));
       setNote('');
       return;
     }
     await run(
-      () => api.activateLine({ packageCode: picked.code, posLogin: loginName, esim, iccid, msisdn, outcome }),
-      { note: (data) => (data.applied ? t.appliedNow : t.sentToBranch), then: () => { setIccid(''); setMsisdn(''); } },
+      () => api.activateLine({
+        packageCode: picked.code,
+        posLogin: loginName,
+        esim: withEsim,
+        iccid: withEsim ? '' : iccid.trim(),
+        msisdn: activation === 'number' ? givenNumber.trim() : '',
+        currentDetails: activation === 'details' ? currentDetails.trim() : '',
+        outcome: 'success',
+      }),
+      { then: (data) => { setResult(data); setIccid(rules.prefix); setGivenNumber(''); setCurrentDetails(''); } },
     );
   }
 
-  const canActivate = loginName.trim().length > 0;
+  const canActivate = loginName.trim().length > 0 && simReady;
 
   return (
     <Desk title={t.plansTitle} lede={t.plansPosLede} error={loadError || error} note={note}>
@@ -105,26 +127,37 @@ function PosCatalog({
         {step === 'details' && picked && (
           <form className="pane pane-body stack" onSubmit={join}>
             <h2>{picked.companyName} · {picked.name}</h2>
-            <p className="pack-price"><Money value={picked.posPrice + (esim ? 5 : 0)} /></p>
-            <label>
-              {t.lineNumber}
-              <input value={msisdn} inputMode="numeric" onChange={(event) => setMsisdn(event.target.value)} required />
-            </label>
-            <label className="check">
-              <input type="checkbox" checked={esim} onChange={(event) => setEsim(event.target.checked)} />
-              <span>{t.esim}</span>
-            </label>
-            {!esim && (
-              <label>
-                {t.serial}
-                <input value={iccid} onChange={(event) => setIccid(event.target.value)} dir="ltr" required />
+            <p className="pack-price"><Money value={picked.posPrice + (withEsim ? picked.esimPrice : 0)} /></p>
+            {offersEsim && (
+              <label className="check">
+                <input type="checkbox" checked={esim} onChange={(event) => setEsim(event.target.checked)} />
+                <span>{t.esim}</span>
               </label>
             )}
-            <OutcomePick value={outcome} onChange={setOutcome} />
-            <button type="submit" disabled={!canActivate}>{t.actActivate}</button>
+            {activation === 'details' && (
+              <label>
+                {t.currentNumberDetails}
+                <input value={currentDetails} onChange={(event) => setCurrentDetails(event.target.value)} required />
+              </label>
+            )}
+            {activation === 'number' && (
+              <label>
+                {t.number}
+                <input value={givenNumber} inputMode="numeric" dir="ltr" onChange={(event) => setGivenNumber(event.target.value)} required />
+              </label>
+            )}
+            {!withEsim && (
+              <label>
+                {t.iccid}
+                <input value={iccid} onChange={(event) => setIccid(event.target.value)} inputMode="numeric" dir="ltr" required />
+                {hasSimRules(rules) && <span className="hint">{simHint(t, rules)}</span>}
+              </label>
+            )}
+            <Button type="submit" disabled={!canActivate}>{t.actActivate}</Button>
           </form>
         )}
       </div>
+      <ActivationResult result={result} onClose={() => setResult(null)} />
     </Desk>
   );
 }
@@ -276,13 +309,13 @@ export default function PlansPage() {
     if (!catalog.data) return;
     setPrices((current) => {
       const next = { ...current };
-      for (const row of catalog.data?.packages ?? []) next[row.code] ??= String(shown(row));
+      for (const row of catalog.data?.packages ?? []) next[row.code] ??= shekelField(shown(row));
       return next;
     });
   }, [catalog.data]);
 
   async function save(row: PackageRow) {
-    const price = whole(prices[row.code] ?? '');
+    const price = parseShekel(prices[row.code] ?? '');
     if (price === null) {
       setError(apiText('بيانات غير صالحة'));
       setNote('');
@@ -290,7 +323,7 @@ export default function PlansPage() {
     }
     await run(() => api.setPackagePrice(row.code, price), {
       note: t.save,
-      then: () => setPrices((current) => ({ ...current, [row.code]: String(price) })),
+      then: () => setPrices((current) => ({ ...current, [row.code]: shekelField(price) })),
     });
   }
 

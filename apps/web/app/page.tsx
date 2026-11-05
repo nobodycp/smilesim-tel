@@ -40,8 +40,11 @@ export default function HomePage() {
 
   const movementColumns: Column<Movement>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
-    { key: 'movement', header: t.movement, render: (row) => `${actionName(t, row.kind)}${row.note ? ` · ${row.note}` : ''}` },
-    { key: 'pos', header: t.pointOfSale, render: (row) => row.loginName },
+    { key: 'movement', header: t.movement, render: (row) => {
+      const detail = row.packageName || row.note;
+      return `${actionName(t, row.kind)}${detail ? ` · ${detail}` : ''}`;
+    } },
+    ...(layer === 'pos' ? [] : [{ key: 'pos', header: t.pointOfSale, render: (row: Movement) => <bdi dir="ltr">{row.loginName}</bdi> }]),
     { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} /> },
   ];
 
@@ -50,7 +53,7 @@ export default function HomePage() {
         { href: '/numbers', label: t.navNumbers, icon: 'numbers' },
         { href: '/packages', label: t.navPlans, icon: 'plans' },
         { href: '/tasks', label: t.navTasks, icon: 'tasks' },
-        { href: '/operations', label: t.navOperations, icon: 'plans' },
+        { href: '/finance', label: t.navFinance, icon: 'wallet' },
       ]
     : [
         { href: '/users', label: t.navUsers, icon: 'staff' },
@@ -140,7 +143,7 @@ export default function HomePage() {
                     <li key={row.id}>
                       <p>{row.body}</p>
                       <small>
-                        {row.authorName} · {layerName(t, row.authorLayer)} · <bdi dir="ltr">{latinWhen(row.at)}</bdi>
+                        <bdi>{row.authorName}</bdi> · {layerName(t, row.authorLayer)} · <bdi dir="ltr">{latinWhen(row.at)}</bdi>
                       </small>
                     </li>
                   ))}

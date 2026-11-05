@@ -13,8 +13,6 @@ const BRANCH = ['branch'];
 
 const kinds = {
   providers: 'reportProviders',
-  consumption: 'reportConsumption',
-  funding: 'reportFunding',
   tasks: 'reportTasks',
   numbers: 'reportNumbers',
   operations: 'reportOperations',
@@ -46,7 +44,7 @@ export default function ReportPage() {
     async (cursor) =>
       pick(await api.officeReport(kind, cursor), (payload) => {
         const shape = shapeOf(payload);
-        return { rows: payload[shape] ?? [], next: payload.nextCursor, extra: shape };
+        return { rows: payload[shape] ?? [], next: payload.nextCursor, total: payload.total, extra: shape };
       }),
     { enabled: allowed && kind !== '' },
   );
@@ -62,15 +60,15 @@ export default function ReportPage() {
   const lineColumns: Column<LineRow>[] = [
     { key: 'number', header: t.number, cell: 'msisdn', render: (line) => <bdi dir="ltr">{line.msisdn}</bdi> },
     { key: 'package', header: t.packageName, render: (line) => line.packageName },
-    { key: 'pos', header: t.pointOfSale, render: (line) => line.posLogin },
+    { key: 'pos', header: t.pointOfSale, render: (line) => <bdi dir="ltr">{line.posLogin}</bdi> },
     { key: 'status', header: t.status, render: (line) => lineStatus(t, line.status) },
   ];
   const taskColumns: Column<TaskRow>[] = [
     { key: 'status', header: t.status, render: (row) => taskStatus(t, row.status) },
     { key: 'movement', header: t.movement, render: (row) => `${actionName(t, row.action)} · ${row.packageName}` },
     { key: 'number', header: t.number, render: (row) => <bdi dir="ltr">{row.msisdn ?? '—'}</bdi> },
-    { key: 'pos', header: t.pointOfSale, render: (row) => row.posLogin },
-    { key: 'account', header: t.accountName, render: (row) => row.assigneeLogin ?? row.submitterLogin },
+    { key: 'pos', header: t.pointOfSale, render: (row) => <bdi dir="ltr">{row.posLogin}</bdi> },
+    { key: 'account', header: t.accountName, render: (row) => <bdi dir="ltr">{row.assigneeLogin ?? row.submitterLogin}</bdi> },
   ];
   const entryColumns: Column<MoneyLine>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
@@ -79,8 +77,8 @@ export default function ReportPage() {
       header: t.accountName,
       render: (row) => (
         <>
-          {row.loginName}
-          <div className="hint">{row.actorLogin}</div>
+          <bdi dir="ltr">{row.loginName}</bdi>
+          <div className="hint"><bdi dir="ltr">{row.actorLogin}</bdi></div>
         </>
       ),
     },

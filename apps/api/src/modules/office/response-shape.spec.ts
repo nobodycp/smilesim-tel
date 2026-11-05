@@ -13,20 +13,23 @@ import { OfficeService } from './office.service';
 
 const ME_KEYS = ['loginName', 'nickname', 'layer', 'isBranchOwner', 'grants', 'impersonating', 'balance', 'ceiling'];
 const HOME_KEYS = ['pendingTasks', 'activeLines', 'inactiveLines', 'canPost', 'operations', 'announcements'];
-const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'loginName'];
+const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
 const HOME_ANNOUNCEMENT_KEYS = ['id', 'body', 'at', 'authorName', 'authorLayer'];
-const LINES_KEYS = ['lines', 'poses', 'nextCursor'];
-const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'packageCode', 'packageName', 'companyName', 'posLogin', 'posPrice', 'createdAt', 'endsAt'];
-const LINE_OPTIONAL_KEYS = ['opsLocked'];
+const LINES_KEYS = ['lines', 'poses', 'nextCursor', 'total'];
+const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'esimQr', 'status', 'packageCode', 'packageName', 'companyName', 'posLogin', 'posPrice', 'createdAt', 'endsAt', 'operations'];
+const LINE_OPTIONAL_KEYS = ['opsLocked', 'dataGb', 'subscriberPrice', 'companyImage', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
 const POS_CHOICE_KEYS = ['loginName', 'nickname'];
+const DISCONNECT_QUOTE_KEYS = ['amount', 'runsNow'];
+const SIM_RULES_KEYS = ['length', 'prefix', 'esim'];
 const SHELF_KEYS = ['companies'];
-const SHELF_COMPANY_KEYS = ['code', 'name', 'image', 'providers'];
+const SHELF_COMPANY_KEYS = ['code', 'name', 'image', 'sim', 'esimPrice', 'providers'];
 const SHELF_PROVIDER_KEYS = ['code', 'name', 'packages'];
 const SHELF_PACKAGE_KEYS = ['code', 'name', 'months', 'forSale', 'enabled', 'lines', 'activeLines', 'stoppedLines'];
 const PACKAGE_SHEET_KEYS = [
   'code', 'name', 'providerCode', 'providerName', 'companyCode', 'companyName', 'enabled', 'forSale',
   'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice',
   'renewalBranchCost', 'renewalMainPrice', 'renewalAgentPrice', 'renewalPosPrice', 'renewalSubscriberPrice',
+  'esimPrice', 'esimPriceEffective', 'esimPriceSource',
   'lines', 'activeLines', 'renewals', 'switches', 'modes', 'offers',
 ];
 
@@ -122,7 +125,7 @@ describe('office response shapes', () => {
       package: { code: 'pk', name: '400', posPrice: 30, company: { name: 'سلكوم' } },
       pos: { loginName: 'pos1' },
     };
-    const { service, gate } = await serviceWith({ line: { findMany: async () => [row] } });
+    const { service, gate } = await serviceWith({ line: { findMany: async () => [row], count: async () => 1 } });
     const listed = await service.lines(gate);
     expect(keysOf(listed)).toEqual(sorted(LINES_KEYS));
     expect(keysOf(listed.lines[0])).toEqual(sorted(LINE_KEYS));
@@ -145,7 +148,7 @@ describe('office response shapes', () => {
     ];
     const { service, gate } = await serviceWith({
       package: { findMany: async () => packageRows },
-      company: { findMany: async () => [{ code: 'wecom', image: '' }] },
+      company: { findMany: async () => [{ code: 'wecom', image: '', iccidLength: 19, iccidPrefix: '8997202', esim: false, esimPrice: 400 }] },
     });
     const shelf = await service.companiesShelf(gate);
     const wecom = shelf.companies.find((company) => company.code === 'wecom');
@@ -153,6 +156,11 @@ describe('office response shapes', () => {
     expect(keysOf(shelf)).toEqual(sorted(SHELF_KEYS));
     expect(shelf.companies.map((company) => company.code)).toEqual(companies.map((company) => company.code));
     expect(keysOf(shelf.companies[0])).toEqual(sorted(SHELF_COMPANY_KEYS));
+    expect(keysOf(shelf.companies[0].sim)).toEqual(sorted(SIM_RULES_KEYS));
+    expect(wecom!.sim).toEqual({ length: 19, prefix: '8997202', esim: false });
+    expect(wecom!.esimPrice).toBe(400);
+    expect(shelf.companies.find((company) => company.code === 'kalam')?.esimPrice).toBe(500);
+    expect(shelf.companies.find((company) => company.code === 'kalam')?.sim).toEqual({ length: null, prefix: '', esim: true });
     expect(keysOf(wecom!.providers[0])).toEqual(sorted(SHELF_PROVIDER_KEYS));
     expect(keysOf(wecom!.providers[0].packages[0])).toEqual(sorted(SHELF_PACKAGE_KEYS));
     expect(wecom!.providers[0].packages[0]).toMatchObject({ forSale: false, enabled: true, lines: 2, activeLines: 1, stoppedLines: 1 });
@@ -388,5 +396,13 @@ describeWeb('web types match the pinned shapes', () => {
     expect(sorted([...(pos?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]))).toEqual(sorted(POS_CHOICE_KEYS));
     const envelope = /officeLines:[\s\S]*?request<\{([^}]*)\}>/.exec(source);
     expect(sorted([...(envelope?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]))).toEqual(sorted(LINES_KEYS));
+  });
+
+  it('DisconnectQuote', () => {
+    expect(declared(typeBody(source, 'DisconnectQuote'))).toEqual({ required: sorted(DISCONNECT_QUOTE_KEYS), optional: [] });
+  });
+
+  it('SimRules', () => {
+    expect(declared(typeBody(source, 'SimRules'))).toEqual({ required: sorted(SIM_RULES_KEYS), optional: [] });
   });
 });

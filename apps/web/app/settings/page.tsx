@@ -140,7 +140,7 @@ export default function SettingsPage() {
               <div className="identity">
                 <div className="identity-mark" aria-hidden="true">{initial}</div>
                 <div>
-                  <strong>{shownName}</strong>
+                  <strong><bdi>{shownName}</bdi></strong>
                   {nickname && nickname !== loginName ? <small>{loginName}</small> : null}
                 </div>
               </div>
@@ -225,7 +225,7 @@ export default function SettingsPage() {
                     <span className="device" aria-hidden="true"><DeviceIcon /></span>
                     <span className="session-copy">
                       <strong title={session.userAgent}>
-                        <span>{deviceLabel(session.userAgent)}</span>
+                        <bdi dir="ltr">{deviceLabel(session.userAgent)}</bdi>
                         {session.current && <span className="badge">{t.currentSession}</span>}
                       </strong>
                       <small className="session-meta" dir="ltr">{session.ip} · {when(session.lastSeenAt)}</small>

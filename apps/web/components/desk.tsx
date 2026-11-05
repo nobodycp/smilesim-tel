@@ -3,12 +3,13 @@
 import { type ReactNode } from 'react';
 import { type Outcome } from '../lib/api';
 import { useIdentity } from '../lib/identity';
+import { formatShekel } from '../lib/money';
 import { useOffice } from '../lib/office-session';
 import { usePrefs } from '../lib/prefs';
 import { OfficeShell } from './office-shell';
 import { PageAlert } from './dialog';
 
-export { actionName, layerName, lineStatus, taskStatus } from './names';
+export { actionName, applyNote, layerName, lineBadgeClass, lineBadgeTone, lineStatus, taskStatus } from './names';
 
 export function Desk({
   title,
@@ -18,7 +19,7 @@ export function Desk({
   note,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   lede: string;
   action?: ReactNode;
   error: string;
@@ -49,7 +50,7 @@ export function Desk({
 export function Money({ value }: { value: number }) {
   return (
     <span className={value < 0 ? 'money neg' : 'money'} dir="ltr">
-      {value}
+      {formatShekel(value)}
     </span>
   );
 }

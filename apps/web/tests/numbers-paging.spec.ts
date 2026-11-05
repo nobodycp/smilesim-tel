@@ -29,11 +29,12 @@ test('numbers list loads more, and filters go to the server', async ({ page, req
   expect((await log()).at(-1)).toEqual({ status: 'frozen' });
 
   // The package options come from the catalog, not from the loaded rows.
-  await page.getByLabel('الرزمة').selectOption('cell-400');
+  await page.locator('.filter-panel').getByLabel('الرزمة').selectOption('cell-400');
   await expect(async () => expect((await log()).at(-1)).toEqual({ status: 'frozen', packageCode: 'cell-400' })).toPass();
 
-  // Search waits for a pause, then sends the text as typed; clearing restores the first page.
-  await page.getByLabel('الرقم').fill('055 0000');
+  // Search sits in the filter and waits for a pause, then sends the text as typed.
+  await expect(page.locator('.table-search')).toHaveCount(0);
+  await page.locator('.filter-panel').getByLabel('الرقم أو السيريال').fill('055 0000');
   await expect(async () => expect((await log()).at(-1)).toEqual({ q: '055 0000', status: 'frozen', packageCode: 'cell-400' })).toPass();
   await page.getByRole('button', { name: 'مسح' }).click();
   await expect(rows).toHaveCount(31);

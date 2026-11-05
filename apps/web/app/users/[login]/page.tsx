@@ -58,7 +58,7 @@ export default function AccountPage() {
   if (!allowed) return <Desk title="" lede="" error="" note=""><span /></Desk>;
 
   const roleHas = new Set(row?.roleGrants ?? []);
-  const title = row ? row.nickname : t.accountName;
+  const title = row ? <bdi>{row.nickname}</bdi> : t.accountName;
   const jobRoles = (row?.roles ?? []).filter((role) => role.id !== primary);
   const showExtras = Boolean(row?.canEdit && (row.staff || jobRoles.length > 0));
 

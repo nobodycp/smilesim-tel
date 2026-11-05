@@ -6,6 +6,8 @@ import { Bootstrap } from '../components/bootstrap';
 import { Toasts } from '../components/toast';
 import { Doors } from '../components/doors';
 import { Preferences } from '../components/preferences';
+import { BrandingProvider } from '../lib/branding';
+import { brandingImageUrl, loadBranding } from '../lib/branding-load';
 import { copy } from '../lib/copy';
 import { DoorProvider } from '../lib/door-context';
 import { doorFromHost } from '../lib/doors';
@@ -29,7 +31,12 @@ const hebrew = IBM_Plex_Sans_Hebrew({
 
 export async function generateMetadata(): Promise<Metadata> {
   const jar = await cookies();
-  return { title: copy[parseLocale(jar.get(LOCALE_KEY)?.value)].brand };
+  const seed = await loadBranding();
+  return {
+    title: seed.siteName || copy[parseLocale(jar.get(LOCALE_KEY)?.value)].brand,
+    // Without a saved icon, Next keeps serving app/icon.svg.
+    ...(seed.hasFavicon ? { icons: { icon: brandingImageUrl('favicon', seed.version) } } : {}),
+  };
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -45,6 +52,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const balanceCookie = jar.get(BALANCE_COOKIE)?.value;
   const parsedBalance = balanceCookie === undefined || balanceCookie === '' ? null : Number(balanceCookie);
   const initialBalance = parsedBalance !== null && Number.isFinite(parsedBalance) ? parsedBalance : null;
+  const branding = await loadBranding();
   return (
     <html
       lang={locale}
@@ -56,15 +64,17 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body>
         <Bootstrap nonce={nonce} />
         <Preferences locale={locale} theme={theme} pageSize={parsePageSize(jar.get(PAGE_SIZE_KEY)?.value)}>
+          <BrandingProvider seed={branding}>
           <Toasts>
           {door ? (
             <DoorProvider door={door}>
               <OfficeSession initialName={initialName} initialBalance={initialBalance}>{children}</OfficeSession>
             </DoorProvider>
           ) : (
-            <Doors host={host} />
+            <Doors host={host} name={branding.siteName} />
           )}
           </Toasts>
+          </BrandingProvider>
         </Preferences>
       </body>
     </html>
