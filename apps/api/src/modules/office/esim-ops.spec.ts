@@ -100,7 +100,7 @@ async function office() {
     officeTask: taskModel,
     package: { findMany: async () => [pkg], findUnique: async () => pkg },
     packageSwitch: { findMany: async () => [] },
-    packageOffer: { findUnique: async () => null },
+    userPackage: { findUnique: async () => null },
     provider: { findMany: async () => [provider] },
     walletEntry: {
       findMany: async (args?: { where?: { kind?: { in?: string[] } } }) => {

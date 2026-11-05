@@ -1981,7 +1981,7 @@ export class OfficeService implements OnModuleInit {
         lines: { select: { status: true } },
         renewals: { include: { target: { select: { code: true } } } },
         switches: { include: { target: { select: { code: true } } } },
-        offers: { include: { user: true } },
+        userTerms: { where: { price: { not: null } }, include: { user: true } },
       },
     });
     if (!pkg) fail(404, 'NOT_FOUND');
@@ -2012,11 +2012,11 @@ export class OfficeService implements OnModuleInit {
       renewals: pkg.renewals.map((renewal) => renewal.target.code),
       switches: pkg.switches.map((item) => item.target.code),
       modes: Object.fromEntries(ACTION_KEYS.map((key) => [key, resolvePackageMode(pkg.actionModes, pkg, key)])),
-      offers: pkg.offers.map((offer) => ({
+      offers: pkg.userTerms.map((offer) => ({
         loginName: offer.user.loginName,
         nickname: offer.user.nickname,
         layer: offer.user.layer,
-        price: offer.price,
+        price: offer.price ?? 0,
       })),
     };
   }
@@ -2163,10 +2163,10 @@ export class OfficeService implements OnModuleInit {
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     const user = await this.prisma.user.findUnique({ where: { loginName } });
     if (!pkg || !user || user.layer === 'branch') fail(400, 'INVALID');
-    await this.prisma.packageOffer.upsert({
+    await this.prisma.userPackage.upsert({
       where: { packageId_userId: { packageId: pkg.id, userId: user.id } },
-      update: { price },
-      create: { packageId: pkg.id, userId: user.id, price },
+      update: { price, renewalPrice: price, setById: actor.id },
+      create: { packageId: pkg.id, userId: user.id, price, renewalPrice: price, setById: actor.id },
     });
     return { ok: true as const };
   }
@@ -2177,7 +2177,7 @@ export class OfficeService implements OnModuleInit {
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     const user = await this.prisma.user.findUnique({ where: { loginName } });
     if (!pkg || !user) fail(404, 'NOT_FOUND');
-    await this.prisma.packageOffer.deleteMany({ where: { packageId: pkg.id, userId: user.id } });
+    await this.prisma.userPackage.deleteMany({ where: { packageId: pkg.id, userId: user.id } });
     return { ok: true as const };
   }
 
@@ -2613,7 +2613,7 @@ export class OfficeService implements OnModuleInit {
   }
 
   private async buyPrice(packageId: string, posId: string, fallback: number) {
-    const offer = await this.prisma.packageOffer.findUnique({ where: { packageId_userId: { packageId, userId: posId } } });
+    const offer = await this.prisma.userPackage.findUnique({ where: { packageId_userId: { packageId, userId: posId } } });
     return offer?.price ?? fallback;
   }
 

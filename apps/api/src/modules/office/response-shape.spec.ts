@@ -206,7 +206,7 @@ describe('office response shapes', () => {
       lines: [{ status: 'active' }, { status: 'frozen' }],
       renewals: [{ target: { code: 'lian-wecom-500-3m' } }],
       switches: [{ target: { code: 'lian-wecom-500-5g' } }],
-      offers: [],
+      userTerms: [],
     };
     const { service, gate } = await serviceWith({ package: { findUnique: async () => pkg } });
 

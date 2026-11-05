@@ -25,6 +25,7 @@ model User {
   liveGrants             String           @default("")
   extraGrants            String           @default("")
   deniedGrants           String           @default("")
+  deniedOps              String           @default("")
   extraRoles             UserRole[]
   disabledAt             DateTime?
   twoFactorExempt        Boolean          @default(false)
@@ -42,7 +43,8 @@ model User {
   announcements          Announcement[]
   notices                Notice[]
   accessLogs             AccessLog[]
-  packageOffers          PackageOffer[]
+  packageTerms           UserPackage[]
+  sellPrices             SellPrice[]
   activityEvents         ActivityEvent[]
 }
 
@@ -188,7 +190,8 @@ model Package {
   actionModes            Json             @default("{}")
   esimPrice              Int?
   lines                  Line[]
-  offers                 PackageOffer[]
+  userTerms              UserPackage[]
+  sellPrices             SellPrice[]
   renewals               PackageRenewal[]
   renewalTargets         PackageRenewal[] @relation("RenewalTarget")
   switches               PackageSwitch[]
@@ -215,15 +218,35 @@ model PackageSwitch {
   @@unique([packageId, targetPackageId])
 }
 
-model PackageOffer {
-  id        String  @id @default(uuid())
-  packageId String
-  package   Package @relation(fields: [packageId], references: [id])
-  userId    String
-  user      User    @relation(fields: [userId], references: [id])
-  price     Int
+// What one account may sell and at what price, written by its parent or the branch.
+// `hidden` turns the package off for the account and everyone under it. A null price inherits.
+model UserPackage {
+  id           String   @id @default(uuid())
+  packageId    String
+  package      Package  @relation(fields: [packageId], references: [id])
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  hidden       Boolean  @default(false)
+  price        Int?
+  renewalPrice Int?
+  setById      String   @default("")
+  updatedAt    DateTime @default(now()) @updatedAt
 
   @@unique([packageId, userId])
+}
+
+// A main agent's or agent's default sell price to the accounts directly under it.
+// The branch has none: its defaults are the Package columns.
+model SellPrice {
+  id           String  @id @default(uuid())
+  packageId    String
+  package      Package @relation(fields: [packageId], references: [id])
+  ownerId      String
+  owner        User    @relation(fields: [ownerId], references: [id])
+  price        Int
+  renewalPrice Int?
+
+  @@unique([packageId, ownerId])
 }
 
 model Line {
