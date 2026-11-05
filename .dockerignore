@@ -8,6 +8,9 @@ four-layers.html
 **/coverage
 **/playwright-report
 **/test-results
+apps/web/audit
+apps/web/audit-output
+apps/web/playwright.audit.config.ts
 **/*.tsbuildinfo
 **/*.log
 **/.next-*
