@@ -10,7 +10,7 @@ export type RunLine = (work: () => Promise<Fetched<ApplyResult>>) => unknown;
  * The immediate operations a number allows, as `RowMenu` items. The list shows them in a row menu and the
  * line card shows the same items as `.command-list` rows, so the rules live here once:
  *
- * - active: extend, disconnect (and freeze, when the page asks for it)
+ * - active: extend, refresh, disconnect (and freeze, when the page asks for it)
  * - frozen: unfreeze, disconnect
  * - disconnected: activate again
  * - suspended: nothing until its rules are decided
@@ -34,7 +34,7 @@ export function lineActions(
   if (line.opsLocked && !line.operations) return [];
   const items: RowAction[] = [];
   if (offered(line, 'extend', line.status === 'active')) items.push({ label: t.extend, icon: 'extend', onClick: () => run(() => api.extendLine(line.id, verdict)) });
-  if (offered(line, 'refresh', !line.opsLocked)) items.push({ label: t.updateNumber, icon: 'refresh', onClick: () => run(() => api.refreshLine(line.id, verdict)) });
+  if (offered(line, 'refresh', line.status === 'active' && !line.opsLocked)) items.push({ label: t.updateNumber, icon: 'refresh', onClick: () => run(() => api.refreshLine(line.id, verdict)) });
   if (offered(line, 'charge', false)) items.push({ label: t.actCharge, icon: 'check', onClick: () => run(() => api.chargeLine(line.id, verdict)) });
   if (!line.operations && line.status === 'disconnected') items.push({ label: t.actCharge, icon: 'check', onClick: () => run(() => api.chargeLine(line.id, verdict)) });
   if (freeze && offered(line, 'freeze', line.status === 'active')) items.push({ label: t.freeze, icon: 'ban', onClick: () => run(() => api.freezeLine(line.id, verdict)) });

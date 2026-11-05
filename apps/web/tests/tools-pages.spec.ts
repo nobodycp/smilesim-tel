@@ -217,10 +217,11 @@ test.describe('useAction and lineActions', () => {
     };
     expect((await listItems(0)).map((text) => text.trim())).toEqual(['تمديد', 'تحديث الرقم', 'فصل']);
     expect((await cardItems('ln1')).map((text) => text.trim())).toEqual(['تمديد', 'تحديث الرقم', 'تجميد', 'فصل']);
-    expect((await listItems(1)).map((text) => text.trim())).toEqual(['فك تجميد', 'تحديث الرقم', 'فصل']);
-    expect((await cardItems('ln2')).map((text) => text.trim())).toEqual(['فك تجميد', 'تحديث الرقم', 'فصل']);
-    expect((await listItems(2)).map((text) => text.trim())).toEqual(['شحن', 'تحديث الرقم']);
-    expect((await cardItems('ln3')).map((text) => text.trim())).toEqual(['شحن', 'تحديث الرقم']);
+    // A refresh is for an active number only: frozen and disconnected numbers do not offer it.
+    expect((await listItems(1)).map((text) => text.trim())).toEqual(['فك تجميد', 'فصل']);
+    expect((await cardItems('ln2')).map((text) => text.trim())).toEqual(['فك تجميد', 'فصل']);
+    expect((await listItems(2)).map((text) => text.trim())).toEqual(['شحن']);
+    expect((await cardItems('ln3')).map((text) => text.trim())).toEqual(['شحن']);
     // A number locked for a package switch has no immediate action on either screen.
     await page.goto(`${admin}/numbers`);
     await expect(page.locator('table.data tbody tr').nth(3).getByRole('button', { name: /إجراءات/ })).toHaveCount(0);

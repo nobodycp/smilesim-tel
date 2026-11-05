@@ -100,6 +100,7 @@ async function office() {
     line: {
       findUnique: async () => line,
       findMany: async () => [{ ...line, package: pkg }],
+      count: async () => 1,
       update: tx.line.update,
     },
     officeTask: { findMany: async () => [] },
@@ -121,6 +122,31 @@ async function office() {
   };
   return { service, gate: { sessionId }, wallet, entries };
 }
+
+describe('refresh is an operation on an active number only', () => {
+  afterEach(() => {
+    line.status = 'active';
+  });
+
+  for (const status of ['disconnected', 'frozen', 'suspended'] as const) {
+    it(`is not offered and is refused on a ${status} number`, async () => {
+      const { service, gate, entries } = await office();
+      line.status = status;
+      const listed = await service.lines(gate);
+      expect(listed.lines[0].operations).not.toContain('refresh');
+      const card = await service.line(gate, 'ln1');
+      expect(card.line.operations).not.toContain('refresh');
+      await expect(service.refreshLine(gate, 'ln1', { outcome: 'success' })).rejects.toMatchObject({ status: 400 });
+      expect(entries).toEqual([]);
+    });
+  }
+
+  it('is offered on an active number', async () => {
+    const { service, gate } = await office();
+    const card = await service.line(gate, 'ln1');
+    expect(card.line.operations).toContain('refresh');
+  });
+});
 
 describe('an applied operation with no charge', () => {
   it('records a refresh in the provider report and the line log without touching the wallet', async () => {

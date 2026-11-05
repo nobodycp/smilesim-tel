@@ -1035,6 +1035,7 @@ export class OfficeService implements OnModuleInit {
     if (!outcome) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
+    if (line.status !== 'active') fail(400, 'INVALID');
     const mode = refreshMode(line.package.actionModes);
     if (mode === 'off') fail(400, 'OPERATION_DISABLED');
     if (outcome === 'fail' || mode !== 'auto') {
@@ -2554,7 +2555,8 @@ export class OfficeService implements OnModuleInit {
     );
     // An eSIM request is always a branch task: the employee attaches the serial and the QR picture.
     if (line.status === 'active' && !line.opsLocked && simRulesOf(line.package.company ?? null).esim) keys.push('esim');
-    if (!line.opsLocked && refreshMode(line.package.actionModes) !== 'off') keys.push('refresh');
+    // A refresh is a provider operation on a live subscription: active numbers only, like the rest.
+    if (line.status === 'active' && !line.opsLocked && refreshMode(line.package.actionModes) !== 'off') keys.push('refresh');
     return keys;
   }
 
