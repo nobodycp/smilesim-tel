@@ -122,6 +122,8 @@ export function UserPackagesTab({
       <section className="pane">
         {!sheet.loaded ? (
           <TableSkeleton rows={5} columns={4} />
+        ) : sheet.error ? (
+          <EmptyState icon="plans">{sheet.error}</EmptyState>
         ) : companies.length === 0 ? (
           <EmptyState icon="plans">{t.noPackagesForUser}</EmptyState>
         ) : (

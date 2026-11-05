@@ -389,17 +389,27 @@ export class OfficeService implements OnModuleInit {
   async packages(gate: Gate) {
     const actor = await this.actor(gate);
     const field = editableField(actor.layer);
-    const [all, accounts, termRows, sellRows] = await Promise.all([
+    const [all, accounts] = await Promise.all([
       this.prisma.package.findMany({
         where: { companyId: { not: null }, enabled: true, forSale: true },
         include: { provider: true, company: true },
         orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
       }),
       this.accounts(),
-      this.prisma.userPackage.findMany({ select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true } }),
-      this.prisma.sellPrice.findMany({ select: { packageId: true, ownerId: true, price: true, renewalPrice: true } }),
     ]);
     const path = this.pathOf(actor.id, accounts);
+    // Only the rows on the actor's path matter: its own terms and sell prices plus its ancestors'.
+    const pathIds = path.map((node) => node.id);
+    const [termRows, sellRows] = await Promise.all([
+      this.prisma.userPackage.findMany({
+        where: { userId: { in: pathIds } },
+        select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
+      }),
+      this.prisma.sellPrice.findMany({
+        where: { ownerId: { in: pathIds } },
+        select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
+      }),
+    ]);
     const canActivate = !deniedOpsFor(path).has('activate');
     const termsOf = (packageId: string) => termRows.filter((row) => row.packageId === packageId);
     const sellsOf = (packageId: string) => sellRows.filter((row) => row.packageId === packageId);
@@ -840,6 +850,8 @@ export class OfficeService implements OnModuleInit {
     if (!pkg) fail(404, 'NOT_FOUND');
     if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
     if (pkg.renewals.some((renewal) => !renewal.target.company || !renewal.target.provider)) fail(400, 'INVALID');
+    // Visibility first, then the user's stop, then the package mode.
+    if (!visibleTo(posPath, (await this.termsFor(pkg.id)).terms, pkg)) fail(400, 'PACKAGE_HIDDEN');
     this.assertRunnable(pkg, 'activate', deniedOpsFor(posPath));
     const inputs = activateInputs(pkg.provider.code);
     if (inputs === 'generated' && !esim && !iccid) fail(400, 'INVALID');
@@ -851,7 +863,6 @@ export class OfficeService implements OnModuleInit {
       const refusal = simRefusal(sim, iccid);
       if (refusal) fail(400, refusal);
     }
-    if (!visibleTo(posPath, (await this.termsFor(pkg.id)).terms, pkg)) fail(400, 'PACKAGE_HIDDEN');
     const pkgTerms = packageTermsOf(pkg);
     const terms = captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target)));
     const unit = await this.resolveBuyPrice(pos.id, pkg, 'subscription');
@@ -2352,8 +2363,10 @@ export class OfficeService implements OnModuleInit {
       price: patch.price === undefined ? (own?.price ?? null) : patch.price,
       renewalPrice: patch.renewalPrice === undefined ? (own?.renewalPrice ?? null) : patch.renewalPrice,
     };
-    if (next.price !== null && next.price < floorFor(path, terms, sells, pkg, 'subscription')) fail(400, 'PRICE_BELOW_FLOOR');
-    if (next.renewalPrice !== null && next.renewalPrice < floorFor(path, terms, sells, pkg, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
+    // The floor is checked at write time only, and only for the price this patch sets: a later
+    // rise of the parent's buy price must not block the hide/show switch on an older row.
+    if (patch.price != null && patch.price < floorFor(path, terms, sells, pkg, 'subscription')) fail(400, 'PRICE_BELOW_FLOOR');
+    if (patch.renewalPrice != null && patch.renewalPrice < floorFor(path, terms, sells, pkg, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
     const where = { packageId_userId: { packageId: pkg.id, userId } };
     if (!next.hidden && next.price === null && next.renewalPrice === null) {
       if (own) {
@@ -2448,6 +2461,8 @@ export class OfficeService implements OnModuleInit {
     await this.auth.dropLiveSessions(target.id);
     await this.prisma.session.deleteMany({ where: { userId: target.id } });
     await this.prisma.wallet.deleteMany({ where: { userId: target.id } });
+    await this.prisma.userPackage.deleteMany({ where: { userId: target.id } });
+    await this.prisma.sellPrice.deleteMany({ where: { ownerId: target.id } });
     await this.prisma.user.delete({ where: { id: target.id } });
     return { ok: true };
   }

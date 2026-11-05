@@ -49,6 +49,17 @@ test('the user page has three tabs and the packages tab shows inherited state pe
   expect((await put).postDataJSON()).toEqual({ hidden: true });
 });
 
+test('a main agent opening a grandchild sees only the access tab, and a hash to a hidden tab falls back', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await serveOffice(page, 'main_agent', {
+    'GET /users/pos1': () => ({ body: { ...account, canEdit: false } }),
+  });
+  await page.goto('http://main.localhost:3910/users/pos1#packages');
+  await expect(page.getByRole('tab')).toHaveCount(1);
+  await expect(page.getByRole('tab', { name: 'صلاحيات الحساب' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('لا رزم معروضة للبيع.')).toHaveCount(0);
+});
+
 test('the operations tab shows nine cards and marks an inherited stop', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveOffice(page, 'branch', {

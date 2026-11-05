@@ -105,12 +105,19 @@ export async function tree() {
     findUnique: async ({ where }: { where: { id?: string; loginName?: string } }) =>
       accounts.find((row) => (where.id ? row.id === where.id : row.loginName === where.loginName)) ?? null,
     findMany: async () => accounts,
+    count: async ({ where }: { where: { parentId: string } }) => accounts.filter((row) => row.parentId === where.parentId).length,
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(accounts.find((row) => row.id === where.id) as Row, data),
+    delete: async ({ where }: { where: { id: string } }) => {
+      // Mirrors the database: a user with terms or sell rows cannot be deleted (ON DELETE RESTRICT).
+      if (userPackages.some((row) => row.userId === where.id) || sellPrices.some((row) => row.ownerId === where.id)) throw new Error('P2003');
+      const i = accounts.findIndex((row) => row.id === where.id);
+      return accounts.splice(i, 1)[0];
+    },
   };
   const lineModel = {
     findUnique: async ({ where }: { where: { id?: string; msisdn?: string } }) => lines.find((row) => (where.id ? row.id === where.id : row.msisdn === where.msisdn)) ?? null,
     findMany: async () => lines,
-    count: async () => lines.length,
+    count: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)).length,
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(lines.find((row) => row.id === where.id) as Row, data),
     updateMany: async () => ({ count: 0 }),
     create: async ({ data }: { data: Data }) => {
@@ -123,6 +130,7 @@ export async function tree() {
     create: async ({ data }: { data: Data }) => { const row = { id: `t${tasks.length + 1}`, createdAt: new Date(), updatedAt: new Date(), log: '', assigneeId: null, ...data }; tasks.push(row); return row; },
     findUnique: async ({ where }: { where: { id: string } }) => tasks.find((row) => row.id === where.id) ?? null,
     findMany: async () => [],
+    count: async () => 0,
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(tasks.find((row) => row.id === where.id) as Row, data),
     updateMany: async () => ({ count: 0 }),
   };
@@ -151,10 +159,11 @@ export async function tree() {
     packageSwitch: { findMany: async () => [{ target: { code: 'alloha-400' }, targetId: 'pb' }] },
     userPackage,
     sellPrice,
-    wallet: tx.wallet,
+    wallet: { ...tx.wallet, deleteMany: async () => ({ count: 0 }) },
+    session: { deleteMany: async () => ({ count: 0 }) },
     provider: { findMany: async () => [provider] },
     role: null,
-    walletEntry: { findMany: async () => [], findFirst: async () => null },
+    walletEntry: { findMany: async () => [], findFirst: async () => null, count: async () => 0 },
     $transaction: async (run: (client: typeof tx) => Promise<unknown>) => run(tx),
   };
   return { service, gates, accounts, packages, pkgA, pkgB, userPackages, sellPrices, line, lines, tasks, entries, wallet };
@@ -232,6 +241,23 @@ describe('run path through user terms', () => {
     await expect(service.switchPackage(gates.pos1, 'ln1', { packageCode: 'alloha-400', outcome: 'success' })).rejects.toMatchObject({ code: 'PACKAGE_HIDDEN' });
   });
 
+  it('activation debits the special price, else the parent sell price, else the layer price', async () => {
+    const activate = (iccid: string) => ({ packageCode: 'alloha-150', posLogin: 'pos1', iccid, outcome: 'success' as const });
+    const custom = await tree();
+    custom.userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: 2900, renewalPrice: null });
+    await custom.service.activate(custom.gates.pos1, activate('8997202000000000002'));
+    expect(custom.entries[0]).toMatchObject({ kind: 'activate', amount: -2900 });
+
+    const sold = await tree();
+    sold.sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ag1', price: 3700, renewalPrice: null });
+    await sold.service.activate(sold.gates.pos1, activate('8997202000000000003'));
+    expect(sold.entries[0]).toMatchObject({ kind: 'activate', amount: -3700 });
+
+    const plain = await tree();
+    await plain.service.activate(plain.gates.pos1, activate('8997202000000000004'));
+    expect(plain.entries[0]).toMatchObject({ kind: 'activate', amount: -3500 });
+  });
+
   it('moving a point of sale drops the terms its old parent wrote', async () => {
     const { service, gates, userPackages, accounts, wallet } = await tree();
     userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: 2900, renewalPrice: null });
@@ -253,6 +279,25 @@ describe('writing user terms', () => {
     expect(saved).toMatchObject({ code: 'alloha-150', price: 3000, effective: 3000, source: 'custom', parentBuy: 3000 });
     expect(userPackages).toHaveLength(1);
     expect(userPackages[0]).toMatchObject({ userId: 'pos1', price: 3000, setById: 'ag1' });
+  });
+
+  it('a later rise of the parent buy price does not block the hide switch on an older row', async () => {
+    const { service, gates, userPackages, sellPrices } = await tree();
+    userPackages.push(row('pos1', { price: 3000 }));
+    sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ma1', price: 3200, renewalPrice: null });
+    await expect(service.setUserPackage(gates.ag1, 'pos1', 'alloha-150', { hidden: true })).resolves.toMatchObject({ hidden: true, price: 3000, parentBuy: 3200 });
+    await expect(service.setUserPackage(gates.ag1, 'pos1', 'alloha-150', { renewalPrice: 3300 })).resolves.toMatchObject({ renewalPrice: 3300 });
+    await expect(service.setUserPackage(gates.ag1, 'pos1', 'alloha-150', { price: 3000 })).rejects.toMatchObject({ code: 'PRICE_BELOW_FLOOR' });
+  });
+
+  it('deleting an account removes its terms and sell rows first', async () => {
+    const { service, gates, userPackages, sellPrices, accounts } = await tree();
+    userPackages.push({ ...row('ag2', { hidden: true }), packageId: 'pb' });
+    sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ag2', price: 3100, renewalPrice: null });
+    await expect(service.removeUser(gates.branch, 'ag2')).resolves.toEqual({ ok: true });
+    expect(accounts.some((item) => item.id === 'ag2')).toBe(false);
+    expect(userPackages).toHaveLength(0);
+    expect(sellPrices).toHaveLength(0);
   });
 
   it('only the direct parent or the branch may write', async () => {

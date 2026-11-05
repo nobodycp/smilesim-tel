@@ -325,8 +325,10 @@ export default function PlansPage() {
   async function save(row: PackageRow) {
     const draft = drafts[row.code] ?? { price: '', renewal: '' };
     const price = parseShekel(draft.price);
-    const renewalPrice = draft.renewal.trim() === '' ? null : parseShekel(draft.renewal);
-    if (price === null || renewalPrice === undefined) {
+    // Empty renewal means "back to the layer default"; malformed text must not be read as empty.
+    const renewalEmpty = draft.renewal.trim() === '';
+    const renewalPrice = renewalEmpty ? null : parseShekel(draft.renewal);
+    if (price === null || (!renewalEmpty && renewalPrice === null)) {
       setError(apiText('بيانات غير صالحة'));
       setNote('');
       return;

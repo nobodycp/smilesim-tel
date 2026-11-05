@@ -88,11 +88,18 @@ export default function AccountPage() {
   const canEditTerms = Boolean(
     row && !row.staff && me && !me.impersonating && (me.layer === 'branch' ? me.isBranchOwner || me.grants.includes('edit') : me.loginName === row.parentLogin),
   );
+  // The API refuses to read the terms of an account the actor may not edit, so the two tabs
+  // exist only for the direct parent and the branch; a hash to a hidden tab falls back to access.
   const tabs: { key: Tab; label: string }[] = [
     { key: 'access', label: t.accountAccess },
-    { key: 'packages', label: t.packagesPricesTab },
-    { key: 'ops', label: t.lineOpsTab },
+    ...(canEditTerms
+      ? [
+          { key: 'packages' as const, label: t.packagesPricesTab },
+          { key: 'ops' as const, label: t.lineOpsTab },
+        ]
+      : []),
   ];
+  const openTab: Tab = tabs.some((item) => item.key === tab) ? tab : 'access';
 
   return (
     <Desk
@@ -131,12 +138,12 @@ export default function AccountPage() {
           </dl>
           <div className="steps" role="tablist">
             {tabs.map((item) => (
-              <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} disabled={item.key !== 'access' && row.staff} onClick={() => setTab(item.key)}>
+              <button key={item.key} type="button" role="tab" aria-selected={openTab === item.key} disabled={item.key !== 'access' && row.staff} onClick={() => setTab(item.key)}>
                 {item.label}
               </button>
             ))}
           </div>
-          {tab === 'access' && (
+          {openTab === 'access' && (
           <section className="pane">
             <header className="pane-head">
               <h2><Shield aria-hidden="true" />{t.accountAccess}</h2>
@@ -217,8 +224,8 @@ export default function AccountPage() {
             </div>
           </section>
           )}
-          {tab === 'packages' && !row.staff && <UserPackagesTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
-          {tab === 'ops' && !row.staff && <UserOpsTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
+          {openTab === 'packages' && !row.staff && <UserPackagesTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
+          {openTab === 'ops' && !row.staff && <UserOpsTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
         </div>
       )}
     </Desk>

@@ -1527,7 +1527,8 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
   align-items: center;
   gap: 12px;
   min-height: 48px;
-  padding: 4px 14px 4px 10px;
+  padding-block: 4px;
+  padding-inline: 10px 14px;
   background: var(--rd-surface-2);
   border-bottom: 1px solid var(--rd-line-soft);
 }
@@ -1540,7 +1541,8 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
   align-items: center;
   gap: 8px 16px;
   min-height: 56px;
-  padding: 6px 14px 6px 10px;
+  padding-block: 6px;
+  padding-inline: 10px 14px;
   border-top: 1px solid var(--rd-line-soft);
 }
 .terms-row > .live-switch { grid-area: switch; }

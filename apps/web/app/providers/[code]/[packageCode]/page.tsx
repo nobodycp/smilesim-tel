@@ -93,6 +93,14 @@ export default function PackageSheetPage() {
   );
   const sheet = card.data?.sheet ?? null;
   const users = card.data?.users ?? [];
+  // The layer column the picked account would pay without a custom price; the pos column until one is picked.
+  const pickedLayer = users.find((row) => row.loginName === loginName)?.layer ?? 'pos';
+  const layerDefault = (kind: 'subscription' | 'renewal') => {
+    if (!sheet) return 0;
+    if (pickedLayer === 'main_agent') return kind === 'subscription' ? sheet.mainPrice : sheet.renewalMainPrice;
+    if (pickedLayer === 'agent') return kind === 'subscription' ? sheet.agentPrice : sheet.renewalAgentPrice;
+    return kind === 'subscription' ? sheet.posPrice : sheet.renewalPosPrice;
+  };
   const lines = card.data?.lines ?? [];
   const customPrices = card.data?.customPrices ?? [];
   const company = card.data?.shelf.companies.find((item) => item.code === sheet?.companyCode);
@@ -535,11 +543,11 @@ export default function PackageSheetPage() {
                     </label>
                     <label>
                       {t.subscriptionPrice}
-                      <input inputMode="decimal" value={offerPrice} placeholder={shekelField(sheet.posPrice)} onChange={(event) => setOfferPrice(event.target.value)} />
+                      <input inputMode="decimal" value={offerPrice} placeholder={shekelField(layerDefault('subscription'))} onChange={(event) => setOfferPrice(event.target.value)} />
                     </label>
                     <label>
                       {t.renewalPrice}
-                      <input inputMode="decimal" value={offerRenewal} placeholder={shekelField(sheet.renewalPosPrice)} onChange={(event) => setOfferRenewal(event.target.value)} />
+                      <input inputMode="decimal" value={offerRenewal} placeholder={shekelField(layerDefault('renewal'))} onChange={(event) => setOfferRenewal(event.target.value)} />
                     </label>
                     <button type="button" disabled={!loginName || (offerPrice === '' && offerRenewal === '')} onClick={() => void saveOffer()}>{t.save}</button>
                   </div>

@@ -51,7 +51,7 @@ export function UserOpsTab({
       {!ops.loaded ? (
         <TableSkeleton rows={3} columns={3} />
       ) : !ops.data ? (
-        <EmptyState icon="numbers">{t.lineOpsTab}</EmptyState>
+        <EmptyState icon="numbers">{ops.error || t.lineOpsTab}</EmptyState>
       ) : (
         <div className="op-grid">
           {OP_KEYS.map((key) => {
