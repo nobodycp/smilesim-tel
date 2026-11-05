@@ -3,6 +3,7 @@
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { AccountName, accountLabel } from '../../components/account-name';
 import { DataTable, type Column } from '../../components/data-table';
 import { Desk, Money, layerName } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
@@ -172,15 +173,12 @@ export default function UsersPage() {
       render: (row) => (
         <Link className="row-link account-cell" href={`/users/${row.loginName}`}>
           <span className="account-mark" aria-hidden="true">{row.nickname.trim().charAt(0) || '?'}</span>
-          <span className="account-id">
-            <strong><bdi>{row.nickname}</bdi></strong>
-            <span className="hint"><bdi dir="ltr">{row.loginName}</bdi></span>
-          </span>
+          <strong className="account-id"><AccountName login={row.loginName} name={row.nickname} /></strong>
         </Link>
       ),
     },
     { key: 'layer', header: t.layer, fit: true, render: (row) => layerName(t, row.layer) },
-    { key: 'parent', header: t.parent, fit: true, render: (row) => (row.parentLogin ? <bdi dir="ltr">{row.parentLogin}</bdi> : '—') },
+    { key: 'parent', header: t.parent, fit: true, render: (row) => <AccountName login={row.parentLogin} /> },
     { key: 'balance', header: t.balance, num: true, render: (row) => <Money value={row.balance} /> },
     { key: 'ceiling', header: t.ceiling, num: true, render: (row) => (row.layer === 'branch' ? '—' : <Money value={row.ceiling} />) },
     {
@@ -197,7 +195,7 @@ export default function UsersPage() {
       key: 'ops',
       header: t.rowActions,
       actions: true,
-      render: (row) => <RowMenu label={`${t.rowActions} ${row.nickname}`} items={actions(row)} />,
+      render: (row) => <RowMenu label={`${t.rowActions} ${accountLabel(row.loginName, row.nickname)}`} items={actions(row)} />,
     },
   ];
 
@@ -256,8 +254,8 @@ export default function UsersPage() {
               <input value={draft.loginName} dir="ltr" onChange={(event) => setDraft((current) => ({ ...current, loginName: event.target.value }))} />
             </label>
             <label>
-              {t.nickname}
-              <input value={draft.nickname} onChange={(event) => setDraft((current) => ({ ...current, nickname: event.target.value }))} />
+              {t.fullName}
+              <input value={draft.nickname} autoComplete="off" onChange={(event) => setDraft((current) => ({ ...current, nickname: event.target.value }))} />
             </label>
             <label>
               {t.newPassword}
@@ -286,7 +284,7 @@ export default function UsersPage() {
                 <Select value={draft.parentLogin} onChange={(event) => setDraft((current) => ({ ...current, parentLogin: event.target.value }))}>
                   <option value="">—</option>
                   {rows.filter((row) => row.layer === ((draft.layer || creatable[0]) === 'agent' ? 'main_agent' : 'agent')).map((row) => (
-                    <option key={row.loginName} value={row.loginName}>{row.nickname}</option>
+                    <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>
                   ))}
                 </Select>
               </label>
@@ -334,10 +332,7 @@ export default function UsersPage() {
             )}
           >
             <div className="dialog-form">
-              <p className="dialog-who">
-                {active.nickname}
-                {active.loginName !== active.nickname ? <bdi dir="ltr">{active.loginName}</bdi> : null}
-              </p>
+              <p className="dialog-who"><AccountName login={active.loginName} name={active.nickname} /></p>
               {op.kind === 'fund' ? (
                 <>
                   <label>
@@ -362,7 +357,7 @@ export default function UsersPage() {
                   <Select value={dest[active.loginName] ?? ''} onChange={(event) => setDest((current) => ({ ...current, [active.loginName]: event.target.value }))}>
                     <option value="">—</option>
                     {rows.filter((item) => item.layer === 'agent').map((item) => (
-                      <option key={item.loginName} value={item.loginName}>{item.nickname}</option>
+                      <option key={item.loginName} value={item.loginName}>{accountLabel(item.loginName, item.nickname)}</option>
                     ))}
                   </Select>
                 </label>

@@ -4,7 +4,7 @@ import { AUTH_STORE, AuthStore, SessionRow, StoredUser } from './auth.store';
 import { hashPassword, passwordMatches } from './password';
 import { idsToRevoke, isListedAccountSession } from './sessions';
 import { createTotpSecret, totpKeyUri, totpMatches } from './totp';
-import { loginBlocked, newPasswordProblem, nicknameProblem } from './validators';
+import { addressProblem, cityProblem, fullNameProblem, loginBlocked, newPasswordProblem } from './validators';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
 
 export type LoginResult =
@@ -22,6 +22,16 @@ const LAYERS: readonly Layer[] = ['branch', 'main_agent', 'agent', 'pos'];
 const fail = (status: Failure['status'], code: ErrorCode): Failure => ({ kind: 'error', status, message: ERROR_MESSAGES[code], code });
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^\+?[0-9 ()-]{6,20}$/;
+
+/** The profile fields the owner reads and edits. `nickname` carries the full name. */
+type ProfileView = { nickname?: string; email?: string; phone?: string; city?: string; address?: string };
+const profileView = (user: StoredUser): ProfileView => ({
+  nickname: user.nickname,
+  email: user.email,
+  phone: user.phone,
+  city: user.city ?? undefined,
+  address: user.address ?? undefined,
+});
 
 @Injectable()
 export class AuthService {
@@ -103,25 +113,24 @@ export class AuthService {
 
   async getProfile(
     sessionId: string | undefined,
-  ): Promise<Outcome<{ profile: { loginName: string; nickname?: string; email?: string; phone?: string } }>> {
+  ): Promise<Outcome<{ profile: ProfileView & { loginName: string } }>> {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
-    const { loginName, nickname, email, phone } = authed.user;
-    return { kind: 'ok', profile: { loginName, nickname, email, phone } };
+    return { kind: 'ok', profile: { loginName: authed.user.loginName, ...profileView(authed.user) } };
   }
 
   async updateProfile(
     sessionId: string | undefined,
-    body: { nickname?: unknown; email?: unknown; phone?: unknown; nextPassword?: unknown; currentPassword?: unknown },
-  ): Promise<Outcome<{ profile: { nickname?: string; email?: string; phone?: string } }>> {
+    body: { nickname?: unknown; email?: unknown; phone?: unknown; city?: unknown; address?: unknown; nextPassword?: unknown; currentPassword?: unknown },
+  ): Promise<Outcome<{ profile: ProfileView }>> {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     const { session, user } = authed;
     if (session.scope !== 'full') return fail(403, 'FORBIDDEN');
     const input = body ?? {};
-    const { nickname, email, phone, nextPassword, currentPassword } = input;
-    for (const value of [nickname, email, phone, nextPassword, currentPassword]) {
+    const { nickname, email, phone, city, address, nextPassword, currentPassword } = input;
+    for (const value of [nickname, email, phone, city, address, nextPassword, currentPassword]) {
       if (value !== undefined && typeof value !== 'string') return fail(400, 'INVALID');
     }
 
@@ -133,9 +142,19 @@ export class AuthService {
 
     const patch: Parameters<AuthStore['updateUser']>[1] = {};
     if (typeof nickname === 'string') {
-      const invalid = nicknameProblem(nickname);
+      const invalid = fullNameProblem(nickname);
       if (invalid) return fail(400, invalid);
       patch.nickname = nickname.trim();
+    }
+    if (typeof city === 'string') {
+      const invalid = cityProblem(city);
+      if (invalid) return fail(400, invalid);
+      patch.city = city.trim() || null;
+    }
+    if (typeof address === 'string') {
+      const invalid = addressProblem(address);
+      if (invalid) return fail(400, invalid);
+      patch.address = address.trim() || null;
     }
     if (typeof email === 'string') {
       if (!EMAIL_PATTERN.test(email.trim())) return fail(400, 'EMAIL_INVALID');
@@ -153,7 +172,7 @@ export class AuthService {
 
     await this.store.updateUser(user.id, patch);
     const stored = (await this.store.findByLogin(user.loginName)) ?? user;
-    return { kind: 'ok', profile: { nickname: stored.nickname, email: stored.email, phone: stored.phone } };
+    return { kind: 'ok', profile: profileView(stored) };
   }
 
   async setUserPassword(

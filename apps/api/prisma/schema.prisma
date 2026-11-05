@@ -13,6 +13,8 @@ model User {
   nickname               String
   email                  String?
   phone                  String?
+  city                   String?
+  address                String?
   passwordHash           String
   mustChangePassword     Boolean          @default(false)
   layer                  String

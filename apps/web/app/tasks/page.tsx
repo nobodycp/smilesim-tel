@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { AccountName } from '../../components/account-name';
 import { PagedTable, type Column } from '../../components/data-table';
 import { Desk, Money, actionName, taskStatus } from '../../components/desk';
 import { FilterBar } from '../../components/filter-bar';
@@ -119,7 +120,7 @@ export default function TasksPage() {
     { key: 'package', header: t.packageName, render: (row) => row.packageName || '—' },
     { key: 'company', header: t.company, render: (row) => row.companyName || '—' },
     { key: 'provider', header: t.provider, render: (row) => row.providerName || '—' },
-    { key: 'pos', header: t.pointOfSale, render: (row) => <bdi dir="ltr">{row.posLogin}</bdi> },
+    { key: 'pos', header: t.pointOfSale, render: (row) => <AccountName login={row.posLogin} /> },
     { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.posDelta} /> },
     {
       key: 'note',

@@ -145,17 +145,44 @@ describe('account endpoints', () => {
     expect(store.users.get('pos')!.phone).toBe('0500000000');
   });
 
-  it('keeps the login name when the nickname changes', async () => {
+  it('keeps the login name when the full name changes', async () => {
     const response = await request(app.getHttpServer()).patch('/auth/profile').set('Cookie', fullCookie).send({ nickname: 'الواجهة' });
     expect(response.status).toBe(200);
     expect(store.users.get('pos')!.loginName).toBe('pos');
     expect(store.users.get('pos')!.nickname).toBe('الواجهة');
   });
 
-  it('rejects an invalid nickname', async () => {
+  it('rejects an invalid full name', async () => {
     const response = await request(app.getHttpServer()).patch('/auth/profile').set('Cookie', fullCookie).send({ nickname: 'أ' });
     expect(response.status).toBe(400);
-    expect(response.body.message).toBe('النيك نيم من حرفين إلى أربعين حرفاً');
+    expect(response.body).toEqual({ message: 'الاسم الكامل من حرفين إلى أربعين حرفاً', code: 'FULL_NAME_INVALID' });
+  });
+
+  it('saves the city and the address without the current password and reads them back', async () => {
+    const saved = await request(app.getHttpServer()).patch('/auth/profile').set('Cookie', fullCookie).send({ city: 'ramallah', address: ' شارع الإرسال 12 ' });
+    expect(saved.status).toBe(200);
+    expect(saved.body).toMatchObject({ city: 'ramallah', address: 'شارع الإرسال 12' });
+    const profile = await request(app.getHttpServer()).get('/auth/profile').set('Cookie', fullCookie);
+    expect(profile.body).toMatchObject({ loginName: 'pos', city: 'ramallah', address: 'شارع الإرسال 12' });
+  });
+
+  it('clears the city and the address with an empty string', async () => {
+    await request(app.getHttpServer()).patch('/auth/profile').set('Cookie', fullCookie).send({ city: 'gaza', address: 'الرمال' });
+    const cleared = await request(app.getHttpServer()).patch('/auth/profile').set('Cookie', fullCookie).send({ city: '', address: '' });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.city).toBeUndefined();
+    expect(cleared.body.address).toBeUndefined();
+    expect(store.users.get('pos')!.city).toBeNull();
+  });
+
+  it('refuses an unknown city and an address over 120 characters', async () => {
+    const city = await request(app.getHttpServer()).patch('/auth/profile').set('Cookie', fullCookie).send({ city: 'atlantis' });
+    expect(city.status).toBe(400);
+    expect(city.body.code).toBe('CITY_INVALID');
+    const address = await request(app.getHttpServer()).patch('/auth/profile').set('Cookie', fullCookie).send({ address: 'ش'.repeat(121) });
+    expect(address.status).toBe(400);
+    expect(address.body.code).toBe('ADDRESS_INVALID');
+    expect(store.users.get('pos')!.city ?? null).toBeNull();
   });
 
   it('changes the password from the profile without setting the force flag', async () => {

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { accountLabel } from './account-name';
 import { api } from '../lib/api';
 import { usePrefs } from '../lib/prefs';
 
@@ -59,8 +60,8 @@ export function ShellSearch() {
           next.push({
             key: `user-${row.loginName}`,
             href: `/users?q=${encodeURIComponent(needle)}`,
-            label: row.nickname,
-            sub: row.loginName,
+            label: accountLabel(row.loginName, row.nickname),
+            sub: '',
             group: t.navUsers,
           });
         }

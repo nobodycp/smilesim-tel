@@ -3,6 +3,7 @@
 import { CircleCheck, KeyRound, Layers, Shield, Snowflake, Waypoints } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { AccountName } from '../../../components/account-name';
 import { Desk, layerName } from '../../../components/desk';
 import { TableSkeleton } from '../../../components/loading';
 import { Button } from '../../../components/ui/button';
@@ -58,7 +59,7 @@ export default function AccountPage() {
   if (!allowed) return <Desk title="" lede="" error="" note=""><span /></Desk>;
 
   const roleHas = new Set(row?.roleGrants ?? []);
-  const title = row ? <bdi>{row.nickname}</bdi> : t.accountName;
+  const title = row ? <AccountName login={row.loginName} name={row.nickname} /> : t.accountName;
   const jobRoles = (row?.roles ?? []).filter((role) => role.id !== primary);
   const showExtras = Boolean(row?.canEdit && (row.staff || jobRoles.length > 0));
 
@@ -77,7 +78,7 @@ export default function AccountPage() {
         <div className="stack flow">
           <dl className="fact-grid">
             <div className="fact-card">
-              <div><dt>{t.loginName}</dt><dd><bdi dir="ltr">{row.loginName}</bdi></dd></div>
+              <div><dt>{t.fullName}</dt><dd><bdi>{row.nickname}</bdi></dd></div>
               <span className="fact-mark" aria-hidden="true"><KeyRound /></span>
             </div>
             <div className="fact-card">
@@ -85,7 +86,7 @@ export default function AccountPage() {
               <span className="fact-mark" aria-hidden="true"><Layers /></span>
             </div>
             <div className="fact-card">
-              <div><dt>{t.parent}</dt><dd>{row.parentLogin ? <bdi dir="ltr">{row.parentLogin}</bdi> : '—'}</dd></div>
+              <div><dt>{t.parent}</dt><dd><AccountName login={row.parentLogin} /></dd></div>
               <span className="fact-mark" aria-hidden="true"><Waypoints /></span>
             </div>
             <div className="fact-card">

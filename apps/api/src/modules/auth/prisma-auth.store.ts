@@ -43,6 +43,8 @@ function toStoredUser(row: UserRecord): StoredUser {
     nickname: row.nickname,
     email: row.email ?? undefined,
     phone: row.phone ?? undefined,
+    city: row.city,
+    address: row.address,
     twoFactorSecret: row.twoFactorSecret,
     pendingTwoFactorSecret: row.pendingTwoFactorSecret,
   };

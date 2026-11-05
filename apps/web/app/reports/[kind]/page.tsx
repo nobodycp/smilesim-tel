@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
+import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column, type PagedView } from '../../../components/data-table';
 import { Desk, Money, actionName, latinWhen, lineStatus, taskStatus } from '../../../components/desk';
 import { api, type LineRow, type ReportPayload, type TaskRow } from '../../../lib/api';
@@ -60,15 +61,15 @@ export default function ReportPage() {
   const lineColumns: Column<LineRow>[] = [
     { key: 'number', header: t.number, cell: 'msisdn', render: (line) => <bdi dir="ltr">{line.msisdn}</bdi> },
     { key: 'package', header: t.packageName, render: (line) => line.packageName },
-    { key: 'pos', header: t.pointOfSale, render: (line) => <bdi dir="ltr">{line.posLogin}</bdi> },
+    { key: 'pos', header: t.pointOfSale, render: (line) => <AccountName login={line.posLogin} /> },
     { key: 'status', header: t.status, render: (line) => lineStatus(t, line.status) },
   ];
   const taskColumns: Column<TaskRow>[] = [
     { key: 'status', header: t.status, render: (row) => taskStatus(t, row.status) },
     { key: 'movement', header: t.movement, render: (row) => `${actionName(t, row.action)} · ${row.packageName}` },
     { key: 'number', header: t.number, render: (row) => <bdi dir="ltr">{row.msisdn ?? '—'}</bdi> },
-    { key: 'pos', header: t.pointOfSale, render: (row) => <bdi dir="ltr">{row.posLogin}</bdi> },
-    { key: 'account', header: t.accountName, render: (row) => <bdi dir="ltr">{row.assigneeLogin ?? row.submitterLogin}</bdi> },
+    { key: 'pos', header: t.pointOfSale, render: (row) => <AccountName login={row.posLogin} /> },
+    { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.assigneeLogin ?? row.submitterLogin} /> },
   ];
   const entryColumns: Column<MoneyLine>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
@@ -77,8 +78,8 @@ export default function ReportPage() {
       header: t.accountName,
       render: (row) => (
         <>
-          <bdi dir="ltr">{row.loginName}</bdi>
-          <div className="hint"><bdi dir="ltr">{row.actorLogin}</bdi></div>
+          <AccountName login={row.loginName} />
+          <div className="hint"><AccountName login={row.actorLogin} /></div>
         </>
       ),
     },

@@ -469,6 +469,26 @@ describe('task reading follows the number', () => {
     const list = await service.tasks(gate, {});
     expect(list.tasks.every((row) => row.canTake && row.log !== '')).toBe(true);
   });
+
+  describe('directory', () => {
+    it('gives a pos its own name, the chain above it, and the branch, but not a sibling pos', async () => {
+      const { service, gate } = await as('pos1', 'pos', 'read');
+      const { names } = await service.directory(gate);
+      expect(names).toEqual({ admin: 'الإدارة', clerk: 'موظف', main1: 'رئيسي', agent1: 'وكيل', pos1: 'نقطة' });
+    });
+
+    it('gives an agent everything under it plus the chain and the branch', async () => {
+      const { service, gate } = await as('agent1', 'agent', 'read');
+      const { names } = await service.directory(gate);
+      expect(Object.keys(names).sort()).toEqual(['admin', 'agent1', 'clerk', 'main1', 'pos1', 'pos2']);
+    });
+
+    it('gives the branch every account', async () => {
+      const { service, gate } = await as('clerk', 'branch', 'read');
+      const { names } = await service.directory(gate);
+      expect(Object.keys(names)).toHaveLength(chain.length);
+    });
+  });
 });
 
 describe('feed cursor', () => {

@@ -3,6 +3,7 @@
 import { Ban, Check, Hand, Undo2, X } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { AccountName } from '../../../components/account-name';
 import { Desk, Money, actionName, latinWhen, taskStatus } from '../../../components/desk';
 import { EsimDialog, EsimMark, QrPicker } from '../../../components/esim-qr';
 import { TableSkeleton } from '../../../components/loading';
@@ -133,7 +134,7 @@ export default function TaskTicketPage() {
                   <div>
                     <dt>{t.pointOfSale}</dt>
                     <dd>
-                      <bdi dir="ltr">{task.posLogin}</bdi>
+                      <AccountName login={task.posLogin} />
                     </dd>
                   </div>
                 ) : null}
@@ -150,12 +151,12 @@ export default function TaskTicketPage() {
                 <div>
                   <dt>{t.taskSubmitter}</dt>
                   <dd>
-                    <bdi dir="ltr">{task.submitterLogin}</bdi>
+                    <AccountName login={task.submitterLogin} />
                   </dd>
                 </div>
                 <div>
                   <dt>{t.taskAssignee}</dt>
-                  <dd>{task.assigneeLogin ? <bdi dir="ltr">{task.assigneeLogin}</bdi> : '—'}</dd>
+                  <dd><AccountName login={task.assigneeLogin} /></dd>
                 </div>
                 <div>
                   <dt>{t.started}</dt>

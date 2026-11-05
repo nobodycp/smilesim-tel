@@ -730,6 +730,10 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   text-align: start;
 }
 .account-id .hint { font-weight: 500; }
+/* An account reference: the login, then the full name in parentheses. Wraps as a unit on narrow cells. */
+.account-name { display: inline; min-width: 0; }
+.account-name > bdi { font-variant-numeric: tabular-nums; }
+.account-full { color: var(--rd-muted); font-weight: 500; font-size: 0.92em; white-space: nowrap; }
 .quiet-file {
   position: relative;
   display: inline-flex;

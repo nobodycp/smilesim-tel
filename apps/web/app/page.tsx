@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
+import { AccountName } from '../components/account-name';
 import { DataTable, type Column } from '../components/data-table';
 import { Money, actionName, latinWhen, layerName } from '../components/desk';
 import { EmptyState } from '../components/empty-state';
@@ -44,7 +45,7 @@ export default function HomePage() {
       const detail = row.packageName || row.note;
       return `${actionName(t, row.kind)}${detail ? ` · ${detail}` : ''}`;
     } },
-    ...(layer === 'pos' ? [] : [{ key: 'pos', header: t.pointOfSale, render: (row: Movement) => <bdi dir="ltr">{row.loginName}</bdi> }]),
+    ...(layer === 'pos' ? [] : [{ key: 'pos', header: t.pointOfSale, render: (row: Movement) => <AccountName login={row.loginName} /> }]),
     { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} /> },
   ];
 

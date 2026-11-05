@@ -17,7 +17,7 @@ export class ChangePasswordBodyDto {
 }
 
 export class UpdateProfileBodyDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Full name (the field keeps its historical name)' })
   nickname?: string;
 
   @ApiPropertyOptional()
@@ -25,6 +25,12 @@ export class UpdateProfileBodyDto {
 
   @ApiPropertyOptional()
   phone?: string;
+
+  @ApiPropertyOptional({ description: 'A key from the Palestinian city list; empty clears it' })
+  city?: string;
+
+  @ApiPropertyOptional({ description: 'Free text, at most 120 characters; empty clears it' })
+  address?: string;
 
   @ApiPropertyOptional()
   nextPassword?: string;
@@ -75,7 +81,7 @@ export class ProfileDto {
   @ApiProperty()
   loginName!: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Full name (the field keeps its historical name)' })
   nickname?: string;
 
   @ApiPropertyOptional()
@@ -83,6 +89,12 @@ export class ProfileDto {
 
   @ApiPropertyOptional()
   phone?: string;
+
+  @ApiPropertyOptional({ description: 'A key from the Palestinian city list' })
+  city?: string;
+
+  @ApiPropertyOptional()
+  address?: string;
 }
 
 export class SessionRowDto {

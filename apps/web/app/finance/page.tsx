@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AccountName } from '../../components/account-name';
 import { PagedTable, type Column } from '../../components/data-table';
 import { Desk, Money, actionName, latinWhen, layerName } from '../../components/desk';
 import { FilterBar } from '../../components/filter-bar';
@@ -37,8 +38,8 @@ export default function FinancePage() {
   const columns: Column<FinanceRow>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     { key: 'layer', header: t.layer, render: (row) => (row.layer ? layerName(t, row.layer) : '—') },
-    { key: 'account', header: t.accountName, render: (row) => (row.loginName ? <bdi dir="ltr">{row.loginName}</bdi> : '—') },
-    { key: 'actor', header: t.actedBy, render: (row) => (row.actorLogin ? <bdi dir="ltr">{row.actorLogin}</bdi> : '—') },
+    { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.loginName} /> },
+    { key: 'actor', header: t.actedBy, render: (row) => <AccountName login={row.actorLogin} /> },
     {
       key: 'kind',
       header: t.kind,

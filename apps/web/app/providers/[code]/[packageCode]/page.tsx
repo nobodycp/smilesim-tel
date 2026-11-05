@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { AccountName, accountLabel } from '../../../../components/account-name';
 import { DataTable, type Column } from '../../../../components/data-table';
 import { Desk, Money, layerName, lineBadgeClass, lineStatus } from '../../../../components/desk';
 import { TableSkeleton } from '../../../../components/loading';
@@ -218,7 +219,7 @@ export default function PackageSheetPage() {
     },
   ];
   const offerColumns: Column<CustomPriceRow>[] = [
-    { key: 'account', header: t.accountName, render: (offer) => offer.nickname },
+    { key: 'account', header: t.accountName, render: (offer) => <AccountName login={offer.loginName} name={offer.nickname} /> },
     { key: 'layer', header: t.layer, render: (offer) => layerName(t, offer.layer) },
     { key: 'price', header: t.price, num: true, render: (offer) => <Money value={offer.price ?? offer.defaultPrice} /> },
     {
@@ -227,7 +228,7 @@ export default function PackageSheetPage() {
       actions: true,
       render: (offer) => (
         <RowMenu
-          label={`${t.rowActions} ${offer.nickname}`}
+          label={`${t.rowActions} ${accountLabel(offer.loginName, offer.nickname)}`}
           items={[{
             label: t.deleteAccount,
             icon: 'trash',
@@ -465,7 +466,7 @@ export default function PackageSheetPage() {
                       <select value={loginName} onChange={(event) => setLoginName(event.target.value)}>
                         <option value="">—</option>
                         {users.map((row) => (
-                          <option key={row.loginName} value={row.loginName}>{row.nickname} · {layerName(t, row.layer)}</option>
+                          <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)} · {layerName(t, row.layer)}</option>
                         ))}
                       </select>
                     </label>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { AccountName, accountLabel } from '../../components/account-name';
 import { PagedTable, type Column } from '../../components/data-table';
 import { ActivationResult } from '../../components/activation-result';
 import { Desk, OutcomePick, applyNote, lineBadgeTone, lineStatus } from '../../components/desk';
@@ -146,7 +147,7 @@ export default function NumbersPage() {
         </span>
       ),
     },
-    ...(isPos ? [] : [{ key: 'pos', header: t.pointOfSale, render: (line: LineRow) => <bdi dir="ltr">{line.posLogin}</bdi> }]),
+    ...(isPos ? [] : [{ key: 'pos', header: t.pointOfSale, render: (line: LineRow) => <AccountName login={line.posLogin} /> }]),
     {
       key: 'status',
       header: t.status,
@@ -268,7 +269,7 @@ export default function NumbersPage() {
                   <Select value={posLogin || poses[0]?.loginName || ''} onChange={(event) => setPosLogin(event.target.value)}>
                     {poses.map((pos) => (
                       <option key={pos.loginName} value={pos.loginName}>
-                        {pos.nickname} · {pos.loginName}
+                        {accountLabel(pos.loginName, pos.nickname)}
                       </option>
                     ))}
                   </Select>

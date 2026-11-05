@@ -35,7 +35,7 @@ createServer((req, res) => {
     const json = { 'content-type': 'application/json; charset=utf-8' };
     const route = `${req.method} ${req.url}`;
     if (route === 'GET /auth/profile') {
-      res.writeHead(200, json).end(JSON.stringify({ loginName: 'pos', nickname: 'الكاشير', email: 'pos@example.com' }));
+      res.writeHead(200, json).end(JSON.stringify({ loginName: 'pos', nickname: 'الكاشير', email: 'pos@example.com', city: 'ramallah', address: 'شارع الإرسال' }));
       return;
     }
     if (route === 'GET /auth/sessions') {
@@ -94,6 +94,10 @@ createServer((req, res) => {
             ceiling: 0,
           }),
         );
+        return;
+      }
+      if (url.pathname === '/office/directory') {
+        res.writeHead(200, json).end(JSON.stringify({ names: { admin: 'الإدارة', pos: 'الكاشير' } }));
         return;
       }
       if (url.pathname === '/office/packages') {

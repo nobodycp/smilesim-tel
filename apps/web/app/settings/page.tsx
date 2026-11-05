@@ -4,14 +4,17 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { OfficeShell } from '../../components/office-shell';
 import { RowMenu } from '../../components/row-menu';
 import { api, type SessionInfo } from '../../lib/api';
+import { citiesFor } from '../../lib/cities';
 import { usePrefs } from '../../lib/prefs';
 
 export default function SettingsPage() {
-  const { t, apiText } = usePrefs();
+  const { t, apiText, locale } = usePrefs();
   const [loginName, setLoginName] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [address, setAddress] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
@@ -36,6 +39,8 @@ export default function SettingsPage() {
     setNickname(result.data.nickname ?? '');
     setEmail(result.data.email ?? '');
     setPhone(result.data.phone ?? '');
+    setCity(result.data.city ?? '');
+    setAddress(result.data.address ?? '');
   }, [apiText]);
 
   useEffect(() => {
@@ -54,13 +59,23 @@ export default function SettingsPage() {
     setNickname(result.data.nickname ?? '');
     setEmail(result.data.email ?? '');
     setPhone(result.data.phone ?? '');
+    setCity(result.data.city ?? '');
+    setAddress(result.data.address ?? '');
     setNote(done);
     return true;
   }
 
-  const saveNickname = (e: FormEvent) => {
+  const saveFullName = (e: FormEvent) => {
     e.preventDefault();
-    return saveProfile({ nickname }, t.savedNickname);
+    return saveProfile({ nickname }, t.savedFullName);
+  };
+  const saveCity = (e: FormEvent) => {
+    e.preventDefault();
+    return saveProfile({ city }, t.savedCity);
+  };
+  const saveAddress = (e: FormEvent) => {
+    e.preventDefault();
+    return saveProfile({ address }, t.savedAddress);
   };
   const saveEmail = (e: FormEvent) => {
     e.preventDefault();
@@ -121,6 +136,7 @@ export default function SettingsPage() {
   };
   const shownName = nickname || loginName;
   const initial = (shownName || t.brand).trim().charAt(0);
+  const cities = citiesFor(locale);
 
   return (
     <OfficeShell account={shownName} hint={nickname ? loginName : undefined} wide>
@@ -150,10 +166,10 @@ export default function SettingsPage() {
                   <input value={loginName} readOnly />
                 </label>
               </form>
-              <form className="field-row" onSubmit={saveNickname}>
+              <form className="field-row" onSubmit={saveFullName}>
                 <label>
-                  {t.nickname}
-                  <input value={nickname} onChange={(e) => setNickname(e.target.value)} />
+                  {t.fullName}
+                  <input value={nickname} onChange={(e) => setNickname(e.target.value)} autoComplete="name" />
                 </label>
                 <button type="submit">{t.save}</button>
               </form>
@@ -168,6 +184,25 @@ export default function SettingsPage() {
                 <label>
                   {t.phone}
                   <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" />
+                </label>
+                <button type="submit">{t.save}</button>
+              </form>
+              <form className="field-row" onSubmit={saveCity}>
+                <label>
+                  {t.city}
+                  <select value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2">
+                    <option value="">{t.cityNone}</option>
+                    {cities.map((row) => (
+                      <option key={row.key} value={row.key}>{row[locale]}</option>
+                    ))}
+                  </select>
+                </label>
+                <button type="submit">{t.save}</button>
+              </form>
+              <form className="field-row" onSubmit={saveAddress}>
+                <label>
+                  {t.address}
+                  <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={120} autoComplete="street-address" />
                 </label>
                 <button type="submit">{t.save}</button>
               </form>

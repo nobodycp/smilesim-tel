@@ -53,6 +53,8 @@ test('settings reads the login name and details from the profile, not from sessi
   await page.addInitScript(() => sessionStorage.setItem('loginName', 'stale-name'));
   await page.goto('/settings');
   await expect(page.getByLabel('اسم الدخول')).toHaveValue('pos');
-  await expect(page.getByLabel('النيك نيم')).toHaveValue('الكاشير');
+  await expect(page.getByLabel('الاسم الكامل')).toHaveValue('الكاشير');
+  await expect(page.getByLabel('المدينة')).toHaveValue('ramallah');
+  await expect(page.getByLabel('العنوان')).toHaveValue('شارع الإرسال');
   await expect(page.getByLabel('البريد')).toHaveValue('pos@example.com');
 });

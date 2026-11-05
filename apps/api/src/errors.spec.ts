@@ -1,10 +1,12 @@
 import { ERROR_CODES, ERROR_MESSAGES, errorBody } from './errors';
 import { DoorMiddleware } from './door.middleware';
 import { MemoryAuthStore } from './modules/auth/auth.store';
-import { newPasswordProblem, nicknameProblem, validateNewPassword, validateNickname } from './modules/auth/validators';
+import { fullNameProblem, newPasswordProblem, validateFullName, validateNewPassword } from './modules/auth/validators';
 
 // The Arabic sentences the web app showed before the codes existed. A code may be added, but
 // no message may change: an older web build still matches on these words.
+// NICKNAME_INVALID was retired on 2026-11-05 when the field became the full name
+// (FULL_NAME_INVALID); it is the one deliberate exception.
 const LEGACY_MESSAGES: Record<string, string> = {
   LOGIN_REQUIRED: 'يلزم تسجيل الدخول',
   DOOR_MISMATCH: 'هذا الحساب ليس لهذا المدخل',
@@ -13,7 +15,6 @@ const LEGACY_MESSAGES: Record<string, string> = {
   RATE_LIMITED: 'محاولات كثيرة. أعد المحاولة بعد قليل',
   WRONG_CODE: 'الرمز غير صحيح',
   WRONG_CURRENT_PASSWORD: 'كلمة السر الحالية غير صحيحة',
-  NICKNAME_INVALID: 'النيك نيم من حرفين إلى أربعين حرفاً',
   PASSWORD_TOO_SHORT: 'كلمة السر ثمانية أحرف على الأقل',
   EMAIL_INVALID: 'البريد الإلكتروني غير صحيح',
   PHONE_INVALID: 'رقم الهاتف غير صحيح',
@@ -54,9 +55,9 @@ describe('error contract', () => {
   });
 
   it('gives the validators a code that matches the message they always returned', () => {
-    expect(nicknameProblem('a')).toBe('NICKNAME_INVALID');
-    expect(nicknameProblem('ab')).toBeNull();
-    expect(validateNickname('a')).toBe(ERROR_MESSAGES.NICKNAME_INVALID);
+    expect(fullNameProblem('a')).toBe('FULL_NAME_INVALID');
+    expect(fullNameProblem('ab')).toBeNull();
+    expect(validateFullName('a')).toBe(ERROR_MESSAGES.FULL_NAME_INVALID);
     expect(newPasswordProblem('short')).toBe('PASSWORD_TOO_SHORT');
     expect(newPasswordProblem('long enough')).toBeNull();
     expect(validateNewPassword('short')).toBe(ERROR_MESSAGES.PASSWORD_TOO_SHORT);

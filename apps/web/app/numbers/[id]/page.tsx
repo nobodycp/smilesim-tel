@@ -3,6 +3,7 @@
 import { ArrowRightLeft, CalendarPlus, Hash, Layers, PhoneOff, QrCode, RefreshCw, Smartphone, Snowflake, Sun, Zap } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { AccountName, accountLabel } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk, Money, OutcomePick, actionName, applyNote, latinWhen, lineBadgeClass, lineStatus } from '../../../components/desk';
 import { Dialog } from '../../../components/dialog';
@@ -194,7 +195,7 @@ export default function LineCardPage() {
                   <div><dt>{t.remainingDays}</dt><dd>{daysLeft(line.endsAt)} {t.dayUnit}</dd></div>
                   <div><dt>{t.lastRecharge}</dt><dd>{line.lastRechargeAt ? <bdi dir="ltr">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</dd></div>
                   <div><dt>{t.subscriptionPrice}</dt><dd><Money value={line.subscriberPrice ?? line.posPrice} /></dd></div>
-                  {!isPos && line.posLogin && <div><dt>{t.pointOfSale}</dt><dd><bdi dir="ltr">{line.posLogin}</bdi></dd></div>}
+                  {!isPos && line.posLogin && <div><dt>{t.pointOfSale}</dt><dd><AccountName login={line.posLogin} /></dd></div>}
                 </dl>
                 <section className="usage">
                   <h2>{t.usage}</h2>
@@ -397,13 +398,13 @@ export default function LineCardPage() {
             <div className="stack">
               <dl className="detail-rows">
                 <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
-                <div><dt>{t.pointOfSale}</dt><dd><bdi dir="ltr">{line.posLogin || '—'}</bdi></dd></div>
+                <div><dt>{t.pointOfSale}</dt><dd><AccountName login={line.posLogin} /></dd></div>
               </dl>
               <label>
                 {t.transfer}
                 <select value={posLogin} onChange={(event) => setPosLogin(event.target.value)}>
                   <option value="">—</option>
-                  {posChoices.map((row) => <option key={row.loginName} value={row.loginName}>{row.nickname}</option>)}
+                  {posChoices.map((row) => <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>)}
                 </select>
               </label>
             </div>

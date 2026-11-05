@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { AccountName } from '../../components/account-name';
 import { PagedTable, type Column } from '../../components/data-table';
 import { Desk, actionName, latinWhen, layerName } from '../../components/desk';
 import { FilterBar } from '../../components/filter-bar';
@@ -37,7 +38,7 @@ export default function AuditPage() {
   const columns: Column<ActivityRow>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     { key: 'layer', header: t.layer, render: (row) => (row.actorLayer ? layerName(t, row.actorLayer) : '—') },
-    { key: 'account', header: t.accountName, render: (row) => (row.actorLogin ? <bdi dir="ltr">{row.actorLogin}</bdi> : '—') },
+    { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.actorLogin} /> },
     { key: 'action', header: t.kind, render: (row) => actionName(t, row.action) },
     {
       key: 'result',

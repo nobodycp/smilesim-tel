@@ -8,9 +8,13 @@ export const AUTH_STORE = Symbol('AUTH_STORE');
 
 export type StoredUser = LoginUser & {
   passwordHash: string;
+  /** The full name; the field keeps its historical name. */
   nickname?: string;
   email?: string;
   phone?: string;
+  /** A key from PALESTINE_CITIES, or null when unset. */
+  city?: string | null;
+  address?: string | null;
   /** Confirmed authenticator secret; only meaningful while twoFactorEnabled is true. */
   twoFactorSecret?: string | null;
   /** Secret issued by setup and not yet proven with a code. */
@@ -22,6 +26,8 @@ export type UserPatch = Partial<
     | 'nickname'
     | 'email'
     | 'phone'
+    | 'city'
+    | 'address'
     | 'passwordHash'
     | 'mustChangePassword'
     | 'twoFactorEnabled'
