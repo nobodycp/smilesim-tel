@@ -183,6 +183,23 @@ export async function tree() {
   return { service, gates, accounts, packages, pkgA, pkgB, userPackages, sellPrices, line, lines, tasks, entries, wallet };
 }
 
+/** A number beside the tree's first line: the same package and point of sale, carrying `posPrice` at renewal. */
+const at = (line: Row, id: string, posPrice: number, status = 'active'): Row => ({
+  ...line,
+  id,
+  msisdn: `05210000${id}`,
+  status,
+  terms: { ...(line.terms as LineTerms), renewal: { ...(line.terms as LineTerms).renewal, posPrice } },
+});
+
+/** The tree plus the numbers the price tests start from: two at 4500, one frozen at 4100, and a disconnected one at 9900 that no save may touch. */
+async function withNumbers() {
+  const fixture = await tree();
+  const { lines, line } = fixture;
+  lines.push(at(line, 'ln2', 4500), at(line, 'ln3', 4500), at(line, 'ln4', 4100, 'frozen'), at(line, 'ln5', 9900, 'disconnected'));
+  return fixture;
+}
+
 describe('catalog through user terms', () => {
   it('omits a package hidden on the agent from the point of sale, not from the main agent', async () => {
     const { service, gates, userPackages } = await tree();
@@ -506,5 +523,42 @@ describe('capturing the renewal price', () => {
     const captured = captureTerms(packageTermsOf(pkgA as unknown as PackagePriceRow), []);
     const stamp = (service as unknown as { stampFor: (terms: LineTerms, posId: string) => Promise<LineTerms> }).stampFor.bind(service);
     await expect(stamp(captured, 'ghost')).resolves.toEqual(captured);
+  });
+});
+
+describe('prices on existing numbers', () => {
+  it('GET line-prices groups the renewable numbers in scope and tells the current price', async () => {
+    const { service, gates } = await withNumbers();
+    await expect(service.linePrices(gates.ag1, 'alloha-150', { scope: 'pos1' })).resolves.toEqual({
+      current: 3200,
+      groups: [{ price: 3200, count: 1 }, { price: 4100, count: 1 }, { price: 4500, count: 2 }],
+    });
+    await expect(service.linePrices(gates.branch, 'alloha-150', { scope: 'all' })).resolves.toMatchObject({ current: null });
+    await expect(service.linePrices(gates.ma1, 'alloha-150', { scope: 'all' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.linePrices(gates.ag2, 'alloha-150', { scope: 'pos1' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.linePrices(gates.pos1, 'alloha-150', { scope: 'pos1' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  it('a scope reaches the numbers of that package under it and no others', async () => {
+    const { service, gates, accounts, lines, line } = await withNumbers();
+    accounts.push(account('pos2', 'pos', 'ag2'));
+    // A point of sale under the other agent, and a number of another package at pos1: neither is in ag1's table.
+    lines.push({ ...at(line, 'ln6', 4800), posId: 'pos2' }, { ...at(line, 'ln7', 4700), packageId: 'pb' });
+    const own = [{ price: 3200, count: 1 }, { price: 4100, count: 1 }, { price: 4500, count: 2 }];
+    // An agent and a main agent run the table over their own subtree by naming themselves.
+    await expect(service.linePrices(gates.ag1, 'alloha-150', { scope: 'ag1' })).resolves.toMatchObject({ groups: own });
+    await expect(service.linePrices(gates.ma1, 'alloha-150', { scope: 'ag2' })).resolves.toMatchObject({ groups: [{ price: 4800, count: 1 }] });
+    await expect(service.linePrices(gates.ma1, 'alloha-150', { scope: 'ma1' })).resolves.toMatchObject({ groups: [...own, { price: 4800, count: 1 }] });
+    await expect(service.linePrices(gates.branch, 'alloha-150', { scope: 'all' })).resolves.toMatchObject({ groups: [...own, { price: 4800, count: 1 }] });
+    await expect(service.linePrices(gates.branch, 'alloha-400', { scope: 'all' })).resolves.toEqual({ current: null, groups: [{ price: 4700, count: 1 }] });
+  });
+
+  it('refuses a scope that names no account, a branch account, or nothing', async () => {
+    const { service, gates } = await tree();
+    await expect(service.linePrices(gates.branch, 'alloha-150', { scope: 'ghost' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(service.linePrices(gates.branch, 'alloha-150', { scope: 'branch' })).rejects.toMatchObject({ code: 'INVALID' });
+    await expect(service.linePrices(gates.branch, 'alloha-150', {})).rejects.toMatchObject({ code: 'INVALID' });
+    await expect(service.linePrices(gates.branch, 'alloha-150', { scope: ['pos1'] })).rejects.toMatchObject({ code: 'INVALID' });
+    await expect(service.linePrices(gates.branch, 'nope-1', { scope: 'all' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
   });
 });

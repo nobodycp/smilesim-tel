@@ -61,9 +61,10 @@ import {
   type ActionKey,
   type ActionMode,
   type LineTerms,
+  type PackageTerms,
 } from './office-rules';
 import { activityActorFilter, clampActivityRange } from './activity-log';
-import { stampRenewal } from './line-prices';
+import { RENEWABLE_STATUSES, groupLinePrices, repriceLine, stampRenewal, type PriceGroup } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
 import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey, layerPrice, parseOps, priceSource, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type PriceSource, type SellRow, type TermRow } from './user-terms';
 import { renderEsimQr } from './office-esim';
@@ -133,6 +134,11 @@ export type CustomPriceRow = {
   price: number | null;
   renewalPrice: number | null;
 };
+/** What a line-prices request covers: the whole system, or one account and everything under it. */
+type LineScope = { kind: 'all' } | { kind: 'account'; id: string; loginName: string; layer: string };
+/** What happens to one number: a flat price, or what a new activation would carry now. */
+type LineTarget = { to: number | 'current' };
+type RepriceLine = { id: string; posId: string; terms: Prisma.JsonValue; package: PackagePriceRow & { id: string } };
 type Action = 'activate' | 'charge' | 'extend' | 'reactivate' | 'disconnect' | 'freeze' | 'unfreeze' | 'switch' | 'rename' | 'sim' | 'esim' | 'refresh';
 type Sale = {
   msisdn: string;
@@ -2339,6 +2345,138 @@ export class OfficeService implements OnModuleInit {
     const { terms, sells } = await this.termsFor(pkg.id);
     await this.writeUserPackage(actor, path, pkg, { price: null, renewalPrice: null }, terms, sells);
     return { ok: true as const };
+  }
+
+  /**
+   * The renewable numbers of a package in a scope, grouped by the renewal price each one carries, and
+   * what a new activation would pay on the scope account (`null` for the whole system: it differs per number).
+   */
+  async linePrices(gate: Gate, code: string, query: { scope?: unknown }): Promise<{ current: number | null; groups: PriceGroup[] }> {
+    const [actor, accounts] = await Promise.all([this.actor(gate), this.accounts()]);
+    const scope = await this.lineScope(actor, accounts, query.scope);
+    const pkg = await this.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const lines = await this.prisma.line.findMany({ where: this.scopeLineWhere(scope, accounts, pkg.id), select: { terms: true } });
+    const groups = groupLinePrices(lines.map((line) => ({ terms: lineTermsOf(line.terms, pkg) })));
+    if (scope.kind === 'all') return { current: null, groups };
+    const { terms, sells } = await this.termsFor(pkg.id);
+    return { current: buyPriceFor(this.pathOf(scope.id, accounts), terms, sells, pkg, 'renewal'), groups };
+  }
+
+  /**
+   * What a line-prices request covers. The whole system is for the branch owner, or staff who may edit.
+   * An account is for whoever may write a custom price on it (its parent, or the branch), and for an agent
+   * or main agent naming itself: the table over its own subtree. A point of sale never opens it, and an
+   * impersonated session writes no prices.
+   */
+  private async lineScope(actor: Actor, accounts: Account[], scope: unknown): Promise<LineScope> {
+    if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
+    if (scope === 'all') {
+      if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+      return { kind: 'all' };
+    }
+    if (typeof scope !== 'string' || !scope) fail(400, 'INVALID');
+    const target = accounts.find((account) => account.loginName === scope);
+    if (!target) fail(404, 'NOT_FOUND');
+    if (target.layer === 'branch') fail(400, 'INVALID');
+    const reachable = visibleAccountIds(actor.id, actor.layer, accounts).has(target.id);
+    if (!reachable || (target.id !== actor.id && !this.canEditTerms(actor, target))) fail(403, 'FORBIDDEN');
+    return { kind: 'account', id: target.id, loginName: target.loginName, layer: target.layer };
+  }
+
+  /** The numbers a table lists and a save may change: one package, in the scope, never a disconnected one. */
+  private scopeLineWhere(scope: LineScope, accounts: Account[], packageId: string) {
+    return {
+      packageId,
+      status: { in: [...RENEWABLE_STATUSES] },
+      ...(scope.kind === 'account' ? { posId: { in: [...visibleAccountIds(scope.id, scope.layer, accounts)] } } : {}),
+    };
+  }
+
+  /**
+   * Rewrites the renewal terms of the numbers `planFor` names, in the caller's transaction, and returns how
+   * many it wrote. A flat price may not sit below the floor of that number's point of sale. `'current'`
+   * rebuilds the ladder and the renewal targets as an activation captures them today, priced through the
+   * number's own path, so a nearer custom price still wins. Everything the batch needs is read once and every
+   * number is checked before the first write, so one refusal applies nothing.
+   */
+  private async repriceLines(
+    tx: Prisma.TransactionClient,
+    lines: RepriceLine[],
+    planFor: (line: RepriceLine) => LineTarget | null,
+    accounts: Account[],
+  ): Promise<number> {
+    const plans = lines.flatMap((line) => {
+      const target = planFor(line);
+      return target ? [{ line, to: target.to }] : [];
+    });
+    if (plans.length === 0) return 0;
+    const paths = new Map<string, PathNode[]>();
+    const pathOf = (posId: string) => {
+      const known = paths.get(posId) ?? this.pathOf(posId, accounts);
+      paths.set(posId, known);
+      return known;
+    };
+    const packageIds = [...new Set(plans.map(({ line }) => line.package.id))];
+
+    // `'current'` needs the renewal targets each package lists today.
+    const renewals = plans.some(({ to }) => to === 'current')
+      ? await tx.packageRenewal.findMany({
+          where: { packageId: { in: packageIds } },
+          include: { target: { include: { company: true, provider: true } } },
+        })
+      : [];
+    const targetsOf = new Map<string, PackageTerms[]>();
+    for (const renewal of renewals) {
+      if (!renewal.target.company || !renewal.target.provider) fail(400, 'INVALID');
+      targetsOf.set(renewal.packageId, [...(targetsOf.get(renewal.packageId) ?? []), packageTermsOf(renewal.target)]);
+    }
+
+    // A flat price needs the rows that set what each parent pays, for every package and path in the batch.
+    const termsOf = new Map<string, TermRow[]>();
+    const sellsOf = new Map<string, SellRow[]>();
+    const flat = plans.filter(({ to }) => to !== 'current');
+    if (flat.length > 0) {
+      const pathIds = [...new Set(flat.flatMap(({ line }) => pathOf(line.posId).map((node) => node.id)))];
+      const [termRows, sellRows] = await Promise.all([
+        tx.userPackage.findMany({
+          where: { packageId: { in: packageIds }, userId: { in: pathIds } },
+          select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
+        }),
+        tx.sellPrice.findMany({
+          where: { packageId: { in: packageIds }, ownerId: { in: pathIds } },
+          select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
+        }),
+      ]);
+      for (const id of packageIds) {
+        termsOf.set(id, termRows.filter((row) => row.packageId === id));
+        sellsOf.set(id, sellRows.filter((row) => row.packageId === id));
+      }
+    }
+
+    const fresh = new Map<string, LineTerms>();
+    const changes: { id: string; terms: LineTerms }[] = [];
+    for (const { line, to } of plans) {
+      const terms = lineTermsOf(line.terms, line.package);
+      const path = pathOf(line.posId);
+      if (to === 'current') {
+        if (!line.package.company || !line.package.provider) fail(400, 'INVALID');
+        // Every number of one package at one point of sale takes the same ladder, so it is built once.
+        const key = `${line.package.id}:${line.posId}`;
+        const ladder =
+          fresh.get(key) ??
+          (await this.stampFor(captureTerms(packageTermsOf(line.package), targetsOf.get(line.package.id) ?? []), line.posId, path, tx));
+        fresh.set(key, ladder);
+        changes.push({ id: line.id, terms: repriceLine(terms, { to, fresh: ladder }) });
+        continue;
+      }
+      if (to < floorFor(path, termsOf.get(line.package.id) ?? [], sellsOf.get(line.package.id) ?? [], line.package, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
+      changes.push({ id: line.id, terms: repriceLine(terms, { to }) });
+    }
+    for (const { id, terms } of changes) {
+      await tx.line.update({ where: { id }, data: { terms: terms as unknown as Prisma.InputJsonValue } });
+    }
+    return changes.length;
   }
 
   /** Resolves the account whose terms are edited and checks the actor may edit them. */

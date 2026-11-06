@@ -261,6 +261,20 @@ export class OfficeController {
     });
   }
 
+  @Get('packages/:code/line-prices')
+  @ApiOperation({ summary: 'The renewable numbers of this package grouped by the renewal price they carry' })
+  @ApiParam({ name: 'code' })
+  @ApiQuery({ name: 'scope', required: true, description: 'An account login (that account and everything under it) or "all" (branch only)' })
+  @ApiErrorResponse(401, 403, 400, 404)
+  linePrices(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('code') code: string,
+    @Query('scope') scope?: string,
+  ) {
+    return this.run(res, () => this.office.linePrices(gateOf(req), code, { scope }));
+  }
+
   @Patch('packages/:code/mode')
   @ApiOperation({ summary: 'Set package sale/visibility mode flags' })
   @ApiParam({ name: 'code' })
