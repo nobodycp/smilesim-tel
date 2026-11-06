@@ -875,7 +875,7 @@ export class OfficeService implements OnModuleInit {
     }
     const pkgTerms = packageTermsOf(pkg);
     const terms = captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target)));
-    const unit = await this.resolveBuyPrice(pos.id, pkg, 'subscription');
+    const unit = await this.resolveBuyPrice(pos.id, pkg, 'subscription', undefined, posPath);
     const esimFee = esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price;
     const posDelta = -(unit + (esim ? esimFee : 0));
     const msisdn = inputs === 'number-and-sim' ? requested : requested || (await this.freshMsisdn());
@@ -1015,7 +1015,7 @@ export class OfficeService implements OnModuleInit {
       allowed.map((item) => item.target.code),
     );
     if ('error' in switched) fail(400, 'INVALID');
-    if (!(await this.visibleFor(line.posId, next))) fail(400, 'PACKAGE_HIDDEN');
+    if (!(await this.visibleFor(line.posId, next, line.posPath))) fail(400, 'PACKAGE_HIDDEN');
     this.assertRunnable(next, 'switch', line.denied);
     if (outcome === 'fail' || !this.runsNow(line.package, 'switch')) {
       const quote = await this.switchQuote(this.prisma, line, next, new Date());
@@ -1063,7 +1063,7 @@ export class OfficeService implements OnModuleInit {
     if (targetCode && (!target || !target.company || !target.provider)) fail(400, 'INVALID');
     const renewal = target ? renewOnto(terms, packageTermsOf(target), base) : renewStay(terms, base);
     if ('error' in renewal) fail(400, 'INVALID');
-    const posDelta = -(await this.resolveBuyPrice(line.posId, target ?? line.package, 'renewal', renewal.debit));
+    const posDelta = -(await this.resolveBuyPrice(line.posId, target ?? line.package, 'renewal', renewal.debit, line.posPath));
     if (outcome === 'fail' || !this.runsNow(line.package, 'extend')) {
       const task = await this.openTask({
         action: 'extend', actor, posId: line.posId, packageId: line.packageId, nextPackageId: target?.id,
@@ -2279,15 +2279,30 @@ export class OfficeService implements OnModuleInit {
   async setUserPackagesBulk(gate: Gate, loginName: string, body: { codes?: unknown; hidden?: unknown }) {
     if (!Array.isArray(body.codes) || body.codes.some((code) => typeof code !== 'string' || !code) || typeof body.hidden !== 'boolean') fail(400, 'INVALID');
     const codes = new Set(body.codes as string[]);
+    const hidden = body.hidden as boolean;
     const { actor, path } = await this.termTarget(gate, loginName);
-    const packages = (await this.prisma.package.findMany({ where: { enabled: true, forSale: true } })).filter((pkg) => codes.has(pkg.code));
-    for (const pkg of packages) {
-      const { terms, sells } = await this.termsFor(pkg.id);
-      if (hiddenAbove(path, terms)) continue;
-      await this.writeUserPackage(actor, path, pkg, { hidden: body.hidden }, terms, sells);
-    }
-    const { summary } = await this.userPackages(gate, loginName);
-    return { summary };
+    const pathIds = path.map((node) => node.id);
+    // The path's rows for every package on sale, loaded once: the picked ones are written, all of
+    // them feed the summary. Every write sits in one transaction so a refusal midway applies nothing.
+    const [packages, terms, sells] = await Promise.all([
+      this.prisma.package.findMany({ where: { enabled: true, forSale: true } }),
+      this.prisma.userPackage.findMany({ where: { userId: { in: pathIds } }, select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true } }),
+      this.prisma.sellPrice.findMany({ where: { ownerId: { in: pathIds } }, select: { packageId: true, ownerId: true, price: true, renewalPrice: true } }),
+    ]);
+    const termsOf = (packageId: string) => terms.filter((row) => row.packageId === packageId);
+    const sellsOf = (packageId: string) => sells.filter((row) => row.packageId === packageId);
+    const written = new Map<string, TermRow[]>();
+    await this.runTx(async (tx) => {
+      for (const pkg of packages) {
+        if (!codes.has(pkg.code)) continue;
+        const own = termsOf(pkg.id);
+        if (hiddenAbove(path, own)) continue;
+        await this.writeUserPackage(actor, path, pkg, { hidden }, own, sellsOf(pkg.id), tx);
+        written.set(pkg.id, own);
+      }
+    });
+    const rows = packages.map((pkg) => this.userPackageRow(pkg, path, written.get(pkg.id) ?? termsOf(pkg.id), sellsOf(pkg.id)));
+    return { summary: summarize(rows) };
   }
 
   async userOps(gate: Gate, loginName: string) {
@@ -2362,6 +2377,7 @@ export class OfficeService implements OnModuleInit {
     patch: TermPatch,
     terms: TermRow[],
     sells: SellRow[],
+    db: Prisma.TransactionClient | PrismaClient = this.prisma,
   ): Promise<UserPackageRow> {
     const userId = path[0].id;
     const index = terms.findIndex((term) => term.userId === userId);
@@ -2380,12 +2396,12 @@ export class OfficeService implements OnModuleInit {
     const where = { packageId_userId: { packageId: pkg.id, userId } };
     if (!next.hidden && next.price === null && next.renewalPrice === null) {
       if (own) {
-        await this.prisma.userPackage.delete({ where });
+        await db.userPackage.delete({ where });
         terms.splice(index, 1);
       }
     } else {
       const data = { hidden: next.hidden, price: next.price, renewalPrice: next.renewalPrice, setById: actor.id };
-      await this.prisma.userPackage.upsert({ where, update: data, create: { packageId: pkg.id, userId, ...data } });
+      await db.userPackage.upsert({ where, update: data, create: { packageId: pkg.id, userId, ...data } });
       if (own) terms[index] = next;
       else terms.push(next);
     }
@@ -2819,7 +2835,7 @@ export class OfficeService implements OnModuleInit {
   private async restartDisconnected(actor: Actor, line: Awaited<ReturnType<OfficeService['visibleLine']>>, outcome: 'success' | 'fail') {
     if (line.status !== 'disconnected') fail(400, 'INVALID');
     this.assertRunnable(line.package, 'charge', line.denied);
-    const charged = await this.resolveBuyPrice(line.posId, line.package, 'subscription');
+    const charged = await this.resolveBuyPrice(line.posId, line.package, 'subscription', undefined, line.posPath);
     const posDelta = -charged;
     if (outcome === 'fail' || !this.runsNow(line.package, 'charge')) {
       const task = await this.openTask({
@@ -2890,9 +2906,9 @@ export class OfficeService implements OnModuleInit {
     return { terms, sells };
   }
 
-  private async visibleFor(userId: string, pkg: { id: string; enabled: boolean; forSale: boolean }): Promise<boolean> {
-    const [accounts, { terms }] = await Promise.all([this.accounts(), this.termsFor(pkg.id)]);
-    return visibleTo(this.pathOf(userId, accounts), terms, pkg);
+  private async visibleFor(userId: string, pkg: { id: string; enabled: boolean; forSale: boolean }, path?: PathNode[]): Promise<boolean> {
+    const [known, { terms }] = await Promise.all([path ? Promise.resolve(path) : this.pathOf(userId, await this.accounts()), this.termsFor(pkg.id)]);
+    return visibleTo(known, terms, pkg);
   }
 
   /** Switch targets saved on the package that the selling account may see. */
@@ -2901,12 +2917,14 @@ export class OfficeService implements OnModuleInit {
       where: { packageId },
       select: { target: { select: { id: true, code: true, enabled: true, forSale: true } } },
     });
-    const out: string[] = [];
-    for (const item of saved) {
-      const { terms } = await this.termsFor(item.target.id);
-      if (visibleTo(posPath, terms, item.target)) out.push(item.target.code);
-    }
-    return out;
+    if (saved.length === 0) return [];
+    const terms = await this.prisma.userPackage.findMany({
+      where: { packageId: { in: saved.map((item) => item.target.id) }, userId: { in: posPath.map((node) => node.id) } },
+      select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
+    });
+    return saved
+      .filter((item) => visibleTo(posPath, terms.filter((row) => row.packageId === item.target.id), item.target))
+      .map((item) => item.target.code);
   }
 
   private canEditTerms(actor: Actor, target: Account): boolean {
@@ -2925,9 +2943,9 @@ export class OfficeService implements OnModuleInit {
     pkg: { id: string } & LayerPrices,
     kind: PriceKind,
     layerFallback?: number,
+    known?: PathNode[],
   ): Promise<number> {
-    const [accounts, { terms, sells }] = await Promise.all([this.accounts(), this.termsFor(pkg.id)]);
-    const path = this.pathOf(userId, accounts);
+    const [path, { terms, sells }] = await Promise.all([known ? Promise.resolve(known) : this.pathOf(userId, await this.accounts()), this.termsFor(pkg.id)]);
     if (path.length === 0) return layerFallback ?? buyPriceFor([{ id: userId, loginName: '', layer: 'pos', deniedOps: '' }], [], [], pkg, kind);
     if (layerFallback === undefined) return buyPriceFor(path, terms, sells, pkg, kind);
     const pinned: LayerPrices = {
@@ -3021,8 +3039,10 @@ export class OfficeService implements OnModuleInit {
     if (!line.package.company || !line.package.provider) fail(400, 'INVALID');
     const accounts = await this.accounts();
     if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
-    // The stop belongs to the selling account that owns the line, not to whoever clicks.
-    return Object.assign(line, { denied: deniedOpsFor(this.pathOf(line.posId, accounts)) });
+    // The stop belongs to the selling account that owns the line, not to whoever clicks. The path
+    // travels with the line so later price and visibility checks do not load the accounts again.
+    const posPath = this.pathOf(line.posId, accounts);
+    return Object.assign(line, { denied: deniedOpsFor(posPath), posPath });
   }
 
   private async openTask(input: {

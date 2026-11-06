@@ -164,7 +164,17 @@ export async function tree() {
     provider: { findMany: async () => [provider] },
     role: null,
     walletEntry: { findMany: async () => [], findFirst: async () => null, count: async () => 0 },
-    $transaction: async (run: (client: typeof tx) => Promise<unknown>) => run(tx),
+    // A failed transaction puts the terms tables back, as the database would.
+    $transaction: async (run: (client: typeof tx) => Promise<unknown>) => {
+      const keep = { userPackages: userPackages.map((row) => ({ ...row })), sellPrices: sellPrices.map((row) => ({ ...row })) };
+      try {
+        return await run(tx);
+      } catch (error) {
+        userPackages.splice(0, userPackages.length, ...keep.userPackages);
+        sellPrices.splice(0, sellPrices.length, ...keep.sellPrices);
+        throw error;
+      }
+    },
   };
   return { service, gates, accounts, packages, pkgA, pkgB, userPackages, sellPrices, line, lines, tasks, entries, wallet };
 }
@@ -328,6 +338,20 @@ describe('writing user terms', () => {
     const out = await service.setUserPackagesBulk(gates.ag1, 'pos1', { codes: ['alloha-150', 'alloha-400'], hidden: true });
     expect(userPackages.filter((item) => item.userId === 'pos1').map((item) => item.packageId)).toEqual(['pa']);
     expect(out.summary).toEqual({ total: 2, visible: 0, custom: 0 });
+  });
+
+  it('bulk show is one transaction: a failure on the second package leaves the first untouched', async () => {
+    const { service, gates, userPackages } = await tree();
+    userPackages.push(row('pos1', { hidden: true }));
+    userPackages.push({ ...row('pos1', { hidden: true }), packageId: 'pb' });
+    const table = (service as unknown as { prismaClient: { userPackage: { delete: (args: { where: { packageId_userId: { packageId: string } } }) => Promise<unknown> } } }).prismaClient.userPackage;
+    const real = table.delete;
+    table.delete = async (args) => {
+      if (args.where.packageId_userId.packageId === 'pb') throw new Error('connection lost');
+      return real(args);
+    };
+    await expect(service.setUserPackagesBulk(gates.ag1, 'pos1', { codes: ['alloha-150', 'alloha-400'], hidden: false })).rejects.toThrow('connection lost');
+    expect(userPackages.filter((item) => item.userId === 'pos1').map((item) => [item.packageId, item.hidden])).toEqual([['pa', true], ['pb', true]]);
   });
 
   it('lists the user packages grouped by company with the inherited state', async () => {
