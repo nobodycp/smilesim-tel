@@ -148,9 +148,9 @@ For a number the two accounts are the points of sale; for a point of sale the ag
 agent the main agents. `subject` is the msisdn or the login. The shell renders them with the same
 action words as the desk («نقل»).
 
-The activity log records `user_transfer` (account moves, with the five choices, the two parents,
-the moved balance, and the count of repriced numbers in the payload) and keeps `transfer` on the
-line's operation record.
+The activity log records `user_transfer` with the moved login as subject and keeps `transfer` on
+the line's operation record. The activity table stores no payload; the choices, the two parents,
+the balance, and the count of repriced numbers live in the two notices and in the response.
 
 ### 6. Screens
 
@@ -182,7 +182,9 @@ all three).
 | `GET`  | `/office/users/:login/transfer-preview` | new |
 | `POST` | `/office/lines/:id/transfer` | body gains `linePrices`; adds the `transfer` stop check and destination layer/frozen checks |
 | `GET`  | `/office/users/:login/ops`, `PUT` same | `transfer` is a valid key |
-| `GET`  | `/office/me`, roles endpoints | `transferAgents` in grants |
+| `GET`  | `/office/me` | `transferAgents` may appear in `grants`; new `stops: OpKey[]`, the stops on the actor's own path, so the browser can hide «نقل» |
+| roles endpoints | | `transferAgents` accepted in `grants` |
+| `GET`  | `/office/users/:login/packages` | each row gains `lines: number`, renewable numbers of that package under the user |
 | `GET`  | `/office/packages/:code/line-prices?scope=` | new: existing numbers grouped by the renewal price they carry (section 9) |
 | `PUT`  | `/office/packages/:code/line-prices` | new: `{ scope, groups: [{ from, to }] }` |
 | `POST` | `/office/packages/:code/reprice-renewal` | removed, replaced by the two above |
@@ -213,15 +215,16 @@ price frozen on the line, so a custom price reached old numbers automatically. T
 it should not: a parent often wants a cheaper activation price for a point of sale without
 touching what its running numbers pay.
 
-**Activation.** `captureTerms` stamps the resolved renewal price into the frozen ladder:
-`terms.renewal.posPrice = buyPriceFor(posPath, terms, sells, pkg, 'renewal')`, and each
+**Activation.** Every place that captures terms for a number — direct activation, activation
+through a branch task, and a package switch — stamps the resolved renewal price into the frozen
+ladder: `terms.renewal.posPrice = buyPriceFor(posPath, terms, sells, pkg, 'renewal')`, and each
 `terms.renewalTargets[i].renewal.posPrice` the same way for the target package. The subscription
 debit is unchanged (already resolved through the path). The other ladder levels (`branchCost`,
 `mainPrice`, `agentPrice`) keep coming from the package's layer prices, as today.
 
 **Renewal.** `extend`, `charge`, `reactivate`, and a renewal onto a target read `terms.renewal`
-(or the target entry) and nothing else. `resolveBuyPrice(..., 'renewal', layerFallback)` loses
-its custom/sell steps whenever a fallback is passed; the subscription path keeps them.
+(or the target entry) and nothing else. `resolveBuyPrice` loses its `layerFallback` parameter:
+it is only ever asked what a new capture would carry.
 
 **Writing a price never touches numbers.** Custom prices, sell prices, and layer prices are saved
 exactly as today and reach new activations only. The `hidden` toggle is not a price. Existing
@@ -256,11 +259,12 @@ activation would pay now. Three office cases, one screen:
 - A numeric `to` is one flat price for every number in the group. It must not sit below the
   floor of that number's point of sale (what its parent pays at renewal), same rule and same
   `PRICE_BELOW_FLOOR` as a custom price; one offending number refuses the whole save.
-- Only `terms.renewal.posPrice` and the matching `renewalTargets[i].renewal.posPrice` change.
-  `packageCode`, `months`, `windowMonths`, `subscription`, and the other ladder levels are kept.
-  `'current'` additionally refreshes the ladder and target list from the package's current
-  settings, exactly as `captureTerms` does at activation; a target removed from the package since
-  the number was activated disappears from that number.
+- A numeric `to` changes `terms.renewal.posPrice` only; the renewal targets (other packages,
+  other prices) are left as they are. `'current'` rebuilds `renewal` and `renewalTargets` from the
+  package's current settings, exactly as activation does, with each `posPrice` resolved through
+  the number's path; a target removed from the package since the number was activated disappears
+  from that number. In both cases `packageCode`, `months`, `windowMonths`, and `subscription` are
+  kept.
 - One transaction; the response is `{ ok: true, lines: number }` and the toast says
   «تم تحديث {n} رقماً».
 
@@ -294,8 +298,8 @@ Copy in ar/en/he: `linePricesTitle`, `linePricesCurrent`, `linePricesCount`, `li
 `linePricesEmpty`, `linePricesSaved` («تم تحديث {n} رقماً»); `repriceWhich`, `repriceStay` are
 removed. The component is one file, `components/line-prices-dialog.tsx`, used by all three screens.
 
-**Audit.** `package_reprice` with `{ code, scope, groups, lines }`. Transfer keeps the count of
-repriced numbers in its `user_transfer` payload.
+**Audit.** `package_reprice` with the package code as subject (the activity table has no
+payload; the count comes back in the response).
 
 ## Non-goals
 
