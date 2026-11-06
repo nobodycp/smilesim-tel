@@ -63,9 +63,10 @@ export default function NumbersPage() {
   const catalog = useLoad(() => api.officePackages());
   const packages = catalog.data?.packages ?? [];
   const poses = list.extra ?? NO_POSES;
-  const ready = catalog.data !== null && list.started;
+  const ready = catalog.loaded && list.started;
   const { run, busy } = useAction({ setError, setNote, onDone: list.reload });
-  const failure = error || list.error || catalog.error;
+  // A failed list is shown once, in the table; the banner is for actions and the catalogue.
+  const failure = error || catalog.error;
 
   useEffect(() => {
     const initial = new URLSearchParams(window.location.search).get('status') ?? '';

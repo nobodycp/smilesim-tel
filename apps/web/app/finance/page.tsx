@@ -67,7 +67,7 @@ export default function FinancePage() {
   ];
 
   return (
-    <Desk title={t.navFinance} lede="" error={list.error} note="">
+    <Desk title={t.navFinance} lede="" error="" note="">
       <FilterBar onClear={() => { setKind(''); setLayer(''); setQ(''); setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.kind}

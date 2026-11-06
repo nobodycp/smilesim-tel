@@ -38,13 +38,15 @@ export default function CompanyPackagesPage() {
   ];
 
   return (
-    <Desk title={provider?.name ?? ''} lede={company?.name ?? ''} error={shelf.error} note="">
+    <Desk title={provider?.name ?? ''} lede={company?.name ?? ''} error="" note="">
       <section className="pane">
         <DataTable
           columns={columns}
           rows={provider?.packages ?? []}
           rowKey={(pkg) => pkg.code}
           loading={!shelf.loaded}
+          failed={shelf.error}
+          onRetry={() => void shelf.reload()}
           skeleton={{ rows: 6, columns: 3 }}
           empty={t.noPackages}
         />

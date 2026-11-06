@@ -29,6 +29,7 @@ export type SessionInfo = {
 export type BrandingSummary = { siteName: string; tagline: string; hasLogo: boolean; hasFavicon: boolean; version: number };
 export type BrandingBody = { siteName: string; tagline: string; logo: string | null; logoDark: string | null; favicon: string | null };
 
+import { reportReach } from './connection';
 import { doorFromHost } from './doors';
 
 const base = () => (typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3001' : '/api');
@@ -57,19 +58,35 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
+    reportReach(false);
     return { ok: false, status: 0, message: NETWORK_MESSAGE, code: 'NETWORK' };
   }
-  const data = await response.json().catch(() => ({}));
+  const data: unknown = await response.json().catch(() => undefined);
+  // The browser reaches the API through the Next rewrite. When the API is down the rewrite answers
+  // a bare 5xx with no JSON; that is the API being unreachable, not an error it chose to send.
+  if (!reachedApi(response.status, data)) {
+    reportReach(false);
+    return { ok: false, status: response.status, message: NETWORK_MESSAGE, code: 'NETWORK' };
+  }
+  reportReach(true);
   if (!response.ok) {
-    const hasMessage = typeof data?.message === 'string';
-    const message = hasMessage ? data.message : GENERIC_MESSAGE;
-    const code = typeof data?.code === 'string' ? data.code : hasMessage ? undefined : 'GENERIC';
+    const body = (data ?? {}) as { message?: unknown; code?: unknown };
+    const hasMessage = typeof body.message === 'string';
+    const message = hasMessage ? (body.message as string) : GENERIC_MESSAGE;
+    const code = typeof body.code === 'string' ? body.code : hasMessage ? undefined : 'GENERIC';
     if (typeof window !== 'undefined' && window.location.pathname !== '/login' && endsSession(response.status, code, message)) {
       window.location.assign('/login');
     }
     return { ok: false, status: response.status, message, ...(code ? { code } : {}) };
   }
-  return { ok: true, status: response.status, data: data as T };
+  return { ok: true, status: response.status, data: (data ?? {}) as T };
+}
+
+// A gateway answer (502/503/504) or a 5xx with no JSON body never came from the API.
+function reachedApi(status: number, data: unknown): boolean {
+  if (status === 502 || status === 503 || status === 504) return false;
+  if (status >= 500 && (data === undefined || typeof data !== 'object' || data === null)) return false;
+  return true;
 }
 
 const segment = encodeURIComponent;

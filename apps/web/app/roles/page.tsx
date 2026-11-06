@@ -35,7 +35,7 @@ export default function RolesPage() {
   });
   const rows = roles.data ?? [];
   const { run, busy } = useAction({ setError, setNote, onDone: roles.reload });
-  const failure = error || roles.error;
+  const failure = error;
 
   function edit(row?: RoleRow) {
     setDraft(row
@@ -131,7 +131,7 @@ export default function RolesPage() {
             </fieldset>
           </div>
         </Dialog>
-        <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} loading={!roles.loaded} empty={t.noMatches} skeleton={{ rows: 4, columns: 4 }} />
+        <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} loading={!roles.loaded} failed={roles.error} onRetry={() => void roles.reload()} empty={t.noMatches} skeleton={{ rows: 4, columns: 4 }} />
       </section>
     </Desk>
   );

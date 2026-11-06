@@ -137,7 +137,7 @@ export default function ProviderPackagesPage() {
   ];
 
   return (
-    <Desk title={title} lede="" error={error || providers.error || settings.error} note={note}>
+    <Desk title={title} lede="" error={error} note={note}>
       <section className="pane">
         <div className="steps" role="tablist">
           {tabs.map((item) => (
@@ -175,6 +175,8 @@ export default function ProviderPackagesPage() {
               rows={[...actions]}
               rowKey={(action) => action}
               loading={!settings.loaded}
+              failed={settings.error}
+              onRetry={() => void settings.reload()}
               skeleton={{ rows: 8, columns: 2 }}
             />
           </div>
@@ -185,6 +187,8 @@ export default function ProviderPackagesPage() {
             rows={rows}
             rowKey={(row) => row.code}
             loading={!providers.loaded && !shelf.loaded}
+            failed={providers.error || shelf.error}
+            onRetry={() => { void providers.reload(); void shelf.reload(); }}
             skeleton={{ rows: 6, columns: 4 }}
             empty={t.noPackages}
           />

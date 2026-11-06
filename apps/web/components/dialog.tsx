@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, ArrowRightLeft, Check, KeyRound, LogIn, Plus, Shield, Snowflake, Trash2, Wallet, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { useConnection } from '../lib/connection';
+import { usePrefs } from '../lib/prefs';
 
 export type DialogMark = 'plus' | 'shield' | 'wallet' | 'transfer' | 'key' | 'freeze' | 'enter' | 'trash' | 'alert' | 'check';
 export type DialogTone = 'neutral' | 'danger' | 'success';
@@ -20,9 +22,13 @@ export function PageAlert({
   children: ReactNode;
 }) {
   const [held, setHeld] = useState(false);
+  const { reachable } = useConnection();
+  const { t } = usePrefs();
+  // While the API is unreachable the shell's outage bar says so once; the page does not repeat it.
+  const repeated = !reachable && error === t.errors.NETWORK;
   return (
     <DialogAlert.Provider value={setHeld}>
-      {error && !held ? <p className="error" role="alert">{error}</p> : null}
+      {error && !held && !repeated ? <p className="error" role="alert">{error}</p> : null}
       {note ? <p className="note" role="status">{note}</p> : null}
       {children}
     </DialogAlert.Provider>

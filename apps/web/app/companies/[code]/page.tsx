@@ -92,7 +92,7 @@ export default function CompanyPage() {
   ];
 
   return (
-    <Desk title={company?.name ?? ''} lede="" error={error || shelf.error} note={note}>
+    <Desk title={company?.name ?? ''} lede="" error={error} note={note}>
       <section className={tab === 'settings' ? 'pane fit' : 'pane'}>
         <div className="steps" role="tablist">
           {tabs.map((item) => (
@@ -163,6 +163,8 @@ export default function CompanyPage() {
             rows={company?.providers ?? []}
             rowKey={(provider) => provider.code}
             loading={!shelf.loaded}
+            failed={shelf.error}
+            onRetry={() => void shelf.reload()}
             skeleton={{ rows: 5, columns: 4 }}
             empty={t.noProviders}
           />

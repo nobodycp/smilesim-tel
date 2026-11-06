@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useConnection } from './connection';
 import { usePrefs } from './prefs';
 import type { Fetched } from './use-load';
 
@@ -72,6 +73,15 @@ export function usePaged<Row, Extra = undefined>(
   useEffect(() => {
     if (enabled) void reload();
   }, [enabled, reload, key]);
+
+  // The API came back: a list that failed while it was away asks again on its own.
+  const { generation } = useConnection();
+  const seenGeneration = useRef(0);
+  useEffect(() => {
+    if (generation === seenGeneration.current) return;
+    seenGeneration.current = generation;
+    if (enabled && error) void reload();
+  }, [generation, enabled, error, reload]);
 
   const fresh = book?.key === key ? book : null;
   const last = fresh?.chunks[fresh.chunks.length - 1];

@@ -35,9 +35,9 @@ export default function ProvidersPage() {
   ];
 
   return (
-    <Desk title={allowed ? t.providersTitle : ''} lede="" error={providers.error || shelf.error} note="">
+    <Desk title={allowed ? t.providersTitle : ''} lede="" error={shelf.error} note="">
       <section className="pane">
-        <DataTable columns={columns} rows={providers.data?.providers ?? []} rowKey={(provider) => provider.code} loading={!providers.loaded} skeleton={{ rows: 5, columns: 5 }} />
+        <DataTable columns={columns} rows={providers.data?.providers ?? []} rowKey={(provider) => provider.code} loading={!providers.loaded} failed={providers.error} onRetry={() => void providers.reload()} skeleton={{ rows: 5, columns: 5 }} />
       </section>
     </Desk>
   );

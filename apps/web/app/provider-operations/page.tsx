@@ -59,7 +59,7 @@ export default function ProviderOperationsPage() {
   ];
 
   return (
-    <Desk title={t.navProviderOps} lede="" error={list.error} note="">
+    <Desk title={t.navProviderOps} lede="" error="" note="">
       <FilterBar onClear={() => { setProvider(''); setKind(''); setQ(''); setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.provider}

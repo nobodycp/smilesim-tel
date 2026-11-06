@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type DependencyList } from 'react';
+import { useConnection } from './connection';
 import { usePrefs } from './prefs';
 
 // The shape every `api.*` call answers with. It is declared here, structurally,
@@ -61,6 +62,15 @@ export function useLoad<T>(fetcher: () => Promise<Fetched<T>>, deps: DependencyL
     // `deps` is the caller's list of what must trigger a new fetch; it is spread on purpose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, reload, ...deps]);
+
+  // The API came back: a page that failed while it was away asks again on its own.
+  const { generation } = useConnection();
+  const seenGeneration = useRef(0);
+  useEffect(() => {
+    if (generation === seenGeneration.current) return;
+    seenGeneration.current = generation;
+    if (enabled && error) void reload();
+  }, [generation, enabled, error, reload]);
 
   return { data, error, loaded, reload };
 }

@@ -235,7 +235,7 @@ function BranchPackages({ error, note }: { error: string; note: string }) {
   ];
 
   return (
-    <Desk title={t.plansTitle} lede="" error={error || shelf.error} note={note}>
+    <Desk title={t.plansTitle} lede="" error={error} note={note}>
       <FilterBar onClear={() => { setQuery(''); setCompany(''); setProvider(''); setStatus(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.packageName}
@@ -274,6 +274,8 @@ function BranchPackages({ error, note }: { error: string; note: string }) {
           rows={shown}
           rowKey={(row) => row.code}
           loading={!shelf.loaded}
+          failed={shelf.error}
+          onRetry={() => void shelf.reload()}
           skeleton={{ rows: 8, columns: 6 }}
           empty={filtering ? t.noMatches : t.noLines}
         />

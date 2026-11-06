@@ -18,7 +18,8 @@ export type IconName =
   | 'logout'
   | 'collapse'
   | 'expand'
-  | 'sim';
+  | 'sim'
+  | 'offline';
 
 export function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, ReactNode> = {
@@ -40,6 +41,7 @@ export function Icon({ name }: { name: IconName }) {
     collapse: <><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M14 5v14M10 10l2 2-2 2" /></>,
     expand: <><rect x="4" y="5" width="16" height="14" rx="2" /><path d="M10 5v14M14 10l-2 2 2 2" /></>,
     sim: <><path d="M7.5 3.5h5.7L19 9.2V20a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 20V5a1.5 1.5 0 0 1 1.5-1.5z" /><rect x="9" y="13.5" width="6" height="6" rx="1" /></>,
+    offline: <><path d="M4 9.5a12 12 0 0 1 4.2-2.6M12 5.5a12 12 0 0 1 8 4M7.2 13a7.5 7.5 0 0 1 2.3-1.6M12 10a7.5 7.5 0 0 1 4.8 3M10 16.4a3 3 0 0 1 4 0" /><path d="M12 19.5h.01" /><path d="M4 4l16 16" /></>,
   };
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { api, type NoticeRow } from '../lib/api';
 import { useBranding } from '../lib/branding';
+import { useConnection } from '../lib/connection';
 import { forgetIdentity, useIdentity } from '../lib/identity';
 import { useDoor } from '../lib/door-context';
 import { useOffice } from '../lib/office-session';
@@ -38,6 +39,7 @@ import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
 import { BackLink } from './back-link';
 import { PageSkeleton } from './loading';
+import { OutageBar, OutagePanel } from './outage';
 import { useNotices, useUnreadTitle } from '../lib/use-notices';
 import { noticeAge, noticeDetail, noticeTitle } from '../lib/notice-text';
 
@@ -71,7 +73,8 @@ export function OfficeShell({
   const [walletOpen, setWalletOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const { ready, me, initialName, initialBalance } = useOffice();
+  const { ready, failed, retrying, retry, me, initialName, initialBalance } = useOffice();
+  const { reachable } = useConnection();
   const { notices, unread, fresh, markRead, dismiss } = useNotices(ready);
   useUnreadTitle(unread, pathname, locale);
   const door = useDoor();
@@ -495,9 +498,10 @@ export function OfficeShell({
               <button type="button" onClick={leaveAccount}>{t.returnAccount}</button>
             </div>
           )}
+          {ready && !reachable && <OutageBar />}
           <div className={wide ? 'canvas-inner wide' : 'canvas-inner'}>
             {ready && backHref ? <BackLink href={backHref} /> : null}
-            {ready ? children : <PageSkeleton />}
+            {ready ? children : failed ? <OutagePanel onRetry={retry} busy={retrying} /> : <PageSkeleton />}
           </div>
         </main>
       </div>

@@ -28,6 +28,63 @@
   font-size: 12px;
   font-weight: 700;
 }
+/* The API stopped answering after the session loaded: one line above the page, same shape as .return-bar. */
+.outage-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--rd-danger-soft);
+  color: var(--rd-danger);
+  font-size: 13px;
+  font-weight: 700;
+}
+.outage-bar-text { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.outage-bar-text svg { flex: none; width: 1rem; height: 1rem; }
+.outage-bar button {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--rd-danger);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--rd-danger);
+  font-size: 12px;
+  font-weight: 700;
+}
+.outage-bar button:hover { background: var(--rd-surface); }
+.outage-bar button:disabled { opacity: 0.6; cursor: default; }
+/* The session cannot be read: the canvas holds this instead of a page. */
+.outage-panel {
+  display: grid;
+  flex: 1;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  margin: auto;
+  padding: 48px 16px;
+  max-width: 28rem;
+  text-align: center;
+}
+.outage-panel .outage-mark {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: var(--rd-danger-soft);
+  color: var(--rd-danger);
+}
+.outage-panel .outage-mark svg { width: 1.6rem; height: 1.6rem; stroke-width: 1.8; }
+.outage-panel h1 { margin: 0; font-size: 20px; }
+.outage-panel p { margin: 0 0 8px; color: var(--rd-muted); font-size: 14px; line-height: 1.6; }
+.outage-panel .btn { justify-self: center; }
+/* A pane whose load failed: the empty-state shape with a retry under it. */
+.empty.load-failed .empty-icon { background: var(--rd-danger-soft); color: var(--rd-danger); }
+.empty.load-failed .btn { height: 34px; margin-top: 6px; padding: 0 14px; font-size: 13px; justify-self: center; }
 .canvas-inner { width: min(1080px, 100%); padding: 20px 16px 48px; }
 .canvas-inner.wide {
   display: flex;
@@ -602,6 +659,7 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 .sk-lede { width: min(440px, 72%); height: 14px; margin-top: 10px; }
 .sk-stat { height: 86px; border-radius: 14px; }
 .sk-num { width: 36px; height: 22px; }
+.stat-dash { color: var(--rd-muted); }
 .loading-well { display: grid; gap: 16px; }
 .table-skeleton-row {
   display: grid;

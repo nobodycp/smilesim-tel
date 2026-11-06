@@ -72,7 +72,7 @@ export default function AuditPage() {
   }
 
   return (
-    <Desk title={t.navAudit} lede="" error={list.error} note="">
+    <Desk title={t.navAudit} lede="" error="" note="">
       <FilterBar onClear={clear} clearLabel={t.clearFilters}>
         <label>
           {t.kind}

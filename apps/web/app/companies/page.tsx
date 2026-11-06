@@ -95,7 +95,7 @@ export default function CompaniesPage() {
   ];
 
   return (
-    <Desk title={allowed ? t.companiesTitle : ''} lede="" error={error || shelf.error} note={note}>
+    <Desk title={allowed ? t.companiesTitle : ''} lede="" error={error} note={note}>
       <input
         ref={file}
         className="sr-only"
@@ -110,6 +110,8 @@ export default function CompaniesPage() {
           rows={shelf.data?.companies ?? []}
           rowKey={(company) => company.code}
           loading={!shelf.loaded}
+          failed={shelf.error}
+          onRetry={() => void shelf.reload()}
           skeleton={{ rows: 11, columns: 6 }}
           empty={t.noCompanies}
         />

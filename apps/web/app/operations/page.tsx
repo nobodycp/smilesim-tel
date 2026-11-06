@@ -33,7 +33,7 @@ export default function OperationsPage() {
   ];
 
   return (
-    <Desk title={t.navOperations} lede="" error={list.error} note="">
+    <Desk title={t.navOperations} lede="" error="" note="">
       <FilterBar onClear={() => { setKind(''); setDirection(''); setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
         <PeriodChips from={from} to={to} onChange={(nextFrom, nextTo) => { setFrom(nextFrom); setTo(nextTo); }} />
         <label>

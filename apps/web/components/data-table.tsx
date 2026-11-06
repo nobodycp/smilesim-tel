@@ -1,6 +1,7 @@
 import { isValidElement, useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { EmptyState } from './empty-state';
+import { LoadFailed } from './load-failed';
 import { TableSkeleton } from './loading';
 import { Pagination, shouldShowPagination } from './ui/pagination';
 import { usePrefs } from '../lib/prefs';
@@ -75,6 +76,8 @@ export function DataTable<Row>({
   bare = false,
   paginate,
   skeleton,
+  failed,
+  onRetry,
 }: {
   columns: Column<Row>[];
   rows: Row[];
@@ -85,6 +88,9 @@ export function DataTable<Row>({
   bare?: boolean;
   paginate?: boolean;
   skeleton?: { rows?: number; columns?: number };
+  /** The translated failure of the load. With no rows it replaces the skeleton and the empty sentence. */
+  failed?: string;
+  onRetry?: () => void;
 }) {
   const { pageSize, setPageSize, locale } = usePrefs();
   const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(null);
@@ -97,6 +103,7 @@ export function DataTable<Row>({
     setPage(1);
   }
 
+  if (failed && rows.length === 0) return <LoadFailed message={failed} onRetry={onRetry} busy={loading} />;
   if (loading) {
     return (
       <div className="sheet">
@@ -195,6 +202,8 @@ export type PagedView<Row> = {
   hasNext: boolean;
   more: boolean;
   loadMore: () => Promise<boolean>;
+  error: string;
+  reload: () => Promise<void>;
 };
 
 /**
@@ -251,7 +260,7 @@ export function PagedTable<Row>({
   ) : null;
   return (
     <>
-      <DataTable {...table} rows={rows} loading={waiting || !list.ready || filling} paginate={false} />
+      <DataTable {...table} rows={rows} loading={waiting || !list.ready || filling} paginate={false} failed={list.error} onRetry={() => void list.reload()} />
       {pager}
     </>
   );

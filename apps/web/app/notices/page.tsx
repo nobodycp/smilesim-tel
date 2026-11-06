@@ -88,7 +88,7 @@ export default function NoticesPage() {
     <Desk
       title={t.notices}
       lede=""
-      error={error || list.error}
+      error={error}
       note=""
       action={unread > 0 ? <Button type="button" variant="secondary" size="sm" onClick={() => void markAll()}>{t.markAllRead}</Button> : undefined}
     >

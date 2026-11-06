@@ -48,7 +48,7 @@ export default function UsersPage() {
   const rows = accounts.data?.users ?? [];
   const roles = useLoad(() => api.officeRoles(), [], { enabled: draft.layer === 'staff' }).data?.roles ?? [];
   const { run: send, busy } = useAction({ setError, setNote, onDone: accounts.reload });
-  const failure = error || accounts.error;
+  const failure = error;
   const isBranch = me?.layer === 'branch';
   const creatable = me?.layer === 'branch'
     ? ['main_agent', 'agent', 'pos', ...(me.isBranchOwner || me.grants?.includes('staff') ? ['staff'] : [])]
@@ -296,6 +296,8 @@ export default function UsersPage() {
           rows={shown}
           rowKey={(row) => row.loginName}
           loading={!accounts.loaded}
+          failed={accounts.error}
+          onRetry={() => void accounts.reload()}
           skeleton={{ rows: 4, columns: 7 }}
           empty={query.trim() || layerFilter ? t.noMatches : undefined}
         />

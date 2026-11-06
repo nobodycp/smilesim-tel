@@ -7,6 +7,7 @@ import { DataTable, type Column } from '../components/data-table';
 import { Money, actionName, latinWhen, layerName } from '../components/desk';
 import { EmptyState } from '../components/empty-state';
 import { Icon, type IconName } from '../components/icon';
+import { LoadFailed } from '../components/load-failed';
 import { Spinner, TableSkeleton } from '../components/loading';
 import { OfficeShell } from '../components/office-shell';
 import { Stat, StatRow } from '../components/stat';
@@ -32,7 +33,10 @@ export default function HomePage() {
   const board = useLoad(() => api.officeHome());
   const home = board.data;
   const { run } = useAction({ setError, setNote, onDone: board.reload });
-  const failure = error || board.error;
+  // A failed board is shown once, in its panes; the banner is for actions.
+  const failure = error;
+  const broken = !home && Boolean(board.error);
+  const dash = <span className="stat-dash" aria-hidden="true">—</span>;
 
   async function publish(event: FormEvent) {
     event.preventDefault();
@@ -79,13 +83,13 @@ export default function HomePage() {
           {/* Stat stays presentational so non-link KPIs can reuse it; the link wraps it here. */}
           <StatRow>
             <Link className="stat-link" href="/tasks?status=pending">
-              <Stat icon="tasks" tone="warning" label={t.navTasks} value={home ? home.pendingTasks : <span className="skeleton sk-num" />} meta={t.pending} />
+              <Stat icon="tasks" tone="warning" label={t.navTasks} value={home ? home.pendingTasks : broken ? dash : <span className="skeleton sk-num" />} meta={t.pending} />
             </Link>
             <Link className="stat-link" href="/numbers?status=active">
-              <Stat icon="numbers" tone="success" label={t.activeLines} value={home ? home.activeLines : <span className="skeleton sk-num" />} meta={t.lineActive} />
+              <Stat icon="numbers" tone="success" label={t.activeLines} value={home ? home.activeLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.lineActive} />
             </Link>
             <Link className="stat-link" href="/numbers?status=disconnected">
-              <Stat icon="numbers" tone="danger" label={t.inactiveLines} value={home ? home.inactiveLines : <span className="skeleton sk-num" />} meta={t.lineDisconnected} />
+              <Stat icon="numbers" tone="danger" label={t.inactiveLines} value={home ? home.inactiveLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.lineDisconnected} />
             </Link>
           </StatRow>
         </section>
@@ -103,7 +107,18 @@ export default function HomePage() {
           </section>
         )}
         <div className="home-grid">
-          {!home ? (
+          {broken ? (
+            <>
+              <section className="pane">
+                <header className="pane-head"><h2>{t.lastOps}</h2></header>
+                <LoadFailed message={board.error} onRetry={() => void board.reload()} />
+              </section>
+              <section className="pane">
+                <header className="pane-head"><h2>{t.board}</h2></header>
+                <LoadFailed message={board.error} onRetry={() => void board.reload()} />
+              </section>
+            </>
+          ) : !home ? (
             <>
               <section className="pane">
                 <header className="pane-head"><h2>{t.lastOps}</h2><Spinner /></header>

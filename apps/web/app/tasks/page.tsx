@@ -143,7 +143,7 @@ export default function TasksPage() {
   ];
 
   return (
-    <Desk title={t.tasksTitle} lede="" error={error || list.error || catalog.error} note={note}>
+    <Desk title={t.tasksTitle} lede="" error={error || catalog.error} note={note}>
       <FilterBar
         onClear={() => {
           setQuery('');
