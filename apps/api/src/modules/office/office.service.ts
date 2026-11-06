@@ -543,6 +543,16 @@ export class OfficeService implements OnModuleInit {
     return { price, renewalPrice };
   }
 
+  /** Drops the caller's own sell price so the layer column applies again; a missing row is already clear. */
+  async clearSellPrice(gate: Gate, code: string) {
+    const actor = await this.actor(gate);
+    if (actor.layer !== 'main_agent' && actor.layer !== 'agent') fail(403, 'FORBIDDEN');
+    const pkg = await this.prisma.package.findUnique({ where: { code } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    await this.prisma.sellPrice.deleteMany({ where: { packageId: pkg.id, ownerId: actor.id } });
+    return { ok: true };
+  }
+
   async setCompanySim(gate: Gate, code: string, body: { length?: unknown; prefix?: unknown; esim?: unknown; esimPrice?: unknown }) {
     const actor = await this.actor(gate);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');

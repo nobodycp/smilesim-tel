@@ -304,6 +304,14 @@ export class OfficeController {
     return this.run(res, () => this.office.setSellPrice(gateOf(req), code, body), { action: 'sell_price', subjectKind: 'package', subjectRef: code });
   }
 
+  @Delete('sell-prices/:code')
+  @ApiOperation({ summary: "Clear the caller's own sell price for a package; the layer column applies again" })
+  @ApiParam({ name: 'code' })
+  @ApiErrorResponse(401, 403, 404)
+  clearSellPrice(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('code') code: string) {
+    return this.run(res, () => this.office.clearSellPrice(gateOf(req), code), { action: 'sell_price', subjectKind: 'package', subjectRef: code });
+  }
+
   @Post('companies/image')
   @ApiOperation({ summary: 'Set company mark / image' })
   @ApiBody({ type: CompanyImageBodyDto })

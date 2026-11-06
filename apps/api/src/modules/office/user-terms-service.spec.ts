@@ -365,6 +365,19 @@ describe('writing user terms', () => {
     expect(sellPrices[0]).toMatchObject({ ownerId: 'ag1', price: 3000, renewalPrice: 2700 });
   });
 
+  it('clearing a sell price returns the owner to the layer column; others may not clear it', async () => {
+    const { service, gates, sellPrices } = await tree();
+    await service.setSellPrice(gates.ag1, 'alloha-150', { price: 3700 });
+    expect(sellPrices).toHaveLength(1);
+    await expect(service.clearSellPrice(gates.pos1, 'alloha-150')).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.clearSellPrice(gates.branch, 'alloha-150')).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.clearSellPrice(gates.ag1, 'alloha-150')).resolves.toEqual({ ok: true });
+    expect(sellPrices).toHaveLength(0);
+    await expect(service.clearSellPrice(gates.ag1, 'alloha-150')).resolves.toEqual({ ok: true });
+    const pos = await service.packages(gates.pos1);
+    expect(pos.packages.find((item) => item.code === 'alloha-150')).toMatchObject({ price: 3500 });
+  });
+
   it('operation stops: the parent writes, cannot lift an inherited stop, the branch can', async () => {
     const { service, gates, accounts } = await tree();
     (accounts.find((item) => item.id === 'ma1') as Row).deniedOps = 'charge';

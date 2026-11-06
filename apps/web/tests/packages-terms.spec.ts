@@ -21,6 +21,7 @@ test('an agent sees its own buy price and writes a sell price', async ({ page })
       },
     }),
     'PUT /sell-prices/lian-wecom-400': () => ({ body: { price: 3900, renewalPrice: null } }),
+    'DELETE /sell-prices/lian-wecom-150': () => ({ body: { ok: true } }),
   });
   await page.goto('http://agent.localhost:3910/packages');
 
@@ -41,6 +42,14 @@ test('an agent sees its own buy price and writes a sell price', async ({ page })
   await row400.getByRole('button', { name: 'حفظ' }).click();
   expect((await put).postDataJSON()).toEqual({ price: 3900, renewalPrice: null });
   await expect.poll(() => calls.filter((call) => call.startsWith('GET /packages')).length).toBeGreaterThan(1);
+
+  // Only a row with its own sell price offers the reset; it sends the DELETE and empties the field.
+  await expect(row400.getByRole('button', { name: 'إجراءات 400 جيجا' })).toHaveCount(0);
+  const del = page.waitForRequest((request) => request.method() === 'DELETE' && request.url().endsWith('/sell-prices/lian-wecom-150'));
+  await row150.getByRole('button', { name: 'إجراءات 150 جيجا' }).click();
+  await page.getByRole('menuitem', { name: 'إرجاع للافتراضي' }).click();
+  await del;
+  await expect(row150.getByRole('textbox', { name: /اشتراك/ })).toHaveValue('');
 });
 
 test('the point of sale sees its effective price and a stopped activation', async ({ page }) => {

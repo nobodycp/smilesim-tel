@@ -121,6 +121,7 @@ export const api = {
     request<{ ok: true; sim: SimRules; esimPrice: number }>('PUT', `/office/companies/${segment(code)}/sim`, sim),
   setSellPrice: (code: string, price: number, renewalPrice?: number | null) =>
     request<{ price: number; renewalPrice: number | null }>('PUT', `/office/sell-prices/${segment(code)}`, { price, renewalPrice }),
+  clearSellPrice: (code: string) => request<{ ok: true }>('DELETE', `/office/sell-prices/${segment(code)}`),
   officeProviders: () => request<{ providers: ProviderRow[] }>('GET', '/office/providers'),
   providerSettings: (code: string) =>
     request<ProviderSettings>('GET', `/office/providers/${segment(code)}/settings`),

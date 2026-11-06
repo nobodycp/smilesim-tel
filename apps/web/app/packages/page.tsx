@@ -7,6 +7,7 @@ import { ActivationResult } from '../../components/activation-result';
 import { Desk, Money } from '../../components/desk';
 import { EmptyState } from '../../components/empty-state';
 import { FilterBar } from '../../components/filter-bar';
+import { RowMenu } from '../../components/row-menu';
 import { Button } from '../../components/ui/button';
 import { Spinner, TableSkeleton } from '../../components/loading';
 import { api, type ApplyResult, type PackageRow } from '../../lib/api';
@@ -322,6 +323,14 @@ export default function PlansPage() {
     });
   }
 
+  /** Drops the own sell price; the fields empty out and show the layer column again. */
+  async function reset(row: PackageRow) {
+    await run(() => api.clearSellPrice(row.code), {
+      note: t.saved,
+      then: () => setDraft(row.code, { price: '', renewal: '' }),
+    });
+  }
+
   async function save(row: PackageRow) {
     const draft = drafts[row.code] ?? { price: '', renewal: '' };
     const price = parseShekel(draft.price);
@@ -409,6 +418,12 @@ export default function PlansPage() {
             />
           </label>
           <Button type="button" variant="secondary" size="sm" onClick={() => save(row)}>{t.save}</Button>
+          {row.sellPrice !== null && (
+            <RowMenu
+              label={`${t.rowActions} ${row.name}`}
+              items={[{ label: t.resetDefault, icon: 'undo', onClick: () => reset(row) }]}
+            />
+          )}
         </div>
       ),
     },
