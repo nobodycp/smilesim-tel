@@ -48,7 +48,7 @@ test.describe('DataTable and EmptyState', () => {
     msisdn: `055000000${id}`, packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: false, canWork: false, canCancel: false, ...extra,
   });
 
-  test('the tasks table writes num and row-actions on header and cells, shows a skeleton while loading, and RowMenu only where there are actions', async ({ page }) => {
+  test('the tasks table writes num and row-actions on header and cells, shows a skeleton while loading, and a RowMenu on every row', async ({ page }) => {
     await serveOffice(page, 'branch', { 'GET /tasks': () => ({ body: { tasks: [task('1', { canTake: true }), task('2')], nextCursor: null }, delay: 700 }) });
     await page.goto(`${admin}/tasks`);
     await expect(page.locator('.sheet .table-skeleton')).toBeVisible();
@@ -60,7 +60,8 @@ test.describe('DataTable and EmptyState', () => {
     await expect(page.locator('table.data th.row-actions')).toHaveCount(1);
     await expect(page.locator('table.data td.row-actions')).toHaveCount(2);
     await expect(page.locator('table.data td.msisdn')).toHaveCount(2);
-    await expect(page.locator('table.data td.row-actions .row-menu')).toHaveCount(1);
+    // Every task row opens from its menu; take and cancel are added where the row allows them.
+    await expect(page.locator('table.data td.row-actions .row-menu')).toHaveCount(2);
     await expect(page.getByRole('button', { name: /إجراءات 0550000001/ })).toBeVisible();
   });
 
@@ -304,6 +305,6 @@ test.describe('shell', () => {
     await page.getByRole('button', { name: 'الإشعارات' }).click();
     await expect(page.locator('.shell-item strong').first()).toHaveText('تمّت المهمة');
     await expect(page.locator('.shell-item .notice-detail').first()).toHaveText('تبديل الشريحة · 0550000001 · بواسطة الفرع');
-    await expect(page.locator('.shell-item .notice-detail').nth(1)).toHaveText('تفعيل · بواسطة نقطة');
+    await expect(page.locator('.shell-item .notice-detail').nth(1)).toHaveText('شحن · بواسطة نقطة');
   });
 });

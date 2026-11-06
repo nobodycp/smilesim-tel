@@ -12,9 +12,11 @@ test('operations, finance, audit, and providers fill the desk', async ({ page })
     entries: [], nextCursor: null, stats: { count: 0, cost: 0, monthCost: 0 }, providers: [],
   })));
   await page.route('**/office/audit**', empty(JSON.stringify({ entries: [] })));
-  await page.route('**/office/providers**', empty(JSON.stringify({
+  await page.route('**/office/providers/cell/settings', empty(JSON.stringify({ code: 'cell', name: 'سلكوم', modes: {}, esimPrice: null })));
+  await page.route('**/office/providers', empty(JSON.stringify({
     providers: [{ code: 'cell', name: 'سلكوم', companies: [] }],
   })));
+  await page.route('**/office/companies', empty(JSON.stringify({ companies: [] })));
   await page.goto('http://admin.localhost:3910/operations');
   await expectFullTable(page, 'العمليات');
   await page.goto('http://admin.localhost:3910/finance');

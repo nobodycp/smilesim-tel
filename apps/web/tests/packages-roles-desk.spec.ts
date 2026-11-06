@@ -7,7 +7,7 @@ test('roles puts the create button on the title row', async ({ page }) => {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ roles: [] }) }),
   );
   await page.goto('http://admin.localhost:3910/roles');
-  await expectFullTable(page, 'الأدوار');
+  await expectFullTable(page, 'الأدوار', { fit: true });
   await expect(page.getByRole('button', { name: 'الدور' })).toBeVisible();
 });
 

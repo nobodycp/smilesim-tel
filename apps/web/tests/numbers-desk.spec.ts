@@ -34,7 +34,7 @@ test('numbers row actions live in the menu', async ({ page }) => {
   await page.goto('/numbers');
   await expectFullTable(page, 'الأرقام');
   await expect(page.getByLabel('الرقم')).toBeVisible();
-  await page.getByRole('button', { name: /عمليات/ }).click();
+  await page.getByRole('button', { name: /إجراءات/ }).click();
   await expect(page.getByRole('menuitem', { name: 'تمديد' })).toBeVisible();
   await expect(page.locator('table.data button.secondary')).toHaveCount(0);
   await expect(page.locator('.lede')).toHaveCount(0);

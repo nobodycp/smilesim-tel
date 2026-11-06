@@ -10,11 +10,14 @@ test('login page is Arabic and sends the entered password', async ({ page }) => 
 });
 
 test('ending the current session returns to login', async ({ page }) => {
-  let listCalls = 0;
+  // Once the session is ended, every later list answers 401 and the shell sends the tab to login.
+  let ended = false;
+  await page.route('**/auth/sessions/*', (route) => {
+    if (route.request().method() === 'DELETE') ended = true;
+    return route.fallback();
+  });
   await page.route('**/auth/sessions', (route) => {
-    if (route.request().method() !== 'GET') return route.fallback();
-    listCalls += 1;
-    if (listCalls === 1) return route.fallback();
+    if (route.request().method() !== 'GET' || !ended) return route.fallback();
     return route.fulfill({
       status: 401,
       contentType: 'application/json',

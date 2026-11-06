@@ -7,7 +7,7 @@ test('users is a full table on the branch door', async ({ page }) => {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ users: [] }) }),
   );
   await page.goto('http://admin.localhost:3910/users');
-  await expectFullTable(page, 'المستخدمون');
+  await expectFullTable(page, 'المستخدمون', { fit: true });
 });
 
 test('an account is named by its login with the full name in parentheses, in the list and in the parent column', async ({ page }) => {

@@ -19,15 +19,19 @@ export async function asBranch(page: Page) {
   );
 }
 
-export async function expectFullTable(page: Page, title: string) {
+/**
+ * A desk page shows one h1, no repeated pane heading, no filter toggle, and one pane. A workbench
+ * pane fills the canvas; a paged card (`.pane.fit`, users and roles) sizes to its rows instead.
+ */
+export async function expectFullTable(page: Page, title: string, { fit = false } = {}) {
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 2, name: title })).toHaveCount(0);
-  await expect(page.locator('.page-head .lede')).toHaveCount(0);
+  // The title is not repeated as a pane heading; an optional lede under the h1 is allowed.
+  await expect(page.getByRole('heading', { level: 2, name: title, exact: true })).toHaveCount(0);
   await expect(page.locator('.filter-toggle')).toHaveCount(0);
   const box = await page.locator('.desk .pane').first().boundingBox();
   expect(box).not.toBeNull();
-  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(720);
+  if (!fit) expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(720);
 }
 
 export type Reply = { body: unknown; status?: number; delay?: number };
