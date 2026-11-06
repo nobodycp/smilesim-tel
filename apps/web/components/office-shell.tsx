@@ -39,7 +39,8 @@ import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
 import { BackLink } from './back-link';
 import { OutageBar, OutagePanel } from './outage';
-import { useNotices, useUnreadTitle } from '../lib/use-notices';
+import { useNotices } from '../lib/use-notices';
+import { tabTitle, usePageTitleValue } from '../lib/page-title';
 import { noticeAge, noticeDetail, noticeTitle } from '../lib/notice-text';
 
 const COLLAPSE_KEY = 'smilesim-sidebar-collapsed';
@@ -65,7 +66,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const { ready, failed, retrying, retry, me, initialName, initialBalance } = useOffice();
   const { reachable } = useConnection();
   const { notices, unread, fresh, markRead, dismiss } = useNotices(ready);
-  useUnreadTitle(unread, pathname, locale);
+  const pageTitle = usePageTitleValue();
   const door = useDoor();
   const layer = door.layer;
   const balance = me ? me.balance : null;
@@ -349,6 +350,8 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const role = me?.layer === 'branch' ? t.layerBranch : me?.layer === 'main_agent' ? t.layerMain : me?.layer === 'agent' ? t.layerAgent : me?.layer === 'pos' ? t.layerPos : me?.layer === 'staff' ? t.staffAccount : '';
 
   return (
+    <>
+    <title>{tabTitle(pageTitle, branding.name, unread)}</title>
     <div className="office">
       {mobileOpen && <div className="backdrop" onClick={() => setMobileOpen(false)} />}
       <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'}>{sidebar(false)}</aside>
@@ -511,5 +514,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         </div>
       )}
     </div>
+    </>
   );
 }

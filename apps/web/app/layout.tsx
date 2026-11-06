@@ -30,11 +30,11 @@ const hebrew = IBM_Plex_Sans_Hebrew({
   display: 'swap',
 });
 
+// The `<title>` is rendered by the shell (section · brand) or, off the office, below; it is not
+// metadata, so a route change cannot reset it to the brand alone.
 export async function generateMetadata(): Promise<Metadata> {
-  const jar = await cookies();
   const seed = await loadBranding();
   return {
-    title: seed.siteName || copy[parseLocale(jar.get(LOCALE_KEY)?.value)].brand,
     // Without a saved icon, Next keeps serving app/icon.svg.
     ...(seed.hasFavicon ? { icons: { icon: brandingImageUrl('favicon', seed.version) } } : {}),
   };
@@ -74,7 +74,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               </OfficeSession>
             </DoorProvider>
           ) : (
-            <Doors host={host} name={branding.siteName} />
+            <>
+              <title>{branding.siteName || copy[locale].brand}</title>
+              <Doors host={host} name={branding.siteName} />
+            </>
           )}
           </Toasts>
           </BrandingProvider>

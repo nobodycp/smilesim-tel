@@ -6,11 +6,13 @@ import { RowMenu } from '../../components/row-menu';
 import { api, type SessionInfo } from '../../lib/api';
 import { citiesFor } from '../../lib/cities';
 import { useOffice } from '../../lib/office-session';
+import { usePageTitle } from '../../lib/page-title';
 import { usePrefs } from '../../lib/prefs';
 
 export default function SettingsPage() {
   const { t, apiText, locale } = usePrefs();
   const { ready, refresh } = useOffice();
+  usePageTitle(t.settingsTitle);
   const [loginName, setLoginName] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');

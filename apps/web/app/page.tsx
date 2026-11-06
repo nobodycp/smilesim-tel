@@ -12,6 +12,7 @@ import { PageSkeleton, Spinner, TableSkeleton } from '../components/loading';
 import { Stat, StatRow } from '../components/stat';
 import { api, type HomePayload } from '../lib/api';
 import { useOffice } from '../lib/office-session';
+import { usePageTitle } from '../lib/page-title';
 import { usePrefs } from '../lib/prefs';
 import { useAction } from '../lib/use-action';
 import { useLoad } from '../lib/use-load';
@@ -21,6 +22,7 @@ type Movement = HomePayload['operations'][number];
 export default function HomePage() {
   const { t } = usePrefs();
   const { ready, me } = useOffice();
+  usePageTitle(t.homeTitle);
   const layer = me?.layer ?? '';
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');

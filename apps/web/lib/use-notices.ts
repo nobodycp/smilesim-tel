@@ -91,12 +91,3 @@ export function useNotices(ready: boolean) {
 
   return { notices, unread, fresh, markRead, dismiss, refresh: pull };
 }
-
-/** The tab title carries the unread count. Call it again when the page or the language rewrites the title. */
-export function useUnreadTitle(unread: number, ...resetOn: unknown[]) {
-  useEffect(() => {
-    const base = document.title.replace(/^\(\d+\+?\)\s*/, '');
-    document.title = unread > 0 ? `(${unread > 99 ? '99+' : unread}) ${base}` : base;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unread, ...resetOn]);
-}
