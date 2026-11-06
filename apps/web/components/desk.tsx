@@ -2,12 +2,11 @@
 
 import { type ReactNode } from 'react';
 import { type Outcome } from '../lib/api';
-import { useIdentity } from '../lib/identity';
 import { formatShekel } from '../lib/money';
 import { useOffice } from '../lib/office-session';
 import { usePrefs } from '../lib/prefs';
-import { OfficeShell } from './office-shell';
 import { PageAlert } from './dialog';
+import { PageSkeleton } from './loading';
 
 export { actionName, applyNote, layerName, lineBadgeClass, lineBadgeTone, lineStatus, taskStatus } from './names';
 
@@ -26,24 +25,22 @@ export function Desk({
   note: string;
   children: ReactNode;
 }) {
-  const { me } = useOffice();
-  const saved = useIdentity();
-  const account = me ? me.nickname || me.loginName : saved.account;
-  const hint = me ? (me.nickname ? me.loginName : undefined) : saved.hint || undefined;
+  const { ready } = useOffice();
+  // The page's own loads already started; the content waits for the session so a guarded page
+  // never flashes before the account is known.
+  if (!ready) return <PageSkeleton />;
 
   return (
-    <OfficeShell account={account} hint={hint} wide>
-      <div className="desk">
-        <header className="page-head">
-          <h1>{title}</h1>
-          {action}
-          {lede ? <p className="lede">{lede}</p> : null}
-        </header>
-        <PageAlert error={error} note={note}>
-          {children}
-        </PageAlert>
-      </div>
-    </OfficeShell>
+    <div className="desk">
+      <header className="page-head">
+        <h1>{title}</h1>
+        {action}
+        {lede ? <p className="lede">{lede}</p> : null}
+      </header>
+      <PageAlert error={error} note={note}>
+        {children}
+      </PageAlert>
+    </div>
   );
 }
 

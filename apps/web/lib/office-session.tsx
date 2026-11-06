@@ -15,6 +15,8 @@ type OfficeSessionValue = {
   retrying: boolean;
   /** Ask `/office/me` again now. */
   retry: () => void;
+  /** Re-read `/office/me` into `me` after the account changed (a profile save). */
+  refresh: () => Promise<void>;
   me: OfficeMe | null;
   /** Login name → full name for the accounts this viewer may meet; empty until loaded. */
   names: Directory;
@@ -29,13 +31,15 @@ const OfficeContext = createContext<OfficeSessionValue>({
   failed: false,
   retrying: false,
   retry: () => {},
+  refresh: async () => {},
   me: null,
   names: NO_NAMES,
   initialName: '',
   initialBalance: null,
 });
 
-function authPath(pathname: string) {
+/** Screens that draw without the office shell and without a session. */
+export function authPath(pathname: string) {
   return pathname === '/login' || pathname === '/password' || pathname.startsWith('/two-factor');
 }
 
@@ -128,8 +132,15 @@ export function OfficeSession({
     setAttemptNo((count) => count + 1);
   }, []);
 
+  const refresh = useCallback(async () => {
+    const result = await api.officeMe();
+    if (!result.ok) return;
+    rememberIdentity(result.data.nickname || result.data.loginName, result.data.nickname ? result.data.loginName : '');
+    setMe(result.data);
+  }, []);
+
   return (
-    <OfficeContext.Provider value={{ ready: skip || ready, failed: !skip && !ready && failed, retrying: !ready && retrying, retry, me, names, initialName, initialBalance }}>
+    <OfficeContext.Provider value={{ ready: skip || ready, failed: !skip && !ready && failed, retrying: !ready && retrying, retry, refresh, me, names, initialName, initialBalance }}>
       {children}
     </OfficeContext.Provider>
   );

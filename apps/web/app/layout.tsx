@@ -5,6 +5,7 @@ import { IBM_Plex_Sans_Hebrew, Tajawal } from 'next/font/google';
 import { Bootstrap } from '../components/bootstrap';
 import { Toasts } from '../components/toast';
 import { Doors } from '../components/doors';
+import { OfficeFrame } from '../components/office-frame';
 import { Preferences } from '../components/preferences';
 import { BrandingProvider } from '../lib/branding';
 import { brandingImageUrl, loadBranding } from '../lib/branding-load';
@@ -68,7 +69,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <Toasts>
           {door ? (
             <DoorProvider door={door}>
-              <OfficeSession initialName={initialName} initialBalance={initialBalance}>{children}</OfficeSession>
+              <OfficeSession initialName={initialName} initialBalance={initialBalance}>
+                <OfficeFrame>{children}</OfficeFrame>
+              </OfficeSession>
             </DoorProvider>
           ) : (
             <Doors host={host} name={branding.siteName} />

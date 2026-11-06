@@ -1,14 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { OfficeShell } from '../../components/office-shell';
+import { PageSkeleton } from '../../components/loading';
 import { RowMenu } from '../../components/row-menu';
 import { api, type SessionInfo } from '../../lib/api';
 import { citiesFor } from '../../lib/cities';
+import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
 
 export default function SettingsPage() {
   const { t, apiText, locale } = usePrefs();
+  const { ready, refresh } = useOffice();
   const [loginName, setLoginName] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
@@ -62,6 +64,8 @@ export default function SettingsPage() {
     setCity(result.data.city ?? '');
     setAddress(result.data.address ?? '');
     setNote(done);
+    // The shell draws the name from the session; a saved name reaches the topbar through it.
+    if ('nickname' in patch) void refresh();
     return true;
   }
 
@@ -138,146 +142,146 @@ export default function SettingsPage() {
   const initial = (shownName || t.brand).trim().charAt(0);
   const cities = citiesFor(locale);
 
+  if (!ready) return <PageSkeleton />;
+
   return (
-    <OfficeShell account={shownName} hint={nickname ? loginName : undefined} wide>
-      <div className="settings-page desk">
-      <header className="page-head">
-        <h1>{t.settingsTitle}</h1>
-        <p className="lede">{t.settingsLede}</p>
-      </header>
-      {error && <p className="error banner" role="alert">{error}</p>}
-      {note && <p className="note banner" role="status">{note}</p>}
+    <div className="settings-page desk">
+    <header className="page-head">
+      <h1>{t.settingsTitle}</h1>
+      <p className="lede">{t.settingsLede}</p>
+    </header>
+    {error && <p className="error banner" role="alert">{error}</p>}
+    {note && <p className="note banner" role="status">{note}</p>}
 
-      <div className="settings-grid">
-        <div className="settings-col">
-          <section className="pane">
-            <header className="pane-head"><h2>{t.account}</h2></header>
-            <div className="pane-body">
-              <div className="identity">
-                <div className="identity-mark" aria-hidden="true">{initial}</div>
-                <div>
-                  <strong><bdi>{shownName}</bdi></strong>
-                  {nickname && nickname !== loginName ? <small>{loginName}</small> : null}
-                </div>
+    <div className="settings-grid">
+      <div className="settings-col">
+        <section className="pane">
+          <header className="pane-head"><h2>{t.account}</h2></header>
+          <div className="pane-body">
+            <div className="identity">
+              <div className="identity-mark" aria-hidden="true">{initial}</div>
+              <div>
+                <strong><bdi>{shownName}</bdi></strong>
+                {nickname && nickname !== loginName ? <small>{loginName}</small> : null}
               </div>
-              <form>
-                <label>
-                  {t.loginName}
-                  <input value={loginName} readOnly />
-                </label>
-              </form>
-              <form className="field-row" onSubmit={saveFullName}>
-                <label>
-                  {t.fullName}
-                  <input value={nickname} onChange={(e) => setNickname(e.target.value)} autoComplete="name" />
-                </label>
-                <button type="submit">{t.save}</button>
-              </form>
-              <form className="field-row" onSubmit={saveEmail}>
-                <label>
-                  {t.email}
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" />
-                </label>
-                <button type="submit">{t.save}</button>
-              </form>
-              <form className="field-row" onSubmit={savePhone}>
-                <label>
-                  {t.phone}
-                  <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" />
-                </label>
-                <button type="submit">{t.save}</button>
-              </form>
-              <form className="field-row" onSubmit={saveCity}>
-                <label>
-                  {t.city}
-                  <select value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2">
-                    <option value="">{t.cityNone}</option>
-                    {cities.map((row) => (
-                      <option key={row.key} value={row.key}>{row[locale]}</option>
-                    ))}
-                  </select>
-                </label>
-                <button type="submit">{t.save}</button>
-              </form>
-              <form className="field-row" onSubmit={saveAddress}>
-                <label>
-                  {t.address}
-                  <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={120} autoComplete="street-address" />
-                </label>
-                <button type="submit">{t.save}</button>
-              </form>
             </div>
-          </section>
-
-          <section className="pane">
-            <header className="pane-head"><h2>{t.passwordSection}</h2></header>
-            <form className="pane-body" onSubmit={savePassword}>
-              <div className="pair">
-                <label>
-                  {t.currentPassword}
-                  <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" dir="ltr" />
-                </label>
-                <label>
-                  {t.newPassword}
-                  <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" dir="ltr" />
-                </label>
-              </div>
-              <button type="submit">{t.changePassword}</button>
+            <form>
+              <label>
+                {t.loginName}
+                <input value={loginName} readOnly />
+              </label>
             </form>
-          </section>
-        </div>
+            <form className="field-row" onSubmit={saveFullName}>
+              <label>
+                {t.fullName}
+                <input value={nickname} onChange={(e) => setNickname(e.target.value)} autoComplete="name" />
+              </label>
+              <button type="submit">{t.save}</button>
+            </form>
+            <form className="field-row" onSubmit={saveEmail}>
+              <label>
+                {t.email}
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" />
+              </label>
+              <button type="submit">{t.save}</button>
+            </form>
+            <form className="field-row" onSubmit={savePhone}>
+              <label>
+                {t.phone}
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" />
+              </label>
+              <button type="submit">{t.save}</button>
+            </form>
+            <form className="field-row" onSubmit={saveCity}>
+              <label>
+                {t.city}
+                <select value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2">
+                  <option value="">{t.cityNone}</option>
+                  {cities.map((row) => (
+                    <option key={row.key} value={row.key}>{row[locale]}</option>
+                  ))}
+                </select>
+              </label>
+              <button type="submit">{t.save}</button>
+            </form>
+            <form className="field-row" onSubmit={saveAddress}>
+              <label>
+                {t.address}
+                <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={120} autoComplete="street-address" />
+              </label>
+              <button type="submit">{t.save}</button>
+            </form>
+          </div>
+        </section>
 
-        <div className="settings-col">
-          <section className="pane">
-            <header className="pane-head"><h2>{t.twoFactor}</h2></header>
-            <div className="pane-body">
-              {!otpauth && (
-                <>
-                  <p className="hint">{t.twoFactorIdle}</p>
-                  <button type="button" className="btn-sm" onClick={startTwoFactor}>{t.enableTwoFactor}</button>
-                </>
-              )}
-              {otpauth && (
-                <form onSubmit={confirmTwoFactor}>
-                  <p className="hint">{t.enrollHint}</p>
-                  <p className="code" dir="ltr">{otpauth}</p>
-                  <label>
-                    {t.code}
-                    <input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required dir="ltr" />
-                  </label>
-                  <button type="submit">{t.confirmEnable}</button>
-                </form>
-              )}
+        <section className="pane">
+          <header className="pane-head"><h2>{t.passwordSection}</h2></header>
+          <form className="pane-body" onSubmit={savePassword}>
+            <div className="pair">
+              <label>
+                {t.currentPassword}
+                <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" dir="ltr" />
+              </label>
+              <label>
+                {t.newPassword}
+                <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" dir="ltr" />
+              </label>
             </div>
-          </section>
+            <button type="submit">{t.changePassword}</button>
+          </form>
+        </section>
+      </div>
 
-          <section className="pane">
-            <header className="pane-head"><h2>{t.sessions}</h2></header>
-            <div className="pane-body">
-              <ul className="sessions">
-                {sessions.map((session) => (
-                  <li key={session.id}>
-                    <span className="device" aria-hidden="true"><DeviceIcon /></span>
-                    <span className="session-copy">
-                      <strong title={session.userAgent}>
-                        <bdi dir="ltr">{deviceLabel(session.userAgent)}</bdi>
-                        {session.current && <span className="badge">{t.currentSession}</span>}
-                      </strong>
-                      <small className="session-meta" dir="ltr">{session.ip} · {when(session.lastSeenAt)}</small>
-                    </span>
-                    <RowMenu
-                      label={`${t.endSession} ${deviceLabel(session.userAgent)}`}
-                      items={[{ label: t.endSession, icon: 'ban', danger: true, onClick: () => revoke(session.id) }]}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        </div>
+      <div className="settings-col">
+        <section className="pane">
+          <header className="pane-head"><h2>{t.twoFactor}</h2></header>
+          <div className="pane-body">
+            {!otpauth && (
+              <>
+                <p className="hint">{t.twoFactorIdle}</p>
+                <button type="button" className="btn-sm" onClick={startTwoFactor}>{t.enableTwoFactor}</button>
+              </>
+            )}
+            {otpauth && (
+              <form onSubmit={confirmTwoFactor}>
+                <p className="hint">{t.enrollHint}</p>
+                <p className="code" dir="ltr">{otpauth}</p>
+                <label>
+                  {t.code}
+                  <input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required dir="ltr" />
+                </label>
+                <button type="submit">{t.confirmEnable}</button>
+              </form>
+            )}
+          </div>
+        </section>
+
+        <section className="pane">
+          <header className="pane-head"><h2>{t.sessions}</h2></header>
+          <div className="pane-body">
+            <ul className="sessions">
+              {sessions.map((session) => (
+                <li key={session.id}>
+                  <span className="device" aria-hidden="true"><DeviceIcon /></span>
+                  <span className="session-copy">
+                    <strong title={session.userAgent}>
+                      <bdi dir="ltr">{deviceLabel(session.userAgent)}</bdi>
+                      {session.current && <span className="badge">{t.currentSession}</span>}
+                    </strong>
+                    <small className="session-meta" dir="ltr">{session.ip} · {when(session.lastSeenAt)}</small>
+                  </span>
+                  <RowMenu
+                    label={`${t.endSession} ${deviceLabel(session.userAgent)}`}
+                    items={[{ label: t.endSession, icon: 'ban', danger: true, onClick: () => revoke(session.id) }]}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
       </div>
-      </div>
-    </OfficeShell>
+    </div>
+    </div>
   );
 }
 

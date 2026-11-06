@@ -38,7 +38,6 @@ import { BrandLogo } from './brand-logo';
 import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
 import { BackLink } from './back-link';
-import { PageSkeleton } from './loading';
 import { OutageBar, OutagePanel } from './outage';
 import { useNotices, useUnreadTitle } from '../lib/use-notices';
 import { noticeAge, noticeDetail, noticeTitle } from '../lib/notice-text';
@@ -53,17 +52,7 @@ type NavGroup = { key: string; label: string; icon: LucideIcon; items: NavItem[]
 type NavEntry = NavItem | NavGroup;
 const isGroup = (entry: NavEntry): entry is NavGroup => 'items' in entry;
 
-export function OfficeShell({
-  account,
-  hint,
-  wide,
-  children,
-}: {
-  account: string;
-  hint?: string;
-  wide?: boolean;
-  children: ReactNode;
-}) {
+export function OfficeShell({ children }: { children: ReactNode }) {
   const { t, locale } = usePrefs();
   const branding = useBranding();
   const pathname = usePathname();
@@ -339,9 +328,9 @@ export function OfficeShell({
     );
   };
 
-  const label = account || saved.account || initialName;
-  const sub = hint || (!account ? saved.hint : '');
-  const shown = me?.nickname || label;
+  // The account answer wins; before it lands the saved identity, then the cookie name, fill in.
+  const shown = me ? me.nickname || me.loginName : saved.account || initialName;
+  const sub = me ? (me.nickname ? me.loginName : '') : saved.hint;
   const first = shown.trim().split(/\s+/)[0] || shown;
   const initial = first.charAt(0);
   const [clock, setClock] = useState<{ hello: string; today: string } | null>(null);
@@ -494,14 +483,16 @@ export function OfficeShell({
         <main className="canvas">
           {me && impersonating && (
             <div className="return-bar">
-              <span>{label}</span>
+              <span>{shown}</span>
               <button type="button" onClick={leaveAccount}>{t.returnAccount}</button>
             </div>
           )}
           {ready && !reachable && <OutageBar />}
-          <div className={wide ? 'canvas-inner wide' : 'canvas-inner'}>
+          <div className="canvas-inner wide">
             {ready && backHref ? <BackLink href={backHref} /> : null}
-            {ready ? children : failed ? <OutagePanel onRetry={retry} busy={retrying} /> : <PageSkeleton />}
+            {/* The page mounts at once so its loads run beside `/office/me`; `Desk` draws the
+                skeleton until the session answers. Only an API that is down replaces it. */}
+            {failed ? <OutagePanel onRetry={retry} busy={retrying} /> : children}
           </div>
         </main>
       </div>
