@@ -64,6 +64,7 @@ import {
   type LineTerms,
 } from './office-rules';
 import { activityActorFilter, clampActivityRange } from './activity-log';
+import { stampRenewal } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
 import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey, layerPrice, parseOps, priceSource, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type PriceSource, type SellRow, type TermRow } from './user-terms';
 import { renderEsimQr } from './office-esim';
@@ -874,7 +875,6 @@ export class OfficeService implements OnModuleInit {
       if (refusal) fail(400, refusal);
     }
     const pkgTerms = packageTermsOf(pkg);
-    const terms = captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target)));
     const unit = await this.resolveBuyPrice(pos.id, pkg, 'subscription', undefined, posPath);
     const esimFee = esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price;
     const posDelta = -(unit + (esim ? esimFee : 0));
@@ -897,6 +897,12 @@ export class OfficeService implements OnModuleInit {
     // Immediate activation: the provider hands the eSIM profile back now, so the line carries it from the start.
     const issuedIccid = generatesEsim ? issueSerial(sim) : storedIccid;
     const issuedQr = generatesEsim && issuedIccid ? await renderEsimQr(msisdn, issuedIccid) : null;
+    // The line carries the renewal price its point of sale pays today, not the layer column.
+    const terms = await this.stampFor(
+      captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target))),
+      pos.id,
+      posPath,
+    );
     const created = await this.runTx(async (tx) => {
       const created = await tx.line.create({
         data: {
@@ -1026,6 +1032,8 @@ export class OfficeService implements OnModuleInit {
       return { applied: false, taskId: task.id };
     }
     let debited = false;
+    // The line carries the renewal price its point of sale would pay for the new package today.
+    const stamped = await this.stampFor(switched.terms, line.posId, line.posPath);
     await this.runTx(async (tx) => {
       const quote = await this.switchQuote(tx, line, next, new Date());
       const posDelta = -quote.difference;
@@ -1036,7 +1044,7 @@ export class OfficeService implements OnModuleInit {
       await tx.line.update({
         where: { id: line.id },
         data: {
-          terms: switched.terms as unknown as Prisma.InputJsonValue,
+          terms: stamped as unknown as Prisma.InputJsonValue,
           packageId: next.id,
           opsLocked: false,
         },
@@ -1480,9 +1488,14 @@ export class OfficeService implements OnModuleInit {
         if (!pkg) fail(404, 'NOT_FOUND');
         if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
         if (pkg.renewals.some((renewal) => !renewal.target.company || !renewal.target.provider)) fail(400, 'INVALID');
-        const terms = captureTerms(
-          packageTermsOf(pkg),
-          pkg.renewals.map((renewal) => packageTermsOf(renewal.target)),
+        const terms = await this.stampFor(
+          captureTerms(
+            packageTermsOf(pkg),
+            pkg.renewals.map((renewal) => packageTermsOf(renewal.target)),
+          ),
+          task.posId,
+          undefined,
+          tx,
         );
         const created = await tx.line.create({
           data: {
@@ -1633,10 +1646,12 @@ export class OfficeService implements OnModuleInit {
         if (switchAmount !== 0) await this.move(tx, task.posId, switchAmount, actor.operatorId, 'switch', note, sale);
         else await this.recordOp(tx, task.posId, actor.operatorId, 'switch', sale);
         posted = true;
+        // Same as an immediate switch: the line carries the renewal price its point of sale pays today.
+        const stamped = await this.stampFor(switched.terms, current.posId, undefined, tx);
         await tx.line.update({
           where: { id: current.id },
           data: {
-            terms: switched.terms as unknown as Prisma.InputJsonValue,
+            terms: stamped as unknown as Prisma.InputJsonValue,
             packageId: target.id,
             opsLocked: false,
           },
@@ -2956,6 +2971,57 @@ export class OfficeService implements OnModuleInit {
     return buyPriceFor(path, terms, sells, pinned, kind);
   }
 
+  /**
+   * Writes into terms about to be saved the renewal price the point of sale would pay today, for the
+   * package and for each of its renewal targets: custom price, else the parent's sell price, else the
+   * layer column. One read per table serves every package named in the terms. A point of sale that is
+   * not in the tree leaves the terms as captured.
+   */
+  private async stampFor(
+    terms: LineTerms,
+    posId: string,
+    known?: PathNode[],
+    db: Prisma.TransactionClient | PrismaClient = this.prisma,
+  ): Promise<LineTerms> {
+    const path = known ?? this.pathOf(posId, await this.accounts());
+    if (path.length === 0) return terms;
+    const codes = [...new Set([terms.packageCode, ...terms.renewalTargets.map((target) => target.code)])];
+    const packages = await db.package.findMany({
+      where: { code: { in: codes } },
+      select: {
+        id: true,
+        code: true,
+        branchCost: true,
+        mainPrice: true,
+        agentPrice: true,
+        posPrice: true,
+        renewalBranchCost: true,
+        renewalMainPrice: true,
+        renewalAgentPrice: true,
+        renewalPosPrice: true,
+      },
+    });
+    const ids = packages.map((row) => row.id);
+    const pathIds = path.map((node) => node.id);
+    const [termRows, sellRows] = await Promise.all([
+      db.userPackage.findMany({
+        where: { packageId: { in: ids }, userId: { in: pathIds } },
+        select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
+      }),
+      db.sellPrice.findMany({
+        where: { packageId: { in: ids }, ownerId: { in: pathIds } },
+        select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
+      }),
+    ]);
+    return stampRenewal(terms, (code) => {
+      const pkg = packages.find((row) => row.code === code);
+      if (!pkg) return null;
+      const termsOf = termRows.filter((row) => row.packageId === pkg.id);
+      const sellsOf = sellRows.filter((row) => row.packageId === pkg.id);
+      return buyPriceFor(path, termsOf, sellsOf, pkg, 'renewal');
+    });
+  }
+
   private noteLog(current: string, line: string) {
     return stampTaskLog(current, line);
   }
@@ -3213,7 +3279,8 @@ export class OfficeService implements OnModuleInit {
   ) {
     const { terms, periods } = await this.openPeriodsOf(db, line, now);
     const nextTerms = packageTermsOf(target);
-    const newPrice = await this.resolveBuyPrice(line.posId, target, 'renewal', nextTerms.renewal.posPrice);
+    // The whole ladder, as `stampFor` resolves it: the quote and the price the switched line carries are one number.
+    const newPrice = await this.resolveBuyPrice(line.posId, target, 'renewal');
     const money = switchOver(periods, newPrice, target.months);
     // The branch side: each open period's cost, chosen like a disconnect, against the target's subscription cost.
     const costs = revalue(periods, (period) => (period.renewal ? terms.renewal.branchCost : terms.subscription.branchCost));

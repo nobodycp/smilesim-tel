@@ -87,7 +87,10 @@ async function office() {
     },
     line: lineModel,
     officeTask: taskModel,
-    package: { findUnique: async () => pkg },
+    package: { findUnique: async () => pkg, findMany: async () => [pkg] },
+    // Closing an activation task stamps the renewal price, which reads the terms tables inside the transaction.
+    userPackage: { findMany: async () => [] },
+    sellPrice: { findMany: async () => [] },
     user: { findUnique: async ({ where }: { where: { id: string } }) => accounts.find((row) => row.id === where.id) ?? null },
     notice: { createMany: async () => ({ count: 0 }) },
   };

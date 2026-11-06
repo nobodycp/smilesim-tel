@@ -3,7 +3,7 @@ import { MemoryAuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
 import type { NoticeService } from './notice.service';
 import { OfficeService } from './office.service';
-import { captureTerms } from './office-rules';
+import { captureTerms, type LineTerms } from './office-rules';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
 
 // The tree: branch → ma1 → ag1 → pos1, plus ag2 under ma1 for transfers.
@@ -116,7 +116,7 @@ export async function tree() {
   };
   const lineModel = {
     findUnique: async ({ where }: { where: { id?: string; msisdn?: string } }) => lines.find((row) => (where.id ? row.id === where.id : row.msisdn === where.msisdn)) ?? null,
-    findMany: async () => lines,
+    findMany: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)),
     count: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)).length,
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(lines.find((row) => row.id === where.id) as Row, data),
     updateMany: async () => ({ count: 0 }),
@@ -135,14 +135,18 @@ export async function tree() {
     updateMany: async () => ({ count: 0 }),
   };
   const packageModel = {
-    findMany: async () => packages,
+    findMany: async (args?: { where?: Record<string, unknown> }) => packages.filter((row) => whereMatch(row, args?.where)),
     findUnique: async ({ where }: { where: { code?: string; id?: string } }) => packages.find((row) => (where.code ? row.code === where.code : row.id === where.id)) ?? null,
   };
   const userPackage = byId(userPackages);
   const sellPrice = byId(sellPrices);
   const tx = {
     wallet: { findUnique: async () => wallet, update: async ({ data }: { data: { balance: number } }) => { wallet.balance = data.balance; return wallet; } },
-    walletEntry: { create: async ({ data }: { data: Data }) => { const row = { id: `e${entries.length + 1}`, createdAt: new Date(), ...data }; entries.push(row); return row; } },
+    walletEntry: {
+      create: async ({ data }: { data: Data }) => { const row = { id: `e${entries.length + 1}`, createdAt: new Date(), ...data }; entries.push(row); return row; },
+      // A switch quote reads the line's paid periods; none are stored here, so it prices the open window.
+      findMany: async () => [],
+    },
     line: lineModel,
     officeTask: taskModel,
     package: packageModel,
@@ -418,5 +422,78 @@ describe('writing user terms', () => {
     line.endsAt = new Date(Date.now() + 10 * 24 * 3600 * 1000);
     await service.extend(gates.pos1, 'ln1', { outcome: 'success' });
     expect(entries[0]).toMatchObject({ kind: 'extend', amount: -3100 });
+  });
+});
+
+describe('capturing the renewal price', () => {
+  const activate = (iccid: string) => ({ packageCode: 'alloha-150', posLogin: 'pos1', iccid, outcome: 'success' as const });
+  const termsOf = (row: Row) => row.terms as LineTerms;
+  // A branch task the owner has taken, ready to be closed.
+  const taken = (patch: Record<string, unknown>) => ({
+    id: 't1', status: 'working', assigneeId: 'branch', submitterId: 'pos1', posId: 'pos1', packageId: 'pa', nextPackageId: null,
+    lineId: null, msisdn: '0521000099', iccid: '8997202000000000009', esim: false, esimQr: null, posDelta: 0, ...patch,
+  });
+
+  it('activation stamps the custom renewal price, else the parent sell price, else the layer price', async () => {
+    const custom = await tree();
+    custom.userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: null, renewalPrice: 3100 });
+    await custom.service.activate(custom.gates.pos1, activate('8997202000000000002'));
+    expect(termsOf(custom.lines[1]).renewal.posPrice).toBe(3100);
+
+    const sold = await tree();
+    sold.sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ag1', price: 3700, renewalPrice: 3400 });
+    await sold.service.activate(sold.gates.pos1, activate('8997202000000000003'));
+    expect(termsOf(sold.lines[1]).renewal.posPrice).toBe(3400);
+
+    const plain = await tree();
+    await plain.service.activate(plain.gates.pos1, activate('8997202000000000004'));
+    expect(termsOf(plain.lines[1]).renewal.posPrice).toBe(3200);
+  });
+
+  it('activation stamps each renewal target from the rows of that target alone', async () => {
+    const { service, gates, pkgA, pkgB, userPackages, sellPrices, lines } = await tree();
+    pkgA.renewals = [{ target: pkgB }];
+    sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ag1', price: 3700, renewalPrice: 3400 });
+    userPackages.push({ id: 'r1', packageId: 'pb', userId: 'pos1', hidden: false, price: null, renewalPrice: 2950 });
+    await service.activate(gates.pos1, activate('8997202000000000005'));
+    const stamped = termsOf(lines[1]);
+    expect(stamped.renewal.posPrice).toBe(3400);
+    expect(stamped.renewalTargets).toMatchObject([{ code: 'alloha-400', renewal: { posPrice: 2950 } }]);
+  });
+
+  it('an activation closed by a branch task stamps the price the point of sale would pay now', async () => {
+    const { service, gates, userPackages, lines, tasks } = await tree();
+    userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: null, renewalPrice: 3100 });
+    tasks.push(taken({ action: 'activate', posDelta: -3500 }));
+    await service.completeTask(gates.branch, 't1', {});
+    expect(termsOf(lines[1]).renewal.posPrice).toBe(3100);
+  });
+
+  it('a switch stamps the target renewal price through the path and debits from it', async () => {
+    const { service, gates, userPackages, line, lines, entries } = await tree();
+    userPackages.push({ id: 'r1', packageId: 'pb', userId: 'pos1', hidden: false, price: null, renewalPrice: 3000 });
+    line.endsAt = new Date(Date.now() + 10 * 24 * 3600 * 1000);
+    await service.switchPackage(gates.pos1, 'ln1', { packageCode: 'alloha-400', outcome: 'success' });
+    expect(termsOf(lines[0]).renewal.posPrice).toBe(3000);
+    // The quote priced the target from the same ladder the line now carries.
+    expect(entries[0]).toMatchObject({ kind: 'switch', packagePrice: 3000 });
+  });
+
+  it('a switch closed by a branch task stamps the same price', async () => {
+    const { service, gates, pkgA, userPackages, line, lines, tasks, entries } = await tree();
+    pkgA.switches = [{ target: { code: 'alloha-400' } }];
+    userPackages.push({ id: 'r1', packageId: 'pb', userId: 'pos1', hidden: false, price: null, renewalPrice: 3000 });
+    line.endsAt = new Date(Date.now() + 10 * 24 * 3600 * 1000);
+    tasks.push(taken({ action: 'switch', nextPackageId: 'pb', lineId: 'ln1', msisdn: '0521000001' }));
+    await service.completeTask(gates.branch, 't1', {});
+    expect(termsOf(lines[0]).renewal.posPrice).toBe(3000);
+    expect(entries[0]).toMatchObject({ kind: 'switch', packagePrice: 3000 });
+  });
+
+  it('leaves the terms as captured when the point of sale is unknown', async () => {
+    const { service, pkgA } = await tree();
+    const captured = captureTerms(packageTermsOf(pkgA as unknown as PackagePriceRow), []);
+    const stamp = (service as unknown as { stampFor: (terms: LineTerms, posId: string) => Promise<LineTerms> }).stampFor.bind(service);
+    await expect(stamp(captured, 'ghost')).resolves.toEqual(captured);
   });
 });
