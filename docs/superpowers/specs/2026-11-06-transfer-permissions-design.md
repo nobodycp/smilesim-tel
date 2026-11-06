@@ -14,10 +14,11 @@ agents across chains. The branch can also stop a specific account from transferr
 Moving an agent (with its points of sale and their numbers) does not exist today; this spec adds it.
 
 The second half (section 9) fixes one rule for what an existing number pays at renewal: **the
-price the number carries**. Writing a price anywhere touches new activations; existing numbers
-change only when the person writing ticks one switch, «يشمل الأرقام القائمة». The same switch,
-with the same meaning, appears on every screen that writes a price, in the transfer dialog, and in
-the branch's tool for provider price changes.
+price the number carries**. Writing a price anywhere touches new activations only. Existing
+numbers are repriced in one table that groups them by the price they carry today — bring them to
+the current price in one press, or give each group its own new price — reached from the package
+row on the user page, from the package sheet, and by the branch across the whole system for
+provider price changes. The transfer dialog offers the same thing as its fifth choice.
 
 ## Vocabulary
 
@@ -87,10 +88,10 @@ states what happens.
 
 - `reset` on prices deletes the rows (and, for `childPrices`, the agent's `SellPrice` rows).
   `reset` on stops sets `deniedOps` to empty. `keep` leaves rows untouched.
-- `linePrices: 'recapture'` runs the recapture of section 9 over every number under the moved
-  account, **after** the other choices are applied and the parent is changed, so the new price is
-  what the number would carry had it been activated today under the new parent. `keep` leaves the
-  numbers' terms untouched: they go on paying what they paid.
+- `linePrices: 'recapture'` reprices every renewable number under the moved account to
+  `'current'` (section 9), **after** the other choices are applied and the parent is changed, so
+  the new price is what the number would carry had it been activated today under the new parent.
+  `keep` leaves the numbers' terms untouched: they go on paying what they paid.
 - Kept custom prices may sit **below the new parent's cost**. The floor is checked at write time
   only (previous spec), so this is allowed; the preview below counts those rows so the person
   moving decides knowingly.
@@ -132,8 +133,8 @@ The stop applies to all three kinds of transfer.
 
 `POST /office/lines/:id/transfer` becomes `{ posLogin, linePrices: 'keep' | 'recapture' }` and
 gains rules 2–4 of section 1 (rule 3 is already enforced). `keep` leaves the number's terms as they
-are; `recapture` reprices it under the new point of sale (section 9). The number-detail dialog
-shows the same switch as everywhere else.
+are; `recapture` reprices it to `'current'` under the new point of sale (section 9). The
+number-detail dialog shows the same radio pair as the account transfer dialog.
 
 ### 5. Notices and the activity log
 
@@ -182,10 +183,9 @@ all three).
 | `POST` | `/office/lines/:id/transfer` | body gains `linePrices`; adds the `transfer` stop check and destination layer/frozen checks |
 | `GET`  | `/office/users/:login/ops`, `PUT` same | `transfer` is a valid key |
 | `GET`  | `/office/me`, roles endpoints | `transferAgents` in grants |
-| `PUT`  | `/office/users/:login/packages/:code`, `DELETE` same | body/query gains `applyToLines` (section 9) |
-| `PUT`  | `/office/packages/:code/custom-prices/:login`, `DELETE` same | same |
-| `PUT`  | `/office/sell-prices/:code`, `DELETE` same | same |
-| `POST` | `/office/packages/:code/reprice-renewal` | body becomes `{ scope: 'all' | login }`; recaptures instead of writing one flat price |
+| `GET`  | `/office/packages/:code/line-prices?scope=` | new: existing numbers grouped by the renewal price they carry (section 9) |
+| `PUT`  | `/office/packages/:code/line-prices` | new: `{ scope, groups: [{ from, to }] }` |
+| `POST` | `/office/packages/:code/reprice-renewal` | removed, replaced by the two above |
 
 No schema migration: `deniedOps` and `Role.grants` are strings; `transferAgents` is a new code;
 line prices already live in `Line.terms`.
@@ -223,51 +223,79 @@ debit is unchanged (already resolved through the path). The other ladder levels 
 (or the target entry) and nothing else. `resolveBuyPrice(..., 'renewal', layerFallback)` loses
 its custom/sell steps whenever a fallback is passed; the subscription path keeps them.
 
-**Recapture** is one pure function, `recaptureRenewal(line, pkg, targets, priceOf)` in
-`office-rules.ts`: it rebuilds `renewal` and `renewalTargets` exactly as `captureTerms` would for an
-activation today — the package's current layer ladder, the current renewal targets, and `posPrice`
-resolved through the number's current point-of-sale path — and keeps `packageCode`, `months`,
-`windowMonths`, and `subscription` untouched. It applies to numbers that can still renew
-(`active` and `frozen`); disconnected numbers are left alone. The service wraps it once,
-`recaptureLines(tx, lineIds)`, loading accounts, terms, and sell rows once and writing every
-changed line in the caller's transaction. Every entry point below calls that wrapper; there is no
-second repricing path.
+**Writing a price never touches numbers.** Custom prices, sell prices, and layer prices are saved
+exactly as today and reach new activations only. The `hidden` toggle is not a price. Existing
+numbers are priced in one place, the table below, and in the transfer dialog's fifth row.
 
-**One switch, every write.** Each endpoint that writes or clears a price takes
-`applyToLines: boolean` (required on `PUT`, as a query flag on `DELETE`; missing is `INVALID`).
-When true, the write recaptures the numbers it reaches, in the same transaction, and the response
-carries `{ ..., repricedLines: number }` so the toast can say «تم تحديث 37 رقماً».
+**The table: existing numbers grouped by the price they carry.** For one package and one scope,
+the numbers that can still renew (`active` and `frozen`; disconnected ones are left alone) are
+grouped by `terms.renewal.posPrice`. The operator sees one row per distinct price with its count
+and types a new price per row, or presses one button that fills every row with what a new
+activation would pay now. Three office cases, one screen:
 
-| Write | Who | Numbers reached when `applyToLines` |
-|-------|-----|-------------------------------------|
-| user page → packages tab, price or clear (`PUT`/`DELETE /users/:login/packages/:code`) | parent or branch | numbers of that package whose point of sale is the user or under it |
-| package sheet → «تخصيص سعر» (`PUT`/`DELETE /packages/:code/custom-prices/:login`) | branch | same set for that user |
-| packages → sell price, set or «إرجاع للافتراضي» (`PUT`/`DELETE /sell-prices/:code`) | agent / main agent | numbers of that package under the owner |
-| package sheet → «سعر التجديد على الأرقام الفعالة» (`POST /packages/:code/reprice-renewal`) | branch | numbers of that package in the chosen scope: the whole system or one account's subtree |
-| transfer (`linePrices: 'recapture'`) | per section 1 | the moved numbers, all packages |
+- *Bring old numbers to the new price*: press «اتباع السعر الحالي», save.
+- *Old numbers at one price, new activations at another*: write the custom price as usual (new
+  activations at 35), then in the table set the 45 row to 41.
+- *Two groups, two new prices*: set the 41 row to 39 and the 35 row to 37, save.
 
-The `hidden` toggle never reprices; it is not a price.
+`GET /office/packages/:code/line-prices?scope=<login | all>` →
 
-Because recapture resolves through each number's own path, a nearer custom price still wins: an
-agent lowering its sell price with the switch on does not disturb a point of sale that has its own
-custom price for that package. A number's price may therefore go up or down; the floor rule is
-unchanged (checked only when a price is written on an account).
+```ts
+{
+  current: number | null;                        // what a new activation would pay for a single-account scope; null for `all`
+  groups: { price: number; count: number }[];    // sorted by price
+}
+```
 
-**The branch tool.** The existing block in the package sheet keeps its title and place. It loses
-the «نفس الرزمة / هدف» select and the single price field; it gains a scope select («كل النظام» or
-an account picker from `/office/users`) and one button «إعادة احتساب». It is the only place that
-reprices without writing an account price, and the way a company or tax change on the package's
-layer prices reaches running numbers. Branch only (owner or `edit`), as today.
+`PUT /office/packages/:code/line-prices` with `{ scope, groups: [{ from: number; to: number | 'current' }] }`:
 
-**Screens.** The switch is `label.check` «يشمل الأرقام القائمة» placed directly under the price
-field it belongs to, unchecked each time the form opens. On a `RowMenu` clear («إرجاع للافتراضي»,
-«حذف السعر الخاص») the item opens a `confirm` dialog with the same checkbox instead of acting at
-once. The transfer dialog shows the same choice as a radio pair (section 6). Copy in ar/en/he:
-`applyToLines`, `repricedLines` («تم تحديث {n} رقماً»), `recaptureScope`, `recaptureAll`,
-`recaptureRun`; `repriceWhich`, `repriceStay` are removed.
+- `scope` is a login (that account and everything under it) or `'all'` (branch only).
+- A row with `to` equal to `from` or omitted is left alone. `to: 'current'` means the price a
+  new activation would carry today for *that number's* point of sale, resolved through its own
+  path — so a nearer custom price still wins when an agent runs the table over its subtree.
+- A numeric `to` is one flat price for every number in the group. It must not sit below the
+  floor of that number's point of sale (what its parent pays at renewal), same rule and same
+  `PRICE_BELOW_FLOOR` as a custom price; one offending number refuses the whole save.
+- Only `terms.renewal.posPrice` and the matching `renewalTargets[i].renewal.posPrice` change.
+  `packageCode`, `months`, `windowMonths`, `subscription`, and the other ladder levels are kept.
+  `'current'` additionally refreshes the ladder and target list from the package's current
+  settings, exactly as `captureTerms` does at activation; a target removed from the package since
+  the number was activated disappears from that number.
+- One transaction; the response is `{ ok: true, lines: number }` and the toast says
+  «تم تحديث {n} رقماً».
 
-**Audit.** Writes keep their actions (`user_package`, `sell_price`, …) and add `repricedLines` to
-the payload. The branch tool records `package_reprice` with `{ code, scope, lines }`.
+**Who.** The actor must see the scope account (`visibleAccountIds`) and must be allowed to write a
+custom price on it (its parent, or the branch); `'all'` is branch only (owner or `edit`). A point
+of sale cannot open the table.
+
+**Pure part.** `groupLinePrices(lines)` and `repriceLine(line, pkg, targets, to, priceOf)` live in
+`office-rules.ts` beside `captureTerms`; `repriceRenewal` and its `which` select are removed. The
+service wraps them once, `repriceLines(tx, lineIds, plan)`, loading accounts, terms, and sell rows
+once; the transfer (`linePrices: 'recapture'`) calls the same wrapper with every group → `'current'`.
+
+**Screens.**
+
+- User page → packages tab: the package `RowMenu` gains «أسعار الأرقام القائمة» (icon `receipt`),
+  shown when the row has at least one renewable number. It opens a `form` `Dialog` titled with
+  the package name: a `.data` table (السعر الحالي · عدد الأرقام · السعر الجديد, numeric columns
+  `num`, new price is a `PriceField`), a secondary button «اتباع السعر الحالي ({current})» above
+  the table, `.empty` when there are no numbers, footer cancel / «حفظ». The toast carries the
+  count.
+- Package sheet → «تخصيص سعر» tab: the same menu item on each account row opens the same dialog
+  with that account as scope.
+- Package sheet → the block «سعر التجديد على الأرقام الفعالة» (branch only) becomes a scope
+  select («كل النظام» or an account from the users list) and a button «عرض الأرقام» that opens
+  the same dialog for that scope. With `all`, the fill button reads «اتباع تسعيرة السلسلة» and
+  `current` is per number. This is the path for a company or tax change on the package.
+- Transfer dialogs: the fifth row stays as agreed in section 6 and section 4.
+
+Copy in ar/en/he: `linePricesTitle`, `linePricesCurrent`, `linePricesCount`, `linePricesNew`,
+`linePricesFollow`, `linePricesFollowChain`, `linePricesScope`, `linePricesAll`, `linePricesOpen`,
+`linePricesEmpty`, `linePricesSaved` («تم تحديث {n} رقماً»); `repriceWhich`, `repriceStay` are
+removed. The component is one file, `components/line-prices-dialog.tsx`, used by all three screens.
+
+**Audit.** `package_reprice` with `{ code, scope, groups, lines }`. Transfer keeps the count of
+repriced numbers in its `user_transfer` payload.
 
 ## Non-goals
 
@@ -277,9 +305,11 @@ the payload. The branch tool records `package_reprice` with `{ code, scope, line
 - Changing who may *see* whom; visibility rules stay as they are.
 - A single action that reprices several packages at once for one account; each package is
   written on its own row.
-- Repricing the subscription already paid, or any ledger entry; recapture changes what the next
+- Repricing the subscription already paid, or any ledger entry; the table changes what the next
   renewal will cost, nothing retroactive.
-- Showing a count on the switch before saving; the count comes back with the response.
+- A switch on the price forms that reprices existing numbers while saving; the table is the only
+  entry (decided 2026-11-07).
+- Picking individual numbers inside a price group; a group moves as one.
 
 ## Testing
 
@@ -304,22 +334,27 @@ the payload. The branch tool records `package_reprice` with `{ code, scope, line
   `terms.renewal.posPrice`; a target with its own custom price is stamped too; without rows the
   layer price is stamped as before.
 - Renewal reads the line only: writing a custom renewal price after activation does not change the
-  next `extend` debit; writing it with `applyToLines: true` does, and the response says how many.
-- `recaptureRenewal`: rebuilds ladder and targets from the current package, keeps `subscription`,
-  `months`, `windowMonths`; the nearer custom price wins over the parent's sell price; frozen
-  numbers are repriced, disconnected ones are not.
-- Sell-price set and clear with the switch reach only numbers under the owner; the custom-price
-  clear with the switch sends numbers back to the parent's sell price.
-- Branch tool: `scope: 'all'` touches every renewable number of the package; `scope: <login>` only
-  that subtree; a non-branch actor is refused; `applyToLines` missing on a price write is `INVALID`.
+  next `extend` debit; the table does.
+- `groupLinePrices`: 45×100, 41×30, 35×20 come back as three sorted groups; disconnected numbers
+  are not counted; frozen ones are.
+- `repriceLine` with a number: only `renewal.posPrice` and the matching target entry change;
+  `subscription`, `months`, `windowMonths` are kept. With `'current'`: ladder and targets are
+  rebuilt from the package, the nearer custom price wins over the parent's sell price, a removed
+  target disappears.
+- `PUT line-prices`: the three office cases (all → current; 45 → 41 while the custom price is 35;
+  41 → 39 and 35 → 37 in one call); a `to` below one number's floor refuses the whole save with
+  `PRICE_BELOW_FLOOR` and changes nothing; `scope: 'all'` by a main agent is `FORBIDDEN`; a scope
+  outside the actor's subtree is `FORBIDDEN`; a point of sale is `FORBIDDEN`.
+- `GET line-prices`: `current` equals `buyPriceFor` on the scope account for a login scope and is
+  `null` for `all`.
 - Transfer with `linePrices: 'recapture'` prices the moved numbers under the new parent; with
   `keep` their terms are byte-equal before and after.
 
 **Playwright**
 
-- User page packages tab: saving a price with the switch sends `applyToLines: true` and the toast
-  shows the count; «إرجاع للافتراضي» opens the confirm with the checkbox.
-- Package sheet: the tool block shows scope + «إعادة احتساب» and posts `{ scope }`.
+- User page packages tab: the row menu item opens the dialog with three groups, «اتباع السعر
+  الحالي» fills every new-price field, save sends `{ scope, groups }` and the toast shows the count.
+- Package sheet: the block shows scope + «عرض الأرقام» and opens the same dialog with `all`.
 
 - Users page as branch: «نقل» on an agent row opens the dialog, picking a destination fetches the
   preview, four choice rows are shown, the request body carries the four choices.
