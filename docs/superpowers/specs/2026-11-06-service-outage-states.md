@@ -22,7 +22,7 @@ When the API is unreachable (process down, proxy returning 5xx, browser offline)
 
 ### Session
 
-- `OfficeSession` exposes `failed: boolean` beside `ready`. `ready` becomes `true` only when `/office/me` succeeds. On a `NETWORK` failure it sets `failed`, keeps `ready = false`, and retries with backoff 2s → 4s → 8s → 16s → 30s, and immediately on the `online` event or when `reachable` flips to `true`. Any other failure (a 4xx the API chose) also sets `failed` and retries on the same schedule; `LOGIN_REQUIRED` / `DOOR_MISMATCH` already redirect inside `api.ts`.
+- `OfficeSession` exposes `failed: boolean` beside `ready`. On a `NETWORK` failure or a `5xx` it sets `failed`, keeps `ready = false`, and retries with backoff 2s → 4s → 8s → 16s → 30s, and immediately on the `online` event or when `reachable` flips to `true`. A `4xx` the API chose is final: `ready` becomes `true` with `me = null`, as before, so the shell draws with no account; `LOGIN_REQUIRED` / `DOOR_MISMATCH` already redirect inside `api.ts`.
 - `OfficeShell`: while `!ready && !failed` it keeps the `PageSkeleton`. While `failed` it renders an `OutagePanel` in the canvas instead of the page: an `offline` icon, the network title, a sentence that it retries on its own, a `retry` button that calls the session's `retry()` now, and the retrying label while a request is in flight. Pages never mount with a dead session, so their own spinners never start.
 - Because `ready` stays `false` during the outage, `allowed()` keeps the full nav list (its existing pre-ready branch). The sidebar does not shrink. The "not ready" group stays exactly as it is.
 - Topbar: the greeting, avatar, and wallet keep the cached identity and balance as today; this spec does not change them.

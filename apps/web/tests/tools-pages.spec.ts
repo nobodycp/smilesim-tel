@@ -137,16 +137,21 @@ test.describe('usePaged', () => {
     await expect(page.locator('table.data tbody')).not.toContainText('0551110000');
   });
 
-  test('a failed load shows the translated error and an empty table, then recovers on the next filter', async ({ page }) => {
+  test('a failed load shows the failed state with its error and a retry inside the pane, then recovers on the next filter', async ({ page }) => {
     await serveOffice(page, 'branch', {
       'GET /audit': (url) => (url.searchParams.get('action') === 'extend'
         ? { body: { entries: [], nextCursor: null } }
         : { status: 400, body: { message: 'بيانات غير صالحة' } }),
     });
     await page.goto(`${admin}/audit`);
-    await expect(page.locator('p.error')).toHaveText('بيانات غير صالحة');
-    await page.getByLabel('النوع').selectOption('extend');
+    // The failure lives in the pane, not in a page banner, and offers one retry.
+    const failed = page.locator('.pane .load-failed');
+    await expect(failed).toContainText('بيانات غير صالحة');
+    await expect(failed.getByRole('button', { name: 'إعادة المحاولة' })).toBeVisible();
     await expect(page.locator('p.error')).toHaveCount(0);
+    await expect(page.locator('.table-skeleton')).toHaveCount(0);
+    await page.getByLabel('النوع').selectOption('extend');
+    await expect(page.locator('.load-failed')).toHaveCount(0);
     await expect(page.locator('.empty')).toHaveText('لا حركات بعد.');
   });
 });

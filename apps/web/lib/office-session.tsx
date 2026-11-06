@@ -88,7 +88,14 @@ export function OfficeSession({
         setReady(true);
         return;
       }
-      // A session that ended already redirected inside `api.ts`; everything else is retried.
+      // A session that ended already redirected inside `api.ts`. An answer the API chose (4xx)
+      // is final: the shell draws with no account. Only an API that is down is retried.
+      if (result.code !== 'NETWORK' && result.status < 500) {
+        setFailed(false);
+        setRetrying(false);
+        setReady(true);
+        return;
+      }
       setFailed(true);
       setRetrying(false);
       timer = window.setTimeout(() => {
