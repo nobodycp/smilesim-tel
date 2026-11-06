@@ -28,7 +28,6 @@ import {
   PackageTargetsBodyDto,
   ProviderModeBodyDto,
   RenameLineBodyDto,
-  RepriceRenewalBodyDto,
   SellPriceBodyDto,
   SetAccountPasswordBodyDto,
   SwapSimBodyDto,
@@ -186,20 +185,6 @@ export class OfficeController {
     @Body() body: Record<string, unknown>,
   ) {
     return this.run(res, () => this.office.setChain(gateOf(req), code, body), { action: 'package_chain', subjectKind: 'package', subjectRef: code });
-  }
-
-  @Post('packages/:code/reprice-renewal')
-  @ApiOperation({ summary: 'Reprice active renewals for a package' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ type: RepriceRenewalBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  repriceRenewal(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-    @Param('code') code: string,
-    @Body() body: RepriceRenewalBodyDto,
-  ) {
-    return this.run(res, () => this.office.repriceActiveRenewal(gateOf(req), code, body));
   }
 
   @Put('packages/:code/renewals')

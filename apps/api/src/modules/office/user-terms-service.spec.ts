@@ -416,12 +416,23 @@ describe('writing user terms', () => {
     await expect(service.setUserOps(gates.branch, 'ma1', { denied: [] })).resolves.toMatchObject({ denied: [] });
   });
 
-  it('an old offer row keeps the renewal charge it had', async () => {
+  it('a custom renewal price written after activation does not change what the number pays', async () => {
     const { service, gates, userPackages, line, entries } = await tree();
     userPackages.push(row('pos1', { price: 3100, renewalPrice: 3100 }));
     line.endsAt = new Date(Date.now() + 10 * 24 * 3600 * 1000);
     await service.extend(gates.pos1, 'ln1', { outcome: 'success' });
-    expect(entries[0]).toMatchObject({ kind: 'extend', amount: -3100 });
+    expect(entries[0]).toMatchObject({ kind: 'extend', amount: -3200 });
+  });
+
+  it('a renewal onto another package pays the price frozen for that target, whatever its rows say today', async () => {
+    const { service, gates, pkgA, pkgB, userPackages, line, entries } = await tree();
+    const target = packageTermsOf(pkgB as unknown as PackagePriceRow);
+    // The number froze 3300 for alloha-400 when it was activated; a custom 2950 came later.
+    line.terms = captureTerms(packageTermsOf(pkgA as unknown as PackagePriceRow), [{ ...target, renewal: { ...target.renewal, posPrice: 3300 } }]);
+    userPackages.push({ id: 'r1', packageId: 'pb', userId: 'pos1', hidden: false, price: null, renewalPrice: 2950 });
+    line.endsAt = new Date(Date.now() + 10 * 24 * 3600 * 1000);
+    await service.extend(gates.pos1, 'ln1', { outcome: 'success', targetCode: 'alloha-400' });
+    expect(entries[0]).toMatchObject({ kind: 'extend', amount: -3300 });
   });
 });
 

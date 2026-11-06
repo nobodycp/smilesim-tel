@@ -23,14 +23,6 @@ export class PackageTargetsBodyDto {
   targets?: unknown;
 }
 
-export class RepriceRenewalBodyDto {
-  @ApiPropertyOptional()
-  which?: string;
-
-  @ApiPropertyOptional()
-  posPrice?: number;
-}
-
 export class UserPackageBodyDto {
   @ApiPropertyOptional({ description: 'Hide the package from this account and everyone below it' })
   hidden?: boolean;

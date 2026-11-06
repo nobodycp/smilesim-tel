@@ -47,7 +47,6 @@ import {
   renewOnto,
   refreshMode,
   renewStay,
-  repriceRenewal,
   readSimRules,
   revalue,
   settleDisconnect,
@@ -875,7 +874,7 @@ export class OfficeService implements OnModuleInit {
       if (refusal) fail(400, refusal);
     }
     const pkgTerms = packageTermsOf(pkg);
-    const unit = await this.resolveBuyPrice(pos.id, pkg, 'subscription', undefined, posPath);
+    const unit = await this.resolveBuyPrice(pos.id, pkg, 'subscription', posPath);
     const esimFee = esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price;
     const posDelta = -(unit + (esim ? esimFee : 0));
     const msisdn = inputs === 'number-and-sim' ? requested : requested || (await this.freshMsisdn());
@@ -1071,7 +1070,8 @@ export class OfficeService implements OnModuleInit {
     if (targetCode && (!target || !target.company || !target.provider)) fail(400, 'INVALID');
     const renewal = target ? renewOnto(terms, packageTermsOf(target), base) : renewStay(terms, base);
     if ('error' in renewal) fail(400, 'INVALID');
-    const posDelta = -(await this.resolveBuyPrice(line.posId, target ?? line.package, 'renewal', renewal.debit, line.posPath));
+    // A number pays the renewal price its own terms carry, stay or target entry; no account row is read.
+    const posDelta = -renewal.debit;
     if (outcome === 'fail' || !this.runsNow(line.package, 'extend')) {
       const task = await this.openTask({
         action: 'extend', actor, posId: line.posId, packageId: line.packageId, nextPackageId: target?.id,
@@ -2172,35 +2172,6 @@ export class OfficeService implements OnModuleInit {
     return { ok: true as const };
   }
 
-  async repriceActiveRenewal(gate: Gate, code: string, body: { which?: unknown; posPrice?: unknown }) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
-    const posPrice = nonNegative(body.posPrice);
-    if (typeof body.which !== 'string' || !body.which || posPrice === null) fail(400, 'INVALID');
-    const which = body.which === 'stay' ? { kind: 'stay' as const } : { kind: 'target' as const, code: body.which };
-    const pkg = await this.prisma.package.findUnique({
-      where: { code },
-      include: { company: true, provider: true, lines: { where: { status: 'active' } } },
-    });
-    if (!pkg) fail(404, 'NOT_FOUND');
-    const changes: { id: string; terms: LineTerms }[] = [];
-    for (const line of pkg.lines) {
-      const repriced = repriceRenewal(lineTermsOf(line.terms, pkg), which, posPrice);
-      if ('error' in repriced) continue;
-      changes.push({ id: line.id, terms: repriced });
-    }
-    if (which.kind === 'target' && changes.length === 0) fail(400, 'INVALID');
-    await this.runTx(async (tx) => {
-      for (const change of changes) {
-        await tx.line.update({
-          where: { id: change.id },
-          data: { terms: change.terms as unknown as Prisma.InputJsonValue },
-        });
-      }
-    });
-    return { ok: true as const, lines: changes.length };
-  }
-
   async setPackageTargets(
     gate: Gate,
     code: string,
@@ -2850,7 +2821,7 @@ export class OfficeService implements OnModuleInit {
   private async restartDisconnected(actor: Actor, line: Awaited<ReturnType<OfficeService['visibleLine']>>, outcome: 'success' | 'fail') {
     if (line.status !== 'disconnected') fail(400, 'INVALID');
     this.assertRunnable(line.package, 'charge', line.denied);
-    const charged = await this.resolveBuyPrice(line.posId, line.package, 'subscription', undefined, line.posPath);
+    const charged = await this.resolveBuyPrice(line.posId, line.package, 'subscription', line.posPath);
     const posDelta = -charged;
     if (outcome === 'fail' || !this.runsNow(line.package, 'charge')) {
       const task = await this.openTask({
@@ -2949,26 +2920,19 @@ export class OfficeService implements OnModuleInit {
   }
 
   /**
-   * What `userId` pays for this package: its custom price, else its parent's sell price, else the
-   * layer column. `layerFallback` replaces that last level when the caller already holds the
-   * price frozen on a line (extend and switch read the saved terms, as before).
+   * What `userId` pays for this package today: its custom price, else its parent's sell price, else
+   * the layer column. It is only ever asked what a new capture would carry or charge (an activation,
+   * a restart, the target of a switch). A renewal never asks: it debits the price on the line.
    */
   private async resolveBuyPrice(
     userId: string,
     pkg: { id: string } & LayerPrices,
     kind: PriceKind,
-    layerFallback?: number,
     known?: PathNode[],
   ): Promise<number> {
     const [path, { terms, sells }] = await Promise.all([known ? Promise.resolve(known) : this.pathOf(userId, await this.accounts()), this.termsFor(pkg.id)]);
-    if (path.length === 0) return layerFallback ?? buyPriceFor([{ id: userId, loginName: '', layer: 'pos', deniedOps: '' }], [], [], pkg, kind);
-    if (layerFallback === undefined) return buyPriceFor(path, terms, sells, pkg, kind);
-    const pinned: LayerPrices = {
-      ...pkg,
-      branchCost: layerFallback, mainPrice: layerFallback, agentPrice: layerFallback, posPrice: layerFallback,
-      renewalBranchCost: layerFallback, renewalMainPrice: layerFallback, renewalAgentPrice: layerFallback, renewalPosPrice: layerFallback,
-    };
-    return buyPriceFor(path, terms, sells, pinned, kind);
+    if (path.length === 0) return buyPriceFor([{ id: userId, loginName: '', layer: 'pos', deniedOps: '' }], [], [], pkg, kind);
+    return buyPriceFor(path, terms, sells, pkg, kind);
   }
 
   /**

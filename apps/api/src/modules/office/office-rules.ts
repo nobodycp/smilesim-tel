@@ -230,24 +230,6 @@ export function renewOnto(
   };
 }
 
-export function repriceRenewal(
-  line: LineTerms,
-  which: { kind: 'stay' } | { kind: 'target'; code: string },
-  posPrice: number,
-): LineTerms | { error: 'NO_TARGET' } {
-  if (which.kind === 'stay') {
-    return { ...line, renewal: { ...line.renewal, posPrice } };
-  }
-  const found = line.renewalTargets.some((item) => item.code === which.code);
-  if (!found) return { error: 'NO_TARGET' };
-  return {
-    ...line,
-    renewalTargets: line.renewalTargets.map((item) =>
-      item.code === which.code ? { ...item, renewal: { ...item.renewal, posPrice } } : item,
-    ),
-  };
-}
-
 /**
  * Value of the days still left on the new package, minus the same days on the current one.
  * A positive difference is a debit. The open window length is the denominator of the current price.

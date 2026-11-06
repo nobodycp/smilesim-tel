@@ -17,7 +17,6 @@ import {
   openPeriods,
   packageFlagsFromModes,
   resolvePackageMode,
-  repriceRenewal,
   renewOnto,
   renewStay,
   providerBranchCost,
@@ -215,20 +214,6 @@ describe('subscription and renewal price rules', () => {
     const moved = renewOnto(line, catalogThree, new Date('2026-01-15T00:00:00Z'));
     expect('debit' in moved && moved.debit).toBe(80);
     expect('endsAt' in moved && moved.endsAt.toISOString()).toBe('2026-04-15T00:00:00.000Z');
-  });
-
-  it('reprices a saved renewal without touching the catalog', () => {
-    const line = captureTerms(month, [three]);
-    const repriced = repriceRenewal(line, { kind: 'target', code: three.code }, 70);
-    expect('renewalTargets' in repriced && repriced).toBeTruthy();
-    if (!('renewalTargets' in repriced)) return;
-    const moved = renewOnto(repriced, three, new Date('2026-01-15T00:00:00Z'));
-    expect('debit' in moved && moved.debit).toBe(70);
-
-    const stayRepriced = repriceRenewal(line, { kind: 'stay' }, 40);
-    expect('renewal' in stayRepriced && chargeDebit(stayRepriced)).toBe(40);
-
-    expect(repriceRenewal(line, { kind: 'target', code: 'missing' }, 1)).toEqual({ error: 'NO_TARGET' });
   });
 
   it('refuses a renewal target that was not saved on the line', () => {
