@@ -117,6 +117,25 @@ test('a bad price is refused in the dialog and a cleared one leaves the group al
   expect(calls.filter((call) => call.startsWith('PUT '))).toEqual([]);
 });
 
+test('a refused price keeps the dialog open when save is pressed', async ({ page }) => {
+  const calls = await serveOffice(page, 'agent', userRoutes());
+  const dialog = await openFromUserPage(page);
+  await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
+
+  // Enter first, so the refusal is on screen and the layout has settled before save is pressed: the message
+  // pushes the footer down, which would otherwise swallow the click and hide whether save closes the dialog.
+  const field = dialog.locator('tbody tr').nth(1).getByRole('textbox');
+  await field.fill('abc');
+  await field.press('Enter');
+  await expect(dialog.getByRole('alert')).toHaveText('بيانات غير صالحة');
+
+  await dialog.getByRole('button', { name: 'حفظ' }).click();
+  // The refused text is not a draft, so nothing is saved, and the dialog stays so the message can be read.
+  await expect(dialog.getByRole('alert')).toHaveText('بيانات غير صالحة');
+  await expect(dialog).toBeVisible();
+  expect(calls.filter((call) => call.startsWith('PUT '))).toEqual([]);
+});
+
 test('a package without renewable numbers has no entry, and an empty table says so', async ({ page }) => {
   await serveOffice(page, 'agent', {
     ...userRoutes(),

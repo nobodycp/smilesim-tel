@@ -46,6 +46,9 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
   const { t, apiText } = usePrefs();
   const [drafts, setDrafts] = useState<Partial<Record<number, Draft>>>({});
   const [error, setError] = useState('');
+  // A refused text is not a draft, so the table looks unchanged while its message is on screen. This flag stands for
+  // that message until a price is accepted or "follow" is used; a failed save also sets `error`, but is no refusal.
+  const [refused, setRefused] = useState(false);
   const table = useLoad(() => api.linePrices(code, scope), [code, scope]);
   const { run, busy } = useAction({ setError, setNote: noNote });
 
@@ -72,9 +75,11 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
     const to = text === '' ? null : parseShekel(text);
     if (text !== '' && to === null) {
       setError(apiText('بيانات غير صالحة'));
+      setRefused(true);
       return;
     }
     setError('');
+    setRefused(false);
     setDrafts((now) => {
       const next = { ...now };
       if (to === null) delete next[price];
@@ -85,12 +90,16 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
 
   function follow() {
     setError('');
+    setRefused(false);
     setDrafts(Object.fromEntries(groups.map((group) => [group.price, 'current' as const])));
   }
 
   // Save is never held back by the drafts. A disabled button swallows the mousedown, so a field still being typed
   // in would not blur and commit; an enabled one blurs the field first, the draft lands, and the same click saves.
   function save() {
+    // A refused price is on screen: save neither sends around it nor closes over it. Cancel and Escape still close.
+    // It keys on the refusal, not on `error`: after a failed save `error` is set too, and save must stay a retry.
+    if (refused) return;
     // Nothing differs from what the groups already carry, so there is nothing to send.
     if (changes.length === 0) {
       onClose();
