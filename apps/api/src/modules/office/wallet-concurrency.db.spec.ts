@@ -6,8 +6,11 @@ import type { NoticeService } from './notice.service';
 import { OfficeService } from './office.service';
 
 // Runs against a real PostgreSQL only: in-memory stores cannot show a lost update.
-//   TEST_DATABASE_URL=postgresql://smilesim:smilesim@localhost:5432/smilesim_test npx jest wallet-concurrency
-// The database needs the migrations applied (`DATABASE_URL=… npx prisma migrate deploy`).
+// The compose postgres does not publish a host port, so use a throwaway one:
+//   docker run -d --name smilesim-wallet-test-pg -e POSTGRES_USER=smilesim -e POSTGRES_PASSWORD=smilesim \
+//     -e POSTGRES_DB=smilesim_test -p 55432:5432 postgres:16
+//   DATABASE_URL=postgresql://smilesim:smilesim@localhost:55432/smilesim_test npx prisma migrate deploy
+//   TEST_DATABASE_URL=postgresql://smilesim:smilesim@localhost:55432/smilesim_test npm test -- wallet-concurrency
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
