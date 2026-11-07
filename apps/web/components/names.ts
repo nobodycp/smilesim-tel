@@ -42,6 +42,7 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'user_freeze') return t.actUserFreeze;
   if (action === 'user_restore') return t.actUserRestore;
   if (action === 'user_delete') return t.actUserDelete;
+  if (action === 'user_transfer') return t.actUserTransfer;
   if (action === 'access') return t.actAccess;
   if (action === 'leave') return t.actLeave;
   if (action === 'task_take') return t.actTaskTake;

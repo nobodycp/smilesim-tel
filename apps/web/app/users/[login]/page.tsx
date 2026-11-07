@@ -168,11 +168,11 @@ export default function AccountPage() {
                 const on = row.isBranchOwner || (mode === 'deny' ? false : mode === 'allow' ? true : fromRole);
                 return (
                   <div key={code} className="grant-line">
-                    <span>{grantLabel(t, code)}</span>
+                    <span>{grantLabel(t, code, row.layer)}</span>
                     <span className={on ? 'badge' : 'badge cancelled'}>{on ? t.grantAllow : t.grantDeny}</span>
                     {row.canEdit ? (
                       <select
-                        aria-label={grantLabel(t, code)}
+                        aria-label={grantLabel(t, code, row.layer)}
                         value={mode}
                         onChange={(event) => setChoices({ ...picked, [code]: event.target.value as Choice })}
                       >

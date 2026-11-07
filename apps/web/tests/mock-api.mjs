@@ -89,6 +89,7 @@ createServer((req, res) => {
             layer: 'branch',
             isBranchOwner: true,
             grants: ['edit', 'reports', 'staff'],
+            stops: [],
             impersonating: false,
             balance: 1000,
             ceiling: 0,

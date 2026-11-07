@@ -18,6 +18,8 @@ export function noticeTitle(t: Copy, row: NoticeRow): string {
     case 'wallet.negative': return t.noticeNegative;
     case 'wallet.ceiling': return t.noticeCeiling;
     case 'announcement': return t.noticeAnnouncement;
+    case 'transfer.out': return t.noticeTransferOut;
+    case 'transfer.in': return t.noticeTransferIn;
     default: return row.kind;
   }
 }
@@ -53,6 +55,15 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
   if (row.kind === 'announcement') {
     if (p.authorName) parts.push(p.authorName);
     if (p.excerpt) parts.push(p.excerpt);
+    return parts.join(' · ');
+  }
+  if (row.kind === 'transfer.out' || row.kind === 'transfer.in') {
+    // What moved, then the account it went to (out) or came from (in), then who moved it.
+    if (p.subject) parts.push(p.subject);
+    if (row.kind === 'transfer.out' && p.toLogin) parts.push(`${t.noticeTo} ${p.toLogin}`);
+    if (row.kind === 'transfer.in' && p.fromLogin) parts.push(`${t.noticeFrom} ${p.fromLogin}`);
+    const who = p.actorName || row.actorName;
+    if (who) parts.push(`${t.noticeBy} ${who}`);
     return parts.join(' · ');
   }
   return row.actorName;

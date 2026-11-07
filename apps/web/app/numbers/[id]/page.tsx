@@ -388,7 +388,7 @@ export default function LineCardPage() {
                 <Button
                   type="button"
                   disabled={busy || !posLogin}
-                  onClick={() => act(() => api.transferLine(line.id, posLogin), { note: t.transfer, then: closeDialog })}
+                  onClick={() => act(() => api.transferLine(line.id, posLogin, 'keep'), { note: t.transfer, then: closeDialog })}
                 >
                   {t.transfer}
                 </Button>

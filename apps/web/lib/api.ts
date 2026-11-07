@@ -205,9 +205,12 @@ export const api = {
   officeRoles: () => request<{ roles: RoleRow[] }>('GET', '/office/roles'),
   saveRole: (body: { id?: string; name: string; grants: string[]; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean }) =>
     request<{ ok: true }>('POST', '/office/roles', body),
-  transferPos: (loginName: string, parentLogin: string) =>
-    request<{ ok: true }>('POST', `/office/users/${segment(loginName)}/transfer`, { parentLogin }),
-  transferLine: (id: string, posLogin: string) => request<{ ok: true }>('POST', `/office/lines/${segment(id)}/transfer`, { posLogin }),
+  transferAccount: (loginName: string, body: TransferAccountBody) =>
+    request<{ ok: true; lines: number }>('POST', `/office/users/${segment(loginName)}/transfer`, body),
+  transferPreview: (loginName: string, parentLogin: string) =>
+    request<TransferPreview>('GET', `/office/users/${segment(loginName)}/transfer-preview${queryString({ parentLogin })}`),
+  transferLine: (id: string, posLogin: string, linePrices: TransferLinePrices) =>
+    request<{ ok: true }>('POST', `/office/lines/${segment(id)}/transfer`, { posLogin, linePrices }),
   setPackageMode: (code: string, body: Record<string, boolean | string>) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/mode`, body),
   packageSheet: (code: string) => request<PackageSheet>('GET', `/office/packages/${segment(code)}/sheet`),
@@ -459,6 +462,27 @@ export type UserRow = {
   canFreeze: boolean;
   canDelete: boolean;
 };
+/** What a move does to the terms written on an account: `keep` leaves them, `reset` deletes them. */
+export type TransferReset = 'keep' | 'reset';
+/** What a move does to the renewal price each moved number carries: `keep` it, or `recapture` it under the new parent. */
+export type TransferLinePrices = 'keep' | 'recapture';
+/** The choices of an account move. Every one is stated, none has a default; the `child` ones are for an agent only. */
+export type TransferAccountBody = {
+  parentLogin: string;
+  ownPrices: TransferReset;
+  ownStops: TransferReset;
+  childPrices?: TransferReset;
+  childStops?: TransferReset;
+  linePrices: TransferLinePrices;
+};
+/** What a move would carry, counted before anything is written. Balances are agorot; `child` is null for a point of sale. */
+export type TransferPreview = {
+  balance: number;
+  subtreeBalance: number;
+  own: { customPrices: number; hidden: number; stops: number; belowNewFloor: number };
+  child: { customPrices: number; hidden: number; stops: number; sellPrices: number } | null;
+  lines: number;
+};
 export type ReportPayload = {
   rows?: { providerName: string; companyName: string; packageName: string; price: number; lines: number }[];
   entries?: ReportRow[];
@@ -588,6 +612,12 @@ export type NoticePayload = {
   attempted?: number;
   loginName?: string;
   announcementId?: string;
+  /** `transfer.out` and `transfer.in`: what moved, its msisdn or login, and the other account. */
+  kind?: 'line' | 'pos' | 'agent';
+  subject?: string;
+  fromLogin?: string;
+  toLogin?: string;
+  actorName?: string;
 };
 export type NoticeRow = {
   id: string;

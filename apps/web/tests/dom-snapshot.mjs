@@ -24,6 +24,7 @@ const me = (layer) => ({
   layer,
   isBranchOwner: layer === 'branch',
   grants: ['edit', 'reports', 'staff'],
+  stops: [],
   impersonating: false,
   balance: 1000,
   ceiling: 0,

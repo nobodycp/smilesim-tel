@@ -11,6 +11,7 @@ export async function asBranch(page: Page) {
         layer: 'branch',
         isBranchOwner: true,
         grants: ['edit', 'reports', 'staff'],
+        stops: [],
         impersonating: false,
         balance: 1000,
         ceiling: 0,
@@ -60,7 +61,7 @@ export async function serveOffice(page: Page, layer: keyof typeof accounts, rout
     calls.push(`${key}${url.search}`);
     let reply: Reply = { body: { message: 'none' }, status: 404 };
     if (routes[key]) reply = routes[key](url);
-    else if (key === 'GET /me') reply = { body: { ...accounts[layer], impersonating: false, balance: 1000, ceiling: 0 } };
+    else if (key === 'GET /me') reply = { body: { ...accounts[layer], stops: [], impersonating: false, balance: 1000, ceiling: 0 } };
     else if (key === 'GET /directory') reply = { body: { names: Object.fromEntries(Object.values(accounts).map((row) => [row.loginName, row.nickname])) } };
     else if (key === 'GET /notices') reply = { body: { unread: 0, notices: [], nextCursor: null } };
     else if (key === 'GET /notices/stream') reply = { body: {}, status: 204 };

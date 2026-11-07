@@ -317,7 +317,8 @@ export default function UsersPage() {
                 <Button type="button" variant="secondary" disabled={busy} onClick={() => setOp(null)}>{t.cancel}</Button>
                 {op.kind === 'fund' ? <Button type="button" disabled={busy} onClick={() => fund(active)}>{t.fund}</Button> : null}
                 {op.kind === 'ceiling' ? <Button type="button" disabled={busy} onClick={() => saveCeiling(active)}>{t.save}</Button> : null}
-                {op.kind === 'transfer' ? <Button type="button" disabled={busy || !dest[active.loginName]} onClick={() => run(() => api.transferPos(active.loginName, dest[active.loginName] ?? ''))}>{t.transfer}</Button> : null}
+                {/* Until the transfer dialog asks for each choice, a move changes the parent and nothing else. */}
+                {op.kind === 'transfer' ? <Button type="button" disabled={busy || !dest[active.loginName]} onClick={() => run(() => api.transferAccount(active.loginName, { parentLogin: dest[active.loginName] ?? '', ownPrices: 'keep', ownStops: 'keep', linePrices: 'keep' }))}>{t.transfer}</Button> : null}
                 {op.kind === 'password' ? <Button type="button" disabled={busy} onClick={() => run(() => api.setUserPassword(active.loginName, passwords[active.loginName] ?? ''))}>{t.save}</Button> : null}
                 {op.kind === 'freeze' ? <Button type="button" disabled={busy} onClick={() => run(() => (active.frozen ? api.restoreUser(active.loginName) : api.freezeUser(active.loginName)))}>{active.frozen ? t.restoreAccount : t.freezeAccount}</Button> : null}
                 {op.kind === 'enter' ? (

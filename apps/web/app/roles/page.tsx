@@ -7,7 +7,7 @@ import { Dialog } from '../../components/dialog';
 import { RowMenu } from '../../components/row-menu';
 import { Button } from '../../components/ui/button';
 import { api, type RoleRow } from '../../lib/api';
-import { GRANT_CODES, grantLabel } from '../../lib/grants';
+import { GRANT_CODES, grantLabel, grantUsable } from '../../lib/grants';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
 import { useLoad } from '../../lib/use-load';
@@ -22,6 +22,9 @@ function codesOf(row: RoleRow) {
 }
 
 const emptyDraft = (): RoleDraft => ({ id: '', name: '', kind: 'job', layer: '', grants: ['read'] });
+
+// A job role has no layer of its own: it belongs to the branch, so it is worded and offered as the branch's.
+const layerOf = (role: { layer?: string }) => role.layer || 'branch';
 
 export default function RolesPage() {
   const { t } = usePrefs();
@@ -62,7 +65,8 @@ export default function RolesPage() {
   }
 
   function labels(row: RoleRow) {
-    return codesOf(row).map((code) => grantLabel(t, code)).join(' · ') || '—';
+    const layer = layerOf(row);
+    return codesOf(row).filter((code) => grantUsable(code, layer)).map((code) => grantLabel(t, code, layer)).join(' · ') || '—';
   }
 
   const columns: Column<RoleRow>[] = [
@@ -113,7 +117,7 @@ export default function RolesPage() {
             )}
             <fieldset className="perm-grid">
               <legend>{t.permissions}</legend>
-              {GRANT_CODES.map((code) => (
+              {GRANT_CODES.filter((code) => grantUsable(code, layerOf(draft))).map((code) => (
                 <label key={code} className="check">
                   <input
                     type="checkbox"
@@ -125,7 +129,7 @@ export default function RolesPage() {
                         : current.grants.filter((item) => item !== code),
                     }))}
                   />
-                  {grantLabel(t, code)}
+                  {grantLabel(t, code, layerOf(draft))}
                 </label>
               ))}
             </fieldset>
