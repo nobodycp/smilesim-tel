@@ -10,7 +10,7 @@ import { OfficeService } from './office.service';
 import type { LineTerms } from './office-rules';
 import { account, tree, type Row } from './tree-fixture';
 
-// Moving an account, and what the office is told before it does.
+// Moving an account or a number, and what the office is told before it does.
 // The tree is the one in tree-fixture.ts: branch → ma1 → ag1 → pos1 and ma1 → ag2 → pos2, plus ma2 with nothing under it.
 // The fixture's accounts hold no grants but the branch owner's, so each case gives its actor the grant it is about.
 
@@ -268,6 +268,8 @@ const agentMove = (patch: Record<string, unknown> = {}) => ({
   parentLogin: 'ma2', ownPrices: 'keep', ownStops: 'keep', childPrices: 'keep', childStops: 'keep', linePrices: 'keep', ...patch,
 });
 const everyReset = { ownPrices: 'reset', ownStops: 'reset', childPrices: 'reset', childStops: 'reset' };
+// A number moves by its own route. Its body names the point of sale and what the number's renewal price does; there is no default.
+const lineMove = (patch: Record<string, unknown> = {}) => ({ posLogin: 'pos2', linePrices: 'keep', ...patch });
 /** The renewal price a number carries. */
 const renewalOf = (item: Row) => (item.terms as LineTerms).renewal.posPrice;
 /** Makes a number carry this renewal price. */
@@ -275,6 +277,12 @@ const carries = (item: Row, posPrice: number) => {
   const held = item.terms as LineTerms;
   item.terms = { ...held, renewal: { ...held.renewal, posPrice } };
 };
+/** The tree where ag1 sells its points of sale renewals at 3300 and ag2 at 3400; the layer column, and what ln1 carries, is 3200. */
+async function sellers() {
+  const fixture = await tree();
+  fixture.sellPrices.push(sell('ag1', 'pa', 3700, 3300), sell('ag2', 'pa', 3700, 3400));
+  return fixture;
+}
 /**
  * Makes the notice writer list what it is asked to write, and the live channel list what it is asked to
  * publish. The writer still writes, so the rows reach the fixture's `notices` as they reach the table.
@@ -414,13 +422,6 @@ describe('transfer: an agent', () => {
 });
 
 describe('transfer: the prices of the moved numbers', () => {
-  /** ag1 sells its points of sale renewals at 3300, ag2 at 3400; the layer column, and what ln1 carries, is 3200. */
-  async function sellers() {
-    const fixture = await tree();
-    fixture.sellPrices.push(sell('ag1', 'pa', 3700, 3300), sell('ag2', 'pa', 3700, 3400));
-    return fixture;
-  }
-
   it('recapture prices moved numbers under the new parent', async () => {
     const recaptured = await sellers();
     const before = structuredClone(recaptured.line.terms) as LineTerms;
@@ -637,7 +638,231 @@ describe('transfer: refusals', () => {
   });
 });
 
-describe('the transfer routes under /office/users/:loginName', () => {
+describe('transfer: a number', () => {
+  /** What a move of a number touches, and so what a refused one must leave alone. */
+  const stored = ({ lines, entries, notices, wallets }: Awaited<ReturnType<typeof tree>>) => JSON.stringify({ lines, entries, notices, wallets });
+
+  it('lets an agent move a number between its own points of sale', async () => {
+    const { service, gates, accounts, line } = await tree();
+    accounts.push(account('pos3', 'pos', 'ag1'));
+    edit(accounts, 'ag1', { liveGrants: 'transferLines' });
+    await expect(service.transferLine(gates.ag1, 'ln1', lineMove({ posLogin: 'pos3' }))).resolves.toEqual({ ok: true });
+    expect(line).toMatchObject({ posId: 'pos3', opsLocked: false });
+  });
+
+  it('refuses an agent a point of sale under another agent, and lets the main agent above both move the number there', async () => {
+    const { service, gates, accounts, line } = await tree();
+    edit(accounts, 'ag1', { liveGrants: 'transferLines' });
+    edit(accounts, 'ma1', { liveGrants: 'transferLines' });
+    // pos2 sits under ag2: outside what ag1 sees, inside what ma1 sees.
+    await expect(service.transferLine(gates.ag1, 'ln1', lineMove())).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    expect(line.posId).toBe('pos1');
+    await expect(service.transferLine(gates.ma1, 'ln1', lineMove())).resolves.toEqual({ ok: true });
+    expect(line.posId).toBe('pos2');
+  });
+
+  it('recapture prices the number under the new point of sale, and keep leaves its terms as they are', async () => {
+    const recaptured = await sellers();
+    const before = structuredClone(recaptured.line.terms) as LineTerms;
+    expect(before.renewal.posPrice).toBe(3200);
+    await expect(recaptured.service.transferLine(recaptured.gates.branch, 'ln1', lineMove({ linePrices: 'recapture' }))).resolves.toEqual({ ok: true });
+    // Under ag2, not under ag1 and not the layer column; what the number was captured with stays.
+    expect(recaptured.line.posId).toBe('pos2');
+    expect(renewalOf(recaptured.line)).toBe(3400);
+    expect(recaptured.line.terms).toMatchObject({
+      packageCode: before.packageCode, months: before.months, windowMonths: before.windowMonths, subscription: before.subscription,
+    });
+
+    const kept = await sellers();
+    const unchanged = structuredClone(kept.line.terms);
+    await expect(kept.service.transferLine(kept.gates.branch, 'ln1', lineMove({ linePrices: 'keep' }))).resolves.toEqual({ ok: true });
+    expect(kept.line.posId).toBe('pos2');
+    expect(kept.line.terms).toEqual(unchanged);
+    expect(renewalOf(kept.line)).toBe(3200);
+  });
+
+  it('recapture resolves through the new point of sale: its own price is the nearest, and nothing of the old one follows the number', async () => {
+    const run = async (...rows: Row[]) => {
+      const { service, gates, userPackages, line } = await sellers();
+      userPackages.push(...rows);
+      await service.transferLine(gates.branch, 'ln1', lineMove({ linePrices: 'recapture' }));
+      return renewalOf(line);
+    };
+    // On the new path ag2 sells at 3400. What the old agent sells at (3300) does not follow the number, and neither does a price of its own on the old point of sale.
+    await expect(run()).resolves.toBe(3400);
+    await expect(run(terms('pos1', 'pa', { renewalPrice: 3050 }))).resolves.toBe(3400);
+    // The new point of sale's own price beats the sell price of its agent.
+    await expect(run(terms('pos2', 'pa', { renewalPrice: 3100 }))).resolves.toBe(3100);
+  });
+
+  it('moves a number that can no longer renew, and recapture prices it as the caller asked', async () => {
+    const { service, gates, line } = await sellers();
+    line.status = 'disconnected';
+    await expect(service.transferLine(gates.branch, 'ln1', lineMove({ linePrices: 'recapture' }))).resolves.toEqual({ ok: true });
+    expect(line).toMatchObject({ posId: 'pos2', status: 'disconnected' });
+    expect(renewalOf(line)).toBe(3400);
+  });
+
+  it('refuses where a transfer stop sits on the actor path, and not the branch above it', async () => {
+    const { service, gates, accounts, line } = await tree();
+    edit(accounts, 'ma1', { liveGrants: 'transferLines', deniedOps: 'transfer' });
+    await expect(service.transferLine(gates.ma1, 'ln1', lineMove())).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    expect(line.posId).toBe('pos1');
+    await expect(service.transferLine(gates.branch, 'ln1', lineMove())).resolves.toEqual({ ok: true });
+    expect(line.posId).toBe('pos2');
+  });
+
+  it('judges the stop on whoever moves the number, not on the point of sale that owns it', async () => {
+    const { service, gates, accounts, line } = await tree();
+    edit(accounts, 'ma1', { liveGrants: 'transferLines' });
+    // The stops of the selling account and of its agent sit below ma1, not on its path.
+    edit(accounts, 'pos1', { deniedOps: 'transfer' });
+    edit(accounts, 'ag1', { deniedOps: 'transfer' });
+    await expect(service.transferLine(gates.ma1, 'ln1', lineMove())).resolves.toEqual({ ok: true });
+    expect(line.posId).toBe('pos2');
+  });
+
+  it('refuses a frozen point of sale, and a number that already is on the one named', async () => {
+    const { service, gates, accounts, line } = await tree();
+    edit(accounts, 'pos2', { disabledAt: new Date('2026-11-01T00:00:00.000Z') });
+    await expect(service.transferLine(gates.branch, 'ln1', lineMove())).rejects.toEqual(refused(400, 'INVALID'));
+    expect(line.posId).toBe('pos1');
+    await expect(service.transferLine(gates.branch, 'ln1', lineMove({ posLogin: 'pos1' }))).rejects.toEqual(refused(400, 'INVALID'));
+    // A frozen point of sale may still send a number away.
+    edit(accounts, 'pos2', { disabledAt: null });
+    edit(accounts, 'pos1', { disabledAt: new Date('2026-11-01T00:00:00.000Z') });
+    await expect(service.transferLine(gates.branch, 'ln1', lineMove())).resolves.toEqual({ ok: true });
+    expect(line.posId).toBe('pos2');
+  });
+
+  it('refuses what the rules refuse, as the move of an account does, and writes nothing', async () => {
+    const fixture = await tree();
+    const { service, gates, accounts, lines, line, notice } = fixture;
+    // A second chain under ma2, with a number of its own. ma1 holds the grant for numbers but sees only its own chain.
+    accounts.push(account('ag3', 'agent', 'ma2'), account('pos4', 'pos', 'ag3'));
+    lines.push(number(line, 'ln2', { posId: 'pos4' }));
+    edit(accounts, 'ma1', { liveGrants: 'transferLines' });
+    // A grant for another kind is no grant for numbers.
+    edit(accounts, 'ag1', { liveGrants: 'transferPos,transferAgents' });
+    const heard = listen(notice);
+    const before = stored(fixture);
+    const cases: [who: string, lineId: string, posLogin: unknown, status: number, code: string][] = [
+      ['ag1', 'ln1', 'pos2', 403, 'FORBIDDEN'],
+      ['ma1', 'ln1', 'pos4', 403, 'FORBIDDEN'],
+      ['ma1', 'ln2', 'pos2', 403, 'FORBIDDEN'],
+      ['branch', 'ghost', 'pos2', 404, 'NOT_FOUND'],
+      ['branch', 'ln1', 'pos1', 400, 'INVALID'],
+      ['branch', 'ln1', 'ag2', 400, 'INVALID'],
+      ['branch', 'ln1', 'ma1', 400, 'INVALID'],
+      ['branch', 'ln1', 'ghost', 400, 'INVALID'],
+      ...[undefined, '', ['pos2'], 7, null].map((posLogin): [string, string, unknown, number, string] => ['branch', 'ln1', posLogin, 400, 'INVALID']),
+    ];
+    for (const [who, lineId, posLogin, status, code] of cases) {
+      await expect(service.transferLine(gates[who], lineId, lineMove({ posLogin }))).rejects.toEqual(refused(status, code));
+    }
+    expect(stored(fixture)).toBe(before);
+    expect(heard.written).toEqual([]);
+  });
+
+  it('reads the price choice before the number or any account: a word that is not one is INVALID to everyone', async () => {
+    const { service, gates } = await tree();
+    type Read = (...args: unknown[]) => Promise<unknown>;
+    const client = (service as unknown as { prismaClient: { user: { findMany: Read }; line: { findUnique: Read } } }).prismaClient;
+    let reads = 0;
+    const listed = client.user.findMany.bind(client.user);
+    client.user.findMany = (...args) => {
+      reads += 1;
+      return listed(...args);
+    };
+    const found = client.line.findUnique.bind(client.line);
+    client.line.findUnique = (...args) => {
+      reads += 1;
+      return found(...args);
+    };
+    // The branch may move numbers and ag1 may not; the choice is wrong for both, and nothing says which line or account exists.
+    for (const who of ['branch', 'ag1']) {
+      for (const linePrices of [undefined, '', 'KEEP', 'reset', 'drop', 'Recapture', null, 0, 1, true, ['keep'], {}]) {
+        await expect(service.transferLine(gates[who], 'ln1', lineMove({ linePrices }))).rejects.toEqual(refused(400, 'INVALID'));
+      }
+      await expect(service.transferLine(gates[who], 'ghost', { posLogin: 'pos2' })).rejects.toEqual(refused(400, 'INVALID'));
+    }
+    expect(reads).toBe(0);
+    // A body of words reads the number and the accounts, and the rules answer: the spy does count.
+    await expect(service.transferLine(gates.ag1, 'ln1', lineMove())).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    expect(reads).toBeGreaterThan(0);
+  });
+
+  it('refuses an impersonating session, even when it is the branch owner entered, and asks for a session', async () => {
+    const { service, auth, line } = await tree();
+    const sessionId = await auth.saveImpersonation({ userId: 'branch', userAgent: '', ip: '' });
+    await expect(service.transferLine({ sessionId }, 'ln1', lineMove())).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    await expect(service.transferLine({}, 'ln1', lineMove())).rejects.toEqual(refused(401, 'LOGIN_REQUIRED'));
+    expect(line.posId).toBe('pos1');
+  });
+
+  it('writes transfer.out to the point of sale that lost the number and transfer.in to the one that received it', async () => {
+    const { service, gates, notice, notices } = await tree();
+    const heard = listen(notice);
+    await service.transferLine(gates.branch, 'ln1', lineMove());
+    expect(heard.written).toEqual([
+      { userIds: ['pos1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'line', subject: '0521000001', toLogin: 'pos2', actorName: 'branch' } } },
+      { userIds: ['pos2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'line', subject: '0521000001', fromLogin: 'pos1', actorName: 'branch' } } },
+    ]);
+    // Both are published together, once the move has committed, and both are stored.
+    expect(heard.published.map((rows) => rows.map((row) => [row.userId, row.kind]))).toEqual([[['pos1', 'transfer.out'], ['pos2', 'transfer.in']]]);
+    expect(notices.map((row) => [row.userId, row.kind])).toEqual([['pos1', 'transfer.out'], ['pos2', 'transfer.in']]);
+  });
+
+  it('keeps the transfer on the operation record of the point of sale the number left, and moves no money', async () => {
+    for (const linePrices of ['keep', 'recapture']) {
+      const { service, gates, entries, wallets } = await sellers();
+      await service.transferLine(gates.branch, 'ln1', lineMove({ linePrices }));
+      expect(entries).toEqual([
+        expect.objectContaining({ userId: 'pos1', actorId: 'branch', kind: 'transfer', amount: 0, balanceAfter: 100000, msisdn: '0521000001', lineId: 'ln1', packageName: '150 جيجا' }),
+      ]);
+      expect(rowOf(wallets, 'w-pos1').balance).toBe(100000);
+      expect(rowOf(wallets, 'w-pos2').balance).toBe(0);
+    }
+  });
+
+  it('is one transaction: a notice that cannot be written puts the number, its price, and its record back and publishes nothing', async () => {
+    const fixture = await sellers();
+    const { service, gates, notice, notices, entries, line } = fixture;
+    const heard = listen(notice);
+    const write = notice.write.bind(notice);
+    // The first notice is stored and the number has moved when the second one fails, so what is back afterwards is the rollback and not a write that never ran.
+    const whenItFails: { entries: number; notices: number; posId: unknown; price: number }[] = [];
+    notice.write = async (tx, userIds, actor, draft) => {
+      if (draft.kind === 'transfer.in') {
+        whenItFails.push({ entries: entries.length, notices: notices.length, posId: line.posId, price: renewalOf(line) });
+        throw new Error('connection lost');
+      }
+      return write(tx, userIds, actor, draft);
+    };
+    const before = stored(fixture);
+    await expect(service.transferLine(gates.branch, 'ln1', lineMove({ linePrices: 'recapture' }))).rejects.toThrow('connection lost');
+    expect(whenItFails).toEqual([{ entries: 1, notices: 1, posId: 'pos2', price: 3400 }]);
+    expect(stored(fixture)).toBe(before);
+    expect(line).toMatchObject({ posId: 'pos1' });
+    expect(renewalOf(line)).toBe(3200);
+    expect(heard.published).toEqual([]);
+  });
+
+  it('refuses the whole move when a recapture cannot be priced, and keep still moves the number', async () => {
+    const fixture = await tree();
+    const { service, gates, pkgA, pkgB, line } = fixture;
+    // The package lists a renewal target that has no company, so the number cannot be captured again.
+    pkgA.renewals = [{ target: { ...pkgB, company: null } }];
+    const before = stored(fixture);
+    await expect(service.transferLine(gates.branch, 'ln1', lineMove({ linePrices: 'recapture' }))).rejects.toEqual(refused(400, 'INVALID'));
+    expect(stored(fixture)).toBe(before);
+    expect(line.posId).toBe('pos1');
+    await expect(service.transferLine(gates.branch, 'ln1', lineMove({ linePrices: 'keep' }))).resolves.toEqual({ ok: true });
+    expect(line.posId).toBe('pos2');
+  });
+});
+
+describe('the transfer routes under /office', () => {
   let app: INestApplication | undefined;
   const recorded: unknown[][] = [];
 
@@ -721,5 +946,30 @@ describe('the transfer routes under /office/users/:loginName', () => {
       [event('pos1'), 'fail', 'FORBIDDEN'],
       [event('pos1'), 'fail', 'INVALID'],
     ]);
+  });
+
+  it('POST lines/:id/transfer hands the service the whole body: the point of sale and the price choice', async () => {
+    const { service, gates, accounts, line } = await sellers();
+    edit(accounts, 'ag1', { liveGrants: 'transferLines' });
+    app = await appFor(service);
+    const post = (gate: { sessionId: string }, body: object) =>
+      request(app!.getHttpServer()).post('/office/lines/ln1/transfer').set('Cookie', `sid=${gate.sessionId}`).send(body);
+
+    const forbidden = await post(gates.ag1, lineMove());
+    expect(forbidden.status).toBe(403);
+    expect(forbidden.body).toMatchObject({ code: 'FORBIDDEN' });
+
+    // A body that names the point of sale and leaves the price out is not a move.
+    const invalid = await post(gates.branch, { posLogin: 'pos2' });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body).toMatchObject({ code: 'INVALID' });
+    expect(line.posId).toBe('pos1');
+
+    // The choice reaches the service: the number takes the price of its new point of sale.
+    const ok = await post(gates.branch, lineMove({ linePrices: 'recapture' }));
+    expect(ok.status).toBe(201);
+    expect(ok.body).toEqual({ ok: true });
+    expect(line.posId).toBe('pos2');
+    expect(renewalOf(line)).toBe(3400);
   });
 });

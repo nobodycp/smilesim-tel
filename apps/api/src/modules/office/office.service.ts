@@ -66,7 +66,7 @@ import {
 import { activityActorFilter, clampActivityRange } from './activity-log';
 import { RENEWABLE_STATUSES, groupChanges, groupLinePrices, repriceLine, stampRenewal, type PriceGroup } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
-import { TRANSFER_GRANT, canTransfer, parseChoice, parseLineChoice, previewOf, transferKind } from './transfer-rules';
+import { TRANSFER_GRANT, canTransfer, parseChoice, parseLineChoice, previewOf, transferKind, type TransferKind } from './transfer-rules';
 import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey, layerPrice, parseOps, priceSource, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type PriceSource, type SellRow, type TermRow } from './user-terms';
 import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
@@ -2126,10 +2126,7 @@ export class OfficeService implements OnModuleInit {
         const accountsAfter = accounts.map((account) => (account.id === moved.id ? { ...account, parentId: next.id } : account));
         repriced = await this.repriceLines(tx, renewable, () => ({ to: 'current' }), accountsAfter);
       }
-      const payload = { kind, subject: moved.loginName, actorName: actor.nickname };
-      const lost = await this.notice.write(tx, [from.id], actor, { kind: 'transfer.out', payload: { ...payload, toLogin: next.loginName } });
-      const gained = await this.notice.write(tx, [next.id], actor, { kind: 'transfer.in', payload: { ...payload, fromLogin: from.loginName } });
-      this.queueNotices(tx, [...lost, ...gained]);
+      await this.writeTransferNotices(tx, actor, { kind, subject: moved.loginName, from, to: next });
       return repriced;
     });
     return { ok: true as const, lines };
@@ -2199,28 +2196,57 @@ export class OfficeService implements OnModuleInit {
     }
     const next = typeof parentLogin === 'string' ? accounts.find((account) => account.loginName === parentLogin) : undefined;
     const from = accounts.find((account) => account.id === moved.parentId);
-    const refusal = canTransfer({
-      kind,
-      actor: { grants: actor.grants, impersonating: actor.impersonating },
-      actorStops: deniedOpsFor(this.pathOf(actor.id, accounts)),
-      currentParentId: moved.parentId ?? '',
-      destination: next ? { id: next.id, layer: next.layer, frozen: Boolean(next.disabledAt) } : null,
-      visible: visibleAccountIds(actor.id, actor.layer, accounts),
-    });
+    const refusal = this.transferRefusal(actor, accounts, { kind, currentParentId: moved.parentId ?? '', next });
     if (refusal === 'FORBIDDEN') fail(403, 'FORBIDDEN');
     if (refusal || !next || !from) fail(400, 'INVALID');
     return { moved, next, from, kind };
   }
 
-  async transferLine(gate: Gate, lineId: string, body: { posLogin?: unknown }) {
+  /**
+   * What the transfer rules say about one move for this actor, on the accounts the caller already loaded.
+   * The preview, the move of an account, and the move of a number all ask here, so each reads the
+   * destination the same way: its layer, and whether it is frozen.
+   */
+  private transferRefusal(actor: Actor, accounts: Account[], move: { kind: TransferKind; currentParentId: string; next: Account | undefined }) {
+    return canTransfer({
+      kind: move.kind,
+      actor: { grants: actor.grants, impersonating: actor.impersonating },
+      actorStops: deniedOpsFor(this.pathOf(actor.id, accounts)),
+      currentParentId: move.currentParentId,
+      destination: move.next ? { id: move.next.id, layer: move.next.layer, frozen: Boolean(move.next.disabledAt) } : null,
+      visible: visibleAccountIds(actor.id, actor.layer, accounts),
+    });
+  }
+
+  /**
+   * Tells the account that lost something and the account that received it, in the caller's transaction.
+   * Both notices are published together once it commits. `subject` is the msisdn or the login that moved.
+   */
+  private async writeTransferNotices(tx: Prisma.TransactionClient, actor: Actor, move: { kind: TransferKind; subject: string; from: Account; to: Account }) {
+    const payload = { kind: move.kind, subject: move.subject, actorName: actor.nickname };
+    const lost = await this.notice.write(tx, [move.from.id], actor, { kind: 'transfer.out', payload: { ...payload, toLogin: move.to.loginName } });
+    const gained = await this.notice.write(tx, [move.to.id], actor, { kind: 'transfer.in', payload: { ...payload, fromLogin: move.from.loginName } });
+    this.queueNotices(tx, [...lost, ...gained]);
+  }
+
+  /**
+   * Moves a number to another point of sale. The caller states what happens to the renewal price the number
+   * carries: it stays, or it is worked out again under the new point of sale (`recapture`). There is no
+   * default, and the word is checked before anything is read. Then the rules decide, the ones that decide a
+   * move of an account: the grant, a stop on the caller's own path, the point of sale named, and what the
+   * caller can see. The move, its operation record, the recapture, and both notices are one transaction.
+   */
+  async transferLine(gate: Gate, lineId: string, body: { posLogin?: unknown; linePrices?: unknown }) {
     const actor = await this.actor(gate);
-    if (actor.impersonating || !actor.grants.includes('transferLines')) fail(403, 'FORBIDDEN');
-    const posLogin = typeof body.posLogin === 'string' ? body.posLogin : '';
+    const linePrices = parseLineChoice(body.linePrices);
+    if (!linePrices) fail(400, 'INVALID');
     const line = await this.visibleLine(actor, lineId);
     const accounts = await this.accounts();
-    const next = accounts.find((account) => account.loginName === posLogin && account.layer === 'pos');
-    if (!next || next.id === line.posId) fail(400, 'INVALID');
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(next.id)) fail(403, 'FORBIDDEN');
+    const next = typeof body.posLogin === 'string' ? accounts.find((account) => account.loginName === body.posLogin) : undefined;
+    const from = accounts.find((account) => account.id === line.posId);
+    const refusal = this.transferRefusal(actor, accounts, { kind: 'line', currentParentId: line.posId, next });
+    if (refusal === 'FORBIDDEN') fail(403, 'FORBIDDEN');
+    if (refusal || !next || !from) fail(400, 'INVALID');
     const locked = !line.package.companyId;
     await this.runTx(async (tx) => {
       await tx.line.update({
@@ -2228,6 +2254,9 @@ export class OfficeService implements OnModuleInit {
         data: { posId: next.id, opsLocked: locked },
       });
       await this.recordOp(tx, line.posId, actor.operatorId, 'transfer', saleOf(line));
+      // After the move, so the number is priced through the point of sale it is on now and the chain above it.
+      if (linePrices === 'recapture') await this.repriceLines(tx, [{ ...line, posId: next.id }], () => ({ to: 'current' }), accounts);
+      await this.writeTransferNotices(tx, actor, { kind: 'line', subject: line.msisdn, from, to: next });
     });
     return { ok: true as const };
   }

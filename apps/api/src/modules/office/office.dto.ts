@@ -148,8 +148,11 @@ export class SwapSimBodyDto {
 }
 
 export class TransferLineBodyDto {
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'The point of sale the number moves to' })
   posLogin?: string;
+
+  @ApiPropertyOptional({ enum: ['keep', 'recapture'], description: 'Renewal price carried by the number: keep it, or price it again under the new point of sale; required' })
+  linePrices?: string;
 }
 
 export class SwitchPackageBodyDto {

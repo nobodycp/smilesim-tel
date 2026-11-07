@@ -136,7 +136,12 @@ export async function tree() {
     },
   };
   const lineModel = {
-    findUnique: async ({ where }: { where: { id?: string; msisdn?: string } }) => lines.find((row) => (where.id ? row.id === where.id : row.msisdn === where.msisdn)) ?? null,
+    // The database hands back a fresh object, so a number the service holds keeps the point of sale it was read with
+    // after a write moves it, and what the service adds to it (`posPath`, `denied`) is not stored.
+    findUnique: async ({ where }: { where: { id?: string; msisdn?: string } }) => {
+      const row = lines.find((item) => (where.id ? item.id === where.id : item.msisdn === where.msisdn));
+      return row ? { ...row, terms: structuredClone(row.terms) } : null;
+    },
     findMany: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)),
     count: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)).length,
     groupBy: async ({ by, where, _count }: { by: string[]; where?: Record<string, unknown>; _count: { _all: true } }) => {
@@ -223,14 +228,15 @@ export async function tree() {
     role: null,
     walletEntry: { findMany: async () => [], findFirst: async () => null, count: async () => 0 },
     // A failed transaction puts back everything a write in it can touch, as the database would: the accounts
-    // (their parent and stops), both terms tables, every line (its terms and its point of sale), and the
-    // notices written so far.
+    // (their parent and stops), both terms tables, every line (its terms and its point of sale), the wallet
+    // entries, and the notices written so far.
     $transaction: async (run: (client: typeof tx) => Promise<unknown>) => {
       const keep = {
         accounts: new Map(accounts.map((row) => [row, { ...row }] as const)),
         userPackages: userPackages.map((row) => ({ ...row })),
         sellPrices: sellPrices.map((row) => ({ ...row })),
         lines: new Map(lines.map((row) => [row, { ...row, terms: structuredClone(row.terms) }] as const)),
+        entries: entries.map((row) => ({ ...row })),
         notices: notices.map((row) => ({ ...row })),
       };
       try {
@@ -240,6 +246,7 @@ export async function tree() {
         userPackages.splice(0, userPackages.length, ...keep.userPackages);
         sellPrices.splice(0, sellPrices.length, ...keep.sellPrices);
         for (const [row, stored] of keep.lines) Object.assign(row, stored);
+        entries.splice(0, entries.length, ...keep.entries);
         notices.splice(0, notices.length, ...keep.notices);
         throw error;
       }
