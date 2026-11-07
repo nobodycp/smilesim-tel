@@ -256,13 +256,19 @@ export class OfficeService implements OnModuleInit {
 
   async me(gate: Gate) {
     const actor = await this.actor(gate);
-    const wallet = await this.prisma.wallet.findUnique({ where: { userId: actor.id } });
+    const [wallet, accounts] = await Promise.all([
+      this.prisma.wallet.findUnique({ where: { userId: actor.id } }),
+      this.accounts(),
+    ]);
     return {
       loginName: actor.loginName,
       nickname: actor.nickname,
       layer: actor.layer,
       isBranchOwner: actor.isBranchOwner,
       grants: actor.grants,
+      // The stops on the actor's own path, own node included. `transfer` is judged on the actor, so the
+      // browser needs them to hide what the server would refuse.
+      stops: parseOps(serializeOps([...deniedOpsFor(this.pathOf(actor.id, accounts))])),
       impersonating: actor.impersonating,
       balance: wallet?.balance ?? 0,
       ceiling: wallet?.ceiling ?? 0,

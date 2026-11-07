@@ -1,4 +1,4 @@
-import { effectiveGrantCodes, roleGrantCodes } from './office-grants';
+import { GRANT_CODES, LAYER_GRANTS, effectiveGrantCodes, roleGrantCodes, splitGrants } from './office-grants';
 
 describe('effective grants', () => {
   it('keeps an old staff role that only has the boolean flags', () => {
@@ -55,5 +55,29 @@ describe('effective grants', () => {
     });
     expect(grants).toContain('transferLines');
     expect(grants).toContain('enter');
+  });
+
+  it('moves agents only with transferAgents: a code the role form can store and the owner always holds', () => {
+    expect(GRANT_CODES).toContain('transferAgents');
+    expect(splitGrants('transferLines,transferAgents,bogus')).toEqual(['transferLines', 'transferAgents']);
+    expect(roleGrantCodes({ grants: 'read,transferAgents' })).toEqual(['read', 'transferAgents']);
+    const owner = effectiveGrantCodes({ owner: true, staff: false, layer: 'branch', layerRole: null, roles: [], extra: '', denied: 'transferAgents' });
+    expect(owner).toContain('transferAgents');
+  });
+
+  it('gives branch staff transferAgents through a job role only, and a block still wins', () => {
+    const staff = { owner: false, staff: true, layer: 'branch', layerRole: null, extra: '' } as const;
+    expect(effectiveGrantCodes({ ...staff, roles: [], denied: '' })).toEqual([]);
+    expect(effectiveGrantCodes({ ...staff, roles: [{ grants: 'read,transferAgents' }], denied: '' })).toEqual(['read', 'transferAgents']);
+    expect(effectiveGrantCodes({ ...staff, roles: [{ grants: 'read,transferAgents' }], denied: 'transferAgents' })).toEqual(['read']);
+  });
+
+  it('leaves transferAgents out of every layer below the branch by default', () => {
+    expect(LAYER_GRANTS.branch).toContain('transferAgents');
+    for (const layer of ['main_agent', 'agent', 'pos']) {
+      expect(LAYER_GRANTS[layer]).not.toContain('transferAgents');
+      const held = effectiveGrantCodes({ owner: false, staff: false, layer, layerRole: null, roles: [], extra: '', denied: '' });
+      expect(held).not.toContain('transferAgents');
+    }
   });
 });

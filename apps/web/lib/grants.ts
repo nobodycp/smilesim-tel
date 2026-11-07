@@ -10,6 +10,7 @@ export const GRANT_CODES = [
   'enter',
   'transferLines',
   'transferPos',
+  'transferAgents',
 ] as const;
 
 export type GrantCode = (typeof GRANT_CODES)[number];
@@ -24,6 +25,7 @@ const labels: Record<GrantCode, (t: Copy) => string> = {
   enter: (t) => t.grantEnter,
   transferLines: (t) => t.grantTransferLines,
   transferPos: (t) => t.grantTransferPos,
+  transferAgents: (t) => t.grantTransferAgents,
 };
 
 export function grantLabel(t: Copy, code: string) {

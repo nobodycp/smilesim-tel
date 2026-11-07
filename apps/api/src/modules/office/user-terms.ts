@@ -5,7 +5,9 @@
 // service loads once per request and asks here. See
 // docs/superpowers/specs/2026-11-05-user-packages-and-operations-design.md.
 
-export const OP_KEYS = ['activate', 'charge', 'extend', 'switch', 'sim', 'esim', 'freeze', 'disconnect', 'rename'] as const;
+// The first nine are line operations, judged on the path of the selling account that owns the line.
+// `transfer` is the exception: it is judged on the path of the actor who moves (see transfer-rules.ts).
+export const OP_KEYS = ['activate', 'charge', 'extend', 'switch', 'sim', 'esim', 'freeze', 'disconnect', 'rename', 'transfer'] as const;
 export type OpKey = (typeof OP_KEYS)[number];
 export type PriceKind = 'subscription' | 'renewal';
 export type PriceSource = 'custom' | 'parent' | 'layer';

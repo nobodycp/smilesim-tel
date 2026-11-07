@@ -8,6 +8,7 @@ export const GRANT_CODES = [
   'enter',
   'transferLines',
   'transferPos',
+  'transferAgents',
 ] as const;
 
 export type GrantCode = (typeof GRANT_CODES)[number];

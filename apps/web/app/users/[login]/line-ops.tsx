@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftRight, BatteryCharging, CalendarPlus, CreditCard, Hash, PhoneOff, Power, QrCode, Snowflake } from 'lucide-react';
+import { ArrowLeftRight, ArrowRightLeft, BatteryCharging, CalendarPlus, CreditCard, Hash, PhoneOff, Power, QrCode, Snowflake } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { EmptyState } from '../../../components/empty-state';
 import { LiveSwitch } from '../../../components/live-switch';
@@ -21,6 +21,7 @@ const ICONS: Record<OpKey, ComponentType<{ 'aria-hidden'?: boolean | 'true' }>> 
   freeze: Snowflake,
   disconnect: PhoneOff,
   rename: Hash,
+  transfer: ArrowRightLeft,
 };
 
 /** The line operations `login` may run. A switch off is a stop that also binds everyone below. */

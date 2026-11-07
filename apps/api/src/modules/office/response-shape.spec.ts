@@ -11,7 +11,7 @@ import { OfficeService } from './office.service';
 // lists below are written by hand, the service must answer with exactly them, and the web types must
 // declare exactly them. Change a shape on one side and this fails until the other side and the list follow.
 
-const ME_KEYS = ['loginName', 'nickname', 'layer', 'isBranchOwner', 'grants', 'impersonating', 'balance', 'ceiling'];
+const ME_KEYS = ['loginName', 'nickname', 'layer', 'isBranchOwner', 'grants', 'stops', 'impersonating', 'balance', 'ceiling'];
 const HOME_KEYS = ['pendingTasks', 'activeLines', 'inactiveLines', 'canPost', 'operations', 'announcements'];
 const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
 const HOME_ANNOUNCEMENT_KEYS = ['id', 'body', 'at', 'authorName', 'authorLayer'];

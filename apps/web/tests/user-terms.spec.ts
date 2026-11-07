@@ -60,7 +60,7 @@ test('a main agent opening a grandchild sees only the access tab, and a hash to 
   await expect(page.getByText('لا رزم معروضة للبيع.')).toHaveCount(0);
 });
 
-test('the operations tab shows nine cards and marks an inherited stop', async ({ page }) => {
+test('the operations tab shows ten cards and marks an inherited stop', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveOffice(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
@@ -68,7 +68,7 @@ test('the operations tab shows nine cards and marks an inherited stop', async ({
   });
   await page.goto('http://admin.localhost:3910/users/pos1#ops');
   const cards = page.locator('.op-card');
-  await expect(cards).toHaveCount(9);
+  await expect(cards).toHaveCount(10);
   const charge = cards.filter({ hasText: 'شحن' }).first();
   await expect(charge.getByRole('switch')).toBeDisabled();
   await expect(charge.getByText('موقوف من ma1')).toBeVisible();

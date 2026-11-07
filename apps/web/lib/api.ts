@@ -263,6 +263,7 @@ export type OfficeMe = {
   layer: string;
   isBranchOwner: boolean;
   grants: string[];
+  stops: string[];
   impersonating: boolean;
   balance: number;
   ceiling: number;

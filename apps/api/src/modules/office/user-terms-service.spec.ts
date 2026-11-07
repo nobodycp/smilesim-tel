@@ -325,6 +325,45 @@ describe('run path through user terms', () => {
   });
 });
 
+describe('me and the stops on the actor path', () => {
+  const setStops = (accounts: { id: string }[], id: string, deniedOps: string) => { (accounts.find((item) => item.id === id) as Row).deniedOps = deniedOps; };
+
+  it('an agent learns the stop its main agent carries; the branch above it learns none', async () => {
+    const { service, gates, accounts } = await tree();
+    setStops(accounts, 'ma1', 'transfer');
+    await expect(service.me(gates.ag1)).resolves.toMatchObject({ stops: ['transfer'] });
+    await expect(service.me(gates.branch)).resolves.toMatchObject({ stops: [] });
+  });
+
+  it('counts the actor own node, passes a stop down to a point of sale, and leaves the other branches of the tree alone', async () => {
+    const { service, gates, accounts } = await tree();
+    setStops(accounts, 'ma1', 'transfer');
+    expect((await service.me(gates.ma1)).stops).toEqual(['transfer']);
+    expect((await service.me(gates.pos1)).stops).toEqual(['transfer']);
+    setStops(accounts, 'ma1', '');
+    setStops(accounts, 'ag1', 'transfer');
+    expect((await service.me(gates.ag1)).stops).toEqual(['transfer']);
+    expect((await service.me(gates.pos1)).stops).toEqual(['transfer']);
+    expect((await service.me(gates.ag2)).stops).toEqual([]);
+    expect((await service.me(gates.ma1)).stops).toEqual([]);
+  });
+
+  it('unions every node of the path in display order and drops keys it does not know', async () => {
+    const { service, gates, accounts } = await tree();
+    setStops(accounts, 'ma1', 'transfer,bogus');
+    setStops(accounts, 'pos1', 'sim,charge');
+    expect((await service.me(gates.pos1)).stops).toEqual(['charge', 'sim', 'transfer']);
+    expect((await service.me(gates.ag1)).stops).toEqual(['transfer']);
+  });
+
+  it('answers an empty list when nothing is stopped, beside the rest of the answer', async () => {
+    const { service, gates } = await tree();
+    const me = await service.me(gates.ag1);
+    expect(me.stops).toEqual([]);
+    expect(me).toMatchObject({ loginName: 'ag1', layer: 'agent', isBranchOwner: false, impersonating: false });
+  });
+});
+
 describe('writing user terms', () => {
   const row = (userId: string, patch: Record<string, unknown> = {}) => ({ id: `x-${userId}`, packageId: 'pa', userId, hidden: false, price: null, renewalPrice: null, setById: '', ...patch });
 

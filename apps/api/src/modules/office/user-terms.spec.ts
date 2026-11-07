@@ -1,9 +1,11 @@
 import {
+  OP_KEYS,
   buyPriceFor,
   deniedAbove,
   deniedOpsFor,
   floorFor,
   hiddenAbove,
+  isOpKey,
   layerPrice,
   parseOps,
   priceSource,
@@ -120,5 +122,18 @@ describe('operation stops', () => {
     expect(parseOps('sim,bogus,charge')).toEqual(['charge', 'sim']);
     expect(serializeOps(['sim', 'charge', 'sim'])).toBe('charge,sim');
     expect(parseOps('')).toEqual([]);
+  });
+  it('transfer is the tenth key, after the nine line operations', () => {
+    expect(OP_KEYS).toEqual(['activate', 'charge', 'extend', 'switch', 'sim', 'esim', 'freeze', 'disconnect', 'rename', 'transfer']);
+    expect(isOpKey('transfer')).toBe(true);
+    expect(parseOps('transfer,charge')).toEqual(['charge', 'transfer']);
+    expect(serializeOps(['transfer', 'sim', 'transfer'])).toBe('sim,transfer');
+  });
+  it('a transfer stop on an ancestor cascades down the path like the others', () => {
+    const stopOnMain = [pos1, ag1, { ...ma1, deniedOps: 'transfer' }, branch];
+    expect([...deniedOpsFor(stopOnMain)]).toEqual(['transfer']);
+    expect(deniedAbove(stopOnMain)).toEqual([{ op: 'transfer', login: 'ma1' }]);
+    expect([...deniedOpsFor([ag1, { ...ma1, deniedOps: 'transfer' }, branch])]).toEqual(['transfer']);
+    expect([...deniedOpsFor([ag1, ma1, branch])]).toEqual([]);
   });
 });
