@@ -77,6 +77,8 @@ async function office() {
     },
   };
   const tx = {
+    // `move()` locks the wallet row with raw SQL; the in-memory store has nothing to lock.
+    $queryRaw: async () => [],
     wallet: { findUnique: async () => wallet, update: async ({ data }: { data: { balance: number } }) => { wallet.balance = data.balance; return wallet; } },
     walletEntry: {
       create: async ({ data }: { data: Row }) => {

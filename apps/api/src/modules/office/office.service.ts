@@ -3713,6 +3713,9 @@ export class OfficeService implements OnModuleInit {
   }
 
   private async move(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, kind: string, note: string, sale?: Sale) {
+    // Hold the wallet row until this transaction ends, so a concurrent move waits here and then reads the balance
+    // this one wrote. Without it two moves read the same balance and one write is lost (ADR 0004).
+    await tx.$queryRaw`SELECT "userId" FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE`;
     const wallet = await tx.wallet.findUnique({ where: { userId } });
     const user = await tx.user.findUnique({ where: { id: userId } });
     if (!wallet || !user) fail(404, 'NOT_FOUND');

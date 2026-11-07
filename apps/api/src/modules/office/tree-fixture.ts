@@ -193,6 +193,8 @@ export async function tree() {
     update: async ({ where, data }: { where: { userId: string }; data: Data }) => Object.assign(wallets.find((row) => row.userId === where.userId) as Row, data),
   };
   const tx = {
+    // `move()` locks the wallet row with raw SQL; the in-memory store has nothing to lock.
+    $queryRaw: async () => [],
     wallet: walletModel,
     walletEntry: {
       create: async ({ data }: { data: Data }) => { const row = { id: `e${entries.length + 1}`, createdAt: new Date(), ...data }; entries.push(row); return row; },
