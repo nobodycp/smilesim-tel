@@ -16,3 +16,4 @@ dump.rdb
 *.tsbuildinfo
 .DS_Store
 .deploy/
+graphify-out/

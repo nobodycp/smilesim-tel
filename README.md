@@ -2,8 +2,8 @@
 
 مكتب بيع بالجملة لشرائح الاتصال بواجهة عربية من اليمين إلى اليسار (وإنجليزية وعبرية). أربع طبقات في سلّم واحد: الفرع، الوكيل الرئيسي، الوكيل، نقطة البيع. لكل طبقة بابها، وكل بابٍ يرى ما تسمح به طبقته. قواعد النظام الكاملة في [`docs/project-plan.md`](docs/project-plan.md).
 
-- `apps/api`: NestJS 10 وPrisma (PostgreSQL) وBullMQ وRedis.
-- `apps/web`: Next.js 15 وReact 19.
+- `apps/api`: NestJS 12 وPrisma 7 (PostgreSQL) وBullMQ وRedis.
+- `apps/web`: Next.js 16 وReact 19.
 
 ## الأبواب
 

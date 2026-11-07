@@ -1,5 +1,7 @@
 # Architecture maps
 
+Text codemaps (read these first, keep them current): [`frontend.md`](./frontend.md), [`backend.md`](./backend.md). Decisions: [`decisions/`](./decisions/).
+
 Visual maps of `smilesim-tel`. Open the `.excalidraw` files with the **Excalidraw** extension in Cursor (`pomdtr.excalidraw-editor`) or [excalidraw.com](https://excalidraw.com).
 
 If a file still opens as raw JSON: Command Palette → **Developer: Reload Window**, then open the file again (or right-click → **Open With…** → **Excalidraw**).

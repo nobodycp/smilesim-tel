@@ -1,0 +1,19 @@
+# Scope of the graphify knowledge graph: application code + core docs only.
+docs/visual-review/
+docs/superpowers/
+docs/qa/
+docs/reference/
+docs/architecture/*.excalidraw
+docs/architecture/generate.mjs
+apps/api/prisma/migrations/
+apps/web/audit/
+apps/web/tests/dom-snapshot.mjs
+.cursor/
+.github/
+.claude/
+graphify-out/
+docker-compose*.yml
+package.json
+package-lock.json
+apps/web/app/icon.svg
+apps/web/AGENTS.md
