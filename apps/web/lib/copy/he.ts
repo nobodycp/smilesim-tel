@@ -553,7 +553,6 @@ export const he: Copy = {
     HAS_HISTORY: 'חשבון עם היסטוריה לא נמחק. הקפא אותו.',
     NUMBER_TAKEN: 'המספר כבר בשימוש',
     LOGIN_TAKEN: 'שם הכניסה כבר בשימוש',
-    ZERO_WALLET_FIRST: 'אפס את הארנק לפני ההעברה',
     PACKAGE_DISABLED: 'החבילה מושבתת',
     PACKAGE_HIDDEN: 'החבילה אינה מוצעת למכירה',
     OPERATION_DISABLED: 'הפעולה מושבתת בחבילה הזו',

@@ -553,7 +553,6 @@ export const en: Copy = {
     HAS_HISTORY: 'An account with history is not deleted. Freeze it.',
     NUMBER_TAKEN: 'This number is already in use',
     LOGIN_TAKEN: 'This login name is already in use',
-    ZERO_WALLET_FIRST: 'Set the wallet to zero before the transfer',
     PACKAGE_DISABLED: 'This plan is turned off',
     PACKAGE_HIDDEN: 'This plan is not offered for sale',
     OPERATION_DISABLED: 'This action is turned off for this plan',

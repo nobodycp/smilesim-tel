@@ -6,7 +6,8 @@ import { fullNameProblem, newPasswordProblem, validateFullName, validateNewPassw
 // The Arabic sentences the web app showed before the codes existed. A code may be added, but
 // no message may change: an older web build still matches on these words.
 // NICKNAME_INVALID was retired on 2026-11-05 when the field became the full name
-// (FULL_NAME_INVALID); it is the one deliberate exception.
+// (FULL_NAME_INVALID), and the zero-wallet transfer code on 2026-11-07 when a transfer began to carry
+// the wallet with its balance; they are the two deliberate exceptions.
 const LEGACY_MESSAGES: Record<string, string> = {
   LOGIN_REQUIRED: 'يلزم تسجيل الدخول',
   DOOR_MISMATCH: 'هذا الحساب ليس لهذا المدخل',
@@ -28,7 +29,6 @@ const LEGACY_MESSAGES: Record<string, string> = {
   HAS_HISTORY: 'لا يُحذف حساب فيه سجل. جمّده.',
   NUMBER_TAKEN: 'الرقم مستخدم',
   LOGIN_TAKEN: 'اسم الدخول مستخدم',
-  ZERO_WALLET_FIRST: 'صفّر المحفظة قبل النقل',
   PACKAGE_DISABLED: 'الرزمة متوقفة',
   PACKAGE_HIDDEN: 'الرزمة غير معروضة للبيع',
   OPERATION_DISABLED: 'متوقف على هذه الرزمة',

@@ -272,7 +272,8 @@ describe('previewOf: a point of sale moving between agents', () => {
   const move = (patch: Partial<Preview> = {}): Preview => ({
     moved: [pos1, node('ag1', 'agent'), ma1, branch],
     nextPath: [pos1, node('ag2', 'agent'), ma1, branch],
-    children: [],
+    // A point of sale has nothing below it, which is not the same as an agent with no points of sale.
+    children: null,
     terms: [],
     sells: [],
     packages: [alloha],
@@ -403,7 +404,13 @@ describe('previewOf: an agent moving between main agents', () => {
     expect(previewOf(move({ terms: terms.slice(0, 2) })).own.belowNewFloor).toBe(0);
   });
 
-  it('has no child section when it has no points of sale', () => {
-    expect(previewOf(move({ children: [], sells: [sold('ag1', 3700)] })).child).toBeNull();
+  it('still has a child section with no points of sale: its own sell prices go with the choice', () => {
+    // The row of ag2 belongs to another agent and is not counted.
+    const sells = [sold('ag1', 3700), sold('ag1', 3900, 3500, 'pb'), sold('ag2', 3600)];
+    expect(previewOf(move({ children: [], sells })).child).toEqual({ customPrices: 0, hidden: 0, stops: 0, sellPrices: 2 });
+  });
+
+  it('counts nothing below an agent that has no points of sale and no sell prices', () => {
+    expect(previewOf(move({ children: [] })).child).toEqual({ customPrices: 0, hidden: 0, stops: 0, sellPrices: 0 });
   });
 });

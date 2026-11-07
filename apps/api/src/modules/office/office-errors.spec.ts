@@ -90,9 +90,9 @@ describe('office refusals', () => {
   });
 
   it('builds the failure message from the code', () => {
-    const failure = new OfficeFailure(400, 'ZERO_WALLET_FIRST');
+    const failure = new OfficeFailure(400, 'BALANCE_CEILING');
     expect(failure.status).toBe(400);
-    expect(failure.code).toBe('ZERO_WALLET_FIRST');
-    expect(failure.message).toBe('صفّر المحفظة قبل النقل');
+    expect(failure.code).toBe('BALANCE_CEILING');
+    expect(failure.message).toBe('الرصيد لا يكفي ضمن السقف');
   });
 });

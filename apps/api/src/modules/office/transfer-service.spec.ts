@@ -3,16 +3,22 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { ActivityRecorder } from './activity-recorder';
+import { NOTICE_GROUPS, hrefFor, type NoticeDraft } from './notice-kinds';
+import type { NoticeService, WrittenNotice } from './notice.service';
 import { OfficeController } from './office.controller';
 import { OfficeService } from './office.service';
+import type { LineTerms } from './office-rules';
 import { account, tree, type Row } from './tree-fixture';
 
 // Moving an account, and what the office is told before it does.
 // The tree is the one in tree-fixture.ts: branch → ma1 → ag1 → pos1 and ma1 → ag2 → pos2, plus ma2 with nothing under it.
 // The fixture's accounts hold no grants but the branch owner's, so each case gives its actor the grant it is about.
 
-/** Sets fields on the stored row with this id: an account, or a wallet (`w-<login>`). */
-const edit = (rows: { id: string }[], id: string, patch: Record<string, unknown>) => Object.assign(rows.find((item) => item.id === id) as Row, patch);
+/** The stored row with this id: an account, a wallet (`w-<login>`), a terms row, a number. */
+const rowOf = (rows: { id: string }[], id: string) => rows.find((item) => item.id === id) as Row;
+/** Sets fields on the stored row with this id. */
+const edit = (rows: { id: string }[], id: string, patch: Record<string, unknown>) => Object.assign(rowOf(rows, id), patch);
+const refused = (status: number, code: string) => expect.objectContaining({ status, code });
 const terms = (userId: string, packageId: string, patch: Record<string, unknown> = {}): Row => ({
   id: `${userId}:${packageId}`, packageId, userId, hidden: false, price: null, renewalPrice: null, setById: '', ...patch,
 });
@@ -123,16 +129,21 @@ describe('transfer preview: what a move would carry', () => {
     await expect(below()).resolves.toBe(0);
   });
 
-  it('gives an agent with no points of sale an empty child section and no balance below it', async () => {
-    const { service, gates, accounts, wallets } = await tree();
+  it('gives an agent with no points of sale a child section that counts only its sell prices, and no balance below it', async () => {
+    const { service, gates, accounts, wallets, sellPrices } = await tree();
     accounts.push(account('ag3', 'agent', 'ma1'));
     wallets.push({ id: 'w-ag3', userId: 'ag3', balance: 900, ceiling: 0 });
     await expect(service.transferPreview(gates.branch, 'ag3', { parentLogin: 'ma2' })).resolves.toEqual({
       balance: 900,
       subtreeBalance: 0,
       own: { customPrices: 0, hidden: 0, stops: 0, belowNewFloor: 0 },
-      child: null,
+      child: { customPrices: 0, hidden: 0, stops: 0, sellPrices: 0 },
       lines: 0,
+    });
+    // A reset of what is below it deletes these, so the preview has to show them though no point of sale is there.
+    sellPrices.push(sell('ag3', 'pa', 3700), sell('ag3', 'pb', 3800), sell('ag2', 'pa', 3600));
+    await expect(service.transferPreview(gates.branch, 'ag3', { parentLogin: 'ma2' })).resolves.toMatchObject({
+      child: { customPrices: 0, hidden: 0, stops: 0, sellPrices: 2 },
     });
   });
 
@@ -160,8 +171,6 @@ describe('transfer preview: what a move would carry', () => {
 });
 
 describe('transfer preview: the refusals are the move\'s', () => {
-  const refused = (status: number, code: string) => expect.objectContaining({ status, code });
-
   it('a main agent is refused a destination it cannot see, though it holds the grant for the kind', async () => {
     const { service, gates, accounts } = await tree();
     edit(accounts, 'ma1', { liveGrants: 'transferAgents,transferPos' });
@@ -253,7 +262,340 @@ describe('transfer preview: the refusals are the move\'s', () => {
   });
 });
 
-describe('GET /office/users/:loginName/transfer-preview', () => {
+// What a move is asked to do. Both bodies are complete and reset nothing; a case overrides what it is about.
+const posMove = (patch: Record<string, unknown> = {}) => ({ parentLogin: 'ag2', ownPrices: 'keep', ownStops: 'keep', linePrices: 'keep', ...patch });
+const agentMove = (patch: Record<string, unknown> = {}) => ({
+  parentLogin: 'ma2', ownPrices: 'keep', ownStops: 'keep', childPrices: 'keep', childStops: 'keep', linePrices: 'keep', ...patch,
+});
+const everyReset = { ownPrices: 'reset', ownStops: 'reset', childPrices: 'reset', childStops: 'reset' };
+/** The renewal price a number carries. */
+const renewalOf = (item: Row) => (item.terms as LineTerms).renewal.posPrice;
+/** Makes a number carry this renewal price. */
+const carries = (item: Row, posPrice: number) => {
+  const held = item.terms as LineTerms;
+  item.terms = { ...held, renewal: { ...held.renewal, posPrice } };
+};
+/** Swaps the notice writer for one that lists what it is asked to write and answers a row per recipient. */
+function listen(notice: NoticeService) {
+  const written: { userIds: string[]; actorId: string; draft: NoticeDraft }[] = [];
+  const published: WrittenNotice[][] = [];
+  notice.write = async (_tx, userIds, actor, draft) => {
+    written.push({ userIds, actorId: actor.id, draft });
+    return userIds.map((userId) => ({
+      id: `n${written.length}-${userId}`, userId, kind: draft.kind, payload: draft.payload, actorName: actor.nickname,
+      href: hrefFor(draft), read: false, createdAt: '2026-11-07T00:00:00.000Z',
+    }));
+  };
+  notice.publish = async (rows) => {
+    published.push(rows);
+  };
+  return { written, published };
+}
+
+describe('transfer: a point of sale', () => {
+  /** pos1 with a stop and two rows of its own, a row each on its old and its new agent, and a number on pos2. */
+  async function withTerms() {
+    const fixture = await tree();
+    edit(fixture.accounts, 'pos1', { deniedOps: 'sim' });
+    fixture.userPackages.push(
+      terms('pos1', 'pa', { price: 3100 }),
+      terms('pos1', 'pb', { hidden: true }),
+      // What its old and its new agent wrote for themselves is not the point of sale's to take or to leave.
+      terms('ag1', 'pa', { price: 2800 }),
+      terms('ag2', 'pb', { price: 3300 }),
+    );
+    fixture.lines.push(number(fixture.line, 'ln2', { posId: 'pos2' }));
+    return fixture;
+  }
+  /** What pos1 is offered once it sits under ag2, with the price it would pay. */
+  const offered = async ({ service, gates }: Awaited<ReturnType<typeof withTerms>>) =>
+    Object.fromEntries((await service.packages(gates.pos1)).packages.map((item) => [item.code, item.price]));
+
+  it('moves a point of sale with its balance and keeps or resets its own terms as asked', async () => {
+    const reset = await withTerms();
+    await expect(reset.service.transferAccount(reset.gates.branch, 'pos1', posMove({ ownPrices: 'reset' }))).resolves.toEqual({ ok: true, lines: 0 });
+    expect(rowOf(reset.accounts, 'pos1')).toMatchObject({ parentId: 'ag2', deniedOps: 'sim' });
+    expect(rowOf(reset.wallets, 'w-pos1').balance).toBe(100000);
+    // Its own rows are gone and it prices through the new agent; the rows its two agents wrote for themselves stay.
+    expect(reset.userPackages.map((item) => item.id).sort()).toEqual(['ag1:pa', 'ag2:pb']);
+    await expect(offered(reset)).resolves.toEqual({ 'alloha-150': 3500, 'alloha-400': 3500 });
+    // Its number is stamped with the agent it was sold under; the number on pos2 is nobody's to stamp.
+    expect(rowOf(reset.lines, 'ln1').originAgentId).toBe('ag1');
+    expect(rowOf(reset.lines, 'ln2').originAgentId).toBeNull();
+
+    const keep = await withTerms();
+    await expect(keep.service.transferAccount(keep.gates.branch, 'pos1', posMove({ ownStops: 'reset' }))).resolves.toEqual({ ok: true, lines: 0 });
+    expect(rowOf(keep.accounts, 'pos1')).toMatchObject({ parentId: 'ag2', deniedOps: '' });
+    expect(rowOf(keep.wallets, 'w-pos1').balance).toBe(100000);
+    expect(keep.userPackages.map((item) => item.id).sort()).toEqual(['ag1:pa', 'ag2:pb', 'pos1:pa', 'pos1:pb']);
+    // It keeps its own price and the package it hid.
+    await expect(offered(keep)).resolves.toEqual({ 'alloha-150': 3100 });
+  });
+
+  it('keeps the stamp of the agent a number was first sold under when its point of sale moves again', async () => {
+    const { service, gates, accounts, lines } = await tree();
+    accounts.push(account('ag3', 'agent', 'ma1'));
+    await service.transferAccount(gates.branch, 'pos1', posMove());
+    await service.transferAccount(gates.branch, 'pos1', posMove({ parentLogin: 'ag3' }));
+    expect(rowOf(accounts, 'pos1').parentId).toBe('ag3');
+    expect(rowOf(lines, 'ln1').originAgentId).toBe('ag1');
+  });
+
+  it('no zero-wallet rule remains', async () => {
+    const { service, gates, wallet } = await tree();
+    wallet.balance = 5000;
+    await expect(service.transferAccount(gates.branch, 'pos1', posMove())).resolves.toEqual({ ok: true, lines: 0 });
+    expect(wallet.balance).toBe(5000);
+  });
+});
+
+describe('transfer: an agent', () => {
+  const moved = async (patch: Record<string, unknown>) => {
+    const fixture = await busyAgent();
+    await expect(fixture.service.transferAccount(fixture.gates.branch, 'ag1', agentMove(patch))).resolves.toMatchObject({ ok: true });
+    return fixture;
+  };
+  /** What is left of the terms ag1 carries: its rows, the rows of its two points of sale, its sell prices, and the three stops. */
+  const left = ({ accounts, userPackages, sellPrices }: Awaited<ReturnType<typeof busyAgent>>) => ({
+    own: userPackages.filter((item) => item.userId === 'ag1').length,
+    below: userPackages.filter((item) => item.userId === 'pos1' || item.userId === 'pos3').length,
+    sells: sellPrices.filter((item) => item.ownerId === 'ag1').length,
+    stops: ['ag1', 'pos1', 'pos3'].map((id) => rowOf(accounts, id).deniedOps),
+  });
+  const kept = { own: 2, below: 3, sells: 2, stops: ['charge', 'sim,esim', 'transfer'] };
+
+  it('moves an agent: child rows, its sell prices, and stops follow the four choices', async () => {
+    // Nothing reset: every row, sell price, and stop travels with ag1.
+    await expect(moved({}).then(left)).resolves.toEqual(kept);
+    // Each choice resets what it names and nothing else; its sell prices go only with the child prices.
+    await expect(moved({ ownPrices: 'reset' }).then(left)).resolves.toEqual({ ...kept, own: 0 });
+    await expect(moved({ ownStops: 'reset' }).then(left)).resolves.toEqual({ ...kept, stops: ['', 'sim,esim', 'transfer'] });
+    await expect(moved({ childPrices: 'reset' }).then(left)).resolves.toEqual({ ...kept, below: 0, sells: 0 });
+    await expect(moved({ childStops: 'reset' }).then(left)).resolves.toEqual({ ...kept, stops: ['charge', '', ''] });
+    await expect(moved(everyReset).then(left)).resolves.toEqual({ own: 0, below: 0, sells: 0, stops: ['', '', ''] });
+  });
+
+  it('moves the agent and nothing else: its points of sale stay under it, every wallet and number stays, the other agent is untouched', async () => {
+    const { service, gates, accounts, wallets, userPackages, sellPrices, lines } = await busyAgent();
+    const balances = () => Object.fromEntries(wallets.map((item) => [item.userId, item.balance]));
+    const before = { balances: balances(), numbers: JSON.stringify(lines) };
+    expect(before.balances).toMatchObject({ ag1: 40000, pos1: 100000, pos3: 25000, pos2: 7000 });
+    await service.transferAccount(gates.branch, 'ag1', agentMove(everyReset));
+    expect(Object.fromEntries(accounts.map((item) => [item.id, item.parentId]))).toEqual({
+      branch: null, ma1: 'branch', ma2: 'branch', ag1: 'ma2', ag2: 'ma1', pos1: 'ag1', pos2: 'ag2', pos3: 'ag1',
+    });
+    // Wallets travel with their accounts, and no number changes point of sale, is stamped, or is repriced.
+    expect(balances()).toEqual(before.balances);
+    expect(JSON.stringify(lines)).toBe(before.numbers);
+    // What belongs to the other agent survives every reset.
+    expect(userPackages.map((item) => item.id)).toEqual(['pos2:pa']);
+    expect(sellPrices.map((item) => item.id)).toEqual(['ag2:pa']);
+    expect(rowOf(accounts, 'pos2').deniedOps).toBe('');
+  });
+
+  it('recaptures the renewable numbers under it after the resets, and no other number', async () => {
+    const run = async (patch: Record<string, unknown>) => {
+      const fixture = await busyAgent();
+      for (const item of fixture.lines) carries(item, 4500);
+      edit(fixture.sellPrices, 'ag1:pa', { renewalPrice: 3600 });
+      const told = await fixture.service.transferPreview(fixture.gates.branch, 'ag1', { parentLogin: 'ma2' });
+      const result = await fixture.service.transferAccount(fixture.gates.branch, 'ag1', agentMove({ linePrices: 'recapture', ...patch }));
+      // The preview counted exactly what the move repriced.
+      expect(result.lines).toBe(told.lines);
+      return { result, prices: fixture.lines.map(renewalOf) };
+    };
+    // ln1 (pos1, active) and ln2 (pos3, frozen) renew; ln3 (disconnected) and ln4 (under ag2) do not.
+    // pos1 pays through the sell price of ag1, 3600; pos3 has a renewal price of its own, 3000.
+    await expect(run({})).resolves.toEqual({ result: { ok: true, lines: 2 }, prices: [3600, 3000, 4500, 4500] });
+    // Once the rows of its points of sale and the sell prices of ag1 are reset, they pay the layer column.
+    await expect(run({ childPrices: 'reset' })).resolves.toEqual({ result: { ok: true, lines: 2 }, prices: [3200, 3200, 4500, 4500] });
+  });
+});
+
+describe('transfer: the prices of the moved numbers', () => {
+  /** ag1 sells its points of sale renewals at 3300, ag2 at 3400; the layer column, and what ln1 carries, is 3200. */
+  async function sellers() {
+    const fixture = await tree();
+    fixture.sellPrices.push(sell('ag1', 'pa', 3700, 3300), sell('ag2', 'pa', 3700, 3400));
+    return fixture;
+  }
+
+  it('recapture prices moved numbers under the new parent', async () => {
+    const recaptured = await sellers();
+    const before = structuredClone(recaptured.line.terms) as LineTerms;
+    expect(before.renewal.posPrice).toBe(3200);
+    await expect(recaptured.service.transferAccount(recaptured.gates.branch, 'pos1', posMove({ linePrices: 'recapture' }))).resolves.toEqual({ ok: true, lines: 1 });
+    // Under ag2, not under ag1 and not the layer column; what the number was captured with stays.
+    expect(renewalOf(recaptured.line)).toBe(3400);
+    expect(recaptured.line.terms).toMatchObject({
+      packageCode: before.packageCode, months: before.months, windowMonths: before.windowMonths, subscription: before.subscription,
+    });
+
+    const kept = await sellers();
+    const unchanged = structuredClone(kept.line.terms);
+    await expect(kept.service.transferAccount(kept.gates.branch, 'pos1', posMove({ linePrices: 'keep' }))).resolves.toEqual({ ok: true, lines: 0 });
+    expect(kept.line.terms).toEqual(unchanged);
+    expect(renewalOf(kept.line)).toBe(3200);
+  });
+
+  it('recapture runs after the resets, so a price that was reset no longer wins', async () => {
+    const run = async (ownPrices: string) => {
+      const { service, gates, userPackages, line } = await sellers();
+      userPackages.push(terms('pos1', 'pa', { renewalPrice: 3100 }));
+      await service.transferAccount(gates.branch, 'pos1', posMove({ ownPrices, linePrices: 'recapture' }));
+      return renewalOf(line);
+    };
+    // Kept, the point of sale's own price is the nearest one; reset, the sell price of the new agent is.
+    await expect(run('keep')).resolves.toBe(3100);
+    await expect(run('reset')).resolves.toBe(3400);
+  });
+
+  it('recaptures only the renewable numbers of the moved point of sale', async () => {
+    const { service, gates, lines, line } = await sellers();
+    lines.push(
+      number(line, 'ln2', { status: 'frozen' }),
+      number(line, 'ln3', { status: 'disconnected' }),
+      number(line, 'ln4', { posId: 'pos2' }),
+    );
+    await expect(service.transferAccount(gates.branch, 'pos1', posMove({ linePrices: 'recapture' }))).resolves.toEqual({ ok: true, lines: 2 });
+    expect(lines.map(renewalOf)).toEqual([3400, 3400, 3200, 3200]);
+  });
+});
+
+describe('transfer: notices and the one transaction', () => {
+  it('writes transfer.out to the old parent and transfer.in to the new one', async () => {
+    const pos = await tree();
+    const heardPos = listen(pos.notice);
+    await pos.service.transferAccount(pos.gates.branch, 'pos1', posMove());
+    expect(heardPos.written).toEqual([
+      { userIds: ['ag1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'pos', subject: 'pos1', toLogin: 'ag2', actorName: 'branch' } } },
+      { userIds: ['ag2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'pos', subject: 'pos1', fromLogin: 'ag1', actorName: 'branch' } } },
+    ]);
+    // Both are published together, after the move has committed.
+    expect(heardPos.published.map((rows) => rows.map((row) => [row.userId, row.kind]))).toEqual([[['ag1', 'transfer.out'], ['ag2', 'transfer.in']]]);
+
+    const agent = await tree();
+    const heardAgent = listen(agent.notice);
+    await agent.service.transferAccount(agent.gates.branch, 'ag1', agentMove());
+    expect(heardAgent.written).toEqual([
+      { userIds: ['ma1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'agent', subject: 'ag1', toLogin: 'ma2', actorName: 'branch' } } },
+      { userIds: ['ma2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'agent', subject: 'ag1', fromLogin: 'ma1', actorName: 'branch' } } },
+    ]);
+  });
+
+  it('files the notices with the wallet group, and they open the users page', () => {
+    const payload = { kind: 'pos' as const, subject: 'pos1', actorName: 'branch' };
+    expect(hrefFor({ kind: 'transfer.out', payload: { ...payload, toLogin: 'ag2' } })).toBe('/users');
+    expect(hrefFor({ kind: 'transfer.in', payload: { ...payload, fromLogin: 'ag1' } })).toBe('/users');
+    expect(NOTICE_GROUPS.wallet).toEqual(expect.arrayContaining(['transfer.out', 'transfer.in']));
+  });
+
+  it('is one transaction: a notice that cannot be written puts the whole move back and publishes nothing', async () => {
+    const fixture = await busyAgent();
+    const { service, gates, notice, accounts, userPackages, sellPrices, wallets, lines } = fixture;
+    const heard = listen(notice);
+    const write = notice.write.bind(notice);
+    notice.write = async (tx, userIds, actor, draft) => {
+      if (draft.kind === 'transfer.in') throw new Error('connection lost');
+      return write(tx, userIds, actor, draft);
+    };
+    const stored = () => JSON.stringify({ accounts, userPackages, sellPrices, wallets, lines });
+    const before = stored();
+    // Every write of an agent's move has run when the second notice fails: the resets and the recapture.
+    await expect(service.transferAccount(gates.branch, 'ag1', agentMove({ ...everyReset, linePrices: 'recapture' }))).rejects.toThrow('connection lost');
+    expect(stored()).toBe(before);
+    // So have the stamp and the parent of a point of sale.
+    await expect(service.transferAccount(gates.branch, 'pos1', posMove({ ownPrices: 'reset', ownStops: 'reset', linePrices: 'recapture' }))).rejects.toThrow('connection lost');
+    expect(stored()).toBe(before);
+    expect(heard.published).toEqual([]);
+  });
+});
+
+describe('transfer: refusals', () => {
+  /** Everything a refused move must leave alone. */
+  const stored = ({ accounts, userPackages, sellPrices, wallets, lines }: Awaited<ReturnType<typeof busyAgent>>) =>
+    JSON.stringify({ accounts, userPackages, sellPrices, wallets, lines });
+  const bodyFor = (login: string, parentLogin: string) => (login.startsWith('pos') ? posMove({ parentLogin }) : agentMove({ parentLogin }));
+
+  it('refuses what the rules refuse, as the preview does, and writes nothing', async () => {
+    const fixture = await busyAgent();
+    const { service, gates, accounts, notice } = fixture;
+    const heard = listen(notice);
+    // ma1 holds the grants for points of sale and agents but sees only its own chain; ag1 holds neither.
+    edit(accounts, 'ma1', { liveGrants: 'transferPos,transferAgents' });
+    const before = stored(fixture);
+    const cases: [who: string, login: string, parentLogin: string, status: number, code: string][] = [
+      ['ag1', 'pos1', 'ag2', 403, 'FORBIDDEN'],
+      ['ma1', 'ag1', 'ma2', 403, 'FORBIDDEN'],
+      // Someone with no say over moves is told nothing about what exists: every name is a refusal.
+      ['ag1', 'ghost', 'ag2', 403, 'FORBIDDEN'],
+      ['branch', 'pos1', 'ag1', 400, 'INVALID'],
+      ['branch', 'pos1', 'ma1', 400, 'INVALID'],
+      ['branch', 'ag1', 'ag2', 400, 'INVALID'],
+      ['branch', 'ma1', 'ma2', 400, 'INVALID'],
+      ['branch', 'ghost', 'ma2', 400, 'INVALID'],
+      ['branch', 'ag1', 'ghost', 400, 'INVALID'],
+    ];
+    for (const [who, login, parentLogin, status, code] of cases) {
+      await expect(service.transferPreview(gates[who], login, { parentLogin })).rejects.toEqual(refused(status, code));
+      await expect(service.transferAccount(gates[who], login, bodyFor(login, parentLogin))).rejects.toEqual(refused(status, code));
+    }
+    // Who may not move is refused before the body is read, so an incomplete body tells it nothing either.
+    await expect(service.transferAccount(gates.ag1, 'pos1', { parentLogin: 'ag2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    await expect(service.transferAccount(gates.branch, 'pos1', { ...posMove(), parentLogin: undefined })).rejects.toEqual(refused(400, 'INVALID'));
+    expect(stored(fixture)).toBe(before);
+    expect(heard.written).toEqual([]);
+    // A frozen destination is refused too.
+    edit(accounts, 'ma2', { disabledAt: new Date('2026-11-01T00:00:00.000Z') });
+    await expect(service.transferAccount(gates.branch, 'ag1', agentMove())).rejects.toEqual(refused(400, 'INVALID'));
+    expect(rowOf(accounts, 'ag1').parentId).toBe('ma1');
+  });
+
+  it('a missing or unknown choice is INVALID, and so is a choice about what a point of sale does not have', async () => {
+    const fixture = await busyAgent();
+    const { service, gates } = fixture;
+    const before = stored(fixture);
+    const pos = (patch: Record<string, unknown>) => service.transferAccount(gates.branch, 'pos1', posMove(patch));
+    const agent = (patch: Record<string, unknown>) => service.transferAccount(gates.branch, 'ag1', agentMove(patch));
+    const invalid = refused(400, 'INVALID');
+    // A point of sale states three choices, and neither of the other two is its to state.
+    for (const key of ['ownPrices', 'ownStops', 'linePrices']) await expect(pos({ [key]: undefined })).rejects.toEqual(invalid);
+    await expect(pos({ childPrices: 'keep' })).rejects.toEqual(invalid);
+    await expect(pos({ childStops: 'reset' })).rejects.toEqual(invalid);
+    // An agent states all five.
+    for (const key of ['ownPrices', 'ownStops', 'childPrices', 'childStops', 'linePrices']) await expect(agent({ [key]: undefined })).rejects.toEqual(invalid);
+    // There is no default and no other word: reset is no choice for numbers, recapture none for terms.
+    for (const value of ['', 'KEEP', 'drop', 'recapture', null, 1, true, ['keep']]) await expect(agent({ ownPrices: value })).rejects.toEqual(invalid);
+    for (const value of ['', 'RECAPTURE', 'reset', null, 0, false, ['keep']]) await expect(agent({ linePrices: value })).rejects.toEqual(invalid);
+    expect(stored(fixture)).toBe(before);
+  });
+
+  it('refuses where a transfer stop sits on the actor path, and not the branch above it', async () => {
+    const { service, gates, accounts } = await tree();
+    edit(accounts, 'ma1', { liveGrants: 'transferPos', deniedOps: 'transfer' });
+    await expect(service.transferAccount(gates.ma1, 'pos1', posMove())).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    expect(rowOf(accounts, 'pos1').parentId).toBe('ag1');
+    await expect(service.transferAccount(gates.branch, 'pos1', posMove())).resolves.toEqual({ ok: true, lines: 0 });
+    expect(rowOf(accounts, 'pos1').parentId).toBe('ag2');
+  });
+
+  it('lets a main agent move a point of sale inside its chain', async () => {
+    const { service, gates, accounts } = await tree();
+    edit(accounts, 'ma1', { liveGrants: 'transferPos' });
+    await expect(service.transferAccount(gates.ma1, 'pos1', posMove())).resolves.toEqual({ ok: true, lines: 0 });
+    expect(rowOf(accounts, 'pos1').parentId).toBe('ag2');
+  });
+
+  it('refuses an impersonating session, even when it is the branch owner entered, and asks for a session', async () => {
+    const { service, auth, accounts } = await tree();
+    const sessionId = await auth.saveImpersonation({ userId: 'branch', userAgent: '', ip: '' });
+    await expect(service.transferAccount({ sessionId }, 'ag1', agentMove())).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    await expect(service.transferAccount({}, 'ag1', agentMove())).rejects.toEqual(refused(401, 'LOGIN_REQUIRED'));
+    expect(rowOf(accounts, 'ag1').parentId).toBe('ma1');
+  });
+});
+
+describe('the transfer routes under /office/users/:loginName', () => {
   let app: INestApplication | undefined;
   const recorded: unknown[][] = [];
 
@@ -283,7 +625,7 @@ describe('GET /office/users/:loginName/transfer-preview', () => {
     return created;
   }
 
-  it('answers the preview as JSON, refuses as the move would, and records no activity', async () => {
+  it('GET transfer-preview answers the preview as JSON, refuses as the move would, and records no activity', async () => {
     const { service, gates } = await busyAgent();
     app = await appFor(service);
     const get = (gate: { sessionId: string } | null, search: string) => {
@@ -310,5 +652,32 @@ describe('GET /office/users/:loginName/transfer-preview', () => {
     expect(anonymous.body).toMatchObject({ code: 'LOGIN_REQUIRED' });
 
     expect(recorded).toEqual([]);
+  });
+
+  it('POST transfer moves the account, answers the count, and records user_transfer under the moved login', async () => {
+    const { service, gates } = await busyAgent();
+    app = await appFor(service);
+    const post = (gate: { sessionId: string }, login: string, body: object) =>
+      request(app!.getHttpServer()).post(`/office/users/${login}/transfer`).set('Cookie', `sid=${gate.sessionId}`).send(body);
+
+    const ok = await post(gates.branch, 'ag1', agentMove({ linePrices: 'recapture' }));
+    expect(ok.status).toBe(201);
+    expect(ok.body).toEqual({ ok: true, lines: 2 });
+
+    const forbidden = await post(gates.ag1, 'pos1', posMove());
+    expect(forbidden.status).toBe(403);
+    expect(forbidden.body).toMatchObject({ code: 'FORBIDDEN' });
+
+    const invalid = await post(gates.branch, 'pos1', { parentLogin: 'ag2' });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body).toMatchObject({ code: 'INVALID' });
+
+    // Every answer is recorded under the moved login, with the reason a refusal gave.
+    const event = (login: string) => ({ action: 'user_transfer', subjectKind: 'user', subjectRef: login });
+    expect(recorded.map(([, , draft, result, reason]) => [draft, result, reason])).toEqual([
+      [event('ag1'), 'ok', ''],
+      [event('pos1'), 'fail', 'FORBIDDEN'],
+      [event('pos1'), 'fail', 'INVALID'],
+    ]);
   });
 });

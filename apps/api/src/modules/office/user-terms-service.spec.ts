@@ -111,11 +111,10 @@ describe('run path through user terms', () => {
   });
 
   it('moving a point of sale drops the terms its old parent wrote', async () => {
-    const { service, gates, userPackages, accounts, wallet } = await tree();
+    const { service, gates, userPackages, accounts } = await tree();
     userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: 2900, renewalPrice: null });
     userPackages.push({ id: 'r2', packageId: 'pa', userId: 'ag1', hidden: true, price: null, renewalPrice: null });
-    wallet.balance = 0;
-    await service.transferPos(gates.branch, 'pos1', { parentLogin: 'ag2' });
+    await service.transferAccount(gates.branch, 'pos1', { parentLogin: 'ag2', ownPrices: 'reset', ownStops: 'keep', linePrices: 'keep' });
     expect(userPackages.map((row) => row.userId)).toEqual(['ag1']);
     expect((accounts.find((row) => row.id === 'pos1') as Row).parentId).toBe('ag2');
   });

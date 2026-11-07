@@ -40,8 +40,8 @@ import {
   SwitchPackageBodyDto,
   TaskInspectionNoteBodyDto,
   TaskRejectBodyDto,
+  TransferAccountBodyDto,
   TransferLineBodyDto,
-  TransferPosBodyDto,
 } from './office.dto';
 
 function cookieBase(): CookieOptions {
@@ -910,17 +910,17 @@ export class OfficeController {
   }
 
   @Post('users/:loginName/transfer')
-  @ApiOperation({ summary: 'Transfer a POS to another parent' })
+  @ApiOperation({ summary: 'Transfer a point of sale or an agent to another parent, with an explicit choice for what travels with it' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: TransferPosBodyDto })
+  @ApiBody({ type: TransferAccountBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
-  transferPos(
+  transferAccount(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
-    @Body() body: TransferPosBodyDto,
+    @Body() body: TransferAccountBodyDto,
   ) {
-    return this.run(res, () => this.office.transferPos(gateOf(req), loginName, body));
+    return this.run(res, () => this.office.transferAccount(gateOf(req), loginName, body), { action: 'user_transfer', subjectKind: 'user', subjectRef: loginName });
   }
 
   @Get('users/:loginName/transfer-preview')

@@ -66,7 +66,7 @@ import {
 import { activityActorFilter, clampActivityRange } from './activity-log';
 import { RENEWABLE_STATUSES, groupChanges, groupLinePrices, repriceLine, stampRenewal, type PriceGroup } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
-import { TRANSFER_GRANT, canTransfer, previewOf, transferKind } from './transfer-rules';
+import { TRANSFER_GRANT, canTransfer, parseChoice, parseLineChoice, previewOf, transferKind } from './transfer-rules';
 import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey, layerPrice, parseOps, priceSource, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type PriceSource, type SellRow, type TermRow } from './user-terms';
 import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
@@ -196,6 +196,35 @@ function fail(status: number, code: ErrorCode): never {
 /** An account as one step of a path. */
 function nodeOf(account: Account): PathNode {
   return { id: account.id, loginName: account.loginName, layer: account.layer, deniedOps: account.deniedOps ?? '' };
+}
+
+/** What a move is asked to do. Every field is checked before it is used, so each arrives as `unknown`. */
+type TransferAccountBody = {
+  parentLogin?: unknown;
+  ownPrices?: unknown;
+  ownStops?: unknown;
+  childPrices?: unknown;
+  childStops?: unknown;
+  linePrices?: unknown;
+};
+
+/**
+ * The choices of a move. None has a default: a move that leaves one out, or words one in any other way, is
+ * `null`. Only an agent has anything below it to choose for, so a point of sale that states a choice about
+ * what is below it is as wrong as an agent that leaves one out.
+ */
+function transferChoices(kind: 'pos' | 'agent', body: TransferAccountBody) {
+  const ownPrices = parseChoice(body.ownPrices);
+  const ownStops = parseChoice(body.ownStops);
+  const linePrices = parseLineChoice(body.linePrices);
+  if (!ownPrices || !ownStops || !linePrices) return null;
+  if (kind === 'pos') {
+    const nothingBelow = body.childPrices === undefined && body.childStops === undefined;
+    return nothingBelow ? { ownPrices, ownStops, linePrices, child: null } : null;
+  }
+  const prices = parseChoice(body.childPrices);
+  const stops = parseChoice(body.childStops);
+  return prices && stops ? { ownPrices, ownStops, linePrices, child: { prices, stops } } : null;
 }
 
 function feedPosition(raw: string | undefined) {
@@ -2047,25 +2076,52 @@ export class OfficeService implements OnModuleInit {
     return { ok: true as const };
   }
 
-  async transferPos(gate: Gate, loginName: string, body: { parentLogin?: unknown }) {
+  /**
+   * Moves a point of sale under another agent, or an agent under another main agent. The rules are the
+   * preview's, so a refusal is the same in both, and they are asked before anything is written. The caller
+   * states every choice: what the account's own terms do, what the terms below it do (an agent), and
+   * whether the numbers under it keep the renewal prices they carry or take what the new parent would
+   * charge. Wallets and numbers go with the account as they are. Everything happens in one transaction, so a
+   * move either carries all its choices and both notices, or nothing.
+   */
+  async transferAccount(gate: Gate, loginName: string, body: TransferAccountBody) {
     const actor = await this.actor(gate);
-    if (actor.impersonating || !actor.grants.includes('transferPos')) fail(403, 'FORBIDDEN');
-    const parentLogin = typeof body.parentLogin === 'string' ? body.parentLogin : '';
     const accounts = await this.accounts();
-    const pos = accounts.find((account) => account.loginName === loginName && account.layer === 'pos');
-    const next = accounts.find((account) => account.loginName === parentLogin && account.layer === 'agent');
-    if (!pos || !next || pos.parentId === next.id) fail(400, 'INVALID');
-    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    if (!visible.has(pos.id) || !visible.has(next.id)) fail(403, 'FORBIDDEN');
-    const wallet = await this.prisma.wallet.findUnique({ where: { userId: pos.id } });
-    if (!wallet || wallet.balance !== 0) fail(400, 'ZERO_WALLET_FIRST');
-    await this.runTx(async (tx) => {
-      await tx.line.updateMany({ where: { posId: pos.id, originAgentId: null }, data: { originAgentId: pos.parentId } });
-      await tx.user.update({ where: { id: pos.id }, data: { parentId: next.id } });
-      // The old parent's terms go with the old parent; the new one's defaults apply from here.
-      await tx.userPackage.deleteMany({ where: { userId: pos.id } });
+    const { moved, next, from, kind } = this.resolveTransfer(actor, accounts, loginName, body.parentLogin);
+    const choices = transferChoices(kind, body);
+    if (!choices) fail(400, 'INVALID');
+    const posIds = accounts.filter((account) => account.parentId === moved.id).map((account) => account.id);
+    const lines = await this.runTx(async (tx) => {
+      // A point of sale's numbers remember the agent they were first sold under.
+      if (kind === 'pos') {
+        await tx.line.updateMany({ where: { posId: moved.id, originAgentId: null }, data: { originAgentId: moved.parentId } });
+      }
+      await tx.user.update({ where: { id: moved.id }, data: { parentId: next.id } });
+      // What the old parent wrote about the moved account goes only if the caller said so.
+      if (choices.ownPrices === 'reset') await tx.userPackage.deleteMany({ where: { userId: moved.id } });
+      if (choices.ownStops === 'reset') await tx.user.update({ where: { id: moved.id }, data: { deniedOps: '' } });
+      if (choices.child?.prices === 'reset') {
+        await tx.userPackage.deleteMany({ where: { userId: { in: posIds } } });
+        await tx.sellPrice.deleteMany({ where: { ownerId: moved.id } });
+      }
+      if (choices.child?.stops === 'reset') await tx.user.updateMany({ where: { id: { in: posIds } }, data: { deniedOps: '' } });
+      let repriced = 0;
+      if (choices.linePrices === 'recapture') {
+        // After the resets, so the numbers are priced by the rows that are left, and through the new parent.
+        const renewable = await tx.line.findMany({
+          where: { posId: { in: [moved.id, ...posIds] }, status: { in: [...RENEWABLE_STATUSES] } },
+          include: { package: { include: { company: true, provider: true } } },
+        });
+        const accountsAfter = accounts.map((account) => (account.id === moved.id ? { ...account, parentId: next.id } : account));
+        repriced = await this.repriceLines(tx, renewable, () => ({ to: 'current' }), accountsAfter);
+      }
+      const payload = { kind, subject: moved.loginName, actorName: actor.nickname };
+      const lost = await this.notice.write(tx, [from.id], actor, { kind: 'transfer.out', payload: { ...payload, toLogin: next.loginName } });
+      const gained = await this.notice.write(tx, [next.id], actor, { kind: 'transfer.in', payload: { ...payload, fromLogin: from.loginName } });
+      this.queueNotices(tx, [...lost, ...gained]);
+      return repriced;
     });
-    return { ok: true as const };
+    return { ok: true as const, lines };
   }
 
   /**
@@ -2076,7 +2132,7 @@ export class OfficeService implements OnModuleInit {
   async transferPreview(gate: Gate, loginName: string, query: { parentLogin?: unknown }) {
     const actor = await this.actor(gate);
     const accounts = await this.accounts();
-    const { moved, next } = this.resolveTransfer(actor, accounts, loginName, query.parentLogin);
+    const { moved, next, kind } = this.resolveTransfer(actor, accounts, loginName, query.parentLogin);
     const nextPath = [nodeOf(moved), ...this.pathOf(next.id, accounts)];
     // What is under the moved account: an agent's points of sale, nothing for a point of sale. They go with
     // it, so their paths after the move run through its own.
@@ -2105,7 +2161,8 @@ export class OfficeService implements OnModuleInit {
       ...previewOf({
         moved: this.pathOf(moved.id, accounts),
         nextPath,
-        children: below.map((account) => [nodeOf(account), ...nextPath]),
+        // Only a point of sale has no child section. An agent with none still has its sell prices to count.
+        children: kind === 'pos' ? null : below.map((account) => [nodeOf(account), ...nextPath]),
         terms,
         sells,
         packages,
@@ -2115,10 +2172,11 @@ export class OfficeService implements OnModuleInit {
   }
 
   /**
-   * The account a move names and the parent it names, once the rules allow the move. Both come from the
-   * accounts the caller already loaded. A login that is not there, or an account with no parent to change,
-   * answers like a destination of the wrong layer, but not to a caller with no say over any move: that one is
-   * refused first, as `canTransfer` refuses before it reads anything, so a refusal never tells what exists.
+   * The account a move names and the parent it names, once the rules allow the move, with the parent it
+   * leaves and the kind of move. All of them come from the accounts the caller already loaded. A login that
+   * is not there, or an account with no parent to change, answers like a destination of the wrong layer, but
+   * not to a caller with no say over any move: that one is refused first, as `canTransfer` refuses before it
+   * reads anything, so a refusal never tells what exists.
    */
   private resolveTransfer(actor: Actor, accounts: Account[], loginName: string, parentLogin: unknown) {
     const moved = accounts.find((account) => account.loginName === loginName);
@@ -2129,6 +2187,7 @@ export class OfficeService implements OnModuleInit {
       fail(400, 'INVALID');
     }
     const next = typeof parentLogin === 'string' ? accounts.find((account) => account.loginName === parentLogin) : undefined;
+    const from = accounts.find((account) => account.id === moved.parentId);
     const refusal = canTransfer({
       kind,
       actor: { grants: actor.grants, impersonating: actor.impersonating },
@@ -2138,8 +2197,8 @@ export class OfficeService implements OnModuleInit {
       visible: visibleAccountIds(actor.id, actor.layer, accounts),
     });
     if (refusal === 'FORBIDDEN') fail(403, 'FORBIDDEN');
-    if (refusal || !next) fail(400, 'INVALID');
-    return { moved, next };
+    if (refusal || !next || !from) fail(400, 'INVALID');
+    return { moved, next, from, kind };
   }
 
   async transferLine(gate: Gate, lineId: string, body: { posLogin?: unknown }) {

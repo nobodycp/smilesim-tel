@@ -51,7 +51,7 @@ export async function tree() {
   const sellPrices: Row[] = [];
   const line: Row = {
     id: 'ln1', msisdn: '0521000001', iccid: '8997202000000000001', esim: false, esimQr: null, status: 'active',
-    endsAt: new Date('2026-12-04T23:00:00.000Z'), opsLocked: false, packageId: 'pa', posId: 'pos1',
+    endsAt: new Date('2026-12-04T23:00:00.000Z'), opsLocked: false, originAgentId: null, packageId: 'pa', posId: 'pos1',
     terms: captureTerms(packageTermsOf(pkgA as unknown as PackagePriceRow), []),
     createdAt: new Date('2026-11-04T23:00:00.000Z'), package: pkgA, pos: { loginName: 'pos1' },
   };
@@ -74,6 +74,8 @@ export async function tree() {
   const whereMatch = (row: Row, where: Record<string, unknown> | undefined) =>
     !where ||
     Object.entries(where).every(([key, value]) => {
+      // A column the stored row does not carry is NULL, as it is in the database.
+      if (value === null) return row[key] == null;
       if (value && typeof value === 'object' && 'not' in value) return row[key] !== (value as { not: unknown }).not;
       if (value && typeof value === 'object' && 'in' in value) return ((value as { in: unknown[] }).in).includes(row[key]);
       return row[key] === value;
@@ -114,9 +116,15 @@ export async function tree() {
   const userModel = {
     findUnique: async ({ where }: { where: { id?: string; loginName?: string } }) =>
       accounts.find((row) => (where.id ? row.id === where.id : row.loginName === where.loginName)) ?? null,
-    findMany: async () => accounts,
+    // The database hands back a fresh object per row, so a list read before a write does not see that write.
+    findMany: async () => accounts.map((row) => ({ ...row })),
     count: async ({ where }: { where: { parentId: string } }) => accounts.filter((row) => row.parentId === where.parentId).length,
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(accounts.find((row) => row.id === where.id) as Row, data),
+    updateMany: async ({ where, data }: { where?: Record<string, unknown>; data: Data }) => {
+      const matched = accounts.filter((row) => whereMatch(row, where));
+      for (const row of matched) Object.assign(row, data);
+      return { count: matched.length };
+    },
     delete: async ({ where }: { where: { id: string } }) => {
       // Mirrors the database: a user with terms or sell rows cannot be deleted (ON DELETE RESTRICT).
       if (userPackages.some((row) => row.userId === where.id) || sellPrices.some((row) => row.ownerId === where.id)) throw new Error('P2003');
@@ -139,9 +147,13 @@ export async function tree() {
       return [...tallies.entries()].map(([packageId, count]) => ({ packageId, _count: { _all: count } }));
     },
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(lines.find((row) => row.id === where.id) as Row, data),
-    updateMany: async () => ({ count: 0 }),
+    updateMany: async ({ where, data }: { where?: Record<string, unknown>; data: Data }) => {
+      const matched = lines.filter((row) => whereMatch(row, where));
+      for (const row of matched) Object.assign(row, data);
+      return { count: matched.length };
+    },
     create: async ({ data }: { data: Data }) => {
-      const row = { id: `ln${lines.length + 1}`, createdAt: new Date(), opsLocked: false, ...data, package: packages.find((p) => p.id === data.packageId), pos: { loginName: 'pos1' } };
+      const row = { id: `ln${lines.length + 1}`, createdAt: new Date(), opsLocked: false, originAgentId: null, ...data, package: packages.find((p) => p.id === data.packageId), pos: { loginName: 'pos1' } };
       lines.push(row);
       return row;
     },
@@ -202,22 +214,25 @@ export async function tree() {
     provider: { findMany: async () => [provider] },
     role: null,
     walletEntry: { findMany: async () => [], findFirst: async () => null, count: async () => 0 },
-    // A failed transaction puts the terms tables and the terms on every line back, as the database would.
+    // A failed transaction puts back everything a write in it can touch, as the database would: the accounts
+    // (their parent and stops), both terms tables, and every line (its terms and its point of sale).
     $transaction: async (run: (client: typeof tx) => Promise<unknown>) => {
       const keep = {
+        accounts: new Map(accounts.map((row) => [row, { ...row }] as const)),
         userPackages: userPackages.map((row) => ({ ...row })),
         sellPrices: sellPrices.map((row) => ({ ...row })),
-        lineTerms: new Map(lines.map((row) => [row, structuredClone(row.terms)] as const)),
+        lines: new Map(lines.map((row) => [row, { ...row, terms: structuredClone(row.terms) }] as const)),
       };
       try {
         return await run(tx);
       } catch (error) {
+        for (const [row, stored] of keep.accounts) Object.assign(row, stored);
         userPackages.splice(0, userPackages.length, ...keep.userPackages);
         sellPrices.splice(0, sellPrices.length, ...keep.sellPrices);
-        for (const [row, terms] of keep.lineTerms) row.terms = terms;
+        for (const [row, stored] of keep.lines) Object.assign(row, stored);
         throw error;
       }
     },
   };
-  return { service, auth, gates, accounts, packages, pkgA, pkgB, userPackages, sellPrices, line, lines, tasks, entries, wallet, wallets };
+  return { service, auth, notice, gates, accounts, packages, pkgA, pkgB, userPackages, sellPrices, line, lines, tasks, entries, wallet, wallets };
 }

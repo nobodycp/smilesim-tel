@@ -9,6 +9,7 @@ export const ACTIVITY_ACTIONS = [
   'user_freeze',
   'user_restore',
   'user_delete',
+  'user_transfer',
   'access',
   'enter',
   'leave',

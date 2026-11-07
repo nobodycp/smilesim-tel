@@ -73,7 +73,11 @@ export function parseLineChoice(value: unknown): 'keep' | 'recapture' | null {
 export type TransferPreview = {
   /** The moved account's own rows and stops. `belowNewFloor` counts its rows with a price the new parent could not honour. */
   own: { customPrices: number; hidden: number; stops: number; belowNewFloor: number };
-  /** What sits below a moved agent, and the agent's own sell prices. `null` when nothing sits below it. */
+  /**
+   * What sits below a moved agent, and the agent's own sell prices. `null` for a point of sale, which has
+   * nothing below it. An agent with no points of sale still has it, with its sell prices counted, because a
+   * reset of what is below it deletes them.
+   */
   child: { customPrices: number; hidden: number; stops: number; sellPrices: number } | null;
 };
 
@@ -98,7 +102,8 @@ function byPackage<T extends { packageId: string }>(rows: T[]): Map<string, T[]>
  *
  * Paths run from the account up to the root, so `moved[0]` is the account itself and `nextPath` is the same
  * account under its new parent. `children` are the points of sale below a moved agent, each on the path it
- * would have after the move; only their first node is read.
+ * would have after the move; only their first node is read. It is `null` when the moved account is a point
+ * of sale, and an empty list when it is an agent with none.
  *
  * A price is below the new floor when it is under what the new parent pays for the same package, judged
  * apart for the subscription and the renewal price. A row on a package that is not in `packages` cannot be
@@ -110,7 +115,7 @@ function byPackage<T extends { packageId: string }>(rows: T[]): Map<string, T[]>
 export function previewOf(input: {
   moved: PathNode[];
   nextPath: PathNode[];
-  children: PathNode[][];
+  children: PathNode[][] | null;
   terms: PackageTerm[];
   sells: PackageSell[];
   packages: ({ id: string } & LayerPrices)[];
@@ -130,7 +135,7 @@ export function previewOf(input: {
   };
 
   const ownRows = terms.filter((row) => row.userId === account.id);
-  const kids = new Set(children.map((path) => path[0].id));
+  const kids = new Set((children ?? []).map((path) => path[0].id));
   const childRows = terms.filter((row) => kids.has(row.userId));
   return {
     own: {
@@ -140,7 +145,7 @@ export function previewOf(input: {
       belowNewFloor: ownRows.filter(underFloor).length,
     },
     child:
-      children.length === 0
+      children === null
         ? null
         : {
             customPrices: childRows.filter(setsPrice).length,

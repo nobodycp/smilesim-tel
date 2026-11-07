@@ -233,9 +233,24 @@ export class CreateUserBodyDto {
   roleId?: string;
 }
 
-export class TransferPosBodyDto {
-  @ApiPropertyOptional()
+export class TransferAccountBodyDto {
+  @ApiPropertyOptional({ description: 'The new agent for a point of sale, the new main agent for an agent' })
   parentLogin?: string;
+
+  @ApiPropertyOptional({ enum: ['keep', 'reset'], description: 'Custom prices and hidden packages on the moved account; required' })
+  ownPrices?: string;
+
+  @ApiPropertyOptional({ enum: ['keep', 'reset'], description: 'Operation stops on the moved account; required' })
+  ownStops?: string;
+
+  @ApiPropertyOptional({ enum: ['keep', 'reset'], description: 'Agent only, required for an agent: rows on its points of sale and its sell prices' })
+  childPrices?: string;
+
+  @ApiPropertyOptional({ enum: ['keep', 'reset'], description: 'Agent only, required for an agent: stops on its points of sale' })
+  childStops?: string;
+
+  @ApiPropertyOptional({ enum: ['keep', 'recapture'], description: 'Renewal prices carried by the moved numbers; required' })
+  linePrices?: string;
 }
 
 export class SetAccountPasswordBodyDto {
