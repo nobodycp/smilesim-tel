@@ -88,7 +88,14 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
     setDrafts(Object.fromEntries(groups.map((group) => [group.price, 'current' as const])));
   }
 
+  // Save is never held back by the drafts. A disabled button swallows the mousedown, so a field still being typed
+  // in would not blur and commit; an enabled one blurs the field first, the draft lands, and the same click saves.
   function save() {
+    // Nothing differs from what the groups already carry, so there is nothing to send.
+    if (changes.length === 0) {
+      onClose();
+      return;
+    }
     void run(() => api.setLinePrices(code, scope, changes), {
       reload: false,
       then: (data) => {
@@ -109,7 +116,7 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
       footer={(
         <>
           <Button type="button" variant="secondary" disabled={busy} onClick={close}>{t.cancel}</Button>
-          <Button type="button" disabled={busy || changes.length === 0} onClick={save}>{t.save}</Button>
+          <Button type="button" disabled={busy || !table.loaded} onClick={save}>{t.save}</Button>
         </>
       )}
     >

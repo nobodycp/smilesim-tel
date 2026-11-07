@@ -45,7 +45,6 @@ test('the user page groups existing numbers and saves two new prices', async ({ 
 
   await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
   await expect(dialog.locator('tbody tr').nth(2).locator('td').nth(1)).toHaveText('100');
-  await expect(dialog.getByRole('button', { name: 'حفظ' })).toBeDisabled();
   // The table fills the dialog body: nothing is pinned to a strip.
   const table = await dialog.locator('table.data').boundingBox();
   const body = await dialog.locator('.dialog-body').boundingBox();
@@ -61,6 +60,20 @@ test('the user page groups existing numbers and saves two new prices', async ({ 
   await expect(page.getByText('تم تحديث 50 رقماً')).toBeVisible();
   await expect(dialog).toHaveCount(0);
   await expect.poll(() => calls.filter((call) => call === 'GET /users/pos/packages').length).toBeGreaterThan(1);
+});
+
+test('one click on save sends a price typed without Enter', async ({ page }) => {
+  await serveOffice(page, 'agent', userRoutes());
+  const dialog = await openFromUserPage(page);
+  await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
+
+  const put = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/line-prices'));
+  // The field is never committed by Enter or by a click elsewhere: the press on save is what takes the focus off it.
+  await dialog.locator('tbody tr').nth(1).getByRole('textbox').fill('39');
+  await dialog.getByRole('button', { name: 'حفظ' }).click();
+  expect((await put).postDataJSON()).toEqual({ scope: 'pos', groups: [{ from: 4100, to: 3900 }] });
+  await expect(page.getByText('تم تحديث 50 رقماً')).toBeVisible();
+  await expect(dialog).toHaveCount(0);
 });
 
 test('follow the current price fills every row', async ({ page }) => {
@@ -82,7 +95,7 @@ test('follow the current price fills every row', async ({ page }) => {
 });
 
 test('a bad price is refused in the dialog and a cleared one leaves the group alone', async ({ page }) => {
-  await serveOffice(page, 'agent', userRoutes());
+  const calls = await serveOffice(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
   await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
 
@@ -90,16 +103,18 @@ test('a bad price is refused in the dialog and a cleared one leaves the group al
   await field.fill('abc');
   await field.press('Enter');
   await expect(dialog.getByRole('alert')).toHaveText('بيانات غير صالحة');
-  await expect(dialog.getByRole('button', { name: 'حفظ' })).toBeDisabled();
+  await expect(field).toHaveValue('');
 
   await field.fill('39');
   await field.press('Enter');
   await expect(dialog.getByRole('alert')).toHaveCount(0);
-  await expect(dialog.getByRole('button', { name: 'حفظ' })).toBeEnabled();
 
   await field.fill('');
   await field.press('Enter');
-  await expect(dialog.getByRole('button', { name: 'حفظ' })).toBeDisabled();
+  // No draft differs from its group, so save has nothing to send: it only closes.
+  await dialog.getByRole('button', { name: 'حفظ' }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(calls.filter((call) => call.startsWith('PUT '))).toEqual([]);
 });
 
 test('a package without renewable numbers has no entry, and an empty table says so', async ({ page }) => {
@@ -118,7 +133,6 @@ test('a package without renewable numbers has no entry, and an empty table says 
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByText('لا أرقام قابلة للتجديد على هذه الرزمة')).toBeVisible();
   await expect(dialog.locator('table')).toHaveCount(0);
-  await expect(dialog.getByRole('button', { name: 'حفظ' })).toBeDisabled();
 });
 
 const sheet = {
