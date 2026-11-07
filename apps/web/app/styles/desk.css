@@ -1624,7 +1624,8 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
 .terms-fields { display: inline-flex; gap: 10px; }
 .terms-price { display: inline-flex; flex-direction: column; gap: 2px; }
 .terms-price > span { color: var(--rd-muted); font-size: 10px; font-weight: 600; }
-.desk .pane .terms-price input {
+/* On the canvas, and in a dialog body (the line prices table): a dialog is portaled out of `.desk`. */
+:is(.desk .pane, .dialog-body) .terms-price input {
   width: 6.5rem;
   min-width: 0;
   height: 32px;
@@ -1639,11 +1640,10 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
   text-align: start;
   direction: ltr;
 }
-.desk .pane .terms-price input::placeholder { color: var(--rd-muted); font-weight: 500; }
-.desk .pane .terms-price input:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 3px var(--rd-focus); }
-.desk .pane .terms-price input:disabled { background: var(--rd-surface-2); color: var(--rd-muted); }
+:is(.desk .pane, .dialog-body) .terms-price input::placeholder { color: var(--rd-muted); font-weight: 500; }
+:is(.desk .pane, .dialog-body) .terms-price input:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 3px var(--rd-focus); }
+:is(.desk .pane, .dialog-body) .terms-price input:disabled { background: var(--rd-surface-2); color: var(--rd-muted); }
 .terms-state { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-.terms-state .link-btn { font-size: 12px; color: var(--rd-muted); }
 .terms-state .badge svg { width: 12px; height: 12px; }
 .terms-summary { white-space: nowrap; }
 .terms-filter .filter-panel { flex-wrap: wrap; overflow: visible; }
@@ -1731,11 +1731,10 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
 }
 .package-sheet .price-board > .account-fund:last-child {
   grid-column: 1 / -1;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
 }
 .package-sheet .price-board > .account-fund:last-child h3 { grid-column: 1 / -1; }
-.package-sheet .price-board > .account-fund:last-child > button { align-self: end; }
 .target-list .check {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

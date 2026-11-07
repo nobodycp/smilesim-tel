@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { AccountName, accountLabel } from '../../../../components/account-name';
 import { DataTable, type Column } from '../../../../components/data-table';
 import { Desk, Money, layerName, lineBadgeClass, lineStatus } from '../../../../components/desk';
+import { LinePricesDialog } from '../../../../components/line-prices-dialog';
 import { LiveSwitch } from '../../../../components/live-switch';
 import { TableSkeleton } from '../../../../components/loading';
 import { PriceField } from '../../../../components/price-field';
@@ -60,8 +61,9 @@ export default function PackageSheetPage() {
   const [loginName, setLoginName] = useState('');
   const [offerPrice, setOfferPrice] = useState('');
   const [offerRenewal, setOfferRenewal] = useState('');
-  const [repriceWhich, setRepriceWhich] = useState('stay');
-  const [repricePrice, setRepricePrice] = useState('');
+  // The scope picked in the prices tab, and the open table: one scope (a login, or `all`) at a time.
+  const [priceScope, setPriceScope] = useState('all');
+  const [pricing, setPricing] = useState<{ scope: string } | null>(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const allowed = useRequireLayer(BRANCH);
@@ -138,7 +140,6 @@ export default function PackageSheetPage() {
     setRenewals(sheet.renewals);
     setSwitches(sheet.switches);
     setSelectedLines([]);
-    setRepriceWhich((current) => (current === 'stay' || sheet.renewals.includes(current) ? current : 'stay'));
   }, [sheet]);
 
   async function saveMode(action: string, mode: string) {
@@ -176,20 +177,6 @@ export default function PackageSheetPage() {
   const esimSourceName = sheet
     ? sheet.esimPriceSource === 'package' ? t.esimSourcePackage : sheet.esimPriceSource === 'provider' ? t.esimSourceProvider : t.esimSourceCompany
     : '';
-
-  async function saveReprice() {
-    if (!sheet || repricePrice === '') return;
-    const price = parseShekel(repricePrice);
-    if (price === null) {
-      setError(apiText('بيانات غير صالحة'));
-      setNote('');
-      return;
-    }
-    await run(() => api.repriceRenewal(sheet.code, repriceWhich, price), {
-      note: t.save,
-      then: () => setRepricePrice(''),
-    });
-  }
 
   async function saveTargets(kind: 'renewals' | 'switches') {
     if (!sheet) return;
@@ -307,11 +294,14 @@ export default function PackageSheetPage() {
       render: (offer) => (
         <RowMenu
           label={`${t.rowActions} ${accountLabel(offer.loginName, offer.nickname)}`}
-          items={[{
-            label: t.resetDefault,
-            icon: 'undo',
-            onClick: () => void run(() => api.clearCustomPrice(sheet?.code ?? '', offer.loginName), { note: t.saved }),
-          }]}
+          items={[
+            {
+              label: t.resetDefault,
+              icon: 'undo',
+              onClick: () => void run(() => api.clearCustomPrice(sheet?.code ?? '', offer.loginName), { note: t.saved }),
+            },
+            { label: t.linePricesMenu, icon: 'receipt', onClick: () => setPricing({ scope: offer.loginName }) },
+          ]}
         />
       ),
     },
@@ -489,29 +479,17 @@ export default function PackageSheetPage() {
                   <div className="account-fund">
                     <h3>{t.repriceTitle}</h3>
                     <label>
-                      {t.repriceWhich}
-                      <select value={repriceWhich} onChange={(event) => setRepriceWhich(event.target.value)}>
-                        <option value="stay">{t.repriceStay}</option>
-                        {sheet.renewals.map((code) => {
-                          const target = targetPackages.find((item) => item.code === code);
-                          return (
-                            <option key={code} value={code}>
-                              {target ? `${target.name} · ${target.months} ${t.months}` : code}
-                            </option>
-                          );
-                        })}
+                      {t.linePricesScope}
+                      <select value={priceScope} onChange={(event) => setPriceScope(event.target.value)}>
+                        <option value="all">{t.linePricesAll}</option>
+                        {users.map((row) => (
+                          <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>
+                        ))}
                       </select>
                     </label>
-                    <label>
-                      {t.layerPos}
-                      <input
-                        className="num"
-                        inputMode="numeric"
-                        value={repricePrice}
-                        onChange={(event) => setRepricePrice(event.target.value)}
-                      />
-                    </label>
-                    <button type="button" disabled={repricePrice === ''} onClick={() => void saveReprice()}>{t.save}</button>
+                    <div>
+                      <Button type="button" variant="secondary" onClick={() => setPricing({ scope: priceScope })}>{t.linePricesOpen}</Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -561,6 +539,14 @@ export default function PackageSheetPage() {
           )}
         </section>
       </div>
+      <LinePricesDialog
+        open={pricing !== null && sheet !== null}
+        code={sheet?.code ?? ''}
+        packageName={sheet?.name ?? ''}
+        scope={pricing?.scope ?? ''}
+        onClose={() => setPricing(null)}
+        onSaved={(lines) => setNote(t.linePricesSaved.replace('{n}', String(lines)))}
+      />
     </Desk>
   );
 }

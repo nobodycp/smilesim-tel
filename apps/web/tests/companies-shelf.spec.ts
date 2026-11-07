@@ -118,7 +118,8 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
       },
     }),
     'PUT /packages/lian-wecom-500/renewals': () => ({ body: { ok: true } }),
-    'POST /packages/lian-wecom-500/reprice-renewal': () => ({ body: { ok: true, lines: 1 } }),
+    'GET /packages/lian-wecom-500/line-prices': () => ({ body: { current: null, groups: [{ price: 3000, count: 1 }] } }),
+    'PUT /packages/lian-wecom-500/line-prices': () => ({ body: { ok: true, lines: 1 } }),
   });
 
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
@@ -127,9 +128,14 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
   await expect(page.locator('.account-fund').nth(0).locator('input')).toHaveCount(5);
   await expect(page.locator('.account-fund').nth(1).locator('input')).toHaveCount(5);
   const reprice = page.locator('.account-fund').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
-  await reprice.locator('input').fill('40');
-  await reprice.getByRole('button', { name: 'حفظ' }).click();
-  await expect.poll(() => calls).toContain('POST /packages/lian-wecom-500/reprice-renewal');
+  await reprice.getByRole('button', { name: 'عرض الأرقام' }).click();
+  const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
+  await dialog.getByRole('textbox').fill('40');
+  await dialog.getByRole('textbox').press('Enter');
+  await dialog.getByRole('button', { name: 'حفظ' }).click();
+  await expect.poll(() => calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=all');
+  await expect.poll(() => calls).toContain('PUT /packages/lian-wecom-500/line-prices');
+  await expect(dialog).toHaveCount(0);
   await page.getByRole('tab', { name: 'التجديد' }).click();
   await page.getByLabel(/500 جيجا · 3 أشهر/).check();
   await page.getByRole('button', { name: 'حفظ', exact: true }).click();

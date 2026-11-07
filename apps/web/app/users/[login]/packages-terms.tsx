@@ -5,9 +5,11 @@ import { useState } from 'react';
 import { Dialog } from '../../../components/dialog';
 import { Money } from '../../../components/desk';
 import { EmptyState } from '../../../components/empty-state';
+import { LinePricesDialog } from '../../../components/line-prices-dialog';
 import { LiveSwitch } from '../../../components/live-switch';
 import { TableSkeleton } from '../../../components/loading';
 import { PriceField } from '../../../components/price-field';
+import { RowMenu, type RowAction } from '../../../components/row-menu';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
 import { api, type UserPackageRow } from '../../../lib/api';
@@ -37,6 +39,7 @@ export function UserPackagesTab({
   const [needle, setNeedle] = useState('');
   const [company, setCompany] = useState('');
   const [bulk, setBulk] = useState<Bulk>(null);
+  const [pricing, setPricing] = useState<UserPackageRow | null>(null);
   const sheet = useLoad(() => api.userPackages(login), [login]);
   const { run, busy } = useAction({ setError, setNote, onDone: sheet.reload });
 
@@ -156,6 +159,7 @@ export function UserPackagesTab({
                       onToggle={(next) => void save(row, { hidden: !next })}
                       onPrice={(field, text) => savePrice(row, field, text)}
                       onReset={() => void save(row, { price: null, renewalPrice: null })}
+                      onLinePrices={() => setPricing(row)}
                     />
                   ))}
                 </section>
@@ -184,6 +188,17 @@ export function UserPackagesTab({
             .replace('{custom}', String(listed.filter((row) => row.price !== null || row.renewalPrice !== null).length))}
         </p>
       </Dialog>
+      <LinePricesDialog
+        open={pricing !== null}
+        code={pricing?.code ?? ''}
+        packageName={pricing?.name ?? ''}
+        scope={login}
+        onClose={() => setPricing(null)}
+        onSaved={(lines) => {
+          setNote(t.linePricesSaved.replace('{n}', String(lines)));
+          void sheet.reload();
+        }}
+      />
     </>
   );
 }
@@ -195,6 +210,7 @@ function TermsRow({
   onToggle,
   onPrice,
   onReset,
+  onLinePrices,
 }: {
   row: UserPackageRow;
   canEdit: boolean;
@@ -202,12 +218,18 @@ function TermsRow({
   onToggle: (shown: boolean) => void;
   onPrice: (field: 'price' | 'renewalPrice', text: string) => void;
   onReset: () => void;
+  onLinePrices: () => void;
 }) {
   const { t } = usePrefs();
   const locked = row.hiddenAbove !== null;
   const margin = row.effective - row.parentBuy;
   const size = row.dataGb === null ? '' : `${row.dataGb} GB`;
   const stateClass = locked ? 'terms-row locked' : row.hidden ? 'terms-row off' : 'terms-row';
+  const actions: RowAction[] = [
+    ...(row.source === 'custom' && canEdit && !locked ? [{ label: t.resetDefault, icon: 'undo' as const, onClick: onReset }] : []),
+    // Numbers that already renewed under another price change only here, never by writing a price above.
+    ...(canEdit && row.lines > 0 ? [{ label: t.linePricesMenu, icon: 'receipt' as const, onClick: onLinePrices }] : []),
+  ];
   return (
     <div className={stateClass} data-code={row.code}>
       <LiveSwitch
@@ -253,11 +275,7 @@ function TermsRow({
         </div>
       </div>
       <div className="terms-state">
-        {row.source === 'custom' && canEdit && !locked ? (
-          <button type="button" className="link-btn hint" disabled={busy} onClick={onReset}>
-            {t.resetDefault}
-          </button>
-        ) : null}
+        <RowMenu label={`${t.rowActions} ${row.name}`} items={actions} />
         {locked ? (
           <span className="badge cancelled"><Lock aria-hidden="true" />{t.stoppedAbove}</span>
         ) : row.hidden ? (

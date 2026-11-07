@@ -225,8 +225,10 @@ export const api = {
     esimPrice: number | null;
   }>) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/chain`, body),
-  repriceRenewal: (code: string, which: string, posPrice: number) =>
-    request<{ ok: true; lines: number }>('POST', `/office/packages/${segment(code)}/reprice-renewal`, { which, posPrice }),
+  linePrices: (code: string, scope: string) =>
+    request<LinePrices>('GET', `/office/packages/${segment(code)}/line-prices?scope=${encodeURIComponent(scope)}`),
+  setLinePrices: (code: string, scope: string, groups: LinePriceChange[]) =>
+    request<{ ok: true; lines: number }>('PUT', `/office/packages/${segment(code)}/line-prices`, { scope, groups }),
   setPackageRenewals: (code: string, targets: string[]) =>
     request<{ ok: true }>('PUT', `/office/packages/${segment(code)}/renewals`, { targets }),
   setPackageSwitches: (code: string, targets: string[]) =>
@@ -339,6 +341,10 @@ export type CustomPriceRow = {
   price: number | null;
   renewalPrice: number | null;
 };
+/** The renewable numbers of one package in a scope, grouped by the renewal price each carries (agorot). `current` is what a new activation would carry on the scope account; `null` for the whole system. */
+export type LinePrices = { current: number | null; groups: { price: number; count: number }[] };
+/** One group's new price: a flat price in agorot, or `'current'` to follow what a new activation carries. */
+export type LinePriceChange = { from: number; to: number | 'current' };
 export type ProviderRow = {
   code: string;
   name: string;

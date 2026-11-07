@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
 
-type RowIcon = 'edit' | 'extend' | 'undo' | 'check' | 'ban' | 'trash' | 'enter' | 'key' | 'fund' | 'move' | 'image' | 'refresh';
+type RowIcon = 'edit' | 'extend' | 'undo' | 'check' | 'ban' | 'trash' | 'enter' | 'key' | 'fund' | 'move' | 'image' | 'refresh' | 'receipt';
 
 export type RowAction = {
   label: string;
@@ -27,6 +27,7 @@ function Glyph({ name }: { name: RowIcon }) {
     fund: <><path d="M12 4v16" /><path d="M16.5 7.5c0-1.4-1.8-2.5-4.5-2.5S7.5 6.1 7.5 7.5 9.3 10 12 10s4.5 1.1 4.5 2.5S14.7 15 12 15s-4.5-1.1-4.5-2.5" /></>,
     move: <path d="M5 12h14M13 6l6 6-6 6" />,
     image: <><rect x="4" y="5" width="16" height="14" rx="2" /><circle cx="9" cy="10" r="1.4" /><path d="M4 16.5 8.5 12l3 3 2.5-2.5L20 16.5" /></>,
+    receipt: <><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" /><path d="M12 17.5v-11" /></>,
   };
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
