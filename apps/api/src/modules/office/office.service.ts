@@ -2231,10 +2231,12 @@ export class OfficeService implements OnModuleInit {
 
   /**
    * Moves a number to another point of sale. The caller states what happens to the renewal price the number
-   * carries: it stays, or it is worked out again under the new point of sale (`recapture`). There is no
-   * default, and the word is checked before anything is read. Then the rules decide, the ones that decide a
-   * move of an account: the grant, a stop on the caller's own path, the point of sale named, and what the
-   * caller can see. The move, its operation record, the recapture, and both notices are one transaction.
+   * carries: it stays, or it is worked out again under the new point of sale (`recapture`). Only a number that
+   * can still renew (active or frozen) is priced again, as in the move of an account; any other moves with its
+   * terms as they are. There is no default, and the word is checked before anything is read. Then the rules
+   * decide, the ones that decide a move of an account: the grant, a stop on the caller's own path, the point
+   * of sale named, and what the caller can see. The move, its operation record, the recapture, and both
+   * notices are one transaction.
    */
   async transferLine(gate: Gate, lineId: string, body: { posLogin?: unknown; linePrices?: unknown }) {
     const actor = await this.actor(gate);
@@ -2255,7 +2257,10 @@ export class OfficeService implements OnModuleInit {
       });
       await this.recordOp(tx, line.posId, actor.operatorId, 'transfer', saleOf(line));
       // After the move, so the number is priced through the point of sale it is on now and the chain above it.
-      if (linePrices === 'recapture') await this.repriceLines(tx, [{ ...line, posId: next.id }], () => ({ to: 'current' }), accounts);
+      // Only a number that can still renew is priced again, as in the move of an account; any other moves with its terms.
+      if (linePrices === 'recapture' && (RENEWABLE_STATUSES as readonly string[]).includes(line.status)) {
+        await this.repriceLines(tx, [{ ...line, posId: next.id }], () => ({ to: 'current' }), accounts);
+      }
       await this.writeTransferNotices(tx, actor, { kind: 'line', subject: line.msisdn, from, to: next });
     });
     return { ok: true as const };

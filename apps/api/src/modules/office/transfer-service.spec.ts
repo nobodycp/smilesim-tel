@@ -695,12 +695,26 @@ describe('transfer: a number', () => {
     await expect(run(terms('pos2', 'pa', { renewalPrice: 3100 }))).resolves.toBe(3100);
   });
 
-  it('moves a number that can no longer renew, and recapture prices it as the caller asked', async () => {
-    const { service, gates, line } = await sellers();
-    line.status = 'disconnected';
-    await expect(service.transferLine(gates.branch, 'ln1', lineMove({ linePrices: 'recapture' }))).resolves.toEqual({ ok: true });
-    expect(line).toMatchObject({ posId: 'pos2', status: 'disconnected' });
-    expect(renewalOf(line)).toBe(3400);
+  it('recaptures a number that can still renew, active or frozen, and moves one that cannot with its terms as they are', async () => {
+    const moved = async (status: string) => {
+      const { service, gates, line } = await sellers();
+      line.status = status;
+      const before = structuredClone(line.terms);
+      await expect(service.transferLine(gates.branch, 'ln1', lineMove({ linePrices: 'recapture' }))).resolves.toEqual({ ok: true });
+      // Whatever its state, the number moves and keeps it.
+      expect(line).toMatchObject({ posId: 'pos2', status });
+      return { line, before };
+    };
+    for (const status of ['active', 'frozen']) {
+      const { line } = await moved(status);
+      expect(renewalOf(line)).toBe(3400);
+    }
+    // As in the move of an account, only the numbers that can renew are priced again.
+    for (const status of ['disconnected', 'suspended']) {
+      const { line, before } = await moved(status);
+      expect(line.terms).toEqual(before);
+      expect(renewalOf(line)).toBe(3200);
+    }
   });
 
   it('refuses where a transfer stop sits on the actor path, and not the branch above it', async () => {
