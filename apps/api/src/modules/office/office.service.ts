@@ -106,7 +106,7 @@ type Actor = {
   impersonating: boolean;
 };
 type Account = { id: string; loginName: string; nickname: string; layer: string; parentId: string | null; deniedOps: string };
-type PackageFacts = { code: string; name: string; dataGb: number | null; months: number; company?: { code: string } | null } & LayerPrices;
+type PackageFacts = { id: string; code: string; name: string; dataGb: number | null; months: number; company?: { code: string } | null } & LayerPrices;
 type TermPatch = { hidden?: boolean; price?: number | null; renewalPrice?: number | null };
 export type UserPackageRow = {
   code: string;
@@ -123,6 +123,8 @@ export type UserPackageRow = {
   effective: number;
   renewalEffective: number;
   source: PriceSource;
+  /** Renewable lines of this package on points of sale in this user's subtree. */
+  lines: number;
 };
 export type CustomPriceRow = {
   loginName: string;
@@ -2243,7 +2245,8 @@ export class OfficeService implements OnModuleInit {
 
   /** Every sellable package, grouped by company, with what `loginName` sees and pays. */
   async userPackages(gate: Gate, loginName: string) {
-    const { path } = await this.termTarget(gate, loginName);
+    const { path, target, accounts } = await this.termTarget(gate, loginName);
+    const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
     const [packages, terms, sells] = await Promise.all([
       this.prisma.package.findMany({ where: { enabled: true, forSale: true }, include: { company: true }, orderBy: [{ company: { name: 'asc' } }, { name: 'asc' }] }),
       this.prisma.userPackage.findMany({ where: { userId: { in: path.map((node) => node.id) } } }),
@@ -2251,7 +2254,7 @@ export class OfficeService implements OnModuleInit {
     ]);
     const rows = packages.map((pkg) => ({
       pkg,
-      row: this.userPackageRow(pkg, path, terms.filter((term) => term.packageId === pkg.id), sells.filter((sell) => sell.packageId === pkg.id)),
+      row: this.userPackageRow(pkg, path, terms.filter((term) => term.packageId === pkg.id), sells.filter((sell) => sell.packageId === pkg.id), lineCountsByPackage),
     }));
     const companies = new Map<string, { code: string; name: string; packages: UserPackageRow[] }>();
     for (const { pkg, row } of rows) {
@@ -2266,11 +2269,12 @@ export class OfficeService implements OnModuleInit {
   async setUserPackage(gate: Gate, loginName: string, code: string, body: { hidden?: unknown; price?: unknown; renewalPrice?: unknown }) {
     const patch = termPatch(body);
     if (!patch) fail(400, 'INVALID');
-    const { actor, path } = await this.termTarget(gate, loginName);
+    const { actor, path, target, accounts } = await this.termTarget(gate, loginName);
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const { terms, sells } = await this.termsFor(pkg.id);
-    return this.writeUserPackage(actor, path, pkg, patch, terms, sells);
+    const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
+    return this.writeUserPackage(actor, path, pkg, patch, terms, sells, this.prisma, lineCountsByPackage);
   }
 
   /** Hide or show several packages at once. Packages hidden higher up are left alone. */
@@ -2278,8 +2282,9 @@ export class OfficeService implements OnModuleInit {
     if (!Array.isArray(body.codes) || body.codes.some((code) => typeof code !== 'string' || !code) || typeof body.hidden !== 'boolean') fail(400, 'INVALID');
     const codes = new Set(body.codes as string[]);
     const hidden = body.hidden as boolean;
-    const { actor, path } = await this.termTarget(gate, loginName);
+    const { actor, path, target, accounts } = await this.termTarget(gate, loginName);
     const pathIds = path.map((node) => node.id);
+    const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
     // The path's rows for every package on sale, loaded once: the picked ones are written, all of
     // them feed the summary. Every write sits in one transaction so a refusal midway applies nothing.
     const [packages, terms, sells] = await Promise.all([
@@ -2295,11 +2300,11 @@ export class OfficeService implements OnModuleInit {
         if (!codes.has(pkg.code)) continue;
         const own = termsOf(pkg.id);
         if (hiddenAbove(path, own)) continue;
-        await this.writeUserPackage(actor, path, pkg, { hidden }, own, sellsOf(pkg.id), tx);
+        await this.writeUserPackage(actor, path, pkg, { hidden }, own, sellsOf(pkg.id), tx, lineCountsByPackage);
         written.set(pkg.id, own);
       }
     });
-    const rows = packages.map((pkg) => this.userPackageRow(pkg, path, written.get(pkg.id) ?? termsOf(pkg.id), sellsOf(pkg.id)));
+    const rows = packages.map((pkg) => this.userPackageRow(pkg, path, written.get(pkg.id) ?? termsOf(pkg.id), sellsOf(pkg.id), lineCountsByPackage));
     return { summary: summarize(rows) };
   }
 
@@ -2533,6 +2538,7 @@ export class OfficeService implements OnModuleInit {
     terms: TermRow[],
     sells: SellRow[],
     db: Prisma.TransactionClient | PrismaClient = this.prisma,
+    lineCountsByPackage: Map<string, number> = new Map(),
   ): Promise<UserPackageRow> {
     const userId = path[0].id;
     const index = terms.findIndex((term) => term.userId === userId);
@@ -2560,10 +2566,28 @@ export class OfficeService implements OnModuleInit {
       if (own) terms[index] = next;
       else terms.push(next);
     }
-    return this.userPackageRow(pkg, path, terms, sells);
+    return this.userPackageRow(pkg, path, terms, sells, lineCountsByPackage);
   }
 
-  private userPackageRow(pkg: PackageFacts, path: PathNode[], terms: TermRow[], sells: SellRow[]): UserPackageRow {
+  /** Renewable line counts per package under `targetId`'s subtree (visible POS ids). */
+  private async renewableLinesByPackage(targetId: string, targetLayer: string, accounts: Account[]): Promise<Map<string, number>> {
+    const posIds = [...visibleAccountIds(targetId, targetLayer, accounts)];
+    if (posIds.length === 0) return new Map();
+    const groups = await this.prisma.line.groupBy({
+      by: ['packageId'],
+      where: { status: { in: [...RENEWABLE_STATUSES] }, posId: { in: posIds } },
+      _count: { _all: true },
+    });
+    return new Map(groups.map((row) => [row.packageId, row._count._all]));
+  }
+
+  private userPackageRow(
+    pkg: PackageFacts,
+    path: PathNode[],
+    terms: TermRow[],
+    sells: SellRow[],
+    lineCountsByPackage: Map<string, number> = new Map(),
+  ): UserPackageRow {
     const own = terms.find((term) => term.userId === path[0].id);
     return {
       code: pkg.code,
@@ -2580,6 +2604,7 @@ export class OfficeService implements OnModuleInit {
       effective: buyPriceFor(path, terms, sells, pkg, 'subscription'),
       renewalEffective: buyPriceFor(path, terms, sells, pkg, 'renewal'),
       source: priceSource(path, terms, sells, 'subscription'),
+      lines: lineCountsByPackage.get(pkg.id) ?? 0,
     };
   }
 

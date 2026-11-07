@@ -321,6 +321,8 @@ export type UserPackageRow = {
   effective: number;
   renewalEffective: number;
   source: 'custom' | 'parent' | 'layer';
+  /** Renewable lines of this package on points of sale under this user. */
+  lines: number;
 };
 export type UserPackagesSheet = {
   summary: UserPackagesSummary;

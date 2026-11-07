@@ -119,6 +119,16 @@ export async function tree() {
     findUnique: async ({ where }: { where: { id?: string; msisdn?: string } }) => lines.find((row) => (where.id ? row.id === where.id : row.msisdn === where.msisdn)) ?? null,
     findMany: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)),
     count: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)).length,
+    groupBy: async ({ by, where, _count }: { by: string[]; where?: Record<string, unknown>; _count: { _all: true } }) => {
+      if (by.join(',') !== 'packageId' || !_count?._all) return [];
+      const matched = lines.filter((row) => whereMatch(row, where));
+      const tallies = new Map<string, number>();
+      for (const row of matched) {
+        const id = row.packageId as string;
+        tallies.set(id, (tallies.get(id) ?? 0) + 1);
+      }
+      return [...tallies.entries()].map(([packageId, count]) => ({ packageId, _count: { _all: count } }));
+    },
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(lines.find((row) => row.id === where.id) as Row, data),
     updateMany: async () => ({ count: 0 }),
     create: async ({ data }: { data: Data }) => {
@@ -391,15 +401,16 @@ describe('writing user terms', () => {
   });
 
   it('lists the user packages grouped by company with the inherited state', async () => {
-    const { service, gates, userPackages, sellPrices } = await tree();
+    const { service, gates, userPackages, sellPrices, line, lines } = await tree();
+    lines.push(at(line, 'ln2', 4500), at(line, 'ln3', 4500), at(line, 'ln4', 4500, 'disconnected'));
     userPackages.push({ ...row('ma1', { hidden: true }), packageId: 'pb' });
     sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ag1', price: 3100, renewalPrice: null });
     const sheet = await service.userPackages(gates.ag1, 'pos1');
     expect(sheet.summary).toEqual({ total: 2, visible: 1, custom: 0 });
     expect(sheet.companies).toHaveLength(1);
     const [a, b] = sheet.companies[0].packages;
-    expect(a).toMatchObject({ code: 'alloha-150', hidden: false, hiddenAbove: null, parentBuy: 3000, effective: 3100, renewalEffective: 3200, source: 'parent' });
-    expect(b).toMatchObject({ code: 'alloha-400', hidden: false, hiddenAbove: 'ma1' });
+    expect(a).toMatchObject({ code: 'alloha-150', hidden: false, hiddenAbove: null, parentBuy: 3000, effective: 3100, renewalEffective: 3200, source: 'parent', lines: 3 });
+    expect(b).toMatchObject({ code: 'alloha-400', hidden: false, hiddenAbove: 'ma1', lines: 0 });
   });
 
   it('custom prices list the priced users only and clearing keeps a hide', async () => {
