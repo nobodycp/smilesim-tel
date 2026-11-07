@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, ArrowRightLeft, Check, KeyRound, LogIn, Plus, Shield, Snowflake, Trash2, Wallet, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useConnection } from '../lib/connection';
@@ -65,6 +65,12 @@ export function Dialog({
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const holdAlert = useContext(DialogAlert);
+  // Callers often pass an inline `onClose`. Reading it through a ref keeps the focus/keyboard effect tied to
+  // `open` only, so a parent re-render (each keystroke in a field) does not move the focus back to the first field.
+  const closeRef = useRef(onClose);
+  useLayoutEffect(() => {
+    closeRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!open || !error) return;
@@ -81,7 +87,7 @@ export function Dialog({
     (field ?? nodes()[0])?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        closeRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -105,7 +111,7 @@ export function Dialog({
       document.body.style.overflow = overflow;
       previous?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || typeof document === 'undefined') return null;
   return createPortal(

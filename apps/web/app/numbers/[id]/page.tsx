@@ -90,8 +90,6 @@ export default function LineCardPage() {
   const posChoices = card.data?.posChoices ?? [];
   const { run: act, busy } = useAction({ setError, setNote, onDone: card.reload });
   const run: RunLine = (work) => act(work, { note: (data) => applyNote(t, data) });
-  // Stable on purpose: `Dialog` focuses its first field again whenever `onClose` changes, which would pull the
-  // focus off a radio on every choice. The setters it calls never change.
   const closeDialog = useCallback(() => {
     setDialog(null);
     setSwitchTo('');
