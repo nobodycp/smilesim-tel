@@ -23,6 +23,7 @@ import {
   CustomPriceBodyDto,
   ExtendBodyDto,
   FundBodyDto,
+  LinePricesBodyDto,
   NoticeReadBodyDto,
   OutcomeBodyDto,
   PackageTargetsBodyDto,
@@ -273,6 +274,20 @@ export class OfficeController {
     @Query('scope') scope?: string,
   ) {
     return this.run(res, () => this.office.linePrices(gateOf(req), code, { scope }));
+  }
+
+  @Put('packages/:code/line-prices')
+  @ApiOperation({ summary: 'Reprice the renewable numbers of this package, one price group at a time' })
+  @ApiParam({ name: 'code' })
+  @ApiBody({ type: LinePricesBodyDto })
+  @ApiErrorResponse(401, 403, 400, 404)
+  setLinePrices(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('code') code: string,
+    @Body() body: LinePricesBodyDto,
+  ) {
+    return this.run(res, () => this.office.setLinePrices(gateOf(req), code, body), { action: 'package_reprice', subjectKind: 'package', subjectRef: code });
   }
 
   @Patch('packages/:code/mode')

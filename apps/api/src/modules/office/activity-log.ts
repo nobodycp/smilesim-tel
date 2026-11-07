@@ -34,6 +34,7 @@ export const ACTIVITY_ACTIONS = [
   'package_mode',
   'package_price',
   'package_chain',
+  'package_reprice',
   'user_package',
   'user_ops',
   'sell_price',

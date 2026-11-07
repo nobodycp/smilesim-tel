@@ -64,7 +64,7 @@ import {
   type PackageTerms,
 } from './office-rules';
 import { activityActorFilter, clampActivityRange } from './activity-log';
-import { RENEWABLE_STATUSES, groupLinePrices, repriceLine, stampRenewal, type PriceGroup } from './line-prices';
+import { RENEWABLE_STATUSES, groupChanges, groupLinePrices, repriceLine, stampRenewal, type PriceGroup } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
 import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey, layerPrice, parseOps, priceSource, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type PriceSource, type SellRow, type TermRow } from './user-terms';
 import { renderEsimQr } from './office-esim';
@@ -2361,6 +2361,37 @@ export class OfficeService implements OnModuleInit {
     if (scope.kind === 'all') return { current: null, groups };
     const { terms, sells } = await this.termsFor(pkg.id);
     return { current: buyPriceFor(this.pathOf(scope.id, accounts), terms, sells, pkg, 'renewal'), groups };
+  }
+
+  /**
+   * Reprices the renewable numbers of a package in a scope, one price group at a time: every number
+   * carrying `from` takes `to`, a flat price or what a new activation would carry now. Numbers in no
+   * listed group stay as they are. One transaction, so a refusal anywhere applies nothing.
+   */
+  async setLinePrices(gate: Gate, code: string, body: { scope?: unknown; groups?: unknown }): Promise<{ ok: true; lines: number }> {
+    const changes = groupChanges(body.groups);
+    if (!changes) fail(400, 'INVALID');
+    const [actor, accounts] = await Promise.all([this.actor(gate), this.accounts()]);
+    const scope = await this.lineScope(actor, accounts, body.scope);
+    const pkg = await this.prisma.package.findUnique({ where: { code }, select: { id: true } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const lines = await this.runTx(async (tx) => {
+      const found = await tx.line.findMany({
+        where: this.scopeLineWhere(scope, accounts, pkg.id),
+        include: { package: { include: { company: true, provider: true } } },
+      });
+      return this.repriceLines(
+        tx,
+        found,
+        (line) => {
+          const price = lineTermsOf(line.terms, line.package).renewal.posPrice;
+          const change = changes.find((item) => item.from === price);
+          return change ? { to: change.to } : null;
+        },
+        accounts,
+      );
+    });
+    return { ok: true as const, lines };
   }
 
   /**

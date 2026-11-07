@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
 import type { NoticeService } from './notice.service';
+import { groupLinePrices } from './line-prices';
 import { OfficeService } from './office.service';
 import { captureTerms, type LineTerms } from './office-rules';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
@@ -138,6 +139,13 @@ export async function tree() {
     findMany: async (args?: { where?: Record<string, unknown> }) => packages.filter((row) => whereMatch(row, args?.where)),
     findUnique: async ({ where }: { where: { code?: string; id?: string } }) => packages.find((row) => (where.code ? row.code === where.code : row.id === where.id)) ?? null,
   };
+  // The renewal targets each package lists, as `activate` reads them through `renewals`; none unless a test sets them.
+  const packageRenewal = {
+    findMany: async (args?: { where?: Record<string, unknown> }) =>
+      packages
+        .flatMap((pkg) => (pkg.renewals as { target: Row }[]).map(({ target }) => ({ id: `${pkg.id}>${target.id}`, packageId: pkg.id, target })))
+        .filter((row) => whereMatch(row, args?.where)),
+  };
   const userPackage = byId(userPackages);
   const sellPrice = byId(sellPrices);
   const tx = {
@@ -150,6 +158,7 @@ export async function tree() {
     line: lineModel,
     officeTask: taskModel,
     package: packageModel,
+    packageRenewal,
     user: userModel,
     userPackage,
     sellPrice,
@@ -160,6 +169,7 @@ export async function tree() {
     line: lineModel,
     officeTask: taskModel,
     package: packageModel,
+    packageRenewal,
     packageSwitch: { findMany: async () => [{ target: { code: 'alloha-400' }, targetId: 'pb' }] },
     userPackage,
     sellPrice,
@@ -168,14 +178,19 @@ export async function tree() {
     provider: { findMany: async () => [provider] },
     role: null,
     walletEntry: { findMany: async () => [], findFirst: async () => null, count: async () => 0 },
-    // A failed transaction puts the terms tables back, as the database would.
+    // A failed transaction puts the terms tables and the terms on every line back, as the database would.
     $transaction: async (run: (client: typeof tx) => Promise<unknown>) => {
-      const keep = { userPackages: userPackages.map((row) => ({ ...row })), sellPrices: sellPrices.map((row) => ({ ...row })) };
+      const keep = {
+        userPackages: userPackages.map((row) => ({ ...row })),
+        sellPrices: sellPrices.map((row) => ({ ...row })),
+        lineTerms: new Map(lines.map((row) => [row, structuredClone(row.terms)] as const)),
+      };
       try {
         return await run(tx);
       } catch (error) {
         userPackages.splice(0, userPackages.length, ...keep.userPackages);
         sellPrices.splice(0, sellPrices.length, ...keep.sellPrices);
+        for (const [row, terms] of keep.lineTerms) row.terms = terms;
         throw error;
       }
     },
@@ -560,5 +575,102 @@ describe('prices on existing numbers', () => {
     await expect(service.linePrices(gates.branch, 'alloha-150', {})).rejects.toMatchObject({ code: 'INVALID' });
     await expect(service.linePrices(gates.branch, 'alloha-150', { scope: ['pos1'] })).rejects.toMatchObject({ code: 'INVALID' });
     await expect(service.linePrices(gates.branch, 'nope-1', { scope: 'all' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('case 1: every group to the current price', async () => {
+    const { service, gates, userPackages, lines } = await withNumbers();
+    // pos1 has its own renewal price, 3100; its numbers carry 4500 twice, 4100 and the layer's 3200
+    userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: null, renewalPrice: 3100 });
+    const result = await service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1', groups: [{ from: 4500, to: 'current' }, { from: 4100, to: 'current' }, { from: 3200, to: 'current' }] });
+    expect(result).toEqual({ ok: true, lines: 4 });
+    expect(lines.filter((l) => l.status !== 'disconnected').map((l) => (l.terms as LineTerms).renewal.posPrice)).toEqual([3100, 3100, 3100, 3100]);
+    expect((lines[4].terms as LineTerms).renewal.posPrice).toBe(9900);
+  });
+
+  it('case 2: old numbers to 41 while the custom activation price stays 35', async () => {
+    const { service, gates, userPackages, lines } = await withNumbers();
+    userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: 3500, renewalPrice: null });
+    await service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1', groups: [{ from: 4500, to: 4100 }] });
+    expect(lines.filter((l) => (l.terms as LineTerms).renewal.posPrice === 4100)).toHaveLength(3);
+    expect(userPackages[0]).toMatchObject({ price: 3500, renewalPrice: null });
+  });
+
+  it('case 3: two groups, two prices, one call', async () => {
+    const { service, gates, lines } = await withNumbers();
+    await service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1', groups: [{ from: 4500, to: 3900 }, { from: 4100, to: 3700 }] });
+    expect(groupLinePrices(lines.filter((l) => l.status !== 'disconnected').map((l) => ({ terms: l.terms as LineTerms })))).toEqual([{ price: 3200, count: 1 }, { price: 3700, count: 1 }, { price: 3900, count: 2 }]);
+  });
+
+  it('a price below one number floor refuses the whole save and changes nothing', async () => {
+    const { service, gates, lines } = await withNumbers();
+    // agent pays renewal 2700 → pos floor 2700
+    await expect(service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1', groups: [{ from: 4500, to: 2600 }, { from: 4100, to: 3000 }] })).rejects.toMatchObject({ code: 'PRICE_BELOW_FLOOR' });
+    expect((lines[3].terms as LineTerms).renewal.posPrice).toBe(4100);
+    // The refused group may come after groups that are fine: none of them is kept.
+    await expect(service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1', groups: [{ from: 4500, to: 3900 }, { from: 4100, to: 2600 }] })).rejects.toMatchObject({ code: 'PRICE_BELOW_FLOOR' });
+    expect(lines.map((l) => (l.terms as LineTerms).renewal.posPrice)).toEqual([3200, 4500, 4500, 4100, 9900]);
+  });
+
+  it('the nearer custom price wins when an agent runs current over its subtree', async () => {
+    const { service, gates, sellPrices, userPackages, lines } = await withNumbers();
+    sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ag1', price: 3700, renewalPrice: 3400 });
+    userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: null, renewalPrice: 3000 });
+    await service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'ag1', groups: [{ from: 4500, to: 'current' }] });
+    expect((lines[1].terms as LineTerms).renewal.posPrice).toBe(3000);
+  });
+
+  it('after case 1 the next extend debits the new price', async () => {
+    const { service, gates, userPackages, line, entries } = await withNumbers();
+    userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: null, renewalPrice: 3100 });
+    await service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1', groups: [{ from: 4500, to: 'current' }, { from: 4100, to: 'current' }, { from: 3200, to: 'current' }] });
+    line.endsAt = new Date(Date.now() + 10 * 24 * 3600 * 1000);
+    await service.extend(gates.pos1, 'ln1', { outcome: 'success' });
+    expect(entries[0]).toMatchObject({ kind: 'extend', amount: -3100 });
+  });
+
+  it('bad bodies are INVALID', async () => {
+    const { service, gates } = await tree();
+    await expect(service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1', groups: 'x' })).rejects.toMatchObject({ code: 'INVALID' });
+    await expect(service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1' })).rejects.toMatchObject({ code: 'INVALID' });
+    await expect(service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1', groups: [{ from: 4500, to: -1 }] })).rejects.toMatchObject({ code: 'INVALID' });
+    await expect(service.setLinePrices(gates.ag1, 'alloha-150', { groups: [] })).rejects.toMatchObject({ code: 'INVALID' });
+  });
+
+  it('a save reaches the numbers of that package under the scope and prices each through its own point of sale', async () => {
+    const { service, gates, accounts, sellPrices, userPackages, lines, line } = await withNumbers();
+    accounts.push(account('pos2', 'pos', 'ag1'), account('pos3', 'pos', 'ag2'));
+    sellPrices.push({ id: 's1', packageId: 'pa', ownerId: 'ag1', price: 3700, renewalPrice: 3400 });
+    userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: null, renewalPrice: 3000 });
+    // pos2 is under ag1 with no row of its own; pos3 is under ag2, outside the scope; ln8 is on another package.
+    lines.push({ ...at(line, 'ln6', 4500), posId: 'pos2' }, { ...at(line, 'ln7', 4500), posId: 'pos3' }, { ...at(line, 'ln8', 4500), packageId: 'pb' });
+    await expect(service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'ag1', groups: [{ from: 4500, to: 'current' }] })).resolves.toEqual({ ok: true, lines: 3 });
+    expect(lines.map((l) => (l.terms as LineTerms).renewal.posPrice)).toEqual([3200, 3000, 3000, 4100, 9900, 3400, 4500, 4500]);
+  });
+
+  it('current takes the renewal targets the package lists today; a flat price leaves the targets alone', async () => {
+    const { service, gates, pkgA, pkgB, userPackages, lines, line } = await withNumbers();
+    // ln2 and ln4 were captured with a target the package no longer lists; it now lists alloha-400, which pos1 has its own price for.
+    const stale = { code: 'alloha-300', months: 1, renewal: { ...(line.terms as LineTerms).renewal, posPrice: 5000 } };
+    for (const row of [lines[1], lines[3]]) row.terms = { ...(row.terms as LineTerms), renewalTargets: [stale] };
+    pkgA.renewals = [{ target: pkgB }];
+    userPackages.push({ id: 'r1', packageId: 'pb', userId: 'pos1', hidden: false, price: null, renewalPrice: 2950 });
+    await service.setLinePrices(gates.ag1, 'alloha-150', { scope: 'pos1', groups: [{ from: 4500, to: 'current' }, { from: 4100, to: 3900 }] });
+    expect(lines[1].terms).toMatchObject({ packageCode: 'alloha-150', renewal: { posPrice: 3200 }, renewalTargets: [{ code: 'alloha-400', renewal: { posPrice: 2950 } }] });
+    expect(lines[3].terms).toMatchObject({ renewal: { posPrice: 3900 }, renewalTargets: [stale] });
+  });
+
+  it('a save goes through the same doors as the table', async () => {
+    const { service, gates } = await withNumbers();
+    const save = (gate: { sessionId: string }, scope: string, from: number, code = 'alloha-150') =>
+      service.setLinePrices(gate, code, { scope, groups: [{ from, to: 3900 }] });
+    await expect(save(gates.ma1, 'all', 4500)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(save(gates.ag2, 'pos1', 4500)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    // The main agent is not the parent of pos1; it reaches those numbers through ag1.
+    await expect(save(gates.ma1, 'pos1', 4500)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(save(gates.pos1, 'pos1', 4500)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(save(gates.branch, 'ghost', 4500)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(save(gates.branch, 'all', 4500, 'nope-1')).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(save(gates.ma1, 'ag1', 4500)).resolves.toEqual({ ok: true, lines: 2 });
+    await expect(save(gates.branch, 'all', 4100)).resolves.toEqual({ ok: true, lines: 1 });
   });
 });

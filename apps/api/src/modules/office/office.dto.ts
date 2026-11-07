@@ -55,6 +55,25 @@ export class CustomPriceBodyDto {
   renewalPrice?: number | null;
 }
 
+export class LinePricesBodyDto {
+  @ApiPropertyOptional({ description: 'An account login (that account and everything under it) or "all" (branch only)' })
+  scope?: string;
+
+  @ApiPropertyOptional({
+    description: 'One entry per price group: `from` is the renewal price the numbers carry now, `to` the flat price they take or "current" for what a new activation would carry',
+    type: 'array',
+    items: {
+      type: 'object',
+      required: ['from', 'to'],
+      properties: {
+        from: { type: 'integer', example: 4500 },
+        to: { oneOf: [{ type: 'integer', example: 4100 }, { type: 'string', enum: ['current'] }] },
+      },
+    },
+  })
+  groups?: { from: number; to: number | 'current' }[];
+}
+
 export class SellPriceBodyDto {
   @ApiPropertyOptional()
   price?: number;
