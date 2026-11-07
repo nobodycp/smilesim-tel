@@ -66,6 +66,7 @@ import {
 import { activityActorFilter, clampActivityRange } from './activity-log';
 import { RENEWABLE_STATUSES, groupChanges, groupLinePrices, repriceLine, stampRenewal, type PriceGroup } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
+import { TRANSFER_GRANT, canTransfer, previewOf, transferKind } from './transfer-rules';
 import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey, layerPrice, parseOps, priceSource, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type PriceSource, type SellRow, type TermRow } from './user-terms';
 import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
@@ -105,7 +106,7 @@ type Actor = {
   operatorId: string;
   impersonating: boolean;
 };
-type Account = { id: string; loginName: string; nickname: string; layer: string; parentId: string | null; deniedOps: string };
+type Account = { id: string; loginName: string; nickname: string; layer: string; parentId: string | null; deniedOps: string; disabledAt: Date | null };
 type PackageFacts = { id: string; code: string; name: string; dataGb: number | null; months: number; company?: { code: string } | null } & LayerPrices;
 type TermPatch = { hidden?: boolean; price?: number | null; renewalPrice?: number | null };
 export type UserPackageRow = {
@@ -141,6 +142,17 @@ type LineScope = { kind: 'all' } | { kind: 'account'; id: string; loginName: str
 /** What happens to one number: a flat price, or what a new activation would carry now. */
 type LineTarget = { to: number | 'current' };
 type RepriceLine = { id: string; posId: string; terms: Prisma.JsonValue; package: PackagePriceRow & { id: string } };
+/** The price columns of a package that `LayerPrices` holds, as a `select`. */
+const PRICE_COLUMNS = {
+  branchCost: true,
+  mainPrice: true,
+  agentPrice: true,
+  posPrice: true,
+  renewalBranchCost: true,
+  renewalMainPrice: true,
+  renewalAgentPrice: true,
+  renewalPosPrice: true,
+} as const;
 /** What decides the prices points of sale pay for some packages: their price columns, the custom rows on them, and the sell prices of the accounts above. */
 type LadderRows = {
   packages: (LayerPrices & { id: string; code: string })[];
@@ -179,6 +191,11 @@ export class OfficeFailure extends Error {
 
 function fail(status: number, code: ErrorCode): never {
   throw new OfficeFailure(status, code);
+}
+
+/** An account as one step of a path. */
+function nodeOf(account: Account): PathNode {
+  return { id: account.id, loginName: account.loginName, layer: account.layer, deniedOps: account.deniedOps ?? '' };
 }
 
 function feedPosition(raw: string | undefined) {
@@ -2051,6 +2068,80 @@ export class OfficeService implements OnModuleInit {
     return { ok: true as const };
   }
 
+  /**
+   * What moving `loginName` under `query.parentLogin` would carry, without writing anything. It asks the
+   * same rules as the move, so a refusal reaches the dialog from here, and it reads each table once however
+   * many accounts sit below.
+   */
+  async transferPreview(gate: Gate, loginName: string, query: { parentLogin?: unknown }) {
+    const actor = await this.actor(gate);
+    const accounts = await this.accounts();
+    const { moved, next } = this.resolveTransfer(actor, accounts, loginName, query.parentLogin);
+    const nextPath = [nodeOf(moved), ...this.pathOf(next.id, accounts)];
+    // What is under the moved account: an agent's points of sale, nothing for a point of sale. They go with
+    // it, so their paths after the move run through its own.
+    const below = accounts.filter((account) => account.parentId === moved.id);
+    const belowIds = below.map((account) => account.id);
+    const subtree = [moved.id, ...belowIds];
+    // The moved account heads the new chain, so one list serves its own rows and the rows that set its floor.
+    const chainIds = nextPath.map((node) => node.id);
+    const [terms, sells, packages, wallets, lines] = await Promise.all([
+      this.prisma.userPackage.findMany({
+        where: { userId: { in: [...chainIds, ...belowIds] } },
+        select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
+      }),
+      this.prisma.sellPrice.findMany({
+        where: { ownerId: { in: chainIds } },
+        select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
+      }),
+      this.prisma.package.findMany({ select: { id: true, ...PRICE_COLUMNS } }),
+      this.prisma.wallet.findMany({ where: { userId: { in: subtree } }, select: { userId: true, balance: true } }),
+      this.prisma.line.count({ where: { posId: { in: subtree }, status: { in: [...RENEWABLE_STATUSES] } } }),
+    ]);
+    const balances = new Map(wallets.map((wallet) => [wallet.userId, wallet.balance]));
+    return {
+      balance: balances.get(moved.id) ?? 0,
+      subtreeBalance: belowIds.reduce((sum, id) => sum + (balances.get(id) ?? 0), 0),
+      ...previewOf({
+        moved: this.pathOf(moved.id, accounts),
+        nextPath,
+        children: below.map((account) => [nodeOf(account), ...nextPath]),
+        terms,
+        sells,
+        packages,
+      }),
+      lines,
+    };
+  }
+
+  /**
+   * The account a move names and the parent it names, once the rules allow the move. Both come from the
+   * accounts the caller already loaded. A login that is not there, or an account with no parent to change,
+   * answers like a destination of the wrong layer, but not to a caller with no say over any move: that one is
+   * refused first, as `canTransfer` refuses before it reads anything, so a refusal never tells what exists.
+   */
+  private resolveTransfer(actor: Actor, accounts: Account[], loginName: string, parentLogin: unknown) {
+    const moved = accounts.find((account) => account.loginName === loginName);
+    const kind = moved ? transferKind(moved.layer) : null;
+    if (!moved || !kind) {
+      const mayMove = !actor.impersonating && (actor.grants.includes(TRANSFER_GRANT.pos) || actor.grants.includes(TRANSFER_GRANT.agent));
+      if (!mayMove) fail(403, 'FORBIDDEN');
+      fail(400, 'INVALID');
+    }
+    const next = typeof parentLogin === 'string' ? accounts.find((account) => account.loginName === parentLogin) : undefined;
+    const refusal = canTransfer({
+      kind,
+      actor: { grants: actor.grants, impersonating: actor.impersonating },
+      actorStops: deniedOpsFor(this.pathOf(actor.id, accounts)),
+      currentParentId: moved.parentId ?? '',
+      destination: next ? { id: next.id, layer: next.layer, frozen: Boolean(next.disabledAt) } : null,
+      visible: visibleAccountIds(actor.id, actor.layer, accounts),
+    });
+    if (refusal === 'FORBIDDEN') fail(403, 'FORBIDDEN');
+    if (refusal || !next) fail(400, 'INVALID');
+    return { moved, next };
+  }
+
   async transferLine(gate: Gate, lineId: string, body: { posLogin?: unknown }) {
     const actor = await this.actor(gate);
     if (actor.impersonating || !actor.grants.includes('transferLines')) fail(403, 'FORBIDDEN');
@@ -3078,7 +3169,7 @@ export class OfficeService implements OnModuleInit {
     const path: PathNode[] = [];
     let current = byId.get(userId);
     while (current && path.length <= accounts.length) {
-      path.push({ id: current.id, loginName: current.loginName, layer: current.layer, deniedOps: current.deniedOps ?? '' });
+      path.push(nodeOf(current));
       current = current.parentId ? byId.get(current.parentId) : undefined;
     }
     return path;
@@ -3161,18 +3252,7 @@ export class OfficeService implements OnModuleInit {
   private async ladderRows(codes: string[], pathIds: string[], db: Prisma.TransactionClient | PrismaClient): Promise<LadderRows> {
     const packages = await db.package.findMany({
       where: { code: { in: codes } },
-      select: {
-        id: true,
-        code: true,
-        branchCost: true,
-        mainPrice: true,
-        agentPrice: true,
-        posPrice: true,
-        renewalBranchCost: true,
-        renewalMainPrice: true,
-        renewalAgentPrice: true,
-        renewalPosPrice: true,
-      },
+      select: { id: true, code: true, ...PRICE_COLUMNS },
     });
     const ids = packages.map((row) => row.id);
     const [termRows, sellRows] = await Promise.all([
@@ -3272,7 +3352,7 @@ export class OfficeService implements OnModuleInit {
 
   private async accounts(): Promise<Account[]> {
     return this.prisma.user.findMany({
-      select: { id: true, loginName: true, nickname: true, layer: true, parentId: true, deniedOps: true },
+      select: { id: true, loginName: true, nickname: true, layer: true, parentId: true, deniedOps: true, disabledAt: true },
       orderBy: { loginName: 'asc' },
     });
   }

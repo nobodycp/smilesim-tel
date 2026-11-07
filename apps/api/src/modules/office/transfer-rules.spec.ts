@@ -5,9 +5,10 @@ import {
   canTransfer,
   parseChoice,
   parseLineChoice,
+  previewOf,
   transferKind,
 } from './transfer-rules';
-import type { OpKey } from './user-terms';
+import type { OpKey, PathNode, SellRow, TermRow } from './user-terms';
 
 type Input = Parameters<typeof canTransfer>[0];
 
@@ -227,5 +228,182 @@ describe('parseLineChoice', () => {
     for (const value of ['reset', 'x', '', 'Recapture', undefined, null, 0, false, {}, ['keep']]) {
       expect(parseLineChoice(value)).toBeNull();
     }
+  });
+});
+
+// The preview of a move reads the same tree as above. A path runs from the account up to the root, so the moved
+// account is its first entry. The layer columns of the package: agents pay 3000 (renewal 2700), main agents 2500 (2200).
+type Preview = Parameters<typeof previewOf>[0];
+
+const node = (id: string, layer: string, deniedOps = ''): PathNode => ({ id, loginName: id, layer, deniedOps });
+const branch = node('branch', 'branch');
+const ma1 = node('ma1', 'main_agent');
+const ma2 = node('ma2', 'main_agent');
+const columns = {
+  branchCost: 2000,
+  mainPrice: 2500,
+  agentPrice: 3000,
+  posPrice: 3500,
+  renewalBranchCost: 1800,
+  renewalMainPrice: 2200,
+  renewalAgentPrice: 2700,
+  renewalPosPrice: 3200,
+};
+const alloha = { id: 'pa', ...columns };
+const heavy = { id: 'pb', ...columns, agentPrice: 3200 };
+const row = (userId: string, patch: Partial<TermRow> = {}, packageId = 'pa'): TermRow & { packageId: string } => ({
+  packageId,
+  userId,
+  hidden: false,
+  price: null,
+  renewalPrice: null,
+  ...patch,
+});
+const sold = (ownerId: string, price: number, renewalPrice: number | null = null, packageId = 'pa'): SellRow & { packageId: string } => ({
+  packageId,
+  ownerId,
+  price,
+  renewalPrice,
+});
+
+describe('previewOf: a point of sale moving between agents', () => {
+  const pos1 = node('pos1', 'pos');
+  // pos1 leaves ag1 for ag2, both under ma1.
+  const move = (patch: Partial<Preview> = {}): Preview => ({
+    moved: [pos1, node('ag1', 'agent'), ma1, branch],
+    nextPath: [pos1, node('ag2', 'agent'), ma1, branch],
+    children: [],
+    terms: [],
+    sells: [],
+    packages: [alloha],
+    ...patch,
+  });
+
+  it('counts a kept custom price that sits below what the new parent pays', () => {
+    const answer = previewOf(move({ terms: [row('pos1', { price: 2900 })] }));
+    expect(answer.own).toEqual({ customPrices: 1, hidden: 0, stops: 0, belowNewFloor: 1 });
+  });
+
+  it('has nothing below it: a point of sale carries no child terms', () => {
+    const answer = previewOf(move({ terms: [row('pos1', { price: 2900 })], sells: [sold('ma1', 3300)] }));
+    expect(answer.child).toBeNull();
+  });
+
+  it('does not count a price that equals the floor or sits above it', () => {
+    expect(previewOf(move({ terms: [row('pos1', { price: 3000 })] })).own.belowNewFloor).toBe(0);
+    expect(previewOf(move({ terms: [row('pos1', { price: 3100 })] })).own.belowNewFloor).toBe(0);
+  });
+
+  it('counts a row once, and holds each of its two prices to its own floor', () => {
+    const below = (patch: Partial<TermRow>) => previewOf(move({ terms: [row('pos1', patch)] })).own;
+    expect(below({ price: 2900, renewalPrice: 2600 })).toMatchObject({ customPrices: 1, belowNewFloor: 1 });
+    // Only the renewal price is under its floor, 2700.
+    expect(below({ price: 3100, renewalPrice: 2600 })).toMatchObject({ customPrices: 1, belowNewFloor: 1 });
+    expect(below({ renewalPrice: 2600 })).toMatchObject({ customPrices: 1, belowNewFloor: 1 });
+    expect(below({ price: 3100, renewalPrice: 2700 })).toMatchObject({ customPrices: 1, belowNewFloor: 0 });
+    // The subscription price is not judged against the renewal floor, nor the renewal price against the subscription one.
+    expect(below({ price: 2800 })).toMatchObject({ belowNewFloor: 1 });
+    expect(below({ renewalPrice: 2800 })).toMatchObject({ belowNewFloor: 0 });
+  });
+
+  it('reads the floor through the new parent: its own price, else the sell price above it, else its layer column', () => {
+    const kept = row('pos1', { price: 3250 });
+    expect(previewOf(move({ terms: [kept] })).own.belowNewFloor).toBe(0);
+    // ma1 sells to its agents at 3400, so ag2 pays 3400 and pos1 sits under it.
+    expect(previewOf(move({ terms: [kept], sells: [sold('ma1', 3400)] })).own.belowNewFloor).toBe(1);
+    // ag2's own price, 3200, beats the sell price above it.
+    const own = row('ag2', { price: 3200 });
+    expect(previewOf(move({ terms: [kept, own], sells: [sold('ma1', 3400)] })).own.belowNewFloor).toBe(0);
+    expect(previewOf(move({ terms: [kept, row('ag2', { price: 3300 })] })).own.belowNewFloor).toBe(1);
+  });
+
+  it('ignores what the old parent charges: only the new chain sets the floor', () => {
+    const terms = [row('pos1', { price: 3100 }), row('ag1', { price: 4000, renewalPrice: 4000 })];
+    expect(previewOf(move({ terms, sells: [sold('ag1', 4100, 4100)] })).own.belowNewFloor).toBe(0);
+  });
+
+  it('judges each row against the columns of its own package', () => {
+    const terms = [row('pos1', { price: 3100 }), row('pos1', { price: 3100 }, 'pb')];
+    // alloha costs the new agent 3000, the heavy package 3200.
+    expect(previewOf(move({ terms, packages: [alloha, heavy] })).own).toMatchObject({ customPrices: 2, belowNewFloor: 1 });
+  });
+
+  it('counts a row on a package it has no columns for, but cannot judge it', () => {
+    const answer = previewOf(move({ terms: [row('pos1', { price: 1 }, 'gone')] }));
+    expect(answer.own).toMatchObject({ customPrices: 1, belowNewFloor: 0 });
+  });
+
+  it('counts a hidden package and a stop without taking them for prices, and drops stops it does not know', () => {
+    const answer = previewOf(move({
+      moved: [node('pos1', 'pos', 'charge,bogus,transfer'), node('ag1', 'agent'), ma1, branch],
+      terms: [row('pos1', { hidden: true }), row('pos1', { hidden: true, price: 3100 }, 'pb')],
+      packages: [alloha, { ...heavy, agentPrice: 3000 }],
+    }));
+    expect(answer.own).toEqual({ customPrices: 1, hidden: 2, stops: 2, belowNewFloor: 0 });
+  });
+
+  it('counts only the rows written on the moved account', () => {
+    const terms = [row('pos1', { price: 3100 }), row('pos9', { price: 100, hidden: true }), row('ag1', { hidden: true, price: 100 })];
+    expect(previewOf(move({ terms })).own).toEqual({ customPrices: 1, hidden: 0, stops: 0, belowNewFloor: 0 });
+  });
+
+  it('does not touch what it is given', () => {
+    const freeze = <T>(value: T): T => {
+      if (value && typeof value === 'object') for (const inner of Object.values(value)) freeze(inner);
+      return Object.freeze(value) as T;
+    };
+    const input = freeze(move({ terms: [row('pos1', { price: 2900 })], sells: [sold('ma1', 3300)] }));
+    expect(() => previewOf(input)).not.toThrow();
+  });
+});
+
+describe('previewOf: an agent moving between main agents', () => {
+  const ag1 = node('ag1', 'agent', 'charge');
+  const pos1 = node('pos1', 'pos', 'sim,esim');
+  const pos3 = node('pos3', 'pos', 'transfer');
+  // ag1 leaves ma1 for ma2 with pos1 and pos3.
+  const move = (patch: Partial<Preview> = {}): Preview => ({
+    moved: [ag1, ma1, branch],
+    nextPath: [ag1, ma2, branch],
+    children: [
+      [pos1, ag1, ma2, branch],
+      [pos3, ag1, ma2, branch],
+    ],
+    terms: [],
+    sells: [],
+    packages: [alloha],
+    ...patch,
+  });
+
+  it('adds up the terms and stops of its points of sale and counts its own sell prices', () => {
+    const answer = previewOf(move({
+      terms: [
+        row('pos1', { price: 3300 }),
+        row('pos1', { hidden: true }, 'pb'),
+        row('pos3', { hidden: true, renewalPrice: 3000 }),
+        // A point of sale under another agent travels with nobody.
+        row('pos2', { price: 3100, hidden: true }),
+      ],
+      sells: [sold('ag1', 3700), sold('ag1', 3900, 3500, 'pb'), sold('ag2', 3600)],
+    }));
+    expect(answer.child).toEqual({ customPrices: 2, hidden: 2, stops: 3, sellPrices: 2 });
+  });
+
+  it('holds its own prices to the main agent columns of the new parent', () => {
+    // ma2 pays 2500 (renewal 2200) as a main agent.
+    const prices = (patch: Partial<TermRow>) => previewOf(move({ terms: [row('ag1', patch)] })).own;
+    expect(prices({ price: 2400 })).toEqual({ customPrices: 1, hidden: 0, stops: 1, belowNewFloor: 1 });
+    expect(prices({ price: 2500, renewalPrice: 2200 }).belowNewFloor).toBe(0);
+    expect(prices({ renewalPrice: 2100 }).belowNewFloor).toBe(1);
+  });
+
+  it('reads the floor from ma2 own price, not from ma1', () => {
+    const terms = [row('ag1', { price: 2600 }), row('ma1', { price: 2000 }), row('ma2', { price: 2700 })];
+    expect(previewOf(move({ terms })).own.belowNewFloor).toBe(1);
+    expect(previewOf(move({ terms: terms.slice(0, 2) })).own.belowNewFloor).toBe(0);
+  });
+
+  it('has no child section when it has no points of sale', () => {
+    expect(previewOf(move({ children: [], sells: [sold('ag1', 3700)] })).child).toBeNull();
   });
 });

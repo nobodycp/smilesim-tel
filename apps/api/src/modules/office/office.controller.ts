@@ -923,6 +923,20 @@ export class OfficeController {
     return this.run(res, () => this.office.transferPos(gateOf(req), loginName, body));
   }
 
+  @Get('users/:loginName/transfer-preview')
+  @ApiOperation({ summary: 'What moving an account under another parent would carry; refuses as the move does' })
+  @ApiParam({ name: 'loginName' })
+  @ApiQuery({ name: 'parentLogin', required: true, description: 'The login of the new parent' })
+  @ApiErrorResponse(401, 403, 400)
+  transferPreview(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Param('loginName') loginName: string,
+    @Query('parentLogin') parentLogin?: unknown,
+  ) {
+    return this.run(res, () => this.office.transferPreview(gateOf(req), loginName, { parentLogin }));
+  }
+
   @Post('users/:loginName/password')
   @ApiOperation({ summary: 'Set account password (office)' })
   @ApiParam({ name: 'loginName' })
