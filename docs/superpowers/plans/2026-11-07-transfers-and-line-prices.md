@@ -10,6 +10,15 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-06-transfer-permissions-design.md`
 
+## Status
+
+Implemented on `main` through Tasks 1–13. Material deviations:
+
+- `lineScope` lets an agent/main agent name itself as scope (own subtree); the brief's literal `canEditTerms` on self contradicted the brief's own tests.
+- 14 dialog-only copy keys moved from Task 12 to Task 13 because `check:copy` rejects unused keys.
+- Spec §9 charge/reactivate sentence reworded to match `restartDisconnected`.
+- `previewOf.children` is `null` only for a point of sale (a childless agent still gets `child` with sellPrices).
+
 ## Global Constraints
 
 - Chat in Arabic; code, identifiers, commits, and this document in English.

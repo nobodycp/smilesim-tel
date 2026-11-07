@@ -222,8 +222,9 @@ ladder: `terms.renewal.posPrice = buyPriceFor(posPath, terms, sells, pkg, 'renew
 debit is unchanged (already resolved through the path). The other ladder levels (`branchCost`,
 `mainPrice`, `agentPrice`) keep coming from the package's layer prices, as today.
 
-**Renewal.** `extend`, `charge`, `reactivate`, and a renewal onto a target read `terms.renewal`
-(or the target entry) and nothing else. `resolveBuyPrice` loses its `layerFallback` parameter:
+**Renewal.** `extend` and a renewal onto a target debit `terms.renewal`; `charge` and
+`reactivate` go through `restartDisconnected` and debit the subscription price resolved today
+(unchanged by this work). `resolveBuyPrice` loses its `layerFallback` parameter:
 it is only ever asked what a new capture would carry.
 
 **Writing a price never touches numbers.** Custom prices, sell prices, and layer prices are saved
