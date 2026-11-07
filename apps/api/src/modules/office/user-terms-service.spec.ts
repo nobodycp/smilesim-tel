@@ -673,4 +673,68 @@ describe('prices on existing numbers', () => {
     await expect(save(gates.ma1, 'ag1', 4500)).resolves.toEqual({ ok: true, lines: 2 });
     await expect(save(gates.branch, 'all', 4100)).resolves.toEqual({ ok: true, lines: 1 });
   });
+
+  it('a save reads the price rows once for every number, to current or to a flat price, across points of sale and packages', async () => {
+    const { service, gates, accounts, pkgA, pkgB, sellPrices, userPackages, lines, line } = await withNumbers();
+    accounts.push(account('pos2', 'pos', 'ag1'), account('pos3', 'pos', 'ag2'));
+    // Every ladder spans two packages: the one repriced and the renewal target it lists today.
+    pkgA.renewals = [{ target: pkgB }];
+    // pos1 has rows of its own on both packages; pos2 pays through ag1's sell price on A; pos3 through ag2's on both.
+    // Above them, ma1 sells A to its agents at 2900 and ag2 has its own price for A, 3050: those two set the floors.
+    userPackages.push(
+      { id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: null, renewalPrice: 3000 },
+      { id: 'r2', packageId: 'pb', userId: 'pos1', hidden: false, price: null, renewalPrice: 2950 },
+      { id: 'r3', packageId: 'pa', userId: 'ag2', hidden: false, price: null, renewalPrice: 3050 },
+    );
+    sellPrices.push(
+      { id: 's1', packageId: 'pa', ownerId: 'ag1', price: 3700, renewalPrice: 3400 },
+      { id: 's2', packageId: 'pa', ownerId: 'ag2', price: 3700, renewalPrice: 3100 },
+      { id: 's3', packageId: 'pb', ownerId: 'ag2', price: 3900, renewalPrice: 3300 },
+      { id: 's4', packageId: 'pa', ownerId: 'ma1', price: 3300, renewalPrice: 2900 },
+    );
+    lines.push(
+      { ...at(line, 'ln6', 4500), posId: 'pos2' },
+      { ...at(line, 'ln7', 4100), posId: 'pos2' },
+      { ...at(line, 'ln8', 4500), posId: 'pos3' },
+      { ...at(line, 'ln9', 4100), posId: 'pos3' },
+      // A point of sale that has left the tree keeps the ladder as captured.
+      { ...at(line, 'ln10', 4500), posId: 'ghost' },
+    );
+    // The transaction hands out the same table objects as the client, so counting on them counts the save's reads.
+    const client = (service as unknown as { prismaClient: Record<string, { findMany: (args?: unknown) => Promise<unknown> }> }).prismaClient;
+    const tables = ['package', 'packageRenewal', 'userPackage', 'sellPrice'];
+    const reads: Record<string, number> = {};
+    const reset = () => {
+      for (const table of tables) reads[table] = 0;
+    };
+    reset();
+    for (const table of tables) {
+      const findMany = client[table].findMany.bind(client[table]);
+      client[table].findMany = async (args) => {
+        reads[table] += 1;
+        return findMany(args);
+      };
+    }
+    const prices = () => lines.map((l) => (l.terms as LineTerms).renewal.posPrice);
+    const save = (groups: { from: number; to: number | 'current' }[]) => service.setLinePrices(gates.branch, 'alloha-150', { scope: 'all', groups });
+
+    await expect(save([{ from: 4500, to: 'current' }, { from: 4100, to: 'current' }])).resolves.toEqual({ ok: true, lines: 8 });
+    // One read of each table for the whole save, not one per point of sale.
+    expect(reads).toEqual({ package: 1, packageRenewal: 1, userPackage: 1, sellPrice: 1 });
+    // Each number carries the ladder of its own path: pos1 3000 and 2950, pos2 3400 and the layer's 3200, pos3 3100 and 3300.
+    const current = [3200, 3000, 3000, 3000, 9900, 3400, 3400, 3100, 3100, 3200];
+    expect(prices()).toEqual(current);
+    expect(lines.map((l) => (l.terms as LineTerms).renewalTargets.map((target) => target.renewal.posPrice))).toEqual([[], [2950], [2950], [2950], [], [3200], [3200], [3300], [3300], [3200]]);
+
+    // A flat price is held to the floor of each number's own point of sale, from the same single read:
+    // 2900 for pos1 and pos2 (ma1's sell price), 3050 for pos3 (ag2's own price), cost for the point of sale that left the tree.
+    reset();
+    await expect(save([{ from: 3100, to: 3000 }])).rejects.toMatchObject({ code: 'PRICE_BELOW_FLOOR' });
+    expect(reads).toEqual({ package: 1, packageRenewal: 0, userPackage: 1, sellPrice: 1 });
+    expect(prices()).toEqual(current);
+    reset();
+    await expect(save([{ from: 3200, to: 2900 }, { from: 3100, to: 3050 }])).resolves.toEqual({ ok: true, lines: 4 });
+    expect(reads).toEqual({ package: 1, packageRenewal: 0, userPackage: 1, sellPrice: 1 });
+    expect(prices()).toEqual([2900, 3000, 3000, 3000, 9900, 3400, 3400, 3050, 3050, 2900]);
+  });
 });

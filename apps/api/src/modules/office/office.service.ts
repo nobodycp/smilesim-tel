@@ -139,6 +139,12 @@ type LineScope = { kind: 'all' } | { kind: 'account'; id: string; loginName: str
 /** What happens to one number: a flat price, or what a new activation would carry now. */
 type LineTarget = { to: number | 'current' };
 type RepriceLine = { id: string; posId: string; terms: Prisma.JsonValue; package: PackagePriceRow & { id: string } };
+/** What decides the prices points of sale pay for some packages: their price columns, the custom rows on them, and the sell prices of the accounts above. */
+type LadderRows = {
+  packages: (LayerPrices & { id: string; code: string })[];
+  termRows: (TermRow & { packageId: string })[];
+  sellRows: (SellRow & { packageId: string })[];
+};
 type Action = 'activate' | 'charge' | 'extend' | 'reactivate' | 'disconnect' | 'freeze' | 'unfreeze' | 'switch' | 'rename' | 'sim' | 'esim' | 'refresh';
 type Sale = {
   msisdn: string;
@@ -2463,45 +2469,39 @@ export class OfficeService implements OnModuleInit {
       targetsOf.set(renewal.packageId, [...(targetsOf.get(renewal.packageId) ?? []), packageTermsOf(renewal.target)]);
     }
 
-    // A flat price needs the rows that set what each parent pays, for every package and path in the batch.
-    const termsOf = new Map<string, TermRow[]>();
-    const sellsOf = new Map<string, SellRow[]>();
-    const flat = plans.filter(({ to }) => to !== 'current');
-    if (flat.length > 0) {
-      const pathIds = [...new Set(flat.flatMap(({ line }) => pathOf(line.posId).map((node) => node.id)))];
-      const [termRows, sellRows] = await Promise.all([
-        tx.userPackage.findMany({
-          where: { packageId: { in: packageIds }, userId: { in: pathIds } },
-          select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
-        }),
-        tx.sellPrice.findMany({
-          where: { packageId: { in: packageIds }, ownerId: { in: pathIds } },
-          select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
-        }),
-      ]);
-      for (const id of packageIds) {
-        termsOf.set(id, termRows.filter((row) => row.packageId === id));
-        sellsOf.set(id, sellRows.filter((row) => row.packageId === id));
-      }
-    }
+    // One read of the price rows serves every number in the batch, a flat price and `'current'` alike:
+    // the batch's packages and the renewal targets they list, for every account on any number's path.
+    const codes = new Set(plans.map(({ line }) => line.package.code));
+    for (const targets of targetsOf.values()) for (const target of targets) codes.add(target.code);
+    const pathIds = [...new Set(plans.flatMap(({ line }) => pathOf(line.posId).map((node) => node.id)))];
+    const rows = await this.ladderRows([...codes], pathIds, tx);
 
     const fresh = new Map<string, LineTerms>();
+    const floors = new Map<string, number>();
     const changes: { id: string; terms: LineTerms }[] = [];
     for (const { line, to } of plans) {
       const terms = lineTermsOf(line.terms, line.package);
       const path = pathOf(line.posId);
+      // Every number of one package at one point of sale takes the same ladder and answers to the same floor, so each is worked out once.
+      const key = `${line.package.id}:${line.posId}`;
       if (to === 'current') {
         if (!line.package.company || !line.package.provider) fail(400, 'INVALID');
-        // Every number of one package at one point of sale takes the same ladder, so it is built once.
-        const key = `${line.package.id}:${line.posId}`;
-        const ladder =
-          fresh.get(key) ??
-          (await this.stampFor(captureTerms(packageTermsOf(line.package), targetsOf.get(line.package.id) ?? []), line.posId, path, tx));
+        const ladder = fresh.get(key) ?? this.stampWith(captureTerms(packageTermsOf(line.package), targetsOf.get(line.package.id) ?? []), path, rows);
         fresh.set(key, ladder);
         changes.push({ id: line.id, terms: repriceLine(terms, { to, fresh: ladder }) });
         continue;
       }
-      if (to < floorFor(path, termsOf.get(line.package.id) ?? [], sellsOf.get(line.package.id) ?? [], line.package, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
+      const floor =
+        floors.get(key) ??
+        floorFor(
+          path,
+          rows.termRows.filter((row) => row.packageId === line.package.id),
+          rows.sellRows.filter((row) => row.packageId === line.package.id),
+          line.package,
+          'renewal',
+        );
+      floors.set(key, floor);
+      if (to < floor) fail(400, 'PRICE_BELOW_FLOOR');
       changes.push({ id: line.id, terms: repriceLine(terms, { to }) });
     }
     for (const { id, terms } of changes) {
@@ -3119,6 +3119,15 @@ export class OfficeService implements OnModuleInit {
     const path = known ?? this.pathOf(posId, await this.accounts());
     if (path.length === 0) return terms;
     const codes = [...new Set([terms.packageCode, ...terms.renewalTargets.map((target) => target.code)])];
+    return this.stampWith(terms, path, await this.ladderRows(codes, path.map((node) => node.id), db));
+  }
+
+  /**
+   * The rows behind what points of sale pay: the price columns of the packages named by `codes`, and
+   * the custom rows and sell prices written on them for the accounts in `pathIds`. One read per table,
+   * however many packages and paths are asked for, so a batch loads once and stamps every number from it.
+   */
+  private async ladderRows(codes: string[], pathIds: string[], db: Prisma.TransactionClient | PrismaClient): Promise<LadderRows> {
     const packages = await db.package.findMany({
       where: { code: { in: codes } },
       select: {
@@ -3135,7 +3144,6 @@ export class OfficeService implements OnModuleInit {
       },
     });
     const ids = packages.map((row) => row.id);
-    const pathIds = path.map((node) => node.id);
     const [termRows, sellRows] = await Promise.all([
       db.userPackage.findMany({
         where: { packageId: { in: ids }, userId: { in: pathIds } },
@@ -3146,11 +3154,20 @@ export class OfficeService implements OnModuleInit {
         select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
       }),
     ]);
+    return { packages, termRows, sellRows };
+  }
+
+  /**
+   * `stampFor` once the rows are loaded: no database. `rows` may hold the rows of many paths. Each
+   * price is resolved through `path` alone, so the rows of other accounts are never read for it.
+   */
+  private stampWith(terms: LineTerms, path: PathNode[], rows: LadderRows): LineTerms {
+    if (path.length === 0) return terms;
     return stampRenewal(terms, (code) => {
-      const pkg = packages.find((row) => row.code === code);
+      const pkg = rows.packages.find((row) => row.code === code);
       if (!pkg) return null;
-      const termsOf = termRows.filter((row) => row.packageId === pkg.id);
-      const sellsOf = sellRows.filter((row) => row.packageId === pkg.id);
+      const termsOf = rows.termRows.filter((row) => row.packageId === pkg.id);
+      const sellsOf = rows.sellRows.filter((row) => row.packageId === pkg.id);
       return buyPriceFor(path, termsOf, sellsOf, pkg, 'renewal');
     });
   }
