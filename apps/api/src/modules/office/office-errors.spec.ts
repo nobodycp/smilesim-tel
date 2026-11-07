@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from '../auth/auth.module';
 import { AUTH_STORE, MemoryAuthStore } from '../auth/auth.store';
-import { hashPassword } from '../auth/password';
+import { hashOnce } from './test-hash';
 import { OfficeController } from './office.controller';
 import { OfficeFailure, OfficeService } from './office.service';
 
@@ -29,7 +29,7 @@ describe('office refusals', () => {
       twoFactorExempt: true,
       twoFactorEnabled: false,
       isBranchOwner: false,
-      passwordHash: await hashPassword('123456'),
+      passwordHash: await hashOnce('123456'),
     });
     posSession = await store.saveSession({ userId: 'pos1', scope: 'full', userAgent: '', ip: '' });
     const moduleRef = await Test.createTestingModule({
@@ -78,7 +78,7 @@ describe('office refusals', () => {
       twoFactorExempt: true,
       twoFactorEnabled: false,
       isBranchOwner: true,
-      passwordHash: await hashPassword('ownerpass1'),
+      passwordHash: await hashOnce('ownerpass1'),
     });
     const admin = await store.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
     (service as unknown as { prismaClient: unknown }).prismaClient = {

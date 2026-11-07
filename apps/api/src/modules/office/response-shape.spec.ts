@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MemoryAuthStore } from '../auth/auth.store';
-import { hashPassword } from '../auth/password';
+import { hashOnce } from './test-hash';
 import { companies } from './office-catalog';
 import { OfficeService } from './office.service';
 
@@ -53,7 +53,7 @@ async function serviceWith(tables: Record<string, unknown>) {
     twoFactorExempt: true,
     twoFactorEnabled: false,
     isBranchOwner: true,
-    passwordHash: await hashPassword('ownerpass1'),
+    passwordHash: await hashOnce('ownerpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
   const service = new OfficeService(auth);
@@ -78,7 +78,7 @@ async function posServiceWith(tables: Record<string, unknown>) {
     twoFactorExempt: true,
     twoFactorEnabled: false,
     isBranchOwner: false,
-    passwordHash: await hashPassword('pointpass1'),
+    passwordHash: await hashOnce('pointpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'pos1', scope: 'full', userAgent: '', ip: '' });
   const service = new OfficeService(auth);

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
-import { hashPassword } from '../auth/password';
+import { hashOnce } from './test-hash';
 import { OfficeService } from './office.service';
 
 // A refresh or a SIM swap that the provider accepts immediately does not move money.
@@ -75,7 +75,7 @@ async function office() {
     twoFactorExempt: true,
     twoFactorEnabled: false,
     isBranchOwner: true,
-    passwordHash: await hashPassword('ownerpass1'),
+    passwordHash: await hashOnce('ownerpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
   const wallet = { userId: 'pos1', balance: 10000, ceiling: 0 };

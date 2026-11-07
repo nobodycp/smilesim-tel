@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
 import type { Layer } from '../auth/decide-login';
-import { hashPassword } from '../auth/password';
+import { hashOnce } from './test-hash';
 import { OfficeFailure, OfficeService } from './office.service';
 import { afterFeed, decodeFeedCursor, encodeFeedCursor, linesWhere, mergeFeed } from './office-paging';
 
@@ -102,7 +102,7 @@ async function serviceWith(tables: Record<string, unknown>) {
     twoFactorExempt: true,
     twoFactorEnabled: false,
     isBranchOwner: true,
-    passwordHash: await hashPassword('ownerpass1'),
+    passwordHash: await hashOnce('ownerpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
   const service = new OfficeService(auth);
@@ -430,7 +430,7 @@ describe('task reading follows the number', () => {
       twoFactorExempt: true,
       twoFactorEnabled: false,
       isBranchOwner: owner,
-      passwordHash: await hashPassword('ownerpass1'),
+      passwordHash: await hashOnce('ownerpass1'),
     });
     const sessionId = await auth.saveSession({ userId: id, scope: 'full', userAgent: '', ip: '' });
     const service = new OfficeService(auth);

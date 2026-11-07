@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
-import { hashPassword } from '../auth/password';
+import { hashOnce } from './test-hash';
 import type { NoticeService } from './notice.service';
 import { OfficeService } from './office.service';
 
@@ -40,7 +40,7 @@ async function office() {
   const auth = new MemoryAuthStore();
   auth.addUser({
     id: 'admin', loginName: 'admin', nickname: 'الإدارة', disabledAt: null, mustChangePassword: false, layer: 'branch',
-    twoFactorExempt: true, twoFactorEnabled: false, isBranchOwner: true, passwordHash: await hashPassword('ownerpass1'),
+    twoFactorExempt: true, twoFactorEnabled: false, isBranchOwner: true, passwordHash: await hashOnce('ownerpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
   const wallet = { userId: 'pos1', balance: 10000, ceiling: 0 };
