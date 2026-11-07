@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
-import type { NoticeService } from './notice.service';
+import { NoticeService } from './notice.service';
 import { OfficeService } from './office.service';
 import { captureTerms } from './office-rules';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
@@ -10,6 +10,8 @@ import { packageTermsOf, type PackagePriceRow } from './office-terms';
 // main agent, ma2, with nothing under it. It lives here and not in a spec file because importing a spec
 // registers its tests again in the importer.
 // Prisma is an in-memory stand-in; every table the terms feature reads is a plain array here.
+// The notice writer is the real one over a silent bus, so what it writes lands in `notices`, and a
+// transaction that fails takes those rows back with everything else.
 
 export type Row = Record<string, unknown> & { id: string };
 export type Data = Record<string, unknown>;
@@ -58,6 +60,7 @@ export async function tree() {
   const lines: Row[] = [line];
   const tasks: Row[] = [];
   const entries: Row[] = [];
+  const notices: Row[] = [];
   // Every account has a wallet, as the office creates them; only the first point of sale carries a balance.
   const wallet = { id: 'w-pos1', userId: 'pos1', balance: 100000, ceiling: 0 };
   const wallets: Row[] = accounts.map((row) => (row.id === 'pos1' ? wallet : { id: `w-${row.id}`, userId: row.id, balance: 0, ceiling: 0 }));
@@ -68,7 +71,7 @@ export async function tree() {
     auth.addUser({ ...row, passwordHash: await passwordHash() } as Parameters<MemoryAuthStore['addUser']>[0]);
     gates[row.id] = { sessionId: await auth.saveSession({ userId: row.id, scope: 'full', userAgent: '', ip: '' }) };
   }
-  const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
+  const notice = new NoticeService({ publish: async () => undefined, subscribe: async () => async () => undefined });
   const service = new OfficeService(auth, notice);
 
   const whereMatch = (row: Row, where: Record<string, unknown> | undefined) =>
@@ -198,7 +201,12 @@ export async function tree() {
     user: userModel,
     userPackage,
     sellPrice,
-    notice: { createMany: async () => ({ count: 0 }) },
+    notice: {
+      createMany: async ({ data }: { data: Data[] }) => {
+        for (const row of data) notices.push({ id: `n${notices.length + 1}`, ...row });
+        return { count: data.length };
+      },
+    },
   };
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: userModel,
@@ -215,13 +223,15 @@ export async function tree() {
     role: null,
     walletEntry: { findMany: async () => [], findFirst: async () => null, count: async () => 0 },
     // A failed transaction puts back everything a write in it can touch, as the database would: the accounts
-    // (their parent and stops), both terms tables, and every line (its terms and its point of sale).
+    // (their parent and stops), both terms tables, every line (its terms and its point of sale), and the
+    // notices written so far.
     $transaction: async (run: (client: typeof tx) => Promise<unknown>) => {
       const keep = {
         accounts: new Map(accounts.map((row) => [row, { ...row }] as const)),
         userPackages: userPackages.map((row) => ({ ...row })),
         sellPrices: sellPrices.map((row) => ({ ...row })),
         lines: new Map(lines.map((row) => [row, { ...row, terms: structuredClone(row.terms) }] as const)),
+        notices: notices.map((row) => ({ ...row })),
       };
       try {
         return await run(tx);
@@ -230,9 +240,10 @@ export async function tree() {
         userPackages.splice(0, userPackages.length, ...keep.userPackages);
         sellPrices.splice(0, sellPrices.length, ...keep.sellPrices);
         for (const [row, stored] of keep.lines) Object.assign(row, stored);
+        notices.splice(0, notices.length, ...keep.notices);
         throw error;
       }
     },
   };
-  return { service, auth, notice, gates, accounts, packages, pkgA, pkgB, userPackages, sellPrices, line, lines, tasks, entries, wallet, wallets };
+  return { service, auth, notice, notices, gates, accounts, packages, pkgA, pkgB, userPackages, sellPrices, line, lines, tasks, entries, wallet, wallets };
 }

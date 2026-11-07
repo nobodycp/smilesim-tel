@@ -209,22 +209,30 @@ type TransferAccountBody = {
 };
 
 /**
- * The choices of a move. None has a default: a move that leaves one out, or words one in any other way, is
- * `null`. Only an agent has anything below it to choose for, so a point of sale that states a choice about
- * what is below it is as wrong as an agent that leaves one out.
+ * The choices that hold whatever is moved. None has a default: a move that leaves one out, or words one in
+ * any other way, is `null`. A choice about what is below the account may be left out here, because only an
+ * agent has anything below it, but one that is stated has to be a word. Nothing here reads an account, so a
+ * body that cannot be a move is refused before any is read, and says nothing about what exists.
  */
-function transferChoices(kind: 'pos' | 'agent', body: TransferAccountBody) {
+function statedChoices(body: TransferAccountBody) {
   const ownPrices = parseChoice(body.ownPrices);
   const ownStops = parseChoice(body.ownStops);
   const linePrices = parseLineChoice(body.linePrices);
   if (!ownPrices || !ownStops || !linePrices) return null;
-  if (kind === 'pos') {
-    const nothingBelow = body.childPrices === undefined && body.childStops === undefined;
-    return nothingBelow ? { ownPrices, ownStops, linePrices, child: null } : null;
-  }
-  const prices = parseChoice(body.childPrices);
-  const stops = parseChoice(body.childStops);
-  return prices && stops ? { ownPrices, ownStops, linePrices, child: { prices, stops } } : null;
+  const childPrices = body.childPrices === undefined ? undefined : parseChoice(body.childPrices);
+  const childStops = body.childStops === undefined ? undefined : parseChoice(body.childStops);
+  if (childPrices === null || childStops === null) return null;
+  return { ownPrices, ownStops, linePrices, childPrices, childStops };
+}
+
+/**
+ * The choices of a move once its kind is known. Only an agent has anything below it to choose for, so a
+ * point of sale that states a choice about what is below it is as wrong as an agent that leaves one out.
+ */
+function transferChoices(kind: 'pos' | 'agent', stated: NonNullable<ReturnType<typeof statedChoices>>) {
+  const { childPrices, childStops, ...own } = stated;
+  if (kind === 'pos') return childPrices === undefined && childStops === undefined ? { ...own, child: null } : null;
+  return childPrices && childStops ? { ...own, child: { prices: childPrices, stops: childStops } } : null;
 }
 
 function feedPosition(raw: string | undefined) {
@@ -2077,18 +2085,21 @@ export class OfficeService implements OnModuleInit {
   }
 
   /**
-   * Moves a point of sale under another agent, or an agent under another main agent. The rules are the
-   * preview's, so a refusal is the same in both, and they are asked before anything is written. The caller
-   * states every choice: what the account's own terms do, what the terms below it do (an agent), and
-   * whether the numbers under it keep the renewal prices they carry or take what the new parent would
-   * charge. Wallets and numbers go with the account as they are. Everything happens in one transaction, so a
-   * move either carries all its choices and both notices, or nothing.
+   * Moves a point of sale under another agent, or an agent under another main agent. The caller states
+   * every choice: what the account's own terms do, what the terms below it do (an agent), and whether the
+   * numbers under it keep the renewal prices they carry or take what the new parent would charge. All of it
+   * is asked before anything is written, in this order: the words of the choices, which need no account;
+   * then the rules, which are the preview's, so a refusal is the same in both; then what is below the
+   * account, which depends on its kind. Wallets and numbers go with the account as they are. Everything
+   * happens in one transaction, so a move either carries all its choices and both notices, or nothing.
    */
   async transferAccount(gate: Gate, loginName: string, body: TransferAccountBody) {
     const actor = await this.actor(gate);
+    const stated = statedChoices(body);
+    if (!stated) fail(400, 'INVALID');
     const accounts = await this.accounts();
     const { moved, next, from, kind } = this.resolveTransfer(actor, accounts, loginName, body.parentLogin);
-    const choices = transferChoices(kind, body);
+    const choices = transferChoices(kind, stated);
     if (!choices) fail(400, 'INVALID');
     const posIds = accounts.filter((account) => account.parentId === moved.id).map((account) => account.id);
     const lines = await this.runTx(async (tx) => {

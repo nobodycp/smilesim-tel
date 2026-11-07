@@ -275,16 +275,17 @@ const carries = (item: Row, posPrice: number) => {
   const held = item.terms as LineTerms;
   item.terms = { ...held, renewal: { ...held.renewal, posPrice } };
 };
-/** Swaps the notice writer for one that lists what it is asked to write and answers a row per recipient. */
+/**
+ * Makes the notice writer list what it is asked to write, and the live channel list what it is asked to
+ * publish. The writer still writes, so the rows reach the fixture's `notices` as they reach the table.
+ */
 function listen(notice: NoticeService) {
   const written: { userIds: string[]; actorId: string; draft: NoticeDraft }[] = [];
   const published: WrittenNotice[][] = [];
-  notice.write = async (_tx, userIds, actor, draft) => {
+  const write = notice.write.bind(notice);
+  notice.write = async (tx, userIds, actor, draft) => {
     written.push({ userIds, actorId: actor.id, draft });
-    return userIds.map((userId) => ({
-      id: `n${written.length}-${userId}`, userId, kind: draft.kind, payload: draft.payload, actorName: actor.nickname,
-      href: hrefFor(draft), read: false, createdAt: '2026-11-07T00:00:00.000Z',
-    }));
+    return write(tx, userIds, actor, draft);
   };
   notice.publish = async (rows) => {
     published.push(rows);
@@ -473,6 +474,8 @@ describe('transfer: notices and the one transaction', () => {
     ]);
     // Both are published together, after the move has committed.
     expect(heardPos.published.map((rows) => rows.map((row) => [row.userId, row.kind]))).toEqual([[['ag1', 'transfer.out'], ['ag2', 'transfer.in']]]);
+    // And both are stored: one row for the parent it left and one for the parent it joined.
+    expect(pos.notices.map((row) => [row.userId, row.kind])).toEqual([['ag1', 'transfer.out'], ['ag2', 'transfer.in']]);
 
     const agent = await tree();
     const heardAgent = listen(agent.notice);
@@ -481,6 +484,7 @@ describe('transfer: notices and the one transaction', () => {
       { userIds: ['ma1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'agent', subject: 'ag1', toLogin: 'ma2', actorName: 'branch' } } },
       { userIds: ['ma2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'agent', subject: 'ag1', fromLogin: 'ma1', actorName: 'branch' } } },
     ]);
+    expect(agent.notices.map((row) => [row.userId, row.kind])).toEqual([['ma1', 'transfer.out'], ['ma2', 'transfer.in']]);
   });
 
   it('files the notices with the wallet group, and they open the users page', () => {
@@ -492,11 +496,16 @@ describe('transfer: notices and the one transaction', () => {
 
   it('is one transaction: a notice that cannot be written puts the whole move back and publishes nothing', async () => {
     const fixture = await busyAgent();
-    const { service, gates, notice, accounts, userPackages, sellPrices, wallets, lines } = fixture;
+    const { service, gates, notice, notices, accounts, userPackages, sellPrices, wallets, lines } = fixture;
     const heard = listen(notice);
     const write = notice.write.bind(notice);
+    // The first notice is already stored when the second one fails, so the empty table afterwards is the rollback and not a notice never written.
+    const storedWhenItFails: number[] = [];
     notice.write = async (tx, userIds, actor, draft) => {
-      if (draft.kind === 'transfer.in') throw new Error('connection lost');
+      if (draft.kind === 'transfer.in') {
+        storedWhenItFails.push(notices.length);
+        throw new Error('connection lost');
+      }
       return write(tx, userIds, actor, draft);
     };
     const stored = () => JSON.stringify({ accounts, userPackages, sellPrices, wallets, lines });
@@ -504,9 +513,12 @@ describe('transfer: notices and the one transaction', () => {
     // Every write of an agent's move has run when the second notice fails: the resets and the recapture.
     await expect(service.transferAccount(gates.branch, 'ag1', agentMove({ ...everyReset, linePrices: 'recapture' }))).rejects.toThrow('connection lost');
     expect(stored()).toBe(before);
+    expect(notices).toHaveLength(0);
     // So have the stamp and the parent of a point of sale.
     await expect(service.transferAccount(gates.branch, 'pos1', posMove({ ownPrices: 'reset', ownStops: 'reset', linePrices: 'recapture' }))).rejects.toThrow('connection lost');
     expect(stored()).toBe(before);
+    expect(notices).toHaveLength(0);
+    expect(storedWhenItFails).toEqual([1, 1]);
     expect(heard.published).toEqual([]);
   });
 });
@@ -540,8 +552,8 @@ describe('transfer: refusals', () => {
       await expect(service.transferPreview(gates[who], login, { parentLogin })).rejects.toEqual(refused(status, code));
       await expect(service.transferAccount(gates[who], login, bodyFor(login, parentLogin))).rejects.toEqual(refused(status, code));
     }
-    // Who may not move is refused before the body is read, so an incomplete body tells it nothing either.
-    await expect(service.transferAccount(gates.ag1, 'pos1', { parentLogin: 'ag2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    // The choices are read before the rules, so an incomplete body is INVALID even to ag1, who may move nothing.
+    await expect(service.transferAccount(gates.ag1, 'pos1', { parentLogin: 'ag2' })).rejects.toEqual(refused(400, 'INVALID'));
     await expect(service.transferAccount(gates.branch, 'pos1', { ...posMove(), parentLogin: undefined })).rejects.toEqual(refused(400, 'INVALID'));
     expect(stored(fixture)).toBe(before);
     expect(heard.written).toEqual([]);
@@ -568,6 +580,36 @@ describe('transfer: refusals', () => {
     for (const value of ['', 'KEEP', 'drop', 'recapture', null, 1, true, ['keep']]) await expect(agent({ ownPrices: value })).rejects.toEqual(invalid);
     for (const value of ['', 'RECAPTURE', 'reset', null, 0, false, ['keep']]) await expect(agent({ linePrices: value })).rejects.toEqual(invalid);
     expect(stored(fixture)).toBe(before);
+  });
+
+  it('reads the choices in three steps: their words before any account is read, then the rules, then what is below the account', async () => {
+    const { service, gates } = await tree();
+    // Counts the reads of the account list: the rules need it, and a body that is not a move must not cost it.
+    const users = (service as unknown as { prismaClient: { user: { findMany: (...args: unknown[]) => Promise<unknown> } } }).prismaClient.user;
+    const findMany = users.findMany.bind(users);
+    let listed = 0;
+    users.findMany = (...args) => {
+      listed += 1;
+      return findMany(...args);
+    };
+    const invalid = refused(400, 'INVALID');
+    const forbidden = refused(403, 'FORBIDDEN');
+    // 1. A choice that is missing or is not a word is INVALID to everyone, and no account is read for it: ag1 may move
+    // nothing, and nobody has the login ghost. What is below the account may be left out here, but a stated one is a word.
+    await expect(service.transferAccount(gates.ag1, 'pos1', posMove({ ownPrices: 'maybe' }))).rejects.toEqual(invalid);
+    await expect(service.transferAccount(gates.branch, 'ghost', posMove({ linePrices: undefined }))).rejects.toEqual(invalid);
+    await expect(service.transferAccount(gates.ag1, 'pos1', posMove({ childStops: null }))).rejects.toEqual(invalid);
+    await expect(service.transferAccount(gates.ag1, 'ag2', agentMove({ childPrices: 'drop' }))).rejects.toEqual(invalid);
+    expect(listed).toBe(0);
+    // 2. A body of words reads the accounts, and the rules answer.
+    await expect(service.transferAccount(gates.ag1, 'pos1', posMove())).rejects.toEqual(forbidden);
+    expect(listed).toBe(1);
+    // 3. Whether what is below the account is stated depends on its kind, so it is judged once the rules allow the move:
+    // a point of sale that states it, or an agent that leaves it out, is INVALID to the branch and FORBIDDEN to ag1.
+    await expect(service.transferAccount(gates.branch, 'pos1', posMove({ childPrices: 'keep' }))).rejects.toEqual(invalid);
+    await expect(service.transferAccount(gates.branch, 'ag1', agentMove({ childStops: undefined }))).rejects.toEqual(invalid);
+    await expect(service.transferAccount(gates.ag1, 'pos1', posMove({ childPrices: 'keep' }))).rejects.toEqual(forbidden);
+    await expect(service.transferAccount(gates.ag1, 'ag2', agentMove({ childStops: undefined }))).rejects.toEqual(forbidden);
   });
 
   it('refuses where a transfer stop sits on the actor path, and not the branch above it', async () => {
