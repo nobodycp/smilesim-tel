@@ -9,6 +9,7 @@ import { Desk, Money, layerName } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
 import { FilterBar } from '../../components/filter-bar';
 import { RowMenu, type RowAction } from '../../components/row-menu';
+import { TransferDialog } from '../../components/transfer-dialog';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
@@ -26,13 +27,14 @@ const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
 export default function UsersPage() {
   const { t, apiText } = usePrefs();
-  const [op, setOp] = useState<{ login: string; kind: 'fund' | 'ceiling' | 'transfer' | 'password' | 'freeze' | 'enter' | 'delete' } | null>(null);
+  const [op, setOp] = useState<{ login: string; kind: 'fund' | 'ceiling' | 'password' | 'freeze' | 'enter' | 'delete' } | null>(null);
+  // The login of the account being moved; its own dialog asks for the destination and the choices.
+  const [moving, setMoving] = useState<string | null>(null);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [ceilings, setCeilings] = useState<Record<string, string>>({});
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ loginName: '', nickname: '', password: '', layer: '', parentLogin: '', roleId: '' });
-  const [dest, setDest] = useState<Record<string, string>>({});
   const [passwords, setPasswords] = useState<Record<string, string>>({});
   const [query, setQuery] = useState('');
   useEffect(() => {
@@ -58,6 +60,11 @@ export default function UsersPage() {
         ? ['pos']
         : [];
   const directLayer = me?.layer === 'branch' ? 'main_agent' : me?.layer === 'main_agent' ? 'agent' : 'pos';
+  // Moving a point of sale and moving an agent are two grants. A stopped transfer, or a session that entered
+  // another account, moves nothing: the server refuses it, so the action is not offered.
+  const canMove = Boolean(me && !me.stops.includes('transfer') && !me.impersonating);
+  const canMovePos = canMove && Boolean(me?.grants.includes('transferPos'));
+  const canMoveAgent = canMove && Boolean(me?.grants.includes('transferAgents'));
 
   // A ceiling the user has not touched follows the list; one they typed stays until it is saved.
   useEffect(() => {
@@ -141,6 +148,12 @@ export default function UsersPage() {
     })
     .sort((a, b) => layerOrder.indexOf(a.layer) - layerOrder.indexOf(b.layer) || a.loginName.localeCompare(b.loginName));
   const active = op ? rows.find((row) => row.loginName === op.login) : undefined;
+  // A point of sale moves under another agent, an agent under another main agent: never to the parent it already
+  // has, and never to a frozen account.
+  const moveRow = moving ? rows.find((row) => row.loginName === moving) ?? null : null;
+  const destinations = moveRow
+    ? rows.filter((row) => row.layer === (moveRow.layer === 'pos' ? 'agent' : 'main_agent') && row.loginName !== moveRow.parentLogin && !row.frozen)
+    : [];
 
   function actions(row: UserRow): RowAction[] {
     const fundable = canFund(row);
@@ -148,8 +161,8 @@ export default function UsersPage() {
     const items: RowAction[] = [];
     if (fundable) items.push({ label: t.fund, icon: 'fund', onClick: () => choose(row.loginName, 'fund') });
     if (ceilingEditable) items.push({ label: t.ceiling, icon: 'edit', onClick: () => choose(row.loginName, 'ceiling') });
-    if (row.layer === 'pos' && (me?.layer === 'branch' || me?.layer === 'main_agent')) {
-      items.push({ label: t.transfer, icon: 'move', onClick: () => choose(row.loginName, 'transfer') });
+    if ((row.layer === 'pos' && canMovePos) || (row.layer === 'agent' && canMoveAgent)) {
+      items.push({ label: t.transfer, icon: 'move', onClick: () => { setError(''); setMoving(row.loginName); } });
     }
     if (!row.self && row.layer !== 'branch' && creatable.length > 0) {
       items.push({ label: t.newPassword, icon: 'key', onClick: () => choose(row.loginName, 'password') });
@@ -304,10 +317,10 @@ export default function UsersPage() {
         {active && op ? (
           <Dialog
             open
-            size={op.kind === 'fund' || op.kind === 'ceiling' || op.kind === 'transfer' || op.kind === 'password' ? 'form' : 'confirm'}
-            title={op.kind === 'fund' ? t.fund : op.kind === 'ceiling' ? t.ceiling : op.kind === 'transfer' ? t.transfer : op.kind === 'password' ? t.newPassword : op.kind === 'enter' ? t.enterAccount : op.kind === 'delete' ? t.deleteAccount : active.frozen ? t.restoreAccount : t.freezeAccount}
-            lede={op.kind === 'fund' ? t.fundHint : op.kind === 'ceiling' ? t.ceilingHint : op.kind === 'transfer' ? t.transferHint : op.kind === 'password' ? t.passwordHint : op.kind === 'enter' ? t.enterHint : op.kind === 'delete' ? t.deleteHint : active.frozen ? t.restoreHint : t.freezeHint}
-            mark={op.kind === 'fund' || op.kind === 'ceiling' ? 'wallet' : op.kind === 'transfer' ? 'transfer' : op.kind === 'password' ? 'key' : op.kind === 'enter' ? 'enter' : op.kind === 'delete' ? 'trash' : 'freeze'}
+            size={op.kind === 'fund' || op.kind === 'ceiling' || op.kind === 'password' ? 'form' : 'confirm'}
+            title={op.kind === 'fund' ? t.fund : op.kind === 'ceiling' ? t.ceiling : op.kind === 'password' ? t.newPassword : op.kind === 'enter' ? t.enterAccount : op.kind === 'delete' ? t.deleteAccount : active.frozen ? t.restoreAccount : t.freezeAccount}
+            lede={op.kind === 'fund' ? t.fundHint : op.kind === 'ceiling' ? t.ceilingHint : op.kind === 'password' ? t.passwordHint : op.kind === 'enter' ? t.enterHint : op.kind === 'delete' ? t.deleteHint : active.frozen ? t.restoreHint : t.freezeHint}
+            mark={op.kind === 'fund' || op.kind === 'ceiling' ? 'wallet' : op.kind === 'password' ? 'key' : op.kind === 'enter' ? 'enter' : op.kind === 'delete' ? 'trash' : 'freeze'}
             tone={op.kind === 'delete' || (op.kind === 'freeze' && !active.frozen) ? 'danger' : 'neutral'}
             closeLabel={t.closeMenu}
             error={failure}
@@ -317,8 +330,6 @@ export default function UsersPage() {
                 <Button type="button" variant="secondary" disabled={busy} onClick={() => setOp(null)}>{t.cancel}</Button>
                 {op.kind === 'fund' ? <Button type="button" disabled={busy} onClick={() => fund(active)}>{t.fund}</Button> : null}
                 {op.kind === 'ceiling' ? <Button type="button" disabled={busy} onClick={() => saveCeiling(active)}>{t.save}</Button> : null}
-                {/* Until the transfer dialog asks for each choice, a move changes the parent and nothing else. */}
-                {op.kind === 'transfer' ? <Button type="button" disabled={busy || !dest[active.loginName]} onClick={() => run(() => api.transferAccount(active.loginName, { parentLogin: dest[active.loginName] ?? '', ownPrices: 'keep', ownStops: 'keep', linePrices: 'keep' }))}>{t.transfer}</Button> : null}
                 {op.kind === 'password' ? <Button type="button" disabled={busy} onClick={() => run(() => api.setUserPassword(active.loginName, passwords[active.loginName] ?? ''))}>{t.save}</Button> : null}
                 {op.kind === 'freeze' ? <Button type="button" disabled={busy} onClick={() => run(() => (active.frozen ? api.restoreUser(active.loginName) : api.freezeUser(active.loginName)))}>{active.frozen ? t.restoreAccount : t.freezeAccount}</Button> : null}
                 {op.kind === 'enter' ? (
@@ -354,17 +365,6 @@ export default function UsersPage() {
                   <input inputMode="numeric" value={ceilings[active.loginName] ?? ''} onChange={(event) => setCeilings((current) => ({ ...current, [active.loginName]: event.target.value }))} />
                 </label>
               ) : null}
-              {op.kind === 'transfer' ? (
-                <label>
-                  {t.transfer}
-                  <Select value={dest[active.loginName] ?? ''} onChange={(event) => setDest((current) => ({ ...current, [active.loginName]: event.target.value }))}>
-                    <option value="">—</option>
-                    {rows.filter((item) => item.layer === 'agent').map((item) => (
-                      <option key={item.loginName} value={item.loginName}>{accountLabel(item.loginName, item.nickname)}</option>
-                    ))}
-                  </Select>
-                </label>
-              ) : null}
               {op.kind === 'password' ? (
                 <label>
                   {t.newPassword}
@@ -374,6 +374,13 @@ export default function UsersPage() {
             </div>
           </Dialog>
         ) : null}
+        <TransferDialog
+          open={moveRow !== null}
+          row={moveRow}
+          destinations={destinations}
+          onClose={() => setMoving(null)}
+          onDone={() => { setMoving(null); void accounts.reload(); }}
+        />
       </section>
     </Desk>
   );

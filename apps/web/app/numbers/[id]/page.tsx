@@ -2,7 +2,7 @@
 
 import { ArrowRightLeft, CalendarPlus, Hash, Layers, PhoneOff, QrCode, RefreshCw, Smartphone, Snowflake, Sun, Zap } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk, Money, OutcomePick, actionName, applyNote, latinWhen, lineBadgeClass, lineStatus } from '../../../components/desk';
@@ -12,8 +12,9 @@ import { EsimDialog, QrPicker } from '../../../components/esim-qr';
 import { lineActions, type RunLine } from '../../../components/line-actions';
 import { TableSkeleton } from '../../../components/loading';
 import type { RowAction } from '../../../components/row-menu';
+import { LineChoice } from '../../../components/transfer-dialog';
 import { Button } from '../../../components/ui/button';
-import { api, type LineHistory, type LineRow, type Outcome } from '../../../lib/api';
+import { api, type LineHistory, type LineRow, type Outcome, type TransferLinePrices } from '../../../lib/api';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
@@ -49,7 +50,8 @@ export default function LineCardPage() {
   const door = useDoor();
   const { me } = useOffice();
   const isPos = door.layer === 'pos';
-  const canTransfer = Boolean(me?.grants.includes('transferLines'));
+  // The grant moves a number; a stopped transfer takes the action away, as the server would refuse it.
+  const canTransfer = Boolean(me?.grants.includes('transferLines') && !me.stops.includes('transfer'));
   const [tab, setTab] = useState<Tab>('ops');
   const [outcome, setOutcome] = useState<Outcome>('success');
   const [dialog, setDialog] = useState<DialogName>(null);
@@ -60,6 +62,8 @@ export default function LineCardPage() {
   const [nextQr, setNextQr] = useState('');
   const [nextNumber, setNextNumber] = useState('');
   const [posLogin, setPosLogin] = useState('');
+  // What happens to the number's renewal price when it moves. Empty until chosen: there is no default.
+  const [linePrices, setLinePrices] = useState<'' | TransferLinePrices>('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const verdict: Outcome = isPos ? 'success' : outcome;
@@ -86,7 +90,9 @@ export default function LineCardPage() {
   const posChoices = card.data?.posChoices ?? [];
   const { run: act, busy } = useAction({ setError, setNote, onDone: card.reload });
   const run: RunLine = (work) => act(work, { note: (data) => applyNote(t, data) });
-  const closeDialog = () => {
+  // Stable on purpose: `Dialog` focuses its first field again whenever `onClose` changes, which would pull the
+  // focus off a radio on every choice. The setters it calls never change.
+  const closeDialog = useCallback(() => {
     setDialog(null);
     setSwitchTo('');
     setNextIccid('');
@@ -94,7 +100,8 @@ export default function LineCardPage() {
     setNextQr('');
     setNextNumber('');
     setPosLogin('');
-  };
+    setLinePrices('');
+  }, []);
 
   const names: Record<Tab, string> = { ops: t.lineOps, details: t.lineDetails, log: t.lineLog };
   const items = line ? lineActions(line, verdict, run, t, { freeze: true, onDisconnect: setEnding }) : [];
@@ -387,8 +394,10 @@ export default function LineCardPage() {
                 <Button type="button" variant="secondary" onClick={closeDialog}>{t.cancel}</Button>
                 <Button
                   type="button"
-                  disabled={busy || !posLogin}
-                  onClick={() => act(() => api.transferLine(line.id, posLogin, 'keep'), { note: t.transfer, then: closeDialog })}
+                  disabled={busy || !posLogin || !linePrices}
+                  onClick={() => {
+                    if (linePrices) void act(() => api.transferLine(line.id, posLogin, linePrices), { note: t.transfer, then: closeDialog });
+                  }}
                 >
                   {t.transfer}
                 </Button>
@@ -407,6 +416,7 @@ export default function LineCardPage() {
                   {posChoices.map((row) => <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>)}
                 </select>
               </label>
+              <LineChoice value={linePrices} onChange={setLinePrices} />
             </div>
           </Dialog>
         </>

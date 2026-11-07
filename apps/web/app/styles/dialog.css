@@ -60,8 +60,9 @@
 }
 .dialog[data-size='confirm'] { width: min(420px, 100%); }
 .dialog[data-size='confirm'] .dialog-foot .danger { margin-inline-end: 0; }
+/* The account a dialog acts on. `AccountName` keeps the login and the full name in parentheses on one line; a block
+   `bdi` here split them across four lines. */
 .dialog-who { margin: 0; font-size: 14px; font-weight: 700; }
-.dialog-who bdi { display: block; margin-top: 2px; color: var(--rd-muted); font-size: 12px; font-weight: 500; }
 .dialog[data-size='wide'] { width: min(760px, 100%); }
 .dialog > header {
   display: flex;
@@ -205,6 +206,36 @@
 .dialog-form label:not(.check) { display: grid; gap: 4px; color: var(--rd-muted); font-size: 11px; font-weight: 700; text-align: start; }
 .dialog-body label .hint { font-size: 12px; font-weight: 500; }
 .dialog button:disabled { opacity: 0.45; cursor: not-allowed; }
+/* Choices with no default (the transfer dialog, the number card). A group is a fieldset of rows; a row is its name
+   and its radios, each radio a 44px `label.check`. The name and the radios stay together on one line while the
+   group is wide enough, then the radios wrap under the name. */
+.choice-set {
+  min-inline-size: 0;
+  margin: 0;
+  padding-block: 2px 6px;
+  padding-inline: 14px;
+  border: 1px solid var(--rd-line);
+  border-radius: 0.5rem;
+}
+.choice-set legend {
+  margin-inline-start: -6px;
+  padding-inline: 6px;
+  color: var(--rd-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.choice-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 16px; }
+.choice-name { flex: 0 0 9.5rem; color: var(--rd-ink-2); font-size: 12px; font-weight: 600; }
+.choice-options { display: flex; flex-wrap: wrap; column-gap: 16px; }
+.choice-set .check { min-height: 44px; }
+/* The two groups of terms share a row once each has room for its rows, and stack when it does not. */
+.transfer-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 12px; }
+/* A point of sale has one balance, an agent has two: the cards share the row between them instead of leaving it half empty. */
+.dialog-transfer .detail-rows { grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+/* A wide screen gives the transfer dialog the room for those two groups side by side. */
+@media (min-width: 1100px) {
+  .dialog.dialog-transfer { width: min(760px, 100%); }
+}
 .row-menu { position: relative; display: inline-flex; }
 /* `.row-menu .row-menu-btn` (two classes), not `.row-menu-btn` alone: the trigger sits inside a
    `Table`'s `.card` wrapper (Task 3), and forms.css's `.card button` rule (one class + one type

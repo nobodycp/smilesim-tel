@@ -158,6 +158,8 @@ async function confirmDisconnect(page: Page) {
 const transferTo = (nickname: string) => async (page: Page) => {
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('نقل').selectOption({ label: nickname });
+  // The dialog asks what happens to the number's renewal price and has no default; this audit keeps it.
+  await dialog.getByRole('radio', { name: 'تبقى كما هي' }).check();
   await dialog.getByRole('button', { name: 'نقل', exact: true }).click();
 };
 
