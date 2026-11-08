@@ -8,6 +8,10 @@ import { OfficeService } from './office.service';
 // closes it with the serial and the QR picture, which land on the line. A SIM swap stays free.
 // A number change that became a task takes its new number when the employee closes it.
 
+// These cases render eSIM QR pictures, which is CPU work: alone the file takes ~4 s, but under the full parallel
+// run one case can cross Jest's 5 s default. The wider limit is for that contention, not for a slow case.
+jest.setTimeout(20_000);
+
 type Row = Record<string, unknown>;
 
 const QR = `data:image/png;base64,${'A'.repeat(64)}`;
