@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { AuthFrame } from '../../components/auth-frame';
 import { api, routeFor } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
+import { Alert } from '../../components/alert';
 
 export default function PasswordPage() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function PasswordPage() {
           {t.newPassword}
           <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" required />
         </label>
-        {message && <p className="error" role="alert">{message}</p>}
+        <Alert>{message}</Alert>
         <button type="submit" disabled={busy}>{t.save}</button>
       </form>
     </AuthFrame>

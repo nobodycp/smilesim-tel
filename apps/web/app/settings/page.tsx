@@ -9,6 +9,7 @@ import { useOffice } from '../../lib/office-session';
 import { usePageTitle } from '../../lib/page-title';
 import { usePrefs } from '../../lib/prefs';
 import { badgeClass } from '../../lib/status-tone';
+import { Alert } from '../../components/alert';
 
 export default function SettingsPage() {
   const { t, apiText, locale } = usePrefs();
@@ -153,8 +154,8 @@ export default function SettingsPage() {
       <h1>{t.settingsTitle}</h1>
       <p className="lede">{t.settingsLede}</p>
     </header>
-    {error && <p className="error banner" role="alert">{error}</p>}
-    {note && <p className="note banner" role="status">{note}</p>}
+    <Alert banner>{error}</Alert>
+    <Alert tone="success" banner>{note}</Alert>
 
     <div className="settings-grid">
       <div className="settings-col">

@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRightLeft, Check, KeyRound, LogIn, Plus, Shield, Sn
 import { createPortal } from 'react-dom';
 import { useConnection } from '../lib/connection';
 import { usePrefs } from '../lib/prefs';
+import { Alert } from './alert';
 
 export type DialogMark = 'plus' | 'shield' | 'wallet' | 'transfer' | 'key' | 'freeze' | 'enter' | 'trash' | 'alert' | 'check';
 export type DialogTone = 'neutral' | 'danger' | 'success';
@@ -28,8 +29,8 @@ export function PageAlert({
   const repeated = !reachable && error === t.errors.NETWORK;
   return (
     <DialogAlert.Provider value={setHeld}>
-      {error && !held && !repeated ? <p className="error" role="alert">{error}</p> : null}
-      {note ? <p className="note" role="status">{note}</p> : null}
+      {!held && !repeated ? <Alert>{error}</Alert> : null}
+      <Alert tone="success">{note}</Alert>
       {children}
     </DialogAlert.Provider>
   );
@@ -125,7 +126,7 @@ export function Dialog({
           </div>
           <button type="button" className="icon-btn" onClick={onClose} aria-label={closeLabel}><X size={18} aria-hidden="true" /></button>
         </header>
-        {error ? <p className="error" role="alert">{error}</p> : null}
+        <Alert>{error}</Alert>
         <div className="dialog-body">{children}</div>
         {footer ? <footer className="dialog-foot">{footer}</footer> : null}
       </div>

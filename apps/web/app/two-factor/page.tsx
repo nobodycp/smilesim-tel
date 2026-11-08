@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { AuthFrame } from '../../components/auth-frame';
 import { api, routeFor, TWO_FACTOR_STEP_KEY } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
+import { Alert } from '../../components/alert';
 
 export default function TwoFactorPage() {
   const router = useRouter();
@@ -50,7 +51,7 @@ export default function TwoFactorPage() {
           {t.code}
           <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required />
         </label>
-        {message && <p className="error" role="alert">{message}</p>}
+        <Alert>{message}</Alert>
         <button type="submit" disabled={busy}>{t.confirm}</button>
       </form>
     </AuthFrame>

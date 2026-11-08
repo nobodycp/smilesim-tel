@@ -10,6 +10,7 @@ import { usePrefs } from '../lib/prefs';
 import { Dialog } from './dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Alert } from './alert';
 
 type SimLike = { esim: boolean; esimQr: string | null };
 type LineLike = SimLike & { msisdn: string; iccid: string | null };
@@ -103,7 +104,7 @@ export function QrPicker({ value, onChange, disabled = false }: { value: string;
           </Button>
         ) : null}
       </div>
-      {problem ? <p className="error" role="alert">{problem}</p> : null}
+      <Alert>{problem}</Alert>
     </div>
   );
 }

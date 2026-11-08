@@ -16,6 +16,7 @@ import { usePageTitle } from '../lib/page-title';
 import { usePrefs } from '../lib/prefs';
 import { useAction } from '../lib/use-action';
 import { useLoad } from '../lib/use-load';
+import { Alert } from '../components/alert';
 
 type Movement = HomePayload['operations'][number];
 
@@ -70,8 +71,8 @@ export default function HomePage() {
 
   return (
     <div className="home">
-      {failure && <p className="error banner" role="alert">{failure}</p>}
-      {note && <p className="note banner" role="status">{note}</p>}
+      <Alert banner>{failure}</Alert>
+      <Alert tone="success" banner>{note}</Alert>
       <header className="page-head">
         <h1>{t.homeTitle}</h1>
         {layer && <p className="lede">{layerName(t, layer)}</p>}

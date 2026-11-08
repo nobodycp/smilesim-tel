@@ -8,6 +8,7 @@ import { api, routeFor } from '../../lib/api';
 import { useBranding } from '../../lib/branding';
 import { useDoor } from '../../lib/door-context';
 import { usePrefs } from '../../lib/prefs';
+import { Alert } from '../../components/alert';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -107,7 +108,7 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-            {message && <p className="error" id="login-error" role="alert">{message}</p>}
+            <Alert id="login-error">{message}</Alert>
             <button className="login-go login-enter d" type="submit" disabled={busy} aria-busy={busy}>
               <span>{t.signIn}</span>
             </button>
