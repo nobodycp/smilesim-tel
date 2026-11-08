@@ -48,7 +48,7 @@ import {
   type LineTerms,
   type PackageTerms,
 } from './office-rules';
-import { RENEWABLE_STATUSES, groupChanges, groupLinePrices, repriceLine, stampRenewal, type PriceGroup } from './line-prices';
+import { RENEWABLE_STATUSES, groupChanges, groupLinePrices, repriceLine, type PriceGroup } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
 import { TRANSFER_GRANT, canTransfer, parseChoice, parseLineChoice, previewOf, transferKind, type TransferKind } from './transfer-rules';
 import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey, parseOps, priceSource, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type PriceSource, type SellRow, type TermRow } from './user-terms';
@@ -56,7 +56,7 @@ import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskWhereFor, type TaskEvent } from './task-access';
 import { NoticeService, type WrittenNotice } from './notice.service';
 import { feedPosition } from './kernel/feed';
-import { nodeOf } from './kernel/office-kernel';
+import { nodeOf, PRICE_COLUMNS, type LadderRows } from './kernel/office-kernel';
 import { optionalPrice } from './kernel/values';
 import { OfficeKernel } from './kernel/office-kernel';
 import { PackagesService } from './packages/packages.service';
@@ -116,22 +116,7 @@ type LineScope = { kind: 'all' } | { kind: 'account'; id: string; loginName: str
 type LineTarget = { to: number | 'current' };
 type RepriceLine = { id: string; posId: string; terms: Prisma.JsonValue; package: PackagePriceRow & { id: string } };
 /** The price columns of a package that `LayerPrices` holds, as a `select`. */
-const PRICE_COLUMNS = {
-  branchCost: true,
-  mainPrice: true,
-  agentPrice: true,
-  posPrice: true,
-  renewalBranchCost: true,
-  renewalMainPrice: true,
-  renewalAgentPrice: true,
-  renewalPosPrice: true,
-} as const;
 /** What decides the prices points of sale pay for some packages: their price columns, the custom rows on them, and the sell prices of the accounts above. */
-type LadderRows = {
-  packages: (LayerPrices & { id: string; code: string })[];
-  termRows: (TermRow & { packageId: string })[];
-  sellRows: (SellRow & { packageId: string })[];
-};
 
 const PREPAID_KINDS = ['activate', 'charge', 'extend', 'reactivate', 'switch'];
 /** Entries that put time on a line: the newest one is the last recharge shown on the card. */
@@ -297,6 +282,14 @@ export class OfficeService implements OnModuleInit {
 
   private termsFor(packageId: string) {
     return this.kernel.termsFor(packageId);
+  }
+
+  private ladderRows(codes: string[], pathIds: string[], db: Prisma.TransactionClient | PrismaClient) {
+    return this.kernel.ladderRows(codes, pathIds, db);
+  }
+
+  private stampWith(terms: LineTerms, path: PathNode[], rows: LadderRows) {
+    return this.kernel.stampWith(terms, path, rows);
   }
 
   private actor(gate: Gate) {
@@ -2423,44 +2416,7 @@ export class OfficeService implements OnModuleInit {
     return this.stampWith(terms, path, await this.ladderRows(codes, path.map((node) => node.id), db));
   }
 
-  /**
-   * The rows behind what points of sale pay: the price columns of the packages named by `codes`, and
-   * the custom rows and sell prices written on them for the accounts in `pathIds`. One read per table,
-   * however many packages and paths are asked for, so a batch loads once and stamps every number from it.
-   */
-  private async ladderRows(codes: string[], pathIds: string[], db: Prisma.TransactionClient | PrismaClient): Promise<LadderRows> {
-    const packages = await db.package.findMany({
-      where: { code: { in: codes } },
-      select: { id: true, code: true, ...PRICE_COLUMNS },
-    });
-    const ids = packages.map((row) => row.id);
-    const [termRows, sellRows] = await Promise.all([
-      db.userPackage.findMany({
-        where: { packageId: { in: ids }, userId: { in: pathIds } },
-        select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
-      }),
-      db.sellPrice.findMany({
-        where: { packageId: { in: ids }, ownerId: { in: pathIds } },
-        select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
-      }),
-    ]);
-    return { packages, termRows, sellRows };
-  }
 
-  /**
-   * `stampFor` once the rows are loaded: no database. `rows` may hold the rows of many paths. Each
-   * price is resolved through `path` alone, so the rows of other accounts are never read for it.
-   */
-  private stampWith(terms: LineTerms, path: PathNode[], rows: LadderRows): LineTerms {
-    if (path.length === 0) return terms;
-    return stampRenewal(terms, (code) => {
-      const pkg = rows.packages.find((row) => row.code === code);
-      if (!pkg) return null;
-      const termsOf = rows.termRows.filter((row) => row.packageId === pkg.id);
-      const sellsOf = rows.sellRows.filter((row) => row.packageId === pkg.id);
-      return buyPriceFor(path, termsOf, sellsOf, pkg, 'renewal');
-    });
-  }
 
   private async ensureLayerRoles() {
     for (const layer of LAYER_ORDER) {
