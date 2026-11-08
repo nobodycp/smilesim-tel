@@ -117,7 +117,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 ## Follow-ups found during the split (not done; each needs the owner's go-ahead)
 
 - [x] **Web lint:** unused imports and variables are reported (done in 5.0, `4eaa4d1`).
-- [x] **API build:** `tsconfig.build.json` (used by `npm run build` and the Docker image) leaves specs and test helpers out of `dist`: 188 → 129 files; no built file loads a test module. TBD
+- [x] **API build:** `tsconfig.build.json` (used by `npm run build` and the Docker image) leaves specs and test helpers out of `dist`: 188 → 129 files; no built file loads a test module. `24a084e`
 
 - [x] **Security:** `PATCH /office/packages/:code/mode` let any account holding `edit` change package modes; no layer check. Default layer roles give `edit` to the branch only, so it opened only if the branch granted `edit` to an agent. Fixed with the same branch check as `setChain` (owner's go-ahead 2026-11-08); `package-catalog.http.spec.ts` now expects 403.
 

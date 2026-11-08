@@ -9,8 +9,9 @@ import { OfficeFacade } from './testing/office-facade';
 // A number change that became a task takes its new number when the employee closes it.
 
 // These cases render eSIM QR pictures, which is CPU work: alone the file takes ~4 s, but under the full parallel
-// run one case can cross Jest's 5 s default. The wider limit is for that contention, not for a slow case.
-jest.setTimeout(20_000);
+// run one case can cross Jest's 5 s default, and 20 s when another process holds the CPU (seen with the
+// graphify rebuild running). The wider limit is for that contention, not for a slow case.
+jest.setTimeout(60_000);
 
 type Row = Record<string, unknown>;
 
