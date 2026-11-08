@@ -11,4 +11,11 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.node } },
   },
   { files: ['**/*.js'], rules: { '@typescript-eslint/no-require-imports': 'off' } },
+  {
+    // Jest declares a global `fail()`. Outside specs, a missing `import { fail }` would compile against it and
+    // silently stop throwing OfficeFailure.
+    files: ['src/**/*.ts'],
+    ignores: ['src/**/*.spec.ts'],
+    rules: { 'no-restricted-globals': ['error', { name: 'fail', message: "Import fail from 'modules/shared/office-failure'." }] },
+  },
 );

@@ -40,8 +40,6 @@ import {
   CompleteTaskBodyDto,
   ProviderEsimPriceBodyDto,
   SwitchPackageBodyDto,
-  TaskInspectionNoteBodyDto,
-  TaskRejectBodyDto,
   TransferAccountBodyDto,
   TransferLineBodyDto,
 } from './office.dto';
@@ -60,7 +58,6 @@ function cookieBase(): CookieOptions {
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value ? value : undefined;
 }
-
 
 const freeFormObject = {
   type: 'object' as const,
@@ -586,77 +583,6 @@ export class OfficeController {
     return this.office.switchPackage(gateOf(req), id, body);
   }
 
-  @Get('tasks')
-  @ApiOperation({ summary: 'Paged tasks' })
-  @ApiQuery({ name: 'cursor', required: false })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiQuery({ name: 'status', required: false })
-  @ApiQuery({ name: 'action', required: false })
-  @ApiQuery({ name: 'packageCode', required: false })
-  @ApiQuery({ name: 'company', required: false })
-  @ApiQuery({ name: 'provider', required: false })
-  @ApiErrorResponse(401, 403)
-  tasks(
-    @Req() req: Request,
-    @Query('cursor') cursor?: string,
-    @Query('q') q?: string,
-    @Query('status') status?: string,
-    @Query('action') action?: string,
-    @Query('packageCode') packageCode?: string,
-    @Query('company') company?: string,
-    @Query('provider') provider?: string,
-  ) {
-    return this.office.tasks(gateOf(req), {
-        cursor: text(cursor),
-        q: text(q),
-        status: text(status),
-        action: text(action),
-        packageCode: text(packageCode),
-        company: text(company),
-        provider: text(provider),
-      });
-  }
-
-  @Get('tasks/:id')
-  @ApiOperation({ summary: 'Task ticket detail with timeline' })
-  @ApiParam({ name: 'id' })
-  @ApiErrorResponse(401, 403, 404)
-  task(@Req() req: Request, @Param('id') id: string) {
-    return this.office.task(gateOf(req), id);
-  }
-
-  @Post('tasks/:id/notes')
-  @ApiOperation({ summary: 'Add inspection note without closing the task' })
-  @ApiParam({ name: 'id' })
-  @ApiBody({ type: TaskInspectionNoteBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('task_note', 'task', param('id'))
-  addTaskNote(
-    @Req() req: Request,
-    @Param('id') id: string,
-    @Body() body: TaskInspectionNoteBodyDto,
-  ) {
-    return this.office.addTaskNote(gateOf(req), id, body);
-  }
-
-  @Post('tasks/:id/take')
-  @ApiOperation({ summary: 'Take a task' })
-  @ApiParam({ name: 'id' })
-  @ApiErrorResponse(401, 403, 404)
-  @Activity('task_take', 'task', param('id'))
-  take(@Req() req: Request, @Param('id') id: string) {
-    return this.office.takeTask(gateOf(req), id);
-  }
-
-  @Post('tasks/:id/release')
-  @ApiOperation({ summary: 'Release a taken task' })
-  @ApiParam({ name: 'id' })
-  @ApiErrorResponse(401, 403, 404)
-  @Activity('task_release', 'task', param('id'))
-  release(@Req() req: Request, @Param('id') id: string) {
-    return this.office.releaseTask(gateOf(req), id);
-  }
-
   @Post('tasks/:id/complete')
   @ApiOperation({ summary: 'Complete a task; an eSIM request takes the serial and QR, a number change takes the new number' })
   @ApiParam({ name: 'id' })
@@ -669,29 +595,6 @@ export class OfficeController {
     @Body() body: CompleteTaskBodyDto,
   ) {
     return this.office.completeTask(gateOf(req), id, body);
-  }
-
-  @Post('tasks/:id/reject')
-  @ApiOperation({ summary: 'Reject a task' })
-  @ApiParam({ name: 'id' })
-  @ApiBody({ type: TaskRejectBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('task_reject', 'task', param('id'))
-  reject(
-    @Req() req: Request,
-    @Param('id') id: string,
-    @Body() body: TaskRejectBodyDto,
-  ) {
-    return this.office.rejectTask(gateOf(req), id, body);
-  }
-
-  @Post('tasks/:id/cancel')
-  @ApiOperation({ summary: 'Cancel a task' })
-  @ApiParam({ name: 'id' })
-  @ApiErrorResponse(401, 403, 404)
-  @Activity('task_cancel', 'task', param('id'))
-  cancel(@Req() req: Request, @Param('id') id: string) {
-    return this.office.cancelTask(gateOf(req), id);
   }
 
   @Get('users')

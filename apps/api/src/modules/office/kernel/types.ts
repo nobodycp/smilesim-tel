@@ -27,3 +27,6 @@ export type Sale = {
   /** The period a prepaid row bought. A switch has no end: it reprices the open periods. */
   period?: { days: number; endsAt: Date | null };
 };
+
+/** A line operation, as a task names it. */
+export type Action = 'activate' | 'charge' | 'extend' | 'reactivate' | 'disconnect' | 'freeze' | 'unfreeze' | 'switch' | 'rename' | 'sim' | 'esim' | 'refresh';

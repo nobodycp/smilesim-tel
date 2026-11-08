@@ -8,10 +8,12 @@ import { NoticeInboxService } from './notices/notice-inbox.service';
 import { NoticesController } from './notices/notices.controller';
 import { AuditController } from './audit/audit.controller';
 import { AuditService } from './audit/audit.service';
+import { TasksController } from './tasks/tasks.controller';
+import { TasksService } from './tasks/tasks.service';
 
 // Exported so HTTP specs build the same set of office routes the app serves, whichever controller holds them.
-export const OFFICE_CONTROLLERS = [OfficeController, NoticesController, AuditController];
-export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, OfficeService, NoticeInboxService, AuditService];
+export const OFFICE_CONTROLLERS = [OfficeController, NoticesController, AuditController, TasksController];
+export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, OfficeService, NoticeInboxService, AuditService, TasksService];
 
 @Module({
   imports: [AuthModule],

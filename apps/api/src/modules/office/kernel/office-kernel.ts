@@ -14,6 +14,11 @@ import type { Account, Actor, Gate, Sale } from './types';
  * list, transactions that publish their notices after commit, and the wallet moves. One instance per process;
  * OfficeService and the domain services under `modules/office/<domain>/` all read through it.
  */
+/** A branch-only action: anyone else is 403 FORBIDDEN. */
+export function assertBranch(actor: Actor): void {
+  if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+}
+
 @Injectable()
 export class OfficeKernel {
   /** The client; specs replace it to run on in-memory tables. */
