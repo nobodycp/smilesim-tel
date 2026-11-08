@@ -19,15 +19,12 @@ import { OfficeService } from './office.service';
 import {
   AccessBodyDto,
   AnnouncementBodyDto,
-  CompanyImageBodyDto,
-  CompanySimBodyDto,
   CreateUserBodyDto,
   CustomPriceBodyDto,
   ExtendBodyDto,
   LinePricesBodyDto,
   OutcomeBodyDto,
   PackageTargetsBodyDto,
-  ProviderModeBodyDto,
   RenameLineBodyDto,
   SellPriceBodyDto,
   SetAccountPasswordBodyDto,
@@ -36,7 +33,6 @@ import {
   UserPackageBodyDto,
   UserPackagesBulkBodyDto,
   CompleteTaskBodyDto,
-  ProviderEsimPriceBodyDto,
   SwitchPackageBodyDto,
   TransferAccountBodyDto,
   TransferLineBodyDto,
@@ -99,13 +95,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403)
   packages(@Req() req: Request) {
     return this.office.packages(gateOf(req));
-  }
-
-  @Get('companies')
-  @ApiOperation({ summary: 'Companies shelf' })
-  @ApiErrorResponse(401, 403)
-  companies(@Req() req: Request) {
-    return this.office.companiesShelf(gateOf(req));
   }
 
   @Get('packages/:code/sheet')
@@ -256,71 +245,6 @@ export class OfficeController {
   @Activity('sell_price', 'package', param('code'))
   clearSellPrice(@Req() req: Request, @Param('code') code: string) {
     return this.office.clearSellPrice(gateOf(req), code);
-  }
-
-  @Post('companies/image')
-  @ApiOperation({ summary: 'Set company mark / image' })
-  @ApiBody({ type: CompanyImageBodyDto })
-  @ApiErrorResponse(401, 403, 400)
-  companyImage(@Req() req: Request, @Body() body: CompanyImageBodyDto) {
-    return this.office.setCompanyImage(gateOf(req), body);
-  }
-
-  @Put('companies/:code/sim')
-  @ApiOperation({ summary: 'Set company SIM rules (ICCID length, prefix, eSIM)' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ type: CompanySimBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('company_sim', 'company', param('code'))
-  companySim(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Body() body: CompanySimBodyDto,
-  ) {
-    return this.office.setCompanySim(gateOf(req), code, body);
-  }
-
-  @Get('providers')
-  @ApiOperation({ summary: 'Provider list' })
-  @ApiErrorResponse(401, 403)
-  providers(@Req() req: Request) {
-    return this.office.providers(gateOf(req));
-  }
-
-  @Get('providers/:code/settings')
-  @ApiOperation({ summary: 'Provider settings including default run modes' })
-  @ApiParam({ name: 'code' })
-  @ApiErrorResponse(401, 403, 404)
-  providerSettings(@Req() req: Request, @Param('code') code: string) {
-    return this.office.providerSettings(gateOf(req), code);
-  }
-
-  @Patch('providers/:code/esim-price')
-  @ApiOperation({ summary: 'Set or clear the provider eSIM price override' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ type: ProviderEsimPriceBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('provider_esim_price', 'provider', param('code'))
-  setProviderEsimPrice(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Body() body: ProviderEsimPriceBodyDto,
-  ) {
-    return this.office.setProviderEsimPrice(gateOf(req), code, body);
-  }
-
-  @Patch('providers/:code/settings')
-  @ApiOperation({ summary: 'Set one provider default run mode (does not touch packages)' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ type: ProviderModeBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('provider_mode', 'provider', param('code'))
-  setProviderMode(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Body() body: ProviderModeBodyDto,
-  ) {
-    return this.office.setProviderMode(gateOf(req), code, body as Record<string, unknown>);
   }
 
   @Get('lines')

@@ -1,0 +1,113 @@
+import { Injectable } from '@nestjs/common';
+import { fail } from '../../shared/office-failure';
+import { OfficeKernel } from '../kernel/office-kernel';
+import type { Actor } from '../kernel/types';
+import { nonNegative } from '../kernel/values';
+import { ACTION_KEYS, normalizeActionModes, type ActionKey, type ActionMode } from '../office-rules';
+
+/** Providers, for the branch: the list with each provider's companies and packages, the per-provider action modes, and the provider eSIM price. */
+@Injectable()
+export class ProvidersService {
+  constructor(private readonly kernel: OfficeKernel) {}
+
+  async list(actor: Actor) {
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    const rows = await this.kernel.prisma.provider.findMany({
+      where: { packages: { some: { companyId: { not: null } } } },
+      include: { packages: { include: { company: true }, orderBy: { code: 'asc' } } },
+      orderBy: { name: 'asc' },
+    });
+    return {
+      providers: rows.map((row) => {
+        const byCompany = new Map<string, { name: string; image: string; packages: Array<{
+          code: string;
+          name: string;
+          dataGb: number | null;
+          months: number;
+          price: number;
+          enabled: boolean;
+          autoActivate: boolean;
+          autoCharge: boolean;
+          autoDisconnect: boolean;
+          autoFreeze: boolean;
+          autoSwitch: boolean;
+          autoExtend: boolean;
+          autoRename: boolean;
+          autoSim: boolean;
+          allowDisconnect: boolean;
+        }> }>();
+        for (const item of row.packages) {
+          if (!item.company) continue;
+          const company = byCompany.get(item.company.id) ?? {
+            name: item.company.name,
+            image: item.company.image ?? '',
+            packages: [],
+          };
+          company.packages.push({
+            code: item.code,
+            name: item.name,
+            dataGb: item.dataGb,
+            months: item.months,
+            price: item.branchCost,
+            enabled: item.enabled,
+            autoActivate: item.autoActivate,
+            autoCharge: item.autoCharge,
+            autoDisconnect: item.autoDisconnect,
+            autoFreeze: item.autoFreeze,
+            autoSwitch: item.autoSwitch,
+            autoExtend: item.autoExtend,
+            autoRename: item.autoRename,
+            autoSim: item.autoSim,
+            allowDisconnect: item.allowDisconnect,
+          });
+          byCompany.set(item.company.id, company);
+        }
+        return {
+          code: row.code,
+          name: row.name,
+          companies: [...byCompany.values()].sort((left, right) => left.name.localeCompare(right.name, 'ar')),
+        };
+      }),
+    };
+  }
+
+  async settings(actor: Actor, code: string) {
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    const row = await this.kernel.prisma.provider.findUnique({ where: { code } });
+    if (!row) fail(404, 'NOT_FOUND');
+    return {
+      code: row.code,
+      name: row.name,
+      modes: normalizeActionModes(row.actionModes),
+      esimPrice: row.esimPrice,
+    };
+  }
+
+  async setEsimPrice(actor: Actor, code: string, body: { price?: unknown }) {
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
+    const row = await this.kernel.prisma.provider.findUnique({ where: { code } });
+    if (!row) fail(404, 'NOT_FOUND');
+    const price = body.price === null ? null : nonNegative(body.price);
+    if (price === null && body.price !== null) fail(400, 'INVALID');
+    await this.kernel.prisma.provider.update({ where: { code }, data: { esimPrice: price } });
+    return { ok: true as const, esimPrice: price };
+  }
+
+  async setMode(actor: Actor, code: string, body: Record<string, unknown>) {
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
+    const row = await this.kernel.prisma.provider.findUnique({ where: { code } });
+    if (!row) fail(404, 'NOT_FOUND');
+    const action = typeof body.action === 'string' ? body.action : '';
+    const mode = body.mode === 'auto' || body.mode === 'manual' || body.mode === 'off' ? body.mode : '';
+    if (!(ACTION_KEYS as readonly string[]).includes(action) || !mode) fail(400, 'INVALID');
+    const modes = normalizeActionModes(row.actionModes);
+    modes[action as ActionKey] = mode as ActionMode;
+    await this.kernel.prisma.provider.update({
+      where: { code },
+      data: { actionModes: modes },
+    });
+    return { ok: true as const };
+  }
+}

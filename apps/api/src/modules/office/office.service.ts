@@ -19,7 +19,6 @@ import {
 } from './office-paging';
 import {
   AGOROT,
-  ESIM_PRICE_DEFAULT,
   activationProviderCost,
   esimPriceOf,
   PERIOD_DAYS,
@@ -40,7 +39,6 @@ import {
   renewOnto,
   refreshMode,
   renewStay,
-  readSimRules,
   revalue,
   settleDisconnect,
   simRefusal,
@@ -51,7 +49,6 @@ import {
   windowMonthsOf,
   visibleAccountIds,
   type ActionKey,
-  type ActionMode,
   type LineTerms,
   type PackageTerms,
 } from './office-rules';
@@ -63,7 +60,10 @@ import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskWhereFor, type TaskEvent } from './task-access';
 import { NoticeService, type WrittenNotice } from './notice.service';
 import { feedPosition } from './kernel/feed';
+import { nonNegative } from './kernel/values';
 import { OfficeKernel } from './kernel/office-kernel';
+import { CompaniesService } from './companies/companies.service';
+import { ProvidersService } from './providers/providers.service';
 import { WalletsService } from './wallets/wallets.service';
 import { PROVIDER_OPERATION_KINDS } from './wallets/provider-cost';
 import { AuditService } from './audit/audit.service';
@@ -284,6 +284,20 @@ export class OfficeService implements OnModuleInit {
   private get walletDesk(): WalletsService {
     this.walletDeskInstance ??= new WalletsService(this.kernel);
     return this.walletDeskInstance;
+  }
+
+  private providerDeskInstance: ProvidersService | null = null;
+
+  private get providerDesk(): ProvidersService {
+    this.providerDeskInstance ??= new ProvidersService(this.kernel);
+    return this.providerDeskInstance;
+  }
+
+  private companyDeskInstance: CompaniesService | null = null;
+
+  private get companyDesk(): CompaniesService {
+    this.companyDeskInstance ??= new CompaniesService(this.kernel);
+    return this.companyDeskInstance;
   }
 
   // One-line delegators: the methods still in this file call the kernel through the names they always used.
@@ -534,68 +548,17 @@ export class OfficeService implements OnModuleInit {
     };
   }
 
+  // Facades (Phase 3): specs still call these; the routes live in companies/companies.controller.ts.
   async companiesShelf(gate: Gate) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const rows = await this.prisma.package.findMany({
-      where: { companyId: { not: null } },
-      include: {
-        provider: true,
-        company: true,
-        lines: { select: { status: true } },
-      },
-      orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
-    });
-    const byCompany = new Map<string, Map<string, {
-      code: string;
-      name: string;
-      packages: Array<{
-        code: string;
-        name: string;
-        months: number;
-        forSale: boolean;
-        enabled: boolean;
-        lines: number;
-        activeLines: number;
-        stoppedLines: number;
-      }>;
-    }>>();
-    for (const row of rows) {
-      if (!row.company) continue;
-      const providers = byCompany.get(row.company.code) ?? new Map();
-      const provider = providers.get(row.provider.code) ?? {
-        code: row.provider.code,
-        name: row.provider.name,
-        packages: [],
-      };
-      const activeLines = row.lines.filter((line) => line.status === 'active').length;
-      provider.packages.push({
-        code: row.code,
-        name: row.name,
-        months: row.months,
-        forSale: row.forSale,
-        enabled: row.enabled,
-        lines: row.lines.length,
-        activeLines,
-        stoppedLines: row.lines.length - activeLines,
-      });
-      providers.set(row.provider.code, provider);
-      byCompany.set(row.company.code, providers);
-    }
-    const stored = await this.prisma.company.findMany({
-      select: { code: true, image: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
-    });
-    const byCode = new Map(stored.map((row) => [row.code, row]));
-    return {
-      companies: companies.map((company) => ({
-        code: company.code,
-        name: company.name,
-        image: byCode.get(company.code)?.image ?? '',
-        sim: simRulesOf(byCode.get(company.code) ?? null),
-        esimPrice: byCode.get(company.code)?.esimPrice ?? ESIM_PRICE_DEFAULT,
-        providers: [...(byCompany.get(company.code)?.values() ?? [])],
-      })),
-    };
+    return this.companyDesk.shelf(await this.actor(gate));
+  }
+
+  async setCompanySim(gate: Gate, code: string, body: { length?: unknown; prefix?: unknown; esim?: unknown; esimPrice?: unknown }) {
+    return this.companyDesk.setSim(await this.actor(gate), code, body);
+  }
+
+  async setCompanyImage(gate: Gate, body: { name?: unknown; image?: unknown }) {
+    return this.companyDesk.setImage(await this.actor(gate), body);
   }
 
   /** A main agent's or agent's own sell price for a package. The floor is what the actor itself pays. */
@@ -630,145 +593,21 @@ export class OfficeService implements OnModuleInit {
     return { ok: true };
   }
 
-  async setCompanySim(gate: Gate, code: string, body: { length?: unknown; prefix?: unknown; esim?: unknown; esimPrice?: unknown }) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
-    const rules = readSimRules(body);
-    if (!rules) fail(400, 'INVALID');
-    const esimPrice = body.esimPrice === undefined ? undefined : nonNegative(body.esimPrice);
-    if (esimPrice === null) fail(400, 'INVALID');
-    const row = await this.prisma.company.findUnique({ where: { code } });
-    if (!row) fail(404, 'NOT_FOUND');
-    const saved = await this.prisma.company.update({
-      where: { id: row.id },
-      data: { iccidLength: rules.length, iccidPrefix: rules.prefix || null, esim: rules.esim, ...(esimPrice === undefined ? {} : { esimPrice }) },
-    });
-    return { ok: true, sim: rules, esimPrice: saved.esimPrice };
-  }
-
-  async setCompanyImage(gate: Gate, body: { name?: unknown; image?: unknown }) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'FORBIDDEN');
-    const name = typeof body.name === 'string' ? body.name.trim() : '';
-    if (!name) fail(400, 'INVALID');
-    const found = await this.prisma.company.count({ where: { name } });
-    if (!found) fail(404, 'NOT_FOUND');
-    let image: string | null = null;
-    if (typeof body.image === 'string' && body.image) {
-      const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(body.image);
-      if (!match) fail(400, 'INVALID');
-      const bytes = Buffer.from(match[2], 'base64');
-      if (bytes.length < 32 || bytes.length > 150_000) fail(400, 'INVALID');
-      image = `data:image/${match[1]};base64,${match[2]}`;
-    }
-    await this.prisma.company.updateMany({ where: { name }, data: { image } });
-    return { ok: true };
+  // Facades (Phase 3): specs still call these; the routes live in providers/providers.controller.ts.
+  async providers(gate: Gate) {
+    return this.providerDesk.list(await this.actor(gate));
   }
 
   async providerSettings(gate: Gate, code: string) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const row = await this.prisma.provider.findUnique({ where: { code } });
-    if (!row) fail(404, 'NOT_FOUND');
-    return {
-      code: row.code,
-      name: row.name,
-      modes: normalizeActionModes(row.actionModes),
-      esimPrice: row.esimPrice,
-    };
+    return this.providerDesk.settings(await this.actor(gate), code);
   }
 
   async setProviderEsimPrice(gate: Gate, code: string, body: { price?: unknown }) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
-    const row = await this.prisma.provider.findUnique({ where: { code } });
-    if (!row) fail(404, 'NOT_FOUND');
-    const price = body.price === null ? null : nonNegative(body.price);
-    if (price === null && body.price !== null) fail(400, 'INVALID');
-    await this.prisma.provider.update({ where: { code }, data: { esimPrice: price } });
-    return { ok: true as const, esimPrice: price };
+    return this.providerDesk.setEsimPrice(await this.actor(gate), code, body);
   }
 
   async setProviderMode(gate: Gate, code: string, body: Record<string, unknown>) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
-    const row = await this.prisma.provider.findUnique({ where: { code } });
-    if (!row) fail(404, 'NOT_FOUND');
-    const action = typeof body.action === 'string' ? body.action : '';
-    const mode = body.mode === 'auto' || body.mode === 'manual' || body.mode === 'off' ? body.mode : '';
-    if (!(ACTION_KEYS as readonly string[]).includes(action) || !mode) fail(400, 'INVALID');
-    const modes = normalizeActionModes(row.actionModes);
-    modes[action as ActionKey] = mode as ActionMode;
-    await this.prisma.provider.update({
-      where: { code },
-      data: { actionModes: modes },
-    });
-    return { ok: true as const };
-  }
-
-  async providers(gate: Gate) {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const rows = await this.prisma.provider.findMany({
-      where: { packages: { some: { companyId: { not: null } } } },
-      include: { packages: { include: { company: true }, orderBy: { code: 'asc' } } },
-      orderBy: { name: 'asc' },
-    });
-    return {
-      providers: rows.map((row) => {
-        const byCompany = new Map<string, { name: string; image: string; packages: Array<{
-          code: string;
-          name: string;
-          dataGb: number | null;
-          months: number;
-          price: number;
-          enabled: boolean;
-          autoActivate: boolean;
-          autoCharge: boolean;
-          autoDisconnect: boolean;
-          autoFreeze: boolean;
-          autoSwitch: boolean;
-          autoExtend: boolean;
-          autoRename: boolean;
-          autoSim: boolean;
-          allowDisconnect: boolean;
-        }> }>();
-        for (const item of row.packages) {
-          if (!item.company) continue;
-          const company = byCompany.get(item.company.id) ?? {
-            name: item.company.name,
-            image: item.company.image ?? '',
-            packages: [],
-          };
-          company.packages.push({
-            code: item.code,
-            name: item.name,
-            dataGb: item.dataGb,
-            months: item.months,
-            price: item.branchCost,
-            enabled: item.enabled,
-            autoActivate: item.autoActivate,
-            autoCharge: item.autoCharge,
-            autoDisconnect: item.autoDisconnect,
-            autoFreeze: item.autoFreeze,
-            autoSwitch: item.autoSwitch,
-            autoExtend: item.autoExtend,
-            autoRename: item.autoRename,
-            autoSim: item.autoSim,
-            allowDisconnect: item.allowDisconnect,
-          });
-          byCompany.set(item.company.id, company);
-        }
-        return {
-          code: row.code,
-          name: row.name,
-          companies: [...byCompany.values()].sort((left, right) => left.name.localeCompare(right.name, 'ar')),
-        };
-      }),
-    };
+    return this.providerDesk.setMode(await this.actor(gate), code, body);
   }
 
   async lines(gate: Gate, query: LineFilter & { cursor?: string } = {}) {
@@ -3156,11 +2995,6 @@ function readQr(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
   if (typeof value !== 'string' || value.length > QR_LIMIT || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) fail(400, 'QR_INVALID');
-  return value;
-}
-
-function nonNegative(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0 || value > 100_000_000) return null;
   return value;
 }
 
