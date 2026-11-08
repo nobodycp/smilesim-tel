@@ -36,6 +36,27 @@ export function expiringWhere(now: Date = new Date()): Prisma.LineWhereInput {
   return { status: 'active', endsAt: { gte: now, lte: new Date(now.getTime() + EXPIRING_DAYS * 86_400_000) } };
 }
 
+/** A package's period when none is stored: 90 days after the end (owner 2026-11-09). */
+export const SUSPEND_AFTER_DAYS = 90;
+
+/** Whether a line is suspended: active or marked suspended, its subscription over for at least the package's period. */
+export function isSuspended(line: { status: string; endsAt: Date }, suspendAfterDays: number = SUSPEND_AFTER_DAYS, now: Date = new Date()): boolean {
+  if (line.status !== 'active' && line.status !== 'suspended') return false;
+  return line.endsAt.getTime() <= now.getTime() - suspendAfterDays * 86_400_000;
+}
+
+/**
+ * The suspended lines (spec 2026-11-08-overview-and-reports-nav, I), one condition per package period in use: the
+ * database cannot add a package's days to the end date, so each period gets its own cut-off.
+ */
+export function suspendedWhere(periods: number[], now: Date = new Date()): Prisma.LineWhereInput {
+  const days = [...new Set(periods.length ? periods : [SUSPEND_AFTER_DAYS])];
+  return {
+    status: { in: ['active', 'suspended'] },
+    OR: days.map((period) => ({ package: { suspendAfterDays: period }, endsAt: { lte: new Date(now.getTime() - period * 86_400_000) } })),
+  };
+}
+
 export type LineFilter = { q?: string; status?: string; packageCode?: string; provider?: string; company?: string };
 
 /**
@@ -43,7 +64,7 @@ export type LineFilter = { q?: string; status?: string; packageCode?: string; pr
  * so "055 024" finds 055024 and "899 720" finds that serial), plus the package name and the
  * company name. Provider, company, and package narrow the same row together.
  */
-export function linesWhere(posIds: string[], filter: LineFilter): Prisma.LineWhereInput {
+export function linesWhere(posIds: string[], filter: LineFilter, suspendPeriods: number[] = []): Prisma.LineWhereInput {
   const status = oneOf(LINE_STATUSES, filter.status);
   const packageCode = (filter.packageCode ?? '').trim();
   const provider = (filter.provider ?? '').trim();
@@ -67,8 +88,8 @@ export function linesWhere(posIds: string[], filter: LineFilter): Prisma.LineWhe
   };
   return {
     posId: { in: posIds },
-    // `expiring` is not a stored status: it narrows the active lines to those ending soon.
-    ...(filter.status === 'expiring' ? expiringWhere() : status ? { status } : {}),
+    // `expiring` and `suspended` are not stored statuses: they narrow the lines by their end date.
+    ...(filter.status === 'expiring' ? expiringWhere() : filter.status === 'suspended' ? suspendedWhere(suspendPeriods) : status ? { status } : {}),
     ...(Object.keys(pack).length ? { package: pack } : {}),
     ...search,
   };

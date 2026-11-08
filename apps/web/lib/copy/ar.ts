@@ -499,6 +499,8 @@ export const ar = {
   minutesLabel: 'دقائق الاتصال',
   smsLabel: 'الرسائل',
   unlimited: 'غير محدود',
+  suspendAfterDays: 'مدة تعليق الرقم (بالأيام)',
+  suspendAfterHint: 'يصير الرقم «معلّق» بعد انتهاء اشتراكه بهذا العدد من الأيام. الافتراضي 90.',
   extraDetails: 'تفاصيل إضافية',
   mainSellPair: 'سعر الوكيل الرئيسي (اشتراك / تجديد)',
   packagesGroupSummary: '{total} رزمة · {off} متوقفة',

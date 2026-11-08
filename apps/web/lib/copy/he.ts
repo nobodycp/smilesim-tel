@@ -499,6 +499,8 @@ export const he: Copy = {
   minutesLabel: 'דקות שיחה',
   smsLabel: 'הודעות',
   unlimited: 'ללא הגבלה',
+  suspendAfterDays: 'ימים עד השהיית המספר',
+  suspendAfterHint: 'מספר הופך ל«מושהה» כעבור מספר הימים הזה מסיום המנוי. ברירת המחדל היא 90.',
   extraDetails: 'פרטים נוספים',
   mainSellPair: 'מחיר לסוכן ראשי (מנוי / חידוש)',
   packagesGroupSummary: '{total} חבילות · {off} מושהות',

@@ -192,6 +192,7 @@ export class PackagesService {
       enabled: pkg.enabled,
       forSale: pkg.forSale,
       dataGb: pkg.dataGb,
+      suspendAfterDays: pkg.suspendAfterDays,
       smsCount: pkg.smsCount,
       minutes: pkg.minutes,
       details: pkg.details ?? '',
@@ -223,6 +224,9 @@ export class PackagesService {
     const amount = (value: unknown) => value === null || (typeof value === 'number' && Number.isInteger(value) && value >= -1 && value <= 1_000_000);
     if (!amount(body.dataGb) || !amount(body.smsCount) || !amount(body.minutes)) fail(400, 'INVALID');
     if (typeof body.details !== 'string' || body.details.trim().length > PACKAGE_DETAILS_LIMIT) fail(400, 'INVALID');
+    // Days after the end before a line counts as suspended (spec 2026-11-08-overview-and-reports-nav, I); optional.
+    const suspend = body.suspendAfterDays;
+    if (suspend !== undefined && !(typeof suspend === 'number' && Number.isInteger(suspend) && suspend >= 1 && suspend <= 3650)) fail(400, 'INVALID');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     await this.kernel.prisma.package.update({
@@ -232,6 +236,7 @@ export class PackagesService {
         smsCount: body.smsCount as number | null,
         minutes: body.minutes as number | null,
         details: body.details.trim() || null,
+        ...(typeof suspend === 'number' ? { suspendAfterDays: suspend } : {}),
       },
     });
     return { ok: true as const };

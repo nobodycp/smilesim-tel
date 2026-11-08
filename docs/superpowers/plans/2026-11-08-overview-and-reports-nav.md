@@ -29,14 +29,14 @@ Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice
 - [x] `wallets.service.ts` `financeWhere`: own wallet + descendants, a `scope=money|all` filter (all drops the `amount != 0` rule); specs; CSV parity.
 - [x] `finance-screen.tsx`: signed amounts with badges, the money/all filter, the ladder drawer for the branch.
 
-## Slice H: user page actions and settings — done 2026-11-09 (API 778, e2e 145; Docker: wallet menu, folds, settings)
+## Slice H: user page actions and settings — done 2026-11-09 `3ac2535`
 - [x] `features/accounts/account-actions.tsx`: «المحفظة» menu button (charge, deduct, ceiling, statement).
 - [x] «إعدادات المستخدم» dialog: email, mobile, two-factor on/off, password, session rules; API for the owner to edit another account's email/mobile/2FA if missing (`auth` or `accounts` module, specs, permission matrix).
 - [x] `features/accounts/screens/account-screen.tsx`: two tabs; permissions, operations and numbers as closed collapsible sections loaded on open.
 
-## Slice I: suspended lines
-- [ ] Migration: `Package.suspendAfterDays Int @default(90)`; package details form and API.
-- [ ] `office-paging.ts`: `suspendedWhere`; `GET /office/lines?status=suspended`; numbers filter chip.
+## Slice I: suspended lines — done 2026-11-09 (API 779, e2e 145; migration applied on Docker)
+- [x] Migration: `Package.suspendAfterDays Int @default(90)`; package details form and API.
+- [x] `office-paging.ts`: `suspendedWhere`; `GET /office/lines?status=suspended`; numbers filter chip.
 
 ## Slice E: provider operations and matching
 - [ ] Migration: `Provider.matchSource` ('api' | 'statement', default 'statement'), `Provider.matchEveryDays` (default 7); `WalletEntry.providerAmount Int?`, `providerMatchedAt DateTime?`.

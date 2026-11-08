@@ -331,7 +331,7 @@ function AccountLines({ login }: { login: string }) {
     { key: 'number', header: t.number, render: (line) => <a href={`/numbers/${encodeURIComponent(line.id)}`}><bdi dir="ltr">{line.msisdn}</bdi></a> },
     { key: 'package', header: t.packageName, render: (line) => line.packageName || '—' },
     { key: 'pos', header: t.pointOfSale, render: (line) => (line.posLogin ? <AccountName login={line.posLogin} /> : '—') },
-    { key: 'status', header: t.status, render: (line) => <Badge variant={lineTone(line.status)} dot>{lineStatus(t, line.status)}</Badge> },
+    { key: 'status', header: t.status, render: (line) => <Badge variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge> },
     { key: 'ends', header: t.endsOn, render: (line) => (line.endsAt ? <bdi dir="ltr">{latinWhen(line.endsAt)}</bdi> : '—') },
   ];
   return <PagedTable list={list} columns={columns} rowKey={(line) => line.id} empty={t.noLines} skeleton={{ rows: 4, columns: 5 }} />;

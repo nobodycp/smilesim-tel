@@ -202,6 +202,8 @@ export type PackageSheet = {
   enabled: boolean;
   forSale: boolean;
   dataGb: number | null;
+  /** Days after the end before a line counts as suspended (90 by default). */
+  suspendAfterDays: number;
   smsCount: number | null;
   minutes: number | null;
   details: string;
@@ -312,6 +314,8 @@ export type LineRow = {
   esim: boolean;
   esimQr: string | null;
   status: string;
+  /** The subscription ended at least its package's period ago (90 days by default): «معلّق». */
+  suspended: boolean;
   packageCode: string;
   packageName: string;
   companyName: string;

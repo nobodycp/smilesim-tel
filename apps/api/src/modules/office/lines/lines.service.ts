@@ -8,7 +8,7 @@ import { lineTermsOf } from '../kernel/line-terms';
 import { saleOf } from '../kernel/sale';
 import type { Action, Sale } from '../kernel/types';
 import { renderEsimQr } from '../office-esim';
-import { LINES_PAGE, NEWEST_FIRST, idCursorArgs, linesWhere, pageOf, type LineFilter } from '../office-paging';
+import { LINES_PAGE, NEWEST_FIRST, idCursorArgs, isSuspended, linesWhere, pageOf, type LineFilter } from '../office-paging';
 import { activateInputs, activationProviderCost, captureTerms, esimPriceOf, issueSerial, lastWindow, offeredOperations, openPeriods, periodEnd, refreshMode, renewOnto, renewStay, resolvePackageMode, revalue, settleDisconnect, simRefusal, simRulesOf, switchOnto, switchOver, visibleAccountIds, windowMonthsOf, type ActionKey, type LineTerms } from '../office-rules';
 import { packageTermsOf, type PackagePriceRow } from '../office-terms';
 import { canHandleTasks } from '../task-access';
@@ -58,6 +58,12 @@ export const QR_LIMIT = 400_000;
 export class LinesService {
   constructor(private readonly kernel: OfficeKernel, private readonly tasks: TasksService) {}
 
+  /** The suspension periods the packages use, so the suspended filter has one cut-off per period. */
+  async suspendPeriods(): Promise<number[]> {
+    const rows = await this.kernel.prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } });
+    return rows.map((row) => row.suspendAfterDays);
+  }
+
   async list(actor: Actor, query: LineFilter & { cursor?: string; account?: string } = {}) {
     const accounts = await this.kernel.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
@@ -66,7 +72,8 @@ export class LinesService {
     const target = query.account ? accounts.find((account) => account.loginName === query.account) : undefined;
     const within = query.account ? (target && visible.has(target.id) ? visibleAccountIds(target.id, target.layer === 'branch' ? 'none' : target.layer, accounts) : new Set<string>()) : visible;
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id) && within.has(account.id)).map((account) => account.id);
-    const where = linesWhere(posIds, query);
+    const periods = query.status === 'suspended' ? await this.suspendPeriods() : [];
+    const where = linesWhere(posIds, query, periods);
     const [rows, total] = await Promise.all([
       this.kernel.prisma.line.findMany({
         where,
@@ -86,6 +93,8 @@ export class LinesService {
         esim: row.esim,
         esimQr: row.esimQr,
         status: row.status,
+        /** The subscription ended at least the package's period ago (spec 2026-11-08-overview-and-reports-nav, I). */
+        suspended: isSuspended(row, row.package.suspendAfterDays),
         packageCode: row.package.code,
         packageName: row.package.name,
         companyName: row.package.company?.name ?? '',

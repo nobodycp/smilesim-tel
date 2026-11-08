@@ -499,6 +499,8 @@ export const en: Copy = {
   minutesLabel: 'Call minutes',
   smsLabel: 'Messages',
   unlimited: 'Unlimited',
+  suspendAfterDays: 'Days until the number is suspended',
+  suspendAfterHint: 'A number becomes «suspended» this many days after its subscription ends. The default is 90.',
   extraDetails: 'Extra details',
   mainSellPair: 'Main agent price (subscription / renewal)',
   packagesGroupSummary: '{total} packages · {off} stopped',

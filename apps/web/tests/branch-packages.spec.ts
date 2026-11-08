@@ -86,9 +86,12 @@ test('the package page edits its details', async ({ page }) => {
   await expect(page.getByLabel('دقائق الاتصال')).toBeDisabled();
   await page.getByLabel('الرسائل').fill('200');
   await page.getByLabel('تفاصيل إضافية').fill('تجوال في الأردن');
+  // Suspension period (spec 2026-11-08-overview-and-reports-nav, I): 90 days when the sheet carries none.
+  await expect(page.getByLabel('مدة تعليق الرقم (بالأيام)')).toHaveValue('90');
+  await page.getByLabel('مدة تعليق الرقم (بالأيام)').fill('60');
   const sent = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/office/packages/lian-wecom-500/details'));
   await page.locator('.package-details-form').getByRole('button', { name: 'حفظ' }).click();
-  expect((await sent).postDataJSON()).toEqual({ dataGb: 500, smsCount: 200, minutes: -1, details: 'تجوال في الأردن' });
+  expect((await sent).postDataJSON()).toEqual({ dataGb: 500, smsCount: 200, minutes: -1, details: 'تجوال في الأردن', suspendAfterDays: 60 });
 });
 
 test('the point of sale sees the details on the package card and the subscribe step', async ({ page }) => {

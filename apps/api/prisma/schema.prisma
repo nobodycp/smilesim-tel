@@ -208,6 +208,8 @@ model Package {
   smsCount               Int?
   minutes                Int?
   details                String?
+  /// Days after the subscription ends before the line counts as suspended (spec 2026-11-08-overview-and-reports-nav, I).
+  suspendAfterDays       Int      @default(90)
   months                 Int              @default(1)
   branchCost             Int
   mainPrice              Int
