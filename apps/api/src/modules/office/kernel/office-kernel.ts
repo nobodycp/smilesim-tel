@@ -8,12 +8,18 @@ import { NoticeService, type WrittenNotice } from '../notice.service';
 import { GRANT_CODES, effectiveGrantCodes } from '../office-grants';
 import { visibleAccountIds, withinCeiling } from '../office-rules';
 import type { Account, Actor, Gate, Sale } from './types';
+import type { PathNode, SellRow, TermRow } from '../user-terms';
 
 /**
  * What every office domain shares: the PostgreSQL client, the signed-in actor and their grants, the account
  * list, transactions that publish their notices after commit, and the wallet moves. One instance per process;
  * OfficeService and the domain services under `modules/office/<domain>/` all read through it.
  */
+/** An account as one step of a path. */
+export function nodeOf(account: Account): PathNode {
+  return { id: account.id, loginName: account.loginName, layer: account.layer, deniedOps: account.deniedOps ?? '' };
+}
+
 /** A branch-only action: anyone else is 403 FORBIDDEN. */
 export function assertBranch(actor: Actor): void {
   if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
@@ -234,5 +240,25 @@ export class OfficeKernel {
         periodEndsAt: sale.period?.endsAt ?? null,
       },
     });
+  }
+
+  /** The accounts from `userId` up to the root. Empty when the user is unknown. */
+  pathOf(userId: string, accounts: Account[]): PathNode[] {
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    const path: PathNode[] = [];
+    let current = byId.get(userId);
+    while (current && path.length <= accounts.length) {
+      path.push(nodeOf(current));
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+    return path;
+  }
+
+  async termsFor(packageId: string): Promise<{ terms: TermRow[]; sells: SellRow[] }> {
+    const [terms, sells] = await Promise.all([
+      this.prisma.userPackage.findMany({ where: { packageId }, select: { userId: true, hidden: true, price: true, renewalPrice: true } }),
+      this.prisma.sellPrice.findMany({ where: { packageId }, select: { ownerId: true, price: true, renewalPrice: true } }),
+    ]);
+    return { terms, sells };
   }
 }

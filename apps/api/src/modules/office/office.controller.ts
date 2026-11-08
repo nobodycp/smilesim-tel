@@ -14,6 +14,7 @@ import { ApiErrorResponse } from '../../openapi/responses';
 import { Activity, bodyField, param } from './activity.decorator';
 import { ActivityInterceptor } from './activity.interceptor';
 import { gateOf, readCookie } from './gate';
+import { freeFormObject } from './kernel/query';
 import { OfficeFailureFilter } from '../shared/office-failure.filter';
 import { OfficeService } from './office.service';
 import {
@@ -24,9 +25,7 @@ import {
   ExtendBodyDto,
   LinePricesBodyDto,
   OutcomeBodyDto,
-  PackageTargetsBodyDto,
   RenameLineBodyDto,
-  SellPriceBodyDto,
   SetAccountPasswordBodyDto,
   SwapSimBodyDto,
   UserOpsBodyDto,
@@ -53,11 +52,6 @@ function text(value: unknown): string | undefined {
   return typeof value === 'string' && value ? value : undefined;
 }
 
-const freeFormObject = {
-  type: 'object' as const,
-  additionalProperties: true,
-  description: 'Free-form JSON object; fields validated in the service',
-};
 
 @ApiTags('office')
 @ApiCookieAuth('sid')
@@ -88,61 +82,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 400)
   postAnnouncement(@Req() req: Request, @Body() body: AnnouncementBodyDto) {
     return this.office.postAnnouncement(gateOf(req), body);
-  }
-
-  @Get('packages')
-  @ApiOperation({ summary: 'Package catalogue for the door' })
-  @ApiErrorResponse(401, 403)
-  packages(@Req() req: Request) {
-    return this.office.packages(gateOf(req));
-  }
-
-  @Get('packages/:code/sheet')
-  @ApiOperation({ summary: 'Package pricing / chain sheet' })
-  @ApiParam({ name: 'code' })
-  @ApiErrorResponse(401, 403, 404)
-  packageSheet(@Req() req: Request, @Param('code') code: string) {
-    return this.office.packageSheet(gateOf(req), code);
-  }
-
-  @Patch('packages/:code/chain')
-  @ApiOperation({ summary: 'Update package price chain' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ schema: freeFormObject })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('package_chain', 'package', param('code'))
-  packageChain(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Body() body: Record<string, unknown>,
-  ) {
-    return this.office.setChain(gateOf(req), code, body);
-  }
-
-  @Put('packages/:code/renewals')
-  @ApiOperation({ summary: 'Set renewal targets for a package' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ type: PackageTargetsBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  packageRenewals(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Body() body: PackageTargetsBodyDto,
-  ) {
-    return this.office.setPackageTargets(gateOf(req), code, 'renewals', body);
-  }
-
-  @Put('packages/:code/switches')
-  @ApiOperation({ summary: 'Set switch targets for a package' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ type: PackageTargetsBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  packageSwitches(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Body() body: PackageTargetsBodyDto,
-  ) {
-    return this.office.setPackageTargets(gateOf(req), code, 'switches', body);
   }
 
   @Get('packages/:code/custom-prices')
@@ -208,43 +147,6 @@ export class OfficeController {
     @Body() body: LinePricesBodyDto,
   ) {
     return this.office.setLinePrices(gateOf(req), code, body);
-  }
-
-  @Patch('packages/:code/mode')
-  @ApiOperation({ summary: 'Set package sale/visibility mode flags' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ schema: freeFormObject })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('package_mode', 'package', param('code'))
-  packageMode(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Body() body: Record<string, unknown>,
-  ) {
-    return this.office.setPackageMode(gateOf(req), code, body);
-  }
-
-  @Put('sell-prices/:code')
-  @ApiOperation({ summary: "Set the caller's own sell price for a package (main agent or agent)" })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ type: SellPriceBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('sell_price', 'package', param('code'))
-  setSellPrice(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Body() body: SellPriceBodyDto,
-  ) {
-    return this.office.setSellPrice(gateOf(req), code, body);
-  }
-
-  @Delete('sell-prices/:code')
-  @ApiOperation({ summary: "Clear the caller's own sell price for a package; the layer column applies again" })
-  @ApiParam({ name: 'code' })
-  @ApiErrorResponse(401, 403, 404)
-  @Activity('sell_price', 'package', param('code'))
-  clearSellPrice(@Req() req: Request, @Param('code') code: string) {
-    return this.office.clearSellPrice(gateOf(req), code);
   }
 
   @Get('lines')

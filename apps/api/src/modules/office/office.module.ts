@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { OfficeController } from './office.controller';
 import { OfficeService } from './office.service';
+import { PackagesController } from './packages/packages.controller';
+import { PackagesService } from './packages/packages.service';
 import { CompaniesController } from './companies/companies.controller';
 import { CompaniesService } from './companies/companies.service';
 import { ProvidersController } from './providers/providers.controller';
@@ -18,8 +20,8 @@ import { TasksController } from './tasks/tasks.controller';
 import { TasksService } from './tasks/tasks.service';
 
 // Exported so HTTP specs build the same set of office routes the app serves, whichever controller holds them.
-export const OFFICE_CONTROLLERS = [OfficeController, NoticesController, AuditController, TasksController, WalletsController, ProvidersController, CompaniesController];
-export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, OfficeService, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, CompaniesService];
+export const OFFICE_CONTROLLERS = [OfficeController, NoticesController, AuditController, TasksController, WalletsController, ProvidersController, CompaniesController, PackagesController];
+export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, OfficeService, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, CompaniesService, PackagesService];
 
 @Module({
   imports: [AuthModule],
