@@ -13,6 +13,8 @@ export const ROUTES: RouteRow[] = [
   ['GET', '/office/directory', null],
   ['GET', '/office/finance', null],
   ['GET', '/office/finance/export', null],
+  ['GET', '/office/finance/profits', null],
+  ['GET', '/office/finance/profits/export', null],
   ['GET', '/office/finance/summary', null],
   ['GET', '/office/home', null],
   ['POST', '/office/leave', ['leave', 'account', '']],

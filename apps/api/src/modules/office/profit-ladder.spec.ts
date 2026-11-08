@@ -1,4 +1,4 @@
-import { ladderOf, marginOf } from './profit-ladder';
+import { ladderOf, marginOf, refundLadder } from './profit-ladder';
 import type { PathNode } from './user-terms';
 
 const node = (id: string, layer: string): PathNode => ({ id, loginName: id, layer, deniedOps: '' });
@@ -27,5 +27,14 @@ describe('profit ladder', () => {
     expect(marginOf(ladder, 'main')).toBe(400);
     expect(marginOf(ladder, 'pos')).toBe(1400);
     expect(ladderOf(path, terms, sells, prices, 'renewal').posSell).toBe(4200);
+  });
+
+  it('takes back the refunded share of every margin', () => {
+    const sale = ladderOf(path, [], [], prices, 'subscription', 3800);
+    const refund = refundLadder(sale, 1900, 3800)!;
+    expect(marginOf(refund, 'pos')).toBe(-350);
+    expect(marginOf(refund, 'agent')).toBe(-150);
+    expect(marginOf(refund, 'branch')).toBe(-250);
+    expect(refundLadder(sale, 0, 3800)).toBeNull();
   });
 });

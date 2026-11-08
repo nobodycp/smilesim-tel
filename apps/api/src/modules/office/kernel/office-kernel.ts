@@ -16,7 +16,7 @@ import type { LayerPrices } from '../user-terms';
 import { LAYER_GRANTS, flagsFor } from '../office-grants';
 import { LAYER_ORDER } from './values';
 import { deniedOpsFor } from '../user-terms';
-import { SALE_KINDS, ladderOf, type Ladder } from '../profit-ladder';
+import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder } from '../profit-ladder';
 
 /**
  * What every office domain shares: the PostgreSQL client, the signed-in actor and their grants, the account
@@ -227,7 +227,13 @@ export class OfficeKernel {
     }
     await tx.wallet.update({ where: { userId }, data: { balance: balanceAfter } });
     // A sale keeps its price chain; failing to read it never stops the sale (the report falls back to today's prices).
-    const ladder = sale && amount < 0 ? await this.saleLadder(tx, userId, kind, sale).catch(() => null) : null;
+    const ladder = !sale
+      ? null
+      : amount < 0
+        ? await this.saleLadder(tx, userId, kind, sale).catch(() => null)
+        : REFUND_KINDS.has(kind)
+          ? await this.refundOf(tx, amount, sale).catch(() => null)
+          : null;
     await tx.walletEntry.create({
       data: {
         userId,
@@ -248,6 +254,18 @@ export class OfficeKernel {
         ...(ladder ? { ladder: ladder as unknown as Prisma.InputJsonValue } : {}),
       },
     });
+  }
+
+  /** A refund's ladder: the line's last sale, scaled by the refunded part of what was paid (profit-ladder.ts). */
+  async refundOf(db: Prisma.TransactionClient | PrismaClient, refunded: number, sale: Pick<Sale, 'lineId' | 'packagePrice'>): Promise<Ladder | null> {
+    if (!sale.lineId) return null;
+    const last = await db.walletEntry.findFirst({
+      where: { lineId: sale.lineId, kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+    if (!last) return null;
+    const base = (last.ladder as Ladder | null) ?? (await this.saleLadder(db, last.userId, last.kind, { lineId: last.lineId ?? '', packagePrice: last.packagePrice ?? 0 }));
+    return base ? refundLadder(base, refunded, sale.packagePrice || last.packagePrice || 0) : null;
   }
 
   /**

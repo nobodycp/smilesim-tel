@@ -488,3 +488,7 @@ export type FinanceSummary = {
   sales: number;
   series: { day: string; balance: number }[];
 };
+
+/** The signed-in account's profit by package over a period (`GET /office/finance/profits`). */
+export type ProfitRow = { packageName: string; companyName: string; sales: number; refunds: number; profit: number };
+export type ProfitReport = { packages: ProfitRow[]; totals: { sales: number; refunds: number; profit: number }; capped: boolean };

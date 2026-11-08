@@ -113,6 +113,35 @@ export class WalletsController {
     return csv;
   }
 
+  @Get('finance/profits')
+  @ApiOperation({ summary: "The signed-in account's profit by package over a period" })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'q', required: false })
+  @ApiErrorResponse(401, 403)
+  profits(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string) {
+    return this.walletDesk.profitReport(actor, { from: text(from), to: text(to), q: text(q) });
+  }
+
+  @Get('finance/profits/export')
+  @ApiOperation({ summary: 'The profit report as CSV' })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'q', required: false })
+  @ApiErrorResponse(401, 403)
+  async profitsExport(
+    @Res({ passthrough: true }) res: Response,
+    @Actor() actor: ActorShape,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('q') q?: string,
+  ) {
+    const csv = await this.walletDesk.profitCsv(actor, { from: text(from), to: text(to), q: text(q) });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="profits.csv"');
+    return csv;
+  }
+
   @Get('finance')
   @ApiOperation({ summary: 'Financial movements for the visible accounts (paged)' })
   @ApiQuery({ name: 'cursor', required: false })

@@ -31,4 +31,4 @@ An alternative source per product. Orders with a quantity for one customer.
 
 - N1 `4c5059e` — duplicate writes refused or replayed on the server (spec `2026-11-08-duplicate-writes.md`).
 - N2 — days left on every active number (a warning badge at 3 days or less), `status=expiring` filter, «ينتهي قريباً» card on every home (`expiringLines`).
-- N4 — profit per layer: `WalletEntry.ladder` snapshot, `margin` on finance rows, `profit` over 30 days on finance and home (spec `2026-11-08-layer-profits.md`).
+- N4 — profit per layer: `WalletEntry.ladder` snapshot, `margin` on finance rows, `profit` over 30 days on finance and home (spec `2026-11-08-layer-profits.md`); refunds take back their share; «الأرباح» page by package and period with CSV.

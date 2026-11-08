@@ -1,5 +1,5 @@
 import { request, segment, queryString } from '../../lib/http';
-import type { FinanceRow, FinanceSummary, LedgerRow, ProviderOpRow, ProviderOpStats } from '../../lib/api-types';
+import type { FinanceRow, FinanceSummary, ProfitReport, LedgerRow, ProviderOpRow, ProviderOpStats } from '../../lib/api-types';
 
 /** The wallets calls of the office API. Composed into `api` by lib/api.ts. */
 export const walletsApi = {
@@ -7,6 +7,9 @@ export const walletsApi = {
     request<{ ok: true }>('POST', `/office/wallets/${segment(loginName)}/fund`, { amount, note }),
   setCeiling: (loginName: string, ceiling: number) =>
     request<{ ok: true }>('PATCH', `/office/wallets/${segment(loginName)}/ceiling`, { ceiling }),
+  profitReport: (query: { from?: string; to?: string; q?: string }) =>
+    request<ProfitReport>('GET', `/office/finance/profits${queryString(query)}`),
+  profitExportHref: (query: { from?: string; to?: string; q?: string }) => `/api/office/finance/profits/export${queryString(query)}`,
   financeSummary: () => request<FinanceSummary>('GET', '/office/finance/summary'),
   /** A link, not a call: the browser downloads the CSV with the session cookie. */
   financeExportHref: (query: { kind?: string; layer?: string; q?: string; from?: string; to?: string }) =>

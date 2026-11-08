@@ -25,6 +25,7 @@ function service() {
     package: { findMany: async ({ select }: { select: Record<string, boolean> }) => [select.subscriberPrice ? pkg : pkg] },
     userPackage: { findMany: async () => [] },
     sellPrice: { findMany: async () => [{ packageId: 'pk', ownerId: 'pos', price: 5000, renewalPrice: null }] },
+    walletEntry: { findMany: async () => [{ id: 'e1', userId: 'pos', kind: 'activate', lineId: 'l1', packagePrice: 3800, ladder: null, createdAt: new Date('2026-11-01T00:00:00.000Z') }] },
   } as unknown as OfficeKernel['prismaClient'];
   return new WalletsService(kernel);
 }
@@ -49,5 +50,28 @@ describe('WalletsService.marginsFor', () => {
     expect((await wallets.marginsFor(actor('branch', 'branch'), rows)).get('e1')).toBe(500);
     expect((await wallets.marginsFor(actor('staff', 'branch'), rows)).get('e2')).toBe(500);
     expect((await wallets.marginsFor(actor('pos', 'pos'), rows)).has('e3')).toBe(false);
+  });
+
+  it('takes back the refunded share of the last sale of the line', async () => {
+    const refund = { id: 'r1', userId: 'pos', kind: 'disconnect', lineId: 'l1', packagePrice: 3800, amount: 1900, ladder: null, createdAt: new Date('2026-11-05T00:00:00.000Z') };
+    const wallets = service();
+    expect((await wallets.marginsFor(actor('pos', 'pos'), [refund])).get('r1')).toBe(-600);
+    expect((await wallets.marginsFor(actor('agent', 'agent'), [refund])).get('r1')).toBe(-150);
+    expect((await wallets.marginsFor(actor('branch', 'branch'), [refund])).get('r1')).toBe(-250);
+  });
+
+  it('reports profit by package: sales, refunds and net, with totals and a CSV', async () => {
+    const wallets = service();
+    const rows = [
+      { id: 'e1', userId: 'pos', kind: 'activate', lineId: 'l1', packagePrice: 3800, amount: -3800, ladder: null, createdAt: new Date('2026-11-01T00:00:00.000Z'), packageName: '150 جيجا', companyName: 'وي' },
+      { id: 'e2', userId: 'pos', kind: 'activate', lineId: 'l1', packagePrice: 3800, amount: -3800, ladder: null, createdAt: new Date('2026-11-02T00:00:00.000Z'), packageName: '150 جيجا', companyName: 'وي' },
+      { id: 'r1', userId: 'pos', kind: 'disconnect', lineId: 'l1', packagePrice: 3800, amount: 1900, ladder: null, createdAt: new Date('2026-11-05T00:00:00.000Z'), packageName: '150 جيجا', companyName: 'وي' },
+    ];
+    (wallets as unknown as { kernel: { prismaClient: { walletEntry: { findMany: () => Promise<unknown[]> } } } }).kernel.prismaClient.walletEntry.findMany = async () => rows;
+    const report = await wallets.profitReport(actor('agent', 'agent'));
+    expect(report.packages).toEqual([{ packageName: '150 جيجا', companyName: 'وي', sales: 2, refunds: 1, profit: 450 }]);
+    expect(report.totals).toEqual({ sales: 2, refunds: 1, profit: 450 });
+    const csv = await wallets.profitCsv(actor('agent', 'agent'));
+    expect(csv.split('\r\n')[1]).toBe('وي,150 جيجا,2,1,4.50');
   });
 });

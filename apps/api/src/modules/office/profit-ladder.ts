@@ -13,8 +13,21 @@ export const SALE_KINDS: Readonly<Record<string, PriceKind>> = {
   reactivate: 'renewal',
 };
 
-/** Stored on the wallet entry at the sale: the chain (point of sale first), what each paid, and the sell price. */
-export type Ladder = { kind: PriceKind; chain: string[]; costs: Record<string, number>; posSell: number };
+/** Wallet entries that give money back for a sale: they take back the same share of every layer's margin. */
+export const REFUND_KINDS = new Set(['disconnect']);
+
+/**
+ * Stored on the wallet entry at the sale: the chain (point of sale first), what each paid, and the sell price.
+ * A refund keeps its sale's ladder with `share`: minus the refunded part of what the point of sale paid, so each
+ * layer gives back that part of its margin.
+ */
+export type Ladder = { kind: PriceKind; chain: string[]; costs: Record<string, number>; posSell: number; share?: number };
+
+/** The ladder a refund of `refunded` agorot keeps: its sale's, scaled by minus the refunded part of `paid`. */
+export function refundLadder(sale: Ladder, refunded: number, paid: number): Ladder | null {
+  if (!(paid > 0) || !(refunded > 0)) return null;
+  return { ...sale, share: -(refunded / paid) };
+}
 
 export type SubscriberPrices = { subscriberPrice: number; renewalSubscriberPrice: number };
 
@@ -43,7 +56,7 @@ export function marginOf(ladder: Ladder, viewerId: string): number | null {
   const at = ladder.chain.indexOf(viewerId);
   if (at < 0) return null;
   const mine = ladder.costs[viewerId] ?? 0;
-  if (at === 0) return ladder.posSell - mine;
-  const below = ladder.costs[ladder.chain[at - 1]] ?? mine;
-  return below - mine;
+  const below = at === 0 ? ladder.posSell : ladder.costs[ladder.chain[at - 1]] ?? mine;
+  const margin = below - mine;
+  return ladder.share === undefined ? margin : Math.round(margin * ladder.share);
 }

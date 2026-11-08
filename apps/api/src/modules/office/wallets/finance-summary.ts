@@ -58,3 +58,10 @@ export function ledgerCsv(rows: {
   }
   return `\uFEFF${lines.join('\r\n')}\r\n`;
 }
+
+/** The profit report as a CSV with a BOM: one line per package, amounts in shekels. */
+export function profitCsv(rows: { packageName: string; companyName: string; sales: number; refunds: number; profit: number }[]): string {
+  const lines = [['company', 'package', 'sales', 'refunds', 'profit'].join(',')];
+  for (const row of rows) lines.push([row.companyName, row.packageName, row.sales, row.refunds, shekels(row.profit)].map(cell).join(','));
+  return `\uFEFF${lines.join('\r\n')}\r\n`;
+}

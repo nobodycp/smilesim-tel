@@ -30,7 +30,12 @@ Date: 2026-11-08 · Status: done · Owner decisions: `docs/project-plan.md` → 
 Docker API with the trial chain: a 400 GB sale (cost 35, main 38, agent 41, point of sale 45, subscriber 70) shows
 +25 / +4 / +3 / +3 ₪ to the point of sale, agent, main agent and branch.
 
-## Not yet
+## Refunds and the report (owner, same day)
 
-Refunds (a disconnect's returned amount) do not take back margin; a profit report by package and period comes with
-the reports slice (N5).
+- A refund (`disconnect` with money back) takes back the same share of every layer's margin as the share of the price
+  it returns: its entry keeps the line's last sale ladder with `share = −refunded / paid` (`refundLadder`). Older
+  refunds use the line's last sale before them. Checked on Docker: 43 ₪ back of 45 ₪ paid (95.6 %) → −23.89 / −3.82 /
+  −2.87 / −2.87 ₪ to the point of sale, agent, main agent and branch.
+- `GET /office/finance/profits?from&to&q`: the viewer's sales, refunds and net profit by package (company and name),
+  with totals; `…/profits/export` as CSV. Web: «الأرباح» in the sidebar for every layer (`/profits`), opening on the
+  last 30 days: three cards (sales, refunds, net profit), the table by package, dates and search, «تصدير CSV».

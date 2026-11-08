@@ -21,6 +21,7 @@ import {
   Shield,
   Radio,
   ListChecks,
+  TrendingUp,
   Users,
   Wallet,
   Wifi,
@@ -163,6 +164,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         { label: t.navPlans, href: '/packages', icon: Package },
         { label: t.navTasks, href: '/tasks', icon: ClipboardList },
         { label: t.navFinance, href: '/finance', icon: Wallet },
+        { label: t.navProfits, href: '/profits', icon: TrendingUp },
         { label: t.navAudit, href: '/audit', icon: ListChecks },
       ],
     },
@@ -182,6 +184,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         { label: t.navNumbers, href: '/numbers', icon: Phone },
         { label: t.navUsers, href: '/users', icon: Users, layers: desk },
         { label: t.navFinance, href: '/finance', icon: Wallet },
+        { label: t.navProfits, href: '/profits', icon: TrendingUp },
       ],
     },
     {
