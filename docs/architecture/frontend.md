@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 4.4a). e2e 102/102. tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 4.4b). e2e 104/104, lint 27 warnings. tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -33,7 +33,7 @@ Next.js 16 (App Router) · React 19 · Tailwind 3 (preflight off, used only in `
 - **Fetching:** `usePaged` (cursor lists) runs on `useInfiniteQuery`, key `['paged', pathname, key]`: keep-previous rows (`stale`), `reload()` invalidates every filter of that list, always revalidated, errors translated when drawn. `useLoad` (single resource) and `useAction` (mutation + `onDone` reload + `me` refresh) are still the custom hooks — detail pages move next (4.5). Each page owns its error/note `useState`.
 - **Prefs:** locale, theme, page size via `useSyncExternalStore` over `document.cookie`.
 - **i18n:** API errors are translated by **code** first, then by the Arabic message (`apiText(result)`; `Fetched` carries `code`). Still open: a hook stores the translated text, so an error on screen keeps its language after a locale switch (goes away as lists move to queries).
-- **URL state:** filters read once from `?status`/`?q` on mount, never written back.
+- **URL state:** `lib/url-state.ts` — `useUrlFilters(keys)` keeps a list's filters in the query string (`router.replace`, scroll kept, each write builds on the last pending one); `useDebouncedField` keeps typing local and commits after 300 ms. Used by numbers, tasks, users.
 
 ## Design system
 

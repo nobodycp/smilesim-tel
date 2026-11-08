@@ -79,7 +79,8 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 4.2 `QueryProvider` + `queryKeys` + `unwrap()` (`lib/query.tsx`); `OfficeSession` runs `me` and `directory` as queries with its context unchanged; `refresh()` invalidates `me` (useAction already calls it after every write). Outage + failed-refresh specs (`tests/session-outage.spec.ts`). `b89afce`
 - [x] 4.3 `lib/http.ts` (request machinery), `lib/api-types.ts` (shapes), `features/<domain>/api.ts` × 14 mirroring the API modules; `lib/api.ts` composes the same `api` object. `24b2d79`
 - [x] 4.4a All eight paged lists at once: `usePaged` runs on `useInfiniteQuery` with the same contract — keep-previous rows on filter change, `reload` refetches every read chunk and invalidates the list's other filters, cache-then-revalidate on reopen, errors translated when drawn (`tests/list-cache.spec.ts`, fails on the old hook). `095162c`
-- [ ] 4.4b URL-synced filters (`lib/url-state.ts`) for numbers, tasks, users; then `/users` server paging.
+- [x] 4.4b URL-synced filters: `lib/url-state.ts` (`useUrlFilters`, `useDebouncedField`) on numbers, tasks, users; back/forward, links and `/users?q=` from /users work (`tests/url-filters.spec.ts`, fails on the old pages). `7ead80c` + race fix `ef684b2`.
+- [ ] 4.4c `/users` server paging (needs an API change: the list route returns everything today).
 - [ ] 4.5 Detail pages: numbers/[id], tasks/[id], provider package sheet, users/[login] — keyed queries, per-mutation invalidation, form state separate from server state.
 - [ ] 4.6 Shell search: dedicated query with debounce + cache, no full user list per keystroke.
 
