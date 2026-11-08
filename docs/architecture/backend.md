@@ -27,7 +27,7 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 |---|---|---|
 | `auth/` | controller, service, `auth.store.ts` (in-memory, specs), `prisma-auth.store.ts` (Postgres + Redis: live session keys and the failed-login counter `login-fail:<login>`), `decide-login`, `password`, `totp`, `sessions`, `validators`, `trial-seed`, `cities` | login, sessions (cookie `sid`, max sessions), 2FA, password change, trial accounts. Store behind `AUTH_STORE` token. |
 | `branding/` | controller, service, store (memory + prisma), rules | site identity (logo, title, icon). Small and clean — the reference shape for other modules. |
-| `office/` | `office.controller.ts` (~280 lines, routes not yet moved), `office.service.ts` (~1690 lines: methods not yet moved + one-line facades), `office.module.ts` (`OFFICE_CONTROLLERS`, `OFFICE_PROVIDERS`), `gate.ts`, pure rule files | being split per domain (Phase 3, spec `docs/superpowers/specs/2026-11-08-office-domain-split.md`) |
+| `office/` | `office.service.ts` (~650 lines: **spec facade** — one-line delegations to the domain services — plus the catalog seed `ensureCatalog` in `onModuleInit`), `office.module.ts` (`OFFICE_CONTROLLERS`, `OFFICE_PROVIDERS`), `gate.ts`, `office.dto.ts` (Swagger bodies), pure rule files | split per domain (Phase 3, spec `docs/superpowers/specs/2026-11-08-office-domain-split.md`); every route lives in a domain controller |
 | `office/kernel/` | `office-kernel.ts` (`OfficeKernel`: prisma + spec override `prismaClient`, auth, notice writer, `actor`, `grantsFor`, `accounts`, `visibleAccount`, `branchActor`, `chainIds`, `runTx`, `queueNotices`, `publishQuietly`, `actorName`, `move`, `recordOp`, `pathOf`, `termsFor`, `ladderRows`, `stampWith`, `ensureLayerRoles`, `visibleLine`; `nodeOf`, `PRICE_COLUMNS`), `types.ts` (`Gate`, `Actor`, `Account`, `Sale`), `actor.interceptor.ts` (`ActorInterceptor`, `@Actor()`), `feed.ts` (`feedPosition`), `line-terms.ts` (`lineTermsOf`), `sale.ts` (`saleOf`), `query.ts` (`text`), `office-test-app.ts` (HTTP spec app), `values.ts` (`nonNegative`, `optionalPrice`, `LAYER_ORDER`), `assertBranch()` | what every office domain shares. `routes.http.spec.ts` pins all 79 routes (method, path, activity event, anonymous answer). |
 | `office/notices/` | `notice-inbox.service.ts` (`NoticeInboxService`: list, read, subscribe), `notices.controller.ts` | `GET /office/notices`, `GET /office/notices/stream` (SSE), `POST /office/notices/read` |
 | `office/audit/` | `audit.service.ts` (`AuditService.list`), `audit.controller.ts` | `GET /office/audit` |
@@ -41,13 +41,13 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 | `office/roles/` | `roles.service.ts` (`RolesService`: list, save), `roles.controller.ts` | `GET/POST /office/roles` |
 | `office/desk/` | `desk.service.ts` (`DeskService`: me, home, postAnnouncement), `desk.controller.ts` | `GET /office/me`, `GET home`, `POST announcements` |
 | `office/transfers/` | `transfers.service.ts` (`TransfersService`: transferAccount, transferPreview, transferLine; uses `TermsService.repriceLines`), `transfers.controller.ts` | `POST users/:login/transfer`, `GET users/:login/transfer-preview`, `POST lines/:id/transfer` |
+| `office/lines/` | `lines.service.ts` (`LinesService`: list, detail, activate, operate, disconnectQuote, switchPackage, extend, reactivate, refresh, rename, swapSim, requestEsim, completeTask, companySwitch, stampFor; uses `TasksService`), `lines.controller.ts` | `GET/POST /office/lines`, `GET lines/:id`, `POST lines/:id/{charge,freeze,unfreeze,disconnect,extend,reactivate,refresh,rename,sim,esim,switch,company-switch}`, `GET lines/:id/disconnect-quote`, `POST tasks/:id/complete` |
+| `office/reports/` | `reports.service.ts` (`ReportsService`: providers, operations, tasks, numbers; uses `TasksService` + `LinesService`), `reports.controller.ts` | `GET /office/reports/:kind` |
 | `activity` (in `office/activity.module.ts`) | `activity-recorder.ts`, `activity-log.ts` | audit/activity events |
 
-### `office` endpoint groups (in `office.controller.ts`; line numbers are pre-split and drift)
+### `office` endpoint groups
 
-- reports: `reports/:kind` (cross-domain; moves with lines)
-- lines: 394–605 (list, detail, create, charge, refresh, disconnect, freeze/unfreeze, extend, reactivate, rename, esim, sim, transfer, switch). `company-switch` 441 is a stub that always returns 400.
-- tasks: `complete` only (the rest moved to `office/tasks/`)
+Every route is in a domain controller (table above). `routes.http.spec.ts` lists all 79 with method, path, activity event and anonymous answer.
 
 ### Pure rule files in `office/` (well tested, keep pure)
 
@@ -55,7 +55,7 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 
 ## Cross-cutting patterns (current)
 
-- **Auth/authorization:** moved domains: `ActorInterceptor` resolves the actor before the handler (declared after `ActivityInterceptor`, so refused sessions are still logged; pipes run after it, so 401 precedes 400) and services take `Actor`. Not-yet-moved methods call `await this.actor(gate)` (kernel), then check inline (`actor.isBranchOwner`, `actor.grants.includes('edit')`, layer comparisons, `visibleAccountIds`).
+- **Auth/authorization:** `ActorInterceptor` resolves the actor before the handler (declared after `ActivityInterceptor`, so refused sessions are still logged; pipes run after it, so 401 precedes 400) and services take `Actor`. Grant and layer checks are inline at the top of each service method (`actor.isBranchOwner`, `actor.grants.includes('edit')`, layer comparisons, `visibleAccountIds`).
 - **Errors:** `fail(status, code)` throws `OfficeFailure` (`shared/office-failure.ts`); `OfficeFailureFilter` (on `OfficeController`) answers `{ message, code }` with its status. Anything else is Nest's 500.
 - **Activity log:** routes declare `@Activity(action, subjectKind, subject)` (`office/activity.decorator.ts`; subject = `param('id')`, `bodyField('msisdn')`, or a function). `ActivityInterceptor` records `ok` after the answer or `fail` + code on an `OfficeFailure`.
 - **Validation:** `office.dto.ts` is Swagger-only. New/migrated routes use zod schemas (`<domain>.schemas.ts`) through `parseInput()` right after `actor()` (ADR 0002); pilot: `wallet.schemas.ts`. The rest still parse by hand.

@@ -67,7 +67,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
   - Found: `PATCH packages/:code/mode` checked the `edit` grant only — fixed afterwards (see follow-ups).
 - [x] 3.7 users + roles + desk: `roles/` (list, save), `desk/` (me, home, announcements) `97266b6` and `accounts/` (list, directory, create, password, detail, access, freeze/restore, delete, enter) + `AccountSessionController` for `leave` (no ActorInterceptor). 10 of 13 routes had no spec: `accounts.http.spec.ts` and `desk.http.spec.ts` written first. `a9564fc`
 - [x] 3.8 transfers: `transfers/` — account move, preview, line move; depends on `TermsService` for repricing. `visibleLine` and `saleOf` moved to the kernel first; the transfer spec's HTTP harness now mounts every office route (`a9cb759`). `c163c7c`
-- [ ] 3.9 lines: list, detail, activate, operate, switch, extend, reactivate, refresh, rename, sim, esim, disconnect, **and task completion** (`POST tasks/:id/complete`), **and `GET reports/:kind`**.
+- [x] 3.9 lines: `lines/` — list, card, activate, every operation, disconnect quote, and task completion (depends on `TasksService`); `reports/` — branch reports over tasks and lines. **`OfficeController` deleted.** The carrier-switch stub now answers 401 first (same owner decision). `reports-lines.http.spec.ts` written first. `05e777c`
 - [ ] 3.10 catalog seed: `ensureCatalog` / `ensureLayerRoles` out of `onModuleInit` into a boot provider.
 - [ ] 3.11 Specs build domain services directly; `OfficeService` facade deleted.
 - [ ] 3.last Migration: indexes (`Line.status/packageId/iccid`, `User.parentId`, `OfficeTask.assigneeId`, `WalletEntry.kind`); replace `accounts()` full scan with subtree queries.
