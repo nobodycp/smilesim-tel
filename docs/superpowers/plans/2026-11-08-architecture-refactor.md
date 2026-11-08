@@ -57,12 +57,12 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 3.2 audit: `audit/` — activity log. Characterized first (`audit.http.spec.ts`), moved `aa59664`; `OfficeService.audit` is a facade.
 - [x] Route table `routes.http.spec.ts` (`9afb7ff`): all 79 office routes, method + path + activity event, 401 without a session. Seven routes answer 400 first (they judge body/cookie before the session) — recorded as they are; moving them behind `ActorInterceptor` changes 400→401 and needs the owner's decision (packages, users slices).
 - [x] 3.3 tasks: `tasks/` — list, detail, notes, take, release, reject, cancel + openTask, taskNotice, handlerIds, noteLog. `4dfc0cb`. **`complete` stays in OfficeService until 3.9** (it applies the line operation). Lint now bans Jest's global `fail` outside specs.
-- [ ] 3.4 wallets: `wallets/` — wallets, fund, ceiling, finance, ledger, reports, provider operations.
+- [x] 3.4 wallets: `wallets/` — wallets, fund, ceiling, ledger, finance, provider operations (+ `provider-cost.ts`). `GET /office/wallets` characterized first. `75ab132`. **`reports/:kind` stays in OfficeService** until lines move (it lists tasks and lines).
 - [ ] 3.5 providers + companies.
 - [ ] 3.6 packages: catalog, sheet, chain, targets, mode, sell/custom/line prices, user packages, user ops.
 - [ ] 3.7 users + roles: list, directory, account, access, create, password, freeze/restore/delete, enter/leave, roles.
 - [ ] 3.8 transfers: account + line transfer, preview.
-- [ ] 3.9 lines: list, detail, activate, operate, switch, extend, reactivate, refresh, rename, sim, esim, disconnect, **and task completion** (`POST tasks/:id/complete`).
+- [ ] 3.9 lines: list, detail, activate, operate, switch, extend, reactivate, refresh, rename, sim, esim, disconnect, **and task completion** (`POST tasks/:id/complete`), **and `GET reports/:kind`**.
 - [ ] 3.10 catalog seed: `ensureCatalog` / `ensureLayerRoles` out of `onModuleInit` into a boot provider.
 - [ ] 3.11 Specs build domain services directly; `OfficeService` facade deleted.
 - [ ] 3.last Migration: indexes (`Line.status/packageId/iccid`, `User.parentId`, `OfficeTask.assigneeId`, `WalletEntry.kind`); replace `accounts()` full scan with subtree queries.
