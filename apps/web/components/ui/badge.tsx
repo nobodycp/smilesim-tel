@@ -4,13 +4,13 @@ import { cn } from "../../lib/utils";
 export type BadgeVariant = "default" | "success" | "warning" | "danger" | "muted" | "info" | "violet";
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: "bg-[var(--accent-soft)] text-[var(--accent)] ring-[var(--accent)]/15",
-  success: "bg-[var(--good-bg)] text-[var(--good)] ring-[var(--good)]/15",
-  warning: "bg-[var(--warn-bg)] text-[var(--warn)] ring-[var(--warn)]/15",
-  danger: "bg-[var(--bad-bg)] text-[var(--bad)] ring-[var(--bad)]/15",
+  default: "bg-[var(--rd-primary-soft)] text-[var(--rd-primary-bg)] ring-[var(--rd-primary-bg)]/15",
+  success: "bg-[var(--rd-success-soft)] text-[var(--rd-success)] ring-[var(--rd-success)]/15",
+  warning: "bg-[var(--rd-warning-soft)] text-[var(--rd-warning)] ring-[var(--rd-warning)]/15",
+  danger: "bg-[var(--rd-danger-soft)] text-[var(--rd-danger)] ring-[var(--rd-danger)]/15",
   info: "bg-[var(--info-bg)] text-[var(--info)] ring-[var(--info)]/15",
   violet: "bg-[var(--violet-bg)] text-[var(--violet)] ring-[var(--violet)]/15",
-  muted: "bg-[var(--surface-2)] text-[var(--ink-3)] ring-[var(--line)]",
+  muted: "bg-[var(--rd-surface-2)] text-[var(--rd-muted)] ring-[var(--rd-line)]",
 };
 
 export function Badge({

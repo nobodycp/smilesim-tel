@@ -7,14 +7,14 @@ type ButtonSize = "sm" | "default" | "lg" | "icon";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-[var(--accent)] text-[var(--accent-fg)] shadow-sm hover:bg-[var(--accent-2)] active:bg-[var(--accent-2)]",
+    "bg-[var(--rd-primary-bg)] text-[var(--rd-primary-fg)] shadow-sm hover:bg-[var(--rd-primary-hover)] active:bg-[var(--rd-primary-hover)]",
   secondary:
-    "border border-[var(--line)] bg-[var(--surface)] text-[var(--ink-2)] shadow-sm hover:bg-[var(--surface-2)] hover:text-[var(--ink)]",
+    "border border-[var(--rd-line)] bg-[var(--rd-surface)] text-[var(--rd-ink-2)] shadow-sm hover:bg-[var(--rd-surface-2)] hover:text-[var(--rd-ink)]",
   outline:
-    "border border-[var(--line)] bg-[var(--surface)] text-[var(--ink-2)] shadow-sm hover:bg-[var(--surface-2)] hover:text-[var(--ink)]",
-  ghost: "bg-transparent text-[var(--ink-2)] hover:bg-[var(--surface-3)] hover:text-[var(--ink)]",
+    "border border-[var(--rd-line)] bg-[var(--rd-surface)] text-[var(--rd-ink-2)] shadow-sm hover:bg-[var(--rd-surface-2)] hover:text-[var(--rd-ink)]",
+  ghost: "bg-transparent text-[var(--rd-ink-2)] hover:bg-[var(--rd-surface-3)] hover:text-[var(--rd-ink)]",
   danger:
-    "bg-[var(--bad)] text-white shadow-sm hover:bg-[color-mix(in_srgb,var(--bad)_85%,black)]",
+    "bg-[var(--rd-danger)] text-white shadow-sm hover:bg-[color-mix(in_srgb,var(--rd-danger)_85%,black)]",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -38,7 +38,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         className={cn(
           "inline-flex select-none items-center justify-center whitespace-nowrap rounded-lg font-semibold transition-colors duration-150",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rd-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--rd-bg)]",
           "disabled:pointer-events-none disabled:opacity-50",
           variantClasses[variant],
           sizeClasses[size],

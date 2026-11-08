@@ -7,15 +7,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: 'var(--bg)',
-        surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)', 3: 'var(--surface-3)' },
-        line: { DEFAULT: 'var(--line)', soft: 'var(--line-soft)' },
-        ink: { DEFAULT: 'var(--ink)', 2: 'var(--ink-2)', 3: 'var(--ink-3)', 4: 'var(--ink-4)' },
-        accent: { DEFAULT: 'var(--accent)', 2: 'var(--accent-2)', soft: 'var(--accent-soft)', fg: 'var(--accent-fg)' },
-        good: 'var(--good)', warn: 'var(--warn)', bad: 'var(--bad)',
+        bg: 'var(--rd-bg)',
+        surface: { DEFAULT: 'var(--rd-surface)', 2: 'var(--rd-surface-2)', 3: 'var(--rd-surface-3)' },
+        line: { DEFAULT: 'var(--rd-line)', soft: 'var(--rd-line-soft)' },
+        ink: { DEFAULT: 'var(--rd-ink)', 2: 'var(--rd-ink-2)', 3: 'var(--rd-muted)', 4: 'var(--rd-faint)' },
+        accent: { DEFAULT: 'var(--rd-primary-bg)', 2: 'var(--rd-primary-hover)', soft: 'var(--rd-primary-soft)', fg: 'var(--rd-primary-fg)' },
+        good: 'var(--rd-success)', warn: 'var(--rd-warning)', bad: 'var(--rd-danger)',
       },
       borderRadius: { lg: '0.5rem', xl: '0.625rem' },
-      boxShadow: { sm: 'var(--rd-shadow-sm)', card: 'var(--shadow-card)', pop: 'var(--shadow-pop)' },
+      boxShadow: { sm: 'var(--rd-shadow-sm)', card: 'var(--rd-shadow-card)', pop: 'var(--rd-shadow-pop)' },
     },
   },
   plugins: [],

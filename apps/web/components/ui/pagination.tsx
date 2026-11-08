@@ -70,7 +70,7 @@ export function Pagination({
 
   return (
     <nav
-      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1 py-2 text-[12px] text-[var(--ink-3)]"
+      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1 py-2 text-[12px] text-[var(--rd-muted)]"
       aria-label={t.pages}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -113,7 +113,7 @@ export function Pagination({
           <div className="flex items-center gap-1" role="group" aria-label={t.pages}>
             {pageWindow(page, totalPages).map((item, index) =>
               item === "gap" ? (
-                <span key={`gap-${index}`} className="px-1 text-[var(--ink-4)]" aria-hidden="true">
+                <span key={`gap-${index}`} className="px-1 text-[var(--rd-faint)]" aria-hidden="true">
                   …
                 </span>
               ) : (
@@ -125,8 +125,8 @@ export function Pagination({
                   className={cn(
                     "num-tab h-8 min-w-8 rounded-lg border px-2 text-[12.5px] font-semibold transition-colors",
                     item === page
-                      ? "border-transparent bg-[var(--accent)] text-[var(--accent-fg)]"
-                      : "border-[var(--line)] bg-[var(--surface)] text-[var(--ink-2)] hover:bg-[var(--surface-2)]"
+                      ? "border-transparent bg-[var(--rd-primary-bg)] text-[var(--rd-primary-fg)]"
+                      : "border-[var(--rd-line)] bg-[var(--rd-surface)] text-[var(--rd-ink-2)] hover:bg-[var(--rd-surface-2)]"
                   )}
                 >
                   {item}
