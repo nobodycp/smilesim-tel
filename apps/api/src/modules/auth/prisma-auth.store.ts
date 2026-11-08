@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../db';
+import { PrismaService } from '../shared/prisma.service';
 import { PrismaClient } from '../../generated/prisma/client';
 import IORedis, { Redis } from 'ioredis';
 import {
@@ -84,9 +85,13 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   private readonly ownsClients: boolean;
   private readonly logger = new Logger(PrismaAuthStore.name);
 
-  constructor(@Optional() @Inject(AUTH_STORE_CLIENTS) clients?: AuthStoreClients) {
+  private readonly ownsPrisma: boolean;
+
+  constructor(@Optional() @Inject(AUTH_STORE_CLIENTS) clients?: AuthStoreClients, @Optional() db?: PrismaService) {
     this.ownsClients = !clients;
-    this.prisma = clients?.prisma ?? createPrismaClient();
+    // The shared client belongs to PrismaService; only a client opened here is closed here.
+    this.ownsPrisma = !clients && !db;
+    this.prisma = clients?.prisma ?? db?.client ?? createPrismaClient();
     this.redis = clients?.redis ?? createRedis();
   }
 
@@ -122,7 +127,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
 
   async onModuleDestroy(): Promise<void> {
     if (!this.ownsClients) return;
-    await this.prisma.$disconnect();
+    if (this.ownsPrisma) await this.prisma.$disconnect();
     this.redis.disconnect();
   }
 

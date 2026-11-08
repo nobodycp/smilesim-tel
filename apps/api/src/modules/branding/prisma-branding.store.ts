@@ -1,6 +1,7 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../db';
 import { PrismaClient } from '../../generated/prisma/client';
+import { PrismaService } from '../shared/prisma.service';
 import type { BrandingBody, BrandingRow } from './branding-rules';
 import type { BrandingStore } from './branding.store';
 
@@ -10,8 +11,16 @@ const ROW_ID = 1;
 export class PrismaBrandingStore implements BrandingStore, OnModuleDestroy {
   private prismaClient: PrismaClient | null = null;
 
+  constructor(@Optional() private readonly db?: PrismaService) {}
+
+  // The shared client belongs to PrismaService; only a client opened here is closed here.
+  private ownsClient = false;
+
   private get prisma(): PrismaClient {
-    this.prismaClient ??= createPrismaClient();
+    if (!this.prismaClient) {
+      this.ownsClient = !this.db;
+      this.prismaClient = this.db?.client ?? createPrismaClient();
+    }
     return this.prismaClient;
   }
 
@@ -28,6 +37,6 @@ export class PrismaBrandingStore implements BrandingStore, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.prismaClient?.$disconnect();
+    if (this.ownsClient) await this.prismaClient?.$disconnect();
   }
 }

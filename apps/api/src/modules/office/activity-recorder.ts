@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../db';
 import { PrismaClient } from '../../generated/prisma/client';
+import { PrismaService } from '../shared/prisma.service';
 
 export type ActivityDraft = {
   action: string;
@@ -14,9 +15,11 @@ type Gate = { sessionId?: string; homeId?: string };
 export class ActivityRecorder {
   private prismaClient: PrismaClient | null = null;
 
+  constructor(@Optional() private readonly db?: PrismaService) {}
+
   private client(): PrismaClient | null {
     if (!process.env.DATABASE_URL) return null;
-    this.prismaClient ??= createPrismaClient();
+    this.prismaClient ??= this.db?.client ?? createPrismaClient();
     return this.prismaClient;
   }
 

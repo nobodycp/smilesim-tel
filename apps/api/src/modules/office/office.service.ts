@@ -1,5 +1,6 @@
 import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../db';
+import { PrismaService } from '../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
@@ -292,13 +293,17 @@ export class OfficeService implements OnModuleInit {
   private prismaClient: PrismaClient | null = null;
 
   private get prisma(): PrismaClient {
-    this.prismaClient ??= createPrismaClient();
+    this.prismaClient ??= this.db?.client ?? createPrismaClient();
     return this.prismaClient;
   }
 
   private readonly notice: NoticeService;
 
-  constructor(@Inject(AUTH_STORE) private readonly auth: AuthStore, @Optional() notice?: NoticeService) {
+  constructor(
+    @Inject(AUTH_STORE) private readonly auth: AuthStore,
+    @Optional() notice?: NoticeService,
+    @Optional() private readonly db?: PrismaService,
+  ) {
     this.notice = notice ?? new NoticeService();
   }
 
