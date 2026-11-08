@@ -96,7 +96,8 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 5.3b Radius and type scales (`--rd-radius-*`, `--rd-text-*`); 91 radius + 139 font-size literals (0 changed pixels, 6 screens × 2 themes). `03ab2b4`
 - [x] 5.3c One solid focus ring for every keyboard-reachable control (shell buttons had none); `.nav-link.locked` contrast to AA. Browser-checked. `c7220f0`
 - [ ] 5.3d Spacing, z-index, motion tokens (few literals each; do with 5.6).
-- [ ] 5.4 Primitives on CSS + `--rd-*` (ADR 0003): Button/IconButton, Field/Input/Select/Checkbox/Switch, Dialog, Menu/Popover (one engine for RowMenu, topbar menus, wallet pop), Badge (status→tone map), Alert/Toast, EmptyState, Skeleton, PageHeader/FilterBar/Pane. Tailwind leaves `components/ui`.
+- [x] 5.4a Tailwind removed: Button, Badge, Select, Pagination on `app/styles/ui.css` (declarations copied from Tailwind's output); `Button size="iconSm"`, `Select compact`; direction helpers `.only-rtl`/`.only-ltr`/`.flip-ltr`; `tailwind.config.ts`, `lib/utils.ts` (`cn`), `tailwindcss`, `tailwind-merge`, `clsx` gone. Badge rings fixed (were Tailwind's default blue). Pixel-identical otherwise: 29 screens × light ar / dark ar / light en via `tests/dom-snapshot.mjs` (now takes `THEME`/`LOCALE`). `01e4497`
+- [ ] 5.4b More primitives on CSS + `--rd-*` (ADR 0003): IconButton, Field/Input/Select/Checkbox/Switch, Dialog, Menu/Popover (one engine for RowMenu, topbar menus, wallet pop), Badge status→tone map, Alert/Toast, EmptyState, Skeleton, PageHeader/FilterBar/Pane.
 - [ ] 5.5b The remaining 27 lint warnings (mostly `set-state-in-effect`).
 - [ ] 5.6 `desk.css` (~2050 lines) split next to its owners; `DESIGN.md` per slice.
 - [ ] 5.2 Pages thin: `features/<domain>/screens/*`.
