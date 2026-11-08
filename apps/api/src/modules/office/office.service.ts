@@ -4,7 +4,9 @@ import { PrismaService } from '../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
-import { OfficeFailure, fail } from './office-failure';
+import { OfficeFailure, fail } from '../shared/office-failure';
+import { parseInput } from '../shared/input';
+import { CeilingBody, FundBody } from './wallet.schemas';
 import { newPasswordProblem, fullNameProblem } from '../auth/validators';
 import { catalog, companies, packageCode, packageName } from './office-catalog';
 import {
@@ -416,11 +418,9 @@ export class OfficeService implements OnModuleInit {
     };
   }
 
-  async fund(gate: Gate, loginName: string, body: { amount?: unknown; note?: unknown }) {
+  async fund(gate: Gate, loginName: string, body: unknown) {
     const actor = await this.actor(gate);
-    const amount = positive(body.amount);
-    const note = typeof body.note === 'string' ? body.note.trim() : '';
-    if (!amount) fail(400, 'INVALID');
+    const { amount, note } = parseInput(FundBody, body);
     const accounts = await this.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target) fail(404, 'NOT_FOUND');
@@ -446,10 +446,9 @@ export class OfficeService implements OnModuleInit {
     return { ok: true };
   }
 
-  async setCeiling(gate: Gate, loginName: string, body: { ceiling?: unknown }) {
+  async setCeiling(gate: Gate, loginName: string, body: unknown) {
     const actor = await this.actor(gate);
-    const ceiling = nonNegative(body.ceiling);
-    if (ceiling === null || ceiling > 100_000_000) fail(400, 'INVALID');
+    const { ceiling } = parseInput(CeilingBody, body);
     const accounts = await this.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target || target.parentId !== actor.id) fail(403, 'FORBIDDEN');
@@ -3939,11 +3938,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isPositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0;
-}
-
-function positive(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 100_000_000) return null;
-  return value;
 }
 
 /** A QR picture as a data URL. `undefined` when absent, `null` when cleared, otherwise the checked URL. */

@@ -14,8 +14,8 @@ import { ApiErrorResponse } from '../../openapi/responses';
 import { Activity, bodyField, param } from './activity.decorator';
 import { ActivityInterceptor } from './activity.interceptor';
 import { gateOf, readCookie } from './gate';
-import { OfficeFailure } from './office-failure';
-import { OfficeFailureFilter } from './office-failure.filter';
+import { OfficeFailure } from '../shared/office-failure';
+import { OfficeFailureFilter } from '../shared/office-failure.filter';
 import { OfficeService } from './office.service';
 import {
   AccessBodyDto,

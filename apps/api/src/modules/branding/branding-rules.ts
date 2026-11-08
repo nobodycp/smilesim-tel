@@ -1,6 +1,6 @@
 // The office identity rules, pure: what a saved row looks like, what a PUT body may carry,
 // and how a stored data URL becomes bytes for the image routes.
-import { OfficeFailure } from '../office/office-failure';
+import { OfficeFailure } from '../shared/office-failure';
 
 export const NAME_LIMIT = 120;
 export const TAGLINE_LIMIT = 160;

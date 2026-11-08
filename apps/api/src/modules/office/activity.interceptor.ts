@@ -5,7 +5,7 @@ import { Observable, catchError, from, mergeMap, throwError } from 'rxjs';
 import { ACTIVITY_KEY, type ActivityMeta } from './activity.decorator';
 import { ActivityRecorder } from './activity-recorder';
 import { gateOf } from './gate';
-import { OfficeFailure } from './office-failure';
+import { OfficeFailure } from '../shared/office-failure';
 
 /** Writes the activity event a route declares with `@Activity`, after the route answered or refused. */
 @Injectable()
