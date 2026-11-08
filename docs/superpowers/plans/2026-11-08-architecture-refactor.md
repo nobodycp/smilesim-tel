@@ -92,7 +92,10 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 5.0b Unused `components/ui/table.tsx`, `ui/card.tsx` and their CSS removed (`.card`, `.data-table*`, `.card button`). `aff3fdf`
 - [x] 5.1 `app/error.tsx` (Next 16 `retry`) and `app/not-found.tsx` (404), Pearl empty state + the way home, three languages. Route groups deliberately not added (see spec). `2fbe124`, centering fix `d03451c`; checked in the browser ar/en, light/dark, 390px.
 - [x] 5.5a Closed drawer `inert`; Escape closes the topbar menus and returns focus; `RowMenu` keys by position. `2317498`
-- [ ] 5.3 Tokens: spacing, type, radius, z-index, motion scales; Known-gaps focus rings and `.nav-link.locked` contrast; remove alias tokens (`--accent`, `--ink-*`, `--bg`).
+- [x] 5.3a Alias tokens removed; every use reads `--rd-*` (0 changed pixels, 4 screens × 2 themes). `28b4b4e`
+- [x] 5.3b Radius and type scales (`--rd-radius-*`, `--rd-text-*`); 91 radius + 139 font-size literals (0 changed pixels, 6 screens × 2 themes). `03ab2b4`
+- [x] 5.3c One solid focus ring for every keyboard-reachable control (shell buttons had none); `.nav-link.locked` contrast to AA. Browser-checked. `c7220f0`
+- [ ] 5.3d Spacing, z-index, motion tokens (few literals each; do with 5.6).
 - [ ] 5.4 Primitives on CSS + `--rd-*` (ADR 0003): Button/IconButton, Field/Input/Select/Checkbox/Switch, Dialog, Menu/Popover (one engine for RowMenu, topbar menus, wallet pop), Badge (status→tone map), Alert/Toast, EmptyState, Skeleton, PageHeader/FilterBar/Pane. Tailwind leaves `components/ui`.
 - [ ] 5.5b The remaining 27 lint warnings (mostly `set-state-in-effect`).
 - [ ] 5.6 `desk.css` (~2050 lines) split next to its owners; `DESIGN.md` per slice.

@@ -63,6 +63,21 @@ Both themes are defined in `apps/web/app/styles/tokens.css`. Use the token, neve
 | `--rd-scrim` | `rgba(10,10,10,.48)` | `rgba(0,0,0,.72)` | dialog backdrop |
 | `--rd-scrim-strong` | `rgba(0,0,0,.50)` | same | drawer backdrop |
 | `--rd-radius-lg` | `1.125rem` | same | cards, panes, filter bars, primary and secondary buttons |
+
+### Scales
+
+Theme-independent, in `:root`. They name the values the stylesheets already used (Phase 5.3b); a new rule uses a step, not a literal.
+
+| Token | Value | Token | Value |
+|---|---|---|---|
+| `--rd-radius-xs` | 6px | `--rd-text-2xs` | 10px |
+| `--rd-radius-sm` | 8px | `--rd-text-xs` | 11px |
+| `--rd-radius-md` | 10px | `--rd-text-sm` | 12px |
+| `--rd-radius-card` | 12px | `--rd-text-md` | 13px |
+| `--rd-radius-panel` | 16px | `--rd-text-base` | 14px |
+| `--rd-radius-pill` | 999px | `--rd-text-lg` / `-xl` / `-2xl` | 15 / 16 / 18px |
+
+Spacing, z-index and motion are not tokens yet: their literals are few and each sits with its owner.
 | `--rd-shadow-card` | `0 1px 2px` ink at 4% | inset 1px hairline | cards |
 | `--rd-shadow-frame` | `0 1px 2px` slate at 5% | `0 1px 2px` black at 40% | the outer frame of a data table |
 | `--rd-shadow-sm` | `0 1px 2px` black at 5% | `0 1px 2px` black at 5% | page actions |
@@ -74,26 +89,9 @@ Where the ink fills a button, use `--rd-primary-bg`. Where ink is a text, border
 
 List chrome that has moved (`/users`, plus the shared dialog, row menu, filter bar, empty state, and skeleton) follows hotspot-store's layout. Colours stay the Pearl tokens above. `--rd-accent` (logo red) is not part of this and stays one accent per screen.
 
-Tailwind is on, with `darkMode: "class"` and `preflight` off, so `base.css` remains the reset. Icons are `lucide-react`. `cn` lives in `apps/web/lib/utils.ts`. New controls are `apps/web/components/ui/` (`Button`, `Select`, `Card`, `Badge`, `Table`, `Pagination`).
+Tailwind is on, with `darkMode: "class"` and `preflight` off, so `base.css` remains the reset. Icons are `lucide-react`. `cn` lives in `apps/web/lib/utils.ts`. New controls are `apps/web/components/ui/` (`Button`, `Select`, `Badge`, `Pagination`).
 
-Alias tokens in both `:root` and `.dark` let the ported classes read hotspot names:
-
-| Alias | Resolves to |
-|---|---|
-| `--bg` | `--rd-bg` |
-| `--surface`, `--surface-2`, `--surface-3` | `--rd-surface`, `--rd-surface-2`, `--rd-surface-3` |
-| `--line`, `--line-soft` | `--rd-line`, `--rd-line-soft` |
-| `--ink`, `--ink-2` | `--rd-ink`, `--rd-ink-2` |
-| `--ink-3`, `--ink-4` | `--rd-muted`, `--rd-faint` |
-| `--accent`, `--accent-2`, `--accent-fg` | `--rd-primary-bg`, `--rd-primary-hover`, `--rd-primary-fg` |
-| `--accent-soft` | `color-mix(in srgb, var(--rd-primary-bg) 10%, transparent)` |
-| `--good`, `--good-bg` | `--rd-success`, `--rd-success-soft` |
-| `--warn`, `--warn-bg` | `--rd-warning`, `--rd-warning-soft` |
-| `--bad`, `--bad-bg` | `--rd-danger`, `--rd-danger-soft` |
-| `--focus-ring` | `--rd-focus` |
-| `--shadow-card`, `--shadow-pop` | `--rd-shadow-card`, `--rd-shadow-pop` |
-
-`--accent` is the ink primary, not the logo red. Ported corners use `0.5rem` and `0.625rem`. `--rd-radius-lg` stays for controls that have not moved yet.
+The ported classes and the Tailwind primitives read `--rd-*` tokens directly (Phase 5.3a; the hotspot alias names `--bg`, `--surface*`, `--line*`, `--ink*`, `--accent*`, `--good*`, `--warn*`, `--bad*`, `--focus-ring`, `--shadow-*` are gone). The ink primary's 10% tint is `--rd-primary-soft`. Tailwind's colour names (`bg-accent`, `text-ink-3`, …) still exist in `tailwind.config.ts` and map to `--rd-*`; they go with Tailwind (ADR 0003).
 
 `Badge` status mapping: account frozen → `warning`, open → `success`; line active → `success`, frozen → `warning`, else `danger`; task done → `success`, cancelled → `danger`, else `warning`. `info` and `violet` are typed and unused until their tokens exist. Shell chrome uses `lucide-react` (nav, wallet, bell, theme).
 
@@ -147,12 +145,11 @@ One of each. A new page uses these, it does not invent a sibling.
 
 ## Known gaps
 
-Shell gaps (Pearl rebuild phase 1 landed the header, sidebar, and drawer; four items remain):
+Shell gaps (Pearl rebuild phase 1 landed the header, sidebar, and drawer; two items remain — focus rings and `.nav-link.locked` contrast were closed in Phase 5.3c: every keyboard-reachable control draws a 2px solid `--rd-ink` outline, the avatar with a 3px gap, and locked links use `--rd-muted`):
 
 - `.sidebar` animates `width` (180ms), which is not transform or opacity.
 - At widths near 390px, the topbar's control row (search toggle, wallet chip, bell, theme, language, avatar) can approach the viewport width; not yet stress-tested below 390px.
-- `.nav-link.locked` still uses `--rd-faint` for text (about 2.5:1 light, 3.4:1 dark); phase 1 fixed `.nav-label`'s contrast but not this selector.
-- Focus rings on shell controls are faint two ways: `.shell-icon`, `.avatar-btn`, `.wallet-btn`, and `.shell-search-toggle` are not in the shared `:focus-visible` rule in `base.css` at all, and the controls that are (`.icon-btn`, `.lang button`, `.nav-link`, `.user-btn`, `.menu a`/`.menu button`) still get the 16–20% `--rd-focus` halo there, not the solid `--rd-ink` outline `.btn` and the dialog header icons use.
+
 
 Outside the shell, left as is to keep the screens identical:
 

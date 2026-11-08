@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.5a). e2e 110/110, lint 0 errors / 27 warnings (unused vars now an error). tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.3). e2e 110/110, lint 0 errors / 27 warnings (unused vars now an error). tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -38,7 +38,7 @@ Next.js 16 (App Router) · React 19 · Tailwind 3 (preflight off, used only in `
 
 ## Design system
 
-Tokens in `app/styles/tokens.css` (`--rd-*` colours/shadows/one radius + undocumented `--rd-login-*` + an alias set `--accent`/`--ink-*`/`--bg` used by Tailwind config). **Trap:** `--accent` = ink, `--rd-accent` = logo red. No spacing / type / radius / z-index scales yet. Rules: `DESIGN.md`, `.cursor/rules/pearl-ui.mdc`, `direction-theme.mdc`, `content-ui.mdc`, `screen-size.mdc`.
+Tokens in `app/styles/tokens.css`: `--rd-*` colours/shadows for both themes, `--rd-primary-soft`, `--rd-login-*`, and theme-independent scales `--rd-radius-{xs,sm,md,card,panel,pill,lg}` and `--rd-text-{2xs…2xl}`. The hotspot alias set is gone (5.3a). No spacing / z-index / motion scales yet. Rules: `DESIGN.md`, `.cursor/rules/pearl-ui.mdc`, `direction-theme.mdc`, `content-ui.mdc`, `screen-size.mdc`.
 
 ## Known defects (audit 2026-11-08, fix plan in `docs/superpowers/plans/2026-11-08-architecture-refactor.md`)
 
@@ -50,7 +50,7 @@ Tokens in `app/styles/tokens.css` (`--rd-*` colours/shadows/one radius + undocum
 6. ~~Paged tables blank on mutation/filter change~~ — fixed `095162c` (infinite query, keep-previous, refetch every read chunk).
 7. ~~Logout relied on a 401 side effect~~ — fixed `ad473c7`. Still open: several in-app links do full reloads (`office-shell.tsx` notices/leave, `users` enter).
 8. ~~No `error.tsx` / `not-found.tsx`~~ — added (5.1). No `loading.tsx`: pages show their own skeletons.
-9. ~~a11y: closed drawer focusable, topbar menus no Escape, `RowMenu` keys by label~~ — fixed (5.5a). Focus rings and `.nav-link.locked` contrast remain (DESIGN.md → Known gaps).
+9. ~~a11y: closed drawer focusable, topbar menus no Escape, `RowMenu` keys by label~~ — fixed (5.5a). Focus rings and `.nav-link.locked` contrast fixed (5.3c).
 10. `/users` unpaged, client-side filtering; `DataTable` sorts by rendering cells.
 
 ## Target shape
