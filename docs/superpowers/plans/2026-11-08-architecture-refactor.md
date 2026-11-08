@@ -39,16 +39,18 @@ Each approved decision gets an ADR in `docs/architecture/decisions/`.
 - [x] 1.5 `useLoad` stale record — dropped: not reproducible (App Router remounts on a new dynamic segment; checked with a Playwright test). Covered by ADR 0001.
 - [x] 1.6 Provider sheet: untouched fields follow the server, typed ones keep their draft; numbers tab reads every cursor page. Test `tests/package-sheet-drafts.spec.ts`. `9dbbe67`
 
-## Phase 2 — Backend kernel
+## Phase 2 — Backend kernel ✅ (2.3 moved to 3.0)
 
-- [ ] 2.1 `modules/shared/prisma.service.ts`, injected everywhere (replace `createPrismaClient()` in services).
-- [ ] 2.2 Global `OfficeExceptionFilter` mapping `OfficeFailure` → `{message, code}`; activity event via interceptor + `@Activity('…')`; delete controller `run()`.
-- [ ] 2.3 `ActorGuard` + `@Actor()` param decorator + `@RequireGrant()` / `@RequireLayer()`; actor and visible accounts cached per request. Same output as `actor()`.
-- [ ] 2.4 `ZodPipe` (D2) + schemas, route group by route group.
-- [ ] 2.5 Login-failure counter to Redis. `auth.store.ts`.
-- [ ] 2.6 CI: a `postgres:16` service job that runs `prisma migrate deploy` and the `*.db.spec.ts` specs with `TEST_DATABASE_URL`. `.github/workflows/ci.yml`.
+- [x] 2.1 `modules/shared/prisma.service.ts` (global `PrismaModule`): one client instead of five pools (office service, two ActivityRecorders, auth store, branding store). `9a97eec`
+- [x] 2.2 `OfficeFailureFilter` + `ActivityInterceptor` + `@Activity(action, kind, subject)`; controller `run()` gone (78 routes), `@Res` only where cookies/stream need it. `147e6b4`
+- [ ] 2.3 → **moved to Phase 3.0.** `actor()` is already one place called first in each method; a guard pays off only when service methods take the actor instead of the gate, which is the per-domain split. Converting 57 methods now would churn hundreds of spec calls for no behaviour gain.
+- [x] 2.4 zod (D2): `parseInput()` in `modules/shared/input.ts`, run after `actor()` to keep 401 before 400; pilot `FundBody`/`CeilingBody`. `ZodPipe` arrives with the guard (3.0). `c100a46`
+- [x] 2.5 Login-failure counter — already in Redis in `PrismaAuthStore` (`login-fail:<login>`, TTL window); the in-memory map is `MemoryAuthStore`, used by specs only. Audit claim was wrong; nothing to change.
+- [x] 2.6 CI: a `postgres:16` service job that runs `prisma migrate deploy` and the `*.db.spec.ts` specs with `TEST_DATABASE_URL`. `.github/workflows/ci.yml`.
 
 ## Phase 3 — Backend domain split (one module per slice, tests green after each)
+
+- [ ] 3.0 Kernel for the split: `ActorResolver` (from `actor()` + `grantsFor`), `ActorGuard` + `@Actor()` + `@RequireGrant()` / `@RequireLayer()`, `ZodPipe`. New domain controllers use them; their services take `Actor`, not `Gate`.
 
 Order (least to most coupled): `notices` → `audit` → `tasks` → `wallets` (+finance, ledger, reports) → `providers` + `companies` → `packages` (+prices, user-packages) → `users` + `roles` → `transfers` → `lines` → `catalog-seed` (out of `onModuleInit`).
 Each: `<domain>.controller.ts / .service.ts / .repository.ts / .schemas.ts / rules (existing pure files) / specs`. `office.service.ts` shrinks each slice until it is deleted.

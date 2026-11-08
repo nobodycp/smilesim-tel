@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`). tsc clean, lint clean, jest 429/429 in ~29 s (+2 opt-in DB tests).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 2). tsc clean, lint clean, jest 460/460 (+2 DB tests, run in the CI `db` job).
 
 ## Stack
 
@@ -12,21 +12,22 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 
 | File | Role |
 |---|---|
-| `src/main.ts` | bootstrap: body limit 1mb, CORS (`cors.ts`), OpenAPI (`openapi/`). No global ValidationPipe, guard, or exception filter. |
+| `src/main.ts` | bootstrap: body limit 1mb, CORS (`cors.ts`), OpenAPI (`openapi/`). No global pipe or guard; office errors go through `OfficeFailureFilter` on the controller. |
 | `src/app.module.ts` | imports `featureModules` from `modules/registry.ts` + `HealthController` + `DoorMiddleware` |
 | `src/door.middleware.ts`, `src/doors.ts` | resolves the door (layer) from the `x-door` header |
 | `src/worker.ts` | BullMQ worker, no processors yet; daily `activityEvent` purge via `setInterval` |
 | `src/errors.ts` | `ERROR_MESSAGES` catalog (code → message), tested |
-| `src/db.ts` | `createPrismaClient()` |
+| `src/db.ts` | `createPrismaClient()` — called by `PrismaService` (and the worker); specs that build services by hand fall back to it |
 | `src/generated/` | Prisma client output — generated, never edit, git-ignored |
+| `modules/shared/` | `prisma.service.ts` (global `PrismaModule`, one client per process), `office-failure.ts` (`OfficeFailure`, `fail()`), `office-failure.filter.ts`, `input.ts` (`parseInput(schema, body)` → 400 INVALID) |
 
 ## Modules
 
 | Module | Files | Owns |
 |---|---|---|
-| `auth/` | controller, service, `auth.store.ts` (in-memory), `prisma-auth.store.ts`, `decide-login`, `password`, `totp`, `sessions`, `validators`, `trial-seed`, `cities` | login, sessions (cookie `sid`, max sessions), 2FA, password change, trial accounts. Store behind `AUTH_STORE` token. |
+| `auth/` | controller, service, `auth.store.ts` (in-memory, specs), `prisma-auth.store.ts` (Postgres + Redis: live session keys and the failed-login counter `login-fail:<login>`), `decide-login`, `password`, `totp`, `sessions`, `validators`, `trial-seed`, `cities` | login, sessions (cookie `sid`, max sessions), 2FA, password change, trial accounts. Store behind `AUTH_STORE` token. |
 | `branding/` | controller, service, store (memory + prisma), rules | site identity (logo, title, icon). Small and clean — the reference shape for other modules. |
-| `office/` | `office.controller.ts` (~1150 lines), `office.service.ts` (~4000 lines), many pure rule files | **everything else** — see below. The god module to be split. |
+| `office/` | `office.controller.ts` (~1100 lines, `@Activity` per route), `gate.ts` (`gateOf`, `readCookie`), `office.service.ts` (~4000 lines), many pure rule files | **everything else** — see below. The god module to be split. |
 | `activity` (in `office/activity.module.ts`) | `activity-recorder.ts`, `activity-log.ts` | audit/activity events |
 
 ### `office` endpoint groups (controller line ≈ decorator)
@@ -49,9 +50,10 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 ## Cross-cutting patterns (current)
 
 - **Auth/authorization:** no guard. Every service method calls `await this.actor(gate)` (≈57 sites, `office.service.ts:~3157`), then checks inline (`actor.isBranchOwner`, `actor.grants.includes('edit')`, layer comparisons, `visibleAccountIds`).
-- **Errors:** `fail(status, code)` throws `OfficeFailure`; the controller's private `run()` (`office.controller.ts:~1139`) maps it to `{ message, code }` and records the activity event. Not a Nest exception filter.
-- **Validation:** `office.dto.ts` is Swagger-only (all optional). Bodies are `unknown` and parsed by hand in the service.
-- **Persistence:** the service builds its own Prisma client (not injected). `runTx` = `$transaction` at Read Committed.
+- **Errors:** `fail(status, code)` throws `OfficeFailure` (`shared/office-failure.ts`); `OfficeFailureFilter` (on `OfficeController`) answers `{ message, code }` with its status. Anything else is Nest's 500.
+- **Activity log:** routes declare `@Activity(action, subjectKind, subject)` (`office/activity.decorator.ts`; subject = `param('id')`, `bodyField('msisdn')`, or a function). `ActivityInterceptor` records `ok` after the answer or `fail` + code on an `OfficeFailure`.
+- **Validation:** `office.dto.ts` is Swagger-only. New/migrated routes use zod schemas (`<domain>.schemas.ts`) through `parseInput()` right after `actor()` (ADR 0002); pilot: `wallet.schemas.ts`. The rest still parse by hand.
+- **Persistence:** `PrismaService` is injected (optional) into OfficeService, ActivityRecorder, PrismaAuthStore, PrismaBrandingStore. `runTx` = `$transaction` at Read Committed.
 - **Money:** Int agorot. `move()` (`office.service.ts:~3715`) locks the wallet row (`SELECT … FOR UPDATE`) before reading it, so the ceiling check and the absolute write are serialised per wallet (ADR 0004). Proof: `wallet-concurrency.db.spec.ts` (opt-in, `TEST_DATABASE_URL`).
 - **Visibility:** `accounts()` (`~3457`) loads all users and then filters in memory.
 - **Seeding:** `ensureCatalog` runs in `onModuleInit` on every start.
@@ -63,7 +65,7 @@ Status/kind/layer fields are `String` (no enums). Missing indexes: `Line.status/
 
 ## Tests
 
-38 suites (one opt-in DB spec). Spec passwords hashed once per file via `office/test-hash.ts`. Pure rule specs + service specs on an in-memory fixture (`tree-fixture.ts`) + supertest HTTP specs for auth and branding. Gaps: no office HTTP permission matrix, DB spec not in CI yet, no coverage gate.
+38 suites (one opt-in DB spec). Spec passwords hashed once per file via `office/test-hash.ts`. Pure rule specs + service specs on an in-memory fixture (`tree-fixture.ts`) + supertest HTTP specs for auth and branding. Gaps: no office HTTP permission matrix, no coverage gate.
 
 ## Target shape (refactor plan)
 

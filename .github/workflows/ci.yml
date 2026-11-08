@@ -34,6 +34,41 @@ jobs:
       - run: npm run test:api
       - run: npm run build
 
+  # Specs that need a real PostgreSQL (row locks, transactions) are named *.db.spec.ts and skip without
+  # TEST_DATABASE_URL. This job gives them one: a throwaway postgres service with the migrations applied.
+  db:
+    name: api specs on postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: smilesim
+          POSTGRES_PASSWORD: smilesim
+          POSTGRES_DB: smilesim_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smilesim"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://smilesim:smilesim@localhost:5432/smilesim_test
+      TEST_DATABASE_URL: postgresql://smilesim:smilesim@localhost:5432/smilesim_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run prisma:generate
+      - run: npx prisma migrate deploy
+        working-directory: apps/api
+      - run: npm test --workspace api -- '\.db\.spec\.ts$'
+
   # Playwright runs the web app against a mock api in a real browser.
   # continue-on-error is deliberate for now: these tests have never run in CI, and a browser,
   # font download, or timing difference there must not block merges while we learn how stable
