@@ -255,6 +255,7 @@ const CATALOGUE = [
   { zone: 'lib', file: 'lib/use-load.ts', role: 'خطاف جلب لمرة / حسب الاعتماديات' },
   { zone: 'lib', file: 'lib/use-paged.ts', role: 'خطاف قوائم متتابعة بالمؤشر' },
   { zone: 'lib', file: 'lib/use-action.ts', role: 'خطاف كتابة مع busy والخطأ' },
+  { zone: 'lib', file: 'lib/status-tone.ts', role: 'خريطة الحالة إلى لون الشارة' },
   { zone: 'lib', file: 'lib/use-popover.ts', role: 'محرك فتح وإغلاق القوائم والنوافذ المنبثقة' },
   { zone: 'lib', file: 'lib/use-require-layer.ts', role: 'تحويل عند طبقة باب غير مسموحة' },
 ];

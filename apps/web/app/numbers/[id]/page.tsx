@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
-import { Desk, Money, OutcomePick, actionName, applyNote, latinWhen, lineBadgeClass, lineStatus } from '../../../components/desk';
+import { Desk, Money, OutcomePick, actionName, applyNote, latinWhen, lineStatus } from '../../../components/desk';
 import { Dialog } from '../../../components/dialog';
 import { DisconnectConfirm } from '../../../components/disconnect-confirm';
 import { EsimDialog, QrPicker } from '../../../components/esim-qr';
@@ -23,6 +23,7 @@ import { useAction } from '../../../lib/use-action';
 import { formatShekel } from '../../../lib/money';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
+import { badgeClass, lineTone } from '../../../lib/status-tone';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
@@ -133,7 +134,7 @@ export default function LineCardPage() {
           <section className="pane">
             <header className="line-head">
               <p className="line-number"><bdi dir="ltr">{line.msisdn}</bdi></p>
-              <span className={lineBadgeClass(line.status)}>{lineStatus(t, line.status)}</span>
+              <span className={badgeClass(lineTone(line.status))}>{lineStatus(t, line.status)}</span>
             </header>
             <div className="steps" role="tablist">
               {tabs.map((item) => (

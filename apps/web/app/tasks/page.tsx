@@ -19,14 +19,9 @@ import { useAction } from '../../lib/use-action';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
+import { taskTone } from '../../lib/status-tone';
 
 const TASK_ACTIONS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'sim'] as const;
-
-function taskBadge(status: string): 'success' | 'danger' | 'warning' {
-  if (status === 'done') return 'success';
-  if (status === 'cancelled') return 'danger';
-  return 'warning';
-}
 
 const FILTER_KEYS = ['q', 'status', 'action', 'pack', 'company', 'provider'] as const;
 const TASK_STATUSES = ['pending', 'working', 'done', 'cancelled'];
@@ -97,7 +92,7 @@ export default function TasksPage() {
       key: 'status',
       header: t.status,
       render: (row) => (
-        <Badge variant={taskBadge(row.status)} dot>
+        <Badge variant={taskTone(row.status)} dot>
           {taskStatus(t, row.status)}
         </Badge>
       ),

@@ -13,6 +13,7 @@ import { noticeDetail, noticeGroup, noticeTitle } from '../../lib/notice-text';
 import { usePrefs } from '../../lib/prefs';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
+import { noticeTone } from '../../lib/status-tone';
 
 const GROUPS = ['tasks', 'wallet', 'announcements'] as const;
 
@@ -70,7 +71,7 @@ export default function NoticesPage() {
       key: 'group',
       header: t.noticeGroup,
       fit: true,
-      render: (row) => <Badge variant={row.read ? 'muted' : 'warning'} dot={!row.read}>{groupLabel(noticeGroup(row.kind))}</Badge>,
+      render: (row) => <Badge variant={noticeTone(row.read)} dot={!row.read}>{groupLabel(noticeGroup(row.kind))}</Badge>,
     },
     {
       key: 'title',

@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccountName, accountLabel } from '../../../../components/account-name';
 import { DataTable, type Column } from '../../../../components/data-table';
-import { Desk, Money, layerName, lineBadgeClass, lineStatus } from '../../../../components/desk';
+import { Desk, Money, layerName, lineStatus } from '../../../../components/desk';
 import { LinePricesDialog } from '../../../../components/line-prices-dialog';
 import { LiveSwitch } from '../../../../components/live-switch';
 import { TableSkeleton } from '../../../../components/loading';
@@ -20,6 +20,7 @@ import { useApiQuery } from '../../../../lib/use-api-query';
 import { packageKeys, sharedKeys } from '../../../../lib/query';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRequireLayer } from '../../../../lib/use-require-layer';
+import { badgeClass, lineTone, onOffTone } from '../../../../lib/status-tone';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
@@ -385,7 +386,7 @@ export default function PackageSheetPage() {
       key: 'status',
       header: t.status,
       render: (line) => (
-        <span className={lineBadgeClass(line.status)}>{lineStatus(t, line.status)}</span>
+        <span className={badgeClass(lineTone(line.status))}>{lineStatus(t, line.status)}</span>
       ),
     },
   ];
@@ -433,7 +434,7 @@ export default function PackageSheetPage() {
               onChange={(event) => toggleTarget(kind, pkg.code, event.target.checked)}
             />
             <span>{pkg.name} · {pkg.months} {t.months}</span>
-            <span className={pkg.forSale ? 'badge' : 'badge cancelled'}>{pkg.forSale ? t.forSale : t.notForSale}</span>
+            <span className={badgeClass(onOffTone(pkg.forSale))}>{pkg.forSale ? t.forSale : t.notForSale}</span>
           </label>
         ))}
         <Button type="button" variant="secondary" size="sm" onClick={() => void saveTargets(kind)}>{t.save}</Button>
@@ -476,7 +477,7 @@ export default function PackageSheetPage() {
                       <b>{sheet.enabled ? t.lineActive : t.stopped}</b>
                     </LiveSwitch>
                   </div>
-                  <span className={sheet.forSale ? 'badge' : 'badge cancelled'}>{sheet.forSale ? t.forSale : t.notForSale}</span>
+                  <span className={badgeClass(onOffTone(sheet.forSale))}>{sheet.forSale ? t.forSale : t.notForSale}</span>
                 </div>
               )}
               {tab === 'run' && (

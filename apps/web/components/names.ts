@@ -72,20 +72,6 @@ export function lineStatus(t: Copy, status: string): string {
   return status;
 }
 
-/** Badge tone for a line status: active is good, frozen is a warning, disconnected is danger, suspended is neutral. */
-export function lineBadgeTone(status: string): 'success' | 'warning' | 'danger' | 'muted' {
-  if (status === 'active') return 'success';
-  if (status === 'frozen') return 'warning';
-  if (status === 'disconnected') return 'danger';
-  return 'muted';
-}
-
-/** The same tone as a `.badge` class for screens that use the plain badge. */
-export function lineBadgeClass(status: string): string {
-  const tone = lineBadgeTone(status);
-  return tone === 'success' ? 'badge' : tone === 'warning' ? 'badge pending' : tone === 'danger' ? 'badge cancelled' : 'badge muted';
-}
-
 export function taskStatus(t: Copy, status: string): string {
   if (status === 'pending') return t.pending;
   if (status === 'working') return t.working;

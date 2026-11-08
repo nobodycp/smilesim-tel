@@ -9,7 +9,7 @@ import { usePrefs } from '../lib/prefs';
 import { PageAlert } from './dialog';
 import { PageSkeleton } from './loading';
 
-export { actionName, applyNote, layerName, lineBadgeClass, lineBadgeTone, lineStatus, taskStatus } from './names';
+export { actionName, applyNote, layerName, lineStatus, taskStatus } from './names';
 
 export function Desk({
   title,

@@ -23,6 +23,7 @@ import { useAction } from '../../lib/use-action';
 import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
 import { useLoad } from '../../lib/use-load';
 import { useRequireLayer } from '../../lib/use-require-layer';
+import { accountTone } from '../../lib/status-tone';
 
 const layerOrder = ['branch', 'main_agent', 'agent', 'pos'];
 // Everyone but a point of sale; a staff account opens the desk through the branch door.
@@ -204,7 +205,7 @@ export default function UsersPage() {
       header: t.status,
       fit: true,
       render: (row) => (
-        <Badge variant={row.frozen ? 'warning' : 'success'} dot>
+        <Badge variant={accountTone(row.frozen)} dot>
           {row.frozen ? t.frozen : t.accountOpen}
         </Badge>
       ),

@@ -10,6 +10,7 @@ import type { Copy } from '../../lib/copy';
 import { usePrefs } from '../../lib/prefs';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
+import { badgeClass } from '../../lib/status-tone';
 
 const KINDS = [
   'fund', 'self_fund',
@@ -48,7 +49,7 @@ export default function FinancePage() {
           {movementName(t, row.kind)}
           {/* An eSIM sale pays the package price plus this fee in one entry; the tag explains the amount. */}
           {row.esimPrice != null && row.kind !== 'esim' && (
-            <span className="badge neutral" title={t.esimSaleTagTitle}>
+            <span className={badgeClass('muted')} title={t.esimSaleTagTitle}>
               {t.esimSaleTag}
               <Money value={row.esimPrice} />
             </span>

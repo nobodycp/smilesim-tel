@@ -8,6 +8,7 @@ import { citiesFor } from '../../lib/cities';
 import { useOffice } from '../../lib/office-session';
 import { usePageTitle } from '../../lib/page-title';
 import { usePrefs } from '../../lib/prefs';
+import { badgeClass } from '../../lib/status-tone';
 
 export default function SettingsPage() {
   const { t, apiText, locale } = usePrefs();
@@ -268,7 +269,7 @@ export default function SettingsPage() {
                   <span className="session-copy">
                     <strong title={session.userAgent}>
                       <bdi dir="ltr">{deviceLabel(session.userAgent)}</bdi>
-                      {session.current && <span className="badge">{t.currentSession}</span>}
+                      {session.current && <span className={badgeClass('success')}>{t.currentSession}</span>}
                     </strong>
                     <small className="session-meta" dir="ltr">{session.ip} · {when(session.lastSeenAt)}</small>
                   </span>

@@ -15,14 +15,9 @@ import { api } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
+import { taskTone } from '../../../lib/status-tone';
 
 const glyph = { size: 14, strokeWidth: 2.25, 'aria-hidden': true as const };
-
-function taskBadge(status: string): 'success' | 'danger' | 'warning' {
-  if (status === 'done') return 'success';
-  if (status === 'cancelled') return 'danger';
-  return 'warning';
-}
 
 type CloseMode = null | 'complete' | 'reject';
 
@@ -100,7 +95,7 @@ export default function TaskTicketPage() {
                 <div>
                   <dt>{t.taskState}</dt>
                   <dd>
-                    <Badge variant={taskBadge(task.status)} dot>
+                    <Badge variant={taskTone(task.status)} dot>
                       {taskStatus(t, task.status)}
                     </Badge>
                   </dd>

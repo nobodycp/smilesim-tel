@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import { AccountName, accountLabel } from '../../components/account-name';
 import { PagedTable, type Column } from '../../components/data-table';
 import { ActivationResult } from '../../components/activation-result';
-import { Desk, OutcomePick, applyNote, lineBadgeTone, lineStatus } from '../../components/desk';
+import { Desk, OutcomePick, applyNote, lineStatus } from '../../components/desk';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
@@ -26,6 +26,7 @@ import { useAction } from '../../lib/use-action';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
+import { lineTone } from '../../lib/status-tone';
 
 const NO_POSES: PosChoice[] = [];
 
@@ -145,7 +146,7 @@ export default function NumbersPage() {
       header: t.status,
       render: (line) => (
         <Badge
-          variant={lineBadgeTone(line.status)}
+          variant={lineTone(line.status)}
           dot
         >
           {lineStatus(t, line.status)}

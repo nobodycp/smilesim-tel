@@ -428,7 +428,7 @@
   border-radius: 50%;
   background: currentColor;
 }
-.badge.muted, .badge.neutral { background: var(--rd-surface-2); color: var(--rd-muted); }
+.badge.muted { background: var(--rd-surface-2); color: var(--rd-muted); }
 .badge.pending { background: var(--rd-warning-soft); color: var(--rd-warning); }
 .badge.cancelled { background: var(--rd-danger-soft); color: var(--rd-danger); }
 button.quiet {
