@@ -50,11 +50,11 @@ Each approved decision gets an ADR in `docs/architecture/decisions/`.
 
 ## Phase 3 — Backend domain split (spec: `docs/superpowers/specs/2026-11-08-office-domain-split.md`)
 
-Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService` delegates moved methods so existing specs guard behaviour unchanged.
+Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService` delegates moved methods so existing specs guard behaviour unchanged. **A domain with no HTTP spec gets one written against the old code first** (`<domain>.http.spec.ts` via `kernel/office-test-app.ts`), committed before the move.
 
-- [ ] 3.0 Kernel: `kernel/office-kernel.ts` (prisma + spec override, auth, notices, actor, grantsFor, accounts, visibleAccount, visibleLine, branchActor, runTx, queueNotices, publishQuietly, actorName, move, recordOp); `ActorInterceptor` + `@Actor()`; `ZodPipe`. `OfficeService` keeps one-line delegators.
-- [ ] 3.1 notices: `notices/` — list, read, SSE stream.
-- [ ] 3.2 audit: `audit/` — activity log.
+- [x] 3.0 Kernel (`73afb76`): `kernel/office-kernel.ts` (prisma + spec override, auth, notices, actor, grantsFor, accounts, visibleAccount, visibleLine, branchActor, runTx, queueNotices, publishQuietly, actorName, move, recordOp); `ActorInterceptor` + `@Actor()`; `ZodPipe`. `OfficeService` keeps one-line delegators.
+- [x] 3.1 notices: `notices/` — list, read, SSE stream. Characterized first (`notices.http.spec.ts`, `8eb99d2`), moved `b01a464`.
+- [x] 3.2 audit: `audit/` — activity log. Characterized first (`audit.http.spec.ts`), moved `aa59664`; `OfficeService.audit` is a facade.
 - [ ] 3.3 tasks: `tasks/` — list, detail, notes, take, release, complete, reject, cancel (+ openTask, handlerIds, taskNotice).
 - [ ] 3.4 wallets: `wallets/` — wallets, fund, ceiling, finance, ledger, reports, provider operations.
 - [ ] 3.5 providers + companies.
