@@ -42,7 +42,7 @@ type Choices = {
 const NOTHING: Choices = { ownPrices: '', ownStops: '', childPrices: '', childStops: '', linePrices: '' };
 
 // What `GET transfer-preview` said for one destination: what the move carries, or why it is refused.
-type Answer = { parent: string; preview: TransferPreview | null; message: string };
+type Answer = { parent: string; preview: TransferPreview | null; message: string; code?: string };
 
 // `useAction` wants a place for a success note. A move says nothing: the dialog closes and the list changes.
 const noNote = () => {};
@@ -187,7 +187,7 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
     if (!parent) return;
     let live = true;
     void api.transferPreview(row.loginName, parent).then((result) => {
-      if (live) setAnswer({ parent, preview: result.ok ? result.data : null, message: result.ok ? '' : result.message });
+      if (live) setAnswer({ parent, preview: result.ok ? result.data : null, message: result.ok ? '' : result.message, code: result.ok ? undefined : result.code });
     });
     return () => {
       live = false;
@@ -207,7 +207,7 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
   const current = answer?.parent === parent ? answer : null;
   const preview = current?.preview ?? null;
   // The server may refuse the destination now chosen; the person reads that before any choice is asked.
-  const refusal = current && !current.preview ? apiText(current.message) : '';
+  const refusal = current && !current.preview ? apiText({ message: current.message, code: current.code }) : '';
   const loading = parent !== '' && current === null;
   const request = requestOf(kind, parent, choice);
 

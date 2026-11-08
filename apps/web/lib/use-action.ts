@@ -61,7 +61,7 @@ export function useAction({ setError, setNote, onDone }: Options) {
         const result = await work();
         if (!live.current) return false;
         if (!result.ok) {
-          setError(apiText(result.message));
+          setError(apiText(result));
           return false;
         }
         if (step.note !== undefined) {

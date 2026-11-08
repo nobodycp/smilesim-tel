@@ -21,7 +21,7 @@ export default function TwoFactorPage() {
     if (!isEnroll) return;
     api.setupTwoFactor().then((result) => {
       if (result.ok) setOtpauth(result.data.otpauth);
-      else setMessage(apiText(result.message));
+      else setMessage(apiText(result));
     });
   }, [apiText]);
 
@@ -32,7 +32,7 @@ export default function TwoFactorPage() {
     const result = enrolling ? await api.confirmTwoFactor(code) : await api.verifyTwoFactor(code);
     setBusy(false);
     if (!result.ok) {
-      setMessage(apiText(result.message));
+      setMessage(apiText(result));
       return;
     }
     router.push(routeFor(result.data.next));

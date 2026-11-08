@@ -36,7 +36,7 @@ export function DisconnectConfirm({
     let live = true;
     void api.disconnectQuote(id).then((result) => {
       if (!live) return;
-      setAnswer(result.ok ? { id, quote: result.data, error: '' } : { id, quote: null, error: apiText(result.message) });
+      setAnswer(result.ok ? { id, quote: result.data, error: '' } : { id, quote: null, error: apiText(result) });
     });
     return () => {
       live = false;

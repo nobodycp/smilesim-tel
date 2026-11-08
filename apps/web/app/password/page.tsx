@@ -21,7 +21,7 @@ export default function PasswordPage() {
     const result = await api.changePassword(password, nextPassword);
     setBusy(false);
     if (!result.ok) {
-      setMessage(apiText(result.message));
+      setMessage(apiText(result));
       return;
     }
     router.push(routeFor(result.data.next));

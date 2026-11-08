@@ -17,7 +17,7 @@ import { usePaged } from '../../lib/use-paged';
 const GROUPS = ['tasks', 'wallet', 'announcements'] as const;
 
 export default function NoticesPage() {
-  const { t } = usePrefs();
+  const { t, apiText } = usePrefs();
   const router = useRouter();
   const [group, setGroup] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -42,7 +42,7 @@ export default function NoticesPage() {
     if (!row.read) {
       const result = await api.readNotices(row.id);
       if (!result.ok) {
-        setError(result.message);
+        setError(apiText(result));
         return;
       }
     }
@@ -52,7 +52,7 @@ export default function NoticesPage() {
   async function markAll() {
     const result = await api.readNotices();
     if (!result.ok) {
-      setError(result.message);
+      setError(apiText(result));
       return;
     }
     await list.reload();

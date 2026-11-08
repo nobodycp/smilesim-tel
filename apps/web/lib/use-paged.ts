@@ -61,7 +61,7 @@ export function usePaged<Row, Extra = undefined>(
     const result = await ask(null);
     if (!live.current || mine !== ticket.current) return;
     if (!result.ok) {
-      setError(apiText(result.message));
+      setError(apiText(result));
       keep({ key: asked, chunks: [{ rows: [], next: null }], total: 0 });
       return;
     }
@@ -103,7 +103,7 @@ export function usePaged<Row, Extra = undefined>(
     setMore(false);
     if (mine !== ticket.current) return false;
     if (!result.ok) {
-      setError(apiText(result.message));
+      setError(apiText(result));
       return false;
     }
     const now = shelf.current;

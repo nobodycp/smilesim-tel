@@ -30,13 +30,13 @@ export default function SettingsPage() {
   const loadSessions = useCallback(async () => {
     const result = await api.listSessions();
     if (result.ok) setSessions(result.data.sessions);
-    else setError(apiText(result.message));
+    else setError(apiText(result));
   }, [apiText]);
 
   const loadProfile = useCallback(async () => {
     const result = await api.getProfile();
     if (!result.ok) {
-      setError(apiText(result.message));
+      setError(apiText(result));
       return;
     }
     setLoginName(result.data.loginName);
@@ -57,7 +57,7 @@ export default function SettingsPage() {
     setNote('');
     const result = await api.updateProfile(patch);
     if (!result.ok) {
-      setError(apiText(result.message));
+      setError(apiText(result));
       return false;
     }
     setNickname(result.data.nickname ?? '');
@@ -104,7 +104,7 @@ export default function SettingsPage() {
     setNote('');
     const result = await api.setupTwoFactor();
     if (!result.ok) {
-      setError(apiText(result.message));
+      setError(apiText(result));
       return;
     }
     setTwoFactorCode('');
@@ -117,7 +117,7 @@ export default function SettingsPage() {
     setNote('');
     const result = await api.confirmTwoFactor(twoFactorCode);
     if (!result.ok) {
-      setError(apiText(result.message));
+      setError(apiText(result));
       return;
     }
     setOtpauth('');
@@ -129,7 +129,7 @@ export default function SettingsPage() {
     setError('');
     const result = await api.revokeSession(id);
     if (!result.ok) {
-      setError(apiText(result.message));
+      setError(apiText(result));
       return;
     }
     await loadSessions();
