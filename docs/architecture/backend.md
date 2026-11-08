@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-08 (commit `75cbcaf`). tsc clean, lint clean, jest 428/429 (one timeout in `esim-ops.spec.ts:280`).
+Last verified: 2026-11-08 (branch `refactor/phase-1`). tsc clean, lint clean, jest 429/429 in ~29 s (+2 opt-in DB tests).
 
 ## Stack
 
@@ -52,7 +52,7 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 - **Errors:** `fail(status, code)` throws `OfficeFailure`; the controller's private `run()` (`office.controller.ts:~1139`) maps it to `{ message, code }` and records the activity event. Not a Nest exception filter.
 - **Validation:** `office.dto.ts` is Swagger-only (all optional). Bodies are `unknown` and parsed by hand in the service.
 - **Persistence:** the service builds its own Prisma client (not injected). `runTx` = `$transaction` at Read Committed.
-- **Money:** Int agorot. `move()` (`office.service.ts:~3715`) reads the wallet, then writes an absolute balance — **lost-update race**, ceiling check races too.
+- **Money:** Int agorot. `move()` (`office.service.ts:~3715`) locks the wallet row (`SELECT … FOR UPDATE`) before reading it, so the ceiling check and the absolute write are serialised per wallet (ADR 0004). Proof: `wallet-concurrency.db.spec.ts` (opt-in, `TEST_DATABASE_URL`).
 - **Visibility:** `accounts()` (`~3457`) loads all users and then filters in memory.
 - **Seeding:** `ensureCatalog` runs in `onModuleInit` on every start.
 
@@ -63,7 +63,7 @@ Status/kind/layer fields are `String` (no enums). Missing indexes: `Line.status/
 
 ## Tests
 
-37 suites. Pure rule specs + service specs on an in-memory fixture (`tree-fixture.ts`) + supertest HTTP specs for auth and branding. Gaps: no office HTTP permission matrix, no wallet concurrency test, no coverage gate.
+38 suites (one opt-in DB spec). Spec passwords hashed once per file via `office/test-hash.ts`. Pure rule specs + service specs on an in-memory fixture (`tree-fixture.ts`) + supertest HTTP specs for auth and branding. Gaps: no office HTTP permission matrix, DB spec not in CI yet, no coverage gate.
 
 ## Target shape (refactor plan)
 

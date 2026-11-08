@@ -24,20 +24,20 @@ Put the existing code on a clear, layered structure so new features land in obvi
 
 Each approved decision gets an ADR in `docs/architecture/decisions/`.
 
-## Phase 0 — Foundation (docs + baseline) ✅ partly done
+## Phase 0 — Foundation (docs + baseline) ✅
 
 - [x] `CLAUDE.md`, `docs/architecture/frontend.md`, `docs/architecture/backend.md`, README version fix.
-- [ ] 0.1 Fix the slow `esim-ops.spec.ts:280` (timeout) so the suite is green. Files: `apps/api/src/modules/office/esim-ops.spec.ts`.
+- [x] 0.1 Slow specs: argon2 hashed once per file (`office/test-hash.ts`); suite 74 s → 29 s, 429/429. `3eba271`
 - [x] 0.2 ADRs: `docs/architecture/decisions/0001`–`0005`.
 
-## Phase 1 — Critical fixes (small, independent, high value)
+## Phase 1 — Critical fixes (small, independent, high value) ✅
 
-- [ ] 1.1 Dialog focus jump: keep `onClose` in a ref, effect depends on `open` only. `components/dialog.tsx`; drop the workaround in `numbers/[id]/page.tsx`. Verify typing in users create/fund dialogs.
-- [ ] 1.2 Wallet race (D4): atomic balance update + ceiling check in one statement; concurrency spec against Postgres (docker). `office.service.ts` `move()`.
-- [ ] 1.3 Topbar balance: refresh `me` after any money mutation (interim, before Query). `lib/office-session.tsx`, `lib/use-action.ts`.
-- [ ] 1.4 Logout navigates explicitly with `router.replace('/login')` even if revoke fails. `components/office-shell.tsx`.
-- [ ] 1.5 `useLoad` resets data on deps change. `lib/use-load.ts`.
-- [ ] 1.6 Provider sheet: stop overwriting drafts; read all line pages. `app/providers/[code]/[packageCode]/page.tsx`.
+- [x] 1.1 Dialog focus jump: `onClose` read through a ref; effect depends on `open`. Test `tests/dialog-focus.spec.ts` (fails before, passes after). `5649ba8`
+- [x] 1.2 Wallet race (D4): `SELECT … FOR UPDATE` in `move()`. `wallet-concurrency.db.spec.ts` on Postgres: before 950/1000 left after 10×50 (9 lost) and 15/15 past the ceiling; after 500 and 10/15. `4d5b03c`, `798e5af`
+- [x] 1.3 Topbar balance: `useAction` refreshes `me` after every successful write. Test `tests/topbar-balance.spec.ts`. `53ae15b`
+- [x] 1.4 Logout: revoke, then forget identity and `location.replace('/login')`; a failed revoke stays signed in. Test `tests/logout.spec.ts`. `ad473c7`
+- [x] 1.5 `useLoad` stale record — dropped: not reproducible (App Router remounts on a new dynamic segment; checked with a Playwright test). Covered by ADR 0001.
+- [x] 1.6 Provider sheet: untouched fields follow the server, typed ones keep their draft; numbers tab reads every cursor page. Test `tests/package-sheet-drafts.spec.ts`. `9dbbe67`
 
 ## Phase 2 — Backend kernel
 
@@ -46,6 +46,7 @@ Each approved decision gets an ADR in `docs/architecture/decisions/`.
 - [ ] 2.3 `ActorGuard` + `@Actor()` param decorator + `@RequireGrant()` / `@RequireLayer()`; actor and visible accounts cached per request. Same output as `actor()`.
 - [ ] 2.4 `ZodPipe` (D2) + schemas, route group by route group.
 - [ ] 2.5 Login-failure counter to Redis. `auth.store.ts`.
+- [ ] 2.6 CI: a `postgres:16` service job that runs `prisma migrate deploy` and the `*.db.spec.ts` specs with `TEST_DATABASE_URL`. `.github/workflows/ci.yml`.
 
 ## Phase 3 — Backend domain split (one module per slice, tests green after each)
 

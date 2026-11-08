@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (commit `75cbcaf`). tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 1). tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -27,7 +27,7 @@ Next.js 16 (App Router) · React 19 · Tailwind 3 (preflight off, used only in `
 
 ## State and data
 
-- **Session:** `OfficeSession` fetches `/office/me` once (backoff), then `/office/directory`. Name/balance cookies seed the shell for SSR. `refresh()` only called from settings → topbar balance goes stale after money ops.
+- **Session:** `OfficeSession` fetches `/office/me` once (backoff), then `/office/directory`. Name/balance cookies seed the shell for SSR. `refresh()` re-reads `me` (and the balance cookie); `useAction` calls it after every successful write.
 - **Fetching:** `useLoad` (single resource), `usePaged` (cursor book), `useAction` (mutation + reload). No shared cache, no keep-previous, no invalidation; each page owns error/note `useState`.
 - **Prefs:** locale, theme, page size via `useSyncExternalStore` over `document.cookie`.
 - **i18n:** API errors are translated from the Arabic **message** (the `code` is dropped in `Fetched`).
@@ -39,13 +39,13 @@ Tokens in `app/styles/tokens.css` (`--rd-*` colours/shadows/one radius + undocum
 
 ## Known defects (audit 2026-11-08, fix plan in `docs/superpowers/plans/2026-11-08-architecture-refactor.md`)
 
-1. `components/dialog.tsx:108` effect depends on `onClose` → focus jumps on every keystroke in dialogs with inline `onClose`.
-2. Topbar balance stale after fund/charge/activate (`lib/office-session.tsx`).
-3. `providers/[code]/[packageCode]/page.tsx:125` reload overwrites unsaved drafts; `:76` uses first cursor page only.
-4. `lib/use-load.ts:46-64` keeps the previous record after a param change.
+1. ~~Dialog focus jumps on every keystroke~~ — fixed `5649ba8` (`onClose` via ref).
+2. ~~Topbar balance stale after money ops~~ — fixed `53ae15b` (`useAction` refreshes `me`; interim until ADR 0001).
+3. ~~Provider sheet overwrote drafts / read one page of lines~~ — fixed `9dbbe67` (`follow()` per field, `packageLines()` reads all pages).
+4. ~~`lib/use-load.ts` keeps the previous record after a param change~~ — not reproducible: App Router remounts a page when its dynamic segment changes, and the only in-component deps (`line-prices-dialog`) mount per opening. Theoretical only; goes away with ADR 0001.
 5. Refetch storms (`numbers/[id]` action reload, shell search loads all users per keystroke).
 6. Paged tables blank on mutation/filter change (`data-table.tsx:244`, `use-paged.ts:86`).
-7. Logout relies on a 401 side effect (`office-shell.tsx:138`); several in-app links do full reloads.
+7. ~~Logout relied on a 401 side effect~~ — fixed `ad473c7`. Still open: several in-app links do full reloads (`office-shell.tsx` notices/leave, `users` enter).
 8. No `error.tsx` / `loading.tsx` / `not-found.tsx`.
 9. a11y: closed drawer focusable, topbar menus no Escape, `RowMenu` keys by label.
 10. `/users` unpaged, client-side filtering; `DataTable` sorts by rendering cells.
