@@ -5,11 +5,12 @@ import { useParams } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk } from '../../../components/desk';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 import { api } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { useLoad } from '../../../lib/use-load';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
@@ -33,9 +34,9 @@ export default function ProviderPackagesPage() {
   const [note, setNote] = useState('');
   const [priceDraft, setPriceDraft] = useState<string | null>(null);
   const allowed = useRequireLayer(BRANCH);
-  const providers = useLoad(() => api.officeProviders(), [], { enabled: allowed });
-  const shelf = useLoad(() => api.officeCompanies(), [], { enabled: allowed });
-  const settings = useLoad(() => api.providerSettings(params.code), [params.code], { enabled: allowed });
+  const providers = useApiQuery(sharedKeys.providers, () => api.officeProviders(), { enabled: allowed });
+  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
+  const settings = useApiQuery(sharedKeys.providerSettings(params.code), () => api.providerSettings(params.code), { enabled: allowed });
   const { run } = useAction({ setError, setNote, onDone: settings.reload });
   const provider = providers.data?.providers.find((row) => row.code === params.code) ?? null;
   const named = shelf.data?.companies

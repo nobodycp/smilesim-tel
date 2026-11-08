@@ -9,11 +9,12 @@ import { EsimDialog, EsimMark, QrPicker } from '../../../components/esim-qr';
 import { TableSkeleton } from '../../../components/loading';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 import { api } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
-import { useLoad } from '../../../lib/use-load';
 
 const glyph = { size: 14, strokeWidth: 2.25, 'aria-hidden': true as const };
 
@@ -44,7 +45,7 @@ export default function TaskTicketPage() {
   const [closeNumber, setCloseNumber] = useState('');
   const [qrOpen, setQrOpen] = useState(false);
 
-  const card = useLoad(async () => api.officeTask(params.id), [params.id]);
+  const card = useApiQuery(sharedKeys.task(params.id), () => api.officeTask(params.id));
   const task = card.data?.task ?? null;
   const events = card.data?.events ?? [];
   // What closing this task hands back: an eSIM request needs the serial and the QR, a number change needs the number.

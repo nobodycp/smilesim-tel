@@ -6,11 +6,12 @@ import { useRef, useState, type ChangeEvent } from 'react';
 import { DataTable, type Column } from '../../components/data-table';
 import { Desk } from '../../components/desk';
 import { RowMenu } from '../../components/row-menu';
+import { useApiQuery } from '../../lib/use-api-query';
+import { sharedKeys } from '../../lib/query';
 import { api, type Shelf } from '../../lib/api';
 import { hueOf, markOf, compactImage } from '../../lib/company-mark';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
-import { useLoad } from '../../lib/use-load';
 import { useRequireLayer } from '../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
@@ -33,7 +34,7 @@ export default function CompaniesPage() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const allowed = useRequireLayer(BRANCH);
-  const shelf = useLoad(() => api.officeCompanies(), [], { enabled: allowed });
+  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
   const { run } = useAction({ setError, setNote, onDone: shelf.reload });
 
   async function onImage(event: ChangeEvent<HTMLInputElement>) {

@@ -12,11 +12,12 @@ import { PriceField } from '../../../components/price-field';
 import { RowMenu, type RowAction } from '../../../components/row-menu';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 import { api, type UserPackageRow } from '../../../lib/api';
 import { parseShekel } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { useLoad } from '../../../lib/use-load';
 
 type Bulk = { hidden: boolean; codes: string[] } | null;
 
@@ -40,7 +41,7 @@ export function UserPackagesTab({
   const [company, setCompany] = useState('');
   const [bulk, setBulk] = useState<Bulk>(null);
   const [pricing, setPricing] = useState<UserPackageRow | null>(null);
-  const sheet = useLoad(() => api.userPackages(login), [login]);
+  const sheet = useApiQuery(sharedKeys.accountPackages(login), () => api.userPackages(login));
   const { run, busy } = useAction({ setError, setNote, onDone: sheet.reload });
 
   const companies = (sheet.data?.companies ?? [])

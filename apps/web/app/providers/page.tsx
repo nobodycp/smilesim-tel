@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { DataTable, type Column } from '../../components/data-table';
 import { Desk } from '../../components/desk';
+import { useApiQuery } from '../../lib/use-api-query';
+import { sharedKeys } from '../../lib/query';
 import { api, type ProviderRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
-import { useLoad } from '../../lib/use-load';
 import { useRequireLayer } from '../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
@@ -13,8 +14,8 @@ const BRANCH = ['branch'];
 export default function ProvidersPage() {
   const { t } = usePrefs();
   const allowed = useRequireLayer(BRANCH);
-  const providers = useLoad(() => api.officeProviders(), [], { enabled: allowed });
-  const shelf = useLoad(() => api.officeCompanies(), [], { enabled: allowed });
+  const providers = useApiQuery(sharedKeys.providers, () => api.officeProviders(), { enabled: allowed });
+  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
 
   function census(code: string) {
     const packages = (shelf.data?.companies ?? []).flatMap((company) => (

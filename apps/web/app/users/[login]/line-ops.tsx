@@ -5,11 +5,12 @@ import type { ComponentType } from 'react';
 import { EmptyState } from '../../../components/empty-state';
 import { LiveSwitch } from '../../../components/live-switch';
 import { TableSkeleton } from '../../../components/loading';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 import { api } from '../../../lib/api';
 import { OP_KEYS, opDescription, opLabel, type OpKey } from '../../../lib/ops';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { useLoad } from '../../../lib/use-load';
 
 const ICONS: Record<OpKey, ComponentType<{ 'aria-hidden'?: boolean | 'true' }>> = {
   activate: Power,
@@ -37,7 +38,7 @@ export function UserOpsTab({
   setNote: (text: string) => void;
 }) {
   const { t } = usePrefs();
-  const ops = useLoad(() => api.userOps(login), [login]);
+  const ops = useApiQuery(sharedKeys.accountOps(login), () => api.userOps(login));
   const { run, busy } = useAction({ setError, setNote, onDone: ops.reload });
   const denied = new Set(ops.data?.denied ?? []);
   const above = new Map((ops.data?.deniedAbove ?? []).map((item) => [item.op, item.login]));

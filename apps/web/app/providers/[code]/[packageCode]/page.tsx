@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccountName, accountLabel } from '../../../../components/account-name';
 import { DataTable, type Column } from '../../../../components/data-table';
 import { Desk, Money, layerName, lineBadgeClass, lineStatus } from '../../../../components/desk';
@@ -15,7 +15,10 @@ import { api, type CustomPriceRow, type LineRow, type Shelf } from '../../../../
 import { formatShekel, parseShekel, shekelField } from '../../../../lib/money';
 import { usePrefs } from '../../../../lib/prefs';
 import { useAction } from '../../../../lib/use-action';
-import { useLoad, type Fetched } from '../../../../lib/use-load';
+import { type Fetched } from '../../../../lib/use-load';
+import { useApiQuery } from '../../../../lib/use-api-query';
+import { packageKeys, sharedKeys } from '../../../../lib/query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRequireLayer } from '../../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
@@ -91,32 +94,35 @@ export default function PackageSheetPage() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const allowed = useRequireLayer(BRANCH);
-  const card = useLoad(
-    async () => {
-      const [found, accounts, shelf, lines, customPrices] = await Promise.all([
-        api.packageSheet(params.packageCode),
-        api.officeUsers(),
-        api.officeCompanies(),
-        packageLines(params.packageCode),
-        api.customPrices(params.packageCode),
-      ]);
-      if (!found.ok) return found;
-      if (!shelf.ok) return shelf;
-      if (!lines.ok) return lines;
-      return {
-        ok: true as const,
-        data: {
-          sheet: found.data,
-          shelf: shelf.data,
-          lines: lines.data.filter((line) => line.packageCode === params.packageCode),
-          users: accounts.ok ? accounts.data.users.filter((row) => row.layer !== 'branch') : [],
-          customPrices: customPrices.ok ? customPrices.data : [],
-        },
-      };
-    },
-    [params.packageCode],
-    { enabled: allowed },
+  // Five reads, cached apart (ADR 0001). The sheet, its numbers and its custom prices belong to this package and are
+  // asked again after an action here; the companies shelf and the accounts are shared with other screens and stay.
+  const code = params.packageCode;
+  const sheetRead = useApiQuery(packageKeys.sheet(code), () => api.packageSheet(code), { enabled: allowed });
+  const linesRead = useApiQuery(packageKeys.lines(code), () => packageLines(code), { enabled: allowed });
+  const pricesRead = useApiQuery(packageKeys.customPrices(code), () => api.customPrices(code), { enabled: allowed });
+  const shelfRead = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
+  const usersRead = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: allowed });
+  const cardData = useMemo(
+    () =>
+      sheetRead.data && shelfRead.data && linesRead.data
+        ? {
+            sheet: sheetRead.data,
+            shelf: shelfRead.data,
+            lines: linesRead.data.filter((line) => line.packageCode === code),
+            users: (usersRead.data?.users ?? []).filter((row) => row.layer !== 'branch'),
+            customPrices: pricesRead.data ?? [],
+          }
+        : null,
+    [sheetRead.data, shelfRead.data, linesRead.data, usersRead.data, pricesRead.data, code],
   );
+  const client = useQueryClient();
+  const card = {
+    loaded: sheetRead.loaded && linesRead.loaded && shelfRead.loaded && pricesRead.loaded && usersRead.loaded,
+    // The custom prices and the accounts are helpers: without them the sheet still shows.
+    error: sheetRead.error || shelfRead.error || linesRead.error,
+    data: cardData,
+    reload: () => client.invalidateQueries({ queryKey: packageKeys.all(code) }),
+  };
   const sheet = card.data?.sheet ?? null;
   const users = card.data?.users ?? [];
   // The layer column the picked account would pay without a custom price; the pos column until one is picked.

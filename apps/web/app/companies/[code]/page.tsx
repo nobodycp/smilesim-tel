@@ -5,13 +5,14 @@ import { useParams } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk } from '../../../components/desk';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 import { api, type Shelf, type SimRules } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simShape } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
-import { useLoad } from '../../../lib/use-load';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
@@ -37,7 +38,7 @@ export default function CompanyPage() {
   const [edited, setEdited] = useState<Draft | null>(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const shelf = useLoad(() => api.officeCompanies(), [], { enabled: allowed });
+  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
   const { run, busy } = useAction({ setError, setNote, onDone: shelf.reload });
   const company = shelf.data?.companies.find((item) => item.code === params.code) ?? null;
   const canEdit = Boolean(me?.isBranchOwner || me?.grants?.includes('edit'));

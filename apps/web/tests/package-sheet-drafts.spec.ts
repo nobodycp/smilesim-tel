@@ -66,3 +66,28 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
   await page.getByRole('tab', { name: 'الأرقام' }).click();
   await expect(page.locator('.data tbody tr')).toHaveCount(3);
 });
+
+// An action on the sheet asks again for what belongs to this package, not the shared shelf and accounts.
+test('a mode change re-reads the sheet, its numbers and its custom prices, not the companies or the accounts', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const calls = await serveOffice(page, 'branch', {
+    'GET /packages/lian-wecom-500/sheet': () => ({ body: base }),
+    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
+    'PATCH /packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
+    'GET /users': () => ({ body: { users: [] } }),
+    'GET /companies': () => ({ body: { companies: [] } }),
+    'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null, total: 0 } }),
+  });
+  await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
+  await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();
+  const count = (key: string) => calls.filter((call) => call.startsWith(key)).length;
+  const keys = ['GET /packages/lian-wecom-500/sheet', 'GET /lines', 'GET /packages/lian-wecom-500/custom-prices', 'GET /users', 'GET /companies'];
+  const before = Object.fromEntries(keys.map((key) => [key, count(key)]));
+  await page.getByLabel('التشغيل شحن').selectOption('manual');
+  await expect.poll(() => count('GET /packages/lian-wecom-500/sheet')).toBe(before['GET /packages/lian-wecom-500/sheet'] + 1);
+  await expect.poll(() => count('GET /lines')).toBe(before['GET /lines'] + 1);
+  await expect.poll(() => count('GET /packages/lian-wecom-500/custom-prices')).toBe(before['GET /packages/lian-wecom-500/custom-prices'] + 1);
+  await page.waitForTimeout(300);
+  expect(count('GET /users')).toBe(before['GET /users']);
+  expect(count('GET /companies')).toBe(before['GET /companies']);
+});

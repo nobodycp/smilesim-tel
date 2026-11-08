@@ -56,5 +56,20 @@ export const queryKeys = {
 export const sharedKeys = {
   packages: ['office', 'packages'] as const,
   users: ['office', 'users'] as const,
+  companies: ['office', 'companies'] as const,
+  providers: ['office', 'providers'] as const,
+  task: (id: string) => ['office', 'task', id] as const,
+  account: (login: string) => ['office', 'account', login] as const,
+  accountPackages: (login: string) => ['office', 'account', login, 'packages'] as const,
+  accountOps: (login: string) => ['office', 'account', login, 'ops'] as const,
+  providerSettings: (code: string) => ['office', 'provider', code, 'settings'] as const,
   line: (id: string) => ['office', 'line', id] as const,
+};
+
+/** Reads that belong to one package's sheet; an action on the sheet asks for these again. */
+export const packageKeys = {
+  sheet: (code: string) => ['office', 'package', code, 'sheet'] as const,
+  lines: (code: string) => ['office', 'package', code, 'lines'] as const,
+  customPrices: (code: string) => ['office', 'package', code, 'custom-prices'] as const,
+  all: (code: string) => ['office', 'package', code] as const,
 };

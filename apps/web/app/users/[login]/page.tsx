@@ -7,11 +7,12 @@ import { AccountName } from '../../../components/account-name';
 import { Desk, layerName } from '../../../components/desk';
 import { TableSkeleton } from '../../../components/loading';
 import { Button } from '../../../components/ui/button';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 import { api } from '../../../lib/api';
 import { GRANT_CODES, grantLabel } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { useLoad } from '../../../lib/use-load';
 import { useOffice } from '../../../lib/office-session';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { UserOpsTab } from './line-ops';
@@ -49,7 +50,7 @@ export default function AccountPage() {
   const [roleId, setRoleId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const account = useLoad(() => api.officeAccount(params.login), [params.login], { enabled: allowed });
+  const account = useApiQuery(sharedKeys.account(params.login), () => api.officeAccount(params.login), { enabled: allowed });
   const row = account.data;
   const picked = choices ?? Object.fromEntries(GRANT_CODES.map((code) => {
     if (row?.deniedGrants.includes(code)) return [code, 'deny'];

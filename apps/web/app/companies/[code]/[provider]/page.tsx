@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { DataTable, type Column } from '../../../../components/data-table';
 import { Desk } from '../../../../components/desk';
+import { useApiQuery } from '../../../../lib/use-api-query';
+import { sharedKeys } from '../../../../lib/query';
 import { api, type Shelf } from '../../../../lib/api';
 import { usePrefs } from '../../../../lib/prefs';
-import { useLoad } from '../../../../lib/use-load';
 import { useRequireLayer } from '../../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
@@ -16,7 +17,7 @@ export default function CompanyPackagesPage() {
   const { t } = usePrefs();
   const params = useParams<{ code: string; provider: string }>();
   const allowed = useRequireLayer(BRANCH);
-  const shelf = useLoad(() => api.officeCompanies(), [], { enabled: allowed });
+  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
   const company = shelf.data?.companies.find((item) => item.code === params.code) ?? null;
   const provider = company?.providers.find((item) => item.code === params.provider) ?? null;
   const columns: Column<ShelfPackage>[] = [
