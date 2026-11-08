@@ -18,7 +18,7 @@ const invalid = (run: () => unknown) => {
 // The schemas accept and refuse what the hand-written checks did (`positive`, `nonNegative`, the note rule).
 describe('wallet schemas', () => {
   it.each([1, 250, 100_000_000])('a fund of %p agorot passes', (amount) => {
-    expect(parseInput(FundBody, { amount, note: '  rent ' })).toEqual({ amount, note: 'rent' });
+    expect(parseInput(FundBody, { amount, note: '  rent ' })).toEqual({ amount, note: 'rent', reason: 'deposit' });
   });
 
   it.each([0, -5, 1.5, 100_000_001, '100', null, undefined, Number.NaN, Number.POSITIVE_INFINITY])('a fund of %p is INVALID', (amount) => {
@@ -26,7 +26,7 @@ describe('wallet schemas', () => {
   });
 
   it.each([undefined, 42, { text: 'x' }])('a note that is not text (%p) counts as no note', (note) => {
-    expect(parseInput(FundBody, { amount: 10, note })).toEqual({ amount: 10, note: '' });
+    expect(parseInput(FundBody, { amount: 10, note })).toEqual({ amount: 10, note: '', reason: 'deposit' });
   });
 
   it('a body that is not an object is INVALID, and a missing body is an empty one', () => {

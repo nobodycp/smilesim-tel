@@ -107,6 +107,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/users/LOGIN1/transfer-preview', 'ynyyyn'],
   ['GET /office/wallets', 'yyyyyy'], // read/accounting not checked (see spec)
   ['PATCH /office/wallets/LOGIN1/ceiling', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['POST /office/wallets/LOGIN1/deduct', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /office/wallets/LOGIN1/fund', 'yyyyyy'], // read/accounting not checked (see spec)
 ];
 

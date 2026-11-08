@@ -7,7 +7,7 @@ import { feedPosition } from '../kernel/feed';
 import type { Actor } from '../kernel/types';
 import { FEED_PAGE, NEWEST_FIRST, afterFeed, encodeFeedCursor, mergeFeed } from '../office-paging';
 import { visibleAccountIds } from '../office-rules';
-import { CeilingBody, FundBody } from '../wallet.schemas';
+import { CeilingBody, DeductBody, FundBody } from '../wallet.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 import { ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../profit-ladder';
@@ -43,7 +43,7 @@ export class WalletsService {
   }
 
   async fund(actor: Actor, loginName: string, body: unknown) {
-    const { amount, note } = parseInput(FundBody, body);
+    const { amount, note, reason } = parseInput(FundBody, body);
     const accounts = await this.kernel.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target) fail(404, 'NOT_FOUND');
@@ -57,14 +57,39 @@ export class WalletsService {
       fail(403, 'FORBIDDEN');
     }
     await this.kernel.runTx(async (tx) => {
-      if (!self) await this.kernel.move(tx, actor.id, -amount, actor.operatorId, 'fund', note);
-      await this.kernel.move(tx, target.id, amount, actor.operatorId, self ? 'self_fund' : 'fund', note);
+      if (!self) await this.kernel.move(tx, actor.id, -amount, actor.operatorId, 'fund', note, undefined, reason);
+      await this.kernel.move(tx, target.id, amount, actor.operatorId, self ? 'self_fund' : 'fund', note, undefined, reason);
       if (!self) {
         this.kernel.queueNotices(tx, await this.kernel.notice.write(tx, [target.id], actor, {
           kind: 'fund.received',
           payload: { amount, senderName: actor.nickname, note },
         }));
       }
+    });
+    return { ok: true };
+  }
+
+  /**
+   * Takes money back from a child (roadmap N6): a return, a correction or a settlement, always with a note. The same
+   * accounts that may fund it may take back: the branch any account below it, everyone else a direct child. The
+   * child's wallet goes down (`deduct`, within its ceiling) and the parent's up by the same amount (`deduct_in`).
+   */
+  async deduct(actor: Actor, loginName: string, body: unknown) {
+    const { amount, note, reason } = parseInput(DeductBody, body);
+    if (!note) fail(400, 'NOTE_REQUIRED');
+    const accounts = await this.kernel.accounts();
+    const target = accounts.find((account) => account.loginName === loginName);
+    if (!target) fail(404, 'NOT_FOUND');
+    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
+    if (!visible.has(target.id) || target.id === actor.id) fail(403, 'FORBIDDEN');
+    if (actor.layer !== 'branch' && target.parentId !== actor.id) fail(403, 'FORBIDDEN');
+    await this.kernel.runTx(async (tx) => {
+      await this.kernel.move(tx, target.id, -amount, actor.operatorId, 'deduct', note, undefined, reason);
+      await this.kernel.move(tx, actor.id, amount, actor.operatorId, 'deduct_in', note, undefined, reason);
+      this.kernel.queueNotices(tx, await this.kernel.notice.write(tx, [target.id], actor, {
+        kind: 'fund.deducted',
+        payload: { amount, senderName: actor.nickname, note, reason },
+      }));
     });
     return { ok: true };
   }
@@ -80,7 +105,7 @@ export class WalletsService {
 
   async ledger(actor: Actor, scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string }) {
     const operationKinds = PROVIDER_OPERATION_KINDS;
-    const auditKinds = [...operationKinds, 'fund', 'self_fund'];
+    const auditKinds = [...operationKinds, 'fund', 'self_fund', 'deduct', 'deduct_in'];
     if (scope !== 'operations' && scope !== 'audit') fail(404, 'NOT_FOUND');
     const allowed = scope === 'operations' ? operationKinds : auditKinds;
     const kind = query.kind && allowed.includes(query.kind) ? query.kind : '';
@@ -216,7 +241,8 @@ export class WalletsService {
     const digits = needle.replace(/\s/g, '');
     return {
       ...(actor.layer === 'branch' ? {} : { userId: { in: visible } }),
-      amount: { not: 0 },
+      // Money movements, and the holds and releases of open tasks, which move no money but change what is spendable.
+      AND: [{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }],
       ...(query.kind ? { kind: query.kind } : {}),
       ...(query.layer ? { user: { layer: query.layer } } : {}),
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
@@ -366,7 +392,7 @@ export class WalletsService {
     const margins = await this.marginsFor(actor, sold);
     const profit = [...margins.values()].reduce((sum: number, value) => sum + (value ?? 0), 0);
     const sales = sold.filter((row) => row.amount < 0).length;
-    return { balance, ceiling: wallet?.ceiling ?? 0, unlimited: actor.layer === 'branch', profit, sales, ...walletSummary(entries, balance, now) };
+    return { balance, ceiling: wallet?.ceiling ?? 0, held: wallet?.held ?? 0, unlimited: actor.layer === 'branch', profit, sales, ...walletSummary(entries, balance, now) };
   }
 
   /** The ledger with the page's filters as a CSV, newest first, at most 10,000 rows. */
@@ -398,10 +424,8 @@ export class WalletsService {
     const where = await this.financeWhere(actor, query);
     const [rows, total] = await Promise.all([
       this.kernel.prisma.walletEntry.findMany({
-        where: {
-          ...where,
-          ...(position ? { AND: [{ OR: [{ createdAt: { lt: position.at } }, { createdAt: position.at, id: { lt: position.id } }] }] } : {}),
-        },
+        // The page cursor joins the ledger filter instead of replacing its own conditions.
+        where: position ? { AND: [where, { OR: [{ createdAt: { lt: position.at } }, { createdAt: position.at, id: { lt: position.id } }] }] } : where,
         include: { user: true, actor: true },
         orderBy: [...NEWEST_FIRST],
         take: FEED_PAGE + 1,
@@ -425,6 +449,9 @@ export class WalletsService {
         amount: row.amount,
         balanceBefore: row.balanceAfter - row.amount,
         balanceAfter: row.balanceAfter,
+        /** Why a manual movement was made; and for a hold or release, the amount held or freed. */
+        reason: row.reason ?? null,
+        held: row.held ?? null,
         msisdn: row.msisdn ?? '',
         companyName: row.companyName ?? '',
         packageName: row.packageName ?? '',

@@ -6,6 +6,7 @@ import { Dialog } from '../../components/dialog';
 import type { RowAction } from '../../components/row-menu';
 import { TransferDialog } from '../../components/transfer-dialog';
 import { Button } from '../../components/ui/button';
+import { Select } from '../../components/ui/select';
 import { api, type UserRow } from '../../lib/api';
 import { parseShekel, shekelField } from '../../lib/money';
 import { useOffice } from '../../lib/office-session';
@@ -15,7 +16,9 @@ import { reloadAt } from '../../lib/reload-at';
 import { useAction } from '../../lib/use-action';
 import { useApiQuery } from '../../lib/use-api-query';
 
-export type AccountOp = 'fund' | 'ceiling' | 'password' | 'freeze' | 'enter' | 'delete';
+export type AccountOp = 'fund' | 'deduct' | 'ceiling' | 'password' | 'freeze' | 'enter' | 'delete';
+type FundReason = 'deposit' | 'correction' | 'settlement';
+type DeductReason = 'return' | 'correction' | 'settlement';
 
 /**
  * What the signed-in account may do to one listed account, and the dialogs that do it: fund, ceiling, password,
@@ -40,6 +43,8 @@ export function useAccountActions({
   const [op, setOp] = useState<{ row: UserRow; kind: AccountOp } | null>(null);
   const [amount, setAmount] = useState('');
   const [fundNote, setFundNote] = useState('');
+  const [fundReason, setFundReason] = useState<FundReason>('deposit');
+  const [deductReason, setDeductReason] = useState<DeductReason>('return');
   const [ceiling, setCeiling] = useState('');
   const [password, setPassword] = useState('');
   const [moving, setMoving] = useState<UserRow | null>(null);
@@ -71,6 +76,8 @@ export function useAccountActions({
     setError('');
     setAmount('');
     setFundNote('');
+    setFundReason('deposit');
+    setDeductReason('return');
     setPassword('');
     setCeiling(shekelField(row.ceiling));
     setOp({ row, kind });
@@ -80,6 +87,8 @@ export function useAccountActions({
   function actionsFor(row: UserRow): (RowAction & { key: AccountOp | 'move' })[] {
     const items: (RowAction & { key: AccountOp | 'move' })[] = [];
     if (canFund(row)) items.push({ key: 'fund', label: t.fund, icon: 'fund', onClick: () => choose(row, 'fund') });
+    // Taking back follows the same rule as funding, but never from oneself.
+    if (canFund(row) && !row.self) items.push({ key: 'deduct', label: t.deduct, icon: 'undo', onClick: () => choose(row, 'deduct') });
     if (row.directChild && row.layer !== 'branch') items.push({ key: 'ceiling', label: t.ceiling, icon: 'edit', onClick: () => choose(row, 'ceiling') });
     if ((row.layer === 'pos' && canMovePos) || (row.layer === 'agent' && canMoveAgent)) {
       items.push({ key: 'move', label: t.transfer, icon: 'move', onClick: () => { setError(''); setMoving(row); } });
@@ -110,7 +119,17 @@ export function useAccountActions({
       setNote('');
       return;
     }
-    await send(() => api.fundWallet(row.loginName, value, fundNote), { note: t.funded, then: () => setOp(null) });
+    await send(() => api.fundWallet(row.loginName, value, fundNote, fundReason), { note: t.funded, then: () => setOp(null) });
+  }
+
+  async function deduct(row: UserRow) {
+    const value = parseShekel(amount);
+    if (value === null || value < 1 || !fundNote.trim()) {
+      setError(apiText(!fundNote.trim() ? 'أضف ملاحظة للتمويل' : 'بيانات غير صالحة'));
+      setNote('');
+      return;
+    }
+    await send(() => api.deductWallet(row.loginName, value, deductReason, fundNote), { note: t.funded2, then: () => setOp(null) });
   }
 
   async function saveCeiling(row: UserRow) {
@@ -129,10 +148,10 @@ export function useAccountActions({
       {active && op ? (
         <Dialog
           open
-          size={op.kind === 'fund' || op.kind === 'ceiling' || op.kind === 'password' ? 'form' : 'confirm'}
-          title={op.kind === 'fund' ? t.fund : op.kind === 'ceiling' ? t.ceiling : op.kind === 'password' ? t.newPassword : op.kind === 'enter' ? t.enterAccount : op.kind === 'delete' ? t.deleteAccount : active.frozen ? t.restoreAccount : t.freezeAccount}
-          lede={op.kind === 'fund' ? t.fundHint : op.kind === 'ceiling' ? t.ceilingHint : op.kind === 'password' ? t.passwordHint : op.kind === 'enter' ? t.enterHint : op.kind === 'delete' ? t.deleteHint : active.frozen ? t.restoreHint : t.freezeHint}
-          mark={op.kind === 'fund' || op.kind === 'ceiling' ? 'wallet' : op.kind === 'password' ? 'key' : op.kind === 'enter' ? 'enter' : op.kind === 'delete' ? 'trash' : 'freeze'}
+          size={op.kind === 'fund' || op.kind === 'deduct' || op.kind === 'ceiling' || op.kind === 'password' ? 'form' : 'confirm'}
+          title={op.kind === 'fund' ? t.fund : op.kind === 'deduct' ? t.deduct : op.kind === 'ceiling' ? t.ceiling : op.kind === 'password' ? t.newPassword : op.kind === 'enter' ? t.enterAccount : op.kind === 'delete' ? t.deleteAccount : active.frozen ? t.restoreAccount : t.freezeAccount}
+          lede={op.kind === 'fund' ? t.fundHint : op.kind === 'deduct' ? t.deductHint : op.kind === 'ceiling' ? t.ceilingHint : op.kind === 'password' ? t.passwordHint : op.kind === 'enter' ? t.enterHint : op.kind === 'delete' ? t.deleteHint : active.frozen ? t.restoreHint : t.freezeHint}
+          mark={op.kind === 'fund' || op.kind === 'deduct' || op.kind === 'ceiling' ? 'wallet' : op.kind === 'password' ? 'key' : op.kind === 'enter' ? 'enter' : op.kind === 'delete' ? 'trash' : 'freeze'}
           tone={op.kind === 'delete' || (op.kind === 'freeze' && !active.frozen) ? 'danger' : 'neutral'}
           closeLabel={t.closeMenu}
           error={error}
@@ -141,6 +160,7 @@ export function useAccountActions({
             <>
               <Button type="button" variant="secondary" disabled={busy} onClick={() => setOp(null)}>{t.cancel}</Button>
               {op.kind === 'fund' ? <Button type="button" disabled={busy} onClick={() => fund(active)}>{t.fund}</Button> : null}
+              {op.kind === 'deduct' ? <Button type="button" disabled={busy} onClick={() => deduct(active)}>{t.deduct}</Button> : null}
               {op.kind === 'ceiling' ? <Button type="button" disabled={busy} onClick={() => saveCeiling(active)}>{t.save}</Button> : null}
               {op.kind === 'password' ? <Button type="button" disabled={busy} onClick={() => run(() => api.setUserPassword(active.loginName, password))}>{t.save}</Button> : null}
               {op.kind === 'freeze' ? <Button type="button" disabled={busy} onClick={() => run(() => (active.frozen ? api.restoreUser(active.loginName) : api.freezeUser(active.loginName)))}>{active.frozen ? t.restoreAccount : t.freezeAccount}</Button> : null}
@@ -155,8 +175,24 @@ export function useAccountActions({
         >
           <div className="dialog-form">
             <p className="dialog-who"><AccountName login={active.loginName} name={active.nickname} /></p>
-            {op.kind === 'fund' ? (
+            {op.kind === 'fund' || op.kind === 'deduct' ? (
               <>
+                <label>
+                  {t.reason}
+                  {op.kind === 'fund' ? (
+                    <Select value={fundReason} onChange={(event) => setFundReason(event.target.value as FundReason)}>
+                      <option value="deposit">{t.reasonDeposit}</option>
+                      <option value="correction">{t.reasonCorrection}</option>
+                      <option value="settlement">{t.reasonSettlement}</option>
+                    </Select>
+                  ) : (
+                    <Select value={deductReason} onChange={(event) => setDeductReason(event.target.value as DeductReason)}>
+                      <option value="return">{t.reasonReturn}</option>
+                      <option value="correction">{t.reasonCorrection}</option>
+                      <option value="settlement">{t.reasonSettlement}</option>
+                    </Select>
+                  )}
+                </label>
                 <label>
                   {t.amount}
                   <input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value)} />

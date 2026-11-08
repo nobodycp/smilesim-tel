@@ -54,6 +54,7 @@ export class AccountsService {
       parentLogin: account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
       balance: byWallet.get(account.id)?.balance ?? 0,
       ceiling: byWallet.get(account.id)?.ceiling ?? 0,
+      held: byWallet.get(account.id)?.held ?? 0,
       frozen: account.disabledAt !== null,
       self: account.id === actor.id,
       directChild: account.parentId === actor.id,

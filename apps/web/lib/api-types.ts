@@ -229,6 +229,8 @@ export type UserRow = {
   parentLogin: string | null;
   balance: number;
   ceiling: number;
+  /** Money held for open tasks (roadmap N6). */
+  held: number;
   frozen: boolean;
   self: boolean;
   directChild: boolean;
@@ -339,6 +341,10 @@ export type ProviderOpRow = {
   esimPrice: number | null;
 };
 export type FinanceRow = {
+  /** Why a manual movement was made: deposit, return, correction or settlement. */
+  reason: string | null;
+  /** For a hold or a release: the amount held (positive) or freed (negative). */
+  held: number | null;
   /** What the signed-in account earned on this sale; null when it is not a sale in its chain. */
   margin: number | null;
   id: string;
@@ -478,6 +484,8 @@ export function routeFor(next: Next): string {
 export type FinanceSummary = {
   balance: number;
   ceiling: number;
+  /** Money held for open tasks. */
+  held: number;
   /** The branch has no ceiling. */
   unlimited: boolean;
   moneyIn: number;
@@ -497,6 +505,6 @@ export type ProfitReport = { packages: ProfitRow[]; totals: { sales: number; ref
 export type SaleReportRow = { id: string; at: string; loginName: string; kind: string; msisdn: string; companyName: string; packageName: string; amount: number; margin: number | null };
 export type OrderReportRow = { id: string; at: string; loginName: string; action: string; msisdn: string; companyName: string; packageName: string; status: 'done' | 'open' | 'cancelled'; amount: number };
 export type BalanceReportRow = {
-  loginName: string; nickname: string; layer: string; parentLogin: string | null; balance: number; ceiling: number; used: number; available: number; frozen: boolean; lastAt: string | null;
+  loginName: string; nickname: string; layer: string; parentLogin: string | null; balance: number; ceiling: number; used: number; held: number; available: number; frozen: boolean; lastAt: string | null;
 };
 export type SupplyReportRow = { providerCode: string; providerName: string; operations: number; cost: number; profit: number };

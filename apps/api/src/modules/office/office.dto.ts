@@ -11,6 +11,20 @@ export class FundBodyDto {
 
   @ApiPropertyOptional({ description: 'Required note when funding' })
   note?: string;
+
+  @ApiPropertyOptional({ enum: ['deposit', 'correction', 'settlement'], default: 'deposit' })
+  reason?: string;
+}
+
+export class DeductBodyDto {
+  @ApiPropertyOptional({ example: 100 })
+  amount?: number;
+
+  @ApiPropertyOptional({ description: 'Required: why the money is taken back' })
+  note?: string;
+
+  @ApiPropertyOptional({ enum: ['return', 'correction', 'settlement'] })
+  reason?: string;
 }
 
 export class CeilingBodyDto {

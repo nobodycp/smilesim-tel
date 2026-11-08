@@ -92,5 +92,6 @@ export const ROUTES: RouteRow[] = [
   ['GET', '/office/users/LOGIN1/transfer-preview', null],
   ['GET', '/office/wallets', null],
   ['PATCH', '/office/wallets/LOGIN1/ceiling', null],
+  ['POST', '/office/wallets/LOGIN1/deduct', ['deduct', 'account', 'LOGIN1']],
   ['POST', '/office/wallets/LOGIN1/fund', ['fund', 'account', 'LOGIN1']],
 ];

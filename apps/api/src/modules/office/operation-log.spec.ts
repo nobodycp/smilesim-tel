@@ -110,10 +110,13 @@ async function office() {
     packageSwitch: { findMany: async () => [] },
     provider: { findMany: async () => [{ code: 'sky', name: 'سكاي' }] },
     walletEntry: {
-      findMany: async (args?: { where?: { amount?: { not?: number }; kind?: { in?: string[] }; msisdn?: { contains?: string } } }) => {
+      findMany: async (args?: { where?: { amount?: { not?: number }; kind?: { in?: string[] }; msisdn?: { contains?: string }; AND?: unknown[] } }) => {
         const where = args?.where ?? {};
+        // The ledger asks for money movements or holds (roadmap N6): `AND: [{ OR: [{ amount: { not: 0 } }, { kind: … }] }]`.
+        const moneyOrHold = (where.AND ?? []).some((part) => JSON.stringify(part).includes('"not":0'));
         return entries
           .filter((row) => (where.amount?.not === undefined ? true : row.amount !== where.amount.not))
+          .filter((row) => (!moneyOrHold ? true : row.amount !== 0 || row.kind === 'hold' || row.kind === 'release'))
           .filter((row) => (where.kind?.in ? where.kind.in.includes(String(row.kind)) : true))
           .filter((row) => (where.msisdn?.contains ? String(row.msisdn ?? '').includes(where.msisdn.contains) : true))
           .map((row) => ({ ...row, actor: { loginName: 'admin', nickname: 'الإدارة' }, user: { loginName: 'pos1', layer: 'pos' } }));

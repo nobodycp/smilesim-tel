@@ -84,7 +84,15 @@ async function office() {
   const tx = {
     // `move()` locks the wallet row with raw SQL; the in-memory store has nothing to lock.
     $queryRaw: async () => [],
-    wallet: { findUnique: async () => wallet, update: async ({ data }: { data: { balance: number } }) => { wallet.balance = data.balance; return wallet; } },
+    wallet: {
+      findUnique: async () => wallet,
+      // A hold changes `held` by increment/decrement (roadmap N6); a move writes the balance.
+      update: async ({ data }: { data: { balance?: number; held?: { increment?: number; decrement?: number } } }) => {
+        if (data.balance !== undefined) wallet.balance = data.balance;
+        if (data.held) (wallet as { held?: number }).held = ((wallet as { held?: number }).held ?? 0) + (data.held.increment ?? 0) - (data.held.decrement ?? 0);
+        return wallet;
+      },
+    },
     walletEntry: {
       create: async ({ data }: { data: Row }) => {
         const row = { id: `e${entries.length + 1}`, createdAt: new Date(), ...data };
@@ -182,7 +190,9 @@ describe('eSIM request', () => {
     expect(task).toMatchObject({ status: 'done', iccid: '8997202000000000002' });
     expect(wallet.balance).toBe(10000 - 400);
     // The fee is the provider's cost of the eSIM, so provider operations can show it.
-    expect(entries).toEqual([expect.objectContaining({ kind: 'esim', amount: -400, msisdn: '0521000001', lineId: 'ln1', providerCost: 400 })]);
+    // The task held its price when it opened and released it when it closed; the charge is the one money entry.
+    expect(entries.map((row) => row.kind)).toEqual(['hold', 'release', 'esim']);
+    expect(entries.filter((row) => row.amount !== 0)).toEqual([expect.objectContaining({ kind: 'esim', amount: -400, msisdn: '0521000001', lineId: 'ln1', providerCost: 400 })]);
   });
 });
 
@@ -264,7 +274,8 @@ describe('immediate eSIM activation', () => {
     // Package price plus the company eSIM price, in one debit.
     expect(wallet.balance).toBe(10000 - 3000 - 400);
     // The entry carries the provider's cost: the package branch cost plus the eSIM fee.
-    expect(entries[0]).toMatchObject({ kind: 'activate', amount: -3400, providerCost: 2000 + 400 });
+    // Hold and release move no money; the charge is the first entry that does.
+    expect(entries.find((row) => row.amount !== 0)).toMatchObject({ kind: 'activate', amount: -3400, providerCost: 2000 + 400 });
   }); // Renders a real PNG; slow when the whole suite runs in parallel: the file-wide limit above covers it.
 
   it('keeps the typed serial for a physical SIM and issues no QR', async () => {
@@ -281,7 +292,8 @@ describe('immediate eSIM activation', () => {
     await service.activate(gate, { packageCode: 'alloha-150', posLogin: 'pos1', esim: true, iccid: '', outcome: 'fail' });
     const task = await work();
     await service.completeTask(gate, String(task.id), { iccid: '8997202000000000003', qr: QR });
-    expect(entries[0]).toMatchObject({ kind: 'activate', amount: -3400, providerCost: 2000 + 400 });
+    // Hold and release move no money; the charge is the first entry that does.
+    expect(entries.find((row) => row.amount !== 0)).toMatchObject({ kind: 'activate', amount: -3400, providerCost: 2000 + 400 });
   });
 
   it('shows package plus eSIM fee, and the eSIM request fee, in provider operations', async () => {
@@ -314,5 +326,27 @@ describe('immediate eSIM activation', () => {
     const answer = await service.activate(gate, { packageCode: 'alloha-150', posLogin: 'pos1', esim: true, iccid: '', outcome: 'fail' });
     expect(answer).toEqual({ applied: false, taskId: 't1' });
     expect(tasks[0]).toMatchObject({ action: 'activate', esim: true, iccid: null });
+  });
+});
+
+// The full wallet (roadmap N6): a task that will charge holds its price while it is open.
+describe('automatic hold', () => {
+  it('holds the price when the task opens and gives it back when the task is cancelled', async () => {
+    const { service, gate, entries, wallet, work } = await office();
+    await service.requestEsim(gate, 'ln1');
+    expect(wallet).toMatchObject({ balance: 10000, held: 400 });
+    expect(entries.map((row) => [row.kind, row.amount, row.held])).toEqual([['hold', 0, 400]]);
+    const task = await work();
+    await service.rejectTask(gate, String(task.id), { reason: 'لا يوجد مخزون' });
+    expect(wallet).toMatchObject({ balance: 10000, held: 0 });
+    expect(entries.map((row) => [row.kind, row.held])).toEqual([['hold', 400], ['release', -400]]);
+  });
+
+  it('refuses a task whose price the wallet cannot cover, counting what is already held', async () => {
+    const { service, gate, wallet, tasks } = await office();
+    Object.assign(wallet, { balance: 600, held: 300 });
+    await expect(service.requestEsim(gate, 'ln1')).rejects.toMatchObject({ status: 400, code: 'BALANCE_CEILING' });
+    expect(tasks).toHaveLength(0);
+    expect(wallet).toMatchObject({ balance: 600, held: 300 });
   });
 });

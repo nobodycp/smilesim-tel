@@ -76,7 +76,7 @@ describe('ActorInterceptor with ActivityInterceptor and ZodPipe', () => {
   it('hands the handler the actor and the parsed body', async () => {
     const response = await request(app.getHttpServer()).post('/probe/fund').set('Cookie', `sid=${session}`).send({ amount: 500, note: ' x ' });
     expect(response.status).toBe(201);
-    expect(response.body).toEqual({ by: 'pos1', amount: 500, note: 'x' });
+    expect(response.body).toEqual({ by: 'pos1', amount: 500, note: 'x', reason: 'deposit' });
     expect(results()).toEqual([['ok', '']]);
   });
 });

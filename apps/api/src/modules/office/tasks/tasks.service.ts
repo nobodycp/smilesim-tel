@@ -264,6 +264,7 @@ export class TasksService {
         data: { status: 'cancelled', resultNote: reason },
       });
       if (updated.count !== 1) fail(400, 'INVALID');
+      await this.kernel.release(tx, task.posId, task.held ?? 0, actor.operatorId, reason);
       return this.taskNotice(tx, 'rejected', task, actor, { reason, handlerName: actor.nickname });
     });
     await this.kernel.publishQuietly(written);
@@ -279,6 +280,7 @@ export class TasksService {
         data: { status: 'cancelled', resultNote: null, assigneeId: null },
       });
       if (updated.count !== 1) fail(400, 'INVALID');
+      await this.kernel.release(tx, task.posId, task.held ?? 0, actor.operatorId, '');
       return this.taskNotice(tx, 'cancelled', task, actor);
     });
     await this.kernel.publishQuietly(written);
@@ -300,6 +302,11 @@ export class TasksService {
     note: string;
   }) {
     const { task, written } = await this.kernel.runTx(async (tx) => {
+      // A task that will charge holds its price first (roadmap N6): refused before anything is written when the
+      // wallet cannot cover it, released when the task closes.
+      const held = input.posDelta < 0
+        ? await this.kernel.hold(tx, input.posId, -input.posDelta, input.actor.operatorId, input.note, input.msisdn ? { msisdn: input.msisdn, lineId: input.lineId ?? '', companyName: '', packageName: '', packagePrice: -input.posDelta } : undefined)
+        : 0;
       const created = await tx.officeTask.create({
         data: {
           action: input.action,
@@ -315,6 +322,7 @@ export class TasksService {
           esim: input.esim ?? false,
           esimQr: input.esimQr ?? null,
           note: input.note,
+          held,
         },
       });
       const named = await tx.package.findUnique({ where: { id: input.nextPackageId ?? input.packageId }, select: { name: true } });

@@ -589,6 +589,8 @@ export class LinesService {
     }
     const handedQr = task.action === 'esim' || task.esim ? givenQr ?? task.esimQr : null;
     const written = await this.kernel.runTx(async (tx) => {
+      // The hold made when the task opened gives way to the charge itself (roadmap N6), before any money moves.
+      await this.kernel.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
       let sale: Sale | undefined;
       let posted = false;
       if (task.action === 'activate') {

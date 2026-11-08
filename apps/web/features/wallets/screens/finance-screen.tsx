@@ -20,7 +20,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 
 const KINDS = [
-  'fund', 'self_fund',
+  'fund', 'self_fund', 'deduct', 'deduct_in', 'hold', 'release',
   'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim',
 ] as const;
 
@@ -28,8 +28,19 @@ const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;
 
 function movementName(t: Copy, kind: string): string {
   if (kind === 'fund') return t.supplyBalance;
+  if (kind === 'deduct') return t.moveDeduct;
+  if (kind === 'deduct_in') return t.moveDeductIn;
+  if (kind === 'hold') return t.moveHold;
+  if (kind === 'release') return t.moveRelease;
   if (kind === 'self_fund') return t.topUpBalance;
   return actionName(t, kind);
+}
+
+function reasonName(t: Copy, reason: string): string {
+  if (reason === 'return') return t.reasonReturn;
+  if (reason === 'correction') return t.reasonCorrection;
+  if (reason === 'settlement') return t.reasonSettlement;
+  return t.reasonDeposit;
 }
 
 export function FinanceScreen() {
@@ -55,6 +66,8 @@ export function FinanceScreen() {
       render: (row) => (
         <span className="kind-cell">
           {movementName(t, row.kind)}
+          {row.reason && row.reason !== 'deposit' ? <Badge variant="muted">{reasonName(t, row.reason)}</Badge> : null}
+          {row.held ? <Badge variant="warning" dot>{t.held} <Money value={Math.abs(row.held)} /></Badge> : null}
           {/* An eSIM sale pays the package price plus this fee in one entry; the tag explains the amount. */}
           {row.esimPrice != null && row.kind !== 'esim' && (
             <Badge variant="muted" dot title={t.esimSaleTagTitle}>
@@ -142,7 +155,8 @@ function WalletHead({ summary }: { summary: FinanceSummary }) {
           progress={summary.unlimited || summary.ceiling <= 0 ? null : used / summary.ceiling}
         />
         <Stat icon="reports" label={t.usedCeiling} value={summary.unlimited ? '—' : <Money value={used} />} />
-        <Stat icon="plans" label={t.availableToSell} value={summary.unlimited ? t.noCeiling : <Money value={summary.balance + summary.ceiling} />} highlight />
+        <Stat icon="tasks" tone={summary.held ? 'warning' : 'muted'} label={t.held} value={<Money value={summary.held ?? 0} />} meta={t.heldHint} />
+        <Stat icon="plans" label={t.availableToSell} value={summary.unlimited ? t.noCeiling : <Money value={summary.balance + summary.ceiling - (summary.held ?? 0)} />} highlight />
       </StatRow>
       <div className="wallet-board">
         <section className="pane wallet-chart">

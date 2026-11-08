@@ -115,7 +115,7 @@ describe('accounts and roles over HTTP', () => {
     expect(response.status).toBe(200);
     expect(response.body.users.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'pos1']);
     expect(response.body.users[1]).toEqual({
-      loginName: 'pos1', nickname: 'نقطة', layer: 'pos', roleName: '', parentLogin: 'ag1', balance: 700, ceiling: 100, frozen: false,
+      loginName: 'pos1', nickname: 'نقطة', layer: 'pos', roleName: '', parentLogin: 'ag1', balance: 700, ceiling: 100, held: 0, frozen: false,
       self: false, directChild: true, canEnter: false, canFreeze: false, canDelete: false,
     });
     const owner = await as('owner', 'get', '/office/users');

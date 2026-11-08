@@ -158,6 +158,7 @@ export class InsightsService {
     const rows = listed.map((account) => {
       const balance = walletOf.get(account.id)?.balance ?? 0;
       const ceiling = account.layer === 'branch' ? 0 : walletOf.get(account.id)?.ceiling ?? 0;
+      const held = walletOf.get(account.id)?.held ?? 0;
       return {
         loginName: account.loginName,
         nickname: account.nickname,
@@ -166,7 +167,8 @@ export class InsightsService {
         balance,
         ceiling,
         used: Math.max(0, -balance),
-        available: balance + ceiling,
+        held,
+        available: balance + ceiling - held,
         frozen: account.disabledAt !== null,
         lastAt: lastOf.get(account.id)?.toISOString() ?? null,
       };
@@ -228,7 +230,7 @@ export class InsightsService {
     }
     if (kind === 'balances') {
       const { rows } = await this.balances(actor, query);
-      return csvOf(['account', 'name', 'layer', 'parent', 'balance', 'ceiling', 'used', 'available', 'frozen', 'last_movement'], rows.map((row) => [row.loginName, row.nickname, row.layer, row.parentLogin ?? '', { money: row.balance }, { money: row.ceiling }, { money: row.used }, { money: row.available }, row.frozen ? 'yes' : 'no', row.lastAt ?? '']));
+      return csvOf(['account', 'name', 'layer', 'parent', 'balance', 'ceiling', 'used', 'held', 'available', 'frozen', 'last_movement'], rows.map((row) => [row.loginName, row.nickname, row.layer, row.parentLogin ?? '', { money: row.balance }, { money: row.ceiling }, { money: row.used }, { money: row.held }, { money: row.available }, row.frozen ? 'yes' : 'no', row.lastAt ?? '']));
     }
     if (kind === 'supply') {
       const { rows } = await this.supply(actor, query);

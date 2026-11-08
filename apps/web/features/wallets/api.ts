@@ -3,8 +3,11 @@ import type { FinanceRow, FinanceSummary, ProfitReport, LedgerRow, ProviderOpRow
 
 /** The wallets calls of the office API. Composed into `api` by lib/api.ts. */
 export const walletsApi = {
-  fundWallet: (loginName: string, amount: number, note: string) =>
-    request<{ ok: true }>('POST', `/office/wallets/${segment(loginName)}/fund`, { amount, note }),
+  fundWallet: (loginName: string, amount: number, note: string, reason: 'deposit' | 'correction' | 'settlement' = 'deposit') =>
+    request<{ ok: true }>('POST', `/office/wallets/${segment(loginName)}/fund`, { amount, note, reason }),
+  /** Takes money back from a child to its parent (roadmap N6): a return, a correction or a settlement, with a note. */
+  deductWallet: (loginName: string, amount: number, reason: 'return' | 'correction' | 'settlement', note: string) =>
+    request<{ ok: true }>('POST', `/office/wallets/${segment(loginName)}/deduct`, { amount, note, reason }),
   setCeiling: (loginName: string, ceiling: number) =>
     request<{ ok: true }>('PATCH', `/office/wallets/${segment(loginName)}/ceiling`, { ceiling }),
   profitReport: (query: { from?: string; to?: string; q?: string }) =>

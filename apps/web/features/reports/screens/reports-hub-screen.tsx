@@ -183,6 +183,7 @@ function BalancesReport() {
     { key: 'balance', header: t.balance, num: true, sortValue: (row) => row.balance, render: (row) => <Money value={row.balance} /> },
     { key: 'ceiling', header: t.ceiling, num: true, sortValue: (row) => row.ceiling, render: (row) => <Money value={row.ceiling} /> },
     { key: 'used', header: t.usedCeiling, num: true, sortValue: (row) => row.used, render: (row) => <Money value={row.used} /> },
+    { key: 'held', header: t.held, num: true, sortValue: (row) => row.held, render: (row) => <Money value={row.held ?? 0} /> },
     { key: 'available', header: t.availableToSell, num: true, sortValue: (row) => row.available, render: (row) => <Money value={row.available} /> },
     { key: 'status', header: t.status, render: (row) => <Badge variant={accountTone(row.frozen)} dot>{row.frozen ? t.frozen : t.accountOpen}</Badge> },
     { key: 'last', header: t.lastMovement, cell: 'when', render: (row) => (row.lastAt ? <bdi dir="ltr">{latinWhen(row.lastAt)}</bdi> : '—') },

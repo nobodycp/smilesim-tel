@@ -14,7 +14,7 @@ export type TaskNoticePayload = {
   reason?: string;
 };
 
-export type FundNoticePayload = { amount: number; senderName: string; note: string };
+export type FundNoticePayload = { amount: number; senderName: string; note: string; reason?: string };
 export type WalletNoticePayload = { balance: number; ceiling: number; attempted?: number; loginName: string };
 export type AnnouncementNoticePayload = { announcementId: string; authorName: string; excerpt: string };
 /**
@@ -25,7 +25,7 @@ export type TransferNoticePayload = { kind: TransferKind; subject: string; fromL
 
 export type NoticeDraft =
   | { kind: 'task.opened' | 'task.taken' | 'task.released' | 'task.note' | 'task.done' | 'task.rejected' | 'task.cancelled'; payload: TaskNoticePayload }
-  | { kind: 'fund.received'; payload: FundNoticePayload }
+  | { kind: 'fund.received' | 'fund.deducted'; payload: FundNoticePayload }
   | { kind: 'wallet.negative' | 'wallet.ceiling'; payload: WalletNoticePayload }
   | { kind: 'transfer.out' | 'transfer.in'; payload: TransferNoticePayload }
   | { kind: 'announcement'; payload: AnnouncementNoticePayload };
@@ -34,7 +34,7 @@ export type NoticeKind = NoticeDraft['kind'];
 
 export const NOTICE_GROUPS = {
   tasks: ['task.opened', 'task.taken', 'task.released', 'task.note', 'task.done', 'task.rejected', 'task.cancelled'],
-  wallet: ['fund.received', 'wallet.negative', 'wallet.ceiling', 'transfer.out', 'transfer.in'],
+  wallet: ['fund.received', 'fund.deducted', 'wallet.negative', 'wallet.ceiling', 'transfer.out', 'transfer.in'],
   announcements: ['announcement'],
 } as const satisfies Record<string, readonly NoticeKind[]>;
 

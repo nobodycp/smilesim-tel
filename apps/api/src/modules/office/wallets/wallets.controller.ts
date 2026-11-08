@@ -7,7 +7,7 @@ import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
-import { CeilingBodyDto, FundBodyDto } from '../office.dto';
+import { CeilingBodyDto, DeductBodyDto, FundBodyDto } from '../office.dto';
 import { WalletsService } from './wallets.service';
 import type { Response } from 'express';
 
@@ -25,6 +25,20 @@ export class WalletsController {
   @ApiErrorResponse(401, 403)
   wallets(@Actor() actor: ActorShape) {
     return this.walletDesk.list(actor);
+  }
+
+  @Post('wallets/:loginName/deduct')
+  @ApiOperation({ summary: 'Take money back from a child: return, correction or settlement (note required)' })
+  @ApiParam({ name: 'loginName' })
+  @ApiBody({ type: DeductBodyDto })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('deduct', 'account', param('loginName'))
+  deduct(
+    @Actor() actor: ActorShape,
+    @Param('loginName') loginName: string,
+    @Body() body: DeductBodyDto,
+  ) {
+    return this.walletDesk.deduct(actor, loginName, body);
   }
 
   @Post('wallets/:loginName/fund')

@@ -266,7 +266,8 @@ function MoneyCards({ row }: { row: UserRow }) {
   const { t } = usePrefs();
   const unlimited = row.layer === 'branch';
   const used = Math.max(0, -row.balance);
-  const available = row.balance + row.ceiling;
+  // What the account may still spend: what is held for open tasks is not (roadmap N6).
+  const available = row.balance + row.ceiling - (row.held ?? 0);
   return (
     <StatRow>
       <Stat icon="wallet" label={t.balance} value={<Money value={row.balance} />} />
@@ -277,6 +278,7 @@ function MoneyCards({ row }: { row: UserRow }) {
         progress={unlimited || row.ceiling <= 0 ? null : used / row.ceiling}
       />
       <Stat icon="reports" label={t.usedCeiling} value={unlimited ? '—' : <Money value={used} />} />
+      <Stat icon="tasks" tone={row.held ? 'warning' : 'muted'} label={t.held} value={<Money value={row.held ?? 0} />} meta={t.heldHint} />
       <Stat icon="plans" label={t.availableToSell} value={unlimited ? t.noCeiling : <Money value={available} />} highlight />
     </StatRow>
   );

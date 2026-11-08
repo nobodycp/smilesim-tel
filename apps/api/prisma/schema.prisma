@@ -105,6 +105,8 @@ model Wallet {
   user    User   @relation(fields: [userId], references: [id])
   balance Int    @default(0)
   ceiling Int    @default(0)
+  /** Money held for open tasks: not spendable until they close (roadmap N6). */
+  held    Int    @default(0)
 }
 
 model WalletEntry {
@@ -129,6 +131,10 @@ model WalletEntry {
   periodEndsAt DateTime?
   /** A sale's price chain at the time (profit-ladder.ts `Ladder`): what each layer paid and the sell price. */
   ladder       Json?
+  /** Why a manual movement was made: deposit, return, correction or settlement. */
+  reason       String?
+  /** For a hold or a release: the amount held (positive) or released (negative). */
+  held         Int?
   createdAt    DateTime  @default(now())
 
   @@index([userId, createdAt])
@@ -297,6 +303,8 @@ model OfficeTask {
   assigneeId    String?
   assignee      User?            @relation("TaskAssignee", fields: [assigneeId], references: [id])
   posDelta      Int
+  /** What opening this task held on the point of sale's wallet, released when it closes. */
+  held          Int              @default(0)
   msisdn        String?
   iccid         String?
   esim          Boolean          @default(false)

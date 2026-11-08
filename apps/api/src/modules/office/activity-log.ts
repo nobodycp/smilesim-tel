@@ -14,6 +14,7 @@ export const ACTIVITY_ACTIONS = [
   'enter',
   'leave',
   'fund',
+  'deduct',
   'activate',
   'charge',
   'extend',

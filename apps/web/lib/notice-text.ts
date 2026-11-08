@@ -15,6 +15,7 @@ export function noticeTitle(t: Copy, row: NoticeRow): string {
     case 'task.rejected': return t.noticeRejected;
     case 'task.cancelled': return t.noticeCancelled;
     case 'fund.received': return t.noticeFund;
+    case 'fund.deducted': return t.noticeDeducted;
     case 'wallet.negative': return t.noticeNegative;
     case 'wallet.ceiling': return t.noticeCeiling;
     case 'announcement': return t.noticeAnnouncement;
@@ -39,7 +40,7 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
     if (who) parts.push(`${t.noticeBy} ${who}`);
     return parts.join(' · ');
   }
-  if (row.kind === 'fund.received') {
+  if (row.kind === 'fund.received' || row.kind === 'fund.deducted') {
     if (typeof p.amount === 'number') parts.push(formatShekel(p.amount));
     if (p.senderName) parts.push(`${t.noticeFrom} ${p.senderName}`);
     if (p.note) parts.push(p.note);
