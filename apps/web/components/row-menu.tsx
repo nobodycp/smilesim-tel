@@ -38,7 +38,11 @@ function Glyph({ name }: { name: RowIcon }) {
 }
 
 /** `boxed` draws the trigger as a 34px outlined button, for a page head beside other buttons. */
-export function RowMenu({ label, items, boxed = false }: { label: string; items: RowAction[]; boxed?: boolean }) {
+/**
+ * `trigger` draws a labelled button (the user page's «المحفظة») in place of the ⋯ icon; its look comes from the
+ * button classes, so the menu stays one component.
+ */
+export function RowMenu({ label, items, boxed = false, trigger }: { label: string; items: RowAction[]; boxed?: boolean; trigger?: { className: string; content: ReactNode } }) {
   const { open, setOpen, toggle, root, panel, trigger: button } = usePopover({ menu: true, deferFocus: true });
   const [box, setBox] = useState<{ top: number; left: number } | null>(null);
 
@@ -84,17 +88,17 @@ export function RowMenu({ label, items, boxed = false }: { label: string; items:
       <button
         ref={button}
         type="button"
-        className="row-menu-btn"
+        className={trigger ? trigger.className : 'row-menu-btn'}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={label}
+        aria-label={trigger ? undefined : label}
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
           toggle();
         }}
       >
-        <MoreHorizontal size={16} aria-hidden="true" />
+        {trigger ? trigger.content : <MoreHorizontal size={16} aria-hidden="true" />}
       </button>
       {open && createPortal(
         <div

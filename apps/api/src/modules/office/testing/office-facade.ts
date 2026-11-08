@@ -383,7 +383,7 @@ export class OfficeFacade {
   }
 
   // Facades (Phase 3): specs still call these; the routes live in lines/lines.controller.ts.
-  async lines(gate: Gate, query: LineFilter & { cursor?: string } = {}) {
+  async lines(gate: Gate, query: LineFilter & { cursor?: string; account?: string } = {}) {
     return this.lineDesk.list(await this.actor(gate), query);
   }
 

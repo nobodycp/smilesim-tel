@@ -27,6 +27,7 @@ export class LinesController {
   @ApiQuery({ name: 'packageCode', required: false })
   @ApiQuery({ name: 'provider', required: false })
   @ApiQuery({ name: 'company', required: false })
+  @ApiQuery({ name: 'account', required: false, description: "One account's numbers: its own, or every point of sale below it" })
   @ApiErrorResponse(401, 403)
   lines(
     @Actor() actor: ActorShape,
@@ -36,8 +37,10 @@ export class LinesController {
     @Query('packageCode') packageCode?: string,
     @Query('provider') provider?: string,
     @Query('company') company?: string,
+    @Query('account') account?: string,
   ) {
     return this.lineDesk.list(actor, {
+        account: text(account),
         cursor: text(cursor),
         q: text(q),
         status: text(status),

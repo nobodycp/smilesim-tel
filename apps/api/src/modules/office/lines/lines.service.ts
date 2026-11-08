@@ -58,10 +58,14 @@ export const QR_LIMIT = 400_000;
 export class LinesService {
   constructor(private readonly kernel: OfficeKernel, private readonly tasks: TasksService) {}
 
-  async list(actor: Actor, query: LineFilter & { cursor?: string } = {}) {
+  async list(actor: Actor, query: LineFilter & { cursor?: string; account?: string } = {}) {
     const accounts = await this.kernel.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
+    // `account` narrows to one account's numbers: its own if it is a point of sale, else every point of sale below
+    // it (the user page's «الأرقام»). An account outside the viewer's tree gives nothing.
+    const target = query.account ? accounts.find((account) => account.loginName === query.account) : undefined;
+    const within = query.account ? (target && visible.has(target.id) ? visibleAccountIds(target.id, target.layer === 'branch' ? 'none' : target.layer, accounts) : new Set<string>()) : visible;
+    const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id) && within.has(account.id)).map((account) => account.id);
     const where = linesWhere(posIds, query);
     const [rows, total] = await Promise.all([
       this.kernel.prisma.line.findMany({

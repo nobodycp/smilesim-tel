@@ -3,7 +3,7 @@ import type { ActivateBody, ApplyResult, DisconnectQuote, LineHistory, LineRow, 
 
 /** The lines calls of the office API. Composed into `api` by lib/api.ts. */
 export const linesApi = {
-  officeLines: (query?: { q?: string; status?: string; packageCode?: string; provider?: string; company?: string; cursor?: string | null }) =>
+  officeLines: (query?: { q?: string; status?: string; packageCode?: string; provider?: string; company?: string; account?: string; cursor?: string | null }) =>
     request<{ lines: LineRow[]; poses: PosChoice[]; nextCursor: string | null; total: number }>('GET', `/office/lines${queryString(query)}`),
   officeLine: (id: string) => request<{ line: LineRow; history: LineHistory[] }>('GET', `/office/lines/${segment(id)}`),
   activateLine: (body: ActivateBody) => request<ApplyResult>('POST', '/office/lines', body),

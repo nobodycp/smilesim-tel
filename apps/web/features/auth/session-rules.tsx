@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { AccountName } from '../../components/account-name';
-import { Dialog } from '../../components/dialog';
 import { layerName } from '../../components/names';
 import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
@@ -24,7 +22,7 @@ export function durationLabel(locale: string, minutes: number) {
   return new Intl.NumberFormat(`${locale}-u-nu-latn`, { style: 'unit', unit, unitDisplay: 'long' }).format(value);
 }
 
-function RuleSelects({
+export function RuleSelects({
   values,
   fallback,
   fallbackLabel,
@@ -101,53 +99,5 @@ export function LayerSessionRulesPane({ setError, setNote }: { setError: (text: 
         ) : null}
       </div>
     </section>
-  );
-}
-
-/** The user page, branch owner only: this account's own values. */
-export function AccountSessionsDialog({ loginName, name, onClose, onSaved }: { loginName: string; name?: string; onClose: () => void; onSaved: (note: string) => void }) {
-  const { t, apiText, locale } = usePrefs();
-  const rules = useApiQuery(['auth', 'session-rules', loginName], () => api.accountSessionRules(loginName), { fresh: true });
-  const [draft, setDraft] = useState<SessionRuleValues | null>(null);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const view = rules.data;
-  const values = draft ?? view?.own ?? { maxSessions: null, sessionMinutes: null };
-
-  async function save() {
-    setError('');
-    setBusy(true);
-    const result = await api.setAccountSessionRules(loginName, values);
-    setBusy(false);
-    if (!result.ok) return setError(apiText(result));
-    onSaved(t.sessionRulesSaved);
-  }
-
-  return (
-    <Dialog
-      open
-      size="form"
-      title={t.sessions}
-      lede={t.accountSessionsHint}
-      mark="shield"
-      tone="neutral"
-      closeLabel={t.closeMenu}
-      error={error || rules.error}
-      onClose={() => { if (!busy) onClose(); }}
-      footer={(
-        <>
-          <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>{t.cancel}</Button>
-          <Button type="button" disabled={busy || !view} onClick={save}>{t.save}</Button>
-        </>
-      )}
-    >
-      <div className="dialog-form">
-        <p className="dialog-who"><AccountName login={loginName} name={name} /></p>
-        {view ? <RuleSelects values={values} fallback={view.layer} fallbackLabel={t.followLayer} onChange={setDraft} /> : null}
-        {view ? (
-          <p className="hint">{`${t.effectiveNow}: ${t.maxSessionsLabel} ${view.effective.maxSessions} · ${durationLabel(locale, view.effective.sessionMinutes)}`}</p>
-        ) : null}
-      </div>
-    </Dialog>
   );
 }

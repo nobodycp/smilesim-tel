@@ -187,6 +187,15 @@ describe('numbers list paging', () => {
     expect(both.calls[0].where).toMatchObject({ status: 'active', package: { code: 'pk-a' } });
   });
 
+  it('narrows to one account\'s numbers, and to none for an account outside the tree', async () => {
+    const own = await walk({ account: 'pos1' });
+    expect(own.pages.flat()).toHaveLength(70);
+    const branch = await walk({ account: 'admin' });
+    expect(branch.pages.flat()).toHaveLength(70);
+    const nobody = await walk({ account: 'nobody' });
+    expect(nobody.pages.flat()).toHaveLength(0);
+  });
+
   it('matches a number typed with spaces', async () => {
     const { pages } = await walk({ q: ' 05500000 6 ' });
     expect(pages.flat().sort()).toEqual(Array.from({ length: 10 }, (_, i) => `ln-${pad(60 + i)}`));

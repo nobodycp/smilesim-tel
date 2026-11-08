@@ -502,6 +502,39 @@ export class AuthService {
     return { kind: 'ok', ...authed };
   }
 
+  /** «إعدادات المستخدم» (branch owner): another account's contact details and its second step. */
+  async userSettings(sessionId: string | undefined, loginName: string): Promise<Outcome<{ settings: UserSettingsView }>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    const target = await this.store.findByLogin(loginName);
+    if (!target) return fail(404, 'NOT_FOUND');
+    return { kind: 'ok', settings: userSettingsView(target) };
+  }
+
+  /** The branch owner sets another account's email and mobile; an empty string clears one. */
+  async setUserContact(sessionId: string | undefined, loginName: string, body: { email?: unknown; phone?: unknown }): Promise<Outcome<{ settings: UserSettingsView }>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    const target = await this.store.findByLogin(loginName);
+    if (!target) return fail(404, 'NOT_FOUND');
+    const { email, phone } = body ?? {};
+    if ((email !== undefined && typeof email !== 'string') || (phone !== undefined && typeof phone !== 'string')) return fail(400, 'INVALID');
+    const patch: Parameters<AuthStore['updateUser']>[1] = {};
+    if (typeof email === 'string') {
+      const value = email.trim();
+      if (value && !EMAIL_PATTERN.test(value)) return fail(400, 'EMAIL_INVALID');
+      patch.email = value;
+    }
+    if (typeof phone === 'string') {
+      const value = phone.trim();
+      if (value && !PHONE_PATTERN.test(value)) return fail(400, 'PHONE_INVALID');
+      patch.phone = value;
+    }
+    await this.store.updateUser(target.id, patch);
+    const stored = (await this.store.findByLogin(loginName)) ?? target;
+    return { kind: 'ok', settings: userSettingsView(stored) };
+  }
+
   async clearUserTwoFactor(sessionId: string | undefined, loginName: string): Promise<Outcome<unknown>> {
     const owner = await this.ownerSession(sessionId);
     if (owner.kind === 'error') return owner;
@@ -546,4 +579,24 @@ export class AuthService {
     await this.store.dropLiveSessions(target.id);
     return { kind: 'ok' };
   }
+}
+
+export type UserSettingsView = {
+  loginName: string;
+  email: string;
+  phone: string;
+  twoFactorEnabled: boolean;
+  twoFactorExempt: boolean;
+  twoFactorMethod: string;
+};
+
+function userSettingsView(user: StoredUser): UserSettingsView {
+  return {
+    loginName: user.loginName,
+    email: user.email ?? '',
+    phone: user.phone ?? '',
+    twoFactorEnabled: Boolean(user.twoFactorEnabled),
+    twoFactorExempt: Boolean(user.twoFactorExempt),
+    twoFactorMethod: user.twoFactorMethod ?? 'app',
+  };
 }

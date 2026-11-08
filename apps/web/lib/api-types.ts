@@ -33,6 +33,7 @@ export type SessionRuleValues = { maxSessions: number | null; sessionMinutes: nu
 export type SessionRuleResult = { maxSessions: number; sessionMinutes: number };
 export type LayerKey = 'branch' | 'main_agent' | 'agent' | 'pos';
 export type SessionRulesView = { defaults: SessionRuleResult; layers: Record<LayerKey, SessionRuleValues> };
+export type UserSettings = { loginName: string; email: string; phone: string; twoFactorEnabled: boolean; twoFactorExempt: boolean; twoFactorMethod: string };
 export type AccountSessionRules = { own: SessionRuleValues; layer: SessionRuleResult; effective: SessionRuleResult };
 
 export type SessionInfo = {

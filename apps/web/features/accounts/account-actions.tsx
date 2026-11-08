@@ -16,9 +16,9 @@ import { doorUrl } from '../../lib/doors';
 import { reloadAt } from '../../lib/reload-at';
 import { useAction } from '../../lib/use-action';
 import { useApiQuery } from '../../lib/use-api-query';
-import { AccountSessionsDialog } from '../auth/session-rules';
+import { UserSettingsDialog } from './user-settings';
 
-export type AccountOp = 'fund' | 'deduct' | 'ceiling' | 'password' | 'freeze' | 'enter' | 'delete' | 'sessions';
+export type AccountOp = 'fund' | 'deduct' | 'ceiling' | 'password' | 'freeze' | 'enter' | 'delete' | 'settings';
 type FundReason = 'deposit' | 'correction' | 'settlement';
 type DeductReason = 'return' | 'correction' | 'settlement';
 
@@ -104,8 +104,8 @@ export function useAccountActions({
         onClick: () => choose(row, 'freeze'),
       });
     }
-    // Session rules are the branch owner's, for any account including its own.
-    if (isBranch && me?.isBranchOwner && !me.impersonating) items.push({ key: 'sessions', label: t.sessions, icon: 'key', onClick: () => choose(row, 'sessions') });
+    // «إعدادات المستخدم» (email, mobile, two-step, password, sessions) is the branch owner's, for any account.
+    if (isBranch && me?.isBranchOwner && !me.impersonating) items.push({ key: 'settings', label: t.userSettings, icon: 'key', onClick: () => choose(row, 'settings') });
     if (row.canEnter) items.push({ key: 'enter', label: t.enterAccount, icon: 'enter', onClick: () => choose(row, 'enter') });
     if (row.canDelete) items.push({ key: 'delete', label: t.deleteAccount, icon: 'trash', danger: true, onClick: () => choose(row, 'delete') });
     return items;
@@ -149,15 +149,15 @@ export function useAccountActions({
   const active = op?.row;
   const dialogs: ReactNode = (
     <>
-      {active && op?.kind === 'sessions' ? (
-        <AccountSessionsDialog
+      {active && op?.kind === 'settings' ? (
+        <UserSettingsDialog
           loginName={active.loginName}
           name={active.nickname}
           onClose={() => setOp(null)}
           onSaved={(text) => { setOp(null); setError(''); setNote(text); }}
         />
       ) : null}
-      {active && op && op.kind !== 'sessions' ? (
+      {active && op && op.kind !== 'settings' ? (
         <Dialog
           open
           size={op.kind === 'fund' || op.kind === 'deduct' || op.kind === 'ceiling' || op.kind === 'password' ? 'form' : 'confirm'}

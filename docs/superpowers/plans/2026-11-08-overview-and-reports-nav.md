@@ -25,14 +25,14 @@ Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice
 - [x] e2e: `tests/reports-hub.spec.ts` becomes per-page tests; the group starts closed and opens on a report page.
 - [x] `frontend.md`, copy keys in ar/en/he.
 
-## Slice D: finance ledger — done 2026-11-09 (API 774, e2e 145; Docker: chain profits dialog)
+## Slice D: finance ledger — done 2026-11-09 `458e631`
 - [x] `wallets.service.ts` `financeWhere`: own wallet + descendants, a `scope=money|all` filter (all drops the `amount != 0` rule); specs; CSV parity.
 - [x] `finance-screen.tsx`: signed amounts with badges, the money/all filter, the ladder drawer for the branch.
 
-## Slice H: user page actions and settings
-- [ ] `features/accounts/account-actions.tsx`: «المحفظة» menu button (charge, deduct, ceiling, statement).
-- [ ] «إعدادات المستخدم» dialog: email, mobile, two-factor on/off, password, session rules; API for the owner to edit another account's email/mobile/2FA if missing (`auth` or `accounts` module, specs, permission matrix).
-- [ ] `features/accounts/screens/account-screen.tsx`: two tabs; permissions, operations and numbers as closed collapsible sections loaded on open.
+## Slice H: user page actions and settings — done 2026-11-09 (API 778, e2e 145; Docker: wallet menu, folds, settings)
+- [x] `features/accounts/account-actions.tsx`: «المحفظة» menu button (charge, deduct, ceiling, statement).
+- [x] «إعدادات المستخدم» dialog: email, mobile, two-factor on/off, password, session rules; API for the owner to edit another account's email/mobile/2FA if missing (`auth` or `accounts` module, specs, permission matrix).
+- [x] `features/accounts/screens/account-screen.tsx`: two tabs; permissions, operations and numbers as closed collapsible sections loaded on open.
 
 ## Slice I: suspended lines
 - [ ] Migration: `Package.suspendAfterDays Int @default(90)`; package details form and API.

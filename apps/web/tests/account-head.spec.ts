@@ -10,8 +10,9 @@ const account = {
   roleId: '', roleName: '', roleGrants: [], extraGrants: [], deniedGrants: [], extraRoleIds: [], grants: [], roles: [], canEdit: true, listed,
 };
 
-// The user page's head (spec 2026-11-08-inner-pages-refresh, §2b): status beside the name, fund and ceiling as
-// buttons, the rest behind ⋯, the wallet as four cards, counts on the tabs.
+// The user page's head (spec 2026-11-08-inner-pages-refresh, §2b; spec 2026-11-08-overview-and-reports-nav, H):
+// status beside the name, the wallet's actions under «المحفظة», the rest behind ⋯, the wallet as cards, two tabs,
+// and the number operations and numbers as closed sections of «الحساب».
 test('the user page heads with its status, actions and wallet cards', async ({ page }) => {
   const calls = await serveOffice(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
@@ -19,16 +20,20 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
     'GET /users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [] } }),
     'POST /wallets/pos1/fund': () => ({ body: { ok: true } }),
     'POST /wallets/pos1/deduct': () => ({ body: { ok: true } }),
+    'GET /lines': () => ({ body: { lines: [{ id: 'ln1', msisdn: '0550000001', status: 'active', packageName: '400 جيجا', posLogin: 'pos1', endsAt: '2026-12-01T00:00:00.000Z' }], poses: [], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1');
   const head = page.locator('.page-head');
   await expect(head.locator('.ui-badge')).toHaveText('يعمل');
   await expect(head).toContainText('نقطة بيع · يتبع: admin');
-  await expect(head.getByRole('button', { name: 'تمويل' })).toBeVisible();
-  await expect(head.getByRole('button', { name: 'السقف' })).toBeVisible();
+  const wallet = head.getByRole('button', { name: 'المحفظة' });
+  await wallet.click();
+  await expect(page.getByRole('menuitem')).toHaveText(['تمويل', 'خصم', 'السقف', 'كشف الحساب']);
+  await page.keyboard.press('Escape');
   await head.getByRole('button', { name: 'إجراءات أخرى' }).click();
   await expect(page.getByRole('menuitem', { name: 'تجميد' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: 'حذف' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'تمويل' })).toHaveCount(0);
   await page.keyboard.press('Escape');
 
   const cards = page.locator('.stat');
@@ -40,18 +45,30 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   await expect(cards.nth(3)).toContainText('20.00 ₪');
   await expect(cards.nth(4)).toContainText('130.00 ₪');
   await expect(cards.nth(4)).toHaveClass(/highlight/);
+  await expect(page.getByRole('tab')).toHaveText(['الحساب', /الرزم والأسعار/]);
   await expect(page.getByRole('tab', { name: /الرزم والأسعار/ }).locator('.step-count')).toHaveText('2');
-  await expect(page.getByRole('tab', { name: /عمليات الأرقام/ }).locator('.step-count')).toHaveText('1');
+  // The sections start closed; the number operations show their count on the closed head.
+  const ops = page.locator('details.fold', { hasText: 'عمليات الأرقام' });
+  await expect(ops).not.toHaveAttribute('open', '');
+  await expect(ops.locator('summary .ui-badge')).toHaveText('1');
+  const numbers = page.locator('details.fold', { hasText: 'أرقام الحساب' });
+  await expect(numbers).not.toHaveAttribute('open', '');
+  // The numbers are read only once their section opens, narrowed to this account.
+  expect(calls.some((call) => call.startsWith('GET /lines'))).toBe(false);
+  await numbers.locator('summary').click();
+  await expect(numbers.locator('table.data tbody tr')).toHaveCount(1);
+  expect(calls.some((call) => call.startsWith('GET /lines?') && call.includes('account=pos1'))).toBe(true);
 
-  await head.getByRole('button', { name: 'تمويل' }).click();
+  await wallet.click();
+  await page.getByRole('menuitem', { name: 'تمويل' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('المبلغ').fill('25');
   await dialog.getByRole('button', { name: 'تمويل' }).click();
   await expect(dialog).toHaveCount(0);
   expect(calls).toContain('POST /wallets/pos1/fund');
 
-  // Taking money back: from ⋯, with a reason and a note.
-  await head.getByRole('button', { name: 'إجراءات أخرى' }).click();
+  // Taking money back: from «المحفظة», with a reason and a note.
+  await wallet.click();
   await page.getByRole('menuitem', { name: 'خصم' }).click();
   const back = page.getByRole('dialog');
   await back.getByLabel('السبب').selectOption('correction');

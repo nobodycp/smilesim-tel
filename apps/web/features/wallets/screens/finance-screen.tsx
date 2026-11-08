@@ -49,7 +49,8 @@ export function FinanceScreen() {
   const { t } = usePrefs();
   const [kind, setKind] = useState('');
   const [layer, setLayer] = useState('');
-  const [q, setQ] = useState('');
+  // «كشف الحساب» on the user page opens this list searched by that account (`?q=`).
+  const [q, setQ] = useState(() => (typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('q') ?? ''));
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   // Every operation by default (owner 2026-11-09); «الحركات المالية فقط» keeps the money movements.
