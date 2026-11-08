@@ -27,8 +27,8 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 |---|---|---|
 | `auth/` | controller, service, `auth.store.ts` (in-memory, specs), `prisma-auth.store.ts` (Postgres + Redis: live session keys and the failed-login counter `login-fail:<login>`), `decide-login`, `password`, `totp`, `sessions`, `validators`, `trial-seed`, `cities` | login, sessions (cookie `sid`, max sessions), 2FA, password change, trial accounts. Store behind `AUTH_STORE` token. |
 | `branding/` | controller, service, store (memory + prisma), rules | site identity (logo, title, icon). Small and clean — the reference shape for other modules. |
-| `office/` | `office.controller.ts` (~500 lines, routes not yet moved), `office.service.ts` (~2280 lines: methods not yet moved + one-line facades), `office.module.ts` (`OFFICE_CONTROLLERS`, `OFFICE_PROVIDERS`), `gate.ts`, pure rule files | being split per domain (Phase 3, spec `docs/superpowers/specs/2026-11-08-office-domain-split.md`) |
-| `office/kernel/` | `office-kernel.ts` (`OfficeKernel`: prisma + spec override `prismaClient`, auth, notice writer, `actor`, `grantsFor`, `accounts`, `visibleAccount`, `branchActor`, `chainIds`, `runTx`, `queueNotices`, `publishQuietly`, `actorName`, `move`, `recordOp`, `pathOf`, `termsFor`, `ladderRows`, `stampWith`; `nodeOf`, `PRICE_COLUMNS`), `types.ts` (`Gate`, `Actor`, `Account`, `Sale`), `actor.interceptor.ts` (`ActorInterceptor`, `@Actor()`), `feed.ts` (`feedPosition`), `line-terms.ts` (`lineTermsOf`), `query.ts` (`text`), `office-test-app.ts` (HTTP spec app), `values.ts` (`nonNegative`), `assertBranch()` | what every office domain shares. `routes.http.spec.ts` pins all 79 routes (method, path, activity event, anonymous answer). |
+| `office/` | `office.controller.ts` (~320 lines, routes not yet moved), `office.service.ts` (~1910 lines: methods not yet moved + one-line facades), `office.module.ts` (`OFFICE_CONTROLLERS`, `OFFICE_PROVIDERS`), `gate.ts`, pure rule files | being split per domain (Phase 3, spec `docs/superpowers/specs/2026-11-08-office-domain-split.md`) |
+| `office/kernel/` | `office-kernel.ts` (`OfficeKernel`: prisma + spec override `prismaClient`, auth, notice writer, `actor`, `grantsFor`, `accounts`, `visibleAccount`, `branchActor`, `chainIds`, `runTx`, `queueNotices`, `publishQuietly`, `actorName`, `move`, `recordOp`, `pathOf`, `termsFor`, `ladderRows`, `stampWith`; `nodeOf`, `PRICE_COLUMNS`), `types.ts` (`Gate`, `Actor`, `Account`, `Sale`), `actor.interceptor.ts` (`ActorInterceptor`, `@Actor()`), `feed.ts` (`feedPosition`), `line-terms.ts` (`lineTermsOf`), `query.ts` (`text`), `office-test-app.ts` (HTTP spec app), `values.ts` (`nonNegative`, `optionalPrice`, `LAYER_ORDER`), `assertBranch()` | what every office domain shares. `routes.http.spec.ts` pins all 79 routes (method, path, activity event, anonymous answer). |
 | `office/notices/` | `notice-inbox.service.ts` (`NoticeInboxService`: list, read, subscribe), `notices.controller.ts` | `GET /office/notices`, `GET /office/notices/stream` (SSE), `POST /office/notices/read` |
 | `office/audit/` | `audit.service.ts` (`AuditService.list`), `audit.controller.ts` | `GET /office/audit` |
 | `office/tasks/` | `tasks.service.ts` (`TasksService`: list, detail, addNote, take, release, reject, cancel; `openTask`, `taskNotice`, `noteLog` used by line ops), `tasks.controller.ts` | `GET /office/tasks`, `GET tasks/:id`, `POST tasks/:id/{notes,take,release,reject,cancel}`. `complete` is still in OfficeController/OfficeService (moves with lines). |
@@ -37,16 +37,17 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 | `office/companies/` | `companies.service.ts` (`CompaniesService`: shelf, setSim, setImage), `companies.controller.ts` | `GET /office/companies`, `PUT companies/:code/sim`, `POST companies/image` |
 | `office/packages/` | `packages.service.ts` (`PackagesService`: list, setSellPrice, clearSellPrice, setMode, sheet, setChain, setTargets), `packages.controller.ts` | `GET /office/packages`, `PUT/DELETE packages/:code/sell-price`, `PATCH packages/:code/mode`, `GET packages/:code/sheet`, `PUT packages/:code/{chain,renewals,switches}` |
 | `office/terms/` | `terms.service.ts` (`TermsService`: userPackages, setUserPackage, setUserPackagesBulk, userOps, setUserOps, customPrices, setCustomPrice, clearCustomPrice, linePrices, setLinePrices, repriceLines), `terms.controller.ts` | `GET/PUT users/:login/packages[/:code]`, `GET/PUT users/:login/ops`, `GET/PUT/DELETE packages/:code/custom-prices[/:login]`, `GET/PUT packages/:code/line-prices` |
+| `office/accounts/` | `accounts.service.ts` (`AccountsService`: list, directory, create, setPassword, detail, saveAccess, setFrozen, remove, enter), `accounts.controller.ts`; `account-session.{service,controller}.ts` (`leave`, deliberately without ActorInterceptor) | `GET /office/users`, `GET directory`, `POST users`, `POST users/:login/{password,freeze,restore,enter}`, `GET users/:login`, `PATCH users/:login/access`, `DELETE users/:login`, `POST leave` |
+| `office/roles/` | `roles.service.ts` (`RolesService`: list, save), `roles.controller.ts` | `GET/POST /office/roles` |
+| `office/desk/` | `desk.service.ts` (`DeskService`: me, home, postAnnouncement), `desk.controller.ts` | `GET /office/me`, `GET home`, `POST announcements` |
 | `activity` (in `office/activity.module.ts`) | `activity-recorder.ts`, `activity-log.ts` | audit/activity events |
 
 ### `office` endpoint groups (in `office.controller.ts`; line numbers are pre-split and drift)
 
-- identity/home: `me` 98, `home` 105, `announcements` 112
 - reports: `reports/:kind` (cross-domain; moves with lines)
 - lines: 394–605 (list, detail, create, charge, refresh, disconnect, freeze/unfreeze, extend, reactivate, rename, esim, sim, transfer, switch). `company-switch` 441 is a stub that always returns 400.
 - tasks: `complete` only (the rest moved to `office/tasks/`)
-- users/tree: 785–1000 (list, directory, detail, user packages, ops, access, create, transfer, transfer-preview, password, freeze/restore/delete, enter/leave)
-- roles 885/892
+- users: transfer, transfer-preview only
 
 ### Pure rule files in `office/` (well tested, keep pure)
 

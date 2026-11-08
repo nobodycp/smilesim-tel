@@ -65,7 +65,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
   - `fb16f91` kernel gets `ladderRows`, `stampWith`, `PRICE_COLUMNS`.
   - `6058a9b` `terms/` — user packages, user ops, custom prices, line prices (+ `kernel/line-terms.ts`).
   - Found: `PATCH packages/:code/mode` checked the `edit` grant only — fixed afterwards (see follow-ups).
-- [ ] 3.7 users + roles: list, directory, account, access, create, password, freeze/restore/delete, enter/leave, roles.
+- [x] 3.7 users + roles + desk: `roles/` (list, save), `desk/` (me, home, announcements) `97266b6` and `accounts/` (list, directory, create, password, detail, access, freeze/restore, delete, enter) + `AccountSessionController` for `leave` (no ActorInterceptor). 10 of 13 routes had no spec: `accounts.http.spec.ts` and `desk.http.spec.ts` written first. `a9564fc`
 - [ ] 3.8 transfers: account + line transfer, preview.
 - [ ] 3.9 lines: list, detail, activate, operate, switch, extend, reactivate, refresh, rename, sim, esim, disconnect, **and task completion** (`POST tasks/:id/complete`), **and `GET reports/:kind`**.
 - [ ] 3.10 catalog seed: `ensureCatalog` / `ensureLayerRoles` out of `onModuleInit` into a boot provider.
