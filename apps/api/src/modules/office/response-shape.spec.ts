@@ -6,7 +6,7 @@ import { hashOnce } from './test-hash';
 import { companies } from './office-catalog';
 import { OfficeFacade } from './testing/office-facade';
 
-// The web app keeps its own copy of the shape of these answers (apps/web/lib/api.ts: OfficeMe,
+// The web app keeps its own copy of the shape of these answers (apps/web/lib/api-types.ts and features/lines/api.ts: OfficeMe,
 // HomePayload, LineRow, PosChoice). There is no shared package, so this test is the guard: the key
 // lists below are written by hand, the service must answer with exactly them, and the web types must
 // declare exactly them. Change a shape on one side and this fails until the other side and the list follow.
@@ -291,13 +291,15 @@ describe('office response shapes', () => {
 });
 
 // The same lists against the web declarations. Skipped where the web app is not checked out beside the API.
-const webApi = join(__dirname, '../../../../web/lib/api.ts');
+const webApi = join(__dirname, '../../../../web/lib/api-types.ts');
+// The officeLines envelope is declared with its call (phase 4.3 split the web client by domain).
+const webLines = join(__dirname, '../../../../web/features/lines/api.ts');
 const describeWeb = existsSync(webApi) ? describe : describe.skip;
 
 /** The text between `export type NAME = {` and the `};` that closes it. */
 function typeBody(source: string, name: string): string {
   const start = source.indexOf(`export type ${name} = {`);
-  if (start < 0) throw new Error(`apps/web/lib/api.ts has no exported type ${name}`);
+  if (start < 0) throw new Error(`apps/web/lib/api-types.ts has no exported type ${name}`);
   const open = source.indexOf('{', start);
   const end = source.indexOf('\n};', open);
   return source.slice(open + 1, end);
@@ -319,7 +321,7 @@ function inlineKeys(body: string, field: string): string[] {
 }
 
 describeWeb('web types match the pinned shapes', () => {
-  const source = existsSync(webApi) ? readFileSync(webApi, 'utf8') : '';
+  const source = [webApi, webLines].map((file) => (existsSync(file) ? readFileSync(file, 'utf8') : '')).join('\n');
 
   it('OfficeMe', () => {
     expect(declared(typeBody(source, 'OfficeMe'))).toEqual({ required: sorted(ME_KEYS), optional: [] });
