@@ -11,7 +11,7 @@ import { Select } from '../../../components/ui/select';
 import { api, type NoticeRow } from '../../../lib/api';
 import { noticeDetail, noticeGroup, noticeTitle } from '../../../lib/notice-text';
 import { usePrefs } from '../../../lib/prefs';
-import { pick } from '../../../lib/use-load';
+import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { noticeTone } from '../../../lib/status-tone';
 

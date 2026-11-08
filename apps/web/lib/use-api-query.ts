@@ -5,14 +5,16 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useConnection } from './connection';
 import { usePrefs } from './prefs';
 import { ApiFailure } from './query';
-import type { Fetched } from './use-load';
+import type { Fetched } from './fetched';
 
 /**
  * One read, kept in the query cache under `key` so every screen that asks for it shares one answer (ADR 0001).
  * Same shape as `useLoad`: `data`, a translated `error`, `loaded`, `reload`. The cached answer shows at once when a
  * screen opens and is asked again in the background; `reload` asks again now (a write's `onDone`).
+ * `fresh` drops the answer when the last screen using it closes, so the next opening waits for a new one: for
+ * an editor that copies the answer into drafts once (branding, line prices), where a cached copy would seed stale drafts.
  */
-export function useApiQuery<T>(key: QueryKey, fetcher: () => Promise<Fetched<T>>, { enabled = true }: { enabled?: boolean } = {}) {
+export function useApiQuery<T>(key: QueryKey, fetcher: () => Promise<Fetched<T>>, { enabled = true, fresh = false }: { enabled?: boolean; fresh?: boolean } = {}) {
   const { apiText } = usePrefs();
   const latest = useRef(fetcher);
   useEffect(() => {
@@ -26,6 +28,7 @@ export function useApiQuery<T>(key: QueryKey, fetcher: () => Promise<Fetched<T>>
       return result.data;
     },
     staleTime: 0,
+    ...(fresh ? { gcTime: 0 } : {}),
     enabled,
   });
 

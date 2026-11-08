@@ -6,7 +6,7 @@ import { PagedTable, type Column, type PagedView } from '../../../components/dat
 import { Desk, Money, actionName, latinWhen, lineStatus, taskStatus } from '../../../components/desk';
 import { api, type LineRow, type ReportPayload, type TaskRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
-import { pick } from '../../../lib/use-load';
+import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 

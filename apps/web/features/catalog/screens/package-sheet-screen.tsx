@@ -15,7 +15,7 @@ import { api, type CustomPriceRow, type LineRow, type Shelf } from '../../../lib
 import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { type Fetched } from '../../../lib/use-load';
+import { type Fetched } from '../../../lib/fetched';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { packageKeys, sharedKeys } from '../../../lib/query';
 import { useQueryClient } from '@tanstack/react-query';

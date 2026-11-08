@@ -10,7 +10,8 @@ import { api, type RoleRow } from '../../../lib/api';
 import { GRANT_CODES, grantLabel, grantUsable } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { useLoad } from '../../../lib/use-load';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 
 type RoleDraft = { id: string; name: string; kind: 'layer' | 'job'; layer: string; grants: string[] };
 
@@ -32,11 +33,8 @@ export function RolesScreen() {
   const [draft, setDraft] = useState<RoleDraft>(emptyDraft);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const roles = useLoad(async () => {
-    const result = await api.officeRoles();
-    return result.ok ? { ok: true as const, data: result.data.roles } : result;
-  });
-  const rows = roles.data ?? [];
+  const roles = useApiQuery(sharedKeys.roles, () => api.officeRoles());
+  const rows = roles.data?.roles ?? [];
   const { run, busy } = useAction({ setError, setNote, onDone: roles.reload });
   const failure = error;
 

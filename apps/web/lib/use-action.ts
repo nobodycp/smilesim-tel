@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOffice } from './office-session';
 import { usePrefs } from './prefs';
-import type { Fetched } from './use-load';
+import type { Fetched } from './fetched';
 
 type Options = {
   setError: (message: string) => void;

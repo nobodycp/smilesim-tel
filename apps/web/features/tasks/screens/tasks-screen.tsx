@@ -16,7 +16,7 @@ import { sharedKeys } from '../../../lib/query';
 import { api, type PackageRow, type TaskRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { pick } from '../../../lib/use-load';
+import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { taskTone } from '../../../lib/status-tone';

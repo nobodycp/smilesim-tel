@@ -11,7 +11,9 @@ import { darkVariant, FAVICON_SIDE, fetchAsDataUrl, LOGO_SIDE, shrinkImage } fro
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { useLoad, pick, type Fetched } from '../../../lib/use-load';
+import { pick, type Fetched } from '../../../lib/fetched';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Button } from '../../../components/ui/button';
 
@@ -42,7 +44,7 @@ export function BrandingScreen() {
   const owner = allowed && Boolean(me?.isBranchOwner);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const { data, error: loadError } = useLoad(loadDraft, [], { enabled: owner });
+  const { data, error: loadError } = useApiQuery(sharedKeys.brandingDraft, loadDraft, { enabled: owner, fresh: true });
 
   useEffect(() => {
     if (me && !me.isBranchOwner) router.replace('/');

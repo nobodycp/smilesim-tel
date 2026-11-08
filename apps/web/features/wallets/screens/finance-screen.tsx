@@ -8,7 +8,7 @@ import { FilterBar } from '../../../components/filter-bar';
 import { api, type FinanceRow } from '../../../lib/api';
 import type { Copy } from '../../../lib/copy';
 import { usePrefs } from '../../../lib/prefs';
-import { pick } from '../../../lib/use-load';
+import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';

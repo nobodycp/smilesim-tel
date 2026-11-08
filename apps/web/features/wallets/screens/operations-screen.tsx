@@ -7,7 +7,7 @@ import { FilterBar } from '../../../components/filter-bar';
 import { PeriodChips } from '../../../components/period-chips';
 import { api, type LedgerRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
-import { pick } from '../../../lib/use-load';
+import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { Select } from '../../../components/ui/select';
 

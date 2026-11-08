@@ -64,6 +64,9 @@ export const sharedKeys = {
   accountOps: (login: string) => ['office', 'account', login, 'ops'] as const,
   providerSettings: (code: string) => ['office', 'provider', code, 'settings'] as const,
   line: (id: string) => ['office', 'line', id] as const,
+  home: ['office', 'home'] as const,
+  roles: ['office', 'roles'] as const,
+  brandingDraft: ['branding', 'draft'] as const,
   profile: ['auth', 'profile'] as const,
   sessions: ['auth', 'sessions'] as const,
 };
@@ -73,5 +76,6 @@ export const packageKeys = {
   sheet: (code: string) => ['office', 'package', code, 'sheet'] as const,
   lines: (code: string) => ['office', 'package', code, 'lines'] as const,
   customPrices: (code: string) => ['office', 'package', code, 'custom-prices'] as const,
+  linePrices: (code: string, scope: string) => ['office', 'package', code, 'line-prices', scope] as const,
   all: (code: string) => ['office', 'package', code] as const,
 };

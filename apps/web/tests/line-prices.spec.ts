@@ -227,3 +227,30 @@ test('a custom price row opens the table for its account', async ({ page }) => {
   expect((await put).postDataJSON()).toEqual({ scope: 'pos1', groups: [{ from: 3200, to: 'current' }] });
   await expect(page.getByText('تم تحديث 2 رقماً')).toBeVisible();
 });
+
+test('opening the table again after a save waits for the new table instead of showing the old one', async ({ page }) => {
+  let saved = false;
+  await serveOffice(page, 'agent', {
+    ...userRoutes(),
+    'GET /packages/lian-wecom-150/line-prices': () => (saved
+      ? { body: { current: 3700, groups: [{ price: 3700, count: 150 }] }, delay: 800 }
+      : { body: grouped }),
+    'PUT /packages/lian-wecom-150/line-prices': () => {
+      saved = true;
+      return { body: { ok: true, lines: 20 } };
+    },
+  });
+  const dialog = await openFromUserPage(page);
+  await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
+  await dialog.locator('tbody tr').nth(0).getByRole('textbox').fill('37');
+  await dialog.locator('tbody tr').nth(0).getByRole('textbox').press('Enter');
+  await dialog.getByRole('button', { name: 'حفظ' }).click();
+  await expect(dialog).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'إجراءات 150 جيجا' }).click();
+  await page.getByRole('menuitem', { name: 'أسعار الأرقام القائمة' }).click();
+  // While the new table is on its way the dialog shows its skeleton, not the three groups it had before the save.
+  // (A cached copy would draw the old groups at once and never show the skeleton.)
+  await expect(page.getByRole('dialog').locator('.table-skeleton')).toBeVisible();
+  await expect(page.getByRole('dialog').locator('table.data tbody tr')).toHaveCount(1);
+});

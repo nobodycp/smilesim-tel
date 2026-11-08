@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useConnection } from './connection';
 import { usePrefs } from './prefs';
 import { ApiFailure } from './query';
-import type { Fetched } from './use-load';
+import type { Fetched } from './fetched';
 
 export type PageOf<Row, Extra = undefined> = {
   rows: Row[];

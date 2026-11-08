@@ -21,7 +21,6 @@ import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
-import { useLoad } from '../../../lib/use-load';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { accountTone } from '../../../lib/status-tone';
 import { reloadAt } from '../../../lib/reload-at';
@@ -55,7 +54,7 @@ export function UsersScreen() {
   const allowed = useRequireLayer(OFFICE_LAYERS);
   const accounts = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: allowed });
   const rows = accounts.data?.users ?? [];
-  const roles = useLoad(() => api.officeRoles(), [], { enabled: draft.layer === 'staff' }).data?.roles ?? [];
+  const roles = useApiQuery(sharedKeys.roles, () => api.officeRoles(), { enabled: draft.layer === 'staff' }).data?.roles ?? [];
   const { run: send, busy } = useAction({ setError, setNote, onDone: accounts.reload });
   const failure = error;
   const isBranch = me?.layer === 'branch';

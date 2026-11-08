@@ -15,7 +15,8 @@ import { useOffice } from '../../../lib/office-session';
 import { usePageTitle } from '../../../lib/page-title';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { useLoad } from '../../../lib/use-load';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 import { Alert } from '../../../components/alert';
 import { Button } from '../../../components/ui/button';
 
@@ -29,7 +30,7 @@ export function HomeScreen() {
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const board = useLoad(() => api.officeHome());
+  const board = useApiQuery(sharedKeys.home, () => api.officeHome());
   const home = board.data;
   const { run } = useAction({ setError, setNote, onDone: board.reload });
   // A failed board is shown once, in its panes; the banner is for actions.

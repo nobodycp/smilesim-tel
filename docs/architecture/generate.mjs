@@ -265,7 +265,8 @@ const CATALOGUE = [
   { zone: 'lib', file: 'lib/copy/he.ts', role: 'النصوص العبرية' },
   { zone: 'lib', file: 'lib/grants.ts', role: 'قائمة رموز المنح وتسمياتها' },
   { zone: 'lib', file: 'lib/company-mark.ts', role: 'حروف وعلامة الشركة وتصغير الشعار' },
-  { zone: 'lib', file: 'lib/use-load.ts', role: 'خطاف جلب لمرة / حسب الاعتماديات' },
+  { zone: 'lib', file: 'lib/fetched.ts', role: 'شكل جواب الـ API ودالة pick' },
+  { zone: 'lib', file: 'lib/use-api-query.ts', role: 'قراءة واحدة مخزّنة في كاش الاستعلامات' },
   { zone: 'lib', file: 'lib/use-paged.ts', role: 'خطاف قوائم متتابعة بالمؤشر' },
   { zone: 'lib', file: 'lib/use-action.ts', role: 'خطاف كتابة مع busy والخطأ' },
   { zone: 'lib', file: 'lib/status-tone.ts', role: 'خريطة الحالة إلى لون الشارة' },
@@ -420,7 +421,7 @@ function buildFlowBoard() {
 
   // Band 3 page I/O
   const page = flowBox(40, bandY[2], 180, 120, 'Page', 'أي page.tsx\nفي المكتب', COLORS.app);
-  const hooks = flowBox(260, bandY[2], 280, 120, 'Hooks', 'useLoad · usePaged · useAction\nuse-require-layer', COLORS.action);
+  const hooks = flowBox(260, bandY[2], 280, 120, 'Hooks', 'useApiQuery · usePaged · useAction\nuse-require-layer', COLORS.action);
   const api = flowBox(580, bandY[2], 260, 120, 'api.ts', 'credentials + x-door\nنتيجة ok أو code', COLORS.action);
   const backend = flowBox(880, bandY[2], 240, 120, '/api → Nest', 'جلسة الكوكي\nالخادم يقرّر', COLORS.flow);
   elements.push(...page.elements, ...hooks.elements, ...api.elements, ...backend.elements);

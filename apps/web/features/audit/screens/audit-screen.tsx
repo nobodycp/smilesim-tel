@@ -8,7 +8,7 @@ import { Desk, actionName, latinWhen, layerName } from '../../../components/desk
 import { FilterBar } from '../../../components/filter-bar';
 import { api, type ActivityRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
-import { pick } from '../../../lib/use-load';
+import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { Select } from '../../../components/ui/select';
 

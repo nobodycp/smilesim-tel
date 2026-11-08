@@ -23,7 +23,7 @@ import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint, withPrefix } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
-import { pick } from '../../../lib/use-load';
+import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { lineTone } from '../../../lib/status-tone';

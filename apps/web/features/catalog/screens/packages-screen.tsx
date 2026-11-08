@@ -20,7 +20,6 @@ import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
-import { useLoad } from '../../../lib/use-load';
 import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
@@ -186,7 +185,7 @@ function CompanyTitle({ name, image, label, heading = false }: { name: string; i
 
 function BranchPackages({ error, note }: { error: string; note: string }) {
   const { t } = usePrefs();
-  const shelf = useLoad(() => api.officeCompanies());
+  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies());
   const [query, setQuery] = useState('');
   const [company, setCompany] = useState('');
   const [provider, setProvider] = useState('');

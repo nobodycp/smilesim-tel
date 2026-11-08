@@ -5,7 +5,8 @@ import { api, type LinePriceChange } from '../lib/api';
 import { formatShekel, parseShekel } from '../lib/money';
 import { usePrefs } from '../lib/prefs';
 import { useAction } from '../lib/use-action';
-import { useLoad } from '../lib/use-load';
+import { useApiQuery } from '../lib/use-api-query';
+import { packageKeys } from '../lib/query';
 import { Money } from './desk';
 import { Dialog } from './dialog';
 import { EmptyState } from './empty-state';
@@ -49,7 +50,7 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
   // A refused text is not a draft, so the table looks unchanged while its message is on screen. This flag stands for
   // that message until a price is accepted or "follow" is used; a failed save also sets `error`, but is no refusal.
   const [refused, setRefused] = useState(false);
-  const table = useLoad(() => api.linePrices(code, scope), [code, scope]);
+  const table = useApiQuery(packageKeys.linePrices(code, scope), () => api.linePrices(code, scope), { fresh: true });
   const { run, busy } = useAction({ setError, setNote: noNote });
 
   // `Dialog` focuses its first field again whenever `onClose` changes, so the handler it gets stays the

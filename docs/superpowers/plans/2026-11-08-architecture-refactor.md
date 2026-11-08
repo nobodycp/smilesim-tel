@@ -83,7 +83,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [ ] 4.4c `/users` server paging (needs an API change: the list route returns everything today).
 - [x] 4.5a `useApiQuery` (useLoad's shape over a cached query) + `sharedKeys` (packages, users, line). The line card reads the number, the catalog and the accounts as three queries; an action re-reads only the number. Numbers, tasks, packages and users read the same catalog/accounts entries. `ac3a279`
 - [x] 4.5b Package sheet split into five cached reads; an action re-reads only the sheet, its numbers and its custom prices (`packageKeys`). Task, account (+ packages and ops tabs), providers and companies screens on `useApiQuery`/`sharedKeys`. `7aed7aa`
-- [ ] 4.5c Remaining `useLoad`: home board, branding draft, roles, the staff-role and shelf dropdowns, the line-prices dialog (single reads, no storms; move when touched).
+- [x] 4.5c The last six `useLoad` reads (home board, branding draft, roles, the staff-role dropdown, the packages shelf, the line-prices dialog) → `useApiQuery` on `sharedKeys.home/roles/companies/brandingDraft` and `packageKeys.linePrices`; `useApiQuery` takes `fresh` (cache dropped on close) for the two draft editors; `lib/use-load.ts` deleted, `Fetched`/`pick` live in `lib/fetched.ts`. Test: reopening line prices after a save shows the skeleton, not the old table (fails without `fresh`). TBD
 - [x] 4.6 Shell search reads the accounts once (shared users query) and filters locally; numbers stay a server search. `a969b86`
 
 ## Phase 5 — Web structure and design system (spec: `docs/superpowers/specs/2026-11-08-web-structure-design-system.md`)

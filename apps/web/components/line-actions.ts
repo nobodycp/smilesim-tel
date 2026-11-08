@@ -1,6 +1,6 @@
 import type { Copy } from '../lib/copy';
 import { api, type ApplyResult, type LineRow, type Outcome } from '../lib/api';
-import type { Fetched } from '../lib/use-load';
+import type { Fetched } from '../lib/fetched';
 import type { RowAction } from './row-menu';
 
 // Runs one write on a number and refreshes the page; the page owns busy, errors, and the note.
