@@ -12,10 +12,8 @@ import {
   FEED_PAGE,
   LINES_PAGE,
   NEWEST_FIRST,
-  NOTICES_PAGE,
   TASKS_PAGE,
   afterFeed,
-  decodeFeedCursor,
   encodeFeedCursor,
   idCursorArgs,
   linesWhere,
@@ -72,9 +70,10 @@ import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey,
 import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { NoticeService, type WrittenNotice } from './notice.service';
+import { feedPosition } from './kernel/feed';
 import { OfficeKernel } from './kernel/office-kernel';
 import type { Account, Actor, Gate, Sale } from './kernel/types';
-import { excerpt, noticeGroupOf, NOTICE_GROUPS, type TaskNoticePayload } from './notice-kinds';
+import { excerpt, type TaskNoticePayload } from './notice-kinds';
 import {
   FLAG_CODES,
   GRANT_CODES,
@@ -203,12 +202,6 @@ function transferChoices(kind: 'pos' | 'agent', stated: NonNullable<ReturnType<t
   const { childPrices, childStops, ...own } = stated;
   if (kind === 'pos') return childPrices === undefined && childStops === undefined ? { ...own, child: null } : null;
   return childPrices && childStops ? { ...own, child: { prices: childPrices, stops: childStops } } : null;
-}
-
-function feedPosition(raw: string | undefined) {
-  const position = decodeFeedCursor(raw);
-  if (position === null) fail(400, 'INVALID');
-  return position;
 }
 
 const PROVIDER_OPERATION_KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'];
@@ -3501,57 +3494,6 @@ export class OfficeService implements OnModuleInit {
     const audience = taskAudience(event, task, handlers, { id: actor.id, handler: canHandleTasks(actor) });
     const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, ...extra };
     return this.notice.write(tx, audience, actor, { kind: `task.${event}`, payload });
-  }
-
-  async notices(gate: Gate, query: { cursor?: string; group?: string; unread?: string } = {}) {
-    const actor = await this.actor(gate);
-    const group = noticeGroupOf(query.group);
-    const onlyUnread = query.unread === '1' || query.unread === 'true';
-    const position = query.cursor ? feedPosition(query.cursor) : undefined;
-    const where = {
-      userId: actor.id,
-      ...(group ? { kind: { in: [...NOTICE_GROUPS[group]] } } : {}),
-      ...(onlyUnread ? { readAt: null } : {}),
-    };
-    const [rows, unread, total] = await Promise.all([
-      this.prisma.notice.findMany({
-        where: { ...where, AND: afterFeed(position) },
-        orderBy: [...NEWEST_FIRST],
-        take: NOTICES_PAGE + 1,
-      }),
-      this.prisma.notice.count({ where: { userId: actor.id, readAt: null } }),
-      this.prisma.notice.count({ where }),
-    ]);
-    const { page, nextCursor } = mergeFeed([rows], NOTICES_PAGE);
-    return {
-      unread,
-      total,
-      notices: page.map((row) => ({
-        id: row.id,
-        kind: row.kind,
-        payload: row.payload,
-        actorName: row.actorName,
-        href: row.href,
-        read: Boolean(row.readAt),
-        createdAt: row.createdAt.toISOString(),
-      })),
-      nextCursor,
-    };
-  }
-
-  async readNotices(gate: Gate, id?: string) {
-    const actor = await this.actor(gate);
-    await this.prisma.notice.updateMany({
-      where: { userId: actor.id, readAt: null, ...(id ? { id } : {}) },
-      data: { readAt: new Date() },
-    });
-    return { ok: true as const };
-  }
-
-  /** One live channel per signed-in user. Resolves an unsubscribe function. */
-  async subscribeNotices(gate: Gate, handler: (message: string) => void) {
-    const actor = await this.actor(gate);
-    return this.notice.subscribe(actor.id, handler);
   }
 
   private async disconnectSettlementFor(
