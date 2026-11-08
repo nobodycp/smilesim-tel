@@ -3,7 +3,7 @@
 //   1. an API error code (apps/api/src/errors.ts) has no text in ar, en or he;
 //   2. the Arabic text of a code differs from the message the API sends;
 //   3. a key exists in one language and not in another, or a {placeholder} differs;
-//   4. a key is not used by any file under app, components, lib or tests.
+//   4. a key is not used by any file under app, components, features, lib or tests.
 //
 // Run: node scripts/check-copy.mjs   (npm run check:copy in apps/web)
 
@@ -17,7 +17,7 @@ const errorsFile = join(web, '..', 'api', 'src', 'errors.ts');
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 
-// Codes the web app raises itself, in lib/api.ts, when there is no answer to read one from.
+// Codes the web app raises itself, in lib/http.ts, when there is no answer to read one from.
 const CLIENT_CODES = ['NETWORK', 'GENERIC'];
 const LANGUAGES = ['ar', 'en', 'he'];
 
@@ -101,18 +101,18 @@ for (const lang of LANGUAGES.filter((item) => item !== 'ar')) {
   }
 }
 
-// 4: nothing unused. Copy keys are looked for by name in the app; a client code in lib/api.ts.
-const files = ['app', 'components', 'lib', 'tests']
+// 4: nothing unused. Copy keys are looked for by name in the app; a client code in lib/http.ts.
+const files = ['app', 'components', 'features', 'lib', 'tests']
   .flatMap((dir) => sourceFiles(join(web, dir)))
   .filter((file) => !relative(join(web, 'lib'), file).startsWith('copy'));
 const text = files.map((file) => readFileSync(file, 'utf8')).join('\n');
 for (const key of Object.keys(copies.ar)) {
   if (key === 'errors') continue;
-  if (!new RegExp(`\\b${key}\\b`).test(text)) fail(`key ${key} is not used by any file under app, components, lib or tests`);
+  if (!new RegExp(`\\b${key}\\b`).test(text)) fail(`key ${key} is not used by any file under app, components, features, lib or tests`);
 }
-const api = readFileSync(join(web, 'lib', 'api.ts'), 'utf8');
+const api = readFileSync(join(web, 'lib', 'http.ts'), 'utf8');
 for (const code of CLIENT_CODES) {
-  if (!api.includes(`'${code}'`)) fail(`client code ${code} is not raised in lib/api.ts`);
+  if (!api.includes(`'${code}'`)) fail(`client code ${code} is not raised in lib/http.ts`);
 }
 
 if (problems.length > 0) {
