@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
 import { NoticeService } from './notice.service';
-import { OfficeService } from './office.service';
+import { OfficeFacade } from './testing/office-facade';
 import { captureTerms } from './office-rules';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
 
@@ -72,7 +72,7 @@ export async function tree() {
     gates[row.id] = { sessionId: await auth.saveSession({ userId: row.id, scope: 'full', userAgent: '', ip: '' }) };
   }
   const notice = new NoticeService({ publish: async () => undefined, subscribe: async () => async () => undefined });
-  const service = new OfficeService(auth, notice);
+  const service = new OfficeFacade(auth, notice);
 
   const whereMatch = (row: Row, where: Record<string, unknown> | undefined) =>
     !where ||

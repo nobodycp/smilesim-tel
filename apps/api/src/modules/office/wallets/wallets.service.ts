@@ -10,7 +10,7 @@ import { visibleAccountIds } from '../office-rules';
 import { CeilingBody, FundBody } from '../wallet.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 
-/** Wallets and money reads: the wallets an account sees, funding and ceilings, the ledger, the finance report and provider operations. The cross-domain `report` stays in OfficeService until lines move. */
+/** Wallets and money reads: the wallets an account sees, funding and ceilings, the ledger, the finance report and provider operations. Branch reports are in ReportsService. */
 @Injectable()
 export class WalletsService {
   constructor(private readonly kernel: OfficeKernel) {}

@@ -2,7 +2,8 @@ import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
 import type { Layer } from '../auth/decide-login';
 import { hashOnce } from './test-hash';
-import { OfficeFailure, OfficeService } from './office.service';
+import { OfficeFailure } from '../shared/office-failure';
+import { OfficeFacade } from './testing/office-facade';
 import { afterFeed, decodeFeedCursor, encodeFeedCursor, linesWhere, mergeFeed } from './office-paging';
 
 // A small in-memory stand-in for the Prisma client: it reads the `where`, `orderBy`, `cursor`,
@@ -105,7 +106,7 @@ async function serviceWith(tables: Record<string, unknown>) {
     passwordHash: await hashOnce('ownerpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
-  const service = new OfficeService(auth);
+  const service = new OfficeFacade(auth);
   const prisma = {
     user: {
       findUnique: async () => ({ liveGrants: '', isBranchOwner: true }),
@@ -135,7 +136,7 @@ describe('numbers list paging', () => {
     endsAt: new Date(t0 + 86_400_000),
   }));
 
-  async function walk(query: Parameters<OfficeService['lines']>[1]) {
+  async function walk(query: Parameters<OfficeFacade['lines']>[1]) {
     const calls: FindArgs[] = [];
     const { service, gate } = await serviceWith({ line: table(lines, calls) });
     const pages: string[][] = [];
@@ -433,7 +434,7 @@ describe('task reading follows the number', () => {
       passwordHash: await hashOnce('ownerpass1'),
     });
     const sessionId = await auth.saveSession({ userId: id, scope: 'full', userAgent: '', ip: '' });
-    const service = new OfficeService(auth);
+    const service = new OfficeFacade(auth);
     (service as unknown as { prismaClient: unknown }).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: grants, isBranchOwner: owner }), findMany: async () => chain },
       officeTask: table(rows),

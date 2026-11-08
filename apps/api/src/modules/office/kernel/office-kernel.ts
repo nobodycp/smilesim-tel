@@ -20,7 +20,7 @@ import { deniedOpsFor } from '../user-terms';
 /**
  * What every office domain shares: the PostgreSQL client, the signed-in actor and their grants, the account
  * list, transactions that publish their notices after commit, and the wallet moves. One instance per process;
- * OfficeService and the domain services under `modules/office/<domain>/` all read through it.
+ * The domain services under `modules/office/<domain>/` all read through it.
  */
 /** The price columns a renewal stamp reads from a package. */
 export const PRICE_COLUMNS = {

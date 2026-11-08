@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
 import { hashOnce } from './test-hash';
-import { OfficeService } from './office.service';
+import { OfficeFacade } from './testing/office-facade';
 
 // A refresh or a SIM swap that the provider accepts immediately does not move money.
 // It still has to land in the provider-operations report and on the line's own log,
@@ -80,7 +80,7 @@ async function office() {
   const sessionId = await auth.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
   const wallet = { userId: 'pos1', balance: 10000, ceiling: 0 };
   const entries: Row[] = [];
-  const service = new OfficeService(auth);
+  const service = new OfficeFacade(auth);
   const tx = {
     // `move()` locks the wallet row with raw SQL; the in-memory store has nothing to lock.
     $queryRaw: async () => [],

@@ -5,7 +5,7 @@ import { AGOROT, normalizeActionModes, packageFlagsFromModes } from '../office-r
 
 /**
  * At boot, makes sure the shipped catalog (providers, companies, packages) and the four layer roles exist. Skipped
- * under tests and without a database. It used to run from OfficeService.onModuleInit.
+ * under tests and without a database.
  */
 @Injectable()
 export class CatalogSeed implements OnModuleInit {

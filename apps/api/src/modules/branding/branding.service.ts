@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
-import { OfficeFailure } from '../office/office.service';
+import { OfficeFailure } from '../shared/office-failure';
 import {
   brandingSummary,
   decodeImage,

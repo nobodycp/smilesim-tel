@@ -1,42 +1,43 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
-import { PrismaService } from '../shared/prisma.service';
-import { Prisma, PrismaClient } from '../../generated/prisma/client';
-import { AUTH_STORE, AuthStore } from '../auth/auth.store';
-import { OfficeFailure } from '../shared/office-failure';
+import { PrismaService } from '../../shared/prisma.service';
+import { Prisma, PrismaClient } from '../../../generated/prisma/client';
+import { AuthStore } from '../../auth/auth.store';
 import {
   type LineFilter,
-} from './office-paging';
+} from '../office-paging';
 import {
   type LineTerms,
-} from './office-rules';
-import { type PathNode } from './user-terms';
-import { type TaskEvent } from './task-access';
-import { NoticeService, type WrittenNotice } from './notice.service';
-import { type LadderRows } from './kernel/office-kernel';
-import { OfficeKernel } from './kernel/office-kernel';
-import { LinesService } from './lines/lines.service';
-import { TransfersService } from './transfers/transfers.service';
-import { AccountsService } from './accounts/accounts.service';
-import { DeskService } from './desk/desk.service';
-import { RolesService } from './roles/roles.service';
-import { TermsService, type LineTarget, type RepriceLine } from './terms/terms.service';
-import { PackagesService } from './packages/packages.service';
-import { CompaniesService } from './companies/companies.service';
-import { ProvidersService } from './providers/providers.service';
-import { WalletsService } from './wallets/wallets.service';
-import { AuditService } from './audit/audit.service';
-import { TasksService } from './tasks/tasks.service';
-import type { Account, Action, Actor, Gate, Sale } from './kernel/types';
-import { type TaskNoticePayload } from './notice-kinds';
-import type { TransferAccountBody } from './transfers/transfers.service';
+} from '../office-rules';
+import { type PathNode } from '../user-terms';
+import { type TaskEvent } from '../task-access';
+import { NoticeService, type WrittenNotice } from '../notice.service';
+import { type LadderRows } from '../kernel/office-kernel';
+import { OfficeKernel } from '../kernel/office-kernel';
+import { LinesService } from '../lines/lines.service';
+import { TransfersService } from '../transfers/transfers.service';
+import { AccountsService } from '../accounts/accounts.service';
+import { DeskService } from '../desk/desk.service';
+import { RolesService } from '../roles/roles.service';
+import { TermsService, type LineTarget, type RepriceLine } from '../terms/terms.service';
+import { PackagesService } from '../packages/packages.service';
+import { CompaniesService } from '../companies/companies.service';
+import { ProvidersService } from '../providers/providers.service';
+import { WalletsService } from '../wallets/wallets.service';
+import { AuditService } from '../audit/audit.service';
+import { TasksService } from '../tasks/tasks.service';
+import type { Account, Action, Actor, Gate, Sale } from '../kernel/types';
+import { type TaskNoticePayload } from '../notice-kinds';
+import type { TransferAccountBody } from '../transfers/transfers.service';
 
 /** The price columns of a package that `LayerPrices` holds, as a `select`. */
 /** What decides the prices points of sale pay for some packages: their price columns, the custom rows on them, and the sell prices of the accounts above. */
 
-export { OfficeFailure };
 
-@Injectable()
-export class OfficeService {
+/**
+ * Test-only adapter (Phase 3.11): the office methods as the specs have always called them, `(gate, ...)`, each
+ * resolving the actor and handing the call to the domain service that owns it. Production code never uses it;
+ * every route lives in a domain controller under `modules/office/<domain>/`.
+ */
+export class OfficeFacade {
   /** Shared by every office domain: the client, the actor, accounts, transactions, wallet moves (kernel/office-kernel.ts). */
   private readonly kernel: OfficeKernel;
 
@@ -107,10 +108,10 @@ export class OfficeService {
   }
 
   constructor(
-    @Inject(AUTH_STORE) auth: AuthStore,
-    @Optional() notice?: NoticeService,
-    @Optional() db?: PrismaService,
-    @Optional() kernel?: OfficeKernel,
+    auth: AuthStore,
+    notice?: NoticeService,
+    db?: PrismaService,
+    kernel?: OfficeKernel,
   ) {
     this.kernel = kernel ?? new OfficeKernel(auth, notice, db);
   }

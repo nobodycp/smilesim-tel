@@ -7,7 +7,7 @@ import { NOTICE_GROUPS, hrefFor, type NoticeDraft } from './notice-kinds';
 import type { NoticeService, WrittenNotice } from './notice.service';
 import { OfficeKernel } from './kernel/office-kernel';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from './office.module';
-import { OfficeService } from './office.service';
+import { OfficeFacade } from './testing/office-facade';
 import type { LineTerms } from './office-rules';
 import { account, tree, type Row } from './tree-fixture';
 
@@ -887,15 +887,14 @@ describe('the transfer routes under /office', () => {
     recorded.length = 0;
   });
 
-  async function appFor(service: OfficeService) {
+  async function appFor(service: OfficeFacade) {
     // Every office route, whichever controller holds it, over this service's kernel (its in-memory tables).
     const kernel = (service as unknown as { kernel: OfficeKernel }).kernel;
     const moduleRef = await Test.createTestingModule({
       controllers: OFFICE_CONTROLLERS,
       providers: [
-        ...OFFICE_PROVIDERS.filter((provider) => provider !== OfficeService && provider !== OfficeKernel),
+        ...OFFICE_PROVIDERS.filter((provider) => provider !== OfficeKernel),
         { provide: OfficeKernel, useValue: kernel },
-        { provide: OfficeService, useValue: service },
         {
           provide: ActivityRecorder,
           useValue: {

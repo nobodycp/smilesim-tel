@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/auth.store';
 import { hashOnce } from './test-hash';
 import type { NoticeService } from './notice.service';
-import { OfficeService } from './office.service';
+import { OfficeFacade } from './testing/office-facade';
 
 // An eSIM request is a branch task priced from the package, the provider, or the company; the employee
 // closes it with the serial and the QR picture, which land on the line. A SIM swap stays free.
@@ -52,7 +52,7 @@ async function office() {
   const tasks: Row[] = [];
   const otherLines: Row[] = [];
   const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
-  const service = new OfficeService(auth, notice);
+  const service = new OfficeFacade(auth, notice);
   const lineById = (id: unknown) => (id === line.id ? line : otherLines.find((row) => row.id === id) ?? null);
   const lineByMsisdn = (msisdn: unknown) => [line, ...otherLines].find((row) => row.msisdn === msisdn) ?? null;
   const lineModel = {

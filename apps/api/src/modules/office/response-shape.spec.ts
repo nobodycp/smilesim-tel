@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { MemoryAuthStore } from '../auth/auth.store';
 import { hashOnce } from './test-hash';
 import { companies } from './office-catalog';
-import { OfficeService } from './office.service';
+import { OfficeFacade } from './testing/office-facade';
 
 // The web app keeps its own copy of the shape of these answers (apps/web/lib/api.ts: OfficeMe,
 // HomePayload, LineRow, PosChoice). There is no shared package, so this test is the guard: the key
@@ -56,7 +56,7 @@ async function serviceWith(tables: Record<string, unknown>) {
     passwordHash: await hashOnce('ownerpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
-  const service = new OfficeService(auth);
+  const service = new OfficeFacade(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: true }), findMany: async () => accounts },
     userPackage: { findMany: async () => [] },
@@ -81,7 +81,7 @@ async function posServiceWith(tables: Record<string, unknown>) {
     passwordHash: await hashOnce('pointpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'pos1', scope: 'full', userAgent: '', ip: '' });
-  const service = new OfficeService(auth);
+  const service = new OfficeFacade(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: false }), findMany: async () => accounts },
     userPackage: { findMany: async () => [] },

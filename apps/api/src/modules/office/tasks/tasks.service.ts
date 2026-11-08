@@ -14,7 +14,7 @@ import { parseTaskLogLine, stampTaskLog } from '../task-log';
 /**
  * Branch tasks: the inbox and one task, inspection notes, take and release, reject and cancel, plus the helpers
  * the line operations use to open a task and tell its audience. Closing a task (`completeTask`) applies a line
- * operation and stays in OfficeService until the lines slice (Phase 3.9).
+ * operation, so it lives in LinesService (`completeTask`).
  */
 @Injectable()
 export class TasksService {

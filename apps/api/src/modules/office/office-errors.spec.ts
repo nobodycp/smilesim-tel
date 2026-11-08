@@ -6,7 +6,8 @@ import { AuthModule } from '../auth/auth.module';
 import { AUTH_STORE, MemoryAuthStore } from '../auth/auth.store';
 import { hashOnce } from './test-hash';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from './office.module';
-import { OfficeFailure, OfficeService } from './office.service';
+import { OfficeFailure } from '../shared/office-failure';
+import { OfficeKernel } from './kernel/office-kernel';
 
 // A refusal from any office route carries `{ message, code }`. The Arabic message is the one the
 // web app has always shown; the code is what it now routes and translates on.
@@ -14,7 +15,8 @@ import { OfficeFailure, OfficeService } from './office.service';
 describe('office refusals', () => {
   let app: INestApplication;
   let store: MemoryAuthStore;
-  let service: OfficeService;
+  // The routes read the kernel's client; the specs swap in in-memory tables there.
+  let kernel: OfficeKernel;
   let posSession: string;
 
   beforeEach(async () => {
@@ -43,8 +45,8 @@ describe('office refusals', () => {
       .compile();
     app = moduleRef.createNestApplication();
     await app.init();
-    service = moduleRef.get(OfficeService);
-    (service as unknown as { prismaClient: unknown }).prismaClient = {
+    kernel = moduleRef.get(OfficeKernel);
+    (kernel as unknown as { prismaClient: unknown }).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: false }), findMany: async () => [] },
     };
   });
@@ -82,7 +84,7 @@ describe('office refusals', () => {
       passwordHash: await hashOnce('ownerpass1'),
     });
     const admin = await store.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
-    (service as unknown as { prismaClient: unknown }).prismaClient = {
+    (kernel as unknown as { prismaClient: unknown }).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: true }), findMany: async () => [] },
     };
     const response = await request(app.getHttpServer()).get('/office/ledger/nothing').set('Cookie', `sid=${admin}`);

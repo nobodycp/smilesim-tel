@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { MemoryAuthStore } from '../auth/auth.store';
 import { createPrismaClient } from '../../db';
 import type { NoticeService } from './notice.service';
-import { OfficeService } from './office.service';
+import { OfficeFacade } from './testing/office-facade';
 
 // Runs against a real PostgreSQL only: in-memory stores cannot show a lost update.
 // The compose postgres does not publish a host port, so use a throwaway one:
@@ -21,14 +21,14 @@ suite('wallet moves under concurrency (PostgreSQL)', () => {
   jest.setTimeout(30_000);
   const previousUrl = process.env.DATABASE_URL;
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeService;
+  let service: OfficeFacade;
   let posId: string;
 
   beforeAll(() => {
     process.env.DATABASE_URL = url;
     prisma = createPrismaClient();
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
-    service = new OfficeService(new MemoryAuthStore(), notice);
+    service = new OfficeFacade(new MemoryAuthStore(), notice);
   });
 
   beforeEach(async () => {
