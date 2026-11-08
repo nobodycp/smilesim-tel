@@ -65,6 +65,8 @@ function classes(...names: (string | false | undefined)[]): string | undefined {
  * the table, unless `keepHead` is set: then the header stays and the message sits under it, inside the sheet.
  * `bare` writes only the `<table>`, for a table that lives inside another block (a company, a tab).
  * A full list pages itself from the saved page size. A cursor list (`PagedTable`) passes `paginate={false}`.
+ * A header sorts the rows it is given when clicked; `sortable={false}` keeps the headers plain, for a table that holds
+ * only one page of a list the server orders (sorting those rows would say nothing about the rest).
  */
 export function DataTable<Row>({
   columns,
@@ -75,6 +77,7 @@ export function DataTable<Row>({
   keepHead = false,
   bare = false,
   paginate,
+  sortable = true,
   skeleton,
   failed,
   onRetry,
@@ -87,6 +90,7 @@ export function DataTable<Row>({
   keepHead?: boolean;
   bare?: boolean;
   paginate?: boolean;
+  sortable?: boolean;
   skeleton?: { rows?: number; columns?: number };
   /** The translated failure of the load. With no rows it replaces the skeleton and the empty sentence. */
   failed?: string;
@@ -139,9 +143,9 @@ export function DataTable<Row>({
               <th
                 key={item.key}
                 className={classes(item.fit && 'fit', item.num && 'num', item.actions && 'row-actions')}
-                aria-sort={item.actions ? undefined : dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none'}
+                aria-sort={item.actions || !sortable ? undefined : dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none'}
               >
-                {item.actions ? item.header : (
+                {item.actions || !sortable ? item.header : (
                   <button
                     type="button"
                     className="col-sort"
@@ -210,6 +214,7 @@ export type PagedView<Row> = {
  * A `DataTable` over a `usePaged` list, paged the same way as every full list: the saved page size,
  * the page numbers, previous and next. The server's `total` counts the pages; a page the book does
  * not hold yet is read chunk by chunk when it is asked for, and "all" reads every chunk.
+ * Its headers do not sort: the rows on screen are one page of the server's order.
  * It writes no `.pane`: the page owns the pane, since a dialog or a head may live in it.
  * `waiting` keeps the skeleton up for something else the table needs (the package catalog of numbers).
  */
@@ -260,7 +265,7 @@ export function PagedTable<Row>({
   ) : null;
   return (
     <>
-      <DataTable {...table} rows={rows} loading={waiting || !list.ready || filling} paginate={false} failed={list.error} onRetry={() => void list.reload()} />
+      <DataTable {...table} rows={rows} loading={waiting || !list.ready || filling} paginate={false} sortable={false} failed={list.error} onRetry={() => void list.reload()} />
       {pager}
     </>
   );

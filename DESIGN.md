@@ -125,7 +125,7 @@ One of each. A new page uses these, it does not invent a sibling.
 
 - Page: title, one muted lede, then the content. No second heading that repeats the title.
 - Card: white surface, hairline, `--rd-radius-lg` radius, `--rd-shadow-card`.
-- Table: quiet header, hairline rows, text at the reading start, numbers tabular and aligned to the reading end.
+- Table: quiet header, hairline rows, text at the reading start, numbers tabular and aligned to the reading end. A header is a sort button only when the table holds the whole list; a server-paged table (`PagedTable`) shows plain headers in the server's order.
 - Primary button: ink fill. One per group. The single special action may be accent. Destructive is an outline in danger (border and text), not a filled red.
 - Badge: label plus a dot. Active, pending, danger, neutral.
 - KPI: `StatRow` wraps a row of `Stat` items. Each `Stat` takes an `icon` (`IconName` from `components/icon.tsx`), `tone` (`success`, `warning`, `danger`, or `muted`), `label`, a large tabular `value`, and optional `meta` below a hairline divider. The icon sits in `.stat-icon` with a tone tint. This is the only KPI pattern; do not use ad-hoc `.stat-card` markup.

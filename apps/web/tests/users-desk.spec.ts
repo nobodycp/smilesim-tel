@@ -65,3 +65,23 @@ test('the users table is paged by the server: filters go in the request, the nex
   await page.getByRole('button', { name: 'حساب جديد' }).click();
   await expect.poll(() => calls.includes('GET /users')).toBe(true);
 });
+
+test('a server-paged table has plain headers, since sorting one page would mislead; a full table still sorts', async ({ page }) => {
+  const user = (loginName: string, balance: number) => ({
+    loginName, nickname: loginName, layer: 'pos', roleName: '', parentLogin: null, balance, ceiling: 0, frozen: false, self: false,
+    directChild: true, canEnter: false, canFreeze: false, canDelete: false,
+  });
+  await serveOffice(page, 'branch', {
+    'GET /users': () => ({ body: { users: [user('p1', 5), user('p2', 9)] } }),
+    'GET /roles': () => ({ body: { roles: [{ id: 'r2', name: 'ب', kind: 'job', layer: null, grants: 'read' }, { id: 'r1', name: 'أ', kind: 'job', layer: null, grants: 'read' }] } }),
+  });
+  await page.goto('http://admin.localhost:3910/users');
+  await expect(page.locator('.data tbody tr')).toHaveCount(2);
+  await expect(page.locator('.data thead .col-sort')).toHaveCount(0);
+  await expect(page.locator('.data thead th[aria-sort]')).toHaveCount(0);
+
+  // The roles list is read whole, so its headers keep sorting.
+  await page.goto('http://admin.localhost:3910/roles');
+  await expect(page.locator('.data tbody tr')).toHaveCount(2);
+  await expect(page.locator('.data thead .col-sort').first()).toBeVisible();
+});
