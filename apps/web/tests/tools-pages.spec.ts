@@ -313,6 +313,23 @@ test.describe('shell', () => {
     expect(calls.filter((call) => call.startsWith('GET /lines')).every((call) => !call.includes('cursor'))).toBe(true);
   });
 
+  // The accounts are read once when the box opens and filtered as the reader types; numbers go to the server.
+  test('the shell search reads the accounts once, however much is typed', async ({ page }) => {
+    const user = (loginName: string, nickname: string) => ({ loginName, nickname, layer: 'pos', roleName: '', parentLogin: null, balance: 0, ceiling: 0, frozen: false, self: false, directChild: true, canEnter: false, canFreeze: false, canDelete: false });
+    const calls = await serveOffice(page, 'branch', {
+      'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, canPost: false, operations: [], announcements: [] } }),
+      'GET /users': () => ({ body: { users: [user('samir1', 'سمير'), user('sara2', 'سارة')] } }),
+      'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null } }),
+    });
+    await page.goto(`${admin}/`);
+    const field = page.locator('.shell-search-field input');
+    await field.pressSequentially('sam', { delay: 250 });
+    await expect(page.locator('.shell-search-item')).toHaveCount(1);
+    await field.pressSequentially('ir', { delay: 250 });
+    await expect(page.locator('.shell-search-item')).toHaveText(/samir1/);
+    expect(calls.filter((call) => call === 'GET /users')).toHaveLength(1);
+  });
+
   test('a notice names its action with the same words as the desk', async ({ page }) => {
     await serveOffice(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, canPost: false, operations: [], announcements: [] } }),

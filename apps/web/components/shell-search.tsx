@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import { accountLabel } from './account-name';
 import { api } from '../lib/api';
 import { usePrefs } from '../lib/prefs';
+import { sharedKeys } from '../lib/query';
+import { useApiQuery } from '../lib/use-api-query';
 
 type Hit = { key: string; href: string; label: string; sub: string; group: string };
 
@@ -15,6 +17,10 @@ export function ShellSearch() {
   const [hits, setHits] = useState<Hit[]>([]);
   const box = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
+  // The accounts are read once, when the box first opens, from the same cache entry as the users page; each
+  // keystroke filters them here. Numbers are searched on the server, which matches number and serial.
+  const accounts = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: open });
+  const users = accounts.data?.users;
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -50,11 +56,11 @@ export function ShellSearch() {
     let stop = false;
     const timer = window.setTimeout(async () => {
       // Only the first page of numbers is read: the box shows at most 8 hits, so `nextCursor` is ignored on purpose.
-      const [users, lines] = await Promise.all([api.officeUsers(), api.officeLines({ q: needle })]);
+      const lines = await api.officeLines({ q: needle });
       if (stop) return;
       const next: Hit[] = [];
-      if (users.ok) {
-        for (const row of users.data.users) {
+      if (users) {
+        for (const row of users) {
           const login = row.loginName.toLowerCase();
           if (!row.nickname.includes(needle) && !login.includes(needle.toLowerCase())) continue;
           next.push({
@@ -83,7 +89,7 @@ export function ShellSearch() {
       stop = true;
       window.clearTimeout(timer);
     };
-  }, [open, query, t.navNumbers, t.navUsers]);
+  }, [open, query, users, t.navNumbers, t.navUsers]);
 
   const groups = [...new Set(hits.map((hit) => hit.group))];
   const showResults = open && query.trim().length >= 2;
