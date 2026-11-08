@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
 import {
   ApiBody,
   ApiCookieAuth,
@@ -21,16 +21,11 @@ import {
   AccessBodyDto,
   AnnouncementBodyDto,
   CreateUserBodyDto,
-  CustomPriceBodyDto,
   ExtendBodyDto,
-  LinePricesBodyDto,
   OutcomeBodyDto,
   RenameLineBodyDto,
   SetAccountPasswordBodyDto,
   SwapSimBodyDto,
-  UserOpsBodyDto,
-  UserPackageBodyDto,
-  UserPackagesBulkBodyDto,
   CompleteTaskBodyDto,
   SwitchPackageBodyDto,
   TransferAccountBodyDto,
@@ -51,7 +46,6 @@ function cookieBase(): CookieOptions {
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value ? value : undefined;
 }
-
 
 @ApiTags('office')
 @ApiCookieAuth('sid')
@@ -82,71 +76,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 400)
   postAnnouncement(@Req() req: Request, @Body() body: AnnouncementBodyDto) {
     return this.office.postAnnouncement(gateOf(req), body);
-  }
-
-  @Get('packages/:code/custom-prices')
-  @ApiOperation({ summary: 'Accounts whose price for this package differs from their default' })
-  @ApiParam({ name: 'code' })
-  @ApiErrorResponse(401, 403, 404)
-  customPrices(@Req() req: Request, @Param('code') code: string) {
-    return this.office.customPrices(gateOf(req), code);
-  }
-
-  @Put('packages/:code/custom-prices/:loginName')
-  @ApiOperation({ summary: 'Set a special price for one account on this package' })
-  @ApiParam({ name: 'code' })
-  @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: CustomPriceBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('user_package', 'user', (req) => `${param('loginName')(req)}:${param('code')(req)}`)
-  setCustomPrice(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Param('loginName') loginName: string,
-    @Body() body: CustomPriceBodyDto,
-  ) {
-    return this.office.setCustomPrice(gateOf(req), code, loginName, body);
-  }
-
-  @Delete('packages/:code/custom-prices/:loginName')
-  @ApiOperation({ summary: 'Return an account to the default price for this package' })
-  @ApiParam({ name: 'code' })
-  @ApiParam({ name: 'loginName' })
-  @ApiErrorResponse(401, 403, 404)
-  @Activity('user_package', 'user', (req) => `${param('loginName')(req)}:${param('code')(req)}`)
-  clearCustomPrice(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Param('loginName') loginName: string,
-  ) {
-    return this.office.clearCustomPrice(gateOf(req), code, loginName);
-  }
-
-  @Get('packages/:code/line-prices')
-  @ApiOperation({ summary: 'The renewable numbers of this package grouped by the renewal price they carry' })
-  @ApiParam({ name: 'code' })
-  @ApiQuery({ name: 'scope', required: true, description: 'An account login (that account and everything under it) or "all" (branch only)' })
-  @ApiErrorResponse(401, 403, 400, 404)
-  linePrices(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Query('scope') scope?: string,
-  ) {
-    return this.office.linePrices(gateOf(req), code, { scope });
-  }
-
-  @Put('packages/:code/line-prices')
-  @ApiOperation({ summary: 'Reprice the renewable numbers of this package, one price group at a time' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ type: LinePricesBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('package_reprice', 'package', param('code'))
-  setLinePrices(
-    @Req() req: Request,
-    @Param('code') code: string,
-    @Body() body: LinePricesBodyDto,
-  ) {
-    return this.office.setLinePrices(gateOf(req), code, body);
   }
 
   @Get('lines')
@@ -407,66 +336,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 404)
   account(@Req() req: Request, @Param('loginName') loginName: string) {
     return this.office.account(gateOf(req), loginName);
-  }
-
-  @Get('users/:loginName/packages')
-  @ApiOperation({ summary: 'Packages as this account sees and pays for them' })
-  @ApiParam({ name: 'loginName' })
-  @ApiErrorResponse(401, 403, 404)
-  userPackages(@Req() req: Request, @Param('loginName') loginName: string) {
-    return this.office.userPackages(gateOf(req), loginName);
-  }
-
-  @Put('users/:loginName/packages')
-  @ApiOperation({ summary: 'Hide or show several packages for this account' })
-  @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: UserPackagesBulkBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('user_package', 'user', param('loginName'))
-  setUserPackagesBulk(
-    @Req() req: Request,
-    @Param('loginName') loginName: string,
-    @Body() body: UserPackagesBulkBodyDto,
-  ) {
-    return this.office.setUserPackagesBulk(gateOf(req), loginName, body);
-  }
-
-  @Put('users/:loginName/packages/:code')
-  @ApiOperation({ summary: 'Hide, show, or price one package for this account' })
-  @ApiParam({ name: 'loginName' })
-  @ApiParam({ name: 'code' })
-  @ApiBody({ type: UserPackageBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('user_package', 'user', (req) => `${param('loginName')(req)}:${param('code')(req)}`)
-  setUserPackage(
-    @Req() req: Request,
-    @Param('loginName') loginName: string,
-    @Param('code') code: string,
-    @Body() body: UserPackageBodyDto,
-  ) {
-    return this.office.setUserPackage(gateOf(req), loginName, code, body);
-  }
-
-  @Get('users/:loginName/ops')
-  @ApiOperation({ summary: 'Line operations stopped on this account, own and inherited' })
-  @ApiParam({ name: 'loginName' })
-  @ApiErrorResponse(401, 403, 404)
-  userOps(@Req() req: Request, @Param('loginName') loginName: string) {
-    return this.office.userOps(gateOf(req), loginName);
-  }
-
-  @Put('users/:loginName/ops')
-  @ApiOperation({ summary: 'Set the line operations stopped on this account' })
-  @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: UserOpsBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('user_ops', 'user', param('loginName'))
-  setUserOps(
-    @Req() req: Request,
-    @Param('loginName') loginName: string,
-    @Body() body: UserOpsBodyDto,
-  ) {
-    return this.office.setUserOps(gateOf(req), loginName, body);
   }
 
   @Patch('users/:loginName/access')

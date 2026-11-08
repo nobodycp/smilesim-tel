@@ -22,7 +22,6 @@ import {
   activationProviderCost,
   esimPriceOf,
   PERIOD_DAYS,
-  Prices,
   captureTerms,
   activateInputs,
   lastWindow,
@@ -46,19 +45,18 @@ import {
   visibleAccountIds,
   type ActionKey,
   type LineTerms,
-  type PackageTerms,
 } from './office-rules';
-import { RENEWABLE_STATUSES, groupChanges, groupLinePrices, repriceLine, type PriceGroup } from './line-prices';
+import { RENEWABLE_STATUSES } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
 import { TRANSFER_GRANT, canTransfer, parseChoice, parseLineChoice, previewOf, transferKind, type TransferKind } from './transfer-rules';
-import { buyPriceFor, deniedAbove, deniedOpsFor, floorFor, hiddenAbove, isOpKey, parseOps, priceSource, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind, type PriceSource, type SellRow, type TermRow } from './user-terms';
+import { buyPriceFor, deniedOpsFor, isOpKey, parseOps, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind } from './user-terms';
 import { renderEsimQr } from './office-esim';
 import { canHandleTasks, taskWhereFor, type TaskEvent } from './task-access';
 import { NoticeService, type WrittenNotice } from './notice.service';
 import { feedPosition } from './kernel/feed';
 import { nodeOf, PRICE_COLUMNS, type LadderRows } from './kernel/office-kernel';
-import { optionalPrice } from './kernel/values';
 import { OfficeKernel } from './kernel/office-kernel';
+import { TermsService, type LineTarget, type RepriceLine } from './terms/terms.service';
 import { PackagesService } from './packages/packages.service';
 import { CompaniesService } from './companies/companies.service';
 import { ProvidersService } from './providers/providers.service';
@@ -77,44 +75,10 @@ import {
   roleGrantCodes,
   splitGrants,
 } from './office-grants';
+import { lineTermsOf } from './kernel/line-terms';
 
 const LAYER_ORDER = ['branch', 'main_agent', 'agent', 'pos'];
 
-type PackageFacts = { id: string; code: string; name: string; dataGb: number | null; months: number; company?: { code: string } | null } & LayerPrices;
-type TermPatch = { hidden?: boolean; price?: number | null; renewalPrice?: number | null };
-export type UserPackageRow = {
-  code: string;
-  name: string;
-  dataGb: number | null;
-  months: number;
-  companyCode: string;
-  hidden: boolean;
-  hiddenAbove: string | null;
-  parentBuy: number;
-  parentRenewalBuy: number;
-  price: number | null;
-  renewalPrice: number | null;
-  effective: number;
-  renewalEffective: number;
-  source: PriceSource;
-  /** Renewable lines of this package on points of sale in this user's subtree. */
-  lines: number;
-};
-export type CustomPriceRow = {
-  loginName: string;
-  nickname: string;
-  layer: string;
-  parentLogin: string;
-  defaultPrice: number;
-  defaultRenewalPrice: number;
-  price: number | null;
-  renewalPrice: number | null;
-};
-/** What a line-prices request covers: the whole system, or one account and everything under it. */
-type LineScope = { kind: 'all' } | { kind: 'account'; id: string; loginName: string; layer: string };
-/** What happens to one number: a flat price, or what a new activation would carry now. */
-type LineTarget = { to: number | 'current' };
-type RepriceLine = { id: string; posId: string; terms: Prisma.JsonValue; package: PackagePriceRow & { id: string } };
 /** The price columns of a package that `LayerPrices` holds, as a `select`. */
 /** What decides the prices points of sale pay for some packages: their price columns, the custom rows on them, and the sell prices of the accounts above. */
 
@@ -275,6 +239,21 @@ export class OfficeService implements OnModuleInit {
     return this.packageDeskInstance;
   }
 
+  private termDeskInstance: TermsService | null = null;
+
+  private get termDesk(): TermsService {
+    this.termDeskInstance ??= new TermsService(this.kernel);
+    return this.termDeskInstance;
+  }
+
+  private repriceLines(
+    tx: Prisma.TransactionClient,
+    lines: RepriceLine[],
+    planFor: (line: RepriceLine) => LineTarget | null,
+    accounts: Account[],
+  ) {
+    return this.termDesk.repriceLines(tx, lines, planFor, accounts);
+  }
   // One-line delegators: the methods still in this file call the kernel through the names they always used.
   private pathOf(userId: string, accounts: Account[]) {
     return this.kernel.pathOf(userId, accounts);
@@ -1792,396 +1771,45 @@ export class OfficeService implements OnModuleInit {
 
   // ---- Per-user package terms and operation stops -------------------------------------------
 
-  /** Every sellable package, grouped by company, with what `loginName` sees and pays. */
+  // Facades (Phase 3): specs still call these; the routes live in terms/terms.controller.ts.
   async userPackages(gate: Gate, loginName: string) {
-    const actor = await this.actor(gate);
-    const { path, target, accounts } = await this.termTarget(actor, loginName);
-    const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
-    const [packages, terms, sells] = await Promise.all([
-      this.prisma.package.findMany({ where: { enabled: true, forSale: true }, include: { company: true }, orderBy: [{ company: { name: 'asc' } }, { name: 'asc' }] }),
-      this.prisma.userPackage.findMany({ where: { userId: { in: path.map((node) => node.id) } } }),
-      this.prisma.sellPrice.findMany({ where: { ownerId: { in: path.map((node) => node.id) } } }),
-    ]);
-    const rows = packages.map((pkg) => ({
-      pkg,
-      row: this.userPackageRow(pkg, path, terms.filter((term) => term.packageId === pkg.id), sells.filter((sell) => sell.packageId === pkg.id), lineCountsByPackage),
-    }));
-    const companies = new Map<string, { code: string; name: string; packages: UserPackageRow[] }>();
-    for (const { pkg, row } of rows) {
-      const key = pkg.company?.code ?? '';
-      const group = companies.get(key) ?? { code: key, name: pkg.company?.name ?? '', packages: [] };
-      group.packages.push(row);
-      companies.set(key, group);
-    }
-    return { summary: summarize(rows.map((item) => item.row)), companies: [...companies.values()] };
+    return this.termDesk.userPackages(await this.actor(gate), loginName);
   }
 
   async setUserPackage(gate: Gate, loginName: string, code: string, body: { hidden?: unknown; price?: unknown; renewalPrice?: unknown }) {
-    const actor = await this.actor(gate);
-    const patch = termPatch(body);
-    if (!patch) fail(400, 'INVALID');
-    const { path, target, accounts } = await this.termTarget(actor, loginName);
-    const pkg = await this.prisma.package.findUnique({ where: { code } });
-    if (!pkg) fail(404, 'NOT_FOUND');
-    const { terms, sells } = await this.termsFor(pkg.id);
-    const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
-    return this.writeUserPackage(actor, path, pkg, patch, terms, sells, this.prisma, lineCountsByPackage);
+    return this.termDesk.setUserPackage(await this.actor(gate), loginName, code, body);
   }
 
-  /** Hide or show several packages at once. Packages hidden higher up are left alone. */
   async setUserPackagesBulk(gate: Gate, loginName: string, body: { codes?: unknown; hidden?: unknown }) {
-    const actor = await this.actor(gate);
-    if (!Array.isArray(body.codes) || body.codes.some((code) => typeof code !== 'string' || !code) || typeof body.hidden !== 'boolean') fail(400, 'INVALID');
-    const codes = new Set(body.codes as string[]);
-    const hidden = body.hidden as boolean;
-    const { path, target, accounts } = await this.termTarget(actor, loginName);
-    const pathIds = path.map((node) => node.id);
-    const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
-    // The path's rows for every package on sale, loaded once: the picked ones are written, all of
-    // them feed the summary. Every write sits in one transaction so a refusal midway applies nothing.
-    const [packages, terms, sells] = await Promise.all([
-      this.prisma.package.findMany({ where: { enabled: true, forSale: true } }),
-      this.prisma.userPackage.findMany({ where: { userId: { in: pathIds } }, select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true } }),
-      this.prisma.sellPrice.findMany({ where: { ownerId: { in: pathIds } }, select: { packageId: true, ownerId: true, price: true, renewalPrice: true } }),
-    ]);
-    const termsOf = (packageId: string) => terms.filter((row) => row.packageId === packageId);
-    const sellsOf = (packageId: string) => sells.filter((row) => row.packageId === packageId);
-    const written = new Map<string, TermRow[]>();
-    await this.runTx(async (tx) => {
-      for (const pkg of packages) {
-        if (!codes.has(pkg.code)) continue;
-        const own = termsOf(pkg.id);
-        if (hiddenAbove(path, own)) continue;
-        await this.writeUserPackage(actor, path, pkg, { hidden }, own, sellsOf(pkg.id), tx, lineCountsByPackage);
-        written.set(pkg.id, own);
-      }
-    });
-    const rows = packages.map((pkg) => this.userPackageRow(pkg, path, written.get(pkg.id) ?? termsOf(pkg.id), sellsOf(pkg.id), lineCountsByPackage));
-    return { summary: summarize(rows) };
+    return this.termDesk.setUserPackagesBulk(await this.actor(gate), loginName, body);
   }
 
   async userOps(gate: Gate, loginName: string) {
-    const actor = await this.actor(gate);
-    const { target, path } = await this.termTarget(actor, loginName);
-    return { denied: parseOps(target.deniedOps), deniedAbove: deniedAbove(path) };
+    return this.termDesk.userOps(await this.actor(gate), loginName);
   }
 
   async setUserOps(gate: Gate, loginName: string, body: { denied?: unknown }) {
-    const actor = await this.actor(gate);
-    if (!Array.isArray(body.denied) || body.denied.some((key) => typeof key !== 'string' || !isOpKey(key))) fail(400, 'INVALID');
-    const { target, path } = await this.termTarget(actor, loginName);
-    const deniedOps = serializeOps(body.denied as string[]);
-    await this.prisma.user.update({ where: { id: target.id }, data: { deniedOps } });
-    return { denied: parseOps(deniedOps), deniedAbove: deniedAbove(path) };
+    return this.termDesk.setUserOps(await this.actor(gate), loginName, body);
   }
 
-  /** Users whose price for `code` differs from what they would pay by default. Branch only. */
-  async customPrices(gate: Gate, code: string): Promise<CustomPriceRow[]> {
-    await this.branchActor(gate);
-    const pkg = await this.prisma.package.findUnique({ where: { code } });
-    if (!pkg) fail(404, 'NOT_FOUND');
-    const [accounts, { terms, sells }] = await Promise.all([this.accounts(), this.termsFor(pkg.id)]);
-    return terms
-      .filter((term) => term.price !== null || term.renewalPrice !== null)
-      .map((term) => this.customPriceRow(term.userId, pkg, accounts, terms, sells))
-      .filter((row): row is CustomPriceRow => row !== null)
-      .sort((a, b) => a.loginName.localeCompare(b.loginName));
+  async customPrices(gate: Gate, code: string) {
+    return this.termDesk.customPrices(await this.actor(gate), code);
   }
 
   async setCustomPrice(gate: Gate, code: string, loginName: string, body: { price?: unknown; renewalPrice?: unknown }) {
-    const actor = await this.actor(gate);
-    const patch = termPatch({ price: body.price, renewalPrice: body.renewalPrice });
-    if (!patch) fail(400, 'INVALID');
-    const { target, accounts, path } = await this.termTarget(actor, loginName);
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.prisma.package.findUnique({ where: { code } });
-    if (!pkg) fail(404, 'NOT_FOUND');
-    const { terms, sells } = await this.termsFor(pkg.id);
-    await this.writeUserPackage(actor, path, pkg, patch, terms, sells);
-    const row = this.customPriceRow(target.id, pkg, accounts, terms, sells);
-    if (!row) fail(404, 'NOT_FOUND');
-    return row;
+    return this.termDesk.setCustomPrice(await this.actor(gate), code, loginName, body);
   }
 
   async clearCustomPrice(gate: Gate, code: string, loginName: string) {
-    const actor = await this.actor(gate);
-    const { path } = await this.termTarget(actor, loginName);
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.prisma.package.findUnique({ where: { code } });
-    if (!pkg) fail(404, 'NOT_FOUND');
-    const { terms, sells } = await this.termsFor(pkg.id);
-    await this.writeUserPackage(actor, path, pkg, { price: null, renewalPrice: null }, terms, sells);
-    return { ok: true as const };
+    return this.termDesk.clearCustomPrice(await this.actor(gate), code, loginName);
   }
 
-  /**
-   * The renewable numbers of a package in a scope, grouped by the renewal price each one carries, and
-   * what a new activation would pay on the scope account (`null` for the whole system: it differs per number).
-   */
-  async linePrices(gate: Gate, code: string, query: { scope?: unknown }): Promise<{ current: number | null; groups: PriceGroup[] }> {
-    const actor = await this.actor(gate);
-    const accounts = await this.accounts();
-    const scope = await this.lineScope(actor, accounts, query.scope);
-    const pkg = await this.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } });
-    if (!pkg) fail(404, 'NOT_FOUND');
-    const lines = await this.prisma.line.findMany({ where: this.scopeLineWhere(scope, accounts, pkg.id), select: { terms: true } });
-    const groups = groupLinePrices(lines.map((line) => ({ terms: lineTermsOf(line.terms, pkg) })));
-    if (scope.kind === 'all') return { current: null, groups };
-    const { terms, sells } = await this.termsFor(pkg.id);
-    return { current: buyPriceFor(this.pathOf(scope.id, accounts), terms, sells, pkg, 'renewal'), groups };
+  async linePrices(gate: Gate, code: string, query: { scope?: unknown }) {
+    return this.termDesk.linePrices(await this.actor(gate), code, query);
   }
 
-  /**
-   * Reprices the renewable numbers of a package in a scope, one price group at a time: every number
-   * carrying `from` takes `to`, a flat price or what a new activation would carry now. Numbers in no
-   * listed group stay as they are. One transaction, so a refusal anywhere applies nothing.
-   */
-  async setLinePrices(gate: Gate, code: string, body: { scope?: unknown; groups?: unknown }): Promise<{ ok: true; lines: number }> {
-    const actor = await this.actor(gate);
-    const changes = groupChanges(body.groups);
-    if (!changes) fail(400, 'INVALID');
-    const accounts = await this.accounts();
-    const scope = await this.lineScope(actor, accounts, body.scope);
-    const pkg = await this.prisma.package.findUnique({ where: { code }, select: { id: true } });
-    if (!pkg) fail(404, 'NOT_FOUND');
-    const lines = await this.runTx(async (tx) => {
-      const found = await tx.line.findMany({
-        where: this.scopeLineWhere(scope, accounts, pkg.id),
-        include: { package: { include: { company: true, provider: true } } },
-      });
-      return this.repriceLines(
-        tx,
-        found,
-        (line) => {
-          const price = lineTermsOf(line.terms, line.package).renewal.posPrice;
-          const change = changes.find((item) => item.from === price);
-          return change ? { to: change.to } : null;
-        },
-        accounts,
-      );
-    });
-    return { ok: true as const, lines };
-  }
-
-  /**
-   * What a line-prices request covers. The whole system is for the branch owner, or staff who may edit.
-   * An account is for whoever may write a custom price on it (its parent, or the branch), and for an agent
-   * or main agent naming itself: the table over its own subtree. A point of sale never opens it, and an
-   * impersonated session writes no prices.
-   */
-  private async lineScope(actor: Actor, accounts: Account[], scope: unknown): Promise<LineScope> {
-    if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
-    if (scope === 'all') {
-      if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
-      return { kind: 'all' };
-    }
-    if (typeof scope !== 'string' || !scope) fail(400, 'INVALID');
-    const target = accounts.find((account) => account.loginName === scope);
-    if (!target) fail(404, 'NOT_FOUND');
-    if (target.layer === 'branch') fail(400, 'INVALID');
-    const reachable = visibleAccountIds(actor.id, actor.layer, accounts).has(target.id);
-    if (!reachable || (target.id !== actor.id && !this.canEditTerms(actor, target))) fail(403, 'FORBIDDEN');
-    return { kind: 'account', id: target.id, loginName: target.loginName, layer: target.layer };
-  }
-
-  /** The numbers a table lists and a save may change: one package, in the scope, never a disconnected one. */
-  private scopeLineWhere(scope: LineScope, accounts: Account[], packageId: string) {
-    return {
-      packageId,
-      status: { in: [...RENEWABLE_STATUSES] },
-      ...(scope.kind === 'account' ? { posId: { in: [...visibleAccountIds(scope.id, scope.layer, accounts)] } } : {}),
-    };
-  }
-
-  /**
-   * Rewrites the renewal terms of the numbers `planFor` names, in the caller's transaction, and returns how
-   * many it wrote. A flat price may not sit below the floor of that number's point of sale. `'current'`
-   * rebuilds the ladder and the renewal targets as an activation captures them today, priced through the
-   * number's own path, so a nearer custom price still wins. Everything the batch needs is read once and every
-   * number is checked before the first write, so one refusal applies nothing.
-   */
-  private async repriceLines(
-    tx: Prisma.TransactionClient,
-    lines: RepriceLine[],
-    planFor: (line: RepriceLine) => LineTarget | null,
-    accounts: Account[],
-  ): Promise<number> {
-    const plans = lines.flatMap((line) => {
-      const target = planFor(line);
-      return target ? [{ line, to: target.to }] : [];
-    });
-    if (plans.length === 0) return 0;
-    const paths = new Map<string, PathNode[]>();
-    const pathOf = (posId: string) => {
-      const known = paths.get(posId) ?? this.pathOf(posId, accounts);
-      paths.set(posId, known);
-      return known;
-    };
-    const packageIds = [...new Set(plans.map(({ line }) => line.package.id))];
-
-    // `'current'` needs the renewal targets each package lists today.
-    const renewals = plans.some(({ to }) => to === 'current')
-      ? await tx.packageRenewal.findMany({
-          where: { packageId: { in: packageIds } },
-          include: { target: { include: { company: true, provider: true } } },
-        })
-      : [];
-    const targetsOf = new Map<string, PackageTerms[]>();
-    for (const renewal of renewals) {
-      if (!renewal.target.company || !renewal.target.provider) fail(400, 'INVALID');
-      targetsOf.set(renewal.packageId, [...(targetsOf.get(renewal.packageId) ?? []), packageTermsOf(renewal.target)]);
-    }
-
-    // One read of the price rows serves every number in the batch, a flat price and `'current'` alike:
-    // the batch's packages and the renewal targets they list, for every account on any number's path.
-    const codes = new Set(plans.map(({ line }) => line.package.code));
-    for (const targets of targetsOf.values()) for (const target of targets) codes.add(target.code);
-    const pathIds = [...new Set(plans.flatMap(({ line }) => pathOf(line.posId).map((node) => node.id)))];
-    const rows = await this.ladderRows([...codes], pathIds, tx);
-
-    const fresh = new Map<string, LineTerms>();
-    const floors = new Map<string, number>();
-    const changes: { id: string; terms: LineTerms }[] = [];
-    for (const { line, to } of plans) {
-      const terms = lineTermsOf(line.terms, line.package);
-      const path = pathOf(line.posId);
-      // Every number of one package at one point of sale takes the same ladder and answers to the same floor, so each is worked out once.
-      const key = `${line.package.id}:${line.posId}`;
-      if (to === 'current') {
-        if (!line.package.company || !line.package.provider) fail(400, 'INVALID');
-        const ladder = fresh.get(key) ?? this.stampWith(captureTerms(packageTermsOf(line.package), targetsOf.get(line.package.id) ?? []), path, rows);
-        fresh.set(key, ladder);
-        changes.push({ id: line.id, terms: repriceLine(terms, { to, fresh: ladder }) });
-        continue;
-      }
-      const floor =
-        floors.get(key) ??
-        floorFor(
-          path,
-          rows.termRows.filter((row) => row.packageId === line.package.id),
-          rows.sellRows.filter((row) => row.packageId === line.package.id),
-          line.package,
-          'renewal',
-        );
-      floors.set(key, floor);
-      if (to < floor) fail(400, 'PRICE_BELOW_FLOOR');
-      changes.push({ id: line.id, terms: repriceLine(terms, { to }) });
-    }
-    for (const { id, terms } of changes) {
-      await tx.line.update({ where: { id }, data: { terms: terms as unknown as Prisma.InputJsonValue } });
-    }
-    return changes.length;
-  }
-
-  /** Resolves the account whose terms are edited and checks the actor may edit them. */
-  private async termTarget(actor: Actor, loginName: string) {
-    const accounts = await this.accounts();
-    const target = accounts.find((account) => account.loginName === loginName);
-    if (!target) fail(404, 'NOT_FOUND');
-    if (target.layer === 'branch') fail(400, 'INVALID');
-    if (!this.canEditTerms(actor, target)) fail(403, 'FORBIDDEN');
-    return { actor, target, accounts, path: this.pathOf(target.id, accounts) };
-  }
-
-  /**
-   * The one writer for a user's row on a package. Refuses to show what an ancestor hid, checks
-   * each price against the parent's own buy price, and deletes a row that is back on defaults.
-   * `terms` is updated in place so the caller can compute the returned row from it.
-   */
-  private async writeUserPackage(
-    actor: Actor,
-    path: PathNode[],
-    pkg: { id: string } & PackageFacts,
-    patch: TermPatch,
-    terms: TermRow[],
-    sells: SellRow[],
-    db: Prisma.TransactionClient | PrismaClient = this.prisma,
-    lineCountsByPackage: Map<string, number> = new Map(),
-  ): Promise<UserPackageRow> {
-    const userId = path[0].id;
-    const index = terms.findIndex((term) => term.userId === userId);
-    const own = index >= 0 ? terms[index] : null;
-    if (patch.hidden === false && hiddenAbove(path, terms)) fail(403, 'FORBIDDEN');
-    const next: TermRow = {
-      userId,
-      hidden: patch.hidden ?? own?.hidden ?? false,
-      price: patch.price === undefined ? (own?.price ?? null) : patch.price,
-      renewalPrice: patch.renewalPrice === undefined ? (own?.renewalPrice ?? null) : patch.renewalPrice,
-    };
-    // The floor is checked at write time only, and only for the price this patch sets: a later
-    // rise of the parent's buy price must not block the hide/show switch on an older row.
-    if (patch.price != null && patch.price < floorFor(path, terms, sells, pkg, 'subscription')) fail(400, 'PRICE_BELOW_FLOOR');
-    if (patch.renewalPrice != null && patch.renewalPrice < floorFor(path, terms, sells, pkg, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
-    const where = { packageId_userId: { packageId: pkg.id, userId } };
-    if (!next.hidden && next.price === null && next.renewalPrice === null) {
-      if (own) {
-        await db.userPackage.delete({ where });
-        terms.splice(index, 1);
-      }
-    } else {
-      const data = { hidden: next.hidden, price: next.price, renewalPrice: next.renewalPrice, setById: actor.id };
-      await db.userPackage.upsert({ where, update: data, create: { packageId: pkg.id, userId, ...data } });
-      if (own) terms[index] = next;
-      else terms.push(next);
-    }
-    return this.userPackageRow(pkg, path, terms, sells, lineCountsByPackage);
-  }
-
-  /** Renewable line counts per package under `targetId`'s subtree (visible POS ids). */
-  private async renewableLinesByPackage(targetId: string, targetLayer: string, accounts: Account[]): Promise<Map<string, number>> {
-    const posIds = [...visibleAccountIds(targetId, targetLayer, accounts)];
-    if (posIds.length === 0) return new Map();
-    const groups = await this.prisma.line.groupBy({
-      by: ['packageId'],
-      where: { status: { in: [...RENEWABLE_STATUSES] }, posId: { in: posIds } },
-      _count: { _all: true },
-    });
-    return new Map(groups.map((row) => [row.packageId, row._count._all]));
-  }
-
-  private userPackageRow(
-    pkg: PackageFacts,
-    path: PathNode[],
-    terms: TermRow[],
-    sells: SellRow[],
-    lineCountsByPackage: Map<string, number> = new Map(),
-  ): UserPackageRow {
-    const own = terms.find((term) => term.userId === path[0].id);
-    return {
-      code: pkg.code,
-      name: pkg.name,
-      dataGb: pkg.dataGb,
-      months: pkg.months,
-      companyCode: pkg.company?.code ?? '',
-      hidden: own?.hidden ?? false,
-      hiddenAbove: hiddenAbove(path, terms),
-      parentBuy: floorFor(path, terms, sells, pkg, 'subscription'),
-      parentRenewalBuy: floorFor(path, terms, sells, pkg, 'renewal'),
-      price: own?.price ?? null,
-      renewalPrice: own?.renewalPrice ?? null,
-      effective: buyPriceFor(path, terms, sells, pkg, 'subscription'),
-      renewalEffective: buyPriceFor(path, terms, sells, pkg, 'renewal'),
-      source: priceSource(path, terms, sells, 'subscription'),
-      lines: lineCountsByPackage.get(pkg.id) ?? 0,
-    };
-  }
-
-  private customPriceRow(userId: string, pkg: LayerPrices, accounts: Account[], terms: TermRow[], sells: SellRow[]): CustomPriceRow | null {
-    const path = this.pathOf(userId, accounts);
-    if (path.length === 0) return null;
-    const account = accounts.find((item) => item.id === userId) as Account;
-    const own = terms.find((term) => term.userId === userId);
-    const without = terms.filter((term) => term.userId !== userId);
-    return {
-      loginName: account.loginName,
-      nickname: account.nickname,
-      layer: account.layer,
-      parentLogin: path[1]?.loginName ?? '',
-      defaultPrice: buyPriceFor(path, without, sells, pkg, 'subscription'),
-      defaultRenewalPrice: buyPriceFor(path, without, sells, pkg, 'renewal'),
-      price: own?.price ?? null,
-      renewalPrice: own?.renewalPrice ?? null,
-    };
+  async setLinePrices(gate: Gate, code: string, body: { scope?: unknown; groups?: unknown }) {
+    return this.termDesk.setLinePrices(await this.actor(gate), code, body);
   }
 
   async setFrozen(gate: Gate, loginName: string, frozen: boolean) {
@@ -2376,12 +2004,6 @@ export class OfficeService implements OnModuleInit {
       .map((item) => item.target.code);
   }
 
-  private canEditTerms(actor: Actor, target: Account): boolean {
-    if (actor.impersonating) return false;
-    if (target.parentId === actor.id) return true;
-    return actor.layer === 'branch' && (actor.isBranchOwner || actor.grants.includes('edit'));
-  }
-
   /**
    * What `userId` pays for this package today: its custom price, else its parent's sell price, else
    * the layer column. It is only ever asked what a new capture would carry or charge (an activation,
@@ -2415,8 +2037,6 @@ export class OfficeService implements OnModuleInit {
     const codes = [...new Set([terms.packageCode, ...terms.renewalTargets.map((target) => target.code)])];
     return this.stampWith(terms, path, await this.ladderRows(codes, path.map((node) => node.id), db));
   }
-
-
 
   private async ensureLayerRoles() {
     for (const layer of LAYER_ORDER) {
@@ -2633,76 +2253,12 @@ function saleOf(
   };
 }
 
-function lineTermsOf(value: unknown, pkg: PackagePriceRow): LineTerms {
-  if (value === null) return captureTerms(packageTermsOf(pkg), []);
-  if (!isLineTerms(value)) throw new Error(`Invalid saved terms for package ${pkg.code}`);
-  return value;
-}
-
-function isLineTerms(value: unknown): value is LineTerms {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.packageCode === 'string' &&
-    isPositiveInteger(value.months) &&
-    (value.windowMonths === undefined || isPositiveInteger(value.windowMonths)) &&
-    isPrices(value.subscription) &&
-    isPrices(value.renewal) &&
-    Array.isArray(value.renewalTargets) &&
-    value.renewalTargets.every(
-      (target) =>
-        isRecord(target) &&
-        typeof target.code === 'string' &&
-        isPositiveInteger(target.months) &&
-        isPrices(target.renewal),
-    )
-  );
-}
-
-function isPrices(value: unknown): value is Prices {
-  if (!isRecord(value)) return false;
-  return ['branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice'].every(
-    (field) => typeof value[field] === 'number' && Number.isInteger(value[field]) && value[field] >= 0,
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isPositiveInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value > 0;
-}
-
 /** A QR picture as a data URL. `undefined` when absent, `null` when cleared, otherwise the checked URL. */
 function readQr(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
   if (value === null || value === '') return null;
   if (typeof value !== 'string' || value.length > QR_LIMIT || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) fail(400, 'QR_INVALID');
   return value;
-}
-
-/** Validates a user-package patch body. `null` when any field is malformed or nothing is set. */
-function termPatch(body: { hidden?: unknown; price?: unknown; renewalPrice?: unknown }): TermPatch | null {
-  const patch: TermPatch = {};
-  if (body.hidden !== undefined) {
-    if (typeof body.hidden !== 'boolean') return null;
-    patch.hidden = body.hidden;
-  }
-  for (const key of ['price', 'renewalPrice'] as const) {
-    if (body[key] === undefined) continue;
-    const price = optionalPrice(body[key]);
-    if (price === undefined) return null;
-    patch[key] = price;
-  }
-  return Object.keys(patch).length ? patch : null;
-}
-
-function summarize(rows: UserPackageRow[]) {
-  return {
-    total: rows.length,
-    visible: rows.filter((row) => !row.hidden && !row.hiddenAbove).length,
-    custom: rows.filter((row) => row.price !== null || row.renewalPrice !== null).length,
-  };
 }
 
 function asOutcome(value: unknown): 'success' | 'fail' | null {
