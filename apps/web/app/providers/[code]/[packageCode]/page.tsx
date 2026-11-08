@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AccountName, accountLabel } from '../../../../components/account-name';
 import { DataTable, type Column } from '../../../../components/data-table';
 import { Desk, Money, layerName, lineBadgeClass, lineStatus } from '../../../../components/desk';
@@ -15,7 +15,7 @@ import { api, type CustomPriceRow, type LineRow, type Shelf } from '../../../../
 import { formatShekel, parseShekel, shekelField } from '../../../../lib/money';
 import { usePrefs } from '../../../../lib/prefs';
 import { useAction } from '../../../../lib/use-action';
-import { useLoad } from '../../../../lib/use-load';
+import { useLoad, type Fetched } from '../../../../lib/use-load';
 import { useRequireLayer } from '../../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
@@ -49,6 +49,30 @@ const EMPTY_PRICES: Record<PriceKey, string> = {
   renewalSubscriberPrice: '',
 };
 
+type Seeded = { prices: typeof EMPTY_PRICES; esimPrice: string; renewals: string[]; switches: string[] };
+
+// The form value after a reload: the server's when the user left the field as it was last loaded, else their draft.
+function follow<T>(current: T, seeded: T | undefined, next: T): T {
+  if (seeded === undefined) return next;
+  return JSON.stringify(current) === JSON.stringify(seeded) ? next : current;
+}
+
+// Every line on the package, across all cursor pages: the operations tab selects among all of them.
+async function packageLines(packageCode: string): Promise<Fetched<LineRow[]>> {
+  const rows: LineRow[] = [];
+  let cursor: string | null = null;
+  for (let page = 0; page < MAX_LINE_PAGES; page += 1) {
+    const result = await api.officeLines({ packageCode, cursor });
+    if (!result.ok) return result;
+    rows.push(...result.data.lines);
+    cursor = result.data.nextCursor;
+    if (!cursor) break;
+  }
+  return { ok: true, data: rows };
+}
+
+const MAX_LINE_PAGES = 100;
+
 export default function PackageSheetPage() {
   const { t, apiText } = usePrefs();
   const params = useParams<{ code: string; packageCode: string }>();
@@ -73,7 +97,7 @@ export default function PackageSheetPage() {
         api.packageSheet(params.packageCode),
         api.officeUsers(),
         api.officeCompanies(),
-        api.officeLines({ packageCode: params.packageCode }),
+        packageLines(params.packageCode),
         api.customPrices(params.packageCode),
       ]);
       if (!found.ok) return found;
@@ -84,7 +108,7 @@ export default function PackageSheetPage() {
         data: {
           sheet: found.data,
           shelf: shelf.data,
-          lines: lines.data.lines.filter((line) => line.packageCode === params.packageCode),
+          lines: lines.data.filter((line) => line.packageCode === params.packageCode),
           users: accounts.ok ? accounts.data.users.filter((row) => row.layer !== 'branch') : [],
           customPrices: customPrices.ok ? customPrices.data : [],
         },
@@ -121,25 +145,38 @@ export default function PackageSheetPage() {
     companySwitch: t.actCompanySwitch,
   };
 
-  // Every reload brings the saved prices back into the form.
+  // Every action reloads the sheet. A field (or list) the user has not edited since the last load follows the server;
+  // one they typed in keeps their draft, so saving in one tab never wipes unsaved fields in another.
+  const seeded = useRef<Seeded | null>(null);
   useEffect(() => {
     if (!sheet) return;
-    setPrices({
-      branchCost: shekelField(sheet.branchCost),
-      mainPrice: shekelField(sheet.mainPrice),
-      agentPrice: shekelField(sheet.agentPrice),
-      posPrice: shekelField(sheet.posPrice),
-      subscriberPrice: shekelField(sheet.subscriberPrice),
-      renewalBranchCost: shekelField(sheet.renewalBranchCost),
-      renewalMainPrice: shekelField(sheet.renewalMainPrice),
-      renewalAgentPrice: shekelField(sheet.renewalAgentPrice),
-      renewalPosPrice: shekelField(sheet.renewalPosPrice),
-      renewalSubscriberPrice: shekelField(sheet.renewalSubscriberPrice),
+    const next: Seeded = {
+      prices: {
+        branchCost: shekelField(sheet.branchCost),
+        mainPrice: shekelField(sheet.mainPrice),
+        agentPrice: shekelField(sheet.agentPrice),
+        posPrice: shekelField(sheet.posPrice),
+        subscriberPrice: shekelField(sheet.subscriberPrice),
+        renewalBranchCost: shekelField(sheet.renewalBranchCost),
+        renewalMainPrice: shekelField(sheet.renewalMainPrice),
+        renewalAgentPrice: shekelField(sheet.renewalAgentPrice),
+        renewalPosPrice: shekelField(sheet.renewalPosPrice),
+        renewalSubscriberPrice: shekelField(sheet.renewalSubscriberPrice),
+      },
+      esimPrice: sheet.esimPrice === null ? '' : shekelField(sheet.esimPrice),
+      renewals: sheet.renewals,
+      switches: sheet.switches,
+    };
+    const before = seeded.current;
+    seeded.current = next;
+    setPrices((current) => {
+      const merged = { ...current };
+      for (const key of Object.keys(next.prices) as PriceKey[]) merged[key] = follow(current[key], before?.prices[key], next.prices[key]);
+      return merged;
     });
-    setEsimPrice(sheet.esimPrice === null ? '' : shekelField(sheet.esimPrice));
-    setRenewals(sheet.renewals);
-    setSwitches(sheet.switches);
-    setSelectedLines([]);
+    setEsimPrice((current) => follow(current, before?.esimPrice, next.esimPrice));
+    setRenewals((current) => follow(current, before?.renewals, next.renewals));
+    setSwitches((current) => follow(current, before?.switches, next.switches));
   }, [sheet]);
 
   async function saveMode(action: string, mode: string) {
