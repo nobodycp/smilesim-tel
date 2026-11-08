@@ -16,6 +16,7 @@ import type { LayerPrices } from '../user-terms';
 import { LAYER_GRANTS, flagsFor } from '../office-grants';
 import { LAYER_ORDER } from './values';
 import { deniedOpsFor } from '../user-terms';
+import { SALE_KINDS, ladderOf, type Ladder } from '../profit-ladder';
 
 /**
  * What every office domain shares: the PostgreSQL client, the signed-in actor and their grants, the account
@@ -225,6 +226,8 @@ export class OfficeKernel {
       }));
     }
     await tx.wallet.update({ where: { userId }, data: { balance: balanceAfter } });
+    // A sale keeps its price chain; failing to read it never stops the sale (the report falls back to today's prices).
+    const ladder = sale && amount < 0 ? await this.saleLadder(tx, userId, kind, sale).catch(() => null) : null;
     await tx.walletEntry.create({
       data: {
         userId,
@@ -242,8 +245,36 @@ export class OfficeKernel {
         esimPrice: sale?.esimPrice ?? null,
         periodDays: sale?.period?.days ?? null,
         periodEndsAt: sale?.period?.endsAt ?? null,
+        ...(ladder ? { ladder: ladder as unknown as Prisma.InputJsonValue } : {}),
       },
     });
+  }
+
+  /**
+   * The price chain of a sale as it stands now, kept on its wallet entry so each layer's margin stays what it was
+   * (profit-ladder.ts). Null for an entry that is not a sale, or a line or package that cannot be read.
+   */
+  async saleLadder(db: Prisma.TransactionClient | PrismaClient, posId: string, kind: string, sale: Pick<Sale, 'lineId' | 'packagePrice'>): Promise<Ladder | null> {
+    const priceKind = SALE_KINDS[kind];
+    if (!priceKind || !sale.lineId) return null;
+    const line = await db.line.findUnique({ where: { id: sale.lineId }, select: { terms: true } });
+    const code = (line?.terms as { packageCode?: string } | null)?.packageCode;
+    if (!code) return null;
+    const path = this.pathOf(posId, await this.accounts());
+    const [rows, subscriber] = await Promise.all([
+      this.ladderRows([code], path.map((node) => node.id), db),
+      db.package.findUnique({ where: { code }, select: { subscriberPrice: true, renewalSubscriberPrice: true } }),
+    ]);
+    const pkg = rows.packages[0];
+    if (!pkg || !subscriber || path.length === 0) return null;
+    return ladderOf(
+      path,
+      rows.termRows.filter((row) => row.packageId === pkg.id),
+      rows.sellRows.filter((row) => row.packageId === pkg.id),
+      { ...pkg, ...subscriber },
+      priceKind,
+      sale.packagePrice,
+    );
   }
 
   async recordOp(tx: Prisma.TransactionClient, userId: string, actorId: string, kind: string, sale: Sale) {

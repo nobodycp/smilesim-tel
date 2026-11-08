@@ -270,7 +270,7 @@
 .sheet .empty:not(.empty-state) { display: block; padding: var(--rd-space-3-5); }
 /* The finance page's head (features/wallets/screens/finance-screen.tsx): the 30-day chart beside three figures. */
 .wallet-board { display: grid; grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr); gap: var(--rd-space-3); align-items: stretch; }
-.wallet-figures { display: grid; gap: var(--rd-space-3); }
+.wallet-figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rd-space-3); align-content: start; }
 .wallet-chart .pane-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--rd-space-2); }
 .wallet-chart .pane-head h2 { margin: 0; }
 .wallet-chart .pane-head .hint { margin: var(--rd-space-0-5) 0 0; }
@@ -286,5 +286,5 @@
 .balance-chart .grid { fill: none; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--rd-space-2); }
 .section-head h2 { margin: 0; font-size: var(--rd-text-lg); font-weight: 800; }
-@media (max-width: 1099px) { .wallet-board { grid-template-columns: 1fr; } .wallet-figures { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 720px) { .wallet-figures { grid-template-columns: 1fr; } }
+@media (max-width: 1099px) { .wallet-board { grid-template-columns: 1fr; } .wallet-figures { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .wallet-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

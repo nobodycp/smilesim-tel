@@ -79,8 +79,9 @@ test.describe('DataTable and EmptyState', () => {
 
     await page.goto(`${admin}/finance`);
     await expect(page.locator('.sheet > .empty')).toHaveText('لا حركات بعد.');
-    await expect(page.locator('.sheet > table.data thead th')).toHaveCount(13);
-    await expect(page.locator('.sheet > table.data thead th.num')).toHaveCount(4);
+    // 14 columns since the margin column (roadmap N4); five of them are amounts.
+    await expect(page.locator('.sheet > table.data thead th')).toHaveCount(14);
+    await expect(page.locator('.sheet > table.data thead th.num')).toHaveCount(5);
   });
 });
 

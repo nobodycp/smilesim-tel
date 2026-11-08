@@ -66,6 +66,7 @@ export function FinanceScreen() {
       ),
     },
     { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} /> },
+    { key: 'margin', header: t.myMargin, num: true, render: (row) => (row.margin == null ? '—' : <Money value={row.margin} signed />) },
     { key: 'before', header: t.balanceBefore, num: true, render: (row) => <Money value={row.balanceBefore} /> },
     { key: 'after', header: t.balanceAfter, num: true, render: (row) => <Money value={row.balanceAfter} /> },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
@@ -160,6 +161,7 @@ function WalletHead({ summary }: { summary: FinanceSummary }) {
           </div>
         </section>
         <div className="wallet-figures">
+          <Stat icon="reports" tone="success" label={t.myProfit30} value={<Money value={summary.profit ?? 0} signed />} meta={t.salesCount.replace('{n}', String(summary.sales ?? 0))} />
           <Stat icon="wallet" label={t.moneyIn30} value={<Money value={summary.moneyIn} />} />
           <Stat icon="wallet" label={t.moneyOut30} value={<Money value={summary.moneyOut} />} />
           <Stat icon="reports" label={t.entries30} value={summary.count} />

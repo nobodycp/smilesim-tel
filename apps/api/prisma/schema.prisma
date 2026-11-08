@@ -127,6 +127,8 @@ model WalletEntry {
   esimPrice    Int?
   periodDays   Int?
   periodEndsAt DateTime?
+  /** A sale's price chain at the time (profit-ladder.ts `Ladder`): what each layer paid and the sell price. */
+  ladder       Json?
   createdAt    DateTime  @default(now())
 
   @@index([userId, createdAt])

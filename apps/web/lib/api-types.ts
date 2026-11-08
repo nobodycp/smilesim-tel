@@ -339,6 +339,8 @@ export type ProviderOpRow = {
   esimPrice: number | null;
 };
 export type FinanceRow = {
+  /** What the signed-in account earned on this sale; null when it is not a sale in its chain. */
+  margin: number | null;
   id: string;
   at: string;
   loginName: string;
@@ -481,5 +483,8 @@ export type FinanceSummary = {
   moneyIn: number;
   moneyOut: number;
   count: number;
+  /** What the signed-in account earned on the sales in its chain over the 30 days, and how many sales. */
+  profit: number;
+  sales: number;
   series: { day: string; balance: number }[];
 };

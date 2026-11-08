@@ -31,6 +31,8 @@ export function HomeScreen() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const board = useApiQuery(sharedKeys.home, () => api.officeHome());
+  // What this account earned over 30 days: the finance page's own figure, shared from its cache.
+  const profit = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary()).data ?? null;
   const home = board.data;
   const { run } = useAction({ setError, setNote, onDone: board.reload });
   // A failed board is shown once, in its panes; the banner is for actions.
@@ -88,6 +90,9 @@ export function HomeScreen() {
           </Link>
           <Link className="stat-link" href="/numbers?status=active">
             <Stat icon="numbers" tone="success" label={t.activeLines} value={home ? home.activeLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.lineActive} />
+          </Link>
+          <Link className="stat-link" href="/finance">
+            <Stat icon="reports" tone="success" label={t.myProfit30} value={profit ? <Money value={profit.profit} signed /> : <span className="skeleton sk-num" />} meta={profit ? t.salesCount.replace('{n}', String(profit.sales)) : undefined} />
           </Link>
           <Link className="stat-link" href="/numbers?status=expiring">
             <Stat icon="numbers" tone="warning" label={t.expiringSoon} value={home ? home.expiringLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.expiringSoonHint} />

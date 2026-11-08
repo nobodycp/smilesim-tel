@@ -10,6 +10,7 @@ import { visibleAccountIds } from '../office-rules';
 import { CeilingBody, FundBody } from '../wallet.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 import { ledgerCsv, walletSummary, windowStart } from './finance-summary';
+import { SALE_KINDS, ladderOf, marginOf, type Ladder } from '../profit-ladder';
 
 const FINANCE_CSV_LIMIT = 10_000;
 
@@ -231,6 +232,50 @@ export class WalletsService {
     };
   }
 
+  /**
+   * What the signed-in account earned on each sale entry (profit-ladder.ts): from the chain kept on the entry, or, for
+   * a sale recorded before chains were kept, from today's prices with what the point of sale actually paid. A branch
+   * account (the owner or staff) sees the branch's margin. Null for entries that are not sales or not in its chain.
+   */
+  async marginsFor(actor: Actor, rows: { id: string; userId: string; kind: string; lineId: string | null; packagePrice: number | null; amount: number; ladder: unknown }[]) {
+    const sales = rows.filter((row) => SALE_KINDS[row.kind] && row.lineId && row.amount < 0);
+    const ladders = new Map<string, Ladder>();
+    const missing = sales.filter((row) => !row.ladder);
+    for (const row of sales) if (row.ladder) ladders.set(row.id, row.ladder as Ladder);
+    if (missing.length) {
+      const accounts = await this.kernel.accounts();
+      const lines = await this.kernel.prisma.line.findMany({ where: { id: { in: [...new Set(missing.map((row) => row.lineId as string))] } }, select: { id: true, terms: true } });
+      const codeOf = new Map(lines.map((line) => [line.id, (line.terms as { packageCode?: string } | null)?.packageCode ?? '']));
+      const paths = new Map(missing.map((row) => [row.userId, this.kernel.pathOf(row.userId, accounts)]));
+      const codes = [...new Set([...codeOf.values()].filter(Boolean))];
+      const ids = [...new Set([...paths.values()].flat().map((node) => node.id))];
+      const [ladderRows, subscribers] = await Promise.all([
+        this.kernel.ladderRows(codes, ids, this.kernel.prisma),
+        this.kernel.prisma.package.findMany({ where: { code: { in: codes } }, select: { code: true, subscriberPrice: true, renewalSubscriberPrice: true } }),
+      ]);
+      for (const row of missing) {
+        const pkg = ladderRows.packages.find((item) => item.code === codeOf.get(row.lineId as string));
+        const subscriber = subscribers.find((item) => item.code === pkg?.code);
+        const path = paths.get(row.userId) ?? [];
+        if (!pkg || !subscriber || path.length === 0) continue;
+        ladders.set(row.id, ladderOf(
+          path,
+          ladderRows.termRows.filter((term) => term.packageId === pkg.id),
+          ladderRows.sellRows.filter((sell) => sell.packageId === pkg.id),
+          { ...pkg, ...subscriber },
+          SALE_KINDS[row.kind],
+          row.packagePrice,
+        ));
+      }
+    }
+    const margins = new Map<string, number | null>();
+    for (const [id, ladder] of ladders) {
+      const viewer = actor.layer === 'branch' ? ladder.chain[ladder.chain.length - 1] : actor.id;
+      margins.set(id, marginOf(ladder, viewer));
+    }
+    return margins;
+  }
+
   /** The signed-in account's own wallet over the last 30 days: the finance page's cards and chart. */
   async financeSummary(actor: Actor, now = new Date()) {
     const [wallet, entries] = await Promise.all([
@@ -242,7 +287,14 @@ export class WalletsService {
       }),
     ]);
     const balance = wallet?.balance ?? 0;
-    return { balance, ceiling: wallet?.ceiling ?? 0, unlimited: actor.layer === 'branch', ...walletSummary(entries, balance, now) };
+    // What this account earned on the sales under it (or its own) over the same window.
+    const sold = await this.kernel.prisma.walletEntry.findMany({
+      where: { ...(await this.financeWhere(actor, {})), kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 }, createdAt: { gte: windowStart(now) } },
+      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true },
+    });
+    const margins = await this.marginsFor(actor, sold);
+    const profit = [...margins.values()].reduce((sum: number, value) => sum + (value ?? 0), 0);
+    return { balance, ceiling: wallet?.ceiling ?? 0, unlimited: actor.layer === 'branch', profit, sales: sold.length, ...walletSummary(entries, balance, now) };
   }
 
   /** The ledger with the page's filters as a CSV, newest first, at most 10,000 rows. */
@@ -286,9 +338,12 @@ export class WalletsService {
     ]);
     const page = rows.slice(0, FEED_PAGE);
     const last = page[page.length - 1];
+    const margins = await this.marginsFor(actor, page);
     return {
       total,
       entries: page.map((row) => ({
+        /** What the signed-in account earned on this sale; null when it is not a sale in its chain. */
+        margin: margins.get(row.id) ?? null,
         id: row.id,
         at: row.createdAt.toISOString(),
         loginName: row.user.loginName,
