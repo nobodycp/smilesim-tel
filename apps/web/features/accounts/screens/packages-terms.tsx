@@ -80,23 +80,6 @@ export function UserPackagesTab({
 
   const columns: Column<UserPackageRow>[] = [
     {
-      key: 'switch',
-      header: <span className="sr-only">{t.status}</span>,
-      fit: true,
-      render: (row) => {
-        const locked = row.hiddenAbove !== null;
-        return (
-          <LiveSwitch
-            label={row.name}
-            checked={!row.hidden && !locked}
-            disabled={!canEdit || busy || locked}
-            title={locked ? t.hiddenBy.replace('{login}', row.hiddenAbove ?? '') : undefined}
-            onChange={(next) => void save(row, { hidden: !next })}
-          />
-        );
-      },
-    },
-    {
       key: 'package',
       header: t.packageName,
       render: (row) => (
@@ -120,6 +103,23 @@ export function UserPackagesTab({
           <Badge variant={termsTone({ locked, hidden: row.hidden, custom })} dot>
             {locked ? <><Lock aria-hidden="true" />{t.stoppedAbove}</> : row.hidden ? t.stopped : t.customPrice}
           </Badge>
+        );
+      },
+    },
+    {
+      key: 'switch',
+      header: <span className="sr-only">{t.status}</span>,
+      fit: true,
+      render: (row) => {
+        const locked = row.hiddenAbove !== null;
+        return (
+          <LiveSwitch
+            label={row.name}
+            checked={!row.hidden && !locked}
+            disabled={!canEdit || busy || locked}
+            title={locked ? t.hiddenBy.replace('{login}', row.hiddenAbove ?? '') : undefined}
+            onChange={(next) => void save(row, { hidden: !next })}
+          />
         );
       },
     },

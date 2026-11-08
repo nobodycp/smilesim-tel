@@ -23,12 +23,12 @@ it. Folded by default.
 
 | Column | Content |
 |---|---|
-| (switch) | on/off for this point of sale; disabled with a lock title when stopped above |
 | الرزمة | name · `150 GB` |
 | سعرك (اشتراك / تجديد) | `25.00 / 22.00` — what this account pays |
 | سعر البيع (اشتراك / تجديد) | `30.00 / 27.00` — what it sells at (the custom price when there is one) |
 | الهامش | sell − buy on the subscription |
 | الحالة | only what is special: `سعر خاص`, `متوقف`, `موقوف من فوق`; empty otherwise (no «موروث») |
+| (switch) | on/off for this point of sale, just before the menu (owner, follow-up); disabled with a lock title when stopped above |
 | ⋯ | «تعديل السعر», «إرجاع للافتراضي» (custom only), «أسعار الأرقام القائمة» (numbers only) |
 
 A stopped or locked row is muted.
@@ -41,6 +41,9 @@ field goes back to the default price. Same API as today: `PUT /office/users/:log
 **Switch (system-wide):** track 34×20 px (was 44×26), knob 14 px; on = `--rd-success`, off = `--rd-danger`;
 disabled keeps its colour at 45% opacity. The button stays 44 px on touch widths. `mixed` is no longer used by any
 screen and goes.
+
+**Row menu (system-wide follow-up):** a roomier card — 38 px lines, 14 px semibold labels, each icon on a soft tile,
+rounded hover; destructive actions red with a red tile.
 
 ## Not changing
 

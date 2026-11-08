@@ -239,36 +239,53 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  gap: 2px;
   width: max-content;
-  min-width: 10rem;
+  min-width: 13rem;
   max-width: calc(100vw - 16px);
-  padding: var(--rd-space-1) 0;
+  padding: var(--rd-space-1-5);
   border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-sm);
+  border-radius: var(--rd-radius-card);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
-  font-size: var(--rd-text-md);
+  font-size: var(--rd-text-base);
   line-height: 1.25;
 }
+/* One action per line: an icon on a soft tile, then the label. The hover fills the line inside the panel's padding. */
 .row-menu-panel button {
   display: flex;
   align-items: center;
-  gap: var(--rd-space-2);
+  gap: var(--rd-space-2-5);
   width: 100%;
-  min-height: 0;
-  padding: var(--rd-space-1-5) var(--rd-space-3);
+  min-height: 38px;
+  padding: var(--rd-space-1) var(--rd-space-2) var(--rd-space-1) var(--rd-space-1);
   border: 0;
-  border-radius: 0;
+  border-radius: var(--rd-radius-sm);
   background: transparent;
-  color: var(--rd-ink-2);
-  font-size: var(--rd-text-md);
-  font-weight: 500;
+  color: var(--rd-ink);
+  font-size: var(--rd-text-base);
+  font-weight: 600;
   line-height: 1.25;
   text-align: start;
   white-space: nowrap;
+  cursor: pointer;
 }
-.row-menu-panel button svg { flex: none; width: 14px; height: 14px; }
-.row-menu-panel button:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
+.row-menu-panel button svg {
+  flex: none;
+  box-sizing: content-box;
+  width: 15px;
+  height: 15px;
+  padding: 6px;
+  border-radius: var(--rd-radius-xs);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink-2);
+}
+.row-menu-panel button:hover,
+.row-menu-panel button:focus-visible { background: var(--rd-surface-2); }
+.row-menu-panel button:hover svg,
+.row-menu-panel button:focus-visible svg { background: var(--rd-surface); color: var(--rd-ink); }
 .row-menu-panel button.danger { color: var(--rd-danger); }
-.row-menu-panel button.danger:hover { background: var(--rd-danger-soft); }
-.row-menu-rule { display: block; height: 1px; margin: var(--rd-space-1) 0; background: var(--rd-line); }
+.row-menu-panel button.danger svg { background: var(--rd-danger-soft); color: var(--rd-danger); }
+.row-menu-panel button.danger:hover,
+.row-menu-panel button.danger:focus-visible { background: var(--rd-danger-soft); }
+.row-menu-rule { display: block; height: 1px; margin: var(--rd-space-1) var(--rd-space-1-5); background: var(--rd-line-soft); }
