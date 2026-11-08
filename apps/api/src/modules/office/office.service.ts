@@ -1,16 +1,12 @@
-import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
 import { OfficeFailure } from '../shared/office-failure';
-import { catalog, companies, packageCode, packageName } from './office-catalog';
 import {
   type LineFilter,
 } from './office-paging';
 import {
-  AGOROT,
-  normalizeActionModes,
-  packageFlagsFromModes,
   type LineTerms,
 } from './office-rules';
 import { type PathNode } from './user-terms';
@@ -40,7 +36,7 @@ import type { TransferAccountBody } from './transfers/transfers.service';
 export { OfficeFailure };
 
 @Injectable()
-export class OfficeService implements OnModuleInit {
+export class OfficeService {
   /** Shared by every office domain: the client, the actor, accounts, transactions, wallet moves (kernel/office-kernel.ts). */
   private readonly kernel: OfficeKernel;
 
@@ -282,12 +278,6 @@ export class OfficeService implements OnModuleInit {
 
   private recordOp(tx: Prisma.TransactionClient, userId: string, actorId: string, kind: string, sale: Sale) {
     return this.kernel.recordOp(tx, userId, actorId, kind, sale);
-  }
-
-  async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'test' || !process.env.DATABASE_URL) return;
-    await this.ensureCatalog();
-    await this.ensureLayerRoles();
   }
 
   // Facades (Phase 3): specs still call these; the routes live in desk/desk.controller.ts.
@@ -584,65 +574,5 @@ export class OfficeService implements OnModuleInit {
     return this.auditLog.list(await this.actor(gate), query);
   }
 
-  private async ensureCatalog(): Promise<void> {
-    const users = await this.prisma.user.findMany({ select: { id: true } });
-    for (const user of users) {
-      await this.prisma.wallet.upsert({
-        where: { userId: user.id },
-        update: {},
-        create: { userId: user.id, balance: 0, ceiling: 0 },
-      });
-    }
-    // Migrations insert companies on their own, so only providers say the catalog was seeded.
-    const seeded = await this.prisma.provider.count();
-    if (seeded > 0) return;
-    for (const company of companies) {
-      await this.prisma.company.upsert({
-        where: { code: company.code },
-        update: { name: company.name },
-        create: { code: company.code, name: company.name },
-      });
-    }
-    for (const provider of catalog) {
-      const savedProvider = await this.prisma.provider.upsert({
-        where: { code: provider.code },
-        update: { name: provider.name },
-        create: { code: provider.code, name: provider.name },
-      });
-      // New packages copy provider defaults once; package rows stay independent after create.
-      const flags = packageFlagsFromModes(normalizeActionModes(savedProvider.actionModes));
-      for (const company of provider.companies) {
-        const savedCompany = await this.prisma.company.findUnique({ where: { code: company.code } });
-        if (!savedCompany) continue;
-        for (const item of company.packages) {
-          await this.prisma.package.upsert({
-            where: { code: packageCode(provider.code, company.code, item) },
-            update: {},
-            create: {
-              code: packageCode(provider.code, company.code, item),
-              name: packageName(item),
-              providerId: savedProvider.id,
-              companyId: savedCompany.id,
-              dataGb: item.gb,
-              months: item.months,
-              forSale: item.forSale,
-              branchCost: item.subscription.branchCost * AGOROT,
-              mainPrice: item.subscription.mainPrice * AGOROT,
-              agentPrice: item.subscription.agentPrice * AGOROT,
-              posPrice: item.subscription.posPrice * AGOROT,
-              subscriberPrice: item.subscription.subscriberPrice * AGOROT,
-              renewalBranchCost: item.renewal.branchCost * AGOROT,
-              renewalMainPrice: item.renewal.mainPrice * AGOROT,
-              renewalAgentPrice: item.renewal.agentPrice * AGOROT,
-              renewalPosPrice: item.renewal.posPrice * AGOROT,
-              renewalSubscriberPrice: item.renewal.subscriberPrice * AGOROT,
-              ...flags,
-              actionModes: normalizeActionModes(savedProvider.actionModes),
-            },
-          });
-        }
-      }
-    }
-  }
 }
 
