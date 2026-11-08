@@ -2,9 +2,7 @@ import { Inject, Injectable, OnModuleInit, Optional } from '@nestjs/common';
 import { PrismaService } from '../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
-import { hashPassword } from '../auth/password';
 import { OfficeFailure, fail } from '../shared/office-failure';
-import { newPasswordProblem, fullNameProblem } from '../auth/validators';
 import { catalog, companies, packageCode, packageName } from './office-catalog';
 import {
   FEED_PAGE,
@@ -56,6 +54,7 @@ import { NoticeService, type WrittenNotice } from './notice.service';
 import { feedPosition } from './kernel/feed';
 import { nodeOf, PRICE_COLUMNS, type LadderRows } from './kernel/office-kernel';
 import { OfficeKernel } from './kernel/office-kernel';
+import { AccountsService } from './accounts/accounts.service';
 import { DeskService } from './desk/desk.service';
 import { RolesService } from './roles/roles.service';
 import { TermsService, type LineTarget, type RepriceLine } from './terms/terms.service';
@@ -68,14 +67,7 @@ import { AuditService } from './audit/audit.service';
 import { TasksService } from './tasks/tasks.service';
 import type { Account, Action, Actor, Gate, Sale } from './kernel/types';
 import { type TaskNoticePayload } from './notice-kinds';
-import {
-  GRANT_CODES,
-  effectiveGrantCodes,
-  roleGrantCodes,
-  splitGrants,
-} from './office-grants';
 import { lineTermsOf } from './kernel/line-terms';
-import { stampTaskLog } from './task-log';
 
 /** The price columns of a package that `LayerPrices` holds, as a `select`. */
 /** What decides the prices points of sale pay for some packages: their price columns, the custom rows on them, and the sell prices of the accounts above. */
@@ -264,6 +256,13 @@ export class OfficeService implements OnModuleInit {
   private get deskDesk(): DeskService {
     this.deskDeskInstance ??= new DeskService(this.kernel);
     return this.deskDeskInstance;
+  }
+
+  private accountDeskInstance: AccountsService | null = null;
+
+  private get accountDesk(): AccountsService {
+    this.accountDeskInstance ??= new AccountsService(this.kernel);
+    return this.accountDeskInstance;
   }
 
   // One-line delegators: the methods still in this file call the kernel through the names they always used.
@@ -1251,142 +1250,41 @@ export class OfficeService implements OnModuleInit {
     return this.tasksDomain.cancel(await this.actor(gate), id);
   }
 
+  // Facades (Phase 3): specs still call these; the routes live in accounts/accounts.controller.ts.
   async users(gate: Gate) {
-    const actor = await this.actor(gate);
-    const accounts = await this.prisma.user.findMany({
-      select: { id: true, loginName: true, nickname: true, layer: true, parentId: true, disabledAt: true, isBranchOwner: true, role: { select: { name: true, staff: true } } },
-      orderBy: { loginName: 'asc' },
-    });
-    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const wallets = await this.prisma.wallet.findMany({ where: { userId: { in: [...visible] } } });
-    const byWallet = new Map(wallets.map((row) => [row.userId, row]));
-    const byId = new Map(accounts.map((account) => [account.id, account]));
-    const branch = actor.layer === 'branch' && !actor.impersonating;
-    return {
-      users: accounts
-        .filter((account) => visible.has(account.id))
-        .map((account) => ({
-          loginName: account.loginName,
-          nickname: account.nickname,
-          layer: account.layer,
-          roleName: account.role?.name ?? '',
-          parentLogin: account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
-          balance: byWallet.get(account.id)?.balance ?? 0,
-          ceiling: byWallet.get(account.id)?.ceiling ?? 0,
-          frozen: account.disabledAt !== null,
-          self: account.id === actor.id,
-          directChild: account.parentId === actor.id,
-          canEnter: (actor.isBranchOwner || actor.grants.includes('enter')) && !actor.impersonating && account.id !== actor.id && account.disabledAt === null,
-          canFreeze: (actor.isBranchOwner || actor.grants.includes('staff')) && !account.isBranchOwner && !(account.role?.staff && !actor.isBranchOwner),
-          canDelete: branch && !account.isBranchOwner && account.id !== actor.id,
-        })),
-    };
+    return this.accountDesk.list(await this.actor(gate));
   }
 
-  /**
-   * Login name → full name for every account the actor may meet on a screen: the accounts it can
-   * see (its subtree), the chain above it, and the branch layer (staff act on every ledger).
-   */
   async directory(gate: Gate) {
-    const actor = await this.actor(gate);
-    const accounts = await this.accounts();
-    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const chain = new Set(this.chainIds(actor.id, accounts));
-    const names: Record<string, string> = {};
-    for (const account of accounts) {
-      if (!visible.has(account.id) && !chain.has(account.id) && account.layer !== 'branch') continue;
-      names[account.loginName] = account.nickname;
-    }
-    return { names };
+    return this.accountDesk.directory(await this.actor(gate));
   }
 
   async createAccount(gate: Gate, body: { loginName?: unknown; nickname?: unknown; password?: unknown; layer?: unknown; parentLogin?: unknown; roleId?: unknown }) {
-    const actor = await this.actor(gate);
-    if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
-    const loginName = typeof body.loginName === 'string' ? body.loginName.trim().toLowerCase() : '';
-    const nickname = typeof body.nickname === 'string' ? body.nickname.trim() : '';
-    const password = typeof body.password === 'string' ? body.password : '';
-    const layer = typeof body.layer === 'string' ? body.layer : '';
-    const parentLogin = typeof body.parentLogin === 'string' ? body.parentLogin.trim() : '';
-    if (!/^[a-z0-9._-]{3,32}$/.test(loginName)) fail(400, 'INVALID');
-    const nickError = fullNameProblem(nickname);
-    if (nickError) fail(400, nickError);
-    const passError = newPasswordProblem(password);
-    if (passError) fail(400, passError);
-    const allowed: Record<string, string[]> = {
-      branch: ['main_agent', 'agent', 'pos'],
-      main_agent: ['agent', 'pos'],
-      agent: ['pos'],
-    };
-    if (layer === 'staff') {
-      if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('staff'))) fail(403, 'FORBIDDEN');
-      const roleId = typeof body.roleId === 'string' ? body.roleId : '';
-      const role = roleId ? await this.prisma.role.findUnique({ where: { id: roleId } }) : null;
-      if (!role || (role.staff && !actor.isBranchOwner)) fail(403, 'FORBIDDEN');
-      const owner = await this.prisma.user.findFirst({ where: { isBranchOwner: true } });
-      if (!owner) fail(400, 'INVALID');
-      const existing = await this.prisma.user.findUnique({ where: { loginName } });
-      if (existing) fail(400, 'LOGIN_TAKEN');
-      await this.prisma.user.create({
-        data: {
-          loginName,
-          nickname,
-          passwordHash: await hashPassword(password),
-          mustChangePassword: true,
-          layer: 'branch',
-          parentId: owner.id,
-          roleId: role.id,
-          wallet: { create: {} },
-        },
-      });
-      return { ok: true as const };
-    }
-    if (!allowed[actor.layer]?.includes(layer)) fail(403, 'FORBIDDEN');
-    const accounts = await this.accounts();
-    const direct: Record<string, string> = { branch: 'main_agent', main_agent: 'agent', agent: 'pos' };
-    let parent = accounts.find((account) => account.id === actor.id) ?? null;
-    if (layer !== direct[actor.layer]) {
-      const chosen = accounts.find((account) => account.loginName === parentLogin);
-      const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-      const parentLayer = layer === 'agent' ? 'main_agent' : 'agent';
-      parent = chosen && chosen.id !== actor.id && visible.has(chosen.id) && chosen.layer === parentLayer ? chosen : null;
-    }
-    if (!parent) fail(400, 'INVALID');
-    const existing = await this.prisma.user.findUnique({ where: { loginName } });
-    if (existing) fail(400, 'LOGIN_TAKEN');
-    await this.prisma.user.create({
-      data: {
-        loginName,
-        nickname,
-        passwordHash: await hashPassword(password),
-        mustChangePassword: true,
-        layer,
-        parentId: parent.id,
-        wallet: { create: {} },
-      },
-    });
-    return { ok: true as const };
+    return this.accountDesk.create(await this.actor(gate), body);
   }
 
   async setAccountPassword(gate: Gate, loginName: string, body: { password?: unknown }) {
-    const actor = await this.actor(gate);
-    if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
-    const password = typeof body.password === 'string' ? body.password : '';
-    const passError = newPasswordProblem(password);
-    if (passError) fail(400, passError);
-    const target = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!target || target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
-    const accounts = await this.accounts();
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(403, 'FORBIDDEN');
-    const rank: Record<string, number> = { branch: 0, main_agent: 1, agent: 2, pos: 3 };
-    if (target.roleId) {
-      if (!actor.isBranchOwner && !actor.grants.includes('staff')) fail(403, 'FORBIDDEN');
-    } else if ((rank[target.layer] ?? 9) <= (rank[actor.layer] ?? 9)) fail(403, 'FORBIDDEN');
-    await this.prisma.user.update({
-      where: { id: target.id },
-      data: { passwordHash: await hashPassword(password), mustChangePassword: true },
-    });
-    return { ok: true as const };
+    return this.accountDesk.setPassword(await this.actor(gate), loginName, body);
+  }
+
+  async account(gate: Gate, loginName: string) {
+    return this.accountDesk.detail(await this.actor(gate), loginName);
+  }
+
+  async saveAccess(gate: Gate, loginName: string, body: { extraGrants?: unknown; deniedGrants?: unknown; extraRoleIds?: unknown; roleId?: unknown }) {
+    return this.accountDesk.saveAccess(await this.actor(gate), loginName, body);
+  }
+
+  async setFrozen(gate: Gate, loginName: string, frozen: boolean) {
+    return this.accountDesk.setFrozen(await this.actor(gate), loginName, frozen);
+  }
+
+  async removeUser(gate: Gate, loginName: string) {
+    return this.accountDesk.remove(await this.actor(gate), loginName);
+  }
+
+  async enter(gate: Gate, loginName: string, meta: { userAgent: string; ip: string }) {
+    return this.accountDesk.enter(await this.actor(gate), loginName, meta);
   }
 
   // Facades (Phase 3): specs still call these; the routes live in roles/roles.controller.ts.
@@ -1396,94 +1294,6 @@ export class OfficeService implements OnModuleInit {
 
   async saveRole(gate: Gate, body: { id?: unknown; name?: unknown; grants?: unknown; read?: unknown; edit?: unknown; accounting?: unknown; tasks?: unknown; reports?: unknown; staff?: unknown; enter?: unknown }) {
     return this.roleDesk.save(await this.actor(gate), body);
-  }
-
-  async account(gate: Gate, loginName: string) {
-    const actor = await this.actor(gate);
-    await this.ensureLayerRoles();
-    const target = await this.visibleAccount(actor, loginName);
-    const [layerRole, jobs, extra] = await Promise.all([
-      this.prisma.role.findUnique({ where: { layer: target.layer } }),
-      this.prisma.role.findMany({ where: { kind: 'job' }, orderBy: { name: 'asc' } }),
-      this.prisma.userRole.findMany({ where: { userId: target.id }, include: { role: true } }),
-    ]);
-    const staff = target.layer === 'branch' && Boolean(target.roleId) && !target.isBranchOwner;
-    const roleGrants = effectiveGrantCodes({
-      owner: false,
-      staff,
-      layer: target.layer,
-      layerRole,
-      roles: [target.role, ...extra.map((link) => link.role)],
-      extra: '',
-      denied: '',
-    });
-    const grants = target.isBranchOwner
-      ? [...GRANT_CODES]
-      : effectiveGrantCodes({
-        owner: false,
-        staff,
-        layer: target.layer,
-        layerRole,
-        roles: [target.role, ...extra.map((link) => link.role)],
-        extra: target.extraGrants,
-        denied: target.deniedGrants,
-      });
-    const parent = target.parentId
-      ? await this.prisma.user.findUnique({ where: { id: target.parentId }, select: { loginName: true } })
-      : null;
-    return {
-      loginName: target.loginName,
-      nickname: target.nickname,
-      layer: target.layer,
-      parentLogin: parent?.loginName ?? null,
-      frozen: target.disabledAt !== null,
-      isBranchOwner: target.isBranchOwner,
-      staff,
-      roleId: target.roleId ?? '',
-      roleName: target.role?.name ?? '',
-      roleGrants,
-      extraGrants: splitGrants(target.extraGrants),
-      deniedGrants: splitGrants(target.deniedGrants),
-      extraRoleIds: extra.map((link) => link.roleId),
-      grants,
-      roles: jobs.map((role) => ({ id: role.id, name: role.name, grants: roleGrantCodes(role) })),
-      canEdit: actor.isBranchOwner && !actor.impersonating && !target.isBranchOwner,
-    };
-  }
-
-  async saveAccess(gate: Gate, loginName: string, body: { extraGrants?: unknown; deniedGrants?: unknown; extraRoleIds?: unknown; roleId?: unknown }) {
-    const actor = await this.actor(gate);
-    if (!actor.isBranchOwner || actor.impersonating) fail(403, 'FORBIDDEN');
-    const target = await this.visibleAccount(actor, loginName);
-    if (target.isBranchOwner) fail(403, 'FORBIDDEN');
-    const extraGrants = splitGrants(Array.isArray(body.extraGrants) ? body.extraGrants.filter((code): code is string => typeof code === 'string').join(',') : '');
-    const denied = new Set(splitGrants(Array.isArray(body.deniedGrants) ? body.deniedGrants.filter((code): code is string => typeof code === 'string').join(',') : ''));
-    for (const code of extraGrants) denied.delete(code);
-    const wanted = Array.isArray(body.extraRoleIds) ? body.extraRoleIds.filter((id): id is string => typeof id === 'string' && id.length > 0) : [];
-    const jobs = wanted.length === 0
-      ? []
-      : await this.prisma.role.findMany({ where: { id: { in: wanted }, kind: 'job' }, select: { id: true } });
-    if (jobs.length !== new Set(wanted).size) fail(400, 'INVALID');
-    const staff = target.layer === 'branch' && Boolean(target.roleId);
-    let roleId = target.roleId;
-    if (staff) {
-      const next = typeof body.roleId === 'string' ? body.roleId : '';
-      const primary = next ? await this.prisma.role.findUnique({ where: { id: next } }) : null;
-      if (!primary || primary.kind === 'layer') fail(400, 'INVALID');
-      roleId = primary.id;
-    }
-    const extraIds = jobs.map((role) => role.id).filter((id) => id !== roleId);
-    await this.runTx(async (tx) => {
-      await tx.user.update({
-        where: { id: target.id },
-        data: { extraGrants: extraGrants.join(','), deniedGrants: [...denied].join(','), roleId },
-      });
-      await tx.userRole.deleteMany({ where: { userId: target.id } });
-      if (extraIds.length > 0) {
-        await tx.userRole.createMany({ data: extraIds.map((id) => ({ userId: target.id, roleId: id })) });
-      }
-    });
-    return { ok: true as const };
   }
 
   /**
@@ -1709,71 +1519,6 @@ export class OfficeService implements OnModuleInit {
 
   async setLinePrices(gate: Gate, code: string, body: { scope?: unknown; groups?: unknown }) {
     return this.termDesk.setLinePrices(await this.actor(gate), code, body);
-  }
-
-  async setFrozen(gate: Gate, loginName: string, frozen: boolean) {
-    const actor = await this.branchActor(gate);
-    if (actor.impersonating) fail(403, 'FORBIDDEN');
-    const target = await this.prisma.user.findUnique({ where: { loginName }, include: { role: true } });
-    if (!target || target.isBranchOwner) fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('staff')) fail(403, 'FORBIDDEN');
-    if (target.role?.staff && !actor.isBranchOwner) fail(403, 'FORBIDDEN');
-    await this.prisma.user.update({ where: { id: target.id }, data: { disabledAt: frozen ? new Date() : null } });
-    if (frozen) {
-      const held = await this.prisma.officeTask.findMany({ where: { assigneeId: target.id, status: 'working' } });
-      for (const task of held) {
-        await this.prisma.officeTask.update({
-          where: { id: task.id },
-          data: {
-            status: 'pending',
-            assigneeId: null,
-            resultNote: 'رجع لأن الحساب أُوقف',
-            log: stampTaskLog(task.log, 'رجعت لأن الحساب أُوقف'),
-          },
-        });
-      }
-      await this.auth.dropLiveSessions(target.id);
-    }
-    return { ok: true };
-  }
-
-  async removeUser(gate: Gate, loginName: string) {
-    const actor = await this.branchActor(gate);
-    if (actor.impersonating) fail(403, 'FORBIDDEN');
-    const target = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!target || target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
-    const [children, lines, tasks, entries] = await Promise.all([
-      this.prisma.user.count({ where: { parentId: target.id } }),
-      this.prisma.line.count({ where: { posId: target.id } }),
-      this.prisma.officeTask.count({ where: { OR: [{ submitterId: target.id }, { posId: target.id }, { assigneeId: target.id }] } }),
-      this.prisma.walletEntry.count({ where: { OR: [{ userId: target.id }, { actorId: target.id }] } }),
-    ]);
-    if (children + lines + tasks + entries > 0) fail(400, 'HAS_HISTORY');
-    await this.auth.dropLiveSessions(target.id);
-    await this.prisma.session.deleteMany({ where: { userId: target.id } });
-    await this.prisma.wallet.deleteMany({ where: { userId: target.id } });
-    await this.prisma.userPackage.deleteMany({ where: { userId: target.id } });
-    await this.prisma.sellPrice.deleteMany({ where: { ownerId: target.id } });
-    await this.prisma.user.delete({ where: { id: target.id } });
-    return { ok: true };
-  }
-
-  async enter(gate: Gate, loginName: string, meta: { userAgent: string; ip: string }) {
-    const actor = await this.actor(gate);
-    if (actor.impersonating || actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('enter')) fail(403, 'FORBIDDEN');
-    const target = await this.prisma.user.findUnique({ where: { loginName } });
-    if (!target || target.disabledAt || target.id === actor.id) fail(400, 'INVALID');
-    await this.prisma.accessLog.create({ data: { actorId: actor.operatorId, targetLogin: target.loginName, ip: meta.ip } });
-    const sessionId = await this.auth.saveImpersonation({ userId: target.id, userAgent: meta.userAgent, ip: meta.ip });
-    return { sessionId };
-  }
-
-  async leave(gate: Gate) {
-    const live = gate.sessionId ? await this.auth.liveSession(gate.sessionId) : null;
-    if (!live || live.session.kind !== 'impersonation') fail(400, 'INVALID');
-    await this.auth.revokeSessions([live.session.id]);
-    return { ok: true };
   }
 
   // Facade (Phase 3): specs still call the service; the route lives in audit/audit.controller.ts.
