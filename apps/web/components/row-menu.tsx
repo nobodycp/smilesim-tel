@@ -132,7 +132,7 @@ export function RowMenu({ label, items }: { label: string; items: RowAction[] })
           style={{ top: box?.top ?? -9999, left: box?.left ?? 8, visibility: box ? 'visible' : 'hidden' }}
         >
           {items.map((item, index) => (
-            <Fragment key={item.label}>
+            <Fragment key={`${index}:${item.label}`}>
               {index === firstDanger && firstDanger > 0 ? <span className="row-menu-rule" role="separator" /> : null}
               <button
                 type="button"

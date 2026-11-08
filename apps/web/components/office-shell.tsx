@@ -112,8 +112,21 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       if (!walletRef.current?.contains(event.target as Node)) setWalletOpen(false);
       if (!noticeRef.current?.contains(event.target as Node)) setNoticeOpen(false);
     };
+    // Escape closes the open menu and gives the focus back to the button that opened it.
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      const open = menuOpen ? menuRef : walletOpen ? walletRef : noticeRef;
+      setMenuOpen(false);
+      setWalletOpen(false);
+      setNoticeOpen(false);
+      open.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    };
     document.addEventListener('mousedown', onPointer);
-    return () => document.removeEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [menuOpen, walletOpen, noticeOpen]);
 
   async function openNotice(row: NoticeRow) {
@@ -359,7 +372,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
     <div className="office">
       {mobileOpen && <div className="backdrop" onClick={() => setMobileOpen(false)} />}
       <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'}>{sidebar(false)}</aside>
-      <aside className={mobileOpen ? 'drawer open' : 'drawer'}>{sidebar(true)}</aside>
+      {/* Closed, the drawer is off screen but still in the page: `inert` keeps it out of the tab order and the
+          accessibility tree until it opens. */}
+      <aside className={mobileOpen ? 'drawer open' : 'drawer'} inert={!mobileOpen}>{sidebar(true)}</aside>
       <div className="office-main">
         <header className="topbar">
           <div className="topbar-start">
