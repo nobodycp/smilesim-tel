@@ -77,6 +77,14 @@
 }
 .back-link:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
 .canvas-inner > .back-link { margin-block-end: var(--rd-space-3); }
+/* The trail above a detail page (components/crumbs.tsx): muted links to each level, the page itself in ink. */
+.crumbs { margin-block-end: var(--rd-space-3); font-size: var(--rd-text-md); }
+.crumbs ol { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-1); margin: 0; padding: 0; list-style: none; }
+.crumbs li { display: inline-flex; align-items: center; gap: var(--rd-space-1); min-width: 0; }
+.crumbs a { padding: 2px var(--rd-space-1); border-radius: var(--rd-radius-xs); color: var(--rd-muted); font-weight: 600; text-decoration: none; }
+.crumbs a:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
+.crumbs [aria-current='page'] { padding: 2px var(--rd-space-1); color: var(--rd-ink); font-weight: 700; overflow-wrap: anywhere; }
+.crumbs-sep { width: 14px; height: 14px; flex: none; color: var(--rd-faint); }
 .back-link svg { width: 16px; height: 16px; flex: none; }
 .sr-only {
   position: absolute;

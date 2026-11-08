@@ -21,6 +21,7 @@ import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { Fact, Facts } from '../../../components/facts';
+import { useCrumbs } from '../../../lib/crumbs';
 
 const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
@@ -56,6 +57,7 @@ export function AccountScreen() {
   const [note, setNote] = useState('');
   const account = useApiQuery(sharedKeys.account(params.login), () => api.officeAccount(params.login), { enabled: allowed });
   const row = account.data;
+  useCrumbs({ [`/users/${encodeURIComponent(params.login)}`]: row ? `${row.loginName} (${row.nickname})` : null });
   const picked = choices ?? Object.fromEntries(GRANT_CODES.map((code) => {
     if (row?.deniedGrants.includes(code)) return [code, 'deny'];
     if (row?.extraGrants.includes(code)) return [code, 'allow'];

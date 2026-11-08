@@ -11,6 +11,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
+import { useCrumbs } from '../../../lib/crumbs';
 
 const BRANCH = ['branch'];
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
@@ -22,6 +23,10 @@ export function CompanyPackagesScreen() {
   const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
   const company = shelf.data?.companies.find((item) => item.code === params.code) ?? null;
   const provider = company?.providers.find((item) => item.code === params.provider) ?? null;
+  useCrumbs({
+    [`/companies/${encodeURIComponent(params.code)}`]: company?.name,
+    [`/companies/${encodeURIComponent(params.code)}/${encodeURIComponent(params.provider)}`]: provider?.name,
+  });
   const columns: Column<ShelfPackage>[] = [
     {
       key: 'package',

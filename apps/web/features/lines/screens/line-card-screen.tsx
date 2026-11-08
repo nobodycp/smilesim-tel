@@ -28,6 +28,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { DataImage } from '../../../components/data-image';
 import { Fact, Facts } from '../../../components/facts';
+import { useCrumbs } from '../../../lib/crumbs';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
@@ -89,6 +90,7 @@ export function LineCardScreen() {
     reload: numberRead.reload,
   };
   const line = numberRead.data?.line ?? null;
+  useCrumbs({ [`/numbers/${encodeURIComponent(params.id)}`]: line?.msisdn });
   const history = numberRead.data?.history ?? [];
   const packages = catalogRead.data?.packages ?? NO_PACKAGES;
   const companies = catalogRead.data?.companies ?? NO_COMPANIES;

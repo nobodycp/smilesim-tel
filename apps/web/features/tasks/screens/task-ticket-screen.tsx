@@ -17,6 +17,7 @@ import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules'
 import { useAction } from '../../../lib/use-action';
 import { taskTone } from '../../../lib/status-tone';
 import { Fact, Facts } from '../../../components/facts';
+import { useCrumbs } from '../../../lib/crumbs';
 
 const glyph = { size: 14, strokeWidth: 2.25, 'aria-hidden': true as const };
 
@@ -43,6 +44,7 @@ export function TaskTicketScreen() {
 
   const card = useApiQuery(sharedKeys.task(params.id), () => api.officeTask(params.id));
   const task = card.data?.task ?? null;
+  useCrumbs({ [`/tasks/${encodeURIComponent(params.id)}`]: task ? `${actionName(t, task.action)}${task.msisdn ? ` · ${task.msisdn}` : ''}` : null });
   const events = card.data?.events ?? [];
   // What closing this task hands back: an eSIM request needs the serial and the QR, a number change needs the number.
   const simRules = task?.sim ?? OPEN_SIM;

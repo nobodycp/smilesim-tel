@@ -39,6 +39,7 @@ import { BrandLogo } from './brand-logo';
 import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
 import { BackLink } from './back-link';
+import { Crumbs } from './crumbs';
 import { OutageBar, OutagePanel } from './outage';
 import { useNotices } from '../lib/use-notices';
 import { tabTitle, usePageTitleValue } from '../lib/page-title';
@@ -237,6 +238,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const flatItems = (entries: NavEntry[]) => entries.flatMap((entry) => (isGroup(entry) ? entry.items : [entry]));
   const roots = new Set(groups.flatMap((group) => flatItems(group.items).map((item) => item.href)));
   const backHref = roots.has(pathname) ? '' : pathname.split('/').slice(0, -1).join('/') || '/';
+  // The trail names the section by its sidebar label; a page outside the sidebar keeps the back button.
+  const sections = groups.flatMap((group) => flatItems(group.items)).map((item) => ({ href: item.href, label: item.label }));
+  const inSection = sections.some((item) => item.href !== '/' && pathname.startsWith(`${item.href}/`));
   const isActive = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
 
   const navLink = (item: NavItem, compact: boolean) => {
@@ -517,7 +521,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           )}
           {ready && !reachable && <OutageBar />}
           <div className="canvas-inner wide">
-            {ready && backHref ? <BackLink href={backHref} /> : null}
+            {ready && backHref ? (inSection ? <Crumbs pathname={pathname} sections={sections} /> : <BackLink href={backHref} />) : null}
             {/* The page mounts at once so its loads run beside `/office/me`; `Desk` draws the
                 skeleton until the session answers. Only an API that is down replaces it. */}
             {failed ? <OutagePanel onRetry={retry} busy={retrying} /> : children}

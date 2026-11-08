@@ -23,6 +23,7 @@ import { useRequireLayer } from '../../../lib/use-require-layer';
 import { lineTone, onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import { useCrumbs } from '../../../lib/crumbs';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
@@ -127,6 +128,10 @@ export function PackageSheetScreen() {
     reload: () => client.invalidateQueries({ queryKey: packageKeys.all(code) }),
   };
   const sheet = card.data?.sheet ?? null;
+  useCrumbs({
+    [`/providers/${encodeURIComponent(params.code)}`]: sheet?.providerName,
+    [`/providers/${encodeURIComponent(params.code)}/${encodeURIComponent(code)}`]: sheet?.name,
+  });
   const users = card.data?.users ?? [];
   // The layer column the picked account would pay without a custom price; the pos column until one is picked.
   const pickedLayer = users.find((row) => row.loginName === loginName)?.layer ?? 'pos';

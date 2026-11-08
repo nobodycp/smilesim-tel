@@ -252,6 +252,7 @@ export const en: Copy = {
   ok: 'OK',
   providersTitle: 'Providers',
   companiesTitle: 'Companies',
+  breadcrumb: 'Breadcrumb',
   back: 'Back',
   navCompanies: 'Companies',
   noCompanies: 'No companies.',

@@ -252,6 +252,7 @@ export const he: Copy = {
   ok: 'אישור',
   providersTitle: 'ספקים',
   companiesTitle: 'חברות',
+  breadcrumb: 'נתיב הדף',
   back: 'חזרה',
   navCompanies: 'חברות',
   noCompanies: 'אין חברות.',

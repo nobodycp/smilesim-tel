@@ -252,6 +252,7 @@ export const ar = {
   ok: 'موافق',
   providersTitle: 'المزودون',
   companiesTitle: 'الشركات',
+  breadcrumb: 'مسار الصفحة',
   back: 'رجوع',
   navCompanies: 'الشركات',
   noCompanies: 'لا شركات.',
