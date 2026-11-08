@@ -11,6 +11,8 @@ import { RowMenu } from '../../components/row-menu';
 import { TableSearch } from '../../components/table-search';
 import { Badge } from '../../components/ui/badge';
 import { Select } from '../../components/ui/select';
+import { useApiQuery } from '../../lib/use-api-query';
+import { sharedKeys } from '../../lib/query';
 import { api, type TaskRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
@@ -40,7 +42,7 @@ export default function TasksPage() {
   const status = TASK_STATUSES.includes(filters.status) ? filters.status : '';
   const commitQuery = useCallback((value: string) => setFilters({ q: value }), [setFilters]);
   const [query, setQuery] = useDebouncedField(needle, commitQuery);
-  const catalog = useLoad(() => api.officePackages());
+  const catalog = useApiQuery(sharedKeys.packages, () => api.officePackages());
   const packages = catalog.data?.packages ?? [];
   const list = usePaged<TaskRow>(
     `${needle}|${status}|${action}|${pack}|${company}|${provider}`,

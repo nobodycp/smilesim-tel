@@ -15,6 +15,8 @@ import { EsimDialog, SimBadge } from '../../components/esim-qr';
 import { FilterBar } from '../../components/filter-bar';
 import { lineActions } from '../../components/line-actions';
 import { RowMenu } from '../../components/row-menu';
+import { useApiQuery } from '../../lib/use-api-query';
+import { sharedKeys } from '../../lib/query';
 import { api, type ApplyResult, type LineRow, type Outcome, type PosChoice } from '../../lib/api';
 import { useDoor } from '../../lib/door-context';
 import { useOffice } from '../../lib/office-session';
@@ -62,7 +64,7 @@ export default function NumbersPage() {
     async (cursor) =>
       pick(await api.officeLines({ q: needle, status, packageCode: pack, provider, company, cursor }), (data) => ({ rows: data.lines, next: data.nextCursor, total: data.total, extra: data.poses })),
   );
-  const catalog = useLoad(() => api.officePackages());
+  const catalog = useApiQuery(sharedKeys.packages, () => api.officePackages());
   const packages = catalog.data?.packages ?? [];
   const poses = list.extra ?? NO_POSES;
   const ready = catalog.loaded && list.started;

@@ -178,6 +178,27 @@ test.describe('useAction and lineActions', () => {
     expect(calls.filter((call) => call.startsWith('POST /lines/ln1/extend'))).toHaveLength(1);
   });
 
+  // The card's three reads are cached apart: an action on the number asks for the number again, not the catalog
+  // or the accounts (they used to be read again, one after the other, on every action).
+  test('an action on the line card reads the number again and leaves the catalog and the accounts alone', async ({ page }) => {
+    const calls = await serveOffice(page, 'branch', {
+      'GET /lines/ln1': () => ({ body: card('active') }),
+      'GET /packages': () => ({ body: { packages: [], companies: [] } }),
+      'GET /users': () => ({ body: { users: [] } }),
+      'POST /lines/ln1/extend': () => ({ body: { applied: true, debited: true } }),
+    });
+    await page.goto(`${admin}/numbers/ln1`);
+    await expect(page.getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
+    const count = (prefix: string) => calls.filter((call) => call === prefix).length;
+    const before = { line: count('GET /lines/ln1'), packages: count('GET /packages'), users: count('GET /users') };
+    await page.getByRole('button', { name: 'تمديد', exact: true }).click();
+    await expect(page.getByRole('status')).toHaveText('تم التنفيذ وخصم الرصيد.');
+    await expect.poll(() => count('GET /lines/ln1')).toBe(before.line + 1);
+    await page.waitForTimeout(300);
+    expect(count('GET /packages')).toBe(before.packages);
+    expect(count('GET /users')).toBe(before.users);
+  });
+
   test('a refused action shows the error, leaves the card as it was, and can be tried again', async ({ page }) => {
     let tries = 0;
     await serveOffice(page, 'branch', {

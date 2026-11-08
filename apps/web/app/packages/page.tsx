@@ -10,6 +10,8 @@ import { FilterBar } from '../../components/filter-bar';
 import { RowMenu } from '../../components/row-menu';
 import { Button } from '../../components/ui/button';
 import { Spinner, TableSkeleton } from '../../components/loading';
+import { useApiQuery } from '../../lib/use-api-query';
+import { sharedKeys } from '../../lib/query';
 import { api, type ApplyResult, type PackageRow } from '../../lib/api';
 import { parseShekel, shekelField } from '../../lib/money';
 import { hueOf, markOf } from '../../lib/company-mark';
@@ -297,7 +299,7 @@ export default function PlansPage() {
   const layer = me?.layer ?? '';
   const isPos = door.layer === 'pos' || layer === 'pos';
   const loginName = me?.loginName ?? '';
-  const catalog = useLoad(() => api.officePackages());
+  const catalog = useApiQuery(sharedKeys.packages, () => api.officePackages());
   const rows = catalog.data?.packages ?? [];
   const marks = catalog.data?.companies ?? [];
   const { run } = useAction({ setError, setNote, onDone: catalog.reload });

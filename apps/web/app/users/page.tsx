@@ -13,6 +13,8 @@ import { TransferDialog } from '../../components/transfer-dialog';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
+import { useApiQuery } from '../../lib/use-api-query';
+import { sharedKeys } from '../../lib/query';
 import { api, type UserRow } from '../../lib/api';
 import { parseShekel } from '../../lib/money';
 import { useOffice } from '../../lib/office-session';
@@ -49,7 +51,7 @@ export default function UsersPage() {
   const [note, setNote] = useState('');
   const { me } = useOffice();
   const allowed = useRequireLayer(OFFICE_LAYERS);
-  const accounts = useLoad(() => api.officeUsers(), [], { enabled: allowed });
+  const accounts = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: allowed });
   const rows = accounts.data?.users ?? [];
   const roles = useLoad(() => api.officeRoles(), [], { enabled: draft.layer === 'staff' }).data?.roles ?? [];
   const { run: send, busy } = useAction({ setError, setNote, onDone: accounts.reload });

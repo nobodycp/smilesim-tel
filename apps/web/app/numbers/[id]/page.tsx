@@ -2,7 +2,7 @@
 
 import { ArrowRightLeft, CalendarPlus, Hash, Layers, PhoneOff, QrCode, RefreshCw, Smartphone, Snowflake, Sun, Zap } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk, Money, OutcomePick, actionName, applyNote, latinWhen, lineBadgeClass, lineStatus } from '../../../components/desk';
@@ -14,14 +14,15 @@ import { TableSkeleton } from '../../../components/loading';
 import type { RowAction } from '../../../components/row-menu';
 import { LineChoice } from '../../../components/transfer-dialog';
 import { Button } from '../../../components/ui/button';
-import { api, type LineHistory, type LineRow, type Outcome, type TransferLinePrices } from '../../../lib/api';
+import { api, type LineHistory, type LineRow, type Outcome, type PackageRow, type Shelf, type TransferLinePrices } from '../../../lib/api';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { formatShekel } from '../../../lib/money';
-import { useLoad } from '../../../lib/use-load';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { sharedKeys } from '../../../lib/query';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
@@ -43,6 +44,9 @@ function daysLeft(endsAt: string): number {
   if (Number.isNaN(end)) return 0;
   return Math.max(0, Math.ceil((end - Date.now()) / 86_400_000));
 }
+
+const NO_PACKAGES: PackageRow[] = [];
+const NO_COMPANIES: Shelf['companies'] = [];
 
 export default function LineCardPage() {
   const { t } = usePrefs();
@@ -68,26 +72,25 @@ export default function LineCardPage() {
   const [note, setNote] = useState('');
   const verdict: Outcome = isPos ? 'success' : outcome;
 
-  const card = useLoad(async () => {
-    const [found, catalog] = await Promise.all([api.officeLine(params.id), api.officePackages()]);
-    if (!found.ok) return found;
-    const users = canTransfer ? await api.officeUsers() : null;
-    return {
-      ok: true as const,
-      data: {
-        line: found.data.line,
-        history: found.data.history,
-        packages: catalog.ok ? catalog.data.packages : [],
-        companies: catalog.ok ? catalog.data.companies : [],
-        posChoices: users?.ok ? users.data.users.filter((row) => row.layer === 'pos').map((row) => ({ loginName: row.loginName, nickname: row.nickname })) : [],
-      },
-    };
-  }, [params.id, canTransfer]);
-  const line = card.data?.line ?? null;
-  const history = card.data?.history ?? [];
-  const packages = card.data?.packages ?? [];
-  const companies = card.data?.companies ?? [];
-  const posChoices = card.data?.posChoices ?? [];
+  // Three reads, each cached on its own (ADR 0001): the number, the catalog (shared with the numbers list) and the
+  // accounts (shared with the users page). An action on the number asks for the number again, not the other two.
+  const numberRead = useApiQuery(sharedKeys.line(params.id), () => api.officeLine(params.id));
+  const catalogRead = useApiQuery(sharedKeys.packages, () => api.officePackages());
+  const usersRead = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: canTransfer });
+  const card = {
+    loaded: numberRead.loaded && catalogRead.loaded && (!canTransfer || usersRead.loaded),
+    // The catalog and the accounts are helpers: without them the card still shows, with fewer choices.
+    error: numberRead.error,
+    reload: numberRead.reload,
+  };
+  const line = numberRead.data?.line ?? null;
+  const history = numberRead.data?.history ?? [];
+  const packages = catalogRead.data?.packages ?? NO_PACKAGES;
+  const companies = catalogRead.data?.companies ?? NO_COMPANIES;
+  const posChoices = useMemo(
+    () => (usersRead.data?.users ?? []).filter((row) => row.layer === 'pos').map((row) => ({ loginName: row.loginName, nickname: row.nickname })),
+    [usersRead.data],
+  );
   const { run: act, busy } = useAction({ setError, setNote, onDone: card.reload });
   const run: RunLine = (work) => act(work, { note: (data) => applyNote(t, data) });
   const closeDialog = useCallback(() => {

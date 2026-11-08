@@ -51,3 +51,10 @@ export const queryKeys = {
   me: ['office', 'me'] as const,
   directory: ['office', 'directory'] as const,
 };
+
+/** Keys of shared reads: one cache entry, whichever screen asked first. */
+export const sharedKeys = {
+  packages: ['office', 'packages'] as const,
+  users: ['office', 'users'] as const,
+  line: (id: string) => ['office', 'line', id] as const,
+};
