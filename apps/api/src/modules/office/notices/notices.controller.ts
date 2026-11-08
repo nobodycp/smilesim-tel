@@ -7,12 +7,8 @@ import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { NoticeReadBodyDto } from '../office.dto';
+import { text } from '../kernel/query';
 import { NoticeInboxService } from './notice-inbox.service';
-
-/** A query value is a string or nothing; a repeated or nested one is ignored. */
-function text(value: unknown): string | undefined {
-  return typeof value === 'string' && value ? value : undefined;
-}
 
 @ApiTags('office')
 @ApiCookieAuth('sid')

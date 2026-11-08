@@ -62,7 +62,6 @@ import {
   type LineTerms,
   type PackageTerms,
 } from './office-rules';
-import { activityActorFilter, clampActivityRange } from './activity-log';
 import { RENEWABLE_STATUSES, groupChanges, groupLinePrices, repriceLine, stampRenewal, type PriceGroup } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
 import { TRANSFER_GRANT, canTransfer, parseChoice, parseLineChoice, previewOf, transferKind, type TransferKind } from './transfer-rules';
@@ -72,6 +71,7 @@ import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent
 import { NoticeService, type WrittenNotice } from './notice.service';
 import { feedPosition } from './kernel/feed';
 import { OfficeKernel } from './kernel/office-kernel';
+import { AuditService } from './audit/audit.service';
 import type { Account, Actor, Gate, Sale } from './kernel/types';
 import { excerpt, type TaskNoticePayload } from './notice-kinds';
 import {
@@ -274,6 +274,13 @@ export class OfficeService implements OnModuleInit {
 
   private get auth(): AuthStore {
     return this.kernel.auth;
+  }
+
+  private auditService: AuditService | null = null;
+
+  private get auditLog(): AuditService {
+    this.auditService ??= new AuditService(this.kernel);
+    return this.auditService;
   }
 
   constructor(
@@ -2979,56 +2986,9 @@ export class OfficeService implements OnModuleInit {
     };
   }
 
-  async audit(gate: Gate, query: { cursor?: string; action?: string; result?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
-    const actor = await this.actor(gate);
-    const accounts = await this.accounts();
-    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const position = feedPosition(query.cursor);
-    const from = query.from ? new Date(query.from) : null;
-    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999Z` : query.to) : null;
-    const range = clampActivityRange(from, to);
-    const needle = (query.q ?? '').trim();
-    const where: Prisma.ActivityEventWhereInput = {
-      ...activityActorFilter(actor.layer, [...visible]),
-      ...(query.action ? { action: query.action } : {}),
-      ...(query.result === 'ok' || query.result === 'fail' ? { result: query.result } : {}),
-      ...(query.layer ? { actorLayer: query.layer } : {}),
-      at: { gte: range.gte, lte: range.lte },
-      ...(needle
-        ? { OR: [{ actorLogin: { contains: needle, mode: 'insensitive' } }, { subjectRef: { contains: needle, mode: 'insensitive' } }] }
-        : {}),
-    };
-    const [rows, total] = await Promise.all([
-      this.prisma.activityEvent.findMany({
-        where: {
-          ...where,
-          ...(position
-            ? { AND: [{ OR: [{ at: { lt: position.at } }, { at: position.at, id: { lt: position.id } }] }] }
-            : {}),
-        },
-        orderBy: [{ at: 'desc' }, { id: 'desc' }],
-        take: FEED_PAGE + 1,
-      }),
-      this.prisma.activityEvent.count({ where }),
-    ]);
-    const page = rows.slice(0, FEED_PAGE);
-    const last = page[page.length - 1];
-    return {
-      total,
-      entries: page.map((row) => ({
-        id: row.id,
-        at: row.at.toISOString(),
-        action: row.action,
-        result: row.result,
-        reason: row.reason,
-        ip: row.ip,
-        actorLogin: row.actorLogin,
-        actorLayer: row.actorLayer,
-        subjectKind: row.subjectKind,
-        subjectRef: row.subjectRef,
-      })),
-      nextCursor: rows.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.at, id: last.id }) : null,
-    };
+  // Facade (Phase 3): specs still call the service; the route lives in audit/audit.controller.ts.
+  async audit(gate: Gate, query: Parameters<AuditService['list']>[1] = {}) {
+    return this.auditLog.list(await this.actor(gate), query);
   }
 
   async providerOperations(gate: Gate, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string } = {}) {

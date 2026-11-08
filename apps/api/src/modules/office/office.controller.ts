@@ -918,37 +918,6 @@ export class OfficeController {
     return result;
   }
 
-  @Get('audit')
-  @ApiOperation({ summary: 'Activity log (paged)' })
-  @ApiQuery({ name: 'cursor', required: false })
-  @ApiQuery({ name: 'action', required: false })
-  @ApiQuery({ name: 'result', required: false })
-  @ApiQuery({ name: 'layer', required: false })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiQuery({ name: 'from', required: false })
-  @ApiQuery({ name: 'to', required: false })
-  @ApiErrorResponse(401, 403)
-  audit(
-    @Req() req: Request,
-    @Query('cursor') cursor?: string,
-    @Query('action') action?: string,
-    @Query('result') result?: string,
-    @Query('layer') layer?: string,
-    @Query('q') q?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-  ) {
-    return this.office.audit(gateOf(req), {
-      cursor: text(cursor),
-      action: text(action),
-      result: text(result),
-      layer: text(layer),
-      q: text(q),
-      from: text(from),
-      to: text(to),
-    });
-  }
-
   @Get('provider-operations')
   @ApiOperation({ summary: 'Line operations with the branch cost at the provider (paged)' })
   @ApiQuery({ name: 'cursor', required: false })
