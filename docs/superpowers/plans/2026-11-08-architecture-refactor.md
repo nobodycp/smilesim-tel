@@ -64,7 +64,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
   - `06bdd61` `packages/` — catalog list, sell prices, mode, sheet, chain, renewal/switch targets (`package-catalog.http.spec.ts` first).
   - `fb16f91` kernel gets `ladderRows`, `stampWith`, `PRICE_COLUMNS`.
   - `6058a9b` `terms/` — user packages, user ops, custom prices, line prices (+ `kernel/line-terms.ts`).
-  - Found, not changed: `PATCH packages/:code/mode` checks the `edit` grant only, no layer check (pinned in the spec; see follow-ups).
+  - Found: `PATCH packages/:code/mode` checked the `edit` grant only — fixed afterwards (see follow-ups).
 - [ ] 3.7 users + roles: list, directory, account, access, create, password, freeze/restore/delete, enter/leave, roles.
 - [ ] 3.8 transfers: account + line transfer, preview.
 - [ ] 3.9 lines: list, detail, activate, operate, switch, extend, reactivate, refresh, rename, sim, esim, disconnect, **and task completion** (`POST tasks/:id/complete`), **and `GET reports/:kind`**.
@@ -96,7 +96,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 
 ## Follow-ups found during the split (not done; each needs the owner's go-ahead)
 
-- **Security:** `PATCH /office/packages/:code/mode` lets any account holding `edit` change package modes; no layer check. Default layer roles give `edit` to the branch only, so it opens only if the branch grants `edit` to an agent (extra grants or an edited layer role). Fix: add the branch check like the other catalog writes.
+- [x] **Security:** `PATCH /office/packages/:code/mode` let any account holding `edit` change package modes; no layer check. Default layer roles give `edit` to the branch only, so it opened only if the branch granted `edit` to an agent. Fixed with the same branch check as `setChain` (owner's go-ahead 2026-11-08); `package-catalog.http.spec.ts` now expects 403.
 
 ## After this plan
 

@@ -92,9 +92,12 @@ describe('package catalog routes over HTTP', () => {
     expect((await as('clerk', 'patch', '/office/packages/p1/mode', { enabled: true })).status).toBe(403);
   });
 
-  // Recorded as it is: the mode route checks the edit grant only, not the layer.
-  it('lets a non-branch account with the edit grant change package modes (no layer check today)', async () => {
-    expect((await as('ag1', 'patch', '/office/packages/p1/mode', { enabled: true })).status).toBe(200);
+  // Until 2026-11-08 the mode route checked the edit grant only; an agent given `edit` could change modes for everyone.
+  it('refuses package modes to a non-branch account even when it holds the edit grant', async () => {
+    const response = await as('ag1', 'patch', '/office/packages/p1/mode', { enabled: true });
+    expect(response.status).toBe(403);
+    expect(response.body).toMatchObject({ code: 'FORBIDDEN' });
+    expect(writes).toEqual([]);
   });
 
   it('replaces renewal and switch targets inside one company and provider', async () => {
