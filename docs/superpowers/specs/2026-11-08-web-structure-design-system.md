@@ -21,3 +21,8 @@ A new look, new screens, new copy beyond the boundary screens, moving pages into
 ## Slices
 
 5.0 web lint reports unused vars/imports · 5.0b delete `components/ui/table.tsx`, `components/ui/card.tsx`, `.data-table--stack` CSS · 5.1 `app/error.tsx`, `app/not-found.tsx` · 5.5a drawer `inert`, menu Escape + focus return, `RowMenu` keys · 5.3 tokens (spacing, type, radius, z-index, motion) + Known-gaps focus/contrast · 5.4 primitives off Tailwind · 5.6 `desk.css` split by owner · 5.2 pages thin (`features/<domain>/screens`).
+
+## Addendum 2026-11-08 — one look per control (5.4b-4)
+
+The owner compared both looks of each control in the same context (light/dark, ar/en) and chose: `<Badge>` (small, tinted inset ring); `<Button>` with 8px corners everywhere, replacing the pill buttons in panes and dialogs; the destructive button as a danger outline (as `DESIGN.md` already says), so `<Button variant="danger">` stops being filled red; `<Select>` with its own chevron instead of the browser's arrow. This overrides the "no new look" non-goal for these four controls only. Found during the comparison and fixed first (4a): `<Button>` draws the browser's 2px default border because the reset never zeroes it, and in the filter bar `<Select>`'s chevron covers the text because a context rule resets its end padding.
+
