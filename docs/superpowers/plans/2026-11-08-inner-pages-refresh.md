@@ -7,4 +7,4 @@ check:copy, typecheck, test:api, build, e2e) and screenshots.
 - [x] R2 `Tabs` component (segmented, counts, arrow keys) replaces the six `.steps` lists. `tests/tabs.spec.ts`.
 - [x] R3 Cards: `Stat` restyled (label and small icon on one line, value under them, 12px radius), `highlight` and `progress`.
 - [x] R4 User page: name with its status badge, a muted line (layer · follows · role), fund and ceiling as buttons and ⋯ for the rest (`features/accounts/account-actions.tsx` `useAccountActions`, shared with the users list); four wallet cards from the account answer's new `listed` row; tab counts (custom prices, stopped operations). `tests/account-head.spec.ts`. The ceiling dialog now opens with the ceiling in shekels (it showed agorot).
-- [ ] R5 Finance: `finance/summary` and `finance/export` routes, cards, 30-day chart and figures, CSV button.
+- [x] R5 Finance: `finance/summary` and `finance/export` routes (route table and permission matrix gain them), four wallet cards, `components/balance-chart.tsx` (SVG, left to right), 30-day figures, «تصدير CSV» link with the filters on screen. `finance-summary.spec.ts`, `tests/finance-head.spec.ts`.

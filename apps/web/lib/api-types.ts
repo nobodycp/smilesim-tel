@@ -469,3 +469,15 @@ export function routeFor(next: Next): string {
       return '/';
   }
 }
+
+/** The signed-in account's wallet over the last 30 days (`GET /office/finance/summary`). */
+export type FinanceSummary = {
+  balance: number;
+  ceiling: number;
+  /** The branch has no ceiling. */
+  unlimited: boolean;
+  moneyIn: number;
+  moneyOut: number;
+  count: number;
+  series: { day: string; balance: number }[];
+};

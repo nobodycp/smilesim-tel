@@ -9,6 +9,9 @@ import { FEED_PAGE, NEWEST_FIRST, afterFeed, encodeFeedCursor, mergeFeed } from 
 import { visibleAccountIds } from '../office-rules';
 import { CeilingBody, FundBody } from '../wallet.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
+import { ledgerCsv, walletSummary, windowStart } from './finance-summary';
+
+const FINANCE_CSV_LIMIT = 10_000;
 
 /** Wallets and money reads: the wallets an account sees, funding and ceilings, the ledger, the finance report and provider operations. Branch reports are in ReportsService. */
 @Injectable()
@@ -196,10 +199,10 @@ export class WalletsService {
     };
   }
 
-  async finance(actor: Actor, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
+  /** The ledger's filter: the entries of the visible accounts (every entry for the branch), narrowed by the query. */
+  private async financeWhere(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string }): Promise<Prisma.WalletEntryWhereInput> {
     const accounts = await this.kernel.accounts();
     const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
-    const position = feedPosition(query.cursor);
     const from = query.from ? new Date(query.from) : null;
     const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999` : query.to) : null;
     const createdAt = {
@@ -208,7 +211,7 @@ export class WalletsService {
     };
     const needle = (query.q ?? '').trim();
     const digits = needle.replace(/\s/g, '');
-    const where: Prisma.WalletEntryWhereInput = {
+    return {
       ...(actor.layer === 'branch' ? {} : { userId: { in: visible } }),
       amount: { not: 0 },
       ...(query.kind ? { kind: query.kind } : {}),
@@ -226,6 +229,49 @@ export class WalletsService {
           }
         : {}),
     };
+  }
+
+  /** The signed-in account's own wallet over the last 30 days: the finance page's cards and chart. */
+  async financeSummary(actor: Actor, now = new Date()) {
+    const [wallet, entries] = await Promise.all([
+      this.kernel.prisma.wallet.findUnique({ where: { userId: actor.id } }),
+      this.kernel.prisma.walletEntry.findMany({
+        where: { userId: actor.id, amount: { not: 0 }, createdAt: { gte: windowStart(now) } },
+        select: { createdAt: true, amount: true, balanceAfter: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+    ]);
+    const balance = wallet?.balance ?? 0;
+    return { balance, ceiling: wallet?.ceiling ?? 0, unlimited: actor.layer === 'branch', ...walletSummary(entries, balance, now) };
+  }
+
+  /** The ledger with the page's filters as a CSV, newest first, at most 10,000 rows. */
+  async financeCsv(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
+    const rows = await this.kernel.prisma.walletEntry.findMany({
+      where: await this.financeWhere(actor, query),
+      include: { user: true, actor: true },
+      orderBy: [...NEWEST_FIRST],
+      take: FINANCE_CSV_LIMIT,
+    });
+    return ledgerCsv(rows.map((row) => ({
+      at: row.createdAt.toISOString(),
+      loginName: row.user.loginName,
+      layer: row.user.layer,
+      actorLogin: row.actor.loginName,
+      kind: row.kind,
+      amount: row.amount,
+      balanceBefore: row.balanceAfter - row.amount,
+      balanceAfter: row.balanceAfter,
+      msisdn: row.msisdn ?? '',
+      companyName: row.companyName ?? '',
+      packageName: row.packageName ?? '',
+      note: row.note ?? '',
+    })));
+  }
+
+  async finance(actor: Actor, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
+    const position = feedPosition(query.cursor);
+    const where = await this.financeWhere(actor, query);
     const [rows, total] = await Promise.all([
       this.kernel.prisma.walletEntry.findMany({
         where: {

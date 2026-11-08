@@ -1,11 +1,17 @@
 'use client';
 
+import { Download } from 'lucide-react';
 import { useState } from 'react';
+import { BalanceChart } from '../../../components/balance-chart';
+import { Stat, StatRow } from '../../../components/stat';
+import { buttonClass } from '../../../components/ui/button';
+import { sharedKeys } from '../../../lib/query';
+import { useApiQuery } from '../../../lib/use-api-query';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { Desk, Money, actionName, latinWhen, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
-import { api, type FinanceRow } from '../../../lib/api';
+import { api, type FinanceRow, type FinanceSummary } from '../../../lib/api';
 import type { Copy } from '../../../lib/copy';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
@@ -33,6 +39,7 @@ export function FinanceScreen() {
   const [q, setQ] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const summary = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary());
   const list = usePaged<FinanceRow>(`${kind}|${layer}|${q}|${from}|${to}`, async (cursor) =>
     pick(await api.officeFinance({ kind, layer, q, from, to, cursor }), (data) => ({ rows: data.entries, next: data.nextCursor, total: data.total })),
   );
@@ -70,6 +77,14 @@ export function FinanceScreen() {
 
   return (
     <Desk title={t.navFinance} lede="" error="" note="">
+      {summary.data?.series ? <WalletHead summary={summary.data} /> : null}
+      <div className="section-head">
+        <h2>{t.statement}</h2>
+        <a className={buttonClass({ variant: 'outline', size: 'sm' })} href={api.financeExportHref({ kind, layer, q, from, to })} download>
+          <Download size={15} aria-hidden="true" />
+          {t.exportCsv}
+        </a>
+      </div>
       <FilterBar onClear={() => { setKind(''); setLayer(''); setQ(''); setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.kind}
@@ -106,5 +121,50 @@ export function FinanceScreen() {
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 13 }} />
       </section>
     </Desk>
+  );
+}
+
+/** The signed-in account's wallet: four cards, the balance over 30 days, and what moved in that time. */
+function WalletHead({ summary }: { summary: FinanceSummary }) {
+  const { t } = usePrefs();
+  const used = Math.max(0, -summary.balance);
+  const first = summary.series[0]?.balance ?? summary.balance;
+  const change = summary.balance - first;
+  return (
+    <>
+      <StatRow>
+        <Stat icon="wallet" label={t.balance} value={<Money value={summary.balance} />} />
+        <Stat
+          icon="lock"
+          label={t.ceiling}
+          value={summary.unlimited ? t.noCeiling : <Money value={summary.ceiling} />}
+          progress={summary.unlimited || summary.ceiling <= 0 ? null : used / summary.ceiling}
+        />
+        <Stat icon="reports" label={t.usedCeiling} value={summary.unlimited ? '—' : <Money value={used} />} />
+        <Stat icon="plans" label={t.availableToSell} value={summary.unlimited ? t.noCeiling : <Money value={summary.balance + summary.ceiling} />} highlight />
+      </StatRow>
+      <div className="wallet-board">
+        <section className="pane wallet-chart">
+          <header className="pane-head">
+            <div>
+              <h2>{t.balanceOverTime}</h2>
+              <p className="hint">{t.balanceOverTimeHint}</p>
+            </div>
+            <p className="wallet-chart-figures">
+              <span>{t.nowLabel} <Money value={summary.balance} /></span>
+              <span>{t.change30} <Money value={change} signed /></span>
+            </p>
+          </header>
+          <div className="pane-body">
+            <BalanceChart series={summary.series} label={t.balanceOverTime} />
+          </div>
+        </section>
+        <div className="wallet-figures">
+          <Stat icon="wallet" label={t.moneyIn30} value={<Money value={summary.moneyIn} />} />
+          <Stat icon="wallet" label={t.moneyOut30} value={<Money value={summary.moneyOut} />} />
+          <Stat icon="reports" label={t.entries30} value={summary.count} />
+        </div>
+      </div>
+    </>
   );
 }

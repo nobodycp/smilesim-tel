@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseFilters, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { OfficeFailureFilter } from '../../shared/office-failure.filter';
@@ -9,6 +9,7 @@ import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
 import { CeilingBodyDto, FundBodyDto } from '../office.dto';
 import { WalletsService } from './wallets.service';
+import type { Response } from 'express';
 
 @ApiTags('office')
 @ApiCookieAuth('sid')
@@ -79,6 +80,37 @@ export class WalletsController {
       from: text(from),
       to: text(to),
     });
+  }
+
+  @Get('finance/summary')
+  @ApiOperation({ summary: "The signed-in account's wallet over the last 30 days (cards and chart)" })
+  @ApiErrorResponse(401, 403)
+  financeSummary(@Actor() actor: ActorShape) {
+    return this.walletDesk.financeSummary(actor);
+  }
+
+  @Get('finance/export')
+  @ApiOperation({ summary: 'The financial movements with the same filters, as CSV (at most 10,000 rows)' })
+  @ApiQuery({ name: 'kind', required: false })
+  @ApiQuery({ name: 'layer', required: false })
+  @ApiQuery({ name: 'q', required: false })
+  @ApiQuery({ name: 'from', required: false })
+  @ApiQuery({ name: 'to', required: false })
+  @ApiErrorResponse(401, 403)
+  async financeExport(
+    @Res({ passthrough: true }) res: Response,
+    @Actor() actor: ActorShape,
+    @Query('kind') kind?: string,
+    @Query('layer') layer?: string,
+    @Query('q') q?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const csv = await this.walletDesk.financeCsv(actor, { kind: text(kind), layer: text(layer), q: text(q), from: text(from), to: text(to) });
+    // Set only once the file exists: a refusal before it still answers as JSON.
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="finance.csv"');
+    return csv;
   }
 
   @Get('finance')

@@ -28,6 +28,8 @@ const EXPECTED: [route: string, access: string][] = [
   ['POST /office/companies/image', 'yyynnn'],
   ['GET /office/directory', 'yyyyyy'],
   ['GET /office/finance', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /office/finance/export', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /office/finance/summary', 'yyyyyy'],
   ['GET /office/home', 'yyyyyy'],
   ['POST /office/leave', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/ledger/SCOPE1', 'yyyyyy'], // read/accounting not checked (see spec)
