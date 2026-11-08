@@ -230,7 +230,7 @@ export default function UsersPage() {
       error={failure}
       note={note}
     >
-      <FilterBar onClear={() => { setQuery(''); setFilters({ q: '', layer: '' }); }} clearLabel={t.clearFilters}>
+      <FilterBar onClear={() => setFilters({ q: '', layer: '' })} clearLabel={t.clearFilters}>
         <label>
           {t.accountName}
           <input value={query} onChange={(event) => setQuery(event.target.value)} />

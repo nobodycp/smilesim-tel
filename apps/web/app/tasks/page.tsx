@@ -133,10 +133,7 @@ export default function TasksPage() {
   return (
     <Desk title={t.tasksTitle} lede="" error={error || catalog.error} note={note}>
       <FilterBar
-        onClear={() => {
-          setQuery('');
-          setFilters({ q: '', status: '', action: '', pack: '', company: '', provider: '' });
-        }}
+        onClear={() => setFilters({ q: '', status: '', action: '', pack: '', company: '', provider: '' })}
         clearLabel={t.clearFilters}
       >
         <TableSearch label={t.numberSearch} value={query} onChange={setQuery} />

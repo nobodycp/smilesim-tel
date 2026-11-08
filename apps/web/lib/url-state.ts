@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /**
  * A list's filters live in the address (`?status=frozen&q=055`): back and forward restore them, a link can open a
@@ -16,15 +16,22 @@ export function useUrlFilters<K extends string>(keys: readonly K[]) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `signature` is the read of `params` for these keys
   const values = useMemo(() => Object.fromEntries(keys.map((key) => [key, params.get(key) ?? ''])) as Record<K, string>, [signature]);
 
+  // A write is a transition: the address may not show it yet when the next write comes (a slow machine, a debounce
+  // landing right after "clear"). Each write builds on the last one written, not on an address that lags behind.
+  const pending = useRef<string | null>(null);
+  useEffect(() => {
+    pending.current = null;
+  }, [signature]);
+
   const set = useCallback(
     (patch: Partial<Record<K, string>>) => {
-      // Read the address as it is now, so two writes in one event both land.
-      const next = new URLSearchParams(window.location.search);
+      const next = new URLSearchParams(pending.current ?? window.location.search);
       for (const [key, value] of Object.entries(patch) as [K, string | undefined][]) {
         if (value) next.set(key, value);
         else next.delete(key);
       }
       const query = next.toString();
+      pending.current = query;
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     },
     [pathname, router],
@@ -35,7 +42,8 @@ export function useUrlFilters<K extends string>(keys: readonly K[]) {
 
 /**
  * The text of a search field whose committed value lives in the address. Typing stays local and is committed after
- * a pause; a change of the address from elsewhere (the shell search, "clear") replaces what is typed.
+ * a pause; a change of the address from elsewhere (the shell search, "clear") replaces what is typed. So "clear"
+ * only writes the address: emptying the field as well would race the debounce against the address update.
  */
 export function useDebouncedField(committed: string, commit: (value: string) => void, delay = 300) {
   const [text, setText] = useState(committed);

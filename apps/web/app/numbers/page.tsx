@@ -172,7 +172,7 @@ export default function NumbersPage() {
       note={note}
     >
       <FilterBar
-        onClear={() => { setQuery(''); setFilters({ q: '', status: '', pack: '', provider: '', company: '' }); }}
+        onClear={() => setFilters({ q: '', status: '', pack: '', provider: '', company: '' })}
         clearLabel={t.clearFilters}
       >
         {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
