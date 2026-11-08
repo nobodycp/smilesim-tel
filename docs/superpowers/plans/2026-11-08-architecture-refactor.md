@@ -48,14 +48,22 @@ Each approved decision gets an ADR in `docs/architecture/decisions/`.
 - [x] 2.5 Login-failure counter — already in Redis in `PrismaAuthStore` (`login-fail:<login>`, TTL window); the in-memory map is `MemoryAuthStore`, used by specs only. Audit claim was wrong; nothing to change.
 - [x] 2.6 CI: a `postgres:16` service job that runs `prisma migrate deploy` and the `*.db.spec.ts` specs with `TEST_DATABASE_URL`. `.github/workflows/ci.yml`.
 
-## Phase 3 — Backend domain split (one module per slice, tests green after each)
+## Phase 3 — Backend domain split (spec: `docs/superpowers/specs/2026-11-08-office-domain-split.md`)
 
-- [ ] 3.0 Kernel for the split: `ActorResolver` (from `actor()` + `grantsFor`), `ActorGuard` + `@Actor()` + `@RequireGrant()` / `@RequireLayer()`, `ZodPipe`. New domain controllers use them; their services take `Actor`, not `Gate`.
+Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService` delegates moved methods so existing specs guard behaviour unchanged.
 
-Order (least to most coupled): `notices` → `audit` → `tasks` → `wallets` (+finance, ledger, reports) → `providers` + `companies` → `packages` (+prices, user-packages) → `users` + `roles` → `transfers` → `lines` → `catalog-seed` (out of `onModuleInit`).
-Each: `<domain>.controller.ts / .service.ts / .repository.ts / .schemas.ts / rules (existing pure files) / specs`. `office.service.ts` shrinks each slice until it is deleted.
-
-- [ ] 3.x one checkbox per module as it lands.
+- [ ] 3.0 Kernel: `kernel/office-kernel.ts` (prisma + spec override, auth, notices, actor, grantsFor, accounts, visibleAccount, visibleLine, branchActor, runTx, queueNotices, publishQuietly, actorName, move, recordOp); `ActorInterceptor` + `@Actor()`; `ZodPipe`. `OfficeService` keeps one-line delegators.
+- [ ] 3.1 notices: `notices/` — list, read, SSE stream.
+- [ ] 3.2 audit: `audit/` — activity log.
+- [ ] 3.3 tasks: `tasks/` — list, detail, notes, take, release, complete, reject, cancel (+ openTask, handlerIds, taskNotice).
+- [ ] 3.4 wallets: `wallets/` — wallets, fund, ceiling, finance, ledger, reports, provider operations.
+- [ ] 3.5 providers + companies.
+- [ ] 3.6 packages: catalog, sheet, chain, targets, mode, sell/custom/line prices, user packages, user ops.
+- [ ] 3.7 users + roles: list, directory, account, access, create, password, freeze/restore/delete, enter/leave, roles.
+- [ ] 3.8 transfers: account + line transfer, preview.
+- [ ] 3.9 lines: list, detail, activate, operate, switch, extend, reactivate, refresh, rename, sim, esim, disconnect.
+- [ ] 3.10 catalog seed: `ensureCatalog` / `ensureLayerRoles` out of `onModuleInit` into a boot provider.
+- [ ] 3.11 Specs build domain services directly; `OfficeService` facade deleted.
 - [ ] 3.last Migration: indexes (`Line.status/packageId/iccid`, `User.parentId`, `OfficeTask.assigneeId`, `WalletEntry.kind`); replace `accounts()` full scan with subtree queries.
 
 ## Phase 4 — Web data layer
