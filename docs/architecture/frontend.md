@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 1). tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 4.2). e2e 100/100. tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -27,10 +27,11 @@ Next.js 16 (App Router) · React 19 · Tailwind 3 (preflight off, used only in `
 
 ## State and data
 
-- **Session:** `OfficeSession` fetches `/office/me` once (backoff), then `/office/directory`. Name/balance cookies seed the shell for SSR. `refresh()` re-reads `me` (and the balance cookie); `useAction` calls it after every successful write.
-- **Fetching:** `useLoad` (single resource), `usePaged` (cursor book), `useAction` (mutation + reload). No shared cache, no keep-previous, no invalidation; each page owns error/note `useState`.
+- **Server state:** TanStack Query (`lib/query.tsx`: `QueryProvider`, `queryKeys`, `unwrap()`, `ApiFailure`), ADR 0001. Wraps the office doors in `app/layout.tsx`.
+- **Session:** `OfficeSession` runs `queryKeys.me` (read once, `staleTime: Infinity`; own 2–30 s backoff while the API is away, 4xx final) and `queryKeys.directory`. Same context as before (`ready`, `failed`, `retrying`, `retry`, `refresh`, `me`, `names`); once `me` answered the page stays drawn. Name/balance cookies seed the shell for SSR. `refresh()` invalidates `me`; `useAction` calls it after every successful write.
+- **Fetching (pages, not yet on queries):** `useLoad` (single resource), `usePaged` (cursor book), `useAction` (mutation + reload). No shared cache or keep-previous yet; each page owns error/note `useState`. Moving to queries list by list (Phase 4.3+).
 - **Prefs:** locale, theme, page size via `useSyncExternalStore` over `document.cookie`.
-- **i18n:** API errors are translated from the Arabic **message** (the `code` is dropped in `Fetched`).
+- **i18n:** API errors are translated by **code** first, then by the Arabic message (`apiText(result)`; `Fetched` carries `code`). Still open: a hook stores the translated text, so an error on screen keeps its language after a locale switch (goes away as lists move to queries).
 - **URL state:** filters read once from `?status`/`?q` on mount, never written back.
 
 ## Design system
@@ -63,4 +64,4 @@ lib/http.ts                request(), door header, ApiError{status,code,message}
 lib/i18n/                  copy + translate by code first
 lib/url-state.ts           search-param backed filters
 ```
-Data layer: TanStack Query (pending owner approval — see plan, decision D1).
+Data layer: TanStack Query (ADR 0001) — session done; pages next.

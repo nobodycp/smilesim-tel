@@ -75,8 +75,8 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 
 ## Phase 4 — Web data layer
 
-- [ ] 4.1 `lib/http.ts`: `request()` + typed `ApiError{status, code, message}`; translate by code first. Keep `lib/api.ts` re-exporting.
-- [ ] 4.2 Add `QueryClientProvider` (D1); move `me` + `directory` to queries; invalidate `me` after money mutations.
+- [x] 4.1 Errors carry their code end to end: `Fetched` has `code`, every `apiText(result)` translates by code first (`tests/error-codes.spec.ts`). `34d79ef`. `ApiFailure{status, code, message}` lives in `lib/query.tsx`; splitting `request()` into `lib/http.ts` goes with 4.3.
+- [x] 4.2 `QueryProvider` + `queryKeys` + `unwrap()` (`lib/query.tsx`); `OfficeSession` runs `me` and `directory` as queries with its context unchanged; `refresh()` invalidates `me` (useAction already calls it after every write). Outage + failed-refresh specs (`tests/session-outage.spec.ts`). `b89afce`
 - [ ] 4.3 Split `lib/api.ts` into `features/<domain>/api.ts` (no behaviour change).
 - [ ] 4.4 Pilot list: numbers — `useInfiniteQuery`, URL-synced filters (`lib/url-state.ts`), keep-previous rows. Then tasks, audit, finance, notices, provider-operations, users (server paging).
 - [ ] 4.5 Detail pages: numbers/[id], tasks/[id], provider package sheet, users/[login] — keyed queries, per-mutation invalidation, form state separate from server state.
