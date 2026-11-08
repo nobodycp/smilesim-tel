@@ -42,6 +42,7 @@ export const ROUTES: RouteRow[] = [
   ['GET', '/office/notices/stream', null],
   ['GET', '/office/packages', null],
   ['PATCH', '/office/packages/CODE1/chain', ['package_chain', 'package', 'CODE1']],
+  ['PATCH', '/office/packages/CODE1/details', ['package_details', 'package', 'CODE1']],
   ['GET', '/office/packages/CODE1/custom-prices', null],
   ['DELETE', '/office/packages/CODE1/custom-prices/LOGIN1', ['user_package', 'user', 'LOGIN1:CODE1']],
   ['PUT', '/office/packages/CODE1/custom-prices/LOGIN1', ['user_package', 'user', 'LOGIN1:CODE1']],

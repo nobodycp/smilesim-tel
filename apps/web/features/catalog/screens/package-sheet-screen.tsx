@@ -25,12 +25,14 @@ import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
+import { PackageFacts } from '../../../components/package-facts';
+import { PackageDetailsForm } from '../package-details-form';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
 const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
 type ModeAction = (typeof actions)[number];
-type Tab = 'overview' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
+type Tab = 'overview' | 'details' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
 type PriceKey =
   | 'branchCost'
@@ -147,7 +149,7 @@ export function PackageSheetScreen() {
   const company = card.data?.shelf.companies.find((item) => item.code === sheet?.companyCode);
   const provider = company?.providers.find((item) => item.code === sheet?.providerCode);
   const targetPackages = (provider?.packages ?? []).filter((item) => item.code !== sheet?.code);
-  const { run } = useAction({ setError, setNote, onDone: card.reload });
+  const { run, busy } = useAction({ setError, setNote, onDone: card.reload });
   const names: Record<ModeAction, string> = {
     activate: t.actActivate,
     charge: t.actCharge,
@@ -400,6 +402,7 @@ export function PackageSheetScreen() {
   ];
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: t.overviewTab },
+    { key: 'details', label: t.detailsTab },
     { key: 'run', label: t.packageActions },
     { key: 'prices', label: t.pricesTab },
     { key: 'renewals', label: t.renewalsTab },
@@ -480,7 +483,11 @@ export function PackageSheetScreen() {
                     </LiveSwitch>
                   </div>
                   <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
+                  <PackageFacts facts={sheet} />
                 </div>
+              )}
+              {tab === 'details' && (
+                <PackageDetailsForm key={sheet.code} sheet={sheet} run={run} busy={busy} onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }} />
               )}
               {tab === 'run' && (
                 <div className="pane-body">

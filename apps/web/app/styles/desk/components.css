@@ -293,3 +293,27 @@
 .recon-map label, .recon-pick { display: grid; gap: var(--rd-space-1); font-size: var(--rd-text-sm); font-weight: 600; color: var(--rd-muted); }
 .recon-pick { max-width: 32rem; }
 .recon-sample { overflow-x: auto; border: 1px solid var(--rd-line); border-radius: var(--rd-radius-card); }
+
+/* Package details (GB, minutes, messages, months, extra text) wherever a package is chosen. */
+.package-facts {
+  display: grid;
+  gap: var(--rd-space-1);
+}
+.package-facts-line {
+  color: var(--rd-muted);
+  font-size: var(--rd-text-sm);
+  font-weight: 600;
+}
+.package-facts-details {
+  margin: 0;
+  color: var(--rd-ink);
+  font-size: var(--rd-text-sm);
+  white-space: pre-line;
+}
+.package-amounts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--rd-space-3);
+}
+.package-amount { display: grid; gap: var(--rd-space-1); align-content: start; }
+.package-details-form textarea { resize: vertical; font: inherit; }

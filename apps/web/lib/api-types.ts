@@ -82,6 +82,10 @@ export type PackageRow = {
   sim: SimRules;
   esimPrice: number;
   dataGb: number | null;
+  /** Package details: null = not stated, -1 = unlimited. */
+  smsCount: number | null;
+  minutes: number | null;
+  details: string;
   months: number;
   branchCost: number;
   mainPrice: number;
@@ -171,6 +175,13 @@ export type Shelf = {
         code: string;
         name: string;
         months: number;
+        dataGb: number | null;
+        smsCount: number | null;
+        minutes: number | null;
+        branchCost: number;
+        mainPrice: number;
+        renewalBranchCost: number;
+        renewalMainPrice: number;
         forSale: boolean;
         enabled: boolean;
         lines: number;
@@ -189,6 +200,11 @@ export type PackageSheet = {
   companyName: string;
   enabled: boolean;
   forSale: boolean;
+  dataGb: number | null;
+  smsCount: number | null;
+  minutes: number | null;
+  details: string;
+  months: number;
   branchCost: number;
   mainPrice: number;
   agentPrice: number;

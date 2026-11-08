@@ -29,6 +29,13 @@ export class CompaniesService {
         code: string;
         name: string;
         months: number;
+        dataGb: number | null;
+        smsCount: number | null;
+        minutes: number | null;
+        branchCost: number;
+        mainPrice: number;
+        renewalBranchCost: number;
+        renewalMainPrice: number;
         forSale: boolean;
         enabled: boolean;
         lines: number;
@@ -49,6 +56,13 @@ export class CompaniesService {
         code: row.code,
         name: row.name,
         months: row.months,
+        dataGb: row.dataGb,
+        smsCount: row.smsCount,
+        minutes: row.minutes,
+        branchCost: row.branchCost,
+        mainPrice: row.mainPrice,
+        renewalBranchCost: row.renewalBranchCost,
+        renewalMainPrice: row.renewalMainPrice,
         forSale: row.forSale,
         enabled: row.enabled,
         lines: row.lines.length,

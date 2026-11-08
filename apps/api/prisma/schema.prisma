@@ -204,6 +204,10 @@ model Package {
   // RESTRICT as the database has it since 20261030010000_catalog: a company with packages cannot be deleted.
   company                Company?         @relation(fields: [companyId], references: [id], onDelete: Restrict)
   dataGb                 Int?
+  /// Package details (spec 2026-11-08-branch-packages-and-details): null = not stated, -1 = unlimited.
+  smsCount               Int?
+  minutes                Int?
+  details                String?
   months                 Int              @default(1)
   branchCost             Int
   mainPrice              Int

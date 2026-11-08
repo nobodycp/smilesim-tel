@@ -344,6 +344,10 @@ export class OfficeFacade {
     return this.packageDesk.setChain(await this.actor(gate), code, body);
   }
 
+  async setPackageDetails(gate: Gate, code: string, body: Record<string, unknown>) {
+    return this.packageDesk.setDetails(await this.actor(gate), code, body);
+  }
+
   async setPackageTargets(gate: Gate, code: string, kind: 'renewals' | 'switches', body: { targets?: unknown }) {
     return this.packageDesk.setTargets(await this.actor(gate), code, kind, body);
   }

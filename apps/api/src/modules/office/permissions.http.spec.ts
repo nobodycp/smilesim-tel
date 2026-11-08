@@ -57,6 +57,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['POST /office/notices/read', 'yyyyyy'],
   ['GET /office/packages', 'yyyyyy'],
   ['PATCH /office/packages/CODE1/chain', 'ynynnn'],
+  ['PATCH /office/packages/CODE1/details', 'ynynnn'],
   ['GET /office/packages/CODE1/custom-prices', 'yyynnn'],
   ['DELETE /office/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PUT /office/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec

@@ -17,6 +17,7 @@ import { lineActions } from '../../../components/line-actions';
 import { RowMenu } from '../../../components/row-menu';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
+import { PackageFacts } from '../../../components/package-facts';
 import { api, type ApplyResult, type LineRow, type Outcome, type PackageRow, type PosChoice } from '../../../lib/api';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
@@ -285,6 +286,7 @@ export function NumbersScreen() {
                   </Select>
                 </label>
               </div>
+              {chosen ? <PackageFacts facts={chosen} /> : null}
               {offersEsim && (
                 <label className="check">
                   <input type="checkbox" checked={esim} onChange={(event) => setEsim(event.target.checked)} />

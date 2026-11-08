@@ -34,6 +34,16 @@ export class PackagesController {
     return this.packageDesk.sheet(actor, code);
   }
 
+  @Patch('packages/:code/details')
+  @ApiOperation({ summary: 'Set package details: GB, minutes, messages (null not stated, -1 unlimited) and extra text' })
+  @ApiParam({ name: 'code' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('package_details', 'package', param('code'))
+  packageDetails(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: Record<string, unknown>) {
+    return this.packageDesk.setDetails(actor, code, body);
+  }
+
   @Patch('packages/:code/chain')
   @ApiOperation({ summary: 'Update package price chain' })
   @ApiParam({ name: 'code' })

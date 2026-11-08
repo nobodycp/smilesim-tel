@@ -1,6 +1,8 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { ActivationResult } from '../../../components/activation-result';
@@ -12,19 +14,20 @@ import { Button } from '../../../components/ui/button';
 import { Spinner, TableSkeleton } from '../../../components/loading';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
-import { api, type ApplyResult, type PackageRow } from '../../../lib/api';
-import { parseShekel, shekelField } from '../../../lib/money';
+import { api, type ApplyResult, type PackageRow, type Shelf } from '../../../lib/api';
+import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
 import { markColor, markOf } from '../../../lib/company-mark';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
-import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { DataImage } from '../../../components/data-image';
 import { Tabs } from '../../../components/tabs';
+import { LiveSwitch } from '../../../components/live-switch';
+import { PackageFacts, useFactLine } from '../../../components/package-facts';
 
 function PosCatalog({
   rows,
@@ -128,6 +131,7 @@ function PosCatalog({
             {packs.map((row) => (
               <button className="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
                 <strong>{row.name}</strong>
+                <PackageFacts facts={row} withDetails={false} />
                 <p className="pack-price"><Money value={row.price} /></p>
               </button>
             ))}
@@ -136,6 +140,7 @@ function PosCatalog({
         {step === 'details' && picked && (
           <form className="pane pane-body stack" onSubmit={join}>
             <h2>{picked.companyName} · {picked.name}</h2>
+            <PackageFacts facts={picked} />
             <p className="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
             {!picked.canActivate && <Badge variant="danger" dot>{t.activationStopped}</Badge>}
             {picked.canActivate && offersEsim && (
@@ -188,60 +193,115 @@ function CompanyTitle({ name, image, label, heading = false }: { name: string; i
   );
 }
 
-function BranchPackages({ error, note }: { error: string; note: string }) {
+type BranchRow = Shelf['companies'][number]['providers'][number]['packages'][number] & {
+  companyCode: string;
+  companyName: string;
+  providerCode: string;
+  providerName: string;
+};
+
+/**
+ * The branch's packages (spec 2026-11-08-branch-packages-and-details), shaped like the users' packages tab: grouped
+ * by company, each company folds, one line per package with its facts, provider, the main agent's price (the child in
+ * the chain), the margin over the branch cost, the on/off switch and a menu that opens the package.
+ */
+function BranchPackages({ error: loadError, note: loadNote }: { error: string; note: string }) {
   const { t } = usePrefs();
+  const router = useRouter();
+  const factLine = useFactLine();
   const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies());
+  const [error, setError] = useState('');
+  const [note, setNote] = useState('');
+  const { run, busy } = useAction({ setError, setNote, onDone: shelf.reload });
   const [query, setQuery] = useState('');
   const [company, setCompany] = useState('');
   const [provider, setProvider] = useState('');
   const [status, setStatus] = useState('');
-  const rows = (shelf.data?.companies ?? []).flatMap((companyRow) => companyRow.providers.flatMap((providerRow) => (
-    providerRow.packages.map((item) => ({
-      code: item.code,
-      name: item.name,
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
+  const groups = (shelf.data?.companies ?? []).map((companyRow) => ({
+    code: companyRow.code,
+    name: companyRow.name,
+    rows: companyRow.providers.flatMap((providerRow): BranchRow[] => providerRow.packages.map((item) => ({
+      ...item,
+      companyCode: companyRow.code,
       companyName: companyRow.name,
       providerCode: providerRow.code,
       providerName: providerRow.name,
-      activeLines: item.activeLines,
-      stoppedLines: item.stoppedLines,
-      enabled: item.enabled,
-    }))
-  )));
-  const companies = [...new Set(rows.map((row) => row.companyName))].sort((left, right) => left.localeCompare(right, 'ar'));
-  const providers = [...new Set(rows.filter((row) => !company || row.companyName === company).map((row) => row.providerName))].sort((left, right) => left.localeCompare(right, 'ar'));
+    }))),
+  }));
+  const all = groups.flatMap((group) => group.rows);
+  const providers = [...new Set(all.filter((row) => !company || row.companyCode === company).map((row) => row.providerName))].sort((left, right) => left.localeCompare(right, 'ar'));
   const needle = query.trim();
-  const shown = rows.filter((row) => {
-    if (needle && !row.name.includes(needle)) return false;
-    if (company && row.companyName !== company) return false;
-    if (provider && row.providerName !== provider) return false;
-    if (status === 'on' && !row.enabled) return false;
-    if (status === 'off' && row.enabled) return false;
-    return true;
-  });
   const filtering = Boolean(needle || company || provider || status);
-  const columns: Column<typeof rows[number]>[] = [
+  const shown = groups
+    .map((group) => ({
+      ...group,
+      rows: group.rows.filter((row) => {
+        if (needle && !row.name.includes(needle) && !row.code.includes(needle)) return false;
+        if (company && row.companyCode !== company) return false;
+        if (provider && row.providerName !== provider) return false;
+        if (status === 'on' && !row.enabled) return false;
+        if (status === 'off' && row.enabled) return false;
+        return true;
+      }),
+    }))
+    .filter((group) => group.rows.length > 0);
+  // A search or a filter opens what it found; otherwise a company opens when its header is pressed.
+  const isOpen = (code: string) => filtering || unfolded.has(code);
+  const openPage = (row: BranchRow) => `/providers/${row.providerCode}/${encodeURIComponent(row.code)}`;
+
+  function toggleGroup(code: string) {
+    setUnfolded((current) => {
+      const next = new Set(current);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }
+
+  const columns: Column<BranchRow>[] = [
     {
       key: 'package',
       header: t.packageName,
       render: (row) => (
-        <Link className="row-link" href={`/providers/${row.providerCode}/${encodeURIComponent(row.code)}`}>{row.name}</Link>
+        <span className="terms-name">
+          <Link className="row-link" href={openPage(row)}><strong>{row.name}</strong></Link>
+          {factLine(row) ? <span className="hint">{factLine(row)}</span> : null}
+        </span>
       ),
     },
-    { key: 'company', header: t.company, render: (row) => row.companyName },
     { key: 'provider', header: t.provider, render: (row) => row.providerName },
     {
-      key: 'live',
-      header: t.status,
+      key: 'child',
+      header: t.mainSellPair,
+      num: true,
       render: (row) => (
-        <Badge variant={onOffTone(row.enabled)} dot>{row.enabled ? t.lineActive : t.stopped}</Badge>
+        <span className="terms-pair">
+          <span className="money" dir="ltr">{formatShekel(row.mainPrice)}</span>
+          <span className="terms-pair-sep" aria-hidden="true">/</span>
+          <span className="money" dir="ltr">{formatShekel(row.renewalMainPrice)}</span>
+        </span>
       ),
     },
-    { key: 'active', header: t.activeNumbers, num: true, render: (row) => row.activeLines },
-    { key: 'stopped', header: t.stoppedLines, num: true, render: (row) => row.stoppedLines },
+    { key: 'margin', header: t.margin, num: true, render: (row) => <Money value={row.mainPrice - row.branchCost} signed /> },
+    {
+      key: 'switch',
+      header: <span className="sr-only">{t.status}</span>,
+      fit: true,
+      render: (row) => (
+        <LiveSwitch label={row.name} checked={row.enabled} disabled={busy} onChange={(next) => void run(() => api.setPackageMode(row.code, { enabled: next }), { note: t.saved })} />
+      ),
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">{t.rowActions}</span>,
+      actions: true,
+      render: (row) => <RowMenu label={`${t.rowActions} ${row.name}`} items={[{ label: t.openPackage, icon: 'enter', onClick: () => router.push(openPage(row)) }]} />,
+    },
   ];
 
   return (
-    <Desk title={t.plansTitle} lede="" error={error} note={note}>
+    <Desk title={t.plansTitle} lede="" error={loadError || error} note={loadNote || note}>
       <FilterBar onClear={() => { setQuery(''); setCompany(''); setProvider(''); setStatus(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.packageName}
@@ -252,10 +312,10 @@ function BranchPackages({ error, note }: { error: string; note: string }) {
           <Select value={company} onChange={(event) => {
             const next = event.target.value;
             setCompany(next);
-            if (next && provider && !rows.some((row) => row.companyName === next && row.providerName === provider)) setProvider('');
+            if (next && provider && !all.some((row) => row.companyCode === next && row.providerName === provider)) setProvider('');
           }}>
             <option value="">{t.allRows}</option>
-            {companies.map((name) => <option key={name} value={name}>{name}</option>)}
+            {groups.filter((group) => group.rows.length > 0).map((group) => <option key={group.code} value={group.code}>{group.name}</option>)}
           </Select>
         </label>
         <label>
@@ -274,17 +334,37 @@ function BranchPackages({ error, note }: { error: string; note: string }) {
           </Select>
         </label>
       </FilterBar>
-      <section className="pane fit">
-        <DataTable
-          columns={columns}
-          rows={shown}
-          rowKey={(row) => row.code}
-          loading={!shelf.loaded}
-          failed={shelf.error}
-          onRetry={() => void shelf.reload()}
-          skeleton={{ rows: 8, columns: 6 }}
-          empty={filtering ? t.noMatches : t.noLines}
-        />
+      <section className="pane">
+        {!shelf.loaded ? (
+          <TableSkeleton rows={6} columns={5} />
+        ) : shelf.error ? (
+          <EmptyState icon="plans">{shelf.error}</EmptyState>
+        ) : shown.length === 0 ? (
+          <EmptyState icon="plans">{filtering ? t.noMatches : t.noLines}</EmptyState>
+        ) : (
+          <div className="sheet terms-sheet">
+            {shown.map((group) => {
+              const open = isOpen(group.code);
+              const body = `packages-${group.code}`;
+              return (
+                <section key={group.code} className={open ? 'terms-group open' : 'terms-group'}>
+                  <button type="button" className="terms-group-head" aria-expanded={open} aria-controls={body} onClick={() => toggleGroup(group.code)}>
+                    <ChevronDown className="terms-chevron" aria-hidden="true" />
+                    <strong>{group.name}</strong>
+                    <span className="hint">
+                      {t.packagesGroupSummary.replace('{total}', String(group.rows.length)).replace('{off}', String(group.rows.filter((row) => !row.enabled).length))}
+                    </span>
+                  </button>
+                  {open ? (
+                    <div id={body} className="terms-rows">
+                      <DataTable bare sortable={false} columns={columns} rows={group.rows} rowKey={(row) => row.code} />
+                    </div>
+                  ) : null}
+                </section>
+              );
+            })}
+          </div>
+        )}
       </section>
     </Desk>
   );

@@ -20,6 +20,8 @@ export const catalogApi = {
     request<{ ok: true }>('PATCH', `/office/providers/${segment(code)}/settings`, { action, mode }),
   setPackageMode: (code: string, body: Record<string, boolean | string>) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/mode`, body),
+  setPackageDetails: (code: string, body: { dataGb: number | null; smsCount: number | null; minutes: number | null; details: string }) =>
+    request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/details`, body),
   packageSheet: (code: string) => request<PackageSheet>('GET', `/office/packages/${segment(code)}/sheet`),
   setChain: (code: string, body: Partial<{
     branchCost: number;

@@ -59,6 +59,7 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'package_mode') return t.actPackageMode;
   if (action === 'package_price') return t.actPackagePrice;
   if (action === 'package_chain') return t.actPackageChain;
+  if (action === 'package_details') return t.actPackageDetails;
   if (action === 'package_reprice') return t.actPackageReprice;
   if (action === 'user_package') return t.actUserPackage;
   if (action === 'user_ops') return t.actUserOps;

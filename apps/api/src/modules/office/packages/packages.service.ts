@@ -32,6 +32,8 @@ function pricesOf(row: Prices): Prices {
 }
 
 /** The package catalog: what an account may sell with its prices, its own sell prices, and for the branch the package sheet, the price chain, renewal and switch targets, and the operation modes. */
+export const PACKAGE_DETAILS_LIMIT = 300;
+
 @Injectable()
 export class PackagesService {
   constructor(private readonly kernel: OfficeKernel) {}
@@ -90,6 +92,9 @@ export class PackagesService {
         sim: simRulesOf(row.company),
         esimPrice: esimPriceOf({ pkg: row, provider: row.provider, company: row.company }).price,
         dataGb: row.dataGb,
+        smsCount: row.smsCount,
+        minutes: row.minutes,
+        details: row.details ?? '',
         months: row.months,
         branchCost: row.branchCost,
         mainPrice: row.mainPrice,
@@ -186,6 +191,11 @@ export class PackagesService {
       companyName: pkg.company?.name ?? '',
       enabled: pkg.enabled,
       forSale: pkg.forSale,
+      dataGb: pkg.dataGb,
+      smsCount: pkg.smsCount,
+      minutes: pkg.minutes,
+      details: pkg.details ?? '',
+      months: pkg.months,
       branchCost: pkg.branchCost,
       mainPrice: pkg.mainPrice,
       agentPrice: pkg.agentPrice,
@@ -205,6 +215,26 @@ export class PackagesService {
       switches: pkg.switches.map((item) => item.target.code),
       modes: Object.fromEntries(ACTION_KEYS.map((key) => [key, resolvePackageMode(pkg.actionModes, pkg, key)])),
     };
+  }
+
+  /** GB, minutes, messages (null = not stated, -1 = unlimited) and up to 300 characters of extra details. */
+  async setDetails(actor: Actor, code: string, body: Record<string, unknown>) {
+    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    const amount = (value: unknown) => value === null || (typeof value === 'number' && Number.isInteger(value) && value >= -1 && value <= 1_000_000);
+    if (!amount(body.dataGb) || !amount(body.smsCount) || !amount(body.minutes)) fail(400, 'INVALID');
+    if (typeof body.details !== 'string' || body.details.trim().length > PACKAGE_DETAILS_LIMIT) fail(400, 'INVALID');
+    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    await this.kernel.prisma.package.update({
+      where: { id: pkg.id },
+      data: {
+        dataGb: body.dataGb as number | null,
+        smsCount: body.smsCount as number | null,
+        minutes: body.minutes as number | null,
+        details: body.details.trim() || null,
+      },
+    });
+    return { ok: true as const };
   }
 
   async setChain(actor: Actor, code: string, body: Record<string, unknown>) {

@@ -24,9 +24,11 @@ const SIM_RULES_KEYS = ['length', 'prefix', 'esim'];
 const SHELF_KEYS = ['companies'];
 const SHELF_COMPANY_KEYS = ['code', 'name', 'image', 'sim', 'esimPrice', 'providers'];
 const SHELF_PROVIDER_KEYS = ['code', 'name', 'packages'];
-const SHELF_PACKAGE_KEYS = ['code', 'name', 'months', 'forSale', 'enabled', 'lines', 'activeLines', 'stoppedLines'];
+// Prices and details joined in spec 2026-11-08-branch-packages-and-details (additions only).
+const SHELF_PACKAGE_KEYS = ['code', 'name', 'months', 'dataGb', 'smsCount', 'minutes', 'branchCost', 'mainPrice', 'renewalBranchCost', 'renewalMainPrice', 'forSale', 'enabled', 'lines', 'activeLines', 'stoppedLines'];
 const PACKAGE_SHEET_KEYS = [
   'code', 'name', 'providerCode', 'providerName', 'companyCode', 'companyName', 'enabled', 'forSale',
+  'dataGb', 'smsCount', 'minutes', 'details', 'months',
   'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice',
   'renewalBranchCost', 'renewalMainPrice', 'renewalAgentPrice', 'renewalPosPrice', 'renewalSubscriberPrice',
   'esimPrice', 'esimPriceEffective', 'esimPriceSource',
@@ -268,6 +270,31 @@ describe('office response shapes', () => {
 
     await expect(service.setChain(gate, 'lian-wecom-500', { renewalBranchCost: 21 }))
       .rejects.toMatchObject({ status: 400, code: 'PRICE_BELOW_FLOOR' });
+  });
+
+  it('saves package details: amounts, unlimited as -1, not stated as null, and trimmed extra text', async () => {
+    let saved: unknown;
+    const { service, gate } = await serviceWith({
+      package: {
+        findUnique: async () => ({ id: 'p1', code: 'lian-wecom-500' }),
+        update: async ({ data }: { data: unknown }) => {
+          saved = data;
+          return {};
+        },
+      },
+    });
+    await service.setPackageDetails(gate, 'lian-wecom-500', { dataGb: 500, smsCount: -1, minutes: null, details: '  تجوال في الأردن  ' });
+    expect(saved).toEqual({ dataGb: 500, smsCount: -1, minutes: null, details: 'تجوال في الأردن' });
+    await service.setPackageDetails(gate, 'lian-wecom-500', { dataGb: null, smsCount: null, minutes: 1000, details: '' });
+    expect(saved).toEqual({ dataGb: null, smsCount: null, minutes: 1000, details: null });
+    for (const body of [{ dataGb: -2, smsCount: null, minutes: null, details: '' }, { dataGb: 1.5, smsCount: null, minutes: null, details: '' }, { dataGb: null, smsCount: null, minutes: null, details: 'x'.repeat(301) }, { dataGb: null, smsCount: null, minutes: null }]) {
+      await expect(service.setPackageDetails(gate, 'lian-wecom-500', body)).rejects.toMatchObject({ status: 400, code: 'INVALID' });
+    }
+  });
+
+  it('refuses package details to a point of sale', async () => {
+    const { service, gate } = await posServiceWith({});
+    await expect(service.setPackageDetails(gate, 'lian-wecom-500', { dataGb: 1, smsCount: null, minutes: null, details: '' })).rejects.toMatchObject({ status: 403 });
   });
 
   it('refuses the company shelf to a point of sale', async () => {
