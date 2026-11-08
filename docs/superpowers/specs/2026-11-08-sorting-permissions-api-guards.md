@@ -25,7 +25,7 @@ hold only the caller, and pins the answer: `403` where the route refuses that ac
 otherwise "passes the gate" (any status but 401/403/500). A route that looks the target up before judging the
 caller answers 404/400 for everyone here; those rows are marked and stay covered by their domain spec.
 
-**Found while building it (needs the owner's decision, not changed here):** the `read` and `accounting` grants are
+**Found while building it — owner decision 2026-11-08: left as is, documented in ADR 0006 until the staff roles (employees, accountants, sales representatives, technicians) are defined:** the `read` and `accounting` grants are
 not checked anywhere in the API. A branch staff member with no grant can fund any account from their own wallet
 (the branch wallet has no ceiling), change ceilings, and read finance, wallets, users and the audit log. The matrix
 pins today's answers for those rows with a comment pointing here, so the fix shows up as a deliberate change.

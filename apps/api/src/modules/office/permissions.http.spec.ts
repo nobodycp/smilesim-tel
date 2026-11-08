@@ -18,7 +18,8 @@ jest.setTimeout(60_000);
 const COLUMNS = ['owner', 'staff0', 'staffall', 'main', 'agent', 'pos'] as const;
 
 // The rows marked "read/accounting not checked" are open to a branch staff member with no grant today: the API
-// never checks the `read` or `accounting` grants. Pinned as they are until the owner decides the rule.
+// never checks the `read` or `accounting` grants. Owner decision (ADR 0006): left as is until the staff roles are
+// defined; enforcing the grants then changes these rows on purpose.
 const EXPECTED: [route: string, access: string][] = [
   ['POST /office/announcements', 'yyyyyn'],
   ['GET /office/audit', 'yyyyyy'], // read/accounting not checked (see spec)
