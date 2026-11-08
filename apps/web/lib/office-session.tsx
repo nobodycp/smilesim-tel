@@ -1,10 +1,12 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from 'react';
 import { api, type Directory, type OfficeMe } from './api';
 import { useConnection } from './connection';
 import { rememberBalance, rememberIdentity } from './identity';
+import { ApiFailure, queryKeys, unwrap } from './query';
 
 type OfficeSessionValue = {
   /** `/office/me` answered: the pages may draw. */
@@ -15,7 +17,7 @@ type OfficeSessionValue = {
   retrying: boolean;
   /** Ask `/office/me` again now. */
   retry: () => void;
-  /** Re-read `/office/me` into `me` after the account changed (a profile save). */
+  /** Re-read `/office/me` into `me` after the account changed (a profile save, a money write). */
   refresh: () => Promise<void>;
   me: OfficeMe | null;
   /** Login name → full name for the accounts this viewer may meet; empty until loaded. */
@@ -58,90 +60,84 @@ export function OfficeSession({
 }) {
   const pathname = usePathname();
   const skip = authPath(pathname);
-  const [me, setMe] = useState<OfficeMe | null>(null);
-  const [names, setNames] = useState<Directory>(NO_NAMES);
-  const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [retrying, setRetrying] = useState(false);
-  // Each attempt is one run of the effect below; bumping this asks again. A failed attempt
-  // schedules the next bump after `wait`, which doubles up to the cap.
-  const [attemptNo, setAttemptNo] = useState(0);
+  const client = useQueryClient();
   const { generation } = useConnection();
+
+  // `/office/me` lives in the query cache (ADR 0001), so a write can invalidate it. It is read once and then
+  // only when asked (`refresh`, or a write through useAction): it never goes stale on its own.
+  const session = useQuery({
+    queryKey: queryKeys.me,
+    queryFn: () => unwrap(api.officeMe()),
+    enabled: !skip,
+    staleTime: Infinity,
+  });
+  const error = session.error instanceof ApiFailure ? session.error : null;
+  // An answer the API chose (4xx) is final: the shell draws with no account. A session that ended already
+  // redirected inside `api.ts`. Only an API that does not answer is asked again.
+  const final = Boolean(session.isError && !error?.unreachable);
+  // Once `me` has answered, the pages stay drawn: a later refresh that fails keeps the last answer on screen.
+  const ready = session.data !== undefined || final;
+  const failed = !ready && Boolean(error?.unreachable);
+
+  useEffect(() => {
+    if (!session.data) return;
+    const name = session.data.nickname || session.data.loginName;
+    rememberIdentity(name, session.data.nickname ? session.data.loginName : '');
+    rememberBalance(session.data.balance);
+  }, [session.data]);
+
+  // While the API is away: ask again after `wait`, which doubles up to the cap. A success resets it.
   const wait = useRef(FIRST_RETRY_MS);
-  const seenGeneration = useRef(0);
-
+  const { refetch } = session;
   useEffect(() => {
+    if (session.data !== undefined) wait.current = FIRST_RETRY_MS;
+    if (skip || !failed || session.isFetching) return;
+    const timer = window.setTimeout(() => void refetch(), wait.current);
+    wait.current = Math.min(wait.current * 2, MAX_RETRY_MS);
+    return () => window.clearTimeout(timer);
+  }, [skip, failed, session.isFetching, session.data, session.errorUpdatedAt, refetch]);
+
+  // The API came back (another call reached it, or the browser went online): ask at once.
+  const seenGeneration = useRef(generation);
+  useEffect(() => {
+    if (generation === seenGeneration.current) return;
+    seenGeneration.current = generation;
     if (skip || ready) return;
-    // The API came back (another call reached it, or the browser went online): this run asks at once.
-    if (generation !== seenGeneration.current) {
-      seenGeneration.current = generation;
-      wait.current = FIRST_RETRY_MS;
-    }
-    let live = true;
-    let timer: number | null = null;
-    void api.officeMe().then((result) => {
-      if (!live) return;
-      if (result.ok) {
-        const name = result.data.nickname || result.data.loginName;
-        rememberIdentity(name, result.data.nickname ? result.data.loginName : '');
-        rememberBalance(result.data.balance);
-        setMe(result.data);
-        setFailed(false);
-        setRetrying(false);
-        wait.current = FIRST_RETRY_MS;
-        setReady(true);
-        return;
-      }
-      // A session that ended already redirected inside `api.ts`. An answer the API chose (4xx)
-      // is final: the shell draws with no account. Only an API that is down is retried.
-      if (result.code !== 'NETWORK' && result.status < 500) {
-        setFailed(false);
-        setRetrying(false);
-        setReady(true);
-        return;
-      }
-      setFailed(true);
-      setRetrying(false);
-      timer = window.setTimeout(() => {
-        setRetrying(true);
-        setAttemptNo((count) => count + 1);
-      }, wait.current);
-      wait.current = Math.min(wait.current * 2, MAX_RETRY_MS);
-    });
-    return () => {
-      live = false;
-      if (timer) window.clearTimeout(timer);
-    };
-  }, [skip, ready, attemptNo, generation]);
+    wait.current = FIRST_RETRY_MS;
+    void refetch();
+  }, [generation, skip, ready, refetch]);
 
-  useEffect(() => {
-    if (skip || !ready) return;
-    let live = true;
-    // The directory is a convenience: a screen that renders before it lands shows login names alone.
-    void api.officeDirectory().then((result) => {
-      if (live && result.ok) setNames(result.data.names);
-    });
-    return () => {
-      live = false;
-    };
-  }, [skip, ready]);
+  // The directory is a convenience: a screen that renders before it lands shows login names alone.
+  const directory = useQuery({
+    queryKey: queryKeys.directory,
+    queryFn: () => unwrap(api.officeDirectory()),
+    enabled: !skip && session.data !== undefined,
+    staleTime: Infinity,
+  });
 
   const retry = useCallback(() => {
     wait.current = FIRST_RETRY_MS;
-    setRetrying(true);
-    setAttemptNo((count) => count + 1);
-  }, []);
+    void refetch();
+  }, [refetch]);
 
   const refresh = useCallback(async () => {
-    const result = await api.officeMe();
-    if (!result.ok) return;
-    rememberIdentity(result.data.nickname || result.data.loginName, result.data.nickname ? result.data.loginName : '');
-    rememberBalance(result.data.balance);
-    setMe(result.data);
-  }, []);
+    await client.invalidateQueries({ queryKey: queryKeys.me });
+  }, [client]);
 
   return (
-    <OfficeContext.Provider value={{ ready: skip || ready, failed: !skip && !ready && failed, retrying: !ready && retrying, retry, refresh, me, names, initialName, initialBalance }}>
+    <OfficeContext.Provider
+      value={{
+        ready: skip || ready,
+        failed: !skip && failed,
+        retrying: !skip && failed && session.isFetching,
+        retry,
+        refresh,
+        me: session.data ?? null,
+        names: directory.data?.names ?? NO_NAMES,
+        initialName,
+        initialBalance,
+      }}
+    >
       {children}
     </OfficeContext.Provider>
   );

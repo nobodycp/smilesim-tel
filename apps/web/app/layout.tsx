@@ -13,6 +13,7 @@ import { copy } from '../lib/copy';
 import { DoorProvider } from '../lib/door-context';
 import { doorFromHost } from '../lib/doors';
 import { BALANCE_COOKIE, dirFor, LOCALE_KEY, NAME_COOKIE, PAGE_SIZE_KEY, parseLocale, parsePageSize, parseTheme, THEME_KEY } from '../lib/document-prefs';
+import { QueryProvider } from '../lib/query';
 import { OfficeSession } from '../lib/office-session';
 import './globals.css';
 
@@ -68,11 +69,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <BrandingProvider seed={branding}>
           <Toasts>
           {door ? (
-            <DoorProvider door={door}>
-              <OfficeSession initialName={initialName} initialBalance={initialBalance}>
-                <OfficeFrame>{children}</OfficeFrame>
-              </OfficeSession>
-            </DoorProvider>
+            <QueryProvider>
+              <DoorProvider door={door}>
+                <OfficeSession initialName={initialName} initialBalance={initialBalance}>
+                  <OfficeFrame>{children}</OfficeFrame>
+                </OfficeSession>
+              </DoorProvider>
+            </QueryProvider>
           ) : (
             <>
               <title>{branding.siteName || copy[locale].brand}</title>
