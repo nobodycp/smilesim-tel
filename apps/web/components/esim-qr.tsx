@@ -11,6 +11,7 @@ import { Dialog } from './dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Alert } from './alert';
+import { DataImage } from './data-image';
 
 type SimLike = { esim: boolean; esimQr: string | null };
 type LineLike = SimLike & { msisdn: string; iccid: string | null };
@@ -35,9 +36,7 @@ export function SimBadge({ line, onOpen, label }: { line: SimLike; onOpen?: () =
 export function EsimMark({ src, label, onOpen }: { src: string; label: string; onOpen: () => void }) {
   return (
     <button type="button" className="esim-mark" aria-label={label} title={label} onClick={onOpen}>
-      {/* A data URL the browser already holds; next/image has nothing to optimise. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" />
+      <DataImage src={src} alt="" />
     </button>
   );
 }
@@ -63,8 +62,7 @@ export function EsimDialog({ line, onClose }: { line: LineLike | null; onClose: 
 export function QrTile({ src }: { src: string }) {
   return (
     <div className="qr-tile">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" />
+      <DataImage src={src} alt="" />
     </div>
   );
 }

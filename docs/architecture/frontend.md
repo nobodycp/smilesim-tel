@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.5b). e2e 116/116 · test:api 578 · tsc 0 errors · lint 0 errors / 0 warnings, enforced (`--max-warnings 0` in both apps) · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.2). e2e 116/116 · test:api 578 · tsc 0 errors · lint 0 errors / 0 warnings, enforced (`--max-warnings 0` in both apps) · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -20,8 +20,9 @@ Next.js 16 (App Router) · React 19 · plain CSS on `--rd-*` tokens (`app/styles
 | Path | Holds |
 |---|---|
 | `app/error.tsx`, `app/not-found.tsx` | page error (retry + home) and 404, inside the shell |
-| `app/<route>/page.tsx` | flat routes: numbers, numbers/[id], tasks, tasks/[id], users, users/[login], packages, providers, providers/[code], providers/[code]/[packageCode], companies, companies/[code], finance, reports, audit, notices, roles, settings, branding, operations, provider-operations, login, password, two-factor |
+| `app/<route>/page.tsx` | two lines each since 5.2: imports the route's screen from `features/<domain>/screens/` and exports it as the default. Flat routes: numbers, numbers/[id], tasks, tasks/[id], users, users/[login], packages, providers, providers/[code], providers/[code]/[packageCode], companies, companies/[code], finance, reports, audit, notices, roles, settings, branding, operations, provider-operations, login, password, two-factor |
 | `features/<domain>/api.ts` | one call group per API module (auth, branding, desk, wallets, catalog, terms, lines, transfers, notices, tasks, accounts, roles, audit, reports) |
+| `features/<domain>/screens/` | the screens, one named `…Screen` export per route: `auth` (login, password, two-factor, settings), `desk` (home), `lines` (numbers, line-card), `accounts` (users, account + its `line-ops` and `packages-terms` tabs), `tasks` (tasks, task-ticket), `catalog` (packages, providers, provider-packages, package-sheet, companies, company, company-packages), `wallets` (finance, operations, provider-operations), `roles`, `notices`, `audit`, `branding`, `reports` (report). A new route adds its screen here and a two-line page. `layout`, `error`, `not-found` and the `reports` redirect stay in `app/`. |
 | `app/styles/*.css` | global CSS in cascade order via `globals.css` (see `DESIGN.md` → Stylesheets). `desk/` 12 files by owner (frame, pane, table, filters, components, then one per page area; 5.6), `shell.css` ~690 |
 | `components/` | shell (`office-shell`, `office-frame`, `shell-search`, `chrome`), `dialog`, `row-menu`, `data-table` (DataTable + PagedTable — the live table), `desk` (page frame), domain dialogs (`transfer-dialog`, `line-prices-dialog`, `disconnect-confirm`), `alert` (the one error / success line), `data-image` (`DataImage`: the plain `<img>` for `data:`/`blob:` sources) |
 | `components/ui/` | primitives `button`, `badge`, `select`, `pagination`, styled by `app/styles/ui.css` (no Tailwind since 5.4a, ADR 0003) |
