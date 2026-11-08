@@ -8,14 +8,14 @@
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(5.5rem, max-content) minmax(9rem, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: var(--rd-space-2-5);
   min-height: 48px;
   border-block-end: 1px solid var(--rd-line);
   color: var(--rd-ink);
   font-size: var(--rd-text-base);
 }
 .pane label.grant-line {
-  gap: 10px;
+  gap: var(--rd-space-2-5);
   color: var(--rd-ink);
   font-size: var(--rd-text-base);
   font-weight: 700;
@@ -35,17 +35,17 @@
 .grant-line.head { min-height: 36px; }
 .grant-line.head span { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 700; }
 .access-block {
-  margin-block-start: 8px;
-  padding-block-start: 8px;
+  margin-block-start: var(--rd-space-2);
+  padding-block-start: var(--rd-space-2);
   border-block-start: 1px solid var(--rd-line);
 }
-.access-block > h3 { margin: 0; padding-block: 8px 4px; font-size: var(--rd-text-lg); font-weight: 700; }
+.access-block > h3 { margin: 0; padding-block: var(--rd-space-2) var(--rd-space-1); font-size: var(--rd-text-lg); font-weight: 700; }
 .role-primary {
   display: grid;
   justify-items: start;
-  gap: 4px;
+  gap: var(--rd-space-1);
   max-width: 24rem;
-  margin-block: 8px 4px;
+  margin-block: var(--rd-space-2) var(--rd-space-1);
 }
 .role-primary select { width: 100%; }
 @media (max-width: 960px) {
@@ -56,23 +56,23 @@
 .fact-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  gap: var(--rd-space-3);
   margin: 0;
 }
 .fact-card {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--rd-space-3);
   min-width: 0;
-  padding: 16px;
+  padding: var(--rd-space-4);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-card);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-frame);
 }
 .fact-card dt { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 500; }
-.fact-card dd { margin: 4px 0 0; color: var(--rd-ink); font-size: var(--rd-text-2xl); font-weight: 600; line-height: 1.25; }
+.fact-card dd { margin: var(--rd-space-1) 0 0; color: var(--rd-ink); font-size: var(--rd-text-2xl); font-weight: 600; line-height: 1.25; }
 .fact-mark {
   display: inline-flex;
   flex: none;
@@ -96,13 +96,13 @@
 .terms-group-head {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: var(--rd-z-raised);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--rd-space-3);
   min-height: 48px;
-  padding-block: 4px;
-  padding-inline: 10px 14px;
+  padding-block: var(--rd-space-1);
+  padding-inline: var(--rd-space-2-5) var(--rd-space-3-5);
   background: var(--rd-surface-2);
   border-bottom: 1px solid var(--rd-line-soft);
 }
@@ -113,10 +113,10 @@
   grid-template-columns: auto minmax(10rem, 1fr) auto minmax(12rem, auto);
   grid-template-areas: 'switch name figures state';
   align-items: center;
-  gap: 8px 16px;
+  gap: var(--rd-space-2) var(--rd-space-4);
   min-height: 56px;
-  padding-block: 6px;
-  padding-inline: 10px 14px;
+  padding-block: var(--rd-space-1-5);
+  padding-inline: var(--rd-space-2-5) var(--rd-space-3-5);
   border-top: 1px solid var(--rd-line-soft);
 }
 .terms-row > .live-switch { grid-area: switch; }
@@ -130,22 +130,22 @@
 .terms-row.locked .terms-figures { color: var(--rd-muted); }
 .terms-row.off .terms-name strong,
 .terms-row.locked .terms-name strong { color: var(--rd-muted); text-decoration: line-through; text-decoration-color: var(--rd-line); }
-.terms-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.terms-name { display: flex; flex-direction: column; gap: var(--rd-space-0-5); min-width: 0; }
 .terms-name strong { color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }
 .terms-name .hint { font-size: var(--rd-text-sm); font-variant-numeric: tabular-nums; }
-.terms-figures { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
-.terms-figure { display: flex; flex-direction: column; gap: 2px; min-width: 5.5rem; }
+.terms-figures { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2) 28px; }
+.terms-figure { display: flex; flex-direction: column; gap: var(--rd-space-0-5); min-width: 5.5rem; }
 .terms-figure > span:first-child { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
 .terms-figure .money { font-size: var(--rd-text-base); }
-.terms-fields { display: inline-flex; gap: 10px; }
-.terms-price { display: inline-flex; flex-direction: column; gap: 2px; }
+.terms-fields { display: inline-flex; gap: var(--rd-space-2-5); }
+.terms-price { display: inline-flex; flex-direction: column; gap: var(--rd-space-0-5); }
 .terms-price > span { color: var(--rd-muted); font-size: var(--rd-text-2xs); font-weight: 600; }
 /* On the canvas, and in a dialog body (the line prices table): a dialog is portaled out of `.desk`. */
 :is(.desk .pane, .dialog-body) .terms-price input {
   width: 6.5rem;
   min-width: 0;
   height: 32px;
-  padding: 0 8px;
+  padding: 0 var(--rd-space-2);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-xs);
   background: var(--rd-surface);
@@ -159,7 +159,7 @@
 :is(.desk .pane, .dialog-body) .terms-price input::placeholder { color: var(--rd-muted); font-weight: 500; }
 :is(.desk .pane, .dialog-body) .terms-price input:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 3px var(--rd-focus); }
 :is(.desk .pane, .dialog-body) .terms-price input:disabled { background: var(--rd-surface-2); color: var(--rd-muted); }
-.terms-state { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.terms-state { display: flex; align-items: center; justify-content: flex-end; gap: var(--rd-space-2-5); }
 .terms-state .ui-badge svg { width: 12px; height: 12px; }
 .terms-summary { white-space: nowrap; }
 .terms-filter .filter-panel { flex-wrap: wrap; overflow: visible; }
@@ -172,7 +172,7 @@
     grid-template-areas:
       'switch name state'
       'switch figures figures';
-    row-gap: 10px;
+    row-gap: var(--rd-space-2-5);
   }
   .terms-row > .live-switch { align-self: start; }
   .terms-filter .filter-panel .terms-summary { flex-basis: 100%; white-space: normal; }

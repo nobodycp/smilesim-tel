@@ -1,22 +1,22 @@
 /* The home page: home grid and shortcuts. */
-.home { display: flex; flex: 1; flex-direction: column; gap: 14px; }
+.home { display: flex; flex: 1; flex-direction: column; gap: var(--rd-space-3-5); }
 .home > .page-head {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--rd-space-2);
   margin-bottom: 0;
 }
 .home > .page-head .lede { margin: 0; }
-.home .section-label { margin: 0 0 6px; }
+.home .section-label { margin: 0 0 var(--rd-space-1-5); }
 .home-access { display: grid; align-content: start; }
-.shortcut-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.shortcut-row { display: flex; flex-wrap: wrap; gap: var(--rd-space-2); }
 .shortcut {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--rd-space-2);
   height: 36px;
   padding-block: 0;
-  padding-inline: 12px 14px;
+  padding-inline: var(--rd-space-3) var(--rd-space-3-5);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-pill);
   background: var(--rd-surface);
@@ -27,7 +27,7 @@
 .shortcut svg { flex: none; width: 1rem; height: 1rem; color: var(--rd-muted); }
 .shortcut:hover { border-color: var(--rd-ink); color: var(--rd-ink); }
 .shortcut:hover svg { color: var(--rd-ink); }
-.home-grid { display: grid; flex: 1; gap: 12px; min-height: 240px; }
+.home-grid { display: grid; flex: 1; gap: var(--rd-space-3); min-height: 240px; }
 @media (min-width: 960px) {
   .home-grid { grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr); align-items: start; }
 }

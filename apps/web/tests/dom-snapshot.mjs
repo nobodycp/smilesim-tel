@@ -190,8 +190,9 @@ for (const [name, path, layer, empty = false] of cases) {
       const walk = (el, path) => {
         if (el.tagName === 'NEXTJS-PORTAL' || el.tagName === 'SCRIPT') return;
         const style = getComputedStyle(el);
-        // Sorted: Chrome lists custom properties in a different order from one load to the next.
-        const names = [...style].sort();
+        // Resolved properties only: a custom property (--rd-*) is a definition, and a refactor that names a value as a
+        // token adds new ones to every element. Sorted, since Chrome's order is not stable.
+        const names = [...style].filter((prop) => !prop.startsWith('--')).sort();
         let text = '';
         for (const prop of names) text += `${prop}:${style.getPropertyValue(prop)};`;
         out.push(`${path}\t${hash(text)}`);

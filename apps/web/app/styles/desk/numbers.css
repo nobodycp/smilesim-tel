@@ -5,7 +5,7 @@
   align-items: center;
   min-height: 44px;
   margin-inline-start: auto;
-  padding-inline: 14px;
+  padding-inline: var(--rd-space-3-5);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-pill);
   color: var(--rd-ink);
@@ -14,7 +14,7 @@
   cursor: pointer;
 }
 .quiet-file input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
-.line-head { display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding: 16px 14px 4px; }
+.line-head { display: flex; align-items: center; justify-content: flex-start; gap: var(--rd-space-3); padding: var(--rd-space-4) var(--rd-space-3-5) var(--rd-space-1); }
 .line-number { margin: 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .command-list {
   display: grid;
@@ -28,7 +28,7 @@
 .op-board {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(7.25rem, 1fr));
-  gap: 8px;
+  gap: var(--rd-space-2);
 }
 .op-board .command-list { display: contents; }
 .op-board .op-card,
@@ -36,9 +36,9 @@
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 8px;
+  gap: var(--rd-space-2);
   min-height: 92px;
-  padding: 12px 8px;
+  padding: var(--rd-space-3) var(--rd-space-2);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-md);
   background: var(--rd-surface);
@@ -58,7 +58,7 @@
 .detail-rows {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-  gap: 6px;
+  gap: var(--rd-space-1-5);
   margin: 0;
 }
 .detail-rows > div {
@@ -75,10 +75,10 @@
 /* A control inside a value cell keeps the row at text height: 28px tall, pulled into the cell padding. */
 .detail-rows dd > button { height: 28px; min-height: 0; margin-block: -4px; }
 /* The details tab: the rows take the width, usage sits in an end column once the canvas is wide enough. */
-.line-details { display: grid; gap: 16px; align-items: start; }
+.line-details { display: grid; gap: var(--rd-space-4); align-items: start; }
 @media (min-width: 1100px) {
   .line-details { grid-template-columns: minmax(0, 1fr) 22rem; }
-  .line-details > .usage { padding-inline-start: 16px; border-inline-start: 1px solid var(--rd-line); }
+  .line-details > .usage { padding-inline-start: var(--rd-space-4); border-inline-start: 1px solid var(--rd-line); }
 }
 /* The eSIM badge as a button: the badge is the visible part, the padding gives the 44px target. */
 .esim-open {
@@ -90,7 +90,7 @@
   border: 0;
   background: none;
   cursor: pointer;
-  transition: transform 150ms ease;
+  transition: transform var(--rd-dur-fast) ease;
 }
 .esim-open:hover { transform: translateY(-1px); }
 .esim-open:focus-visible { outline: 2px solid var(--rd-focus); outline-offset: 2px; border-radius: var(--rd-radius-pill); }
@@ -100,12 +100,12 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  padding: 4px;
+  padding: var(--rd-space-1);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-sm);
   background: var(--rd-qr-tile);
   cursor: pointer;
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition: transform var(--rd-dur-fast) ease, box-shadow var(--rd-dur-fast) ease;
 }
 .esim-mark:hover { box-shadow: var(--rd-shadow-sm); transform: translateY(-1px); }
 .esim-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -114,15 +114,15 @@
   place-items: center;
   width: min(100%, 280px);
   margin-inline: auto;
-  padding: 12px;
+  padding: var(--rd-space-3);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-card);
   background: var(--rd-qr-tile);
 }
 .qr-tile img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
-.qr-picker { display: grid; gap: 8px; justify-items: start; }
-.qr-picker .qr-tile { width: min(100%, 160px); margin-inline: 0; padding: 8px; }
-.qr-picker-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.qr-picker { display: grid; gap: var(--rd-space-2); justify-items: start; }
+.qr-picker .qr-tile { width: min(100%, 160px); margin-inline: 0; padding: var(--rd-space-2); }
+.qr-picker-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2); }
 .qr-picker-row .quiet-file { margin-inline-start: 0; }
 .detail-rows dt,
 .detail-rows dd {
@@ -130,7 +130,7 @@
   align-items: center;
   justify-content: flex-start;
   margin: 0;
-  padding: 4px 8px;
+  padding: var(--rd-space-1) var(--rd-space-2);
   text-align: start;
 }
 .detail-rows dt {
@@ -146,10 +146,10 @@
   font-weight: 700;
   background: var(--rd-surface);
 }
-.usage { display: grid; gap: 12px; }
-.usage h2 { margin: 4px 0 0; font-size: var(--rd-text-base); font-weight: 700; }
-.usage-meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.usage-meter { display: grid; justify-items: center; gap: 4px; color: var(--rd-ink); font-size: var(--rd-text-md); font-weight: 700; text-align: center; }
+.usage { display: grid; gap: var(--rd-space-3); }
+.usage h2 { margin: var(--rd-space-1) 0 0; font-size: var(--rd-text-base); font-weight: 700; }
+.usage-meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--rd-space-2); }
+.usage-meter { display: grid; justify-items: center; gap: var(--rd-space-1); color: var(--rd-ink); font-size: var(--rd-text-md); font-weight: 700; text-align: center; }
 .usage-dial {
   display: grid;
   place-items: center;

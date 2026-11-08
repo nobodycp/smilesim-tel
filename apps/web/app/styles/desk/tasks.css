@@ -28,10 +28,10 @@
 .task-rail {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--rd-space-3);
   min-width: 0;
   min-height: 0;
-  padding: 14px 16px 16px;
+  padding: var(--rd-space-3-5) var(--rd-space-4) var(--rd-space-4);
   border-inline-end: 1px solid var(--rd-line);
   overflow: auto;
 }
@@ -43,7 +43,7 @@
 .task-facts > div {
   display: grid;
   grid-template-columns: minmax(4.5rem, 42%) minmax(0, 1fr);
-  column-gap: 8px;
+  column-gap: var(--rd-space-2);
   align-items: baseline;
   padding-block: 5px;
   border-block-end: 1px solid var(--rd-line-soft);
@@ -67,21 +67,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin-block-start: 4px;
+  gap: var(--rd-space-1-5);
+  margin-block-start: var(--rd-space-1);
 }
 .task-op {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--rd-space-1-5);
   min-height: 32px;
-  padding: 0 10px;
+  padding: 0 var(--rd-space-2-5);
   border: 1px solid transparent;
   border-radius: var(--rd-radius-sm);
   font-size: var(--rd-text-sm);
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  transition: background-color var(--rd-dur-fast) ease, color var(--rd-dur-fast) ease, border-color var(--rd-dur-fast) ease;
 }
 .task-op svg { flex: none; }
 .task-op:disabled {
@@ -119,12 +119,12 @@
   border-color: var(--rd-danger);
   color: var(--rd-primary-fg);
 }
-.task-close { display: grid; gap: 10px; }
-.task-close-sim { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 12px; align-items: start; }
+.task-close { display: grid; gap: var(--rd-space-2-5); }
+.task-close-sim { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--rd-space-3); align-items: start; }
 .task-close .task-op:disabled { opacity: 0.5; cursor: not-allowed; }
 .task-close-row {
   display: grid;
-  gap: 8px;
+  gap: var(--rd-space-2);
 }
 .task-close-row > input {
   width: 100%;
@@ -144,7 +144,7 @@
 }
 .task-thread-head {
   flex: none;
-  padding: 12px 16px 0;
+  padding: var(--rd-space-3) var(--rd-space-4) 0;
 }
 .task-thread-title {
   margin: 0;
@@ -157,7 +157,7 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 12px 16px 8px;
+  padding: var(--rd-space-3) var(--rd-space-4) var(--rd-space-2);
 }
 .task-tree {
   list-style: none;
@@ -171,8 +171,8 @@
   position: relative;
   display: grid;
   grid-template-columns: 1.25rem minmax(0, 1fr);
-  column-gap: 12px;
-  padding-block-end: 14px;
+  column-gap: var(--rd-space-3);
+  padding-block-end: var(--rd-space-3-5);
 }
 .task-tree-node:last-child { padding-block-end: 0; }
 .task-tree-node:not(:last-child)::before {
@@ -186,7 +186,7 @@
 }
 .task-tree-dot {
   position: relative;
-  z-index: 1;
+  z-index: var(--rd-z-raised);
   width: 0.6rem;
   height: 0.6rem;
   margin-block-start: 0.4rem;
@@ -206,9 +206,9 @@
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 6px 12px;
+  gap: var(--rd-space-1-5) var(--rd-space-3);
   margin: 0;
-  padding-block: 2px;
+  padding-block: var(--rd-space-0-5);
   color: var(--rd-ink-2);
   font-size: var(--rd-text-md);
   font-weight: 600;
@@ -221,7 +221,7 @@
 }
 .task-tree-card {
   min-width: 0;
-  padding: 12px 14px;
+  padding: var(--rd-space-3) var(--rd-space-3-5);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-md);
   background: var(--rd-surface-2);
@@ -231,8 +231,8 @@
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 4px 10px;
-  margin-block-end: 6px;
+  gap: var(--rd-space-1) var(--rd-space-2-5);
+  margin-block-end: var(--rd-space-1-5);
 }
 .task-tree-meta strong {
   color: var(--rd-ink);
@@ -255,10 +255,10 @@
 .task-tree-compose {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: var(--rd-space-2);
   align-items: end;
   flex: none;
-  padding: 10px 16px 14px;
+  padding: var(--rd-space-2-5) var(--rd-space-4) var(--rd-space-3-5);
   border-block-start: 1px solid var(--rd-line);
   background: var(--rd-surface);
 }

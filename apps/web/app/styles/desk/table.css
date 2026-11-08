@@ -4,13 +4,13 @@
   box-shadow: var(--rd-shadow-frame);
 }
 .data { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--rd-text-md); }
-.data th, .data td { padding: 8px 12px; text-align: start; vertical-align: middle; }
+.data th, .data td { padding: var(--rd-space-2) var(--rd-space-3); text-align: start; vertical-align: middle; }
 .data td strong { font-weight: 700; }
 .data .hint, .data td .hint { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 500; }
 .data .col-sort {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--rd-space-1);
   max-width: 100%;
   padding: 0;
   border: 0;
@@ -29,7 +29,7 @@
 .data th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: var(--rd-z-raised);
   background: var(--rd-surface-3);
   color: var(--rd-ink-2);
   font-size: 0.75rem;
@@ -47,14 +47,14 @@
 .money.neg { color: var(--rd-danger); }
 .money.muted { color: var(--rd-muted); font-weight: 600; }
 /* A kind name with a tag after it (the eSIM fee on a sale). Wraps on a narrow table. */
-.kind-cell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.kind-cell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-1) var(--rd-space-2); }
 .kind-cell .ui-badge .money { color: inherit; font-weight: 700; }
 .num-link { color: var(--rd-ink); font-weight: 800; text-decoration: none; }
 .row-link { color: inherit; font-weight: 700; text-decoration: none; }
 .account-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--rd-space-2);
   min-width: 0;
   font-weight: 500;
 }
@@ -116,7 +116,7 @@
 .data th.row-actions,
 .data td.row-actions {
   width: 6rem;
-  padding-inline: 8px;
+  padding-inline: var(--rd-space-2);
   vertical-align: middle;
   white-space: nowrap;
 }
@@ -127,7 +127,7 @@
    inline padding each side and the timestamp may break between date and clock. */
 @media (max-width: 1100px) {
   .canvas .data th,
-  .canvas .data td { padding-inline: 8px; }
+  .canvas .data td { padding-inline: var(--rd-space-2); }
   .canvas .data td.when,
   .canvas .data td.when bdi { white-space: normal; }
   .canvas .data td.when bdi { display: inline-block; max-width: 5.5rem; }
@@ -144,6 +144,6 @@
 .canvas .data bdi { unicode-bidi: isolate; }
 .table-pager {
   border-top: 1px solid var(--rd-line);
-  padding: 4px 12px 8px;
+  padding: var(--rd-space-1) var(--rd-space-3) var(--rd-space-2);
 }
 .pane .table-pager select { width: 100%; height: 28px; }

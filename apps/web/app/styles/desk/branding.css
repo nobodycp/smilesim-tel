@@ -11,19 +11,19 @@
 .device svg { width: 15px; height: 15px; }
 /* Site identity (/branding): the form fills the width and the live preview keeps a fixed column
    beside it; under 960px the preview sits below. The preview is the one loud element here. */
-.brand-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; align-items: start; }
-.brand-form { display: grid; gap: 12px; }
-.brand-drops { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 12px; }
-.drop-field { display: grid; gap: 8px; align-content: start; }
+.brand-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--rd-space-3); align-items: start; }
+.brand-form { display: grid; gap: var(--rd-space-3); }
+.brand-drops { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--rd-space-3); }
+.drop-field { display: grid; gap: var(--rd-space-2); align-content: start; }
 .drop-title { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
 .pane label.drop {
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: var(--rd-space-3);
   min-height: 96px;
-  padding: 12px;
+  padding: var(--rd-space-3);
   border: 1px dashed var(--rd-field);
   border-radius: var(--rd-radius-lg);
   background: var(--rd-surface-2);
@@ -48,13 +48,13 @@
 .drop-field.square .drop-thumb { width: 72px; }
 .drop-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
 .drop-thumb svg { width: 22px; height: 22px; color: var(--rd-muted); }
-.drop-text { display: grid; gap: 2px; min-width: 0; }
+.drop-text { display: grid; gap: var(--rd-space-0-5); min-width: 0; }
 .drop-text strong { font-size: var(--rd-text-base); font-weight: 700; }
 .drop-text small { color: var(--rd-muted); font-size: var(--rd-text-sm); }
 .drop input[type='file'] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .desk button.drop-clear { justify-self: start; height: 30px; font-size: var(--rd-text-sm); }
-.brand-foot { display: flex; flex-wrap: wrap; gap: 8px; }
-.brand-preview { position: sticky; top: 0; display: grid; gap: 12px; }
+.brand-foot { display: flex; flex-wrap: wrap; gap: var(--rd-space-2); }
+.brand-preview { position: sticky; top: 0; display: grid; gap: var(--rd-space-3); }
 .brand-preview-label { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 600; }
 .bp-browser {
   overflow: hidden;
@@ -66,8 +66,8 @@
 .bp-tab {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--rd-space-2);
+  padding: var(--rd-space-2) var(--rd-space-3);
   border-bottom: 1px solid var(--rd-line);
   background: var(--rd-surface-2);
   font-size: var(--rd-text-sm);
@@ -81,8 +81,8 @@
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 6px;
-  padding: 14px 8px;
+  gap: var(--rd-space-1-5);
+  padding: var(--rd-space-3-5) var(--rd-space-2);
   border-inline-end: 1px solid var(--rd-line);
   text-align: center;
 }
@@ -99,13 +99,13 @@
 }
 .bp-name { font-size: var(--rd-text-sm); font-weight: 700; color: var(--rd-ink); }
 .bp-tag { font-size: var(--rd-text-2xs); color: var(--rd-muted); }
-.bp-lines { display: grid; gap: 10px; align-content: start; padding: 18px 16px; }
+.bp-lines { display: grid; gap: var(--rd-space-2-5); align-content: start; padding: 18px var(--rd-space-4); }
 .bp-lines span { height: 8px; border-radius: 99px; background: var(--rd-surface-3); }
 .bp-login {
   display: grid;
   justify-items: center;
-  gap: 8px;
-  padding: 22px 16px;
+  gap: var(--rd-space-2);
+  padding: 22px var(--rd-space-4);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-lg);
   background: var(--rd-surface);
@@ -114,7 +114,7 @@
 }
 .bp-login .brand-logo { max-width: 160px; max-height: 56px; }
 .bp-login-name { font-size: var(--rd-text-lg); font-weight: 700; color: var(--rd-ink); }
-.bp-login-tag { margin-bottom: 6px; font-size: var(--rd-text-xs); color: var(--rd-muted); }
+.bp-login-tag { margin-bottom: var(--rd-space-1-5); font-size: var(--rd-text-xs); color: var(--rd-muted); }
 .bp-field { width: 100%; max-width: 220px; height: 30px; border: 1px solid var(--rd-field); border-radius: var(--rd-radius-sm); background: var(--rd-surface); }
 .bp-btn {
   display: grid;

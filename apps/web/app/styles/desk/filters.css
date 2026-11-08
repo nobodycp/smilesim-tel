@@ -1,7 +1,7 @@
 /* The filter bar (FilterBar), the table search and the period chips. */
 button.quiet {
   height: 28px;
-  padding: 0 8px;
+  padding: 0 var(--rd-space-2);
   border: 0;
   border-radius: var(--rd-radius-sm);
   background: transparent;
@@ -15,15 +15,15 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   border: 1px solid var(--rd-field);
   border-radius: var(--rd-radius-sm);
   background: var(--rd-surface);
-  padding: 0 8px;
+  padding: 0 var(--rd-space-2);
   font-size: var(--rd-text-md);
 }
 .filter-bar, .filters {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: var(--rd-space-1-5);
+  padding: var(--rd-space-1) var(--rd-space-2);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-md);
   background: var(--rd-surface);
@@ -34,7 +34,7 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--rd-space-1-5);
   width: 100%;
   padding: 0;
   overflow-x: auto;
@@ -45,7 +45,7 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   display: inline-flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: var(--rd-space-1-5);
   min-width: 0;
   height: 28px;
   color: var(--rd-muted);
@@ -61,29 +61,29 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 .desk .filter-panel select,
 .filter-panel .quiet {
   height: 28px;
-  padding: 0 8px;
+  padding: 0 var(--rd-space-2);
   border-radius: var(--rd-radius-xs);
   font-size: var(--rd-text-xs);
 }
 .filter-panel .filter-clear { margin-inline-start: auto; }
-.filter-panel .filter-clear { height: 28px; padding: 0 8px; font-size: var(--rd-text-xs); }
-.filters label { display: grid; gap: 4px; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
+.filter-panel .filter-clear { height: 28px; padding: 0 var(--rd-space-2); font-size: var(--rd-text-xs); }
+.filters label { display: grid; gap: var(--rd-space-1); color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
 .filters select, .filters input { height: 34px; }
 .table-search {
   display: flex;
   align-items: center;
-  padding: 6px 8px;
+  padding: var(--rd-space-1-5) var(--rd-space-2);
   border-bottom: 1px solid var(--rd-line-soft);
 }
 .table-search label {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
-  gap: 6px;
+  gap: var(--rd-space-1-5);
   width: min(16rem, 100%);
   height: 28px;
   margin: 0;
-  padding-inline: 8px;
+  padding-inline: var(--rd-space-2);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-xs);
   background: var(--rd-surface);
@@ -112,11 +112,11 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: 4px;
+  gap: var(--rd-space-1);
 }
 .period-chips button {
   height: 28px;
-  padding: 0 8px;
+  padding: 0 var(--rd-space-2);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-pill);
   background: var(--rd-surface);

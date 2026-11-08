@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.6). e2e 113/113 · tsc 0 errors · lint 0 errors / 27 warnings (unused vars are reported) · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.3d). e2e 113/113 · tsc 0 errors · lint 0 errors / 27 warnings (unused vars are reported) · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -38,7 +38,7 @@ Next.js 16 (App Router) · React 19 · plain CSS on `--rd-*` tokens (`app/styles
 
 ## Design system
 
-Tokens in `app/styles/tokens.css`: `--rd-*` colours/shadows for both themes, `--rd-primary-soft`, `--rd-login-*`, and theme-independent scales `--rd-radius-{xs,sm,md,card,panel,pill,lg}` and `--rd-text-{2xs…2xl}`. The hotspot alias set is gone (5.3a). No spacing / z-index / motion scales yet. Rules: `DESIGN.md`, `.cursor/rules/pearl-ui.mdc`, `direction-theme.mdc`, `content-ui.mdc`, `screen-size.mdc`.
+Tokens in `app/styles/tokens.css`: `--rd-*` colours/shadows for both themes, `--rd-primary-soft`, `--rd-login-*`, and theme-independent scales `--rd-radius-{xs,sm,md,card,panel,pill,lg}` and `--rd-text-{2xs…2xl}`. The hotspot alias set is gone (5.3a). Spacing `--rd-space-*`, layers `--rd-z-*` and motion `--rd-dur-*` / `--rd-ease-*` since 5.3d. Rules: `DESIGN.md`, `.cursor/rules/pearl-ui.mdc`, `direction-theme.mdc`, `content-ui.mdc`, `screen-size.mdc`.
 
 ## Known defects (audit 2026-11-08, fix plan in `docs/superpowers/plans/2026-11-08-architecture-refactor.md`)
 

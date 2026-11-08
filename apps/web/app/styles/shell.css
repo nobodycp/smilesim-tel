@@ -15,7 +15,7 @@
 .sidebar.collapsed { width: 60px; }
 .drawer {
   position: fixed;
-  z-index: 50;
+  z-index: var(--rd-z-drawer);
   inset-block: 0;
   inset-inline-start: 0;
   width: min(288px, 86vw);
@@ -27,7 +27,7 @@
 .backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--rd-z-overlay);
   background: var(--rd-scrim-strong);
 }
 .brand-block {
@@ -35,11 +35,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 16px 12px 12px;
+  gap: var(--rd-space-1);
+  padding: var(--rd-space-4) var(--rd-space-3) var(--rd-space-3);
   text-align: center;
 }
-.brand-block.compact { padding-inline: 8px; }
+.brand-block.compact { padding-inline: var(--rd-space-2); }
 .brand-block.compact .brand-rule { width: 20px; }
 /* Hotspot-style brand tile in the shell only (auth keeps base.css mark). */
 .sidebar .brand-mark,
@@ -70,11 +70,11 @@
 .drawer .brand-block-logo { max-width: 160px; max-height: 56px; }
 .sidebar.collapsed .brand-block-logo { max-width: 40px; max-height: 40px; }
 .drawer-close { position: absolute; top: 8px; inset-inline-end: 8px; }
-.side-nav { flex: 1; overflow: auto; padding: 8px 10px; }
+.side-nav { flex: 1; overflow: auto; padding: var(--rd-space-2) var(--rd-space-2-5); }
 /* The label and the link icons start on the same edge: 12px inside the nav padding. */
 .nav-label {
-  margin: 16px 0 4px;
-  padding-inline: 12px;
+  margin: var(--rd-space-4) 0 var(--rd-space-1);
+  padding-inline: var(--rd-space-3);
   color: var(--rd-muted);
   font-size: var(--rd-text-xs);
   font-weight: 700;
@@ -84,11 +84,11 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--rd-space-2-5);
   width: 100%;
   min-height: 40px;
-  margin-top: 2px;
-  padding: 0 12px;
+  margin-top: var(--rd-space-0-5);
+  padding: 0 var(--rd-space-3);
   border-radius: var(--rd-radius-sm);
   color: var(--rd-ink-2);
   font-size: var(--rd-text-md);
@@ -140,18 +140,18 @@
 .nav-group-chevron.open { transform: rotate(180deg); }
 .nav-group-body .nav-link { padding-inline-start: 40px; }
 .nav-group-body .nav-link.active::before { inset-inline-start: 28px; }
-.side-foot { border-top: 1px solid var(--rd-line-soft); padding: 8px; }
+.side-foot { border-top: 1px solid var(--rd-line-soft); padding: var(--rd-space-2); }
 .collapse-btn { display: none; }
 .sidebar .collapse-btn { display: flex; }
 .office-main { display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column; }
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: var(--rd-z-topbar);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--rd-space-3);
   padding: 0.7rem 1rem;
   border-bottom: 1px solid var(--rd-line);
   container-type: inline-size;
@@ -251,7 +251,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .avatar-btn .avatar { width: 100%; height: 100%; }
 .shell-panel {
   position: absolute;
-  z-index: 30;
+  z-index: var(--rd-z-popover);
   top: calc(100% + 0.6rem);
   inset-inline-end: 0;
   min-width: 16rem;
@@ -308,7 +308,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   font-size: 0.85rem;
 }
 .shell-panel button.shell-item { display: grid; }
-.shell-item { gap: 2px; }
+.shell-item { gap: var(--rd-space-0-5); }
 .shell-item.unread { background: var(--rd-surface-2); }
 .shell-item small { color: var(--rd-muted); }
 /* A fixed width: the tools row sizes to its content, and a flexible field here would let the
@@ -337,7 +337,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .notice-panel button.shell-item {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
-  gap: 2px 0.5rem;
+  gap: var(--rd-space-0-5) 0.5rem;
 }
 .notice-panel .shell-item strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notice-panel .shell-item .notice-detail { grid-column: 1 / -1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -355,7 +355,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 /* Live arrival: one card at the top corner, 4s, then it leaves. Click opens the record. */
 .notice-toast {
   position: fixed;
-  z-index: 60;
+  z-index: var(--rd-z-shell-toast);
   top: 4.5rem;
   inset-inline-end: 1rem;
   display: flex;
@@ -366,7 +366,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   border-radius: var(--rd-radius-lg);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
-  animation: notice-toast-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: notice-toast-in 240ms var(--rd-ease-out);
 }
 .notice-toast-body {
   flex: 1;
@@ -382,7 +382,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   text-align: start;
   cursor: pointer;
 }
-.notice-toast-body > span { display: grid; gap: 2px; min-width: 0; }
+.notice-toast-body > span { display: grid; gap: var(--rd-space-0-5); min-width: 0; }
 .notice-toast-body strong { font-size: 0.9rem; }
 .notice-toast-body small { color: var(--rd-muted); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notice-toast-close {
@@ -428,9 +428,9 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .shell-search-field {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--rd-space-2);
   height: 2.5rem;
-  padding-inline: 12px 8px;
+  padding-inline: var(--rd-space-3) var(--rd-space-2);
   border: 1px solid var(--rd-line);
   border-radius: calc(var(--rd-radius-lg) * 0.75);
   background: var(--rd-surface-2);
@@ -467,11 +467,11 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .shell-search-clear:hover { background: var(--rd-surface-3); color: var(--rd-ink); }
 .shell-search-results {
   position: absolute;
-  z-index: 40;
+  z-index: var(--rd-z-overlay);
   top: calc(100% + 6px);
   inset-inline-end: 0;
   display: grid;
-  gap: 2px;
+  gap: var(--rd-space-0-5);
   width: max(100%, 16rem);
   max-height: min(420px, 60vh);
   overflow: auto;
@@ -521,11 +521,11 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .user-copy small { color: var(--rd-muted); font-size: var(--rd-text-xs); }
 .menu {
   position: absolute;
-  z-index: 30;
+  z-index: var(--rd-z-popover);
   top: calc(100% + 6px);
   inset-inline-end: 0;
   min-width: 200px;
-  padding: 6px;
+  padding: var(--rd-space-1-5);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-card);
   background: var(--rd-surface);
@@ -534,10 +534,10 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .menu a, .menu button {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--rd-space-2);
   width: 100%;
   height: 36px;
-  padding: 0 10px;
+  padding: 0 var(--rd-space-2-5);
   border-radius: var(--rd-radius-sm);
   color: var(--rd-ink-2);
   font-weight: 600;
@@ -549,7 +549,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--rd-space-1-5);
   white-space: nowrap;
   padding: 0 0.7rem;
   border: 1px solid var(--rd-line);
@@ -560,11 +560,11 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .wallet-btn svg { width: 18px; height: 18px; }
 .wallet-pop {
   position: absolute;
-  z-index: 30;
+  z-index: var(--rd-z-popover);
   top: calc(100% + 6px);
   inset-inline-end: 0;
   min-width: 220px;
-  padding: 8px;
+  padding: var(--rd-space-2);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-card);
   background: var(--rd-surface);
@@ -574,9 +574,9 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--rd-space-4);
   margin: 0;
-  padding: 6px 8px;
+  padding: var(--rd-space-1-5) var(--rd-space-2);
   color: var(--rd-muted);
   font-size: var(--rd-text-sm);
   font-weight: 700;
@@ -597,12 +597,12 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   position: absolute;
   top: calc(100% + 8px);
   inset-inline-end: 0;
-  z-index: 20;
+  z-index: var(--rd-z-topbar);
   display: grid;
   width: min(360px, 80vw);
   max-height: 420px;
   overflow: auto;
-  padding: 8px;
+  padding: var(--rd-space-2);
   border: 1px solid var(--rd-line);
   border-radius: var(--rd-radius-panel);
   background: var(--rd-surface);
@@ -610,9 +610,9 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 }
 .notice-pop button.item {
   display: grid;
-  gap: 2px;
+  gap: var(--rd-space-0-5);
   width: 100%;
-  padding: 10px 12px;
+  padding: var(--rd-space-2-5) var(--rd-space-3);
   border: 0;
   border-radius: var(--rd-radius-md);
   background: transparent;
@@ -624,9 +624,9 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 /* Touch: the shell turns to the drawer at 767px (responsive.css), so the topbar controls reach 44px there.
    The .topbar prefix lifts the search selectors over the 2.6rem width responsive.css gives them at this width. */
 @media (max-width: 767px) {
-  .topbar { padding-inline: 8px; gap: 6px; }
-  .topbar-start { flex: none; gap: 6px; }
-  .topbar-tools { gap: 4px; }
+  .topbar { padding-inline: var(--rd-space-2); gap: var(--rd-space-1-5); }
+  .topbar-start { flex: none; gap: var(--rd-space-1-5); }
+  .topbar-tools { gap: var(--rd-space-1); }
   .wallet-btn { width: 2.75rem; padding: 0; }
   .wallet-btn .money { display: none; }
   .shell-icon,
@@ -645,11 +645,11 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   .shell-search.is-open .shell-search-desk {
     display: block;
     position: absolute;
-    z-index: 40;
+    z-index: var(--rd-z-overlay);
     top: calc(100% + 6px);
     inset-inline-end: 0;
     width: min(18rem, 72vw);
-    padding: 8px;
+    padding: var(--rd-space-2);
     border: 1px solid var(--rd-line);
     border-radius: var(--rd-radius-md);
     background: var(--rd-surface);
@@ -658,7 +658,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   .shell-search.is-open .shell-search-results {
     position: static;
     width: 100%;
-    margin-top: 6px;
+    margin-top: var(--rd-space-1-5);
     border: 0;
     box-shadow: none;
   }
@@ -671,11 +671,11 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   .shell-search.is-open .shell-search-desk {
     display: block;
     position: absolute;
-    z-index: 40;
+    z-index: var(--rd-z-overlay);
     top: calc(100% + 6px);
     inset-inline-end: 0;
     width: min(18rem, 72vw);
-    padding: 8px;
+    padding: var(--rd-space-2);
     border: 1px solid var(--rd-line);
     border-radius: var(--rd-radius-md);
     background: var(--rd-surface);
@@ -684,7 +684,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   .shell-search.is-open .shell-search-results {
     position: static;
     width: 100%;
-    margin-top: 6px;
+    margin-top: var(--rd-space-1-5);
     border: 0;
     box-shadow: none;
   }

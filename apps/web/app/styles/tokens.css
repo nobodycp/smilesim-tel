@@ -65,6 +65,31 @@
   --rd-text-lg: 15px;
   --rd-text-xl: 16px;
   --rd-text-2xl: 18px;
+  /* Spacing (5.3d): a 4px step; -1-5, -2-5 and -3-5 are the half steps the screens use. */
+  --rd-space-0-5: 2px;
+  --rd-space-1: 4px;
+  --rd-space-1-5: 6px;
+  --rd-space-2: 8px;
+  --rd-space-2-5: 10px;
+  --rd-space-3: 12px;
+  --rd-space-3-5: 14px;
+  --rd-space-4: 16px;
+  --rd-space-5: 20px;
+  --rd-space-6: 24px;
+  /* Layers (5.3d), low to high. The sign-in frame keeps its own local 3 and 5. */
+  --rd-z-raised: 1;
+  --rd-z-topbar: 20;
+  --rd-z-popover: 30;
+  --rd-z-overlay: 40;
+  --rd-z-drawer: 50;
+  --rd-z-shell-toast: 60;
+  --rd-z-dialog: 70;
+  --rd-z-top: 80;
+  /* Motion (5.3d). Longer, one-off timings (the sign-in choreography, the bell) stay where they are used. */
+  --rd-dur-fast: 150ms;
+  --rd-dur-base: 180ms;
+  --rd-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --rd-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --rd-shadow-card: 0 1px 2px rgba(10, 10, 10, 0.04), 0 1px 1px rgba(10, 10, 10, 0.02);
   --rd-shadow-frame: 0 1px 2px rgba(16, 24, 40, 0.05);
   --rd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);

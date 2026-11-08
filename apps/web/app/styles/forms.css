@@ -6,11 +6,11 @@ h1 {
   letter-spacing: -0.015em;
   line-height: 1.25;
 }
-.lede { margin: 6px 0 18px; color: var(--rd-muted); }
-form { display: grid; gap: 14px; }
+.lede { margin: var(--rd-space-1-5) 0 18px; color: var(--rd-muted); }
+form { display: grid; gap: var(--rd-space-3-5); }
 label {
   display: grid;
-  gap: 6px;
+  gap: var(--rd-space-1-5);
   color: var(--rd-ink-2);
   font-size: var(--rd-text-md);
   font-weight: 600;
@@ -21,7 +21,7 @@ select,
 textarea {
   width: 100%;
   height: 42px;
-  padding: 0 12px;
+  padding: 0 var(--rd-space-3);
   border: 1px solid var(--rd-field);
   border-radius: var(--rd-radius-sm);
   background: var(--rd-surface);
@@ -35,7 +35,7 @@ input:focus {
 input[readonly] { color: var(--rd-muted); border-style: dashed; background: transparent; }
 .error, .note {
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--rd-space-2-5) var(--rd-space-3);
   border-radius: var(--rd-radius-sm);
   font-size: var(--rd-text-md);
   font-weight: 600;
@@ -43,10 +43,10 @@ input[readonly] { color: var(--rd-muted); border-style: dashed; background: tran
 }
 .error { color: var(--rd-danger); background: var(--rd-danger-soft); }
 .note { color: var(--rd-success); background: var(--rd-success-soft); }
-.error.banner, .note.banner { margin-bottom: 16px; }
+.error.banner, .note.banner { margin-bottom: var(--rd-space-4); }
 .code {
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--rd-space-2-5) var(--rd-space-3);
   overflow-x: auto;
   border-radius: var(--rd-radius-sm);
   background: var(--rd-surface-2);
