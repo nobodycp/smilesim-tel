@@ -26,8 +26,7 @@ export function shouldShowPagination({
   count,
   pageSize,
   onPageSizeChange,
-  pageSizeOptions = PAGE_SIZE_OPTIONS,
-}: Pick<PaginationProps, "count" | "pageSize" | "onPageSizeChange" | "pageSizeOptions">): boolean {
+}: Pick<PaginationProps, "count" | "pageSize" | "onPageSizeChange">): boolean {
   const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(count / pageSize));
   const showSizeSelector = Boolean(onPageSizeChange) && count > 0;
   return totalPages > 1 || showSizeSelector;
@@ -63,7 +62,7 @@ export function Pagination({
   const { t } = usePrefs();
   const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(count / pageSize));
   const showSizeSelector = Boolean(onPageSizeChange) && count > 0;
-  if (!shouldShowPagination({ count, pageSize, onPageSizeChange, pageSizeOptions })) return null;
+  if (!shouldShowPagination({ count, pageSize, onPageSizeChange })) return null;
   const status = t.pageStatus
     .replace('{page}', String(page))
     .replace('{total}', String(totalPages))

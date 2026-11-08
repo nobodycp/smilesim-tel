@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import { AccountName, accountLabel } from '../../components/account-name';
 import { PagedTable, type Column } from '../../components/data-table';
 import { ActivationResult } from '../../components/activation-result';
@@ -23,7 +23,7 @@ import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint, withPrefix } from '../../lib/sim-rules';
 import { useAction } from '../../lib/use-action';
-import { pick, useLoad } from '../../lib/use-load';
+import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
 

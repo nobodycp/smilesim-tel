@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { AccountName } from '../../components/account-name';
 import { PagedTable, type Column } from '../../components/data-table';
 import { Desk, Money, actionName, taskStatus } from '../../components/desk';
@@ -16,7 +16,7 @@ import { sharedKeys } from '../../lib/query';
 import { api, type TaskRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
-import { pick, useLoad } from '../../lib/use-load';
+import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
 
