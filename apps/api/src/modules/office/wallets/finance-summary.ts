@@ -35,14 +35,14 @@ export function windowStart(now: Date, days = SUMMARY_DAYS): Date {
 
 const CSV_HEAD = ['at', 'account', 'layer', 'actor', 'kind', 'amount', 'balance_before', 'balance_after', 'number', 'company', 'package', 'note'];
 
-function cell(value: string | number | null | undefined): string {
+export function cell(value: string | number | null | undefined): string {
   const text = value === null || value === undefined ? '' : String(value);
   // Quote every cell that needs it; a leading = + - @ is prefixed so a spreadsheet never runs it as a formula.
   const safe = /^[=+\-@]/.test(text) && !/^-?\d+(\.\d+)?$/.test(text) ? `'${text}` : text;
   return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
-const shekels = (agorot: number) => (agorot / 100).toFixed(2);
+export const shekels = (agorot: number) => (agorot / 100).toFixed(2);
 
 /** The ledger rows as a UTF-8 CSV with a BOM (Excel reads Arabic then). Amounts in shekels. */
 export function ledgerCsv(rows: {

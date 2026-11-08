@@ -1,4 +1,5 @@
-import { Controller, Get, Param, Query, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Param, Query, Res, UseFilters, UseInterceptors } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { OfficeFailureFilter } from '../../shared/office-failure.filter';
@@ -6,6 +7,7 @@ import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
+import { InsightsService } from './insights.service';
 import { ReportsService } from './reports.service';
 
 @ApiTags('office')
@@ -15,7 +17,57 @@ import { ReportsService } from './reports.service';
 @UseFilters(OfficeFailureFilter)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class ReportsController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(
+    private readonly reports: ReportsService,
+    private readonly insights: InsightsService,
+  ) {}
+
+  // The «التقارير» page (spec 2026-11-08-reports). Static paths, declared before `reports/:kind`, win over it.
+  @Get('reports/sales')
+  @ApiOperation({ summary: 'Sales under the signed-in account, with its margin on each' })
+  @ApiErrorResponse(401, 403)
+  sales(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string) {
+    return this.insights.sales(actor, { from: text(from), to: text(to), q: text(q) });
+  }
+
+  @Get('reports/orders')
+  @ApiOperation({ summary: 'Line operations under the signed-in account: done, open and cancelled' })
+  @ApiErrorResponse(401, 403)
+  orders(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string, @Query('status') status?: string) {
+    return this.insights.orders(actor, { from: text(from), to: text(to), q: text(q), status: text(status) });
+  }
+
+  @Get('reports/balances')
+  @ApiOperation({ summary: 'Wallets of the accounts under the signed-in account' })
+  @ApiErrorResponse(401, 403)
+  balances(@Actor() actor: ActorShape, @Query('q') q?: string, @Query('layer') layer?: string, @Query('negative') negative?: string) {
+    return this.insights.balances(actor, { q: text(q), layer: text(layer), negative: text(negative) });
+  }
+
+  @Get('reports/supply')
+  @ApiOperation({ summary: 'Per provider over the dates: operations, cost and branch profit (branch, reports grant)' })
+  @ApiErrorResponse(401, 403)
+  supply(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string) {
+    return this.insights.supply(actor, { from: text(from), to: text(to) });
+  }
+
+  @Get('reports/:kind/export')
+  @ApiOperation({ summary: 'A report of the «التقارير» page as CSV, with the same filters' })
+  @ApiParam({ name: 'kind' })
+  @ApiErrorResponse(401, 403, 404)
+  async export(
+    @Res({ passthrough: true }) res: Response,
+    @Actor() actor: ActorShape,
+    @Param('kind') kind: string,
+    @Query() query: Record<string, unknown>,
+  ) {
+    const filters = Object.fromEntries(['from', 'to', 'q', 'status', 'layer', 'negative'].map((key) => [key, text(query[key])]));
+    const csv = await this.insights.csv(actor, kind, filters);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${kind}.csv"`);
+    return csv;
+  }
+
 
   @Get('reports/:kind')
   @ApiOperation({ summary: 'Report by kind (branch-gated kinds exist)' })

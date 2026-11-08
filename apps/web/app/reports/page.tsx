@@ -1,5 +1,3 @@
-import { redirect } from 'next/navigation';
+import { ReportsHubScreen } from '../../features/reports/screens/reports-hub-screen';
 
-export default function ReportsIndex() {
-  redirect('/reports/providers');
-}
+export default ReportsHubScreen;

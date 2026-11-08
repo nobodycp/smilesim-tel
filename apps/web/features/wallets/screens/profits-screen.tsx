@@ -22,6 +22,16 @@ function monthAgo(): string {
  */
 export function ProfitsScreen() {
   const { t } = usePrefs();
+  return (
+    <Desk title={t.navProfits} lede={t.profitsLede} error="" note="">
+      <ProfitsReport />
+    </Desk>
+  );
+}
+
+/** The profit report itself: cards, filters, the table by package and its CSV. Also a tab of «التقارير». */
+export function ProfitsReport() {
+  const { t } = usePrefs();
   const [from, setFrom] = useState(monthAgo);
   const [to, setTo] = useState('');
   const [q, setQ] = useState('');
@@ -38,7 +48,7 @@ export function ProfitsScreen() {
   ];
 
   return (
-    <Desk title={t.navProfits} lede={t.profitsLede} error={report.error} note="">
+    <>
       <StatRow>
         <Stat icon="reports" label={t.salesTitle} value={data ? data.totals.sales : '—'} />
         <Stat icon="numbers" label={t.refundsTitle} value={data ? data.totals.refunds : '—'} />
@@ -78,6 +88,6 @@ export function ProfitsScreen() {
           skeleton={{ rows: 5, columns: 5 }}
         />
       </section>
-    </Desk>
+    </>
   );
 }

@@ -165,6 +165,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         { label: t.navTasks, href: '/tasks', icon: ClipboardList },
         { label: t.navFinance, href: '/finance', icon: Wallet },
         { label: t.navProfits, href: '/profits', icon: TrendingUp },
+        { label: t.navReports, href: '/reports', icon: ClipboardList },
         { label: t.navAudit, href: '/audit', icon: ListChecks },
       ],
     },
@@ -185,6 +186,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         { label: t.navUsers, href: '/users', icon: Users, layers: desk },
         { label: t.navFinance, href: '/finance', icon: Wallet },
         { label: t.navProfits, href: '/profits', icon: TrendingUp },
+        { label: t.navReports, href: '/reports', icon: ClipboardList },
       ],
     },
     {
@@ -193,7 +195,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         { label: t.navPlans, href: '/packages', icon: Package },
         { label: t.navCompanies, href: '/companies', icon: Layers, layers: ['branch'], grant: 'edit' },
         { label: t.providersTitle, href: '/providers', icon: Radio, layers: ['branch'], grant: 'edit' },
-        { label: t.reportProviders, href: '/reports/providers', icon: ClipboardList, layers: ['branch'], grant: 'reports' },
         { label: t.navProviderOps, href: '/provider-operations', icon: ListChecks, layers: ['branch'], grant: 'reports' },
       ],
     },
@@ -214,9 +215,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       title: t.navNotReady,
       items: [
         { label: t.navOperations, href: '/operations', icon: Package },
-        { label: t.reportTasks, href: '/reports/tasks', icon: ClipboardList, layers: ['branch'], grant: 'reports' },
-        { label: t.reportNumbers, href: '/reports/numbers', icon: Phone, layers: ['branch'], grant: 'reports' },
-        { label: t.reportOperations, href: '/reports/operations', icon: Package, layers: ['branch'], grant: 'reports' },
       ],
     },
   ];

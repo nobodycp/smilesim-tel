@@ -202,7 +202,8 @@ export class WalletsService {
   }
 
   /** The ledger's filter: the entries of the visible accounts (every entry for the branch), narrowed by the query. */
-  private async financeWhere(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string }): Promise<Prisma.WalletEntryWhereInput> {
+  /** Public for the reports, which read the same entries. */
+  async financeWhere(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string }): Promise<Prisma.WalletEntryWhereInput> {
     const accounts = await this.kernel.accounts();
     const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
     const from = query.from ? new Date(query.from) : null;
