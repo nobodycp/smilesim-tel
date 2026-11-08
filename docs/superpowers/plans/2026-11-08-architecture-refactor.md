@@ -43,7 +43,7 @@ Each approved decision gets an ADR in `docs/architecture/decisions/`.
 
 - [x] 2.1 `modules/shared/prisma.service.ts` (global `PrismaModule`): one client instead of five pools (office service, two ActivityRecorders, auth store, branding store). `9a97eec`
 - [x] 2.2 `OfficeFailureFilter` + `ActivityInterceptor` + `@Activity(action, kind, subject)`; controller `run()` gone (78 routes), `@Res` only where cookies/stream need it. `147e6b4`
-- [ ] 2.3 → **moved to Phase 3.0.** `actor()` is already one place called first in each method; a guard pays off only when service methods take the actor instead of the gate, which is the per-domain split. Converting 57 methods now would churn hundreds of spec calls for no behaviour gain.
+- [x] 2.3 → **moved to Phase 3.0, done there** (`73afb76`: `ActorInterceptor` + `@Actor()`). `actor()` is already one place called first in each method; a guard pays off only when service methods take the actor instead of the gate, which is the per-domain split. Converting 57 methods now would churn hundreds of spec calls for no behaviour gain.
 - [x] 2.4 zod (D2): `parseInput()` in `modules/shared/input.ts`, run after `actor()` to keep 401 before 400; pilot `FundBody`/`CeilingBody`. `ZodPipe` arrives with the guard (3.0). `c100a46`
 - [x] 2.5 Login-failure counter — already in Redis in `PrismaAuthStore` (`login-fail:<login>`, TTL window); the in-memory map is `MemoryAuthStore`, used by specs only. Audit claim was wrong; nothing to change.
 - [x] 2.6 CI: a `postgres:16` service job that runs `prisma migrate deploy` and the `*.db.spec.ts` specs with `TEST_DATABASE_URL`. `.github/workflows/ci.yml`.
@@ -116,7 +116,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] G2 The sidebar's `width` transition goes; its contents fade in after each toggle (opacity).
 - [x] G3 Below 360px theme and language move from the topbar to the drawer's foot: at 320px the account menu sat 22px off screen. `tests/topbar-narrow.spec.ts`.
 - [x] G4 Every `border-radius` literal → a scale step (`--rd-radius-2xs` 4px and `--rd-radius-tile` 14px added) and a rule for which step where; the company and package cards take `--rd-radius-lg` (16 → 18px, the one visible change with G5).
-- [x] G5 Company marks on `markColor()` (`hsl(h 42% 33%)`): white letters at 4.67:1 or more on every hue (was 3.04:1 at worst). TBD
+- [x] G5 Company marks on `markColor()` (`hsl(h 42% 33%)`): white letters at 4.67:1 or more on every hue (was 3.04:1 at worst). `7827d81`
 
 ## Verification per slice
 
