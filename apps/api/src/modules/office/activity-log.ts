@@ -15,6 +15,8 @@ export const ACTIVITY_ACTIONS = [
   'leave',
   'fund',
   'deduct',
+  'provider_payment',
+  'provider_credit',
   'activate',
   'charge',
   'extend',

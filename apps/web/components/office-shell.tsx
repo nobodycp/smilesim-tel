@@ -196,6 +196,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         { label: t.navCompanies, href: '/companies', icon: Layers, layers: ['branch'], grant: 'edit' },
         { label: t.providersTitle, href: '/providers', icon: Radio, layers: ['branch'], grant: 'edit' },
         { label: t.navProviderOps, href: '/provider-operations', icon: ListChecks, layers: ['branch'], grant: 'reports' },
+        { label: t.providerAccounts, href: '/provider-accounts', icon: Wallet, layers: ['branch'], grant: 'accounting' },
       ],
     },
     {

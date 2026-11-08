@@ -508,3 +508,13 @@ export type BalanceReportRow = {
   loginName: string; nickname: string; layer: string; parentLogin: string | null; balance: number; ceiling: number; used: number; held: number; available: number; frozen: boolean; lastAt: string | null;
 };
 export type SupplyReportRow = { providerCode: string; providerName: string; operations: number; cost: number; profit: number };
+
+/** Our account with one provider (`GET /office/provider-accounts`): payments + settlements − purchases. */
+export type ProviderAccount = {
+  code: string; name: string; purchases: number; payments: number; settlements: number;
+  balance: number; creditLimit: number; held: number; available: number;
+};
+export type ProviderLedgerRow = {
+  id: string; at: string; kind: string; amount: number; balanceAfter: number; note: string; msisdn: string; packageName: string; actorLogin: string;
+};
+export type ProviderAccountDetail = { summary: ProviderAccount; ledger: ProviderLedgerRow[]; capped: boolean };

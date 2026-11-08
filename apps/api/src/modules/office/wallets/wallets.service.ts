@@ -150,22 +150,20 @@ export class WalletsService {
     };
   }
 
-  async providerOperations(actor: Actor, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string } = {}) {
-    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
-    if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, 'REPORTS_BRANCH_ONLY');
-    const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
-    const needle = (query.q ?? '').replace(/\s/g, '');
-    const from = query.from ? new Date(query.from) : null;
-    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999` : query.to) : null;
+  /**
+   * Every line operation with what it cost at its provider (provider-cost.ts `pricedOp`, or the cost kept on the
+   * entry), newest first. Shared by the provider-operations report and the provider accounts (roadmap N7).
+   */
+  async pricedOperations(filter: { kind?: string; msisdn?: string } = {}) {
     const rows = await this.kernel.prisma.walletEntry.findMany({
       where: {
-        kind: { in: kind ? [kind] : PROVIDER_OPERATION_KINDS },
-        ...(needle ? { msisdn: { contains: needle } } : {}),
+        kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
+        ...(filter.msisdn ? { msisdn: { contains: filter.msisdn } } : {}),
       },
       orderBy: [...NEWEST_FIRST],
     });
     const lineIds = [...new Set(rows.flatMap((row) => (row.lineId ? [row.lineId] : [])))];
-    const [lines, packages, providers] = await Promise.all([
+    const [lines, packages] = await Promise.all([
       lineIds.length
         ? this.kernel.prisma.line.findMany({
             where: { id: { in: lineIds } },
@@ -173,10 +171,9 @@ export class WalletsService {
           })
         : [],
       this.kernel.prisma.package.findMany({ include: { provider: true, company: true } }),
-      this.kernel.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
     ]);
     const lineById = new Map(lines.map((line) => [line.id, line]));
-    const resolved = rows.map((row) => {
+    return rows.map((row) => {
       const priced = pricedOp(row.kind, row.packageName ?? '', row.companyName ?? '', row.lineId ? lineById.get(row.lineId) : undefined, packages);
       return {
         id: row.id,
@@ -190,6 +187,19 @@ export class WalletsService {
         esimPrice: row.esimPrice ?? null,
       };
     });
+  }
+
+  async providerOperations(actor: Actor, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string } = {}) {
+    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
+    if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, 'REPORTS_BRANCH_ONLY');
+    const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
+    const needle = (query.q ?? '').replace(/\s/g, '');
+    const from = query.from ? new Date(query.from) : null;
+    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999` : query.to) : null;
+    const [resolved, providers] = await Promise.all([
+      this.pricedOperations({ kind: kind || undefined, msisdn: needle || undefined }),
+      this.kernel.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
+    ]);
     const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
     const ranged = chosen.filter((row) => {
       if (from && !Number.isNaN(from.getTime()) && row.at < from) return false;

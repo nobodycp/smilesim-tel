@@ -144,12 +144,30 @@ model WalletEntry {
 }
 
 model Provider {
-  id          String    @id @default(uuid())
-  code        String    @unique
+  id          String          @id @default(uuid())
+  code        String          @unique
   name        String
-  actionModes Json      @default("{}")
+  actionModes Json            @default("{}")
   esimPrice   Int?
+  /** How far we may owe this provider, in agorot (roadmap N7). */
+  creditLimit Int             @default(0)
   packages    Package[]
+  entries     ProviderEntry[]
+}
+
+/** A payment to a provider or a settlement with it (roadmap N7). Purchases come from our operations' provider cost. */
+model ProviderEntry {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  /** `payment` (positive) or `settlement` (positive or negative). */
+  kind       String
+  amount     Int
+  note       String
+  actorLogin String
+  createdAt  DateTime @default(now())
+
+  @@index([providerId, createdAt])
 }
 
 model Company {

@@ -26,6 +26,8 @@ import { CompaniesController } from './companies/companies.controller';
 import { CompaniesService } from './companies/companies.service';
 import { ProvidersController } from './providers/providers.controller';
 import { ProvidersService } from './providers/providers.service';
+import { ProviderAccountsController } from './providers/provider-accounts.controller';
+import { ProviderAccountsService } from './providers/provider-accounts.service';
 import { WalletsController } from './wallets/wallets.controller';
 import { WalletsService } from './wallets/wallets.service';
 import { NoticeService } from './notice.service';
@@ -38,8 +40,8 @@ import { TasksController } from './tasks/tasks.controller';
 import { TasksService } from './tasks/tasks.service';
 
 // Exported so HTTP specs build the same set of office routes the app serves, whichever controller holds them.
-export const OFFICE_CONTROLLERS = [NoticesController, AuditController, TasksController, WalletsController, ProvidersController, CompaniesController, PackagesController, TermsController, RolesController, DeskController, AccountsController, AccountSessionController, TransfersController, LinesController, ReportsController];
-export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, CompaniesService, PackagesService, TermsService, RolesService, DeskService, AccountsService, AccountSessionService, TransfersService, LinesService, ReportsService, InsightsService, CatalogSeed];
+export const OFFICE_CONTROLLERS = [NoticesController, AuditController, TasksController, WalletsController, ProvidersController, CompaniesController, PackagesController, TermsController, RolesController, DeskController, AccountsController, AccountSessionController, TransfersController, LinesController, ReportsController, ProviderAccountsController];
+export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, CompaniesService, PackagesService, TermsService, RolesService, DeskService, AccountsService, AccountSessionService, TransfersService, LinesService, ReportsService, InsightsService, ProviderAccountsService, CatalogSeed];
 
 @Module({
   imports: [AuthModule],
