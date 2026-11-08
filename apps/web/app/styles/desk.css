@@ -87,7 +87,8 @@
 .empty.load-failed .btn { height: 34px; margin-top: 6px; padding: 0 14px; font-size: 13px; justify-self: center; }
 /* The error and not-found screens: the way out under the text, one row, centered (app/error.tsx, app/not-found.tsx). */
 .empty .empty-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: 6px; }
-.empty .empty-actions .btn { height: 34px; margin-top: 0; padding: 0 14px; font-size: 13px; }
+/* `.btn` is drawn for <button>, which centers its label; a link needs the centering said out loud. */
+.empty .empty-actions .btn { display: inline-flex; align-items: center; justify-content: center; height: 34px; margin-top: 0; padding: 0 14px; font-size: 13px; text-decoration: none; }
 .canvas-inner { width: min(1080px, 100%); padding: 20px 16px 48px; }
 .canvas-inner.wide {
   display: flex;
