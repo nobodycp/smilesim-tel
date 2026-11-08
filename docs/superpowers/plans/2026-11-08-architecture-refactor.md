@@ -77,8 +77,9 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 
 - [x] 4.1 Errors carry their code end to end: `Fetched` has `code`, every `apiText(result)` translates by code first (`tests/error-codes.spec.ts`). `34d79ef`. `ApiFailure{status, code, message}` lives in `lib/query.tsx`; splitting `request()` into `lib/http.ts` goes with 4.3.
 - [x] 4.2 `QueryProvider` + `queryKeys` + `unwrap()` (`lib/query.tsx`); `OfficeSession` runs `me` and `directory` as queries with its context unchanged; `refresh()` invalidates `me` (useAction already calls it after every write). Outage + failed-refresh specs (`tests/session-outage.spec.ts`). `b89afce`
-- [ ] 4.3 Split `lib/api.ts` into `features/<domain>/api.ts` (no behaviour change).
-- [ ] 4.4 Pilot list: numbers — `useInfiniteQuery`, URL-synced filters (`lib/url-state.ts`), keep-previous rows. Then tasks, audit, finance, notices, provider-operations, users (server paging).
+- [x] 4.3 `lib/http.ts` (request machinery), `lib/api-types.ts` (shapes), `features/<domain>/api.ts` × 14 mirroring the API modules; `lib/api.ts` composes the same `api` object. `24b2d79`
+- [x] 4.4a All eight paged lists at once: `usePaged` runs on `useInfiniteQuery` with the same contract — keep-previous rows on filter change, `reload` refetches every read chunk and invalidates the list's other filters, cache-then-revalidate on reopen, errors translated when drawn (`tests/list-cache.spec.ts`, fails on the old hook). `095162c`
+- [ ] 4.4b URL-synced filters (`lib/url-state.ts`) for numbers, tasks, users; then `/users` server paging.
 - [ ] 4.5 Detail pages: numbers/[id], tasks/[id], provider package sheet, users/[login] — keyed queries, per-mutation invalidation, form state separate from server state.
 - [ ] 4.6 Shell search: dedicated query with debounce + cache, no full user list per keystroke.
 
