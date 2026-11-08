@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after 4.4c). tsc clean, lint clean, jest 583/583 (+2 DB tests). Booted on fresh Postgres + Redis: 79 office routes, end-to-end fund → eSIM activation → task completion.
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after improvement 3). tsc clean, lint clean, jest 589/589 (+2 DB tests). Booted on fresh Postgres + Redis: 79 office routes, end-to-end fund → eSIM activation → task completion.
 
 ## Stack
 
@@ -12,8 +12,10 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 
 | File | Role |
 |---|---|
-| `src/main.ts` | bootstrap: body limit 1mb, CORS (`cors.ts`), OpenAPI (`openapi/`). No global pipe or guard; office errors go through `OfficeFailureFilter` on the controller. |
-| `src/app.module.ts` | imports `featureModules` from `modules/registry.ts` + `HealthController` + `DoorMiddleware` |
+| `src/main.ts` | bootstrap: no `X-Powered-By`, security headers (`security-headers.ts`: nosniff, frame DENY, no referrer, CSP `default-src 'none'` except `/docs`, HSTS in production), body limit 1mb, CORS (`cors.ts`), OpenAPI (`openapi/`). No global pipe or guard; office errors go through `OfficeFailureFilter` on the controller. |
+| `src/app.module.ts` | imports `featureModules` from `modules/registry.ts` + `HealthController`; middleware `RateLimitMiddleware` then `DoorMiddleware` on every route |
+| `src/rate-limit.middleware.ts` | per signed-in session (SHA-256 of `sid`), one-minute window in Redis (memory without `REDIS_URL`): 600 requests, 60 of them writes → `429 RATE_LIMITED` + `Retry-After`; the notices stream, `/health` and calls without a session are not counted; a Redis failure lets the request through |
+| `src/cookies.ts` | `readCookie(req, name)` for the middlewares |
 | `src/door.middleware.ts`, `src/doors.ts` | resolves the door (layer) from the `x-door` header |
 | `src/worker.ts` | BullMQ worker, no processors yet; daily `activityEvent` purge via `setInterval` |
 | `src/errors.ts` | `ERROR_MESSAGES` catalog (code → message), tested |

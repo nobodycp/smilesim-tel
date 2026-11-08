@@ -3,22 +3,8 @@ import type { NextFunction, Request, Response } from 'express';
 import { expectedLayer } from './doors';
 import { errorBody } from './errors';
 import { AUTH_STORE, AuthStore } from './modules/auth/auth.store';
+import { readCookie } from './cookies';
 
-function readCookie(req: Request, name: string): string | undefined {
-  const parsed = (req as Request & { cookies?: Record<string, unknown> }).cookies?.[name];
-  if (typeof parsed === 'string' && parsed) return parsed;
-  for (const part of String(req.headers.cookie ?? '').split(';')) {
-    const index = part.indexOf('=');
-    if (index > 0 && part.slice(0, index).trim() === name) {
-      try {
-        return decodeURIComponent(part.slice(index + 1).trim()) || undefined;
-      } catch {
-        return undefined;
-      }
-    }
-  }
-  return undefined;
-}
 
 @Injectable()
 export class DoorMiddleware implements NestMiddleware {
