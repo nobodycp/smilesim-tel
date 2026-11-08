@@ -15,6 +15,9 @@ Split `apps/api/src/modules/office/office.service.ts` (~3,950 lines, ~70 public 
 5. **`ZodPipe`** for domain routes (`@Body(new ZodPipe(Schema))`). Pipes run after interceptors, so `401` still precedes `400 INVALID`, and a pipe refusal still reaches `ActivityInterceptor` as a logged `fail`.
 6. **Grant checks stay inline** in the moved methods for now. `@RequireGrant` comes only when a slice can prove the same refusal order.
 
+7. **Routes that judge before the session** (`leave`, `lines/:id/company-switch`, custom/line prices, user ops and packages writes) answer 400 to an anonymous call today. `leave` reads the impersonation session itself and must not go behind `ActorInterceptor`. For the others, going behind it turns 400 into 401 — a behaviour change that needs the owner's decision in its slice. `routes.http.spec.ts` holds the current answers.
+8. **Every new file imports `fail`.** Jest declares a global `fail()`; ESLint bans it outside specs.
+
 ## Non-goals
 
 - No behaviour change, no new endpoint, no schema migration (indexes are their own slice, 3.last).

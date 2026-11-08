@@ -27,10 +27,11 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 |---|---|---|
 | `auth/` | controller, service, `auth.store.ts` (in-memory, specs), `prisma-auth.store.ts` (Postgres + Redis: live session keys and the failed-login counter `login-fail:<login>`), `decide-login`, `password`, `totp`, `sessions`, `validators`, `trial-seed`, `cities` | login, sessions (cookie `sid`, max sessions), 2FA, password change, trial accounts. Store behind `AUTH_STORE` token. |
 | `branding/` | controller, service, store (memory + prisma), rules | site identity (logo, title, icon). Small and clean — the reference shape for other modules. |
-| `office/` | `office.controller.ts` (~1000 lines, routes not yet moved), `office.service.ts` (~3750 lines: methods not yet moved + one-line facades), `office.module.ts` (`OFFICE_CONTROLLERS`, `OFFICE_PROVIDERS`), `gate.ts`, pure rule files | being split per domain (Phase 3, spec `docs/superpowers/specs/2026-11-08-office-domain-split.md`) |
-| `office/kernel/` | `office-kernel.ts` (`OfficeKernel`: prisma + spec override `prismaClient`, auth, notice writer, `actor`, `grantsFor`, `accounts`, `visibleAccount`, `branchActor`, `chainIds`, `runTx`, `queueNotices`, `publishQuietly`, `actorName`, `move`, `recordOp`), `types.ts` (`Gate`, `Actor`, `Account`, `Sale`), `actor.interceptor.ts` (`ActorInterceptor`, `@Actor()`), `feed.ts` (`feedPosition`), `query.ts` (`text`), `office-test-app.ts` (HTTP spec app) | what every office domain shares |
+| `office/` | `office.controller.ts` (~910 lines, routes not yet moved), `office.service.ts` (~3480 lines: methods not yet moved + one-line facades), `office.module.ts` (`OFFICE_CONTROLLERS`, `OFFICE_PROVIDERS`), `gate.ts`, pure rule files | being split per domain (Phase 3, spec `docs/superpowers/specs/2026-11-08-office-domain-split.md`) |
+| `office/kernel/` | `office-kernel.ts` (`OfficeKernel`: prisma + spec override `prismaClient`, auth, notice writer, `actor`, `grantsFor`, `accounts`, `visibleAccount`, `branchActor`, `chainIds`, `runTx`, `queueNotices`, `publishQuietly`, `actorName`, `move`, `recordOp`), `types.ts` (`Gate`, `Actor`, `Account`, `Sale`), `actor.interceptor.ts` (`ActorInterceptor`, `@Actor()`), `feed.ts` (`feedPosition`), `query.ts` (`text`), `office-test-app.ts` (HTTP spec app), `assertBranch()` | what every office domain shares. `routes.http.spec.ts` pins all 79 routes (method, path, activity event, anonymous answer). |
 | `office/notices/` | `notice-inbox.service.ts` (`NoticeInboxService`: list, read, subscribe), `notices.controller.ts` | `GET /office/notices`, `GET /office/notices/stream` (SSE), `POST /office/notices/read` |
 | `office/audit/` | `audit.service.ts` (`AuditService.list`), `audit.controller.ts` | `GET /office/audit` |
+| `office/tasks/` | `tasks.service.ts` (`TasksService`: list, detail, addNote, take, release, reject, cancel; `openTask`, `taskNotice`, `noteLog` used by line ops), `tasks.controller.ts` | `GET /office/tasks`, `GET tasks/:id`, `POST tasks/:id/{notes,take,release,reject,cancel}`. `complete` is still in OfficeController/OfficeService (moves with lines). |
 | `activity` (in `office/activity.module.ts`) | `activity-recorder.ts`, `activity-log.ts` | audit/activity events |
 
 ### `office` endpoint groups (in `office.controller.ts`; line numbers are pre-split and drift)
@@ -41,7 +42,7 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 - companies: 162, image 329, sim 337
 - providers: 351–380, provider-operations 1045
 - lines: 394–605 (list, detail, create, charge, refresh, disconnect, freeze/unfreeze, extend, reactivate, rename, esim, sim, transfer, switch). `company-switch` 441 is a stub that always returns 400.
-- tasks: 677–777 (list, detail, notes, take, release, complete, reject, cancel)
+- tasks: `complete` only (the rest moved to `office/tasks/`)
 - users/tree: 785–1000 (list, directory, detail, user packages, ops, access, create, transfer, transfer-preview, password, freeze/restore/delete, enter/leave)
 - roles 885/892
 

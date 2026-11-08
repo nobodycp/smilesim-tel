@@ -55,13 +55,14 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 3.0 Kernel (`73afb76`): `kernel/office-kernel.ts` (prisma + spec override, auth, notices, actor, grantsFor, accounts, visibleAccount, visibleLine, branchActor, runTx, queueNotices, publishQuietly, actorName, move, recordOp); `ActorInterceptor` + `@Actor()`; `ZodPipe`. `OfficeService` keeps one-line delegators.
 - [x] 3.1 notices: `notices/` — list, read, SSE stream. Characterized first (`notices.http.spec.ts`, `8eb99d2`), moved `b01a464`.
 - [x] 3.2 audit: `audit/` — activity log. Characterized first (`audit.http.spec.ts`), moved `aa59664`; `OfficeService.audit` is a facade.
-- [ ] 3.3 tasks: `tasks/` — list, detail, notes, take, release, complete, reject, cancel (+ openTask, handlerIds, taskNotice).
+- [x] Route table `routes.http.spec.ts` (`9afb7ff`): all 79 office routes, method + path + activity event, 401 without a session. Seven routes answer 400 first (they judge body/cookie before the session) — recorded as they are; moving them behind `ActorInterceptor` changes 400→401 and needs the owner's decision (packages, users slices).
+- [x] 3.3 tasks: `tasks/` — list, detail, notes, take, release, reject, cancel + openTask, taskNotice, handlerIds, noteLog. `4dfc0cb`. **`complete` stays in OfficeService until 3.9** (it applies the line operation). Lint now bans Jest's global `fail` outside specs.
 - [ ] 3.4 wallets: `wallets/` — wallets, fund, ceiling, finance, ledger, reports, provider operations.
 - [ ] 3.5 providers + companies.
 - [ ] 3.6 packages: catalog, sheet, chain, targets, mode, sell/custom/line prices, user packages, user ops.
 - [ ] 3.7 users + roles: list, directory, account, access, create, password, freeze/restore/delete, enter/leave, roles.
 - [ ] 3.8 transfers: account + line transfer, preview.
-- [ ] 3.9 lines: list, detail, activate, operate, switch, extend, reactivate, refresh, rename, sim, esim, disconnect.
+- [ ] 3.9 lines: list, detail, activate, operate, switch, extend, reactivate, refresh, rename, sim, esim, disconnect, **and task completion** (`POST tasks/:id/complete`).
 - [ ] 3.10 catalog seed: `ensureCatalog` / `ensureLayerRoles` out of `onModuleInit` into a boot provider.
 - [ ] 3.11 Specs build domain services directly; `OfficeService` facade deleted.
 - [ ] 3.last Migration: indexes (`Line.status/packageId/iccid`, `User.parentId`, `OfficeTask.assigneeId`, `WalletEntry.kind`); replace `accounts()` full scan with subtree queries.
