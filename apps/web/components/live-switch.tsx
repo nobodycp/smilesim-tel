@@ -3,9 +3,8 @@
 import type { ReactNode } from 'react';
 
 /**
- * The `.live-switch` control: a `role="switch"` button with a sliding knob, saved on change.
- * `checked` may be `'mixed'` for a group whose members disagree; clicking a mixed switch turns
- * the group on. Children render before the button (a visible label and state text).
+ * The `.live-switch` control: a `role="switch"` button with a sliding knob, saved on change: green when on, red
+ * when off. Children render before the button (a visible label and state text).
  */
 export function LiveSwitch({
   label,
@@ -16,7 +15,7 @@ export function LiveSwitch({
   children,
 }: {
   label: string;
-  checked: boolean | 'mixed';
+  checked: boolean;
   disabled?: boolean;
   title?: string;
   onChange: (next: boolean) => void;
@@ -32,7 +31,7 @@ export function LiveSwitch({
         aria-label={label}
         title={title}
         disabled={disabled}
-        onClick={() => onChange(checked !== true)}
+        onClick={() => onChange(!checked)}
       >
         <span className="track"><span /></span>
       </button>

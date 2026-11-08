@@ -222,38 +222,38 @@
 .live-switch button {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 32px;
   padding: 0;
   border: 0;
   background: transparent;
 }
+/* On is green, off is red, everywhere (owner, 2026-11-08). The knob is the surface colour in both themes. */
 .live-switch .track {
   position: relative;
-  width: 44px;
-  height: 26px;
+  width: 34px;
+  height: 20px;
   border-radius: var(--rd-radius-pill);
-  background: var(--rd-surface-3);
+  background: var(--rd-danger);
 }
-.live-switch button[aria-checked='true'] .track { background: var(--rd-ink); }
+.live-switch button[aria-checked='true'] .track { background: var(--rd-success); }
 .live-switch .track span {
   position: absolute;
   top: 3px;
   inset-inline-start: 3px;
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--rd-surface);
 }
-[dir='ltr'] .live-switch button[aria-checked='true'] .track span { transform: translateX(18px); }
-[dir='rtl'] .live-switch button[aria-checked='true'] .track span { transform: translateX(-18px); }
+[dir='ltr'] .live-switch button[aria-checked='true'] .track span { transform: translateX(14px); }
+[dir='rtl'] .live-switch button[aria-checked='true'] .track span { transform: translateX(-14px); }
 .live-switch { display: inline-flex; align-items: center; gap: var(--rd-space-2); }
 .live-switch .track,
 .live-switch .track span { transition: background-color var(--rd-dur-fast) ease, transform var(--rd-dur-fast) ease; }
-.live-switch button[aria-checked='mixed'] .track { background: color-mix(in srgb, var(--rd-ink) 45%, var(--rd-surface-3)); }
-[dir='ltr'] .live-switch button[aria-checked='mixed'] .track span { transform: translateX(9px); }
-[dir='rtl'] .live-switch button[aria-checked='mixed'] .track span { transform: translateX(-9px); }
 .live-switch button:disabled { opacity: 0.45; cursor: not-allowed; }
+/* A finger needs 44px; the track stays small inside it. */
+@media (max-width: 720px) { .live-switch button { width: 44px; height: 44px; } }
 .live-switch button:focus-visible { outline: none; border-radius: var(--rd-radius-pill); box-shadow: 0 0 0 3px var(--rd-focus); }
 
 /* Line operation stops: cards fill the pane, the switch means "allowed". */

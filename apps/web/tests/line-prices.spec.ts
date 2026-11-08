@@ -34,6 +34,8 @@ function userRoutes(): Routes {
 async function openFromUserPage(page: import('@playwright/test').Page) {
   await page.goto('http://agent.localhost:3910/users/pos');
   await page.getByRole('tab', { name: 'الرزم والأسعار' }).click();
+  // Companies open folded.
+  await page.getByRole('button', { name: /^ويكوم/ }).click();
   await page.getByRole('button', { name: 'إجراءات 150 جيجا' }).click();
   await page.getByRole('menuitem', { name: 'أسعار الأرقام القائمة' }).click();
   return page.getByRole('dialog');
@@ -144,8 +146,14 @@ test('a package without renewable numbers has no entry, and an empty table says 
   });
   await page.goto('http://agent.localhost:3910/users/pos');
   await page.getByRole('tab', { name: 'الرزم والأسعار' }).click();
+  // Companies open folded.
+  await page.getByRole('button', { name: /^ويكوم/ }).click();
   await expect(page.getByRole('button', { name: 'إجراءات 150 جيجا' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'إجراءات 400 جيجا' })).toHaveCount(0);
+  // Every package has a menu now (its price is edited there); one without renewable numbers has no line-prices entry.
+  await page.getByRole('button', { name: 'إجراءات 400 جيجا' }).click();
+  await expect(page.getByRole('menuitem', { name: 'تعديل السعر' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'أسعار الأرقام القائمة' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
   await page.getByRole('button', { name: 'إجراءات 150 جيجا' }).click();
   await page.getByRole('menuitem', { name: 'أسعار الأرقام القائمة' }).click();

@@ -25,7 +25,7 @@ const sheet = {
   ],
 };
 
-test('the user page has three tabs and the packages tab shows inherited state per row', async ({ page }) => {
+test('the packages tab folds each company, keeps one line per package, and edits a price from the row menu', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveOffice(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
@@ -36,17 +36,54 @@ test('the user page has three tabs and the packages tab shows inherited state pe
   await expect(page.getByRole('tab')).toHaveCount(3);
   await expect(page.getByRole('tab', { name: 'الرزم والأسعار' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('3 رزمة · 2 ظاهرة · 1 بسعر خاص')).toBeVisible();
+  // No bulk actions, no company switch, and every company starts folded.
+  await expect(page.getByRole('button', { name: 'تشغيل الكل' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'إيقاف الكل' })).toHaveCount(0);
+  const alloha = page.getByRole('button', { name: /^الوها/ });
+  await expect(alloha).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('switch')).toHaveCount(0);
 
-  const locked = page.locator('.terms-row', { hasText: '400 جيجا' });
+  await alloha.click();
+  await expect(alloha).toHaveAttribute('aria-expanded', 'true');
+  const rows = page.locator('.terms-rows tbody tr');
+  await expect(rows).toHaveCount(2);
+  // One line: buy and sell pairs, the margin, and a state only when there is one ("inherited" is gone).
+  const open = rows.filter({ hasText: '150 جيجا' });
+  await expect(open).toContainText('30.00 ₪/27.00 ₪');
+  await expect(open).toContainText('35.00 ₪/32.00 ₪');
+  await expect(open).toContainText('+5.00 ₪');
+  await expect(page.getByText('موروث')).toHaveCount(0);
+  const locked = rows.filter({ hasText: '400 جيجا' });
   await expect(locked.getByRole('switch')).toBeDisabled();
   await expect(locked.getByText('موقوف من فوق')).toBeVisible();
-  const custom = page.locator('.terms-row', { hasText: '100 جيجا' });
-  await expect(custom.getByText('سعر خاص')).toBeVisible();
 
-  const open = page.locator('.terms-row', { hasText: '150 جيجا' });
-  const put = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/office/users/pos1/packages/alloha-150'));
+  const toggle = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/office/users/pos1/packages/alloha-150'));
   await open.getByRole('switch').click();
-  expect((await put).postDataJSON()).toEqual({ hidden: true });
+  expect((await toggle).postDataJSON()).toEqual({ hidden: true });
+
+  await page.getByRole('button', { name: /^سلكوم/ }).click();
+  await expect(page.locator('.terms-rows tbody tr').filter({ hasText: '100 جيجا' }).getByText('سعر خاص')).toBeVisible();
+
+  // The price is edited from the menu: an empty renewal field goes back to the default.
+  await open.getByRole('button', { name: 'إجراءات 150 جيجا' }).click();
+  await page.getByRole('menuitem', { name: 'تعديل السعر' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('اشتراك').fill('36.5');
+  const price = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/office/users/pos1/packages/alloha-150'));
+  await dialog.getByRole('button', { name: 'حفظ' }).click();
+  expect((await price).postDataJSON()).toEqual({ price: 3650, renewalPrice: null });
+  await expect(dialog).toHaveCount(0);
+});
+
+test('a search opens the companies it finds', async ({ page }) => {
+  await serveOffice(page, 'branch', {
+    'GET /users/pos1': () => ({ body: account }),
+    'GET /users/pos1/packages': () => ({ body: sheet }),
+  });
+  await page.goto('http://admin.localhost:3910/users/pos1#packages');
+  await page.getByLabel('الرزمة').fill('100');
+  await expect(page.getByRole('button', { name: /^سلكوم/ })).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('.terms-rows tbody tr')).toHaveCount(1);
 });
 
 test('a main agent opening a grandchild sees only the access tab, and a hash to a hidden tab falls back', async ({ page }) => {
