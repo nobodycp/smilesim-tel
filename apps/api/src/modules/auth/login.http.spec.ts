@@ -5,7 +5,9 @@ import request from 'supertest';
 import { AuthModule } from './auth.module';
 import { AUTH_STORE, MemoryAuthStore } from './auth.store';
 import { hashPassword } from './password';
-import { SESSION_TTL_SECONDS } from './sessions';
+import { DEFAULT_SESSION_MINUTES, SESSION_COOKIE_SECONDS } from './sessions';
+
+const SESSION_TTL_SECONDS = DEFAULT_SESSION_MINUTES * 60;
 
 describe('POST /auth/login', () => {
   let app: INestApplication;
@@ -65,7 +67,7 @@ describe('POST /auth/login', () => {
     expect(response.headers['set-cookie'][0]).toContain('sid=');
     expect(response.headers['set-cookie'][0]).toContain('HttpOnly');
     expect(response.headers['set-cookie'][0]).toContain('SameSite=Lax');
-    expect(response.headers['set-cookie'][0]).toContain(`Max-Age=${SESSION_TTL_SECONDS}`);
+    expect(response.headers['set-cookie'][0]).toContain(`Max-Age=${SESSION_COOKIE_SECONDS}`);
     expect(response.headers['set-cookie'][0]).not.toContain('Secure');
     expect(response.headers['set-cookie'][0]).not.toContain('Domain');
     expect(store.sessions).toHaveLength(1);

@@ -11,7 +11,7 @@ import {
 import type { CookieOptions, Request, Response } from 'express';
 import { ActivityRecorder } from '../office/activity-recorder';
 import { AuthService, Failure } from './auth.service';
-import { SESSION_TTL_SECONDS } from './sessions';
+import { SESSION_COOKIE_SECONDS } from './sessions';
 import { expectedLayer } from '../../doors';
 import { errorBody } from '../../errors';
 import { ApiErrorResponse } from '../../openapi/responses';
@@ -31,6 +31,7 @@ import {
   TwoFactorMethodBodyDto,
   PasskeyBodyDto,
   PasskeyLoginBodyDto,
+  SessionRulesBodyDto,
   UpdateProfileBodyDto,
 } from './auth.dto';
 import { PasskeyService } from './passkeys';
@@ -45,7 +46,7 @@ function cookieBase(): CookieOptions {
 }
 
 function setSessionCookie(res: Response, sessionId: string): void {
-  res.cookie('sid', sessionId, { ...cookieBase(), maxAge: SESSION_TTL_SECONDS * 1000 });
+  res.cookie('sid', sessionId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
 }
 
 function sessionIdOf(req: Request): string | undefined {
@@ -489,5 +490,57 @@ export class AuthController {
     await this.activity.recordLogin({ loginName, ip: metaOf(req).ip, result: 'ok', reason: 'passkey' });
     setSessionCookie(res, result.sessionId);
     return { next: result.next };
+  }
+
+  @Get('session-rules')
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Branch owner: default and per-layer session rules (sessions allowed, idle minutes)' })
+  @ApiErrorResponse(401, 403)
+  async sessionRules(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.sessionRules(sessionIdOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return result.view;
+  }
+
+  @Patch('session-rules/:layer')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Branch owner: set a layer session rules; null follows the default' })
+  @ApiParam({ name: 'layer' })
+  @ApiBody({ type: SessionRulesBodyDto })
+  @ApiErrorResponse(401, 403, 400)
+  async setLayerSessionRules(@Param('layer') layer: string, @Body() body: SessionRulesBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.setLayerSessionRules(sessionIdOf(req), layer, body ?? {});
+    if (result.kind === 'error') return failWith(res, result);
+    return { layers: result.layers };
+  }
+
+  @Get('users/:loginName/session-rules')
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Branch owner: an account session rules, its layer and the result' })
+  @ApiParam({ name: 'loginName' })
+  @ApiErrorResponse(401, 403, 404)
+  async userSessionRules(@Param('loginName') loginName: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.userSessionRules(sessionIdOf(req), loginName);
+    if (result.kind === 'error') return failWith(res, result);
+    return result.view;
+  }
+
+  @Patch('users/:loginName/session-rules')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Branch owner: set an account session rules; null follows its layer' })
+  @ApiParam({ name: 'loginName' })
+  @ApiBody({ type: SessionRulesBodyDto })
+  @ApiErrorResponse(401, 403, 404, 400)
+  async setUserSessionRules(
+    @Param('loginName') loginName: string,
+    @Body() body: SessionRulesBodyDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.auth.setUserSessionRules(sessionIdOf(req), loginName, body ?? {});
+    if (result.kind === 'error') return failWith(res, result);
+    return result.view;
   }
 }

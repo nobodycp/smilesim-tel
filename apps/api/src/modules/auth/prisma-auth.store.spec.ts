@@ -5,7 +5,9 @@ import type { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import { passwordMatches } from './password';
 import { PrismaAuthStore } from './prisma-auth.store';
-import { SESSION_TTL_SECONDS } from './sessions';
+import { DEFAULT_SESSION_MINUTES } from './sessions';
+
+const SESSION_TTL_SECONDS = DEFAULT_SESSION_MINUTES * 60;
 import { LOGIN_FAIL_WINDOW_SECONDS } from './validators';
 
 type Row = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any

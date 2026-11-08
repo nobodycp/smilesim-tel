@@ -17,7 +17,7 @@ import {
 } from './auth.store';
 import { Layer, LoginUser } from './decide-login';
 import { hashPassword } from './password';
-import { SESSION_TTL_SECONDS } from './sessions';
+import { SessionRuleValues, SessionRules, effectiveRules } from './sessions';
 import { TRIAL_PASSWORD, buildTrialSeed, trialSeedDecision } from './trial-seed';
 import { LOGIN_FAIL_WINDOW_SECONDS } from './validators';
 
@@ -68,6 +68,8 @@ function toStoredUser(row: UserRecord): StoredUser {
     twoFactorSecret: row.twoFactorSecret,
     pendingTwoFactorSecret: row.pendingTwoFactorSecret,
     twoFactorMethod: TWO_FACTOR_METHODS.find((method) => method === row.twoFactorMethod) ?? 'app',
+    maxSessions: row.maxSessions ?? null,
+    sessionMinutes: row.sessionMinutes ?? null,
   };
 }
 
@@ -221,6 +223,28 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     });
   }
 
+  async sessionRules(): Promise<Record<Layer, SessionRuleValues>> {
+    const result = Object.fromEntries(LAYERS.map((layer) => [layer, { maxSessions: null, sessionMinutes: null }])) as Record<Layer, SessionRuleValues>;
+    for (const row of await this.prisma.layerPolicy.findMany()) {
+      const layer = LAYERS.find((candidate) => candidate === row.layer);
+      if (layer) result[layer] = { maxSessions: row.maxSessions ?? null, sessionMinutes: row.sessionMinutes ?? null };
+    }
+    return result;
+  }
+
+  async setSessionRules(layer: Layer, values: SessionRuleValues): Promise<void> {
+    await this.prisma.layerPolicy.upsert({ where: { layer }, update: { ...values }, create: { layer, required: false, ...values } });
+  }
+
+  async rulesFor(user: Pick<StoredUser, 'layer' | 'maxSessions' | 'sessionMinutes'>): Promise<SessionRules> {
+    return effectiveRules(user, (await this.sessionRules())[user.layer]);
+  }
+
+  private async idleOf(userId: string): Promise<number> {
+    const row = await this.prisma.user.findUnique({ where: { id: userId } });
+    return row ? (await this.rulesFor(toStoredUser(row))).idleSeconds : effectiveRules(null, null).idleSeconds;
+  }
+
   /** Keeps only the ids whose live key is still present in Redis. */
   private async withLiveKey<T extends { id: string }>(rows: T[]): Promise<T[]> {
     if (rows.length === 0) return rows;
@@ -244,6 +268,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
 
   async saveSession(input: { userId: string; scope: SessionScope; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
+    const idle = await this.idleOf(input.userId);
     const row = await this.prisma.session.create({
       data: {
         userId: input.userId,
@@ -253,10 +278,10 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
         ip: input.ip,
         createdAt: now,
         lastSeenAt: now,
-        expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000),
+        expiresAt: new Date(now.getTime() + idle * 1000),
       },
     });
-    await this.redis.set(sessionKey(row.id), input.userId, 'EX', SESSION_TTL_SECONDS);
+    await this.redis.set(sessionKey(row.id), input.userId, 'EX', idle);
     if (input.scope === 'full') await this.freezeGrants(input.userId);
     return row.id;
   }
@@ -272,6 +297,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
 
   async saveImpersonation(input: { userId: string; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
+    const idle = await this.idleOf(input.userId);
     const row = await this.prisma.session.create({
       data: {
         userId: input.userId,
@@ -281,10 +307,10 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
         ip: input.ip,
         createdAt: now,
         lastSeenAt: now,
-        expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000),
+        expiresAt: new Date(now.getTime() + idle * 1000),
       },
     });
-    await this.redis.set(sessionKey(row.id), input.userId, 'EX', SESSION_TTL_SECONDS);
+    await this.redis.set(sessionKey(row.id), input.userId, 'EX', idle);
     return row.id;
   }
 
@@ -299,11 +325,15 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     await this.revokeSessions(rows.map((row) => row.id));
   }
 
-  async liveSession(sessionId: string): Promise<{ session: SessionRow; user: StoredUser } | null> {
+  async liveSession(sessionId: string): Promise<{ session: SessionRow; user: StoredUser; rules: SessionRules } | null> {
     if (!(await this.redis.exists(sessionKey(sessionId)))) return null;
     const row = await this.prisma.session.findUnique({ where: { id: sessionId }, include: { user: true } });
     if (!row || row.revokedAt || row.expiresAt.getTime() <= Date.now()) return null;
-    return { session: toSessionRow(row), user: toStoredUser(row.user) };
+    const user = toStoredUser(row.user);
+    const rules = await this.rulesFor(user);
+    // A lowered idle time closes a session already idle longer than it.
+    if (row.lastSeenAt.getTime() + rules.idleSeconds * 1000 <= Date.now()) return null;
+    return { session: toSessionRow(row), user, rules };
   }
 
   async userBySession(sessionId: string): Promise<LoginUser | null> {
@@ -323,12 +353,17 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   }
 
   /** Renews the key's TTL, and only for a key that still exists; the row follows. */
-  async touchSession(sessionId: string): Promise<void> {
-    if ((await this.redis.expire(sessionKey(sessionId), SESSION_TTL_SECONDS)) !== 1) return;
+  async touchSession(sessionId: string, idleSeconds?: number): Promise<void> {
+    let idle = idleSeconds;
+    if (idle === undefined) {
+      const row = await this.prisma.session.findUnique({ where: { id: sessionId }, include: { user: true } });
+      idle = row ? (await this.rulesFor(toStoredUser(row.user))).idleSeconds : effectiveRules(null, null).idleSeconds;
+    }
+    if ((await this.redis.expire(sessionKey(sessionId), idle)) !== 1) return;
     const now = new Date();
     await this.prisma.session.updateMany({
       where: { id: sessionId, revokedAt: null },
-      data: { lastSeenAt: now, expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000) },
+      data: { lastSeenAt: now, expiresAt: new Date(now.getTime() + idle * 1000) },
     });
   }
 

@@ -5,7 +5,9 @@ import request from 'supertest';
 import { AuthModule } from './auth.module';
 import { AUTH_STORE, MemoryAuthStore, StoredUser } from './auth.store';
 import { hashPassword, passwordMatches } from './password';
-import { SESSION_TTL_SECONDS } from './sessions';
+import { DEFAULT_SESSION_MINUTES } from './sessions';
+
+const SESSION_TTL_SECONDS = DEFAULT_SESSION_MINUTES * 60;
 
 const WRONG_CURRENT = 'كلمة السر الحالية غير صحيحة';
 
@@ -269,7 +271,7 @@ describe('account endpoints', () => {
 
   it('refreshes lastSeenAt and the expiry on an authenticated request', async () => {
     const session = store.sessions.find((s) => s.userId === 'pos')!;
-    session.lastSeenAt = new Date(0);
+    session.lastSeenAt = new Date(Date.now() - 60_000);
     session.expiresAt = new Date(Date.now() + 1000);
     await request(app.getHttpServer()).get('/auth/sessions').set('Cookie', fullCookie);
     expect(session.lastSeenAt.getTime()).toBeGreaterThan(Date.now() - 5000);

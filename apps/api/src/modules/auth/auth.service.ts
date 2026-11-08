@@ -4,7 +4,7 @@ import { AUTH_STORE, AuthStore, SessionRow, StoredUser, TwoFactorMethod } from '
 import { MESSAGE_SENDER, type MessageSender } from './message-sender';
 import { CODE_TRIES, CODE_TTL_SECONDS, RESEND_SECONDS, codeMatches, hashCode, maskContact, newCode, type PendingCode } from './one-time-code';
 import { hashPassword, passwordMatches } from './password';
-import { idsToRevoke, isListedAccountSession } from './sessions';
+import { SessionRuleValues, effectiveRules, idsToRevoke, isListedAccountSession, ruleValuesProblem } from './sessions';
 import { createTotpSecret, totpKeyUri, totpMatches } from './totp';
 import { addressProblem, cityProblem, fullNameProblem, loginBlocked, newPasswordProblem } from './validators';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
@@ -17,6 +17,8 @@ export type Failure = { kind: 'error'; status: 400 | 401 | 403 | 404; message: s
 export type Outcome<T> = Failure | ({ kind: 'ok' } & T);
 type Meta = { userAgent: string; ip: string };
 export type Authed = { session: SessionRow; user: StoredUser };
+type RuleView = { maxSessions: number; sessionMinutes: number };
+const ruleView = (rules: { maxSessions: number; idleSeconds: number }): RuleView => ({ maxSessions: rules.maxSessions, sessionMinutes: rules.idleSeconds / 60 });
 type CodeMethod = Exclude<TwoFactorMethod, 'app'>;
 const codeKey = (userId: string) => `two-factor-code:${userId}`;
 const sentKey = (userId: string) => `two-factor-sent:${userId}`;
@@ -63,10 +65,7 @@ export class AuthService {
     const user = found!;
     if (door && user.layer !== door) return { kind: 'error', status: 403, message: ERROR_MESSAGES.DOOR_MISMATCH, code: 'DOOR_MISMATCH' };
     await this.store.clearFailures(body.loginName);
-    if (decision.scope === 'full') {
-      const existing = await this.store.listFullSessions(user.id);
-      await this.store.revokeSessions(idsToRevoke(existing, true));
-    }
+    if (decision.scope === 'full') await this.makeRoom(user);
     const sessionId = await this.store.saveSession({
       userId: user.id,
       scope: decision.scope,
@@ -81,8 +80,64 @@ export class AuthService {
     if (!sessionId) return null;
     const found = await this.store.liveSession(sessionId);
     if (!found || found.user.disabledAt) return null;
-    await this.store.touchSession(sessionId);
-    return found;
+    await this.store.touchSession(sessionId, found.rules.idleSeconds);
+    return { session: found.session, user: found.user };
+  }
+
+  /** Before a new full session: closes the oldest beyond the account's allowed count. */
+  async makeRoom(user: StoredUser): Promise<void> {
+    const { maxSessions } = await this.store.rulesFor(user);
+    const existing = await this.store.listFullSessions(user.id);
+    await this.store.revokeSessions(idsToRevoke(existing, true, maxSessions));
+  }
+
+  /** Branch owner: the defaults and each layer's own values. */
+  async sessionRules(sessionId: string | undefined): Promise<Outcome<{ view: { defaults: RuleView; layers: Record<Layer, SessionRuleValues> } }>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    return { kind: 'ok', view: { defaults: ruleView(effectiveRules(null, null)), layers: await this.store.sessionRules() } };
+  }
+
+  async setLayerSessionRules(sessionId: string | undefined, layerName: string, body: { maxSessions?: unknown; sessionMinutes?: unknown }): Promise<Outcome<{ layers: Record<Layer, SessionRuleValues> }>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    const layer = LAYERS.find((candidate) => candidate === layerName);
+    if (!layer || ruleValuesProblem(body ?? {})) return fail(400, 'INVALID');
+    await this.store.setSessionRules(layer, { maxSessions: body.maxSessions as number | null, sessionMinutes: body.sessionMinutes as number | null });
+    return { kind: 'ok', layers: await this.store.sessionRules() };
+  }
+
+  /** Branch owner: an account's own values, what its layer gives, and the result. */
+  async userSessionRules(sessionId: string | undefined, loginName: string): Promise<Outcome<{ view: { own: SessionRuleValues; layer: RuleView; effective: RuleView } }>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    const target = await this.store.findByLogin(loginName);
+    if (!target) return fail(404, 'NOT_FOUND');
+    return { kind: 'ok', view: await this.userRuleView(target) };
+  }
+
+  async setUserSessionRules(
+    sessionId: string | undefined,
+    loginName: string,
+    body: { maxSessions?: unknown; sessionMinutes?: unknown },
+  ): Promise<Outcome<{ view: { own: SessionRuleValues; layer: RuleView; effective: RuleView } }>> {
+    const owner = await this.ownerSession(sessionId);
+    if (owner.kind === 'error') return owner;
+    if (ruleValuesProblem(body ?? {})) return fail(400, 'INVALID');
+    const target = await this.store.findByLogin(loginName);
+    if (!target) return fail(404, 'NOT_FOUND');
+    const own = { maxSessions: body.maxSessions as number | null, sessionMinutes: body.sessionMinutes as number | null };
+    await this.store.updateUser(target.id, own);
+    return { kind: 'ok', view: await this.userRuleView({ ...target, ...own }) };
+  }
+
+  private async userRuleView(user: StoredUser) {
+    const layer = (await this.store.sessionRules())[user.layer];
+    return {
+      own: { maxSessions: user.maxSessions ?? null, sessionMinutes: user.sessionMinutes ?? null },
+      layer: ruleView(effectiveRules(null, layer)),
+      effective: ruleView(effectiveRules(user, layer)),
+    };
   }
 
   async changePassword(
@@ -106,10 +161,7 @@ export class AuthService {
     if (decision.kind === 'error') return fail(decision.status, decision.code);
 
     await this.store.revokeSessions([session.id]);
-    if (decision.scope === 'full') {
-      const existing = await this.store.listFullSessions(user.id);
-      await this.store.revokeSessions(idsToRevoke(existing, true));
-    }
+    if (decision.scope === 'full') await this.makeRoom(user);
     const newSessionId = await this.store.saveSession({
       userId: user.id,
       scope: decision.scope,
@@ -239,8 +291,7 @@ export class AuthService {
   /** Replaces a two-factor session with a full one, applying the session limit before the new one is kept. */
   async promoteToFull(session: SessionRow, user: StoredUser, meta: Meta): Promise<string> {
     await this.store.revokeSessions([session.id]);
-    const existing = await this.store.listFullSessions(user.id);
-    await this.store.revokeSessions(idsToRevoke(existing, true));
+    await this.makeRoom(user);
     return this.store.saveSession({ userId: user.id, scope: 'full', userAgent: meta.userAgent, ip: meta.ip });
   }
 

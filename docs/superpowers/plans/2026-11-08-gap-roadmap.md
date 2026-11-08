@@ -37,3 +37,4 @@ An alternative source per product. Orders with a quantity for one customer.
 - N7 — provider accounts: balance = payments + settlements − purchases, credit limit, held for open tasks, ledger with running balance and CSV (spec `2026-11-08-provider-accounts.md`).
 - N8 — reconciliation: upload a provider statement (xlsx/csv), pick its columns (kept per provider), compare with our operations, follow each difference (spec `2026-11-08-provider-reconciliation.md`).
 - N9 — sign-in methods: the second step by app, SMS or email on a pluggable sender (logs until the gateways are chosen), and passkeys that sign in without the password or the code (spec `2026-11-08-signin-methods.md`).
+- Session rules (owner request after N9): sessions allowed and idle time per layer and per account, default 3 sessions and 6 hours idle (spec `2026-11-08-session-rules.md`).

@@ -36,6 +36,9 @@ model User {
   pendingTwoFactorSecret String?
   /** How the second factor is proven: app (default), sms or email (roadmap N9). */
   twoFactorMethod        String           @default("app")
+  /// Sessions allowed and idle minutes for this account; null follows its layer.
+  maxSessions            Int?
+  sessionMinutes         Int?
   passkeys               Passkey[]
   sessions               Session[]
   wallet                 Wallet?
@@ -101,6 +104,9 @@ model LayerPolicy {
   id       String  @id @default(uuid())
   layer    String  @unique
   required Boolean @default(false)
+  /// Sessions allowed and idle minutes for the layer; null follows the default (session rules spec).
+  maxSessions    Int?
+  sessionMinutes Int?
 }
 
 model Wallet {

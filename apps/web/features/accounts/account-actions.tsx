@@ -15,8 +15,9 @@ import { sharedKeys } from '../../lib/query';
 import { reloadAt } from '../../lib/reload-at';
 import { useAction } from '../../lib/use-action';
 import { useApiQuery } from '../../lib/use-api-query';
+import { AccountSessionsDialog } from '../auth/session-rules';
 
-export type AccountOp = 'fund' | 'deduct' | 'ceiling' | 'password' | 'freeze' | 'enter' | 'delete';
+export type AccountOp = 'fund' | 'deduct' | 'ceiling' | 'password' | 'freeze' | 'enter' | 'delete' | 'sessions';
 type FundReason = 'deposit' | 'correction' | 'settlement';
 type DeductReason = 'return' | 'correction' | 'settlement';
 
@@ -102,6 +103,8 @@ export function useAccountActions({
         onClick: () => choose(row, 'freeze'),
       });
     }
+    // Session rules are the branch owner's, for any account including its own.
+    if (isBranch && me?.isBranchOwner && !me.impersonating) items.push({ key: 'sessions', label: t.sessions, icon: 'key', onClick: () => choose(row, 'sessions') });
     if (row.canEnter) items.push({ key: 'enter', label: t.enterAccount, icon: 'enter', onClick: () => choose(row, 'enter') });
     if (row.canDelete) items.push({ key: 'delete', label: t.deleteAccount, icon: 'trash', danger: true, onClick: () => choose(row, 'delete') });
     return items;
@@ -145,7 +148,15 @@ export function useAccountActions({
   const active = op?.row;
   const dialogs: ReactNode = (
     <>
-      {active && op ? (
+      {active && op?.kind === 'sessions' ? (
+        <AccountSessionsDialog
+          loginName={active.loginName}
+          name={active.nickname}
+          onClose={() => setOp(null)}
+          onSaved={(text) => { setOp(null); setError(''); setNote(text); }}
+        />
+      ) : null}
+      {active && op && op.kind !== 'sessions' ? (
         <Dialog
           open
           size={op.kind === 'fund' || op.kind === 'deduct' || op.kind === 'ceiling' || op.kind === 'password' ? 'form' : 'confirm'}

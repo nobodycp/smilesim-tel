@@ -150,3 +150,11 @@ export class PasskeyLoginBodyDto {
   @ApiPropertyOptional({ description: 'The browser answer (AuthenticationResponseJSON)' })
   response?: unknown;
 }
+
+export class SessionRulesBodyDto {
+  @ApiPropertyOptional({ nullable: true, example: 3, description: '1–10; null follows the next level' })
+  maxSessions?: number | null;
+
+  @ApiPropertyOptional({ nullable: true, example: 360, description: 'Idle minutes, 15–43200; null follows the next level' })
+  sessionMinutes?: number | null;
+}

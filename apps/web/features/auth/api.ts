@@ -1,6 +1,6 @@
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { request, segment } from '../../lib/http';
-import type { AccountProfile, CodeSent, Next, PasskeyInfo, Profile, SessionInfo, SignInMethods, TwoFactorMethod } from '../../lib/api-types';
+import type { AccountProfile, AccountSessionRules, LayerKey, SessionRuleValues, SessionRulesView, CodeSent, Next, PasskeyInfo, Profile, SessionInfo, SignInMethods, TwoFactorMethod } from '../../lib/api-types';
 
 type Result<T> = Awaited<ReturnType<typeof request<T>>>;
 /** The browser's own prompt refused or was dismissed: a failure the page shows, never a thrown error. */
@@ -27,6 +27,12 @@ export const authApi = {
   setupTwoFactor: () => request<{ otpauth: string }>('POST', '/auth/two-factor/setup'),
   confirmTwoFactor: (code: string) => request<{ next: Next }>('POST', '/auth/two-factor/confirm', { code }),
   verifyTwoFactor: (code: string) => request<{ next: Next }>('POST', '/auth/two-factor/verify', { code }),
+  sessionRules: () => request<SessionRulesView>('GET', '/auth/session-rules'),
+  setLayerSessionRules: (layer: LayerKey, values: SessionRuleValues) =>
+    request<{ layers: SessionRulesView['layers'] }>('PATCH', `/auth/session-rules/${segment(layer)}`, values),
+  accountSessionRules: (loginName: string) => request<AccountSessionRules>('GET', `/auth/users/${segment(loginName)}/session-rules`),
+  setAccountSessionRules: (loginName: string, values: SessionRuleValues) =>
+    request<AccountSessionRules>('PATCH', `/auth/users/${segment(loginName)}/session-rules`, values),
   disableTwoFactor: () => request<{ ok: true }>('DELETE', '/auth/two-factor'),
   signInMethods: () => request<SignInMethods>('GET', '/auth/sign-in-methods'),
   /** Enrolment by SMS or email: the API sends a code to the account's phone or email. */

@@ -13,7 +13,6 @@ import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
 import { AUTH_STORE, AuthStore, PasskeyRow } from './auth.store';
 import { AuthService, type Failure, type Outcome } from './auth.service';
 import { Layer } from './decide-login';
-import { idsToRevoke } from './sessions';
 
 // Passkeys (spec 2026-11-08-signin-methods): added from settings with a full session, and a sign-in of their own
 // that stands for the password and the second step together. Challenges live CHALLENGE_SECONDS and are spent once.
@@ -189,8 +188,7 @@ export class PasskeyService {
       const sessionId = await this.store.saveSession({ userId: user.id, scope: 'password_change', userAgent: meta.userAgent, ip: meta.ip });
       return { kind: 'ok', next: 'password', sessionId, loginName: user.loginName };
     }
-    const existing = await this.store.listFullSessions(user.id);
-    await this.store.revokeSessions(idsToRevoke(existing, true));
+    await this.auth.makeRoom(user);
     const sessionId = await this.store.saveSession({ userId: user.id, scope: 'full', userAgent: meta.userAgent, ip: meta.ip });
     return { kind: 'ok', next: 'app', sessionId, loginName: user.loginName };
   }

@@ -1,7 +1,7 @@
 import { Controller, Post, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { SESSION_TTL_SECONDS } from '../../auth/sessions';
+import { SESSION_COOKIE_SECONDS } from '../../auth/sessions';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { OfficeFailureFilter } from '../../shared/office-failure.filter';
 import { Activity } from '../activity.decorator';
@@ -30,7 +30,7 @@ export class AccountSessionController {
     const home = readCookie(req, 'home');
     const result = await this.sessions.leave(gateOf(req));
     if (result && typeof result === 'object' && 'ok' in result && home) {
-      res.cookie('sid', home, { ...cookieBase(), maxAge: SESSION_TTL_SECONDS * 1000 });
+      res.cookie('sid', home, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
       res.clearCookie('home', cookieBase());
     }
     return result;

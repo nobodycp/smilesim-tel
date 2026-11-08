@@ -80,7 +80,7 @@ export class OfficeKernel {
     if (!sessionId) fail(401, 'LOGIN_REQUIRED');
     const live = await this.auth.liveSession(sessionId);
     if (!live || live.session.scope !== 'full' || live.user.disabledAt) fail(401, 'LOGIN_REQUIRED');
-    await this.auth.touchSession(sessionId);
+    await this.auth.touchSession(sessionId, live.rules.idleSeconds);
     const impersonating = live.session.kind === 'impersonation';
     let operatorId = live.user.id;
     if (impersonating && gate.homeId) {

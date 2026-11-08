@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { SESSION_TTL_SECONDS } from '../../auth/sessions';
+import { SESSION_COOKIE_SECONDS } from '../../auth/sessions';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { OfficeFailureFilter } from '../../shared/office-failure.filter';
 import { Activity, bodyField, param } from '../activity.decorator';
@@ -134,8 +134,8 @@ export class AccountsController {
     const previous = readCookie(req, 'sid');
     const result = await this.accountDesk.enter(actor, loginName, { userAgent: String(req.headers['user-agent'] ?? ''), ip: req.ip ?? '' });
     if (result && typeof result === 'object' && 'sessionId' in result && typeof result.sessionId === 'string' && previous) {
-      res.cookie('home', previous, { ...cookieBase(), maxAge: SESSION_TTL_SECONDS * 1000 });
-      res.cookie('sid', result.sessionId, { ...cookieBase(), maxAge: SESSION_TTL_SECONDS * 1000 });
+      res.cookie('home', previous, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
+      res.cookie('sid', result.sessionId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
     }
     return result;
   }

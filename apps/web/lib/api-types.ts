@@ -28,6 +28,13 @@ export type SignInMethods = {
 /** A code sent by SMS or email; `sent` false means one went out less than `retryIn` seconds ago. */
 export type CodeSent = { sentTo: string; sent: boolean; retryIn: number };
 
+/** One level of session rules; null follows the next level (account → layer → default). */
+export type SessionRuleValues = { maxSessions: number | null; sessionMinutes: number | null };
+export type SessionRuleResult = { maxSessions: number; sessionMinutes: number };
+export type LayerKey = 'branch' | 'main_agent' | 'agent' | 'pos';
+export type SessionRulesView = { defaults: SessionRuleResult; layers: Record<LayerKey, SessionRuleValues> };
+export type AccountSessionRules = { own: SessionRuleValues; layer: SessionRuleResult; effective: SessionRuleResult };
+
 export type SessionInfo = {
   id: string;
   userAgent: string;

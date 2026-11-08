@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Layer, LoginUser } from './decide-login';
-import { SESSION_TTL_SECONDS } from './sessions';
+import { SessionRuleValues, SessionRules, effectiveRules } from './sessions';
 import { failureWindowExpired } from './validators';
 
 export const AUTH_STORE = Symbol('AUTH_STORE');
@@ -21,6 +21,9 @@ export type StoredUser = LoginUser & {
   pendingTwoFactorSecret?: string | null;
   /** How the second step is proven: the authenticator app (default), or a code sent by SMS or email. */
   twoFactorMethod?: TwoFactorMethod;
+  /** This account's own session rules; null follows its layer. */
+  maxSessions?: number | null;
+  sessionMinutes?: number | null;
 };
 export type TwoFactorMethod = 'app' | 'sms' | 'email';
 export const TWO_FACTOR_METHODS: readonly TwoFactorMethod[] = ['app', 'sms', 'email'];
@@ -52,6 +55,8 @@ export type UserPatch = Partial<
     | 'twoFactorSecret'
     | 'pendingTwoFactorSecret'
     | 'twoFactorMethod'
+    | 'maxSessions'
+    | 'sessionMinutes'
     | 'disabledAt'
   >
 >;
@@ -90,10 +95,15 @@ export interface AuthStore {
   saveImpersonation(input: { userId: string; userAgent: string; ip: string }): Promise<string>;
   revokeSessions(ids: string[]): Promise<void>;
   userBySession(sessionId: string): Promise<LoginUser | null>;
-  /** The live session and its owner, or null when missing, revoked, or expired. */
-  liveSession(sessionId: string): Promise<{ session: SessionRow; user: StoredUser } | null>;
-  /** Sets lastSeenAt to now and pushes the expiry SESSION_TTL_SECONDS ahead. */
-  touchSession(sessionId: string): Promise<void>;
+  /** The live session, its owner and the owner's rules; null when missing, revoked, expired, or idle past the rules. */
+  liveSession(sessionId: string): Promise<{ session: SessionRow; user: StoredUser; rules: SessionRules } | null>;
+  /** Sets lastSeenAt to now and pushes the expiry the owner's idle time ahead (given, or read from the rules). */
+  touchSession(sessionId: string, idleSeconds?: number): Promise<void>;
+  /** Each layer's own session values (null follows the default). */
+  sessionRules(): Promise<Record<Layer, SessionRuleValues>>;
+  setSessionRules(layer: Layer, values: SessionRuleValues): Promise<void>;
+  /** The account's effective rules: account, then layer, then default. */
+  rulesFor(user: Pick<StoredUser, 'layer' | 'maxSessions' | 'sessionMinutes'>): Promise<SessionRules>;
   listSessions(userId: string): Promise<SessionRow[]>;
   updateUser(userId: string, patch: UserPatch): Promise<void>;
   /** Revokes every session of the user, whatever its scope, and deletes their live keys. */
@@ -192,9 +202,34 @@ export class MemoryAuthStore implements AuthStore {
       .map((s) => ({ id: s.id, createdAt: s.createdAt, scope: 'full' as const, kind: 'account' as const, revokedAt: s.revokedAt }));
   }
 
+  private readonly layerRules: Record<Layer, SessionRuleValues> = {
+    branch: { maxSessions: null, sessionMinutes: null },
+    main_agent: { maxSessions: null, sessionMinutes: null },
+    agent: { maxSessions: null, sessionMinutes: null },
+    pos: { maxSessions: null, sessionMinutes: null },
+  };
+
+  async sessionRules(): Promise<Record<Layer, SessionRuleValues>> {
+    return structuredClone(this.layerRules);
+  }
+
+  async setSessionRules(layer: Layer, values: SessionRuleValues): Promise<void> {
+    this.layerRules[layer] = { ...values };
+  }
+
+  async rulesFor(user: Pick<StoredUser, 'layer' | 'maxSessions' | 'sessionMinutes'>): Promise<SessionRules> {
+    return effectiveRules(user, this.layerRules[user.layer]);
+  }
+
+  private async idleOf(userId: string): Promise<number> {
+    const owner = this.userById(userId);
+    return owner ? (await this.rulesFor(owner)).idleSeconds : effectiveRules(null, null).idleSeconds;
+  }
+
   async saveSession(input: { userId: string; scope: SessionScope; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
     const id = randomUUID();
+    const idle = await this.idleOf(input.userId);
     this.sessions.push({
       id,
       userId: input.userId,
@@ -204,7 +239,7 @@ export class MemoryAuthStore implements AuthStore {
       ip: input.ip,
       createdAt: now,
       lastSeenAt: now,
-      expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000),
+      expiresAt: new Date(now.getTime() + idle * 1000),
       revokedAt: null,
     });
     this.liveSessionKeys.add(id);
@@ -216,6 +251,7 @@ export class MemoryAuthStore implements AuthStore {
   async saveImpersonation(input: { userId: string; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
     const id = randomUUID();
+    const idle = await this.idleOf(input.userId);
     this.sessions.push({
       id,
       userId: input.userId,
@@ -225,7 +261,7 @@ export class MemoryAuthStore implements AuthStore {
       ip: input.ip,
       createdAt: now,
       lastSeenAt: now,
-      expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000),
+      expiresAt: new Date(now.getTime() + idle * 1000),
       revokedAt: null,
     });
     this.liveSessionKeys.add(id);
@@ -284,20 +320,24 @@ export class MemoryAuthStore implements AuthStore {
     };
   }
 
-  async liveSession(sessionId: string): Promise<{ session: SessionRow; user: StoredUser } | null> {
+  async liveSession(sessionId: string): Promise<{ session: SessionRow; user: StoredUser; rules: SessionRules } | null> {
     const session = this.liveRow(sessionId);
     if (!session) return null;
     const user = this.userById(session.userId);
     if (!user) return null;
-    return { session: { ...session }, user };
+    const rules = await this.rulesFor(user);
+    // A lowered idle time closes a session already idle longer than it.
+    if (session.lastSeenAt.getTime() + rules.idleSeconds * 1000 <= Date.now()) return null;
+    return { session: { ...session }, user, rules };
   }
 
-  async touchSession(sessionId: string): Promise<void> {
+  async touchSession(sessionId: string, idleSeconds?: number): Promise<void> {
     const session = this.liveRow(sessionId);
     if (!session) return;
+    const idle = idleSeconds ?? (await this.idleOf(session.userId));
     const now = new Date();
     session.lastSeenAt = now;
-    session.expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
+    session.expiresAt = new Date(now.getTime() + idle * 1000);
   }
 
   async listSessions(userId: string): Promise<SessionRow[]> {
