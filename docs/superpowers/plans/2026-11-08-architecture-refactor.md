@@ -59,7 +59,12 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 3.3 tasks: `tasks/` — list, detail, notes, take, release, reject, cancel + openTask, taskNotice, handlerIds, noteLog. `4dfc0cb`. **`complete` stays in OfficeService until 3.9** (it applies the line operation). Lint now bans Jest's global `fail` outside specs.
 - [x] 3.4 wallets: `wallets/` — wallets, fund, ceiling, ledger, finance, provider operations (+ `provider-cost.ts`). `GET /office/wallets` characterized first. `75ab132`. **`reports/:kind` stays in OfficeService** until lines move (it lists tasks and lines).
 - [x] 3.5 providers + companies: `providers/` (list, settings, eSIM price, action mode) and `companies/` (shelf, SIM rules, image). 6 of 7 routes had no spec: `catalog.http.spec.ts` written first. `086564a`
-- [ ] 3.6 packages: catalog, sheet, chain, targets, mode, sell/custom/line prices, user packages, user ops.
+- [x] 3.6 packages, in four commits:
+  - `7fca6cd` **behaviour change (owner decision: 401 first)** — five price/terms writes ask for the session before judging the body; route table drops their rows.
+  - `06bdd61` `packages/` — catalog list, sell prices, mode, sheet, chain, renewal/switch targets (`package-catalog.http.spec.ts` first).
+  - `fb16f91` kernel gets `ladderRows`, `stampWith`, `PRICE_COLUMNS`.
+  - `6058a9b` `terms/` — user packages, user ops, custom prices, line prices (+ `kernel/line-terms.ts`).
+  - Found, not changed: `PATCH packages/:code/mode` checks the `edit` grant only, no layer check (pinned in the spec; see follow-ups).
 - [ ] 3.7 users + roles: list, directory, account, access, create, password, freeze/restore/delete, enter/leave, roles.
 - [ ] 3.8 transfers: account + line transfer, preview.
 - [ ] 3.9 lines: list, detail, activate, operate, switch, extend, reactivate, refresh, rename, sim, esim, disconnect, **and task completion** (`POST tasks/:id/complete`), **and `GET reports/:kind`**.
@@ -88,6 +93,10 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 ## Verification per slice
 
 `npm run lint && npm run typecheck && npm run check:copy && npm run test:api && npm run build`; web slices also run the relevant Playwright specs and a browser check in ar + en, light + dark, desktop + 390px. Update the codemaps, run `graphify update .`, tick the box with the commit hash.
+
+## Follow-ups found during the split (not done; each needs the owner's go-ahead)
+
+- **Security:** `PATCH /office/packages/:code/mode` lets any account holding `edit` change package modes; no layer check. Default layer roles give `edit` to the branch only, so it opens only if the branch grants `edit` to an agent (extra grants or an edited layer role). Fix: add the branch check like the other catalog writes.
 
 ## After this plan
 
