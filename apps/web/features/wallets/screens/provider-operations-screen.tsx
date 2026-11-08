@@ -23,9 +23,10 @@ export function ProviderOperationsScreen() {
   const [q, setQ] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [match, setMatch] = useState('');
   const list = usePaged<ProviderOpRow, { stats: ProviderOpStats; providers: { code: string; name: string }[] }>(
-    `${provider}|${kind}|${q}|${from}|${to}`,
-    async (cursor) => pick(await api.officeProviderOperations({ provider, kind, q, from, to, cursor }), (data) => ({
+    `${provider}|${kind}|${q}|${from}|${to}|${match}`,
+    async (cursor) => pick(await api.officeProviderOperations({ provider, kind, q, from, to, match, cursor }), (data) => ({
       rows: data.entries,
       next: data.nextCursor,
       total: data.total,
@@ -58,11 +59,32 @@ export function ProviderOperationsScreen() {
     { key: 'company', header: t.company, render: (row) => row.companyName || '—' },
     { key: 'package', header: t.packageName, render: (row) => row.packageName || '—' },
     { key: 'cost', header: t.providerCost, num: true, render: (row) => <Money value={row.cost ?? 0} /> },
+    // Matching, simulated until real providers are connected (spec E): the source, what the provider charged, the gap.
+    { key: 'source', header: t.matchSource, render: (row) => (row.matchSource === 'api' ? t.matchSourceApi : t.matchSourceStatement) },
+    { key: 'charged', header: t.providerCharged, num: true, render: (row) => (row.providerAmount == null ? '—' : <Money value={row.providerAmount} />) },
+    {
+      key: 'match',
+      header: t.matchState,
+      render: (row) => row.matchState === 'pending'
+        ? <Badge variant="muted" dot>{t.matchPending}</Badge>
+        : row.matchState === 'difference'
+          ? <Badge variant="danger" dot>{t.matchDifference} <Money value={row.difference ?? 0} signed /></Badge>
+          : <Badge variant="success" dot>{t.matchMatched}</Badge>,
+    },
   ];
 
   return (
     <Desk title={t.navProviderOps} lede="" error="" note="">
-      <FilterBar onClear={() => { setProvider(''); setKind(''); setQ(''); setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
+      <FilterBar onClear={() => { setProvider(''); setKind(''); setQ(''); setFrom(''); setTo(''); setMatch(''); }} clearLabel={t.clearFilters}>
+        <label>
+          {t.matchState}
+          <Select value={match} onChange={(event) => setMatch(event.target.value)}>
+            <option value="">{t.allRows}</option>
+            <option value="matched">{t.matchMatched}</option>
+            <option value="difference">{t.matchDifference}</option>
+            <option value="pending">{t.matchPending}</option>
+          </Select>
+        </label>
         <label>
           {t.provider}
           <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
@@ -100,9 +122,13 @@ export function ProviderOperationsScreen() {
             <Stat icon="numbers" tone="muted" value={stats.count} label={t.opsCount} />
             <Stat icon="wallet" tone="warning" value={<Money value={stats.cost} />} label={t.providerCost} />
             <Stat icon="plans" tone="warning" value={<Money value={stats.monthCost} />} label={t.providerMonth} />
+            <Stat icon="reports" tone="success" value={stats.matched ?? 0} label={t.matchMatched} />
+            <Stat icon="reports" tone="danger" value={stats.differences ?? 0} label={t.matchDifference} meta={<Money value={stats.differenceAmount ?? 0} signed />} />
+            <Stat icon="tasks" tone="muted" value={stats.pending ?? 0} label={t.matchPending} />
           </StatRow>
+          <p className="hint">{t.matchSimulatedHint}</p>
         </div>
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noProviderOps} keepHead skeleton={{ rows: 6, columns: 7 }} />
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noProviderOps} keepHead skeleton={{ rows: 6, columns: 10 }} />
       </section>
     </Desk>
   );

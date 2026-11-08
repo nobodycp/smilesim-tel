@@ -72,6 +72,8 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/provider-accounts', 'ynynnn'],
   ['GET /office/provider-accounts/CODE1', 'ynynnn'],
   ['PATCH /office/provider-accounts/CODE1/credit', 'ynynnn'],
+  ['PATCH /office/provider-accounts/CODE1/matching', 'ynynnn'],
+  ['POST /office/provider-accounts/CODE1/simulate-statement', 'ynynnn'],
   ['POST /office/provider-accounts/CODE1/entries', 'ynynnn'],
   ['GET /office/provider-accounts/CODE1/export', 'ynynnn'],
   ['GET /office/provider-accounts/CODE1/reconciliations', 'ynynnn'],

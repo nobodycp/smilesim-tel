@@ -387,7 +387,8 @@ export type ActivityRow = {
   subjectKind: string;
   subjectRef: string;
 };
-export type ProviderOpStats = { count: number; cost: number; monthCost: number };
+/** `matched`, `differences`, `pending`, `differenceAmount`: the simulated matching (spec E), over the dated rows. */
+export type ProviderOpStats = { count: number; cost: number; monthCost: number; matched?: number; differences?: number; pending?: number; differenceAmount?: number };
 export type ProviderOpRow = {
   id: string;
   at: string;
@@ -400,6 +401,11 @@ export type ProviderOpRow = {
   cost: number;
   /** The eSIM fee inside this operation's cost, when it sold or issued an eSIM. */
   esimPrice: number | null;
+  /** Matching, simulated until real providers are connected (spec E). */
+  matchSource?: 'api' | 'statement';
+  matchState?: 'matched' | 'difference' | 'pending';
+  providerAmount?: number | null;
+  difference?: number | null;
 };
 /** One account's share of a sale, as the branch reads it on a finance row. */
 export type FinanceShare = { loginName: string; layer: string; margin: number };
@@ -584,6 +590,7 @@ export type SupplyReportRow = { providerCode: string; providerName: string; oper
 export type ProviderAccount = {
   code: string; name: string; purchases: number; payments: number; settlements: number;
   balance: number; creditLimit: number; alertFloor: number; held: number; available: number;
+  matchSource?: 'api' | 'statement'; matchEveryDays?: number; lastMatchedAt?: string | null; matchOverdue?: boolean; openDifferences?: number;
 };
 export type ProviderLedgerRow = {
   id: string; at: string; kind: string; amount: number; balanceAfter: number; note: string; msisdn: string; packageName: string; actorLogin: string;

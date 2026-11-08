@@ -42,7 +42,7 @@ function service() {
 describe('ProviderAccountsService', () => {
   it('sums each provider: payments + settlements − purchases, credit, held for open tasks, available', async () => {
     const { rows, totals } = await service().accounts.list(owner);
-    expect(rows[0]).toEqual({ code: 'sky', name: 'سكاي', purchases: 6500, payments: 20000, settlements: -500, balance: 13000, creditLimit: 50000, alertFloor: 0, held: 3500, available: 59500 });
+    expect(rows[0]).toEqual({ code: 'sky', name: 'سكاي', purchases: 6500, payments: 20000, settlements: -500, balance: 13000, creditLimit: 50000, alertFloor: 0, held: 3500, available: 59500, matchSource: 'statement', matchEveryDays: 7, lastMatchedAt: null, matchOverdue: true, openDifferences: 0 });
     expect(rows[1]).toMatchObject({ code: 'lian', balance: -2000, available: -2000 });
     expect(totals).toEqual({ balance: 11000, held: 3500, owed: 2000 });
   });

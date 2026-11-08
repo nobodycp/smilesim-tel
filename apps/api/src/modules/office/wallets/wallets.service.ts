@@ -9,6 +9,7 @@ import { FEED_PAGE, NEWEST_FIRST, afterFeed, encodeFeedCursor, mergeFeed } from 
 import { visibleAccountIds } from '../office-rules';
 import { CeilingBody, DeductBody, FundBody } from '../wallet.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
+import { matchOf } from '../providers/match-simulator';
 import { ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../profit-ladder';
 import type { Account } from '../kernel/types';
@@ -203,7 +204,7 @@ export class WalletsService {
     });
   }
 
-  async providerOperations(actor: Actor, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string } = {}) {
+  async providerOperations(actor: Actor, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string; match?: string } = {}) {
     if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, 'REPORTS_BRANCH_ONLY');
     const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
@@ -215,11 +216,21 @@ export class WalletsService {
       this.kernel.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
     ]);
     const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
-    const ranged = chosen.filter((row) => {
+    // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
+    const providerByCode = new Map(providers.map((item) => [item.code, item]));
+    const matchFor = (row: { id: string; at: Date; cost: number; providerCode: string }) => {
+      const provider = providerByCode.get(row.providerCode);
+      return matchOf(row, { matchSource: provider?.matchSource ?? 'statement', lastMatchedAt: provider?.lastMatchedAt ?? null });
+    };
+    const dated = chosen.filter((row) => {
       if (from && !Number.isNaN(from.getTime()) && row.at < from) return false;
       if (to && !Number.isNaN(to.getTime()) && row.at > to) return false;
       return true;
     });
+    const matches = new Map(dated.map((row) => [row.id, matchFor(row)]));
+    const ranged = query.match === 'matched' || query.match === 'difference' || query.match === 'pending'
+      ? dated.filter((row) => matches.get(row.id)?.state === query.match)
+      : dated;
     const now = new Date();
     const monthCost = chosen
       .filter((row) => row.at.getFullYear() === now.getFullYear() && row.at.getMonth() === now.getMonth())
@@ -242,11 +253,23 @@ export class WalletsService {
         packageName: row.packageName,
         cost: row.cost,
         esimPrice: row.esimPrice,
+        matchSource: providerByCode.get(row.providerCode)?.matchSource ?? 'statement',
+        matchState: matches.get(row.id)?.state ?? 'pending',
+        providerAmount: matches.get(row.id)?.providerAmount ?? null,
+        difference: matches.get(row.id)?.difference ?? null,
       })),
       nextCursor: window.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.at, id: last.id }) : null,
       total: ranged.length,
-      stats: { count: ranged.length, cost: ranged.reduce((sum, row) => sum + row.cost, 0), monthCost },
-      providers: providers.map((item) => ({ code: item.code, name: item.name })),
+      stats: {
+        count: ranged.length,
+        cost: ranged.reduce((sum, row) => sum + row.cost, 0),
+        monthCost,
+        matched: dated.filter((row) => matches.get(row.id)?.state === 'matched').length,
+        differences: dated.filter((row) => matches.get(row.id)?.state === 'difference').length,
+        pending: dated.filter((row) => matches.get(row.id)?.state === 'pending').length,
+        differenceAmount: dated.reduce((sum, row) => sum + (matches.get(row.id)?.difference ?? 0), 0),
+      },
+      providers: providers.map((item) => ({ code: item.code, name: item.name, matchSource: item.matchSource })),
     };
   }
 

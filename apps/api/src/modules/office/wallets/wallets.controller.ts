@@ -85,8 +85,10 @@ export class WalletsController {
     @Query('q') q?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('match') match?: string,
   ) {
     return this.walletDesk.providerOperations(actor, {
+      match: text(match),
       cursor: text(cursor),
       kind: text(kind),
       provider: text(provider),

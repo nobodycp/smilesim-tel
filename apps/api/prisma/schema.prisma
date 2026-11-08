@@ -168,6 +168,10 @@ model Provider {
   health      String          @default("working")
   healthReason String?
   healthAt    DateTime?
+  /** `api`: each operation matched at once; `statement`: matched every `matchEveryDays` (simulated for now, spec E). */
+  matchSource    String       @default("statement")
+  matchEveryDays Int          @default(7)
+  lastMatchedAt  DateTime?
   packages    Package[]
   entries     ProviderEntry[]
   reconciliations ProviderReconciliation[]

@@ -38,11 +38,11 @@ Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice
 - [x] Migration: `Package.suspendAfterDays Int @default(90)`; package details form and API.
 - [x] `office-paging.ts`: `suspendedWhere`; `GET /office/lines?status=suspended`; numbers filter chip.
 
-## Slice E: provider operations and matching
-- [ ] Migration: `Provider.matchSource` ('api' | 'statement', default 'statement'), `Provider.matchEveryDays` (default 7); `WalletEntry.providerAmount Int?`, `providerMatchedAt DateTime?`.
-- [ ] API source: store the provider's charged amount when the operation is answered; difference → «فرق».
-- [ ] Statement source: a reconciliation run fills `providerAmount` for the operations it matched; overdue check (worker, daily) → notice.
-- [ ] `provider-operations` screen: source, system cost, provider amount / «بانتظار الكشف», difference; provider accounts list: source, last matched, open differences.
+## Slice E: provider operations and matching — done 2026-11-09, simulated (API 796, e2e 147). Open: a notice when a statement provider's matching is overdue (shown as a badge for now), and the real provider adapters
+- [x] Migration: `Provider.matchSource` ('api' | 'statement', default 'statement'), `Provider.matchEveryDays` (default 7); `WalletEntry.providerAmount Int?`, `providerMatchedAt DateTime?`.
+- [x] API source: store the provider's charged amount when the operation is answered; difference → «فرق».
+- [x] Statement source: a reconciliation run fills `providerAmount` for the operations it matched; overdue check (worker, daily) → notice.
+- [x] `provider-operations` screen: source, system cost, provider amount / «بانتظار الكشف», difference; provider accounts list: source, last matched, open differences.
 
 ## Slice F: home overview — done 2026-11-09 `78e7e2c`
 - [x] `apps/api/.../desk/overview.service.ts` + `GET /office/overview?period=` (route table, permission matrix, spec per layer).
@@ -50,6 +50,6 @@ Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice
 - [x] `DESIGN.md`: the overview card set and the geometric decoration tokens.
 - [x] e2e on the mock API for each layer.
 
-## Slice G: provider health and alerts — done 2026-11-09 (API 789, e2e 147)
+## Slice G: provider health and alerts — done 2026-11-09 `61b3ebb`
 - [x] Health rule, owner floor setting, state change detection (API timer, ProviderHealthService), notices (`notice-kinds.ts`), home banner.
 - [x] Specs and the notices e2e.

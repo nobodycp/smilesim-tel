@@ -57,6 +57,8 @@ export const ROUTES: RouteRow[] = [
   ['GET', '/office/provider-accounts', null],
   ['GET', '/office/provider-accounts/CODE1', null],
   ['PATCH', '/office/provider-accounts/CODE1/credit', ['provider_credit', 'provider', 'CODE1']],
+  ['PATCH', '/office/provider-accounts/CODE1/matching', ['provider_matching', 'provider', 'CODE1']],
+  ['POST', '/office/provider-accounts/CODE1/simulate-statement', ['provider_statement', 'provider', 'CODE1']],
   ['POST', '/office/provider-accounts/CODE1/entries', ['provider_payment', 'provider', 'CODE1']],
   ['GET', '/office/provider-accounts/CODE1/export', null],
   ['GET', '/office/provider-accounts/CODE1/reconciliations', null],

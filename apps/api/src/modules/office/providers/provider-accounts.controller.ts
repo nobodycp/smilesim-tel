@@ -75,6 +75,25 @@ export class ProviderAccountsController {
     return this.accounts.setCredit(actor, code, body);
   }
 
+  @Patch('provider-accounts/:code/matching')
+  @ApiOperation({ summary: 'Set how this provider is matched: `api` at once or `statement` every N days (simulated for now)' })
+  @ApiParam({ name: 'code' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('provider_matching', 'provider', param('code'))
+  setMatching(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: unknown) {
+    return this.accounts.setMatching(actor, code, body);
+  }
+
+  @Post('provider-accounts/:code/simulate-statement')
+  @ApiOperation({ summary: 'Simulated statement match: covers every operation up to now (until real statements arrive)' })
+  @ApiParam({ name: 'code' })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('provider_statement', 'provider', param('code'))
+  simulateStatement(@Actor() actor: ActorShape, @Param('code') code: string) {
+    return this.accounts.simulateStatement(actor, code);
+  }
+
   @Post('provider-accounts/:code/statements/preview')
   @ApiOperation({ summary: 'Read a statement file: its columns, a few rows, and the columns to use' })
   @ApiParam({ name: 'code' })

@@ -21,6 +21,7 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Tabs } from '../../../components/tabs';
 import { Reconciliation } from '../reconciliation';
+import { MatchingPane } from '../matching-pane';
 
 const BRANCH = ['branch'];
 
@@ -115,6 +116,7 @@ export function ProviderAccountScreen() {
         <Stat icon="tasks" tone="warning" label={t.held} value={summary ? <Money value={summary.held} /> : '—'} meta={t.heldHint} />
         <Stat icon="plans" label={t.available} value={summary ? <Money value={summary.available} /> : '—'} highlight />
       </StatRow>
+      {summary ? <MatchingPane summary={summary} canWrite={canWrite} run={run} busy={busy} /> : null}
       <Tabs items={[{ key: 'ledger', label: t.providerLedger }, { key: 'recon', label: t.reconTitle }]} value={tab} onChange={setTab} />
       {tab === 'recon' ? <Reconciliation code={params.code} canWrite={canWrite} setError={setError} setNote={setNote} /> : (
         <>
