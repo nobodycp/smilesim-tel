@@ -1,8 +1,9 @@
 'use client';
 
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
+import { usePopover } from '../lib/use-popover';
 
 type RowIcon = 'edit' | 'extend' | 'undo' | 'check' | 'ban' | 'trash' | 'enter' | 'key' | 'fund' | 'move' | 'image' | 'refresh' | 'receipt';
 
@@ -37,12 +38,10 @@ function Glyph({ name }: { name: RowIcon }) {
 }
 
 export function RowMenu({ label, items }: { label: string; items: RowAction[] }) {
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, toggle, root, panel, trigger: button } = usePopover({ menu: true, deferFocus: true });
   const [box, setBox] = useState<{ top: number; left: number } | null>(null);
-  const root = useRef<HTMLDivElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
-  const button = useRef<HTMLButtonElement>(null);
 
+  // The panel is portalled to <body>, so it is placed by hand next to its button and follows scroll and resize.
   useEffect(() => {
     if (!open || !button.current) return;
     const place = () => {
@@ -62,48 +61,20 @@ export function RowMenu({ label, items }: { label: string; items: RowAction[] })
     };
     place();
     const frame = requestAnimationFrame(place);
-    const onPointer = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (root.current?.contains(target) || panel.current?.contains(target)) return;
-      setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-        button.current?.focus();
-        return;
-      }
-      const list = [...(panel.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])];
-      const inMenu = panel.current?.contains(document.activeElement) || document.activeElement === button.current;
-      if (!inMenu || list.length === 0) return;
-      const index = list.indexOf(document.activeElement as HTMLButtonElement);
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        list[(index + 1) % list.length]?.focus();
-      } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        list[(index - 1 + list.length) % list.length]?.focus();
-      } else if (event.key === 'Home') {
-        event.preventDefault();
-        list[0]?.focus();
-      } else if (event.key === 'End') {
-        event.preventDefault();
-        list[list.length - 1]?.focus();
-      }
-    };
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    panel.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place, true);
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, button, panel]);
+
+  // The panel stays hidden until it is placed; only then can its first item take the focus.
+  const placed = box !== null;
+  useEffect(() => {
+    if (open && placed) panel.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+  }, [open, placed, panel]);
 
   if (items.length === 0) return null;
   const firstDanger = items.findIndex((item) => item.danger);
@@ -119,7 +90,7 @@ export function RowMenu({ label, items }: { label: string; items: RowAction[] })
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();
-          setOpen((value) => !value);
+          toggle();
         }}
       >
         <MoreHorizontal size={16} aria-hidden="true" />

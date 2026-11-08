@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
@@ -34,6 +34,7 @@ import { useDoor } from '../lib/door-context';
 import { useOffice } from '../lib/office-session';
 import { formatShekel } from '../lib/money';
 import { usePrefs } from '../lib/prefs';
+import { usePopover } from '../lib/use-popover';
 import { BrandLogo } from './brand-logo';
 import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
@@ -59,9 +60,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [walletOpen, setWalletOpen] = useState(false);
-  const [noticeOpen, setNoticeOpen] = useState(false);
+  const { open: menuOpen, close: closeMenu, toggle: toggleMenu, root: menuRoot, trigger: menuTrigger } = usePopover({ menu: true });
+  const { open: walletOpen, toggle: toggleWallet, root: walletRoot, trigger: walletTrigger } = usePopover();
+  const { open: noticeOpen, close: closeNotices, toggle: toggleNotices, root: noticeRoot, trigger: noticeTrigger } = usePopover();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { ready, failed, retrying, retry, me, initialName, initialBalance } = useOffice();
   const { reachable } = useConnection();
@@ -73,9 +74,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const shownBalance = balance !== null ? balance : initialBalance;
   const ceiling = me?.ceiling ?? 0;
   const impersonating = me?.impersonating ?? false;
-  const menuRef = useRef<HTMLDivElement>(null);
-  const walletRef = useRef<HTMLDivElement>(null);
-  const noticeRef = useRef<HTMLDivElement>(null);
   const saved = useIdentity();
 
   useEffect(() => {
@@ -105,33 +103,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
     };
   }, [mobileOpen]);
 
-  useEffect(() => {
-    if (!menuOpen && !walletOpen && !noticeOpen) return;
-    const onPointer = (event: MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
-      if (!walletRef.current?.contains(event.target as Node)) setWalletOpen(false);
-      if (!noticeRef.current?.contains(event.target as Node)) setNoticeOpen(false);
-    };
-    // Escape closes the open menu and gives the focus back to the button that opened it.
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      const open = menuOpen ? menuRef : walletOpen ? walletRef : noticeRef;
-      setMenuOpen(false);
-      setWalletOpen(false);
-      setNoticeOpen(false);
-      open.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [menuOpen, walletOpen, noticeOpen]);
-
   async function openNotice(row: NoticeRow) {
     if (!row.read) await markRead(row.id);
-    setNoticeOpen(false);
+    closeNotices();
     dismiss();
     window.location.assign(row.href);
   }
@@ -391,14 +365,15 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           </div>
           <div className="topbar-tools">
             <ShellSearch />
-            <div className="wallet-chip" ref={walletRef}>
+            <div className="wallet-chip" ref={walletRoot}>
                 <button
+                  ref={walletTrigger}
                   type="button"
                   className="wallet-btn"
                   aria-haspopup="dialog"
                   aria-expanded={walletOpen}
                   aria-label={t.walletMenu}
-                  onClick={() => { if (balance !== null) setWalletOpen((open) => !open); }}
+                  onClick={() => { if (balance !== null) toggleWallet(); }}
                 >
                   <Wallet {...glyph} />
                   {shownBalance !== null && (
@@ -424,13 +399,14 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                   </div>
                 )}
               </div>
-            <div className="notice-wrap" ref={noticeRef}>
+            <div className="notice-wrap" ref={noticeRoot}>
               <button
+                ref={noticeTrigger}
                 type="button"
                 className={unread > 0 ? 'shell-icon notice-btn is-active' : 'shell-icon notice-btn'}
                 aria-label={t.notices}
                 aria-expanded={noticeOpen}
-                onClick={() => setNoticeOpen((open) => !open)}
+                onClick={toggleNotices}
               >
                 <Bell {...glyph} />
                 {unread > 0 && <span className="notice-count">{unread > 9 ? '9+' : unread}</span>}
@@ -460,7 +436,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                     </button>
                   ))}
                   <span className="shell-rule" />
-                  <Link href="/notices" onClick={() => setNoticeOpen(false)}>
+                  <Link href="/notices" onClick={closeNotices}>
                     {t.allNotices}
                   </Link>
                 </div>
@@ -468,14 +444,15 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             </div>
             <ThemeToggle shell />
             <LanguageSwitch shell />
-            <div className="user-menu" ref={menuRef}>
+            <div className="user-menu" ref={menuRoot}>
               <button
+                ref={menuTrigger}
                 type="button"
                 className="avatar-btn"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-label={t.userMenu}
-                onClick={() => setMenuOpen((open) => !open)}
+                onClick={toggleMenu}
               >
                 <span className="avatar" aria-hidden="true">{initial}</span>
               </button>
@@ -488,7 +465,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                       <small>{sub ? `@${sub}` : `@${me?.loginName ?? ''}`}{role ? ` · ${role}` : ''}</small>
                     </div>
                   </div>
-                  <Link href="/settings" role="menuitem" onClick={() => setMenuOpen(false)}>
+                  <Link href="/settings" role="menuitem" onClick={closeMenu}>
                     <Settings {...glyph} />
                     {t.accountSettings}
                   </Link>

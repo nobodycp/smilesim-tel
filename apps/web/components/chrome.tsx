@@ -1,9 +1,9 @@
 'use client';
 
 import { Moon, Sun } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { langLabel, langName, locales } from '../lib/copy';
 import { usePrefs } from '../lib/prefs';
+import { usePopover } from '../lib/use-popover';
 
 export function ThemeToggle({ shell = false }: { shell?: boolean }) {
   const { theme, toggleTheme, t } = usePrefs();
@@ -29,24 +29,7 @@ export function ThemeToggle({ shell = false }: { shell?: boolean }) {
 
 export function LanguageSwitch({ shell = false }: { shell?: boolean }) {
   const { locale, setLocale, t } = usePrefs();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  const { open, close, toggle, root, trigger } = usePopover({ menu: true });
 
   if (shell) {
     const order = locales;
@@ -66,13 +49,14 @@ export function LanguageSwitch({ shell = false }: { shell?: boolean }) {
   }
 
   return (
-    <div className="lang" ref={ref}>
+    <div className="lang" ref={root}>
       <button
+        ref={trigger}
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t.language}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
       >
         {langLabel[locale]}
       </button>
@@ -87,7 +71,7 @@ export function LanguageSwitch({ shell = false }: { shell?: boolean }) {
                 role="menuitem"
                 onClick={() => {
                   setLocale(code);
-                  setOpen(false);
+                  close();
                 }}
               >
                 {langName[code]}

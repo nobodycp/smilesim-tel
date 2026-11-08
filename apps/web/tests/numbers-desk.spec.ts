@@ -39,3 +39,23 @@ test('numbers row actions live in the menu', async ({ page }) => {
   await expect(page.locator('table.data button.secondary')).toHaveCount(0);
   await expect(page.locator('.lede')).toHaveCount(0);
 });
+
+test('a row menu opens on its first item, walks with the arrows, and Escape gives the focus back', async ({ page }) => {
+  await page.route('**/office/lines**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ lines: [line], poses: [] }) }),
+  );
+  await page.route('**/office/packages', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
+  );
+  await page.goto('/numbers');
+  await expectFullTable(page, 'الأرقام');
+  const trigger = page.getByRole('button', { name: /إجراءات/ });
+  await trigger.click();
+  const items = page.getByRole('menuitem');
+  await expect(items.first()).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(items.nth(1)).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(items).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});
