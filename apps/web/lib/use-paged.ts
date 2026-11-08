@@ -1,8 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { keepPreviousData, useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { usePathname } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useConnection } from './connection';
 import { usePrefs } from './prefs';
+import { ApiFailure } from './query';
 import type { Fetched } from './use-load';
 
 export type PageOf<Row, Extra = undefined> = {
@@ -13,15 +16,15 @@ export type PageOf<Row, Extra = undefined> = {
   extra?: Extra;
 };
 
-type Chunk<Row> = { rows: Row[]; next: string | null };
-type Book<Row> = { key: string; chunks: Chunk<Row>[]; total: number | null };
-
 /**
- * A list the server pages by cursor, with filters the server applies.
+ * A list the server pages by cursor, with filters the server applies (ADR 0001: an infinite query).
  *
- * The chunks the server answered with are kept in a book and handed out flattened as `all`, with the
- * server's `total` beside them. `loadMore` reads the next cursor and appends it. Changing the filter
- * key drops the book and starts again.
+ * The chunks the server answered with are handed out flattened as `all`, with the server's `total` beside them.
+ * `loadMore` reads the next cursor and appends it. Changing the filter `key` asks for the new list and keeps the
+ * previous rows on screen until it lands (`stale`), so a table never blanks between filters. `reload` asks again
+ * for every chunk already read, in the background, so a write does not send the reader back to page one, and
+ * marks the list's other filters out of date. A list
+ * read before is shown from the cache at once when its page opens again.
  */
 export function usePaged<Row, Extra = undefined>(
   key: string,
@@ -29,101 +32,76 @@ export function usePaged<Row, Extra = undefined>(
   { enabled = true }: { enabled?: boolean } = {},
 ) {
   const { apiText } = usePrefs();
-  const [book, setBook] = useState<Book<Row> | null>(null);
-  const [extra, setExtra] = useState<Extra | null>(null);
-  const [more, setMore] = useState(false);
-  const [error, setError] = useState('');
-  const latest = useRef({ key, fetchPage });
-  const shelf = useRef<Book<Row> | null>(null);
-  const live = useRef(true);
-  const ticket = useRef(0);
-  const asking = useRef(false);
-
+  // The page's path keeps two screens with the same filter key apart in the cache.
+  const pathname = usePathname();
+  const latest = useRef(fetchPage);
   useEffect(() => {
-    latest.current = { key, fetchPage };
+    latest.current = fetchPage;
   });
 
-  useEffect(() => {
-    live.current = true;
-    return () => {
-      live.current = false;
-    };
-  }, []);
+  const query = useInfiniteQuery<PageOf<Row, Extra>, Error, InfiniteData<PageOf<Row, Extra>, string | null>, readonly unknown[], string | null>({
+    queryKey: ['paged', pathname, key],
+    queryFn: async ({ pageParam }) => {
+      const result = await latest.current(pageParam);
+      if (!result.ok) throw new ApiFailure(0, result.message, result.code);
+      return result.data;
+    },
+    initialPageParam: null,
+    getNextPageParam: (last) => last.next ?? undefined,
+    placeholderData: keepPreviousData,
+    // A list is always asked again when it opens or its filter comes back: the cached rows show at once and the
+    // server's answer replaces them. A list is never trusted from the cache alone.
+    staleTime: 0,
+    enabled,
+  });
 
-  const keep = useCallback((next: Book<Row> | null) => {
-    shelf.current = next;
-    setBook(next);
-  }, []);
+  const pages = query.data?.pages;
+  const all = useMemo(() => (pages ? pages.flatMap((chunk) => chunk.rows) : []), [pages]);
+  const total = pages ? (pages[pages.length - 1].total ?? pages[0].total ?? null) : query.isError ? 0 : null;
+  const extra = useMemo(() => {
+    const withExtra = pages ? [...pages].reverse().find((chunk) => chunk.extra !== undefined) : undefined;
+    return withExtra ? (withExtra.extra as Extra) : null;
+  }, [pages]);
+  const stale = query.isPlaceholderData;
 
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = query;
+  // Reads the chunk after the last one. Answers true when a chunk was added. Never for rows of an older filter.
+  const loadMore = useCallback(async (): Promise<boolean> => {
+    if (stale || !hasNextPage || isFetchingNextPage) return false;
+    const before = pages?.length ?? 0;
+    const after = await fetchNextPage();
+    return (after.data?.pages.length ?? 0) > before;
+  }, [stale, hasNextPage, isFetchingNextPage, pages, fetchNextPage]);
+
+  // After a write: every filter of this list is out of date, not only the one on screen. The one on screen is asked
+  // again now (all its chunks), the others when they open.
+  const client = useQueryClient();
   const reload = useCallback(async () => {
-    const mine = ++ticket.current;
-    const { key: asked, fetchPage: ask } = latest.current;
-    const result = await ask(null);
-    if (!live.current || mine !== ticket.current) return;
-    if (!result.ok) {
-      setError(apiText(result));
-      keep({ key: asked, chunks: [{ rows: [], next: null }], total: 0 });
-      return;
-    }
-    setError('');
-    keep({ key: asked, chunks: [{ rows: result.data.rows, next: result.data.next ?? null }], total: result.data.total ?? null });
-    if (result.data.extra !== undefined) setExtra(result.data.extra);
-  }, [apiText, keep]);
-
-  useEffect(() => {
-    if (enabled) void reload();
-  }, [enabled, reload, key]);
+    await client.invalidateQueries({ queryKey: ['paged', pathname] });
+  }, [client, pathname]);
 
   // The API came back: a list that failed while it was away asks again on its own.
   const { generation } = useConnection();
-  const seenGeneration = useRef(0);
+  const seenGeneration = useRef(generation);
+  const failed = query.isError;
   useEffect(() => {
     if (generation === seenGeneration.current) return;
     seenGeneration.current = generation;
-    if (enabled && error) void reload();
-  }, [generation, enabled, error, reload]);
+    if (enabled && failed) void refetch();
+  }, [generation, enabled, failed, refetch]);
 
-  const fresh = book?.key === key ? book : null;
-  const last = fresh?.chunks[fresh.chunks.length - 1];
-  const hasNext = Boolean(last?.next);
-  const all = useMemo(() => (fresh ? fresh.chunks.flatMap((chunk) => chunk.rows) : []), [fresh]);
-
-  // Reads the chunk after the last one. Answers true when a chunk was added.
-  const loadMore = useCallback(async (): Promise<boolean> => {
-    const current = shelf.current;
-    if (!current || current.key !== latest.current.key) return false;
-    const tail = current.chunks[current.chunks.length - 1];
-    if (!tail?.next || asking.current) return false;
-    asking.current = true;
-    const mine = ticket.current;
-    setMore(true);
-    const result = await latest.current.fetchPage(tail.next);
-    asking.current = false;
-    if (!live.current) return false;
-    setMore(false);
-    if (mine !== ticket.current) return false;
-    if (!result.ok) {
-      setError(apiText(result));
-      return false;
-    }
-    const now = shelf.current;
-    if (!now || now.key !== current.key) return false;
-    keep({
-      key: now.key,
-      chunks: [...now.chunks, { rows: result.data.rows, next: result.data.next ?? null }],
-      total: result.data.total ?? now.total,
-    });
-    return true;
-  }, [apiText, keep]);
+  // Translated when drawn, so an error on screen follows a change of language.
+  const error = query.error instanceof ApiFailure ? apiText(query.error) : query.error ? apiText(query.error.message) : '';
 
   return {
     key,
     all,
-    total: fresh?.total ?? null,
-    ready: fresh !== null,
-    started: book !== null,
-    hasNext,
-    more,
+    total,
+    ready: query.data !== undefined || query.isError,
+    started: query.data !== undefined || query.isError,
+    stale,
+    hasNext: Boolean(hasNextPage) && !stale,
+    more: isFetchingNextPage,
     error,
     extra,
     loadMore,
