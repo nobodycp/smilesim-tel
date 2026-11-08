@@ -7,49 +7,54 @@ import { DataTable, type Column } from '../../../components/data-table';
 import { Desk, Money, actionName, latinWhen, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
-import { Tabs } from '../../../components/tabs';
 import { Badge } from '../../../components/ui/badge';
 import { buttonClass } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
 import { queryString } from '../../../lib/http';
 import { api, type BalanceReportRow, type OrderReportRow, type SaleReportRow, type SupplyReportRow } from '../../../lib/api';
-import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { accountTone } from '../../../lib/status-tone';
-import { useUrlFilters } from '../../../lib/url-state';
 import { useApiQuery } from '../../../lib/use-api-query';
-import { ProfitsReport } from '../../wallets/screens/profits-screen';
-
-type Tab = 'sales' | 'profits' | 'orders' | 'balances' | 'supply';
-const TABS: readonly Tab[] = ['sales', 'profits', 'orders', 'balances', 'supply'];
+import { useRequireLayer } from '../../../lib/use-require-layer';
 
 /** The first day of the window a dated report opens on: 30 days back, as a date field value. */
 const monthAgo = () => new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10);
 
 /**
- * «التقارير» (spec 2026-11-08-reports, roadmap N5): sales, profits, orders, balances and, for the branch with the
- * reports grant, providers. Each report covers the signed-in account's own chain and exports its filters as CSV.
- * The open tab lives in the address (`?tab=`).
+ * The reports (spec 2026-11-08-reports, roadmap N5; one page each since spec 2026-11-08-overview-and-reports-nav, C):
+ * each covers the signed-in account's own chain and exports its filters as CSV. They sit in the sidebar's
+ * «التقارير» group; `/reports` opens the first.
  */
-export function ReportsHubScreen() {
+function ReportPage({ title, children }: { title: string; children: ReactNode }) {
   const { t } = usePrefs();
-  const { me } = useOffice();
-  const [filters, setFilters] = useUrlFilters(['tab'] as const);
-  const supply = me?.layer === 'branch' && (me.isBranchOwner || me.grants.includes('reports'));
-  const tabs = TABS.filter((key) => key !== 'supply' || supply);
-  const tab: Tab = tabs.find((key) => key === filters.tab) ?? 'sales';
-  const names: Record<Tab, string> = { sales: t.salesTitle, profits: t.navProfits, orders: t.ordersTitle, balances: t.balancesTitle, supply: t.providersTitle };
-
   return (
-    <Desk title={t.navReports} lede={t.reportsLede} error="" note="">
-      <Tabs items={tabs.map((key) => ({ key, label: names[key] }))} value={tab} onChange={(next) => setFilters({ tab: next })} />
-      {tab === 'sales' && <SalesReport />}
-      {tab === 'profits' && <ProfitsReport />}
-      {tab === 'orders' && <OrdersReport />}
-      {tab === 'balances' && <BalancesReport />}
-      {tab === 'supply' && <SupplyReport />}
+    <Desk title={title} lede={t.reportsLede} error="" note="">
+      {children}
     </Desk>
   );
+}
+
+export function SalesReportScreen() {
+  const { t } = usePrefs();
+  return <ReportPage title={t.salesTitle}><SalesReport /></ReportPage>;
+}
+
+export function OrdersReportScreen() {
+  const { t } = usePrefs();
+  return <ReportPage title={t.ordersTitle}><OrdersReport /></ReportPage>;
+}
+
+export function BalancesReportScreen() {
+  const { t } = usePrefs();
+  const allowed = useRequireLayer(['branch', 'main_agent', 'agent']);
+  return <ReportPage title={t.balancesTitle}>{allowed ? <BalancesReport /> : null}</ReportPage>;
+}
+
+/** Providers: the branch owner and staff with the reports grant (the API refuses the rest). */
+export function SupplyReportScreen() {
+  const { t } = usePrefs();
+  const allowed = useRequireLayer(['branch']);
+  return <ReportPage title={t.providersTitle}>{allowed ? <SupplyReport /> : null}</ReportPage>;
 }
 
 function Export({ kind, query }: { kind: string; query: Record<string, string> }) {

@@ -196,21 +196,40 @@ describe('accounts and roles over HTTP', () => {
     expect(w.written.at(-1)).toEqual({ op: 'user.delete', args: { where: { id: 'pos1' } } });
   });
 
-  it('enters an account for the branch with the enter grant, logs it, and sets the session cookies; leave needs an entered session', async () => {
+  it('enters an account for the branch with the enter grant, logs it, and hands its door a one-time code; leave needs an entered session', async () => {
     expect(await code(as('ag1', 'post', '/office/users/pos1/enter'))).toBe('403 FORBIDDEN');
     expect(await code(as('clerk', 'post', '/office/users/pos1/enter'))).toBe('403 FORBIDDEN');
     expect(await code(as('owner', 'post', '/office/users/owner/enter'))).toBe('400 INVALID');
     const entered = await as('owner', 'post', '/office/users/pos1/enter');
     expect(entered.status).toBe(201);
-    expect(entered.body.sessionId).toEqual(expect.any(String));
-    const cookies = String(entered.headers['set-cookie']);
-    expect(cookies).toContain('home=');
-    expect(cookies).toContain(`sid=${entered.body.sessionId}`);
+    expect(entered.body).toEqual({ door: 'pos', code: expect.any(String) });
+    // The admin host keeps the owner's own cookies.
+    expect(entered.headers['set-cookie']).toBeUndefined();
     expect(w.written.find((entry) => entry.op === 'accessLog.create')!.args).toMatchObject({ data: { actorId: 'owner', targetLogin: 'pos1' } });
+
+    // The point-of-sale door trades the code once for the entered session and the owner's session.
+    expect(await code(request(app.getHttpServer()).post('/office/handoff').send({ code: 'nope' }))).toBe('400 INVALID');
+    const handed = await request(app.getHttpServer()).post('/office/handoff').send({ code: entered.body.code });
+    expect(handed.status).toBe(201);
+    const cookies = String(handed.headers['set-cookie']);
+    const sid = /sid=([^;]+)/.exec(cookies)![1];
+    expect(cookies).toContain(`home=${sessions.owner}`);
+    expect((await store.liveSession(sid))?.session.kind).toBe('impersonation');
+    expect((await store.liveSession(sid))?.user.loginName).toBe('pos1');
+    expect(await code(request(app.getHttpServer()).post('/office/handoff').send({ code: entered.body.code }))).toBe('400 INVALID');
+
     expect(await code(as('owner', 'post', '/office/leave'))).toBe('400 INVALID');
-    const left = await request(app.getHttpServer()).post('/office/leave').set('Cookie', `sid=${entered.body.sessionId}; home=${sessions.owner}`);
+    const left = await request(app.getHttpServer()).post('/office/leave').set('Cookie', `sid=${sid}; home=${sessions.owner}`);
     expect(left.status).toBe(201);
     expect(String(left.headers['set-cookie'])).toContain(`sid=${sessions.owner}`);
+    expect(await store.liveSession(sid)).toBeNull();
+  });
+
+  it('refuses an expired or unknown handoff code', async () => {
+    const entered = await as('owner', 'post', '/office/users/pos1/enter');
+    await store.dropSecret(`handoff:${entered.body.code}`);
+    expect(await code(request(app.getHttpServer()).post('/office/handoff').send({ code: entered.body.code }))).toBe('400 INVALID');
+    expect(await code(request(app.getHttpServer()).post('/office/handoff').send({}))).toBe('400 INVALID');
   });
 
   it('shows and edits roles for the owner only', async () => {

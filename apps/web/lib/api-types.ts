@@ -350,6 +350,11 @@ export type LedgerRow = {
   packageName: string | null;
   msisdn: string | null;
   actorLogin: string;
+  /** The account whose wallet moved (the operations scope covers the viewer's tree). */
+  loginName: string;
+  layer: string;
+  /** What the viewer earned on this operation; null when it is not a sale in its chain. */
+  margin: number | null;
 };
 export type ActivityRow = {
   id: string;

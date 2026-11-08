@@ -22,3 +22,9 @@ export function doorOrigin(door: Door, hostHeader: string): string {
     : hostname.split('.').slice(1).join('.') || 'localhost';
   return `${door.host}.${parent}${port}`;
 }
+
+/** The address of `path` on another door of this office, from the page that is open now (browser only). */
+export function doorUrl(host: string, path: string): string {
+  const door = DOOR_HOSTS.find((item) => item.host === host) ?? DOOR_HOSTS[0];
+  return `${window.location.protocol}//${doorOrigin(door, window.location.host)}${path}`;
+}

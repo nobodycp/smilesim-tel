@@ -115,8 +115,16 @@ export class WalletsService {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
       ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),
     };
-    const where = {
-      userId: actor.id,
+    // Operations cover the viewer's whole tree: a sale debits only the point of sale's wallet, so the layers above
+    // have no operation entries of their own (spec 2026-11-08-overview-and-reports-nav, B). The audit scope stays
+    // the viewer's own wallet.
+    let owners: Prisma.WalletEntryWhereInput = { userId: actor.id };
+    if (scope === 'operations') {
+      const accounts = await this.kernel.accounts();
+      owners = actor.layer === 'branch' ? {} : { userId: { in: [...visibleAccountIds(actor.id, actor.layer, accounts)] } };
+    }
+    const where: Prisma.WalletEntryWhereInput = {
+      ...owners,
       kind: { in: kind ? [kind] : allowed },
       ...(query.direction === 'in' ? { amount: { gt: 0 } } : {}),
       ...(query.direction === 'out' ? { amount: { lt: 0 } } : {}),
@@ -125,15 +133,20 @@ export class WalletsService {
     const [read, total] = await Promise.all([
       this.kernel.prisma.walletEntry.findMany({
         where: { ...where, AND: afterFeed(feedPosition(query.cursor)) },
-        include: { actor: true },
+        include: { actor: true, user: true },
         orderBy: [...NEWEST_FIRST],
         take: FEED_PAGE + 1,
       }),
       this.kernel.prisma.walletEntry.count({ where }),
     ]);
     const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
+    const margins = scope === 'operations' ? await this.marginsFor(actor, rows) : new Map<string, number | null>();
     return {
       entries: rows.map((row) => ({
+        /** The account whose wallet the operation moved, and what the viewer earned on it (null when nothing). */
+        loginName: row.user?.loginName ?? actor.loginName,
+        layer: row.user?.layer ?? actor.layer,
+        margin: margins.get(row.id) ?? null,
         id: row.id,
         at: row.createdAt.toISOString(),
         kind: row.kind,

@@ -12,6 +12,7 @@ import { parseShekel, shekelField } from '../../lib/money';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
 import { sharedKeys } from '../../lib/query';
+import { doorUrl } from '../../lib/doors';
 import { reloadAt } from '../../lib/reload-at';
 import { useAction } from '../../lib/use-action';
 import { useApiQuery } from '../../lib/use-api-query';
@@ -176,7 +177,7 @@ export function useAccountActions({
               {op.kind === 'password' ? <Button type="button" disabled={busy} onClick={() => run(() => api.setUserPassword(active.loginName, password))}>{t.save}</Button> : null}
               {op.kind === 'freeze' ? <Button type="button" disabled={busy} onClick={() => run(() => (active.frozen ? api.restoreUser(active.loginName) : api.freezeUser(active.loginName)))}>{active.frozen ? t.restoreAccount : t.freezeAccount}</Button> : null}
               {op.kind === 'enter' ? (
-                <Button type="button" disabled={busy} onClick={() => send(() => api.enterUser(active.loginName), { then: () => reloadAt('/numbers'), reload: false })}>
+                <Button type="button" disabled={busy} onClick={() => send(() => api.enterUser(active.loginName), { then: (entered) => reloadAt(doorUrl(entered.door, `/enter#${entered.code}`)), reload: false })}>
                   {t.enterAccount}
                 </Button>
               ) : null}

@@ -1,4 +1,6 @@
+import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { DOOR_HOSTS } from '../../../doors';
 import { hashPassword } from '../../auth/password';
 import { fullNameProblem, newPasswordProblem } from '../../auth/validators';
 import { fail } from '../../shared/office-failure';
@@ -7,7 +9,10 @@ import type { Actor } from '../kernel/types';
 import { GRANT_CODES, effectiveGrantCodes, roleGrantCodes, splitGrants } from '../office-grants';
 import { visibleAccountIds } from '../office-rules';
 import { stampTaskLog } from '../task-log';
+import { HANDOFF_SECONDS, handoffKey } from './handoff';
 import { usersPage, type UsersFilter } from './users-page';
+
+const doorOfLayer = (layer: string) => DOOR_HOSTS.find((door) => door.layer === layer)?.host ?? 'admin';
 
 type ListedAccount = {
   id: string; loginName: string; nickname: string; layer: string; parentId: string | null; disabledAt: Date | null; isBranchOwner: boolean;
@@ -305,13 +310,17 @@ export class AccountsService {
     return { ok: true };
   }
 
-  async enter(actor: Actor, loginName: string, meta: { userAgent: string; ip: string }) {
+  async enter(actor: Actor, loginName: string, meta: { userAgent: string; ip: string; homeId?: string }) {
     if (actor.impersonating || actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     if (!actor.isBranchOwner && !actor.grants.includes('enter')) fail(403, 'FORBIDDEN');
     const target = await this.kernel.prisma.user.findUnique({ where: { loginName } });
     if (!target || target.disabledAt || target.id === actor.id) fail(400, 'INVALID');
     await this.kernel.prisma.accessLog.create({ data: { actorId: actor.operatorId, targetLogin: target.loginName, ip: meta.ip } });
     const sessionId = await this.kernel.auth.saveImpersonation({ userId: target.id, userAgent: meta.userAgent, ip: meta.ip });
-    return { sessionId };
+    // The entered account opens on its own layer's door. Cookies there are set by `handoff`, so the browser carries
+    // a one-time code to that host instead of the session itself (the admin host's cookies are left as they are).
+    const code = randomBytes(32).toString('base64url');
+    await this.kernel.auth.putSecret(handoffKey(code), JSON.stringify({ sessionId, homeId: meta.homeId ?? null }), HANDOFF_SECONDS);
+    return { door: doorOfLayer(target.layer), code };
   }
 }

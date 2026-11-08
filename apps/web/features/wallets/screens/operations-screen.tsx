@@ -2,10 +2,13 @@
 
 import { useState } from 'react';
 import { PagedTable, type Column } from '../../../components/data-table';
+import { AccountName } from '../../../components/account-name';
 import { Desk, Money, actionName, latinWhen } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { PeriodChips } from '../../../components/period-chips';
 import { api, type LedgerRow } from '../../../lib/api';
+import { useDoor } from '../../../lib/door-context';
+import { layerName } from '../../../components/names';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
@@ -15,6 +18,7 @@ const kinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'free
 
 export function OperationsScreen() {
   const { t } = usePrefs();
+  const layer = useDoor().layer;
   const [kind, setKind] = useState('');
   const [direction, setDirection] = useState('');
   const [from, setFrom] = useState('');
@@ -25,10 +29,15 @@ export function OperationsScreen() {
 
   const columns: Column<LedgerRow>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    ...(layer === 'pos' ? [] : [
+      { key: 'layer', header: t.layer, render: (row: LedgerRow) => layerName(t, row.layer) },
+      { key: 'account', header: t.accountName, render: (row: LedgerRow) => <AccountName login={row.loginName} /> },
+    ]),
     { key: 'kind', header: t.kind, render: (row) => actionName(t, row.kind) },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
     { key: 'note', header: t.note, render: (row) => row.packageName || row.note || '' },
     { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} /> },
+    { key: 'margin', header: t.myMargin, num: true, render: (row) => (row.margin == null ? '—' : <Money value={row.margin} signed />) },
     { key: 'before', header: t.balanceBefore, num: true, render: (row) => <Money value={row.balanceBefore} /> },
     { key: 'after', header: t.balanceAfter, num: true, render: (row) => <Money value={row.balanceAfter} /> },
   ];
@@ -64,7 +73,7 @@ export function OperationsScreen() {
         </label>
       </FilterBar>
       <section className="pane">
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 7 }} />
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: layer === 'pos' ? 8 : 10 }} />
       </section>
     </Desk>
   );
