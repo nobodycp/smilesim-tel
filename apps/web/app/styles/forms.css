@@ -33,7 +33,7 @@ input:focus {
   box-shadow: 0 0 0 3px var(--rd-focus);
 }
 input[readonly] { color: var(--rd-muted); border-style: dashed; background: transparent; }
-.btn, form > button, .panel button, .card button {
+.btn, form > button, .panel button {
   height: 40px;
   padding: 0 16px;
   border: 0;
@@ -43,7 +43,7 @@ input[readonly] { color: var(--rd-muted); border-style: dashed; background: tran
   font-weight: 700;
   justify-self: start;
 }
-.btn:hover, form > button:hover, .card button:hover { background: var(--rd-primary-hover); }
+.btn:hover, form > button:hover { background: var(--rd-primary-hover); }
 .btn:disabled, form > button:disabled { opacity: 0.6; cursor: default; }
 button.danger {
   background: transparent;

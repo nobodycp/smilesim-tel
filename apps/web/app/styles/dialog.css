@@ -237,10 +237,9 @@
   .dialog.dialog-transfer { width: min(760px, 100%); }
 }
 .row-menu { position: relative; display: inline-flex; }
-/* `.row-menu .row-menu-btn` (two classes), not `.row-menu-btn` alone: the trigger sits inside a
-   `Table`'s `.card` wrapper (Task 3), and forms.css's `.card button` rule (one class + one type
-   selector) otherwise outranks a single-class selector and repaints the ghost trigger as a
-   filled primary button. */
+/* `.row-menu .row-menu-btn` (two classes), not `.row-menu-btn` alone: forms.css's broad button rules
+   (`.panel button`: one class + one type selector) otherwise outrank a single-class selector and
+   repaint the ghost trigger as a filled primary button. */
 .row-menu .row-menu-btn {
   display: inline-flex;
   align-items: center;
