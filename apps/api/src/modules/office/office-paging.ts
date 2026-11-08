@@ -28,6 +28,14 @@ export function idCursorArgs(cursor: string | undefined, size: number) {
   return { take: size + 1, ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}) };
 }
 
+/** «ينتهي قريباً»: an active line whose subscription ends within this many days (owner, 2026-11-08). */
+export const EXPIRING_DAYS = 3;
+
+/** The window of an expiring line: active, ending between now and EXPIRING_DAYS from now. */
+export function expiringWhere(now: Date = new Date()): Prisma.LineWhereInput {
+  return { status: 'active', endsAt: { gte: now, lte: new Date(now.getTime() + EXPIRING_DAYS * 86_400_000) } };
+}
+
 export type LineFilter = { q?: string; status?: string; packageCode?: string; provider?: string; company?: string };
 
 /**
@@ -59,7 +67,8 @@ export function linesWhere(posIds: string[], filter: LineFilter): Prisma.LineWhe
   };
   return {
     posId: { in: posIds },
-    ...(status ? { status } : {}),
+    // `expiring` is not a stored status: it narrows the active lines to those ending soon.
+    ...(filter.status === 'expiring' ? expiringWhere() : status ? { status } : {}),
     ...(Object.keys(pack).length ? { package: pack } : {}),
     ...search,
   };

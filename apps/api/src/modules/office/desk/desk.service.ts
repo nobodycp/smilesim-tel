@@ -6,6 +6,7 @@ import { excerpt } from '../notice-kinds';
 import { visibleAccountIds } from '../office-rules';
 import { taskWhereFor } from '../task-access';
 import { deniedOpsFor, parseOps, serializeOps } from '../user-terms';
+import { expiringWhere } from '../office-paging';
 
 /** The signed-in account's desk: who it is (identity, balance, grants, stops), the home board, and posting an announcement to everyone below it. */
 @Injectable()
@@ -38,10 +39,11 @@ export class DeskService {
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
     const chain = this.kernel.chainIds(actor.id, accounts);
     const taskWhere = { ...taskWhereFor(actor, accounts), status: 'pending' };
-    const [pendingTasks, activeLines, inactiveLines, entries, notes] = await Promise.all([
+    const [pendingTasks, activeLines, inactiveLines, expiringLines, entries, notes] = await Promise.all([
       this.kernel.prisma.officeTask.count({ where: taskWhere }),
       posIds.length ? this.kernel.prisma.line.count({ where: { posId: { in: posIds }, status: 'active' } }) : 0,
       posIds.length ? this.kernel.prisma.line.count({ where: { posId: { in: posIds }, status: 'disconnected' } }) : 0,
+      posIds.length ? this.kernel.prisma.line.count({ where: { posId: { in: posIds }, ...expiringWhere() } }) : 0,
       posIds.length
         ? this.kernel.prisma.walletEntry.findMany({
             where: { userId: { in: posIds }, kind: { in: ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch'] } },
@@ -61,6 +63,7 @@ export class DeskService {
       pendingTasks,
       activeLines,
       inactiveLines,
+      expiringLines,
       canPost: actor.layer !== 'pos',
       operations: entries.map((row) => ({
         id: row.id,

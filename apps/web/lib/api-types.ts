@@ -45,6 +45,8 @@ export type HomePayload = {
   pendingTasks: number;
   activeLines: number;
   inactiveLines: number;
+  /** Active lines ending within three days. */
+  expiringLines: number;
   canPost: boolean;
   operations: { id: string; at: string; kind: string; amount: number; note: string | null; packageName: string | null; loginName: string }[];
   announcements: { id: string; body: string; at: string; authorName: string; authorLayer: string }[];

@@ -27,12 +27,14 @@ import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { lineTone } from '../../../lib/status-tone';
+import { EXPIRING_DAYS, daysLeft } from '../../../lib/days-left';
 
 const NO_POSES: PosChoice[] = [];
 const NO_PACKAGES: PackageRow[] = [];
 
 const FILTER_KEYS = ['q', 'status', 'pack', 'provider', 'company'] as const;
-const LINE_STATUSES = ['active', 'frozen', 'disconnected', 'suspended'];
+// `expiring` is a filter, not a stored status: active lines ending within three days.
+const LINE_STATUSES = ['active', 'expiring', 'frozen', 'disconnected', 'suspended'];
 
 export function NumbersScreen() {
   const { t, locale } = usePrefs();
@@ -156,6 +158,16 @@ export function NumbersScreen() {
     },
     { key: 'ends', header: t.endsOn, render: (line) => new Date(line.endsAt).toLocaleDateString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar') },
     {
+      key: 'days',
+      header: t.remainingDays,
+      num: true,
+      render: (line) => {
+        if (line.status !== 'active') return '—';
+        const days = daysLeft(line.endsAt);
+        return days <= EXPIRING_DAYS ? <Badge variant="warning" dot>{days} {t.dayUnit}</Badge> : days;
+      },
+    },
+    {
       key: 'ops',
       header: t.rowActions,
       actions: true,
@@ -226,6 +238,7 @@ export function NumbersScreen() {
           <Select value={status} onChange={(event) => setFilters({ status: event.target.value })}>
             <option value="">{t.allRows}</option>
             <option value="active">{t.lineActive}</option>
+            <option value="expiring">{t.expiringSoon}</option>
             <option value="frozen">{t.lineFrozen}</option>
             <option value="disconnected">{t.lineDisconnected}</option>
             <option value="suspended">{t.lineSuspended}</option>

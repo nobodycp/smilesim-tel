@@ -526,6 +526,8 @@ export const ar = {
   endsOn: 'انتهاء الحزمة',
   updateNumber: 'تحديث الرقم',
   swapSim: 'تبديل الشريحة',
+  expiringSoon: 'ينتهي قريباً',
+  expiringSoonHint: 'يبقى لها ٣ أيام أو أقل',
   remainingDays: 'الأيام المتبقية',
   dayUnit: 'يوم',
   subscriptionPrice: 'سعر الاشتراك',

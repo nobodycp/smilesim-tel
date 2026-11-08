@@ -526,6 +526,8 @@ export const he: Copy = {
   endsOn: 'סיום החבילה',
   updateNumber: 'עדכון מספר',
   swapSim: 'החלפת סים',
+  expiringSoon: 'מסתיים בקרוב',
+  expiringSoonHint: 'נותרו 3 ימים או פחות',
   remainingDays: 'ימים שנותרו',
   dayUnit: 'יום',
   subscriptionPrice: 'מחיר מנוי',

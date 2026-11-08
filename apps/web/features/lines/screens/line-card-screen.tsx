@@ -30,6 +30,7 @@ import { DataImage } from '../../../components/data-image';
 import { Fact, Facts } from '../../../components/facts';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
+import { daysLeft } from '../../../lib/days-left';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
@@ -46,11 +47,6 @@ function tileIcon(item: RowAction) {
   return <CalendarPlus {...glyph} />;
 }
 
-function daysLeft(endsAt: string): number {
-  const end = new Date(endsAt).getTime();
-  if (Number.isNaN(end)) return 0;
-  return Math.max(0, Math.ceil((end - Date.now()) / 86_400_000));
-}
 
 const NO_PACKAGES: PackageRow[] = [];
 const NO_COMPANIES: Shelf['companies'] = [];

@@ -89,6 +89,9 @@ export function HomeScreen() {
           <Link className="stat-link" href="/numbers?status=active">
             <Stat icon="numbers" tone="success" label={t.activeLines} value={home ? home.activeLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.lineActive} />
           </Link>
+          <Link className="stat-link" href="/numbers?status=expiring">
+            <Stat icon="numbers" tone="warning" label={t.expiringSoon} value={home ? home.expiringLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.expiringSoonHint} />
+          </Link>
           <Link className="stat-link" href="/numbers?status=disconnected">
             <Stat icon="numbers" tone="danger" label={t.inactiveLines} value={home ? home.inactiveLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.lineDisconnected} />
           </Link>

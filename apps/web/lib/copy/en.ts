@@ -526,6 +526,8 @@ export const en: Copy = {
   endsOn: 'Package ends',
   updateNumber: 'Update number',
   swapSim: 'Replace SIM',
+  expiringSoon: 'Ending soon',
+  expiringSoonHint: '3 days or less left',
   remainingDays: 'Days left',
   dayUnit: 'days',
   subscriptionPrice: 'Subscription price',

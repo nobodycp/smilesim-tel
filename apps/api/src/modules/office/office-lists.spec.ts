@@ -4,7 +4,7 @@ import type { Layer } from '../auth/decide-login';
 import { hashOnce } from './test-hash';
 import { OfficeFailure } from '../shared/office-failure';
 import { OfficeFacade } from './testing/office-facade';
-import { afterFeed, decodeFeedCursor, encodeFeedCursor, linesWhere, mergeFeed } from './office-paging';
+import { EXPIRING_DAYS, afterFeed, decodeFeedCursor, encodeFeedCursor, expiringWhere, linesWhere, mergeFeed } from './office-paging';
 
 // A small in-memory stand-in for the Prisma client: it reads the `where`, `orderBy`, `cursor`,
 // `skip` and `take` the service sends, so the lists are proven to page in the query and not in memory.
@@ -209,6 +209,15 @@ describe('numbers list paging', () => {
       posId: { in: ['p'] },
       package: { code: 'pk-a', provider: { name: 'سكاي' }, company: { name: 'سلكوم' } },
     });
+  });
+
+  it('reads «ending soon» as active lines that end within three days', () => {
+    const now = new Date('2026-11-08T12:00:00.000Z');
+    expect(EXPIRING_DAYS).toBe(3);
+    expect(expiringWhere(now)).toEqual({ status: 'active', endsAt: { gte: now, lte: new Date('2026-11-11T12:00:00.000Z') } });
+    const where = linesWhere(['p'], { status: 'expiring' });
+    expect(where).toMatchObject({ posId: { in: ['p'] }, status: 'active' });
+    expect(where.endsAt).toBeDefined();
   });
 
   it('finds a line by its serial', async () => {
