@@ -14,6 +14,7 @@ import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
+import { Tabs } from '../../../components/tabs';
 
 const BRANCH = ['branch'];
 const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
@@ -142,19 +143,7 @@ export function ProviderPackagesScreen() {
   return (
     <Desk title={title} lede="" error={error} note={note}>
       <section className="pane">
-        <div className="steps" role="tablist">
-          {tabs.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.key}
-              onClick={() => setTab(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <Tabs items={tabs} value={tab} onChange={setTab} />
         {tab === 'settings' && (
           <div className="pane-body stack">
             <form className="switch-row" onSubmit={savePrice}>

@@ -29,6 +29,7 @@ import { Select } from '../../../components/ui/select';
 import { DataImage } from '../../../components/data-image';
 import { Fact, Facts } from '../../../components/facts';
 import { useCrumbs } from '../../../lib/crumbs';
+import { Tabs } from '../../../components/tabs';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
@@ -142,13 +143,7 @@ export function LineCardScreen() {
               <p className="line-number"><bdi dir="ltr">{line.msisdn}</bdi></p>
               <Badge variant={lineTone(line.status)} dot>{lineStatus(t, line.status)}</Badge>
             </header>
-            <div className="steps" role="tablist">
-              {tabs.map((item) => (
-                <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)}>
-                  {names[item]}
-                </button>
-              ))}
-            </div>
+            <Tabs items={tabs.map((item) => ({ key: item, label: names[item] }))} value={tab} onChange={setTab} />
             {tab === 'ops' && (
               <div className="pane-body line-ops">
                 {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}

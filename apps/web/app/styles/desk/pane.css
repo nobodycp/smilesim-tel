@@ -90,40 +90,59 @@
 .seg { display: inline-flex; gap: var(--rd-space-0-5); padding: var(--rd-space-0-5); border: 1px solid var(--rd-line); border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); }
 .seg button { height: 28px; padding: 0 var(--rd-space-2-5); border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 700; }
 .seg button[aria-pressed='true'] { background: var(--rd-surface); color: var(--rd-ink); }
+/* Tabs (components/tabs.tsx): a segmented control on a soft track; the selected tab sits on the surface. */
 .steps {
-  display: flex;
+  display: inline-flex;
   flex: none;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  align-self: flex-start;
+  gap: 2px;
+  max-width: 100%;
   margin: 0;
-  padding-inline: 0.25rem;
-  border-bottom: 1px solid var(--rd-line);
-  background: transparent;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-surface-2);
+  scrollbar-width: none;
 }
 .steps button {
-  position: relative;
+  display: inline-flex;
   flex: none;
-  height: 40px;
-  padding: 0 0.85rem;
-  border: 0;
-  border-radius: 0;
+  align-items: center;
+  gap: var(--rd-space-1-5);
+  height: 32px;
+  padding: 0 var(--rd-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--rd-radius-sm);
   background: transparent;
   color: var(--rd-muted);
-  font-size: 0.875rem;
+  font-size: var(--rd-text-base);
   font-weight: 600;
   white-space: nowrap;
+  cursor: pointer;
 }
-.steps button[aria-selected='true'] { color: var(--rd-ink); background: transparent; box-shadow: none; }
-.steps button[aria-selected='true']::after {
-  content: "";
-  position: absolute;
-  inset-inline: 0.85rem;
-  bottom: 0;
-  height: 2px;
-  border-radius: var(--rd-radius-2xs);
-  background: var(--rd-ink);
+.steps button:hover:not(:disabled) { color: var(--rd-ink); }
+.steps button[aria-selected='true'] {
+  border-color: var(--rd-line);
+  background: var(--rd-surface);
+  color: var(--rd-ink);
+  font-weight: 700;
+  box-shadow: var(--rd-shadow-sm);
 }
 .steps button:disabled { opacity: 0.4; cursor: default; }
+.step-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-surface-3);
+  color: var(--rd-ink-2);
+  font-size: var(--rd-text-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 .switch-row {
   display: flex;
   flex-wrap: wrap;
@@ -155,3 +174,4 @@
 .canvas .pane,
 .canvas .sheet { min-width: 0; max-width: 100%; }
 .canvas .sheet { overflow-x: auto; }
+@media (max-width: 720px) { .steps button { height: 40px; } }

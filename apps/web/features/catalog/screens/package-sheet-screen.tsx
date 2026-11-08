@@ -24,6 +24,7 @@ import { lineTone, onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { useCrumbs } from '../../../lib/crumbs';
+import { Tabs } from '../../../components/tabs';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
@@ -455,13 +456,7 @@ export function PackageSheetScreen() {
         <section className="pane package-sheet">
           {!card.loaded || !sheet ? <TableSkeleton rows={6} columns={2} /> : (
             <>
-              <div className="steps" role="tablist">
-                {tabs.map((item) => (
-                  <button key={item.key} type="button" role="tab" aria-selected={tab === item.key} onClick={() => setTab(item.key)}>
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+              <Tabs items={tabs} value={tab} onChange={setTab} />
               {tab === 'overview' && (
                 <div className="pane-body">
                   <div className="sheet-stats">

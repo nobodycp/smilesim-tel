@@ -15,6 +15,7 @@ import { OPEN_SIM, hasSimRules, simShape } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Button } from '../../../components/ui/button';
+import { Tabs } from '../../../components/tabs';
 
 const BRANCH = ['branch'];
 type Provider = Shelf['companies'][number]['providers'][number];
@@ -96,19 +97,7 @@ export function CompanyScreen() {
   return (
     <Desk title={company?.name ?? ''} lede="" error={error} note={note}>
       <section className={tab === 'settings' ? 'pane fit' : 'pane'}>
-        <div className="steps" role="tablist">
-          {tabs.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.key}
-              onClick={() => setTab(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <Tabs items={tabs} value={tab} onChange={setTab} />
         {tab === 'settings' && (
           <form className="pane-body company-sim" onSubmit={save}>
             <fieldset className="sim-fields" disabled={!shelf.loaded || !canEdit}>

@@ -24,6 +24,7 @@ import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { DataImage } from '../../../components/data-image';
+import { Tabs } from '../../../components/tabs';
 
 function PosCatalog({
   rows,
@@ -100,11 +101,15 @@ function PosCatalog({
   return (
     <Desk title={t.plansTitle} lede={t.plansPosLede} error={loadError || error} note={note}>
       <div className="stack">
-        <div className="steps" role="tablist">
-          <button type="button" role="tab" aria-selected={step === 'companies'} onClick={() => setStep('companies')}>{t.tabCompanies}</button>
-          <button type="button" role="tab" aria-selected={step === 'packages'} disabled={!company} onClick={() => setStep('packages')}>{t.tabPackages}</button>
-          <button type="button" role="tab" aria-selected={step === 'details'} disabled={!picked} onClick={() => setStep('details')}>{t.tabSubscribe}</button>
-        </div>
+        <Tabs
+          items={[
+            { key: 'companies', label: t.tabCompanies },
+            { key: 'packages', label: t.tabPackages, disabled: !company },
+            { key: 'details', label: t.tabSubscribe, disabled: !picked },
+          ]}
+          value={step}
+          onChange={setStep}
+        />
         {step === 'companies' && (
           <div className="company-grid">
             {names.map((name) => {

@@ -22,6 +22,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { Fact, Facts } from '../../../components/facts';
 import { useCrumbs } from '../../../lib/crumbs';
+import { Tabs } from '../../../components/tabs';
 
 const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
@@ -132,13 +133,7 @@ export function AccountScreen() {
             <Fact label={t.role} icon={<Shield />}>{row.staff ? (row.roleName || '—') : layerName(t, row.layer)}</Fact>
             <Fact label={t.status} icon={row.frozen ? <Snowflake /> : <CircleCheck />} tone={row.frozen ? 'warn' : 'good'}>{row.frozen ? t.frozen : t.accountOpen}</Fact>
           </Facts>
-          <div className="steps" role="tablist">
-            {tabs.map((item) => (
-              <button key={item.key} type="button" role="tab" aria-selected={openTab === item.key} disabled={item.key !== 'access' && row.staff} onClick={() => setTab(item.key)}>
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <Tabs items={tabs.map((item) => ({ ...item, disabled: item.key !== 'access' && row.staff }))} value={openTab} onChange={setTab} />
           {openTab === 'access' && (
           <section className="pane">
             <header className="pane-head">
