@@ -1,0 +1,199 @@
+/* Packages, companies and the package sheet: pack and company cards, price board, sell cells, SIM settings. */
+.company-sim { gap: 14px; }
+.sim-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 14px 16px;
+  align-items: start;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.sim-toggle { display: grid; gap: 4px; align-content: start; }
+.sim-toggle .check { min-height: 34px; margin-block-start: 20px; }
+.sim-sample {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--rd-line);
+  color: var(--rd-ink-2);
+  font-size: var(--rd-text-sm);
+  font-weight: 700;
+}
+.sim-sample bdi {
+  color: var(--rd-ink);
+  font-size: var(--rd-text-xl);
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+.company-logo { width: 64px; height: 64px; object-fit: contain; border-radius: var(--rd-radius-panel); background: var(--rd-surface-2); }
+.company-head { display: flex; align-items: center; gap: 12px; }
+.company-head .company-mark { width: 48px; height: 48px; border-radius: 14px; font-size: var(--rd-text-base); }
+.data .company-head .company-logo,
+.data .company-head .company-mark { width: 36px; height: 36px; border-radius: var(--rd-radius-md); font-size: var(--rd-text-md); }
+.company-grid, .pack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 180px);
+  justify-content: start;
+  gap: 12px;
+}
+.company-card, .pack-card {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  min-height: 148px;
+  padding: 16px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-panel);
+  background: var(--rd-surface);
+  color: var(--rd-ink);
+  text-align: center;
+}
+.company-card { cursor: pointer; }
+.company-card:hover, .pack-card:hover { border-color: var(--rd-ink); }
+.company-mark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  color: var(--rd-on-mark);
+  font-size: var(--rd-text-2xl);
+  font-weight: 800;
+}
+.pack-card { justify-items: stretch; text-align: start; }
+.pack-card > button { height: 34px; border: 0; border-radius: var(--rd-radius-sm); background: var(--rd-primary-bg); color: var(--rd-primary-fg); font-weight: 700; }
+.pack-price { margin: 0; font-size: 22px; font-weight: 800; }
+.mode-pick { width: 220px; max-width: 100%; }
+.sim-cell { display: inline-flex; align-items: center; gap: 8px; }
+.pack-picks { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 8px; }
+.pack-pick {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-height: 132px;
+  padding: 14px 10px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-surface);
+  color: var(--rd-ink);
+  text-align: center;
+}
+.pack-pick img,
+.pack-pick > span:first-child {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: var(--rd-surface-2);
+}
+.pack-pick > span:first-child { display: grid; place-items: center; font-weight: 800; }
+.pack-pick.is-on { border-color: var(--rd-ink); background: var(--rd-surface-2); }
+.account-fund { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.account-fund label {
+  display: grid;
+  gap: 4px;
+  min-width: 140px;
+  color: var(--rd-muted);
+  font-size: var(--rd-text-xs);
+  font-weight: 700;
+}
+.account-fund input { height: 34px; }
+.account-fund > button {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-primary-bg);
+  color: var(--rd-primary-fg);
+  font-size: var(--rd-text-sm);
+  font-weight: 700;
+}
+.package-sheet .pane-body > .ui-badge { justify-self: start; }
+.sheet-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.sheet-stats > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: var(--rd-radius-card);
+  background: var(--rd-surface-2);
+}
+.sheet-stats span { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 700; }
+.sheet-stats strong { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.sheet-meta { display: grid; }
+.sheet-meta > div,
+.sheet-meta > .live-switch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--rd-line-soft);
+}
+.sheet-meta > div > span,
+.sheet-meta > .live-switch > span { color: var(--rd-muted); font-size: var(--rd-text-md); font-weight: 700; }
+.sheet-meta strong,
+.sheet-meta b { color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }
+.price-board {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  align-items: start;
+}
+.price-board > .secondary { grid-column: 1 / -1; justify-self: start; }
+.package-sheet .account-fund {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+.package-sheet .account-fund h3 {
+  margin: 0;
+  color: var(--rd-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.package-sheet .account-fund label { min-width: 0; }
+.package-sheet .account-fund input,
+.package-sheet .account-fund select { width: 100%; }
+.package-sheet .account-fund.custom-price-add {
+  grid-template-columns: minmax(12rem, 2fr) minmax(8rem, 1fr) minmax(8rem, 1fr) auto;
+  align-items: end;
+}
+.package-sheet .account-fund.custom-price-add > button { align-self: end; }
+@media (max-width: 1099px) {
+  .package-sheet .account-fund.custom-price-add { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .package-sheet .account-fund.custom-price-add > label:first-child,
+  .package-sheet .account-fund.custom-price-add > button { grid-column: 1 / -1; }
+}
+.package-sheet .price-board > .account-fund:last-child {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+.package-sheet .price-board > .account-fund:last-child h3 { grid-column: 1 / -1; }
+.target-list .check {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--rd-line-soft);
+}
+.target-list > .secondary { justify-self: start; margin-top: 4px; }
+@media (max-width: 720px) {
+  .sheet-stats,
+  .price-board { grid-template-columns: 1fr; }
+  .package-sheet .price-board > .account-fund:last-child { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Custom prices tab on the package sheet: default figure beside the editable field. */
+.price-pair { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.price-pair > .money.muted { font-size: var(--rd-text-sm); }
+
+/* Sell price cell on /packages: two short fields and their save control, aligned to the figure column. */
+.sell-cell { display: inline-flex; align-items: flex-end; justify-content: flex-end; gap: 8px; }

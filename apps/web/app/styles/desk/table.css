@@ -1,0 +1,149 @@
+/* The .data table (DataTable, PagedTable): cells, sort header, row actions, numbers and money, account and kind cells, pager. */
+.pane:has(table.data) {
+  border-radius: var(--rd-radius-card);
+  box-shadow: var(--rd-shadow-frame);
+}
+.data { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--rd-text-md); }
+.data th, .data td { padding: 8px 12px; text-align: start; vertical-align: middle; }
+.data td strong { font-weight: 700; }
+.data .hint, .data td .hint { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 500; }
+.data .col-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+.data th:first-child .col-sort { justify-content: flex-start; }
+.data th:not(:first-child) .col-sort { justify-content: center; }
+.data .col-sort svg { width: 14px; height: 14px; flex: none; opacity: 0.45; }
+.data th[aria-sort='ascending'] .col-sort svg,
+.data th[aria-sort='descending'] .col-sort svg { opacity: 1; }
+.data th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--rd-surface-3);
+  color: var(--rd-ink-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--rd-line);
+  box-shadow: 0 1px 0 var(--rd-line);
+}
+.data td { border-bottom: 1px solid var(--rd-line); background: transparent; }
+.data tbody tr:nth-child(even) td { background: var(--rd-surface-2); }
+.data tbody tr:last-child td { border-bottom: 0; }
+.data tbody tr:hover td { background: var(--rd-surface-2); }
+.money { font-variant-numeric: tabular-nums; font-weight: 700; }
+.money.pos { color: var(--rd-success); }
+.money.neg { color: var(--rd-danger); }
+.money.muted { color: var(--rd-muted); font-weight: 600; }
+/* A kind name with a tag after it (the eSIM fee on a sale). Wraps on a narrow table. */
+.kind-cell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.kind-cell .ui-badge .money { color: inherit; font-weight: 700; }
+.num-link { color: var(--rd-ink); font-weight: 800; text-decoration: none; }
+.row-link { color: inherit; font-weight: 700; text-decoration: none; }
+.account-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 500;
+}
+.account-mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-primary-soft);
+  color: var(--rd-primary-bg);
+  font-size: var(--rd-text-xs);
+  font-weight: 700;
+}
+.account-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: start;
+}
+.account-id .hint { font-weight: 500; }
+/* An account reference: the login, then the full name in parentheses. Wraps as a unit on narrow cells. */
+.account-name { display: inline; min-width: 0; }
+.account-name > bdi { font-variant-numeric: tabular-nums; }
+.account-full { color: var(--rd-muted); font-weight: 500; font-size: 0.92em; white-space: nowrap; }
+.data td.msisdn { text-align: start; }
+.data td.msisdn bdi { unicode-bidi: isolate; }
+.canvas .data { width: 100%; table-layout: auto; }
+.canvas .data th { line-height: 1.25; }
+.data th,
+.data td,
+.data th.num,
+.data td.num,
+.data td:has(.money),
+.data th.row-actions,
+.data td.row-actions {
+  text-align: center;
+}
+.data th:first-child,
+.data td:first-child {
+  text-align: start;
+}
+.data th.num { font-variant-numeric: tabular-nums; }
+.data td.num,
+.data td:has(.money) {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.data th.fit,
+.data td.fit {
+  white-space: nowrap;
+}
+.data td.when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.data th.row-actions,
+.data td.row-actions {
+  width: 6rem;
+  padding-inline: 8px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.data td.msisdn,
+.data td.msisdn bdi,
+.data bdi { white-space: nowrap; }
+/* Narrow window: a seven-column sheet must still show its last column. Cells lose 4px of
+   inline padding each side and the timestamp may break between date and clock. */
+@media (max-width: 1100px) {
+  .canvas .data th,
+  .canvas .data td { padding-inline: 8px; }
+  .canvas .data td.when,
+  .canvas .data td.when bdi { white-space: normal; }
+  .canvas .data td.when bdi { display: inline-block; max-width: 5.5rem; }
+}
+.canvas .data .field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 9.5rem;
+  max-width: 100%;
+}
+.canvas .data td.msisdn,
+.canvas .data td .num-link { text-align: start; }
+.canvas .data td.msisdn bdi,
+.canvas .data bdi { unicode-bidi: isolate; }
+.table-pager {
+  border-top: 1px solid var(--rd-line);
+  padding: 4px 12px 8px;
+}
+.pane .table-pager select { width: 100%; height: 28px; }

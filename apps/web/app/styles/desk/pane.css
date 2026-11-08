@@ -1,0 +1,157 @@
+/* Panes and what sits in them: pane head and body, sheet, step tabs, segmented pick, field rows, switch rows, checks. */
+/*
+ * Scroll model (office shell is height:100dvh; overflow:hidden):
+ * - Workbench lists: .desk > .pane (+ .sheet) fill the canvas; .sheet scrolls.
+ * - Multi-block desks: .desk > .stack sizes to content; .canvas scrolls.
+ *   Never flex-crush the last pane — that left a ~0px scrollport and a locked canvas.
+ * - .stack.flow stays as an alias of the stack scroll behaviour.
+ */
+.desk > .pane { display: flex; flex-direction: column; width: 100%; min-height: 0; flex: 1; }
+.desk > .pane.fit { flex: none; }
+.desk > .stack > .pane,
+.desk > .stack > .pane:last-child,
+.desk > .stack.flow > .pane,
+.desk > .stack.flow > .pane:last-child {
+  flex: none;
+  display: block;
+  min-height: auto;
+}
+.form-save {
+  display: flex;
+  justify-content: flex-start;
+  margin-block-start: 4px;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--rd-line);
+}
+.desk .sheet { flex: 1; min-height: 0; overflow: auto; }
+.pane {
+  overflow: hidden;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-card);
+}
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0.9rem 0.85rem;
+  border-bottom: 1px solid var(--rd-line);
+  background: transparent;
+}
+.pane-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--rd-ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.pane-head .count {
+  display: inline-flex;
+  align-items: center;
+  min-width: 1.25rem;
+  padding: 0 6px;
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-surface-2);
+  color: var(--rd-muted);
+  font-size: var(--rd-text-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pane-body { display: grid; gap: 12px; padding: 12px 14px 14px; }
+.pane form { gap: 8px; }
+.pane label { gap: 4px; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
+.pane input:not([type='checkbox']):not([type='radio']):not([type='file']) { height: 34px; background: var(--rd-surface); font-size: var(--rd-text-md); }
+.pane .hint { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); }
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.field-row > label { flex: 1 1 16rem; max-width: 22rem; min-width: 0; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sheet { overflow-x: auto; }
+.pane-body textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 12px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface);
+  resize: vertical;
+}
+.pane-body textarea:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 3px var(--rd-focus); }
+.seg { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--rd-line); border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); }
+.seg button { height: 28px; padding: 0 10px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 700; }
+.seg button[aria-pressed='true'] { background: var(--rd-surface); color: var(--rd-ink); }
+.steps {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding-inline: 0.25rem;
+  border-bottom: 1px solid var(--rd-line);
+  background: transparent;
+}
+.steps button {
+  position: relative;
+  flex: none;
+  height: 40px;
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--rd-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.steps button[aria-selected='true'] { color: var(--rd-ink); background: transparent; box-shadow: none; }
+.steps button[aria-selected='true']::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0.85rem;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--rd-ink);
+}
+.steps button:disabled { opacity: 0.4; cursor: default; }
+.switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 10px;
+}
+.switch-row > label { flex: 1 1 16rem; max-width: 22rem; min-width: 0; }
+.switch-row > button { height: 34px; }
+@media (max-width: 720px) {
+  .switch-row { flex-direction: column; align-items: stretch; }
+  .switch-row > label { max-width: none; }
+}
+.pane-head h2 svg { width: 16px; height: 16px; flex: none; color: var(--rd-ink-2); }
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  margin: 0;
+  color: var(--rd-ink);
+  font-size: var(--rd-text-md);
+  font-weight: 600;
+  cursor: pointer;
+}
+.desk .pane > .pane-body { min-height: 0; overflow: auto; }
+/* Inner pages only. The shell (sidebar, topbar) is outside .canvas. */
+.canvas .stack,
+.canvas .pane,
+.canvas .sheet { min-width: 0; max-width: 100%; }
+.canvas .sheet { overflow-x: auto; }

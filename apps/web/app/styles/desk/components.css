@@ -1,0 +1,296 @@
+/* Shared pieces: EmptyState and load-failed, skeletons and spinner, Stat, LiveSwitch, operation cards, outage and return bars. */
+.return-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+  font-size: var(--rd-text-md);
+  font-weight: 700;
+}
+.return-bar button {
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-primary-bg);
+  color: var(--rd-primary-fg);
+  font-size: var(--rd-text-sm);
+  font-weight: 700;
+}
+/* The API stopped answering after the session loaded: one line above the page, same shape as .return-bar. */
+.outage-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--rd-danger-soft);
+  color: var(--rd-danger);
+  font-size: var(--rd-text-md);
+  font-weight: 700;
+}
+.outage-bar-text { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.outage-bar-text svg { flex: none; width: 1rem; height: 1rem; }
+.outage-bar button {
+  flex: none;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--rd-danger);
+  border-radius: var(--rd-radius-sm);
+  background: transparent;
+  color: var(--rd-danger);
+  font-size: var(--rd-text-sm);
+  font-weight: 700;
+}
+.outage-bar button:hover { background: var(--rd-surface); }
+.outage-bar button:disabled { opacity: 0.6; cursor: default; }
+/* The session cannot be read: the canvas holds this instead of a page. */
+.outage-panel {
+  display: grid;
+  flex: 1;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  margin: auto;
+  padding: 48px 16px;
+  max-width: 28rem;
+  text-align: center;
+}
+.outage-panel .outage-mark {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 8px;
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-danger-soft);
+  color: var(--rd-danger);
+}
+.outage-panel .outage-mark svg { width: 1.6rem; height: 1.6rem; stroke-width: 1.8; }
+.outage-panel h1 { margin: 0; font-size: 20px; }
+.outage-panel p { margin: 0 0 8px; color: var(--rd-muted); font-size: var(--rd-text-base); line-height: 1.6; }
+.outage-panel .ui-btn { justify-self: center; }
+/* A pane whose load failed: the empty-state shape with a retry under it. */
+.empty.load-failed .empty-icon { background: var(--rd-danger-soft); color: var(--rd-danger); }
+.empty.load-failed .ui-btn { margin-top: 6px; justify-self: center; }
+/* The error and not-found screens: the way out under the text, one row, centered (app/error.tsx, app/not-found.tsx). */
+.empty .empty-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: 6px; }
+.result-ok,
+.result-fail { font-weight: 700; }
+.result-ok { color: var(--rd-success); }
+.result-fail { color: var(--rd-danger); }
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.stat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 4px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-surface);
+}
+.stat-icon {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--rd-radius-md);
+  border: 1px solid var(--rd-line-soft);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+}
+.stat-icon svg { width: 1.25rem; height: 1.25rem; }
+.stat-label { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 700; line-height: 1.2; }
+.stat-value {
+  color: var(--rd-ink);
+  font-size: 1.55rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+.stat-meta {
+  grid-column: 1 / -1;
+  margin-block-start: 4px;
+  padding-block-start: 8px;
+  border-block-start: 1px solid var(--rd-line-soft);
+  color: var(--rd-muted);
+  font-size: var(--rd-text-sm);
+  font-weight: 600;
+}
+.stat.success .stat-icon {
+  border-color: var(--rd-success);
+  background: var(--rd-success-soft);
+  color: var(--rd-success);
+}
+.stat.warning .stat-icon {
+  border-color: var(--rd-warning);
+  background: var(--rd-warning-soft);
+  color: var(--rd-warning);
+}
+.stat.danger .stat-icon {
+  border-color: var(--rd-danger);
+  background: var(--rd-danger-soft);
+  color: var(--rd-danger);
+}
+.stat.muted .stat-icon {
+  border-color: var(--rd-muted);
+  background: var(--rd-surface-2);
+  color: var(--rd-muted);
+}
+.stat-link { display: block; border-radius: var(--rd-radius-lg); color: inherit; }
+.stat-link:hover .stat { border-color: var(--rd-ink); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer { to { transform: translateX(100%); } }
+.spinner { display: block; color: var(--rd-ink); }
+.skeleton {
+  display: block;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-3);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rd-surface) 55%, transparent), transparent);
+  animation: shimmer 1.6s infinite;
+}
+.sk-title { width: 168px; height: 22px; }
+.sk-lede { width: min(440px, 72%); height: 14px; margin-top: 10px; }
+.sk-stat { height: 86px; border-radius: 14px; }
+.sk-num { width: 36px; height: 22px; }
+.stat-dash { color: var(--rd-muted); }
+.loading-well { display: grid; gap: 16px; }
+.table-skeleton-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 12px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--rd-line);
+}
+.table-skeleton-row .skeleton { height: 12px; }
+.op-card {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--rd-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--rd-ink);
+  font-weight: 700;
+  text-align: start;
+}
+.op-card:hover { background: var(--rd-surface-2); }
+.op-card.danger { color: var(--rd-danger); }
+.empty { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-md); }
+.empty.empty-state {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  min-height: 100%;
+  padding: 14px;
+  text-align: center;
+}
+.empty .empty-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-surface-2);
+  color: var(--rd-muted);
+}
+.empty .empty-icon svg { width: 1rem; height: 1rem; }
+.empty .empty-title {
+  margin: 0;
+  color: var(--rd-ink);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+.empty .empty-text { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-md); }
+.live-switch button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.live-switch .track {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-surface-3);
+}
+.live-switch button[aria-checked='true'] .track { background: var(--rd-ink); }
+.live-switch .track span {
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--rd-surface);
+}
+[dir='ltr'] .live-switch button[aria-checked='true'] .track span { transform: translateX(18px); }
+[dir='rtl'] .live-switch button[aria-checked='true'] .track span { transform: translateX(-18px); }
+.live-switch { display: inline-flex; align-items: center; gap: 8px; }
+.live-switch .track,
+.live-switch .track span { transition: background-color 150ms ease, transform 150ms ease; }
+.live-switch button[aria-checked='mixed'] .track { background: color-mix(in srgb, var(--rd-ink) 45%, var(--rd-surface-3)); }
+[dir='ltr'] .live-switch button[aria-checked='mixed'] .track span { transform: translateX(9px); }
+[dir='rtl'] .live-switch button[aria-checked='mixed'] .track span { transform: translateX(-9px); }
+.live-switch button:disabled { opacity: 0.45; cursor: not-allowed; }
+.live-switch button:focus-visible { outline: none; border-radius: var(--rd-radius-pill); box-shadow: 0 0 0 3px var(--rd-focus); }
+
+/* Line operation stops: cards fill the pane, the switch means "allowed". */
+.op-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1px;
+}
+.op-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 12px;
+  min-height: 96px;
+  padding: 14px;
+  background: var(--rd-surface);
+  box-shadow: 0 0 0 1px var(--rd-line-soft);
+}
+.op-card.off { background: var(--rd-surface-2); }
+.op-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--rd-radius-card);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+}
+.op-card.off .op-mark { background: var(--rd-surface); color: var(--rd-muted); }
+.op-mark svg { width: 20px; height: 20px; }
+.op-text { display: grid; gap: 4px; min-width: 0; }
+.op-text h3 { margin: 0; font-size: var(--rd-text-base); font-weight: 800; color: var(--rd-ink); }
+.op-card.off .op-text h3 { color: var(--rd-muted); }
+.op-text .hint { margin: 0; font-size: var(--rd-text-sm); line-height: 1.4; color: var(--rd-muted); }
+.op-text .ui-badge { justify-self: start; margin-top: 2px; }
+.op-card .live-switch { flex-direction: column; align-items: center; gap: 0; }
+.op-card .live-switch b { order: 2; font-size: var(--rd-text-xs); font-weight: 700; color: var(--rd-muted); }
+.canvas .empty:not(.empty-state),
+.pane .empty:not(.empty-state),
+.sheet .empty:not(.empty-state) { display: block; padding: 14px; }

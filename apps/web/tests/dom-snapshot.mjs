@@ -6,6 +6,8 @@
 // With SHOTS=<dir> it also writes a full-page screenshot of every case there, for a before/after comparison.
 // ONLY=a,b limits the run to the named cases; CHROMIUM=<path> picks the browser executable.
 // THEME=dark and LOCALE=en|he set the preference cookies, so the same cases run in dark mode or left to right.
+// STYLES=1 also writes <name>.styles.tsv: every element's path and a hash of its whole computed style (a CSS
+// refactor that moves rules must leave these equal); WIDTH sets the viewport width (default 1280).
 //
 // The origin defaults to the Playwright dev server, http://admin.localhost:3910 (start it with `npm run dev`
 // style env: NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_API_URL=http://localhost:3911 next dev -p 3910).
@@ -161,7 +163,7 @@ const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: p
 for (const [name, path, layer, empty = false] of cases) {
   if (only && !only.includes(name)) continue;
   const host = origin.replace('//admin.', layer === 'pos' ? '//pos.' : '//admin.');
-  const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: 'ar' });
+  const page = await browser.newPage({ viewport: { width: Number(process.env.WIDTH ?? 1280), height: 900 }, locale: 'ar' });
   const prefs = [['smilesim-theme', process.env.THEME], ['smilesim-locale', process.env.LOCALE]].filter(([, value]) => value);
   if (prefs.length) await page.context().addCookies(prefs.map(([name, value]) => ({ name, value, url: host })));
   await page.route('**/api/**', (route) => {
@@ -180,6 +182,25 @@ for (const [name, path, layer, empty = false] of cases) {
   if (process.env.SHOTS) {
     mkdirSync(process.env.SHOTS, { recursive: true });
     await page.screenshot({ path: join(process.env.SHOTS, `${name}.png`) });
+  }
+  if (process.env.STYLES) {
+    const rows = await page.evaluate(() => {
+      const out = [];
+      const hash = (text) => { let h = 2166136261; for (let i = 0; i < text.length; i += 1) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); };
+      const walk = (el, path) => {
+        if (el.tagName === 'NEXTJS-PORTAL' || el.tagName === 'SCRIPT') return;
+        const style = getComputedStyle(el);
+        // Sorted: Chrome lists custom properties in a different order from one load to the next.
+        const names = [...style].sort();
+        let text = '';
+        for (const prop of names) text += `${prop}:${style.getPropertyValue(prop)};`;
+        out.push(`${path}\t${hash(text)}`);
+        [...el.children].forEach((child, index) => walk(child, `${path}>${child.tagName.toLowerCase()}${index}`));
+      };
+      walk(document.body, 'body');
+      return out.join('\n');
+    });
+    writeFileSync(join(out, `${name}.styles.tsv`), `${rows}\n`);
   }
   const html = await page.evaluate(() => document.querySelector('.canvas-inner')?.innerHTML ?? '');
   const pretty = html

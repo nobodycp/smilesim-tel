@@ -1,0 +1,162 @@
+/* The number card (app/numbers/[id]): detail rows, line details, usage, eSIM and QR, operation tiles and the command list. */
+.quiet-file {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-inline-start: auto;
+  padding-inline: 14px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-pill);
+  color: var(--rd-ink);
+  font-size: var(--rd-text-md);
+  font-weight: 700;
+  cursor: pointer;
+}
+.quiet-file input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.line-head { display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding: 16px 14px 4px; }
+.line-number { margin: 0; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.command-list {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-card);
+}
+.command-list .op-card:last-child { border-bottom: 0; }
+.line-ops { align-content: start; }
+.line-ops > .stack { justify-items: start; width: max-content; max-width: 100%; }
+.op-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.25rem, 1fr));
+  gap: 8px;
+}
+.op-board .command-list { display: contents; }
+.op-board .op-card,
+.op-tile {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  min-height: 92px;
+  padding: 12px 8px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-surface);
+  color: var(--rd-ink);
+  font-size: var(--rd-text-md);
+  font-weight: 700;
+  text-align: center;
+}
+.op-board .op-card svg,
+.op-tile svg { width: 22px; height: 22px; }
+.op-board .command-list .op-card,
+.op-board .command-list .op-card:last-child { border: 1px solid var(--rd-line); }
+.op-board .op-card:hover,
+.op-tile:hover { background: var(--rd-surface-2); }
+.op-board .op-card.danger { color: var(--rd-danger); }
+/* Label/value cards. The grid repeats the pair across the width: three columns on a wide canvas, one in a dialog or a narrow window. */
+.detail-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 6px;
+  margin: 0;
+}
+.detail-rows > div {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface);
+}
+.detail-rows dd { min-width: 0; overflow-wrap: anywhere; }
+/* A control inside a value cell keeps the row at text height: 28px tall, pulled into the cell padding. */
+.detail-rows dd > button { height: 28px; min-height: 0; margin-block: -4px; }
+/* The details tab: the rows take the width, usage sits in an end column once the canvas is wide enough. */
+.line-details { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 1100px) {
+  .line-details { grid-template-columns: minmax(0, 1fr) 22rem; }
+  .line-details > .usage { padding-inline-start: 16px; border-inline-start: 1px solid var(--rd-line); }
+}
+/* The eSIM badge as a button: the badge is the visible part, the padding gives the 44px target. */
+.esim-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-block: -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+.esim-open:hover { transform: translateY(-1px); }
+.esim-open:focus-visible { outline: 2px solid var(--rd-focus); outline-offset: 2px; border-radius: var(--rd-radius-pill); }
+.esim-mark {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 4px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-qr-tile);
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.esim-mark:hover { box-shadow: var(--rd-shadow-sm); transform: translateY(-1px); }
+.esim-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.qr-tile {
+  display: grid;
+  place-items: center;
+  width: min(100%, 280px);
+  margin-inline: auto;
+  padding: 12px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-card);
+  background: var(--rd-qr-tile);
+}
+.qr-tile img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+.qr-picker { display: grid; gap: 8px; justify-items: start; }
+.qr-picker .qr-tile { width: min(100%, 160px); margin-inline: 0; padding: 8px; }
+.qr-picker-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.qr-picker-row .quiet-file { margin-inline-start: 0; }
+.detail-rows dt,
+.detail-rows dd {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 4px 8px;
+  text-align: start;
+}
+.detail-rows dt {
+  color: var(--rd-ink-2);
+  font-size: var(--rd-text-sm);
+  font-weight: 700;
+  background: var(--rd-surface-3);
+  border-inline-end: 1px solid var(--rd-line);
+}
+.detail-rows dd {
+  color: var(--rd-ink);
+  font-size: var(--rd-text-md);
+  font-weight: 700;
+  background: var(--rd-surface);
+}
+.usage { display: grid; gap: 12px; }
+.usage h2 { margin: 4px 0 0; font-size: var(--rd-text-base); font-weight: 700; }
+.usage-meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.usage-meter { display: grid; justify-items: center; gap: 4px; color: var(--rd-ink); font-size: var(--rd-text-md); font-weight: 700; text-align: center; }
+.usage-dial {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 2px solid var(--rd-line);
+  border-radius: 50%;
+  background: var(--rd-surface);
+  font-variant-numeric: tabular-nums;
+}

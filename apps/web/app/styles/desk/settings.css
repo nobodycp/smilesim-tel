@@ -1,0 +1,66 @@
+/* The profile page (app/settings): settings grid, identity, sessions. */
+.settings-page { display: flex; flex: 1; flex-direction: column; gap: 14px; min-height: 0; }
+.settings-page.desk { width: 100%; }
+.settings-page .pane { width: 100%; }
+.settings-page.desk > .settings-grid { align-content: start; grid-template-rows: none; }
+.settings-page.desk .settings-col { grid-template-rows: none; align-content: start; }
+.settings-page > .page-head,
+.settings-page > .error.banner,
+.settings-page > .note.banner { margin-bottom: 0; }
+.settings-grid { display: grid; flex: 1; gap: 12px; align-content: start; }
+.settings-col { display: grid; gap: 12px; align-content: start; }
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rd-line-soft);
+}
+.identity-mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+  font-size: var(--rd-text-2xl);
+  font-weight: 800;
+}
+.identity strong { display: block; font-size: var(--rd-text-lg); line-height: 1.2; }
+.identity small { color: var(--rd-muted); font-size: var(--rd-text-sm); }
+.sessions { display: grid; margin: 0; padding: 0; list-style: none; }
+.sessions li {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--rd-line-soft);
+}
+.sessions li:first-child { padding-top: 0; border-top: 0; }
+.sessions li:last-child { padding-bottom: 0; }
+.session-meta { direction: ltr; unicode-bidi: isolate; text-align: start; }
+[dir='rtl'] .session-meta { text-align: end; }
+.session-copy { display: grid; min-width: 0; gap: 1px; }
+.session-copy strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.session-copy strong span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-copy small {
+  overflow: hidden;
+  color: var(--rd-muted);
+  font-size: var(--rd-text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

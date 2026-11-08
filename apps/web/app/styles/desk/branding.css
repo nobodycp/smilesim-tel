@@ -1,0 +1,134 @@
+/* Site identity (app/branding): the form, the logo drops and the live preview. */
+.device {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  color: var(--rd-muted);
+}
+.device svg { width: 15px; height: 15px; }
+/* Site identity (/branding): the form fills the width and the live preview keeps a fixed column
+   beside it; under 960px the preview sits below. The preview is the one loud element here. */
+.brand-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; align-items: start; }
+.brand-form { display: grid; gap: 12px; }
+.brand-drops { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 12px; }
+.drop-field { display: grid; gap: 8px; align-content: start; }
+.drop-title { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
+.pane label.drop {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 96px;
+  padding: 12px;
+  border: 1px dashed var(--rd-field);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+  font-size: var(--rd-text-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+.pane label.drop:hover,
+.pane label.drop.over,
+.pane label.drop:focus-within { border-color: var(--rd-ink); border-style: solid; }
+.drop-thumb {
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-md);
+  background: var(--rd-surface);
+}
+.drop-field.square .drop-thumb { width: 72px; }
+.drop-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.drop-thumb svg { width: 22px; height: 22px; color: var(--rd-muted); }
+.drop-text { display: grid; gap: 2px; min-width: 0; }
+.drop-text strong { font-size: var(--rd-text-base); font-weight: 700; }
+.drop-text small { color: var(--rd-muted); font-size: var(--rd-text-sm); }
+.drop input[type='file'] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.desk button.drop-clear { justify-self: start; height: 30px; font-size: var(--rd-text-sm); }
+.brand-foot { display: flex; flex-wrap: wrap; gap: 8px; }
+.brand-preview { position: sticky; top: 0; display: grid; gap: 12px; }
+.brand-preview-label { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 600; }
+.bp-browser {
+  overflow: hidden;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-card);
+}
+.bp-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--rd-line);
+  background: var(--rd-surface-2);
+  font-size: var(--rd-text-sm);
+}
+.bp-tab-icon { flex: none; width: 16px; height: 16px; overflow: hidden; border-radius: 4px; background: var(--rd-primary-bg); }
+.bp-tab-icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.bp-tab-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.bp-tab-close { color: var(--rd-muted); }
+.bp-body { display: grid; grid-template-columns: 124px minmax(0, 1fr); min-height: 132px; }
+.bp-side {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
+  padding: 14px 8px;
+  border-inline-end: 1px solid var(--rd-line);
+  text-align: center;
+}
+.bp-side .brand-logo { max-width: 92px; max-height: 44px; }
+.bp-mark {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--rd-radius-card);
+  background: var(--rd-primary-bg);
+  color: var(--rd-primary-fg);
+  font-weight: 700;
+}
+.bp-name { font-size: var(--rd-text-sm); font-weight: 700; color: var(--rd-ink); }
+.bp-tag { font-size: var(--rd-text-2xs); color: var(--rd-muted); }
+.bp-lines { display: grid; gap: 10px; align-content: start; padding: 18px 16px; }
+.bp-lines span { height: 8px; border-radius: 99px; background: var(--rd-surface-3); }
+.bp-login {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 22px 16px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-card);
+  text-align: center;
+}
+.bp-login .brand-logo { max-width: 160px; max-height: 56px; }
+.bp-login-name { font-size: var(--rd-text-lg); font-weight: 700; color: var(--rd-ink); }
+.bp-login-tag { margin-bottom: 6px; font-size: var(--rd-text-xs); color: var(--rd-muted); }
+.bp-field { width: 100%; max-width: 220px; height: 30px; border: 1px solid var(--rd-field); border-radius: var(--rd-radius-sm); background: var(--rd-surface); }
+.bp-btn {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: 220px;
+  height: 32px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-primary-bg);
+  color: var(--rd-primary-fg);
+  font-size: var(--rd-text-sm);
+  font-weight: 700;
+}
+@media (max-width: 960px) {
+  .brand-layout { grid-template-columns: 1fr; }
+  .brand-preview { position: static; }
+}

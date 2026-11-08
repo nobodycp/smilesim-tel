@@ -26,7 +26,7 @@ All CSS reads `--rd-*` tokens. The old blue set (`--bg`, `--accent`, `--ink-3`, 
 | 4 | `auth.css` | sign-in frame |
 | 5 | `forms.css` | page type, fields, `.error` / `.note` |
 | 6 | `shell.css` | sidebar, drawer, topbar, shell panels, search, notices, wallet chip |
-| 7 | `desk.css` | canvas, `.page-head`, `.filter-bar`, `.pane`, `.steps`, `.data`, `.empty`, `.stat`, skeletons, page compositions |
+| 7 | `desk/*.css` | inner pages, one file per owner, imported in this order: `frame` (canvas, desk layout and scroll model, page head, back link, `.stack`, banners, `.sr-only`), `pane` (pane, sheet, `.steps`, `.seg`, field and switch rows, `.check`), `table` (`.data`, sort header, row actions, money, account and kind cells, pager), `filters` (filter bar, table search, period chips), `components` (EmptyState, skeletons, spinner, Stat, LiveSwitch, operation cards, outage and return bars), then the pages: `numbers`, `tasks`, `users`, `packages`, `home`, `settings`, `branding`. Shared files come first, so a page file can refine them at equal specificity; a rule belongs in the file of the class its selector is about. |
 | 8 | `dialog.css` | toast, `Dialog`, `.perm-grid`, `.op-blocks`, `RowMenu` |
 | 9 | `controls.css` | checkbox and radio size, last so it beats every `input` height rule |
 | 10 | `responsive.css` | shell and layout breakpoints, the 44px touch-target block |
@@ -122,7 +122,7 @@ One of each. A new page uses these, it does not invent a sibling.
 - Badge: label plus a dot. Active, pending, danger, neutral.
 - KPI: `StatRow` wraps a row of `Stat` items. Each `Stat` takes an `icon` (`IconName` from `components/icon.tsx`), `tone` (`success`, `warning`, `danger`, or `muted`), `label`, a large tabular `value`, and optional `meta` below a hairline divider. The icon sits in `.stat-icon` with a tone tint. This is the only KPI pattern; do not use ad-hoc `.stat-card` markup.
 - Filter: `FilterBar` wraps `.filter-bar`/`.filter-panel` — a card of `<label>` fields above the table, with an optional trailing clear button (`onClear`/`clearLabel`). This is the only filter pattern; do not write a bare `.filter-line` or inline filter markup on a new page.
-- Facts: `.facts` — a `<dl>` grid of label/value pairs (`dt`/`dd`). Columns auto-fit to the available width and collapse to one without a breakpoint. Latin identifiers inside a value stay in `<bdi dir="ltr">`. This is the only key/value detail pattern; do not write a parallel grid (for example `.account-facts`) for the same purpose.
+- Facts: label/value pairs (`dt`/`dd`) in a `<dl>`. Latin identifiers inside a value stay in `<bdi dir="ltr">`. Three shapes exist today and a new page reuses one of them: `.fact-grid` of `.fact-card` (the user page head), `.detail-rows` (the number card), `.task-facts` (a task). The `.facts` grid this line once named was never used and went in 5.6.
 - Empty: `EmptyState` inside `.empty` — muted icon in a small circle on `--rd-surface-2`, title (`children`), optional secondary `text`, centered (both axes) in the available `.pane`/`.sheet` space, not pinned to the start edge. Not a lone italic line.
 - Feedback: one alert line for an error, one for a success, always through `Alert` (`components/alert.tsx`): `<Alert>{error}</Alert>` draws `.error` with `role="alert"`, `<Alert tone="success">` draws `.note` with `role="status"`, `banner` adds the page-top card, and an empty message draws nothing. Pages inside `Desk` get theirs from `PageAlert`, which uses `Alert`. No hand-written `<p className="error">` and no browser `alert` for success.
 - Switch: `LiveSwitch` (`components/live-switch.tsx`) — `role="switch"` button with a `.track` and a knob; `checked` is `true`, `false`, or `'mixed'` (half knob, blended track) for a group. The label and the state word sit beside it as `children`. This is the only on/off control; do not draw a second toggle.
@@ -145,6 +145,8 @@ One of each. A new page uses these, it does not invent a sibling.
 - Check light and dark.
 
 ## Known gaps
+
+- Key/value pairs have three shapes (`.fact-grid`, `.detail-rows`, `.task-facts`); one would do.
 
 Shell gaps (Pearl rebuild phase 1 landed the header, sidebar, and drawer; two items remain — focus rings and `.nav-link.locked` contrast were closed in Phase 5.3c: every keyboard-reachable control draws a 2px solid `--rd-ink` outline, the avatar with a 3px gap, and locked links use `--rd-muted`):
 

@@ -4,7 +4,7 @@
  * states 0,2,0), this file last in globals.css where @tailwind sat. Deliberate changes since: badge and invalid-Select
  * rings drawn in their own colour (5.4a; Tailwind never generated `ring-[var(--x)]/15`), and in 5.4b-4a no browser
  * default border on a button, the danger button as an outline, and the chevron's room kept in every select context.
- * `.sr-only` lives in desk.css.
+ * `.sr-only` lives in desk/frame.css.
  */
 
 /* Button */
