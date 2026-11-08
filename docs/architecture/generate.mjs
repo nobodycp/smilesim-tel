@@ -244,6 +244,7 @@ const CATALOGUE = [
   { zone: 'components', file: 'components/period-chips.tsx', role: 'فلاتر فترة زمنية سريعة' },
   { zone: 'components', file: 'components/row-menu.tsx', role: 'قائمة عمليات الصف (المحفّز الوحيد لكل صف)' },
   { zone: 'components', file: 'components/dialog.tsx', role: 'حوار (تأكيد / نموذج / واسع)' },
+  { zone: 'components', file: 'components/data-image.tsx', role: 'صورة data:/blob: من الواجهة' },
   { zone: 'components', file: 'components/alert.tsx', role: 'سطر الخطأ أو النجاح الموحد' },
   { zone: 'components', file: 'components/ui/button.tsx', role: 'أزرار بأحجام وأنماط' },
   { zone: 'components', file: 'components/ui/badge.tsx', role: 'شارة حالة / نغمة' },
@@ -268,6 +269,7 @@ const CATALOGUE = [
   { zone: 'lib', file: 'lib/use-paged.ts', role: 'خطاف قوائم متتابعة بالمؤشر' },
   { zone: 'lib', file: 'lib/use-action.ts', role: 'خطاف كتابة مع busy والخطأ' },
   { zone: 'lib', file: 'lib/status-tone.ts', role: 'خريطة الحالة إلى لون الشارة' },
+  { zone: 'lib', file: 'lib/reload-at.ts', role: 'تحميل كامل مقصود عند تغيّر الحساب' },
   { zone: 'lib', file: 'lib/use-popover.ts', role: 'محرك فتح وإغلاق القوائم والنوافذ المنبثقة' },
   { zone: 'lib', file: 'lib/use-require-layer.ts', role: 'تحويل عند طبقة باب غير مسموحة' },
 ];
