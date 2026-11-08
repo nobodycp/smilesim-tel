@@ -136,6 +136,7 @@ export function OfficeSession({
     const result = await api.officeMe();
     if (!result.ok) return;
     rememberIdentity(result.data.nickname || result.data.loginName, result.data.nickname ? result.data.loginName : '');
+    rememberBalance(result.data.balance);
     setMe(result.data);
   }, []);
 

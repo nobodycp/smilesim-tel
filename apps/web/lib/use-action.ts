@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useOffice } from './office-session';
 import { usePrefs } from './prefs';
 import type { Fetched } from './use-load';
 
@@ -27,6 +28,7 @@ type Step<T> = {
  */
 export function useAction({ setError, setNote, onDone }: Options) {
   const { apiText } = usePrefs();
+  const { refresh: refreshMe } = useOffice();
   const [busy, setBusy] = useState(false);
   const flying = useRef(false);
   const live = useRef(true);
@@ -73,6 +75,9 @@ export function useAction({ setError, setNote, onDone }: Options) {
           }
         }
         await step.then?.(result.data);
+        // Any write can move the signed-in wallet (activate, charge, fund, refunds), so the topbar balance
+        // is asked again in the background. Interim until the query cache (ADR 0001) invalidates `me`.
+        void refreshMe();
         if (step.reload !== false) await done.current?.();
         return true;
       } finally {
@@ -80,7 +85,7 @@ export function useAction({ setError, setNote, onDone }: Options) {
         if (live.current) setBusy(false);
       }
     },
-    [apiText, setError, setNote],
+    [apiText, refreshMe, setError, setNote],
   );
 
   return { run, busy };
