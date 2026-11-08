@@ -86,14 +86,17 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [ ] 4.5c Remaining `useLoad`: home board, branding draft, roles, the staff-role and shelf dropdowns, the line-prices dialog (single reads, no storms; move when touched).
 - [x] 4.6 Shell search reads the accounts once (shared users query) and filters locally; numbers stay a server search. `a969b86`
 
-## Phase 5 — Web structure and design system
+## Phase 5 — Web structure and design system (spec: `docs/superpowers/specs/2026-11-08-web-structure-design-system.md`)
 
-- [ ] 5.1 Route groups `(auth)` / `(office)`; `error.tsx`, `loading.tsx`, `not-found.tsx`; server-side layer guard in `(office)/layout.tsx`; in-app links via `router`, not `location.assign`.
-- [ ] 5.2 Pages become thin: `features/<domain>/screens/*`.
-- [ ] 5.3 Tokens: add spacing, type, radius, z-index, motion scales; remove alias tokens (`--accent`, `--ink-*`, `--bg`).
-- [ ] 5.4 Primitives (D3): Button/IconButton, Field/Input/Select/Checkbox/Switch, Dialog, Menu/Popover (one engine for RowMenu, topbar menus, wallet pop), Table (DataTable with `sortValue`), Badge (status→tone map), Alert/Toast, EmptyState, Skeleton, PageHeader/FilterBar/Pane. Delete dead `ui/table`, `ui/card`, `.data-table--stack`.
-- [ ] 5.5 a11y: inert closed drawer, Escape + focus return on menus, unique keys. Then the remaining 31 lint warnings.
-- [ ] 5.6 Move `desk.css` rules next to their feature/primitive; `DESIGN.md` updated per slice.
+- [x] 5.0 Web lint reports unused vars/imports (reuses the plugin Next registers); six fixed. `4eaa4d1`
+- [x] 5.0b Unused `components/ui/table.tsx`, `ui/card.tsx` and their CSS removed (`.card`, `.data-table*`, `.card button`). `aff3fdf`
+- [x] 5.1 `app/error.tsx` (Next 16 `retry`) and `app/not-found.tsx` (404), Pearl empty state + the way home, three languages. Route groups deliberately not added (see spec). `2fbe124`, centering fix `d03451c`; checked in the browser ar/en, light/dark, 390px.
+- [x] 5.5a Closed drawer `inert`; Escape closes the topbar menus and returns focus; `RowMenu` keys by position. `2317498`
+- [ ] 5.3 Tokens: spacing, type, radius, z-index, motion scales; Known-gaps focus rings and `.nav-link.locked` contrast; remove alias tokens (`--accent`, `--ink-*`, `--bg`).
+- [ ] 5.4 Primitives on CSS + `--rd-*` (ADR 0003): Button/IconButton, Field/Input/Select/Checkbox/Switch, Dialog, Menu/Popover (one engine for RowMenu, topbar menus, wallet pop), Badge (status→tone map), Alert/Toast, EmptyState, Skeleton, PageHeader/FilterBar/Pane. Tailwind leaves `components/ui`.
+- [ ] 5.5b The remaining 27 lint warnings (mostly `set-state-in-effect`).
+- [ ] 5.6 `desk.css` (~2050 lines) split next to its owners; `DESIGN.md` per slice.
+- [ ] 5.2 Pages thin: `features/<domain>/screens/*`.
 
 ## Verification per slice
 

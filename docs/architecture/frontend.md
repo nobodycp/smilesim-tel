@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 4). e2e 107/107, lint 27 warnings. tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.5a). e2e 110/110, lint 0 errors / 27 warnings (unused vars now an error). tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -19,11 +19,12 @@ Next.js 16 (App Router) · React 19 · Tailwind 3 (preflight off, used only in `
 
 | Path | Holds |
 |---|---|
+| `app/error.tsx`, `app/not-found.tsx` | page error (retry + home) and 404, inside the shell |
 | `app/<route>/page.tsx` | flat routes: numbers, numbers/[id], tasks, tasks/[id], users, users/[login], packages, providers, providers/[code], providers/[code]/[packageCode], companies, companies/[code], finance, reports, audit, notices, roles, settings, branding, operations, provider-operations, login, password, two-factor |
 | `features/<domain>/api.ts` | one call group per API module (auth, branding, desk, wallets, catalog, terms, lines, transfers, notices, tasks, accounts, roles, audit, reports) |
 | `app/styles/*.css` | global CSS in cascade order via `globals.css` (see `DESIGN.md` → Stylesheets). `desk.css` ~2070 lines, `shell.css` ~690 |
 | `components/` | shell (`office-shell`, `office-frame`, `shell-search`, `chrome`), `dialog`, `row-menu`, `data-table` (DataTable + PagedTable — the live table), `desk` (page frame), domain dialogs (`transfer-dialog`, `line-prices-dialog`, `disconnect-confirm`) |
-| `components/ui/` | Tailwind primitives: `button`, `badge`, `select`, `pagination` (live); `table`, `card` (**dead, 0 importers**) |
+| `components/ui/` | Tailwind primitives: `button`, `badge`, `select`, `pagination` (to move to CSS on tokens, ADR 0003) |
 | `lib/` | `api.ts` (composes `api` from `features/*/api.ts`, re-exports `api-types.ts`), `http.ts` (`request`, door header, session redirect), `query.tsx` (TanStack provider, `queryKeys`, `unwrap`, `ApiFailure`), hooks (`use-load`, `use-paged`, `use-action`, `use-notices`, `use-require-layer`), contexts (`office-session`, `door-context`, `prefs`, `branding`), `connection.ts` (reachability store; `generation` triggers refetch), `copy/{ar,en,he}.ts` (flat `t` objects), helpers (`money`, `names`, `grants`, `sim-rules`, `ops`) |
 
 ## State and data
@@ -48,8 +49,8 @@ Tokens in `app/styles/tokens.css` (`--rd-*` colours/shadows/one radius + undocum
 5. ~~Refetch storms~~ — line card re-reads only the number after an action (`ac3a279`); shell search reads accounts once (`a969b86`). The package sheet re-reads only its own three reads (`7aed7aa`).
 6. ~~Paged tables blank on mutation/filter change~~ — fixed `095162c` (infinite query, keep-previous, refetch every read chunk).
 7. ~~Logout relied on a 401 side effect~~ — fixed `ad473c7`. Still open: several in-app links do full reloads (`office-shell.tsx` notices/leave, `users` enter).
-8. No `error.tsx` / `loading.tsx` / `not-found.tsx`.
-9. a11y: closed drawer focusable, topbar menus no Escape, `RowMenu` keys by label.
+8. ~~No `error.tsx` / `not-found.tsx`~~ — added (5.1). No `loading.tsx`: pages show their own skeletons.
+9. ~~a11y: closed drawer focusable, topbar menus no Escape, `RowMenu` keys by label~~ — fixed (5.5a). Focus rings and `.nav-link.locked` contrast remain (DESIGN.md → Known gaps).
 10. `/users` unpaged, client-side filtering; `DataTable` sorts by rendering cells.
 
 ## Target shape

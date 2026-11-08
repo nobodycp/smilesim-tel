@@ -133,6 +133,10 @@ One of each. A new page uses these, it does not invent a sibling.
 - **Line prices dialog** (`components/line-prices-dialog.tsx`): Dialog `size="form"` that groups a package's renewable numbers by the renewal price they carry and lets the operator set a new flat price per group or «follow current»; table `.data` with `num` columns, `PriceField` for the new price, secondary follow button, footer cancel/save. Mounted from the user packages tab and the package sheet.
 - **Transfer dialog** (`components/transfer-dialog.tsx`): Dialog `size="form" mark="transfer"` that moves a point of sale or an agent: destination select, live preview (balances, line count, below-floor badge), radio pairs on `label.check` for own/child terms (keep / follow → `reset`) and for moved-number prices (keep / recapture), no defaults, submit disabled until every choice is made. Mounted from the users page; the number detail page asks the same line-price choice inline.
 
+### Error and not-found screens
+
+`app/error.tsx` and `app/not-found.tsx` draw the empty state (`.empty.empty-state`, `.load-failed` for the error) in a `.pane` inside the shell, with the way out in `.empty-actions`: one row, centered; `.btn` for the main way (it centers its label on a link too) and `.back-link` for the second.
+
 ## Motion and access
 
 - Motion is 150–450ms, transform and opacity only, and exists only on the sidebar width, the drawer slide, the notification bell, the spinner, and the skeleton shimmer. All of it sits under `@media (prefers-reduced-motion: no-preference)` in `styles/base.css`, so there is no reduced-motion override and no `!important`. Dialogs, menus, and toasts appear without motion.
