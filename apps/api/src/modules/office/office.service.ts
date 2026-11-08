@@ -69,15 +69,15 @@ import { excerpt, type TaskNoticePayload } from './notice-kinds';
 import {
   FLAG_CODES,
   GRANT_CODES,
-  LAYER_GRANTS,
   effectiveGrantCodes,
   flagsFor,
   roleGrantCodes,
   splitGrants,
 } from './office-grants';
 import { lineTermsOf } from './kernel/line-terms';
+import { stampTaskLog } from './task-log';
+import { LAYER_ORDER } from './kernel/values';
 
-const LAYER_ORDER = ['branch', 'main_agent', 'agent', 'pos'];
 
 /** The price columns of a package that `LayerPrices` holds, as a `select`. */
 /** What decides the prices points of sale pay for some packages: their price columns, the custom rows on them, and the sell prices of the accounts above. */
@@ -261,6 +261,10 @@ export class OfficeService implements OnModuleInit {
 
   private termsFor(packageId: string) {
     return this.kernel.termsFor(packageId);
+  }
+
+  private ensureLayerRoles() {
+    return this.kernel.ensureLayerRoles();
   }
 
   private ladderRows(codes: string[], pathIds: string[], db: Prisma.TransactionClient | PrismaClient) {
@@ -1829,7 +1833,7 @@ export class OfficeService implements OnModuleInit {
             status: 'pending',
             assigneeId: null,
             resultNote: 'رجع لأن الحساب أُوقف',
-            log: this.noteLog(task.log, 'رجعت لأن الحساب أُوقف'),
+            log: stampTaskLog(task.log, 'رجعت لأن الحساب أُوقف'),
           },
         });
       }
@@ -2038,16 +2042,6 @@ export class OfficeService implements OnModuleInit {
     return this.stampWith(terms, path, await this.ladderRows(codes, path.map((node) => node.id), db));
   }
 
-  private async ensureLayerRoles() {
-    for (const layer of LAYER_ORDER) {
-      const existing = await this.prisma.role.findUnique({ where: { layer } });
-      if (existing) continue;
-      const grants = LAYER_GRANTS[layer] ?? [];
-      await this.prisma.role.create({
-        data: { name: layer, kind: 'layer', layer, grants: grants.join(','), ...flagsFor(grants) },
-      });
-    }
-  }
 
   private async visibleLine(actor: Actor, lineId: string) {
     const line = await this.prisma.line.findUnique({

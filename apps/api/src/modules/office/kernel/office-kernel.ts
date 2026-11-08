@@ -13,6 +13,8 @@ import { stampRenewal } from '../line-prices';
 import type { LineTerms } from '../office-rules';
 import { buyPriceFor } from '../user-terms';
 import type { LayerPrices } from '../user-terms';
+import { LAYER_GRANTS, flagsFor } from '../office-grants';
+import { LAYER_ORDER } from './values';
 
 /**
  * What every office domain shares: the PostgreSQL client, the signed-in actor and their grants, the account
@@ -322,5 +324,17 @@ export class OfficeKernel {
       const sellsOf = rows.sellRows.filter((row) => row.packageId === pkg.id);
       return buyPriceFor(path, termsOf, sellsOf, pkg, 'renewal');
     });
+  }
+
+  /** The four layer roles exist: made on first need (role screens, account access, boot). */
+  async ensureLayerRoles() {
+    for (const layer of LAYER_ORDER) {
+      const existing = await this.prisma.role.findUnique({ where: { layer } });
+      if (existing) continue;
+      const grants = LAYER_GRANTS[layer] ?? [];
+      await this.prisma.role.create({
+        data: { name: layer, kind: 'layer', layer, grants: grants.join(','), ...flagsFor(grants) },
+      });
+    }
   }
 }
