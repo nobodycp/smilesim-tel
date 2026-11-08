@@ -19,13 +19,11 @@ import { OfficeService } from './office.service';
 import {
   AccessBodyDto,
   AnnouncementBodyDto,
-  CeilingBodyDto,
   CompanyImageBodyDto,
   CompanySimBodyDto,
   CreateUserBodyDto,
   CustomPriceBodyDto,
   ExtendBodyDto,
-  FundBodyDto,
   LinePricesBodyDto,
   OutcomeBodyDto,
   PackageTargetsBodyDto,
@@ -94,40 +92,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 400)
   postAnnouncement(@Req() req: Request, @Body() body: AnnouncementBodyDto) {
     return this.office.postAnnouncement(gateOf(req), body);
-  }
-
-  @Get('wallets')
-  @ApiOperation({ summary: 'List wallets visible to the session' })
-  @ApiErrorResponse(401, 403)
-  wallets(@Req() req: Request) {
-    return this.office.wallets(gateOf(req));
-  }
-
-  @Post('wallets/:loginName/fund')
-  @ApiOperation({ summary: 'Fund a wallet (note required)' })
-  @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: FundBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('fund', 'account', param('loginName'))
-  fund(
-    @Req() req: Request,
-    @Param('loginName') loginName: string,
-    @Body() body: FundBodyDto,
-  ) {
-    return this.office.fund(gateOf(req), loginName, body);
-  }
-
-  @Patch('wallets/:loginName/ceiling')
-  @ApiOperation({ summary: 'Set wallet overdraft ceiling' })
-  @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: CeilingBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  ceiling(
-    @Req() req: Request,
-    @Param('loginName') loginName: string,
-    @Body() body: CeilingBodyDto,
-  ) {
-    return this.office.setCeiling(gateOf(req), loginName, body);
   }
 
   @Get('packages')
@@ -819,83 +783,6 @@ export class OfficeController {
       res.clearCookie('home', cookieBase());
     }
     return result;
-  }
-
-  @Get('provider-operations')
-  @ApiOperation({ summary: 'Line operations with the branch cost at the provider (paged)' })
-  @ApiQuery({ name: 'cursor', required: false })
-  @ApiQuery({ name: 'kind', required: false })
-  @ApiQuery({ name: 'provider', required: false })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiQuery({ name: 'from', required: false })
-  @ApiQuery({ name: 'to', required: false })
-  @ApiErrorResponse(401, 403)
-  providerOperations(
-    @Req() req: Request,
-    @Query('cursor') cursor?: string,
-    @Query('kind') kind?: string,
-    @Query('provider') provider?: string,
-    @Query('q') q?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-  ) {
-    return this.office.providerOperations(gateOf(req), {
-      cursor: text(cursor),
-      kind: text(kind),
-      provider: text(provider),
-      q: text(q),
-      from: text(from),
-      to: text(to),
-    });
-  }
-
-  @Get('finance')
-  @ApiOperation({ summary: 'Financial movements for the visible accounts (paged)' })
-  @ApiQuery({ name: 'cursor', required: false })
-  @ApiQuery({ name: 'kind', required: false })
-  @ApiQuery({ name: 'layer', required: false })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiQuery({ name: 'from', required: false })
-  @ApiQuery({ name: 'to', required: false })
-  @ApiErrorResponse(401, 403)
-  finance(
-    @Req() req: Request,
-    @Query('cursor') cursor?: string,
-    @Query('kind') kind?: string,
-    @Query('layer') layer?: string,
-    @Query('q') q?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-  ) {
-    return this.office.finance(gateOf(req), {
-      cursor: text(cursor),
-      kind: text(kind),
-      layer: text(layer),
-      q: text(q),
-      from: text(from),
-      to: text(to),
-    });
-  }
-
-  @Get('ledger/:scope')
-  @ApiOperation({ summary: 'Ledger for a scope' })
-  @ApiParam({ name: 'scope' })
-  @ApiQuery({ name: 'kind', required: false })
-  @ApiQuery({ name: 'direction', required: false })
-  @ApiQuery({ name: 'from', required: false })
-  @ApiQuery({ name: 'to', required: false })
-  @ApiQuery({ name: 'cursor', required: false })
-  @ApiErrorResponse(401, 403)
-  ledger(
-    @Req() req: Request,
-    @Param('scope') scope: string,
-    @Query('kind') kind?: string,
-    @Query('direction') direction?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-    @Query('cursor') cursor?: string,
-  ) {
-    return this.office.ledger(gateOf(req), scope, { kind, direction, from, to, cursor: text(cursor) });
   }
 
   @Get('reports/:kind')

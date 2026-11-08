@@ -5,7 +5,7 @@ import request from 'supertest';
 import { AuthModule } from '../auth/auth.module';
 import { AUTH_STORE, MemoryAuthStore } from '../auth/auth.store';
 import { hashOnce } from './test-hash';
-import { OfficeController } from './office.controller';
+import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from './office.module';
 import { OfficeFailure, OfficeService } from './office.service';
 
 // A refusal from any office route carries `{ message, code }`. The Arabic message is the one the
@@ -34,8 +34,9 @@ describe('office refusals', () => {
     posSession = await store.saveSession({ userId: 'pos1', scope: 'full', userAgent: '', ip: '' });
     const moduleRef = await Test.createTestingModule({
       imports: [AuthModule],
-      controllers: [OfficeController],
-      providers: [OfficeService],
+      // Every office route, whichever controller holds it (Phase 3 moves routes out of OfficeController).
+      controllers: OFFICE_CONTROLLERS,
+      providers: OFFICE_PROVIDERS,
     })
       .overrideProvider(AUTH_STORE)
       .useValue(store)
