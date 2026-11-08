@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 4.6). e2e 106/106, lint 27 warnings. tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 4). e2e 107/107, lint 27 warnings. tsc 0 errors · lint 0 errors / 31 warnings · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -30,7 +30,7 @@ Next.js 16 (App Router) · React 19 · Tailwind 3 (preflight off, used only in `
 
 - **Server state:** TanStack Query (`lib/query.tsx`: `QueryProvider`, `queryKeys`, `unwrap()`, `ApiFailure`), ADR 0001. Wraps the office doors in `app/layout.tsx`.
 - **Session:** `OfficeSession` runs `queryKeys.me` (read once, `staleTime: Infinity`; own 2–30 s backoff while the API is away, 4xx final) and `queryKeys.directory`. Same context as before (`ready`, `failed`, `retrying`, `retry`, `refresh`, `me`, `names`); once `me` answered the page stays drawn. Name/balance cookies seed the shell for SSR. `refresh()` invalidates `me`; `useAction` calls it after every successful write.
-- **Fetching:** `usePaged` (cursor lists) runs on `useInfiniteQuery`, key `['paged', pathname, key]`: keep-previous rows (`stale`), `reload()` invalidates every filter of that list, always revalidated, errors translated when drawn. `useApiQuery(key, fetcher)` (`lib/use-api-query.ts`) is `useLoad`'s shape over a cached query; `sharedKeys` in `lib/query.tsx` (`packages`, `users`, `line(id)`) are read by the line card, numbers, tasks, packages, users and the shell search. `useLoad` remains on the other detail pages (tasks/[id], package sheet, users/[login]). `useAction` (mutation + `onDone` reload + `me` refresh). Each page owns its error/note `useState`.
+- **Fetching:** `usePaged` (cursor lists) runs on `useInfiniteQuery`, key `['paged', pathname, key]`: keep-previous rows (`stale`), `reload()` invalidates every filter of that list, always revalidated, errors translated when drawn. `useApiQuery(key, fetcher)` (`lib/use-api-query.ts`) is `useLoad`'s shape over a cached query; `sharedKeys` in `lib/query.tsx` (`packages`, `users`, `line(id)`) are read by the line card, numbers, tasks, packages, users and the shell search. `packageKeys(code)` group a package sheet's own reads (an action invalidates `packageKeys.all`). `useLoad` remains only on single reads: home board, branding draft, roles, two dropdowns, the line-prices dialog. `useAction` (mutation + `onDone` reload + `me` refresh). Each page owns its error/note `useState`.
 - **Prefs:** locale, theme, page size via `useSyncExternalStore` over `document.cookie`.
 - **i18n:** API errors are translated by **code** first, then by the Arabic message (`apiText(result)`; `Fetched` carries `code`). Still open: a hook stores the translated text, so an error on screen keeps its language after a locale switch (goes away as lists move to queries).
 - **URL state:** `lib/url-state.ts` — `useUrlFilters(keys)` keeps a list's filters in the query string (`router.replace`, scroll kept, each write builds on the last pending one); `useDebouncedField` keeps typing local and commits after 300 ms. Used by numbers, tasks, users.
@@ -45,7 +45,7 @@ Tokens in `app/styles/tokens.css` (`--rd-*` colours/shadows/one radius + undocum
 2. ~~Topbar balance stale after money ops~~ — fixed `53ae15b` (`useAction` refreshes `me`; interim until ADR 0001).
 3. ~~Provider sheet overwrote drafts / read one page of lines~~ — fixed `9dbbe67` (`follow()` per field, `packageLines()` reads all pages).
 4. ~~`lib/use-load.ts` keeps the previous record after a param change~~ — not reproducible: App Router remounts a page when its dynamic segment changes, and the only in-component deps (`line-prices-dialog`) mount per opening. Theoretical only; goes away with ADR 0001.
-5. ~~Refetch storms~~ — line card re-reads only the number after an action (`ac3a279`); shell search reads accounts once (`a969b86`). The provider package sheet still reloads five reads per action (4.5b).
+5. ~~Refetch storms~~ — line card re-reads only the number after an action (`ac3a279`); shell search reads accounts once (`a969b86`). The package sheet re-reads only its own three reads (`7aed7aa`).
 6. ~~Paged tables blank on mutation/filter change~~ — fixed `095162c` (infinite query, keep-previous, refetch every read chunk).
 7. ~~Logout relied on a 401 side effect~~ — fixed `ad473c7`. Still open: several in-app links do full reloads (`office-shell.tsx` notices/leave, `users` enter).
 8. No `error.tsx` / `loading.tsx` / `not-found.tsx`.

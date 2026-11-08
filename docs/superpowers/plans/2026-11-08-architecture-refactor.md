@@ -73,7 +73,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] Boot check (2026-11-08): built API on fresh Postgres + Redis, trial seed on — 79 office routes mapped, catalog seeded (23 packages, layer roles), reads 200 for the branch, 401/403 where expected, and a write flow end to end: fund → eSIM activation task → take → complete → number active, point of sale charged 35 ₪, notices delivered, audit entries written.
 - [x] 3.last Indexes (owner's go-ahead 2026-11-08): migration `20261108021907_lookup_indexes` — `User(parentId)`, `Line(status)`, `Line(packageId)`, `Line(iccid)`, `OfficeTask(assigneeId, status)`, `WalletEntry(kind, createdAt)`; additive only. The schema now states the delete rules the database already had (`Package.company` RESTRICT, `UserPackage` CASCADE), so `migrate diff` is empty. Subtree queries instead of `accounts()` stay a later proposal (measure first).
 
-## Phase 4 — Web data layer
+## Phase 4 — Web data layer ✅ (4.4c, 4.5c open)
 
 - [x] 4.1 Errors carry their code end to end: `Fetched` has `code`, every `apiText(result)` translates by code first (`tests/error-codes.spec.ts`). `34d79ef`. `ApiFailure{status, code, message}` lives in `lib/query.tsx`; splitting `request()` into `lib/http.ts` goes with 4.3.
 - [x] 4.2 `QueryProvider` + `queryKeys` + `unwrap()` (`lib/query.tsx`); `OfficeSession` runs `me` and `directory` as queries with its context unchanged; `refresh()` invalidates `me` (useAction already calls it after every write). Outage + failed-refresh specs (`tests/session-outage.spec.ts`). `b89afce`
@@ -82,7 +82,8 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 4.4b URL-synced filters: `lib/url-state.ts` (`useUrlFilters`, `useDebouncedField`) on numbers, tasks, users; back/forward, links and `/users?q=` from /users work (`tests/url-filters.spec.ts`, fails on the old pages). `7ead80c` + race fix `ef684b2`.
 - [ ] 4.4c `/users` server paging (needs an API change: the list route returns everything today).
 - [x] 4.5a `useApiQuery` (useLoad's shape over a cached query) + `sharedKeys` (packages, users, line). The line card reads the number, the catalog and the accounts as three queries; an action re-reads only the number. Numbers, tasks, packages and users read the same catalog/accounts entries. `ac3a279`
-- [ ] 4.5b tasks/[id], provider package sheet (5 reads per reload today), users/[login] onto `useApiQuery`.
+- [x] 4.5b Package sheet split into five cached reads; an action re-reads only the sheet, its numbers and its custom prices (`packageKeys`). Task, account (+ packages and ops tabs), providers and companies screens on `useApiQuery`/`sharedKeys`. `7aed7aa`
+- [ ] 4.5c Remaining `useLoad`: home board, branding draft, roles, the staff-role and shelf dropdowns, the line-prices dialog (single reads, no storms; move when touched).
 - [x] 4.6 Shell search reads the accounts once (shared users query) and filters locally; numbers stay a server search. `a969b86`
 
 ## Phase 5 — Web structure and design system
@@ -99,6 +100,9 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 `npm run lint && npm run typecheck && npm run check:copy && npm run test:api && npm run build`; web slices also run the relevant Playwright specs and a browser check in ar + en, light + dark, desktop + 390px. Update the codemaps, run `graphify update .`, tick the box with the commit hash.
 
 ## Follow-ups found during the split (not done; each needs the owner's go-ahead)
+
+- **Web lint:** `apps/web/eslint.config.mjs` does not report unused imports or variables (`@typescript-eslint/no-unused-vars`); nine dead `useLoad` imports went unnoticed in 4.5b. Turn it on in Phase 5.
+- **API build:** `tsconfig.json` compiles `*.spec.ts` and test helpers into `dist`; a `tsconfig.build.json` excluding them keeps the image smaller.
 
 - [x] **Security:** `PATCH /office/packages/:code/mode` let any account holding `edit` change package modes; no layer check. Default layer roles give `edit` to the branch only, so it opened only if the branch granted `edit` to an agent. Fixed with the same branch check as `setChain` (owner's go-ahead 2026-11-08); `package-catalog.http.spec.ts` now expects 403.
 
