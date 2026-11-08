@@ -5,6 +5,6 @@ check:copy, typecheck, test:api, build, e2e) and screenshots.
 
 - [x] R1 Trail instead of «رجوع» (`components/crumbs.tsx`, `lib/crumbs.ts` `useCrumbs`): user, number, task, provider package and company provider pages name their levels; a page outside the sidebar keeps the back button. `tests/crumbs.spec.ts`.
 - [x] R2 `Tabs` component (segmented, counts, arrow keys) replaces the six `.steps` lists. `tests/tabs.spec.ts`.
-- [ ] R3 Cards: `Stat` restyled, `highlight` and `progress`.
+- [x] R3 Cards: `Stat` restyled (label and small icon on one line, value under them, 12px radius), `highlight` and `progress`.
 - [ ] R4 User page: head with status and actions (`AccountActions` shared with the users list), money cards (API `balance`, `ceiling`), tab counts.
 - [ ] R5 Finance: `finance/summary` and `finance/export` routes, cards, 30-day chart and figures, CSV button.
