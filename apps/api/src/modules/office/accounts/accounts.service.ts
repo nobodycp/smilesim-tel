@@ -198,6 +198,10 @@ export class AccountsService {
     const parent = target.parentId
       ? await this.kernel.prisma.user.findUnique({ where: { id: target.parentId }, select: { loginName: true } })
       : null;
+    // The account as the users list shows it (wallet and what the actor may do), for the page's head and cards.
+    const { accounts, visible } = await this.visibleAccounts(actor);
+    const shown = visible.find((account) => account.id === target.id);
+    const listed = shown ? (await this.present(actor, accounts, [shown]))[0] ?? null : null;
     return {
       loginName: target.loginName,
       nickname: target.nickname,
@@ -215,6 +219,7 @@ export class AccountsService {
       grants,
       roles: jobs.map((role) => ({ id: role.id, name: role.name, grants: roleGrantCodes(role) })),
       canEdit: actor.isBranchOwner && !actor.impersonating && !target.isBranchOwner,
+      listed,
     };
   }
 

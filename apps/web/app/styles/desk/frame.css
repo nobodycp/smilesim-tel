@@ -98,3 +98,6 @@
   border: 0;
 }
 .canvas .page-head h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: 0; }
+/* A record's head (the user page): its name and status, then its main actions at the inline end. */
+.account-title { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2-5); }
+.page-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2); }

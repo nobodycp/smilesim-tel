@@ -230,6 +230,10 @@ describe('accounts and roles over HTTP', () => {
     const shown = await as('ma1', 'get', '/office/users/ag1');
     expect(shown.status).toBe(200);
     expect(shown.body).toMatchObject({ loginName: 'ag1', layer: 'agent', parentLogin: 'ma1', staff: false, canEdit: false });
+    // The page's head and cards read the account as the list shows it to this viewer.
+    expect(shown.body.listed).toMatchObject({ loginName: 'ag1', balance: 0, ceiling: 0, directChild: true, frozen: false });
+    const pos = await as('ag1', 'get', '/office/users/pos1');
+    expect(pos.body.listed).toMatchObject({ loginName: 'pos1', balance: 700, ceiling: 100, directChild: true });
     expect(await code(as('ag1', 'get', '/office/users/ma1'))).toBe('403 FORBIDDEN');
     expect(await code(as('ma1', 'patch', '/office/users/ag1/access', { extraGrants: ['edit'] }))).toBe('403 FORBIDDEN');
     expect(await code(as('owner', 'patch', '/office/users/ag1/access', { extraGrants: ['reports'], deniedGrants: ['reports', 'tasks'], extraRoleIds: ['r-desk'] }))).toBe('200');

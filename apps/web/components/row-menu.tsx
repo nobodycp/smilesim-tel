@@ -37,7 +37,8 @@ function Glyph({ name }: { name: RowIcon }) {
   );
 }
 
-export function RowMenu({ label, items }: { label: string; items: RowAction[] }) {
+/** `boxed` draws the trigger as a 34px outlined button, for a page head beside other buttons. */
+export function RowMenu({ label, items, boxed = false }: { label: string; items: RowAction[]; boxed?: boolean }) {
   const { open, setOpen, toggle, root, panel, trigger: button } = usePopover({ menu: true, deferFocus: true });
   const [box, setBox] = useState<{ top: number; left: number } | null>(null);
 
@@ -79,7 +80,7 @@ export function RowMenu({ label, items }: { label: string; items: RowAction[] })
   if (items.length === 0) return null;
   const firstDanger = items.findIndex((item) => item.danger);
   return (
-    <div className="row-menu" ref={root}>
+    <div className={boxed ? 'row-menu boxed' : 'row-menu'} ref={root}>
       <button
         ref={button}
         type="button"

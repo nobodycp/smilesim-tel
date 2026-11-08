@@ -1,15 +1,15 @@
 'use client';
 
-import { CircleCheck, KeyRound, Layers, Shield, Snowflake, Waypoints } from 'lucide-react';
-import { useParams } from 'next/navigation';
+import { Shield } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
 import { useState, useSyncExternalStore } from 'react';
 import { AccountName } from '../../../components/account-name';
-import { Desk, layerName } from '../../../components/desk';
+import { Desk, Money, layerName } from '../../../components/desk';
 import { TableSkeleton } from '../../../components/loading';
 import { Button } from '../../../components/ui/button';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
-import { api } from '../../../lib/api';
+import { api, type UserRow } from '../../../lib/api';
 import { GRANT_CODES, grantLabel } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
@@ -20,7 +20,10 @@ import { UserPackagesTab } from './packages-terms';
 import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
-import { Fact, Facts } from '../../../components/facts';
+import { RowMenu } from '../../../components/row-menu';
+import { Stat, StatRow } from '../../../components/stat';
+import { accountTone } from '../../../lib/status-tone';
+import { useAccountActions } from '../account-actions';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
 
@@ -67,6 +70,26 @@ export function AccountScreen() {
   const extras = extraRoleIds ?? row?.extraRoleIds ?? [];
   const primary = roleId ?? row?.roleId ?? '';
   const { run, busy } = useAction({ setError, setNote, onDone: account.reload });
+  const router = useRouter();
+  const accountActions = useAccountActions({
+    error,
+    setError,
+    setNote,
+    onDone: account.reload,
+    onDeleted: () => router.push('/users'),
+  });
+  // The server is the judge; this only hides controls from accounts that can never pass it.
+  const canEditTerms = Boolean(
+    row && !row.staff && row.layer !== 'branch' && me && !me.impersonating && (me.layer === 'branch' ? me.isBranchOwner || me.grants.includes('edit') : me.loginName === row.parentLogin),
+  );
+  // Tab counts: packages with a custom price, operations stopped. The tabs read the same cached answers.
+  const termsFor = row?.loginName ?? params.login;
+  const packagesRead = useApiQuery(sharedKeys.accountPackages(termsFor), () => api.userPackages(termsFor), { enabled: canEditTerms });
+  const opsRead = useApiQuery(sharedKeys.accountOps(termsFor), () => api.userOps(termsFor), { enabled: canEditTerms });
+  const counts: Partial<Record<Tab, number>> = {
+    packages: packagesRead.data?.summary.custom ?? 0,
+    ops: (opsRead.data?.denied.length ?? 0) + (opsRead.data?.deniedAbove.length ?? 0),
+  };
 
   // A new answer for the account drops the unsaved picks, so the form shows what the server holds. Done while
   // rendering, when the answer changes, instead of in an effect.
@@ -93,13 +116,32 @@ export function AccountScreen() {
   if (!allowed) return <Desk title="" lede="" error="" note=""><span /></Desk>;
 
   const roleHas = new Set(row?.roleGrants ?? []);
-  const title = row ? <AccountName login={row.loginName} name={row.nickname} /> : t.accountName;
+  const listed = row?.listed ?? null;
+  const title = row ? (
+    <span className="account-title">
+      <AccountName login={row.loginName} name={row.nickname} />
+      <Badge variant={accountTone(row.frozen)} dot>{row.frozen ? t.frozen : t.accountOpen}</Badge>
+    </span>
+  ) : t.accountName;
+  const lede = row
+    ? [layerName(t, row.layer), row.parentLogin ? `${t.parent}: ${row.parentLogin}` : '', row.staff ? row.roleName : ''].filter(Boolean).join(' · ')
+    : '';
+  // The head shows fund and ceiling as buttons; every other action of the users list waits behind ⋯.
+  const actions = listed ? accountActions.actionsFor(listed) : [];
+  const shown = actions.filter((item) => item.key === 'fund' || item.key === 'ceiling');
+  const more = actions.filter((item) => item.key !== 'fund' && item.key !== 'ceiling');
+  const head = actions.length > 0 ? (
+    <div className="page-actions">
+      {shown.map((item) => (
+        <Button key={item.key} type="button" variant={item.key === 'fund' ? 'primary' : 'outline'} onClick={item.onClick}>
+          {item.label}
+        </Button>
+      ))}
+      {more.length > 0 ? <RowMenu boxed label={t.moreActions} items={more} /> : null}
+    </div>
+  ) : null;
   const jobRoles = (row?.roles ?? []).filter((role) => role.id !== primary);
   const showExtras = Boolean(row?.canEdit && (row.staff || jobRoles.length > 0));
-  // The server is the judge; this only hides controls from accounts that can never pass it.
-  const canEditTerms = Boolean(
-    row && !row.staff && row.layer !== 'branch' && me && !me.impersonating && (me.layer === 'branch' ? me.isBranchOwner || me.grants.includes('edit') : me.loginName === row.parentLogin),
-  );
   // The API refuses to read the terms of an account the actor may not edit, so the two tabs
   // exist only for the direct parent and the branch; a hash to a hidden tab falls back to access.
   const tabs: { key: Tab; label: string }[] = [
@@ -116,7 +158,8 @@ export function AccountScreen() {
   return (
     <Desk
       title={title}
-      lede={row ? '' : ''}
+      lede={lede}
+      action={head}
       error={error || account.error}
       note={note}
     >
@@ -126,14 +169,8 @@ export function AccountScreen() {
         </section>
       ) : row && (
         <div className="stack flow">
-          <Facts variant="cards">
-            <Fact label={t.fullName} icon={<KeyRound />}><bdi>{row.nickname}</bdi></Fact>
-            <Fact label={t.layer} icon={<Layers />}>{layerName(t, row.layer)}</Fact>
-            <Fact label={t.parent} icon={<Waypoints />}><AccountName login={row.parentLogin} /></Fact>
-            <Fact label={t.role} icon={<Shield />}>{row.staff ? (row.roleName || '—') : layerName(t, row.layer)}</Fact>
-            <Fact label={t.status} icon={row.frozen ? <Snowflake /> : <CircleCheck />} tone={row.frozen ? 'warn' : 'good'}>{row.frozen ? t.frozen : t.accountOpen}</Fact>
-          </Facts>
-          <Tabs items={tabs.map((item) => ({ ...item, disabled: item.key !== 'access' && row.staff }))} value={openTab} onChange={setTab} />
+          {listed ? <MoneyCards row={listed} /> : null}
+          <Tabs items={tabs.map((item) => ({ ...item, count: counts[item.key], disabled: item.key !== 'access' && row.staff }))} value={openTab} onChange={setTab} />
           {openTab === 'access' && (
           <section className="pane">
             <header className="pane-head">
@@ -219,6 +256,28 @@ export function AccountScreen() {
           {openTab === 'ops' && !row.staff && <UserOpsTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
         </div>
       )}
+      {accountActions.dialogs}
     </Desk>
+  );
+}
+
+/** The account's wallet as four cards: balance, ceiling (with the share used), used from the ceiling, available. */
+function MoneyCards({ row }: { row: UserRow }) {
+  const { t } = usePrefs();
+  const unlimited = row.layer === 'branch';
+  const used = Math.max(0, -row.balance);
+  const available = row.balance + row.ceiling;
+  return (
+    <StatRow>
+      <Stat icon="wallet" label={t.balance} value={<Money value={row.balance} />} />
+      <Stat
+        icon="lock"
+        label={t.ceiling}
+        value={unlimited ? t.noCeiling : <Money value={row.ceiling} />}
+        progress={unlimited || row.ceiling <= 0 ? null : used / row.ceiling}
+      />
+      <Stat icon="reports" label={t.usedCeiling} value={unlimited ? '—' : <Money value={used} />} />
+      <Stat icon="plans" label={t.availableToSell} value={unlimited ? t.noCeiling : <Money value={available} />} highlight />
+    </StatRow>
   );
 }

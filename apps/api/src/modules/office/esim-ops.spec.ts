@@ -265,7 +265,7 @@ describe('immediate eSIM activation', () => {
     expect(wallet.balance).toBe(10000 - 3000 - 400);
     // The entry carries the provider's cost: the package branch cost plus the eSIM fee.
     expect(entries[0]).toMatchObject({ kind: 'activate', amount: -3400, providerCost: 2000 + 400 });
-  }, 15_000); // Renders a real PNG; slow when the whole suite runs in parallel.
+  }); // Renders a real PNG; slow when the whole suite runs in parallel: the file-wide limit above covers it.
 
   it('keeps the typed serial for a physical SIM and issues no QR', async () => {
     const { service, gate, otherLines, entries } = await office();

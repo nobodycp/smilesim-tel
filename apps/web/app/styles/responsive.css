@@ -1,6 +1,8 @@
 /* Shell and layout breakpoints, then the 44px touch-target block. */
 @media (max-width: 767px) {
-  .stat-row { grid-template-columns: 1fr; }
+  .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rd-space-2); }
+  .stat { min-height: 0; padding: var(--rd-space-3); }
+  .stat-value { font-size: 1.2rem; }
   .sidebar { display: none; }
   .menu-btn.shell-icon, .topbar-brand { display: inline-flex; }
   .hello { display: none; }

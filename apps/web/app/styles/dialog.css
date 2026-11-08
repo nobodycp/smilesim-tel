@@ -232,6 +232,9 @@
 .row-menu .row-menu-btn:hover { background: var(--rd-surface-3); color: var(--rd-ink); }
 .row-menu .row-menu-btn[aria-expanded='true'] { background: var(--rd-surface-3); color: var(--rd-ink); }
 .row-menu .row-menu-btn svg { width: 16px; height: 16px; }
+.row-menu.boxed .row-menu-btn { width: 34px; height: 34px; border: 1px solid var(--rd-line); background: var(--rd-surface); color: var(--rd-ink-2); }
+.row-menu.boxed .row-menu-btn:hover,
+.row-menu.boxed .row-menu-btn[aria-expanded='true'] { background: var(--rd-surface-2); color: var(--rd-ink); }
 .row-menu-panel {
   position: fixed;
   z-index: var(--rd-z-top);

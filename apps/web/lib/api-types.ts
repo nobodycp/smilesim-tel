@@ -216,6 +216,8 @@ export type AccountAccess = {
   grants: string[];
   roles: { id: string; name: string; grants: string[] }[];
   canEdit: boolean;
+  /** The account as the users list shows it: wallet and what the viewer may do. */
+  listed: UserRow | null;
 };
 export type UserRow = {
   loginName: string;
