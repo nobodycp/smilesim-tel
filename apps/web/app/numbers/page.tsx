@@ -17,7 +17,7 @@ import { lineActions } from '../../components/line-actions';
 import { RowMenu } from '../../components/row-menu';
 import { useApiQuery } from '../../lib/use-api-query';
 import { sharedKeys } from '../../lib/query';
-import { api, type ApplyResult, type LineRow, type Outcome, type PosChoice } from '../../lib/api';
+import { api, type ApplyResult, type LineRow, type Outcome, type PackageRow, type PosChoice } from '../../lib/api';
 import { useDoor } from '../../lib/door-context';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
@@ -29,6 +29,7 @@ import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
 import { lineTone } from '../../lib/status-tone';
 
 const NO_POSES: PosChoice[] = [];
+const NO_PACKAGES: PackageRow[] = [];
 
 const FILTER_KEYS = ['q', 'status', 'pack', 'provider', 'company'] as const;
 const LINE_STATUSES = ['active', 'frozen', 'disconnected', 'suspended'];
@@ -66,7 +67,7 @@ export default function NumbersPage() {
       pick(await api.officeLines({ q: needle, status, packageCode: pack, provider, company, cursor }), (data) => ({ rows: data.lines, next: data.nextCursor, total: data.total, extra: data.poses })),
   );
   const catalog = useApiQuery(sharedKeys.packages, () => api.officePackages());
-  const packages = catalog.data?.packages ?? [];
+  const packages = catalog.data?.packages ?? NO_PACKAGES;
   const poses = list.extra ?? NO_POSES;
   const ready = catalog.loaded && list.started;
   const { run, busy } = useAction({ setError, setNote, onDone: list.reload });

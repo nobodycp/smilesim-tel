@@ -1,6 +1,7 @@
 'use client';
 
 import { usePrefs } from '../lib/prefs';
+import { DataImage } from './data-image';
 
 /**
  * The live preview beside the identity form: a browser tab, the sidebar head, and the sign-in
@@ -24,8 +25,8 @@ export function BrandingPreview({
   const initial = name.trim().charAt(0);
   const logoPair = logo ? (
     <>
-      <img src={logo} alt="" className="brand-logo brand-logo-light" />
-      <img src={logoDark || logo} alt="" className="brand-logo brand-logo-dark" />
+      <DataImage src={logo} alt="" className="brand-logo brand-logo-light" />
+      <DataImage src={logoDark || logo} alt="" className="brand-logo brand-logo-dark" />
     </>
   ) : null;
 
@@ -36,7 +37,7 @@ export function BrandingPreview({
       <div className="bp-browser" aria-label={t.brandingPreviewTab}>
         <div className="bp-tab">
           <span className={favicon ? 'bp-tab-icon has-image' : 'bp-tab-icon'} aria-hidden="true">
-            {favicon && <img src={favicon} alt="" />}
+            {favicon && <DataImage src={favicon} alt="" />}
           </span>
           <span className="bp-tab-title">{name}</span>
           <span className="bp-tab-close" aria-hidden="true">×</span>

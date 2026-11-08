@@ -26,6 +26,7 @@ import { sharedKeys } from '../../../lib/query';
 import { lineTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import { DataImage } from '../../../components/data-image';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
@@ -377,7 +378,7 @@ export default function LineCardPage() {
                   const image = companies.find((company) => company.name === row.companyName)?.image;
                   return (
                     <button key={row.code} type="button" className={switchTo === row.code ? 'pack-pick is-on' : 'pack-pick'} onClick={() => setSwitchTo(row.code)}>
-                      {image ? <img src={image} alt="" /> : <span>{row.companyName.slice(0, 1)}</span>}
+                      {image ? <DataImage src={image} alt="" /> : <span>{row.companyName.slice(0, 1)}</span>}
                       <b>{row.companyName}</b>
                       <span>{row.name}</span>
                       <Money value={row.subscriberPrice} />

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../components/data-table';
 import { ActivationResult } from '../../components/activation-result';
 import { Desk, Money } from '../../components/desk';
@@ -308,12 +308,15 @@ export default function PlansPage() {
   const { run } = useAction({ setError, setNote, onDone: catalog.reload });
   const failure = error || catalog.error;
 
-  // A sell price the user has not touched follows the catalog; one they typed stays until it is saved.
-  useEffect(() => {
-    if (!catalog.data) return;
+  // A sell price the user has not touched follows the catalog; one they typed stays until it is saved. Merged while
+  // rendering, when a new answer arrives, instead of in an effect.
+  const [mergedFrom, setMergedFrom] = useState<typeof catalog.data>(null);
+  if (catalog.data && catalog.data !== mergedFrom) {
+    const fresh = catalog.data;
+    setMergedFrom(fresh);
     setDrafts((current) => {
       const next = { ...current };
-      for (const row of catalog.data?.packages ?? []) {
+      for (const row of fresh.packages) {
         next[row.code] ??= {
           price: row.sellPrice === null ? '' : shekelField(row.sellPrice),
           renewal: row.sellRenewalPrice === null ? '' : shekelField(row.sellRenewalPrice),
@@ -321,7 +324,7 @@ export default function PlansPage() {
       }
       return next;
     });
-  }, [catalog.data]);
+  }
 
   function setDraft(code: string, patch: Partial<SellDraft>) {
     setDrafts((current) => {

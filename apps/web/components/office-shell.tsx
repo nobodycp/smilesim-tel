@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
@@ -43,8 +43,39 @@ import { OutageBar, OutagePanel } from './outage';
 import { useNotices } from '../lib/use-notices';
 import { tabTitle, usePageTitleValue } from '../lib/page-title';
 import { noticeAge, noticeDetail, noticeTitle } from '../lib/notice-text';
+import { reloadAt } from '../lib/reload-at';
 
 const COLLAPSE_KEY = 'smilesim-sidebar-collapsed';
+
+// The collapsed sidebar is a browser preference (localStorage), read through useSyncExternalStore: the server render
+// draws it open, the browser answers on hydration. Storage may be off; the choice then lives for the tab only.
+const collapseListeners = new Set<() => void>();
+let collapseFallback = false;
+function readCollapsed() {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === '1';
+  } catch {
+    return collapseFallback;
+  }
+}
+function writeCollapsed(next: boolean) {
+  collapseFallback = next;
+  try {
+    localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
+  } catch {
+    // Preference is optional.
+  }
+  collapseListeners.forEach((listener) => listener());
+}
+function subscribeCollapsed(listener: () => void) {
+  collapseListeners.add(listener);
+  return () => collapseListeners.delete(listener);
+}
+const serverCollapsed = () => false;
+
+// The greeting and the date depend on the browser's clock, so the server renders neither; one string, so the snapshot
+// compares equal between reads.
+const noSubscribe = () => () => {};
 const glyph = { size: 18, strokeWidth: 2.2, 'aria-hidden': true as const };
 
 type NavItem = { label: string; href: string; icon: LucideIcon; layers?: readonly string[]; grant?: string; owner?: boolean };
@@ -58,7 +89,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const { t, locale } = usePrefs();
   const branding = useBranding();
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, serverCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { open: menuOpen, close: closeMenu, toggle: toggleMenu, root: menuRoot, trigger: menuTrigger } = usePopover({ menu: true });
   const { open: walletOpen, toggle: toggleWallet, root: walletRoot, trigger: walletTrigger } = usePopover();
@@ -76,17 +107,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const impersonating = me?.impersonating ?? false;
   const saved = useIdentity();
 
-  useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === '1');
-    } catch {
-      // Preference is optional.
-    }
-  }, []);
-
   async function leaveAccount() {
     const result = await api.leaveUser();
-    if (result.ok) window.location.assign('/users');
+    if (result.ok) reloadAt('/users');
   }
 
   useEffect(() => {
@@ -111,16 +134,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   }
 
   function toggleCollapsed() {
-    setCollapsed((current) => {
-      const next = !current;
-      try {
-        localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
-      } catch {
-        // Preference is optional.
-      }
-      return next;
-    });
+    writeCollapsed(!collapsed);
   }
+
 
   // Signing out revokes this session and then leaves for the sign-in page on purpose: a full load drops every
   // piece of account state held in memory. If the revoke fails (API down) the account stays signed in, as shown.
@@ -325,18 +341,22 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const sub = me ? (me.nickname ? me.loginName : '') : saved.hint;
   const first = shown.trim().split(/\s+/)[0] || shown;
   const initial = first.charAt(0);
-  const [clock, setClock] = useState<{ hello: string; today: string } | null>(null);
-  useEffect(() => {
-    const now = new Date();
-    const hello =
-      now.getHours() < 12 ? t.goodMorning : now.getHours() < 18 ? t.goodAfternoon : t.goodEvening;
-    const today = new Intl.DateTimeFormat(locale === 'en' ? 'en' : locale === 'he' ? 'he' : 'ar', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-    }).format(now);
-    setClock({ hello, today });
-  }, [locale, t.goodMorning, t.goodAfternoon, t.goodEvening]);
+  const clockText = useSyncExternalStore(
+    noSubscribe,
+    () => {
+      const now = new Date();
+      const hello = now.getHours() < 12 ? t.goodMorning : now.getHours() < 18 ? t.goodAfternoon : t.goodEvening;
+      const today = new Intl.DateTimeFormat(locale === 'en' ? 'en' : locale === 'he' ? 'he' : 'ar', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }).format(now);
+      return `${hello}\n${today}`;
+    },
+    () => null,
+  );
+  const [clockHello, clockToday] = clockText ? clockText.split('\n') : [];
+  const clock = clockText ? { hello: clockHello, today: clockToday } : null;
   const helloMark = locale === 'en' ? ',' : '،';
   const role = me?.layer === 'branch' ? t.layerBranch : me?.layer === 'main_agent' ? t.layerMain : me?.layer === 'agent' ? t.layerAgent : me?.layer === 'pos' ? t.layerPos : me?.layer === 'staff' ? t.staffAccount : '';
 

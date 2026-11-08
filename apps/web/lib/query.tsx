@@ -64,6 +64,8 @@ export const sharedKeys = {
   accountOps: (login: string) => ['office', 'account', login, 'ops'] as const,
   providerSettings: (code: string) => ['office', 'provider', code, 'settings'] as const,
   line: (id: string) => ['office', 'line', id] as const,
+  profile: ['auth', 'profile'] as const,
+  sessions: ['auth', 'sessions'] as const,
 };
 
 /** Reads that belong to one package's sheet; an action on the sheet asks for these again. */

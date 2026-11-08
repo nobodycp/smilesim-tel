@@ -4,6 +4,7 @@ import { ImageUp } from 'lucide-react';
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { usePrefs } from '../lib/prefs';
 import { Button } from './ui/button';
+import { DataImage } from './data-image';
 
 /**
  * One image slot on the identity page: a dashed drop area that is also a file picker, the current
@@ -61,8 +62,8 @@ export function BrandingDrop({
         <span className="drop-thumb" aria-hidden="true">
           {value ? (
             <>
-              <img src={value} alt="" className={dark ? 'brand-logo-light' : undefined} />
-              {dark && <img src={dark} alt="" className="brand-logo-dark" />}
+              <DataImage src={value} alt="" className={dark ? 'brand-logo-light' : undefined} />
+              {dark && <DataImage src={dark} alt="" className="brand-logo-dark" />}
             </>
           ) : (
             <ImageUp strokeWidth={2.2} />

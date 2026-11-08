@@ -4,6 +4,7 @@
 import { reportReach } from './connection';
 import { doorFromHost } from './doors';
 import type { ApiResult } from './api-types';
+import { reloadAt } from './reload-at';
 
 const base = () => (typeof window === 'undefined' ? process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:3001' : '/api');
 
@@ -48,7 +49,7 @@ export async function request<T>(method: string, path: string, body?: unknown): 
     const message = hasMessage ? (body.message as string) : GENERIC_MESSAGE;
     const code = typeof body.code === 'string' ? body.code : hasMessage ? undefined : 'GENERIC';
     if (typeof window !== 'undefined' && window.location.pathname !== '/login' && endsSession(response.status, code, message)) {
-      window.location.assign('/login');
+      reloadAt('/login');
     }
     return { ok: false, status: response.status, message, ...(code ? { code } : {}) };
   }

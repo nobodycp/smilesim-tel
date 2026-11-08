@@ -13,7 +13,7 @@ import { Badge } from '../../components/ui/badge';
 import { Select } from '../../components/ui/select';
 import { useApiQuery } from '../../lib/use-api-query';
 import { sharedKeys } from '../../lib/query';
-import { api, type TaskRow } from '../../lib/api';
+import { api, type PackageRow, type TaskRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
 import { pick } from '../../lib/use-load';
@@ -21,6 +21,8 @@ import { usePaged } from '../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
 import { taskTone } from '../../lib/status-tone';
 
+// One empty list for every render, so the memos below keep their inputs while the catalog loads.
+const NO_PACKAGES: PackageRow[] = [];
 const TASK_ACTIONS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'sim'] as const;
 
 const FILTER_KEYS = ['q', 'status', 'action', 'pack', 'company', 'provider'] as const;
@@ -38,7 +40,7 @@ export default function TasksPage() {
   const commitQuery = useCallback((value: string) => setFilters({ q: value }), [setFilters]);
   const [query, setQuery] = useDebouncedField(needle, commitQuery);
   const catalog = useApiQuery(sharedKeys.packages, () => api.officePackages());
-  const packages = catalog.data?.packages ?? [];
+  const packages = catalog.data?.packages ?? NO_PACKAGES;
   const list = usePaged<TaskRow>(
     `${needle}|${status}|${action}|${pack}|${company}|${provider}`,
     async (cursor) =>

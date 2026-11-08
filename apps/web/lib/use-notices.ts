@@ -63,6 +63,9 @@ export function useNotices(ready: boolean) {
       };
     };
 
+    // This effect subscribes to an external system (the stream and the poll). pull() sets state only after its
+    // await, in a later task, which the rule cannot see.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above
     void pull();
     open();
     const poll = window.setInterval(() => void pull(), POLL_MS);

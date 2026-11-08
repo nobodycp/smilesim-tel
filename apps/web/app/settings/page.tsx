@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { PageSkeleton } from '../../components/loading';
 import { RowMenu } from '../../components/row-menu';
-import { api, type SessionInfo } from '../../lib/api';
+import { api } from '../../lib/api';
+import { sharedKeys } from '../../lib/query';
+import { useApiQuery } from '../../lib/use-api-query';
 import { citiesFor } from '../../lib/cities';
 import { useOffice } from '../../lib/office-session';
 import { usePageTitle } from '../../lib/page-title';
@@ -17,7 +19,6 @@ export default function SettingsPage() {
   const { t, apiText, locale } = usePrefs();
   const { ready, refresh } = useOffice();
   usePageTitle(t.settingsTitle);
-  const [loginName, setLoginName] = useState('');
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -25,36 +26,26 @@ export default function SettingsPage() {
   const [address, setAddress] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [otpauth, setOtpauth] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
 
-  const loadSessions = useCallback(async () => {
-    const result = await api.listSessions();
-    if (result.ok) setSessions(result.data.sessions);
-    else setError(apiText(result));
-  }, [apiText]);
-
-  const loadProfile = useCallback(async () => {
-    const result = await api.getProfile();
-    if (!result.ok) {
-      setError(apiText(result));
-      return;
-    }
-    setLoginName(result.data.loginName);
-    setNickname(result.data.nickname ?? '');
-    setEmail(result.data.email ?? '');
-    setPhone(result.data.phone ?? '');
-    setCity(result.data.city ?? '');
-    setAddress(result.data.address ?? '');
-  }, [apiText]);
-
-  useEffect(() => {
-    loadProfile();
-    loadSessions();
-  }, [loadProfile, loadSessions]);
+  const profile = useApiQuery(sharedKeys.profile, () => api.getProfile());
+  const sessionList = useApiQuery(sharedKeys.sessions, () => api.listSessions());
+  const loginName = profile.data?.loginName ?? '';
+  const sessions = sessionList.data?.sessions ?? [];
+  // The fields start from the first answer and are the user's from then on: a later read in the background never
+  // overwrites a draft. Seeded while rendering, when that first answer arrives, instead of in an effect.
+  const [seeded, setSeeded] = useState(false);
+  if (!seeded && profile.data) {
+    setSeeded(true);
+    setNickname(profile.data.nickname ?? '');
+    setEmail(profile.data.email ?? '');
+    setPhone(profile.data.phone ?? '');
+    setCity(profile.data.city ?? '');
+    setAddress(profile.data.address ?? '');
+  }
 
   async function saveProfile(patch: Parameters<typeof api.updateProfile>[0], done: string) {
     setError('');
@@ -136,7 +127,7 @@ export default function SettingsPage() {
       setError(apiText(result));
       return;
     }
-    await loadSessions();
+    await sessionList.reload();
   }
 
   const when = (value: string) => {
@@ -156,7 +147,7 @@ export default function SettingsPage() {
       <h1>{t.settingsTitle}</h1>
       <p className="lede">{t.settingsLede}</p>
     </header>
-    <Alert banner>{error}</Alert>
+    <Alert banner>{error || profile.error || sessionList.error}</Alert>
     <Alert tone="success" banner>{note}</Alert>
 
     <div className="settings-grid">

@@ -7,7 +7,7 @@
     "start": "next start",
     "test": "playwright test",
     "audit": "playwright test -c playwright.audit.config.ts",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings 0",
     "check:copy": "node scripts/check-copy.mjs"
   },
   "dependencies": {

@@ -2,7 +2,7 @@
 
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AccountName, accountLabel } from '../../components/account-name';
 import { DataTable, type Column } from '../../components/data-table';
 import { Desk, Money, layerName } from '../../components/desk';
@@ -24,6 +24,7 @@ import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
 import { useLoad } from '../../lib/use-load';
 import { useRequireLayer } from '../../lib/use-require-layer';
 import { accountTone } from '../../lib/status-tone';
+import { reloadAt } from '../../lib/reload-at';
 
 const layerOrder = ['branch', 'main_agent', 'agent', 'pos'];
 // Everyone but a point of sale; a staff account opens the desk through the branch door.
@@ -72,15 +73,18 @@ export default function UsersPage() {
   const canMovePos = canMove && Boolean(me?.grants.includes('transferPos'));
   const canMoveAgent = canMove && Boolean(me?.grants.includes('transferAgents'));
 
-  // A ceiling the user has not touched follows the list; one they typed stays until it is saved.
-  useEffect(() => {
-    if (!accounts.data) return;
+  // A ceiling the user has not touched follows the list; one they typed stays until it is saved. Merged while
+  // rendering, when a new answer arrives, instead of in an effect.
+  const [mergedFrom, setMergedFrom] = useState<typeof accounts.data>(null);
+  if (accounts.data && accounts.data !== mergedFrom) {
+    const fresh = accounts.data;
+    setMergedFrom(fresh);
     setCeilings((current) => {
       const next = { ...current };
-      for (const row of accounts.data?.users ?? []) next[row.loginName] ??= String(row.ceiling);
+      for (const row of fresh.users) next[row.loginName] ??= String(row.ceiling);
       return next;
     });
-  }, [accounts.data]);
+  }
 
   function canFund(row: UserRow) {
     if (row.self) return isBranch;
@@ -342,7 +346,7 @@ export default function UsersPage() {
                   <Button
                     type="button"
                     disabled={busy}
-                    onClick={() => send(() => api.enterUser(active.loginName), { then: () => window.location.assign('/numbers'), reload: false })}
+                    onClick={() => send(() => api.enterUser(active.loginName), { then: () => reloadAt('/numbers'), reload: false })}
                   >
                     {t.enterAccount}
                   </Button>

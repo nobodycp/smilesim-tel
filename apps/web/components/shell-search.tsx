@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { accountLabel } from './account-name';
 import { api } from '../lib/api';
 import { usePrefs } from '../lib/prefs';
@@ -15,6 +15,15 @@ export function ShellSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<Hit[]>([]);
+  const resultsId = useId();
+  // Leaving the search (closed, or under two letters) drops the last hits, so coming back starts empty. Done while
+  // rendering, the way React adjusts state to a change of its inputs, instead of in an effect.
+  const searching = open && query.trim().length >= 2;
+  const [wasSearching, setWasSearching] = useState(searching);
+  if (searching !== wasSearching) {
+    setWasSearching(searching);
+    if (!searching) setHits([]);
+  }
   const box = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
   // The accounts are read once, when the box first opens, from the same cache entry as the users page; each
@@ -49,10 +58,7 @@ export function ShellSearch() {
 
   useEffect(() => {
     const needle = query.trim();
-    if (!open || needle.length < 2) {
-      setHits([]);
-      return;
-    }
+    if (!open || needle.length < 2) return;
     let stop = false;
     const timer = window.setTimeout(async () => {
       // Only the first page of numbers is read: the box shows at most 8 hits, so `nextCursor` is ignored on purpose.
@@ -114,7 +120,7 @@ export function ShellSearch() {
             value={query}
             placeholder={t.searchPlaceholder}
             aria-label={t.searchPlaceholder}
-            aria-expanded={showResults}
+            aria-controls={showResults ? resultsId : undefined}
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
@@ -141,7 +147,7 @@ export function ShellSearch() {
           )}
         </div>
         {showResults && (
-          <div className="shell-search-results">
+          <div className="shell-search-results" id={resultsId}>
             {hits.length === 0 ? <p className="shell-search-empty">{t.searchEmpty}</p> : groups.map((group) => (
               <div key={group}>
                 <p className="shell-search-label">{group}</p>

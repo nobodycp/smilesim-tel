@@ -2,7 +2,7 @@
 
 import { CircleCheck, KeyRound, Layers, Shield, Snowflake, Waypoints } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { Desk, layerName } from '../../../components/desk';
 import { TableSkeleton } from '../../../components/loading';
@@ -64,11 +64,15 @@ export default function AccountPage() {
   const primary = roleId ?? row?.roleId ?? '';
   const { run, busy } = useAction({ setError, setNote, onDone: account.reload });
 
-  useEffect(() => {
+  // A new answer for the account drops the unsaved picks, so the form shows what the server holds. Done while
+  // rendering, when the answer changes, instead of in an effect.
+  const [pickedFor, setPickedFor] = useState(account.data);
+  if (account.data !== pickedFor) {
+    setPickedFor(account.data);
     setChoices(null);
     setExtraRoleIds(null);
     setRoleId(null);
-  }, [account.data]);
+  }
 
   async function save() {
     if (!row) return;

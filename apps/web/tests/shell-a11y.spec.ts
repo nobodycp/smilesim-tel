@@ -59,3 +59,33 @@ test('the closed drawer is inert, and the open one is not', async ({ page }) => 
   await expect(drawer).toHaveClass(/open/);
   await expect(drawer).not.toHaveAttribute('inert');
 });
+
+// The collapsed sidebar is a browser preference (useSyncExternalStore over localStorage): it survives a reload.
+test('a collapsed sidebar stays collapsed after a reload', async ({ page }) => {
+  await serveOffice(page, 'branch', { 'GET /home': () => home });
+  await page.goto(`${admin}/`);
+  const sidebar = page.locator('aside.sidebar');
+  await expect(sidebar).not.toHaveClass(/collapsed/);
+  await sidebar.getByRole('button', { name: 'طي القائمة' }).click();
+  await expect(sidebar).toHaveClass(/collapsed/);
+  await page.reload();
+  await expect(sidebar).toHaveClass(/collapsed/);
+  await sidebar.getByRole('button', { name: 'توسيع القائمة' }).click();
+  await expect(sidebar).not.toHaveClass(/collapsed/);
+});
+
+// The step the sign-in left in sessionStorage decides the page: enrolling asks the API for a new secret, checking does not.
+for (const step of ['enroll', 'verify'] as const) {
+  test(`the two-factor page asks for a new secret only when enrolling (${step})`, async ({ page }) => {
+    const setups: string[] = [];
+    await page.route('**/auth/two-factor/setup', (route) => {
+      setups.push(route.request().url());
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ otpauth: 'otpauth://totp/x?secret=ABC' }) });
+    });
+    await page.addInitScript((value) => sessionStorage.setItem('twoFactorStep', value), step);
+    await page.goto('/two-factor');
+    await expect(page.locator('form')).toBeVisible();
+    await page.waitForTimeout(500);
+    expect(setups.length).toBe(step === 'enroll' ? 1 : 0);
+  });
+}
