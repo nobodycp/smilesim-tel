@@ -81,8 +81,9 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 4.4a All eight paged lists at once: `usePaged` runs on `useInfiniteQuery` with the same contract — keep-previous rows on filter change, `reload` refetches every read chunk and invalidates the list's other filters, cache-then-revalidate on reopen, errors translated when drawn (`tests/list-cache.spec.ts`, fails on the old hook). `095162c`
 - [x] 4.4b URL-synced filters: `lib/url-state.ts` (`useUrlFilters`, `useDebouncedField`) on numbers, tasks, users; back/forward, links and `/users?q=` from /users work (`tests/url-filters.spec.ts`, fails on the old pages). `7ead80c` + race fix `ef684b2`.
 - [ ] 4.4c `/users` server paging (needs an API change: the list route returns everything today).
-- [ ] 4.5 Detail pages: numbers/[id], tasks/[id], provider package sheet, users/[login] — keyed queries, per-mutation invalidation, form state separate from server state.
-- [ ] 4.6 Shell search: dedicated query with debounce + cache, no full user list per keystroke.
+- [x] 4.5a `useApiQuery` (useLoad's shape over a cached query) + `sharedKeys` (packages, users, line). The line card reads the number, the catalog and the accounts as three queries; an action re-reads only the number. Numbers, tasks, packages and users read the same catalog/accounts entries. `ac3a279`
+- [ ] 4.5b tasks/[id], provider package sheet (5 reads per reload today), users/[login] onto `useApiQuery`.
+- [x] 4.6 Shell search reads the accounts once (shared users query) and filters locally; numbers stay a server search. `a969b86`
 
 ## Phase 5 — Web structure and design system
 
