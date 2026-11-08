@@ -58,7 +58,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] Route table `routes.http.spec.ts` (`9afb7ff`): all 79 office routes, method + path + activity event, 401 without a session. Seven routes answer 400 first (they judge body/cookie before the session) — recorded as they are; moving them behind `ActorInterceptor` changes 400→401 and needs the owner's decision (packages, users slices).
 - [x] 3.3 tasks: `tasks/` — list, detail, notes, take, release, reject, cancel + openTask, taskNotice, handlerIds, noteLog. `4dfc0cb`. **`complete` stays in OfficeService until 3.9** (it applies the line operation). Lint now bans Jest's global `fail` outside specs.
 - [x] 3.4 wallets: `wallets/` — wallets, fund, ceiling, ledger, finance, provider operations (+ `provider-cost.ts`). `GET /office/wallets` characterized first. `75ab132`. **`reports/:kind` stays in OfficeService** until lines move (it lists tasks and lines).
-- [ ] 3.5 providers + companies.
+- [x] 3.5 providers + companies: `providers/` (list, settings, eSIM price, action mode) and `companies/` (shelf, SIM rules, image). 6 of 7 routes had no spec: `catalog.http.spec.ts` written first. `086564a`
 - [ ] 3.6 packages: catalog, sheet, chain, targets, mode, sell/custom/line prices, user packages, user ops.
 - [ ] 3.7 users + roles: list, directory, account, access, create, password, freeze/restore/delete, enter/leave, roles.
 - [ ] 3.8 transfers: account + line transfer, preview.
