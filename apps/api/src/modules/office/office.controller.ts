@@ -23,8 +23,6 @@ import {
   SwapSimBodyDto,
   CompleteTaskBodyDto,
   SwitchPackageBodyDto,
-  TransferAccountBodyDto,
-  TransferLineBodyDto,
 } from './office.dto';
 
 /** A query value is a string or nothing; a repeated or nested one is ignored. */
@@ -238,19 +236,6 @@ export class OfficeController {
     return this.office.swapSim(gateOf(req), id, body);
   }
 
-  @Post('lines/:id/transfer')
-  @ApiOperation({ summary: 'Transfer a line to another POS' })
-  @ApiParam({ name: 'id' })
-  @ApiBody({ type: TransferLineBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  transferLine(
-    @Req() req: Request,
-    @Param('id') id: string,
-    @Body() body: TransferLineBodyDto,
-  ) {
-    return this.office.transferLine(gateOf(req), id, body);
-  }
-
   @Post('lines/:id/switch')
   @ApiOperation({ summary: 'Switch package on a line' })
   @ApiParam({ name: 'id' })
@@ -277,33 +262,6 @@ export class OfficeController {
     @Body() body: CompleteTaskBodyDto,
   ) {
     return this.office.completeTask(gateOf(req), id, body);
-  }
-
-  @Post('users/:loginName/transfer')
-  @ApiOperation({ summary: 'Transfer a point of sale or an agent to another parent, with an explicit choice for what travels with it' })
-  @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: TransferAccountBodyDto })
-  @ApiErrorResponse(401, 403, 400, 404)
-  @Activity('user_transfer', 'user', param('loginName'))
-  transferAccount(
-    @Req() req: Request,
-    @Param('loginName') loginName: string,
-    @Body() body: TransferAccountBodyDto,
-  ) {
-    return this.office.transferAccount(gateOf(req), loginName, body);
-  }
-
-  @Get('users/:loginName/transfer-preview')
-  @ApiOperation({ summary: 'What moving an account under another parent would carry; refuses as the move does' })
-  @ApiParam({ name: 'loginName' })
-  @ApiQuery({ name: 'parentLogin', required: true, description: 'The login of the new parent' })
-  @ApiErrorResponse(401, 403, 400)
-  transferPreview(
-    @Req() req: Request,
-    @Param('loginName') loginName: string,
-    @Query('parentLogin') parentLogin?: unknown,
-  ) {
-    return this.office.transferPreview(gateOf(req), loginName, { parentLogin });
   }
 
   @Get('reports/:kind')
