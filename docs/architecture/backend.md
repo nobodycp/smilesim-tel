@@ -65,7 +65,7 @@ Status/kind/layer fields are `String` (no enums). Missing indexes: `Line.status/
 
 ## Tests
 
-38 suites (one opt-in DB spec). Spec passwords hashed once per file via `office/test-hash.ts`. Pure rule specs + service specs on an in-memory fixture (`tree-fixture.ts`) + supertest HTTP specs for auth and branding. Gaps: no office HTTP permission matrix, no coverage gate.
+41 suites (one opt-in DB spec). Spec passwords hashed once per file via `office/test-hash.ts`. Pure rule specs + service specs on an in-memory fixture (`tree-fixture.ts`) + supertest HTTP specs for auth and branding. Gaps: no office HTTP permission matrix, no coverage gate.
 
 ## Target shape (refactor plan)
 
