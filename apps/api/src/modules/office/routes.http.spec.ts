@@ -93,10 +93,10 @@ const ROUTES: Row[] = [
 ];
 
 // Routes that judge something before the session, so an anonymous call with the sample body answers 400 INVALID:
-// the carrier switch is not defined yet; `leave` reads the impersonation session itself. The price and terms
+// `leave` reads the impersonation session itself. The carrier switch (not defined yet, always refused) asks for the
+// session first since 2026-11-08, like every other line route. The price and terms
 // writes used to parse their body first; since 2026-11-08 (owner decision, 401 first) they ask for the session first.
 const BEFORE_SESSION: Record<string, number> = {
-  'POST /office/lines/ID1/company-switch': 400,
   'POST /office/leave': 400,
 };
 
