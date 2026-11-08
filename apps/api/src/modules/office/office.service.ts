@@ -2053,7 +2053,8 @@ export class OfficeService implements OnModuleInit {
 
   /** Every sellable package, grouped by company, with what `loginName` sees and pays. */
   async userPackages(gate: Gate, loginName: string) {
-    const { path, target, accounts } = await this.termTarget(gate, loginName);
+    const actor = await this.actor(gate);
+    const { path, target, accounts } = await this.termTarget(actor, loginName);
     const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
     const [packages, terms, sells] = await Promise.all([
       this.prisma.package.findMany({ where: { enabled: true, forSale: true }, include: { company: true }, orderBy: [{ company: { name: 'asc' } }, { name: 'asc' }] }),
@@ -2075,9 +2076,10 @@ export class OfficeService implements OnModuleInit {
   }
 
   async setUserPackage(gate: Gate, loginName: string, code: string, body: { hidden?: unknown; price?: unknown; renewalPrice?: unknown }) {
+    const actor = await this.actor(gate);
     const patch = termPatch(body);
     if (!patch) fail(400, 'INVALID');
-    const { actor, path, target, accounts } = await this.termTarget(gate, loginName);
+    const { path, target, accounts } = await this.termTarget(actor, loginName);
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const { terms, sells } = await this.termsFor(pkg.id);
@@ -2087,10 +2089,11 @@ export class OfficeService implements OnModuleInit {
 
   /** Hide or show several packages at once. Packages hidden higher up are left alone. */
   async setUserPackagesBulk(gate: Gate, loginName: string, body: { codes?: unknown; hidden?: unknown }) {
+    const actor = await this.actor(gate);
     if (!Array.isArray(body.codes) || body.codes.some((code) => typeof code !== 'string' || !code) || typeof body.hidden !== 'boolean') fail(400, 'INVALID');
     const codes = new Set(body.codes as string[]);
     const hidden = body.hidden as boolean;
-    const { actor, path, target, accounts } = await this.termTarget(gate, loginName);
+    const { path, target, accounts } = await this.termTarget(actor, loginName);
     const pathIds = path.map((node) => node.id);
     const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
     // The path's rows for every package on sale, loaded once: the picked ones are written, all of
@@ -2117,13 +2120,15 @@ export class OfficeService implements OnModuleInit {
   }
 
   async userOps(gate: Gate, loginName: string) {
-    const { target, path } = await this.termTarget(gate, loginName);
+    const actor = await this.actor(gate);
+    const { target, path } = await this.termTarget(actor, loginName);
     return { denied: parseOps(target.deniedOps), deniedAbove: deniedAbove(path) };
   }
 
   async setUserOps(gate: Gate, loginName: string, body: { denied?: unknown }) {
+    const actor = await this.actor(gate);
     if (!Array.isArray(body.denied) || body.denied.some((key) => typeof key !== 'string' || !isOpKey(key))) fail(400, 'INVALID');
-    const { target, path } = await this.termTarget(gate, loginName);
+    const { target, path } = await this.termTarget(actor, loginName);
     const deniedOps = serializeOps(body.denied as string[]);
     await this.prisma.user.update({ where: { id: target.id }, data: { deniedOps } });
     return { denied: parseOps(deniedOps), deniedAbove: deniedAbove(path) };
@@ -2143,9 +2148,10 @@ export class OfficeService implements OnModuleInit {
   }
 
   async setCustomPrice(gate: Gate, code: string, loginName: string, body: { price?: unknown; renewalPrice?: unknown }) {
+    const actor = await this.actor(gate);
     const patch = termPatch({ price: body.price, renewalPrice: body.renewalPrice });
     if (!patch) fail(400, 'INVALID');
-    const { actor, target, accounts, path } = await this.termTarget(gate, loginName);
+    const { target, accounts, path } = await this.termTarget(actor, loginName);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
@@ -2157,7 +2163,8 @@ export class OfficeService implements OnModuleInit {
   }
 
   async clearCustomPrice(gate: Gate, code: string, loginName: string) {
-    const { actor, path } = await this.termTarget(gate, loginName);
+    const actor = await this.actor(gate);
+    const { path } = await this.termTarget(actor, loginName);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const pkg = await this.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
@@ -2171,7 +2178,8 @@ export class OfficeService implements OnModuleInit {
    * what a new activation would pay on the scope account (`null` for the whole system: it differs per number).
    */
   async linePrices(gate: Gate, code: string, query: { scope?: unknown }): Promise<{ current: number | null; groups: PriceGroup[] }> {
-    const [actor, accounts] = await Promise.all([this.actor(gate), this.accounts()]);
+    const actor = await this.actor(gate);
+    const accounts = await this.accounts();
     const scope = await this.lineScope(actor, accounts, query.scope);
     const pkg = await this.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } });
     if (!pkg) fail(404, 'NOT_FOUND');
@@ -2188,9 +2196,10 @@ export class OfficeService implements OnModuleInit {
    * listed group stay as they are. One transaction, so a refusal anywhere applies nothing.
    */
   async setLinePrices(gate: Gate, code: string, body: { scope?: unknown; groups?: unknown }): Promise<{ ok: true; lines: number }> {
+    const actor = await this.actor(gate);
     const changes = groupChanges(body.groups);
     if (!changes) fail(400, 'INVALID');
-    const [actor, accounts] = await Promise.all([this.actor(gate), this.accounts()]);
+    const accounts = await this.accounts();
     const scope = await this.lineScope(actor, accounts, body.scope);
     const pkg = await this.prisma.package.findUnique({ where: { code }, select: { id: true } });
     if (!pkg) fail(404, 'NOT_FOUND');
@@ -2324,8 +2333,8 @@ export class OfficeService implements OnModuleInit {
   }
 
   /** Resolves the account whose terms are edited and checks the actor may edit them. */
-  private async termTarget(gate: Gate, loginName: string) {
-    const [actor, accounts] = await Promise.all([this.actor(gate), this.accounts()]);
+  private async termTarget(actor: Actor, loginName: string) {
+    const accounts = await this.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target) fail(404, 'NOT_FOUND');
     if (target.layer === 'branch') fail(400, 'INVALID');

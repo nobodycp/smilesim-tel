@@ -93,17 +93,11 @@ const ROUTES: Row[] = [
 ];
 
 // Routes that judge something before the session, so an anonymous call with the sample body answers 400 INVALID:
-// the carrier switch is not defined yet; `leave` reads the impersonation session itself; the price and terms
-// writes parse their body first. Moving a route behind ActorInterceptor turns its 400 into 401: that is a
-// behaviour change and needs its own decision before the row changes.
+// the carrier switch is not defined yet; `leave` reads the impersonation session itself. The price and terms
+// writes used to parse their body first; since 2026-11-08 (owner decision, 401 first) they ask for the session first.
 const BEFORE_SESSION: Record<string, number> = {
   'POST /office/lines/ID1/company-switch': 400,
   'POST /office/leave': 400,
-  'PUT /office/packages/CODE1/custom-prices/LOGIN1': 400,
-  'PUT /office/packages/CODE1/line-prices': 400,
-  'PUT /office/users/LOGIN1/ops': 400,
-  'PUT /office/users/LOGIN1/packages': 400,
-  'PUT /office/users/LOGIN1/packages/CODE1': 400,
 };
 
 describe('office routes without a session', () => {
