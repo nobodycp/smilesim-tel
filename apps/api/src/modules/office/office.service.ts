@@ -49,13 +49,15 @@ import {
 import { RENEWABLE_STATUSES } from './line-prices';
 import { packageTermsOf, type PackagePriceRow } from './office-terms';
 import { TRANSFER_GRANT, canTransfer, parseChoice, parseLineChoice, previewOf, transferKind, type TransferKind } from './transfer-rules';
-import { buyPriceFor, deniedOpsFor, isOpKey, parseOps, serializeOps, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind } from './user-terms';
+import { buyPriceFor, deniedOpsFor, isOpKey, visibleTo, type LayerPrices, type OpKey, type PathNode, type PriceKind } from './user-terms';
 import { renderEsimQr } from './office-esim';
-import { canHandleTasks, taskWhereFor, type TaskEvent } from './task-access';
+import { canHandleTasks, type TaskEvent } from './task-access';
 import { NoticeService, type WrittenNotice } from './notice.service';
 import { feedPosition } from './kernel/feed';
 import { nodeOf, PRICE_COLUMNS, type LadderRows } from './kernel/office-kernel';
 import { OfficeKernel } from './kernel/office-kernel';
+import { DeskService } from './desk/desk.service';
+import { RolesService } from './roles/roles.service';
 import { TermsService, type LineTarget, type RepriceLine } from './terms/terms.service';
 import { PackagesService } from './packages/packages.service';
 import { CompaniesService } from './companies/companies.service';
@@ -65,19 +67,15 @@ import { PROVIDER_OPERATION_KINDS } from './wallets/provider-cost';
 import { AuditService } from './audit/audit.service';
 import { TasksService } from './tasks/tasks.service';
 import type { Account, Action, Actor, Gate, Sale } from './kernel/types';
-import { excerpt, type TaskNoticePayload } from './notice-kinds';
+import { type TaskNoticePayload } from './notice-kinds';
 import {
-  FLAG_CODES,
   GRANT_CODES,
   effectiveGrantCodes,
-  flagsFor,
   roleGrantCodes,
   splitGrants,
 } from './office-grants';
 import { lineTermsOf } from './kernel/line-terms';
 import { stampTaskLog } from './task-log';
-import { LAYER_ORDER } from './kernel/values';
-
 
 /** The price columns of a package that `LayerPrices` holds, as a `select`. */
 /** What decides the prices points of sale pay for some packages: their price columns, the custom rows on them, and the sell prices of the accounts above. */
@@ -254,6 +252,20 @@ export class OfficeService implements OnModuleInit {
   ) {
     return this.termDesk.repriceLines(tx, lines, planFor, accounts);
   }
+  private roleDeskInstance: RolesService | null = null;
+
+  private get roleDesk(): RolesService {
+    this.roleDeskInstance ??= new RolesService(this.kernel);
+    return this.roleDeskInstance;
+  }
+
+  private deskDeskInstance: DeskService | null = null;
+
+  private get deskDesk(): DeskService {
+    this.deskDeskInstance ??= new DeskService(this.kernel);
+    return this.deskDeskInstance;
+  }
+
   // One-line delegators: the methods still in this file call the kernel through the names they always used.
   private pathOf(userId: string, accounts: Account[]) {
     return this.kernel.pathOf(userId, accounts);
@@ -338,92 +350,17 @@ export class OfficeService implements OnModuleInit {
     await this.ensureLayerRoles();
   }
 
+  // Facades (Phase 3): specs still call these; the routes live in desk/desk.controller.ts.
   async me(gate: Gate) {
-    const actor = await this.actor(gate);
-    const [wallet, accounts] = await Promise.all([
-      this.prisma.wallet.findUnique({ where: { userId: actor.id } }),
-      this.accounts(),
-    ]);
-    return {
-      loginName: actor.loginName,
-      nickname: actor.nickname,
-      layer: actor.layer,
-      isBranchOwner: actor.isBranchOwner,
-      grants: actor.grants,
-      // The stops on the actor's own path, own node included. `transfer` is judged on the actor, so the
-      // browser needs them to hide what the server would refuse.
-      stops: parseOps(serializeOps([...deniedOpsFor(this.pathOf(actor.id, accounts))])),
-      impersonating: actor.impersonating,
-      balance: wallet?.balance ?? 0,
-      ceiling: wallet?.ceiling ?? 0,
-    };
+    return this.deskDesk.me(await this.actor(gate));
   }
 
   async home(gate: Gate) {
-    const actor = await this.actor(gate);
-    const accounts = await this.accounts();
-    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
-    const chain = this.chainIds(actor.id, accounts);
-    const taskWhere = { ...taskWhereFor(actor, accounts), status: 'pending' };
-    const [pendingTasks, activeLines, inactiveLines, entries, notes] = await Promise.all([
-      this.prisma.officeTask.count({ where: taskWhere }),
-      posIds.length ? this.prisma.line.count({ where: { posId: { in: posIds }, status: 'active' } }) : 0,
-      posIds.length ? this.prisma.line.count({ where: { posId: { in: posIds }, status: 'disconnected' } }) : 0,
-      posIds.length
-        ? this.prisma.walletEntry.findMany({
-            where: { userId: { in: posIds }, kind: { in: ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch'] } },
-            orderBy: { createdAt: 'desc' },
-            take: 8,
-            include: { user: true },
-          })
-        : [],
-      this.prisma.announcement.findMany({
-        where: { authorId: { in: chain } },
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-        include: { author: true },
-      }),
-    ]);
-    return {
-      pendingTasks,
-      activeLines,
-      inactiveLines,
-      canPost: actor.layer !== 'pos',
-      operations: entries.map((row) => ({
-        id: row.id,
-        at: row.createdAt.toISOString(),
-        kind: row.kind,
-        amount: row.amount,
-        note: row.note,
-        packageName: row.packageName,
-        loginName: row.user.loginName,
-      })),
-      announcements: notes.map((row) => ({
-        id: row.id,
-        body: row.body,
-        at: row.createdAt.toISOString(),
-        authorName: row.author.nickname || row.author.loginName,
-        authorLayer: row.author.layer,
-      })),
-    };
+    return this.deskDesk.home(await this.actor(gate));
   }
 
   async postAnnouncement(gate: Gate, body: { body?: unknown }) {
-    const actor = await this.actor(gate);
-    if (actor.layer === 'pos') fail(403, 'FORBIDDEN');
-    const text = typeof body.body === 'string' ? body.body.trim() : '';
-    if (!text || text.length > 400) fail(400, 'INVALID');
-    const accounts = await this.accounts();
-    const audience = [...visibleAccountIds(actor.id, actor.layer, accounts)].filter((id) => id !== actor.id);
-    await this.runTx(async (tx) => {
-      const posted = await tx.announcement.create({ data: { authorId: actor.id, body: text } });
-      this.queueNotices(tx, await this.notice.write(tx, audience, actor, {
-        kind: 'announcement',
-        payload: { announcementId: posted.id, authorName: actor.nickname, excerpt: excerpt(text) },
-      }));
-    });
-    return { ok: true };
+    return this.deskDesk.postAnnouncement(await this.actor(gate), body);
   }
 
   // Facades (Phase 3): specs still call these; the routes live in wallets/wallets.controller.ts.
@@ -1452,55 +1389,13 @@ export class OfficeService implements OnModuleInit {
     return { ok: true as const };
   }
 
+  // Facades (Phase 3): specs still call these; the routes live in roles/roles.controller.ts.
   async roles(gate: Gate) {
-    const actor = await this.actor(gate);
-    if (!actor.isBranchOwner) fail(403, 'FORBIDDEN');
-    await this.ensureLayerRoles();
-    const roles = await this.prisma.role.findMany();
-    const rank = (role: { kind: string; layer: string | null; name: string }) =>
-      role.kind === 'layer' ? LAYER_ORDER.indexOf(role.layer ?? '') : LAYER_ORDER.length;
-    roles.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
-    return {
-      roles: roles.map((role) => ({
-        id: role.id,
-        name: role.name,
-        kind: role.kind === 'layer' ? 'layer' : 'job',
-        layer: role.layer ?? '',
-        grants: roleGrantCodes(role),
-        read: role.read,
-        edit: role.edit,
-        accounting: role.accounting,
-        tasks: role.tasks,
-        reports: role.reports,
-        staff: role.staff,
-        enter: role.enter,
-      })),
-    };
+    return this.roleDesk.list(await this.actor(gate));
   }
 
   async saveRole(gate: Gate, body: { id?: unknown; name?: unknown; grants?: unknown; read?: unknown; edit?: unknown; accounting?: unknown; tasks?: unknown; reports?: unknown; staff?: unknown; enter?: unknown }) {
-    const actor = await this.actor(gate);
-    if (!actor.isBranchOwner || actor.impersonating) fail(403, 'FORBIDDEN');
-    const listed = Array.isArray(body.grants)
-      ? splitGrants(body.grants.filter((code): code is string => typeof code === 'string').join(','))
-      : FLAG_CODES.filter((code) => body[code] === true);
-    const flags = flagsFor(listed);
-    const id = typeof body.id === 'string' ? body.id : '';
-    if (id) {
-      const existing = await this.prisma.role.findUnique({ where: { id } });
-      if (!existing) fail(404, 'NOT_FOUND');
-      const name = existing.kind === 'layer' ? existing.name : (typeof body.name === 'string' ? body.name.trim() : '');
-      if (name.length < 2) fail(400, 'INVALID');
-      await this.prisma.role.update({
-        where: { id },
-        data: { name, ...flags, grants: listed.join(',') },
-      });
-    } else {
-      const name = typeof body.name === 'string' ? body.name.trim() : '';
-      if (name.length < 2) fail(400, 'INVALID');
-      await this.prisma.role.create({ data: { name, kind: 'job', ...flags, grants: listed.join(',') } });
-    }
-    return { ok: true as const };
+    return this.roleDesk.save(await this.actor(gate), body);
   }
 
   async account(gate: Gate, loginName: string) {
@@ -2041,7 +1936,6 @@ export class OfficeService implements OnModuleInit {
     const codes = [...new Set([terms.packageCode, ...terms.renewalTargets.map((target) => target.code)])];
     return this.stampWith(terms, path, await this.ladderRows(codes, path.map((node) => node.id), db));
   }
-
 
   private async visibleLine(actor: Actor, lineId: string) {
     const line = await this.prisma.line.findUnique({

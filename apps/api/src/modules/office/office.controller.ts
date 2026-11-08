@@ -19,7 +19,6 @@ import { OfficeFailureFilter } from '../shared/office-failure.filter';
 import { OfficeService } from './office.service';
 import {
   AccessBodyDto,
-  AnnouncementBodyDto,
   CreateUserBodyDto,
   ExtendBodyDto,
   OutcomeBodyDto,
@@ -55,28 +54,6 @@ function text(value: unknown): string | undefined {
 @UseInterceptors(ActivityInterceptor)
 export class OfficeController {
   constructor(private readonly office: OfficeService) {}
-
-  @Get('me')
-  @ApiOperation({ summary: 'Current office identity, balance, grants' })
-  @ApiErrorResponse(401, 403)
-  me(@Req() req: Request) {
-    return this.office.me(gateOf(req));
-  }
-
-  @Get('home')
-  @ApiOperation({ summary: 'Home desk payload (stats, shortcuts, panes)' })
-  @ApiErrorResponse(401, 403)
-  home(@Req() req: Request) {
-    return this.office.home(gateOf(req));
-  }
-
-  @Post('announcements')
-  @ApiOperation({ summary: 'Post a desk announcement' })
-  @ApiBody({ type: AnnouncementBodyDto })
-  @ApiErrorResponse(401, 403, 400)
-  postAnnouncement(@Req() req: Request, @Body() body: AnnouncementBodyDto) {
-    return this.office.postAnnouncement(gateOf(req), body);
-  }
 
   @Get('lines')
   @ApiOperation({ summary: 'Paged lines / SIMs' })
@@ -350,21 +327,6 @@ export class OfficeController {
     @Body() body: AccessBodyDto,
   ) {
     return this.office.saveAccess(gateOf(req), loginName, body);
-  }
-
-  @Get('roles')
-  @ApiOperation({ summary: 'Roles catalogue' })
-  @ApiErrorResponse(401, 403)
-  roles(@Req() req: Request) {
-    return this.office.roles(gateOf(req));
-  }
-
-  @Post('roles')
-  @ApiOperation({ summary: 'Create or update a role' })
-  @ApiBody({ schema: freeFormObject })
-  @ApiErrorResponse(401, 403, 400)
-  saveRole(@Req() req: Request, @Body() body: Record<string, unknown>) {
-    return this.office.saveRole(gateOf(req), body);
   }
 
   @Post('users')
