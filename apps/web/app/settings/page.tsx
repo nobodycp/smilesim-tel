@@ -11,6 +11,7 @@ import { usePrefs } from '../../lib/prefs';
 import { Alert } from '../../components/alert';
 import { Badge } from '../../components/ui/badge';
 import { Select } from '../../components/ui/select';
+import { Button } from '../../components/ui/button';
 
 export default function SettingsPage() {
   const { t, apiText, locale } = usePrefs();
@@ -181,21 +182,21 @@ export default function SettingsPage() {
                 {t.fullName}
                 <input value={nickname} onChange={(e) => setNickname(e.target.value)} autoComplete="name" />
               </label>
-              <button type="submit">{t.save}</button>
+              <Button type="submit">{t.save}</Button>
             </form>
             <form className="field-row" onSubmit={saveEmail}>
               <label>
                 {t.email}
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" />
               </label>
-              <button type="submit">{t.save}</button>
+              <Button type="submit">{t.save}</Button>
             </form>
             <form className="field-row" onSubmit={savePhone}>
               <label>
                 {t.phone}
                 <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" />
               </label>
-              <button type="submit">{t.save}</button>
+              <Button type="submit">{t.save}</Button>
             </form>
             <form className="field-row" onSubmit={saveCity}>
               <label>
@@ -207,14 +208,14 @@ export default function SettingsPage() {
                   ))}
                 </Select>
               </label>
-              <button type="submit">{t.save}</button>
+              <Button type="submit">{t.save}</Button>
             </form>
             <form className="field-row" onSubmit={saveAddress}>
               <label>
                 {t.address}
                 <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={120} autoComplete="street-address" />
               </label>
-              <button type="submit">{t.save}</button>
+              <Button type="submit">{t.save}</Button>
             </form>
           </div>
         </section>
@@ -232,7 +233,7 @@ export default function SettingsPage() {
                 <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" dir="ltr" />
               </label>
             </div>
-            <button type="submit">{t.changePassword}</button>
+            <Button type="submit">{t.changePassword}</Button>
           </form>
         </section>
       </div>
@@ -244,7 +245,7 @@ export default function SettingsPage() {
             {!otpauth && (
               <>
                 <p className="hint">{t.twoFactorIdle}</p>
-                <button type="button" className="btn-sm" onClick={startTwoFactor}>{t.enableTwoFactor}</button>
+                <Button type="button" onClick={startTwoFactor}>{t.enableTwoFactor}</Button>
               </>
             )}
             {otpauth && (
@@ -255,7 +256,7 @@ export default function SettingsPage() {
                   {t.code}
                   <input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required dir="ltr" />
                 </label>
-                <button type="submit">{t.confirmEnable}</button>
+                <Button type="submit">{t.confirmEnable}</Button>
               </form>
             )}
           </div>

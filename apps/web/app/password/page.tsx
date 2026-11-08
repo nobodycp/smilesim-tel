@@ -6,6 +6,7 @@ import { AuthFrame } from '../../components/auth-frame';
 import { api, routeFor } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { Alert } from '../../components/alert';
+import { Button } from '../../components/ui/button';
 
 export default function PasswordPage() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function PasswordPage() {
           <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" required />
         </label>
         <Alert>{message}</Alert>
-        <button type="submit" disabled={busy}>{t.save}</button>
+        <Button type="submit" size="lg" disabled={busy}>{t.save}</Button>
       </form>
     </AuthFrame>
   );

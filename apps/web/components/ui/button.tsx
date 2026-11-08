@@ -13,6 +13,11 @@ const sizeClasses: Record<ButtonSize, string> = {
   iconSm: "ui-btn-icon-sm",
 };
 
+/** The classes of a Button, for an element that must look like one but is not a <button> (a Link). */
+export function buttonClass({ variant = "primary", size = "default" }: { variant?: ButtonVariant; size?: ButtonSize } = {}) {
+  return `ui-btn ui-btn-${variant} ${sizeClasses[size]}`;
+}
+
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -25,7 +30,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || loading}
-        className={["ui-btn", `ui-btn-${variant}`, sizeClasses[size], className].filter(Boolean).join(" ")}
+        className={className ? `${buttonClass({ variant, size })} ${className}` : buttonClass({ variant, size })}
         {...props}
       >
         {loading && <Spinner size={16} />}

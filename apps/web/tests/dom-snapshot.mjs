@@ -153,6 +153,7 @@ const cases = [
   ['report-numbers', '/reports/numbers', 'branch'],
   ['report-numbers-empty', '/reports/numbers', 'branch', true],
   ['report-operations', '/reports/operations', 'branch'],
+  ['settings', '/settings', 'branch'],
 ];
 const only = process.env.ONLY?.split(',');
 

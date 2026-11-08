@@ -3,6 +3,7 @@
 import { ImageUp } from 'lucide-react';
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import { usePrefs } from '../lib/prefs';
+import { Button } from './ui/button';
 
 /**
  * One image slot on the identity page: a dashed drop area that is also a file picker, the current
@@ -74,9 +75,9 @@ export function BrandingDrop({
         <input ref={input} type="file" accept="image/png,image/webp" aria-labelledby={`${id}-label`} onChange={onChange} />
       </label>
       {value && (
-        <button type="button" className="secondary drop-clear" onClick={onClear}>
+        <Button type="button" variant="secondary" size="sm" className="drop-clear" onClick={onClear}>
           {t.brandingRemove}
-        </button>
+        </Button>
       )}
     </div>
   );

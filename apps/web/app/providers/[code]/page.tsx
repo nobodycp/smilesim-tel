@@ -13,6 +13,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Select } from '../../../components/ui/select';
+import { Button } from '../../../components/ui/button';
 
 const BRANCH = ['branch'];
 const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
@@ -169,7 +170,7 @@ export default function ProviderPackagesPage() {
                 />
                 <span className="hint">{t.esimPriceProviderHint}</span>
               </label>
-              <button type="submit" disabled={!settings.loaded}>{t.save}</button>
+              <Button type="submit" disabled={!settings.loaded}>{t.save}</Button>
             </form>
             <DataTable
               bare

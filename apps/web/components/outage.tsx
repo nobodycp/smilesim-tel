@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api';
 import { usePrefs } from '../lib/prefs';
 import { Icon } from './icon';
+import { Button } from './ui/button';
 
 /**
  * The canvas while the session cannot be read: the API is not answering. Takes the place of the
@@ -19,9 +20,9 @@ export function OutagePanel({ onRetry, busy }: { onRetry: () => void; busy: bool
       </span>
       <h1>{t.outageTitle}</h1>
       <p>{t.outageText}</p>
-      <button type="button" className="btn" onClick={onRetry} disabled={busy}>
+      <Button type="button" onClick={onRetry} disabled={busy}>
         {busy ? t.retrying : t.retry}
-      </button>
+      </Button>
     </div>
   );
 }

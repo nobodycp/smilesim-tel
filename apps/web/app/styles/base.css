@@ -36,7 +36,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .icon-btn:hover, .lang button:hover, .user-btn:hover { background: var(--rd-surface-3); }
 /* One focus ring for every control the keyboard reaches: solid ink, 2px, just outside the box. The shell buttons
    (search, wallet, bell, theme, avatar) had none, and the rest had a 16% halo that was hard to see (DESIGN.md). */
-.icon-btn:focus-visible, .lang button:focus-visible, .nav-link:focus-visible, .user-btn:focus-visible, .btn:focus-visible,
+.icon-btn:focus-visible, .lang button:focus-visible, .nav-link:focus-visible, .user-btn:focus-visible,
 .menu a:focus-visible, .menu button:focus-visible,
 .shell-icon:focus-visible, .avatar-btn:focus-visible, .wallet-btn:focus-visible, .shell-search-toggle:focus-visible {
   outline: 2px solid var(--rd-ink);

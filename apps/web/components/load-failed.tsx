@@ -2,6 +2,7 @@
 
 import { usePrefs } from '../lib/prefs';
 import { Icon } from './icon';
+import { Button } from './ui/button';
 
 /**
  * A pane whose load failed. Sits where the table or skeleton would, inside the pane, and offers
@@ -18,9 +19,9 @@ export function LoadFailed({ message, onRetry, busy = false }: { message: string
       <p className="empty-title">{network ? t.outageTitle : t.loadFailed}</p>
       {!network && message ? <p className="empty-text">{message}</p> : null}
       {onRetry ? (
-        <button type="button" className="btn" onClick={onRetry} disabled={busy}>
+        <Button type="button" onClick={onRetry} disabled={busy}>
           {busy ? t.retrying : t.retry}
-        </button>
+        </Button>
       ) : null}
     </div>
   );

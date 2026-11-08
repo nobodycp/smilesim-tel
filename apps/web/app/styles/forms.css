@@ -1,4 +1,4 @@
-/* Page typography, fields, buttons, alerts. Loaded before desk so .desk and .pane rules override it at equal specificity. */
+/* Page typography, fields, alerts (buttons are components/ui/button.tsx, ui.css). Loaded before desk so .desk and .pane rules override it at equal specificity. */
 h1 {
   margin: 0;
   font-size: 22px;
@@ -33,24 +33,6 @@ input:focus {
   box-shadow: 0 0 0 3px var(--rd-focus);
 }
 input[readonly] { color: var(--rd-muted); border-style: dashed; background: transparent; }
-.btn, form > button, .panel button {
-  height: 40px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
-  font-weight: 700;
-  justify-self: start;
-}
-.btn:hover, form > button:hover { background: var(--rd-primary-hover); }
-.btn:disabled, form > button:disabled { opacity: 0.6; cursor: default; }
-button.danger {
-  background: transparent;
-  color: var(--rd-danger);
-  border: 1px solid var(--rd-danger);
-}
-button.danger:hover { background: var(--rd-danger-soft); }
 .error, .note {
   margin: 0;
   padding: 10px 12px;

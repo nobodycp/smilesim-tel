@@ -81,14 +81,12 @@
 .outage-panel .outage-mark svg { width: 1.6rem; height: 1.6rem; stroke-width: 1.8; }
 .outage-panel h1 { margin: 0; font-size: 20px; }
 .outage-panel p { margin: 0 0 8px; color: var(--rd-muted); font-size: var(--rd-text-base); line-height: 1.6; }
-.outage-panel .btn { justify-self: center; }
+.outage-panel .ui-btn { justify-self: center; }
 /* A pane whose load failed: the empty-state shape with a retry under it. */
 .empty.load-failed .empty-icon { background: var(--rd-danger-soft); color: var(--rd-danger); }
-.empty.load-failed .btn { height: 34px; margin-top: 6px; padding: 0 14px; font-size: var(--rd-text-md); justify-self: center; }
+.empty.load-failed .ui-btn { margin-top: 6px; justify-self: center; }
 /* The error and not-found screens: the way out under the text, one row, centered (app/error.tsx, app/not-found.tsx). */
 .empty .empty-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: 6px; }
-/* `.btn` is drawn for <button>, which centers its label; a link needs the centering said out loud. */
-.empty .empty-actions .btn { display: inline-flex; align-items: center; justify-content: center; height: 34px; margin-top: 0; padding: 0 14px; font-size: var(--rd-text-md); text-decoration: none; }
 .canvas-inner { width: min(1080px, 100%); padding: 20px 16px 48px; }
 .canvas-inner.wide {
   display: flex;
@@ -217,29 +215,9 @@
   .grant-head .grant-line.head + .grant-line.head { display: none; }
 }
 .desk .sheet { flex: 1; min-height: 0; overflow: auto; }
-.desk button.primary {
-  height: 34px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--rd-radius-lg);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
-  font-weight: 700;
-}
-.desk button.secondary {
-  height: 34px;
-  padding: 0 12px;
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-lg);
-  background: transparent;
-  color: var(--rd-ink);
-  font-weight: 700;
-}
 .desk input:not([type='checkbox']):not([type='file']),
 .desk select { height: 34px; }
 @media (max-width: 720px) {
-  .desk button.primary,
-  .desk button.secondary,
   .back-link,
   .desk input:not([type='checkbox']):not([type='file']),
   .desk select { height: 44px; }
@@ -320,18 +298,6 @@
   gap: 8px;
 }
 .field-row > label { flex: 1 1 16rem; max-width: 22rem; min-width: 0; }
-.field-row > button:not(.secondary), .pane form > button, .pane .btn-sm {
-  height: 34px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
-  font-size: var(--rd-text-sm);
-  font-weight: 700;
-  justify-self: start;
-}
-.field-row > button:not(.secondary):hover, .pane form > button:hover, .pane .btn-sm:hover { background: var(--rd-primary-hover); }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .company-sim { gap: 14px; }
 .sim-fields {
@@ -876,7 +842,6 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 }
 .detail-rows dd { min-width: 0; overflow-wrap: anywhere; }
 /* A control inside a value cell keeps the row at text height: 28px tall, pulled into the cell padding. */
-.detail-rows dd > .btn,
 .detail-rows dd > button { height: 28px; min-height: 0; margin-block: -4px; }
 /* The details tab: the rows take the width, usage sits in an end column once the canvas is wide enough. */
 .line-details { display: grid; gap: 16px; align-items: start; }
@@ -1109,14 +1074,12 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 }
 .desk .filter-panel input:not([type='checkbox']):not([type='file']),
 .desk .filter-panel select,
-.desk .filter-bar button.secondary,
 .filter-panel .quiet {
   height: 28px;
   padding: 0 8px;
   border-radius: var(--rd-radius-xs);
   font-size: var(--rd-text-xs);
 }
-.filter-panel button.secondary,
 .filter-panel .filter-clear { margin-inline-start: auto; }
 .filter-panel .filter-clear { height: 28px; padding: 0 8px; font-size: var(--rd-text-xs); }
 .filters label { display: grid; gap: 4px; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
@@ -1810,18 +1773,6 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
 .pane .empty:not(.empty-state),
 .sheet .empty:not(.empty-state) { display: block; padding: 14px; }
 .canvas .page-head h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: 0; }
-.canvas form > button:not(.secondary):not(.danger):not(.icon-btn),
-.canvas .pane form > button:not(.secondary):not(.danger) {
-  height: 34px;
-  border: 0;
-  border-radius: var(--rd-radius-lg);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
-}
-.canvas form > button:not(.secondary):not(.danger):hover,
-.canvas .pane form > button:not(.secondary):not(.danger):hover {
-  background: var(--rd-primary-bg);
-}
 
 .table-search {
   display: flex;
@@ -2020,4 +1971,3 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
 
 /* Sell price cell on /packages: two short fields and their save control, aligned to the figure column. */
 .sell-cell { display: inline-flex; align-items: flex-end; justify-content: flex-end; gap: 8px; }
-.desk .pane .sell-cell .btn-sm { height: 32px; }

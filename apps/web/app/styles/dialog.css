@@ -134,29 +134,6 @@
   background: var(--rd-surface-2);
 }
 .dialog-foot .danger { margin-inline-end: auto; }
-.dialog button.primary,
-.dialog button.secondary,
-.dialog button.danger {
-  height: 34px;
-  padding: 0 12px;
-  border-radius: var(--rd-radius-lg);
-  font-weight: 700;
-}
-.dialog button.primary {
-  border: 0;
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
-}
-.dialog button.secondary {
-  border: 1px solid var(--rd-line);
-  background: transparent;
-  color: var(--rd-ink);
-}
-.dialog button.danger {
-  border: 1px solid var(--rd-danger);
-  background: transparent;
-  color: var(--rd-danger);
-}
 .dialog input:not([type='checkbox']):not([type='radio']):not([type='file']),
 .dialog select,
 .dialog textarea {
@@ -194,9 +171,7 @@
   .perm-grid, .op-fields { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
-  .dialog button.primary,
-  .dialog button.secondary,
-  .dialog button.danger,
+  .dialog .ui-btn,
   .dialog input:not([type='checkbox']):not([type='radio']):not([type='file']),
   .dialog select,
   .dialog textarea { height: 44px; }

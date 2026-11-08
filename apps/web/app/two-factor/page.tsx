@@ -6,6 +6,7 @@ import { AuthFrame } from '../../components/auth-frame';
 import { api, routeFor, TWO_FACTOR_STEP_KEY } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { Alert } from '../../components/alert';
+import { Button } from '../../components/ui/button';
 
 export default function TwoFactorPage() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function TwoFactorPage() {
           <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required />
         </label>
         <Alert>{message}</Alert>
-        <button type="submit" disabled={busy}>{t.confirm}</button>
+        <Button type="submit" size="lg" disabled={busy}>{t.confirm}</Button>
       </form>
     </AuthFrame>
   );

@@ -17,6 +17,7 @@ import { usePrefs } from '../lib/prefs';
 import { useAction } from '../lib/use-action';
 import { useLoad } from '../lib/use-load';
 import { Alert } from '../components/alert';
+import { Button } from '../components/ui/button';
 
 type Movement = HomePayload['operations'][number];
 
@@ -147,7 +148,7 @@ export default function HomePage() {
                   <textarea value={draft} maxLength={400} onChange={(event) => setDraft(event.target.value)} />
                 </label>
                 <p className="hint">{t.announcementHint}</p>
-                <button type="submit" disabled={!draft.trim()}>{t.postAnnouncement}</button>
+                <Button type="submit" disabled={!draft.trim()}>{t.postAnnouncement}</Button>
               </form>
             )}
             {home.announcements.length === 0 ? (

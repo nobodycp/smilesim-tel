@@ -14,6 +14,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simShape } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
+import { Button } from '../../../components/ui/button';
 
 const BRANCH = ['branch'];
 type Provider = Shelf['companies'][number]['providers'][number];
@@ -155,7 +156,7 @@ export default function CompanyPage() {
                 ? <bdi dir="ltr">{simShape(shown)}</bdi>
                 : <span className="hint">{t.simAny}</span>}
             </p>
-            {canEdit && <button type="submit" disabled={busy || !shelf.loaded}>{t.save}</button>}
+            {canEdit && <Button type="submit" disabled={busy || !shelf.loaded}>{t.save}</Button>}
           </form>
         )}
         {tab === 'providers' && (

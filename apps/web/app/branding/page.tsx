@@ -13,6 +13,7 @@ import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
 import { useLoad, pick, type Fetched } from '../../lib/use-load';
 import { useRequireLayer } from '../../lib/use-require-layer';
+import { Button } from '../../components/ui/button';
 
 // Every image is a data URL or '' (none), so an untouched image is re-sent as it was stored.
 type Draft = { siteName: string; tagline: string; logo: string; logoDark: string; favicon: string };
@@ -172,10 +173,10 @@ function BrandingEditor({
         </section>
 
         <div className="brand-foot">
-          <button type="submit" className="primary" disabled={!dirty || busy}>{t.saveChanges}</button>
-          <button type="button" className="secondary" disabled={!dirty || busy} onClick={() => setDraft(saved)}>
+          <Button type="submit" disabled={!dirty || busy}>{t.saveChanges}</Button>
+          <Button type="button" variant="secondary" disabled={!dirty || busy} onClick={() => setDraft(saved)}>
             {t.discardChanges}
-          </button>
+          </Button>
         </div>
       </form>
 

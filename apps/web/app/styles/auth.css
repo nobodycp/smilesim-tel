@@ -199,6 +199,8 @@
 .login-room form > button.login-go {
   width: 100%;
   height: 56px;
+  padding: 0 16px;
+  border: 0;
   justify-self: stretch;
   border-radius: 14px;
   background: var(--rd-primary-bg);
