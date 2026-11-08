@@ -17,7 +17,8 @@ import { useOffice } from '../../../lib/office-session';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { UserOpsTab } from './line-ops';
 import { UserPackagesTab } from './packages-terms';
-import { badgeClass, onOffTone } from '../../../lib/status-tone';
+import { onOffTone } from '../../../lib/status-tone';
+import { Badge } from '../../../components/ui/badge';
 
 const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
@@ -171,7 +172,7 @@ export default function AccountPage() {
                 return (
                   <div key={code} className="grant-line">
                     <span>{grantLabel(t, code, row.layer)}</span>
-                    <span className={badgeClass(onOffTone(on))}>{on ? t.grantAllow : t.grantDeny}</span>
+                    <Badge variant={onOffTone(on)} dot>{on ? t.grantAllow : t.grantDeny}</Badge>
                     {row.canEdit ? (
                       <select
                         aria-label={grantLabel(t, code, row.layer)}

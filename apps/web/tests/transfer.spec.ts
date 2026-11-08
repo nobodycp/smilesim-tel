@@ -100,7 +100,7 @@ test('branch moves an agent: destination, preview, five choices, request body', 
   await destination.selectOption('ma2');
   await expect(dialog.getByText('37 رقماً')).toBeVisible();
   expect(calls).toContain('GET /users/ag1/transfer-preview?parentLogin=ma2');
-  await expect(dialog.locator('.badge.pending')).toHaveText('1 سعراً خاصاً أقل من تكلفة الأب الجديد');
+  await expect(dialog.locator('.ui-badge-warning')).toHaveText('1 سعراً خاصاً أقل من تكلفة الأب الجديد');
   await expect(dialog.locator('.detail-rows > div', { hasText: 'الرصيد المنقول' })).toContainText('12.00 ₪');
   await expect(dialog.locator('.detail-rows > div', { hasText: 'رصيد ما تحته' })).toContainText('50.00 ₪');
 
@@ -146,7 +146,7 @@ test('a point of sale asks three choices, shows no terms for what is below it, a
   await expect(dialog.getByText('4 رقماً')).toBeVisible();
   await expect(dialog.locator('.detail-rows > div', { hasText: 'الرصيد المنقول' })).toContainText('3.00 ₪');
   await expect(dialog.getByText('رصيد ما تحته')).toHaveCount(0);
-  await expect(dialog.locator('.badge.pending')).toHaveCount(0);
+  await expect(dialog.locator('.ui-badge-warning')).toHaveCount(0);
   await expect(below).toHaveCount(0);
   await expect(dialog.getByRole('radio')).toHaveCount(6);
 
@@ -187,12 +187,12 @@ test('changing the destination reads its own preview and keeps the choices alrea
   const destination = dialog.getByLabel('الوكيل الرئيسي الجديد');
   await destination.selectOption('ma2');
   await expect(dialog.getByText('37 رقماً')).toBeVisible();
-  await expect(dialog.locator('.badge.pending')).toHaveCount(1);
+  await expect(dialog.locator('.ui-badge-warning')).toHaveCount(1);
   await radio(accountGroups(dialog).own, KEEP, 'الأسعار والإخفاء').check();
 
   await destination.selectOption('ma4');
   await expect(dialog.getByText('5 رقماً')).toBeVisible();
-  await expect(dialog.locator('.badge.pending')).toHaveCount(0);
+  await expect(dialog.locator('.ui-badge-warning')).toHaveCount(0);
   expect(calls).toContain('GET /users/ag1/transfer-preview?parentLogin=ma4');
   await expect(radio(accountGroups(dialog).own, KEEP, 'الأسعار والإخفاء')).toBeChecked();
   await expect(dialog.getByRole('radio', { checked: true })).toHaveCount(1);
@@ -375,7 +375,7 @@ for (const locale of ['ar', 'en', 'he'] as const) {
     await expect(lines.getByRole('radio', { name: w.keep })).toHaveCount(1);
     await expect(lines.getByRole('radio', { name: w.recapture })).toHaveCount(1);
     await expect(lines).toContainText(w.count);
-    await expect(dialog.locator('.badge.pending')).toHaveText(w.floor);
+    await expect(dialog.locator('.ui-badge-warning')).toHaveText(w.floor);
     await expect(dialog.locator('.detail-rows > div', { hasText: w.balance })).toContainText('12.00 ₪');
     await expect(dialog.locator('.detail-rows > div', { hasText: w.subtree })).toContainText('50.00 ₪');
 

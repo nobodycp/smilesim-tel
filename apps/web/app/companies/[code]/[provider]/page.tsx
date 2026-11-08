@@ -9,7 +9,8 @@ import { sharedKeys } from '../../../../lib/query';
 import { api, type Shelf } from '../../../../lib/api';
 import { usePrefs } from '../../../../lib/prefs';
 import { useRequireLayer } from '../../../../lib/use-require-layer';
-import { badgeClass, onOffTone } from '../../../../lib/status-tone';
+import { onOffTone } from '../../../../lib/status-tone';
+import { Badge } from '../../../../components/ui/badge';
 
 const BRANCH = ['branch'];
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
@@ -34,7 +35,7 @@ export default function CompanyPackagesPage() {
       key: 'sale',
       header: t.saleStatus,
       render: (pkg) => (
-        <span className={badgeClass(onOffTone(pkg.forSale))}>{pkg.forSale ? t.forSale : t.notForSale}</span>
+        <Badge variant={onOffTone(pkg.forSale)} dot>{pkg.forSale ? t.forSale : t.notForSale}</Badge>
       ),
     },
   ];

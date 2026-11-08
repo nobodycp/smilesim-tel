@@ -21,7 +21,8 @@ import { usePrefs } from '../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../lib/sim-rules';
 import { useAction } from '../../lib/use-action';
 import { useLoad } from '../../lib/use-load';
-import { badgeClass, onOffTone } from '../../lib/status-tone';
+import { onOffTone } from '../../lib/status-tone';
+import { Badge } from '../../components/ui/badge';
 
 function PosCatalog({
   rows,
@@ -132,7 +133,7 @@ function PosCatalog({
           <form className="pane pane-body stack" onSubmit={join}>
             <h2>{picked.companyName} · {picked.name}</h2>
             <p className="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
-            {!picked.canActivate && <p className={badgeClass('danger')}>{t.activationStopped}</p>}
+            {!picked.canActivate && <Badge variant="danger" dot>{t.activationStopped}</Badge>}
             {picked.canActivate && offersEsim && (
               <label className="check">
                 <input type="checkbox" checked={esim} onChange={(event) => setEsim(event.target.checked)} />
@@ -230,7 +231,7 @@ function BranchPackages({ error, note }: { error: string; note: string }) {
       key: 'live',
       header: t.status,
       render: (row) => (
-        <span className={badgeClass(onOffTone(row.enabled))}>{row.enabled ? t.lineActive : t.stopped}</span>
+        <Badge variant={onOffTone(row.enabled)} dot>{row.enabled ? t.lineActive : t.stopped}</Badge>
       ),
     },
     { key: 'active', header: t.activeNumbers, num: true, render: (row) => row.activeLines },

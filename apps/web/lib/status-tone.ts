@@ -1,5 +1,5 @@
-// Every "which colour is this status" decision, in one place. `<Badge variant={tone}>` takes a tone directly; the
-// plain `.badge` span takes `badgeClass(tone)`. A new status gets its tone here, not inline on a page.
+// Every "which colour is this status" decision, in one place; `<Badge variant={tone}>` draws it. A new status gets
+// its tone here, not inline on a page.
 
 export type Tone = 'success' | 'warning' | 'danger' | 'muted';
 
@@ -37,9 +37,4 @@ export function onOffTone(on: boolean): Tone {
 export function termsTone(row: { locked: boolean; hidden: boolean; custom: boolean }): Tone {
   if (row.locked || row.hidden) return 'danger';
   return row.custom ? 'success' : 'muted';
-}
-
-/** The plain `.badge` class for a tone (desk.css: no modifier is success). */
-export function badgeClass(tone: Tone): string {
-  return tone === 'success' ? 'badge' : tone === 'warning' ? 'badge pending' : tone === 'danger' ? 'badge cancelled' : 'badge muted';
 }

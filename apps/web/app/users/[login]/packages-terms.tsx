@@ -18,7 +18,8 @@ import { api, type UserPackageRow } from '../../../lib/api';
 import { parseShekel } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { badgeClass, termsTone } from '../../../lib/status-tone';
+import { termsTone } from '../../../lib/status-tone';
+import { Badge } from '../../../components/ui/badge';
 
 type Bulk = { hidden: boolean; codes: string[] } | null;
 
@@ -278,9 +279,9 @@ function TermsRow({
       </div>
       <div className="terms-state">
         <RowMenu label={`${t.rowActions} ${row.name}`} items={actions} />
-        <span className={badgeClass(termsTone({ locked, hidden: row.hidden, custom: row.source === 'custom' }))}>
+        <Badge variant={termsTone({ locked, hidden: row.hidden, custom: row.source === 'custom' })} dot>
           {locked ? <><Lock aria-hidden="true" />{t.stoppedAbove}</> : row.hidden ? t.stopped : row.source === 'custom' ? t.customPrice : t.inherited}
-        </span>
+        </Badge>
       </div>
     </div>
   );

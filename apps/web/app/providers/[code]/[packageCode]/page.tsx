@@ -20,7 +20,8 @@ import { useApiQuery } from '../../../../lib/use-api-query';
 import { packageKeys, sharedKeys } from '../../../../lib/query';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRequireLayer } from '../../../../lib/use-require-layer';
-import { badgeClass, lineTone, onOffTone } from '../../../../lib/status-tone';
+import { lineTone, onOffTone } from '../../../../lib/status-tone';
+import { Badge } from '../../../../components/ui/badge';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
@@ -386,7 +387,7 @@ export default function PackageSheetPage() {
       key: 'status',
       header: t.status,
       render: (line) => (
-        <span className={badgeClass(lineTone(line.status))}>{lineStatus(t, line.status)}</span>
+        <Badge variant={lineTone(line.status)} dot>{lineStatus(t, line.status)}</Badge>
       ),
     },
   ];
@@ -434,7 +435,7 @@ export default function PackageSheetPage() {
               onChange={(event) => toggleTarget(kind, pkg.code, event.target.checked)}
             />
             <span>{pkg.name} · {pkg.months} {t.months}</span>
-            <span className={badgeClass(onOffTone(pkg.forSale))}>{pkg.forSale ? t.forSale : t.notForSale}</span>
+            <Badge variant={onOffTone(pkg.forSale)} dot>{pkg.forSale ? t.forSale : t.notForSale}</Badge>
           </label>
         ))}
         <Button type="button" variant="secondary" size="sm" onClick={() => void saveTargets(kind)}>{t.save}</Button>
@@ -477,7 +478,7 @@ export default function PackageSheetPage() {
                       <b>{sheet.enabled ? t.lineActive : t.stopped}</b>
                     </LiveSwitch>
                   </div>
-                  <span className={badgeClass(onOffTone(sheet.forSale))}>{sheet.forSale ? t.forSale : t.notForSale}</span>
+                  <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
                 </div>
               )}
               {tab === 'run' && (

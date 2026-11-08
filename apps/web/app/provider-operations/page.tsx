@@ -9,7 +9,7 @@ import { api, type ProviderOpRow, type ProviderOpStats } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
-import { badgeClass } from '../../lib/status-tone';
+import { Badge } from '../../components/ui/badge';
 
 const KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'] as const;
 
@@ -44,10 +44,10 @@ export default function ProviderOperationsPage() {
           {actionName(t, row.kind)}
           {/* Same tag as the finance page: the eSIM fee folded into this operation's cost. */}
           {row.esimPrice != null && row.kind !== 'esim' && (
-            <span className={badgeClass('muted')} title={t.esimSaleTagTitle}>
+            <Badge variant="muted" dot title={t.esimSaleTagTitle}>
               {t.esimSaleTag}
               <Money value={row.esimPrice} />
-            </span>
+            </Badge>
           )}
         </span>
       ),

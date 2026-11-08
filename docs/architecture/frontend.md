@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.4b-4a). e2e 113/113 · tsc 0 errors · lint 0 errors / 27 warnings (unused vars are reported) · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.4b-4b). e2e 113/113 · tsc 0 errors · lint 0 errors / 27 warnings (unused vars are reported) · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -25,7 +25,7 @@ Next.js 16 (App Router) · React 19 · plain CSS on `--rd-*` tokens (`app/styles
 | `app/styles/*.css` | global CSS in cascade order via `globals.css` (see `DESIGN.md` → Stylesheets). `desk.css` ~2070 lines, `shell.css` ~690 |
 | `components/` | shell (`office-shell`, `office-frame`, `shell-search`, `chrome`), `dialog`, `row-menu`, `data-table` (DataTable + PagedTable — the live table), `desk` (page frame), domain dialogs (`transfer-dialog`, `line-prices-dialog`, `disconnect-confirm`), `alert` (the one error / success line) |
 | `components/ui/` | primitives `button`, `badge`, `select`, `pagination`, styled by `app/styles/ui.css` (no Tailwind since 5.4a, ADR 0003) |
-| `lib/` | `api.ts` (composes `api` from `features/*/api.ts`, re-exports `api-types.ts`), `http.ts` (`request`, door header, session redirect), `query.tsx` (TanStack provider, `queryKeys`, `unwrap`, `ApiFailure`), hooks (`use-load`, `use-paged`, `use-action`, `use-notices`, `use-require-layer`, `use-popover` — the one open/close engine for `RowMenu`, the topbar menus, the wallet pop and the language menu), contexts (`office-session`, `door-context`, `prefs`, `branding`), `connection.ts` (reachability store; `generation` triggers refetch), `copy/{ar,en,he}.ts` (flat `t` objects), helpers (`money`, `names`, `grants`, `sim-rules`, `ops`, `status-tone` — every status → badge tone and `badgeClass`) |
+| `lib/` | `api.ts` (composes `api` from `features/*/api.ts`, re-exports `api-types.ts`), `http.ts` (`request`, door header, session redirect), `query.tsx` (TanStack provider, `queryKeys`, `unwrap`, `ApiFailure`), hooks (`use-load`, `use-paged`, `use-action`, `use-notices`, `use-require-layer`, `use-popover` — the one open/close engine for `RowMenu`, the topbar menus, the wallet pop and the language menu), contexts (`office-session`, `door-context`, `prefs`, `branding`), `connection.ts` (reachability store; `generation` triggers refetch), `copy/{ar,en,he}.ts` (flat `t` objects), helpers (`money`, `names`, `grants`, `sim-rules`, `ops`, `status-tone` — every status → badge tone) |
 
 ## State and data
 

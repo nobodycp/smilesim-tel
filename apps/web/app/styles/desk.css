@@ -184,7 +184,7 @@
 }
 .grant-line > span:first-child { font-weight: 700; }
 .grant-line > b { font-weight: 700; white-space: nowrap; }
-.grant-line > .badge,
+.grant-line > .ui-badge,
 .grant-line > input[type='checkbox'] { justify-self: start; }
 .grant-line > input[type='checkbox'] { width: 18px; height: 18px; margin: 0; }
 .grant-line select { width: 100%; }
@@ -408,29 +408,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex: none;
-  padding: 0.25rem 0.6rem;
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-success-soft);
-  color: var(--rd-success);
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.3;
-}
-.badge::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-.badge.muted { background: var(--rd-surface-2); color: var(--rd-muted); }
-.badge.pending { background: var(--rd-warning-soft); color: var(--rd-warning); }
-.badge.cancelled { background: var(--rd-danger-soft); color: var(--rd-danger); }
 button.quiet {
   height: 28px;
   padding: 0 8px;
@@ -497,7 +474,7 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 .money.muted { color: var(--rd-muted); font-weight: 600; }
 /* A kind name with a tag after it (the eSIM fee on a sale). Wraps on a narrow table. */
 .kind-cell { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.kind-cell .badge .money { color: inherit; font-weight: 700; }
+.kind-cell .ui-badge .money { color: inherit; font-weight: 700; }
 .result-ok,
 .result-fail { font-weight: 700; }
 .result-ok { color: var(--rd-success); }
@@ -1220,7 +1197,6 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   overflow-wrap: anywhere;
 }
 .task-facts dd bdi { font-variant-numeric: tabular-nums; }
-.task-facts .badge { font-size: var(--rd-text-sm); }
 .task-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1514,7 +1490,7 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
   font-size: var(--rd-text-sm);
   font-weight: 700;
 }
-.package-sheet .pane-body > .badge { justify-self: start; }
+.package-sheet .pane-body > .ui-badge { justify-self: start; }
 .desk .pane > .pane-body { min-height: 0; overflow: auto; }
 .sheet-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .sheet-stats > div {
@@ -1648,7 +1624,7 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
 :is(.desk .pane, .dialog-body) .terms-price input:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 3px var(--rd-focus); }
 :is(.desk .pane, .dialog-body) .terms-price input:disabled { background: var(--rd-surface-2); color: var(--rd-muted); }
 .terms-state { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-.terms-state .badge svg { width: 12px; height: 12px; }
+.terms-state .ui-badge svg { width: 12px; height: 12px; }
 .terms-summary { white-space: nowrap; }
 .terms-filter .filter-panel { flex-wrap: wrap; overflow: visible; }
 .terms-filter .filter-panel label { flex: 1 1 9rem; }
@@ -1698,7 +1674,7 @@ tr.ops-row td { padding: 0; background: var(--rd-surface-2); }
 .op-text h3 { margin: 0; font-size: var(--rd-text-base); font-weight: 800; color: var(--rd-ink); }
 .op-card.off .op-text h3 { color: var(--rd-muted); }
 .op-text .hint { margin: 0; font-size: var(--rd-text-sm); line-height: 1.4; color: var(--rd-muted); }
-.op-text .badge { justify-self: start; margin-top: 2px; }
+.op-text .ui-badge { justify-self: start; margin-top: 2px; }
 .op-card .live-switch { flex-direction: column; align-items: center; gap: 0; }
 .op-card .live-switch b { order: 2; font-size: var(--rd-text-xs); font-weight: 700; color: var(--rd-muted); }
 .price-board {

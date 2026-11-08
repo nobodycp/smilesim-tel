@@ -17,7 +17,7 @@ import { Dialog } from './dialog';
 import { TableSkeleton } from './loading';
 import { Button } from './ui/button';
 import { Select } from './ui/select';
-import { badgeClass } from '../lib/status-tone';
+import { Badge } from './ui/badge';
 
 type Props = {
   open: boolean;
@@ -286,7 +286,7 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
             </dl>
             {preview.own.belowNewFloor > 0 ? (
               <div>
-                <span className={badgeClass('warning')}>{t.transferBelowFloor.replace('{n}', String(preview.own.belowNewFloor))}</span>
+                <Badge variant="warning" dot>{t.transferBelowFloor.replace('{n}', String(preview.own.belowNewFloor))}</Badge>
               </div>
             ) : null}
           </>

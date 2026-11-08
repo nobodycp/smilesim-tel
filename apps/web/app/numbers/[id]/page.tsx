@@ -23,7 +23,8 @@ import { useAction } from '../../../lib/use-action';
 import { formatShekel } from '../../../lib/money';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
-import { badgeClass, lineTone } from '../../../lib/status-tone';
+import { lineTone } from '../../../lib/status-tone';
+import { Badge } from '../../../components/ui/badge';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
@@ -134,7 +135,7 @@ export default function LineCardPage() {
           <section className="pane">
             <header className="line-head">
               <p className="line-number"><bdi dir="ltr">{line.msisdn}</bdi></p>
-              <span className={badgeClass(lineTone(line.status))}>{lineStatus(t, line.status)}</span>
+              <Badge variant={lineTone(line.status)} dot>{lineStatus(t, line.status)}</Badge>
             </header>
             <div className="steps" role="tablist">
               {tabs.map((item) => (

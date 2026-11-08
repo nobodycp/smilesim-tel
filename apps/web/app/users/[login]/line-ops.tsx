@@ -11,7 +11,7 @@ import { api } from '../../../lib/api';
 import { OP_KEYS, opDescription, opLabel, type OpKey } from '../../../lib/ops';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { badgeClass } from '../../../lib/status-tone';
+import { Badge } from '../../../components/ui/badge';
 
 const ICONS: Record<OpKey, ComponentType<{ 'aria-hidden'?: boolean | 'true' }>> = {
   activate: Power,
@@ -67,7 +67,7 @@ export function UserOpsTab({
                 <div className="op-text">
                   <h3>{opLabel(t, key)}</h3>
                   <p className="hint">{opDescription(t, key)}</p>
-                  {stoppedBy ? <span className={badgeClass('danger')}>{t.stoppedBy.replace('{login}', stoppedBy)}</span> : null}
+                  {stoppedBy ? <Badge variant="danger" dot>{t.stoppedBy.replace('{login}', stoppedBy)}</Badge> : null}
                 </div>
                 <LiveSwitch
                   label={opLabel(t, key)}
