@@ -97,7 +97,11 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 5.3c One solid focus ring for every keyboard-reachable control (shell buttons had none); `.nav-link.locked` contrast to AA. Browser-checked. `c7220f0`
 - [ ] 5.3d Spacing, z-index, motion tokens (few literals each; do with 5.6).
 - [x] 5.4a Tailwind removed: Button, Badge, Select, Pagination on `app/styles/ui.css` (declarations copied from Tailwind's output); `Button size="iconSm"`, `Select compact`; direction helpers `.only-rtl`/`.only-ltr`/`.flip-ltr`; `tailwind.config.ts`, `lib/utils.ts` (`cn`), `tailwindcss`, `tailwind-merge`, `clsx` gone. Badge rings fixed (were Tailwind's default blue). Pixel-identical otherwise: 29 screens × light ar / dark ar / light en via `tests/dom-snapshot.mjs` (now takes `THEME`/`LOCALE`). `01e4497`
-- [ ] 5.4b More primitives on CSS + `--rd-*` (ADR 0003): IconButton, Field/Input/Select/Checkbox/Switch, Dialog, Menu/Popover (one engine for RowMenu, topbar menus, wallet pop), Badge status→tone map, Alert/Toast, EmptyState, Skeleton, PageHeader/FilterBar/Pane.
+- 5.4b One of each primitive (ADR 0003). Already single components on `--rd-*` CSS, no work: `Dialog`, `Toast`, `EmptyState`, `LiveSwitch`, `FilterBar`, `Stat`/`StatRow`, `Desk` (page frame + skeleton). What is left, one slice each:
+  - [x] 5.4b-1 One popover engine: `lib/use-popover.ts` (outside press and Escape close, focus back to the button; a `menu` takes the focus on its first item and walks with ArrowUp/Down, Home, End) drives `RowMenu`, the account menu, the wallet pop, the notices panel and the language menu. Fixes: the row menu never focused its first item (the panel was still hidden), the account and language menus had no arrow keys, Escape on the language menu lost the focus. No markup change. `93e47fa`
+  - [ ] 5.4b-2 Status → badge tone in one map (line, account, task, package for-sale, grant), read by `<Badge>` and `.badge` callers alike. Behaviour-preserving.
+  - [ ] 5.4b-3 `<Alert>` for the error / success line (`.error`, `.note`, `role="alert"` in 10 files). Same markup.
+  - [ ] 5.4b-4 One look per control — `.badge` (14 uses) vs `<Badge>` (9), `.btn`/form buttons vs `<Button>` (54), raw `<select>` (22) vs `<Select>` (19). **Changes pixels: the owner picks the look first.**
 - [ ] 5.5b The remaining 27 lint warnings (mostly `set-state-in-effect`).
 - [ ] 5.6 `desk.css` (~2050 lines) split next to its owners; `DESIGN.md` per slice.
 - [ ] 5.2 Pages thin: `features/<domain>/screens/*`.
