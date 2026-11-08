@@ -19,7 +19,24 @@ export type StoredUser = LoginUser & {
   twoFactorSecret?: string | null;
   /** Secret issued by setup and not yet proven with a code. */
   pendingTwoFactorSecret?: string | null;
+  /** How the second step is proven: the authenticator app (default), or a code sent by SMS or email. */
+  twoFactorMethod?: TwoFactorMethod;
 };
+export type TwoFactorMethod = 'app' | 'sms' | 'email';
+export const TWO_FACTOR_METHODS: readonly TwoFactorMethod[] = ['app', 'sms', 'email'];
+export type PasskeyRow = {
+  id: string;
+  userId: string;
+  /** Base64url, as the browser reports it. */
+  credentialId: string;
+  publicKey: Uint8Array;
+  counter: number;
+  transports: string[];
+  name: string;
+  createdAt: Date;
+  lastUsedAt: Date | null;
+};
+export type NewPasskey = Pick<PasskeyRow, 'userId' | 'credentialId' | 'publicKey' | 'counter' | 'transports' | 'name'>;
 export type UserPatch = Partial<
   Pick<
     StoredUser,
@@ -34,6 +51,7 @@ export type UserPatch = Partial<
     | 'twoFactorExempt'
     | 'twoFactorSecret'
     | 'pendingTwoFactorSecret'
+    | 'twoFactorMethod'
     | 'disabledAt'
   >
 >;
@@ -80,6 +98,17 @@ export interface AuthStore {
   updateUser(userId: string, patch: UserPatch): Promise<void>;
   /** Revokes every session of the user, whatever its scope, and deletes their live keys. */
   dropLiveSessions(userId: string): Promise<void>;
+  /** A short-lived value (codes, passkey challenges). `ttlSeconds` 0 keeps the current expiry. */
+  putSecret(key: string, value: string, ttlSeconds: number): Promise<void>;
+  getSecret(key: string): Promise<string | null>;
+  dropSecret(key: string): Promise<void>;
+  listPasskeys(userId: string): Promise<PasskeyRow[]>;
+  passkeyByCredential(credentialId: string): Promise<{ passkey: PasskeyRow; user: StoredUser } | null>;
+  addPasskey(input: NewPasskey): Promise<PasskeyRow>;
+  /** Records a sign-in with the passkey and its new signature counter. */
+  usePasskey(id: string, counter: number): Promise<void>;
+  /** False when the passkey is not the user's. */
+  removePasskey(userId: string, id: string): Promise<boolean>;
 }
 
 export type MemorySession = {
@@ -275,6 +304,57 @@ export class MemoryAuthStore implements AuthStore {
     return this.sessions
       .filter((s) => s.userId === userId)
       .map((row) => ({ ...row }));
+  }
+
+  private readonly secrets = new Map<string, { value: string; expiresAt: number }>();
+  readonly passkeys: PasskeyRow[] = [];
+
+  async putSecret(key: string, value: string, ttlSeconds: number): Promise<void> {
+    const kept = this.secrets.get(key);
+    const expiresAt = ttlSeconds > 0 || !kept ? Date.now() + Math.max(ttlSeconds, 1) * 1000 : kept.expiresAt;
+    this.secrets.set(key, { value, expiresAt });
+  }
+
+  async getSecret(key: string): Promise<string | null> {
+    const found = this.secrets.get(key);
+    if (!found) return null;
+    if (found.expiresAt <= Date.now()) {
+      this.secrets.delete(key);
+      return null;
+    }
+    return found.value;
+  }
+
+  async dropSecret(key: string): Promise<void> {
+    this.secrets.delete(key);
+  }
+
+  async listPasskeys(userId: string): Promise<PasskeyRow[]> {
+    return this.passkeys.filter((row) => row.userId === userId).map((row) => ({ ...row }));
+  }
+
+  async passkeyByCredential(credentialId: string): Promise<{ passkey: PasskeyRow; user: StoredUser } | null> {
+    const passkey = this.passkeys.find((row) => row.credentialId === credentialId);
+    const user = passkey ? this.userById(passkey.userId) : null;
+    return passkey && user ? { passkey: { ...passkey }, user } : null;
+  }
+
+  async addPasskey(input: NewPasskey): Promise<PasskeyRow> {
+    const row: PasskeyRow = { ...input, id: randomUUID(), createdAt: new Date(), lastUsedAt: null };
+    this.passkeys.push(row);
+    return { ...row };
+  }
+
+  async usePasskey(id: string, counter: number): Promise<void> {
+    const row = this.passkeys.find((candidate) => candidate.id === id);
+    if (row) Object.assign(row, { counter, lastUsedAt: new Date() });
+  }
+
+  async removePasskey(userId: string, id: string): Promise<boolean> {
+    const at = this.passkeys.findIndex((row) => row.id === id && row.userId === userId);
+    if (at < 0) return false;
+    this.passkeys.splice(at, 1);
+    return true;
   }
 
   async updateUser(userId: string, patch: UserPatch): Promise<void> {

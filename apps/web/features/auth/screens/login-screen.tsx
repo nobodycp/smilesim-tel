@@ -9,6 +9,7 @@ import { useBranding } from '../../../lib/branding';
 import { useDoor } from '../../../lib/door-context';
 import { usePrefs } from '../../../lib/prefs';
 import { Alert } from '../../../components/alert';
+import { usePasskeySupport } from '../sign-in-methods';
 
 export function LoginScreen() {
   const router = useRouter();
@@ -22,6 +23,22 @@ export function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const message = failure ? apiText(failure) : '';
+  const passkeys = usePasskeySupport();
+
+  async function withPasskey() {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setFailure(null);
+    const result = await api.passkeyLogin();
+    pending.current = false;
+    setBusy(false);
+    if (!result.ok) {
+      setFailure({ message: result.message, code: result.code });
+      return;
+    }
+    router.push(routeFor(result.data.next));
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -112,6 +129,11 @@ export function LoginScreen() {
             <button className="login-go login-enter d" type="submit" disabled={busy} aria-busy={busy}>
               <span>{t.signIn}</span>
             </button>
+            {passkeys ? (
+              <button className="login-passkey login-enter d" type="button" disabled={busy} onClick={withPasskey}>
+                {t.passkeySignIn}
+              </button>
+            ) : null}
           </form>
           <div className="login-meta">
             <p className="login-help">{t.loginHelp}</p>

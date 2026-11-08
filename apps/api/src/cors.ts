@@ -5,7 +5,8 @@ export const LOCAL_WEB_ORIGIN = 'http://localhost:3000';
 
 const LOCAL_DOORS = DOOR_HOSTS.map((door) => `http://${door.host}.localhost:3000`);
 
-function allowedOrigins(): string[] {
+/** The web origins the API answers; passkeys check the page's origin against the same list. */
+export function allowedOrigins(): string[] {
   const configured = (process.env.WEB_ORIGIN ?? '')
     .split(',')
     .map((origin) => origin.trim())

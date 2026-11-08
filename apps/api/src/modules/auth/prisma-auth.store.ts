@@ -6,6 +6,9 @@ import IORedis, { Redis } from 'ioredis';
 import {
   AuthStore,
   FullSessionRow,
+  NewPasskey,
+  PasskeyRow,
+  TWO_FACTOR_METHODS,
   SessionKind,
   SessionRow,
   SessionScope,
@@ -26,9 +29,25 @@ const LAYERS: readonly Layer[] = ['branch', 'main_agent', 'agent', 'pos'];
 
 const sessionKey = (sessionId: string) => `session:${sessionId}`;
 const failureKey = (loginName: string) => `login-fail:${loginName}`;
+const secretKey = (key: string) => `auth-secret:${key}`;
 
 type UserRecord = NonNullable<Awaited<ReturnType<PrismaClient['user']['findUnique']>>>;
 type SessionRecord = NonNullable<Awaited<ReturnType<PrismaClient['session']['findUnique']>>>;
+type PasskeyRecord = NonNullable<Awaited<ReturnType<PrismaClient['passkey']['findUnique']>>>;
+
+function toPasskeyRow(row: PasskeyRecord): PasskeyRow {
+  return {
+    id: row.id,
+    userId: row.userId,
+    credentialId: row.credentialId,
+    publicKey: new Uint8Array(row.publicKey),
+    counter: row.counter,
+    transports: row.transports ? row.transports.split(',') : [],
+    name: row.name,
+    createdAt: row.createdAt,
+    lastUsedAt: row.lastUsedAt,
+  };
+}
 
 function toStoredUser(row: UserRecord): StoredUser {
   return {
@@ -48,6 +67,7 @@ function toStoredUser(row: UserRecord): StoredUser {
     address: row.address,
     twoFactorSecret: row.twoFactorSecret,
     pendingTwoFactorSecret: row.pendingTwoFactorSecret,
+    twoFactorMethod: TWO_FACTOR_METHODS.find((method) => method === row.twoFactorMethod) ?? 'app',
   };
 }
 
@@ -320,5 +340,42 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
 
   async updateUser(userId: string, patch: UserPatch): Promise<void> {
     await this.prisma.user.updateMany({ where: { id: userId }, data: patch });
+  }
+
+  async putSecret(key: string, value: string, ttlSeconds: number): Promise<void> {
+    if (ttlSeconds > 0) await this.redis.set(secretKey(key), value, 'EX', ttlSeconds);
+    else await this.redis.set(secretKey(key), value, 'KEEPTTL');
+  }
+
+  async getSecret(key: string): Promise<string | null> {
+    return this.redis.get(secretKey(key));
+  }
+
+  async dropSecret(key: string): Promise<void> {
+    await this.redis.del(secretKey(key));
+  }
+
+  async listPasskeys(userId: string): Promise<PasskeyRow[]> {
+    return (await this.prisma.passkey.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } })).map(toPasskeyRow);
+  }
+
+  async passkeyByCredential(credentialId: string): Promise<{ passkey: PasskeyRow; user: StoredUser } | null> {
+    const row = await this.prisma.passkey.findUnique({ where: { credentialId }, include: { user: true } });
+    return row ? { passkey: toPasskeyRow(row), user: toStoredUser(row.user) } : null;
+  }
+
+  async addPasskey(input: NewPasskey): Promise<PasskeyRow> {
+    const row = await this.prisma.passkey.create({
+      data: { ...input, publicKey: Buffer.from(input.publicKey), transports: input.transports.join(',') },
+    });
+    return toPasskeyRow(row);
+  }
+
+  async usePasskey(id: string, counter: number): Promise<void> {
+    await this.prisma.passkey.updateMany({ where: { id }, data: { counter, lastUsedAt: new Date() } });
+  }
+
+  async removePasskey(userId: string, id: string): Promise<boolean> {
+    return (await this.prisma.passkey.deleteMany({ where: { id, userId } })).count > 0;
   }
 }

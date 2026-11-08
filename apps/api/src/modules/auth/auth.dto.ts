@@ -126,3 +126,27 @@ export class TwoFactorExemptDto {
   @ApiProperty()
   twoFactorExempt!: boolean;
 }
+
+export class TwoFactorMethodBodyDto {
+  @ApiPropertyOptional({ enum: ['sms', 'email'] })
+  method?: string;
+
+  @ApiPropertyOptional({ example: '123456', description: 'Only when confirming' })
+  code?: string;
+}
+
+export class PasskeyBodyDto {
+  @ApiPropertyOptional({ description: 'The browser answer (RegistrationResponseJSON)' })
+  response?: unknown;
+
+  @ApiPropertyOptional({ example: 'iPhone' })
+  name?: string;
+}
+
+export class PasskeyLoginBodyDto {
+  @ApiPropertyOptional()
+  loginId?: string;
+
+  @ApiPropertyOptional({ description: 'The browser answer (AuthenticationResponseJSON)' })
+  response?: unknown;
+}

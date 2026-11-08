@@ -59,6 +59,10 @@ createServer((req, res) => {
       res.writeHead(200, json).end(JSON.stringify({ ok: true }));
       return;
     }
+    if (route === 'GET /auth/sign-in-methods') {
+      res.writeHead(200, json).end(JSON.stringify({ twoFactorEnabled: false, twoFactorMethod: 'app', canDisable: false, phone: null, email: 'p•••@example.com', passkeys: [] }));
+      return;
+    }
     if (route === 'POST /auth/two-factor/setup') {
       res.writeHead(200, json).end(JSON.stringify({ otpauth: 'otpauth://totp/Smilesim:pos?secret=MOCKSECRET' }));
       return;

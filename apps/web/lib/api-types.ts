@@ -14,6 +14,20 @@ export type AccountProfile = Profile & { loginName: string };
 /** Login name → full name for the accounts the viewer may meet on a screen. */
 export type Directory = Record<string, string>;
 
+export type TwoFactorMethod = 'app' | 'sms' | 'email';
+export type PasskeyInfo = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
+/** GET /auth/sign-in-methods: how this account signs in. Contacts come masked. */
+export type SignInMethods = {
+  twoFactorEnabled: boolean;
+  twoFactorMethod: TwoFactorMethod;
+  canDisable: boolean;
+  phone: string | null;
+  email: string | null;
+  passkeys: PasskeyInfo[];
+};
+/** A code sent by SMS or email; `sent` false means one went out less than `retryIn` seconds ago. */
+export type CodeSent = { sentTo: string; sent: boolean; retryIn: number };
+
 export type SessionInfo = {
   id: string;
   userAgent: string;

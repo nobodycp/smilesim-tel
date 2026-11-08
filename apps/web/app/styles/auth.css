@@ -215,6 +215,20 @@
   opacity: 0.72;
 }
 .login-room form > button.login-go:hover { background: var(--rd-primary-hover); }
+/* The passkey sign-in: second to the password button, outlined, the same width. */
+.login-room form > button.login-passkey {
+  width: 100%;
+  height: 48px;
+  padding: 0 var(--rd-space-4);
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-tile);
+  background: transparent;
+  color: var(--rd-ink);
+  font-size: var(--rd-text-lg);
+  font-weight: 700;
+}
+.login-room form > button.login-passkey:hover { background: var(--rd-surface-2); }
+.login-room form > button.login-passkey:disabled { opacity: 0.72; }
 .login-meta {
   display: flex;
   align-items: baseline;

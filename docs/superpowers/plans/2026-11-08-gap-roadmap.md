@@ -15,7 +15,7 @@ answers listed under "Needs the owner" first.
 | N6 ✅ | Full wallet, every layer: every entry names its operation and reason; deposit and deduct (consumption, correction, settlement); the parent takes money back from a child with a note (no transfers); an automatic hold when a task opens, released or charged when it closes; the spending limit is today's ceiling | — | L |
 | N7 ✅ | Provider accounts: balance (may go negative), purchases from our operations, payments in instalments entered by a staff member with the accountant role, settlements, credit limit, a ledger per provider | — | M |
 | N8 ✅ | Reconciliation: upload a provider's Excel statement (a column map per provider; API pull later), match it against our operations and balances, list missing, duplicate and different rows | each provider's columns, at the start | M |
-| N9 | Sign-in: Passkeys; 2FA method choice (authenticator app by default, SMS, email) on a pluggable sender — gateways chosen later | — | L |
+| N9 ✅ | Sign-in: Passkeys; 2FA method choice (authenticator app by default, SMS, email) on a pluggable sender — gateways chosen later | — | L |
 
 ## Later (recorded, not planned)
 
@@ -36,3 +36,4 @@ An alternative source per product. Orders with a quantity for one customer.
 - N6 — full wallet: reasons on deposits, «خصم» (child → parent with a note), automatic hold for open tasks, available = balance + ceiling − held (spec `2026-11-08-full-wallet.md`).
 - N7 — provider accounts: balance = payments + settlements − purchases, credit limit, held for open tasks, ledger with running balance and CSV (spec `2026-11-08-provider-accounts.md`).
 - N8 — reconciliation: upload a provider statement (xlsx/csv), pick its columns (kept per provider), compare with our operations, follow each difference (spec `2026-11-08-provider-reconciliation.md`).
+- N9 — sign-in methods: the second step by app, SMS or email on a pluggable sender (logs until the gateways are chosen), and passkeys that sign in without the password or the code (spec `2026-11-08-signin-methods.md`).

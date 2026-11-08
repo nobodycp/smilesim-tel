@@ -14,6 +14,7 @@ import { Alert } from '../../../components/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
+import { PasskeysPane, TwoFactorPane, useSignInMethods } from '../sign-in-methods';
 
 export function SettingsScreen() {
   const { t, apiText, locale } = usePrefs();
@@ -28,11 +29,10 @@ export function SettingsScreen() {
   const [nextPassword, setNextPassword] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const [otpauth, setOtpauth] = useState('');
-  const [twoFactorCode, setTwoFactorCode] = useState('');
 
   const profile = useApiQuery(sharedKeys.profile, () => api.getProfile());
   const sessionList = useApiQuery(sharedKeys.sessions, () => api.listSessions());
+  const methods = useSignInMethods();
   const loginName = profile.data?.loginName ?? '';
   const sessions = sessionList.data?.sessions ?? [];
   // The fields start from the first answer and are the user's from then on: a later read in the background never
@@ -94,32 +94,6 @@ export function SettingsScreen() {
     }
   }
 
-  async function startTwoFactor() {
-    setError('');
-    setNote('');
-    const result = await api.setupTwoFactor();
-    if (!result.ok) {
-      setError(apiText(result));
-      return;
-    }
-    setTwoFactorCode('');
-    setOtpauth(result.data.otpauth);
-  }
-
-  async function confirmTwoFactor(e: FormEvent) {
-    e.preventDefault();
-    setError('');
-    setNote('');
-    const result = await api.confirmTwoFactor(twoFactorCode);
-    if (!result.ok) {
-      setError(apiText(result));
-      return;
-    }
-    setOtpauth('');
-    setTwoFactorCode('');
-    setNote(t.enabledTwoFactor);
-  }
-
   async function revoke(id: string) {
     setError('');
     const result = await api.revokeSession(id);
@@ -147,7 +121,7 @@ export function SettingsScreen() {
       <h1>{t.settingsTitle}</h1>
       <p className="lede">{t.settingsLede}</p>
     </header>
-    <Alert banner>{error || profile.error || sessionList.error}</Alert>
+    <Alert banner>{error || profile.error || sessionList.error || methods.error}</Alert>
     <Alert tone="success" banner>{note}</Alert>
 
     <div className="settings-grid">
@@ -230,28 +204,8 @@ export function SettingsScreen() {
       </div>
 
       <div className="settings-col">
-        <section className="pane">
-          <header className="pane-head"><h2>{t.twoFactor}</h2></header>
-          <div className="pane-body">
-            {!otpauth && (
-              <>
-                <p className="hint">{t.twoFactorIdle}</p>
-                <Button type="button" onClick={startTwoFactor}>{t.enableTwoFactor}</Button>
-              </>
-            )}
-            {otpauth && (
-              <form onSubmit={confirmTwoFactor}>
-                <p className="hint">{t.enrollHint}</p>
-                <p className="code" dir="ltr">{otpauth}</p>
-                <label>
-                  {t.code}
-                  <input value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required dir="ltr" />
-                </label>
-                <Button type="submit">{t.confirmEnable}</Button>
-              </form>
-            )}
-          </div>
-        </section>
+        <TwoFactorPane methods={methods.data} reload={methods.reload} setError={setError} setNote={setNote} />
+        <PasskeysPane methods={methods.data} reload={methods.reload} setError={setError} setNote={setNote} when={when} />
 
         <section className="pane">
           <header className="pane-head"><h2>{t.sessions}</h2></header>

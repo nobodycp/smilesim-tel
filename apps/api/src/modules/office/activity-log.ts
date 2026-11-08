@@ -5,6 +5,8 @@ export const ACTIVITY_ACTIONS = [
   'logout',
   'password',
   'two_factor',
+  'passkey_add',
+  'passkey_remove',
   'user_create',
   'user_freeze',
   'user_restore',

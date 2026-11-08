@@ -5,7 +5,7 @@ test('login page is Arabic and sends the entered password', async ({ page }) => 
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await page.getByLabel('اسم الدخول').fill('pos');
   await page.getByLabel('كلمة السر').fill('123456');
-  await page.getByRole('button', { name: 'دخول' }).click();
+  await page.getByRole('button', { name: 'دخول', exact: true }).click();
   await expect(page.getByText('بيانات الدخول غير صحيحة')).toBeVisible();
 });
 
@@ -59,5 +59,5 @@ test('settings reads the login name and details from the profile, not from sessi
   await expect(page.getByLabel('الاسم الكامل')).toHaveValue('الكاشير');
   await expect(page.getByLabel('المدينة')).toHaveValue('ramallah');
   await expect(page.getByLabel('العنوان')).toHaveValue('شارع الإرسال');
-  await expect(page.getByLabel('البريد')).toHaveValue('pos@example.com');
+  await expect(page.getByLabel('البريد', { exact: true })).toHaveValue('pos@example.com');
 });

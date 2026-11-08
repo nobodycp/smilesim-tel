@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Layer, decideLogin } from './decide-login';
-import { AUTH_STORE, AuthStore, SessionRow, StoredUser } from './auth.store';
+import { AUTH_STORE, AuthStore, SessionRow, StoredUser, TwoFactorMethod } from './auth.store';
+import { MESSAGE_SENDER, type MessageSender } from './message-sender';
+import { CODE_TRIES, CODE_TTL_SECONDS, RESEND_SECONDS, codeMatches, hashCode, maskContact, newCode, type PendingCode } from './one-time-code';
 import { hashPassword, passwordMatches } from './password';
 import { idsToRevoke, isListedAccountSession } from './sessions';
 import { createTotpSecret, totpKeyUri, totpMatches } from './totp';
@@ -14,7 +16,10 @@ export type LoginResult =
 export type Failure = { kind: 'error'; status: 400 | 401 | 403 | 404; message: string; code: ErrorCode };
 export type Outcome<T> = Failure | ({ kind: 'ok' } & T);
 type Meta = { userAgent: string; ip: string };
-type Authed = { session: SessionRow; user: StoredUser };
+export type Authed = { session: SessionRow; user: StoredUser };
+type CodeMethod = Exclude<TwoFactorMethod, 'app'>;
+const codeKey = (userId: string) => `two-factor-code:${userId}`;
+const sentKey = (userId: string) => `two-factor-sent:${userId}`;
 
 const TOTP_ISSUER = 'SmileSim';
 const LAYERS: readonly Layer[] = ['branch', 'main_agent', 'agent', 'pos'];
@@ -35,7 +40,10 @@ const profileView = (user: StoredUser): ProfileView => ({
 
 @Injectable()
 export class AuthService {
-  constructor(@Inject(AUTH_STORE) private readonly store: AuthStore) {}
+  constructor(
+    @Inject(AUTH_STORE) private readonly store: AuthStore,
+    @Inject(MESSAGE_SENDER) private readonly sender: MessageSender,
+  ) {}
 
   async login(
     body: { loginName: string; password: string },
@@ -69,7 +77,7 @@ export class AuthService {
   }
 
   /** Resolves the cookie's session and slides its expiry. Null when missing, revoked, or expired. */
-  private async authenticate(sessionId: string | undefined): Promise<Authed | null> {
+  async authenticate(sessionId: string | undefined): Promise<Authed | null> {
     if (!sessionId) return null;
     const found = await this.store.liveSession(sessionId);
     if (!found || found.user.disabledAt) return null;
@@ -229,7 +237,7 @@ export class AuthService {
   }
 
   /** Replaces a two-factor session with a full one, applying the session limit before the new one is kept. */
-  private async promoteToFull(session: SessionRow, user: StoredUser, meta: Meta): Promise<string> {
+  async promoteToFull(session: SessionRow, user: StoredUser, meta: Meta): Promise<string> {
     await this.store.revokeSessions([session.id]);
     const existing = await this.store.listFullSessions(user.id);
     await this.store.revokeSessions(idsToRevoke(existing, true));
@@ -241,9 +249,9 @@ export class AuthService {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'two_factor' && authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
-    // An account that already has two-factor on must switch it off before enrolling again.
-    // Otherwise a password-only (two_factor scope) session could swap the secret and skip the code.
-    if (authed.user.twoFactorEnabled) return fail(403, 'FORBIDDEN');
+    // A password-only (two_factor scope) session of an account that already has two-factor on could swap the secret
+    // and skip the code, so it may not enrol. A full session has passed the second step and may change its method.
+    if (authed.user.twoFactorEnabled && authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
     return { kind: 'ok', ...authed };
   }
 
@@ -270,6 +278,7 @@ export class AuthService {
       twoFactorEnabled: true,
       twoFactorSecret: user.pendingTwoFactorSecret,
       pendingTwoFactorSecret: null,
+      twoFactorMethod: 'app',
     });
     if (session.scope === 'full') return { kind: 'ok' };
     return { kind: 'ok', sessionId: await this.promoteToFull(session, user, meta) };
@@ -285,13 +294,143 @@ export class AuthService {
     const { session, user } = authed;
     if (session.scope !== 'two_factor') return fail(403, 'FORBIDDEN');
     if (typeof body?.code !== 'string') return fail(400, 'INVALID');
-    if (!user.twoFactorEnabled || !user.twoFactorSecret) return fail(403, 'FORBIDDEN');
-    if (!totpMatches(user.twoFactorSecret, body.code)) return fail(401, 'WRONG_CODE');
+    if (!user.twoFactorEnabled) return fail(403, 'FORBIDDEN');
+    const method = user.twoFactorMethod ?? 'app';
+    if (method === 'app') {
+      if (!user.twoFactorSecret) return fail(403, 'FORBIDDEN');
+      if (!totpMatches(user.twoFactorSecret, body.code)) return fail(401, 'WRONG_CODE');
+    } else {
+      const checked = await this.checkCode(user, 'challenge', method, body.code);
+      if (checked) return checked;
+    }
     return { kind: 'ok', sessionId: await this.promoteToFull(session, user, meta) };
   }
 
+  /** Where a code for `method` goes: the account's phone or email. */
+  private contactOf(user: StoredUser, method: CodeMethod): string | null {
+    const value = method === 'sms' ? user.phone : user.email;
+    return value?.trim() ? value.trim() : null;
+  }
+
+  /**
+   * Sends a fresh six-digit code, at most once every RESEND_SECONDS. A code lives CODE_TTL_SECONDS, allows CODE_TRIES
+   * tries and is kept hashed; a new one replaces the last.
+   */
+  private async sendCode(user: StoredUser, purpose: PendingCode['purpose'], method: CodeMethod): Promise<Outcome<{ sentTo: string; sent: boolean; retryIn: number }>> {
+    const to = this.contactOf(user, method);
+    if (!to) return fail(400, 'CONTACT_MISSING');
+    const sentAt = Number(await this.store.getSecret(sentKey(user.id)));
+    if (sentAt) {
+      const retryIn = Math.max(1, Math.ceil((sentAt + RESEND_SECONDS * 1000 - Date.now()) / 1000));
+      return { kind: 'ok', sentTo: maskContact(to, method), sent: false, retryIn };
+    }
+    const code = newCode();
+    const pending: PendingCode = { hash: hashCode(user.id, code), tries: 0, purpose, method };
+    await this.store.putSecret(codeKey(user.id), JSON.stringify(pending), CODE_TTL_SECONDS);
+    await this.store.putSecret(sentKey(user.id), String(Date.now()), RESEND_SECONDS);
+    await this.sender.send({
+      channel: method,
+      to,
+      subject: TOTP_ISSUER,
+      text: `${TOTP_ISSUER}: ${code} — رمز الدخول، صالح خمس دقائق. لا تشاركه مع أحد.`,
+    });
+    return { kind: 'ok', sentTo: maskContact(to, method), sent: true, retryIn: RESEND_SECONDS };
+  }
+
+  /** Null when the code is right (and spends it); otherwise the refusal. */
+  private async checkCode(user: StoredUser, purpose: PendingCode['purpose'], method: CodeMethod, code: string): Promise<Failure | null> {
+    const raw = await this.store.getSecret(codeKey(user.id));
+    const pending = raw ? (JSON.parse(raw) as PendingCode) : null;
+    if (!pending || pending.purpose !== purpose || pending.method !== method || pending.tries >= CODE_TRIES) return fail(401, 'CODE_EXPIRED');
+    if (!codeMatches(pending.hash, user.id, code)) {
+      const tries = pending.tries + 1;
+      if (tries >= CODE_TRIES) await this.store.dropSecret(codeKey(user.id));
+      else await this.store.putSecret(codeKey(user.id), JSON.stringify({ ...pending, tries }), 0);
+      return fail(401, 'WRONG_CODE');
+    }
+    await this.store.dropSecret(codeKey(user.id));
+    await this.store.dropSecret(sentKey(user.id));
+    return null;
+  }
+
+  /** During the sign-in challenge: sends the code of an SMS or email account. The app method sends nothing. */
+  async sendChallengeCode(sessionId: string | undefined): Promise<Outcome<{ method: TwoFactorMethod; sentTo?: string; sent?: boolean; retryIn?: number }>> {
+    const authed = await this.authenticate(sessionId);
+    if (!authed) return fail(401, 'LOGIN_REQUIRED');
+    const { session, user } = authed;
+    if (session.scope !== 'two_factor' || !user.twoFactorEnabled) return fail(403, 'FORBIDDEN');
+    const method = user.twoFactorMethod ?? 'app';
+    if (method === 'app') return { kind: 'ok', method };
+    const sent = await this.sendCode(user, 'challenge', method);
+    if (sent.kind === 'error') return sent;
+    return { kind: 'ok', method, sentTo: sent.sentTo, sent: sent.sent, retryIn: sent.retryIn };
+  }
+
+  /** Enrolment by SMS or email: sends a code to the account's phone or email. */
+  async chooseCodeMethod(sessionId: string | undefined, body: { method?: unknown }): Promise<Outcome<{ sentTo: string; sent: boolean; retryIn: number }>> {
+    const enrolling = await this.enrollmentSession(sessionId);
+    if (enrolling.kind === 'error') return enrolling;
+    if (body?.method !== 'sms' && body?.method !== 'email') return fail(400, 'INVALID');
+    return this.sendCode(enrolling.user, 'enroll', body.method);
+  }
+
+  /** The code sent by chooseCodeMethod turns two-factor on with that method. */
+  async confirmCodeMethod(
+    sessionId: string | undefined,
+    body: { method?: unknown; code?: unknown },
+    meta: Meta,
+  ): Promise<Outcome<{ sessionId?: string }>> {
+    const enrolling = await this.enrollmentSession(sessionId);
+    if (enrolling.kind === 'error') return enrolling;
+    const { session, user } = enrolling;
+    if ((body?.method !== 'sms' && body?.method !== 'email') || typeof body?.code !== 'string') return fail(400, 'INVALID');
+    const checked = await this.checkCode(user, 'enroll', body.method, body.code);
+    if (checked) return checked;
+    await this.store.updateUser(user.id, {
+      twoFactorEnabled: true,
+      twoFactorMethod: body.method,
+      twoFactorSecret: null,
+      pendingTwoFactorSecret: null,
+    });
+    if (session.scope === 'full') return { kind: 'ok' };
+    return { kind: 'ok', sessionId: await this.promoteToFull(session, user, meta) };
+  }
+
+  /** The settings view of how this account signs in. */
+  async signInMethods(sessionId: string | undefined): Promise<
+    Outcome<{
+      view: {
+        twoFactorEnabled: boolean;
+        twoFactorMethod: TwoFactorMethod;
+        canDisable: boolean;
+        phone: string | null;
+        email: string | null;
+        passkeys: { id: string; name: string; createdAt: Date; lastUsedAt: Date | null }[];
+      };
+    }>
+  > {
+    const authed = await this.authenticate(sessionId);
+    if (!authed) return fail(401, 'LOGIN_REQUIRED');
+    if (authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
+    const { user } = authed;
+    const required = (await this.store.policy())[user.layer] && !user.twoFactorExempt;
+    const phone = this.contactOf(user, 'sms');
+    const email = this.contactOf(user, 'email');
+    return {
+      kind: 'ok',
+      view: {
+        twoFactorEnabled: user.twoFactorEnabled,
+        twoFactorMethod: user.twoFactorMethod ?? 'app',
+        canDisable: user.twoFactorEnabled && !required,
+        phone: phone ? maskContact(phone, 'sms') : null,
+        email: email ? maskContact(email, 'email') : null,
+        passkeys: (await this.store.listPasskeys(user.id)).map((row) => ({ id: row.id, name: row.name, createdAt: row.createdAt, lastUsedAt: row.lastUsedAt })),
+      },
+    };
+  }
+
   private async clearTwoFactor(userId: string): Promise<void> {
-    await this.store.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null, pendingTwoFactorSecret: null });
+    await this.store.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null, pendingTwoFactorSecret: null, twoFactorMethod: 'app' });
   }
 
   async disableOwnTwoFactor(sessionId: string | undefined): Promise<Outcome<unknown>> {

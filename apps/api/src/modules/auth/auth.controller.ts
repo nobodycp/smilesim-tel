@@ -28,8 +28,12 @@ import {
   SetPasswordBodyDto,
   TwoFactorCodeBodyDto,
   TwoFactorExemptDto,
+  TwoFactorMethodBodyDto,
+  PasskeyBodyDto,
+  PasskeyLoginBodyDto,
   UpdateProfileBodyDto,
 } from './auth.dto';
+import { PasskeyService } from './passkeys';
 
 function cookieBase(): CookieOptions {
   return {
@@ -64,6 +68,15 @@ function metaOf(req: Request) {
   return { userAgent: String(req.headers['user-agent'] ?? ''), ip: req.ip ?? '' };
 }
 
+function originOf(req: Request): string | undefined {
+  return typeof req.headers.origin === 'string' ? req.headers.origin : undefined;
+}
+
+function doorOf(req: Request) {
+  const header = req.headers['x-door'];
+  return expectedLayer({ origin: originOf(req), door: typeof header === 'string' ? header : undefined });
+}
+
 function failWith(res: Response, failure: Failure) {
   res.status(failure.status);
   return { message: failure.message, code: failure.code };
@@ -76,6 +89,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly activity: ActivityRecorder,
+    private readonly passkeys: PasskeyService,
   ) {}
 
   @Post('login')
@@ -92,11 +106,7 @@ export class AuthController {
       res.status(401);
       return errorBody('BAD_CREDENTIALS');
     }
-    const header = req.headers['x-door'];
-    const door = expectedLayer({
-      origin: typeof req.headers.origin === 'string' ? req.headers.origin : undefined,
-      door: typeof header === 'string' ? header : undefined,
-    });
+    const door = doorOf(req);
     if (door === 'conflict') {
       res.status(403);
       return errorBody('DOOR_MISMATCH');
@@ -345,5 +355,139 @@ export class AuthController {
     const result = await this.auth.setExemption(sessionIdOf(req), loginName, body ?? {});
     if (result.kind === 'error') return failWith(res, result);
     return { twoFactorExempt: result.twoFactorExempt };
+  }
+  @Get('sign-in-methods')
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'How this account signs in: 2FA method, masked contacts, passkeys' })
+  @ApiErrorResponse(401, 403)
+  async signInMethods(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.signInMethods(sessionIdOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return result.view;
+  }
+
+  @Post('two-factor/method')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Choose SMS or email as the 2FA method; sends a code to confirm it' })
+  @ApiBody({ type: TwoFactorMethodBodyDto })
+  @ApiErrorResponse(401, 403, 400)
+  async chooseMethod(@Body() body: TwoFactorMethodBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.chooseCodeMethod(sessionIdOf(req), body ?? {});
+    if (result.kind === 'error') return failWith(res, result);
+    return { sentTo: result.sentTo, sent: result.sent, retryIn: result.retryIn };
+  }
+
+  @Post('two-factor/method/confirm')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Confirm the SMS or email method with the code it sent; turns 2FA on' })
+  @ApiBody({ type: TwoFactorMethodBodyDto })
+  @ApiOkResponse({ type: NextAppDto })
+  @ApiErrorResponse(401, 403, 400)
+  async confirmMethod(@Body() body: TwoFactorMethodBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.confirmCodeMethod(sessionIdOf(req), body ?? {}, metaOf(req));
+    if (result.kind === 'error') {
+      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
+      return failWith(res, result);
+    }
+    await this.activity.recordOffice({ sessionId: result.sessionId ?? sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'ok', '');
+    if (result.sessionId) setSessionCookie(res, result.sessionId);
+    return { next: 'app' };
+  }
+
+  @Post('two-factor/send')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'During the sign-in challenge: send the SMS or email code (once every 30 seconds)' })
+  @ApiErrorResponse(401, 403, 400)
+  async sendCode(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.sendChallengeCode(sessionIdOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return { method: result.method, sentTo: result.sentTo, sent: result.sent, retryIn: result.retryIn };
+  }
+
+  @Get('passkeys')
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'The passkeys of this account' })
+  @ApiErrorResponse(401, 403)
+  async listPasskeys(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.passkeys.list(sessionIdOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return { passkeys: result.passkeys };
+  }
+
+  @Post('passkeys/options')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Begin adding a passkey: options for navigator.credentials.create' })
+  @ApiErrorResponse(401, 403, 400)
+  async passkeyOptions(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.passkeys.registrationOptions(sessionIdOf(req), originOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return result.options;
+  }
+
+  @Post('passkeys')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Finish adding a passkey with the browser answer' })
+  @ApiBody({ type: PasskeyBodyDto })
+  @ApiErrorResponse(401, 403, 400)
+  async addPasskey(@Body() body: PasskeyBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.passkeys.register(sessionIdOf(req), body ?? {});
+    if (result.kind === 'error') {
+      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_add' }, 'fail', result.code);
+      return failWith(res, result);
+    }
+    await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_add' }, 'ok', '');
+    return result.passkey;
+  }
+
+  @Delete('passkeys/:id')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Delete one of this account passkeys' })
+  @ApiParam({ name: 'id' })
+  @ApiOkResponse({ type: OkDto })
+  @ApiErrorResponse(401, 403, 404)
+  async removePasskey(@Param('id') id: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.passkeys.remove(sessionIdOf(req), id);
+    if (result.kind === 'error') return failWith(res, result);
+    await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_remove' }, 'ok', '');
+    return { ok: true };
+  }
+
+  @Post('passkey-login/options')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Begin a passkey sign-in: a one-time id and options for navigator.credentials.get' })
+  @ApiErrorResponse(400)
+  async passkeyLoginOptions(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.passkeys.loginOptions(originOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return { loginId: result.loginId, options: result.options };
+  }
+
+  @Post('passkey-login')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Sign in with a passkey; sets `sid` cookie on success' })
+  @ApiBody({ type: PasskeyLoginBodyDto })
+  @ApiOkResponse({ type: NextAppDto })
+  @ApiErrorResponse(400, 401, 403)
+  async passkeyLogin(@Body() body: PasskeyLoginBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const door = doorOf(req);
+    if (door === 'conflict') {
+      res.status(403);
+      return errorBody('DOOR_MISMATCH');
+    }
+    const result = await this.passkeys.login(body ?? {}, metaOf(req), door);
+    const loginName = 'loginName' in result ? (result.loginName ?? '') : '';
+    if (result.kind === 'error') {
+      if (loginName) await this.activity.recordLogin({ loginName, ip: metaOf(req).ip, result: 'fail', reason: result.code });
+      return failWith(res, result);
+    }
+    await this.activity.recordLogin({ loginName, ip: metaOf(req).ip, result: 'ok', reason: 'passkey' });
+    setSessionCookie(res, result.sessionId);
+    return { next: result.next };
   }
 }

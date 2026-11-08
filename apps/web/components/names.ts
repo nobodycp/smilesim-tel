@@ -38,6 +38,8 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'logout') return t.actLogout;
   if (action === 'password') return t.actPassword;
   if (action === 'two_factor') return t.actTwoFactor;
+  if (action === 'passkey_add') return t.actPasskeyAdd;
+  if (action === 'passkey_remove') return t.actPasskeyRemove;
   if (action === 'user_create') return t.actUserCreate;
   if (action === 'user_freeze') return t.actUserFreeze;
   if (action === 'user_restore') return t.actUserRestore;

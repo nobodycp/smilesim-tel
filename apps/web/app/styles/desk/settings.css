@@ -64,3 +64,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Sign-in methods (two-factor method, passkeys): the buttons under a choice sit in one wrapping row. */
+.signin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-2);
+}
+.pane-head .ui-badge { margin-inline-start: auto; }
