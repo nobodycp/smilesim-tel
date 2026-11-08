@@ -65,10 +65,10 @@ Every route is in a domain controller (table above). `routes.http.spec.ts` lists
 - **Visibility:** `accounts()` (`~3457`) loads all users and then filters in memory.
 - **Seeding:** `CatalogSeed.onModuleInit` runs `ensureCatalog` and the layer roles on every start (idempotent).
 
-## Data model (`prisma/schema.prisma`, 28 migrations)
+## Data model (`prisma/schema.prisma`, 29 migrations)
 
 User, Session, Role, UserRole, LayerPolicy, Wallet, WalletEntry, Provider, Company, Package, PackageRenewal, PackageSwitch, UserPackage, SellPrice, Line, OfficeTask, OfficeTaskNote, ActivityEvent, AccessLog, Notice, Announcement, SiteBranding.
-Status/kind/layer fields are `String` (no enums). Missing indexes: `Line.status/packageId/iccid`, `User.parentId`, `OfficeTask.assigneeId`, `WalletEntry.kind`.
+Status/kind/layer fields are `String` (no enums). Lookup indexes (2026-11-08): `User(parentId)`, `Line(status)`, `Line(packageId)`, `Line(iccid)`, `OfficeTask(assigneeId, status)`, `WalletEntry(kind, createdAt)`. Delete rules are written in the schema as the database has them (`Package.company` RESTRICT, `UserPackage` CASCADE); `prisma migrate diff` against the migrations is empty.
 
 ## Tests
 

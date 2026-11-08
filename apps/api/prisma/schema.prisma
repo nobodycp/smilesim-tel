@@ -48,6 +48,9 @@ model User {
   packageTerms           UserPackage[]
   sellPrices             SellPrice[]
   activityEvents         ActivityEvent[]
+
+  // Tree walks: children of an account.
+  @@index([parentId])
 }
 
 model Session {
@@ -128,6 +131,8 @@ model WalletEntry {
 
   @@index([userId, createdAt])
   @@index([lineId])
+  // Reports and the line card read entries by kind, newest first.
+  @@index([kind, createdAt])
 }
 
 model Provider {
@@ -158,7 +163,8 @@ model Package {
   providerId             String
   provider               Provider         @relation(fields: [providerId], references: [id])
   companyId              String?
-  company                Company?         @relation(fields: [companyId], references: [id])
+  // RESTRICT as the database has it since 20261030010000_catalog: a company with packages cannot be deleted.
+  company                Company?         @relation(fields: [companyId], references: [id], onDelete: Restrict)
   dataGb                 Int?
   months                 Int              @default(1)
   branchCost             Int
@@ -225,9 +231,10 @@ model PackageSwitch {
 model UserPackage {
   id           String   @id @default(uuid())
   packageId    String
-  package      Package  @relation(fields: [packageId], references: [id])
+  // CASCADE as the database has it since 20261030090000_package_sheet (then PackageOffer).
+  package      Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
   userId       String
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   hidden       Boolean  @default(false)
   price        Int?
   renewalPrice Int?
@@ -270,6 +277,9 @@ model Line {
   tasks         OfficeTask[]
 
   @@index([posId, createdAt])
+  @@index([status])
+  @@index([packageId])
+  @@index([iccid])
 }
 
 model OfficeTask {
@@ -299,6 +309,8 @@ model OfficeTask {
 
   @@index([status, createdAt])
   @@index([submitterId, createdAt])
+  // Tasks an account holds (freezing returns them).
+  @@index([assigneeId, status])
 }
 
 model OfficeTaskNote {

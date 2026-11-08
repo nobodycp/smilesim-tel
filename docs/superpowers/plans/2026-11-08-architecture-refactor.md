@@ -48,7 +48,7 @@ Each approved decision gets an ADR in `docs/architecture/decisions/`.
 - [x] 2.5 Login-failure counter — already in Redis in `PrismaAuthStore` (`login-fail:<login>`, TTL window); the in-memory map is `MemoryAuthStore`, used by specs only. Audit claim was wrong; nothing to change.
 - [x] 2.6 CI: a `postgres:16` service job that runs `prisma migrate deploy` and the `*.db.spec.ts` specs with `TEST_DATABASE_URL`. `.github/workflows/ci.yml`.
 
-## Phase 3 — Backend domain split ✅ (3.last pending) (spec: `docs/superpowers/specs/2026-11-08-office-domain-split.md`)
+## Phase 3 — Backend domain split ✅ (spec: `docs/superpowers/specs/2026-11-08-office-domain-split.md`)
 
 Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService` delegates moved methods so existing specs guard behaviour unchanged. **A domain with no HTTP spec gets one written against the old code first** (`<domain>.http.spec.ts` via `kernel/office-test-app.ts`), committed before the move.
 
@@ -71,7 +71,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 3.10 catalog seed: `catalog/catalog-seed.ts` (`CatalogSeed.onModuleInit`, same skip rules). `55177eb`
 - [x] 3.11 `OfficeService` left production: the `(gate, …)` adapters are a test-only `testing/office-facade.ts` (`OfficeFacade`, no Nest wiring); specs that took it from Nest take `OfficeKernel`. `c5d089f`
 - [x] Boot check (2026-11-08): built API on fresh Postgres + Redis, trial seed on — 79 office routes mapped, catalog seeded (23 packages, layer roles), reads 200 for the branch, 401/403 where expected, and a write flow end to end: fund → eSIM activation task → take → complete → number active, point of sale charged 35 ₪, notices delivered, audit entries written.
-- [ ] 3.last **Awaiting owner decision.** Verified missing indexes: `User.parentId`, `Line.status`, `Line.packageId`, `Line.iccid`, `OfficeTask.assigneeId`, `WalletEntry.kind` (additive migration, no data change). Subtree queries instead of `accounts()` (~30 call sites) are a separate, riskier change: proposed only when account counts make the full scan measurable.
+- [x] 3.last Indexes (owner's go-ahead 2026-11-08): migration `20261108021907_lookup_indexes` — `User(parentId)`, `Line(status)`, `Line(packageId)`, `Line(iccid)`, `OfficeTask(assigneeId, status)`, `WalletEntry(kind, createdAt)`; additive only. The schema now states the delete rules the database already had (`Package.company` RESTRICT, `UserPackage` CASCADE), so `migrate diff` is empty. Subtree queries instead of `accounts()` stay a later proposal (measure first).
 
 ## Phase 4 — Web data layer
 
