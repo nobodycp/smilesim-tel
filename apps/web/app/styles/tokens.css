@@ -50,6 +50,21 @@
   --rd-scrim: rgba(10, 10, 10, 0.48);
   --rd-scrim-strong: rgba(0, 0, 0, 0.5);
   --rd-radius-lg: 1.125rem;
+  /* Scales (Phase 5.3): the values the stylesheets already used, named. Theme-independent. */
+  --rd-radius-xs: 6px;
+  --rd-radius-sm: 8px;
+  --rd-radius-md: 10px;
+  --rd-radius-card: 12px;
+  --rd-radius-panel: 16px;
+  --rd-radius-pill: 999px;
+  --rd-text-2xs: 10px;
+  --rd-text-xs: 11px;
+  --rd-text-sm: 12px;
+  --rd-text-md: 13px;
+  --rd-text-base: 14px;
+  --rd-text-lg: 15px;
+  --rd-text-xl: 16px;
+  --rd-text-2xl: 18px;
   --rd-shadow-card: 0 1px 2px rgba(10, 10, 10, 0.04), 0 1px 1px rgba(10, 10, 10, 0.02);
   --rd-shadow-frame: 0 1px 2px rgba(16, 24, 40, 0.05);
   --rd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);

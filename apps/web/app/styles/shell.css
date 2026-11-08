@@ -46,14 +46,14 @@
 .drawer .brand-mark {
   width: 3.5rem;
   height: 3.5rem;
-  border-radius: 1rem;
+  border-radius: var(--rd-radius-panel);
   background: var(--rd-primary-bg);
   box-shadow: var(--rd-shadow-card);
 }
 .sidebar.collapsed .brand-mark {
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 0.75rem;
+  border-radius: var(--rd-radius-card);
 }
 .sidebar .brand-mark svg,
 .drawer .brand-mark svg {
@@ -76,7 +76,7 @@
   margin: 16px 0 4px;
   padding-inline: 12px;
   color: var(--rd-muted);
-  font-size: 11px;
+  font-size: var(--rd-text-xs);
   font-weight: 700;
 }
 /* Tajawal loads 400, 500, 700 and 800, so the old 600 drew as 700 and rest looked as heavy as active. Rest is 500, active is 700. */
@@ -89,9 +89,9 @@
   min-height: 40px;
   margin-top: 2px;
   padding: 0 12px;
-  border-radius: 0.5rem;
+  border-radius: var(--rd-radius-sm);
   color: var(--rd-ink-2);
-  font-size: 13px;
+  font-size: var(--rd-text-md);
   font-weight: 500;
   text-align: start;
 }
@@ -266,7 +266,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   gap: 0.65rem;
   margin-bottom: 0.35rem;
   padding: 0.6rem;
-  border-radius: 0.75rem;
+  border-radius: var(--rd-radius-card);
   background: var(--rd-surface-2);
 }
 .shell-identity div { min-width: 0; }
@@ -301,7 +301,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .shell-empty {
   margin: 0.25rem 0 0;
   padding: 0.7rem;
-  border-radius: 0.75rem;
+  border-radius: var(--rd-radius-card);
   background: var(--rd-surface-2);
   color: var(--rd-muted);
   font-size: 0.85rem;
@@ -324,7 +324,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   flex: none;
   padding: 0.25rem 0.6rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--rd-radius-pill);
   background: transparent;
   color: var(--rd-muted);
   font: inherit;
@@ -404,7 +404,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   width: 2.25rem;
   padding: 0;
   border: 1px solid var(--rd-line);
-  border-radius: 999px;
+  border-radius: var(--rd-radius-pill);
   background: var(--rd-surface);
   color: var(--rd-muted);
 }
@@ -445,7 +445,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  font-size: 13px;
+  font-size: var(--rd-text-md);
 }
 .topbar .shell-search-field input:not([type='checkbox']):not([type='radio']):not([type='file']):focus {
   border: 0;
@@ -459,7 +459,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   height: 20px;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--rd-radius-pill);
   background: transparent;
   color: var(--rd-faint);
 }
@@ -476,7 +476,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   overflow: auto;
   padding: 0.35rem;
   border: 1px solid var(--rd-line);
-  border-radius: 0.625rem;
+  border-radius: var(--rd-radius-md);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
 }
@@ -494,7 +494,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   min-width: 1.05rem;
   height: 1.05rem;
   padding: 0 0.32rem;
-  border-radius: 999px;
+  border-radius: var(--rd-radius-pill);
   background: var(--rd-danger);
   color: var(--rd-bg);
   font-size: 0.65rem;
@@ -516,8 +516,8 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .notice-pop { width: min(21rem, 80vw); max-height: 420px; overflow: auto; }
 .user-copy { display: grid; min-width: 0; text-align: start; line-height: 1.15; }
 .user-copy strong, .user-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.user-copy strong { font-size: 13px; }
-.user-copy small { color: var(--rd-muted); font-size: 11px; }
+.user-copy strong { font-size: var(--rd-text-md); }
+.user-copy small { color: var(--rd-muted); font-size: var(--rd-text-xs); }
 .menu {
   position: absolute;
   z-index: 30;
@@ -526,7 +526,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   min-width: 200px;
   padding: 6px;
   border: 1px solid var(--rd-line);
-  border-radius: 12px;
+  border-radius: var(--rd-radius-card);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
 }
@@ -537,7 +537,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   width: 100%;
   height: 36px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: var(--rd-radius-sm);
   color: var(--rd-ink-2);
   font-weight: 600;
   text-align: start;
@@ -565,7 +565,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   min-width: 220px;
   padding: 8px;
   border: 1px solid var(--rd-line);
-  border-radius: 12px;
+  border-radius: var(--rd-radius-card);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
 }
@@ -577,10 +577,10 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   margin: 0;
   padding: 6px 8px;
   color: var(--rd-muted);
-  font-size: 12px;
+  font-size: var(--rd-text-sm);
   font-weight: 700;
 }
-.wallet-pop strong { color: var(--rd-ink); font-size: 13px; }
+.wallet-pop strong { color: var(--rd-ink); font-size: var(--rd-text-md); }
 .notice-wrap { position: relative; }
 .notice-btn { position: relative; }
 .notice-dot {
@@ -603,7 +603,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   overflow: auto;
   padding: 8px;
   border: 1px solid var(--rd-line);
-  border-radius: 16px;
+  border-radius: var(--rd-radius-panel);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
 }
@@ -613,12 +613,12 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   width: 100%;
   padding: 10px 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--rd-radius-md);
   background: transparent;
   text-align: start;
 }
 .notice-pop button.item.unread { background: var(--rd-accent-soft); }
-.notice-pop strong { font-size: 13px; }
+.notice-pop strong { font-size: var(--rd-text-md); }
 .notice-pop small { color: var(--rd-muted); }
 /* Touch: the shell turns to the drawer at 767px (responsive.css), so the topbar controls reach 44px there.
    The .topbar prefix lifts the search selectors over the 2.6rem width responsive.css gives them at this width. */
@@ -650,7 +650,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
     width: min(18rem, 72vw);
     padding: 8px;
     border: 1px solid var(--rd-line);
-    border-radius: 0.625rem;
+    border-radius: var(--rd-radius-md);
     background: var(--rd-surface);
     box-shadow: var(--rd-shadow-pop);
   }
@@ -676,7 +676,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
     width: min(18rem, 72vw);
     padding: 8px;
     border: 1px solid var(--rd-line);
-    border-radius: 0.625rem;
+    border-radius: var(--rd-radius-md);
     background: var(--rd-surface);
     box-shadow: var(--rd-shadow-pop);
   }

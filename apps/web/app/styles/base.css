@@ -5,7 +5,7 @@ body {
   background: var(--rd-bg);
   color: var(--rd-ink);
   font-family: var(--font-sans), var(--font-he), Tahoma, sans-serif;
-  font-size: 14px;
+  font-size: var(--rd-text-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -30,7 +30,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: 8px;
+  border-radius: var(--rd-radius-sm);
   color: var(--rd-muted);
 }
 .icon-btn:hover, .lang button:hover, .user-btn:hover { background: var(--rd-surface-3); }
@@ -48,10 +48,10 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   height: 34px;
   padding: 0 8px;
   border: 1px solid var(--rd-line);
-  border-radius: 8px;
+  border-radius: var(--rd-radius-sm);
   background: var(--rd-surface);
   color: var(--rd-ink-2);
-  font-size: 12px;
+  font-size: var(--rd-text-sm);
   font-weight: 800;
 }
 .lang > button:hover { background: var(--rd-surface-3); }
@@ -68,8 +68,8 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   box-shadow: var(--rd-shadow-card);
 }
 .brand-mark svg { width: 22px; height: 22px; stroke: var(--rd-primary-fg); }
-.brand-name { margin: 0; font-size: 14px; font-weight: 700; color: var(--rd-ink); }
-.brand-sub { margin: 2px 0 0; font-size: 12px; color: var(--rd-muted); }
+.brand-name { margin: 0; font-size: var(--rd-text-base); font-weight: 700; color: var(--rd-ink); }
+.brand-sub { margin: 2px 0 0; font-size: var(--rd-text-sm); color: var(--rd-muted); }
 .brand-rule { display: block; width: 40px; height: 2px; margin-top: 8px; border-radius: 99px; background: var(--rd-accent); }
 /* A saved logo comes as two copies; the theme picks one. `.on-ink` sits on an ink panel (the
    sign-in banner) and so picks the other way round. */

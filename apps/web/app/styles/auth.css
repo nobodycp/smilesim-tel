@@ -19,7 +19,7 @@
   width: min(440px, 100%);
   padding: 28px 24px 24px;
   border: 1px solid var(--rd-line);
-  border-radius: 16px;
+  border-radius: var(--rd-radius-panel);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
   text-align: center;
@@ -67,7 +67,7 @@
 .login-mast .lang > button {
   width: 42px;
   height: 42px;
-  border-radius: 999px;
+  border-radius: var(--rd-radius-pill);
   border: 1px solid color-mix(in srgb, var(--rd-bg) 28%, transparent);
   background: color-mix(in srgb, var(--rd-bg) 8%, transparent);
   color: var(--rd-bg);
@@ -110,7 +110,7 @@
   margin-top: 8px;
   color: var(--rd-bg);
   opacity: 0.72;
-  font-size: 15px;
+  font-size: var(--rd-text-lg);
 }
 .login-seam {
   flex: none;
@@ -134,13 +134,13 @@
   font-weight: 800;
   letter-spacing: -0.03em;
 }
-.login-role { margin: 8px 0 0; font-size: 16px; font-weight: 700; }
+.login-role { margin: 8px 0 0; font-size: var(--rd-text-xl); font-weight: 700; }
 .login-room form { margin-top: 24px; }
 .login-field > label {
   display: block;
   margin: 0 0 8px;
   color: var(--rd-ink);
-  font-size: 13px;
+  font-size: var(--rd-text-md);
   font-weight: 800;
 }
 .login-box {
@@ -183,11 +183,11 @@
   height: 44px;
   padding: 0 4px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--rd-radius-sm);
   background: transparent;
   color: var(--rd-muted);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--rd-text-md);
   font-weight: 700;
 }
 .login-reveal:hover { color: var(--rd-ink); }
@@ -203,7 +203,7 @@
   border-radius: 14px;
   background: var(--rd-primary-bg);
   color: var(--rd-primary-fg);
-  font-size: 18px;
+  font-size: var(--rd-text-2xl);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -220,11 +220,11 @@
   gap: 12px;
   margin-top: 16px;
 }
-.login-help { margin: 0; color: var(--rd-muted); font-size: 13px; }
+.login-help { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-md); }
 .login-meta bdi {
   flex: none;
   color: var(--rd-muted);
-  font-size: 12px;
+  font-size: var(--rd-text-sm);
   font-variant-numeric: tabular-nums;
 }
 @media (max-width: 991px) and (max-height: 700px) {
@@ -252,7 +252,7 @@
   .login-lockrow { width: min(640px, 100%); margin-inline: auto; }
   .login-plate { width: 168px; height: 210px; }
   .login-lockup strong { font-size: 52px; }
-  .login-lockup small { margin-top: 12px; font-size: 16px; }
+  .login-lockup small { margin-top: 12px; font-size: var(--rd-text-xl); }
   .login-lockup .login-logo { max-width: 280px; max-height: 72px; }
 }
 @media (min-width: 992px) {
@@ -272,7 +272,7 @@
     height: 46%;
   }
   .login-lockup strong { font-size: clamp(44px, 4.6vw, 72px); }
-  .login-lockup small { margin-top: 16px; font-size: 18px; }
+  .login-lockup small { margin-top: 16px; font-size: var(--rd-text-2xl); }
   .login-mast { position: static; margin: 0; }
   .login-mast .auth-tools {
     position: fixed;

@@ -12,7 +12,7 @@ label {
   display: grid;
   gap: 6px;
   color: var(--rd-ink-2);
-  font-size: 13px;
+  font-size: var(--rd-text-md);
   font-weight: 600;
   text-align: start;
 }
@@ -23,7 +23,7 @@ textarea {
   height: 42px;
   padding: 0 12px;
   border: 1px solid var(--rd-field);
-  border-radius: 8px;
+  border-radius: var(--rd-radius-sm);
   background: var(--rd-surface);
   color: var(--rd-ink);
 }
@@ -37,7 +37,7 @@ input[readonly] { color: var(--rd-muted); border-style: dashed; background: tran
   height: 40px;
   padding: 0 16px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--rd-radius-sm);
   background: var(--rd-primary-bg);
   color: var(--rd-primary-fg);
   font-weight: 700;
@@ -54,8 +54,8 @@ button.danger:hover { background: var(--rd-danger-soft); }
 .error, .note {
   margin: 0;
   padding: 10px 12px;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: var(--rd-radius-sm);
+  font-size: var(--rd-text-md);
   font-weight: 600;
   text-align: start;
 }
@@ -66,9 +66,9 @@ button.danger:hover { background: var(--rd-danger-soft); }
   margin: 0;
   padding: 10px 12px;
   overflow-x: auto;
-  border-radius: 8px;
+  border-radius: var(--rd-radius-sm);
   background: var(--rd-surface-2);
   color: var(--rd-ink-2);
-  font-size: 12px;
+  font-size: var(--rd-text-sm);
   text-align: start;
 }

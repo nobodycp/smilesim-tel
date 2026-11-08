@@ -18,7 +18,7 @@
   padding-block: 16px;
   padding-inline: 16px 14px;
   border: 1px solid var(--rd-line);
-  border-radius: 16px;
+  border-radius: var(--rd-radius-panel);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
   pointer-events: auto;
@@ -31,7 +31,7 @@
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--rd-radius-sm);
   background: var(--rd-surface-2);
   font-weight: 800;
 }
@@ -54,7 +54,7 @@
   overflow: hidden;
   padding: 0;
   border: 1px solid var(--rd-line);
-  border-radius: 0.625rem;
+  border-radius: var(--rd-radius-md);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
 }
@@ -62,7 +62,7 @@
 .dialog[data-size='confirm'] .dialog-foot .danger { margin-inline-end: 0; }
 /* The account a dialog acts on. `AccountName` keeps the login and the full name in parentheses on one line; a block
    `bdi` here split them across four lines. */
-.dialog-who { margin: 0; font-size: 14px; font-weight: 700; }
+.dialog-who { margin: 0; font-size: var(--rd-text-base); font-weight: 700; }
 .dialog[data-size='wide'] { width: min(760px, 100%); }
 .dialog > header {
   display: flex;
@@ -81,7 +81,7 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 999px;
+  border-radius: var(--rd-radius-pill);
   background: var(--rd-surface-2);
   color: var(--rd-ink);
 }
@@ -91,7 +91,7 @@
 .dialog-result .dialog-mark { width: 56px; height: 56px; }
 .dialog-result .dialog-mark svg { width: 28px; height: 28px; }
 .dialog-mark svg { width: 18px; height: 18px; }
-.dialog-lede { margin: 4px 0 0; color: var(--rd-muted); font-size: 13px; font-weight: 500; line-height: 1.45; }
+.dialog-lede { margin: 4px 0 0; color: var(--rd-muted); font-size: var(--rd-text-md); font-weight: 500; line-height: 1.45; }
 .dialog[data-size='confirm'] > header {
   flex-direction: column;
   align-items: center;
@@ -115,11 +115,11 @@
   width: 36px;
   height: 36px;
   flex: none;
-  border-radius: 0.5rem;
+  border-radius: var(--rd-radius-sm);
   color: var(--rd-faint);
 }
 .dialog > header .icon-btn:hover { background: var(--rd-surface-2); }
-.dialog h2 { margin: 0; font-size: 16px; font-weight: 700; text-align: start; }
+.dialog h2 { margin: 0; font-size: var(--rd-text-xl); font-weight: 700; text-align: start; }
 .dialog > .error { flex: none; margin: 12px 16px 0; }
 .dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px; }
 .dialog-foot {
@@ -176,7 +176,7 @@
   margin: 0 0 4px;
   padding: 0;
   color: var(--rd-muted);
-  font-size: 11px;
+  font-size: var(--rd-text-xs);
   font-weight: 700;
 }
 .op-blocks { display: grid; gap: 14px; }
@@ -187,7 +187,7 @@
   border-bottom: 1px solid var(--rd-line);
 }
 .op-block:last-child { padding-bottom: 0; border-bottom: 0; }
-.op-block h3 { margin: 0; font-size: 13px; font-weight: 700; }
+.op-block h3 { margin: 0; font-size: var(--rd-text-md); font-weight: 700; }
 .op-block > button { justify-self: end; }
 .op-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 560px) {
@@ -203,8 +203,8 @@
 }
 .dialog-form { display: grid; gap: 12px; }
 .dialog-body label:not(.check),
-.dialog-form label:not(.check) { display: grid; gap: 4px; color: var(--rd-muted); font-size: 11px; font-weight: 700; text-align: start; }
-.dialog-body label .hint { font-size: 12px; font-weight: 500; }
+.dialog-form label:not(.check) { display: grid; gap: 4px; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 700; text-align: start; }
+.dialog-body label .hint { font-size: var(--rd-text-sm); font-weight: 500; }
 .dialog button:disabled { opacity: 0.45; cursor: not-allowed; }
 /* Choices with no default (the transfer dialog, the number card). A group is a fieldset of rows; a row is its name
    and its radios, each radio a 44px `label.check`. The name and the radios stay together on one line while the
@@ -215,17 +215,17 @@
   padding-block: 2px 6px;
   padding-inline: 14px;
   border: 1px solid var(--rd-line);
-  border-radius: 0.5rem;
+  border-radius: var(--rd-radius-sm);
 }
 .choice-set legend {
   margin-inline-start: -6px;
   padding-inline: 6px;
   color: var(--rd-ink);
-  font-size: 12px;
+  font-size: var(--rd-text-sm);
   font-weight: 700;
 }
 .choice-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 16px; }
-.choice-name { flex: 0 0 9.5rem; color: var(--rd-ink-2); font-size: 12px; font-weight: 600; }
+.choice-name { flex: 0 0 9.5rem; color: var(--rd-ink-2); font-size: var(--rd-text-sm); font-weight: 600; }
 .choice-options { display: flex; flex-wrap: wrap; column-gap: 16px; }
 .choice-set .check { min-height: 44px; }
 /* The two groups of terms share a row once each has room for its rows, and stack when it does not. */
@@ -248,7 +248,7 @@
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 0.5rem;
+  border-radius: var(--rd-radius-sm);
   background: transparent;
   color: var(--rd-faint);
   font-weight: 400;
@@ -269,10 +269,10 @@
   max-width: calc(100vw - 16px);
   padding: 4px 0;
   border: 1px solid var(--rd-line);
-  border-radius: 0.5rem;
+  border-radius: var(--rd-radius-sm);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
-  font-size: 13px;
+  font-size: var(--rd-text-md);
   line-height: 1.25;
 }
 .row-menu-panel button {
@@ -286,7 +286,7 @@
   border-radius: 0;
   background: transparent;
   color: var(--rd-ink-2);
-  font-size: 13px;
+  font-size: var(--rd-text-md);
   font-weight: 500;
   line-height: 1.25;
   text-align: start;

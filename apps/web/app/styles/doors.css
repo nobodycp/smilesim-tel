@@ -15,13 +15,13 @@
   gap: 6px;
   padding: 18px 16px;
   border: 1px solid var(--rd-line);
-  border-radius: 16px;
+  border-radius: var(--rd-radius-panel);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-card);
   color: var(--rd-ink);
   text-decoration: none;
 }
-.door-card span { color: var(--rd-muted); font-size: 12px; }
+.door-card span { color: var(--rd-muted); font-size: var(--rd-text-sm); }
 .door-card:hover { border-color: var(--rd-ink); }
 @media (max-width: 560px) {
   .door-grid { grid-template-columns: 1fr; }
