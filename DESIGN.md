@@ -71,12 +71,16 @@ Theme-independent, in `:root`. They name the values the stylesheets already used
 
 | Token | Value | Token | Value |
 |---|---|---|---|
-| `--rd-radius-xs` | 6px | `--rd-text-2xs` | 10px |
-| `--rd-radius-sm` | 8px | `--rd-text-xs` | 11px |
-| `--rd-radius-md` | 10px | `--rd-text-sm` | 12px |
-| `--rd-radius-card` | 12px | `--rd-text-md` | 13px |
-| `--rd-radius-panel` | 16px | `--rd-text-base` | 14px |
-| `--rd-radius-pill` | 999px | `--rd-text-lg` / `-xl` / `-2xl` | 15 / 16 / 18px |
+| `--rd-radius-2xs` | 4px | `--rd-text-2xs` | 10px |
+| `--rd-radius-xs` | 6px | `--rd-text-xs` | 11px |
+| `--rd-radius-sm` | 8px | `--rd-text-sm` | 12px |
+| `--rd-radius-md` | 10px | `--rd-text-md` | 13px |
+| `--rd-radius-card` | 12px | `--rd-text-base` | 14px |
+| `--rd-radius-tile` | 14px | `--rd-text-lg` / `-xl` / `-2xl` | 15 / 16 / 18px |
+| `--rd-radius-panel` | 16px | | |
+| `--rd-radius-pill` | 999px | | |
+
+Which radius where: cards, panes, filter bars and the cards in a page grid (`.company-card`, `.pack-card`, `.stat`) take `--rd-radius-lg`; a surface that stands alone on the page or floats over it (`.auth-card`, `.door-card`, `.toast`, `.notice-pop`) takes `--rd-radius-panel`; menus, popovers and tile lists (`.menu`, `.wallet-pop`, `.command-list`, the data-table frame) take `--rd-radius-card`; the marks and skeleton tiles take `--rd-radius-tile`; controls take `sm`/`md`; small inner bits `2xs`/`xs`. There is no `border-radius` literal left in the sheets but `0` and `50%`.
 
 Spacing, layers and motion are tokens too (5.3d), named from the values the sheets already used:
 
@@ -126,7 +130,7 @@ One of each. A new page uses these, it does not invent a sibling.
 - Badge: label plus a dot. Active, pending, danger, neutral.
 - KPI: `StatRow` wraps a row of `Stat` items. Each `Stat` takes an `icon` (`IconName` from `components/icon.tsx`), `tone` (`success`, `warning`, `danger`, or `muted`), `label`, a large tabular `value`, and optional `meta` below a hairline divider. The icon sits in `.stat-icon` with a tone tint. This is the only KPI pattern; do not use ad-hoc `.stat-card` markup.
 - Filter: `FilterBar` wraps `.filter-bar`/`.filter-panel` — a card of `<label>` fields above the table, with an optional trailing clear button (`onClear`/`clearLabel`). This is the only filter pattern; do not write a bare `.filter-line` or inline filter markup on a new page.
-- Facts: label/value pairs (`dt`/`dd`) in a `<dl>`. Latin identifiers inside a value stay in `<bdi dir="ltr">`. Three shapes exist today and a new page reuses one of them: `.fact-grid` of `.fact-card` (the user page head), `.detail-rows` (the number card), `.task-facts` (a task). The `.facts` grid this line once named was never used and went in 5.6.
+- Facts: label/value pairs are `<Facts>` + `<Fact label>` (`components/facts.tsx`), never a hand-written `<dl>`. One primitive, three densities: `tiles` (default, `.detail-rows`: label beside value in bordered tiles that repeat across the width; the number card and every dialog), `cards` (`.fact-grid`: a summary card per fact with an `icon` and a `tone` of `good`/`warn`; the head of the user page), `list` (`.task-facts`: a compact ruled list for a narrow rail; the task ticket). Latin identifiers inside a value stay in `<bdi dir="ltr">`.
 - Empty: `EmptyState` inside `.empty` — muted icon in a small circle on `--rd-surface-2`, title (`children`), optional secondary `text`, centered (both axes) in the available `.pane`/`.sheet` space, not pinned to the start edge. Not a lone italic line.
 - Feedback: one alert line for an error, one for a success, always through `Alert` (`components/alert.tsx`): `<Alert>{error}</Alert>` draws `.error` with `role="alert"`, `<Alert tone="success">` draws `.note` with `role="status"`, `banner` adds the page-top card, and an empty message draws nothing. Pages inside `Desk` get theirs from `PageAlert`, which uses `Alert`. No hand-written `<p className="error">` and no browser `alert` for success. An image whose source is a `data:` or `blob:` URL (logos, company marks, the eSIM QR) is `DataImage` (`components/data-image.tsx`); there is no bare `<img>`.
 - Switch: `LiveSwitch` (`components/live-switch.tsx`) — `role="switch"` button with a `.track` and a knob; `checked` is `true`, `false`, or `'mixed'` (half knob, blended track) for a group. The label and the state word sit beside it as `children`. This is the only on/off control; do not draw a second toggle.
@@ -142,7 +146,7 @@ One of each. A new page uses these, it does not invent a sibling.
 
 ## Motion and access
 
-- Motion is 150–450ms, transform and opacity only, and exists only on the sidebar width, the drawer slide, the notification bell, the spinner, and the skeleton shimmer. All of it sits under `@media (prefers-reduced-motion: no-preference)` in `styles/base.css`, so there is no reduced-motion override and no `!important`. Dialogs, menus, and toasts appear without motion.
+- Motion is 150–450ms, transform and opacity only, and exists only on the sidebar's contents (they fade in after a collapse or an expand; the width itself snaps), the drawer slide, the notification bell, the spinner, and the skeleton shimmer. All of it sits under `@media (prefers-reduced-motion: no-preference)` in `styles/base.css`, so there is no reduced-motion override and no `!important`. Dialogs, menus, and toasts appear without motion.
 - Targets at least 44px on touch widths.
 - Text contrast at least 4.5:1 in both themes. `--rd-faint` is the one token below that; it is never used for body text on the canvas.
 - Visible focus. Text inputs show an ink border plus the `--rd-focus` halo. Page-level buttons and links use a 2px solid `--rd-ink` outline.
@@ -150,15 +154,10 @@ One of each. A new page uses these, it does not invent a sibling.
 
 ## Known gaps
 
-- Key/value pairs have three shapes (`.fact-grid`, `.detail-rows`, `.task-facts`); one would do.
+None open. Closed after Phase 5 (2026-11-08):
 
-Shell gaps (Pearl rebuild phase 1 landed the header, sidebar, and drawer; two items remain — focus rings and `.nav-link.locked` contrast were closed in Phase 5.3c: every keyboard-reachable control draws a 2px solid `--rd-ink` outline, the avatar with a 3px gap, and locked links use `--rd-muted`):
-
-- `.sidebar` animates `width` (180ms), which is not transform or opacity.
-- At widths near 390px, the topbar's control row (search toggle, wallet chip, bell, theme, language, avatar) can approach the viewport width; not yet stress-tested below 390px.
-
-
-Outside the shell, left as is to keep the screens identical:
-
-- `.auth-card`, `.door-card`, `.dialog`, `.toast`, `.notice-pop`, `.hero`, `.company-card`, and `.pack-card` use a 16px radius, and `.command-list` and `.menu` use 12px, instead of `--rd-radius-lg`.
-- The company mark text is white over an inline `hsl(... 42% 42%)` set in `features/catalog/screens/packages-screen.tsx` and `companies-screen.tsx`; some hues sit under 4.5:1.
+- Key/value had three hand-written shapes; they are one `Facts` primitive with three densities (same pixels).
+- The sidebar animated `width`; the width snaps and its contents fade (opacity).
+- Below 360px the topbar's controls ran off the screen (the account menu at 320px); theme and language move to the drawer's foot there (`tests/topbar-narrow.spec.ts` checks 320, 360 and 390px in ar and en).
+- Radius literals; every radius is a scale step with a rule for which one (see Scales).
+- Company-mark contrast: the letters sit on `markColor(name)` (`lib/company-mark.ts`, `hsl(h 42% 33%)`), at least 4.67:1 against white on every hue (`tests/company-mark.spec.ts`).

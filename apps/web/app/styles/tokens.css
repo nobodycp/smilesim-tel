@@ -51,10 +51,12 @@
   --rd-scrim-strong: rgba(0, 0, 0, 0.5);
   --rd-radius-lg: 1.125rem;
   /* Scales (Phase 5.3): the values the stylesheets already used, named. Theme-independent. */
+  --rd-radius-2xs: 4px;
   --rd-radius-xs: 6px;
   --rd-radius-sm: 8px;
   --rd-radius-md: 10px;
   --rd-radius-card: 12px;
+  --rd-radius-tile: 14px;
   --rd-radius-panel: 16px;
   --rd-radius-pill: 999px;
   --rd-text-2xs: 10px;

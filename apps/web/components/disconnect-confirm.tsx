@@ -6,6 +6,7 @@ import { usePrefs } from '../lib/prefs';
 import { Money } from './desk';
 import { Dialog } from './dialog';
 import { Button } from './ui/button';
+import { Fact, Facts } from './facts';
 
 /**
  * Asks before a disconnect and shows what the point of sale gets back, by the same rule the
@@ -82,13 +83,12 @@ export function DisconnectConfirm({
     >
       {line ? (
         <div className="stack">
-          <dl className="detail-rows">
-            <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
-            <div>
-              <dt>{quote && quote.amount < 0 ? t.disconnectTakes : t.disconnectReturns}</dt>
-              <dd>{quote ? <Money value={Math.abs(quote.amount)} /> : t.loading}</dd>
-            </div>
-          </dl>
+          <Facts>
+            <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
+            <Fact label={quote && quote.amount < 0 ? t.disconnectTakes : t.disconnectReturns}>
+              {quote ? <Money value={Math.abs(quote.amount)} /> : t.loading}
+            </Fact>
+          </Facts>
           {quote && (failing || !quote.runsNow) ? <p className="hint">{t.disconnectAsTask}</p> : null}
         </div>
       ) : null}

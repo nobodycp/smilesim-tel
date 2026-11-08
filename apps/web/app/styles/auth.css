@@ -150,7 +150,7 @@
   height: 56px;
   padding-inline: var(--rd-space-3-5);
   border: 1.5px solid var(--rd-field);
-  border-radius: 14px;
+  border-radius: var(--rd-radius-tile);
   background: var(--rd-surface);
 }
 .login-box > svg {
@@ -202,7 +202,7 @@
   padding: 0 var(--rd-space-4);
   border: 0;
   justify-self: stretch;
-  border-radius: 14px;
+  border-radius: var(--rd-radius-tile);
   background: var(--rd-primary-bg);
   color: var(--rd-primary-fg);
   font-size: var(--rd-text-2xl);

@@ -32,7 +32,7 @@
 }
 .company-logo { width: 64px; height: 64px; object-fit: contain; border-radius: var(--rd-radius-panel); background: var(--rd-surface-2); }
 .company-head { display: flex; align-items: center; gap: var(--rd-space-3); }
-.company-head .company-mark { width: 48px; height: 48px; border-radius: 14px; font-size: var(--rd-text-base); }
+.company-head .company-mark { width: 48px; height: 48px; border-radius: var(--rd-radius-tile); font-size: var(--rd-text-base); }
 .data .company-head .company-logo,
 .data .company-head .company-mark { width: 36px; height: 36px; border-radius: var(--rd-radius-md); font-size: var(--rd-text-md); }
 .company-grid, .pack-grid {
@@ -48,7 +48,7 @@
   min-height: 148px;
   padding: var(--rd-space-4);
   border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-panel);
+  border-radius: var(--rd-radius-lg);
   background: var(--rd-surface);
   color: var(--rd-ink);
   text-align: center;
@@ -60,7 +60,7 @@
   place-items: center;
   width: 64px;
   height: 64px;
-  border-radius: 18px;
+  border-radius: var(--rd-radius-lg);
   color: var(--rd-on-mark);
   font-size: var(--rd-text-2xl);
   font-weight: 800;
@@ -87,7 +87,7 @@
 .pack-pick > span:first-child {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: var(--rd-radius-tile);
   object-fit: contain;
   background: var(--rd-surface-2);
 }

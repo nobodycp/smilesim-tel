@@ -245,6 +245,7 @@ const CATALOGUE = [
   { zone: 'components', file: 'components/row-menu.tsx', role: 'قائمة عمليات الصف (المحفّز الوحيد لكل صف)' },
   { zone: 'components', file: 'components/dialog.tsx', role: 'حوار (تأكيد / نموذج / واسع)' },
   { zone: 'components', file: 'components/data-image.tsx', role: 'صورة data:/blob: من الواجهة' },
+  { zone: 'components', file: 'components/facts.tsx', role: 'قائمة تسمية/قيمة بثلاث كثافات' },
   { zone: 'components', file: 'components/alert.tsx', role: 'سطر الخطأ أو النجاح الموحد' },
   { zone: 'components', file: 'components/ui/button.tsx', role: 'أزرار بأحجام وأنماط' },
   { zone: 'components', file: 'components/ui/badge.tsx', role: 'شارة حالة / نغمة' },

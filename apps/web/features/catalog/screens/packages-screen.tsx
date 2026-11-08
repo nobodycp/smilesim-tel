@@ -14,7 +14,7 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type ApplyResult, type PackageRow } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
-import { hueOf, markOf } from '../../../lib/company-mark';
+import { markColor, markOf } from '../../../lib/company-mark';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
@@ -111,7 +111,7 @@ function PosCatalog({
               const image = imageOf.get(name) ?? '';
               return (
                 <button className="company-card" key={name} type="button" onClick={() => openCompany(name)}>
-                  {image ? <DataImage className="company-logo" src={image} alt="" /> : <span className="company-mark" style={{ background: `hsl(${hueOf(name)} 42% 42%)` }}>{markOf(name)}</span>}
+                  {image ? <DataImage className="company-logo" src={image} alt="" /> : <span className="company-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
                   <strong>{name}</strong>
                 </button>
               );
@@ -173,7 +173,7 @@ function CompanyTitle({ name, image, label, heading = false }: { name: string; i
       {image ? (
         <DataImage className="company-logo" src={image} alt="" />
       ) : (
-        <span className="company-mark" style={{ background: `hsl(${hueOf(name)} 42% 42%)` }}>{markOf(name)}</span>
+        <span className="company-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>
       )}
       <div>
         <p className="eyebrow">{label}</p>

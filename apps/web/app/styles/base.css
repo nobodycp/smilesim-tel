@@ -64,7 +64,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
   justify-content: center;
   width: 44px;
   height: 44px;
-  border-radius: 14px;
+  border-radius: var(--rd-radius-tile);
   background: var(--rd-primary-bg);
   color: var(--rd-primary-fg);
   box-shadow: var(--rd-shadow-card);
@@ -72,7 +72,7 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .brand-mark svg { width: 22px; height: 22px; stroke: var(--rd-primary-fg); }
 .brand-name { margin: 0; font-size: var(--rd-text-base); font-weight: 700; color: var(--rd-ink); }
 .brand-sub { margin: var(--rd-space-0-5) 0 0; font-size: var(--rd-text-sm); color: var(--rd-muted); }
-.brand-rule { display: block; width: 40px; height: 2px; margin-top: var(--rd-space-2); border-radius: 99px; background: var(--rd-accent); }
+.brand-rule { display: block; width: 40px; height: 2px; margin-top: var(--rd-space-2); border-radius: var(--rd-radius-pill); background: var(--rd-accent); }
 /* A saved logo comes as two copies; the theme picks one. `.on-ink` sits on an ink panel (the
    sign-in banner) and so picks the other way round. */
 .brand-logo { display: block; max-width: 100%; object-fit: contain; }
@@ -83,9 +83,14 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .dark .brand-logo-dark,
 .on-ink .brand-logo-dark,
 .dark .on-ink .brand-logo-light { display: block; }
+@keyframes sidebar-settle { from { opacity: 0; } }
+@keyframes sidebar-settle-collapsed { from { opacity: 0; } }
 /* Motion is opt-in: nothing moves unless the user allows it, so no forced reset is needed. */
 @media (prefers-reduced-motion: no-preference) {
-  .sidebar { transition: width var(--rd-dur-base) ease; }
+  /* The sidebar's width snaps (animating width re-lays the page every frame); its contents fade in after each
+     toggle instead. A new animation name per state restarts the fade. */
+  .sidebar > * { animation: sidebar-settle var(--rd-dur-base) var(--rd-ease-out); }
+  .sidebar.collapsed > * { animation-name: sidebar-settle-collapsed; }
   .drawer { transition: transform var(--rd-dur-base) ease; }
   .notice-btn.is-active svg { animation: shell-bell 2.4s ease-in-out infinite; }
   .spinner { animation: spin 0.7s linear infinite; }

@@ -317,6 +317,12 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="side-foot">
+          {mobile && (
+            <div className="drawer-prefs">
+              <ThemeToggle shell />
+              <LanguageSwitch shell />
+            </div>
+          )}
           <button
             type="button"
             className="nav-link collapse-btn"
@@ -462,8 +468,11 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                 </div>
               )}
             </div>
-            <ThemeToggle shell />
-            <LanguageSwitch shell />
+            {/* Below 360px seven 44px controls do not fit beside the menu button: these two move to the drawer's foot. */}
+            <div className="topbar-prefs">
+              <ThemeToggle shell />
+              <LanguageSwitch shell />
+            </div>
             <div className="user-menu" ref={menuRoot}>
               <button
                 ref={menuTrigger}

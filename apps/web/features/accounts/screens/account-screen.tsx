@@ -20,6 +20,7 @@ import { UserPackagesTab } from './packages-terms';
 import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import { Fact, Facts } from '../../../components/facts';
 
 const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
@@ -122,28 +123,13 @@ export function AccountScreen() {
         </section>
       ) : row && (
         <div className="stack flow">
-          <dl className="fact-grid">
-            <div className="fact-card">
-              <div><dt>{t.fullName}</dt><dd><bdi>{row.nickname}</bdi></dd></div>
-              <span className="fact-mark" aria-hidden="true"><KeyRound /></span>
-            </div>
-            <div className="fact-card">
-              <div><dt>{t.layer}</dt><dd>{layerName(t, row.layer)}</dd></div>
-              <span className="fact-mark" aria-hidden="true"><Layers /></span>
-            </div>
-            <div className="fact-card">
-              <div><dt>{t.parent}</dt><dd><AccountName login={row.parentLogin} /></dd></div>
-              <span className="fact-mark" aria-hidden="true"><Waypoints /></span>
-            </div>
-            <div className="fact-card">
-              <div><dt>{t.role}</dt><dd>{row.staff ? (row.roleName || '—') : layerName(t, row.layer)}</dd></div>
-              <span className="fact-mark" aria-hidden="true"><Shield /></span>
-            </div>
-            <div className={row.frozen ? 'fact-card warn' : 'fact-card good'}>
-              <div><dt>{t.status}</dt><dd>{row.frozen ? t.frozen : t.accountOpen}</dd></div>
-              <span className="fact-mark" aria-hidden="true">{row.frozen ? <Snowflake /> : <CircleCheck />}</span>
-            </div>
-          </dl>
+          <Facts variant="cards">
+            <Fact label={t.fullName} icon={<KeyRound />}><bdi>{row.nickname}</bdi></Fact>
+            <Fact label={t.layer} icon={<Layers />}>{layerName(t, row.layer)}</Fact>
+            <Fact label={t.parent} icon={<Waypoints />}><AccountName login={row.parentLogin} /></Fact>
+            <Fact label={t.role} icon={<Shield />}>{row.staff ? (row.roleName || '—') : layerName(t, row.layer)}</Fact>
+            <Fact label={t.status} icon={row.frozen ? <Snowflake /> : <CircleCheck />} tone={row.frozen ? 'warn' : 'good'}>{row.frozen ? t.frozen : t.accountOpen}</Fact>
+          </Facts>
           <div className="steps" role="tablist">
             {tabs.map((item) => (
               <button key={item.key} type="button" role="tab" aria-selected={openTab === item.key} disabled={item.key !== 'access' && row.staff} onClick={() => setTab(item.key)}>

@@ -18,6 +18,7 @@ import { TableSkeleton } from './loading';
 import { Button } from './ui/button';
 import { Select } from './ui/select';
 import { Badge } from './ui/badge';
+import { Fact, Facts } from './facts';
 
 type Props = {
   open: boolean;
@@ -280,10 +281,10 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
               ) : null}
             </div>
             <LineChoice value={choice.linePrices} count={preview.lines} onChange={(value) => set({ linePrices: value })} />
-            <dl className="detail-rows">
-              <div><dt>{t.transferBalance}</dt><dd><Money value={preview.balance} /></dd></div>
-              {kind === 'agent' ? <div><dt>{t.transferSubtreeBalance}</dt><dd><Money value={preview.subtreeBalance} /></dd></div> : null}
-            </dl>
+            <Facts>
+              <Fact label={t.transferBalance}><Money value={preview.balance} /></Fact>
+              {kind === 'agent' ? <Fact label={t.transferSubtreeBalance}><Money value={preview.subtreeBalance} /></Fact> : null}
+            </Facts>
             {preview.own.belowNewFloor > 0 ? (
               <div>
                 <Badge variant="warning" dot>{t.transferBelowFloor.replace('{n}', String(preview.own.belowNewFloor))}</Badge>

@@ -12,6 +12,12 @@ export function hueOf(name: string): number {
   return [...name].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 360;
 }
 
+// The colour behind the white letters. At 42% saturation a lightness of 33% keeps white at 4.5:1 or more on every
+// hue (the worst, yellow at 60°, is 4.67:1); the table's 13px letters need that, not only the large ones.
+export function markColor(name: string): string {
+  return `hsl(${hueOf(name)} 42% 33%)`;
+}
+
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const LOGO_SIDE = 256;
 const LOGO_LIMIT = 200_000;

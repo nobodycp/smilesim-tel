@@ -167,7 +167,7 @@
 }
 .sk-title { width: 168px; height: 22px; }
 .sk-lede { width: min(440px, 72%); height: 14px; margin-top: var(--rd-space-2-5); }
-.sk-stat { height: 86px; border-radius: 14px; }
+.sk-stat { height: 86px; border-radius: var(--rd-radius-tile); }
 .sk-num { width: 36px; height: 22px; }
 .stat-dash { color: var(--rd-muted); }
 .loading-well { display: grid; gap: var(--rd-space-4); }

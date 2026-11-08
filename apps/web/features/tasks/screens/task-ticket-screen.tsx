@@ -16,6 +16,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { taskTone } from '../../../lib/status-tone';
+import { Fact, Facts } from '../../../components/facts';
 
 const glyph = { size: 14, strokeWidth: 2.25, 'aria-hidden': true as const };
 
@@ -83,93 +84,48 @@ export function TaskTicketScreen() {
         <section className="pane task-ticket">
           <div className="task-board">
             <aside className="task-rail">
-              <dl className="task-facts">
+              <Facts variant="list">
                 {task.msisdn ? (
-                  <div>
-                    <dt>{t.number}</dt>
-                    <dd>
-                      <bdi dir="ltr">{task.msisdn}</bdi>
-                    </dd>
-                  </div>
+                  <Fact label={t.number}>
+                    <bdi dir="ltr">{task.msisdn}</bdi>
+                  </Fact>
                 ) : null}
-                <div>
-                  <dt>{t.taskState}</dt>
-                  <dd>
-                    <Badge variant={taskTone(task.status)} dot>
-                      {taskStatus(t, task.status)}
-                    </Badge>
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t.simType}</dt>
-                  <dd>{task.esim ? t.esim : t.physicalSim}</dd>
-                </div>
-                <div>
-                  <dt>{t.simSerial}</dt>
-                  <dd>{task.iccid ? <bdi dir="ltr">{task.iccid}</bdi> : '—'}</dd>
-                </div>
+                <Fact label={t.taskState}>
+                  <Badge variant={taskTone(task.status)} dot>
+                    {taskStatus(t, task.status)}
+                  </Badge>
+                </Fact>
+                <Fact label={t.simType}>{task.esim ? t.esim : t.physicalSim}</Fact>
+                <Fact label={t.simSerial}>{task.iccid ? <bdi dir="ltr">{task.iccid}</bdi> : '—'}</Fact>
                 {task.esimQr ? (
-                  <div>
-                    <dt>{t.esimQr}</dt>
-                    <dd><EsimMark src={task.esimQr} label={t.esimQr} onOpen={() => setQrOpen(true)} /></dd>
-                  </div>
+                  <Fact label={t.esimQr}><EsimMark src={task.esimQr} label={t.esimQr} onOpen={() => setQrOpen(true)} /></Fact>
                 ) : null}
-                <div>
-                  <dt>{t.packageName}</dt>
-                  <dd>{task.packageName || '—'}</dd>
-                </div>
-                <div>
-                  <dt>{t.company}</dt>
-                  <dd>{task.companyName || '—'}</dd>
-                </div>
-                <div>
-                  <dt>{t.provider}</dt>
-                  <dd>{task.providerName || '—'}</dd>
-                </div>
+                <Fact label={t.packageName}>{task.packageName || '—'}</Fact>
+                <Fact label={t.company}>{task.companyName || '—'}</Fact>
+                <Fact label={t.provider}>{task.providerName || '—'}</Fact>
                 {task.posLogin ? (
-                  <div>
-                    <dt>{t.pointOfSale}</dt>
-                    <dd>
-                      <AccountName login={task.posLogin} />
-                    </dd>
-                  </div>
+                  <Fact label={t.pointOfSale}>
+                    <AccountName login={task.posLogin} />
+                  </Fact>
                 ) : null}
-                <div>
-                  <dt>{t.amount}</dt>
-                  <dd>
-                    <Money value={task.posDelta} />
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t.movement}</dt>
-                  <dd>{actionName(t, task.action)}</dd>
-                </div>
-                <div>
-                  <dt>{t.taskSubmitter}</dt>
-                  <dd>
-                    <AccountName login={task.submitterLogin} />
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t.taskAssignee}</dt>
-                  <dd><AccountName login={task.assigneeLogin} /></dd>
-                </div>
-                <div>
-                  <dt>{t.started}</dt>
-                  <dd>
-                    <bdi dir="ltr">{latinWhen(task.createdAt)}</bdi>
-                  </dd>
-                </div>
+                <Fact label={t.amount}>
+                  <Money value={task.posDelta} />
+                </Fact>
+                <Fact label={t.movement}>{actionName(t, task.action)}</Fact>
+                <Fact label={t.taskSubmitter}>
+                  <AccountName login={task.submitterLogin} />
+                </Fact>
+                <Fact label={t.taskAssignee}><AccountName login={task.assigneeLogin} /></Fact>
+                <Fact label={t.started}>
+                  <bdi dir="ltr">{latinWhen(task.createdAt)}</bdi>
+                </Fact>
                 {task.note ? (
-                  <div>
-                    <dt>{t.taskReason}</dt>
-                    <dd>
-                      {task.note}
-                      {task.providerName ? ` · ${task.providerName}` : ''}
-                    </dd>
-                  </div>
+                  <Fact label={t.taskReason}>
+                    {task.note}
+                    {task.providerName ? ` · ${task.providerName}` : ''}
+                  </Fact>
                 ) : null}
-              </dl>
+              </Facts>
 
               <div className="task-toolbar">
                 {task.canTake ? (

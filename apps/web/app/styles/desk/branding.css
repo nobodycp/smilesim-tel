@@ -72,7 +72,7 @@
   background: var(--rd-surface-2);
   font-size: var(--rd-text-sm);
 }
-.bp-tab-icon { flex: none; width: 16px; height: 16px; overflow: hidden; border-radius: 4px; background: var(--rd-primary-bg); }
+.bp-tab-icon { flex: none; width: 16px; height: 16px; overflow: hidden; border-radius: var(--rd-radius-2xs); background: var(--rd-primary-bg); }
 .bp-tab-icon img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .bp-tab-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .bp-tab-close { color: var(--rd-muted); }
@@ -100,7 +100,7 @@
 .bp-name { font-size: var(--rd-text-sm); font-weight: 700; color: var(--rd-ink); }
 .bp-tag { font-size: var(--rd-text-2xs); color: var(--rd-muted); }
 .bp-lines { display: grid; gap: var(--rd-space-2-5); align-content: start; padding: 18px var(--rd-space-4); }
-.bp-lines span { height: 8px; border-radius: 99px; background: var(--rd-surface-3); }
+.bp-lines span { height: 8px; border-radius: var(--rd-radius-pill); background: var(--rd-surface-3); }
 .bp-login {
   display: grid;
   justify-items: center;

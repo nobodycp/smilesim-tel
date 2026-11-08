@@ -9,7 +9,7 @@ import { RowMenu } from '../../../components/row-menu';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type Shelf } from '../../../lib/api';
-import { hueOf, markOf, compactImage } from '../../../lib/company-mark';
+import { markColor, markOf, compactImage } from '../../../lib/company-mark';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
@@ -61,7 +61,7 @@ export function CompaniesScreen() {
           {company.image ? (
             <DataImage className="company-logo" src={company.image} alt="" />
           ) : (
-            <span className="company-mark" style={{ background: `hsl(${hueOf(company.name)} 42% 42%)` }}>{markOf(company.name)}</span>
+            <span className="company-mark" style={{ background: markColor(company.name) }}>{markOf(company.name)}</span>
           )}
           <Link className="row-link" href={`/companies/${company.code}`}>{company.name}</Link>
         </span>

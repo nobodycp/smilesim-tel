@@ -116,7 +116,7 @@
   inset-block: 25%;
   inset-inline-start: 0;
   width: 3px;
-  border-radius: 99px;
+  border-radius: var(--rd-radius-pill);
   background: var(--rd-ink);
 }
 /* Muted, not faint: a locked page is still a label someone reads (about 5:1, AA). */
@@ -214,10 +214,10 @@
 }
 .menu-btn.shell-icon { display: none; }
 .shell-icon svg { width: 18px; height: 18px; }
-.topbar .shell-icon .shell-sun,
-.topbar .shell-icon .shell-moon { display: none; }
-html:not(.dark) .topbar .shell-icon .shell-moon { display: block; }
-html.dark .topbar .shell-icon .shell-sun { display: block; }
+:is(.topbar, .drawer-prefs) .shell-icon .shell-sun,
+:is(.topbar, .drawer-prefs) .shell-icon .shell-moon { display: none; }
+html:not(.dark) :is(.topbar, .drawer-prefs) .shell-icon .shell-moon { display: block; }
+html.dark :is(.topbar, .drawer-prefs) .shell-icon .shell-sun { display: block; }
 .shell-lang {
   font-size: 0.8rem;
   font-weight: 700;
@@ -286,7 +286,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   width: 100%;
   padding: 0.55rem 0.7rem;
   border: 0;
-  border-radius: 0.7rem;
+  border-radius: var(--rd-radius-card);
   background: transparent;
   color: inherit;
   font-size: 0.9rem;
@@ -416,7 +416,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   min-width: 1.45rem;
   padding: 0.12rem 0.4rem;
   border: 1px solid var(--rd-line);
-  border-radius: 0.35rem;
+  border-radius: var(--rd-radius-xs);
   background: var(--rd-surface);
   color: var(--rd-faint);
   font-size: 0.68rem;
@@ -482,7 +482,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   box-shadow: var(--rd-shadow-pop);
 }
 .shell-search-label { margin: 0; padding: 0.35rem 0.5rem 0.15rem; color: var(--rd-muted); font-size: 0.7rem; font-weight: 700; }
-.shell-search-item { display: grid; gap: 1px; padding: 0.4rem 0.5rem; border-radius: 0.6rem; }
+.shell-search-item { display: grid; gap: 1px; padding: 0.4rem 0.5rem; border-radius: var(--rd-radius-md); }
 .shell-search-item:hover { background: color-mix(in srgb, var(--rd-ink) 8%, var(--rd-surface)); }
 .shell-search-item small, .shell-search-empty { color: var(--rd-muted); }
 .shell-search-empty { margin: 0; padding: 0.8rem; text-align: center; font-size: 0.85rem; }
@@ -590,7 +590,7 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   inset-inline-end: 6px;
   width: 8px;
   height: 8px;
-  border-radius: 99px;
+  border-radius: var(--rd-radius-pill);
   background: var(--rd-accent);
 }
 .notice-pop {
@@ -623,6 +623,13 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
 .notice-pop small { color: var(--rd-muted); }
 /* Touch: the shell turns to the drawer at 767px (responsive.css), so the topbar controls reach 44px there.
    The .topbar prefix lifts the search selectors over the 2.6rem width responsive.css gives them at this width. */
+/* Theme and language: in the topbar, or at the drawer's foot on the narrowest phones (see office-shell). */
+.topbar-prefs { display: contents; }
+.drawer-prefs { display: none; }
+@media (max-width: 359px) {
+  .topbar-prefs { display: none; }
+  .drawer-prefs { display: flex; gap: var(--rd-space-2); padding-block-end: var(--rd-space-2); }
+}
 @media (max-width: 767px) {
   .topbar { padding-inline: var(--rd-space-2); gap: var(--rd-space-1-5); }
   .topbar-start { flex: none; gap: var(--rd-space-1-5); }

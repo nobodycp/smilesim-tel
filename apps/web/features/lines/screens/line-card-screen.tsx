@@ -27,6 +27,7 @@ import { lineTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { DataImage } from '../../../components/data-image';
+import { Fact, Facts } from '../../../components/facts';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
@@ -195,20 +196,20 @@ export function LineCardScreen() {
             )}
             {tab === 'details' && (
               <div className="pane-body line-details">
-                <dl className="detail-rows">
-                  <div><dt>{t.company}</dt><dd>{line.companyName || '—'}</dd></div>
-                  <div><dt>{t.packageName}</dt><dd>{line.packageName}</dd></div>
-                  <div><dt>{t.simType}</dt><dd>{line.esim ? t.esim : t.physicalSim}</dd></div>
-                  <div><dt>{t.simSerial}</dt><dd>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</dd></div>
+                <Facts>
+                  <Fact label={t.company}>{line.companyName || '—'}</Fact>
+                  <Fact label={t.packageName}>{line.packageName}</Fact>
+                  <Fact label={t.simType}>{line.esim ? t.esim : t.physicalSim}</Fact>
+                  <Fact label={t.simSerial}>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</Fact>
                   {line.esim && line.esimQr && (
-                    <div><dt>{t.esimQr}</dt><dd><Button type="button" variant="secondary" size="iconSm" aria-label={t.showQr} title={t.showQr} onClick={() => setDialog('qr')}><QrCode size={16} strokeWidth={1.75} aria-hidden="true" /></Button></dd></div>
+                    <Fact label={t.esimQr}><Button type="button" variant="secondary" size="iconSm" aria-label={t.showQr} title={t.showQr} onClick={() => setDialog('qr')}><QrCode size={16} strokeWidth={1.75} aria-hidden="true" /></Button></Fact>
                   )}
-                  <div><dt>{t.endsOn}</dt><dd><bdi dir="ltr">{latinWhen(line.endsAt).slice(0, 10)}</bdi></dd></div>
-                  <div><dt>{t.remainingDays}</dt><dd>{daysLeft(line.endsAt)} {t.dayUnit}</dd></div>
-                  <div><dt>{t.lastRecharge}</dt><dd>{line.lastRechargeAt ? <bdi dir="ltr">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</dd></div>
-                  <div><dt>{t.subscriptionPrice}</dt><dd><Money value={line.subscriberPrice ?? line.posPrice} /></dd></div>
-                  {!isPos && line.posLogin && <div><dt>{t.pointOfSale}</dt><dd><AccountName login={line.posLogin} /></dd></div>}
-                </dl>
+                  <Fact label={t.endsOn}><bdi dir="ltr">{latinWhen(line.endsAt).slice(0, 10)}</bdi></Fact>
+                  <Fact label={t.remainingDays}>{daysLeft(line.endsAt)} {t.dayUnit}</Fact>
+                  <Fact label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</Fact>
+                  <Fact label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Fact>
+                  {!isPos && line.posLogin && <Fact label={t.pointOfSale}><AccountName login={line.posLogin} /></Fact>}
+                </Facts>
                 <section className="usage">
                   <h2>{t.usage}</h2>
                   <div className="usage-meters">
@@ -267,9 +268,9 @@ export function LineCardScreen() {
             )}
           >
             <div className="stack">
-              <dl className="detail-rows">
-                <div><dt>{t.currentSim}</dt><dd>{simLabel(line)}</dd></div>
-              </dl>
+              <Facts>
+                <Fact label={t.currentSim}>{simLabel(line)}</Fact>
+              </Facts>
               <label>
                 {t.newSim}
                 <input value={nextIccid} inputMode="numeric" dir="ltr" onChange={(event) => setNextIccid(event.target.value)} />
@@ -311,11 +312,11 @@ export function LineCardScreen() {
             )}
           >
             <div className="stack">
-              <dl className="detail-rows">
-                <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
-                <div><dt>{t.currentSim}</dt><dd>{simLabel(line)}</dd></div>
-                <div><dt>{t.esimPrice}</dt><dd><Money value={line.esimPrice ?? 0} /></dd></div>
-              </dl>
+              <Facts>
+                <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
+                <Fact label={t.currentSim}>{simLabel(line)}</Fact>
+                <Fact label={t.esimPrice}><Money value={line.esimPrice ?? 0} /></Fact>
+              </Facts>
               <p className="hint">{t.requestEsimHint.replace('{price}', formatShekel(line.esimPrice ?? 0))}</p>
             </div>
           </Dialog>
@@ -339,9 +340,9 @@ export function LineCardScreen() {
             )}
           >
             <div className="stack">
-              <dl className="detail-rows">
-                <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
-              </dl>
+              <Facts>
+                <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
+              </Facts>
               <label>
                 {t.newNumber}
                 <input value={nextNumber} inputMode="numeric" dir="ltr" onChange={(event) => setNextNumber(event.target.value)} />
@@ -410,10 +411,10 @@ export function LineCardScreen() {
             )}
           >
             <div className="stack">
-              <dl className="detail-rows">
-                <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
-                <div><dt>{t.pointOfSale}</dt><dd><AccountName login={line.posLogin} /></dd></div>
-              </dl>
+              <Facts>
+                <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
+                <Fact label={t.pointOfSale}><AccountName login={line.posLogin} /></Fact>
+              </Facts>
               <label>
                 {t.transfer}
                 <Select value={posLogin} onChange={(event) => setPosLogin(event.target.value)}>

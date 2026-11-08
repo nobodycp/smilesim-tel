@@ -12,6 +12,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Alert } from './alert';
 import { DataImage } from './data-image';
+import { Fact, Facts } from './facts';
 
 type SimLike = { esim: boolean; esimQr: string | null };
 type LineLike = SimLike & { msisdn: string; iccid: string | null };
@@ -49,10 +50,10 @@ export function EsimDialog({ line, onClose }: { line: LineLike | null; onClose: 
       {line?.esimQr ? (
         <div className="stack">
           <QrTile src={line.esimQr} />
-          <dl className="detail-rows">
-            <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
-            <div><dt>{t.simSerial}</dt><dd>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</dd></div>
-          </dl>
+          <Facts>
+            <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
+            <Fact label={t.simSerial}>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</Fact>
+          </Facts>
         </div>
       ) : null}
     </Dialog>

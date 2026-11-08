@@ -10,6 +10,7 @@ import { QrTile } from './esim-qr';
 import { Button } from './ui/button';
 import type { ApplyResult } from '../lib/api';
 import { usePrefs } from '../lib/prefs';
+import { Fact, Facts } from './facts';
 
 export function ActivationResult({ result, onClose }: { result: ApplyResult | null; onClose: () => void }) {
   const { t } = usePrefs();
@@ -36,11 +37,11 @@ export function ActivationResult({ result, onClose }: { result: ApplyResult | nu
       {line ? (
         <div className="stack">
           {line.esimQr ? <QrTile src={line.esimQr} /> : null}
-          <dl className="detail-rows">
-            <div><dt>{t.number}</dt><dd><bdi dir="ltr">{line.msisdn}</bdi></dd></div>
-            <div><dt>{t.simType}</dt><dd>{line.esim ? t.esim : t.physicalSim}</dd></div>
-            <div><dt>{t.simSerial}</dt><dd>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</dd></div>
-          </dl>
+          <Facts>
+            <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
+            <Fact label={t.simType}>{line.esim ? t.esim : t.physicalSim}</Fact>
+            <Fact label={t.simSerial}>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</Fact>
+          </Facts>
           {result?.debited ? <p className="hint">{t.appliedNow}</p> : null}
         </div>
       ) : null}
