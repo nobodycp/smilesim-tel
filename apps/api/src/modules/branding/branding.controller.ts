@@ -5,7 +5,7 @@ import type { Request, Response } from 'express';
 import { errorBody } from '../../errors';
 import { ApiErrorResponse } from '../../openapi/responses';
 import { ActivityRecorder } from '../office/activity-recorder';
-import { OfficeFailure } from '../office/office.service';
+import { OfficeFailure } from '../office/office-failure';
 import { BrandingService, type ImageKind } from './branding.service';
 
 export class BrandingBodyDto {

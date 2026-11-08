@@ -1,0 +1,33 @@
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
+import { Observable, catchError, from, mergeMap, throwError } from 'rxjs';
+import { ACTIVITY_KEY, type ActivityMeta } from './activity.decorator';
+import { ActivityRecorder } from './activity-recorder';
+import { gateOf } from './gate';
+import { OfficeFailure } from './office-failure';
+
+/** Writes the activity event a route declares with `@Activity`, after the route answered or refused. */
+@Injectable()
+export class ActivityInterceptor implements NestInterceptor {
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly activity: ActivityRecorder,
+  ) {}
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const meta = this.reflector.get<ActivityMeta | undefined>(ACTIVITY_KEY, context.getHandler());
+    if (!meta) return next.handle();
+    const req = context.switchToHttp().getRequest<Request>();
+    const event = { action: meta.action, subjectKind: meta.subjectKind, subjectRef: meta.subject(req) };
+    const record = (result: 'ok' | 'fail', reason: string) => this.activity.recordOffice(gateOf(req), req.ip ?? '', event, result, reason);
+    return next.handle().pipe(
+      mergeMap((value) => from(record('ok', '').then(() => value))),
+      catchError((error: unknown) =>
+        error instanceof OfficeFailure
+          ? from(record('fail', error.code)).pipe(mergeMap(() => throwError(() => error)))
+          : throwError(() => error),
+      ),
+    );
+  }
+}

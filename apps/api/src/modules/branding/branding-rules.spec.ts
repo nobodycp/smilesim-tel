@@ -1,4 +1,4 @@
-import { OfficeFailure } from '../office/office.service';
+import { OfficeFailure } from '../office/office-failure';
 import { brandingSummary, decodeImage, parseBrandingBody } from './branding-rules';
 
 describe('branding rules', () => {

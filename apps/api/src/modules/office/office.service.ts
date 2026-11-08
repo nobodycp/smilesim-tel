@@ -4,7 +4,7 @@ import { PrismaService } from '../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
 import { hashPassword } from '../auth/password';
-import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
+import { OfficeFailure, fail } from './office-failure';
 import { newPasswordProblem, fullNameProblem } from '../auth/validators';
 import { catalog, companies, packageCode, packageName } from './office-catalog';
 import {
@@ -184,15 +184,7 @@ function periodOf(months: number, endsAt: Date | null) {
   return { days: PERIOD_DAYS * Math.max(1, months), endsAt };
 }
 
-export class OfficeFailure extends Error {
-  constructor(readonly status: number, readonly code: ErrorCode) {
-    super(ERROR_MESSAGES[code]);
-  }
-}
-
-function fail(status: number, code: ErrorCode): never {
-  throw new OfficeFailure(status, code);
-}
+export { OfficeFailure };
 
 /** An account as one step of a path. */
 function nodeOf(account: Account): PathNode {

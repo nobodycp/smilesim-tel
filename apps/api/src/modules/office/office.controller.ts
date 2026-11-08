@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
 import {
   ApiBody,
   ApiCookieAuth,
@@ -11,8 +11,12 @@ import {
 import type { CookieOptions, Request, Response } from 'express';
 import { SESSION_TTL_SECONDS } from '../auth/sessions';
 import { ApiErrorResponse } from '../../openapi/responses';
-import { ActivityDraft, ActivityRecorder } from './activity-recorder';
-import { OfficeFailure, OfficeService } from './office.service';
+import { Activity, bodyField, param } from './activity.decorator';
+import { ActivityInterceptor } from './activity.interceptor';
+import { gateOf, readCookie } from './gate';
+import { OfficeFailure } from './office-failure';
+import { OfficeFailureFilter } from './office-failure.filter';
+import { OfficeService } from './office.service';
 import {
   AccessBodyDto,
   AnnouncementBodyDto,
@@ -54,30 +58,11 @@ function cookieBase(): CookieOptions {
   };
 }
 
-function readCookie(req: Request, name: string): string | undefined {
-  const parsed = (req as Request & { cookies?: Record<string, unknown> }).cookies?.[name];
-  if (typeof parsed === 'string' && parsed) return parsed;
-  for (const part of String(req.headers.cookie ?? '').split(';')) {
-    const index = part.indexOf('=');
-    if (index > 0 && part.slice(0, index).trim() === name) {
-      try {
-        return decodeURIComponent(part.slice(index + 1).trim()) || undefined;
-      } catch {
-        return undefined;
-      }
-    }
-  }
-  return undefined;
-}
-
 /** A query value is a string or nothing; a repeated or nested one is ignored. */
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value ? value : undefined;
 }
 
-function gateOf(req: Request) {
-  return { sessionId: readCookie(req, 'sid'), homeId: readCookie(req, 'home') };
-}
 
 const freeFormObject = {
   type: 'object' as const,
@@ -89,39 +74,38 @@ const freeFormObject = {
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')
+@UseFilters(OfficeFailureFilter)
+@UseInterceptors(ActivityInterceptor)
 export class OfficeController {
-  constructor(
-    private readonly office: OfficeService,
-    private readonly activity: ActivityRecorder,
-  ) {}
+  constructor(private readonly office: OfficeService) {}
 
   @Get('me')
   @ApiOperation({ summary: 'Current office identity, balance, grants' })
   @ApiErrorResponse(401, 403)
-  me(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.me(gateOf(req)));
+  me(@Req() req: Request) {
+    return this.office.me(gateOf(req));
   }
 
   @Get('home')
   @ApiOperation({ summary: 'Home desk payload (stats, shortcuts, panes)' })
   @ApiErrorResponse(401, 403)
-  home(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.home(gateOf(req)));
+  home(@Req() req: Request) {
+    return this.office.home(gateOf(req));
   }
 
   @Post('announcements')
   @ApiOperation({ summary: 'Post a desk announcement' })
   @ApiBody({ type: AnnouncementBodyDto })
   @ApiErrorResponse(401, 403, 400)
-  postAnnouncement(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body: AnnouncementBodyDto) {
-    return this.run(res, () => this.office.postAnnouncement(gateOf(req), body));
+  postAnnouncement(@Req() req: Request, @Body() body: AnnouncementBodyDto) {
+    return this.office.postAnnouncement(gateOf(req), body);
   }
 
   @Get('wallets')
   @ApiOperation({ summary: 'List wallets visible to the session' })
   @ApiErrorResponse(401, 403)
-  wallets(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.wallets(gateOf(req)));
+  wallets(@Req() req: Request) {
+    return this.office.wallets(gateOf(req));
   }
 
   @Post('wallets/:loginName/fund')
@@ -129,13 +113,13 @@ export class OfficeController {
   @ApiParam({ name: 'loginName' })
   @ApiBody({ type: FundBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('fund', 'account', param('loginName'))
   fund(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
     @Body() body: FundBodyDto,
   ) {
-    return this.run(res, () => this.office.fund(gateOf(req), loginName, body), { action: 'fund', subjectKind: 'account', subjectRef: loginName });
+    return this.office.fund(gateOf(req), loginName, body);
   }
 
   @Patch('wallets/:loginName/ceiling')
@@ -145,33 +129,32 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 400, 404)
   ceiling(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
     @Body() body: CeilingBodyDto,
   ) {
-    return this.run(res, () => this.office.setCeiling(gateOf(req), loginName, body));
+    return this.office.setCeiling(gateOf(req), loginName, body);
   }
 
   @Get('packages')
   @ApiOperation({ summary: 'Package catalogue for the door' })
   @ApiErrorResponse(401, 403)
-  packages(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.packages(gateOf(req)));
+  packages(@Req() req: Request) {
+    return this.office.packages(gateOf(req));
   }
 
   @Get('companies')
   @ApiOperation({ summary: 'Companies shelf' })
   @ApiErrorResponse(401, 403)
-  companies(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.companiesShelf(gateOf(req)));
+  companies(@Req() req: Request) {
+    return this.office.companiesShelf(gateOf(req));
   }
 
   @Get('packages/:code/sheet')
   @ApiOperation({ summary: 'Package pricing / chain sheet' })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
-  packageSheet(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('code') code: string) {
-    return this.run(res, () => this.office.packageSheet(gateOf(req), code));
+  packageSheet(@Req() req: Request, @Param('code') code: string) {
+    return this.office.packageSheet(gateOf(req), code);
   }
 
   @Patch('packages/:code/chain')
@@ -179,13 +162,13 @@ export class OfficeController {
   @ApiParam({ name: 'code' })
   @ApiBody({ schema: freeFormObject })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('package_chain', 'package', param('code'))
   packageChain(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Body() body: Record<string, unknown>,
   ) {
-    return this.run(res, () => this.office.setChain(gateOf(req), code, body), { action: 'package_chain', subjectKind: 'package', subjectRef: code });
+    return this.office.setChain(gateOf(req), code, body);
   }
 
   @Put('packages/:code/renewals')
@@ -195,11 +178,10 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 400, 404)
   packageRenewals(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Body() body: PackageTargetsBodyDto,
   ) {
-    return this.run(res, () => this.office.setPackageTargets(gateOf(req), code, 'renewals', body));
+    return this.office.setPackageTargets(gateOf(req), code, 'renewals', body);
   }
 
   @Put('packages/:code/switches')
@@ -209,19 +191,18 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 400, 404)
   packageSwitches(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Body() body: PackageTargetsBodyDto,
   ) {
-    return this.run(res, () => this.office.setPackageTargets(gateOf(req), code, 'switches', body));
+    return this.office.setPackageTargets(gateOf(req), code, 'switches', body);
   }
 
   @Get('packages/:code/custom-prices')
   @ApiOperation({ summary: 'Accounts whose price for this package differs from their default' })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
-  customPrices(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('code') code: string) {
-    return this.run(res, () => this.office.customPrices(gateOf(req), code));
+  customPrices(@Req() req: Request, @Param('code') code: string) {
+    return this.office.customPrices(gateOf(req), code);
   }
 
   @Put('packages/:code/custom-prices/:loginName')
@@ -230,18 +211,14 @@ export class OfficeController {
   @ApiParam({ name: 'loginName' })
   @ApiBody({ type: CustomPriceBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('user_package', 'user', (req) => `${param('loginName')(req)}:${param('code')(req)}`)
   setCustomPrice(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Param('loginName') loginName: string,
     @Body() body: CustomPriceBodyDto,
   ) {
-    return this.run(res, () => this.office.setCustomPrice(gateOf(req), code, loginName, body), {
-      action: 'user_package',
-      subjectKind: 'user',
-      subjectRef: `${loginName}:${code}`,
-    });
+    return this.office.setCustomPrice(gateOf(req), code, loginName, body);
   }
 
   @Delete('packages/:code/custom-prices/:loginName')
@@ -249,17 +226,13 @@ export class OfficeController {
   @ApiParam({ name: 'code' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
+  @Activity('user_package', 'user', (req) => `${param('loginName')(req)}:${param('code')(req)}`)
   clearCustomPrice(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Param('loginName') loginName: string,
   ) {
-    return this.run(res, () => this.office.clearCustomPrice(gateOf(req), code, loginName), {
-      action: 'user_package',
-      subjectKind: 'user',
-      subjectRef: `${loginName}:${code}`,
-    });
+    return this.office.clearCustomPrice(gateOf(req), code, loginName);
   }
 
   @Get('packages/:code/line-prices')
@@ -269,11 +242,10 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 400, 404)
   linePrices(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Query('scope') scope?: string,
   ) {
-    return this.run(res, () => this.office.linePrices(gateOf(req), code, { scope }));
+    return this.office.linePrices(gateOf(req), code, { scope });
   }
 
   @Put('packages/:code/line-prices')
@@ -281,13 +253,13 @@ export class OfficeController {
   @ApiParam({ name: 'code' })
   @ApiBody({ type: LinePricesBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('package_reprice', 'package', param('code'))
   setLinePrices(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Body() body: LinePricesBodyDto,
   ) {
-    return this.run(res, () => this.office.setLinePrices(gateOf(req), code, body), { action: 'package_reprice', subjectKind: 'package', subjectRef: code });
+    return this.office.setLinePrices(gateOf(req), code, body);
   }
 
   @Patch('packages/:code/mode')
@@ -295,13 +267,13 @@ export class OfficeController {
   @ApiParam({ name: 'code' })
   @ApiBody({ schema: freeFormObject })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('package_mode', 'package', param('code'))
   packageMode(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Body() body: Record<string, unknown>,
   ) {
-    return this.run(res, () => this.office.setPackageMode(gateOf(req), code, body), { action: 'package_mode', subjectKind: 'package', subjectRef: code });
+    return this.office.setPackageMode(gateOf(req), code, body);
   }
 
   @Put('sell-prices/:code')
@@ -309,29 +281,30 @@ export class OfficeController {
   @ApiParam({ name: 'code' })
   @ApiBody({ type: SellPriceBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('sell_price', 'package', param('code'))
   setSellPrice(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Body() body: SellPriceBodyDto,
   ) {
-    return this.run(res, () => this.office.setSellPrice(gateOf(req), code, body), { action: 'sell_price', subjectKind: 'package', subjectRef: code });
+    return this.office.setSellPrice(gateOf(req), code, body);
   }
 
   @Delete('sell-prices/:code')
   @ApiOperation({ summary: "Clear the caller's own sell price for a package; the layer column applies again" })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
-  clearSellPrice(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('code') code: string) {
-    return this.run(res, () => this.office.clearSellPrice(gateOf(req), code), { action: 'sell_price', subjectKind: 'package', subjectRef: code });
+  @Activity('sell_price', 'package', param('code'))
+  clearSellPrice(@Req() req: Request, @Param('code') code: string) {
+    return this.office.clearSellPrice(gateOf(req), code);
   }
 
   @Post('companies/image')
   @ApiOperation({ summary: 'Set company mark / image' })
   @ApiBody({ type: CompanyImageBodyDto })
   @ApiErrorResponse(401, 403, 400)
-  companyImage(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body: CompanyImageBodyDto) {
-    return this.run(res, () => this.office.setCompanyImage(gateOf(req), body));
+  companyImage(@Req() req: Request, @Body() body: CompanyImageBodyDto) {
+    return this.office.setCompanyImage(gateOf(req), body);
   }
 
   @Put('companies/:code/sim')
@@ -339,28 +312,28 @@ export class OfficeController {
   @ApiParam({ name: 'code' })
   @ApiBody({ type: CompanySimBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('company_sim', 'company', param('code'))
   companySim(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Body() body: CompanySimBodyDto,
   ) {
-    return this.run(res, () => this.office.setCompanySim(gateOf(req), code, body), { action: 'company_sim', subjectKind: 'company', subjectRef: code });
+    return this.office.setCompanySim(gateOf(req), code, body);
   }
 
   @Get('providers')
   @ApiOperation({ summary: 'Provider list' })
   @ApiErrorResponse(401, 403)
-  providers(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.providers(gateOf(req)));
+  providers(@Req() req: Request) {
+    return this.office.providers(gateOf(req));
   }
 
   @Get('providers/:code/settings')
   @ApiOperation({ summary: 'Provider settings including default run modes' })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
-  providerSettings(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('code') code: string) {
-    return this.run(res, () => this.office.providerSettings(gateOf(req), code));
+  providerSettings(@Req() req: Request, @Param('code') code: string) {
+    return this.office.providerSettings(gateOf(req), code);
   }
 
   @Patch('providers/:code/esim-price')
@@ -368,13 +341,13 @@ export class OfficeController {
   @ApiParam({ name: 'code' })
   @ApiBody({ type: ProviderEsimPriceBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('provider_esim_price', 'provider', param('code'))
   setProviderEsimPrice(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Body() body: ProviderEsimPriceBodyDto,
   ) {
-    return this.run(res, () => this.office.setProviderEsimPrice(gateOf(req), code, body), { action: 'provider_esim_price', subjectKind: 'provider', subjectRef: code });
+    return this.office.setProviderEsimPrice(gateOf(req), code, body);
   }
 
   @Patch('providers/:code/settings')
@@ -382,13 +355,13 @@ export class OfficeController {
   @ApiParam({ name: 'code' })
   @ApiBody({ type: ProviderModeBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('provider_mode', 'provider', param('code'))
   setProviderMode(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('code') code: string,
     @Body() body: ProviderModeBodyDto,
   ) {
-    return this.run(res, () => this.office.setProviderMode(gateOf(req), code, body as Record<string, unknown>), { action: 'provider_mode', subjectKind: 'provider', subjectRef: code });
+    return this.office.setProviderMode(gateOf(req), code, body as Record<string, unknown>);
   }
 
   @Get('lines')
@@ -402,7 +375,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403)
   lines(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Query('cursor') cursor?: string,
     @Query('q') q?: string,
     @Query('status') status?: string,
@@ -410,40 +382,40 @@ export class OfficeController {
     @Query('provider') provider?: string,
     @Query('company') company?: string,
   ) {
-    return this.run(res, () =>
-      this.office.lines(gateOf(req), {
+    return this.office.lines(gateOf(req), {
         cursor: text(cursor),
         q: text(q),
         status: text(status),
         packageCode: text(packageCode),
         provider: text(provider),
         company: text(company),
-      }),
-    );
+      });
   }
 
   @Get('lines/:id')
   @ApiOperation({ summary: 'Single line detail' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
-  line(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('id') id: string) {
-    return this.run(res, () => this.office.line(gateOf(req), id));
+  line(@Req() req: Request, @Param('id') id: string) {
+    return this.office.line(gateOf(req), id);
   }
 
   @Post('lines')
   @ApiOperation({ summary: 'Activate a new line' })
   @ApiBody({ schema: freeFormObject })
   @ApiErrorResponse(401, 403, 400)
-  activate(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body: Record<string, unknown>) {
-    return this.run(res, () => this.office.activate(gateOf(req), body), { action: 'activate', subjectKind: 'line', subjectRef: typeof body.msisdn === 'string' ? body.msisdn : '' });
+  @Activity('activate', 'line', bodyField('msisdn'))
+  activate(@Req() req: Request, @Body() body: Record<string, unknown>) {
+    return this.office.activate(gateOf(req), body);
   }
 
   @Post('lines/:id/company-switch')
   @ApiOperation({ summary: 'Switch the carrier. Fields are not defined yet, so the request is rejected.' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 400, 404)
-  companySwitch(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('id') id: string) {
-    return this.run(res, () => this.office.companySwitch(), { action: 'company_switch', subjectKind: 'line', subjectRef: id });
+  @Activity('company_switch', 'line', param('id'))
+  companySwitch() {
+    return this.office.companySwitch();
   }
 
   @Post('lines/:id/charge')
@@ -451,13 +423,13 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: OutcomeBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('charge', 'line', param('id'))
   charge(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: OutcomeBodyDto,
   ) {
-    return this.run(res, () => this.office.operate(gateOf(req), id, 'charge', body), { action: 'charge', subjectKind: 'line', subjectRef: id });
+    return this.office.operate(gateOf(req), id, 'charge', body);
   }
 
   @Post('lines/:id/refresh')
@@ -465,21 +437,21 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: OutcomeBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('refresh', 'line', param('id'))
   refresh(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: OutcomeBodyDto,
   ) {
-    return this.run(res, () => this.office.refreshLine(gateOf(req), id, body), { action: 'refresh', subjectKind: 'line', subjectRef: id });
+    return this.office.refreshLine(gateOf(req), id, body);
   }
 
   @Get('lines/:id/disconnect-quote')
   @ApiOperation({ summary: 'What a disconnect would return to the point of sale now, and whether it runs at once' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 400, 404)
-  disconnectQuote(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('id') id: string) {
-    return this.run(res, () => this.office.disconnectQuote(gateOf(req), id));
+  disconnectQuote(@Req() req: Request, @Param('id') id: string) {
+    return this.office.disconnectQuote(gateOf(req), id);
   }
 
   @Post('lines/:id/disconnect')
@@ -487,13 +459,13 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: OutcomeBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('disconnect', 'line', param('id'))
   disconnect(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: OutcomeBodyDto,
   ) {
-    return this.run(res, () => this.office.operate(gateOf(req), id, 'disconnect', body), { action: 'disconnect', subjectKind: 'line', subjectRef: id });
+    return this.office.operate(gateOf(req), id, 'disconnect', body);
   }
 
   @Post('lines/:id/unfreeze')
@@ -501,13 +473,13 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: OutcomeBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('unfreeze', 'line', param('id'))
   unfreeze(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: OutcomeBodyDto,
   ) {
-    return this.run(res, () => this.office.operate(gateOf(req), id, 'unfreeze', body), { action: 'unfreeze', subjectKind: 'line', subjectRef: id });
+    return this.office.operate(gateOf(req), id, 'unfreeze', body);
   }
 
   @Post('lines/:id/freeze')
@@ -515,13 +487,13 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: OutcomeBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('freeze', 'line', param('id'))
   freeze(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: OutcomeBodyDto,
   ) {
-    return this.run(res, () => this.office.operate(gateOf(req), id, 'freeze', body), { action: 'freeze', subjectKind: 'line', subjectRef: id });
+    return this.office.operate(gateOf(req), id, 'freeze', body);
   }
 
   @Post('lines/:id/extend')
@@ -529,13 +501,13 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: ExtendBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('extend', 'line', param('id'))
   extend(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: ExtendBodyDto,
   ) {
-    return this.run(res, () => this.office.extend(gateOf(req), id, body), { action: 'extend', subjectKind: 'line', subjectRef: id });
+    return this.office.extend(gateOf(req), id, body);
   }
 
   @Post('lines/:id/reactivate')
@@ -543,13 +515,13 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: OutcomeBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('reactivate', 'line', param('id'))
   reactivate(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: OutcomeBodyDto,
   ) {
-    return this.run(res, () => this.office.reactivate(gateOf(req), id, body), { action: 'reactivate', subjectKind: 'line', subjectRef: id });
+    return this.office.reactivate(gateOf(req), id, body);
   }
 
   @Post('lines/:id/rename')
@@ -557,21 +529,22 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: RenameLineBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('rename', 'line', param('id'))
   rename(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: RenameLineBodyDto,
   ) {
-    return this.run(res, () => this.office.renameLine(gateOf(req), id, body), { action: 'rename', subjectKind: 'line', subjectRef: id });
+    return this.office.renameLine(gateOf(req), id, body);
   }
 
   @Post('lines/:id/esim')
   @ApiOperation({ summary: 'Request an eSIM for a line; always a branch task priced from the company, provider, or package' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 400, 404)
-  requestEsim(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('id') id: string) {
-    return this.run(res, () => this.office.requestEsim(gateOf(req), id), { action: 'esim', subjectKind: 'line', subjectRef: id });
+  @Activity('esim', 'line', param('id'))
+  requestEsim(@Req() req: Request, @Param('id') id: string) {
+    return this.office.requestEsim(gateOf(req), id);
   }
 
   @Post('lines/:id/sim')
@@ -579,13 +552,13 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: SwapSimBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('sim', 'line', param('id'))
   swapSim(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: SwapSimBodyDto,
   ) {
-    return this.run(res, () => this.office.swapSim(gateOf(req), id, body), { action: 'sim', subjectKind: 'line', subjectRef: id });
+    return this.office.swapSim(gateOf(req), id, body);
   }
 
   @Post('lines/:id/transfer')
@@ -595,11 +568,10 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 400, 404)
   transferLine(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: TransferLineBodyDto,
   ) {
-    return this.run(res, () => this.office.transferLine(gateOf(req), id, body));
+    return this.office.transferLine(gateOf(req), id, body);
   }
 
   @Post('lines/:id/switch')
@@ -607,13 +579,13 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: SwitchPackageBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('switch', 'line', param('id'))
   switchPackage(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: SwitchPackageBodyDto,
   ) {
-    return this.run(res, () => this.office.switchPackage(gateOf(req), id, body), { action: 'switch', subjectKind: 'line', subjectRef: id });
+    return this.office.switchPackage(gateOf(req), id, body);
   }
 
   @Get('notices')
@@ -624,12 +596,11 @@ export class OfficeController {
   @ApiErrorResponse(401, 403)
   notices(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Query('cursor') cursor?: string,
     @Query('group') group?: string,
     @Query('unread') unread?: string,
   ) {
-    return this.run(res, () => this.office.notices(gateOf(req), { cursor: text(cursor), group: text(group), unread: text(unread) }));
+    return this.office.notices(gateOf(req), { cursor: text(cursor), group: text(group), unread: text(unread) });
   }
 
   @Get('notices/stream')
@@ -669,9 +640,9 @@ export class OfficeController {
   @ApiOperation({ summary: 'Mark notice(s) read' })
   @ApiBody({ type: NoticeReadBodyDto })
   @ApiErrorResponse(401, 403)
-  readNotices(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body: NoticeReadBodyDto) {
+  readNotices(@Req() req: Request, @Body() body: NoticeReadBodyDto) {
     const id = typeof body.id === 'string' ? body.id : undefined;
-    return this.run(res, () => this.office.readNotices(gateOf(req), id));
+    return this.office.readNotices(gateOf(req), id);
   }
 
   @Get('tasks')
@@ -686,7 +657,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403)
   tasks(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Query('cursor') cursor?: string,
     @Query('q') q?: string,
     @Query('status') status?: string,
@@ -695,8 +665,7 @@ export class OfficeController {
     @Query('company') company?: string,
     @Query('provider') provider?: string,
   ) {
-    return this.run(res, () =>
-      this.office.tasks(gateOf(req), {
+    return this.office.tasks(gateOf(req), {
         cursor: text(cursor),
         q: text(q),
         status: text(status),
@@ -704,16 +673,15 @@ export class OfficeController {
         packageCode: text(packageCode),
         company: text(company),
         provider: text(provider),
-      }),
-    );
+      });
   }
 
   @Get('tasks/:id')
   @ApiOperation({ summary: 'Task ticket detail with timeline' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
-  task(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('id') id: string) {
-    return this.run(res, () => this.office.task(gateOf(req), id));
+  task(@Req() req: Request, @Param('id') id: string) {
+    return this.office.task(gateOf(req), id);
   }
 
   @Post('tasks/:id/notes')
@@ -721,29 +689,31 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: TaskInspectionNoteBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('task_note', 'task', param('id'))
   addTaskNote(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: TaskInspectionNoteBodyDto,
   ) {
-    return this.run(res, () => this.office.addTaskNote(gateOf(req), id, body), { action: 'task_note', subjectKind: 'task', subjectRef: id });
+    return this.office.addTaskNote(gateOf(req), id, body);
   }
 
   @Post('tasks/:id/take')
   @ApiOperation({ summary: 'Take a task' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
-  take(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('id') id: string) {
-    return this.run(res, () => this.office.takeTask(gateOf(req), id), { action: 'task_take', subjectKind: 'task', subjectRef: id });
+  @Activity('task_take', 'task', param('id'))
+  take(@Req() req: Request, @Param('id') id: string) {
+    return this.office.takeTask(gateOf(req), id);
   }
 
   @Post('tasks/:id/release')
   @ApiOperation({ summary: 'Release a taken task' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
-  release(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('id') id: string) {
-    return this.run(res, () => this.office.releaseTask(gateOf(req), id), { action: 'task_release', subjectKind: 'task', subjectRef: id });
+  @Activity('task_release', 'task', param('id'))
+  release(@Req() req: Request, @Param('id') id: string) {
+    return this.office.releaseTask(gateOf(req), id);
   }
 
   @Post('tasks/:id/complete')
@@ -751,13 +721,13 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: CompleteTaskBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('task_complete', 'task', param('id'))
   complete(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: CompleteTaskBodyDto,
   ) {
-    return this.run(res, () => this.office.completeTask(gateOf(req), id, body), { action: 'task_complete', subjectKind: 'task', subjectRef: id });
+    return this.office.completeTask(gateOf(req), id, body);
   }
 
   @Post('tasks/:id/reject')
@@ -765,51 +735,52 @@ export class OfficeController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: TaskRejectBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('task_reject', 'task', param('id'))
   reject(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('id') id: string,
     @Body() body: TaskRejectBodyDto,
   ) {
-    return this.run(res, () => this.office.rejectTask(gateOf(req), id, body), { action: 'task_reject', subjectKind: 'task', subjectRef: id });
+    return this.office.rejectTask(gateOf(req), id, body);
   }
 
   @Post('tasks/:id/cancel')
   @ApiOperation({ summary: 'Cancel a task' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
-  cancel(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('id') id: string) {
-    return this.run(res, () => this.office.cancelTask(gateOf(req), id), { action: 'task_cancel', subjectKind: 'task', subjectRef: id });
+  @Activity('task_cancel', 'task', param('id'))
+  cancel(@Req() req: Request, @Param('id') id: string) {
+    return this.office.cancelTask(gateOf(req), id);
   }
 
   @Get('users')
   @ApiOperation({ summary: 'Users list for the door' })
   @ApiErrorResponse(401, 403)
-  users(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.users(gateOf(req)));
+  users(@Req() req: Request) {
+    return this.office.users(gateOf(req));
   }
 
   @Get('directory')
   @ApiOperation({ summary: 'Login name → full name for the accounts the actor may meet on a screen' })
   @ApiErrorResponse(401, 403)
-  directory(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.directory(gateOf(req)));
+  directory(@Req() req: Request) {
+    return this.office.directory(gateOf(req));
   }
 
   @Get('users/:loginName')
   @ApiOperation({ summary: 'Single account detail' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
-  account(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('loginName') loginName: string) {
-    return this.run(res, () => this.office.account(gateOf(req), loginName));
+  account(@Req() req: Request, @Param('loginName') loginName: string) {
+    return this.office.account(gateOf(req), loginName);
   }
 
   @Get('users/:loginName/packages')
   @ApiOperation({ summary: 'Packages as this account sees and pays for them' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
-  userPackages(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('loginName') loginName: string) {
-    return this.run(res, () => this.office.userPackages(gateOf(req), loginName));
+  userPackages(@Req() req: Request, @Param('loginName') loginName: string) {
+    return this.office.userPackages(gateOf(req), loginName);
   }
 
   @Put('users/:loginName/packages')
@@ -817,13 +788,13 @@ export class OfficeController {
   @ApiParam({ name: 'loginName' })
   @ApiBody({ type: UserPackagesBulkBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('user_package', 'user', param('loginName'))
   setUserPackagesBulk(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
     @Body() body: UserPackagesBulkBodyDto,
   ) {
-    return this.run(res, () => this.office.setUserPackagesBulk(gateOf(req), loginName, body), { action: 'user_package', subjectKind: 'user', subjectRef: loginName });
+    return this.office.setUserPackagesBulk(gateOf(req), loginName, body);
   }
 
   @Put('users/:loginName/packages/:code')
@@ -832,26 +803,22 @@ export class OfficeController {
   @ApiParam({ name: 'code' })
   @ApiBody({ type: UserPackageBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('user_package', 'user', (req) => `${param('loginName')(req)}:${param('code')(req)}`)
   setUserPackage(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
     @Param('code') code: string,
     @Body() body: UserPackageBodyDto,
   ) {
-    return this.run(res, () => this.office.setUserPackage(gateOf(req), loginName, code, body), {
-      action: 'user_package',
-      subjectKind: 'user',
-      subjectRef: `${loginName}:${code}`,
-    });
+    return this.office.setUserPackage(gateOf(req), loginName, code, body);
   }
 
   @Get('users/:loginName/ops')
   @ApiOperation({ summary: 'Line operations stopped on this account, own and inherited' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
-  userOps(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('loginName') loginName: string) {
-    return this.run(res, () => this.office.userOps(gateOf(req), loginName));
+  userOps(@Req() req: Request, @Param('loginName') loginName: string) {
+    return this.office.userOps(gateOf(req), loginName);
   }
 
   @Put('users/:loginName/ops')
@@ -859,13 +826,13 @@ export class OfficeController {
   @ApiParam({ name: 'loginName' })
   @ApiBody({ type: UserOpsBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('user_ops', 'user', param('loginName'))
   setUserOps(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
     @Body() body: UserOpsBodyDto,
   ) {
-    return this.run(res, () => this.office.setUserOps(gateOf(req), loginName, body), { action: 'user_ops', subjectKind: 'user', subjectRef: loginName });
+    return this.office.setUserOps(gateOf(req), loginName, body);
   }
 
   @Patch('users/:loginName/access')
@@ -873,40 +840,40 @@ export class OfficeController {
   @ApiParam({ name: 'loginName' })
   @ApiBody({ type: AccessBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('access', 'account', param('loginName'))
   saveAccess(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
     @Body() body: AccessBodyDto,
   ) {
-    return this.run(res, () => this.office.saveAccess(gateOf(req), loginName, body), { action: 'access', subjectKind: 'account', subjectRef: loginName });
+    return this.office.saveAccess(gateOf(req), loginName, body);
   }
 
   @Get('roles')
   @ApiOperation({ summary: 'Roles catalogue' })
   @ApiErrorResponse(401, 403)
-  roles(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    return this.run(res, () => this.office.roles(gateOf(req)));
+  roles(@Req() req: Request) {
+    return this.office.roles(gateOf(req));
   }
 
   @Post('roles')
   @ApiOperation({ summary: 'Create or update a role' })
   @ApiBody({ schema: freeFormObject })
   @ApiErrorResponse(401, 403, 400)
-  saveRole(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body: Record<string, unknown>) {
-    return this.run(res, () => this.office.saveRole(gateOf(req), body));
+  saveRole(@Req() req: Request, @Body() body: Record<string, unknown>) {
+    return this.office.saveRole(gateOf(req), body);
   }
 
   @Post('users')
   @ApiOperation({ summary: 'Create an account under this door' })
   @ApiBody({ type: CreateUserBodyDto })
   @ApiErrorResponse(401, 403, 400)
+  @Activity('user_create', 'account', bodyField('loginName'))
   createUser(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Body() body: CreateUserBodyDto,
   ) {
-    return this.run(res, () => this.office.createAccount(gateOf(req), body), { action: 'user_create', subjectKind: 'account', subjectRef: typeof body.loginName === 'string' ? body.loginName : '' });
+    return this.office.createAccount(gateOf(req), body);
   }
 
   @Post('users/:loginName/transfer')
@@ -914,13 +881,13 @@ export class OfficeController {
   @ApiParam({ name: 'loginName' })
   @ApiBody({ type: TransferAccountBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('user_transfer', 'user', param('loginName'))
   transferAccount(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
     @Body() body: TransferAccountBodyDto,
   ) {
-    return this.run(res, () => this.office.transferAccount(gateOf(req), loginName, body), { action: 'user_transfer', subjectKind: 'user', subjectRef: loginName });
+    return this.office.transferAccount(gateOf(req), loginName, body);
   }
 
   @Get('users/:loginName/transfer-preview')
@@ -930,11 +897,10 @@ export class OfficeController {
   @ApiErrorResponse(401, 403, 400)
   transferPreview(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
     @Query('parentLogin') parentLogin?: unknown,
   ) {
-    return this.run(res, () => this.office.transferPreview(gateOf(req), loginName, { parentLogin }));
+    return this.office.transferPreview(gateOf(req), loginName, { parentLogin });
   }
 
   @Post('users/:loginName/password')
@@ -942,54 +908,54 @@ export class OfficeController {
   @ApiParam({ name: 'loginName' })
   @ApiBody({ type: SetAccountPasswordBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('password', 'account', param('loginName'))
   setUserPassword(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
     @Body() body: SetAccountPasswordBodyDto,
   ) {
-    return this.run(res, () => this.office.setAccountPassword(gateOf(req), loginName, body), { action: 'password', subjectKind: 'account', subjectRef: loginName });
+    return this.office.setAccountPassword(gateOf(req), loginName, body);
   }
 
   @Post('users/:loginName/freeze')
   @ApiOperation({ summary: 'Freeze an account' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
-  freezeUser(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('loginName') loginName: string) {
-    return this.run(res, () => this.office.setFrozen(gateOf(req), loginName, true), { action: 'user_freeze', subjectKind: 'account', subjectRef: loginName });
+  @Activity('user_freeze', 'account', param('loginName'))
+  freezeUser(@Req() req: Request, @Param('loginName') loginName: string) {
+    return this.office.setFrozen(gateOf(req), loginName, true);
   }
 
   @Post('users/:loginName/restore')
   @ApiOperation({ summary: 'Restore a frozen account' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
-  restoreUser(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('loginName') loginName: string) {
-    return this.run(res, () => this.office.setFrozen(gateOf(req), loginName, false), { action: 'user_restore', subjectKind: 'account', subjectRef: loginName });
+  @Activity('user_restore', 'account', param('loginName'))
+  restoreUser(@Req() req: Request, @Param('loginName') loginName: string) {
+    return this.office.setFrozen(gateOf(req), loginName, false);
   }
 
   @Delete('users/:loginName')
   @ApiOperation({ summary: 'Delete an account (no history)' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404, 400)
-  removeUser(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Param('loginName') loginName: string) {
-    return this.run(res, () => this.office.removeUser(gateOf(req), loginName), { action: 'user_delete', subjectKind: 'account', subjectRef: loginName });
+  @Activity('user_delete', 'account', param('loginName'))
+  removeUser(@Req() req: Request, @Param('loginName') loginName: string) {
+    return this.office.removeUser(gateOf(req), loginName);
   }
 
   @Post('users/:loginName/enter')
   @ApiOperation({ summary: 'Impersonate / enter an account; sets `home` + `sid` cookies' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
+  @Activity('enter', 'account', param('loginName'))
   async enter(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Param('loginName') loginName: string,
   ) {
     const previous = readCookie(req, 'sid');
-    const result = await this.run(
-      res,
-      () => this.office.enter(gateOf(req), loginName, { userAgent: String(req.headers['user-agent'] ?? ''), ip: req.ip ?? '' }),
-      { action: 'enter', subjectKind: 'account', subjectRef: loginName },
-    );
+    const result = await this.office.enter(gateOf(req), loginName, { userAgent: String(req.headers['user-agent'] ?? ''), ip: req.ip ?? '' });
     if (result && typeof result === 'object' && 'sessionId' in result && typeof result.sessionId === 'string' && previous) {
       res.cookie('home', previous, { ...cookieBase(), maxAge: SESSION_TTL_SECONDS * 1000 });
       res.cookie('sid', result.sessionId, { ...cookieBase(), maxAge: SESSION_TTL_SECONDS * 1000 });
@@ -1000,9 +966,10 @@ export class OfficeController {
   @Post('leave')
   @ApiOperation({ summary: 'Leave impersonation; restores `sid` from `home`' })
   @ApiErrorResponse(401, 403)
+  @Activity('leave', 'account')
   async leave(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const home = readCookie(req, 'home');
-    const result = await this.run(res, () => this.office.leave(gateOf(req)), { action: 'leave', subjectKind: 'account', subjectRef: '' });
+    const result = await this.office.leave(gateOf(req));
     if (result && typeof result === 'object' && 'ok' in result && home) {
       res.cookie('sid', home, { ...cookieBase(), maxAge: SESSION_TTL_SECONDS * 1000 });
       res.clearCookie('home', cookieBase());
@@ -1022,7 +989,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403)
   audit(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Query('cursor') cursor?: string,
     @Query('action') action?: string,
     @Query('result') result?: string,
@@ -1031,7 +997,7 @@ export class OfficeController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.run(res, () => this.office.audit(gateOf(req), {
+    return this.office.audit(gateOf(req), {
       cursor: text(cursor),
       action: text(action),
       result: text(result),
@@ -1039,7 +1005,7 @@ export class OfficeController {
       q: text(q),
       from: text(from),
       to: text(to),
-    }));
+    });
   }
 
   @Get('provider-operations')
@@ -1053,7 +1019,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403)
   providerOperations(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Query('cursor') cursor?: string,
     @Query('kind') kind?: string,
     @Query('provider') provider?: string,
@@ -1061,14 +1026,14 @@ export class OfficeController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.run(res, () => this.office.providerOperations(gateOf(req), {
+    return this.office.providerOperations(gateOf(req), {
       cursor: text(cursor),
       kind: text(kind),
       provider: text(provider),
       q: text(q),
       from: text(from),
       to: text(to),
-    }));
+    });
   }
 
   @Get('finance')
@@ -1082,7 +1047,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403)
   finance(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Query('cursor') cursor?: string,
     @Query('kind') kind?: string,
     @Query('layer') layer?: string,
@@ -1090,14 +1054,14 @@ export class OfficeController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.run(res, () => this.office.finance(gateOf(req), {
+    return this.office.finance(gateOf(req), {
       cursor: text(cursor),
       kind: text(kind),
       layer: text(layer),
       q: text(q),
       from: text(from),
       to: text(to),
-    }));
+    });
   }
 
   @Get('ledger/:scope')
@@ -1111,7 +1075,6 @@ export class OfficeController {
   @ApiErrorResponse(401, 403)
   ledger(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('scope') scope: string,
     @Query('kind') kind?: string,
     @Query('direction') direction?: string,
@@ -1119,7 +1082,7 @@ export class OfficeController {
     @Query('to') to?: string,
     @Query('cursor') cursor?: string,
   ) {
-    return this.run(res, () => this.office.ledger(gateOf(req), scope, { kind, direction, from, to, cursor: text(cursor) }));
+    return this.office.ledger(gateOf(req), scope, { kind, direction, from, to, cursor: text(cursor) });
   }
 
   @Get('reports/:kind')
@@ -1129,26 +1092,10 @@ export class OfficeController {
   @ApiErrorResponse(401, 403)
   report(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
     @Param('kind') kind: string,
     @Query('cursor') cursor?: string,
   ) {
-    return this.run(res, () => this.office.report(gateOf(req), kind, text(cursor)));
+    return this.office.report(gateOf(req), kind, text(cursor));
   }
 
-  private async run(res: Response, work: () => Promise<unknown>, event?: ActivityDraft) {
-    const req = res.req;
-    try {
-      const value = await work();
-      if (event) await this.activity.recordOffice(gateOf(req), req.ip ?? '', event, 'ok', '');
-      return value;
-    } catch (error) {
-      if (error instanceof OfficeFailure) {
-        if (event) await this.activity.recordOffice(gateOf(req), req.ip ?? '', event, 'fail', error.code);
-        res.status(error.status);
-        return { message: error.message, code: error.code };
-      }
-      throw error;
-    }
-  }
 }
