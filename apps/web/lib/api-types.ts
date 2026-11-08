@@ -63,6 +63,20 @@ export type OfficeMe = {
   balance: number;
   ceiling: number;
 };
+/** One ranked row of the overview: a package, company, provider or account, by count or profit. */
+export type OverviewRanked = { key: string; label: string; count: number; amount: number; profit: number; nickname?: string };
+/** `GET /office/overview` (spec 2026-11-08-overview-and-reports-nav, F). */
+export type OverviewPayload = {
+  period: 'day' | 'month' | 'all';
+  from: string | null;
+  lines: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number };
+  sales: { count: number; amount: number; profit: number; refunds: number; refundAmount: number; net: number; trend: { day: string; amount: number; profit: number; count: number }[]; capped: boolean };
+  top: { packages: OverviewRanked[]; companies: OverviewRanked[]; providers: OverviewRanked[] };
+  active: { main_agent: OverviewRanked[]; agent: OverviewRanked[]; pos: OverviewRanked[] };
+  users: { counts: { main_agent: number; agent: number; pos: number }; frozen: number; debtors: number; debt: number; ceilings: number; used: number };
+  tasks: { pending: number; working: number; done: number; rejected: number; cancelled: number; oldestOpenMinutes: number | null };
+  providers: { code: string; name: string; operations: number; cost: number; profit: number; balance: number; creditLimit: number; available: number; status: 'working' | 'problem'; problem: string | null }[] | null;
+};
 export type HomePayload = {
   pendingTasks: number;
   activeLines: number;

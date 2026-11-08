@@ -12,6 +12,7 @@ import { TransfersController } from './transfers/transfers.controller';
 import { TransfersService } from './transfers/transfers.service';
 import { AccountsController } from './accounts/accounts.controller';
 import { AccountSessionController } from './accounts/account-session.controller';
+import { OverviewService } from './desk/overview.service';
 import { AccountSessionService } from './accounts/account-session.service';
 import { AccountsService } from './accounts/accounts.service';
 import { DeskController } from './desk/desk.controller';
@@ -41,7 +42,7 @@ import { TasksService } from './tasks/tasks.service';
 
 // Exported so HTTP specs build the same set of office routes the app serves, whichever controller holds them.
 export const OFFICE_CONTROLLERS = [NoticesController, AuditController, TasksController, WalletsController, ProvidersController, CompaniesController, PackagesController, TermsController, RolesController, DeskController, AccountsController, AccountSessionController, TransfersController, LinesController, ReportsController, ProviderAccountsController];
-export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, CompaniesService, PackagesService, TermsService, RolesService, DeskService, AccountsService, AccountSessionService, TransfersService, LinesService, ReportsService, InsightsService, ProviderAccountsService, CatalogSeed];
+export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, CompaniesService, PackagesService, TermsService, RolesService, DeskService, AccountsService, AccountSessionService, TransfersService, LinesService, ReportsService, InsightsService, ProviderAccountsService, OverviewService, CatalogSeed];
 
 @Module({
   imports: [AuthModule],

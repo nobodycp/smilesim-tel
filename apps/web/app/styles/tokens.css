@@ -43,6 +43,9 @@
   --rd-success: #0a7a3e;
   --rd-success-soft: #e8f6ee;
   --rd-warning: #c2410c;
+  /* Chart slices with no status colour of their own (spec 2026-11-08-overview-and-reports-nav, F). */
+  --rd-chart-frozen: #6d28d9;
+  --rd-chart-suspended: #8a6d3b;
   --rd-warning-soft: #fff0e9;
   --rd-danger: #b91c1c;
   --rd-danger-soft: #fdecec;
@@ -142,6 +145,8 @@
   --rd-success: #4ade80;
   --rd-success-soft: rgba(74, 222, 128, 0.12);
   --rd-warning: #fbbf24;
+  --rd-chart-frozen: #a78bfa;
+  --rd-chart-suspended: #d6b37a;
   --rd-warning-soft: rgba(251, 191, 36, 0.12);
   --rd-danger: #f87171;
   --rd-danger-soft: rgba(248, 113, 113, 0.12);

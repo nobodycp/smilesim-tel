@@ -39,6 +39,7 @@ export const ROUTES: RouteRow[] = [
   ['POST', '/office/lines/ID1/unfreeze', ['unfreeze', 'line', 'ID1']],
   ['GET', '/office/me', null],
   ['GET', '/office/notices', null],
+  ['GET', '/office/overview', null],
   ['POST', '/office/notices/read', null],
   ['GET', '/office/notices/stream', null],
   ['GET', '/office/packages', null],

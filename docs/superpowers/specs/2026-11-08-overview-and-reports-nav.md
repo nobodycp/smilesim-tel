@@ -70,6 +70,8 @@ Owner (2026-11-09): «معلقه وليست عالقه — خط انتهي اش�
 - `/provider-operations` shows, per operation, the source, the system cost, the provider amount (or «بانتظار الكشف» until a statement covers it), and the difference.
 - The menu item «مطابقة المزودين» links to the provider accounts list, which gains each provider's source, last matched, and open differences.
 
+- **Simulated for now** (owner 2026-11-09: «اجل موضوع المطابقه… اعمل مطابقه وهميه حسب المزودين الي عندنا»): no provider is called through a real API yet (an «تلقائي» mode applies the operation inside the office). Until real providers are connected, each provider gets a demo source and the matching is simulated from our own provider cost, with a few deterministic differences, so the screens and the flow can be seen. The real adapters replace the simulator later; the screens, fields and notices stay.
+
 ### F. Home: one overview per layer
 - A period switch: اليوم / الشهر / الكل. It applies to every money and count card below. Line status cards are "now".
 - Cards, each shown only to the layers and grants that may see its data:
@@ -99,4 +101,4 @@ Owner (2026-11-09): «معلقه وليست عالقه — خط انتهي اش�
 3. ~~Provider-side amount~~: both, answered 2026-11-09 (E).
 
 ## Order
-The plan `docs/superpowers/plans/2026-11-08-overview-and-reports-nav.md` has one slice per decision, in this order: A → B → C → D → H → I → E → F → G.
+The plan `docs/superpowers/plans/2026-11-08-overview-and-reports-nav.md` has one slice per decision, in this order: A → B → C → D → H → I → F → G → E (simulated; owner 2026-11-09).

@@ -34,7 +34,7 @@ Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice
 - [x] «إعدادات المستخدم» dialog: email, mobile, two-factor on/off, password, session rules; API for the owner to edit another account's email/mobile/2FA if missing (`auth` or `accounts` module, specs, permission matrix).
 - [x] `features/accounts/screens/account-screen.tsx`: two tabs; permissions, operations and numbers as closed collapsible sections loaded on open.
 
-## Slice I: suspended lines — done 2026-11-09 (API 779, e2e 145; migration applied on Docker)
+## Slice I: suspended lines — done 2026-11-09 `363e922`
 - [x] Migration: `Package.suspendAfterDays Int @default(90)`; package details form and API.
 - [x] `office-paging.ts`: `suspendedWhere`; `GET /office/lines?status=suspended`; numbers filter chip.
 
@@ -44,11 +44,11 @@ Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice
 - [ ] Statement source: a reconciliation run fills `providerAmount` for the operations it matched; overdue check (worker, daily) → notice.
 - [ ] `provider-operations` screen: source, system cost, provider amount / «بانتظار الكشف», difference; provider accounts list: source, last matched, open differences.
 
-## Slice F: home overview
-- [ ] `apps/api/.../desk/overview.service.ts` + `GET /office/overview?period=` (route table, permission matrix, spec per layer).
-- [ ] `features/desk/screens/home-screen.tsx`: period switch and the seven cards; `components/donut.tsx` (SVG) for the lines card.
-- [ ] `DESIGN.md`: the overview card set and the geometric decoration tokens.
-- [ ] e2e on the mock API for each layer.
+## Slice F: home overview — done 2026-11-09 (API 786, e2e 147; Docker in light and dark)
+- [x] `apps/api/.../desk/overview.service.ts` + `GET /office/overview?period=` (route table, permission matrix, spec per layer).
+- [x] `features/desk/screens/home-screen.tsx`: period switch and the seven cards; `components/donut.tsx` (SVG) for the lines card.
+- [x] `DESIGN.md`: the overview card set and the geometric decoration tokens.
+- [x] e2e on the mock API for each layer.
 
 ## Slice G: provider health and alerts
 - [ ] Health rule, owner floor setting, state change detection (worker), notices (`notice-kinds.ts`), home banner.

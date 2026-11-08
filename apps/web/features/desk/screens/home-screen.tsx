@@ -9,7 +9,8 @@ import { EmptyState } from '../../../components/empty-state';
 import { Icon, type IconName } from '../../../components/icon';
 import { LoadFailed } from '../../../components/load-failed';
 import { PageSkeleton, Spinner, TableSkeleton } from '../../../components/loading';
-import { Stat, StatRow } from '../../../components/stat';
+import { Tabs } from '../../../components/tabs';
+import { ActiveCard, LinesCard, ProvidersCard, SalesCard, TasksCard, TopCard, UsersCard } from '../overview';
 import { api, type HomePayload } from '../../../lib/api';
 import { useOffice } from '../../../lib/office-session';
 import { usePageTitle } from '../../../lib/page-title';
@@ -31,14 +32,14 @@ export function HomeScreen() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const board = useApiQuery(sharedKeys.home, () => api.officeHome());
-  // What this account earned over 30 days: the finance page's own figure, shared from its cache.
-  const profit = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary()).data ?? null;
+  // The full picture (spec 2026-11-08-overview-and-reports-nav, F): one read per period, kept per period in the cache.
+  const [period, setPeriod] = useState<'day' | 'month' | 'all'>('month');
+  const overview = useApiQuery(sharedKeys.overview(period), () => api.officeOverview(period));
   const home = board.data;
   const { run } = useAction({ setError, setNote, onDone: board.reload });
   // A failed board is shown once, in its panes; the banner is for actions.
   const failure = error;
   const broken = !home && Boolean(board.error);
-  const dash = <span className="stat-dash" aria-hidden="true">—</span>;
 
   async function publish(event: FormEvent) {
     event.preventDefault();
@@ -78,29 +79,39 @@ export function HomeScreen() {
       <Alert banner>{failure}</Alert>
       <Alert tone="success" banner>{note}</Alert>
       <header className="page-head">
-        <h1>{t.homeTitle}</h1>
-        {layer && <p className="lede">{layerName(t, layer)}</p>}
+        <div>
+          <h1>{t.homeTitle}</h1>
+          {layer && <p className="lede">{layerName(t, layer)}</p>}
+        </div>
+        <div className="page-actions">
+          <Tabs
+            label={t.period}
+            items={[{ key: 'day', label: t.periodToday }, { key: 'month', label: t.periodMonth }, { key: 'all', label: t.periodAll }]}
+            value={period}
+            onChange={setPeriod}
+          />
+        </div>
       </header>
-      <section className="home-access">
-        <p className="section-label">{t.quickAccess}</p>
-        {/* Stat stays presentational so non-link KPIs can reuse it; the link wraps it here. */}
-        <StatRow>
-          <Link className="stat-link" href="/tasks?status=pending">
-            <Stat icon="tasks" tone="warning" label={t.navTasks} value={home ? home.pendingTasks : broken ? dash : <span className="skeleton sk-num" />} meta={t.pending} />
-          </Link>
-          <Link className="stat-link" href="/numbers?status=active">
-            <Stat icon="numbers" tone="success" label={t.activeLines} value={home ? home.activeLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.lineActive} />
-          </Link>
-          <Link className="stat-link" href="/finance">
-            <Stat icon="reports" tone="success" label={t.myProfit30} value={profit ? <Money value={profit.profit} signed /> : <span className="skeleton sk-num" />} meta={profit ? t.salesCount.replace('{n}', String(profit.sales)) : undefined} />
-          </Link>
-          <Link className="stat-link" href="/numbers?status=expiring">
-            <Stat icon="numbers" tone="warning" label={t.expiringSoon} value={home ? home.expiringLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.expiringSoonHint} />
-          </Link>
-          <Link className="stat-link" href="/numbers?status=disconnected">
-            <Stat icon="numbers" tone="danger" label={t.inactiveLines} value={home ? home.inactiveLines : broken ? dash : <span className="skeleton sk-num" />} meta={t.lineDisconnected} />
-          </Link>
-        </StatRow>
+      <section className="overview" aria-busy={!overview.data && !overview.error}>
+        {overview.error && !overview.data ? (
+          <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section>
+        ) : !overview.data ? (
+          <div className="overview-grid">
+            <section className="pane overview-card wide"><TableSkeleton rows={2} columns={5} /></section>
+            <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section>
+            <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section>
+          </div>
+        ) : (
+          <div className="overview-grid">
+            <SalesCard data={overview.data} />
+            <LinesCard data={overview.data} />
+            <TasksCard data={overview.data} />
+            <ProvidersCard data={overview.data} />
+            <TopCard data={overview.data} />
+            {layer !== 'pos' ? <UsersCard data={overview.data} layer={layer} /> : null}
+            {layer !== 'pos' ? <ActiveCard data={overview.data} layer={layer} /> : null}
+          </div>
+        )}
       </section>
       {me && (
         <section>
