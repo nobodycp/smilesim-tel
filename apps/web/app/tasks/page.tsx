@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AccountName } from '../../components/account-name';
 import { PagedTable, type Column } from '../../components/data-table';
 import { Desk, Money, actionName, taskStatus } from '../../components/desk';
@@ -16,6 +16,7 @@ import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
 import { pick, useLoad } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
+import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
 
 const TASK_ACTIONS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'sim'] as const;
 
@@ -25,19 +26,20 @@ function taskBadge(status: string): 'success' | 'danger' | 'warning' {
   return 'warning';
 }
 
+const FILTER_KEYS = ['q', 'status', 'action', 'pack', 'company', 'provider'] as const;
+const TASK_STATUSES = ['pending', 'working', 'done', 'cancelled'];
+
 export default function TasksPage() {
   const { t } = usePrefs();
   const router = useRouter();
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const [query, setQuery] = useState('');
-  const [needle, setNeedle] = useState('');
-  const [status, setStatus] = useState('');
-  const [action, setAction] = useState('');
-  const [pack, setPack] = useState('');
-  const [company, setCompany] = useState('');
-  const [provider, setProvider] = useState('');
-  const [urlRead, setUrlRead] = useState(false);
+  // The filters live in the address (`?status=pending&q=…`), so back/forward and links keep them.
+  const [filters, setFilters] = useUrlFilters(FILTER_KEYS);
+  const { q: needle, action, pack, company, provider } = filters;
+  const status = TASK_STATUSES.includes(filters.status) ? filters.status : '';
+  const commitQuery = useCallback((value: string) => setFilters({ q: value }), [setFilters]);
+  const [query, setQuery] = useDebouncedField(needle, commitQuery);
   const catalog = useLoad(() => api.officePackages());
   const packages = catalog.data?.packages ?? [];
   const list = usePaged<TaskRow>(
@@ -55,22 +57,8 @@ export default function TasksPage() {
         }),
         (data) => ({ rows: data.tasks, next: data.nextCursor, total: data.total }),
       ),
-    { enabled: urlRead },
   );
   const { run } = useAction({ setError, setNote, onDone: list.reload });
-
-  useEffect(() => {
-    const initial = new URLSearchParams(window.location.search).get('status') ?? '';
-    if (initial === 'pending' || initial === 'working' || initial === 'done' || initial === 'cancelled') {
-      setStatus(initial);
-    }
-    setUrlRead(true);
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setNeedle(query.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [query]);
 
   const companyOptions = useMemo(() => {
     const names = new Set(packages.map((row) => row.companyName).filter(Boolean));
@@ -147,19 +135,14 @@ export default function TasksPage() {
       <FilterBar
         onClear={() => {
           setQuery('');
-          setNeedle('');
-          setStatus('');
-          setAction('');
-          setPack('');
-          setCompany('');
-          setProvider('');
+          setFilters({ q: '', status: '', action: '', pack: '', company: '', provider: '' });
         }}
         clearLabel={t.clearFilters}
       >
         <TableSearch label={t.numberSearch} value={query} onChange={setQuery} />
         <label>
           {t.movement}
-          <Select value={action} onChange={(event) => setAction(event.target.value)}>
+          <Select value={action} onChange={(event) => setFilters({ action: event.target.value })}>
             <option value="">{t.allRows}</option>
             {TASK_ACTIONS.map((code) => (
               <option key={code} value={code}>
@@ -170,7 +153,7 @@ export default function TasksPage() {
         </label>
         <label>
           {t.packageName}
-          <Select value={pack} onChange={(event) => setPack(event.target.value)}>
+          <Select value={pack} onChange={(event) => setFilters({ pack: event.target.value })}>
             <option value="">{t.allRows}</option>
             {packageOptions.map((row) => (
               <option key={row.code} value={row.code}>
@@ -183,10 +166,7 @@ export default function TasksPage() {
           {t.provider}
           <Select
             value={provider}
-            onChange={(event) => {
-              setProvider(event.target.value);
-              setPack('');
-            }}
+            onChange={(event) => setFilters({ provider: event.target.value, pack: '' })}
           >
             <option value="">{t.allRows}</option>
             {providerOptions.map((name) => (
@@ -200,10 +180,7 @@ export default function TasksPage() {
           {t.company}
           <Select
             value={company}
-            onChange={(event) => {
-              setCompany(event.target.value);
-              setPack('');
-            }}
+            onChange={(event) => setFilters({ company: event.target.value, pack: '' })}
           >
             <option value="">{t.allRows}</option>
             {companyOptions.map((name) => (
@@ -215,7 +192,7 @@ export default function TasksPage() {
         </label>
         <label>
           {t.status}
-          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <Select value={status} onChange={(event) => setFilters({ status: event.target.value })}>
             <option value="">{t.allRows}</option>
             <option value="pending">{taskStatus(t, 'pending')}</option>
             <option value="working">{taskStatus(t, 'working')}</option>

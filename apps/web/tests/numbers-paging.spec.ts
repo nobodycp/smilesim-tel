@@ -44,9 +44,13 @@ test('numbers list pages by the total, reads the next cursor on demand, and filt
   await expect(page.locator('.table-search')).toHaveCount(0);
   await page.locator('.filter-panel').getByLabel('الرقم أو السيريال').fill('055 0000');
   await expect(async () => expect((await log()).at(-1)).toEqual({ q: '055 0000', status: 'frozen', packageCode: 'cell-400' })).toPass();
+  const beforeClear = (await log()).length;
   await page.getByRole('button', { name: 'مسح' }).click();
   await expect(rows).toHaveCount(10);
   await expect(page.getByRole('button', { name: '1', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('button', { name: '4', exact: true })).toBeVisible();
-  expect((await log()).at(-1)).toEqual({});
+  // The cleared list shows from the cache at once and is asked again in the background: every chunk read before for
+  // it, starting from the first, with no filter sent.
+  await expect(async () => expect((await log()).slice(beforeClear)[0]).toEqual({})).toPass();
+  expect((await log()).slice(beforeClear).every((query) => !query.status && !query.packageCode && !query.q)).toBe(true);
 });

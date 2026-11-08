@@ -2,7 +2,7 @@
 
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AccountName, accountLabel } from '../../components/account-name';
 import { DataTable, type Column } from '../../components/data-table';
 import { Desk, Money, layerName } from '../../components/desk';
@@ -18,12 +18,15 @@ import { parseShekel } from '../../lib/money';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
+import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
 import { useLoad } from '../../lib/use-load';
 import { useRequireLayer } from '../../lib/use-require-layer';
 
 const layerOrder = ['branch', 'main_agent', 'agent', 'pos'];
 // Everyone but a point of sale; a staff account opens the desk through the branch door.
 const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
+
+const FILTER_KEYS = ['q', 'layer'] as const;
 
 export default function UsersPage() {
   const { t, apiText } = usePrefs();
@@ -36,12 +39,12 @@ export default function UsersPage() {
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState({ loginName: '', nickname: '', password: '', layer: '', parentLogin: '', roleId: '' });
   const [passwords, setPasswords] = useState<Record<string, string>>({});
-  const [query, setQuery] = useState('');
-  useEffect(() => {
-    const value = new URLSearchParams(window.location.search).get('q');
-    if (value) setQuery(value);
-  }, []);
-  const [layerFilter, setLayerFilter] = useState('');
+  // The filters live in the address (`?q=…&layer=pos`): the shell search can open this page filtered, even from it.
+  // The list filters on what is typed at once; the address follows after a pause.
+  const [filters, setFilters] = useUrlFilters(FILTER_KEYS);
+  const layerFilter = filters.layer;
+  const commitQuery = useCallback((value: string) => setFilters({ q: value }), [setFilters]);
+  const [query, setQuery] = useDebouncedField(filters.q, commitQuery);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const { me } = useOffice();
@@ -227,14 +230,14 @@ export default function UsersPage() {
       error={failure}
       note={note}
     >
-      <FilterBar onClear={() => { setQuery(''); setLayerFilter(''); }} clearLabel={t.clearFilters}>
+      <FilterBar onClear={() => { setQuery(''); setFilters({ q: '', layer: '' }); }} clearLabel={t.clearFilters}>
         <label>
           {t.accountName}
           <input value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
         <label>
           {t.layer}
-          <Select value={layerFilter} onChange={(event) => setLayerFilter(event.target.value)}>
+          <Select value={layerFilter} onChange={(event) => setFilters({ layer: event.target.value })}>
             <option value="">{t.allRows}</option>
             {layerOrder.map((value) => (
               <option key={value} value={value}>{layerName(t, value)}</option>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AccountName, accountLabel } from '../../components/account-name';
 import { PagedTable, type Column } from '../../components/data-table';
 import { ActivationResult } from '../../components/activation-result';
@@ -23,8 +23,12 @@ import { OPEN_SIM, hasSimRules, simFits, simHint, withPrefix } from '../../lib/s
 import { useAction } from '../../lib/use-action';
 import { pick, useLoad } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
+import { useDebouncedField, useUrlFilters } from '../../lib/url-state';
 
 const NO_POSES: PosChoice[] = [];
+
+const FILTER_KEYS = ['q', 'status', 'pack', 'provider', 'company'] as const;
+const LINE_STATUSES = ['active', 'frozen', 'disconnected', 'suspended'];
 
 export default function NumbersPage() {
   const { t, locale } = usePrefs();
@@ -37,14 +41,13 @@ export default function NumbersPage() {
   const [outcome, setOutcome] = useState<Outcome>('success');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const [urlRead, setUrlRead] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('');
-  const [pack, setPack] = useState('');
-  const [provider, setProvider] = useState('');
-  const [company, setCompany] = useState('');
-  const [needle, setNeedle] = useState('');
+  // The filters live in the address (`?status=frozen&q=…`), so back/forward and links keep them.
+  const [filters, setFilters] = useUrlFilters(FILTER_KEYS);
+  const { q: needle, pack, provider, company } = filters;
+  const status = LINE_STATUSES.includes(filters.status) ? filters.status : '';
+  const commitQuery = useCallback((value: string) => setFilters({ q: value }), [setFilters]);
+  const [query, setQuery] = useDebouncedField(needle, commitQuery);
   const [ending, setEnding] = useState<LineRow | null>(null);
   const [qrLine, setQrLine] = useState<LineRow | null>(null);
   const [result, setResult] = useState<ApplyResult | null>(null);
@@ -58,7 +61,6 @@ export default function NumbersPage() {
     `${needle}|${status}|${pack}|${provider}|${company}`,
     async (cursor) =>
       pick(await api.officeLines({ q: needle, status, packageCode: pack, provider, company, cursor }), (data) => ({ rows: data.lines, next: data.nextCursor, total: data.total, extra: data.poses })),
-    { enabled: urlRead },
   );
   const catalog = useLoad(() => api.officePackages());
   const packages = catalog.data?.packages ?? [];
@@ -67,19 +69,6 @@ export default function NumbersPage() {
   const { run, busy } = useAction({ setError, setNote, onDone: list.reload });
   // A failed list is shown once, in the table; the banner is for actions and the catalogue.
   const failure = error || catalog.error;
-
-  useEffect(() => {
-    const initial = new URLSearchParams(window.location.search).get('status') ?? '';
-    if (initial === 'active' || initial === 'frozen' || initial === 'disconnected' || initial === 'suspended') {
-      setStatus(initial);
-    }
-    setUrlRead(true);
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setNeedle(query.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [query]);
 
   const applied = { note: (data: { applied: boolean; debited?: boolean }) => applyNote(t, data) };
 
@@ -183,7 +172,7 @@ export default function NumbersPage() {
       note={note}
     >
       <FilterBar
-        onClear={() => { setQuery(''); setNeedle(''); setStatus(''); setPack(''); setProvider(''); setCompany(''); }}
+        onClear={() => { setQuery(''); setFilters({ q: '', status: '', pack: '', provider: '', company: '' }); }}
         clearLabel={t.clearFilters}
       >
         {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
@@ -196,11 +185,7 @@ export default function NumbersPage() {
             {t.provider}
             <Select
               value={provider}
-              onChange={(event) => {
-                setProvider(event.target.value);
-                setCompany('');
-                setPack('');
-              }}
+              onChange={(event) => setFilters({ provider: event.target.value, company: '', pack: '' })}
             >
               <option value="">{t.allRows}</option>
               {providerOptions.map((name) => (
@@ -213,10 +198,7 @@ export default function NumbersPage() {
           {t.company}
           <Select
             value={company}
-            onChange={(event) => {
-              setCompany(event.target.value);
-              setPack('');
-            }}
+            onChange={(event) => setFilters({ company: event.target.value, pack: '' })}
           >
             <option value="">{t.allRows}</option>
             {companyOptions.map((name) => (
@@ -226,7 +208,7 @@ export default function NumbersPage() {
         </label>
         <label>
           {t.packageName}
-          <Select value={pack} onChange={(event) => setPack(event.target.value)}>
+          <Select value={pack} onChange={(event) => setFilters({ pack: event.target.value })}>
             <option value="">{t.allRows}</option>
             {filterPackages.map((row) => (
               <option key={row.code} value={row.code}>
@@ -237,7 +219,7 @@ export default function NumbersPage() {
         </label>
         <label>
           {t.status}
-          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <Select value={status} onChange={(event) => setFilters({ status: event.target.value })}>
             <option value="">{t.allRows}</option>
             <option value="active">{t.lineActive}</option>
             <option value="frozen">{t.lineFrozen}</option>
