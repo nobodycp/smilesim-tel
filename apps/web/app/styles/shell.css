@@ -119,7 +119,8 @@
   border-radius: 99px;
   background: var(--rd-ink);
 }
-.nav-link.locked { color: var(--rd-faint); cursor: default; }
+/* Muted, not faint: a locked page is still a label someone reads (about 5:1, AA). */
+.nav-link.locked { color: var(--rd-muted); cursor: default; }
 .nav-link.locked svg:last-child { width: 13px; height: 13px; margin-inline-start: auto; }
 /* Collapsed rail: the icon is the whole link, so it sits in the middle of the 40px tile. */
 .sidebar.collapsed .nav-link { justify-content: center; padding-inline: 0; }
