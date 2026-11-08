@@ -288,3 +288,8 @@
 .section-head h2 { margin: 0; font-size: var(--rd-text-lg); font-weight: 800; }
 @media (max-width: 1099px) { .wallet-board { grid-template-columns: 1fr; } .wallet-figures { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .wallet-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Reconciliation (features/providers/reconciliation.tsx): the column choice in one row, the sample scrolls. */
+.recon-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--rd-space-3); }
+.recon-map label, .recon-pick { display: grid; gap: var(--rd-space-1); font-size: var(--rd-text-sm); font-weight: 600; color: var(--rd-muted); }
+.recon-pick { max-width: 32rem; }
+.recon-sample { overflow-x: auto; border: 1px solid var(--rd-line); border-radius: var(--rd-radius-card); }

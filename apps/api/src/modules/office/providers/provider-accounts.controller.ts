@@ -74,4 +74,49 @@ export class ProviderAccountsController {
   setCredit(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: unknown) {
     return this.accounts.setCredit(actor, code, body);
   }
+
+  @Post('provider-accounts/:code/statements/preview')
+  @ApiOperation({ summary: 'Read a statement file: its columns, a few rows, and the columns to use' })
+  @ApiParam({ name: 'code' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  preview(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: unknown) {
+    return this.accounts.previewStatement(actor, code, body);
+  }
+
+  @Post('provider-accounts/:code/reconciliations')
+  @ApiOperation({ summary: 'Compare a statement with our operations at this provider and save the run' })
+  @ApiParam({ name: 'code' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('provider_reconcile', 'provider', param('code'))
+  reconcile(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: unknown) {
+    return this.accounts.runReconciliation(actor, code, body);
+  }
+
+  @Get('provider-accounts/:code/reconciliations')
+  @ApiOperation({ summary: 'Earlier reconciliations with this provider' })
+  @ApiParam({ name: 'code' })
+  @ApiErrorResponse(401, 403, 404)
+  runs(@Actor() actor: ActorShape, @Param('code') code: string) {
+    return this.accounts.reconciliations(actor, code);
+  }
+
+  @Get('reconciliations/:id')
+  @ApiOperation({ summary: 'One reconciliation with its rows that did not match' })
+  @ApiParam({ name: 'id' })
+  @ApiErrorResponse(401, 403, 404)
+  run(@Actor() actor: ActorShape, @Param('id') id: string) {
+    return this.accounts.reconciliation(actor, id);
+  }
+
+  @Patch('reconciliation-items/:id')
+  @ApiOperation({ summary: 'Mark a difference handled (with a note) or open it again' })
+  @ApiParam({ name: 'id' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('provider_reconcile_item', 'provider', param('id'))
+  updateItem(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: unknown) {
+    return this.accounts.updateItem(actor, id, body);
+  }
 }

@@ -8,6 +8,7 @@ import { providerBranchCost } from '../office-rules';
 import { csvOf } from '../reports/report-csv';
 import { MAX_AGOROT, ceilingValue } from '../wallet.schemas';
 import { WalletsService } from '../wallets/wallets.service';
+import { linesOf, readSheet, reconcile, suggestMap, type StatementMap } from './statement';
 
 // Our account with each provider (spec 2026-11-08-provider-accounts, roadmap N7): what we bought through our operations,
 // what we paid and settled, the credit limit, what open tasks are about to cost, and a ledger with a running balance.
@@ -20,6 +21,10 @@ const EntryBody = z.object({
   note,
 });
 const CreditBody = z.object({ creditLimit: ceilingValue });
+const FileBody = z.object({ fileName: z.string().min(1).max(200), content: z.string().min(1) });
+const column = z.number().int().min(0).max(200);
+const RunBody = FileBody.extend({ map: z.object({ msisdn: column, date: column, amount: column, reference: column.nullable().optional() }) });
+const ItemBody = z.object({ status: z.enum(['open', 'resolved']), note });
 const OPEN_TASKS = ['pending', 'working'];
 
 type LedgerRow = { id: string; at: Date; kind: string; amount: number; note: string; msisdn: string; packageName: string; actorLogin: string };
@@ -149,6 +154,132 @@ export class ProviderAccountsService {
     const provider = await this.kernel.prisma.provider.findUnique({ where: { code } });
     if (!provider) fail(404, 'NOT_FOUND');
     await this.kernel.prisma.provider.update({ where: { code }, data: { creditLimit } });
+    return { ok: true };
+  }
+
+  private async providerByCode(code: string) {
+    const provider = await this.kernel.prisma.provider.findUnique({ where: { code } });
+    if (!provider) fail(404, 'NOT_FOUND');
+    return provider;
+  }
+
+  private async sheetOf(body: { fileName: string; content: string }) {
+    try {
+      return await readSheet(body.fileName, Buffer.from(body.content, 'base64'));
+    } catch {
+      fail(400, 'INVALID');
+    }
+  }
+
+  /** The statement's columns, a few rows, and the columns to use: the provider's saved choice, else a guess. */
+  async previewStatement(actor: Actor, code: string, body: unknown) {
+    this.gate(actor, true);
+    const file = parseInput(FileBody, body);
+    const provider = await this.providerByCode(code);
+    const sheet = await this.sheetOf(file);
+    const saved = provider.statementMap as StatementMap | null;
+    const fits = saved && [saved.msisdn, saved.date, saved.amount].every((index) => index < sheet.columns.length);
+    return { columns: sheet.columns, sample: sheet.rows.slice(0, 5), rows: sheet.rows.length, map: fits ? saved : suggestMap(sheet.columns) };
+  }
+
+  /**
+   * Compares the statement with our operations at this provider over its dates (± one day), saves the run and its
+   * non-matching rows, and keeps the column choice for next time (spec 2026-11-08-provider-reconciliation).
+   */
+  async runReconciliation(actor: Actor, code: string, body: unknown) {
+    this.gate(actor, true);
+    const { fileName, content, map } = parseInput(RunBody, body);
+    const provider = await this.providerByCode(code);
+    const sheet = await this.sheetOf({ fileName, content });
+    const { lines, skipped } = linesOf(sheet, map);
+    if (lines.length === 0) fail(400, 'INVALID');
+    const times = lines.map((line) => line.at.getTime());
+    const from = new Date(Math.min(...times) - 86_400_000);
+    const to = new Date(Math.max(...times) + 86_400_000);
+    const ours = (await this.wallets.pricedOperations())
+      .filter((op) => op.providerCode === code && op.cost !== 0 && op.at >= from && op.at <= to)
+      .map((op) => ({ id: op.id, msisdn: op.msisdn, at: op.at, amount: op.cost }));
+    const result = reconcile(lines, ours);
+    const run = await this.kernel.prisma.$transaction(async (tx) => {
+      await tx.provider.update({ where: { id: provider.id }, data: { statementMap: map } });
+      return tx.providerReconciliation.create({
+        data: {
+          providerId: provider.id,
+          fileName,
+          periodFrom: new Date(Math.min(...times)),
+          periodTo: new Date(Math.max(...times)),
+          statementTotal: result.statementTotal,
+          ourTotal: result.ourTotal,
+          counts: { ...result.counts, skipped },
+          actorLogin: actor.loginName,
+          items: { create: result.rows.map((row) => ({ ...row, status: 'open' })) },
+        },
+      });
+    });
+    return this.reconciliation(actor, run.id);
+  }
+
+  async reconciliations(actor: Actor, code: string) {
+    this.gate(actor, false);
+    const provider = await this.providerByCode(code);
+    const runs = await this.kernel.prisma.providerReconciliation.findMany({
+      where: { providerId: provider.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: { items: { select: { status: true } } },
+    });
+    return {
+      runs: runs.map((run) => ({
+        id: run.id,
+        at: run.createdAt.toISOString(),
+        fileName: run.fileName,
+        periodFrom: run.periodFrom?.toISOString() ?? null,
+        periodTo: run.periodTo?.toISOString() ?? null,
+        statementTotal: run.statementTotal,
+        ourTotal: run.ourTotal,
+        counts: run.counts,
+        open: run.items.filter((item) => item.status === 'open').length,
+        actorLogin: run.actorLogin,
+      })),
+    };
+  }
+
+  async reconciliation(actor: Actor, id: string) {
+    this.gate(actor, false);
+    const run = await this.kernel.prisma.providerReconciliation.findUnique({ where: { id }, include: { items: true, provider: true } });
+    if (!run) fail(404, 'NOT_FOUND');
+    const order = ['different', 'missing_ours', 'missing_theirs', 'duplicate'];
+    return {
+      id: run.id,
+      providerCode: run.provider.code,
+      providerName: run.provider.name,
+      at: run.createdAt.toISOString(),
+      fileName: run.fileName,
+      periodFrom: run.periodFrom?.toISOString() ?? null,
+      periodTo: run.periodTo?.toISOString() ?? null,
+      statementTotal: run.statementTotal,
+      ourTotal: run.ourTotal,
+      counts: run.counts,
+      actorLogin: run.actorLogin,
+      items: run.items
+        .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || (a.at?.getTime() ?? 0) - (b.at?.getTime() ?? 0))
+        .map((item) => ({ ...item, at: item.at?.toISOString() ?? null, resolvedAt: item.resolvedAt?.toISOString() ?? null })),
+    };
+  }
+
+  /** Marks a difference handled (with a note) or opens it again. */
+  async updateItem(actor: Actor, id: string, body: unknown) {
+    this.gate(actor, true);
+    const { status, note: text } = parseInput(ItemBody, body);
+    if (status === 'resolved' && !text) fail(400, 'NOTE_REQUIRED');
+    const item = await this.kernel.prisma.providerReconItem.findUnique({ where: { id } });
+    if (!item) fail(404, 'NOT_FOUND');
+    await this.kernel.prisma.providerReconItem.update({
+      where: { id },
+      data: status === 'resolved'
+        ? { status, note: text, resolvedBy: actor.loginName, resolvedAt: new Date() }
+        : { status, resolvedBy: null, resolvedAt: null, ...(text ? { note: text } : {}) },
+    });
     return { ok: true };
   }
 }

@@ -518,3 +518,17 @@ export type ProviderLedgerRow = {
   id: string; at: string; kind: string; amount: number; balanceAfter: number; note: string; msisdn: string; packageName: string; actorLogin: string;
 };
 export type ProviderAccountDetail = { summary: ProviderAccount; ledger: ProviderLedgerRow[]; capped: boolean };
+
+/** Reconciliation with a provider (roadmap N8). */
+export type StatementMap = { msisdn: number; date: number; amount: number; reference?: number | null };
+export type StatementPreview = { columns: string[]; sample: string[][]; rows: number; map: Partial<StatementMap> };
+export type ReconCounts = { matched: number; different: number; missing_ours: number; missing_theirs: number; duplicate: number; skipped?: number };
+export type ReconItem = {
+  id: string; kind: 'different' | 'missing_ours' | 'missing_theirs' | 'duplicate'; msisdn: string; at: string | null;
+  theirAmount: number | null; ourAmount: number | null; reference: string | null; status: 'open' | 'resolved'; note: string | null; resolvedBy: string | null;
+};
+export type ReconRunSummary = {
+  id: string; at: string; fileName: string; periodFrom: string | null; periodTo: string | null; statementTotal: number; ourTotal: number;
+  counts: ReconCounts; open: number; actorLogin: string;
+};
+export type ReconRun = Omit<ReconRunSummary, 'open'> & { providerCode: string; providerName: string; items: ReconItem[] };

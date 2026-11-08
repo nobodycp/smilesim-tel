@@ -11,6 +11,7 @@
     "check:copy": "node scripts/check-copy.mjs"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^14.0.0",
     "@tanstack/react-query": "^5.107.1",
     "lucide-react": "0.468.0",
     "next": "^16.4.3",

@@ -19,6 +19,8 @@ import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
+import { Tabs } from '../../../components/tabs';
+import { Reconciliation } from '../reconciliation';
 
 const BRANCH = ['branch'];
 
@@ -38,6 +40,7 @@ export function ProviderAccountScreen() {
   const [amount, setAmount] = useState('');
   const [text, setText] = useState('');
   const [credit, setCredit] = useState('');
+  const [tab, setTab] = useState<'ledger' | 'recon'>('ledger');
   const query = { from, to };
   const read = useApiQuery(['office', 'provider-account', params.code, query], () => api.providerAccount(params.code, query), { enabled: allowed });
   const summary = read.data?.summary;
@@ -108,6 +111,9 @@ export function ProviderAccountScreen() {
         <Stat icon="tasks" tone="warning" label={t.held} value={summary ? <Money value={summary.held} /> : '—'} meta={t.heldHint} />
         <Stat icon="plans" label={t.available} value={summary ? <Money value={summary.available} /> : '—'} highlight />
       </StatRow>
+      <Tabs items={[{ key: 'ledger', label: t.providerLedger }, { key: 'recon', label: t.reconTitle }]} value={tab} onChange={setTab} />
+      {tab === 'recon' ? <Reconciliation code={params.code} canWrite={canWrite} setError={setError} setNote={setNote} /> : (
+        <>
       <div className="section-head">
         <h2>{t.providerLedger}</h2>
         <a className={buttonClass({ variant: 'outline', size: 'sm' })} href={api.providerAccountExportHref(params.code, query)} download>
@@ -128,6 +134,8 @@ export function ProviderAccountScreen() {
       <section className="pane">
         <DataTable columns={columns} rows={read.data?.ledger ?? []} rowKey={(row) => row.id} loading={!read.loaded} failed={read.error} onRetry={() => void read.reload()} empty={t.noRows} keepHead skeleton={{ rows: 5, columns: 7 }} />
       </section>
+        </>
+      )}
       <Dialog
         open={dialog !== null}
         size="form"

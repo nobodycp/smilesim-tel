@@ -17,6 +17,8 @@ export const ACTIVITY_ACTIONS = [
   'deduct',
   'provider_payment',
   'provider_credit',
+  'provider_reconcile',
+  'provider_reconcile_item',
   'activate',
   'charge',
   'extend',

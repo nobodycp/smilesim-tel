@@ -34,6 +34,9 @@ model User {
   twoFactorEnabled       Boolean          @default(false)
   twoFactorSecret        String?
   pendingTwoFactorSecret String?
+  /** How the second factor is proven: app (default), sms or email (roadmap N9). */
+  twoFactorMethod        String           @default("app")
+  passkeys               Passkey[]
   sessions               Session[]
   wallet                 Wallet?
   walletEntries          WalletEntry[]    @relation("WalletOwner")
@@ -151,8 +154,11 @@ model Provider {
   esimPrice   Int?
   /** How far we may owe this provider, in agorot (roadmap N7). */
   creditLimit Int             @default(0)
+  /** Which statement columns hold the number, date, amount and reference (roadmap N8). */
+  statementMap Json?
   packages    Package[]
   entries     ProviderEntry[]
+  reconciliations ProviderReconciliation[]
 }
 
 /** A payment to a provider or a settlement with it (roadmap N7). Purchases come from our operations' provider cost. */
@@ -419,4 +425,59 @@ model SiteBranding {
   logoDark  String?
   favicon   String?
   updatedAt DateTime @updatedAt
+}
+
+/** One comparison of a provider's statement with our operations (roadmap N8). */
+model ProviderReconciliation {
+  id             String               @id @default(uuid())
+  providerId     String
+  provider       Provider             @relation(fields: [providerId], references: [id])
+  fileName       String
+  periodFrom     DateTime?
+  periodTo       DateTime?
+  statementTotal Int
+  ourTotal       Int
+  /** How many rows fell in each class: matched, different, missing_ours, missing_theirs, duplicate. */
+  counts         Json
+  actorLogin     String
+  createdAt      DateTime             @default(now())
+  items          ProviderReconItem[]
+
+  @@index([providerId, createdAt])
+}
+
+/** A row that did not match, followed until it is handled. */
+model ProviderReconItem {
+  id               String                 @id @default(uuid())
+  reconciliationId String
+  reconciliation   ProviderReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  kind             String
+  msisdn           String
+  at               DateTime?
+  theirAmount      Int?
+  ourAmount        Int?
+  ourEntryId       String?
+  reference        String?
+  status           String                 @default("open")
+  note             String?
+  resolvedBy       String?
+  resolvedAt       DateTime?
+
+  @@index([reconciliationId])
+}
+
+/** A WebAuthn credential (roadmap N9): signs the user in without a password. */
+model Passkey {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String    @unique
+  publicKey    Bytes
+  counter      Int       @default(0)
+  transports   String    @default("")
+  name         String
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
 }
