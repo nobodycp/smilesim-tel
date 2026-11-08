@@ -11,6 +11,7 @@ import { usePrefs } from '../../lib/prefs';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
 import { Badge } from '../../components/ui/badge';
+import { Select } from '../../components/ui/select';
 
 const KINDS = [
   'fund', 'self_fund',
@@ -72,21 +73,21 @@ export default function FinancePage() {
       <FilterBar onClear={() => { setKind(''); setLayer(''); setQ(''); setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.kind}
-          <select value={kind} onChange={(event) => setKind(event.target.value)}>
+          <Select value={kind} onChange={(event) => setKind(event.target.value)}>
             <option value="">{t.allRows}</option>
             {KINDS.map((value) => (
               <option key={value} value={value}>{movementName(t, value)}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           {t.layer}
-          <select value={layer} onChange={(event) => setLayer(event.target.value)}>
+          <Select value={layer} onChange={(event) => setLayer(event.target.value)}>
             <option value="">{t.allRows}</option>
             {LAYERS.map((value) => (
               <option key={value} value={value}>{layerName(t, value)}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           {t.financeSearch}

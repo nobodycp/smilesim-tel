@@ -22,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRequireLayer } from '../../../../lib/use-require-layer';
 import { lineTone, onOffTone } from '../../../../lib/status-tone';
 import { Badge } from '../../../../components/ui/badge';
+import { Select } from '../../../../components/ui/select';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
@@ -277,11 +278,11 @@ export default function PackageSheetPage() {
       key: 'run',
       header: t.runTab,
       render: (action) => (
-        <select className="mode-pick" aria-label={`${t.runTab} ${names[action]}`} value={sheet?.modes[action] ?? 'manual'} onChange={(event) => void saveMode(action, event.target.value)}>
+        <Select className="mode-pick" aria-label={`${t.runTab} ${names[action]}`} value={sheet?.modes[action] ?? 'manual'} onChange={(event) => void saveMode(action, event.target.value)}>
           <option value="auto">{t.automatic}</option>
           <option value="manual">{t.manual}</option>
           <option value="off">{t.stopped}</option>
-        </select>
+        </Select>
       ),
     },
   ];
@@ -525,12 +526,12 @@ export default function PackageSheetPage() {
                     <h3>{t.repriceTitle}</h3>
                     <label>
                       {t.linePricesScope}
-                      <select value={priceScope} onChange={(event) => setPriceScope(event.target.value)}>
+                      <Select value={priceScope} onChange={(event) => setPriceScope(event.target.value)}>
                         <option value="all">{t.linePricesAll}</option>
                         {users.map((row) => (
                           <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                     <div>
                       <Button type="button" variant="secondary" onClick={() => setPricing({ scope: priceScope })}>{t.linePricesOpen}</Button>
@@ -557,12 +558,12 @@ export default function PackageSheetPage() {
                   <div className="account-fund custom-price-add">
                     <label>
                       {t.accountName}
-                      <select value={loginName} onChange={(event) => setLoginName(event.target.value)}>
+                      <Select value={loginName} onChange={(event) => setLoginName(event.target.value)}>
                         <option value="">—</option>
                         {users.map((row) => (
                           <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)} · {layerName(t, row.layer)}</option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                     <label>
                       {t.subscriptionPrice}

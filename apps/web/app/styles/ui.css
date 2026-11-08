@@ -102,6 +102,8 @@
 .ui-select-compact { height: 1.75rem; font-size: var(--rd-text-sm); }
 /* Keep the chevron's room wherever a context rule (.pane select, .desk .filter-panel select, .dialog select) resets the padding. */
 .ui-select > select.ui-select-field { padding-inline-end: 2.25rem; }
+/* In a table cell the field follows the cell's alignment (centred in .data), as a bare <select> did. */
+.data td .ui-select { display: inline-block; vertical-align: middle; }
 .ui-select-chevron {
   pointer-events: none;
   position: absolute;

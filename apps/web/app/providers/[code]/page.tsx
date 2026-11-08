@@ -12,6 +12,7 @@ import { parseShekel, shekelField } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
+import { Select } from '../../../components/ui/select';
 
 const BRANCH = ['branch'];
 const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
@@ -105,7 +106,7 @@ export default function ProviderPackagesPage() {
       key: 'run',
       header: t.runTab,
       render: (action) => (
-        <select
+        <Select
           className="mode-pick"
           aria-label={`${t.runTab} ${names[action]}`}
           value={settings.data?.modes[action] ?? 'manual'}
@@ -114,7 +115,7 @@ export default function ProviderPackagesPage() {
           <option value="auto">{t.automatic}</option>
           <option value="manual">{t.manual}</option>
           <option value="off">{t.stopped}</option>
-        </select>
+        </Select>
       ),
     },
   ];

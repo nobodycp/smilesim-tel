@@ -9,6 +9,7 @@ import { api, type LedgerRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
+import { Select } from '../../components/ui/select';
 
 const kinds = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'refresh', 'transfer'];
 
@@ -38,20 +39,20 @@ export default function OperationsPage() {
         <PeriodChips from={from} to={to} onChange={(nextFrom, nextTo) => { setFrom(nextFrom); setTo(nextTo); }} />
         <label>
           {t.kind}
-          <select value={kind} onChange={(event) => setKind(event.target.value)}>
+          <Select value={kind} onChange={(event) => setKind(event.target.value)}>
             <option value="">{t.allRows}</option>
             {kinds.map((item) => (
               <option key={item} value={item}>{actionName(t, item)}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           {t.direction}
-          <select value={direction} onChange={(event) => setDirection(event.target.value)}>
+          <Select value={direction} onChange={(event) => setDirection(event.target.value)}>
             <option value="">{t.allRows}</option>
             <option value="in">{t.increase}</option>
             <option value="out">{t.decrease}</option>
-          </select>
+          </Select>
         </label>
         <label>
           {t.from}

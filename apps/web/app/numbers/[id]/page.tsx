@@ -25,6 +25,7 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { lineTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
+import { Select } from '../../../components/ui/select';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
@@ -414,10 +415,10 @@ export default function LineCardPage() {
               </dl>
               <label>
                 {t.transfer}
-                <select value={posLogin} onChange={(event) => setPosLogin(event.target.value)}>
+                <Select value={posLogin} onChange={(event) => setPosLogin(event.target.value)}>
                   <option value="">—</option>
                   {posChoices.map((row) => <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>)}
-                </select>
+                </Select>
               </label>
               <LineChoice value={linePrices} onChange={setLinePrices} />
             </div>

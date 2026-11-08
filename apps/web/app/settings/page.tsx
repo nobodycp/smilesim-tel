@@ -10,6 +10,7 @@ import { usePageTitle } from '../../lib/page-title';
 import { usePrefs } from '../../lib/prefs';
 import { Alert } from '../../components/alert';
 import { Badge } from '../../components/ui/badge';
+import { Select } from '../../components/ui/select';
 
 export default function SettingsPage() {
   const { t, apiText, locale } = usePrefs();
@@ -199,12 +200,12 @@ export default function SettingsPage() {
             <form className="field-row" onSubmit={saveCity}>
               <label>
                 {t.city}
-                <select value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2">
+                <Select value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2">
                   <option value="">{t.cityNone}</option>
                   {cities.map((row) => (
                     <option key={row.key} value={row.key}>{row[locale]}</option>
                   ))}
-                </select>
+                </Select>
               </label>
               <button type="submit">{t.save}</button>
             </form>

@@ -10,6 +10,7 @@ import { usePrefs } from '../../lib/prefs';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
 import { Badge } from '../../components/ui/badge';
+import { Select } from '../../components/ui/select';
 
 const KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'] as const;
 
@@ -64,21 +65,21 @@ export default function ProviderOperationsPage() {
       <FilterBar onClear={() => { setProvider(''); setKind(''); setQ(''); setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.provider}
-          <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+          <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
             <option value="">{t.allRows}</option>
             {providers.map((item) => (
               <option key={item.code} value={item.code}>{item.name}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           {t.kind}
-          <select value={kind} onChange={(event) => setKind(event.target.value)}>
+          <Select value={kind} onChange={(event) => setKind(event.target.value)}>
             <option value="">{t.allRows}</option>
             {KINDS.map((value) => (
               <option key={value} value={value}>{actionName(t, value)}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           {t.number}

@@ -23,6 +23,7 @@ import { useAction } from '../../lib/use-action';
 import { useLoad } from '../../lib/use-load';
 import { onOffTone } from '../../lib/status-tone';
 import { Badge } from '../../components/ui/badge';
+import { Select } from '../../components/ui/select';
 
 function PosCatalog({
   rows,
@@ -247,29 +248,29 @@ function BranchPackages({ error, note }: { error: string; note: string }) {
         </label>
         <label>
           {t.company}
-          <select value={company} onChange={(event) => {
+          <Select value={company} onChange={(event) => {
             const next = event.target.value;
             setCompany(next);
             if (next && provider && !rows.some((row) => row.companyName === next && row.providerName === provider)) setProvider('');
           }}>
             <option value="">{t.allRows}</option>
             {companies.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
+          </Select>
         </label>
         <label>
           {t.provider}
-          <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+          <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
             <option value="">{t.allRows}</option>
             {providers.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
+          </Select>
         </label>
         <label>
           {t.status}
-          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">{t.allRows}</option>
             <option value="on">{t.lineActive}</option>
             <option value="off">{t.stopped}</option>
-          </select>
+          </Select>
         </label>
       </FilterBar>
       <section className="pane fit">
@@ -468,12 +469,12 @@ export default function PlansPage() {
       <FilterBar onClear={() => setCompanyFilter('')} clearLabel={t.clearFilters}>
         <label>
           {t.company}
-          <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
+          <Select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
             <option value="">{t.allRows}</option>
             {companyNames.map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
-          </select>
+          </Select>
         </label>
       </FilterBar>
       {listed.length === 0 ? (

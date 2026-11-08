@@ -10,6 +10,7 @@ import { api, type ActivityRow } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { pick } from '../../lib/use-load';
 import { usePaged } from '../../lib/use-paged';
+import { Select } from '../../components/ui/select';
 
 const ACTIONS = [
   'login', 'logout', 'password', 'two_factor',
@@ -76,29 +77,29 @@ export default function AuditPage() {
       <FilterBar onClear={clear} clearLabel={t.clearFilters}>
         <label>
           {t.kind}
-          <select value={action} onChange={(event) => setAction(event.target.value)}>
+          <Select value={action} onChange={(event) => setAction(event.target.value)}>
             <option value="">{t.allRows}</option>
             {ACTIONS.map((value) => (
               <option key={value} value={value}>{actionName(t, value)}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           {t.activityResult}
-          <select value={result} onChange={(event) => setResult(event.target.value)}>
+          <Select value={result} onChange={(event) => setResult(event.target.value)}>
             <option value="">{t.allRows}</option>
             <option value="ok">{t.activitySuccess}</option>
             <option value="fail">{t.activityFailure}</option>
-          </select>
+          </Select>
         </label>
         <label>
           {t.layer}
-          <select value={layer} onChange={(event) => setLayer(event.target.value)}>
+          <Select value={layer} onChange={(event) => setLayer(event.target.value)}>
             <option value="">{t.allRows}</option>
             {LAYERS.map((value) => (
               <option key={value} value={value}>{layerName(t, value)}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           {t.activitySearch}

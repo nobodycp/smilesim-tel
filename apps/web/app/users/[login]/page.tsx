@@ -19,6 +19,7 @@ import { UserOpsTab } from './line-ops';
 import { UserPackagesTab } from './packages-terms';
 import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
+import { Select } from '../../../components/ui/select';
 
 const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
@@ -174,7 +175,7 @@ export default function AccountPage() {
                     <span>{grantLabel(t, code, row.layer)}</span>
                     <Badge variant={onOffTone(on)} dot>{on ? t.grantAllow : t.grantDeny}</Badge>
                     {row.canEdit ? (
-                      <select
+                      <Select
                         aria-label={grantLabel(t, code, row.layer)}
                         value={mode}
                         onChange={(event) => setChoices({ ...picked, [code]: event.target.value as Choice })}
@@ -182,7 +183,7 @@ export default function AccountPage() {
                         <option value="role">{t.followRole}</option>
                         <option value="allow">{t.grantAllow}</option>
                         <option value="deny">{t.grantDeny}</option>
-                      </select>
+                      </Select>
                     ) : <span />}
                   </div>
                 );
@@ -194,9 +195,9 @@ export default function AccountPage() {
                   {row.staff && (
                     <label className="role-primary">
                       {t.role}
-                      <select value={primary} onChange={(event) => setRoleId(event.target.value)}>
+                      <Select value={primary} onChange={(event) => setRoleId(event.target.value)}>
                         {row.roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
-                      </select>
+                      </Select>
                     </label>
                   )}
                   <div className="grant-board">

@@ -7,17 +7,19 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   compact?: boolean;
 }
 
-/** A native select with a chevron. Styles live in app/styles/ui.css (.ui-select*). */
+/**
+ * A native select with a chevron. Styles live in app/styles/ui.css (.ui-select*). `className` goes on the wrapper,
+ * which carries the layout (width, grid placement), so the chevron stays at the field's own end.
+ */
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, invalid, compact, children, ...props }, ref) => {
     const classes = [
       "ui-select-field",
       compact ? "ui-select-compact" : "ui-select-regular",
       invalid && "ui-select-invalid",
-      className,
     ];
     return (
-      <div className="ui-select">
+      <div className={className ? `ui-select ${className}` : "ui-select"}>
         <select ref={ref} className={classes.filter(Boolean).join(" ")} {...props}>
           {children}
         </select>
