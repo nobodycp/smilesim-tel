@@ -142,7 +142,7 @@ export function ProvidersCard({ data }: { data: OverviewPayload }) {
                 <tr key={row.code}>
                   <td><Link href={`/provider-accounts/${encodeURIComponent(row.code)}`}>{row.name}</Link></td>
                   <td>
-                    <Badge variant={row.status === 'working' ? 'success' : 'danger'} dot title={row.problem === 'balance' ? t.providerProblemBalance : undefined}>
+                    <Badge variant={row.status === 'working' ? 'success' : 'danger'} dot title={row.problem === 'balance' ? t.providerProblemBalance : row.problem === 'failures' ? t.providerProblemFailures.replace('{n}', String(row.failures)) : undefined}>
                       {row.status === 'working' ? t.providerWorking : t.providerProblem}
                     </Badge>
                   </td>

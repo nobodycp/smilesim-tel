@@ -41,7 +41,7 @@ function service() {
     },
   } as unknown as OfficeKernel['prismaClient'];
   const wallets = new WalletsService(kernel);
-  return new OverviewService(kernel, wallets, {} as never, {} as never);
+  return new OverviewService(kernel, wallets, {} as never, {} as never, {} as never);
 }
 
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: false, grants: [], operatorId: id, impersonating: false });

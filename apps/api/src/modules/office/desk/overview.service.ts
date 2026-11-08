@@ -5,6 +5,7 @@ import { visibleAccountIds } from '../office-rules';
 import { NEWEST_FIRST, expiringWhere, suspendedWhere } from '../office-paging';
 import { REFUND_KINDS, SALE_KINDS, marginOf } from '../profit-ladder';
 import { ProviderAccountsService } from '../providers/provider-accounts.service';
+import { ProviderHealthService } from '../providers/provider-health.service';
 import { InsightsService } from '../reports/insights.service';
 import { taskWhereFor } from '../task-access';
 import { WalletsService } from '../wallets/wallets.service';
@@ -46,6 +47,7 @@ export class OverviewService {
     private readonly wallets: WalletsService,
     private readonly insights: InsightsService,
     private readonly providerAccounts: ProviderAccountsService,
+    private readonly health: ProviderHealthService,
   ) {}
 
   async overview(actor: Actor, query: { period?: string } = {}) {
@@ -201,15 +203,18 @@ export class OverviewService {
 
   /** The branch's providers: the period's operations and cost, the balance with them, and a status. */
   private async providers(actor: Actor, from: Date | null) {
-    const [accounts, supply] = await Promise.all([
+    const [accounts, supply, health] = await Promise.all([
       this.providerAccounts.list(actor),
       this.insights.supply(actor, from ? { from: from.toISOString() } : {}),
+      this.health.current(),
     ]);
     const used = new Map(supply.rows.map((row) => [row.providerCode, row]));
+    const healthOf = new Map(health.map((row) => [row.code, row]));
     return accounts.rows.map((row) => {
       const period = used.get(row.code);
-      // Provider health (slice G) adds failed operations; until then a provider over its credit is the problem.
-      const problem = row.available < 0 ? 'balance' : null;
+      // The same rule the alerts use (provider-health.ts): recent failures, or the balance under the owner's floor.
+      const now = healthOf.get(row.code);
+      const problem = now?.reason ?? null;
       return {
         code: row.code,
         name: row.name,
@@ -221,6 +226,8 @@ export class OverviewService {
         available: row.available,
         status: problem ? 'problem' : 'working',
         problem,
+        failures: now?.failures ?? 0,
+        alertFloor: now?.alertFloor ?? 0,
       };
     });
   }

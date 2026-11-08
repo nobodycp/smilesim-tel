@@ -8,6 +8,7 @@ import { lineTermsOf } from '../kernel/line-terms';
 import { saleOf } from '../kernel/sale';
 import type { Action, Sale } from '../kernel/types';
 import { renderEsimQr } from '../office-esim';
+import { PROVIDER_FAILED_NOTE } from '../providers/provider-health';
 import { LINES_PAGE, NEWEST_FIRST, idCursorArgs, isSuspended, linesWhere, pageOf, type LineFilter } from '../office-paging';
 import { activateInputs, activationProviderCost, captureTerms, esimPriceOf, issueSerial, lastWindow, offeredOperations, openPeriods, periodEnd, refreshMode, renewOnto, renewStay, resolvePackageMode, revalue, settleDisconnect, simRefusal, simRulesOf, switchOnto, switchOver, visibleAccountIds, windowMonthsOf, type ActionKey, type LineTerms } from '../office-rules';
 import { packageTermsOf, type PackagePriceRow } from '../office-terms';
@@ -263,7 +264,7 @@ export class LinesService {
     if (outcome === 'fail' || !this.runsNow(pkg, 'activate')) {
       const task = await this.tasks.openTask({
         action: 'activate', actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: storedIccid, esim,
-        note: outcome === 'fail' ? 'فشل المزود' : currentDetails || 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : currentDetails || 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -323,7 +324,7 @@ export class LinesService {
       if (outcome === 'fail' || !this.runsNow(line.package, 'disconnect')) {
         const task = await this.tasks.openTask({
           action, actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn,
-          note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+          note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
         });
         return { applied: false, taskId: task.id };
       }
@@ -347,7 +348,7 @@ export class LinesService {
     if (outcome === 'fail' || !this.runsNow(line.package, action)) {
       const task = await this.tasks.openTask({
         action, actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta, msisdn: line.msisdn,
-        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -397,7 +398,7 @@ export class LinesService {
       const quote = await this.switchQuote(this.kernel.prisma, line, next, new Date());
       const task = await this.tasks.openTask({
         action: 'switch', actor, posId: line.posId, packageId: line.packageId, nextPackageId: next.id, lineId: line.id,
-        posDelta: -quote.difference, msisdn: line.msisdn, note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        posDelta: -quote.difference, msisdn: line.msisdn, note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -446,7 +447,7 @@ export class LinesService {
       const task = await this.tasks.openTask({
         action: 'extend', actor, posId: line.posId, packageId: line.packageId, nextPackageId: target?.id,
         lineId: line.id, posDelta, msisdn: line.msisdn,
-        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -491,7 +492,7 @@ export class LinesService {
     if (outcome === 'fail' || mode !== 'auto') {
       const task = await this.tasks.openTask({
         action: 'refresh', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn,
-        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -525,7 +526,7 @@ export class LinesService {
     }
     const task = await this.tasks.openTask({
       action: 'rename', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: msisdn || null,
-      note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+      note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
     });
     return { applied: false, taskId: task.id };
   }
@@ -554,7 +555,7 @@ export class LinesService {
     }
     const task = await this.tasks.openTask({
       action: 'sim', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn, iccid, esim, esimQr: qr,
-      note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+      note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
     });
     return { applied: false, taskId: task.id };
   }
@@ -862,7 +863,7 @@ export class LinesService {
     if (outcome === 'fail' || !this.runsNow(line.package, 'charge')) {
       const task = await this.tasks.openTask({
         action: 'charge', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta, msisdn: line.msisdn,
-        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false as const, taskId: task.id };
     }

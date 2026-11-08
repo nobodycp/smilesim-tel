@@ -162,6 +162,12 @@ model Provider {
   creditLimit Int             @default(0)
   /** Which statement columns hold the number, date, amount and reference (roadmap N8). */
   statementMap Json?
+  /** Alert when the available balance falls under this, in agorot (spec 2026-11-08-overview-and-reports-nav, G). */
+  alertFloor  Int             @default(0)
+  /** Last known status, `working` or `problem`, so a change writes its notice once. */
+  health      String          @default("working")
+  healthReason String?
+  healthAt    DateTime?
   packages    Package[]
   entries     ProviderEntry[]
   reconciliations ProviderReconciliation[]

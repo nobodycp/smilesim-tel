@@ -44,12 +44,12 @@ Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice
 - [ ] Statement source: a reconciliation run fills `providerAmount` for the operations it matched; overdue check (worker, daily) → notice.
 - [ ] `provider-operations` screen: source, system cost, provider amount / «بانتظار الكشف», difference; provider accounts list: source, last matched, open differences.
 
-## Slice F: home overview — done 2026-11-09 (API 786, e2e 147; Docker in light and dark)
+## Slice F: home overview — done 2026-11-09 `78e7e2c`
 - [x] `apps/api/.../desk/overview.service.ts` + `GET /office/overview?period=` (route table, permission matrix, spec per layer).
 - [x] `features/desk/screens/home-screen.tsx`: period switch and the seven cards; `components/donut.tsx` (SVG) for the lines card.
 - [x] `DESIGN.md`: the overview card set and the geometric decoration tokens.
 - [x] e2e on the mock API for each layer.
 
-## Slice G: provider health and alerts
-- [ ] Health rule, owner floor setting, state change detection (worker), notices (`notice-kinds.ts`), home banner.
-- [ ] Specs and the notices e2e.
+## Slice G: provider health and alerts — done 2026-11-09 (API 789, e2e 147)
+- [x] Health rule, owner floor setting, state change detection (API timer, ProviderHealthService), notices (`notice-kinds.ts`), home banner.
+- [x] Specs and the notices e2e.

@@ -92,6 +92,12 @@ export function HomeScreen() {
           />
         </div>
       </header>
+      {/* Provider alerts (spec G): the same rule as the notices, shown while it holds. */}
+      {overview.data?.providers?.some((row) => row.status === 'problem') ? (
+        <Alert banner>
+          {`${t.providerAlertBanner} ${overview.data.providers.filter((row) => row.status === 'problem').map((row) => `${row.name} (${row.problem === 'failures' ? t.providerProblemFailures.replace('{n}', String(row.failures)) : t.providerProblemBalance})`).join('، ')}`}
+        </Alert>
+      ) : null}
       <section className="overview" aria-busy={!overview.data && !overview.error}>
         {overview.error && !overview.data ? (
           <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section>

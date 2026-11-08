@@ -20,7 +20,7 @@ const EntryBody = z.object({
   amount: z.number().int().min(-MAX_AGOROT).max(MAX_AGOROT),
   note,
 });
-const CreditBody = z.object({ creditLimit: ceilingValue });
+const CreditBody = z.object({ creditLimit: ceilingValue, alertFloor: z.number().int().min(-100_000_000).max(100_000_000).optional() });
 const FileBody = z.object({ fileName: z.string().min(1).max(200), content: z.string().min(1) });
 const column = z.number().int().min(0).max(200);
 const RunBody = FileBody.extend({ map: z.object({ msisdn: column, date: column, amount: column, reference: column.nullable().optional() }) });
@@ -78,9 +78,16 @@ export class ProviderAccountsService {
       settlements,
       balance,
       creditLimit: provider.creditLimit,
+      alertFloor: (provider as { alertFloor?: number }).alertFloor ?? 0,
       held,
       available: balance + provider.creditLimit - held,
     };
+  }
+
+  /** Every provider's summary with no viewer check: for the API's own health watch (ProviderHealthService). */
+  async summaries() {
+    const books = await this.books();
+    return books.providers.map((provider) => this.summaryOf(provider, books));
   }
 
   async list(actor: Actor) {
@@ -150,10 +157,10 @@ export class ProviderAccountsService {
 
   async setCredit(actor: Actor, code: string, body: unknown) {
     this.gate(actor, true);
-    const { creditLimit } = parseInput(CreditBody, body);
+    const { creditLimit, alertFloor } = parseInput(CreditBody, body);
     const provider = await this.kernel.prisma.provider.findUnique({ where: { code } });
     if (!provider) fail(404, 'NOT_FOUND');
-    await this.kernel.prisma.provider.update({ where: { code }, data: { creditLimit } });
+    await this.kernel.prisma.provider.update({ where: { code }, data: { creditLimit, ...(alertFloor !== undefined ? { alertFloor } : {}) } });
     return { ok: true };
   }
 

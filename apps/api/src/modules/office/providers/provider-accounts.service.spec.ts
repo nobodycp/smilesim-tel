@@ -42,7 +42,7 @@ function service() {
 describe('ProviderAccountsService', () => {
   it('sums each provider: payments + settlements − purchases, credit, held for open tasks, available', async () => {
     const { rows, totals } = await service().accounts.list(owner);
-    expect(rows[0]).toEqual({ code: 'sky', name: 'سكاي', purchases: 6500, payments: 20000, settlements: -500, balance: 13000, creditLimit: 50000, held: 3500, available: 59500 });
+    expect(rows[0]).toEqual({ code: 'sky', name: 'سكاي', purchases: 6500, payments: 20000, settlements: -500, balance: 13000, creditLimit: 50000, alertFloor: 0, held: 3500, available: 59500 });
     expect(rows[1]).toMatchObject({ code: 'lian', balance: -2000, available: -2000 });
     expect(totals).toEqual({ balance: 11000, held: 3500, owed: 2000 });
   });
@@ -62,11 +62,16 @@ describe('ProviderAccountsService', () => {
     await accounts.addEntry(staff(['accounting']), 'sky', { kind: 'payment', amount: 10000, note: 'دفعة ٢' });
     await accounts.addEntry(owner, 'sky', { kind: 'settlement', amount: -300, note: 'تسوية' });
     await accounts.setCredit(owner, 'sky', { creditLimit: 80000 });
+    await accounts.setCredit(owner, 'sky', { creditLimit: 80000, alertFloor: 10000 });
     expect(created).toEqual([
       { data: { providerId: 'p1', kind: 'payment', amount: 10000, note: 'دفعة ٢', actorLogin: 'clerk' } },
       { data: { providerId: 'p1', kind: 'settlement', amount: -300, note: 'تسوية', actorLogin: 'branch' } },
     ]);
-    expect(updated).toEqual([{ where: { code: 'sky' }, data: { creditLimit: 80000 } }]);
+    expect(updated).toEqual([
+      { where: { code: 'sky' }, data: { creditLimit: 80000 } },
+      // The owner's alert floor (spec 2026-11-08-overview-and-reports-nav, G) rides on the same request.
+      { where: { code: 'sky' }, data: { creditLimit: 80000, alertFloor: 10000 } },
+    ]);
   });
 
   it('refuses a negative payment, a missing note, an unknown provider, and staff without the grant', async () => {

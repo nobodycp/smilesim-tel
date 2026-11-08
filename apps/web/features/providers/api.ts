@@ -17,6 +17,6 @@ export const providerAccountsApi = {
   reconciliation: (id: string) => request<ReconRun>('GET', `/office/reconciliations/${segment(id)}`),
   updateReconItem: (id: string, body: { status: 'open' | 'resolved'; note: string }) =>
     request<{ ok: true }>('PATCH', `/office/reconciliation-items/${segment(id)}`, body),
-  setProviderCredit: (code: string, creditLimit: number) =>
-    request<{ ok: true }>('PATCH', `/office/provider-accounts/${segment(code)}/credit`, { creditLimit }),
+  setProviderCredit: (code: string, creditLimit: number, alertFloor?: number) =>
+    request<{ ok: true }>('PATCH', `/office/provider-accounts/${segment(code)}/credit`, { creditLimit, ...(alertFloor !== undefined ? { alertFloor } : {}) }),
 };

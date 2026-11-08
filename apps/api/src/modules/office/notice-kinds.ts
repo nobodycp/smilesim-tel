@@ -23,12 +23,16 @@ export type AnnouncementNoticePayload = { announcementId: string; authorName: st
  */
 export type TransferNoticePayload = { kind: TransferKind; subject: string; fromLogin?: string; toLogin?: string; actorName: string };
 
+/** A provider turned to a problem, or recovered (spec 2026-11-08-overview-and-reports-nav, G). */
+export type ProviderNoticePayload = { code: string; name: string; reason: 'failures' | 'balance' | null; failures: number; available: number; alertFloor: number };
+
 export type NoticeDraft =
   | { kind: 'task.opened' | 'task.taken' | 'task.released' | 'task.note' | 'task.done' | 'task.rejected' | 'task.cancelled'; payload: TaskNoticePayload }
   | { kind: 'fund.received' | 'fund.deducted'; payload: FundNoticePayload }
   | { kind: 'wallet.negative' | 'wallet.ceiling'; payload: WalletNoticePayload }
   | { kind: 'transfer.out' | 'transfer.in'; payload: TransferNoticePayload }
-  | { kind: 'announcement'; payload: AnnouncementNoticePayload };
+  | { kind: 'announcement'; payload: AnnouncementNoticePayload }
+  | { kind: 'provider.problem' | 'provider.recovered'; payload: ProviderNoticePayload };
 
 export type NoticeKind = NoticeDraft['kind'];
 
@@ -36,12 +40,13 @@ export const NOTICE_GROUPS = {
   tasks: ['task.opened', 'task.taken', 'task.released', 'task.note', 'task.done', 'task.rejected', 'task.cancelled'],
   wallet: ['fund.received', 'fund.deducted', 'wallet.negative', 'wallet.ceiling', 'transfer.out', 'transfer.in'],
   announcements: ['announcement'],
+  providers: ['provider.problem', 'provider.recovered'],
 } as const satisfies Record<string, readonly NoticeKind[]>;
 
 export type NoticeGroup = keyof typeof NOTICE_GROUPS;
 
 export function noticeGroupOf(value: unknown): NoticeGroup | null {
-  return value === 'tasks' || value === 'wallet' || value === 'announcements' ? value : null;
+  return value === 'tasks' || value === 'wallet' || value === 'announcements' || value === 'providers' ? value : null;
 }
 
 /** The record a notice opens. */
@@ -49,6 +54,7 @@ export function hrefFor(draft: NoticeDraft): string {
   if (draft.kind.startsWith('task.')) return `/tasks/${(draft.payload as TaskNoticePayload).taskId}`;
   if (draft.kind === 'announcement') return '/';
   if (draft.kind === 'transfer.out' || draft.kind === 'transfer.in') return '/users';
+  if (draft.kind === 'provider.problem' || draft.kind === 'provider.recovered') return `/provider-accounts/${encodeURIComponent((draft.payload as ProviderNoticePayload).code)}`;
   return '/finance';
 }
 

@@ -75,7 +75,7 @@ export type OverviewPayload = {
   active: { main_agent: OverviewRanked[]; agent: OverviewRanked[]; pos: OverviewRanked[] };
   users: { counts: { main_agent: number; agent: number; pos: number }; frozen: number; debtors: number; debt: number; ceilings: number; used: number };
   tasks: { pending: number; working: number; done: number; rejected: number; cancelled: number; oldestOpenMinutes: number | null };
-  providers: { code: string; name: string; operations: number; cost: number; profit: number; balance: number; creditLimit: number; available: number; status: 'working' | 'problem'; problem: string | null }[] | null;
+  providers: { code: string; name: string; operations: number; cost: number; profit: number; balance: number; creditLimit: number; available: number; status: 'working' | 'problem'; problem: 'failures' | 'balance' | null; failures: number; alertFloor: number }[] | null;
 };
 export type HomePayload = {
   pendingTasks: number;
@@ -465,6 +465,12 @@ export type NoticePayload = {
   fromLogin?: string;
   toLogin?: string;
   actorName?: string;
+  /** `provider.problem` and `provider.recovered` (spec 2026-11-08-overview-and-reports-nav, G). `reason` is shared. */
+  code?: string;
+  name?: string;
+  failures?: number;
+  available?: number;
+  alertFloor?: number;
 };
 export type NoticeRow = {
   id: string;
@@ -577,7 +583,7 @@ export type SupplyReportRow = { providerCode: string; providerName: string; oper
 /** Our account with one provider (`GET /office/provider-accounts`): payments + settlements − purchases. */
 export type ProviderAccount = {
   code: string; name: string; purchases: number; payments: number; settlements: number;
-  balance: number; creditLimit: number; held: number; available: number;
+  balance: number; creditLimit: number; alertFloor: number; held: number; available: number;
 };
 export type ProviderLedgerRow = {
   id: string; at: string; kind: string; amount: number; balanceAfter: number; note: string; msisdn: string; packageName: string; actorLogin: string;

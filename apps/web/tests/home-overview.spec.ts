@@ -24,7 +24,7 @@ const overview = (period: string, withProviders: boolean) => ({
   providers: withProviders
     ? [
         { code: 'sky', name: 'سكاي', operations: 12, cost: 30000, profit: 3600, balance: -40000, creditLimit: 100000, available: 60000, status: 'working', problem: null },
-        { code: 'lian', name: 'ليان', operations: 0, cost: 0, profit: 0, balance: -120000, creditLimit: 100000, available: -20000, status: 'problem', problem: 'balance' },
+        { code: 'lian', name: 'ليان', operations: 0, cost: 0, profit: 0, balance: -120000, creditLimit: 100000, available: -20000, status: 'problem', problem: 'balance', failures: 0, alertFloor: 0 },
       ]
     : null,
 });
@@ -50,6 +50,8 @@ test('the branch reads the full overview, switches the period, and sees its prov
   const providers = page.locator('.overview-card', { hasText: 'المزودون' }).first();
   await expect(providers.locator('tbody tr')).toHaveCount(2);
   await expect(providers.locator('tbody tr').nth(1)).toContainText('فيه مشكلة');
+  // Provider alerts (spec G): a banner names the providers with a problem while it holds.
+  await expect(page.locator('.banner', { hasText: 'مزوّدون فيهم مشكلة الآن' })).toContainText('ليان');
 
   const top = page.locator('.overview-card', { hasText: 'الأكثر' }).filter({ has: page.getByRole('tab', { name: 'أكثر الرزم مبيعاً' }) });
   await expect(top.getByRole('tab')).toHaveText(['أكثر الرزم مبيعاً', 'أعلى الشركات ربحاً', 'أعلى المزودين ربحاً']);
@@ -71,6 +73,7 @@ test('an agent sees no providers card and no main-agent tab', async ({ page }) =
   await page.goto('http://agent.localhost:3910/');
   await expect(page.locator('.overview-sales')).toBeVisible();
   await expect(page.locator('.overview-card table.data')).toHaveCount(0);
+  await expect(page.locator('.banner', { hasText: 'مزوّدون فيهم مشكلة الآن' })).toHaveCount(0);
   const top = page.locator('.overview-card').filter({ has: page.getByRole('tab', { name: 'أكثر الرزم مبيعاً' }) });
   await expect(top.getByRole('tab')).toHaveCount(2);
   const active = page.locator('.overview-card', { hasText: 'الأنشط' });

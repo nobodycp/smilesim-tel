@@ -40,6 +40,7 @@ export function ProviderAccountScreen() {
   const [amount, setAmount] = useState('');
   const [text, setText] = useState('');
   const [credit, setCredit] = useState('');
+  const [floor, setFloor] = useState('');
   const [tab, setTab] = useState<'ledger' | 'recon'>('ledger');
   const query = { from, to };
   const read = useApiQuery(['office', 'provider-account', params.code, query], () => api.providerAccount(params.code, query), { enabled: allowed });
@@ -53,6 +54,7 @@ export function ProviderAccountScreen() {
     setAmount('');
     setText('');
     setCredit(summary ? shekelField(summary.creditLimit) : '');
+    setFloor(summary ? shekelField(summary.alertFloor ?? 0) : '');
     setDialog(which);
   }
 
@@ -68,11 +70,13 @@ export function ProviderAccountScreen() {
 
   async function saveCredit() {
     const value = parseShekel(credit);
-    if (value === null) {
+    const floorValue = parseShekel(floor.trim().replace(/^-/, ''));
+    if (value === null || floorValue === null) {
       setError(apiText('بيانات غير صالحة'));
       return;
     }
-    await run(() => api.setProviderCredit(params.code, value), { note: t.saved, then: () => setDialog(null) });
+    const alertFloor = floor.trim().startsWith('-') ? -floorValue : floorValue;
+    await run(() => api.setProviderCredit(params.code, value, alertFloor), { note: t.saved, then: () => setDialog(null) });
   }
 
   const kindName = (value: string) => (value === 'payment' ? t.providerPayment : value === 'settlement' ? t.reasonSettlement : actionName(t, value));
@@ -154,10 +158,17 @@ export function ProviderAccountScreen() {
       >
         <div className="dialog-form">
           {dialog === 'credit' ? (
-            <label>
-              {t.creditLimit}
-              <input inputMode="decimal" dir="ltr" value={credit} onChange={(event) => setCredit(event.target.value)} />
-            </label>
+            <>
+              <label>
+                {t.creditLimit}
+                <input inputMode="decimal" dir="ltr" value={credit} onChange={(event) => setCredit(event.target.value)} />
+              </label>
+              <label>
+                {t.alertFloor}
+                <input inputMode="decimal" dir="ltr" value={floor} onChange={(event) => setFloor(event.target.value)} />
+              </label>
+              <p className="hint">{t.alertFloorHint}</p>
+            </>
           ) : (
             <>
               <label>
