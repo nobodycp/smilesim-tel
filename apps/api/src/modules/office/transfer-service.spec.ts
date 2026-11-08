@@ -5,7 +5,8 @@ import request from 'supertest';
 import { ActivityRecorder } from './activity-recorder';
 import { NOTICE_GROUPS, hrefFor, type NoticeDraft } from './notice-kinds';
 import type { NoticeService, WrittenNotice } from './notice.service';
-import { OfficeController } from './office.controller';
+import { OfficeKernel } from './kernel/office-kernel';
+import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from './office.module';
 import { OfficeService } from './office.service';
 import type { LineTerms } from './office-rules';
 import { account, tree, type Row } from './tree-fixture';
@@ -887,9 +888,13 @@ describe('the transfer routes under /office', () => {
   });
 
   async function appFor(service: OfficeService) {
+    // Every office route, whichever controller holds it, over this service's kernel (its in-memory tables).
+    const kernel = (service as unknown as { kernel: OfficeKernel }).kernel;
     const moduleRef = await Test.createTestingModule({
-      controllers: [OfficeController],
+      controllers: OFFICE_CONTROLLERS,
       providers: [
+        ...OFFICE_PROVIDERS.filter((provider) => provider !== OfficeService && provider !== OfficeKernel),
+        { provide: OfficeKernel, useValue: kernel },
         { provide: OfficeService, useValue: service },
         {
           provide: ActivityRecorder,

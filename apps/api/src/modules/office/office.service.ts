@@ -278,6 +278,10 @@ export class OfficeService implements OnModuleInit {
     return this.kernel.ensureLayerRoles();
   }
 
+  private visibleLine(actor: Actor, lineId: string) {
+    return this.kernel.visibleLine(actor, lineId);
+  }
+
   private ladderRows(codes: string[], pathIds: string[], db: Prisma.TransactionClient | PrismaClient) {
     return this.kernel.ladderRows(codes, pathIds, db);
   }
@@ -1682,20 +1686,6 @@ export class OfficeService implements OnModuleInit {
     return this.stampWith(terms, path, await this.ladderRows(codes, path.map((node) => node.id), db));
   }
 
-  private async visibleLine(actor: Actor, lineId: string) {
-    const line = await this.prisma.line.findUnique({
-      where: { id: lineId },
-      include: { package: { include: { company: true, provider: true } } },
-    });
-    if (!line) fail(404, 'NOT_FOUND');
-    if (!line.package.company || !line.package.provider) fail(400, 'INVALID');
-    const accounts = await this.accounts();
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
-    // The stop belongs to the selling account that owns the line, not to whoever clicks. The path
-    // travels with the line so later price and visibility checks do not load the accounts again.
-    const posPath = this.pathOf(line.posId, accounts);
-    return Object.assign(line, { denied: deniedOpsFor(posPath), posPath });
-  }
 
   private async disconnectSettlementFor(
     tx: Prisma.TransactionClient | PrismaClient,
