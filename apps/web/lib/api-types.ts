@@ -382,7 +382,11 @@ export type ProviderOpRow = {
   /** The eSIM fee inside this operation's cost, when it sold or issued an eSIM. */
   esimPrice: number | null;
 };
+/** One account's share of a sale, as the branch reads it on a finance row. */
+export type FinanceShare = { loginName: string; layer: string; margin: number };
 export type FinanceRow = {
+  /** For the branch: every account's share of the sale, branch first; null otherwise. */
+  shares: FinanceShare[] | null;
   /** Why a manual movement was made: deposit, return, correction or settlement. */
   reason: string | null;
   /** For a hold or a release: the amount held (positive) or freed (negative). */

@@ -2,7 +2,7 @@
 
 Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice at a time. Each slice is verified (typecheck, lint, check:copy, test:api, and the browser in ar + en, light + dark, for UI) before the next one starts, and each slice updates the codemaps it touches.
 
-## Slice A: entering an account opens its layer's door — done 2026-11-09 (verified on Docker: enter → pos.localhost with the pos menu, leave → admin users)
+## Slice A: entering an account opens its layer's door — done 2026-11-09 `b9e1d37` (verified on Docker: enter → pos.localhost with the pos menu, leave → admin users)
 - [x] `apps/api/src/modules/auth/`: handoff store (`saveHandoff`, `takeHandoff`, 60 s, one use) in the memory and Prisma auth stores.
 - [x] `accounts.service.ts` `enter`: returns `{ door, code }`; `accounts.controller.ts` stops setting cookies.
 - [x] New `POST /office/handoff` (no actor; reads the code, sets `sid` + `home`), in `account-session.controller.ts`; route table + permission matrix + activity.
@@ -11,23 +11,23 @@ Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice
 - [x] Specs: handoff once only, expired, door middleware for an entered point of sale on the pos and admin doors; e2e: enter opens the pos door, leave returns to the admin users page.
 - [x] `docs/architecture/backend.md`, `frontend.md`.
 
-## Slice B: operations across the chain — done 2026-11-09 (verified on Docker: the branch reads 33 operations)
+## Slice B: operations across the chain — done 2026-11-09 `b9e1d37` (verified on Docker: the branch reads 33 operations)
 - [x] `apps/api/.../wallets/wallets.service.ts` `ledger('operations')`: `userId in visibleAccountIds`, plus `loginName`, `layer` and `margin` on each row; `audit` scope unchanged.
 - [x] spec: the branch sees the points of sale's operations, the agent sees only its chain's, and the point of sale sees only its own.
 - [x] `response-shape.spec.ts` (fields added only).
 - [x] `features/wallets/screens/operations-screen.tsx`: account, layer and my-profit columns.
 - [x] `docs/architecture/backend.md`, `frontend.md`.
 
-## Slice C: «التقارير» menu, one page per report — done 2026-11-09 (e2e 145; Docker in ar/en/he, light/dark)
+## Slice C: «التقارير» menu, one page per report — done 2026-11-09 `b9e1d37` (e2e 145; Docker in ar/en/he, light/dark)
 - [x] `components/office-shell.tsx`: a «التقارير» `NavGroup` (closed by default) holding the spec's items with their layers and grants; remove the old finance, profits, reports, provider-operations and «غير جاهز» entries. Same for the point-of-sale menu.
 - [x] `app/reports/{sales,orders,balances,supply}/page.tsx` plus screens split from `reports-hub-screen.tsx`; `/reports` redirects to `/reports/sales`; resolve name collisions with `/reports/[kind]`.
 - [x] Crumbs and page titles for the new pages.
 - [x] e2e: `tests/reports-hub.spec.ts` becomes per-page tests; the group starts closed and opens on a report page.
 - [x] `frontend.md`, copy keys in ar/en/he.
 
-## Slice D: finance ledger
-- [ ] `wallets.service.ts` `financeWhere`: own wallet + descendants, a `scope=money|all` filter (all drops the `amount != 0` rule); specs; CSV parity.
-- [ ] `finance-screen.tsx`: signed amounts with badges, the money/all filter, the ladder drawer for the branch.
+## Slice D: finance ledger — done 2026-11-09 (API 774, e2e 145; Docker: chain profits dialog)
+- [x] `wallets.service.ts` `financeWhere`: own wallet + descendants, a `scope=money|all` filter (all drops the `amount != 0` rule); specs; CSV parity.
+- [x] `finance-screen.tsx`: signed amounts with badges, the money/all filter, the ladder drawer for the branch.
 
 ## Slice H: user page actions and settings
 - [ ] `features/accounts/account-actions.tsx`: «المحفظة» menu button (charge, deduct, ceiling, statement).

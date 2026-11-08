@@ -315,7 +315,7 @@ export class OfficeFacade {
     return this.walletDesk.providerOperations(await this.actor(gate), query);
   }
 
-  async finance(gate: Gate, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
+  async finance(gate: Gate, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
     return this.walletDesk.finance(await this.actor(gate), query);
   }
 

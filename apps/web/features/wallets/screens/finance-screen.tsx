@@ -18,6 +18,8 @@ import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import { Dialog } from '../../../components/dialog';
+import { Fact, Facts } from '../../../components/facts';
 
 const KINDS = [
   'fund', 'self_fund', 'deduct', 'deduct_in', 'hold', 'release',
@@ -50,9 +52,12 @@ export function FinanceScreen() {
   const [q, setQ] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  // Every operation by default (owner 2026-11-09); «الحركات المالية فقط» keeps the money movements.
+  const [scope, setScope] = useState('');
+  const [chainOf, setChainOf] = useState<FinanceRow | null>(null);
   const summary = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary());
-  const list = usePaged<FinanceRow>(`${kind}|${layer}|${q}|${from}|${to}`, async (cursor) =>
-    pick(await api.officeFinance({ kind, layer, q, from, to, cursor }), (data) => ({ rows: data.entries, next: data.nextCursor, total: data.total })),
+  const list = usePaged<FinanceRow>(`${kind}|${layer}|${q}|${from}|${to}|${scope}`, async (cursor) =>
+    pick(await api.officeFinance({ kind, layer, q, from, to, scope, cursor }), (data) => ({ rows: data.entries, next: data.nextCursor, total: data.total })),
   );
 
   const columns: Column<FinanceRow>[] = [
@@ -78,8 +83,22 @@ export function FinanceScreen() {
         </span>
       ),
     },
-    { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} /> },
-    { key: 'margin', header: t.myMargin, num: true, render: (row) => (row.margin == null ? '—' : <Money value={row.margin} signed />) },
+    // Money in reads «+», money out «−»: the sign carries the direction, the colour only repeats it.
+    { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} signed /> },
+    {
+      key: 'margin',
+      header: t.myMargin,
+      num: true,
+      render: (row) => {
+        if (row.margin == null) return '—';
+        if (!row.shares) return <Money value={row.margin} signed />;
+        return (
+          <button type="button" className="link-btn" onClick={() => setChainOf(row)} title={t.sharesOpen} aria-label={`${t.sharesOpen}: ${row.msisdn}`}>
+            <Money value={row.margin} signed />
+          </button>
+        );
+      },
+    },
     { key: 'before', header: t.balanceBefore, num: true, render: (row) => <Money value={row.balanceBefore} /> },
     { key: 'after', header: t.balanceAfter, num: true, render: (row) => <Money value={row.balanceAfter} /> },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
@@ -94,12 +113,19 @@ export function FinanceScreen() {
       {summary.data?.series ? <WalletHead summary={summary.data} /> : null}
       <div className="section-head">
         <h2>{t.statement}</h2>
-        <a className={buttonClass({ variant: 'outline', size: 'sm' })} href={api.financeExportHref({ kind, layer, q, from, to })} download>
+        <a className={buttonClass({ variant: 'outline', size: 'sm' })} href={api.financeExportHref({ kind, layer, q, from, to, scope })} download>
           <Download size={15} aria-hidden="true" />
           {t.exportCsv}
         </a>
       </div>
-      <FilterBar onClear={() => { setKind(''); setLayer(''); setQ(''); setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
+      <FilterBar onClear={() => { setKind(''); setLayer(''); setQ(''); setFrom(''); setTo(''); setScope(''); }} clearLabel={t.clearFilters}>
+        <label>
+          {t.financeScope}
+          <Select value={scope} onChange={(event) => setScope(event.target.value)}>
+            <option value="">{t.financeScopeAll}</option>
+            <option value="money">{t.financeScopeMoney}</option>
+          </Select>
+        </label>
         <label>
           {t.kind}
           <Select value={kind} onChange={(event) => setKind(event.target.value)}>
@@ -134,6 +160,17 @@ export function FinanceScreen() {
       <section className="pane">
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 13 }} />
       </section>
+      <Dialog open={chainOf !== null} title={t.sharesTitle} lede={t.sharesHint} closeLabel={t.closeMenu} size="confirm" onClose={() => setChainOf(null)}>
+        {chainOf?.shares ? (
+          <Facts variant="list">
+            {chainOf.shares.map((share) => (
+              <Fact key={share.loginName} label={<>{layerName(t, share.layer)} · <AccountName login={share.loginName} /></>}>
+                <Money value={share.margin} signed />
+              </Fact>
+            ))}
+          </Facts>
+        ) : null}
+      </Dialog>
     </Desk>
   );
 }
