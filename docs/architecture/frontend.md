@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.4b-3). e2e 113/113 · tsc 0 errors · lint 0 errors / 27 warnings (unused vars are reported) · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 5.4b-4a). e2e 113/113 · tsc 0 errors · lint 0 errors / 27 warnings (unused vars are reported) · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
