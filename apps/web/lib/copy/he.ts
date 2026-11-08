@@ -572,6 +572,7 @@ export const he: Copy = {
     BAD_CREDENTIALS: 'פרטי הכניסה שגויים',
     ACCOUNT_DISABLED: 'החשבון מושעה',
     RATE_LIMITED: 'יותר מדי ניסיונות. נסה שוב בקרוב',
+    DUPLICATE_REQUEST: 'אותה בקשה כבר מתבצעת',
     WRONG_CODE: 'הקוד שגוי',
     WRONG_CURRENT_PASSWORD: 'הסיסמה הנוכחית שגויה',
     FULL_NAME_INVALID: 'השם המלא חייב להיות בין 2 ל-40 תווים',

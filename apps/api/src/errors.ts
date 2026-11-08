@@ -13,6 +13,7 @@ export const ERROR_MESSAGES = {
   BAD_CREDENTIALS: 'بيانات الدخول غير صحيحة',
   ACCOUNT_DISABLED: 'الحساب موقوف',
   RATE_LIMITED: 'محاولات كثيرة. أعد المحاولة بعد قليل',
+  DUPLICATE_REQUEST: 'الطلب نفسه قيد التنفيذ',
   WRONG_CODE: 'الرمز غير صحيح',
   WRONG_CURRENT_PASSWORD: 'كلمة السر الحالية غير صحيحة',
   FULL_NAME_INVALID: 'الاسم الكامل من حرفين إلى أربعين حرفاً',

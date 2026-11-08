@@ -8,7 +8,7 @@ answers listed under "Needs the owner" first.
 
 | # | Slice | Needs the owner | Size |
 |---|---|---|---|
-| N1 | Server-side idempotency for every write (an `Idempotency-Key` per action, kept 24 h in Redis; a repeat answers the first result) | — | S |
+| N1 ✅ | Server-side idempotency for every write (an `Idempotency-Key` per action, kept 24 h in Redis; a repeat answers the first result) | — | S |
 | N2 | Days left and «ينتهي قريباً» (≤ 3 days) on numbers: a column, a filter, and a card on every layer's home | — | S |
 | N4 | Profit per layer: what each layer earned on its sales (its price minus the price above), on the home cards and in a report | — | M |
 | N5 | Reports like the offer: sales, profits, orders (operations and tasks), balances, providers — each with search, filters and CSV | — | L |

@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { DuplicateGuardInterceptor } from '../shared/duplicate-guard.interceptor';
 import { AuthModule } from '../auth/auth.module';
 import { CatalogSeed } from './catalog/catalog-seed';
 import { ReportsController } from './reports/reports.controller';
@@ -41,6 +43,7 @@ export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, NoticeInboxService
 @Module({
   imports: [AuthModule],
   controllers: OFFICE_CONTROLLERS,
-  providers: OFFICE_PROVIDERS,
+  // Not in OFFICE_PROVIDERS: HTTP specs repeat writes on purpose; duplicate-guard.interceptor.spec.ts covers it.
+  providers: [...OFFICE_PROVIDERS, { provide: APP_INTERCEPTOR, useClass: DuplicateGuardInterceptor }],
 })
 export class OfficeModule {}

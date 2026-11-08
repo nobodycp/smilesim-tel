@@ -572,6 +572,7 @@ export const en: Copy = {
     BAD_CREDENTIALS: 'The login details are incorrect',
     ACCOUNT_DISABLED: 'This account is suspended',
     RATE_LIMITED: 'Too many attempts. Try again shortly',
+    DUPLICATE_REQUEST: 'The same request is already running',
     WRONG_CODE: 'The code is incorrect',
     WRONG_CURRENT_PASSWORD: 'The current password is incorrect',
     FULL_NAME_INVALID: 'The full name must be 2 to 40 characters',

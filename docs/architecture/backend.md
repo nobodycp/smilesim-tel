@@ -16,6 +16,7 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 | `src/app.module.ts` | imports `featureModules` from `modules/registry.ts` + `HealthController`; middleware `RateLimitMiddleware` then `DoorMiddleware` on every route |
 | `src/rate-limit.middleware.ts` | per signed-in session (SHA-256 of `sid`), one-minute window in Redis (memory without `REDIS_URL`): 600 requests, 60 of them writes → `429 RATE_LIMITED` + `Retry-After`; the notices stream, `/health` and calls without a session are not counted; a Redis failure lets the request through |
 | `src/cookies.ts` | `readCookie(req, name)` for the middlewares |
+| `modules/shared/duplicate-guard.interceptor.ts` | global (`APP_INTERCEPTOR` in `OfficeModule`): an `/office/` write repeated by the same session (same method, URL, body within 10 s, or the same `Idempotency-Key` within 24 h) runs once — `409 DUPLICATE_REQUEST` while the first runs, the first answer after |
 | `src/door.middleware.ts`, `src/doors.ts` | resolves the door (layer) from the `x-door` header |
 | `src/worker.ts` | BullMQ worker, no processors yet; daily `activityEvent` purge via `setInterval` |
 | `src/errors.ts` | `ERROR_MESSAGES` catalog (code → message), tested |
