@@ -135,14 +135,18 @@ export function OfficeShell({ children }: { children: ReactNode }) {
     });
   }
 
+  // Signing out revokes this session and then leaves for the sign-in page on purpose: a full load drops every
+  // piece of account state held in memory. If the revoke fails (API down) the account stays signed in, as shown.
   async function logout() {
-    forgetIdentity();
     const listed = await api.listSessions();
     if (!listed.ok) return;
     const current = listed.data.sessions.find((session) => session.current);
-    if (!current) return;
-    await api.revokeSession(current.id);
-    await api.listSessions();
+    if (current) {
+      const revoked = await api.revokeSession(current.id);
+      if (!revoked.ok) return;
+    }
+    forgetIdentity();
+    window.location.replace('/login');
   }
 
   const desk = ['branch', 'main_agent', 'agent'] as const;
