@@ -18,6 +18,7 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 | `src/worker.ts` | BullMQ worker, no processors yet; daily `activityEvent` purge via `setInterval` |
 | `src/errors.ts` | `ERROR_MESSAGES` catalog (code → message), tested |
 | `src/db.ts` | `createPrismaClient()` — called by `PrismaService` (and the worker); specs that build services by hand fall back to it |
+| `tsconfig.build.json` | `npm run build` (and the Docker image) compiles `src/` without specs and test helpers (`testing/`, `kernel/office-test-app.ts`, `test-hash.ts`, `tree-fixture.ts`); `tsconfig.json` keeps them for typecheck and jest |
 | `src/generated/` | Prisma client output — generated, never edit, git-ignored |
 | `modules/shared/` | `prisma.service.ts` (global `PrismaModule`, one client per process), `office-failure.ts` (`OfficeFailure`, `fail()`), `office-failure.filter.ts`, `input.ts` (`parseInput(schema, body)` → 400 INVALID) |
 

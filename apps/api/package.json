@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "prisma:generate": "prisma generate",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --watchman=false",
     "start": "node dist/main.js",
     "start:worker": "node dist/worker.js",
