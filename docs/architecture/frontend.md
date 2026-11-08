@@ -2,7 +2,7 @@
 
 Living map of the web app. Read this instead of re-reading `app/`, `components/`, `lib/`. **Update it in the same commit** whenever a route, shared component, hook, or data flow changes (see `CLAUDE.md` → "Keep the maps current"). The Excalidraw boards in this folder are the visual companion.
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after 4.5c). e2e 117/117 · test:api 578 · tsc 0 errors · lint 0 errors / 0 warnings, enforced (`--max-warnings 0` in both apps) · `check:copy` ok (583 keys × 3 languages).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after 4.4c). e2e 118/118 · test:api 578 · tsc 0 errors · lint 0 errors / 0 warnings, enforced (`--max-warnings 0` in both apps) · `check:copy` ok (583 keys × 3 languages).
 
 ## Stack
 
@@ -32,7 +32,7 @@ Next.js 16 (App Router) · React 19 · plain CSS on `--rd-*` tokens (`app/styles
 
 - **Server state:** TanStack Query (`lib/query.tsx`: `QueryProvider`, `queryKeys`, `unwrap()`, `ApiFailure`), ADR 0001. Wraps the office doors in `app/layout.tsx`.
 - **Session:** `OfficeSession` runs `queryKeys.me` (read once, `staleTime: Infinity`; own 2–30 s backoff while the API is away, 4xx final) and `queryKeys.directory`. Same context as before (`ready`, `failed`, `retrying`, `retry`, `refresh`, `me`, `names`); once `me` answered the page stays drawn. Name/balance cookies seed the shell for SSR. `refresh()` invalidates `me`; `useAction` calls it after every successful write.
-- **Fetching:** `usePaged` (cursor lists) runs on `useInfiniteQuery`, key `['paged', pathname, key]`: keep-previous rows (`stale`), `reload()` invalidates every filter of that list, always revalidated, errors translated when drawn. `useApiQuery(key, fetcher, { enabled, fresh })` (`lib/use-api-query.ts`) is every single read: `data`, a translated `error`, `loaded`, `reload`, over a cached query. `sharedKeys` in `lib/query.tsx` (`packages`, `users`, `companies`, `providers`, `roles`, `home`, `line(id)`, …) are shared between screens (the roles list and the users page's staff-role dropdown read one `roles` entry; the packages and companies screens one `companies` entry). `packageKeys(code)` group a package sheet's own reads, the line-prices table included (an action invalidates `packageKeys.all`). `fresh: true` drops the answer when its screen closes, for editors that copy it into drafts once: the branding draft and the line-prices table always open on a new read. `useLoad` is gone (4.5c). `useAction` (mutation + `onDone` reload + `me` refresh). Each page owns its error/note `useState`.
+- **Fetching:** `usePaged` (cursor lists: numbers, tasks, users, audit, finance, operations, provider operations, notices, reports) runs on `useInfiniteQuery`, key `['paged', pathname, key]`: keep-previous rows (`stale`), `reload()` invalidates every filter of that list, always revalidated, errors translated when drawn. `useApiQuery(key, fetcher, { enabled, fresh })` (`lib/use-api-query.ts`) is every single read: `data`, a translated `error`, `loaded`, `reload`, over a cached query. `sharedKeys` in `lib/query.tsx` (`packages`, `users`, `companies`, `providers`, `roles`, `home`, `line(id)`, …) are shared between screens (the roles list and the users page's staff-role dropdown read one `roles` entry; the packages and companies screens one `companies` entry). `packageKeys(code)` group a package sheet's own reads, the line-prices table included (an action invalidates `packageKeys.all`). `fresh: true` drops the answer when its screen closes, for editors that copy it into drafts once: the branding draft and the line-prices table always open on a new read. `useLoad` is gone (4.5c). `useAction` (mutation + `onDone` reload + `me` refresh). Each page owns its error/note `useState`.
 - **Prefs:** locale, theme, page size via `useSyncExternalStore` over `document.cookie`.
 - **i18n:** API errors are translated by **code** first, then by the Arabic message (`apiText(result)`; `Fetched` carries `code`). Still open: a hook stores the translated text, so an error on screen keeps its language after a locale switch (goes away as lists move to queries).
 - **URL state:** `lib/url-state.ts` — `useUrlFilters(keys)` keeps a list's filters in the query string (`router.replace`, scroll kept, each write builds on the last pending one); `useDebouncedField` keeps typing local and commits after 300 ms. Used by numbers, tasks, users.
@@ -52,7 +52,7 @@ Tokens in `app/styles/tokens.css`: `--rd-*` colours/shadows for both themes, `--
 7. ~~Logout relied on a 401 side effect~~ — fixed `ad473c7`. Still open: several in-app links do full reloads (`office-shell.tsx` notices/leave, `users` enter).
 8. ~~No `error.tsx` / `not-found.tsx`~~ — added (5.1). No `loading.tsx`: pages show their own skeletons.
 9. ~~a11y: closed drawer focusable, topbar menus no Escape, `RowMenu` keys by label~~ — fixed (5.5a). Focus rings and `.nav-link.locked` contrast fixed (5.3c).
-10. `/users` unpaged, client-side filtering; `DataTable` sorts by rendering cells.
+10. ~~`/users` unpaged, client-side filtering~~ — paged by the server (4.4c): the table is a `PagedTable` over `api.officeUsersPage` (`paged=1`, `q`, `layer`, cursor); the whole list (`sharedKeys.users`) is read only while the new-account or move dialog is open. Still open: `DataTable` sorts by rendering cells.
 
 ## Target shape
 

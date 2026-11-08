@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
+import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { SESSION_TTL_SECONDS } from '../../auth/sessions';
 import { ApiErrorResponse } from '../../../openapi/responses';
@@ -10,6 +10,7 @@ import { cookieBase, readCookie } from '../gate';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { AccessBodyDto, CreateUserBodyDto, SetAccountPasswordBodyDto } from '../office.dto';
+import { text } from '../kernel/query';
 import { AccountsService } from './accounts.service';
 
 @ApiTags('office')
@@ -22,10 +23,20 @@ export class AccountsController {
   constructor(private readonly accountDesk: AccountsService) {}
 
   @Get('users')
-  @ApiOperation({ summary: 'Users list for the door' })
+  @ApiOperation({ summary: 'Users list for the door; with `paged=1`, one page of the users table ({ users, nextCursor, total })' })
+  @ApiQuery({ name: 'paged', required: false })
+  @ApiQuery({ name: 'cursor', required: false })
+  @ApiQuery({ name: 'q', required: false })
+  @ApiQuery({ name: 'layer', required: false })
   @ApiErrorResponse(401, 403)
-  users(@Actor() actor: ActorShape) {
-    return this.accountDesk.list(actor);
+  users(
+    @Actor() actor: ActorShape,
+    @Query('paged') paged?: string,
+    @Query('cursor') cursor?: string,
+    @Query('q') q?: string,
+    @Query('layer') layer?: string,
+  ) {
+    return text(paged) ? this.accountDesk.page(actor, { cursor: text(cursor), q: text(q), layer: text(layer) }) : this.accountDesk.list(actor);
   }
 
   @Get('directory')

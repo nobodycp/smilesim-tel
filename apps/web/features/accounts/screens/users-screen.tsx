@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
-import { DataTable, type Column } from '../../../components/data-table';
+import { PagedTable, type Column } from '../../../components/data-table';
 import { Desk, Money, layerName } from '../../../components/desk';
 import { Dialog } from '../../../components/dialog';
 import { FilterBar } from '../../../components/filter-bar';
@@ -20,6 +20,8 @@ import { parseShekel } from '../../../lib/money';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
+import { pick } from '../../../lib/fetched';
+import { usePaged } from '../../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { accountTone } from '../../../lib/status-tone';
@@ -43,7 +45,7 @@ export function UsersScreen() {
   const [draft, setDraft] = useState({ loginName: '', nickname: '', password: '', layer: '', parentLogin: '', roleId: '' });
   const [passwords, setPasswords] = useState<Record<string, string>>({});
   // The filters live in the address (`?q=…&layer=pos`): the shell search can open this page filtered, even from it.
-  // The list filters on what is typed at once; the address follows after a pause.
+  // The server filters and pages (4.4c): what is typed reaches the address, and the list, after a pause.
   const [filters, setFilters] = useUrlFilters(FILTER_KEYS);
   const layerFilter = filters.layer;
   const commitQuery = useCallback((value: string) => setFilters({ q: value }), [setFilters]);
@@ -52,10 +54,22 @@ export function UsersScreen() {
   const [note, setNote] = useState('');
   const { me } = useOffice();
   const allowed = useRequireLayer(OFFICE_LAYERS);
-  const accounts = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: allowed });
-  const rows = accounts.data?.users ?? [];
+  const needle = filters.q.trim();
+  const list = usePaged<UserRow>(
+    `${needle}|${layerFilter}`,
+    async (cursor) => pick(await api.officeUsersPage({ q: needle, layer: layerFilter, cursor }), (data) => ({ rows: data.users, next: data.nextCursor, total: data.total })),
+    { enabled: allowed },
+  );
+  const rows = list.all;
+  // The whole visible tree, read only while a dialog needs it: the parent choice when opening an account and the
+  // destinations of a move. The shell search and the line card share this entry.
+  const accounts = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: allowed && (creating || moving !== null) });
+  const everyone = accounts.data?.users ?? [];
   const roles = useApiQuery(sharedKeys.roles, () => api.officeRoles(), { enabled: draft.layer === 'staff' }).data?.roles ?? [];
-  const { run: send, busy } = useAction({ setError, setNote, onDone: accounts.reload });
+  const reloadAll = useCallback(async () => {
+    await Promise.all([list.reload(), accounts.reload()]);
+  }, [list, accounts]);
+  const { run: send, busy } = useAction({ setError, setNote, onDone: reloadAll });
   const failure = error;
   const isBranch = me?.layer === 'branch';
   const creatable = me?.layer === 'branch'
@@ -74,13 +88,13 @@ export function UsersScreen() {
 
   // A ceiling the user has not touched follows the list; one they typed stays until it is saved. Merged while
   // rendering, when a new answer arrives, instead of in an effect.
-  const [mergedFrom, setMergedFrom] = useState<typeof accounts.data>(null);
-  if (accounts.data && accounts.data !== mergedFrom) {
-    const fresh = accounts.data;
+  const [mergedFrom, setMergedFrom] = useState<UserRow[] | null>(null);
+  if (list.all !== mergedFrom) {
+    const fresh = list.all;
     setMergedFrom(fresh);
     setCeilings((current) => {
       const next = { ...current };
-      for (const row of fresh.users) next[row.loginName] ??= String(row.ceiling);
+      for (const row of fresh) next[row.loginName] ??= String(row.ceiling);
       return next;
     });
   }
@@ -148,20 +162,12 @@ export function UsersScreen() {
     );
   }
 
-  const shown = [...rows]
-    .filter((row) => !layerFilter || row.layer === layerFilter)
-    .filter((row) => {
-      const needle = query.trim();
-      if (!needle) return true;
-      return row.nickname.includes(needle) || row.loginName.includes(needle);
-    })
-    .sort((a, b) => layerOrder.indexOf(a.layer) - layerOrder.indexOf(b.layer) || a.loginName.localeCompare(b.loginName));
   const active = op ? rows.find((row) => row.loginName === op.login) : undefined;
   // A point of sale moves under another agent, an agent under another main agent: never to the parent it already
   // has, and never to a frozen account.
   const moveRow = moving ? rows.find((row) => row.loginName === moving) ?? null : null;
   const destinations = moveRow
-    ? rows.filter((row) => row.layer === (moveRow.layer === 'pos' ? 'agent' : 'main_agent') && row.loginName !== moveRow.parentLogin && !row.frozen)
+    ? everyone.filter((row) => row.layer === (moveRow.layer === 'pos' ? 'agent' : 'main_agent') && row.loginName !== moveRow.parentLogin && !row.frozen)
     : [];
 
   function actions(row: UserRow): RowAction[] {
@@ -253,7 +259,7 @@ export function UsersScreen() {
       </FilterBar>
       <section className="pane fit">
         <header className="pane-head">
-          <h2>{t.usersList}{accounts.loaded ? <span className="count">{shown.length}</span> : null}</h2>
+          <h2>{t.usersList}{list.ready ? <span className="count">{list.total ?? list.all.length}</span> : null}</h2>
         </header>
         <Dialog
           open={creating}
@@ -305,7 +311,7 @@ export function UsersScreen() {
                 {t.parent}
                 <Select value={draft.parentLogin} onChange={(event) => setDraft((current) => ({ ...current, parentLogin: event.target.value }))}>
                   <option value="">—</option>
-                  {rows.filter((row) => row.layer === ((draft.layer || creatable[0]) === 'agent' ? 'main_agent' : 'agent')).map((row) => (
+                  {everyone.filter((row) => row.layer === ((draft.layer || creatable[0]) === 'agent' ? 'main_agent' : 'agent')).map((row) => (
                     <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>
                   ))}
                 </Select>
@@ -313,15 +319,12 @@ export function UsersScreen() {
             )}
           </div>
         </Dialog>
-        <DataTable
+        <PagedTable
+          list={list}
           columns={columns}
-          rows={shown}
           rowKey={(row) => row.loginName}
-          loading={!accounts.loaded}
-          failed={accounts.error}
-          onRetry={() => void accounts.reload()}
           skeleton={{ rows: 4, columns: 7 }}
-          empty={query.trim() || layerFilter ? t.noMatches : undefined}
+          empty={needle || layerFilter ? t.noMatches : undefined}
         />
         {active && op ? (
           <Dialog
@@ -388,7 +391,7 @@ export function UsersScreen() {
           row={moveRow}
           destinations={destinations}
           onClose={() => setMoving(null)}
-          onDone={() => { setMoving(null); void accounts.reload(); }}
+          onDone={() => { setMoving(null); void reloadAll(); }}
         />
       </section>
     </Desk>

@@ -123,6 +123,22 @@ describe('accounts and roles over HTTP', () => {
     expect(pos).toMatchObject({ canEnter: true, canFreeze: true, canDelete: true });
   });
 
+  it('answers one page of the table with paged=1, filtered and counted by the server, and the full list without it', async () => {
+    const page = await as('owner', 'get', '/office/users?paged=1&layer=agent');
+    expect(page.status).toBe(200);
+    expect(page.body).toMatchObject({ nextCursor: null, total: 2 });
+    expect(page.body.users.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'ag2']);
+    expect(page.body.users[0]).toMatchObject({ loginName: 'ag1', parentLogin: 'ma1', canEnter: true });
+    const named = await as('owner', 'get', '/office/users?paged=1&q=%D9%86%D9%82%D8%B7%D8%A9');
+    expect(named.body.users.map((row: { loginName: string }) => row.loginName)).toEqual(['pos1']);
+    expect(named.body.users[0]).toMatchObject({ balance: 700, ceiling: 100 });
+    const seen = await as('ag1', 'get', '/office/users?paged=1');
+    expect(seen.body.users.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'pos1']);
+    const full = await as('owner', 'get', '/office/users');
+    expect(Object.keys(full.body)).toEqual(['users']);
+    expect(full.body.users).toHaveLength(6);
+  });
+
   it('creates accounts only down the ladder, under a visible parent, with a fresh name', async () => {
     const body = (patch: object) => ({ loginName: 'NewPos', nickname: 'جديد', password: 'longenough', layer: 'pos', ...patch });
     expect(await code(as('ag1', 'post', '/office/users', body({})))).toBe('201');

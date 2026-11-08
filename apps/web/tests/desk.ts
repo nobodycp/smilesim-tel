@@ -51,6 +51,26 @@ const accounts = {
  * The account and the notices have defaults. The returned list records every call as "METHOD /path?query",
  * so a test can say which requests were made, and in what order.
  */
+type ListedUser = { loginName: string; nickname: string; layer: string };
+const USER_LAYERS = ['branch', 'main_agent', 'agent', 'pos'];
+
+/**
+ * A test's `GET /users` answers the whole list. The users table asks for one page with `paged=1`, so that answer
+ * is filtered, ordered and counted here the way the API's `users-page.ts` does, unless the test answered a page itself.
+ */
+function asUsersPage(url: URL, reply: Reply): Reply {
+  const body = reply.body as { users?: ListedUser[]; total?: number } | null;
+  if (!url.searchParams.get('paged') || !body || !Array.isArray(body.users) || body.total !== undefined) return reply;
+  const needle = (url.searchParams.get('q') ?? '').trim();
+  const layer = url.searchParams.get('layer') ?? '';
+  const rank = (row: ListedUser) => USER_LAYERS.indexOf(row.layer);
+  const users = body.users
+    .filter((row) => !layer || row.layer === layer)
+    .filter((row) => !needle || row.nickname.includes(needle) || row.loginName.includes(needle))
+    .sort((a, b) => rank(a) - rank(b) || a.loginName.localeCompare(b.loginName));
+  return { ...reply, body: { ...body, users, nextCursor: null, total: users.length } };
+}
+
 export async function serveOffice(page: Page, layer: keyof typeof accounts, routes: Routes = {}) {
   const calls: string[] = [];
   await page.route('**/api/office/**', async (route) => {
@@ -60,7 +80,7 @@ export async function serveOffice(page: Page, layer: keyof typeof accounts, rout
     const key = `${request.method()} ${path}`;
     calls.push(`${key}${url.search}`);
     let reply: Reply = { body: { message: 'none' }, status: 404 };
-    if (routes[key]) reply = routes[key](url);
+    if (routes[key]) reply = key === 'GET /users' ? asUsersPage(url, routes[key](url)) : routes[key](url);
     else if (key === 'GET /me') reply = { body: { ...accounts[layer], stops: [], impersonating: false, balance: 1000, ceiling: 0 } };
     else if (key === 'GET /directory') reply = { body: { names: Object.fromEntries(Object.values(accounts).map((row) => [row.loginName, row.nickname])) } };
     else if (key === 'GET /notices') reply = { body: { unread: 0, notices: [], nextCursor: null } };

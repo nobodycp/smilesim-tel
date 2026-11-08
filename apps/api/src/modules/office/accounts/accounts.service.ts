@@ -7,41 +7,60 @@ import type { Actor } from '../kernel/types';
 import { GRANT_CODES, effectiveGrantCodes, roleGrantCodes, splitGrants } from '../office-grants';
 import { visibleAccountIds } from '../office-rules';
 import { stampTaskLog } from '../task-log';
+import { usersPage, type UsersFilter } from './users-page';
+
+type ListedAccount = {
+  id: string; loginName: string; nickname: string; layer: string; parentId: string | null; disabledAt: Date | null; isBranchOwner: boolean;
+  role: { name: string; staff: boolean } | null;
+};
 
 /** Accounts below the signed-in one: the list and the name directory, opening an account, resetting its password, its access (grants and roles), freezing, deleting, and entering it. */
 @Injectable()
 export class AccountsService {
   constructor(private readonly kernel: OfficeKernel) {}
 
+  /** Every account the actor may see, unpaged: the shell search, the dialogs and the line card read it. */
   async list(actor: Actor) {
+    const { accounts, visible } = await this.visibleAccounts(actor);
+    return { users: await this.present(actor, accounts, visible) };
+  }
+
+  /** One page of the users table, filtered and ordered by the server (`users-page.ts`). */
+  async page(actor: Actor, filter: UsersFilter) {
+    const { accounts, visible } = await this.visibleAccounts(actor);
+    const { page, nextCursor, total } = usersPage(visible, filter);
+    return { users: await this.present(actor, accounts, page), nextCursor, total };
+  }
+
+  private async visibleAccounts(actor: Actor) {
     const accounts = await this.kernel.prisma.user.findMany({
       select: { id: true, loginName: true, nickname: true, layer: true, parentId: true, disabledAt: true, isBranchOwner: true, role: { select: { name: true, staff: true } } },
       orderBy: { loginName: 'asc' },
     });
-    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const wallets = await this.kernel.prisma.wallet.findMany({ where: { userId: { in: [...visible] } } });
+    const ids = visibleAccountIds(actor.id, actor.layer, accounts);
+    return { accounts, visible: accounts.filter((account) => ids.has(account.id)) };
+  }
+
+  private async present(actor: Actor, accounts: ListedAccount[], shown: ListedAccount[]) {
+    const wallets = await this.kernel.prisma.wallet.findMany({ where: { userId: { in: shown.map((account) => account.id) } } });
     const byWallet = new Map(wallets.map((row) => [row.userId, row]));
     const byId = new Map(accounts.map((account) => [account.id, account]));
     const branch = actor.layer === 'branch' && !actor.impersonating;
-    return {
-      users: accounts
-        .filter((account) => visible.has(account.id))
-        .map((account) => ({
-          loginName: account.loginName,
-          nickname: account.nickname,
-          layer: account.layer,
-          roleName: account.role?.name ?? '',
-          parentLogin: account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
-          balance: byWallet.get(account.id)?.balance ?? 0,
-          ceiling: byWallet.get(account.id)?.ceiling ?? 0,
-          frozen: account.disabledAt !== null,
-          self: account.id === actor.id,
-          directChild: account.parentId === actor.id,
-          canEnter: (actor.isBranchOwner || actor.grants.includes('enter')) && !actor.impersonating && account.id !== actor.id && account.disabledAt === null,
-          canFreeze: (actor.isBranchOwner || actor.grants.includes('staff')) && !account.isBranchOwner && !(account.role?.staff && !actor.isBranchOwner),
-          canDelete: branch && !account.isBranchOwner && account.id !== actor.id,
-        })),
-    };
+    return shown.map((account) => ({
+      loginName: account.loginName,
+      nickname: account.nickname,
+      layer: account.layer,
+      roleName: account.role?.name ?? '',
+      parentLogin: account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
+      balance: byWallet.get(account.id)?.balance ?? 0,
+      ceiling: byWallet.get(account.id)?.ceiling ?? 0,
+      frozen: account.disabledAt !== null,
+      self: account.id === actor.id,
+      directChild: account.parentId === actor.id,
+      canEnter: (actor.isBranchOwner || actor.grants.includes('enter')) && !actor.impersonating && account.id !== actor.id && account.disabledAt === null,
+      canFreeze: (actor.isBranchOwner || actor.grants.includes('staff')) && !account.isBranchOwner && !(account.role?.staff && !actor.isBranchOwner),
+      canDelete: branch && !account.isBranchOwner && account.id !== actor.id,
+    }));
   }
 
   /**

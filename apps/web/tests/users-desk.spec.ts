@@ -27,3 +27,41 @@ test('an account is named by its login with the full name in parentheses, in the
   await expect(rows.nth(1).locator('td').nth(2)).toHaveText('agent1 (وكيل)');
   await expect(rows.nth(1).getByRole('button', { name: 'إجراءات pos (الكاشير)' })).toBeVisible();
 });
+
+test('the users table is paged by the server: filters go in the request, the next cursor is read past the first answer, and the whole list waits for a dialog', async ({ page }) => {
+  const user = (loginName: string, layer: string) => ({
+    loginName, nickname: loginName, layer, roleName: '', parentLogin: null, balance: 0, ceiling: 0, frozen: false, self: false, directChild: true,
+    canEnter: false, canFreeze: false, canDelete: false,
+  });
+  const many = Array.from({ length: 60 }, (_, index) => user(`p${String(index).padStart(2, '0')}`, 'pos'));
+  const calls = await serveOffice(page, 'branch', {
+    'GET /users': (url) => {
+      if (!url.searchParams.get('paged')) return { body: { users: [...many, user('agent9', 'agent')] } };
+      if (url.searchParams.get('layer') === 'agent') return { body: { users: [user('agent9', 'agent')], nextCursor: null, total: 1 } };
+      return url.searchParams.get('cursor') === '3:p49'
+        ? { body: { users: many.slice(50), nextCursor: null, total: 60 } }
+        : { body: { users: many.slice(0, 50), nextCursor: '3:p49', total: 60 } };
+    },
+  });
+  await page.context().addCookies([{ name: 'smilesim-page-size', value: '20', url: 'http://admin.localhost:3910' }]);
+  await page.goto('http://admin.localhost:3910/users');
+  await expect(page.locator('.pane-head .count')).toHaveText('60');
+  await expect(page.locator('.data tbody tr')).toHaveCount(20);
+  expect(calls.filter((call) => call.startsWith('GET /users')).every((call) => call.includes('paged=1'))).toBe(true);
+  expect(calls).not.toContain('GET /users?paged=1&cursor=3%3Ap49');
+
+  // Page 3 (rows 41–60) runs past the first answer of fifty: the next cursor is read.
+  await page.locator('.table-pager').getByRole('button', { name: '3', exact: true }).click();
+  await expect(page.locator('.data tbody tr')).toHaveCount(20);
+  await expect(page.locator('.data tbody tr').last()).toContainText('p59');
+  expect(calls).toContain('GET /users?paged=1&cursor=3%3Ap49');
+
+  await page.getByRole('combobox', { name: 'الطبقة' }).selectOption('agent');
+  await expect(page.locator('.data tbody tr')).toHaveCount(1);
+  expect(calls).toContain('GET /users?paged=1&layer=agent');
+
+  // Opening an account asks for the whole tree, for the parent choice.
+  expect(calls).not.toContain('GET /users');
+  await page.getByRole('button', { name: 'حساب جديد' }).click();
+  await expect.poll(() => calls.includes('GET /users')).toBe(true);
+});

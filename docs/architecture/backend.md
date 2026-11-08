@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 3). tsc clean, lint clean, jest 578/578 (+2 DB tests). Booted on fresh Postgres + Redis: 79 office routes, end-to-end fund → eSIM activation → task completion.
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after 4.4c). tsc clean, lint clean, jest 583/583 (+2 DB tests). Booted on fresh Postgres + Redis: 79 office routes, end-to-end fund → eSIM activation → task completion.
 
 ## Stack
 
@@ -39,7 +39,7 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 | `office/companies/` | `companies.service.ts` (`CompaniesService`: shelf, setSim, setImage), `companies.controller.ts` | `GET /office/companies`, `PUT companies/:code/sim`, `POST companies/image` |
 | `office/packages/` | `packages.service.ts` (`PackagesService`: list, setSellPrice, clearSellPrice, setMode, sheet, setChain, setTargets), `packages.controller.ts` | `GET /office/packages`, `PUT/DELETE packages/:code/sell-price`, `PATCH packages/:code/mode`, `GET packages/:code/sheet`, `PUT packages/:code/{chain,renewals,switches}` |
 | `office/terms/` | `terms.service.ts` (`TermsService`: userPackages, setUserPackage, setUserPackagesBulk, userOps, setUserOps, customPrices, setCustomPrice, clearCustomPrice, linePrices, setLinePrices, repriceLines), `terms.controller.ts` | `GET/PUT users/:login/packages[/:code]`, `GET/PUT users/:login/ops`, `GET/PUT/DELETE packages/:code/custom-prices[/:login]`, `GET/PUT packages/:code/line-prices` |
-| `office/accounts/` | `accounts.service.ts` (`AccountsService`: list, directory, create, setPassword, detail, saveAccess, setFrozen, remove, enter), `accounts.controller.ts`; `account-session.{service,controller}.ts` (`leave`, deliberately without ActorInterceptor) | `GET /office/users`, `GET directory`, `POST users`, `POST users/:login/{password,freeze,restore,enter}`, `GET users/:login`, `PATCH users/:login/access`, `DELETE users/:login`, `POST leave` |
+| `office/accounts/` | `accounts.service.ts` (`AccountsService`: list, page, directory, create, setPassword, detail, saveAccess, setFrozen, remove, enter), `accounts.controller.ts`; `users-page.ts` (`usersPage`: order, `q`/`layer` filters, cursor, 50 a page), `account-session.{service,controller}.ts` (`leave`, deliberately without ActorInterceptor) | `GET /office/users` (everything visible; `?paged=1&q&layer&cursor` → `{ users, nextCursor, total }`), `GET directory`, `POST users`, `POST users/:login/{password,freeze,restore,enter}`, `GET users/:login`, `PATCH users/:login/access`, `DELETE users/:login`, `POST leave` |
 | `office/roles/` | `roles.service.ts` (`RolesService`: list, save), `roles.controller.ts` | `GET/POST /office/roles` |
 | `office/desk/` | `desk.service.ts` (`DeskService`: me, home, postAnnouncement), `desk.controller.ts` | `GET /office/me`, `GET home`, `POST announcements` |
 | `office/transfers/` | `transfers.service.ts` (`TransfersService`: transferAccount, transferPreview, transferLine; uses `TermsService.repriceLines`), `transfers.controller.ts` | `POST users/:login/transfer`, `GET users/:login/transfer-preview`, `POST lines/:id/transfer` |
