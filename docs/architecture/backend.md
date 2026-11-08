@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 2). tsc clean, lint clean, jest 460/460 (+2 DB tests, run in the CI `db` job).
+Last verified: 2026-11-08 (branch `refactor/phase-1`, after Phase 3). tsc clean, lint clean, jest 578/578 (+2 DB tests). Booted on fresh Postgres + Redis: 79 office routes, end-to-end fund → eSIM activation → task completion.
 
 ## Stack
 
@@ -27,7 +27,8 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 |---|---|---|
 | `auth/` | controller, service, `auth.store.ts` (in-memory, specs), `prisma-auth.store.ts` (Postgres + Redis: live session keys and the failed-login counter `login-fail:<login>`), `decide-login`, `password`, `totp`, `sessions`, `validators`, `trial-seed`, `cities` | login, sessions (cookie `sid`, max sessions), 2FA, password change, trial accounts. Store behind `AUTH_STORE` token. |
 | `branding/` | controller, service, store (memory + prisma), rules | site identity (logo, title, icon). Small and clean — the reference shape for other modules. |
-| `office/` | `office.service.ts` (~650 lines: **spec facade** — one-line delegations to the domain services — plus the catalog seed `ensureCatalog` in `onModuleInit`), `office.module.ts` (`OFFICE_CONTROLLERS`, `OFFICE_PROVIDERS`), `gate.ts`, `office.dto.ts` (Swagger bodies), pure rule files | split per domain (Phase 3, spec `docs/superpowers/specs/2026-11-08-office-domain-split.md`); every route lives in a domain controller |
+| `office/` | `office.module.ts` (`OFFICE_CONTROLLERS`, `OFFICE_PROVIDERS`), `gate.ts`, `office.dto.ts` (Swagger bodies), `activity.*` (decorator, interceptor, recorder), pure rule files (`office-rules`, `transfer-rules`, `user-terms`, `line-prices`, `office-grants`, `task-access`, …), `testing/office-facade.ts` (**test-only** `(gate, …)` adapter for older specs) | every route lives in a domain controller below |
+| `office/catalog/` | `catalog-seed.ts` (`CatalogSeed`: shipped catalog + layer roles at boot; skipped under tests / without a DB) | — |
 | `office/kernel/` | `office-kernel.ts` (`OfficeKernel`: prisma + spec override `prismaClient`, auth, notice writer, `actor`, `grantsFor`, `accounts`, `visibleAccount`, `branchActor`, `chainIds`, `runTx`, `queueNotices`, `publishQuietly`, `actorName`, `move`, `recordOp`, `pathOf`, `termsFor`, `ladderRows`, `stampWith`, `ensureLayerRoles`, `visibleLine`; `nodeOf`, `PRICE_COLUMNS`), `types.ts` (`Gate`, `Actor`, `Account`, `Sale`), `actor.interceptor.ts` (`ActorInterceptor`, `@Actor()`), `feed.ts` (`feedPosition`), `line-terms.ts` (`lineTermsOf`), `sale.ts` (`saleOf`), `query.ts` (`text`), `office-test-app.ts` (HTTP spec app), `values.ts` (`nonNegative`, `optionalPrice`, `LAYER_ORDER`), `assertBranch()` | what every office domain shares. `routes.http.spec.ts` pins all 79 routes (method, path, activity event, anonymous answer). |
 | `office/notices/` | `notice-inbox.service.ts` (`NoticeInboxService`: list, read, subscribe), `notices.controller.ts` | `GET /office/notices`, `GET /office/notices/stream` (SSE), `POST /office/notices/read` |
 | `office/audit/` | `audit.service.ts` (`AuditService.list`), `audit.controller.ts` | `GET /office/audit` |
@@ -62,7 +63,7 @@ Every route is in a domain controller (table above). `routes.http.spec.ts` lists
 - **Persistence:** `PrismaService` is injected (optional) into OfficeService, ActivityRecorder, PrismaAuthStore, PrismaBrandingStore. `runTx` = `$transaction` at Read Committed.
 - **Money:** Int agorot. `move()` (`office.service.ts:~3715`) locks the wallet row (`SELECT … FOR UPDATE`) before reading it, so the ceiling check and the absolute write are serialised per wallet (ADR 0004). Proof: `wallet-concurrency.db.spec.ts` (opt-in, `TEST_DATABASE_URL`).
 - **Visibility:** `accounts()` (`~3457`) loads all users and then filters in memory.
-- **Seeding:** `ensureCatalog` runs in `onModuleInit` on every start.
+- **Seeding:** `CatalogSeed.onModuleInit` runs `ensureCatalog` and the layer roles on every start (idempotent).
 
 ## Data model (`prisma/schema.prisma`, 28 migrations)
 

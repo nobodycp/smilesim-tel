@@ -48,7 +48,7 @@ Each approved decision gets an ADR in `docs/architecture/decisions/`.
 - [x] 2.5 Login-failure counter — already in Redis in `PrismaAuthStore` (`login-fail:<login>`, TTL window); the in-memory map is `MemoryAuthStore`, used by specs only. Audit claim was wrong; nothing to change.
 - [x] 2.6 CI: a `postgres:16` service job that runs `prisma migrate deploy` and the `*.db.spec.ts` specs with `TEST_DATABASE_URL`. `.github/workflows/ci.yml`.
 
-## Phase 3 — Backend domain split (spec: `docs/superpowers/specs/2026-11-08-office-domain-split.md`)
+## Phase 3 — Backend domain split ✅ (3.last pending) (spec: `docs/superpowers/specs/2026-11-08-office-domain-split.md`)
 
 Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService` delegates moved methods so existing specs guard behaviour unchanged. **A domain with no HTTP spec gets one written against the old code first** (`<domain>.http.spec.ts` via `kernel/office-test-app.ts`), committed before the move.
 
@@ -68,9 +68,10 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 - [x] 3.7 users + roles + desk: `roles/` (list, save), `desk/` (me, home, announcements) `97266b6` and `accounts/` (list, directory, create, password, detail, access, freeze/restore, delete, enter) + `AccountSessionController` for `leave` (no ActorInterceptor). 10 of 13 routes had no spec: `accounts.http.spec.ts` and `desk.http.spec.ts` written first. `a9564fc`
 - [x] 3.8 transfers: `transfers/` — account move, preview, line move; depends on `TermsService` for repricing. `visibleLine` and `saleOf` moved to the kernel first; the transfer spec's HTTP harness now mounts every office route (`a9cb759`). `c163c7c`
 - [x] 3.9 lines: `lines/` — list, card, activate, every operation, disconnect quote, and task completion (depends on `TasksService`); `reports/` — branch reports over tasks and lines. **`OfficeController` deleted.** The carrier-switch stub now answers 401 first (same owner decision). `reports-lines.http.spec.ts` written first. `05e777c`
-- [ ] 3.10 catalog seed: `ensureCatalog` / `ensureLayerRoles` out of `onModuleInit` into a boot provider.
-- [ ] 3.11 Specs build domain services directly; `OfficeService` facade deleted.
-- [ ] 3.last Migration: indexes (`Line.status/packageId/iccid`, `User.parentId`, `OfficeTask.assigneeId`, `WalletEntry.kind`); replace `accounts()` full scan with subtree queries.
+- [x] 3.10 catalog seed: `catalog/catalog-seed.ts` (`CatalogSeed.onModuleInit`, same skip rules). `55177eb`
+- [x] 3.11 `OfficeService` left production: the `(gate, …)` adapters are a test-only `testing/office-facade.ts` (`OfficeFacade`, no Nest wiring); specs that took it from Nest take `OfficeKernel`. `c5d089f`
+- [x] Boot check (2026-11-08): built API on fresh Postgres + Redis, trial seed on — 79 office routes mapped, catalog seeded (23 packages, layer roles), reads 200 for the branch, 401/403 where expected, and a write flow end to end: fund → eSIM activation task → take → complete → number active, point of sale charged 35 ₪, notices delivered, audit entries written.
+- [ ] 3.last **Awaiting owner decision.** Verified missing indexes: `User.parentId`, `Line.status`, `Line.packageId`, `Line.iccid`, `OfficeTask.assigneeId`, `WalletEntry.kind` (additive migration, no data change). Subtree queries instead of `accounts()` (~30 call sites) are a separate, riskier change: proposed only when account counts make the full scan measurable.
 
 ## Phase 4 — Web data layer
 
