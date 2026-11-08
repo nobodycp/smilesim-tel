@@ -197,7 +197,7 @@ export default function LineCardPage() {
                   <div><dt>{t.simType}</dt><dd>{line.esim ? t.esim : t.physicalSim}</dd></div>
                   <div><dt>{t.simSerial}</dt><dd>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</dd></div>
                   {line.esim && line.esimQr && (
-                    <div><dt>{t.esimQr}</dt><dd><Button type="button" variant="secondary" size="icon" className="h-7 w-7" aria-label={t.showQr} title={t.showQr} onClick={() => setDialog('qr')}><QrCode size={16} strokeWidth={1.75} aria-hidden="true" /></Button></dd></div>
+                    <div><dt>{t.esimQr}</dt><dd><Button type="button" variant="secondary" size="iconSm" aria-label={t.showQr} title={t.showQr} onClick={() => setDialog('qr')}><QrCode size={16} strokeWidth={1.75} aria-hidden="true" /></Button></dd></div>
                   )}
                   <div><dt>{t.endsOn}</dt><dd><bdi dir="ltr">{latinWhen(line.endsAt).slice(0, 10)}</bdi></dd></div>
                   <div><dt>{t.remainingDays}</dt><dd>{daysLeft(line.endsAt)} {t.dayUnit}</dd></div>

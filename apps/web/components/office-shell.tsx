@@ -335,9 +335,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             aria-label={collapsed ? t.expand : t.collapse}
           >
             {collapsed ? (
-              <PanelLeftOpen {...glyph} className="ltr:-scale-x-100" />
+              <PanelLeftOpen {...glyph} className="flip-ltr" />
             ) : (
-              <PanelLeftClose {...glyph} className="ltr:-scale-x-100" />
+              <PanelLeftClose {...glyph} className="flip-ltr" />
             )}
             {!compact && <span>{t.collapse}</span>}
           </button>

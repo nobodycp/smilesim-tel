@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./button";
 import { Select } from "./select";
-import { cn } from "../../lib/utils";
 import { usePrefs } from "../../lib/prefs";
 import { PAGE_SIZES, type PageSize } from "../../lib/document-prefs";
 
@@ -70,19 +69,19 @@ export function Pagination({
 
   return (
     <nav
-      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1 py-2 text-[12px] text-[var(--rd-muted)]"
+      className="ui-pager"
       aria-label={t.pages}
     >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="ui-pager-info">
         <span className="num-tab">{status}</span>
         {showSizeSelector && (
-          <label className="inline-flex items-center gap-1.5">
-            <span className="text-[11.5px]">{t.perPage}</span>
-            <span className="inline-block w-[5.5rem]">
+          <label className="ui-pager-size">
+            <span className="ui-pager-size-label">{t.perPage}</span>
+            <span className="ui-pager-size-field">
             <Select
               value={String(pageSize)}
               onChange={(event) => onPageSizeChange?.(event.target.value === "all" ? "all" : Number(event.target.value) as PageSize)}
-              className="h-7 text-[12px]"
+              compact
               aria-label={t.perPage}
             >
               {pageSizeOptions.map((option) => (
@@ -97,7 +96,7 @@ export function Pagination({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center gap-1">
+        <div className="ui-pager-nav">
           <Button
             variant="outline"
             size="sm"
@@ -105,15 +104,15 @@ export function Pagination({
             onClick={() => onPageChange(page - 1)}
             aria-label={t.pagePrev}
           >
-            <ChevronRight className="h-3.5 w-3.5 ltr:hidden" aria-hidden="true" />
-            <ChevronLeft className="h-3.5 w-3.5 rtl:hidden" aria-hidden="true" />
+            <ChevronRight className="ui-pager-arrow only-rtl" aria-hidden="true" />
+            <ChevronLeft className="ui-pager-arrow only-ltr" aria-hidden="true" />
             {t.pagerPrev}
           </Button>
 
-          <div className="flex items-center gap-1" role="group" aria-label={t.pages}>
+          <div className="ui-pager-pages" role="group" aria-label={t.pages}>
             {pageWindow(page, totalPages).map((item, index) =>
               item === "gap" ? (
-                <span key={`gap-${index}`} className="px-1 text-[var(--rd-faint)]" aria-hidden="true">
+                <span key={`gap-${index}`} className="ui-pager-gap" aria-hidden="true">
                   …
                 </span>
               ) : (
@@ -122,12 +121,7 @@ export function Pagination({
                   type="button"
                   onClick={() => onPageChange(item)}
                   aria-current={item === page ? "page" : undefined}
-                  className={cn(
-                    "num-tab h-8 min-w-8 rounded-lg border px-2 text-[12.5px] font-semibold transition-colors",
-                    item === page
-                      ? "border-transparent bg-[var(--rd-primary-bg)] text-[var(--rd-primary-fg)]"
-                      : "border-[var(--rd-line)] bg-[var(--rd-surface)] text-[var(--rd-ink-2)] hover:bg-[var(--rd-surface-2)]"
-                  )}
+                  className="num-tab ui-pager-page"
                 >
                   {item}
                 </button>
@@ -143,8 +137,8 @@ export function Pagination({
             aria-label={t.pageNext}
           >
             {t.pagerNext}
-            <ChevronLeft className="h-3.5 w-3.5 ltr:hidden" aria-hidden="true" />
-            <ChevronRight className="h-3.5 w-3.5 rtl:hidden" aria-hidden="true" />
+            <ChevronLeft className="ui-pager-arrow only-rtl" aria-hidden="true" />
+            <ChevronRight className="ui-pager-arrow only-ltr" aria-hidden="true" />
           </Button>
         </div>
       )}

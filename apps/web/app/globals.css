@@ -1,7 +1,7 @@
 /*
  * Entry point imported by app/layout.tsx. The order is the cascade: do not reorder.
  * Tokens come first, then element defaults, then the screens, then overlays, then the
- * native-control overrides, then breakpoints.
+ * native-control overrides, then breakpoints, then the components/ui primitives.
  */
 @import './styles/tokens.css';
 @import './styles/base.css';
@@ -13,7 +13,4 @@
 @import './styles/dialog.css';
 @import './styles/controls.css';
 @import './styles/responsive.css';
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import './styles/ui.css';

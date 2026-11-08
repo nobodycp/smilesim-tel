@@ -169,7 +169,6 @@ const CATALOGUE = [
   { zone: 'root', file: 'app/globals.css', role: 'يستورد فقط ملفات app/styles/*' },
   { zone: 'root', file: 'app/icon.svg', role: 'أيقونة التطبيق / المفضلة' },
   { zone: 'root', file: 'proxy.ts', role: 'CSP وnonce لكل طلب وسلوك حافة مرتبط بالباب' },
-  { zone: 'root', file: 'tailwind.config.ts', role: 'إعداد Tailwind وdarkMode: class' },
 
   // Auth routes
   { zone: 'app', file: 'app/login/page.tsx', role: 'نموذج تسجيل الدخول للباب' },
@@ -209,6 +208,7 @@ const CATALOGUE = [
   { zone: 'styles', file: 'app/styles/auth.css', role: 'غرفة تسجيل الدخول' },
   { zone: 'styles', file: 'app/styles/doors.css', role: 'صفحة اختيار الباب' },
   { zone: 'styles', file: 'app/styles/responsive.css', role: 'نقاط التوقف والتخطيطات الكثيفة' },
+  { zone: 'styles', file: 'app/styles/ui.css', role: 'أنماط مكونات components/ui ومساعدات الاتجاه' },
 
   // Components shell
   { zone: 'components', file: 'components/bootstrap.tsx', role: 'سكربت أول رسم: مزامنة لغة/ثيم/هوية' },
@@ -231,14 +231,11 @@ const CATALOGUE = [
   { zone: 'components', file: 'components/data-table.tsx', role: 'جدول قابل للفرز مع paging وهيكل فارغ' },
   { zone: 'components', file: 'components/table-search.tsx', role: 'بحث داخل الجدول' },
   { zone: 'components', file: 'components/period-chips.tsx', role: 'فلاتر فترة زمنية سريعة' },
-  { zone: 'components', file: 'components/load-more.tsx', role: 'صف «تحميل المزيد» بالقائمة المتتابعة' },
   { zone: 'components', file: 'components/row-menu.tsx', role: 'قائمة عمليات الصف (المحفّز الوحيد لكل صف)' },
   { zone: 'components', file: 'components/dialog.tsx', role: 'حوار (تأكيد / نموذج / واسع)' },
   { zone: 'components', file: 'components/ui/button.tsx', role: 'أزرار بأحجام وأنماط' },
   { zone: 'components', file: 'components/ui/badge.tsx', role: 'شارة حالة / نغمة' },
-  { zone: 'components', file: 'components/ui/card.tsx', role: 'غلاف سطح البطاقة' },
   { zone: 'components', file: 'components/ui/select.tsx', role: 'قائمة اختيار' },
-  { zone: 'components', file: 'components/ui/table.tsx', role: 'جدول أساسي مع حالة فارغة' },
   { zone: 'components', file: 'components/ui/pagination.tsx', role: 'تحكم الصفحات وحجم الصفحة' },
 
   // Lib
@@ -259,7 +256,6 @@ const CATALOGUE = [
   { zone: 'lib', file: 'lib/use-paged.ts', role: 'خطاف قوائم متتابعة بالمؤشر' },
   { zone: 'lib', file: 'lib/use-action.ts', role: 'خطاف كتابة مع busy والخطأ' },
   { zone: 'lib', file: 'lib/use-require-layer.ts', role: 'تحويل عند طبقة باب غير مسموحة' },
-  { zone: 'lib', file: 'lib/utils.ts', role: 'مساعد دمج الأصناف cn()' },
 ];
 
 const ZONE_META = {

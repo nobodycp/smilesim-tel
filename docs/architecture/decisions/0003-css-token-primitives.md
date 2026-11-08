@@ -11,3 +11,4 @@ Primitives in `components/ui/` are styled with plain CSS that reads `--rd-*` tok
 ## Consequences
 - Phase 5 work. `DESIGN.md` is updated in each slice.
 - Visual output must not change unless a slice states it (checked in ar + en, light + dark).
+- 5.4a (2026-11-08): Tailwind is gone from the project. The four primitives read `app/styles/ui.css`; its declarations are the ones Tailwind generated, so 29 screens × 3 modes (light ar, dark ar, light en) are pixel-identical except the badge rings, which now draw the intended tinted colour instead of Tailwind's default blue.

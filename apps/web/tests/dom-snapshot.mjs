@@ -5,6 +5,7 @@
 //
 // With SHOTS=<dir> it also writes a full-page screenshot of every case there, for a before/after comparison.
 // ONLY=a,b limits the run to the named cases; CHROMIUM=<path> picks the browser executable.
+// THEME=dark and LOCALE=en|he set the preference cookies, so the same cases run in dark mode or left to right.
 //
 // The origin defaults to the Playwright dev server, http://admin.localhost:3910 (start it with `npm run dev`
 // style env: NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_API_URL=http://localhost:3911 next dev -p 3910).
@@ -160,6 +161,8 @@ for (const [name, path, layer, empty = false] of cases) {
   if (only && !only.includes(name)) continue;
   const host = origin.replace('//admin.', layer === 'pos' ? '//pos.' : '//admin.');
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, locale: 'ar' });
+  const prefs = [['smilesim-theme', process.env.THEME], ['smilesim-locale', process.env.LOCALE]].filter(([, value]) => value);
+  if (prefs.length) await page.context().addCookies(prefs.map(([name, value]) => ({ name, value, url: host })));
   await page.route('**/api/**', (route) => {
     const url = new URL(route.request().url());
     const body = answer(url.pathname.replace(/^\/api/, ''), layer, empty);

@@ -30,6 +30,7 @@ All CSS reads `--rd-*` tokens. The old blue set (`--bg`, `--accent`, `--ink-3`, 
 | 8 | `dialog.css` | toast, `Dialog`, `.perm-grid`, `.op-blocks`, `RowMenu` |
 | 9 | `controls.css` | checkbox and radio size, last so it beats every `input` height rule |
 | 10 | `responsive.css` | shell and layout breakpoints, the 44px touch-target block |
+| 11 | `ui.css` | the `components/ui` primitives (`.ui-btn*`, `.ui-badge*`, `.ui-select*`, `.ui-pager*`) and the direction helpers `.only-rtl`, `.only-ltr`, `.flip-ltr` |
 
 ## Tokens
 
@@ -89,13 +90,13 @@ Where the ink fills a button, use `--rd-primary-bg`. Where ink is a text, border
 
 List chrome that has moved (`/users`, plus the shared dialog, row menu, filter bar, empty state, and skeleton) follows hotspot-store's layout. Colours stay the Pearl tokens above. `--rd-accent` (logo red) is not part of this and stays one accent per screen.
 
-Tailwind is on, with `darkMode: "class"` and `preflight` off, so `base.css` remains the reset. Icons are `lucide-react`. `cn` lives in `apps/web/lib/utils.ts`. New controls are `apps/web/components/ui/` (`Button`, `Select`, `Badge`, `Pagination`).
+There is no Tailwind (removed in Phase 5.4a, ADR 0003); `base.css` is the reset. Icons are `lucide-react`. New controls are `apps/web/components/ui/` (`Button`, `Select`, `Badge`, `Pagination`), styled by `ui.css` with one `ui-` class per part and a modifier class per variant or size (`ui-btn ui-btn-outline ui-btn-sm`). A component joins its classes with `[...].filter(Boolean).join(' ')`; a `className` from the caller comes last and wins only by the cascade, so give it a class from a sheet, not a one-off utility. `Button` sizes: `sm` 32px, `default` 36px, `lg` 40px, `icon` 36px square, `iconSm` 28px square. `Select` takes `compact` for the 28px pager field.
 
-The ported classes and the Tailwind primitives read `--rd-*` tokens directly (Phase 5.3a; the hotspot alias names `--bg`, `--surface*`, `--line*`, `--ink*`, `--accent*`, `--good*`, `--warn*`, `--bad*`, `--focus-ring`, `--shadow-*` are gone). The ink primary's 10% tint is `--rd-primary-soft`. Tailwind's colour names (`bg-accent`, `text-ink-3`, …) still exist in `tailwind.config.ts` and map to `--rd-*`; they go with Tailwind (ADR 0003).
+The ported classes and the primitives read `--rd-*` tokens directly (Phase 5.3a; the hotspot alias names `--bg`, `--surface*`, `--line*`, `--ink*`, `--accent*`, `--good*`, `--warn*`, `--bad*`, `--focus-ring`, `--shadow-*` are gone). The ink primary's 10% tint is `--rd-primary-soft`. A badge's inset ring is its text colour at 15% (`color-mix`), the muted badge's is `--rd-line`; until 5.4a every badge drew Tailwind's default blue ring because the `/15` colours were never generated.
 
 `Badge` status mapping: account frozen → `warning`, open → `success`; line active → `success`, frozen → `warning`, else `danger`; task done → `success`, cancelled → `danger`, else `warning`. `info` and `violet` are typed and unused until their tokens exist. Shell chrome uses `lucide-react` (nav, wallet, bell, theme).
 
-The filter bar is its own card, one row, controls at 28px. It does not share a border with the table. PostCSS loads Tailwind and Autoprefixer from this file on disk, because the dev worker cannot see packages hoisted to the repo root.
+The filter bar is its own card, one row, controls at 28px. It does not share a border with the table. `postcss.config.js` loads Autoprefixer from this file on disk, because the dev worker cannot see packages hoisted to the repo root.
 
 ## Type
 
