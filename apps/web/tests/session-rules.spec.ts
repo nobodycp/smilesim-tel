@@ -16,30 +16,31 @@ const account = {
   roleId: '', roleName: '', roleGrants: [], extraGrants: [], deniedGrants: [], extraRoleIds: [], grants: [], roles: [], canEdit: true, listed,
 };
 
-test('the owner sets a layer’s sessions and idle time on «قواعد الدخول», reached from the settings group', async ({ page }) => {
-  await serveOffice(page, 'branch');
+test('the owner sets a layer’s sessions and idle time on that layer\'s role', async ({ page }) => {
   const saved: unknown[] = [];
+  const posRole = { id: 'r-pos', name: 'pos', kind: 'layer', layer: 'pos', grants: ['read'], read: true, edit: false, accounting: false, tasks: false, reports: false, staff: false, enter: false };
+  await serveOffice(page, 'branch', {
+    'GET /roles': () => ({ body: { roles: [posRole] } }),
+    'POST /roles': () => ({ body: { ok: true } }),
+  });
   await page.route('**/auth/session-rules', (route) => route.fulfill(json({ defaults: { maxSessions: 3, sessionMinutes: 360 }, layers: { branch: none, main_agent: none, agent: none, pos: none } })));
   await page.route('**/auth/session-rules/pos', (route) => {
     saved.push(route.request().postDataJSON());
     return route.fulfill(json({ layers: {} }));
   });
-  await page.goto('http://admin.localhost:3910/');
-  const nav = page.locator('.sidebar .side-nav');
-  await nav.getByRole('button', { name: 'الإعدادات' }).click();
-  await nav.getByRole('link', { name: 'قواعد الدخول' }).click();
-  await expect(page).toHaveURL(/\/settings\/access$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'قواعد الدخول' })).toBeVisible();
-  const pane = page.locator('.pane', { has: page.getByRole('heading', { name: 'الجلسات حسب الطبقة' }) });
-  const row = pane.locator('li', { hasText: 'نقطة بيع' });
-  await expect(row.getByLabel('تنتهي بعد عدم نشاط')).toHaveValue('');
-  await expect(row.getByLabel('تنتهي بعد عدم نشاط').locator('option').first()).toHaveText('الافتراضي (6 ساعات)');
-  await expect(row.getByRole('button', { name: 'حفظ' })).toBeDisabled();
-  await row.getByLabel('الجلسات المسموحة').selectOption('1');
-  await row.getByLabel('تنتهي بعد عدم نشاط').selectOption('30');
-  await row.getByRole('button', { name: 'حفظ' }).click();
-  await expect(page.getByText('تم حفظ قواعد الجلسات')).toBeVisible();
-  expect(saved).toEqual([{ maxSessions: 1, sessionMinutes: 30 }]);
+  // The layer's defaults live on its role (spec 2026-11-09-admin-review, 6.1); «قواعد الدخول» is gone.
+  await page.goto('http://admin.localhost:3910/settings/access');
+  await expect(page).toHaveURL(/\/roles$/);
+  await expect(page.locator('.sidebar').getByRole('link', { name: 'قواعد الدخول' })).toHaveCount(0);
+  await page.getByRole('button', { name: /إجراءات نقطة بيع/ }).click();
+  await page.getByRole('menuitem').first().click();
+  const dialog = page.getByRole('dialog');
+  const group = dialog.getByRole('group', { name: 'الجلسات حسب الطبقة' });
+  await expect(group.getByLabel('تنتهي بعد عدم نشاط').locator('option').first()).toHaveText('الافتراضي (6 ساعات)');
+  await group.getByLabel('الجلسات المسموحة').selectOption('1');
+  await group.getByLabel('تنتهي بعد عدم نشاط').selectOption('30');
+  await dialog.getByRole('button', { name: 'حفظ' }).click();
+  await expect.poll(() => saved).toEqual([{ maxSessions: 1, sessionMinutes: 30 }]);
 });
 
 test('the owner\'s own settings hold only the account: no layer rules there any more', async ({ page }) => {
@@ -47,13 +48,6 @@ test('the owner\'s own settings hold only the account: no layer rules there any 
   await page.route('**/auth/session-rules', (route) => route.fulfill(json({ defaults: { maxSessions: 3, sessionMinutes: 360 }, layers: { branch: none, main_agent: none, agent: none, pos: none } })));
   await page.goto('http://admin.localhost:3910/settings');
   await expect(page.getByRole('heading', { name: 'الجلسات', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'الجلسات حسب الطبقة' })).toHaveCount(0);
-});
-
-test('«قواعد الدخول» is not for an account that is not the branch owner', async ({ page }) => {
-  await serveOffice(page, 'pos');
-  await page.goto('/settings/access');
-  await expect(page).not.toHaveURL(/\/settings\/access$/);
   await expect(page.getByRole('heading', { name: 'الجلسات حسب الطبقة' })).toHaveCount(0);
 });
 

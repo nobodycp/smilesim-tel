@@ -200,3 +200,25 @@ adapter exists; matching is simulated. Provider run modes are copied to a packag
 
 
 Status 2026-11-09: spec and plan agreed; the owner asked not to start yet.
+
+## Section 6 — Corrections after review (owner 2026-11-09)
+
+1. **No «قواعد الدخول» page.** Section 5's page goes: an account's own session values stay on its user page
+   («إعدادات المستخدم»), and a layer's defaults are set on that layer's role in «الأدوار» (the layer role dialog gets
+   the two session fields). `/settings/access` redirects to `/roles`; the sidebar entry goes.
+2. **The old announcements board is deleted** from every layer and from the system: the home «لوحة الإعلانات»
+   pane, `POST /office/announcements`, the home payload's `announcements` and `canPost`, the `announcement` notice
+   kind and the notices group «الإعلانات»; migration drops the `Announcement` table and its notices. The offers hero
+   («الإعلانات» page, spec 2026-11-09-offers-…) is the one announcements system.
+3. **Branch home, trimmed:** no «آخر العمليات», no «مهام بانتظارك»; the top band loses «الرصيد المتاح» and
+   «أرقام فعالة»; the head loses «تمويل حساب» and «تفعيل رقم». Other layers keep their home.
+4. **Numbers donut:** each status shows its change over the period picked (اليوم / الشهر / كل المدة) as a count with a
+   small arrow — green ↑ for more, red ↓ for fewer, nothing when equal or unknown. Its share moves into the ring's
+   middle on hover or focus of a slice (ring or legend). Soft motion: the ring draws in, a hovered slice thickens,
+   the others dim; none with reduced motion.
+   - The API keeps one snapshot of the viewer's counts per day (`LineCountSnapshot`, written by the overview read).
+     Change = now − the latest snapshot before the period: yesterday's for «اليوم», the last day of the previous
+     month for «الشهر», zero for «كل المدة». No snapshot yet → no arrow (history starts with this change).
+5. **Sidebar handle** shows on hover of the sidebar (and on keyboard focus), hidden otherwise, as in the Graphite
+   design.
+6. **Topbar search** keeps a steady size at every width (checked at 320 / 375 / 768 / 1024 / 1440).

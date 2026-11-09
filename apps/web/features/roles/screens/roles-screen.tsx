@@ -8,6 +8,8 @@ import { Dialog } from '../../../components/dialog';
 import { RowMenu } from '../../../components/row-menu';
 import { Button } from '../../../components/ui/button';
 import { api, type RoleRow } from '../../../lib/api';
+import type { LayerKey, SessionRuleValues } from '../../../lib/api-types';
+import { RuleSelects } from '../../auth/session-rules';
 import { GRANT_CODES, grantLabel, grantUsable } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
@@ -40,11 +42,19 @@ export function RolesScreen() {
   const failure = error;
 
   function edit(row?: RoleRow) {
+    setRuleDraft(null);
     setDraft(row
       ? { id: row.id, name: row.name, kind: row.kind === 'layer' ? 'layer' : 'job', layer: row.layer ?? '', grants: codesOf(row) }
       : emptyDraft());
     setOpen(true);
   }
+
+  // A layer role carries its layer's session defaults (spec 2026-11-09-admin-review, 6.1): open sessions and idle
+  // time for every account of the layer that has no value of its own.
+  const rules = useApiQuery(['auth', 'session-rules'], () => api.sessionRules(), { enabled: open && draft.kind === 'layer' });
+  const [ruleDraft, setRuleDraft] = useState<SessionRuleValues | null>(null);
+  const layerKey = (draft.kind === 'layer' ? draft.layer : '') as LayerKey | '';
+  const ruleValues = ruleDraft ?? (layerKey && rules.data ? rules.data.layers[layerKey] : null);
 
   async function save() {
     const flags = {
@@ -56,7 +66,12 @@ export function RolesScreen() {
       staff: draft.grants.includes('staff'),
       enter: draft.grants.includes('enter'),
     };
-    await run(() => api.saveRole({ id: draft.id || undefined, name: draft.name, grants: draft.grants, ...flags }), { then: () => setOpen(false) });
+    await run(async () => {
+      const saved = await api.saveRole({ id: draft.id || undefined, name: draft.name, grants: draft.grants, ...flags });
+      if (!saved.ok || !layerKey || !ruleDraft) return saved.ok ? { ok: true as const, data: null } : saved;
+      const ruled = await api.setLayerSessionRules(layerKey, ruleDraft);
+      return ruled.ok ? { ok: true as const, data: null } : ruled;
+    }, { then: () => { setOpen(false); setRuleDraft(null); void rules.reload(); } });
   }
 
   function roleTitle(row: { kind?: string; layer?: string; name: string }) {
@@ -143,6 +158,13 @@ export function RolesScreen() {
                 </label>
               ))}
             </fieldset>
+            {layerKey && rules.data && ruleValues ? (
+              <fieldset className="stack">
+                <legend>{t.sessionRulesTitle}</legend>
+                <p className="hint">{t.layerSessionHint}</p>
+                <RuleSelects values={ruleValues} fallback={rules.data.defaults} fallbackLabel={t.followDefault} onChange={setRuleDraft} />
+              </fieldset>
+            ) : null}
           </div>
         </Dialog>
         <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} loading={!roles.loaded} failed={roles.error} onRetry={() => void roles.reload()} empty={t.noMatches} skeleton={{ rows: 4, columns: 4 }} />

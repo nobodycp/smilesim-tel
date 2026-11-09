@@ -16,7 +16,6 @@ import {
   Megaphone,
   Menu,
   Package,
-  KeyRound,
   Palette,
   Truck,
   Phone,
@@ -271,8 +270,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           icon: Settings,
           items: [
             { label: t.navBranding, href: '/branding', icon: Palette, layers: ['branch'], owner: true },
-            // The layers' sign-in rules: a system setting, not the owner's own account (spec 2026-11-09-admin-review, 5).
-            { label: t.accessRulesTitle, href: '/settings/access', icon: KeyRound, layers: ['branch'], owner: true },
           ],
         },
       ],

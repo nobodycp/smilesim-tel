@@ -83,3 +83,15 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
   run (folded) → prices → save; reuses the package page editors. e2e on the mock API.
 - [x] **3.7 «إضافة شركة» page (web).** `/companies/new`: provider → query → pick → SIM rules → save. e2e.
 - [x] **3.8 Docs and check** (backend + frontend maps, all widths, ar + en, light + dark).
+
+## Section 6 — Corrections after review
+
+- [x] **6.1** Remove `/settings/access` (redirect to `/roles`) and its sidebar entry; layer role dialog gets the
+  session fields (`RuleSelects`, saved with `setLayerSessionRules`). e2e.
+- [ ] **6.2** Delete the old announcements board: API route/service/DTO/notice kind/group, home payload keys
+  (pins updated), migration dropping `Announcement` and its notices; web board pane, notices group, copy. Specs.
+- [ ] **6.3** Branch home: drop the two panes, the two tiles and the two head buttons. e2e.
+- [ ] **6.4** Donut: `LineCountSnapshot` (migration), overview `lines.change`, hover share in the middle, arrows,
+  motion. Specs + e2e.
+- [ ] **6.5** Sidebar handle on hover/focus; topbar search sizes at five widths.
+- [ ] **6.6** Docs, CI set, visual check, push on the owner's word.

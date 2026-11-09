@@ -1,3 +1,6 @@
-import { AccessRulesScreen } from '../../../features/auth/screens/access-rules-screen';
+import { redirect } from 'next/navigation';
 
-export default AccessRulesScreen;
+// The layers' session defaults live on each layer's role in «الأدوار» (spec 2026-11-09-admin-review, 6.1).
+export default function Page() {
+  redirect('/roles');
+}
