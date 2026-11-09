@@ -91,7 +91,7 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
 - [x] **6.2** Delete the old announcements board: API route/service/DTO/notice kind/group, home payload keys
   (pins updated), migration dropping `Announcement` and its notices; web board pane, notices group, copy. Specs.
 - [x] **6.3** Branch home: drop the two panes, the two tiles and the two head buttons. e2e.
-- [ ] **6.4** Donut: `LineCountSnapshot` (migration), overview `lines.change`, hover share in the middle, arrows,
+- [x] **6.4** Donut: `LineCountSnapshot` (migration), overview `lines.change`, hover share in the middle, arrows,
   motion. Specs + e2e.
-- [ ] **6.5** Sidebar handle on hover/focus; topbar search sizes at five widths.
-- [ ] **6.6** Docs, CI set, visual check, push on the owner's word.
+- [x] **6.5** Sidebar handle on hover/focus; topbar search sizes at five widths.
+- [x] **6.6** Docs, CI set, visual check, push on the owner's word.

@@ -1,0 +1,25 @@
+---
+description: The owner's machine is small — one running copy at a time, and every build runs on GitHub Actions
+alwaysApply: true
+---
+
+# Machine limits (owner 2026-11-09)
+
+The owner's machine does not cope with several copies of the app or with builds. Two rules, for every agent:
+
+## One copy at a time
+
+- At most **one** running copy of the app on the machine: one web (a dev server or the web container), one API with
+  its database and Redis. Never two web servers on different ports, never a second API, never Storybook-style extras.
+- Before starting one, check what runs (`lsof -nP -iTCP -sTCP:LISTEN`, `docker compose ps`) and stop the others.
+- Stop what you started when you are done with it (`preview_stop`, `docker compose stop`).
+
+## Builds run on GitHub Actions, not here
+
+- No `npm run build`, no `docker compose up --build` / `docker build`, no Playwright e2e run (it starts its own
+  servers), no full `npm run test:api` on the owner's machine or on the server.
+- Light checks are fine locally: `npm run lint`, `npm run check:copy`, `npm run typecheck`, and one spec file at a
+  time with jest when needed.
+- To build and test: push to a **work branch** (not `main`) and let `.github/workflows/ci.yml` run there. Watch the
+  run (`gh run watch <id>`). When it is green, merge to `main` / push it — or tell the owner it is ready and push on
+  their word. A red run is fixed on the branch first.
