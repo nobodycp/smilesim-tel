@@ -104,6 +104,6 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
 
 ## Section 8 — Home cards polish
 
-- [ ] **8.1** Donut: butt caps + gap, no stroke on the middle text, legend label → change → count. Users card
+- [x] **8.1** (6003f4d) Donut: butt caps + gap, no stroke on the middle text, legend label → change → count. Users card
   tiles + credit bar. Trend under the figures in the period cards. Short period tab labels (new copy keys). e2e
   updated; checked on 3000 at 320 / 768 / 1440, ar + en, light + dark.
