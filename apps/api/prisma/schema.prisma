@@ -380,6 +380,8 @@ model OfficeTaskNote {
   authorId  String
   author    User       @relation(fields: [authorId], references: [id])
   body      String
+  /// Only branch accounts (the owner and the staff) read an internal note (spec 2026-11-09, 2).
+  internal  Boolean    @default(false)
   createdAt DateTime   @default(now())
 
   @@index([taskId, createdAt])

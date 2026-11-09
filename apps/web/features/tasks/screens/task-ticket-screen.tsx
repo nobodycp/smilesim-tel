@@ -8,6 +8,7 @@ import { Desk, Money, actionName, latinWhen, taskStatus } from '../../../compone
 import { EsimDialog, EsimMark, QrPicker } from '../../../components/esim-qr';
 import { TableSkeleton } from '../../../components/loading';
 import { Badge } from '../../../components/ui/badge';
+import { useOffice } from '../../../lib/office-session';
 import { Button } from '../../../components/ui/button';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -33,7 +34,10 @@ export function TaskTicketScreen() {
   const params = useParams<{ id: string }>();
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  const { me } = useOffice();
   const [draft, setDraft] = useState('');
+  // An internal note (spec 2026-11-09, 2): the branch's, hidden from the point of sale and the agents.
+  const [internalNote, setInternalNote] = useState(true);
   const [closeNote, setCloseNote] = useState('');
   const [reason, setReason] = useState('');
   const [closeMode, setCloseMode] = useState<CloseMode>(null);
@@ -138,10 +142,13 @@ export function TaskTicketScreen() {
                 ) : null}
                 {task.canWork ? (
                   <>
-                    <button type="button" className="task-op task-op-release" onClick={() => run(() => api.releaseTask(task.id), { note: t.release })}>
-                      <Undo2 {...glyph} />
-                      {t.release}
-                    </button>
+                    {/* Taking only names the handler now (spec 2026-11-09, 2); whoever took it may release it. */}
+                    {task.assigneeLogin && task.assigneeLogin === me?.loginName ? (
+                      <button type="button" className="task-op task-op-release" onClick={() => run(() => api.releaseTask(task.id), { note: t.release })}>
+                        <Undo2 {...glyph} />
+                        {t.release}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className={`task-op task-op-complete${closeMode === 'complete' ? ' is-on' : ''}`}
@@ -242,9 +249,10 @@ export function TaskTicketScreen() {
                       event.kind === 'note' || event.kind === 'result' ? (
                         <li key={event.id} className={`task-tree-node task-tree-${event.kind}`}>
                           <span className="task-tree-dot" aria-hidden="true" />
-                          <div className="task-tree-card">
+                          <div className={event.internal ? 'task-tree-card internal' : 'task-tree-card'}>
                             <div className="task-tree-meta">
                               <strong>{event.authorName ? <bdi>{event.authorName}</bdi> : t.taskSystem}</strong>
+                              {event.internal ? <Badge variant="warning" dot>{t.internalNote}</Badge> : null}
                               <bdi dir="ltr">{latinWhen(event.at, true)}</bdi>
                             </div>
                             <p>{event.body}</p>
@@ -272,6 +280,12 @@ export function TaskTicketScreen() {
                     placeholder={t.addTaskNote}
                     aria-label={t.note}
                   />
+                  {task.canNoteInternal ? (
+                    <label className="check">
+                      <input type="checkbox" checked={internalNote} onChange={(event) => setInternalNote(event.target.checked)} />
+                      <span>{t.internalNoteToggle}</span>
+                    </label>
+                  ) : null}
                   <Button
                     type="button"
                     size="sm"
@@ -279,7 +293,7 @@ export function TaskTicketScreen() {
                     onClick={() =>
                       run(
                         async () => {
-                          const result = await api.addTaskNote(task.id, draft.trim());
+                          const result = await api.addTaskNote(task.id, draft.trim(), internalNote);
                           if (result.ok) setDraft('');
                           return result;
                         },

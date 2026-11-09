@@ -26,7 +26,7 @@ const NO_PACKAGES: PackageRow[] = [];
 const TASK_ACTIONS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'sim'] as const;
 
 const FILTER_KEYS = ['q', 'status', 'action', 'pack', 'company', 'provider'] as const;
-const TASK_STATUSES = ['pending', 'working', 'done', 'cancelled'];
+const TASK_STATUSES = ['working', 'done', 'cancelled'];
 
 export function TasksScreen() {
   const { t } = usePrefs();
@@ -190,7 +190,6 @@ export function TasksScreen() {
           {t.status}
           <Select value={status} onChange={(event) => setFilters({ status: event.target.value })}>
             <option value="">{t.allRows}</option>
-            <option value="pending">{taskStatus(t, 'pending')}</option>
             <option value="working">{taskStatus(t, 'working')}</option>
             <option value="done">{taskStatus(t, 'done')}</option>
             <option value="cancelled">{taskStatus(t, 'cancelled')}</option>

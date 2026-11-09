@@ -524,10 +524,14 @@ export type TaskDetail = TaskRow & {
   companyName: string;
   providerName: string;
   canNote: boolean;
+  /** The branch may write a note only the branch reads (spec 2026-11-09, 2). */
+  canNoteInternal?: boolean;
 };
 export type TaskEvent = {
   id: string;
   kind: 'system' | 'note' | 'result';
+  /** An internal note: shown to the branch only. */
+  internal?: boolean;
   body: string;
   authorName: string | null;
   at: string;

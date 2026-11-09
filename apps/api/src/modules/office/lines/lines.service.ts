@@ -584,7 +584,9 @@ export class LinesService {
     const givenQr = readQr(body.qr) ?? null;
     const givenMsisdn = typeof body.msisdn === 'string' ? body.msisdn.trim() : '';
     const task = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
-    if (!task || task.status !== 'working' || task.assigneeId !== actor.id) fail(400, 'INVALID');
+    // Any branch account that handles tasks may finish an open one (spec 2026-11-09, 2); the claim below makes sure
+    // only one of two at the same moment does.
+    if (!task || task.status !== 'working') fail(400, 'INVALID');
     const handed: { iccid?: string; msisdn?: string } = {};
     if (task.action === 'esim') {
       if (!givenIccid || !givenQr) fail(400, 'INVALID');
@@ -603,6 +605,9 @@ export class LinesService {
     }
     const handedQr = task.action === 'esim' || task.esim ? givenQr ?? task.esimQr : null;
     const written = await this.kernel.runTx(async (tx) => {
+      // Claim the task first: a second handler finishing it at the same moment waits on this row, then finds it done.
+      const claimed = await tx.officeTask.updateMany({ where: { id, status: 'working' }, data: { status: 'done', assigneeId: actor.id } });
+      if (claimed.count !== 1) fail(400, 'INVALID');
       // The hold made when the task opened gives way to the charge itself (roadmap N6), before any money moves.
       await this.kernel.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
       let sale: Sale | undefined;

@@ -441,7 +441,8 @@ describe('task reading follows the number', () => {
     id,
     posId,
     action: 'switch',
-    status: 'pending',
+    // Open tasks are in progress from the start (spec 2026-11-09, 2); none is taken yet.
+    status: 'working',
     posDelta: 0,
     packageId: 'pa',
     msisdn: '0550000001',

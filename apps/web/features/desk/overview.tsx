@@ -93,11 +93,10 @@ export function TasksCard({ data }: { data: OverviewPayload }) {
   const { t } = usePrefs();
   const { tasks } = data;
   const rows: { key: string; label: string; value: number; tone: 'warning' | 'info' | 'success' | 'danger' | 'muted'; href: string }[] = [
-    { key: 'pending', label: t.pending, value: tasks.pending, tone: 'warning', href: '/tasks?status=pending' },
-    { key: 'working', label: t.working, value: tasks.working, tone: 'warning', href: '/tasks?status=working' },
+    // Three statuses (spec 2026-11-09, 2): in progress, closed, done.
+    { key: 'working', label: t.working, value: tasks.pending + tasks.working, tone: 'warning', href: '/tasks?status=working' },
+    { key: 'closed', label: t.taskClosed, value: tasks.rejected + tasks.cancelled, tone: 'muted', href: '/tasks?status=cancelled' },
     { key: 'done', label: t.done, value: tasks.done, tone: 'success', href: '/tasks?status=done' },
-    { key: 'rejected', label: t.taskRejected, value: tasks.rejected, tone: 'danger', href: '/tasks?status=rejected' },
-    { key: 'cancelled', label: t.cancelled, value: tasks.cancelled, tone: 'muted', href: '/tasks?status=cancelled' },
   ];
   const all = Math.max(1, rows.reduce((sum, row) => sum + row.value, 0));
   const age = tasks.oldestOpenMinutes;

@@ -13,7 +13,7 @@ export const tasksApi = {
     cursor?: string | null;
   }) => request<{ tasks: TaskRow[]; nextCursor: string | null; total: number }>('GET', `/office/tasks${queryString(query)}`),
   officeTask: (id: string) => request<{ task: TaskDetail; events: TaskEvent[] }>('GET', `/office/tasks/${segment(id)}`),
-  addTaskNote: (id: string, text: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/notes`, { text }),
+  addTaskNote: (id: string, text: string, internal = false) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/notes`, { text, ...(internal ? { internal: true } : {}) }),
   takeTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/take`),
   releaseTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/release`),
   completeTask: (id: string, body: CompleteTaskBody) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/complete`, body),

@@ -9,9 +9,9 @@ Spec: `docs/superpowers/specs/2026-11-09-offers-tasks-addons-wallet-esim.md`. On
 ## Slice 4: wallet page — done 2026-11-09
 - [x] `/wallet` route and screen (cards, chart, own movements, top-up «قريباً»); topbar chip → link with «المحفظة».
 
-## Slice 2: task notes and statuses
-- [ ] Migration: `OfficeTaskNote.internal`, `pending` → `working`; open tasks as `working`; complete/reject by any handler; internal notes hidden from non-branch readers and notices.
-- [ ] Web: status words, no take step, internal note checkbox and badge.
+## Slice 2: task notes and statuses — done 2026-11-09
+- [x] Migration: `OfficeTaskNote.internal`, `pending` → `working`; open tasks as `working`; complete/reject by any handler; internal notes hidden from non-branch readers and notices.
+- [x] Web: status words, no take step, internal note checkbox and badge.
 
 ## Slice 3: line add-ons
 - [ ] Migration `PackageAddon`; CRUD under the package; `POST lines/:id/addon` opens the task with hold; completion moves the price.
