@@ -25,8 +25,8 @@ import { useRequireLayer } from '../../../lib/use-require-layer';
 import { useOffice } from '../../../lib/office-session';
 import { lineTone, onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
-import { Select } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
+import { InheritedModes } from '../inherited-modes';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
 import { PackageAddons } from '../package-addons';
@@ -35,8 +35,6 @@ import { PackageDetailsForm } from '../package-details-form';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
-const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
-type ModeAction = (typeof actions)[number];
 type Tab = 'overview' | 'details' | 'addons' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
 type PriceKey =
@@ -162,17 +160,6 @@ export function PackageSheetScreen() {
   const provider = company?.providers.find((item) => item.code === sheet?.providerCode);
   const targetPackages = (provider?.packages ?? []).filter((item) => item.code !== sheet?.code);
   const { run, busy } = useAction({ setError, setNote, onDone: card.reload });
-  const names: Record<ModeAction, string> = {
-    activate: t.actActivate,
-    charge: t.actCharge,
-    extend: t.extend,
-    disconnect: t.actDisconnect,
-    freeze: `${t.freeze} / ${t.unfreeze}`,
-    switch: t.actSwitch,
-    rename: t.changeNumber,
-    sim: t.swapSim,
-    companySwitch: t.actCompanySwitch,
-  };
 
   // Every action reloads the sheet. A field (or list) the user has not edited since the last load follows the server;
   // one they typed in keeps their draft, so saving in one tab never wipes unsaved fields in another.
@@ -292,20 +279,6 @@ export function PackageSheetScreen() {
     await run(() => api.setCustomPrice(sheet.code, offer.loginName, { [field]: value }), { note: t.saved });
   }
 
-  const modeColumns: Column<ModeAction>[] = [
-    { key: 'kind', header: t.kind, render: (action) => names[action] },
-    {
-      key: 'run',
-      header: t.runTab,
-      render: (action) => (
-        <Select className="mode-pick" aria-label={`${t.runTab} ${names[action]}`} value={sheet?.modes[action] ?? 'manual'} onChange={(event) => void saveMode(action, event.target.value)}>
-          <option value="auto">{t.automatic}</option>
-          <option value="manual">{t.manual}</option>
-          <option value="off">{t.stopped}</option>
-        </Select>
-      ),
-    },
-  ];
   const offerColumns: Column<CustomPriceRow>[] = [
     { key: 'account', header: t.accountName, render: (offer) => <AccountName login={offer.loginName} name={offer.nickname} /> },
     { key: 'layer', header: t.layer, fit: true, render: (offer) => layerName(t, offer.layer) },
@@ -525,7 +498,13 @@ export function PackageSheetScreen() {
               )}
               {tab === 'run' && (
                 <div className="pane-body">
-                  <DataTable bare columns={modeColumns} rows={[...actions]} rowKey={(action) => action} />
+                  {/* The modes come from the provider and follow it, except the ones set here (ADR 0009). */}
+                  <InheritedModes
+                    modes={sheet.modes}
+                    inherited={sheet.inheritedModes ?? []}
+                    disabled={busy}
+                    onChange={(action, mode) => void saveMode(action, mode)}
+                  />
                 </div>
               )}
               {tab === 'prices' && (

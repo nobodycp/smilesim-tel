@@ -77,7 +77,7 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
   `Package.providerProductCode`, unique per provider; a company keeps the provider's company code as its own code, so
   no `Company.providerCompanyCode` column was needed). Validation and error codes
   (ar copy = API message). Specs incl. duplicate product refused.
-- [ ] **3.5 Run tab with inheritance (web).** Package page run tab: the Select table gives way to `ModeCards`
+- [x] **3.5 Run tab with inheritance (web).** Package page run tab: the Select table gives way to `ModeCards`
   (already on the provider page), each action «موروث» / «مخصص», folded, «رجوع للموروث».
 - [ ] **3.6 «إضافة رزمة» page (web).** `/companies/[code]/packages/new`: provider → query → pick → details → addons →
   run (folded) → prices → save; reuses the package page editors. e2e on the mock API.

@@ -1169,3 +1169,16 @@ input[readonly] { background-color: transparent; }
   .inline-field .name-field { flex: 1; }
   .inline-field .name-field > input { width: 100%; height: 44px; }
 }
+
+/* Where a package's run mode comes from (spec 2026-11-09-admin-review, 3): the provider, or the package's own. */
+.mode-source { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
+.mode-source.own { color: var(--rd-accent); }
+.mode-source .link-btn { font-size: var(--rd-text-xs); }
+.inherit-fold { border: 1px solid var(--rd-line); border-radius: var(--rd-radius-sm); background: var(--rd-surface); }
+.inherit-fold > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 12px 14px; cursor: pointer; list-style: none; }
+.inherit-fold > summary::-webkit-details-marker { display: none; }
+.inherit-fold > summary b { color: var(--rd-ink); font-size: var(--rd-text-md); }
+.inherit-fold > summary span { color: var(--rd-muted); font-size: var(--rd-text-sm); }
+.inherit-fold > summary::after { content: ''; inline-size: 8px; block-size: 8px; margin-inline-start: auto; border-inline-end: 2px solid var(--rd-muted); border-block-end: 2px solid var(--rd-muted); transform: rotate(45deg); align-self: center; }
+.inherit-fold[open] > summary::after { transform: rotate(225deg); }
+.inherit-fold > .inherit-body { display: grid; gap: var(--rd-space-3); padding: 0 14px 14px; }

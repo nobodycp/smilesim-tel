@@ -34,9 +34,11 @@ test('a reload keeps typed chain prices and refreshes untouched ones', async ({ 
 
   await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();
   const reloaded = page.waitForResponse((response) => response.url().endsWith('/sheet') && response.request().method() === 'GET');
-  await page.getByLabel('التشغيل شحن').selectOption('manual');
+  // The run modes are cards (ModeCards, spec 2026-11-09-admin-review, 3).
+  const charge = page.getByRole('radiogroup', { name: 'التشغيل شحن' });
+  await charge.getByRole('radio', { name: 'مهمة فرع' }).click();
   await reloaded;
-  await expect(page.getByLabel('التشغيل شحن')).toHaveValue('manual');
+  await expect(charge.getByRole('radio', { name: 'مهمة فرع' })).toHaveAttribute('aria-checked', 'true');
 
   await page.getByRole('tab', { name: 'الأسعار' }).click();
   await expect(board.getByLabel('وكيل رئيسي').first()).toHaveValue('30');
@@ -83,7 +85,7 @@ test('a mode change re-reads the sheet, its numbers and its custom prices, not t
   const count = (key: string) => calls.filter((call) => call.startsWith(key)).length;
   const keys = ['GET /packages/lian-wecom-500/sheet', 'GET /lines', 'GET /packages/lian-wecom-500/custom-prices', 'GET /users', 'GET /companies'];
   const before = Object.fromEntries(keys.map((key) => [key, count(key)]));
-  await page.getByLabel('التشغيل شحن').selectOption('manual');
+  await page.getByRole('radiogroup', { name: 'التشغيل شحن' }).getByRole('radio', { name: 'مهمة فرع' }).click();
   await expect.poll(() => count('GET /packages/lian-wecom-500/sheet')).toBe(before['GET /packages/lian-wecom-500/sheet'] + 1);
   await expect.poll(() => count('GET /lines')).toBe(before['GET /lines'] + 1);
   await expect.poll(() => count('GET /packages/lian-wecom-500/custom-prices')).toBe(before['GET /packages/lian-wecom-500/custom-prices'] + 1);

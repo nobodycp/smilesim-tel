@@ -255,6 +255,9 @@ export type PackageSheet = {
   renewals: string[];
   switches: string[];
   modes: Record<string, 'auto' | 'manual' | 'off'>;
+  /** The actions that follow the provider, and the provider's own modes (spec 2026-11-09-admin-review, 3). */
+  inheritedModes?: string[];
+  providerModes?: Record<string, 'auto' | 'manual' | 'off'>;
 };
 export type RoleRow = {
   id: string;
