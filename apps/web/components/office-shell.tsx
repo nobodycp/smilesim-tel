@@ -9,7 +9,6 @@ import {
   Bell,
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
   ClipboardList,
   Home,
   Layers,
@@ -98,6 +97,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const { open: menuOpen, close: closeMenu, toggle: toggleMenu, root: menuRoot, trigger: menuTrigger } = usePopover({ menu: true });
   const { open: noticeOpen, close: closeNotices, toggle: toggleNotices, root: noticeRoot, trigger: noticeTrigger } = usePopover();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [flyout, setFlyout] = useState<{ top: number; label: string; items?: NavItem[] } | null>(null);
   const { ready, failed, retrying, retry, me, initialName, initialBalance } = useOffice();
   const { reachable } = useConnection();
   const { notices, unread, fresh, markRead, dismiss } = useNotices(ready);
@@ -268,75 +268,119 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   );
   const isActive = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
 
-  const navLink = (item: NavItem, compact: boolean) => {
+  // The account answer wins; before it lands the saved identity, then the cookie name, fill in.
+  const shown = me ? me.nickname || me.loginName : saved.account || initialName;
+  const sub = me ? (me.nickname ? me.loginName : '') : saved.hint;
+  const first = shown.trim().split(/\s+/)[0] || shown;
+  const initial = first.charAt(0);
+  const role = me?.layer === 'branch' ? t.layerBranch : me?.layer === 'main_agent' ? t.layerMain : me?.layer === 'agent' ? t.layerAgent : me?.layer === 'pos' ? t.layerPos : me?.layer === 'staff' ? t.staffAccount : '';
+
+  // Folded on a wide screen, the rail shows each name — and a group's pages as a menu — beside the hovered icon
+  // (Graphite flyout). Under 900px the sidebar is the drawer and shows its names itself.
+  const hint = (event: { currentTarget: HTMLElement }, label: string, items?: NavItem[]) => {
+    if (!collapsed || window.matchMedia('(max-width: 899px)').matches) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    setFlyout({ top: box.top + box.height / 2, label, items });
+  };
+
+  const navLink = (item: NavItem, mobile: boolean, nested = false) => {
     const active = isActive(item.href);
     const ItemIcon = item.icon;
     return (
       <Link
         key={item.href}
         href={item.href}
-        className={active ? 'nav-link active' : 'nav-link'}
-        title={item.label}
+        className={['nav-link', nested ? 'nested' : '', active ? 'active' : ''].filter(Boolean).join(' ')}
         aria-current={active ? 'page' : undefined}
-        onClick={() => setMobileOpen(false)}
+        onClick={() => {
+          setMobileOpen(false);
+          setFlyout(null);
+        }}
+        onMouseEnter={mobile || nested ? undefined : (event) => hint(event, item.label)}
+        onFocus={mobile || nested ? undefined : (event) => hint(event, item.label)}
+        onBlur={() => setFlyout(null)}
       >
-        <ItemIcon {...glyph} />
-        {!compact && <span>{item.label}</span>}
+        {nested ? <span className="nav-bullet" aria-hidden="true" /> : <ItemIcon {...glyph} />}
+        <span className="label">{item.label}</span>
       </Link>
     );
   };
 
   const sidebar = (mobile: boolean) => {
-    const compact = collapsed && !mobile;
+    const rail = collapsed && !mobile;
     return (
       <>
-        <div className={compact ? 'brand-block compact' : 'brand-block'}>
+        <div className="brand-block">
+          {branding.logo ? (
+            <BrandLogo className="brand-block-logo" />
+          ) : (
+            <div className="brand-mark" aria-hidden="true">
+              <Wifi {...glyph} />
+            </div>
+          )}
+          <div className="brand-copy label">
+            <p className="brand-name">{branding.name}</p>
+            <p className="brand-sub">{t[door.label]}</p>
+          </div>
           {mobile && (
             <button type="button" className="icon-btn drawer-close" onClick={() => setMobileOpen(false)} aria-label={t.closeMenu}>
               <X {...glyph} />
             </button>
           )}
-          {branding.logo ? (
-            <BrandLogo className="brand-block-logo" />
-          ) : (
-            <div className="brand-mark" aria-hidden="true">
-              <Wifi {...glyph} size={compact ? 20 : 28} />
-            </div>
-          )}
-          {!compact && (
-            <div className="brand-copy">
-              <p className="brand-name">{branding.name}</p>
-              <p className="brand-sub">{t[door.label]}</p>
-            </div>
-          )}
-          <span className="brand-rule" aria-hidden="true" />
         </div>
+        {!mobile && (
+          // The handle on the sidebar's edge (Graphite): shows on hover, folds the sidebar to a rail of icons; «[» too.
+          <button
+            type="button"
+            className="side-handle"
+            onClick={toggleCollapsed}
+            title={`${collapsed ? t.expand : t.collapse}  [`}
+            aria-label={collapsed ? t.expand : t.collapse}
+            aria-expanded={!collapsed}
+          >
+            <ChevronLeft {...glyph} className="flip-ltr" />
+          </button>
+        )}
         <nav className="side-nav" aria-label={t.mainNav}>
           {visibleGroups.map((group) => (
-            <div key={group.title || 'home'}>
-              {!compact && group.title && <p className="nav-label">{group.title}</p>}
+            <div key={group.title || 'home'} className="side-section">
+              {group.title && <p className="nav-label"><span className="label">{group.title}</span></p>}
               {group.items.map((entry) => {
-                if (!isGroup(entry)) return navLink(entry, compact);
-                if (compact) return entry.items.map((item) => navLink(item, compact));
-                const open = openGroups[entry.key] ?? entry.items.some((item) => isActive(item.href));
+                if (!isGroup(entry)) return navLink(entry, mobile);
+                const holds = entry.items.some((item) => isActive(item.href));
+                const open = !rail && (openGroups[entry.key] ?? holds);
                 const HeadIcon = entry.icon;
                 const bodyId = `nav-group-${entry.key}${mobile ? '-drawer' : ''}`;
                 return (
-                  <div key={entry.key} className="nav-group">
-                    <button
-                      type="button"
-                      className="nav-link nav-group-head"
-                      aria-expanded={open}
-                      aria-controls={bodyId}
-                      onClick={() => setOpenGroups((current) => ({ ...current, [entry.key]: !open }))}
-                    >
-                      <HeadIcon {...glyph} />
-                      <span>{entry.label}</span>
-                      <ChevronDown {...glyph} size={14} className={open ? 'nav-group-chevron open' : 'nav-group-chevron'} />
-                    </button>
+                  <div key={entry.key} className={open ? 'nav-group open' : 'nav-group'}>
+                    {rail ? (
+                      // Folded: the head opens the group's first page; its pages come as a flyout menu on hover.
+                      <Link
+                        href={entry.items[0].href}
+                        className={holds ? 'nav-link nav-group-head holds' : 'nav-link nav-group-head'}
+                        aria-label={entry.label}
+                        onMouseEnter={(event) => hint(event, entry.label, entry.items)}
+                        onFocus={(event) => hint(event, entry.label, entry.items)}
+                      >
+                        <HeadIcon {...glyph} />
+                        <span className="label">{entry.label}</span>
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        className={holds ? 'nav-link nav-group-head holds' : 'nav-link nav-group-head'}
+                        aria-expanded={open}
+                        aria-controls={bodyId}
+                        onClick={() => setOpenGroups((current) => ({ ...current, [entry.key]: !open }))}
+                      >
+                        <HeadIcon {...glyph} />
+                        <span className="label">{entry.label}</span>
+                        <ChevronDown {...glyph} className="nav-group-chevron" />
+                      </button>
+                    )}
                     {open && (
                       <div id={bodyId} className="nav-group-body">
-                        {entry.items.map((item) => navLink(item, compact))}
+                        {entry.items.map((item) => navLink(item, mobile, true))}
                       </div>
                     )}
                   </div>
@@ -345,43 +389,71 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             </div>
           ))}
         </nav>
-        {mobile ? (
-          <div className="side-foot">
+        <div className="side-foot">
+          {mobile && (
             <div className="drawer-prefs">
               <ThemeToggle shell />
               <LanguageSwitch shell />
             </div>
-          </div>
-        ) : (
-          // The handle on the sidebar's edge (Graphite): folds the sidebar to a rail of icons and back; «[» too.
+          )}
+          {/* The account at the foot of the sidebar (Graphite): opens the profile; signing out sits under it. */}
+          <Link
+            href="/settings"
+            className="side-user"
+            onClick={() => setMobileOpen(false)}
+            onMouseEnter={mobile ? undefined : (event) => hint(event, `${shown} · ${t.accountSettings}`)}
+            onBlur={() => setFlyout(null)}
+          >
+            <span className="avatar" aria-hidden="true">{initial}</span>
+            <span className="label">
+              <b><bdi>{shown}</bdi></b>
+              <small>{role || ' '}</small>
+            </span>
+          </Link>
           <button
             type="button"
-            className="side-handle"
-            onClick={toggleCollapsed}
-            title={`${collapsed ? t.expand : t.collapse} ([)`}
-            aria-label={collapsed ? t.expand : t.collapse}
-            aria-expanded={!collapsed}
+            className="nav-link side-logout"
+            onClick={logout}
+            onMouseEnter={mobile ? undefined : (event) => hint(event, t.logout)}
+            onBlur={() => setFlyout(null)}
           >
-            {collapsed ? <ChevronLeft {...glyph} size={14} className="flip-ltr" /> : <ChevronRight {...glyph} size={14} className="flip-ltr" />}
+            <LogOut {...glyph} />
+            <span className="label">{t.logout}</span>
           </button>
-        )}
+        </div>
       </>
     );
   };
-
-  // The account answer wins; before it lands the saved identity, then the cookie name, fill in.
-  const shown = me ? me.nickname || me.loginName : saved.account || initialName;
-  const sub = me ? (me.nickname ? me.loginName : '') : saved.hint;
-  const first = shown.trim().split(/\s+/)[0] || shown;
-  const initial = first.charAt(0);
-  const role = me?.layer === 'branch' ? t.layerBranch : me?.layer === 'main_agent' ? t.layerMain : me?.layer === 'agent' ? t.layerAgent : me?.layer === 'pos' ? t.layerPos : me?.layer === 'staff' ? t.staffAccount : '';
 
   return (
     <>
     <title>{tabTitle(pageTitle, branding.name, unread)}</title>
     <div className="office">
       {mobileOpen && <div className="backdrop" onClick={() => setMobileOpen(false)} />}
-      <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'}>{sidebar(false)}</aside>
+      <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'} onMouseLeave={() => setFlyout(null)}>{sidebar(false)}</aside>
+      {flyout && collapsed ? (
+        <div
+          className={flyout.items ? 'side-flyout menu' : 'side-flyout'}
+          style={{ top: flyout.top }}
+          role={flyout.items ? 'menu' : 'tooltip'}
+          onMouseEnter={() => setFlyout(flyout)}
+          onMouseLeave={() => setFlyout(null)}
+        >
+          <b>{flyout.label}</b>
+          {flyout.items?.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              role="menuitem"
+              className={isActive(item.href) ? 'active' : undefined}
+              aria-current={isActive(item.href) ? 'page' : undefined}
+              onClick={() => setFlyout(null)}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      ) : null}
       {/* Closed, the drawer is off screen but still in the page: `inert` keeps it out of the tab order and the
           accessibility tree until it opens. */}
       <aside className={mobileOpen ? 'drawer open' : 'drawer'} inert={!mobileOpen}>{sidebar(true)}</aside>

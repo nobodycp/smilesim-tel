@@ -78,20 +78,82 @@ export function HomeScreen() {
         ...(layer === 'branch' ? [{ href: '/companies', label: t.navCompanies, icon: 'providers' as const }] : []),
         ...(me?.isBranchOwner ? [] : [{ href: '/reports/sales', label: t.salesTitle, icon: 'reports' as const }]),
       ];
-  // The lede (Graphite): the greeting and today's date, moved here from the topbar; the layer until the clock is read.
+  // The head (Graphite, as in the approved design): the greeting is the title, today's date and the layer the lede.
   const name = me ? me.nickname || me.loginName : '';
-  const lede = greeting && name ? `${greeting.hello}${locale === 'en' ? ',' : '،'} ${name} · ${greeting.today}` : layer ? layerName(t, layer) : '';
+  const title = greeting && name ? `${greeting.hello}${locale === 'en' ? ',' : '،'} ${name}` : t.homeTitle;
+  const lede = [greeting?.today, layer ? layerName(t, layer) : ''].filter(Boolean).join(' · ');
+  const data = overview.data;
+  const loadingOverview = !data && !overview.error;
 
   if (!ready) return <PageSkeleton />;
+
+  const lastOps = broken ? (
+    <section className="pane">
+      <header className="pane-head"><h2>{t.lastOps}</h2></header>
+      <LoadFailed message={board.error} onRetry={() => void board.reload()} />
+    </section>
+  ) : !home ? (
+    <section className="pane">
+      <header className="pane-head"><h2>{t.lastOps}</h2><Spinner /></header>
+      <TableSkeleton rows={5} columns={4} />
+    </section>
+  ) : (
+    <section className="pane home-ops">
+      <header className="pane-head"><h2>{t.lastOps}</h2></header>
+      <DataTable columns={movementColumns} rows={home.operations} rowKey={(row) => row.id} empty={t.noMovements} />
+    </section>
+  );
+
+  const boardCard = broken ? (
+    <section className="pane">
+      <header className="pane-head"><h2>{t.board}</h2></header>
+      <LoadFailed message={board.error} onRetry={() => void board.reload()} />
+    </section>
+  ) : !home ? (
+    <section className="pane">
+      <header className="pane-head"><h2>{t.board}</h2><Spinner /></header>
+      <TableSkeleton rows={3} columns={1} />
+    </section>
+  ) : (
+    <section className="pane home-board">
+      <header className="pane-head"><h2>{t.board}</h2></header>
+      <div className="pane-body">
+        {home.canPost && (
+          <form onSubmit={publish}>
+            <label>
+              {t.announcementText}
+              <textarea value={draft} maxLength={400} onChange={(event) => setDraft(event.target.value)} />
+            </label>
+            <p className="hint">{t.announcementHint}</p>
+            <Button type="submit" disabled={!draft.trim()}>{t.postAnnouncement}</Button>
+          </form>
+        )}
+        {home.announcements.length === 0 ? (
+          <EmptyState>{t.noAnnouncements}</EmptyState>
+        ) : (
+          <ul className="notices">
+            {home.announcements.map((row) => (
+              <li key={row.id}>
+                <p>{row.body}</p>
+                <small>
+                  <bdi>{row.authorName}</bdi> · {layerName(t, row.authorLayer)} · <bdi dir="ltr">{latinWhen(row.at)}</bdi>
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
 
   return (
     <div className="home">
       <Alert banner>{failure}</Alert>
       <Alert tone="success" banner>{note}</Alert>
-      <header className="page-head">
+      <header className="page-head home-head">
         <div>
-          <h1>{t.homeTitle}</h1>
-          {lede && <p className="lede"><bdi>{lede}</bdi></p>}
+          <h1><bdi>{title}</bdi></h1>
+          {lede && <p className="lede">{lede}</p>}
         </div>
         <div className="page-actions">
           <Tabs
@@ -104,110 +166,37 @@ export function HomeScreen() {
       </header>
       {offers.length > 0 ? <OfferHero offers={offers} /> : null}
       {/* Provider alerts (spec G): the same rule as the notices, shown while it holds. */}
-      {overview.data?.providers?.some((row) => row.status === 'problem') ? (
+      {data?.providers?.some((row) => row.status === 'problem') ? (
         <Alert banner>
-          {`${t.providerAlertBanner} ${overview.data.providers.filter((row) => row.status === 'problem').map((row) => `${row.name} (${row.problem === 'failures' ? t.providerProblemFailures.replace('{n}', String(row.failures)) : t.providerProblemBalance})`).join('، ')}`}
+          {`${t.providerAlertBanner} ${data.providers.filter((row) => row.status === 'problem').map((row) => `${row.name} (${row.problem === 'failures' ? t.providerProblemFailures.replace('{n}', String(row.failures)) : t.providerProblemBalance})`).join('، ')}`}
         </Alert>
       ) : null}
-      {/* Graphite home (spec 2026-11-09-graphite-identity): the figure band, a middle row (numbers, tasks, shortcuts),
-          a rankings row, the providers, then the last operations beside the board. */}
-      <section className="overview" aria-busy={!overview.data && !overview.error}>
-        {overview.error && !overview.data ? (
-          <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section>
-        ) : !overview.data ? (
-          <div className="figure-band">
-            {[0, 1, 2, 3].map((key) => <div key={key} className={key === 0 ? 'figure-tile lead' : 'figure-tile'}><TableSkeleton rows={2} columns={1} /></div>)}
-          </div>
-        ) : (
-          <FigureBand data={overview.data} />
-        )}
-        <div className="home-row">
-          {overview.data ? (
-            <>
-              <LinesCard data={overview.data} />
-              <TasksCard data={overview.data} />
-            </>
-          ) : !overview.error ? (
-            <>
-              <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section>
-              <section className="pane overview-card"><TableSkeleton rows={3} columns={2} /></section>
-            </>
-          ) : null}
-          {me ? <ShortcutsCard items={shortcuts} /> : null}
+      {overview.error && !data ? (
+        <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section>
+      ) : data ? (
+        <FigureBand data={data} />
+      ) : (
+        <div className="figure-band" aria-busy="true">
+          {[0, 1, 2, 3].map((key) => <div key={key} className={key === 0 ? 'figure-tile lead' : 'figure-tile'}><TableSkeleton rows={2} columns={1} /></div>)}
         </div>
-        {overview.data ? (
-          <>
-            <div className="home-row">
-              <TopCard data={overview.data} />
-              {layer !== 'pos' ? <ActiveCard data={overview.data} layer={layer} /> : null}
-              {layer !== 'pos' ? <UsersCard data={overview.data} layer={layer} /> : null}
-            </div>
-            <ProvidersCard data={overview.data} />
-          </>
-        ) : null}
-      </section>
-      <div className="home-grid">
-        {broken ? (
-          <>
-            <section className="pane">
-              <header className="pane-head"><h2>{t.lastOps}</h2></header>
-              <LoadFailed message={board.error} onRetry={() => void board.reload()} />
-            </section>
-            <section className="pane">
-              <header className="pane-head"><h2>{t.board}</h2></header>
-              <LoadFailed message={board.error} onRetry={() => void board.reload()} />
-            </section>
-          </>
-        ) : !home ? (
-          <>
-            <section className="pane">
-              <header className="pane-head"><h2>{t.lastOps}</h2><Spinner /></header>
-              <TableSkeleton rows={5} columns={4} />
-            </section>
-            <section className="pane">
-              <header className="pane-head"><h2>{t.board}</h2><Spinner /></header>
-              <TableSkeleton rows={4} columns={1} />
-            </section>
-          </>
-        ) : <>
-        <section className="pane">
-          <header className="pane-head">
-            <h2>{t.lastOps}</h2>
-          </header>
-          <DataTable columns={movementColumns} rows={home.operations} rowKey={(row) => row.id} empty={t.noMovements} />
-        </section>
-        <section className="pane">
-          <header className="pane-head">
-            <h2>{t.board}</h2>
-          </header>
-          <div className="pane-body">
-            {home.canPost && (
-              <form onSubmit={publish}>
-                <label>
-                  {t.announcementText}
-                  <textarea value={draft} maxLength={400} onChange={(event) => setDraft(event.target.value)} />
-                </label>
-                <p className="hint">{t.announcementHint}</p>
-                <Button type="submit" disabled={!draft.trim()}>{t.postAnnouncement}</Button>
-              </form>
-            )}
-            {home.announcements.length === 0 ? (
-              <EmptyState>{t.noAnnouncements}</EmptyState>
-            ) : (
-              <ul className="notices">
-                {home.announcements.map((row) => (
-                  <li key={row.id}>
-                    <p>{row.body}</p>
-                    <small>
-                      <bdi>{row.authorName}</bdi> · {layerName(t, row.authorLayer)} · <bdi dir="ltr">{latinWhen(row.at)}</bdi>
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
-      </>}
+      )}
+      {/* Graphite home (spec 2026-11-09-graphite-identity): two columns that stack their own cards, so no card is
+          stretched to its neighbour's height. The side column (status, tasks, shortcuts, accounts) comes first
+          in the page, so on a phone it is read first; on a wide screen it sits at the reading end. */}
+      <div className="home-columns">
+        <div className="home-side">
+          {data ? <LinesCard data={data} /> : loadingOverview ? <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section> : null}
+          {data ? <TasksCard data={data} /> : null}
+          {me ? <ShortcutsCard items={shortcuts} /> : null}
+          {data && layer !== 'pos' ? <UsersCard data={data} layer={layer} /> : null}
+        </div>
+        <div className="home-main">
+          {lastOps}
+          {data ? <TopCard data={data} /> : null}
+          {data && layer !== 'pos' ? <ActiveCard data={data} layer={layer} /> : null}
+          {data ? <ProvidersCard data={data} /> : null}
+          {boardCard}
+        </div>
       </div>
     </div>
   );

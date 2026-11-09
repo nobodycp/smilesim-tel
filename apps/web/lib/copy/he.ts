@@ -510,6 +510,8 @@ export const he: Copy = {
   packagesGroupSummary: '{total} חבילות · {off} מושהות',
   openPackage: 'פתיחת החבילה',
   actPackageDetails: 'פרטי חבילה',
+  overviewMarginMeta: '{n}% מהמכירות',
+  overviewAverageMeta: 'ממוצע למכירה {amount}',
   usedCeiling: 'נוצל מהתקרה',
   availableToSell: 'זמין למכירה',
   moreActions: 'פעולות נוספות',

@@ -5,193 +5,221 @@
   overflow: hidden;
   background: var(--rd-bg);
 }
+/* ── Sidebar (Graphite, ported from design/night-desk-family): the canvas colour, a hairline at its edge; folded on a
+   wide screen it is a 76px rail whose names fade and come back as flyouts beside the icons. ── */
 .sidebar, .drawer {
   display: flex;
   flex-direction: column;
+  padding: var(--rd-space-3-5) var(--rd-space-3) var(--rd-space-3);
   background: var(--rd-bg);
   border-inline-end: 1px solid var(--rd-line);
 }
-/* Graphite: the sidebar is the canvas colour with a hairline at its edge; folded, a 76px rail of icons. */
-.sidebar { position: relative; z-index: calc(var(--rd-z-topbar) + 1); width: 248px; flex: none; }
-.sidebar.collapsed { width: 76px; }
-.drawer { background: var(--rd-surface); }
-/* The round handle on the sidebar's edge, half over the hairline. */
-.side-handle {
-  position: absolute;
-  z-index: var(--rd-z-raised);
-  top: 26px;
-  inset-inline-end: -12px;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-surface);
-  color: var(--rd-muted);
-  box-shadow: var(--rd-shadow-pop);
-  opacity: 0.85;
+.sidebar {
+  position: relative;
+  z-index: calc(var(--rd-z-topbar) + 1);
+  flex: none;
+  width: 268px;
+  min-width: 0;
 }
-.side-handle:hover { color: var(--rd-ink); border-color: color-mix(in srgb, var(--rd-ink) 25%, transparent); opacity: 1; }
-.side-handle svg { width: 14px; height: 14px; }
+.sidebar.collapsed { width: 76px; }
 .drawer {
   position: fixed;
   z-index: var(--rd-z-drawer);
   inset-block: 0;
   inset-inline-start: 0;
-  width: min(288px, 86vw);
-  transform: translateX(-100%);
+  width: min(300px, 86vw);
+  transform: translateX(-105%);
   box-shadow: var(--rd-shadow-pop);
 }
-[dir="rtl"] .drawer { transform: translateX(100%); }
+[dir="rtl"] .drawer { transform: translateX(105%); }
 .drawer.open { transform: translateX(0); }
 .backdrop {
   position: fixed;
   inset: 0;
   z-index: var(--rd-z-overlay);
   background: var(--rd-scrim-strong);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
+.sidebar .label, .drawer .label { white-space: nowrap; }
+
+/* Brand row: the cut-corner tile, the name and the door. */
 .brand-block {
-  position: relative;
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: var(--rd-space-2-5);
-  min-height: 64px;
-  padding: var(--rd-space-3) var(--rd-space-4);
-  text-align: start;
+  gap: 11px;
+  height: 48px;
+  margin-block-end: var(--rd-space-2);
+  padding-inline: 9px;
+  overflow: hidden;
+  white-space: nowrap;
 }
-.brand-block.compact { justify-content: center; }
 .brand-copy { min-width: 0; }
 .brand-copy p { margin: 0; line-height: 1.35; }
 .sidebar .brand-name, .drawer .brand-name { font-size: var(--rd-text-lg); font-weight: 700; }
 .sidebar .brand-sub, .drawer .brand-sub { color: var(--rd-muted); font-size: var(--rd-text-xs); }
-/* One crimson thread under the brand, from the inline start. */
-.sidebar .brand-rule, .drawer .brand-rule {
-  position: absolute;
-  inset-block-end: 0;
-  inset-inline: var(--rd-space-4);
-  height: 1px;
-  width: auto;
-  background: linear-gradient(to left, transparent, var(--rd-line) 30%, var(--rd-line));
-}
-[dir='rtl'] .sidebar .brand-rule, [dir='rtl'] .drawer .brand-rule { background: linear-gradient(to right, transparent, var(--rd-line) 30%, var(--rd-line)); }
-.brand-block.compact { padding-inline: var(--rd-space-2); }
-.brand-block.compact .brand-rule { width: 20px; }
-/* Hotspot-style brand tile in the shell only (auth keeps base.css mark). */
 .sidebar .brand-mark,
 .drawer .brand-mark {
   display: grid;
   place-items: center;
   flex: none;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 34px;
+  height: 34px;
   border-radius: var(--rd-radius-sm);
   background: var(--rd-accent);
-  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
 }
-[dir='rtl'] .sidebar .brand-mark, [dir='rtl'] .drawer .brand-mark { clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); }
-.sidebar.collapsed .brand-mark {
-  width: 2.25rem;
-  height: 2.25rem;
+[dir='rtl'] .sidebar .brand-mark, [dir='rtl'] .drawer .brand-mark { clip-path: polygon(9px 0, 100% 0, 100% 100%, 0 100%, 0 9px); }
+.sidebar .brand-mark svg, .drawer .brand-mark svg { width: 18px; height: 18px; stroke: var(--rd-on-accent); }
+.sidebar .brand-block-logo, .drawer .brand-block-logo { flex: none; max-width: 120px; max-height: 34px; }
+.sidebar.collapsed .brand-block-logo { max-width: 34px; }
+.drawer-close { margin-inline-start: auto; }
+
+/* The round handle on the edge: hidden until the sidebar is hovered or the handle has focus. */
+.side-handle {
+  position: absolute;
+  z-index: 2;
+  top: 74px;
+  inset-inline-end: -13px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink-2);
+  box-shadow: 0 0 0 1px var(--rd-line), var(--rd-shadow-pop);
+  opacity: 0;
+  transition: opacity 160ms ease, color 140ms ease;
 }
-.sidebar .brand-mark svg,
-.drawer .brand-mark svg {
-  width: 1.15rem;
-  height: 1.15rem;
-  stroke: var(--rd-on-accent);
-}
-.sidebar.collapsed .brand-mark svg {
-  width: 1.15rem;
-  height: 1.15rem;
-}
-/* A saved logo takes the tile's place and keeps its own proportions. */
-.sidebar .brand-block-logo,
-.drawer .brand-block-logo { max-width: 150px; max-height: 40px; }
-.sidebar.collapsed .brand-block-logo { max-width: 40px; max-height: 40px; }
-.drawer-close { position: absolute; top: 8px; inset-inline-end: 8px; }
-.side-nav { flex: 1; overflow: auto; padding: var(--rd-space-2) var(--rd-space-3); scrollbar-width: thin; }
-/* The label and the link icons start on the same edge: 12px inside the nav padding. */
+.sidebar:hover .side-handle, .side-handle:focus-visible { opacity: 1; }
+.side-handle:hover { color: var(--rd-accent); }
+.side-handle svg { width: 15px; height: 15px; transform: rotate(180deg); transition: transform 320ms cubic-bezier(0.32, 0.72, 0, 1); }
+.sidebar.collapsed .side-handle svg { transform: none; }
+
+.side-nav { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; margin-inline: -4px; padding-inline: 4px; scrollbar-width: thin; }
+.side-section { margin-block-end: 6px; }
 .nav-label {
-  margin: var(--rd-space-5) 0 var(--rd-space-1-5);
-  padding-inline: var(--rd-space-3);
-  color: var(--rd-muted);
-  font-size: var(--rd-text-2xs);
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  margin: 10px 0 2px;
+  padding-inline: 12px;
+  overflow: hidden;
+  color: var(--rd-faint);
+  font-size: var(--rd-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
-/* Rest is 500, current is 600 (Noto Kufi Arabic is variable, every weight is real). */
 .nav-link {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--rd-space-2-5);
+  gap: 12px;
   width: 100%;
-  min-height: 38px;
-  margin-top: 1px;
-  padding: 0 var(--rd-space-3);
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
   border-radius: var(--rd-radius-sm);
-  transition: background-color var(--rd-dur-fast) var(--rd-ease-standard), color var(--rd-dur-fast) var(--rd-ease-standard);
-  color: var(--rd-ink-2);
-  font-size: var(--rd-text-md);
-  font-weight: 500;
-  text-align: start;
-}
-.nav-link svg { flex: none; color: var(--rd-muted); }
-/* Hover is a lighter wash than the active fill (--rd-surface-2, about 4% ink). The popover items mix 8% ink, which is
-   darker than --rd-surface-2 and would make hover stronger than active, so the nav uses the same mix at 3%. */
-.nav-link:hover:not(.locked):not(.active) {
-  background: var(--rd-surface-2);
-  color: var(--rd-ink);
-}
-.nav-link:hover:not(.locked):not(.active) svg { color: var(--rd-ink); }
-.nav-link.active {
   background: transparent;
-  color: var(--rd-ink);
+  color: var(--rd-muted);
+  font-size: 13.5px;
   font-weight: 600;
+  text-align: start;
+  overflow: hidden;
+  transition: background-color 140ms ease, color 140ms ease;
 }
-/* Graphite: the current page is ink text with the crimson thread at its inline start. */
+.nav-link > svg { flex: none; width: 19px; height: 19px; }
+.nav-link:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
+.nav-link.active { color: var(--rd-ink); }
 .nav-link.active::before {
   content: '';
   position: absolute;
-  inset-block: 11px;
   inset-inline-start: 0;
+  inset-block: 11px;
   width: 2px;
-  border-radius: var(--rd-radius-pill);
+  border-radius: 3px;
   background: var(--rd-accent);
 }
-.nav-link.active svg { color: var(--rd-accent); }
-/* Muted, not faint: a locked page is still a label someone reads (about 5:1, AA). */
+.nav-link.active > svg, .nav-link.holds > svg { color: var(--rd-accent); }
+.nav-link.holds { color: var(--rd-ink); }
 .nav-link.locked { color: var(--rd-muted); cursor: default; }
-.nav-link.locked svg:last-child { width: 13px; height: 13px; margin-inline-start: auto; }
-/* Collapsed rail: the icon is the whole link, so it sits in the middle of the 40px tile. */
-.sidebar.collapsed .nav-link { justify-content: center; min-height: 42px; padding-inline: 0; }
-.sidebar.collapsed .nav-link.active { background: var(--rd-surface-2); }
-.sidebar.collapsed .nav-link.active::before { inset-block: 12px; }
-.sidebar.collapsed .side-nav { padding-inline: var(--rd-space-3); }
-/* The drawer only shows on touch widths. */
-.drawer .nav-link { min-height: 44px; }
-/* A collapsible group: the head is a nav-link-sized button with a chevron at the inline end, and
-   its items indent by the head's icon (18px) and gap (10px) so their icons sit under the label.
-   It opens and closes without motion; DESIGN.md keeps the motion list closed. */
-.nav-group-head { cursor: pointer; }
-.nav-group-head[aria-expanded='true'] { color: var(--rd-ink); }
-.nav-group-head[aria-expanded='true'] svg { color: var(--rd-ink); }
-.nav-group-chevron {
-  width: 14px;
-  height: 14px;
-  margin-inline-start: auto;
+
+/* A folding group: its pages hang from a hairline, each with a small diamond; the current one lights up. */
+.nav-group-chevron { width: 15px !important; height: 15px !important; margin-inline-start: auto; transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1); }
+.nav-group.open .nav-group-chevron { transform: rotate(180deg); }
+.nav-group-body { position: relative; display: grid; gap: 1px; padding-inline-start: 20px; }
+.nav-group-body::before { content: ''; position: absolute; inset-block: 6px; inset-inline-start: 21px; width: 1px; background: var(--rd-line); }
+.nav-link.nested { height: 34px; padding-inline-start: 22px; font-size: 13px; font-weight: 500; overflow: visible; }
+.nav-bullet {
+  position: absolute;
+  inset-inline-start: -2.5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  background: var(--rd-bg);
+  box-shadow: inset 0 0 0 1.5px var(--rd-faint);
 }
-.nav-group-chevron { transition: transform var(--rd-dur-base) var(--rd-ease-out); }
-.nav-group-chevron.open { transform: rotate(180deg); }
-/* A folding group's links hang from a hairline, like folders under their parent. */
-.nav-group-body { position: relative; }
-.nav-group-body::before { content: ''; position: absolute; inset-block: 4px; inset-inline-start: 20px; width: 1px; background: var(--rd-line); }
-.nav-group-body .nav-link { padding-inline-start: 34px; min-height: 34px; font-size: var(--rd-text-sm); }
-.nav-group-body .nav-link svg { width: 15px; height: 15px; }
-.nav-group-body .nav-link.active::before { inset-inline-start: 19px; inset-block: 9px; width: 3px; }
-.side-foot { border-top: 1px solid var(--rd-line-soft); padding: var(--rd-space-2); }
+.nav-link.nested.active::before { display: none; }
+.nav-link.nested.active .nav-bullet { background: var(--rd-accent); box-shadow: 0 0 8px var(--rd-accent); }
+.nav-link.nested.active .label { color: var(--rd-accent); }
+
+/* The account at the foot. */
+.side-foot { display: grid; gap: 2px; margin-block-start: 6px; padding-block-start: 10px; border-block-start: 1px solid var(--rd-line); }
+.side-user {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  height: 50px;
+  padding-inline: 6px;
+  border-radius: var(--rd-radius-md);
+  overflow: hidden;
+  text-align: start;
+}
+.side-user:hover { background: var(--rd-surface-2); }
+.side-user .avatar { flex: none; width: 36px; height: 36px; border-radius: var(--rd-radius-sm); background: var(--rd-accent); color: var(--rd-on-accent); font-size: var(--rd-text-base); }
+.side-user b { display: block; overflow: hidden; color: var(--rd-ink); font-size: var(--rd-text-md); text-overflow: ellipsis; }
+.side-user small { display: block; color: var(--rd-muted); font-size: var(--rd-text-xs); }
+.side-user .label { min-width: 0; }
+.side-logout:hover { color: var(--rd-danger); }
+
+/* Folded rail on a wide screen: names fade, icons stay centred, section titles become hairlines. */
+.sidebar.collapsed .label, .sidebar.collapsed .nav-group-chevron { opacity: 0; transform: translateX(8px); pointer-events: none; }
+[dir='rtl'] .sidebar.collapsed .label { transform: translateX(-8px); }
+.sidebar.collapsed .nav-label { height: 14px; margin: 6px 0; }
+.sidebar.collapsed .nav-label::after { content: ''; flex: 1; height: 1px; margin-inline: 6px; background: var(--rd-line); }
+.sidebar.collapsed .side-user { padding-inline: 8px; }
+.sidebar.collapsed .nav-link.holds::before { content: ''; position: absolute; inset-inline-start: 0; inset-block: 11px; width: 2px; border-radius: 3px; background: var(--rd-accent); }
+
+/* The flyout beside a hovered rail icon: a name, or a group's pages as a small menu. */
+.side-flyout {
+  position: fixed;
+  z-index: var(--rd-z-dialog);
+  inset-inline-start: calc(76px + 10px);
+  padding: 7px 12px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  box-shadow: inset 0 0 0 1px var(--rd-line), var(--rd-shadow-pop);
+  pointer-events: none;
+}
+.side-flyout b { font-weight: 600; }
+.side-flyout.menu { display: grid; gap: 1px; min-width: 190px; padding: 6px; transform: translateY(-22px); pointer-events: auto; }
+.side-flyout.menu b { padding: 6px 10px; color: var(--rd-muted); font-size: 11.5px; }
+.side-flyout.menu a { display: flex; align-items: center; height: 34px; padding-inline: 10px; border-radius: var(--rd-radius-xs); color: var(--rd-ink-2); font-size: var(--rd-text-md); font-weight: 600; }
+.side-flyout.menu a:hover { background: var(--rd-surface); color: var(--rd-ink); }
+.side-flyout.menu a.active { color: var(--rd-accent); }
+/* A bridge over the gap, so the pointer can travel from the icon into the menu. */
+.side-flyout.menu::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: -12px; width: 12px; }
+.drawer .nav-link { height: 46px; font-size: 14.5px; }
+.drawer .nav-link.nested { height: 40px; }
 .office-main { display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column; }
 .topbar {
   position: sticky;

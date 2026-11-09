@@ -61,3 +61,11 @@ and a quieter head; tabs, buttons, inputs and badges follow the new tokens). Pag
 - ar / en, light / dark, 1440px and 390px: no horizontal scroll, no overlap, 4.5:1 text contrast.
 - The path names each level correctly on numbers → number, users → user, providers → provider → package, reports.
 - Gate green: lint, check:copy, typecheck, test:api, build, e2e.
+
+## Revision 2026-11-09 (owner review)
+
+The owner rejected the first rollout's home ("very bad") and asked for every detail of the approved sidebar. Now:
+the sidebar is the design's (hover flyouts when folded, the account and sign-out at its foot, groups that slide
+open, diamond marks); it becomes the drawer under 900px. The home is two stacked columns under the figure band
+(see DESIGN.md → Home layout); each figure tile has a meta line. Every change is checked by screenshots at 360, 390,
+768, 1024, 1280, 1440 and 1920px, ar/en, light/dark, branch and point of sale, before it is reported.

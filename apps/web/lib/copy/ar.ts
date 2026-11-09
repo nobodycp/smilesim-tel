@@ -510,6 +510,8 @@ export const ar = {
   packagesGroupSummary: '{total} رزمة · {off} متوقفة',
   openPackage: 'فتح الرزمة',
   actPackageDetails: 'تفاصيل الرزمة',
+  overviewMarginMeta: '{n}% من المبيعات',
+  overviewAverageMeta: 'متوسط البيعة {amount}',
   usedCeiling: 'المستخدم من السقف',
   availableToSell: 'المتاح للبيع',
   moreActions: 'إجراءات أخرى',

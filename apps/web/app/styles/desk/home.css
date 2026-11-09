@@ -10,14 +10,6 @@
 }
 .home > .page-head .lede { margin: 0; }
 .home .section-label { margin: 0 0 var(--rd-space-1-5); }
-.home-grid { display: grid; flex: 1; gap: var(--rd-space-3); min-height: 240px; }
-@media (min-width: 960px) {
-  .home-grid { grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr); align-items: start; }
-}
-.home-grid > .pane { display: flex; flex-direction: column; min-height: 100%; }
-.home-grid > .pane .sheet,
-.home-grid > .pane .pane-body { flex: 1; }
-
 /* Overview cards (spec 2026-11-08-overview-and-reports-nav, F): a grid of panes, the sales and providers wide. */
 .overview-grid { display: grid; gap: var(--rd-space-3); grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 960px) {
@@ -253,16 +245,44 @@
 .sparkline-line { fill: none; stroke: var(--rd-accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .sparkline-area { fill: var(--rd-accent-soft); stroke: none; }
 
-/* ── Rows of cards: three across from 1200px, two from 760px ─────────────────────────── */
-.overview { display: flex; flex-direction: column; gap: var(--rd-space-3); }
-.home-row { display: grid; gap: var(--rd-space-3); grid-template-columns: minmax(0, 1fr); align-items: stretch; }
-@media (min-width: 760px) { .home-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1200px) { .home-row { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); } }
-.home-row > .pane { display: flex; flex-direction: column; min-width: 0; }
-.home-row > .pane > .pane-body { flex: 1; }
+/* ── Two columns that stack their own cards (Graphite home): the wide one at the reading start (last operations,
+   rankings, providers, board), the narrow one at the end (status, tasks, shortcuts, accounts). One column on a
+   phone; between 760 and 1099px the narrow column's cards pair up. ── */
+.home-columns { display: grid; gap: var(--rd-space-3-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
+.home-main, .home-side { display: grid; gap: var(--rd-space-3-5); align-content: start; min-width: 0; }
+.home-main > *, .home-side > * { min-width: 0; }
+@media (min-width: 640px) and (max-width: 1099px) {
+  .home-side { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+}
+@media (min-width: 1100px) {
+  .home-columns { grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); }
+  .home-main { grid-column: 1; grid-row: 1; }
+  .home-side { grid-column: 2; grid-row: 1; }
+}
+/* In the narrow column the donut is smaller and keeps its legend beside it; in a card under 340px the legend goes
+   under the ring. */
+.home-side .overview-card { container-type: inline-size; }
+.home-side .donut { flex-wrap: nowrap; gap: var(--rd-space-3); }
+@container (max-width: 340px) {
+  .home-side .donut { flex-wrap: wrap; justify-content: center; }
+  .home-side .donut-legend { flex-basis: 100%; }
+}
+.home-side .donut-ring { inline-size: 112px; block-size: 112px; }
+.home-side .donut-legend { min-inline-size: 0; }
+.home-side .donut-legend li > a, .home-side .donut-legend li > span { padding-block: 3px; }
+.home-ops .table-wrap, .home-ops .data-table { border: 0; }
+/* The last operations keep each cell on one line; on a phone the table scrolls inside its card. */
+.canvas .home-ops .data td, .canvas .home-ops .data td.when bdi { white-space: nowrap; max-width: none; }
+/* Phone: the lead figure takes the whole row, so its amount never breaks. */
+@media (max-width: 639px) {
+  .figure-band > .figure-tile.lead, .figure-band > .figure-tile:nth-child(4) { grid-column: 1 / -1; }
+  .figure-tile { min-height: 0; padding: var(--rd-space-3); }
+  .figure-tile-value { font-size: 1.2rem; }
+  .figure-tile.lead .figure-tile-value { font-size: 1.6rem; }
+}
 
 /* Shortcuts: square action tiles. */
-.shortcut-grid { display: grid; gap: var(--rd-space-2); grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+.shortcut-grid { display: grid; gap: var(--rd-space-2); grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .shortcut-tile {
   position: relative;
   display: flex;
@@ -270,7 +290,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--rd-space-3);
-  min-height: 84px;
+  min-height: 76px;
   padding: var(--rd-space-3);
   border-radius: var(--rd-radius-sm);
   background: var(--rd-surface-2);
@@ -288,11 +308,11 @@
 
 /* ── Motion: cards rise in, tiles lift, the sparkline draws ──────────────────────────── */
 @media (prefers-reduced-motion: no-preference) {
-  .home > *, .figure-band > *, .home-row > *, .shortcut-grid > * { animation: rd-rise 420ms var(--rd-ease-out) both; }
-  .home > :nth-child(2), .figure-band > :nth-child(2), .home-row > :nth-child(2), .shortcut-grid > :nth-child(2) { animation-delay: 40ms; }
-  .home > :nth-child(3), .figure-band > :nth-child(3), .home-row > :nth-child(3), .shortcut-grid > :nth-child(3) { animation-delay: 80ms; }
-  .home > :nth-child(4), .figure-band > :nth-child(4), .shortcut-grid > :nth-child(4) { animation-delay: 120ms; }
-  .home > :nth-child(n + 5), .shortcut-grid > :nth-child(n + 5) { animation-delay: 160ms; }
+  .home > *, .figure-band > *, .home-main > *, .home-side > *, .shortcut-grid > * { animation: rd-rise 420ms var(--rd-ease-out) both; }
+  .home > :nth-child(2), .figure-band > :nth-child(2), .home-main > :nth-child(2), .home-side > :nth-child(2), .shortcut-grid > :nth-child(2) { animation-delay: 40ms; }
+  .home > :nth-child(3), .figure-band > :nth-child(3), .home-main > :nth-child(3), .home-side > :nth-child(3), .shortcut-grid > :nth-child(3) { animation-delay: 80ms; }
+  .home > :nth-child(4), .figure-band > :nth-child(4), .home-main > :nth-child(4), .home-side > :nth-child(4), .shortcut-grid > :nth-child(4) { animation-delay: 120ms; }
+  .home > :nth-child(n + 5), .home-side > :nth-child(n + 5), .shortcut-grid > :nth-child(n + 5) { animation-delay: 160ms; }
   .figure-tile { transition: transform var(--rd-dur-base) var(--rd-ease-out); }
   .figure-tile:hover, .shortcut-tile:hover { transform: translateY(-2px); }
   .sparkline-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: rd-draw 900ms 200ms var(--rd-ease-out) forwards; }
@@ -304,4 +324,3 @@
 .shortcut-grid, .overview-meters, .overview-rank { align-content: start; }
 /* A card's tabs scroll inside the card when they do not fit beside the title. */
 .overview-card .pane-head > [role='tablist'] { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-.overview-card .pane-head:has(> [role='tablist']) { flex-direction: column; align-items: stretch; }

@@ -12,6 +12,7 @@ import { Sparkline } from '../../components/sparkline';
 import { Tabs } from '../../components/tabs';
 import { Badge } from '../../components/ui/badge';
 import type { OverviewPayload, OverviewRanked } from '../../lib/api';
+import { formatShekel } from '../../lib/money';
 import { usePrefs } from '../../lib/prefs';
 
 // The home page's overview cards (spec 2026-11-08-overview-and-reports-nav, F). Each card draws only what the
@@ -76,7 +77,14 @@ export function FigureBand({ data }: { data: OverviewPayload }) {
       >
         <Money value={sales.amount} />
       </Tile>
-      <Tile label={t.overviewMyProfit} icon="wallet" tone="good"><Money value={sales.profit} signed /></Tile>
+      <Tile
+        label={t.overviewMyProfit}
+        icon="wallet"
+        tone="good"
+        meta={sales.amount > 0 ? <span className="num">{t.overviewMarginMeta.replace('{n}', ((sales.profit / sales.amount) * 100).toFixed(1))}</span> : null}
+      >
+        <Money value={sales.profit} signed />
+      </Tile>
       <Tile
         label={t.overviewNet}
         icon="plans"
@@ -84,7 +92,13 @@ export function FigureBand({ data }: { data: OverviewPayload }) {
       >
         <Money value={sales.net} />
       </Tile>
-      <Tile label={t.overviewSalesCount} icon="numbers"><span className="num">{sales.count}</span></Tile>
+      <Tile
+        label={t.overviewSalesCount}
+        icon="numbers"
+        meta={sales.count > 0 ? <span className="num">{t.overviewAverageMeta.replace('{amount}', formatShekel(Math.round(sales.amount / sales.count)))}</span> : null}
+      >
+        <span className="num">{sales.count}</span>
+      </Tile>
     </section>
   );
 }

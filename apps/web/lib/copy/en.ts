@@ -510,6 +510,8 @@ export const en: Copy = {
   packagesGroupSummary: '{total} packages · {off} stopped',
   openPackage: 'Open package',
   actPackageDetails: 'Package details',
+  overviewMarginMeta: '{n}% of sales',
+  overviewAverageMeta: 'Average sale {amount}',
   usedCeiling: 'Used from ceiling',
   availableToSell: 'Available to sell',
   moreActions: 'More actions',

@@ -23,13 +23,17 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   sidebar, the drawer, and the sign-in lockup with `BrandLogo`, and sets the tab title and icon. Without one, the
   crimson tile with the signal glyph and the name stay. The logo keeps a browser-derived dark copy
   (`.brand-logo-light` / `.brand-logo-dark`).
-- Sidebar: the canvas colour with a hairline at its edge, brand row on top (tile, name, door). Section titles are small
-  muted labels; the current page is ink with a 2px crimson bar at the inline start and a crimson icon; hover is
-  `--rd-surface-2`. A folding group (`.nav-group`, e.g. «التقارير») hangs its links from a hairline like folders; its
-  chevron turns. The round `.side-handle` on the sidebar's edge (and the `[` key) folds it to a 76px rail of icons.
+- Sidebar (ported from `design/night-desk-family`): the canvas colour with a hairline at its edge; a brand row on top
+  (the crimson cut-corner tile, name, door), sections with small muted titles, 40px items (icon 19px) — the current
+  page is ink with a 2px crimson bar and a crimson icon, hover is `--rd-surface-2`. A folding group (`.nav-group`, e.g.
+  «التقارير») slides its pages open under a hairline, each page marked by a small diamond that lights crimson when
+  current. The foot holds the account (`.side-user`: avatar, name, layer → `/settings`) and «تسجيل الخروج». The round
+  `.side-handle` shows on hover at the edge (and the `[` key) and folds the sidebar to a 76px rail: names fade, section
+  titles become hairlines, and hovering an icon shows its name in a `.side-flyout` — a group shows its pages as a small
+  menu there. The width glides (320ms). Under 900px the sidebar is the drawer (menu button in the topbar).
 - Topbar: the **path** (`ShellPath`, `components/crumbs.tsx`) at the reading start — `⌂ / section / list / item`;
   section titles plain, the levels above the page links, the page in ink; `Alt+↑` goes one level up. There is no back
-  button. Under 768px the path takes its own full-width row under the icons.
+  button. Under 900px the path takes its own full-width row under the icons.
 
 ## Stylesheets
 
@@ -154,9 +158,9 @@ One of each. A new page uses these, it does not invent a sibling.
 - Badge: label plus a dot. Active, pending, danger, neutral.
 - Chart: `BalanceChart` (`components/balance-chart.tsx`) — SVG, no library; a `--rd-success` line over a 12% area, four `--rd-line-soft` grid lines, muted 11px axis numbers; time runs left to right in every language.
 - Offers hero (home, spec 2026-11-09-offers-tasks-addons-wallet-esim): `OfferHero` (`components/offer-hero.tsx`, `.offer-hero`) — a compact strip — text at the reading start and a small 240px 2:1 picture at the end, stacked picture-first under 760px; the picture is optional, and without one the offer is text only on one column (`.text-only`); a pill dot per offer under it, the current one wide with a `--rd-primary-bg` fill that is its timer (`seconds` per offer); arrows show on hover or focus on desktop; swipe and the arrow keys move it; it pauses on hover, focus and a hidden tab, and does not run with reduced motion. The dot button is the touch target and the 8px bar inside it is what shows.
-- Overview (home): under the figure band, `.home-row` rows of `.overview-card` panes — three across from 1200px, two from 760px: numbers by status (`Donut`), tasks by status (meters), shortcuts; then top sellers and most active (each with `Tabs`, which take their own row and scroll inside the card) and the accounts summary; then the providers table full width; then the last operations beside the board (`.home-grid`). The head's lede is the greeting and today's date (`lib/greeting.ts`).
+- Home layout: the head (the greeting is the title; date and layer the lede; the period switch at the end), the figure band, then `.home-columns` — two columns that stack their own cards, so nothing is stretched to a neighbour: the wide one (reading start) holds the last operations, top sellers, most active, providers and the board; the narrow one (reading end, first in the page so a phone reads it first) holds numbers by status (a 112px `Donut`, legend beside it, under it in a card below 340px), tasks, shortcuts (3 per row) and the accounts summary. Between 640 and 1099px the narrow column's cards pair up; one column under 640px, where the lead figure and the fourth tile take full rows.
 - KPI: `StatRow` wraps a row of `Stat` items. Each `Stat` is a white card with a hairline and a 12px radius: the `label` at the start and a small `icon` (`IconName`) at the end on the first line, then a large tabular `value`, then optional `meta`. `tone` colours the icon; `highlight` tints the card with `--rd-success-soft` for the one figure that matters most on a screen; `progress` (0–1) draws a thin bar under the value. This is the only KPI pattern; do not use ad-hoc `.stat-card` markup.
-- Figure band (home): `FigureBand` (`features/desk/overview.tsx`, `.figure-band`) — four `.figure-tile`s with the cut corner: label and a small icon tile on the first line, a large tabular figure, an optional meta line. The `.lead` tile (sales) is wider from 1100px, has a crimson top thread and a `Sparkline` (`components/sparkline.tsx`: SVG line plus a soft area, time left to right, draws in once); `.good` colours the figure green. `followPointer` moves a soft `--rd-glow` light under the pointer.
+- Figure band (home): `FigureBand` (`features/desk/overview.tsx`, `.figure-band`) — four `.figure-tile`s with the cut corner: label and a small icon tile on the first line, a large tabular figure, a meta line (profit: share of sales; net: refunds; count: average sale). The `.lead` tile (sales) is wider from 1100px, has a crimson top thread and a `Sparkline` (`components/sparkline.tsx`: SVG line plus a soft area, time left to right, draws in once); `.good` colours the figure green. `followPointer` moves a soft `--rd-glow` light under the pointer.
 - Shortcut tiles (home): `ShortcutsCard`, `.shortcut-grid` of square `.shortcut-tile`s (icon tile in crimson, label under it) on `--rd-surface-2`.
 - Filter: `FilterBar` wraps `.filter-bar`/`.filter-panel` — a card of `<label>` fields above the table, with an optional trailing clear button (`onClear`/`clearLabel`). This is the only filter pattern; do not write a bare `.filter-line` or inline filter markup on a new page.
 - Facts: label/value pairs are `<Facts>` + `<Fact label>` (`components/facts.tsx`), never a hand-written `<dl>`. One primitive, three densities: `tiles` (default, `.detail-rows`: label beside value in bordered tiles that repeat across the width; the number card and every dialog), `cards` (`.fact-grid`: a summary card per fact with an `icon` and a `tone` of `good`/`warn`; the head of the user page), `list` (`.task-facts`: a compact ruled list for a narrow rail; the task ticket). Latin identifiers inside a value stay in `<bdi dir="ltr">`.

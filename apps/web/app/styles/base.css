@@ -88,15 +88,18 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 @keyframes rd-draw { to { stroke-dashoffset: 0; } }
 @keyframes rd-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rd-grow { from { transform: scaleX(0); } to { transform: none; } }
-@keyframes sidebar-settle { from { opacity: 0; } }
-@keyframes sidebar-settle-collapsed { from { opacity: 0; } }
+@keyframes side-open { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes side-flyin { from { opacity: 0; translate: 6px 0; } }
+@keyframes side-flyin-rtl { from { opacity: 0; translate: -6px 0; } }
 /* Motion is opt-in: nothing moves unless the user allows it, so no forced reset is needed. */
 @media (prefers-reduced-motion: no-preference) {
-  /* The sidebar's width snaps (animating width re-lays the page every frame); its contents fade in after each
-     toggle instead. A new animation name per state restarts the fade. */
-  .sidebar > * { animation: sidebar-settle var(--rd-dur-base) var(--rd-ease-out); }
-  .sidebar.collapsed > * { animation-name: sidebar-settle-collapsed; }
-  .drawer { transition: transform var(--rd-dur-base) ease; }
+  /* Graphite sidebar: the width glides, names fade and slide, a group's pages slide in, flyouts drift in. */
+  .sidebar { transition: width 320ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .sidebar .label, .sidebar .nav-group-chevron { transition: opacity 180ms ease, transform 260ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .nav-group-body { animation: side-open 260ms cubic-bezier(0.32, 0.72, 0, 1); }
+  .side-flyout { animation: side-flyin 160ms cubic-bezier(0.32, 0.72, 0, 1); }
+  [dir='rtl'] .side-flyout { animation-name: side-flyin-rtl; }
+  .drawer { transition: transform 340ms cubic-bezier(0.32, 0.72, 0, 1); }
   .notice-btn.is-active svg { animation: shell-bell 2.4s ease-in-out infinite; }
   .spinner { animation: spin 0.7s linear infinite; }
   .skeleton::after { animation: shimmer 1.6s infinite; }

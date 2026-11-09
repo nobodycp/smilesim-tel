@@ -3,13 +3,6 @@
   .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rd-space-2); }
   .stat { min-height: 0; padding: var(--rd-space-3); }
   .stat-value { font-size: 1.2rem; }
-  .sidebar { display: none; }
-  .menu-btn.shell-icon, .topbar-brand { display: inline-flex; }
-  /* The path takes its own full-width row under the icons, so it is not squeezed. */
-  .topbar { flex-wrap: wrap; row-gap: var(--rd-space-1-5); padding-block: var(--rd-space-2); }
-  .topbar-start { display: contents; }
-  .topbar-tools { margin-inline-start: auto; }
-  .shell-path { order: 10; flex: 1 0 100%; margin-inline: -4px; padding-block-start: var(--rd-space-1-5); border-block-start: 1px solid var(--rd-line-soft); }
   .shell-search-field kbd { display: none; }
   .topbar-brand { display: block; }
   .user-copy, .user-btn > svg { display: none; }
@@ -20,13 +13,24 @@
 }
 @media (min-width: 768px) {
   .canvas-inner { padding: 22px 28px 56px; }
+}
+/* Graphite: the sidebar becomes the drawer under 900px, so a tablet keeps the full width for the page. */
+@media (max-width: 899px) {
+  .sidebar { display: none; }
+  .menu-btn.shell-icon, .topbar-brand { display: inline-flex; }
+  /* The path takes its own full-width row under the icons, so it is not squeezed. */
+  .topbar { flex-wrap: wrap; row-gap: var(--rd-space-1-5); padding-block: var(--rd-space-2); }
+  .topbar-start { display: contents; }
+  .topbar-tools { margin-inline-start: auto; }
+  .shell-path { order: 10; flex: 1 0 100%; margin-inline: -4px; padding-block-start: var(--rd-space-1-5); border-block-start: 1px solid var(--rd-line-soft); }
+}
+@media (min-width: 900px) {
   .drawer, .backdrop { display: none; }
 }
 @media (min-width: 960px) {
   .settings-page > .settings-grid { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
   .settings-grid { grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr); align-items: stretch; }
   .settings-col { grid-template-rows: auto minmax(180px, 1fr); align-content: stretch; }
-  .home-grid { grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.75fr); align-items: stretch; }
 }
 /* Touch targets: 44px under 720px. The topbar, sidebar and drawer are frozen and stay outside this block. */
 @media (max-width: 720px) {
