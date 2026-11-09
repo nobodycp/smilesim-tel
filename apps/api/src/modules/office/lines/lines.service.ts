@@ -8,7 +8,8 @@ import { lineTermsOf } from '../kernel/line-terms';
 import { saleOf } from '../kernel/sale';
 import type { Action, Sale } from '../kernel/types';
 import { renderEsimQr } from '../office-esim';
-import { LINES_PAGE, NEWEST_FIRST, idCursorArgs, linesWhere, pageOf, type LineFilter } from '../office-paging';
+import { PROVIDER_FAILED_NOTE } from '../providers/provider-health';
+import { LINES_PAGE, NEWEST_FIRST, idCursorArgs, isSuspended, linesWhere, pageOf, type LineFilter } from '../office-paging';
 import { activateInputs, activationProviderCost, captureTerms, esimPriceOf, issueSerial, lastWindow, offeredOperations, openPeriods, periodEnd, refreshMode, renewOnto, renewStay, resolvePackageMode, revalue, settleDisconnect, simRefusal, simRulesOf, switchOnto, switchOver, visibleAccountIds, windowMonthsOf, type ActionKey, type LineTerms } from '../office-rules';
 import { packageTermsOf, type PackagePriceRow } from '../office-terms';
 import { canHandleTasks } from '../task-access';
@@ -58,11 +59,22 @@ export const QR_LIMIT = 400_000;
 export class LinesService {
   constructor(private readonly kernel: OfficeKernel, private readonly tasks: TasksService) {}
 
-  async list(actor: Actor, query: LineFilter & { cursor?: string } = {}) {
+  /** The suspension periods the packages use, so the suspended filter has one cut-off per period. */
+  async suspendPeriods(): Promise<number[]> {
+    const rows = await this.kernel.prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } });
+    return rows.map((row) => row.suspendAfterDays);
+  }
+
+  async list(actor: Actor, query: LineFilter & { cursor?: string; account?: string } = {}) {
     const accounts = await this.kernel.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
-    const where = linesWhere(posIds, query);
+    // `account` narrows to one account's numbers: its own if it is a point of sale, else every point of sale below
+    // it (the user page's «الأرقام»). An account outside the viewer's tree gives nothing.
+    const target = query.account ? accounts.find((account) => account.loginName === query.account) : undefined;
+    const within = query.account ? (target && visible.has(target.id) ? visibleAccountIds(target.id, target.layer === 'branch' ? 'none' : target.layer, accounts) : new Set<string>()) : visible;
+    const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id) && within.has(account.id)).map((account) => account.id);
+    const periods = query.status === 'suspended' ? await this.suspendPeriods() : [];
+    const where = linesWhere(posIds, query, periods);
     const [rows, total] = await Promise.all([
       this.kernel.prisma.line.findMany({
         where,
@@ -82,6 +94,8 @@ export class LinesService {
         esim: row.esim,
         esimQr: row.esimQr,
         status: row.status,
+        /** The subscription ended at least the package's period ago (spec 2026-11-08-overview-and-reports-nav, I). */
+        suspended: isSuspended(row, row.package.suspendAfterDays),
         packageCode: row.package.code,
         packageName: row.package.name,
         companyName: row.package.company?.name ?? '',
@@ -185,12 +199,18 @@ export class LinesService {
         dataGb: line.package.dataGb,
         subscriberPrice: line.package.subscriberPrice,
         companyImage: line.package.company?.image ?? '',
-        sim: simRulesOf(line.package.company),
+        sim: simRulesOf(line.package.company, line.package),
         switchTargets: await this.visibleSwitchTargets(line.packageId, posPath),
         opsLocked: line.opsLocked,
         createdAt: line.createdAt.toISOString(),
         endsAt: line.endsAt.toISOString(),
         operations: this.operationsFor({ ...line, denied }),
+        // The package's extra operations the number may ask for (spec 2026-11-09, 3).
+        addons: line.status === 'disconnected' ? [] : (await this.kernel.prisma.packageAddon.findMany({
+          where: { packageId: line.packageId, active: true },
+          orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+          select: { id: true, name: true, price: true },
+        })),
       },
       history,
     };
@@ -228,8 +248,10 @@ export class LinesService {
     if (inputs === 'generated' && !esim && !iccid) fail(400, 'INVALID');
     if (inputs === 'current-details' && (!currentDetails || iccid.length < 8)) fail(400, 'INVALID');
     if (inputs === 'number-and-sim' && (!requested || iccid.length < 8)) fail(400, 'INVALID');
-    const sim = simRulesOf(pkg.company);
-    if (esim && !sim.esim) fail(400, 'ESIM_UNSUPPORTED');
+    const sim = simRulesOf(pkg.company, pkg);
+    // The company refusing eSIM keeps its own answer; a package switched off says so (spec 2026-11-09, 5).
+    if (esim && !simRulesOf(pkg.company).esim) fail(400, 'ESIM_UNSUPPORTED');
+    if (esim && !sim.esim) fail(400, 'ESIM_PACKAGE_OFF');
     if (!(inputs === 'generated' && esim)) {
       const refusal = simRefusal(sim, iccid);
       if (refusal) fail(400, refusal);
@@ -250,7 +272,7 @@ export class LinesService {
     if (outcome === 'fail' || !this.runsNow(pkg, 'activate')) {
       const task = await this.tasks.openTask({
         action: 'activate', actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: storedIccid, esim,
-        note: outcome === 'fail' ? 'فشل المزود' : currentDetails || 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : currentDetails || 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -296,7 +318,7 @@ export class LinesService {
     };
   }
 
-  async operate(actor: Actor, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim'>, body: { outcome?: unknown }) {
+  async operate(actor: Actor, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim' | 'addon'>, body: { outcome?: unknown }) {
     const outcome = asOutcome(body.outcome);
     if (!outcome) fail(400, 'INVALID');
     const line = await this.kernel.visibleLine(actor, lineId);
@@ -310,7 +332,7 @@ export class LinesService {
       if (outcome === 'fail' || !this.runsNow(line.package, 'disconnect')) {
         const task = await this.tasks.openTask({
           action, actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn,
-          note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+          note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
         });
         return { applied: false, taskId: task.id };
       }
@@ -334,7 +356,7 @@ export class LinesService {
     if (outcome === 'fail' || !this.runsNow(line.package, action)) {
       const task = await this.tasks.openTask({
         action, actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta, msisdn: line.msisdn,
-        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -384,7 +406,7 @@ export class LinesService {
       const quote = await this.switchQuote(this.kernel.prisma, line, next, new Date());
       const task = await this.tasks.openTask({
         action: 'switch', actor, posId: line.posId, packageId: line.packageId, nextPackageId: next.id, lineId: line.id,
-        posDelta: -quote.difference, msisdn: line.msisdn, note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        posDelta: -quote.difference, msisdn: line.msisdn, note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -433,7 +455,7 @@ export class LinesService {
       const task = await this.tasks.openTask({
         action: 'extend', actor, posId: line.posId, packageId: line.packageId, nextPackageId: target?.id,
         lineId: line.id, posDelta, msisdn: line.msisdn,
-        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -478,7 +500,7 @@ export class LinesService {
     if (outcome === 'fail' || mode !== 'auto') {
       const task = await this.tasks.openTask({
         action: 'refresh', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn,
-        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false, taskId: task.id };
     }
@@ -512,7 +534,7 @@ export class LinesService {
     }
     const task = await this.tasks.openTask({
       action: 'rename', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: msisdn || null,
-      note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+      note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
     });
     return { applied: false, taskId: task.id };
   }
@@ -528,7 +550,7 @@ export class LinesService {
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     this.assertRunnable(line.package, 'sim', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
-    const rules = simRulesOf(line.package.company);
+    const rules = simRulesOf(line.package.company, line.package);
     if (esim && !rules.esim) fail(400, 'ESIM_UNSUPPORTED');
     const refusal = simRefusal(rules, iccid);
     if (refusal) fail(400, refusal);
@@ -541,7 +563,24 @@ export class LinesService {
     }
     const task = await this.tasks.openTask({
       action: 'sim', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn, iccid, esim, esimQr: qr,
-      note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+      note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
+    });
+    return { applied: false, taskId: task.id };
+  }
+
+  /**
+   * An extra operation of the line's package (spec 2026-11-09, 3): always a manual branch task that holds the
+   * add-on's price, charged when the task is done and released if it is closed.
+   */
+  async requestAddon(actor: Actor, lineId: string, body: Record<string, unknown>) {
+    const line = await this.kernel.visibleLine(actor, lineId);
+    const addonId = typeof body.addonId === 'string' ? body.addonId : '';
+    const addon = addonId ? await this.kernel.prisma.packageAddon.findUnique({ where: { id: addonId } }) : null;
+    if (!addon || addon.packageId !== line.packageId || !addon.active) fail(400, 'INVALID');
+    if (line.status === 'disconnected') fail(400, 'INVALID');
+    const task = await this.tasks.openTask({
+      action: 'addon', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: -addon.price, msisdn: line.msisdn,
+      iccid: null, note: addon.name,
     });
     return { applied: false, taskId: task.id };
   }
@@ -553,6 +592,7 @@ export class LinesService {
     if (line.status !== 'active') fail(400, 'INVALID');
     if (line.denied.has('esim')) fail(403, 'OPERATION_DENIED');
     if (!simRulesOf(line.package.company).esim) fail(400, 'ESIM_UNSUPPORTED');
+    if (!simRulesOf(line.package.company, line.package).esim) fail(400, 'ESIM_PACKAGE_OFF');
     const { price } = esimPriceOf({ pkg: line.package, provider: line.package.provider, company: line.package.company });
     const task = await this.tasks.openTask({
       action: 'esim', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: -price, msisdn: line.msisdn, iccid: null, esim: true,
@@ -570,7 +610,9 @@ export class LinesService {
     const givenQr = readQr(body.qr) ?? null;
     const givenMsisdn = typeof body.msisdn === 'string' ? body.msisdn.trim() : '';
     const task = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
-    if (!task || task.status !== 'working' || task.assigneeId !== actor.id) fail(400, 'INVALID');
+    // Any branch account that handles tasks may finish an open one (spec 2026-11-09, 2); the claim below makes sure
+    // only one of two at the same moment does.
+    if (!task || task.status !== 'working') fail(400, 'INVALID');
     const handed: { iccid?: string; msisdn?: string } = {};
     if (task.action === 'esim') {
       if (!givenIccid || !givenQr) fail(400, 'INVALID');
@@ -589,6 +631,9 @@ export class LinesService {
     }
     const handedQr = task.action === 'esim' || task.esim ? givenQr ?? task.esimQr : null;
     const written = await this.kernel.runTx(async (tx) => {
+      // Claim the task first: a second handler finishing it at the same moment waits on this row, then finds it done.
+      const claimed = await tx.officeTask.updateMany({ where: { id, status: 'working' }, data: { status: 'done', assigneeId: actor.id } });
+      if (claimed.count !== 1) fail(400, 'INVALID');
       // The hold made when the task opened gives way to the charge itself (roadmap N6), before any money moves.
       await this.kernel.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
       let sale: Sale | undefined;
@@ -789,7 +834,8 @@ export class LinesService {
         if (current) sale = task.action === 'esim' ? { ...saleOf(current), providerCost: -task.posDelta, esimPrice: -task.posDelta } : saleOf(current);
       }
       if (task.action !== 'disconnect' && task.action !== 'switch' && task.posDelta !== 0) {
-        await this.kernel.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, note, sale);
+        // An add-on's wallet entry carries its name when the handler wrote no note.
+        await this.kernel.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, task.action === 'addon' ? note || task.note || '' : note, sale);
         posted = true;
       }
       if (!posted && sale) await this.kernel.recordOp(tx, task.posId, actor.operatorId, task.action, sale);
@@ -823,7 +869,7 @@ export class LinesService {
     status: string;
     endsAt: Date;
     opsLocked?: boolean;
-    package: Parameters<LinesService['assertRunnable']>[0] & { company?: { esim?: boolean } | null };
+    package: Parameters<LinesService['assertRunnable']>[0] & { company?: { esim?: boolean } | null; esimAvailable?: boolean };
     denied?: ReadonlySet<OpKey>;
   }): string[] {
     const denied = line.denied ?? new Set<OpKey>();
@@ -832,7 +878,7 @@ export class LinesService {
       (action) => resolvePackageMode(line.package.actionModes, line.package, action),
     );
     // An eSIM request is always a branch task: the employee attaches the serial and the QR picture.
-    if (line.status === 'active' && !line.opsLocked && simRulesOf(line.package.company ?? null).esim) keys.push('esim');
+    if (line.status === 'active' && !line.opsLocked && simRulesOf(line.package.company ?? null, line.package).esim) keys.push('esim');
     // A refresh is a provider operation on a live subscription: active numbers only, like the rest.
     if (line.status === 'active' && !line.opsLocked && refreshMode(line.package.actionModes) !== 'off') keys.push('refresh');
     return keys.filter((key) => {
@@ -849,7 +895,7 @@ export class LinesService {
     if (outcome === 'fail' || !this.runsNow(line.package, 'charge')) {
       const task = await this.tasks.openTask({
         action: 'charge', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta, msisdn: line.msisdn,
-        note: outcome === 'fail' ? 'فشل المزود' : 'مهمة فرع',
+        note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
       });
       return { applied: false as const, taskId: task.id };
     }

@@ -20,40 +20,56 @@ const balances = {
   capped: false,
 };
 
-// «التقارير» (roadmap N5): sales, profits, orders and balances for every layer; providers for the branch with reports.
-test('an agent reads its sales, orders and balances, and exports each with its filters', async ({ page }) => {
+// «التقارير» (roadmap N5; one page each since spec 2026-11-08-overview-and-reports-nav, C): sales, orders and
+// balances for the layers that have them; providers for the branch with reports. The sidebar folds them in one group.
+test('an agent reads its sales, orders and balances on their own pages, and exports each with its filters', async ({ page }) => {
   const calls = await serveOffice(page, 'agent', {
     'GET /reports/sales': () => ({ body: sales }),
     'GET /reports/orders': () => ({ body: orders }),
     'GET /reports/balances': () => ({ body: balances }),
   });
   await page.goto('http://agent.localhost:3910/reports');
-  const tabs = page.getByRole('tab');
-  await expect(tabs).toHaveText(['المبيعات', 'الأرباح', 'الطلبات', 'الأرصدة']);
+  await expect(page).toHaveURL(/\/reports\/sales$/);
   await expect(page.locator('table.data tbody tr')).toHaveCount(1);
   await expect(page.locator('.stat-row .stat').nth(2)).toContainText('+4.00 ₪');
   await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', /\/api\/office\/reports\/sales\/export\?from=/);
 
-  await tabs.nth(2).click();
-  await expect(page).toHaveURL(/tab=orders/);
+  // The pages are reached from the sidebar group, as a user moves between them.
+  const nav = page.locator('.sidebar .side-nav');
+  await nav.getByRole('link', { name: 'الطلبات' }).click();
+  await expect(page).toHaveURL(/\/reports\/orders$/);
   await expect(page.locator('table.data tbody tr')).toHaveCount(2);
   await expect(page.locator('table.data tbody tr').first()).toContainText('مفتوح');
   await page.getByRole('combobox', { name: 'الحالة' }).selectOption('open');
   await expect.poll(() => calls.some((call) => call.startsWith('GET /reports/orders?') && call.includes('status=open'))).toBe(true);
 
-  await tabs.nth(3).click();
+  await nav.getByRole('link', { name: 'الأرصدة' }).click();
+  await expect(page).toHaveURL(/\/reports\/balances$/);
   await expect(page.locator('table.data tbody tr').first()).toContainText('30.00 ₪');
   await page.getByLabel('السالب فقط').check();
   await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', '/api/office/reports/balances/export?negative=1');
 });
 
-test('the providers tab is the branch reader\'s', async ({ page }) => {
+test('the sidebar folds the reports in one group that starts closed and opens on a report page', async ({ page }) => {
+  await serveOffice(page, 'agent', { 'GET /reports/sales': () => ({ body: sales }) });
+  await page.goto('http://agent.localhost:3910/numbers');
+  const nav = page.locator('.sidebar .side-nav');
+  const head = nav.getByRole('button', { name: 'التقارير' });
+  await expect(head).toHaveAttribute('aria-expanded', 'false');
+  await head.click();
+  await expect(nav.getByRole('link')).toContainText(['المالية', 'العمليات', 'الأرباح', 'المبيعات', 'الطلبات', 'الأرصدة']);
+  await expect(nav.getByRole('link', { name: 'تقارير المزودين' })).toHaveCount(0);
+  await expect(nav.getByText('غير جاهز')).toHaveCount(0);
+  await page.goto('http://agent.localhost:3910/reports/sales');
+  await expect(nav.getByRole('button', { name: 'التقارير' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(nav.getByRole('link', { name: 'المبيعات' })).toHaveAttribute('aria-current', 'page');
+});
+
+test('the providers report is the branch reader\'s', async ({ page }) => {
   await serveOffice(page, 'branch', {
-    'GET /reports/sales': () => ({ body: sales }),
     'GET /reports/supply': () => ({ body: { rows: [{ providerCode: 'sky', providerName: 'سكاي', operations: 7, cost: 24500, profit: 2100 }], totals: { operations: 7, cost: 24500, profit: 2100 }, capped: false } }),
   });
-  await page.goto('http://admin.localhost:3910/reports?tab=supply');
-  await expect(page.getByRole('tab', { name: 'المزودون' })).toHaveAttribute('aria-selected', 'true');
+  await page.goto('http://admin.localhost:3910/reports/supply');
   await expect(page.locator('table.data tbody tr').first()).toContainText('سكاي');
   await expect(page.locator('table.data tbody tr').first()).toContainText('+21.00 ₪');
 });

@@ -292,3 +292,6 @@
 .row-menu-panel button.danger:hover,
 .row-menu-panel button.danger:focus-visible { background: var(--rd-danger-soft); }
 .row-menu-rule { display: block; height: 1px; margin: var(--rd-space-1) var(--rd-space-1-5); background: var(--rd-line-soft); }
+
+/* Two row menus side by side: «المحفظة» then ⋯ (users list, spec 2026-11-08-overview-and-reports-nav, H). */
+.row-menus { display: inline-flex; align-items: center; gap: var(--rd-space-1); }

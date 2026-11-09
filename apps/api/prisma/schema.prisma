@@ -162,6 +162,18 @@ model Provider {
   creditLimit Int             @default(0)
   /** Which statement columns hold the number, date, amount and reference (roadmap N8). */
   statementMap Json?
+  /** Alert when the available balance falls under this, in agorot (spec 2026-11-08-overview-and-reports-nav, G). */
+  alertFloor  Int             @default(0)
+  /** Last known status, `working` or `problem`, so a change writes its notice once. */
+  health      String          @default("working")
+  healthReason String?
+  healthAt    DateTime?
+  /** `api`: each operation matched at once; `statement`: matched every `matchEveryDays` (simulated for now, spec E). */
+  matchSource    String       @default("statement")
+  matchEveryDays Int          @default(7)
+  lastMatchedAt  DateTime?
+  /** When «مطابقة متأخرة» was sent for this lapse; cleared once the provider is matched again. */
+  matchOverdueNoticeAt DateTime?
   packages    Package[]
   entries     ProviderEntry[]
   reconciliations ProviderReconciliation[]
@@ -208,6 +220,10 @@ model Package {
   smsCount               Int?
   minutes                Int?
   details                String?
+  /// Days after the subscription ends before the line counts as suspended (spec 2026-11-08-overview-and-reports-nav, I).
+  suspendAfterDays       Int      @default(90)
+  /// Whether this package may be sold or served as an eSIM; the company must allow it too (spec 2026-11-09, 5).
+  esimAvailable          Boolean  @default(true)
   months                 Int              @default(1)
   branchCost             Int
   mainPrice              Int
@@ -246,6 +262,7 @@ model Package {
   renewalTargets         PackageRenewal[] @relation("RenewalTarget")
   switches               PackageSwitch[]
   switchTargets          PackageSwitch[]  @relation("SwitchTarget")
+  addons                 PackageAddon[]
 }
 
 model PackageRenewal {
@@ -364,6 +381,8 @@ model OfficeTaskNote {
   authorId  String
   author    User       @relation(fields: [authorId], references: [id])
   body      String
+  /// Only branch accounts (the owner and the staff) read an internal note (spec 2026-11-09, 2).
+  internal  Boolean    @default(false)
   createdAt DateTime   @default(now())
 
   @@index([taskId, createdAt])
@@ -490,4 +509,42 @@ model Passkey {
   lastUsedAt   DateTime?
 
   @@index([userId])
+}
+
+/** An extra operation named by hand for a package (spec 2026-11-09, 3): requested on a number, it becomes a manual task. */
+model PackageAddon {
+  id        String   @id @default(uuid())
+  packageId String
+  package   Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  name      String
+  /** What the point of sale pays, in agorot; 0 for a free one. */
+  price     Int      @default(0)
+  active    Boolean  @default(true)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([packageId, position])
+}
+
+/** An offer on the home hero (spec 2026-11-09, 1): a picture and text, for some layers, shown for `seconds`. */
+model Offer {
+  id          String    @id @default(uuid())
+  title       String
+  body        String    @default("")
+  /** A data URL (png, jpeg or webp), at most about 700 KB. */
+  image       String?
+  actionLabel String?
+  /** An office path starting with `/`, or an `https://` address. */
+  actionHref  String?
+  seconds     Int       @default(7)
+  active      Boolean   @default(true)
+  position    Int       @default(0)
+  /** Comma-separated layers that see it: branch, main_agent, agent, pos. */
+  layers      String    @default("branch,main_agent,agent,pos")
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([active, position])
 }

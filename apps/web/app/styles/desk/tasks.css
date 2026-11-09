@@ -289,3 +289,7 @@
   }
   .task-tree-compose > button { justify-self: start; }
 }
+
+/* An internal note (spec 2026-11-09, 2): the branch's own, marked by a warning edge and its badge. */
+.task-tree-card.internal { border-inline-start: 3px solid var(--rd-warning); background: var(--rd-warning-soft); }
+.task-tree-compose .check { align-self: flex-start; }

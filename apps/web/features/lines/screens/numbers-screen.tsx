@@ -149,11 +149,12 @@ export function NumbersScreen() {
       key: 'status',
       header: t.status,
       render: (line) => (
+        // «معلّق» is read from the end date and the package's period, over the stored status (spec I).
         <Badge
-          variant={lineTone(line.status)}
+          variant={lineTone(line.suspended ? 'suspended' : line.status)}
           dot
         >
-          {lineStatus(t, line.status)}
+          {lineStatus(t, line.suspended ? 'suspended' : line.status)}
         </Badge>
       ),
     },

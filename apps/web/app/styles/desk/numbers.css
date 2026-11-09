@@ -160,3 +160,7 @@
   background: var(--rd-surface);
   font-variant-numeric: tabular-nums;
 }
+
+/* The extra operations dialog on a number's card (spec 2026-11-09, 3): one radio row per operation, its price at the end. */
+.addon-choices { display: grid; gap: var(--rd-space-1); margin: 0; padding: 0; border: 0; }
+.addon-choices .check { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--rd-space-2); padding-block: var(--rd-space-1-5); border-block-end: 1px solid var(--rd-line-soft); }

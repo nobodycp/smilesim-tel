@@ -479,9 +479,14 @@ export const SIM_LENGTH_MIN = 10;
 export const SIM_LENGTH_MAX = 22;
 const SIM_PREFIX_MAX = 10;
 
-export function simRulesOf(company: { iccidLength?: number | null; iccidPrefix?: string | null; esim?: boolean } | null): SimRules {
-  if (!company) return { length: null, prefix: '', esim: true };
-  return { length: company.iccidLength ?? null, prefix: company.iccidPrefix ?? '', esim: company.esim ?? true };
+/**
+ * The SIM rules of a package's company. eSIM needs both the company and, when given, the package to allow it
+ * (`Package.esimAvailable`, spec 2026-11-09-offers-tasks-addons-wallet-esim, 5).
+ */
+export function simRulesOf(company: { iccidLength?: number | null; iccidPrefix?: string | null; esim?: boolean } | null, pkg?: { esimAvailable?: boolean } | null): SimRules {
+  const packageEsim = pkg?.esimAvailable ?? true;
+  if (!company) return { length: null, prefix: '', esim: packageEsim };
+  return { length: company.iccidLength ?? null, prefix: company.iccidPrefix ?? '', esim: (company.esim ?? true) && packageEsim };
 }
 
 /** A company with no length and no prefix checks nothing here; the caller keeps its own minimum. */

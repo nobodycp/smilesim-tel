@@ -25,13 +25,9 @@ export class DoorMiddleware implements NestMiddleware {
     if (!sessionId) return next();
     const live = await this.store.liveSession(sessionId);
     if (!live) return next();
-    let layer = live.user.layer;
-    if (live.session.kind === 'impersonation') {
-      const homeId = readCookie(req, 'home');
-      const home = homeId ? await this.store.liveSession(homeId) : null;
-      if (home) layer = home.user.layer;
-    }
-    if (layer !== expected) {
+    // An entered (impersonation) session opens on the entered account's own door, like that account would, so the
+    // owner sees exactly its menu and screens; the admin door refuses it.
+    if (live.user.layer !== expected) {
       res.status(403).json(errorBody('DOOR_MISMATCH'));
       return;
     }

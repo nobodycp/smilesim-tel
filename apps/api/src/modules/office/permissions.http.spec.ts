@@ -32,12 +32,21 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/finance/summary', 'yyyyyy'],
   ['GET /office/finance/profits', 'yyyyyy'],
   ['GET /office/finance/profits/export', 'yyyyyy'],
+  ['POST /office/handoff', 'yyyyyy'], // no session needed: judged by the one-time code, covered by its domain spec
   ['GET /office/home', 'yyyyyy'],
+  ['GET /office/offers', 'ynynnn'],
+  ['POST /office/offers', 'ynynnn'],
+  ['GET /office/offers/live', 'yyyyyy'],
+  ['PATCH /office/offers/ID1', 'ynynnn'],
+  ['DELETE /office/offers/ID1', 'ynynnn'],
+  ['POST /office/offers/ID1/move', 'ynynnn'],
+  ['GET /office/overview', 'yyyyyy'], // every layer; the providers card only for the branch with reports or accounting
   ['POST /office/leave', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/ledger/SCOPE1', 'yyyyyy'], // read/accounting not checked (see spec)
   ['GET /office/lines', 'yyyyyy'], // read/accounting not checked (see spec)
   ['POST /office/lines', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/lines/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /office/lines/ID1/addon', 'yyyyyy'], // judged after the lookup: covered by its domain spec
   ['POST /office/lines/ID1/charge', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /office/lines/ID1/company-switch', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /office/lines/ID1/disconnect', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
@@ -58,6 +67,10 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/packages', 'yyyyyy'],
   ['PATCH /office/packages/CODE1/chain', 'ynynnn'],
   ['PATCH /office/packages/CODE1/details', 'ynynnn'],
+  ['GET /office/packages/CODE1/addons', 'yyynnn'],
+  ['POST /office/packages/CODE1/addons', 'ynynnn'],
+  ['PATCH /office/packages/CODE1/addons/ID1', 'ynynnn'],
+  ['DELETE /office/packages/CODE1/addons/ID1', 'ynynnn'],
   ['GET /office/packages/CODE1/custom-prices', 'yyynnn'],
   ['DELETE /office/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PUT /office/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
@@ -70,6 +83,8 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/provider-accounts', 'ynynnn'],
   ['GET /office/provider-accounts/CODE1', 'ynynnn'],
   ['PATCH /office/provider-accounts/CODE1/credit', 'ynynnn'],
+  ['PATCH /office/provider-accounts/CODE1/matching', 'ynynnn'],
+  ['POST /office/provider-accounts/CODE1/simulate-statement', 'ynynnn'],
   ['POST /office/provider-accounts/CODE1/entries', 'ynynnn'],
   ['GET /office/provider-accounts/CODE1/export', 'ynynnn'],
   ['GET /office/provider-accounts/CODE1/reconciliations', 'ynynnn'],

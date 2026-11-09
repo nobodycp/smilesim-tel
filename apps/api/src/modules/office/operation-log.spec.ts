@@ -107,6 +107,7 @@ async function office() {
     },
     officeTask: { findMany: async () => [] },
     package: { findMany: async () => [pkg] },
+    packageAddon: { findMany: async () => [] },
     packageSwitch: { findMany: async () => [] },
     provider: { findMany: async () => [{ code: 'sky', name: 'سكاي' }] },
     walletEntry: {
@@ -168,7 +169,10 @@ describe('an applied operation with no charge', () => {
     const card = await service.line(gate, 'ln1');
     expect(card.history.map((row) => row.action)).toContain('refresh');
 
-    const money = await service.finance(gate, { q: '0521000001' });
+    // Finance lists every operation (owner 2026-11-09), the free ones included; the money view leaves them out.
+    const all = await service.finance(gate, { q: '0521000001' });
+    expect(all.entries.map((row) => [row.kind, row.amount])).toEqual([['refresh', 0]]);
+    const money = await service.finance(gate, { q: '0521000001', scope: 'money' });
     expect(money.entries).toEqual([]);
   });
 

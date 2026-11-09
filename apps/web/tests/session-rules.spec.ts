@@ -43,13 +43,28 @@ test('settings shows no session rules to an account that is not the branch owner
   await expect(page.getByRole('heading', { name: 'الجلسات حسب الطبقة' })).toHaveCount(0);
 });
 
-test('the owner gives one account its own values from the user page', async ({ page }) => {
+test('the owner edits one account from «إعدادات المستخدم»: contact, two-step and its own session values', async ({ page }) => {
   await serveOffice(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
     'GET /users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),
   });
   const saved: unknown[] = [];
+  const contact: unknown[] = [];
+  const exempt: unknown[] = [];
+  let settings = { loginName: 'pos1', email: 'shop@example.com', phone: '', twoFactorEnabled: false, twoFactorExempt: true, twoFactorMethod: 'app' };
+  await page.route('**/auth/users/pos1/settings', (route) => route.fulfill(json(settings)));
+  await page.route('**/auth/users/pos1/contact', (route) => {
+    contact.push(route.request().postDataJSON());
+    settings = { ...settings, ...(route.request().postDataJSON() as object) };
+    return route.fulfill(json(settings));
+  });
+  await page.route('**/auth/exemptions/pos1', (route) => {
+    const body = route.request().postDataJSON() as { exempt: boolean };
+    exempt.push(body);
+    settings = { ...settings, twoFactorExempt: body.exempt };
+    return route.fulfill(json({ twoFactorExempt: body.exempt }));
+  });
   await page.route('**/auth/users/pos1/session-rules', (route) => {
     if (route.request().method() === 'PATCH') {
       saved.push(route.request().postDataJSON());
@@ -59,13 +74,22 @@ test('the owner gives one account its own values from the user page', async ({ p
   });
   await page.goto('http://admin.localhost:3910/users/pos1');
   await page.locator('.page-head').getByRole('button', { name: 'إجراءات أخرى' }).click();
-  await page.getByRole('menuitem', { name: 'الجلسات' }).click();
+  await page.getByRole('menuitem', { name: 'إعدادات المستخدم' }).click();
   const dialog = page.getByRole('dialog');
+  await expect(dialog.getByLabel('البريد')).toHaveValue('shop@example.com');
+  await expect(dialog.getByText('غير مفعّل')).toBeVisible();
+
+  await dialog.getByRole('button', { name: 'تشغيل التحقق بخطوتين' }).click();
+  await expect(dialog.getByText('مطلوب عند الدخول القادم')).toBeVisible();
+  expect(exempt).toEqual([{ exempt: false }]);
+
   await expect(dialog.getByLabel('الجلسات المسموحة').locator('option').first()).toHaveText('حسب الطبقة (3)');
   await expect(dialog.getByText('المطبّق الآن: الجلسات المسموحة 3 · 6 ساعات')).toBeVisible();
+  await dialog.getByLabel('الهاتف').fill('0501234567');
   await dialog.getByLabel('الجلسات المسموحة').selectOption('2');
   await dialog.getByRole('button', { name: 'حفظ' }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByText('تم حفظ قواعد الجلسات')).toBeVisible();
+  await expect(page.getByText('حُفظت إعدادات المستخدم')).toBeVisible();
+  expect(contact).toEqual([{ phone: '0501234567' }]);
   expect(saved).toEqual([{ maxSessions: 2, sessionMinutes: null }]);
 });

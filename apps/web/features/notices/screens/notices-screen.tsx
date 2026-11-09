@@ -15,7 +15,7 @@ import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { noticeTone } from '../../../lib/status-tone';
 
-const GROUPS = ['tasks', 'wallet', 'announcements'] as const;
+const GROUPS = ['tasks', 'wallet', 'announcements', 'providers'] as const;
 
 export function NoticesScreen() {
   const { t, apiText } = usePrefs();
@@ -35,6 +35,7 @@ export function NoticesScreen() {
 
   function groupLabel(code: string): string {
     if (code === 'tasks') return t.noticeGroupTasks;
+    if (code === 'providers') return t.noticeGroupProviders;
     if (code === 'wallet') return t.noticeGroupWallet;
     return t.noticeGroupAnnouncements;
   }

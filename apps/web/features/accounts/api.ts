@@ -17,6 +17,8 @@ export const accountsApi = {
   freezeUser: (loginName: string) => request<{ ok: true }>('POST', `/office/users/${segment(loginName)}/freeze`),
   restoreUser: (loginName: string) => request<{ ok: true }>('POST', `/office/users/${segment(loginName)}/restore`),
   removeUser: (loginName: string) => request<{ ok: true }>('DELETE', `/office/users/${segment(loginName)}`),
-  enterUser: (loginName: string) => request<{ sessionId: string }>('POST', `/office/users/${segment(loginName)}/enter`),
+  /** Answers the entered account's door and a one-time code that `handoff` trades there for the cookies. */
+  enterUser: (loginName: string) => request<{ door: string; code: string }>('POST', `/office/users/${segment(loginName)}/enter`),
+  handoff: (code: string) => request<{ ok: true }>('POST', '/office/handoff', { code }),
   leaveUser: () => request<{ ok: true }>('POST', '/office/leave'),
 };

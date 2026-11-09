@@ -24,6 +24,7 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'refresh') return t.updateNumber;
   if (action === 'rename') return t.changeNumber;
   if (action === 'esim') return t.actEsim;
+  if (action === 'addon') return t.actAddon;
   if (action === 'companySwitch') return t.actCompanySwitch;
   if (action === 'sim') return t.swapSim;
   if (action === 'disconnect') return t.actDisconnect;
@@ -75,10 +76,10 @@ export function lineStatus(t: Copy, status: string): string {
   return status;
 }
 
+/** Three words (spec 2026-11-09, 2): in progress, closed (rejected or cancelled), done. */
 export function taskStatus(t: Copy, status: string): string {
-  if (status === 'pending') return t.pending;
-  if (status === 'working') return t.working;
+  if (status === 'pending' || status === 'working') return t.working;
   if (status === 'done') return t.done;
-  if (status === 'cancelled') return t.cancelled;
+  if (status === 'cancelled' || status === 'rejected') return t.taskClosed;
   return status;
 }

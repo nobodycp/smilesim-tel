@@ -36,7 +36,8 @@ test('a failed background refresh of /me keeps the page on screen', async ({ pag
     },
   });
   await page.goto(`${admin}/users`);
-  await page.getByRole('button', { name: 'إجراءات admin (الإدارة)' }).click();
+  // Funding sits in the row's «المحفظة» menu (spec 2026-11-08-overview-and-reports-nav, H).
+  await page.getByRole('button', { name: 'المحفظة admin (الإدارة)' }).click();
   await page.getByRole('menuitem', { name: 'تمويل' }).click();
   const dialog = page.getByRole('dialog', { name: 'تمويل' });
   await dialog.getByLabel('المبلغ').fill('5');

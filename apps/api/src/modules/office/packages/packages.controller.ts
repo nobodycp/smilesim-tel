@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Put, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseFilters, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { OfficeFailureFilter } from '../../shared/office-failure.filter';
@@ -42,6 +42,45 @@ export class PackagesController {
   @Activity('package_details', 'package', param('code'))
   packageDetails(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: Record<string, unknown>) {
     return this.packageDesk.setDetails(actor, code, body);
+  }
+
+  @Get('packages/:code/addons')
+  @ApiOperation({ summary: "A package's extra operations (branch)" })
+  @ApiParam({ name: 'code' })
+  @ApiErrorResponse(401, 403, 404)
+  packageAddons(@Actor() actor: ActorShape, @Param('code') code: string) {
+    return this.packageDesk.addons(actor, code);
+  }
+
+  @Post('packages/:code/addons')
+  @ApiOperation({ summary: 'Add an extra operation to a package: name and price' })
+  @ApiParam({ name: 'code' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('package_addon', 'package', param('code'))
+  addPackageAddon(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: Record<string, unknown>) {
+    return this.packageDesk.saveAddon(actor, code, body ?? {});
+  }
+
+  @Patch('packages/:code/addons/:id')
+  @ApiOperation({ summary: "Change a package's extra operation: name, price, on/off, position" })
+  @ApiParam({ name: 'code' })
+  @ApiParam({ name: 'id' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('package_addon', 'package', param('code'))
+  savePackageAddon(@Actor() actor: ActorShape, @Param('code') code: string, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.packageDesk.saveAddon(actor, code, body ?? {}, id);
+  }
+
+  @Delete('packages/:code/addons/:id')
+  @ApiOperation({ summary: "Delete a package's extra operation" })
+  @ApiParam({ name: 'code' })
+  @ApiParam({ name: 'id' })
+  @ApiErrorResponse(401, 403, 404)
+  @Activity('package_addon', 'package', param('code'))
+  removePackageAddon(@Actor() actor: ActorShape, @Param('code') code: string, @Param('id') id: string) {
+    return this.packageDesk.removeAddon(actor, code, id);
   }
 
   @Patch('packages/:code/chain')

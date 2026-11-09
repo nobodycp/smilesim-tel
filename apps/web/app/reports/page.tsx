@@ -1,3 +1,6 @@
-import { ReportsHubScreen } from '../../features/reports/screens/reports-hub-screen';
+import { redirect } from 'next/navigation';
 
-export default ReportsHubScreen;
+// Each report is its own page since 2026-11-09; the sidebar's «التقارير» group lists them. `/reports` opens the first.
+export default function ReportsPage() {
+  redirect('/reports/sales');
+}

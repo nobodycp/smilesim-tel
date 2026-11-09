@@ -1,15 +1,21 @@
 'use client';
 
-import { Shield } from 'lucide-react';
+import { ChevronDown, ListChecks, Phone, Shield, Wallet } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { Desk, Money, layerName } from '../../../components/desk';
+import { lineStatus } from '../../../components/names';
 import { TableSkeleton } from '../../../components/loading';
-import { Button } from '../../../components/ui/button';
+import { Button, buttonClass } from '../../../components/ui/button';
+import { PagedTable, type Column } from '../../../components/data-table';
+import { latinWhen } from '../../../components/desk';
+import { pick } from '../../../lib/fetched';
+import { usePaged } from '../../../lib/use-paged';
+import { lineTone } from '../../../lib/status-tone';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
-import { api, type UserRow } from '../../../lib/api';
+import { api, type LineRow, type UserRow } from '../../../lib/api';
 import { GRANT_CODES, grantLabel } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
@@ -30,8 +36,10 @@ import { Tabs } from '../../../components/tabs';
 const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
 type Choice = 'role' | 'allow' | 'deny';
-type Tab = 'access' | 'packages' | 'ops';
-const TABS: readonly Tab[] = ['access', 'packages', 'ops'];
+// Two tabs since spec 2026-11-08-overview-and-reports-nav, H: «الحساب» (permissions, number operations and the
+// account's numbers, each a closed section) and «الرزم والأسعار». An old `#ops` link opens «الحساب».
+type Tab = 'access' | 'packages';
+const TABS: readonly Tab[] = ['access', 'packages'];
 
 function subscribeHash(onChange: () => void) {
   window.addEventListener('hashchange', onChange);
@@ -86,7 +94,7 @@ export function AccountScreen() {
   const termsFor = row?.loginName ?? params.login;
   const packagesRead = useApiQuery(sharedKeys.accountPackages(termsFor), () => api.userPackages(termsFor), { enabled: canEditTerms });
   const opsRead = useApiQuery(sharedKeys.accountOps(termsFor), () => api.userOps(termsFor), { enabled: canEditTerms });
-  const counts: Partial<Record<Tab, number>> = {
+  const counts = {
     packages: packagesRead.data?.summary.custom ?? 0,
     ops: (opsRead.data?.denied.length ?? 0) + (opsRead.data?.deniedAbove.length ?? 0),
   };
@@ -126,17 +134,20 @@ export function AccountScreen() {
   const lede = row
     ? [layerName(t, row.layer), row.parentLogin ? `${t.parent}: ${row.parentLogin}` : '', row.staff ? row.roleName : ''].filter(Boolean).join(' · ')
     : '';
-  // The head shows fund and ceiling as buttons; every other action of the users list waits behind ⋯.
-  const actions = listed ? accountActions.actionsFor(listed) : [];
-  const shown = actions.filter((item) => item.key === 'fund' || item.key === 'ceiling');
-  const more = actions.filter((item) => item.key !== 'fund' && item.key !== 'ceiling');
-  const head = actions.length > 0 ? (
+  // The head groups the wallet's actions under «المحفظة» (fund, deduct, ceiling, statement); every other action of
+  // the users list waits behind ⋯.
+  const { wallet: walletItems, more } = listed ? accountActions.groupedFor(listed) : { wallet: [], more: [] };
+  const actions = [...walletItems, ...more];
+  const head = actions.length > 0 || walletItems.length > 0 ? (
     <div className="page-actions">
-      {shown.map((item) => (
-        <Button key={item.key} type="button" variant={item.key === 'fund' ? 'primary' : 'outline'} onClick={item.onClick}>
-          {item.label}
-        </Button>
-      ))}
+      {walletItems.length > 0 ? (
+        <RowMenu
+          boxed
+          label={t.walletActions}
+          items={walletItems}
+          trigger={{ className: buttonClass({}), content: <><Wallet size={16} aria-hidden="true" />{t.walletActions}<ChevronDown size={14} aria-hidden="true" /></> }}
+        />
+      ) : null}
       {more.length > 0 ? <RowMenu boxed label={t.moreActions} items={more} /> : null}
     </div>
   ) : null;
@@ -145,13 +156,8 @@ export function AccountScreen() {
   // The API refuses to read the terms of an account the actor may not edit, so the two tabs
   // exist only for the direct parent and the branch; a hash to a hidden tab falls back to access.
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'access', label: t.accountAccess },
-    ...(canEditTerms
-      ? [
-          { key: 'packages' as const, label: t.packagesPricesTab },
-          { key: 'ops' as const, label: t.lineOpsTab },
-        ]
-      : []),
+    { key: 'access', label: t.accountTab },
+    ...(canEditTerms ? [{ key: 'packages' as const, label: t.packagesPricesTab }] : []),
   ];
   const openTab: Tab = tabs.some((item) => item.key === tab) ? tab : 'access';
 
@@ -170,12 +176,10 @@ export function AccountScreen() {
       ) : row && (
         <div className="stack flow">
           {listed ? <MoneyCards row={listed} /> : null}
-          <Tabs items={tabs.map((item) => ({ ...item, count: counts[item.key], disabled: item.key !== 'access' && row.staff }))} value={openTab} onChange={setTab} />
+          <Tabs items={tabs.map((item) => ({ ...item, count: item.key === 'packages' ? counts.packages : undefined, disabled: item.key !== 'access' && row.staff }))} value={openTab} onChange={setTab} />
           {openTab === 'access' && (
-          <section className="pane">
-            <header className="pane-head">
-              <h2><Shield aria-hidden="true" />{t.accountAccess}</h2>
-            </header>
+          <>
+          <Fold icon={<Shield aria-hidden="true" />} title={t.accountAccess}>
             <div className="pane-body access-sheet">
               <div className="grant-head">
                 <div className="grant-line head">
@@ -250,10 +254,20 @@ export function AccountScreen() {
                 </div>
               )}
             </div>
-          </section>
+          </Fold>
+          {canEditTerms && !row.staff ? (
+            <Fold icon={<ListChecks aria-hidden="true" />} title={t.lineOpsTab} count={counts.ops}>
+              <UserOpsTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />
+            </Fold>
+          ) : null}
+          {!row.staff && row.layer !== 'branch' ? (
+            <Fold icon={<Phone aria-hidden="true" />} title={t.accountNumbers}>
+              <AccountLines login={row.loginName} />
+            </Fold>
+          ) : null}
+          </>
           )}
           {openTab === 'packages' && !row.staff && <UserPackagesTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
-          {openTab === 'ops' && !row.staff && <UserOpsTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
         </div>
       )}
       {accountActions.dialogs}
@@ -282,4 +296,38 @@ function MoneyCards({ row }: { row: UserRow }) {
       <Stat icon="plans" label={t.availableToSell} value={unlimited ? t.noCeiling : <Money value={available} />} highlight />
     </StatRow>
   );
+}
+
+/**
+ * One closed section of the «الحساب» tab. Its body mounts the first time it opens, so a section's reads (the
+ * number operations, the account's numbers) run only when they are wanted.
+ */
+function Fold({ icon, title, count, children }: { icon: ReactNode; title: string; count?: number; children: ReactNode }) {
+  const [seen, setSeen] = useState(false);
+  return (
+    <details className="pane fold" onToggle={(event) => { if (event.currentTarget.open) setSeen(true); }}>
+      <summary className="pane-head">
+        <h2>{icon}{title}</h2>
+        {count ? <Badge variant="muted">{count}</Badge> : null}
+        <ChevronDown className="fold-mark" size={16} aria-hidden="true" />
+      </summary>
+      {seen ? children : null}
+    </details>
+  );
+}
+
+/** The account's numbers: its own if it is a point of sale, else every point of sale's below it. */
+function AccountLines({ login }: { login: string }) {
+  const { t } = usePrefs();
+  const list = usePaged<LineRow>(`account:${login}`, async (cursor) =>
+    pick(await api.officeLines({ account: login, cursor }), (data) => ({ rows: data.lines, next: data.nextCursor, total: data.total })),
+  );
+  const columns: Column<LineRow>[] = [
+    { key: 'number', header: t.number, render: (line) => <a href={`/numbers/${encodeURIComponent(line.id)}`}><bdi dir="ltr">{line.msisdn}</bdi></a> },
+    { key: 'package', header: t.packageName, render: (line) => line.packageName || '—' },
+    { key: 'pos', header: t.pointOfSale, render: (line) => (line.posLogin ? <AccountName login={line.posLogin} /> : '—') },
+    { key: 'status', header: t.status, render: (line) => <Badge variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge> },
+    { key: 'ends', header: t.endsOn, render: (line) => (line.endsAt ? <bdi dir="ltr">{latinWhen(line.endsAt)}</bdi> : '—') },
+  ];
+  return <PagedTable list={list} columns={columns} rowKey={(line) => line.id} empty={t.noLines} skeleton={{ rows: 4, columns: 5 }} />;
 }

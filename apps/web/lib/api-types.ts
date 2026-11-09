@@ -33,6 +33,7 @@ export type SessionRuleValues = { maxSessions: number | null; sessionMinutes: nu
 export type SessionRuleResult = { maxSessions: number; sessionMinutes: number };
 export type LayerKey = 'branch' | 'main_agent' | 'agent' | 'pos';
 export type SessionRulesView = { defaults: SessionRuleResult; layers: Record<LayerKey, SessionRuleValues> };
+export type UserSettings = { loginName: string; email: string; phone: string; twoFactorEnabled: boolean; twoFactorExempt: boolean; twoFactorMethod: string };
 export type AccountSessionRules = { own: SessionRuleValues; layer: SessionRuleResult; effective: SessionRuleResult };
 
 export type SessionInfo = {
@@ -62,6 +63,26 @@ export type OfficeMe = {
   balance: number;
   ceiling: number;
 };
+/** One ranked row of the overview: a package, company, provider or account, by count or profit. */
+export type OverviewRanked = { key: string; label: string; count: number; amount: number; profit: number; nickname?: string };
+/** `GET /office/overview` (spec 2026-11-08-overview-and-reports-nav, F). */
+export type OverviewPayload = {
+  period: 'day' | 'month' | 'all';
+  from: string | null;
+  lines: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number };
+  sales: { count: number; amount: number; profit: number; refunds: number; refundAmount: number; net: number; trend: { day: string; amount: number; profit: number; count: number }[]; capped: boolean };
+  top: { packages: OverviewRanked[]; companies: OverviewRanked[]; providers: OverviewRanked[] };
+  active: { main_agent: OverviewRanked[]; agent: OverviewRanked[]; pos: OverviewRanked[] };
+  users: { counts: { main_agent: number; agent: number; pos: number }; frozen: number; debtors: number; debt: number; ceilings: number; used: number };
+  tasks: { pending: number; working: number; done: number; rejected: number; cancelled: number; oldestOpenMinutes: number | null };
+  providers: { code: string; name: string; operations: number; cost: number; profit: number; balance: number; creditLimit: number; available: number; status: 'working' | 'problem'; problem: 'failures' | 'balance' | null; failures: number; alertFloor: number }[] | null;
+};
+/** An offer on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1). */
+export type Offer = {
+  id: string; title: string; body: string; image: string | null; actionLabel: string | null; actionHref: string | null;
+  seconds: number; active: boolean; position: number; layers: string[]; startsAt: string | null; endsAt: string | null;
+};
+export type OfferInput = Partial<Omit<Offer, 'id' | 'position'>> & { title?: string };
 export type HomePayload = {
   pendingTasks: number;
   activeLines: number;
@@ -191,6 +212,8 @@ export type Shelf = {
     }[];
   }[];
 };
+/** A package's extra operation (spec 2026-11-09, 3). */
+export type PackageAddon = { id: string; name: string; price: number; active: boolean; position: number };
 export type PackageSheet = {
   code: string;
   name: string;
@@ -201,6 +224,10 @@ export type PackageSheet = {
   enabled: boolean;
   forSale: boolean;
   dataGb: number | null;
+  /** Days after the end before a line counts as suspended (90 by default). */
+  suspendAfterDays: number;
+  /** Whether this package may be sold or served as an eSIM (its company must allow it too). */
+  esimAvailable?: boolean;
   smsCount: number | null;
   minutes: number | null;
   details: string;
@@ -311,6 +338,8 @@ export type LineRow = {
   esim: boolean;
   esimQr: string | null;
   status: string;
+  /** The subscription ended at least its package's period ago (90 days by default): «معلّق». */
+  suspended: boolean;
   packageCode: string;
   packageName: string;
   companyName: string;
@@ -327,6 +356,8 @@ export type LineRow = {
   esimPrice?: number;
   sim?: SimRules;
   switchTargets?: string[];
+  /** The package's live extra operations (spec 2026-11-09, 3), on the number's card. */
+  addons?: { id: string; name: string; price: number }[];
 };
 export type LineHistory = {
   id: string;
@@ -350,6 +381,11 @@ export type LedgerRow = {
   packageName: string | null;
   msisdn: string | null;
   actorLogin: string;
+  /** The account whose wallet moved (the operations scope covers the viewer's tree). */
+  loginName: string;
+  layer: string;
+  /** What the viewer earned on this operation; null when it is not a sale in its chain. */
+  margin: number | null;
 };
 export type ActivityRow = {
   id: string;
@@ -363,7 +399,8 @@ export type ActivityRow = {
   subjectKind: string;
   subjectRef: string;
 };
-export type ProviderOpStats = { count: number; cost: number; monthCost: number };
+/** `matched`, `differences`, `pending`, `differenceAmount`: the simulated matching (spec E), over the dated rows. */
+export type ProviderOpStats = { count: number; cost: number; monthCost: number; matched?: number; differences?: number; pending?: number; differenceAmount?: number };
 export type ProviderOpRow = {
   id: string;
   at: string;
@@ -376,8 +413,17 @@ export type ProviderOpRow = {
   cost: number;
   /** The eSIM fee inside this operation's cost, when it sold or issued an eSIM. */
   esimPrice: number | null;
+  /** Matching, simulated until real providers are connected (spec E). */
+  matchSource?: 'api' | 'statement';
+  matchState?: 'matched' | 'difference' | 'pending';
+  providerAmount?: number | null;
+  difference?: number | null;
 };
+/** One account's share of a sale, as the branch reads it on a finance row. */
+export type FinanceShare = { loginName: string; layer: string; margin: number };
 export type FinanceRow = {
+  /** For the branch: every account's share of the sale, branch first; null otherwise. */
+  shares: FinanceShare[] | null;
   /** Why a manual movement was made: deposit, return, correction or settlement. */
   reason: string | null;
   /** For a hold or a release: the amount held (positive) or freed (negative). */
@@ -437,6 +483,15 @@ export type NoticePayload = {
   fromLogin?: string;
   toLogin?: string;
   actorName?: string;
+  /** `provider.problem` and `provider.recovered` (spec 2026-11-08-overview-and-reports-nav, G). `reason` is shared. */
+  code?: string;
+  name?: string;
+  failures?: number;
+  available?: number;
+  alertFloor?: number;
+  /** `provider.match_overdue`: the provider's matching period and its last match. */
+  matchEveryDays?: number;
+  lastMatchedAt?: string | null;
 };
 export type NoticeRow = {
   id: string;
@@ -479,10 +534,14 @@ export type TaskDetail = TaskRow & {
   companyName: string;
   providerName: string;
   canNote: boolean;
+  /** The branch may write a note only the branch reads (spec 2026-11-09, 2). */
+  canNoteInternal?: boolean;
 };
 export type TaskEvent = {
   id: string;
   kind: 'system' | 'note' | 'result';
+  /** An internal note: shown to the branch only. */
+  internal?: boolean;
   body: string;
   authorName: string | null;
   at: string;
@@ -549,7 +608,8 @@ export type SupplyReportRow = { providerCode: string; providerName: string; oper
 /** Our account with one provider (`GET /office/provider-accounts`): payments + settlements − purchases. */
 export type ProviderAccount = {
   code: string; name: string; purchases: number; payments: number; settlements: number;
-  balance: number; creditLimit: number; held: number; available: number;
+  balance: number; creditLimit: number; alertFloor: number; held: number; available: number;
+  matchSource?: 'api' | 'statement'; matchEveryDays?: number; lastMatchedAt?: string | null; matchOverdue?: boolean; openDifferences?: number;
 };
 export type ProviderLedgerRow = {
   id: string; at: string; kind: string; amount: number; balanceAfter: number; note: string; msisdn: string; packageName: string; actorLogin: string;

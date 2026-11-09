@@ -37,16 +37,19 @@ export function PackageDetailsForm({
   const [minutes, setMinutes] = useState(amountOf(sheet.minutes));
   const [smsCount, setSmsCount] = useState(amountOf(sheet.smsCount));
   const [details, setDetails] = useState(sheet.details);
+  const [suspendAfter, setSuspendAfter] = useState(String(sheet.suspendAfterDays ?? 90));
+  const [esimAvailable, setEsimAvailable] = useState(sheet.esimAvailable ?? true);
 
   async function save(event: FormEvent) {
     event.preventDefault();
     const values = [valueOf(dataGb), valueOf(smsCount), valueOf(minutes)];
-    if (values.some((value) => value === undefined) || details.trim().length > DETAILS_LIMIT) {
+    const suspendDays = Number(suspendAfter.trim());
+    if (values.some((value) => value === undefined) || details.trim().length > DETAILS_LIMIT || !Number.isInteger(suspendDays) || suspendDays < 1 || suspendDays > 3650) {
       onInvalid();
       return;
     }
     const [gb, sms, mins] = values as (number | null)[];
-    await run(() => api.setPackageDetails(sheet.code, { dataGb: gb, smsCount: sms, minutes: mins, details: details.trim() }), { note: t.saved });
+    await run(() => api.setPackageDetails(sheet.code, { dataGb: gb, smsCount: sms, minutes: mins, details: details.trim(), suspendAfterDays: suspendDays, esimAvailable }), { note: t.saved });
   }
 
   const field = (label: string, amount: Amount, set: (next: Amount) => void) => (
@@ -77,6 +80,16 @@ export function PackageDetailsForm({
         {field(t.minutesLabel, minutes, setMinutes)}
         {field(t.smsLabel, smsCount, setSmsCount)}
       </div>
+      <label className="package-amount">
+        {t.suspendAfterDays}
+        <input className="num" inputMode="numeric" dir="ltr" value={suspendAfter} onChange={(event) => setSuspendAfter(event.target.value)} />
+        <span className="hint">{t.suspendAfterHint}</span>
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={esimAvailable} onChange={(event) => setEsimAvailable(event.target.checked)} />
+        <span>{t.packageEsimAvailable}</span>
+      </label>
+      <p className="hint">{t.packageEsimHint}</p>
       <label>
         {t.extraDetails}
         <textarea rows={3} maxLength={DETAILS_LIMIT} value={details} onChange={(event) => setDetails(event.target.value)} />

@@ -172,7 +172,13 @@ export async function tree() {
     findMany: async () => [],
     count: async () => 0,
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(tasks.find((row) => row.id === where.id) as Row, data),
-    updateMany: async () => ({ count: 0 }),
+    // A compare-and-set on the id and the scalar fields given (the task claim, take, reject).
+    updateMany: async ({ where, data }: { where: Data; data: Data }) => {
+      const row = tasks.find((item) => Object.entries(where).every(([key, value]) => (value && typeof value === 'object' ? true : item[key] === value)));
+      if (!row) return { count: 0 };
+      Object.assign(row, data);
+      return { count: 1 };
+    },
   };
   const packageModel = {
     findMany: async (args?: { where?: Record<string, unknown> }) => packages.filter((row) => whereMatch(row, args?.where)),
@@ -205,6 +211,7 @@ export async function tree() {
     officeTask: taskModel,
     package: packageModel,
     packageRenewal,
+    packageAddon: { findMany: async () => [], findUnique: async () => null },
     user: userModel,
     userPackage,
     sellPrice,
@@ -221,6 +228,7 @@ export async function tree() {
     officeTask: taskModel,
     package: packageModel,
     packageRenewal,
+    packageAddon: { findMany: async () => [], findUnique: async () => null },
     packageSwitch: { findMany: async () => [{ target: { code: 'alloha-400' }, targetId: 'pb' }] },
     userPackage,
     sellPrice,

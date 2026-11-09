@@ -10,10 +10,11 @@ import { ROUTES } from './testing/office-routes';
 // The table lives in testing/office-routes.ts.
 
 // Routes that judge something before the session, so an anonymous call with the sample body answers 400 INVALID:
-// `leave` reads the impersonation session itself. The carrier switch (not defined yet, always refused) asks for the
+// `leave` reads the impersonation session itself; `handoff` has no session yet (it trades a one-time code for one). The carrier switch (not defined yet, always refused) asks for the
 // session first since 2026-11-08, like every other line route. The price and terms
 // writes used to parse their body first; since 2026-11-08 (owner decision, 401 first) they ask for the session first.
 const BEFORE_SESSION: Record<string, number> = {
+  'POST /office/handoff': 400,
   'POST /office/leave': 400,
 };
 

@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { DataTable, type Column } from '../../../components/data-table';
-import { Desk, Money } from '../../../components/desk';
+import { Desk, Money, latinWhen } from '../../../components/desk';
+import { Badge } from '../../../components/ui/badge';
 import { Stat, StatRow } from '../../../components/stat';
 import { api, type ProviderAccount } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
@@ -25,6 +26,16 @@ export function ProviderAccountsScreen() {
     { key: 'credit', header: t.creditLimit, num: true, sortValue: (row) => row.creditLimit, render: (row) => <Money value={row.creditLimit} /> },
     { key: 'held', header: t.held, num: true, sortValue: (row) => row.held, render: (row) => <Money value={row.held} /> },
     { key: 'available', header: t.available, num: true, sortValue: (row) => row.available, render: (row) => <Money value={row.available} /> },
+    // Matching, simulated until real providers are connected (spec E).
+    { key: 'source', header: t.matchSource, render: (row) => (row.matchSource === 'api' ? t.matchSourceApi : t.matchSourceStatement) },
+    {
+      key: 'matched',
+      header: t.matchLast,
+      render: (row) => row.matchOverdue
+        ? <Badge variant="warning" dot>{t.matchOverdue}</Badge>
+        : row.matchSource === 'api' ? t.matchSourceApi : row.lastMatchedAt ? <bdi dir="ltr">{latinWhen(row.lastMatchedAt)}</bdi> : t.matchNever,
+    },
+    { key: 'differences', header: t.matchOpenDifferences, num: true, sortValue: (row) => row.openDifferences ?? 0, render: (row) => (row.openDifferences ? <Badge variant="danger" dot>{row.openDifferences}</Badge> : <span className="num">0</span>) },
   ];
   return (
     <Desk title={allowed ? t.providerAccounts : ''} lede={t.providerAccountsLede} error={read.error} note="">

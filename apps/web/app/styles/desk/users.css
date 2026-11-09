@@ -165,3 +165,18 @@
 @media (max-width: 1099px) {
   .terms-filter .filter-panel .terms-summary { flex-basis: 100%; white-space: normal; }
 }
+
+/* User page «الحساب» tab: each section is a closed <details> pane (spec 2026-11-08-overview-and-reports-nav, H). */
+.pane.fold > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-2);
+}
+.pane.fold > summary::-webkit-details-marker { display: none; }
+.pane.fold > summary h2 { flex: 1; }
+.pane.fold > summary:focus-visible { outline: 2px solid var(--rd-focus); outline-offset: -2px; }
+.pane.fold .fold-mark { color: var(--rd-muted); transition: transform var(--rd-dur-fast) var(--rd-ease-out); }
+.pane.fold[open] .fold-mark { transform: rotate(180deg); }
+.pane.fold:not([open]) > summary { border-block-end: 0; }

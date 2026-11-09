@@ -1,4 +1,4 @@
-import { Controller, Post, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { SESSION_COOKIE_SECONDS } from '../../auth/sessions';
@@ -29,10 +29,23 @@ export class AccountSessionController {
   async leave(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const home = readCookie(req, 'home');
     const result = await this.sessions.leave(gateOf(req));
-    if (result && typeof result === 'object' && 'ok' in result && home) {
-      res.cookie('sid', home, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
-      res.clearCookie('home', cookieBase());
-    }
+    if (home) res.cookie('sid', home, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
+    else res.clearCookie('sid', cookieBase());
+    res.clearCookie('home', cookieBase());
     return result;
+  }
+
+  /**
+   * The entered account's door trades the one-time code from `users/:login/enter` for its cookies: `sid` is the
+   * entered session, `home` the owner's, so leaving can put the owner back. Not logged: `enter` already was.
+   */
+  @Post('handoff')
+  @ApiOperation({ summary: 'Open an entered account on its door: trades the one-time code for the `sid` + `home` cookies' })
+  @ApiErrorResponse(400)
+  async handoff(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
+    const { sessionId, homeId } = await this.sessions.handoff(body);
+    res.cookie('sid', sessionId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
+    if (homeId) res.cookie('home', homeId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
+    return { ok: true };
   }
 }

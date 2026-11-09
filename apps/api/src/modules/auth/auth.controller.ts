@@ -515,6 +515,29 @@ export class AuthController {
     return { layers: result.layers };
   }
 
+  @Get('users/:loginName/settings')
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Branch owner: an account email, mobile and second step («إعدادات المستخدم»)' })
+  @ApiParam({ name: 'loginName' })
+  @ApiErrorResponse(401, 403, 404)
+  async userSettings(@Param('loginName') loginName: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.userSettings(sessionIdOf(req), loginName);
+    if (result.kind === 'error') return failWith(res, result);
+    return result.settings;
+  }
+
+  @Patch('users/:loginName/contact')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Branch owner: set an account email and mobile; an empty string clears one' })
+  @ApiParam({ name: 'loginName' })
+  @ApiErrorResponse(401, 403, 404, 400)
+  async setUserContact(@Param('loginName') loginName: string, @Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.setUserContact(sessionIdOf(req), loginName, (body ?? {}) as { email?: unknown; phone?: unknown });
+    if (result.kind === 'error') return failWith(res, result);
+    return result.settings;
+  }
+
   @Get('users/:loginName/session-rules')
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Branch owner: an account session rules, its layer and the result' })

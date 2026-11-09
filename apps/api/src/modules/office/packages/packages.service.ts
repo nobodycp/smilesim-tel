@@ -89,7 +89,7 @@ export class PackagesService {
         providerName: actor.layer === 'branch' ? row.provider.name : '',
         activateMode: resolvePackageMode(row.actionModes, row, 'activate'),
         companyName: row.company?.name ?? '',
-        sim: simRulesOf(row.company),
+        sim: simRulesOf(row.company, row),
         esimPrice: esimPriceOf({ pkg: row, provider: row.provider, company: row.company }).price,
         dataGb: row.dataGb,
         smsCount: row.smsCount,
@@ -192,6 +192,8 @@ export class PackagesService {
       enabled: pkg.enabled,
       forSale: pkg.forSale,
       dataGb: pkg.dataGb,
+      suspendAfterDays: pkg.suspendAfterDays,
+      esimAvailable: pkg.esimAvailable,
       smsCount: pkg.smsCount,
       minutes: pkg.minutes,
       details: pkg.details ?? '',
@@ -223,6 +225,10 @@ export class PackagesService {
     const amount = (value: unknown) => value === null || (typeof value === 'number' && Number.isInteger(value) && value >= -1 && value <= 1_000_000);
     if (!amount(body.dataGb) || !amount(body.smsCount) || !amount(body.minutes)) fail(400, 'INVALID');
     if (typeof body.details !== 'string' || body.details.trim().length > PACKAGE_DETAILS_LIMIT) fail(400, 'INVALID');
+    // Days after the end before a line counts as suspended (spec 2026-11-08-overview-and-reports-nav, I); optional.
+    const suspend = body.suspendAfterDays;
+    if (suspend !== undefined && !(typeof suspend === 'number' && Number.isInteger(suspend) && suspend >= 1 && suspend <= 3650)) fail(400, 'INVALID');
+    if (body.esimAvailable !== undefined && typeof body.esimAvailable !== 'boolean') fail(400, 'INVALID');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     await this.kernel.prisma.package.update({
@@ -232,9 +238,57 @@ export class PackagesService {
         smsCount: body.smsCount as number | null,
         minutes: body.minutes as number | null,
         details: body.details.trim() || null,
+        ...(typeof suspend === 'number' ? { suspendAfterDays: suspend } : {}),
+        ...(typeof body.esimAvailable === 'boolean' ? { esimAvailable: body.esimAvailable } : {}),
       },
     });
     return { ok: true as const };
+  }
+
+  /** A package's extra operations (spec 2026-11-09, 3), in their order. */
+  async addons(actor: Actor, code: string) {
+    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
+    const pkg = await this.kernel.prisma.package.findUnique({ where: { code }, include: { addons: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    return { addons: pkg.addons.map((row) => ({ id: row.id, name: row.name, price: row.price, active: row.active, position: row.position })) };
+  }
+
+  /** Adds an extra operation, or changes one when `id` is given: name, price (agorot) and on/off. */
+  async saveAddon(actor: Actor, code: string, body: Record<string, unknown>, id?: string) {
+    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const name = typeof body.name === 'string' ? body.name.trim() : undefined;
+    if (name !== undefined && (!name || name.length > 60)) fail(400, 'INVALID');
+    const price = body.price;
+    if (price !== undefined && !(typeof price === 'number' && Number.isInteger(price) && price >= 0 && price <= 10_000_000)) fail(400, 'INVALID');
+    if (body.active !== undefined && typeof body.active !== 'boolean') fail(400, 'INVALID');
+    if (body.position !== undefined && !(typeof body.position === 'number' && Number.isInteger(body.position))) fail(400, 'INVALID');
+    const data = {
+      ...(name !== undefined ? { name } : {}),
+      ...(typeof price === 'number' ? { price } : {}),
+      ...(typeof body.active === 'boolean' ? { active: body.active } : {}),
+      ...(typeof body.position === 'number' ? { position: body.position } : {}),
+    };
+    if (id) {
+      const row = await this.kernel.prisma.packageAddon.findUnique({ where: { id } });
+      if (!row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
+      await this.kernel.prisma.packageAddon.update({ where: { id }, data });
+    } else {
+      if (!name) fail(400, 'INVALID');
+      const count = await this.kernel.prisma.packageAddon.count({ where: { packageId: pkg.id } });
+      await this.kernel.prisma.packageAddon.create({ data: { packageId: pkg.id, name, price: typeof price === 'number' ? price : 0, active: body.active !== false, position: count } });
+    }
+    return this.addons(actor, code);
+  }
+
+  async removeAddon(actor: Actor, code: string, id: string) {
+    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const row = await this.kernel.prisma.packageAddon.findUnique({ where: { id } });
+    if (!pkg || !row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
+    await this.kernel.prisma.packageAddon.delete({ where: { id } });
+    return this.addons(actor, code);
   }
 
   async setChain(actor: Actor, code: string, body: Record<string, unknown>) {

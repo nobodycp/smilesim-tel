@@ -40,9 +40,9 @@ const OfficeContext = createContext<OfficeSessionValue>({
   initialBalance: null,
 });
 
-/** Screens that draw without the office shell and without a session. */
+/** Screens that draw without the office shell and without a session (`/enter` opens an entered account's door). */
 export function authPath(pathname: string) {
-  return pathname === '/login' || pathname === '/password' || pathname.startsWith('/two-factor');
+  return pathname === '/login' || pathname === '/password' || pathname.startsWith('/two-factor') || pathname === '/enter';
 }
 
 // Backoff between attempts while the API does not answer: 2s, 4s, 8s, 16s, then 30s.

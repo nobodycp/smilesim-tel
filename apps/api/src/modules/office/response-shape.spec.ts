@@ -16,8 +16,8 @@ const HOME_KEYS = ['pendingTasks', 'activeLines', 'inactiveLines', 'expiringLine
 const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
 const HOME_ANNOUNCEMENT_KEYS = ['id', 'body', 'at', 'authorName', 'authorLayer'];
 const LINES_KEYS = ['lines', 'poses', 'nextCursor', 'total'];
-const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'esimQr', 'status', 'packageCode', 'packageName', 'companyName', 'posLogin', 'posPrice', 'createdAt', 'endsAt', 'operations'];
-const LINE_OPTIONAL_KEYS = ['opsLocked', 'dataGb', 'subscriberPrice', 'companyImage', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
+const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'esimQr', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'posLogin', 'posPrice', 'createdAt', 'endsAt', 'operations'];
+const LINE_OPTIONAL_KEYS = ['addons', 'opsLocked', 'dataGb', 'subscriberPrice', 'companyImage', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
 const POS_CHOICE_KEYS = ['loginName', 'nickname'];
 const DISCONNECT_QUOTE_KEYS = ['amount', 'runsNow'];
 const SIM_RULES_KEYS = ['length', 'prefix', 'esim'];
@@ -28,7 +28,7 @@ const SHELF_PROVIDER_KEYS = ['code', 'name', 'packages'];
 const SHELF_PACKAGE_KEYS = ['code', 'name', 'months', 'dataGb', 'smsCount', 'minutes', 'branchCost', 'mainPrice', 'renewalBranchCost', 'renewalMainPrice', 'forSale', 'enabled', 'lines', 'activeLines', 'stoppedLines'];
 const PACKAGE_SHEET_KEYS = [
   'code', 'name', 'providerCode', 'providerName', 'companyCode', 'companyName', 'enabled', 'forSale',
-  'dataGb', 'smsCount', 'minutes', 'details', 'months',
+  'dataGb', 'suspendAfterDays', 'esimAvailable', 'smsCount', 'minutes', 'details', 'months',
   'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice',
   'renewalBranchCost', 'renewalMainPrice', 'renewalAgentPrice', 'renewalPosPrice', 'renewalSubscriberPrice',
   'esimPrice', 'esimPriceEffective', 'esimPriceSource',

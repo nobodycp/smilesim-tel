@@ -5,15 +5,20 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
+  BarChart3,
   Bell,
   ChevronDown,
   ClipboardList,
   Home,
   Layers,
   LogOut,
+  Megaphone,
   Menu,
   Package,
   Palette,
+  Receipt,
+  ShoppingCart,
+  Truck,
   PanelLeftClose,
   PanelLeftOpen,
   Phone,
@@ -45,6 +50,7 @@ import { OutageBar, OutagePanel } from './outage';
 import { useNotices } from '../lib/use-notices';
 import { tabTitle, usePageTitleValue } from '../lib/page-title';
 import { noticeAge, noticeDetail, noticeTitle } from '../lib/notice-text';
+import { doorUrl } from '../lib/doors';
 import { reloadAt } from '../lib/reload-at';
 
 const COLLAPSE_KEY = 'smilesim-sidebar-collapsed';
@@ -94,7 +100,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, serverCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { open: menuOpen, close: closeMenu, toggle: toggleMenu, root: menuRoot, trigger: menuTrigger } = usePopover({ menu: true });
-  const { open: walletOpen, toggle: toggleWallet, root: walletRoot, trigger: walletTrigger } = usePopover();
   const { open: noticeOpen, close: closeNotices, toggle: toggleNotices, root: noticeRoot, trigger: noticeTrigger } = usePopover();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { ready, failed, retrying, retry, me, initialName, initialBalance } = useOffice();
@@ -105,13 +110,13 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const layer = door.layer;
   const balance = me ? me.balance : null;
   const shownBalance = balance !== null ? balance : initialBalance;
-  const ceiling = me?.ceiling ?? 0;
   const impersonating = me?.impersonating ?? false;
   const saved = useIdentity();
 
   async function leaveAccount() {
     const result = await api.leaveUser();
-    if (result.ok) reloadAt('/users');
+    // The entered account was open on its own door; the owner goes back to the admin door's users page.
+    if (result.ok) reloadAt(doorUrl('admin', '/users'));
   }
 
   useEffect(() => {
@@ -155,7 +160,24 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   }
 
   const desk = ['branch', 'main_agent', 'agent'] as const;
-  const posGroups: { title: string; items: NavItem[] }[] = [
+  // «التقارير» (spec 2026-11-08-overview-and-reports-nav, C): every report is its own page, folded in one group
+  // that starts closed and opens by itself on one of its pages. Each layer sees the reports its data allows.
+  const reportsGroup: NavGroup = {
+    key: 'reports',
+    label: t.navReports,
+    icon: BarChart3,
+    items: [
+      { label: t.navFinance, href: '/finance', icon: Wallet },
+      { label: t.navOperations, href: '/operations', icon: Package },
+      { label: t.navProfits, href: '/profits', icon: TrendingUp },
+      { label: t.salesTitle, href: '/reports/sales', icon: ShoppingCart },
+      { label: t.ordersTitle, href: '/reports/orders', icon: Receipt },
+      { label: t.balancesTitle, href: '/reports/balances', icon: Wallet, layers: desk },
+      { label: t.reportProviders, href: '/reports/supply', icon: Truck, layers: ['branch'], grant: 'reports' },
+      { label: t.navProviderOps, href: '/provider-operations', icon: ListChecks, layers: ['branch'], grant: 'reports' },
+    ],
+  };
+  const posGroups: { title: string; items: NavEntry[] }[] = [
     {
       title: '',
       items: [
@@ -163,9 +185,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         { label: t.navNumbers, href: '/numbers', icon: Phone },
         { label: t.navPlans, href: '/packages', icon: Package },
         { label: t.navTasks, href: '/tasks', icon: ClipboardList },
-        { label: t.navFinance, href: '/finance', icon: Wallet },
-        { label: t.navProfits, href: '/profits', icon: TrendingUp },
-        { label: t.navReports, href: '/reports', icon: ClipboardList },
+        reportsGroup,
         { label: t.navAudit, href: '/audit', icon: ListChecks },
       ],
     },
@@ -184,9 +204,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       items: [
         { label: t.navNumbers, href: '/numbers', icon: Phone },
         { label: t.navUsers, href: '/users', icon: Users, layers: desk },
-        { label: t.navFinance, href: '/finance', icon: Wallet },
-        { label: t.navProfits, href: '/profits', icon: TrendingUp },
-        { label: t.navReports, href: '/reports', icon: ClipboardList },
+        reportsGroup,
       ],
     },
     {
@@ -195,7 +213,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         { label: t.navPlans, href: '/packages', icon: Package },
         { label: t.navCompanies, href: '/companies', icon: Layers, layers: ['branch'], grant: 'edit' },
         { label: t.providersTitle, href: '/providers', icon: Radio, layers: ['branch'], grant: 'edit' },
-        { label: t.navProviderOps, href: '/provider-operations', icon: ListChecks, layers: ['branch'], grant: 'reports' },
         { label: t.providerAccounts, href: '/provider-accounts', icon: Wallet, layers: ['branch'], grant: 'accounting' },
       ],
     },
@@ -204,18 +221,13 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       items: [
         { label: t.navAudit, href: '/audit', icon: ClipboardList },
         { label: t.navRoles, href: '/roles', icon: Shield, layers: ['branch'], owner: true },
+        { label: t.offersTitle, href: '/offers', icon: Megaphone, layers: ['branch'], grant: 'edit' },
         {
           key: 'settings',
           label: t.navSettings,
           icon: Settings,
           items: [{ label: t.navBranding, href: '/branding', icon: Palette, layers: ['branch'], owner: true }],
         },
-      ],
-    },
-    {
-      title: t.navNotReady,
-      items: [
-        { label: t.navOperations, href: '/operations', icon: Package },
       ],
     },
   ];
@@ -397,40 +409,18 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           </div>
           <div className="topbar-tools">
             <ShellSearch />
-            <div className="wallet-chip" ref={walletRoot}>
-                <button
-                  ref={walletTrigger}
-                  type="button"
-                  className="wallet-btn"
-                  aria-haspopup="dialog"
-                  aria-expanded={walletOpen}
-                  aria-label={t.walletMenu}
-                  onClick={() => { if (balance !== null) toggleWallet(); }}
-                >
-                  <Wallet {...glyph} />
-                  {shownBalance !== null && (
-                    <span className={shownBalance < 0 ? 'money neg' : shownBalance > 0 ? 'money pos' : 'money'} dir="ltr">
-                      {formatShekel(shownBalance)}
-                    </span>
-                  )}
-                </button>
-                {walletOpen && balance !== null && (
-                  <div className="wallet-pop" role="dialog" aria-label={t.walletMenu}>
-                    <p>
-                      <span>{t.balance}</span>
-                      <strong className={balance < 0 ? 'money neg' : balance > 0 ? 'money pos' : 'money'} dir="ltr">{formatShekel(balance)}</strong>
-                    </p>
-                    <p>
-                      <span>{t.ceiling}</span>
-                      <strong dir="ltr">{layer === 'branch' ? t.noCeiling : formatShekel(ceiling)}</strong>
-                    </p>
-                    <p>
-                      <span>{t.available}</span>
-                      <strong dir="ltr">{layer === 'branch' ? t.noCeiling : formatShekel(balance + ceiling)}</strong>
-                    </p>
-                  </div>
+            {/* «المحفظة» (spec 2026-11-09, 4): the balance chip opens the wallet page, where top-up will live. */}
+            <div className="wallet-chip">
+              <Link href="/wallet" className="wallet-btn" aria-label={t.walletPage}>
+                <Wallet {...glyph} />
+                {shownBalance !== null && (
+                  <span className={shownBalance < 0 ? 'money neg' : shownBalance > 0 ? 'money pos' : 'money'} dir="ltr">
+                    {formatShekel(shownBalance)}
+                  </span>
                 )}
-              </div>
+                <span className="wallet-word">{t.walletPage}</span>
+              </Link>
+            </div>
             <div className="notice-wrap" ref={noticeRoot}>
               <button
                 ref={noticeTrigger}
@@ -503,6 +493,10 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                   <Link href="/settings" role="menuitem" onClick={closeMenu}>
                     <Settings {...glyph} />
                     {t.accountSettings}
+                  </Link>
+                  <Link href="/wallet" role="menuitem" onClick={closeMenu}>
+                    <Wallet {...glyph} />
+                    {t.walletPage}
                   </Link>
                   <span className="shell-rule" />
                   <button type="button" className="danger" role="menuitem" onClick={logout}>

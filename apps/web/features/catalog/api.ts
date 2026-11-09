@@ -1,5 +1,5 @@
 import { request, segment } from '../../lib/http';
-import type { PackageRow, PackageSheet, ProviderRow, ProviderSettings, Shelf, SimRules } from '../../lib/api-types';
+import type { PackageAddon, PackageRow, PackageSheet, ProviderRow, ProviderSettings, Shelf, SimRules } from '../../lib/api-types';
 
 /** The catalog calls of the office API. Composed into `api` by lib/api.ts. */
 export const catalogApi = {
@@ -20,8 +20,13 @@ export const catalogApi = {
     request<{ ok: true }>('PATCH', `/office/providers/${segment(code)}/settings`, { action, mode }),
   setPackageMode: (code: string, body: Record<string, boolean | string>) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/mode`, body),
-  setPackageDetails: (code: string, body: { dataGb: number | null; smsCount: number | null; minutes: number | null; details: string }) =>
+  setPackageDetails: (code: string, body: { dataGb: number | null; smsCount: number | null; minutes: number | null; details: string; suspendAfterDays?: number; esimAvailable?: boolean }) =>
     request<{ ok: true }>('PATCH', `/office/packages/${segment(code)}/details`, body),
+  packageAddons: (code: string) => request<{ addons: PackageAddon[] }>('GET', `/office/packages/${segment(code)}/addons`),
+  addPackageAddon: (code: string, body: { name: string; price: number }) => request<{ addons: PackageAddon[] }>('POST', `/office/packages/${segment(code)}/addons`, body),
+  savePackageAddon: (code: string, id: string, body: Partial<Pick<PackageAddon, 'name' | 'price' | 'active' | 'position'>>) =>
+    request<{ addons: PackageAddon[] }>('PATCH', `/office/packages/${segment(code)}/addons/${segment(id)}`, body),
+  removePackageAddon: (code: string, id: string) => request<{ addons: PackageAddon[] }>('DELETE', `/office/packages/${segment(code)}/addons/${segment(id)}`),
   packageSheet: (code: string) => request<PackageSheet>('GET', `/office/packages/${segment(code)}/sheet`),
   setChain: (code: string, body: Partial<{
     branchCost: number;

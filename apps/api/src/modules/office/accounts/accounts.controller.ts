@@ -1,12 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseFilters, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
-import { SESSION_COOKIE_SECONDS } from '../../auth/sessions';
+import type { Request } from 'express';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { OfficeFailureFilter } from '../../shared/office-failure.filter';
 import { Activity, bodyField, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
-import { cookieBase, readCookie } from '../gate';
+import { readCookie } from '../gate';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { AccessBodyDto, CreateUserBodyDto, SetAccountPasswordBodyDto } from '../office.dto';
@@ -122,21 +121,15 @@ export class AccountsController {
   }
 
   @Post('users/:loginName/enter')
-  @ApiOperation({ summary: 'Impersonate / enter an account; sets `home` + `sid` cookies' })
+  @ApiOperation({ summary: 'Enter an account: answers its door and a one-time handoff code (`POST /office/handoff` on that door sets the cookies)' })
   @ApiParam({ name: 'loginName' })
   @ApiErrorResponse(401, 403, 404)
   @Activity('enter', 'account', param('loginName'))
-  async enter(
-    @Actor() actor: ActorShape, @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-    @Param('loginName') loginName: string,
-  ) {
-    const previous = readCookie(req, 'sid');
-    const result = await this.accountDesk.enter(actor, loginName, { userAgent: String(req.headers['user-agent'] ?? ''), ip: req.ip ?? '' });
-    if (result && typeof result === 'object' && 'sessionId' in result && typeof result.sessionId === 'string' && previous) {
-      res.cookie('home', previous, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
-      res.cookie('sid', result.sessionId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
-    }
-    return result;
+  enter(@Actor() actor: ActorShape, @Req() req: Request, @Param('loginName') loginName: string) {
+    return this.accountDesk.enter(actor, loginName, {
+      userAgent: String(req.headers['user-agent'] ?? ''),
+      ip: req.ip ?? '',
+      homeId: readCookie(req, 'sid'),
+    });
   }
 }

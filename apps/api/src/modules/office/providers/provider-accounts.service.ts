@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { fail } from '../../shared/office-failure';
 import { parseInput } from '../../shared/input';
 import { OfficeKernel } from '../kernel/office-kernel';
+import { matchOf, matchOverdue } from './match-simulator';
 import type { Actor } from '../kernel/types';
 import { providerBranchCost } from '../office-rules';
 import { csvOf } from '../reports/report-csv';
@@ -20,7 +21,8 @@ const EntryBody = z.object({
   amount: z.number().int().min(-MAX_AGOROT).max(MAX_AGOROT),
   note,
 });
-const CreditBody = z.object({ creditLimit: ceilingValue });
+const MatchingBody = z.object({ matchSource: z.enum(['api', 'statement']), matchEveryDays: z.number().int().min(1).max(90) });
+const CreditBody = z.object({ creditLimit: ceilingValue, alertFloor: z.number().int().min(-100_000_000).max(100_000_000).optional() });
 const FileBody = z.object({ fileName: z.string().min(1).max(200), content: z.string().min(1) });
 const column = z.number().int().min(0).max(200);
 const RunBody = FileBody.extend({ map: z.object({ msisdn: column, date: column, amount: column, reference: column.nullable().optional() }) });
@@ -63,7 +65,14 @@ export class ProviderAccountsService {
     return { providers, operations, entries, held };
   }
 
-  private summaryOf(provider: { id: string; code: string; name: string; creditLimit: number }, books: Awaited<ReturnType<ProviderAccountsService['books']>>) {
+  private summaryOf(provider: { id: string; code: string; name: string; creditLimit: number; matchSource?: string; matchEveryDays?: number; lastMatchedAt?: Date | null }, books: Awaited<ReturnType<ProviderAccountsService['books']>>) {
+    const matching = {
+      matchSource: provider.matchSource ?? 'statement',
+      matchEveryDays: provider.matchEveryDays ?? 7,
+      lastMatchedAt: provider.lastMatchedAt ?? null,
+    };
+    // Open differences (simulated matching, spec E): this provider's operations whose «charged» amount differs.
+    const openDifferences = books.operations.filter((row) => row.providerCode === provider.code && matchOf(row, matching).state === 'difference').length;
     const purchases = books.operations.filter((row) => row.providerCode === provider.code).reduce((sum, row) => sum + row.cost, 0);
     const own = books.entries.filter((row) => row.providerId === provider.id);
     const payments = own.filter((row) => row.kind === 'payment').reduce((sum, row) => sum + row.amount, 0);
@@ -78,9 +87,21 @@ export class ProviderAccountsService {
       settlements,
       balance,
       creditLimit: provider.creditLimit,
+      alertFloor: (provider as { alertFloor?: number }).alertFloor ?? 0,
       held,
       available: balance + provider.creditLimit - held,
+      matchSource: matching.matchSource,
+      matchEveryDays: matching.matchEveryDays,
+      lastMatchedAt: matching.lastMatchedAt?.toISOString() ?? null,
+      matchOverdue: matchOverdue(matching),
+      openDifferences,
     };
+  }
+
+  /** Every provider's summary with no viewer check: for the API's own health watch (ProviderHealthService). */
+  async summaries() {
+    const books = await this.books();
+    return books.providers.map((provider) => this.summaryOf(provider, books));
   }
 
   async list(actor: Actor) {
@@ -150,11 +171,33 @@ export class ProviderAccountsService {
 
   async setCredit(actor: Actor, code: string, body: unknown) {
     this.gate(actor, true);
-    const { creditLimit } = parseInput(CreditBody, body);
+    const { creditLimit, alertFloor } = parseInput(CreditBody, body);
     const provider = await this.kernel.prisma.provider.findUnique({ where: { code } });
     if (!provider) fail(404, 'NOT_FOUND');
-    await this.kernel.prisma.provider.update({ where: { code }, data: { creditLimit } });
+    await this.kernel.prisma.provider.update({ where: { code }, data: { creditLimit, ...(alertFloor !== undefined ? { alertFloor } : {}) } });
     return { ok: true };
+  }
+
+  /** The matching source and, for a statement provider, how often it must be matched (owner or accounting). */
+  async setMatching(actor: Actor, code: string, body: unknown) {
+    this.gate(actor, true);
+    const { matchSource, matchEveryDays } = parseInput(MatchingBody, body);
+    await this.providerByCode(code);
+    await this.kernel.prisma.provider.update({ where: { code }, data: { matchSource, matchEveryDays } });
+    return { ok: true };
+  }
+
+  /**
+   * A simulated statement match (spec E): marks every operation up to now as covered by a statement, as the real
+   * statement run will once providers send theirs. The uploaded-statement reconciliation stays as it is.
+   */
+  async simulateStatement(actor: Actor, code: string) {
+    this.gate(actor, true);
+    const provider = await this.providerByCode(code);
+    if (provider.matchSource !== 'statement') fail(400, 'INVALID');
+    const lastMatchedAt = new Date();
+    await this.kernel.prisma.provider.update({ where: { code }, data: { lastMatchedAt, matchOverdueNoticeAt: null } });
+    return { ok: true, lastMatchedAt: lastMatchedAt.toISOString() };
   }
 
   private async providerByCode(code: string) {

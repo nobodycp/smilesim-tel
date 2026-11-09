@@ -21,6 +21,9 @@ export function noticeTitle(t: Copy, row: NoticeRow): string {
     case 'announcement': return t.noticeAnnouncement;
     case 'transfer.out': return t.noticeTransferOut;
     case 'transfer.in': return t.noticeTransferIn;
+    case 'provider.problem': return t.noticeProviderProblem;
+    case 'provider.recovered': return t.noticeProviderRecovered;
+    case 'provider.match_overdue': return t.noticeMatchOverdue;
     default: return row.kind;
   }
 }
@@ -67,6 +70,17 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
     if (who) parts.push(`${t.noticeBy} ${who}`);
     return parts.join(' · ');
   }
+  if (row.kind === 'provider.match_overdue') {
+    if (p.name) parts.push(p.name);
+    parts.push(t.noticeMatchOverdueDetail.replace('{n}', String(p.matchEveryDays ?? 7)));
+    return parts.join(' · ');
+  }
+  if (row.kind === 'provider.problem' || row.kind === 'provider.recovered') {
+    if (p.name) parts.push(p.name);
+    if (row.kind === 'provider.problem' && p.reason === 'failures') parts.push(t.providerProblemFailures.replace('{n}', String(p.failures ?? 0)));
+    if (row.kind === 'provider.problem' && p.reason === 'balance') parts.push(`${t.providerAvailable} ${formatShekel(p.available ?? 0)}`);
+    return parts.join(' · ');
+  }
   return row.actorName;
 }
 
@@ -80,8 +94,9 @@ export function noticeAge(t: Copy, iso: string, now = Date.now()): string {
   return t.daysAgo.replace('{n}', String(Math.floor(hours / 24)));
 }
 
-export function noticeGroup(kind: string): 'tasks' | 'wallet' | 'announcements' {
+export function noticeGroup(kind: string): 'tasks' | 'wallet' | 'announcements' | 'providers' {
   if (kind.startsWith('task.')) return 'tasks';
+  if (kind.startsWith('provider.')) return 'providers';
   if (kind === 'announcement') return 'announcements';
   return 'wallet';
 }

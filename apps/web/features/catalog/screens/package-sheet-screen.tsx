@@ -20,11 +20,13 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { packageKeys, sharedKeys } from '../../../lib/query';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
+import { useOffice } from '../../../lib/office-session';
 import { lineTone, onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
+import { PackageAddons } from '../package-addons';
 import { PackageFacts } from '../../../components/package-facts';
 import { PackageDetailsForm } from '../package-details-form';
 
@@ -32,7 +34,7 @@ const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
 const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
 type ModeAction = (typeof actions)[number];
-type Tab = 'overview' | 'details' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
+type Tab = 'overview' | 'details' | 'addons' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
 type PriceKey =
   | 'branchCost'
@@ -101,6 +103,9 @@ export function PackageSheetScreen() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const allowed = useRequireLayer(BRANCH);
+  // The owner and staff with the edit grant change the extra operations; other branch staff read them.
+  const { me } = useOffice();
+  const canEditAddons = Boolean(me && (me.isBranchOwner || me.grants.includes('edit')));
   // Five reads, cached apart (ADR 0001). The sheet, its numbers and its custom prices belong to this package and are
   // asked again after an action here; the companies shelf and the accounts are shared with other screens and stay.
   const code = params.packageCode;
@@ -403,6 +408,7 @@ export function PackageSheetScreen() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: t.overviewTab },
     { key: 'details', label: t.detailsTab },
+    { key: 'addons', label: t.lineAddons },
     { key: 'run', label: t.packageActions },
     { key: 'prices', label: t.pricesTab },
     { key: 'renewals', label: t.renewalsTab },
@@ -488,6 +494,9 @@ export function PackageSheetScreen() {
               )}
               {tab === 'details' && (
                 <PackageDetailsForm key={sheet.code} sheet={sheet} run={run} busy={busy} onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }} />
+              )}
+              {tab === 'addons' && (
+                <PackageAddons code={sheet.code} canEdit={canEditAddons} setError={setError} setNote={setNote} />
               )}
               {tab === 'run' && (
                 <div className="pane-body">

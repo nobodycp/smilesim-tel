@@ -9,8 +9,10 @@ import { FEED_PAGE, NEWEST_FIRST, afterFeed, encodeFeedCursor, mergeFeed } from 
 import { visibleAccountIds } from '../office-rules';
 import { CeilingBody, DeductBody, FundBody } from '../wallet.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
+import { matchOf } from '../providers/match-simulator';
 import { ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../profit-ladder';
+import type { Account } from '../kernel/types';
 
 const FINANCE_CSV_LIMIT = 10_000;
 const PROFIT_REPORT_LIMIT = 50_000;
@@ -115,8 +117,16 @@ export class WalletsService {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
       ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),
     };
-    const where = {
-      userId: actor.id,
+    // Operations cover the viewer's whole tree: a sale debits only the point of sale's wallet, so the layers above
+    // have no operation entries of their own (spec 2026-11-08-overview-and-reports-nav, B). The audit scope stays
+    // the viewer's own wallet.
+    let owners: Prisma.WalletEntryWhereInput = { userId: actor.id };
+    if (scope === 'operations') {
+      const accounts = await this.kernel.accounts();
+      owners = actor.layer === 'branch' ? {} : { userId: { in: [...visibleAccountIds(actor.id, actor.layer, accounts)] } };
+    }
+    const where: Prisma.WalletEntryWhereInput = {
+      ...owners,
       kind: { in: kind ? [kind] : allowed },
       ...(query.direction === 'in' ? { amount: { gt: 0 } } : {}),
       ...(query.direction === 'out' ? { amount: { lt: 0 } } : {}),
@@ -125,15 +135,20 @@ export class WalletsService {
     const [read, total] = await Promise.all([
       this.kernel.prisma.walletEntry.findMany({
         where: { ...where, AND: afterFeed(feedPosition(query.cursor)) },
-        include: { actor: true },
+        include: { actor: true, user: true },
         orderBy: [...NEWEST_FIRST],
         take: FEED_PAGE + 1,
       }),
       this.kernel.prisma.walletEntry.count({ where }),
     ]);
     const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
+    const margins = scope === 'operations' ? await this.marginsFor(actor, rows) : new Map<string, number | null>();
     return {
       entries: rows.map((row) => ({
+        /** The account whose wallet the operation moved, and what the viewer earned on it (null when nothing). */
+        loginName: row.user?.loginName ?? actor.loginName,
+        layer: row.user?.layer ?? actor.layer,
+        margin: margins.get(row.id) ?? null,
         id: row.id,
         at: row.createdAt.toISOString(),
         kind: row.kind,
@@ -189,7 +204,7 @@ export class WalletsService {
     });
   }
 
-  async providerOperations(actor: Actor, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string } = {}) {
+  async providerOperations(actor: Actor, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string; match?: string } = {}) {
     if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, 'REPORTS_BRANCH_ONLY');
     const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
@@ -201,11 +216,21 @@ export class WalletsService {
       this.kernel.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
     ]);
     const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
-    const ranged = chosen.filter((row) => {
+    // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
+    const providerByCode = new Map(providers.map((item) => [item.code, item]));
+    const matchFor = (row: { id: string; at: Date; cost: number; providerCode: string }) => {
+      const provider = providerByCode.get(row.providerCode);
+      return matchOf(row, { matchSource: provider?.matchSource ?? 'statement', lastMatchedAt: provider?.lastMatchedAt ?? null });
+    };
+    const dated = chosen.filter((row) => {
       if (from && !Number.isNaN(from.getTime()) && row.at < from) return false;
       if (to && !Number.isNaN(to.getTime()) && row.at > to) return false;
       return true;
     });
+    const matches = new Map(dated.map((row) => [row.id, matchFor(row)]));
+    const ranged = query.match === 'matched' || query.match === 'difference' || query.match === 'pending'
+      ? dated.filter((row) => matches.get(row.id)?.state === query.match)
+      : dated;
     const now = new Date();
     const monthCost = chosen
       .filter((row) => row.at.getFullYear() === now.getFullYear() && row.at.getMonth() === now.getMonth())
@@ -228,17 +253,29 @@ export class WalletsService {
         packageName: row.packageName,
         cost: row.cost,
         esimPrice: row.esimPrice,
+        matchSource: providerByCode.get(row.providerCode)?.matchSource ?? 'statement',
+        matchState: matches.get(row.id)?.state ?? 'pending',
+        providerAmount: matches.get(row.id)?.providerAmount ?? null,
+        difference: matches.get(row.id)?.difference ?? null,
       })),
       nextCursor: window.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.at, id: last.id }) : null,
       total: ranged.length,
-      stats: { count: ranged.length, cost: ranged.reduce((sum, row) => sum + row.cost, 0), monthCost },
-      providers: providers.map((item) => ({ code: item.code, name: item.name })),
+      stats: {
+        count: ranged.length,
+        cost: ranged.reduce((sum, row) => sum + row.cost, 0),
+        monthCost,
+        matched: dated.filter((row) => matches.get(row.id)?.state === 'matched').length,
+        differences: dated.filter((row) => matches.get(row.id)?.state === 'difference').length,
+        pending: dated.filter((row) => matches.get(row.id)?.state === 'pending').length,
+        differenceAmount: dated.reduce((sum, row) => sum + (matches.get(row.id)?.difference ?? 0), 0),
+      },
+      providers: providers.map((item) => ({ code: item.code, name: item.name, matchSource: item.matchSource })),
     };
   }
 
   /** The ledger's filter: the entries of the visible accounts (every entry for the branch), narrowed by the query. */
   /** Public for the reports, which read the same entries. */
-  async financeWhere(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string }): Promise<Prisma.WalletEntryWhereInput> {
+  async financeWhere(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string }): Promise<Prisma.WalletEntryWhereInput> {
     const accounts = await this.kernel.accounts();
     const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
     const from = query.from ? new Date(query.from) : null;
@@ -251,8 +288,10 @@ export class WalletsService {
     const digits = needle.replace(/\s/g, '');
     return {
       ...(actor.layer === 'branch' ? {} : { userId: { in: visible } }),
-      // Money movements, and the holds and releases of open tasks, which move no money but change what is spendable.
-      AND: [{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }],
+      // Every entry of the viewer and the accounts below it (owner 2026-11-09: «شامله كل العمليات للاب والابناء»),
+      // operations that move no money included. `scope=money` keeps the money movements, and the holds and releases
+      // of open tasks, which move no money but change what is spendable.
+      ...(query.scope === 'money' ? { AND: [{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }] } : {}),
       ...(query.kind ? { kind: query.kind } : {}),
       ...(query.layer ? { user: { layer: query.layer } } : {}),
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
@@ -309,8 +348,8 @@ export class WalletsService {
    * takes back its share of the line's last sale before it. A branch account (the owner or staff) sees the branch's
    * margin. Entries that are neither, or not in its chain, get none.
    */
-  async marginsFor(
-    actor: Actor,
+  /** Each sale's and refund's ladder (the chain and what each paid), keyed by entry id; other entries are left out. */
+  async laddersFor(
     rows: { id: string; userId: string; kind: string; lineId: string | null; packagePrice: number | null; amount: number; ladder: unknown; createdAt?: Date }[],
   ) {
     const sales = rows.filter((row) => SALE_KINDS[row.kind] && row.lineId && row.amount < 0);
@@ -332,6 +371,14 @@ export class WalletsService {
         if (ladder) ladders.set(row.id, ladder);
       }
     }
+    return ladders;
+  }
+
+  async marginsFor(
+    actor: Actor,
+    rows: { id: string; userId: string; kind: string; lineId: string | null; packagePrice: number | null; amount: number; ladder: unknown; createdAt?: Date }[],
+  ) {
+    const ladders = await this.laddersFor(rows);
     const margins = new Map<string, number | null>();
     for (const [id, ladder] of ladders) {
       const viewer = actor.layer === 'branch' ? ladder.chain[ladder.chain.length - 1] : actor.id;
@@ -406,7 +453,7 @@ export class WalletsService {
   }
 
   /** The ledger with the page's filters as a CSV, newest first, at most 10,000 rows. */
-  async financeCsv(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
+  async financeCsv(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
     const rows = await this.kernel.prisma.walletEntry.findMany({
       where: await this.financeWhere(actor, query),
       include: { user: true, actor: true },
@@ -429,7 +476,7 @@ export class WalletsService {
     })));
   }
 
-  async finance(actor: Actor, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
+  async finance(actor: Actor, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
     const position = feedPosition(query.cursor);
     const where = await this.financeWhere(actor, query);
     const [rows, total] = await Promise.all([
@@ -444,10 +491,18 @@ export class WalletsService {
     ]);
     const page = rows.slice(0, FEED_PAGE);
     const last = page[page.length - 1];
+    const ladders = await this.laddersFor(page);
     const margins = await this.marginsFor(actor, page);
+    const accounts = actor.layer === 'branch' ? await this.kernel.accounts() : [];
+    const byId = new Map(accounts.map((account) => [account.id, account]));
     return {
       total,
       entries: page.map((row) => ({
+        /**
+         * For the branch: what every account in the sale's chain earned on it, branch first. Null for other viewers
+         * and for entries that are not a sale or a refund.
+         */
+        shares: actor.layer === 'branch' && ladders.has(row.id) ? sharesOf(ladders.get(row.id) as Ladder, byId) : null,
         /** What the signed-in account earned on this sale; null when it is not a sale in its chain. */
         margin: margins.get(row.id) ?? null,
         id: row.id,
@@ -472,4 +527,13 @@ export class WalletsService {
       nextCursor: rows.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.createdAt, id: last.id }) : null,
     };
   }
+}
+
+/** Each account of a ladder, from the branch down, with its layer and what it earned on that entry. */
+function sharesOf(ladder: Ladder, byId: Map<string, Account>) {
+  return [...ladder.chain].reverse().map((id) => ({
+    loginName: byId.get(id)?.loginName ?? id,
+    layer: byId.get(id)?.layer ?? '',
+    margin: marginOf(ladder, id) ?? 0,
+  }));
 }

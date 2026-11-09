@@ -4,7 +4,7 @@ import type { Layer } from '../auth/decide-login';
 import { hashOnce } from './test-hash';
 import { OfficeFailure } from '../shared/office-failure';
 import { OfficeFacade } from './testing/office-facade';
-import { EXPIRING_DAYS, afterFeed, decodeFeedCursor, encodeFeedCursor, expiringWhere, linesWhere, mergeFeed } from './office-paging';
+import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, afterFeed, decodeFeedCursor, encodeFeedCursor, expiringWhere, isSuspended, linesWhere, mergeFeed, suspendedWhere } from './office-paging';
 
 // A small in-memory stand-in for the Prisma client: it reads the `where`, `orderBy`, `cursor`,
 // `skip` and `take` the service sends, so the lists are proven to page in the query and not in memory.
@@ -187,6 +187,15 @@ describe('numbers list paging', () => {
     expect(both.calls[0].where).toMatchObject({ status: 'active', package: { code: 'pk-a' } });
   });
 
+  it('narrows to one account\'s numbers, and to none for an account outside the tree', async () => {
+    const own = await walk({ account: 'pos1' });
+    expect(own.pages.flat()).toHaveLength(70);
+    const branch = await walk({ account: 'admin' });
+    expect(branch.pages.flat()).toHaveLength(70);
+    const nobody = await walk({ account: 'nobody' });
+    expect(nobody.pages.flat()).toHaveLength(0);
+  });
+
   it('matches a number typed with spaces', async () => {
     const { pages } = await walk({ q: ' 05500000 6 ' });
     expect(pages.flat().sort()).toEqual(Array.from({ length: 10 }, (_, i) => `ln-${pad(60 + i)}`));
@@ -218,6 +227,26 @@ describe('numbers list paging', () => {
     const where = linesWhere(['p'], { status: 'expiring' });
     expect(where).toMatchObject({ posId: { in: ['p'] }, status: 'active' });
     expect(where.endsAt).toBeDefined();
+  });
+
+  it('reads «معلّق» as a line whose subscription ended its package\'s period ago, 90 days by default', () => {
+    const now = new Date('2026-11-08T12:00:00.000Z');
+    const day = 86_400_000;
+    expect(SUSPEND_AFTER_DAYS).toBe(90);
+    expect(isSuspended({ status: 'active', endsAt: new Date(now.getTime() - 90 * day) }, 90, now)).toBe(true);
+    expect(isSuspended({ status: 'active', endsAt: new Date(now.getTime() - 89 * day) }, 90, now)).toBe(false);
+    expect(isSuspended({ status: 'active', endsAt: new Date(now.getTime() - 31 * day) }, 30, now)).toBe(true);
+    // A disconnected or frozen line keeps its own status.
+    expect(isSuspended({ status: 'disconnected', endsAt: new Date(now.getTime() - 400 * day) }, 90, now)).toBe(false);
+    expect(isSuspended({ status: 'frozen', endsAt: new Date(now.getTime() - 400 * day) }, 90, now)).toBe(false);
+    expect(suspendedWhere([90, 30, 90], now)).toEqual({
+      status: { in: ['active', 'suspended'] },
+      OR: [
+        { package: { suspendAfterDays: 90 }, endsAt: { lte: new Date(now.getTime() - 90 * day) } },
+        { package: { suspendAfterDays: 30 }, endsAt: { lte: new Date(now.getTime() - 30 * day) } },
+      ],
+    });
+    expect(linesWhere(['p'], { status: 'suspended' }, [60])).toMatchObject({ posId: { in: ['p'] }, status: { in: ['active', 'suspended'] } });
   });
 
   it('finds a line by its serial', async () => {
@@ -412,7 +441,8 @@ describe('task reading follows the number', () => {
     id,
     posId,
     action: 'switch',
-    status: 'pending',
+    // Open tasks are in progress from the start (spec 2026-11-09, 2); none is taken yet.
+    status: 'working',
     posDelta: 0,
     packageId: 'pa',
     msisdn: '0550000001',

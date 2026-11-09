@@ -21,8 +21,11 @@ test('the account menu opens on its first item and the arrow keys move between i
   await page.goto(`${admin}/`);
   await page.getByRole('button', { name: 'قائمة الحساب' }).click();
   const settings = page.getByRole('menuitem', { name: 'الملف الشخصي' });
+  const wallet = page.getByRole('menuitem', { name: 'المحفظة' });
   const logout = page.getByRole('menuitem', { name: 'تسجيل الخروج' });
   await expect(settings).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(wallet).toBeFocused();
   await page.keyboard.press('ArrowDown');
   await expect(logout).toBeFocused();
   await page.keyboard.press('ArrowDown');
@@ -31,15 +34,26 @@ test('the account menu opens on its first item and the arrow keys move between i
   await expect(logout).toBeFocused();
 });
 
-test('a press outside the wallet pop closes it, and Escape on the notices gives the focus back', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /home': () => home });
+// «المحفظة» (spec 2026-11-09, 4): the balance chip is a link to the wallet page, also in the account menu.
+test('the wallet chip opens the wallet page, and Escape on the notices gives the focus back', async ({ page }) => {
+  await serveOffice(page, 'branch', {
+    'GET /home': () => home,
+    'GET /ledger/audit': () => ({ body: { entries: [{ id: 'e1', at: '2026-11-08T10:00:00.000Z', kind: 'fund', amount: 5000, balanceBefore: 0, balanceAfter: 5000, note: 'إيداع', packageName: null, msisdn: null, actorLogin: 'admin', loginName: 'admin', layer: 'branch', margin: null }], nextCursor: null, total: 1 } }),
+  });
   const session = page.waitForResponse((response) => response.url().endsWith('/office/me'));
   await page.goto(`${admin}/`);
   await session;
-  await page.getByRole('button', { name: 'تفاصيل المحفظة' }).click();
-  await expect(page.getByRole('dialog', { name: 'تفاصيل المحفظة' })).toBeVisible();
-  await page.locator('.canvas').click({ position: { x: 5, y: 5 } });
-  await expect(page.getByRole('dialog', { name: 'تفاصيل المحفظة' })).toHaveCount(0);
+  const chip = page.getByRole('link', { name: 'المحفظة' }).first();
+  await expect(chip).toHaveAttribute('href', '/wallet');
+  await chip.click();
+  await expect(page).toHaveURL(/\/wallet$/);
+  await expect(page.getByRole('heading', { name: 'المحفظة', level: 1 })).toBeVisible();
+  await expect(page.locator('table.data tbody tr')).toHaveCount(1);
+  await page.getByRole('button', { name: 'شحن الرصيد' }).click();
+  await expect(page.getByText('طلبات الشحن قريباً', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'قائمة الحساب' }).click();
+  await expect(page.getByRole('menuitem', { name: 'المحفظة' })).toHaveAttribute('href', '/wallet');
+  await page.keyboard.press('Escape');
   const bell = page.getByRole('button', { name: 'الإشعارات' });
   await bell.click();
   await expect(page.locator('.notice-panel')).toBeVisible();

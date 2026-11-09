@@ -315,7 +315,7 @@ export class OfficeFacade {
     return this.walletDesk.providerOperations(await this.actor(gate), query);
   }
 
-  async finance(gate: Gate, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string } = {}) {
+  async finance(gate: Gate, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
     return this.walletDesk.finance(await this.actor(gate), query);
   }
 
@@ -383,7 +383,7 @@ export class OfficeFacade {
   }
 
   // Facades (Phase 3): specs still call these; the routes live in lines/lines.controller.ts.
-  async lines(gate: Gate, query: LineFilter & { cursor?: string } = {}) {
+  async lines(gate: Gate, query: LineFilter & { cursor?: string; account?: string } = {}) {
     return this.lineDesk.list(await this.actor(gate), query);
   }
 
@@ -395,7 +395,11 @@ export class OfficeFacade {
     return this.lineDesk.activate(await this.actor(gate), body);
   }
 
-  async operate(gate: Gate, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim'>, body: { outcome?: unknown }) {
+  async requestAddon(gate: Gate, lineId: string, body: Record<string, unknown>) {
+    return this.lineDesk.requestAddon(await this.actor(gate), lineId, body);
+  }
+
+  async operate(gate: Gate, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim' | 'addon'>, body: { outcome?: unknown }) {
     return this.lineDesk.operate(await this.actor(gate), lineId, action, body);
   }
 

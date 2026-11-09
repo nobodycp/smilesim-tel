@@ -15,11 +15,11 @@ export const walletsApi = {
   profitExportHref: (query: { from?: string; to?: string; q?: string }) => `/api/office/finance/profits/export${queryString(query)}`,
   financeSummary: () => request<FinanceSummary>('GET', '/office/finance/summary'),
   /** A link, not a call: the browser downloads the CSV with the session cookie. */
-  financeExportHref: (query: { kind?: string; layer?: string; q?: string; from?: string; to?: string }) =>
+  financeExportHref: (query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string }) =>
     `/api/office/finance/export${queryString(query)}`,
-  officeFinance: (query?: { kind?: string; layer?: string; q?: string; from?: string; to?: string; cursor?: string | null }) =>
+  officeFinance: (query?: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string; cursor?: string | null }) =>
     request<{ entries: FinanceRow[]; nextCursor: string | null; total: number }>('GET', `/office/finance${queryString(query)}`),
-  officeProviderOperations: (query?: { kind?: string; provider?: string; q?: string; from?: string; to?: string; cursor?: string | null }) =>
+  officeProviderOperations: (query?: { kind?: string; provider?: string; q?: string; from?: string; to?: string; match?: string; cursor?: string | null }) =>
     request<{ entries: ProviderOpRow[]; nextCursor: string | null; total: number; stats: ProviderOpStats; providers: { code: string; name: string }[] }>('GET', `/office/provider-operations${queryString(query)}`),
   officeLedger: (scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string | null }) =>
     request<{ entries: LedgerRow[]; nextCursor: string | null; total: number }>('GET', `/office/ledger/${segment(scope)}${queryString(query)}`),

@@ -64,7 +64,8 @@ export class TasksService {
         include: {
           submitter: true,
           assignee: true,
-          notes: { orderBy: { createdAt: 'desc' }, take: 1, select: { body: true } },
+          // The list's last note skips internal notes for accounts outside the branch.
+          notes: { where: actor.layer === 'branch' ? {} : { internal: false }, orderBy: { createdAt: 'desc' }, take: 1, select: { body: true } },
         },
         orderBy: [...NEWEST_FIRST],
         take: TASKS_PAGE + 1,
@@ -95,8 +96,8 @@ export class TasksService {
           resultNote: row.status === 'pending' && !handler ? null : row.resultNote,
           lastNote: row.notes[0]?.body ?? null,
           log: handler ? row.log : '',
-          canTake: handler && row.status === 'pending',
-          canWork: handler && row.assigneeId === actor.id && row.status === 'working',
+          canTake: handler && row.status === 'working' && !row.assigneeId,
+          canWork: handler && row.status === 'working',
           canCancel: row.submitterId === actor.id && open,
         };
       }),
@@ -112,7 +113,7 @@ export class TasksService {
       include: {
         submitter: true,
         assignee: true,
-        notes: { include: { author: true }, orderBy: { createdAt: 'asc' } },
+        notes: { where: actor.layer === 'branch' ? {} : { internal: false }, include: { author: true }, orderBy: { createdAt: 'asc' } },
         line: { include: { package: { include: { company: true, provider: true } } } },
       },
     });
@@ -129,6 +130,8 @@ export class TasksService {
     const events: {
       id: string;
       kind: 'system' | 'note' | 'result';
+      /** An internal note: the branch only. */
+      internal?: boolean;
       body: string;
       authorName: string | null;
       at: string;
@@ -153,6 +156,7 @@ export class TasksService {
       events.push({
         id: note.id,
         kind: 'note',
+        ...(note.internal ? { internal: true } : {}),
         body: note.body,
         authorName: note.author.nickname || note.author.loginName,
         at: note.createdAt.toISOString(),
@@ -193,25 +197,29 @@ export class TasksService {
         log: handler ? row.log : '',
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
-        canTake: handler && row.status === 'pending',
-        canWork: handler && row.assigneeId === actor.id && row.status === 'working',
+        canTake: handler && row.status === 'working' && !row.assigneeId,
+        canWork: handler && row.status === 'working',
         canNote: open,
+        canNoteInternal: open && actor.layer === 'branch',
         canCancel: row.submitterId === actor.id && open,
       },
       events,
     };
   }
 
-  async addNote(actor: Actor, id: string, body: { text?: unknown }) {
+  async addNote(actor: Actor, id: string, body: { text?: unknown; internal?: unknown }) {
     const text = typeof body.text === 'string' ? body.text.trim() : '';
     if (!text || text.length > 2000) fail(400, 'INVALID');
+    // An internal note is written and read by the branch only (spec 2026-11-09, 2).
+    const internal = body.internal === true;
+    if (internal && actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const current = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
     if (!current) fail(404, 'NOT_FOUND');
     if (!taskReaders(current, await this.kernel.accounts()).has(actor.id)) fail(403, 'FORBIDDEN');
     if (current.status !== 'pending' && current.status !== 'working') fail(400, 'INVALID');
     const written = await this.kernel.runTx(async (tx) => {
-      await tx.officeTaskNote.create({ data: { taskId: id, authorId: actor.id, body: text } });
-      return this.taskNotice(tx, 'note', current, actor, { authorName: actor.nickname, excerpt: excerpt(text) });
+      await tx.officeTaskNote.create({ data: { taskId: id, authorId: actor.id, body: text, internal } });
+      return this.taskNotice(tx, 'note', current, actor, { authorName: actor.nickname, excerpt: excerpt(text) }, internal);
     });
     await this.kernel.publishQuietly(written);
     return { ok: true };
@@ -221,11 +229,12 @@ export class TasksService {
     assertBranch(actor);
     if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
     const current = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
-    if (!current || current.status !== 'pending') fail(400, 'INVALID');
+    // Taking is optional now (spec 2026-11-09, 2): it names who handles the open task.
+    if (!current || current.status !== 'working' || current.assigneeId) fail(400, 'INVALID');
     const written = await this.kernel.runTx(async (tx) => {
       const updated = await tx.officeTask.updateMany({
-        where: { id, status: 'pending' },
-        data: { status: 'working', assigneeId: actor.id, log: this.noteLog(current.log, `أخذها ${actor.nickname}`) },
+        where: { id, status: 'working', assigneeId: null },
+        data: { assigneeId: actor.id, log: this.noteLog(current.log, `أخذها ${actor.nickname}`) },
       });
       if (updated.count !== 1) fail(400, 'INVALID');
       return this.taskNotice(tx, 'taken', { ...current, assigneeId: actor.id }, actor, { handlerName: actor.nickname });
@@ -242,7 +251,7 @@ export class TasksService {
     const written = await this.kernel.runTx(async (tx) => {
       const updated = await tx.officeTask.updateMany({
         where: { id, status: 'working', assigneeId: actor.id },
-        data: { status: 'pending', assigneeId: null, log: this.noteLog(current.log, `أرجعها ${actor.nickname}`) },
+        data: { assigneeId: null, log: this.noteLog(current.log, `أرجعها ${actor.nickname}`) },
       });
       if (updated.count !== 1) fail(400, 'INVALID');
       return this.taskNotice(tx, 'released', { ...current, assigneeId: null }, actor);
@@ -257,11 +266,11 @@ export class TasksService {
     const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
     if (!reason) fail(400, 'INVALID');
     const task = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
-    if (!task || task.status !== 'working' || task.assigneeId !== actor.id) fail(400, 'INVALID');
+    if (!task || task.status !== 'working') fail(400, 'INVALID');
     const written = await this.kernel.runTx(async (tx) => {
       const updated = await tx.officeTask.updateMany({
-        where: { id, status: 'working', assigneeId: actor.id },
-        data: { status: 'cancelled', resultNote: reason },
+        where: { id, status: 'working' },
+        data: { status: 'cancelled', resultNote: reason, assigneeId: actor.id },
       });
       if (updated.count !== 1) fail(400, 'INVALID');
       await this.kernel.release(tx, task.posId, task.held ?? 0, actor.operatorId, reason);
@@ -310,7 +319,8 @@ export class TasksService {
       const created = await tx.officeTask.create({
         data: {
           action: input.action,
-          status: 'pending',
+          // No «بانتظار الاستلام» (spec 2026-11-09, 2): a task is in progress from the moment it opens.
+          status: 'working',
           posId: input.posId,
           packageId: input.packageId,
           lineId: input.lineId,
@@ -355,9 +365,14 @@ export class TasksService {
     task: { id: string; action: string; msisdn: string | null; submitterId: string; posId: string; assigneeId: string | null },
     actor: Actor,
     extra: Partial<TaskNoticePayload> = {},
+    branchOnly = false,
   ): Promise<WrittenNotice[]> {
     const handlers = await this.handlerIds();
-    const audience = taskAudience(event, task, handlers, { id: actor.id, handler: canHandleTasks(actor) });
+    let audience = taskAudience(event, task, handlers, { id: actor.id, handler: canHandleTasks(actor) });
+    if (branchOnly) {
+      const branch = new Set((await this.kernel.accounts()).filter((account) => account.layer === 'branch').map((account) => account.id));
+      audience = audience.filter((id) => branch.has(id));
+    }
     const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, ...extra };
     return this.kernel.notice.write(tx, audience, actor, { kind: `task.${event}`, payload });
   }

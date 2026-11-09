@@ -310,6 +310,14 @@ describe('provider action mode defaults', () => {
     expect(esimPriceOf({ pkg: { esimPrice: 0 }, provider: { esimPrice: 600 }, company: { esimPrice: 400 } })).toEqual({ price: 0, source: 'package' });
   });
 
+  it('offers eSIM only when both the company and the package allow it', () => {
+    expect(simRulesOf({ esim: true }, { esimAvailable: false }).esim).toBe(false);
+    expect(simRulesOf({ esim: false }, { esimAvailable: true }).esim).toBe(false);
+    expect(simRulesOf({ esim: true }, { esimAvailable: true }).esim).toBe(true);
+    expect(simRulesOf({ esim: true }).esim).toBe(true);
+    expect(simRulesOf(null, { esimAvailable: false }).esim).toBe(false);
+  });
+
   it('checks a SIM against its company rules', () => {
     const open = simRulesOf(null);
     expect(open).toEqual({ length: null, prefix: '', esim: true });

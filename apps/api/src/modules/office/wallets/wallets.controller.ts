@@ -85,8 +85,10 @@ export class WalletsController {
     @Query('q') q?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('match') match?: string,
   ) {
     return this.walletDesk.providerOperations(actor, {
+      match: text(match),
       cursor: text(cursor),
       kind: text(kind),
       provider: text(provider),
@@ -110,6 +112,7 @@ export class WalletsController {
   @ApiQuery({ name: 'q', required: false })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'scope', required: false })
   @ApiErrorResponse(401, 403)
   async financeExport(
     @Res({ passthrough: true }) res: Response,
@@ -119,8 +122,9 @@ export class WalletsController {
     @Query('q') q?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('scope') scope?: string,
   ) {
-    const csv = await this.walletDesk.financeCsv(actor, { kind: text(kind), layer: text(layer), q: text(q), from: text(from), to: text(to) });
+    const csv = await this.walletDesk.financeCsv(actor, { kind: text(kind), layer: text(layer), q: text(q), from: text(from), to: text(to), scope: text(scope) });
     // Set only once the file exists: a refusal before it still answers as JSON.
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="finance.csv"');
@@ -164,6 +168,7 @@ export class WalletsController {
   @ApiQuery({ name: 'q', required: false })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
+  @ApiQuery({ name: 'scope', required: false, description: '`money` keeps the money movements; every entry otherwise' })
   @ApiErrorResponse(401, 403)
   finance(
     @Actor() actor: ActorShape,
@@ -173,6 +178,7 @@ export class WalletsController {
     @Query('q') q?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('scope') scope?: string,
   ) {
     return this.walletDesk.finance(actor, {
       cursor: text(cursor),
@@ -181,6 +187,7 @@ export class WalletsController {
       q: text(q),
       from: text(from),
       to: text(to),
+      scope: text(scope),
     });
   }
 

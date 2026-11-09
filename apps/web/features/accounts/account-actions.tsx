@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Dialog } from '../../components/dialog';
@@ -12,12 +13,13 @@ import { parseShekel, shekelField } from '../../lib/money';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
 import { sharedKeys } from '../../lib/query';
+import { doorUrl } from '../../lib/doors';
 import { reloadAt } from '../../lib/reload-at';
 import { useAction } from '../../lib/use-action';
 import { useApiQuery } from '../../lib/use-api-query';
-import { AccountSessionsDialog } from '../auth/session-rules';
+import { UserSettingsDialog } from './user-settings';
 
-export type AccountOp = 'fund' | 'deduct' | 'ceiling' | 'password' | 'freeze' | 'enter' | 'delete' | 'sessions';
+export type AccountOp = 'fund' | 'deduct' | 'ceiling' | 'password' | 'freeze' | 'enter' | 'delete' | 'settings';
 type FundReason = 'deposit' | 'correction' | 'settlement';
 type DeductReason = 'return' | 'correction' | 'settlement';
 
@@ -41,6 +43,7 @@ export function useAccountActions({
 }) {
   const { t, apiText } = usePrefs();
   const { me } = useOffice();
+  const router = useRouter();
   const [op, setOp] = useState<{ row: UserRow; kind: AccountOp } | null>(null);
   const [amount, setAmount] = useState('');
   const [fundNote, setFundNote] = useState('');
@@ -103,11 +106,25 @@ export function useAccountActions({
         onClick: () => choose(row, 'freeze'),
       });
     }
-    // Session rules are the branch owner's, for any account including its own.
-    if (isBranch && me?.isBranchOwner && !me.impersonating) items.push({ key: 'sessions', label: t.sessions, icon: 'key', onClick: () => choose(row, 'sessions') });
+    // «إعدادات المستخدم» (email, mobile, two-step, password, sessions) is the branch owner's, for any account.
+    if (isBranch && me?.isBranchOwner && !me.impersonating) items.push({ key: 'settings', label: t.userSettings, icon: 'key', onClick: () => choose(row, 'settings') });
     if (row.canEnter) items.push({ key: 'enter', label: t.enterAccount, icon: 'enter', onClick: () => choose(row, 'enter') });
     if (row.canDelete) items.push({ key: 'delete', label: t.deleteAccount, icon: 'trash', danger: true, onClick: () => choose(row, 'delete') });
     return items;
+  }
+
+  /**
+   * The same actions split in two menus (spec 2026-11-08-overview-and-reports-nav, H), on the users list and on the
+   * user page: «المحفظة» holds fund, deduct, ceiling and the statement; ⋯ holds the rest.
+   */
+  function groupedFor(row: UserRow) {
+    const all = actionsFor(row);
+    const walletKeys = new Set(['fund', 'deduct', 'ceiling']);
+    const wallet: RowAction[] = all.filter((item) => walletKeys.has(item.key));
+    if (row.layer !== 'branch' || row.self) {
+      wallet.push({ label: t.statement, icon: 'receipt', onClick: () => router.push(`/finance?q=${encodeURIComponent(row.loginName)}`) });
+    }
+    return { wallet, more: all.filter((item) => !walletKeys.has(item.key)) };
   }
 
   // Every account operation closes its dialog when it succeeds.
@@ -148,15 +165,15 @@ export function useAccountActions({
   const active = op?.row;
   const dialogs: ReactNode = (
     <>
-      {active && op?.kind === 'sessions' ? (
-        <AccountSessionsDialog
+      {active && op?.kind === 'settings' ? (
+        <UserSettingsDialog
           loginName={active.loginName}
           name={active.nickname}
           onClose={() => setOp(null)}
           onSaved={(text) => { setOp(null); setError(''); setNote(text); }}
         />
       ) : null}
-      {active && op && op.kind !== 'sessions' ? (
+      {active && op && op.kind !== 'settings' ? (
         <Dialog
           open
           size={op.kind === 'fund' || op.kind === 'deduct' || op.kind === 'ceiling' || op.kind === 'password' ? 'form' : 'confirm'}
@@ -176,7 +193,7 @@ export function useAccountActions({
               {op.kind === 'password' ? <Button type="button" disabled={busy} onClick={() => run(() => api.setUserPassword(active.loginName, password))}>{t.save}</Button> : null}
               {op.kind === 'freeze' ? <Button type="button" disabled={busy} onClick={() => run(() => (active.frozen ? api.restoreUser(active.loginName) : api.freezeUser(active.loginName)))}>{active.frozen ? t.restoreAccount : t.freezeAccount}</Button> : null}
               {op.kind === 'enter' ? (
-                <Button type="button" disabled={busy} onClick={() => send(() => api.enterUser(active.loginName), { then: () => reloadAt('/numbers'), reload: false })}>
+                <Button type="button" disabled={busy} onClick={() => send(() => api.enterUser(active.loginName), { then: (entered) => reloadAt(doorUrl(entered.door, `/enter#${entered.code}`)), reload: false })}>
                   {t.enterAccount}
                 </Button>
               ) : null}
@@ -239,5 +256,5 @@ export function useAccountActions({
     </>
   );
 
-  return { actionsFor, dialogs, busy };
+  return { actionsFor, groupedFor, dialogs, busy };
 }

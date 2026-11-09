@@ -45,6 +45,8 @@ export const ERROR_MESSAGES = {
   SIM_PREFIX: 'رقم الشريحة لا يبدأ بمقدّمة الشركة',
   ESIM_UNSUPPORTED: 'الشركة لا تدعم eSIM',
   QR_INVALID: 'صورة رمز QR غير صالحة',
+  IMAGE_TOO_LARGE: 'الصورة أكبر من المسموح (700 كيلوبايت)',
+  ESIM_PACKAGE_OFF: 'الرزمة غير متاحة كـ eSIM',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;
