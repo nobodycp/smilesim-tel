@@ -100,7 +100,7 @@ export function CompanyScreen() {
   const packageCards = (company?.providers ?? []).flatMap((provider) => provider.packages.map((item) => ({ ...item, providerCode: provider.code, providerName: provider.name })));
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'packages', label: t.packagesTab, count: packageCards.length || undefined },
-    { key: 'settings', label: t.companySettingsTab },
+    { key: 'settings', label: t.simRulesTab },
     { key: 'providers', label: t.providersTitle },
   ];
 
@@ -113,11 +113,11 @@ export function CompanyScreen() {
           <span>{company.name}</span>
         </span>
       ) : ''}
-      lede={company ? `${t.packagesGroupSummary.replace('{total}', String(company.providers.reduce((sum, item) => sum + item.packages.length, 0))).replace(/ · .*$/, '')} · ${company.providers.length} ${t.providersTitle}` : ''}
+      lede={company ? [t.coPackages.replace('{n}', String(packageCards.length)), t.coProviders.replace('{n}', String(company.providers.length)), company.sim?.esim ? t.esimSupported : ''].filter(Boolean).join(' · ') : ''}
       error={error}
       note={note}
     >
-      <section className={tab === 'settings' ? 'pane fit' : 'pane'}>
+      <section className={tab === 'settings' ? 'pane fit' : tab === 'packages' ? 'pane line-pane' : 'pane'}>
         <Tabs items={tabs} value={tab} onChange={setTab} />
         {tab === 'settings' && (
           <form className="pane-body company-sim" onSubmit={save}>

@@ -76,7 +76,19 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - White on crimson: the sidebar count, the notice dot and the page's own action.
 - Task ticket actions sit in the page head (take / complete in ink, reject / cancel outlined in danger); complete and
   reject open their form in the details column.
-- Company page opens on «الرزم»: the company's packages as `.line-op` cards that open each package.
+- Company page opens on «الرزم» (no card around it): the company's packages as `.line-op` cards that open each
+  package; the lede reads «N رزمة · N مزود · eSIM مدعوم»; tabs الرزم / قواعد الشريحة / المزودون.
+- Companies list: a grid of cut-corner `.co-card`s — the company's mark and an «eSIM» tag, the name (the whole card
+  opens it), its SIM rules («19 خانة · تبدأ 8997202» or «بلا قيود»), then bold counts under a hairline; ⋯ in the corner.
+- Packages list: the lede, a search box with its icon and placeholder, the provider and status chips standing above
+  the list (`FilterBar loose`); companies fold as groups — mark, name over «N رزمة · M متوقفة», chevron at the far
+  end — and the first opens with the page; rows 56px with the name over its facts, a square switch, a stopped
+  package's row dim.
+- Package page opens on «سلسلة الأسعار»: five steps across per group (`.chain-step`), the price edited in place, each
+  layer's margin under it; the for-sale state and the switch beside the title.
+- Money: the shekel sign small and quiet after the figure (`.money .cur`); the text still reads «12.50 ₪».
+- A chip that holds a value shows «×» (pointer shortcut; the field's «الكل» does the same from the keyboard);
+  «مسح» shows only once something is filtered.
 - Settings: the two-step methods are cards to choose (`.method-card`, the chosen one outlined in crimson); sessions
   and passkeys are cards with a crimson device mark.
 - Finance and wallet (`WalletHead`): a figure band — the balance leads (held, available to sell, its 30-day

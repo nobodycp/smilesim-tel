@@ -30,9 +30,9 @@ test('the branch list folds by company and shows the main agent price, the margi
   await page.goto(`${admin}/packages`);
   const head = page.getByRole('button', { name: /ويكوم/ });
   await expect(head).toContainText('2 رزمة · 1 متوقفة');
-  await expect(head).toHaveAttribute('aria-expanded', 'false');
+  // Graphite: the first company opens with the page, as in the design.
+  await expect(head).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('button', { name: /كلام/ })).toHaveCount(0);
-  await head.click();
   const row = page.locator('tr', { hasText: '500 جيجا' });
   await expect(row).toContainText('500 جيجا · دقائق غير محدودة · 100 رسالة');
   await expect(row).toContainText('ليان');
@@ -80,6 +80,8 @@ test('the package page edits its details', async ({ page }) => {
     'PATCH /packages/lian-wecom-500/details': () => ({ body: { ok: true } }),
   });
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
+  // The page opens on the price chain (as in the design); the facts are on the overview.
+  await page.getByRole('tab', { name: 'نظرة عامة' }).click();
   await expect(page.getByText('500 جيجا · دقائق غير محدودة')).toBeVisible();
   await page.getByRole('tab', { name: 'التفاصيل' }).click();
   await expect(page.getByLabel('الإنترنت (جيجا)')).toHaveValue('500');

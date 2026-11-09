@@ -90,7 +90,8 @@ const MAX_LINE_PAGES = 100;
 export function PackageSheetScreen() {
   const { t, apiText } = usePrefs();
   const params = useParams<{ code: string; packageCode: string }>();
-  const [tab, setTab] = useState<Tab>('overview');
+  // The price chain opens first, as in the design.
+  const [tab, setTab] = useState<Tab>('prices');
   const [prices, setPrices] = useState(EMPTY_PRICES);
   const [esimPrice, setEsimPrice] = useState('');
   const [renewals, setRenewals] = useState<string[]>([]);
@@ -410,10 +411,10 @@ export function PackageSheetScreen() {
   ];
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: t.overviewTab },
+    { key: 'prices', label: t.priceChainTab },
     { key: 'details', label: t.detailsTab },
     { key: 'addons', label: t.lineAddons },
     { key: 'run', label: t.packageActions },
-    { key: 'prices', label: t.pricesTab },
     { key: 'renewals', label: t.renewalsTab },
     { key: 'switches', label: t.switchesTab },
     { key: 'numbers', label: t.numbersTab },
@@ -470,9 +471,14 @@ export function PackageSheetScreen() {
         <span className="ticket-title">
           <span className="co-mark big" style={{ background: markColor(sheet.companyName || '?') }} aria-hidden="true">{markOf(sheet.companyName || '?')}</span>
           <span>{`${sheet.companyName} · ${sheet.name}`}</span>
-          <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
         </span>
       ) : ''}
+      action={sheet ? (
+        <div className="page-actions sheet-head-actions">
+          <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
+          <LiveSwitch label={t.packageLive} checked={sheet.enabled} onChange={(next) => void saveEnabled(next)} />
+        </div>
+      ) : undefined}
       lede={sheet ? [`${t.provider} ${sheet.providerName}`, `${sheet.activeLines} ${t.activeLines}`].join(' · ') : ''}
       error={error || card.error}
       note={note}
@@ -499,10 +505,10 @@ export function PackageSheetScreen() {
                       <span>{t.provider}</span>
                       <strong>{sheet.providerName}</strong>
                     </div>
-                    <LiveSwitch label={t.packageLive} checked={sheet.enabled} onChange={(next) => void saveEnabled(next)}>
+                    <div>
                       <span>{t.packageLive}</span>
-                      <b>{sheet.enabled ? t.lineActive : t.stopped}</b>
-                    </LiveSwitch>
+                      <strong>{sheet.enabled ? t.lineActive : t.stopped}</strong>
+                    </div>
                   </div>
                   <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
                   <PackageFacts facts={sheet} />
@@ -524,17 +530,26 @@ export function PackageSheetScreen() {
                   {priceGroups.map((group) => (
                     <div className="account-fund" key={group.title}>
                       <h3>{group.title}</h3>
-                      {group.fields.map(([key, label]) => (
-                        <label key={key}>
-                          {label}
-                          <input
-                            className="num"
-                            inputMode="numeric"
-                            value={prices[key]}
-                            onChange={(event) => setPrices((current) => ({ ...current, [key]: event.target.value }))}
-                          />
-                        </label>
-                      ))}
+                      {group.fields.map(([key, label], index) => {
+                        // Each layer's margin over the one above it, under its price (the design's ladder).
+                        const here = Number(prices[key]);
+                        const above = index > 0 ? Number(prices[group.fields[index - 1][0]]) : NaN;
+                        const margin = Number.isFinite(here) && Number.isFinite(above) && prices[key] !== '' ? Math.round((here - above) * 100) : null;
+                        return (
+                          <div key={key} className="chain-step">
+                            <label>
+                              {label}
+                              <input
+                                className="num"
+                                inputMode="numeric"
+                                value={prices[key]}
+                                onChange={(event) => setPrices((current) => ({ ...current, [key]: event.target.value }))}
+                              />
+                            </label>
+                            {index > 0 && margin !== null ? <span className="step-note"><Money value={margin} signed /></span> : null}
+                          </div>
+                        );
+                      })}
                     </div>
                   ))}
                   <div className="account-fund">

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
@@ -15,7 +15,7 @@ import { Spinner, TableSkeleton } from '../../../components/loading';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type ApplyResult, type PackageRow, type Shelf } from '../../../lib/api';
-import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
+import { parseShekel, shekelField } from '../../../lib/money';
 import { markColor, markOf } from '../../../lib/company-mark';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
@@ -217,7 +217,8 @@ function BranchPackages({ error: loadError, note: loadNote }: { error: string; n
   const [company, setCompany] = useState('');
   const [provider, setProvider] = useState('');
   const [status, setStatus] = useState('');
-  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set());
+  // The first company opens with the page, as in the design; the others when pressed.
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string> | null>(null);
   const groups = (shelf.data?.companies ?? []).map((companyRow) => ({
     code: companyRow.code,
     name: companyRow.name,
@@ -248,12 +249,12 @@ function BranchPackages({ error: loadError, note: loadNote }: { error: string; n
     }))
     .filter((group) => group.rows.length > 0);
   // A search or a filter opens what it found; otherwise a company opens when its header is pressed.
-  const isOpen = (code: string) => filtering || unfolded.has(code);
+  const isOpen = (code: string) => filtering || (unfolded ?? new Set(shown.slice(0, 1).map((group) => group.code))).has(code);
   const openPage = (row: BranchRow) => `/providers/${row.providerCode}/${encodeURIComponent(row.code)}`;
 
   function toggleGroup(code: string) {
     setUnfolded((current) => {
-      const next = new Set(current);
+      const next = new Set(current ?? shown.slice(0, 1).map((group) => group.code));
       if (next.has(code)) next.delete(code);
       else next.add(code);
       return next;
@@ -278,9 +279,9 @@ function BranchPackages({ error: loadError, note: loadNote }: { error: string; n
       num: true,
       render: (row) => (
         <span className="terms-pair">
-          <span className="money" dir="ltr">{formatShekel(row.mainPrice)}</span>
+          <Money value={row.mainPrice} />
           <span className="terms-pair-sep" aria-hidden="true">/</span>
-          <span className="money" dir="ltr">{formatShekel(row.renewalMainPrice)}</span>
+          <Money value={row.renewalMainPrice} />
         </span>
       ),
     },
@@ -302,22 +303,14 @@ function BranchPackages({ error: loadError, note: loadNote }: { error: string; n
   ];
 
   return (
-    <Desk title={t.plansTitle} lede="" error={loadError || error} note={loadNote || note}>
-      <FilterBar onClear={() => { setQuery(''); setCompany(''); setProvider(''); setStatus(''); }} clearLabel={t.clearFilters}>
-        <label>
-          {t.packageName}
-          <input value={query} onChange={(event) => setQuery(event.target.value)} />
-        </label>
-        <label>
-          {t.company}
-          <Select value={company} onChange={(event) => {
-            const next = event.target.value;
-            setCompany(next);
-            if (next && provider && !all.some((row) => row.companyCode === next && row.providerName === provider)) setProvider('');
-          }}>
-            <option value="">{t.allRows}</option>
-            {groups.filter((group) => group.rows.length > 0).map((group) => <option key={group.code} value={group.code}>{group.name}</option>)}
-          </Select>
+    <Desk title={t.plansTitle} lede={t.packagesLede} error={loadError || error} note={loadNote || note}>
+      {/* As in the design: a search box, then the provider and status chips, above the list (the companies are its
+          groups, so they need no chip). */}
+      <FilterBar loose onClear={() => { setQuery(''); setCompany(''); setProvider(''); setStatus(''); }} clearLabel={t.clearFilters}>
+        <label className="filter-search">
+          <Search size={16} strokeWidth={1.9} aria-hidden="true" />
+          <span className="sr-only">{t.packageName}</span>
+          <input value={query} placeholder={t.searchPackages} onChange={(event) => setQuery(event.target.value)} />
         </label>
         <label>
           {t.provider}
@@ -350,12 +343,14 @@ function BranchPackages({ error: loadError, note: loadNote }: { error: string; n
               return (
                 <section key={group.code} className={open ? 'terms-group open' : 'terms-group'}>
                   <button type="button" className="terms-group-head" aria-expanded={open} aria-controls={body} onClick={() => toggleGroup(group.code)}>
-                    <ChevronDown className="terms-chevron" aria-hidden="true" />
                     {group.image ? <DataImage className="co-mark" src={group.image} alt="" /> : <span className="co-mark" style={{ background: markColor(group.name) }} aria-hidden="true">{markOf(group.name)}</span>}
-                    <strong>{group.name}</strong>
-                    <span className="hint">
-                      {t.packagesGroupSummary.replace('{total}', String(group.rows.length)).replace('{off}', String(group.rows.filter((row) => !row.enabled).length))}
+                    <span className="group-name">
+                      <strong>{group.name}</strong>
+                      <span className="hint">
+                        {t.packagesGroupSummary.replace('{total}', String(group.rows.length)).replace('{off}', String(group.rows.filter((row) => !row.enabled).length))}
+                      </span>
                     </span>
+                    <ChevronDown className="terms-chevron" aria-hidden="true" />
                   </button>
                   {open ? (
                     <div id={body} className="terms-rows">

@@ -126,6 +126,7 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
   });
 
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
+  await page.getByRole('tab', { name: 'نظرة عامة' }).click();
   await expect(page.getByText('عدد الأرقام', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'الأسعار' }).click();
   await expect(page.locator('.account-fund').nth(0).locator('input')).toHaveCount(5);

@@ -3,7 +3,10 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, type ChangeEvent } from 'react';
-import { DataTable, type Column } from '../../../components/data-table';
+import { TableSkeleton } from '../../../components/loading';
+import { LoadFailed } from '../../../components/load-failed';
+import { EmptyState } from '../../../components/empty-state';
+import { hasSimRules } from '../../../lib/sim-rules';
 import { Desk } from '../../../components/desk';
 import { RowMenu } from '../../../components/row-menu';
 import { useApiQuery } from '../../../lib/use-api-query';
@@ -17,6 +20,12 @@ import { DataImage } from '../../../components/data-image';
 
 const BRANCH = ['branch'];
 type Company = Shelf['companies'][number];
+
+/** A count's words with the figure in bold, as in the design («**6** رزمة»). */
+function counted(template: string, n: number) {
+  const [before, after] = template.split('{n}');
+  return <>{before}<b className="num">{n}</b>{after}</>;
+}
 
 function totals(company: Company) {
   const packages = company.providers.flatMap((provider) => provider.packages);
@@ -52,50 +61,57 @@ export function CompaniesScreen() {
     await run(() => api.setCompanyImage(name, image), { note: t.save });
   }
 
-  const columns: Column<Company>[] = [
-    {
-      key: 'company',
-      header: t.company,
-      render: (company) => (
-        <span className="company-head">
+  // Each company a cut-corner card, as in the approved design: its mark (and «eSIM» when it offers one), its name,
+  // its SIM rules, then its packages and providers. The whole card opens the company; ⋯ edits it or its picture.
+  const card = (company: Company) => {
+    const sums = totals(company);
+    return (
+      <article key={company.code} className="co-card">
+        <div className="co-top">
           {company.image ? (
-            <DataImage className="company-logo" src={company.image} alt="" />
+            <DataImage className="co-mark big" src={company.image} alt="" />
           ) : (
-            <span className="company-mark" style={{ background: markColor(company.name) }}>{markOf(company.name)}</span>
+            <span className="co-mark big" style={{ background: markColor(company.name) }} aria-hidden="true">{markOf(company.name)}</span>
           )}
-          <Link className="row-link" href={`/companies/${company.code}`}>{company.name}</Link>
+          {company.sim?.esim ? <span className="co-esim">eSIM</span> : null}
+        </div>
+        <Link className="co-link" href={`/companies/${company.code}`}>{company.name}</Link>
+        <span className="co-sim">
+          {company.sim && hasSimRules(company.sim)
+            ? [
+                company.sim.length !== null ? t.simDigits.replace('{n}', String(company.sim.length)) : '',
+                company.sim.prefix ? t.simStarts.replace('{p}', company.sim.prefix) : '',
+              ].filter(Boolean).join(' · ')
+            : t.simFree}
         </span>
-      ),
-    },
-    { key: 'providers', header: t.providersTitle, num: true, render: (company) => company.providers.length },
-    { key: 'packages', header: t.navPlans, num: true, render: (company) => totals(company).packages },
-    { key: 'active', header: t.activeNumbers, num: true, render: (company) => totals(company).active },
-    { key: 'stopped', header: t.stoppedLines, num: true, render: (company) => totals(company).stopped },
-    {
-      key: 'ops',
-      header: t.quickActions,
-      actions: true,
-      render: (company) => (
-        <RowMenu
-          label={`${t.quickActions} ${company.name}`}
-          items={[
-            { label: t.edit, icon: 'edit', onClick: () => router.push(`/companies/${company.code}`) },
-            {
-              label: t.companyImage,
-              icon: 'image',
-              onClick: () => {
-                pending.current = company.name;
-                file.current?.click();
+        <div className="co-nums">
+          <span>{counted(t.coPackages, sums.packages)}</span>
+          <span>{counted(t.coProviders, company.providers.length)}</span>
+          <span>{counted(t.coActive, sums.active)}</span>
+        </div>
+        <div className="co-menu">
+          <RowMenu
+            label={`${t.quickActions} ${company.name}`}
+            items={[
+              { label: t.edit, icon: 'edit', onClick: () => router.push(`/companies/${company.code}`) },
+              {
+                label: t.companyImage,
+                icon: 'image',
+                onClick: () => {
+                  pending.current = company.name;
+                  file.current?.click();
+                },
               },
-            },
-          ]}
-        />
-      ),
-    },
-  ];
+            ]}
+          />
+        </div>
+      </article>
+    );
+  };
+  const companies = shelf.data?.companies ?? [];
 
   return (
-    <Desk title={allowed ? t.companiesTitle : ''} lede="" error={error} note={note}>
+    <Desk title={allowed ? t.companiesTitle : ''} lede={t.companiesLede} error={error} note={note}>
       <input
         ref={file}
         className="sr-only"
@@ -104,18 +120,15 @@ export function CompaniesScreen() {
         aria-label={t.companyImage}
         onChange={(event) => void onImage(event)}
       />
-      <section className="pane">
-        <DataTable
-          columns={columns}
-          rows={shelf.data?.companies ?? []}
-          rowKey={(company) => company.code}
-          loading={!shelf.loaded}
-          failed={shelf.error}
-          onRetry={() => void shelf.reload()}
-          skeleton={{ rows: 11, columns: 6 }}
-          empty={t.noCompanies}
-        />
-      </section>
+      {!shelf.loaded ? (
+        <section className="pane"><TableSkeleton rows={4} columns={3} /></section>
+      ) : shelf.error ? (
+        <section className="pane"><LoadFailed message={shelf.error} onRetry={() => void shelf.reload()} /></section>
+      ) : companies.length === 0 ? (
+        <section className="pane"><EmptyState icon="providers">{t.noCompanies}</EmptyState></section>
+      ) : (
+        <div className="co-grid">{companies.map(card)}</div>
+      )}
     </Desk>
   );
 }

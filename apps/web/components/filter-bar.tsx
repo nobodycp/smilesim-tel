@@ -1,7 +1,8 @@
 'use client';
 
 import { Check, ListFilter, X } from 'lucide-react';
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { Children, cloneElement, isValidElement, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactElement, type ReactNode } from 'react';
+import { Select } from './ui/select';
 import { usePrefs } from '../lib/prefs';
 import { Button } from './ui/button';
 
@@ -25,10 +26,13 @@ export function FilterBar({
   children,
   onClear,
   clearLabel,
+  loose = false,
 }: {
   children: ReactNode;
   onClear?: () => void;
   clearLabel?: string;
+  /** Chips standing on the page above the list (packages), not on the top edge of its card. */
+  loose?: boolean;
 }) {
   const { t } = usePrefs();
   const [open, setOpen] = useState(false);
@@ -89,8 +93,40 @@ export function FilterBar({
     });
   }
 
+  // A chip that holds a value gets a «×» that sets it back to all, as in the design.
+  const chips = Children.map(children, (child) => {
+    if (!isValidElement(child) || child.type !== 'label') return child;
+    const parts = Children.toArray((child.props as { children?: ReactNode }).children);
+    const field = parts.find((part) => isValidElement(part) && part.type === Select) as ReactElement<{ value?: string }> | undefined;
+    if (!field?.props.value) return child;
+    const name = parts.find((part) => typeof part === 'string') as string | undefined;
+    return cloneElement(
+      child as ReactElement<{ children?: ReactNode }>,
+      {},
+      ...parts,
+      <button
+        key="clear"
+        type="button"
+        className="chip-x"
+        // A pointer shortcut: the field's own «الكل» does the same from the keyboard, and the «×» stays out of the
+        // field's name.
+        aria-hidden="true"
+        tabIndex={-1}
+        title={t.clearChip.replace('{name}', name ?? '')}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const select = event.currentTarget.parentElement?.querySelector('select');
+          if (select) choose(select, '');
+        }}
+      >
+        <X size={13} strokeWidth={2} aria-hidden="true" />
+      </button>,
+    );
+  });
+
   return (
-    <div className={open ? 'filter-bar drawer-open' : 'filter-bar'}>
+    <div className={['filter-bar', open ? 'drawer-open' : '', loose ? 'loose' : ''].filter(Boolean).join(' ')}>
       <button type="button" className="filter-all" aria-expanded={open} onClick={() => setOpen(true)}>
         <ListFilter size={15} strokeWidth={1.9} aria-hidden="true" />
         {t.allFilters}
@@ -109,7 +145,7 @@ export function FilterBar({
             <X size={18} strokeWidth={1.9} aria-hidden="true" />
           </button>
         </div>
-        {children}
+        {chips}
         {onClear ? (
           <Button type="button" variant="ghost" size="sm" className="filter-clear" onClick={onClear}>
             {clearLabel}

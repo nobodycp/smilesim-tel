@@ -45,7 +45,7 @@ test('numbers list pages by the total, reads the next cursor on demand, and filt
   await page.locator('.filter-panel').getByLabel('الرقم أو السيريال').fill('055 0000');
   await expect(async () => expect((await log()).at(-1)).toEqual({ q: '055 0000', status: 'frozen', packageCode: 'cell-400' })).toPass();
   const beforeClear = (await log()).length;
-  await page.getByRole('button', { name: 'مسح' }).click();
+  await page.getByRole('button', { name: 'مسح', exact: true }).click();
   await expect(rows).toHaveCount(10);
   await expect(page.getByRole('button', { name: '1', exact: true })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('button', { name: '4', exact: true })).toBeVisible();

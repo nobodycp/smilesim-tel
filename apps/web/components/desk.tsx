@@ -51,8 +51,9 @@ export function Desk({
 export function Money({ value, muted, signed }: { value: number; muted?: boolean; signed?: boolean }) {
   const tone = value < 0 ? ' neg' : signed && value > 0 ? ' pos' : '';
   return (
+    // Graphite: the shekel sign small and quiet after the figure; the text reads the same («12.50 ₪»).
     <span className={`money${tone}${muted ? ' muted' : ''}`} dir="ltr">
-      {signed && value > 0 ? '+' : ''}{formatShekel(value)}
+      {signed && value > 0 ? '+' : ''}{formatShekel(value).replace(/ ₪$/, '')}<small className="cur"> ₪</small>
     </span>
   );
 }

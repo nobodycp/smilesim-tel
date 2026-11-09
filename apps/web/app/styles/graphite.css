@@ -775,12 +775,12 @@ input[readonly] { background-color: transparent; }
 /* ── Package page price chain (Graphite «سلسلة الأسعار»): each group a row of steps — one cut-corner card per layer,
    from the branch's cost to the subscriber — joined by a chevron. ── */
 .package-sheet .price-board { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-.package-sheet .price-board > .account-fund:has(> label + label) {
+.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
 }
-.package-sheet .price-board > .account-fund:has(> label + label) h3 { grid-column: 1 / -1; }
-.package-sheet .price-board > .account-fund:has(> label + label) > label {
+.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) h3 { grid-column: 1 / -1; }
+.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step {
   position: relative;
   display: grid;
   gap: 6px;
@@ -792,9 +792,9 @@ input[readonly] { background-color: transparent; }
   font-size: var(--rd-text-sm);
   clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
 }
-[dir='rtl'] .package-sheet .price-board > .account-fund:has(> label + label) > label { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
-.package-sheet .price-board > .account-fund:has(> label + label) > label:first-of-type { background: var(--rd-accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-accent) 35%, transparent); }
-.package-sheet .price-board > .account-fund:has(> label + label) > label input { height: 38px; font-size: 18px; font-weight: 700; text-align: center; background: var(--rd-sunken); }
+[dir='rtl'] .package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
+.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step:first-of-type { background: var(--rd-accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-accent) 35%, transparent); }
+.pane.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step input { height: 38px; font-size: 18px; font-weight: 700; text-align: center; background: var(--rd-sunken); }
 /* The wallet's head keeps its own height in the page's column; the statement below takes the rest. */
 .desk .wallet-band, .desk .wallet-chart, .desk > .stat-row, .desk .stat-row { flex: none; }
 
@@ -840,3 +840,130 @@ input[readonly] { background-color: transparent; }
 .filter-panel > label select { cursor: pointer; }
 /* A chip is as wide as its value (the list shows the rest). */
 .filter-panel > label .ui-select-field, .filter-panel > label select { field-sizing: content; min-width: 4.5rem; max-width: 16rem; }
+
+/* ── Packages page, exactly as the design ── */
+/* The shekel sign small and quiet after every figure. */
+.money .cur { margin-inline-start: 1px; color: var(--rd-muted); font-size: 0.8em; font-weight: 400; }
+.money.pos .cur, .money.neg .cur { color: inherit; opacity: 0.75; }
+/* Chips that stand on the page (no card), above the list. */
+.filter-bar.loose { padding: 0; background: transparent; box-shadow: none; }
+.filter-bar.loose + .pane, .filter-bar.loose + section.pane { margin-block-start: 0; border-start-start-radius: var(--rd-radius-sm); border-start-end-radius: var(--rd-radius-sm); }
+/* The search box: an icon, the field, a placeholder that says what it finds. */
+.filter-panel > label.filter-search {
+  gap: 8px;
+  width: 280px;
+  max-width: 100%;
+  height: 36px;
+  padding-inline: 12px;
+  border: 0;
+  background: var(--rd-sunken);
+  box-shadow: inset 0 0 0 1px var(--rd-line);
+  color: var(--rd-muted);
+  line-height: 36px;
+}
+.filter-panel > label.filter-search:focus-within { box-shadow: inset 0 0 0 1px var(--rd-accent); }
+.filter-panel > label.filter-search svg { flex: none; align-self: center; }
+.desk .filter-panel > label.filter-search input:not([type='checkbox']), .filter-panel > label.filter-search input:not([type='checkbox']) {
+  flex: 1;
+  width: auto;
+  height: 34px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rd-ink);
+}
+.filter-panel > label.filter-search:has(input:not([value=''])) { border: 0; background: var(--rd-sunken); box-shadow: inset 0 0 0 1px var(--rd-accent); color: var(--rd-muted); }
+/* The «×» of a chip that holds a value, in place of its chevron. */
+.chip-x {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  padding: 0;
+  border: 0;
+  border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent);
+  background: transparent;
+  color: var(--rd-muted);
+}
+.chip-x:hover { background: var(--rd-accent-soft); color: var(--rd-accent); }
+.filter-panel > label:has(.chip-x) .ui-select-chevron { display: none; }
+.filter-panel > label:has(.chip-x) select { padding-inline-end: 10px; }
+/* «مسح» shows only once something is filtered. */
+.filter-panel:not(:has(> label :is(.chip-x, input:not([type='checkbox']):not([value=''])), > label input[type='checkbox']:checked)) .filter-clear { display: none; }
+/* A company's group head: its mark, the name over the count, the chevron at the far end. */
+.terms-group-head { gap: 12px; min-height: 58px; padding-inline: 18px; }
+.terms-group-head .group-name { display: grid; gap: 1px; text-align: start; }
+.terms-group-head .group-name .hint { font-size: 12px; }
+.terms-group-head .terms-chevron { margin-inline-start: auto; color: var(--rd-muted); transform: rotate(0deg); transition: transform 180ms ease; }
+.terms-group.open .terms-group-head .terms-chevron { transform: rotate(180deg); }
+/* A stopped package's row reads dim. */
+.terms-rows tr:has([role='switch'][aria-checked='false']) td:not(.row-actions):not(:has([role='switch'])) { color: var(--rd-muted); opacity: 0.7; }
+/* The design's switch: square track, square knob. */
+.live-switch .track { width: 38px; border-radius: var(--rd-radius-xs); }
+.live-switch .track span { border-radius: 2px; background: var(--rd-on-mark); }
+[dir='ltr'] .live-switch button[aria-checked='true'] .track span { transform: translateX(18px); }
+[dir='rtl'] .live-switch button[aria-checked='true'] .track span { transform: translateX(-18px); }
+/* The package's name over its facts, and the design's 56px rows. */
+.terms-name { display: grid; gap: 1px; }
+.terms-name .hint { font-size: 11.5px; }
+.terms-rows .data td { height: 56px; }
+/* Package page: whether it is for sale and its switch beside the title; each step's margin under its price. */
+.sheet-head-actions { display: inline-flex; align-items: center; gap: 10px; }
+.package-sheet .step-note { color: var(--rd-success); font-size: 12px; font-weight: 700; text-align: center; }
+.package-sheet .step-note .money { font-size: inherit; }
+/* The chain's steps fill the row, five across (two on a phone), and each price reads as a figure that is edited in
+   place: no box until it is hovered or focused. */
+.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; }
+@media (max-width: 767px) { .package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step { align-content: start; text-align: start; }
+.pane.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step input {
+  height: 40px;
+  padding-inline: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--rd-ink);
+  font-size: 22px;
+  text-align: start;
+}
+.pane.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step input:hover { border-color: color-mix(in srgb, var(--rd-ink) 15%, transparent); }
+.pane.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step input:focus { border-color: var(--rd-accent); background: var(--rd-sunken); }
+.package-sheet .step-note { text-align: start; padding-inline: 6px; }
+
+/* ── Companies (Graphite «co-card»): a grid of cut-corner cards — the company's mark and its eSIM tag, the name, its
+   SIM rules, then its counts under a hairline; the whole card opens the company, ⋯ sits in its corner. ── */
+.co-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.co-card {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface);
+  box-shadow: inset 0 0 0 1px var(--rd-line);
+  text-align: start;
+  isolation: isolate;
+  clip-path: polygon(0 0, calc(100% - var(--rd-cut)) 0, 100% var(--rd-cut), 100% 100%, 0 100%);
+  transition: background-color 140ms ease;
+}
+[dir='rtl'] .co-card { clip-path: polygon(var(--rd-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--rd-cut)); }
+.co-card:hover { background: var(--rd-surface-2); }
+.co-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; }
+.co-esim { display: inline-flex; align-items: center; height: 22px; padding-inline: 8px; border-radius: var(--rd-radius-xs); background: var(--rd-accent-soft); color: var(--rd-accent); font-size: 11.5px; font-weight: 700; }
+.co-link { color: var(--rd-ink); font-size: 15px; font-weight: 700; text-decoration: none; }
+.co-link::after { content: ''; position: absolute; inset: 0; z-index: 1; }
+.co-link:focus-visible { outline: none; }
+.co-card:has(.co-link:focus-visible) { box-shadow: inset 0 0 0 2px var(--rd-accent); }
+.co-sim { color: var(--rd-muted); font-size: 12.5px; }
+.co-nums { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--rd-line); color: var(--rd-muted); font-size: 12px; }
+.co-menu { position: absolute; z-index: 2; bottom: 10px; inset-inline-end: 10px; }
+.co-card { padding-bottom: 18px; }
+@media (prefers-reduced-motion: no-preference) {
+  .co-grid > * { animation: rd-rise 420ms var(--rd-ease-out) both; }
+  .co-grid > :nth-child(2) { animation-delay: 40ms; }
+  .co-grid > :nth-child(3) { animation-delay: 80ms; }
+  .co-grid > :nth-child(n + 4) { animation-delay: 120ms; }
+}
+.co-nums b { color: var(--rd-ink); font-weight: 700; }
+
+.chain-step > label { display: grid; gap: 6px; color: var(--rd-muted); font-size: var(--rd-text-sm); }
