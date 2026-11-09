@@ -2,10 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useRef, useState, type FormEvent } from 'react';
-import { BrandLogo } from '../../../components/brand-logo';
+import { KeyRound } from 'lucide-react';
+import { AuthArt, AuthBrand } from '../../../components/auth-art';
 import { LanguageSwitch, ThemeToggle } from '../../../components/chrome';
 import { api, routeFor } from '../../../lib/api';
-import { useBranding } from '../../../lib/branding';
 import { useDoor } from '../../../lib/door-context';
 import { usePrefs } from '../../../lib/prefs';
 import { Alert } from '../../../components/alert';
@@ -15,7 +15,6 @@ export function LoginScreen() {
   const router = useRouter();
   const { t, apiText } = usePrefs();
   const door = useDoor();
-  const branding = useBranding();
   const [loginName, setLoginName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -56,39 +55,24 @@ export function LoginScreen() {
     router.push(routeFor(result.data.next));
   }
 
+  // Graphite sign-in (spec 2026-11-09-graphite-identity): the form on the reading side, the art beside it.
   return (
-    <main className="login-room">
-      <header className="login-banner">
-        <i className="login-crop a" aria-hidden="true" />
-        <i className="login-crop b" aria-hidden="true" />
-        <i className="login-crop c" aria-hidden="true" />
-        <i className="login-crop d" aria-hidden="true" />
-        <div className="login-mast">
-          <div className="auth-tools">
-            <LanguageSwitch />
-            <ThemeToggle />
-          </div>
+    <main className="gauth">
+      <section className="gauth-form">
+        <div className="gauth-tools">
+          <LanguageSwitch />
+          <ThemeToggle />
         </div>
-        <div className="login-lockrow">
-          <div className="login-lockup">
-            <BrandLogo className="login-logo" onInk />
-            <strong>{branding.name}</strong>
-            <small>{branding.tagline}</small>
-          </div>
-          <Plate />
-        </div>
-      </header>
-      <div className="login-seam" aria-hidden="true" />
-      <section className="login-doc">
-        <div className="login-doc-inner">
-          <div className="login-head login-enter a">
+        <div className="gauth-card">
+          <AuthBrand />
+          <div className="gauth-head login-enter a">
             <h1>{t.loginTitle}</h1>
-            <p className="login-role">{t[door.label]}</p>
+            <span className="gauth-door">{t[door.label]}</span>
           </div>
           <form onSubmit={submit}>
-            <div className="login-field login-enter b">
+            <div className="gauth-field login-enter b">
               <label htmlFor="login-name">{t.loginName}</label>
-              <div className="login-box">
+              <div className="gauth-box">
                 <UserMark />
                 <input
                   id="login-name"
@@ -101,9 +85,9 @@ export function LoginScreen() {
                 />
               </div>
             </div>
-            <div className="login-field login-enter c">
+            <div className="gauth-field login-enter c">
               <label htmlFor="login-password">{t.password}</label>
-              <div className="login-box">
+              <div className="gauth-box">
                 <LockMark />
                 <input
                   id="login-password"
@@ -117,7 +101,7 @@ export function LoginScreen() {
                 />
                 <button
                   type="button"
-                  className="login-reveal"
+                  className="gauth-reveal"
                   aria-pressed={showPassword}
                   onClick={() => setShowPassword((value) => !value)}
                 >
@@ -126,38 +110,21 @@ export function LoginScreen() {
               </div>
             </div>
             <Alert id="login-error">{message}</Alert>
-            <button className="login-go login-enter d" type="submit" disabled={busy} aria-busy={busy}>
+            <button className="gauth-go login-enter d" type="submit" disabled={busy} aria-busy={busy}>
               <span>{t.signIn}</span>
             </button>
             {passkeys ? (
-              <button className="login-passkey login-enter d" type="button" disabled={busy} onClick={withPasskey}>
+              <button className="gauth-passkey login-enter d" type="button" disabled={busy} onClick={withPasskey}>
+                <KeyRound size={16} strokeWidth={1.9} aria-hidden="true" />
                 {t.passkeySignIn}
               </button>
             ) : null}
           </form>
-          <div className="login-meta">
-            <p className="login-help">{t.loginHelp}</p>
-            <bdi dir="ltr">{new Date().getFullYear()}</bdi>
-          </div>
+          <p className="gauth-help">{t.loginHelp}</p>
         </div>
       </section>
+      <AuthArt />
     </main>
-  );
-}
-
-function Plate() {
-  return (
-    <svg className="login-plate" viewBox="0 0 200 250" aria-hidden="true">
-      <g className="heavy">
-        <rect x="18" y="16" width="164" height="218" rx="22" />
-      </g>
-      <g className="light">
-        <rect x="46" y="52" width="108" height="146" rx="12" />
-        <rect x="74" y="96" width="52" height="64" />
-        <path d="M74 118h52M74 140h52M100 96v64" />
-        <path d="M18 125h28M154 125h28M100 16v20M100 214v20" />
-      </g>
-    </svg>
   );
 }
 

@@ -10,7 +10,11 @@ import { useApiQuery } from '../lib/use-api-query';
 
 type Hit = { key: string; href: string; label: string; sub: string; group: string };
 
-export function ShellSearch() {
+/**
+ * «ابحث أو انتقل» (Graphite command box): pages from the sidebar by name, then accounts and numbers. Opens with «/»,
+ * Ctrl K or ⌘K.
+ */
+export function ShellSearch({ pages = [] }: { pages?: { href: string; label: string }[] }) {
   const { t } = usePrefs();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -35,6 +39,12 @@ export function ShellSearch() {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+      if ((event.key === 'k' || event.key === 'K') && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setOpen(true);
+        field.current?.focus();
+        return;
+      }
       if (event.key === '/' && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
         event.preventDefault();
         setOpen(true);
@@ -97,8 +107,17 @@ export function ShellSearch() {
     };
   }, [open, query, users, t.navNumbers, t.navUsers]);
 
-  const groups = [...new Set(hits.map((hit) => hit.group))];
-  const showResults = open && query.trim().length >= 2;
+  // Pages match from the first letter, by their sidebar name; they come before accounts and numbers.
+  const needle = query.trim();
+  const pageHits: Hit[] = needle
+    ? pages
+        .filter((page) => page.label.includes(needle) || page.label.toLowerCase().includes(needle.toLowerCase()))
+        .slice(0, 5)
+        .map((page) => ({ key: `page-${page.href}`, href: page.href, label: page.label, sub: '', group: t.searchPages }))
+    : [];
+  const shown = [...pageHits, ...(needle.length >= 2 ? hits : [])];
+  const groups = [...new Set(shown.map((hit) => hit.group))];
+  const showResults = open && needle.length >= 1 && (pageHits.length > 0 || needle.length >= 2);
 
   return (
     <div className={open ? 'shell-search is-open' : 'shell-search'} ref={box}>
@@ -143,15 +162,15 @@ export function ShellSearch() {
               <ClearIcon />
             </button>
           ) : (
-            <kbd>/</kbd>
+            <kbd dir="ltr">Ctrl K</kbd>
           )}
         </div>
         {showResults && (
           <div className="shell-search-results" id={resultsId}>
-            {hits.length === 0 ? <p className="shell-search-empty">{t.searchEmpty}</p> : groups.map((group) => (
+            {shown.length === 0 ? <p className="shell-search-empty">{t.searchEmpty}</p> : groups.map((group) => (
               <div key={group}>
                 <p className="shell-search-label">{group}</p>
-                {hits.filter((hit) => hit.group === group).map((hit) => (
+                {shown.filter((hit) => hit.group === group).map((hit) => (
                   <Link key={hit.key} href={hit.href} className="shell-search-item" onClick={() => setOpen(false)}>
                     <strong>{hit.label}</strong>
                     {hit.sub && <small>{hit.sub}</small>}

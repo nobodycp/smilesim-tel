@@ -4,34 +4,14 @@ import { serveOffice } from './desk';
 const admin = 'http://admin.localhost:3910';
 const home = { body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, canPost: false, operations: [], announcements: [] } };
 
-test('Escape closes the account menu and gives the focus back to its button', async ({ page }) => {
+// Graphite (spec 2026-11-09-graphite-identity): the account is at the sidebar's foot, not in the topbar.
+test('the sidebar foot holds the account, which opens the profile, and signing out', async ({ page }) => {
   await serveOffice(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
-  const trigger = page.getByRole('button', { name: 'قائمة الحساب' });
-  await trigger.click();
-  await expect(page.getByRole('menuitem', { name: 'تسجيل الخروج' })).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('menuitem', { name: 'تسجيل الخروج' })).toHaveCount(0);
-  await expect(trigger).toBeFocused();
-});
-
-// Every popup shares usePopover: a menu takes the focus on its first item and the arrows walk it.
-test('the account menu opens on its first item and the arrow keys move between its items', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /home': () => home });
-  await page.goto(`${admin}/`);
-  await page.getByRole('button', { name: 'قائمة الحساب' }).click();
-  const settings = page.getByRole('menuitem', { name: 'الملف الشخصي' });
-  const wallet = page.getByRole('menuitem', { name: 'المحفظة' });
-  const logout = page.getByRole('menuitem', { name: 'تسجيل الخروج' });
-  await expect(settings).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(wallet).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(logout).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await expect(settings).toBeFocused();
-  await page.keyboard.press('End');
-  await expect(logout).toBeFocused();
+  const sidebar = page.locator('aside.sidebar');
+  await expect(page.locator('.topbar .avatar-btn')).toHaveCount(0);
+  await expect(sidebar.locator('.side-user')).toHaveAttribute('href', '/settings');
+  await expect(sidebar.getByRole('button', { name: 'تسجيل الخروج' })).toBeVisible();
 });
 
 // «المحفظة» (spec 2026-11-09, 4): the balance chip is a link to the wallet page, also in the account menu.
@@ -51,9 +31,6 @@ test('the wallet chip opens the wallet page, and Escape on the notices gives the
   await expect(page.locator('table.data tbody tr')).toHaveCount(1);
   await page.getByRole('button', { name: 'شحن الرصيد' }).click();
   await expect(page.getByText('طلبات الشحن قريباً', { exact: false })).toBeVisible();
-  await page.getByRole('button', { name: 'قائمة الحساب' }).click();
-  await expect(page.getByRole('menuitem', { name: 'المحفظة' })).toHaveAttribute('href', '/wallet');
-  await page.keyboard.press('Escape');
   const bell = page.getByRole('button', { name: 'الإشعارات' });
   await bell.click();
   await expect(page.locator('.notice-panel')).toBeVisible();

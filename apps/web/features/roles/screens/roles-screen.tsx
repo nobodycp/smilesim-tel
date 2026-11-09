@@ -70,7 +70,7 @@ export function RolesScreen() {
   const columns: Column<RoleRow>[] = [
     { key: 'role', header: t.role, render: (row) => <strong>{roleTitle(row)}</strong> },
     { key: 'kind', header: t.layer, render: (row) => row.kind === 'layer' ? t.layerRole : t.jobRole },
-    { key: 'permissions', header: t.permissions, render: (row) => labels(row) },
+    { key: 'permissions', header: t.permissions, cell: 'wrap', render: (row) => labels(row) },
     {
       key: 'ops',
       header: t.rowActions,

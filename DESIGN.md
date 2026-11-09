@@ -33,7 +33,20 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   menu there. The width glides (320ms). Under 900px the sidebar is the drawer (menu button in the topbar).
 - Topbar: the **path** (`ShellPath`, `components/crumbs.tsx`) at the reading start — `⌂ / section / list / item`;
   section titles plain, the levels above the page links, the page in ink; `Alt+↑` goes one level up. There is no back
-  button. Under 900px the path takes its own full-width row under the icons.
+  button. Then, at the end: «ابحث أو انتقل» (`ShellSearch`: pages by name, then accounts and numbers; `/`, Ctrl K or
+  ⌘K) on an inset field, the wallet chip (raised, balance only, crimson mark), notices and the theme as bare icons.
+  The account and the language are not in the topbar: they sit at the sidebar's foot (the drawer's foot on a phone).
+  Under 900px the path takes its own full-width row under the icons.
+- Sign-in, password and two-step pages: `.gauth` — the form on the reading side (brand row, title, the door as a
+  crimson outlined tag, inset fields with an icon, ink «دخول», raised passkey button), and a dark art panel beside it
+  (`components/auth-art.tsx`: the crimson tag rising from its corner, one line about the office); stacked under 860px
+  with the art below.
+- Filters (`FilterBar`): chips in one wrapping row on the top edge of the table card below — the field's name on a
+  raised segment, the field beside it, crimson once it holds a value; «مسح» in crimson at the end. Under 768px only
+  «كل الفلاتر» shows; it opens the fields in a drawer from the inline end, with «عرض النتائج».
+- Tables: no band behind the head, 46px zebra rows, every cell on one line (a long text column is `cell: 'wrap'`),
+  the table scrolls inside its card; the pager is a hairline row with square page numbers, the current one ink.
+- The page's own action (`.page-head` primary button) is the crimson button on the screen.
 
 ## Stylesheets
 

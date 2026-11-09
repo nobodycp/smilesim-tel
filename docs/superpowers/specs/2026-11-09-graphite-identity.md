@@ -69,3 +69,11 @@ the sidebar is the design's (hover flyouts when folded, the account and sign-out
 open, diamond marks); it becomes the drawer under 900px. The home is two stacked columns under the figure band
 (see DESIGN.md → Home layout); each figure tile has a meta line. Every change is checked by screenshots at 360, 390,
 768, 1024, 1280, 1440 and 1920px, ar/en, light/dark, branch and point of sale, before it is reported.
+
+## Revision 2 (owner review, 2026-11-09)
+
+Compared side by side with the prototype: the sign-in page takes the design's split (form + dark art with the crimson
+tag), the password and two-step pages too; the topbar loses the account menu and the language (both in the sidebar's
+foot) and gets the design's command box («ابحث أو انتقل», Ctrl K, pages by name), wallet chip and bare icons; filters
+become chips on the table card's top edge with a «كل الفلاتر» drawer on a phone; tables lose the head band, keep
+cells on one line and get the design's pager; the page's own action is crimson.

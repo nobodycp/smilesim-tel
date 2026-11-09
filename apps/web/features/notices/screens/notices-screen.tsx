@@ -83,7 +83,7 @@ export function NoticesScreen() {
         </button>
       ),
     },
-    { key: 'detail', header: t.note, render: (row) => noticeDetail(t, row) || '—' },
+    { key: 'detail', header: t.note, cell: 'wrap', render: (row) => noticeDetail(t, row) || '—' },
   ];
 
   return (

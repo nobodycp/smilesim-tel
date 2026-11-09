@@ -94,7 +94,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, serverCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { open: menuOpen, close: closeMenu, toggle: toggleMenu, root: menuRoot, trigger: menuTrigger } = usePopover({ menu: true });
   const { open: noticeOpen, close: closeNotices, toggle: toggleNotices, root: noticeRoot, trigger: noticeTrigger } = usePopover();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [flyout, setFlyout] = useState<{ top: number; label: string; items?: NavItem[] } | null>(null);
@@ -283,7 +282,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
 
   // The account answer wins; before it lands the saved identity, then the cookie name, fill in.
   const shown = me ? me.nickname || me.loginName : saved.account || initialName;
-  const sub = me ? (me.nickname ? me.loginName : '') : saved.hint;
   const first = shown.trim().split(/\s+/)[0] || shown;
   const initial = first.charAt(0);
   const role = me?.layer === 'branch' ? t.layerBranch : me?.layer === 'main_agent' ? t.layerMain : me?.layer === 'agent' ? t.layerAgent : me?.layer === 'pos' ? t.layerPos : me?.layer === 'staff' ? t.staffAccount : '';
@@ -403,9 +401,13 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="side-foot">
-          {mobile && (
+          {mobile ? (
             <div className="drawer-prefs">
               <ThemeToggle shell />
+              <LanguageSwitch shell />
+            </div>
+          ) : (
+            <div className="side-prefs label">
               <LanguageSwitch shell />
             </div>
           )}
@@ -479,7 +481,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             <ShellPath pathname={pathname} sections={sections} />
           </div>
           <div className="topbar-tools">
-            <ShellSearch />
+            <ShellSearch pages={sections.map((item) => ({ href: item.href, label: item.label }))} />
             {/* «المحفظة» (spec 2026-11-09, 4): the balance chip opens the wallet page, where top-up will live. */}
             <div className="wallet-chip">
               <Link href="/wallet" className="wallet-btn" aria-label={t.walletPage}>
@@ -535,48 +537,8 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                 </div>
               )}
             </div>
-            {/* Below 360px seven 44px controls do not fit beside the menu button: these two move to the drawer's foot. */}
-            <div className="topbar-prefs">
-              <ThemeToggle shell />
-              <LanguageSwitch shell />
-            </div>
-            <div className="user-menu" ref={menuRoot}>
-              <button
-                ref={menuTrigger}
-                type="button"
-                className="avatar-btn"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                aria-label={t.userMenu}
-                onClick={toggleMenu}
-              >
-                <span className="avatar" aria-hidden="true">{initial}</span>
-              </button>
-              {menuOpen && (
-                <div className="shell-panel" role="menu">
-                  <div className="shell-identity">
-                    <span className="avatar" aria-hidden="true">{initial}</span>
-                    <div>
-                      <strong>{shown}</strong>
-                      <small>{sub ? `@${sub}` : `@${me?.loginName ?? ''}`}{role ? ` · ${role}` : ''}</small>
-                    </div>
-                  </div>
-                  <Link href="/settings" role="menuitem" onClick={closeMenu}>
-                    <Settings {...glyph} />
-                    {t.accountSettings}
-                  </Link>
-                  <Link href="/wallet" role="menuitem" onClick={closeMenu}>
-                    <Wallet {...glyph} />
-                    {t.walletPage}
-                  </Link>
-                  <span className="shell-rule" />
-                  <button type="button" className="danger" role="menuitem" onClick={logout}>
-                    <LogOut {...glyph} />
-                    {t.logout}
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Graphite topbar: search, wallet, notices, theme. The account and the language live in the sidebar's foot. */}
+            <ThemeToggle shell />
           </div>
         </header>
         <main className="canvas">
