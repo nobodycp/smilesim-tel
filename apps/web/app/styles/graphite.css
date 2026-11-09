@@ -443,6 +443,11 @@ input[readonly] { background-color: transparent; }
   .shell-search-field kbd { display: inline-block; }
 }
 .topbar .shell-search-field input::placeholder { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The field never spills over its neighbours, whatever the fonts: its contents stay inside it, and the input is the
+   part that gives way (a wider font on another machine made it cover the language and theme buttons). */
+.topbar .shell-search-field { min-width: 0; overflow: hidden; }
+.topbar .shell-search-field input:not([type='checkbox']):not([type='radio']):not([type='file']) { width: 0; min-width: 0; flex: 1 1 0; }
+.topbar .shell-search-field kbd { flex: none; }
 .topbar .wallet-btn {
   gap: 8px;
   padding-inline: 12px;
