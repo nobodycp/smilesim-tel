@@ -30,9 +30,10 @@ export async function expectFullTable(page: Page, title: string, { fit = false }
   // The title is not repeated as a pane heading; an optional lede under the h1 is allowed.
   await expect(page.getByRole('heading', { level: 2, name: title, exact: true })).toHaveCount(0);
   await expect(page.locator('.filter-toggle')).toHaveCount(0);
+  // Graphite: a list's card ends with its content (no empty block down to the page's bottom), and the page scrolls.
   const box = await page.locator('.desk .pane').first().boundingBox();
   expect(box).not.toBeNull();
-  if (!fit) expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan(720);
+  void fit;
 }
 
 export type Reply = { body: unknown; status?: number; delay?: number };

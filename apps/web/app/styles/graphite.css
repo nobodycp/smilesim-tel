@@ -141,9 +141,10 @@ input[readonly] { background-color: transparent; }
 .terms-sheet { align-content: start; }
 .terms-group-head:hover { background: var(--rd-surface-2); }
 
-/* A list that shares the page with figures and a chart keeps room for its rows; the page scrolls instead of
-   squeezing the table to one line. */
-.desk .sheet { min-height: min(440px, 70dvh); }
+/* As in the design, a list's card ends with its content: it never stretches to the bottom of the page (which left an
+   empty block under short lists) and never squeezes its rows; the page scrolls when the content is longer. */
+.desk > .pane, .desk > section.pane, .desk > .stack > .pane { flex: none; }
+.desk .sheet { flex: none; min-height: 0; overflow-x: auto; }
 
 /* ── Filters (Graphite, from design/night-desk-family): chips in one wrapping row — the field's name on a raised
    segment, the field beside it, an accent edge once it holds a value — on the top edge of the table card below.
