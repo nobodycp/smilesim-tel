@@ -775,12 +775,12 @@ input[readonly] { background-color: transparent; }
 /* ── Package page price chain (Graphite «سلسلة الأسعار»): each group a row of steps — one cut-corner card per layer,
    from the branch's cost to the subscriber — joined by a chevron. ── */
 .package-sheet .price-board { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-.package-sheet .price-board > .account-fund:not(:last-child) {
+.package-sheet .price-board > .account-fund:has(> label + label) {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
 }
-.package-sheet .price-board > .account-fund:not(:last-child) h3 { grid-column: 1 / -1; }
-.package-sheet .price-board > .account-fund:not(:last-child) > label {
+.package-sheet .price-board > .account-fund:has(> label + label) h3 { grid-column: 1 / -1; }
+.package-sheet .price-board > .account-fund:has(> label + label) > label {
   position: relative;
   display: grid;
   gap: 6px;
@@ -792,8 +792,8 @@ input[readonly] { background-color: transparent; }
   font-size: var(--rd-text-sm);
   clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
 }
-[dir='rtl'] .package-sheet .price-board > .account-fund:not(:last-child) > label { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
-.package-sheet .price-board > .account-fund:not(:last-child) > label:first-of-type { background: var(--rd-accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-accent) 35%, transparent); }
-.package-sheet .price-board > .account-fund:not(:last-child) > label input { height: 38px; font-size: 18px; font-weight: 700; text-align: center; background: var(--rd-sunken); }
+[dir='rtl'] .package-sheet .price-board > .account-fund:has(> label + label) > label { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
+.package-sheet .price-board > .account-fund:has(> label + label) > label:first-of-type { background: var(--rd-accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-accent) 35%, transparent); }
+.package-sheet .price-board > .account-fund:has(> label + label) > label input { height: 38px; font-size: 18px; font-weight: 700; text-align: center; background: var(--rd-sunken); }
 /* The wallet's head keeps its own height in the page's column; the statement below takes the rest. */
 .desk .wallet-band, .desk .wallet-chart, .desk > .stat-row, .desk .stat-row { flex: none; }
