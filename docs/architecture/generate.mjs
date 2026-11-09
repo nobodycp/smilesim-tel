@@ -241,7 +241,7 @@ const CATALOGUE = [
   { zone: 'components', file: 'components/filter-bar.tsx', role: 'شريط/لوحة الفلاتر فوق الجداول' },
   { zone: 'components', file: 'components/data-table.tsx', role: 'جدول قابل للفرز مع paging وهيكل فارغ' },
   { zone: 'components', file: 'components/table-search.tsx', role: 'بحث داخل الجدول' },
-  { zone: 'components', file: 'components/period-chips.tsx', role: 'فلاتر فترة زمنية سريعة' },
+  { zone: 'components', file: 'components/trend-line.tsx', role: 'خط اتجاه متحرك (بطاقات الرئيسية ورسم الرصيد)' },
   { zone: 'components', file: 'components/row-menu.tsx', role: 'قائمة عمليات الصف (المحفّز الوحيد لكل صف)' },
   { zone: 'components', file: 'components/dialog.tsx', role: 'حوار (تأكيد / نموذج / واسع)' },
   { zone: 'components', file: 'components/data-image.tsx', role: 'صورة data:/blob: من الواجهة' },

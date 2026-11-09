@@ -8,6 +8,7 @@ import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
 import { CeilingBodyDto, DeductBodyDto, FundBodyDto } from '../office.dto';
+import { summaryDays } from './finance-summary';
 import { WalletsService } from './wallets.service';
 import type { Response } from 'express';
 
@@ -99,10 +100,10 @@ export class WalletsController {
   }
 
   @Get('finance/summary')
-  @ApiOperation({ summary: "The signed-in account's wallet over the last 30 days (cards and chart)" })
+  @ApiOperation({ summary: "The signed-in account's wallet over the last 7, 30 (default) or 90 days (cards and chart)" })
   @ApiErrorResponse(401, 403)
-  financeSummary(@Actor() actor: ActorShape) {
-    return this.walletDesk.financeSummary(actor);
+  financeSummary(@Actor() actor: ActorShape, @Query('days') days?: string) {
+    return this.walletDesk.financeSummary(actor, new Date(), summaryDays(text(days)));
   }
 
   @Get('finance/export')

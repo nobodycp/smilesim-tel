@@ -10,7 +10,7 @@ import { visibleAccountIds } from '../office-rules';
 import { CeilingBody, DeductBody, FundBody } from '../wallet.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 import { matchOf } from '../providers/match-simulator';
-import { ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
+import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../profit-ladder';
 import type { Account } from '../kernel/types';
 
@@ -426,13 +426,13 @@ export class WalletsService {
     return profitCsv([...packages, { packageName: 'TOTAL', companyName: '', ...totals }]);
   }
 
-  /** The signed-in account's own wallet over the last 30 days: the finance page's cards and chart. */
-  async financeSummary(actor: Actor, now = new Date()) {
+  /** The signed-in account's own wallet over the last `days` (7, 30 or 90): the finance page's cards and chart. */
+  async financeSummary(actor: Actor, now = new Date(), days = SUMMARY_DAYS) {
     const [wallet, entries] = await Promise.all([
       this.kernel.prisma.wallet.findUnique({ where: { userId: actor.id } }),
       this.kernel.prisma.walletEntry.findMany({
-        where: { userId: actor.id, amount: { not: 0 }, createdAt: { gte: windowStart(now) } },
-        select: { createdAt: true, amount: true, balanceAfter: true },
+        where: { userId: actor.id, amount: { not: 0 }, createdAt: { gte: windowStart(now, days) } },
+        select: { createdAt: true, amount: true, balanceAfter: true, kind: true },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
     ]);
@@ -442,14 +442,14 @@ export class WalletsService {
       where: {
         ...(await this.financeWhere(actor, {})),
         OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }],
-        createdAt: { gte: windowStart(now) },
+        createdAt: { gte: windowStart(now, days) },
       },
       select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true },
     });
     const margins = await this.marginsFor(actor, sold);
     const profit = [...margins.values()].reduce((sum: number, value) => sum + (value ?? 0), 0);
     const sales = sold.filter((row) => row.amount < 0).length;
-    return { balance, ceiling: wallet?.ceiling ?? 0, held: wallet?.held ?? 0, unlimited: actor.layer === 'branch', profit, sales, ...walletSummary(entries, balance, now) };
+    return { balance, ceiling: wallet?.ceiling ?? 0, held: wallet?.held ?? 0, unlimited: actor.layer === 'branch', profit, sales, ...walletSummary(entries, balance, now, days) };
   }
 
   /** The ledger with the page's filters as a CSV, newest first, at most 10,000 rows. */

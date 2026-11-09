@@ -7,18 +7,20 @@ import { useId, useState, type PointerEvent } from 'react';
  * glowing dot that breathes at the latest point, and the value of the nearest step on hover. SVG, no library; time
  * runs left to right in every language. Motion only under `prefers-reduced-motion: no-preference` (CSS).
  */
-export function TrendLine({ values, labels, format, label, tone = 'accent' }: {
+export function TrendLine({ values, labels, format, label, tone = 'accent', size = 'small' }: {
   values: number[];
   labels: string[];
   format: (value: number) => string;
   label: string;
   tone?: 'accent' | 'success';
+  /** `large`: the balance chart of the wallet head, with faint guide lines. */
+  size?: 'small' | 'large';
 }) {
   const id = useId().replace(/:/g, '');
   const [hover, setHover] = useState<number | null>(null);
   if (values.length < 2) return null;
-  const width = 200;
-  const height = 48;
+  const width = size === 'large' ? 600 : 200;
+  const height = size === 'large' ? 160 : 48;
   const high = Math.max(...values);
   const low = Math.min(0, ...values);
   const span = high - low || 1;
@@ -47,7 +49,7 @@ export function TrendLine({ values, labels, format, label, tone = 'accent' }: {
   }
 
   return (
-    <div className={`trend-line ${tone}`}>
+    <div className={`trend-line ${tone} ${size}`}>
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={label} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
         <defs>
           <linearGradient id={`trend-fill-${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -55,6 +57,7 @@ export function TrendLine({ values, labels, format, label, tone = 'accent' }: {
             <stop offset="100%" className="trend-stop-bottom" />
           </linearGradient>
         </defs>
+        {size === 'large' ? [0.25, 0.5, 0.75].map((at) => <line key={at} className="trend-guide" x1={0} x2={width} y1={height * at} y2={height * at} vectorEffect="non-scaling-stroke" />) : null}
         <path className="trend-area" d={area} fill={`url(#trend-fill-${id})`} />
         <path className="trend-glow" d={line} pathLength={1} vectorEffect="non-scaling-stroke" />
         <path className="trend-stroke" d={line} pathLength={1} vectorEffect="non-scaling-stroke" />

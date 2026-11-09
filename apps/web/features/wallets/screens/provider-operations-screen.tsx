@@ -1,10 +1,13 @@
 'use client';
 
+import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { Desk, Money, actionName, latinWhen } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
+import { Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
+import { reasonTone } from './finance-screen';
 import { api, type ProviderOpRow, type ProviderOpStats } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
@@ -21,8 +24,9 @@ export function ProviderOperationsScreen() {
   const [provider, setProvider] = useState('');
   const [kind, setKind] = useState('');
   const [q, setQ] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [days, setDays] = useState<PeriodDays>(30);
+  const from = periodFrom(days);
+  const to = '';
   const [match, setMatch] = useState('');
   const list = usePaged<ProviderOpRow, { stats: ProviderOpStats; providers: { code: string; name: string }[] }>(
     `${provider}|${kind}|${q}|${from}|${to}|${match}`,
@@ -40,10 +44,10 @@ export function ProviderOperationsScreen() {
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     {
       key: 'kind',
-      header: t.kind,
+      header: t.operationColumn,
       render: (row) => (
         <span className="kind-cell">
-          {actionName(t, row.kind)}
+          <span className={`reason ${reasonTone(row.kind)}`}>{actionName(t, row.kind)}</span>
           {/* Same tag as the finance page: the eSIM fee folded into this operation's cost. */}
           {row.esimPrice != null && row.kind !== 'esim' && (
             <Badge variant="muted" dot title={t.esimSaleTagTitle}>
@@ -55,9 +59,8 @@ export function ProviderOperationsScreen() {
       ),
     },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
-    { key: 'provider', header: t.provider, render: (row) => row.providerName || '—' },
-    { key: 'company', header: t.company, render: (row) => row.companyName || '—' },
-    { key: 'package', header: t.packageName, render: (row) => row.packageName || '—' },
+    { key: 'provider', header: t.provider, render: (row) => <strong>{row.providerName || '—'}</strong> },
+    { key: 'package', header: t.packageName, render: (row) => <><bdi>{row.packageName || '—'}</bdi>{row.companyName ? <span className="sub">{row.companyName}</span> : null}</> },
     { key: 'cost', header: t.providerCost, num: true, render: (row) => <Money value={row.cost ?? 0} /> },
     // Matching, simulated until real providers are connected (spec E): the source, what the provider charged, the gap.
     { key: 'source', header: t.matchSource, render: (row) => (row.matchSource === 'api' ? t.matchSourceApi : t.matchSourceStatement) },
@@ -74,61 +77,52 @@ export function ProviderOperationsScreen() {
   ];
 
   return (
-    <Desk title={t.navProviderOps} lede="" error="" note="">
-      <FilterBar onClear={() => { setProvider(''); setKind(''); setQ(''); setFrom(''); setTo(''); setMatch(''); }} clearLabel={t.clearFilters}>
-        <label>
-          {t.matchState}
-          <Select value={match} onChange={(event) => setMatch(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            <option value="matched">{t.matchMatched}</option>
-            <option value="difference">{t.matchDifference}</option>
-            <option value="pending">{t.matchPending}</option>
-          </Select>
-        </label>
-        <label>
-          {t.provider}
-          <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            {providers.map((item) => (
-              <option key={item.code} value={item.code}>{item.name}</option>
-            ))}
-          </Select>
-        </label>
-        <label>
-          {t.kind}
-          <Select value={kind} onChange={(event) => setKind(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            {KINDS.map((value) => (
-              <option key={value} value={value}>{actionName(t, value)}</option>
-            ))}
-          </Select>
-        </label>
-        <label>
-          {t.number}
-          <input value={q} onChange={(event) => setQ(event.target.value)} />
-        </label>
-        <label>
-          {t.from}
-          <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-        </label>
-        <label>
-          {t.to}
-          <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-        </label>
-      </FilterBar>
+    <Desk title={t.navProviderOps} lede={t.providerOpsLede} error="" note="">
+      <ReportFilters>
+        <Period days={days} onPick={setDays} />
+        <FilterBar loose onClear={() => { setProvider(''); setKind(''); setQ(''); setMatch(''); }} clearLabel={t.clearFilters}>
+          <label className="filter-search">
+            <Search size={16} strokeWidth={1.9} aria-hidden="true" />
+            <span className="sr-only">{t.number}</span>
+            <input value={q} placeholder={t.number} onChange={(event) => setQ(event.target.value)} />
+          </label>
+          <label>
+            {t.provider}
+            <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {providers.map((item) => (
+                <option key={item.code} value={item.code}>{item.name}</option>
+              ))}
+            </Select>
+          </label>
+          <label>
+            {t.operationColumn}
+            <Select value={kind} onChange={(event) => setKind(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {KINDS.map((value) => (
+                <option key={value} value={value}>{actionName(t, value)}</option>
+              ))}
+            </Select>
+          </label>
+          <label>
+            {t.matchState}
+            <Select value={match} onChange={(event) => setMatch(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              <option value="matched">{t.matchMatched}</option>
+              <option value="difference">{t.matchDifference}</option>
+              <option value="pending">{t.matchPending}</option>
+            </Select>
+          </label>
+        </FilterBar>
+      </ReportFilters>
+      <StatRow>
+        <Stat label={t.opsCount} value={stats.count} meta={t.lastDaysMeta.replace('{n}', String(days))} />
+        <Stat label={t.providerCost} value={<Money value={stats.cost} />} meta={<>{t.providerMonth}: <Money value={stats.monthCost} /></>} />
+        <Stat tone="success" label={t.matchMatched} value={<span className="tone-success">{stats.matched ?? 0}</span>} meta={t.pendingMeta.replace('{n}', String(stats.pending ?? 0))} />
+        <Stat tone="danger" label={t.matchDifference} value={<span className={stats.differences ? 'tone-danger' : undefined}>{stats.differences ?? 0}</span>} meta={<Money value={stats.differenceAmount ?? 0} signed />} />
+      </StatRow>
       <section className="pane">
-        <div className="pane-body">
-          <StatRow>
-            <Stat icon="numbers" tone="muted" value={stats.count} label={t.opsCount} />
-            <Stat icon="wallet" tone="warning" value={<Money value={stats.cost} />} label={t.providerCost} />
-            <Stat icon="plans" tone="warning" value={<Money value={stats.monthCost} />} label={t.providerMonth} />
-            <Stat icon="reports" tone="success" value={stats.matched ?? 0} label={t.matchMatched} />
-            <Stat icon="reports" tone="danger" value={stats.differences ?? 0} label={t.matchDifference} meta={<Money value={stats.differenceAmount ?? 0} signed />} />
-            <Stat icon="tasks" tone="muted" value={stats.pending ?? 0} label={t.matchPending} />
-          </StatRow>
-          <p className="hint">{t.matchSimulatedHint}</p>
-        </div>
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noProviderOps} keepHead skeleton={{ rows: 6, columns: 10 }} />
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noProviderOps} keepHead skeleton={{ rows: 6, columns: 9 }} />
       </section>
     </Desk>
   );

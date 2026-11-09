@@ -11,7 +11,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { usePaged } from '../../../lib/use-paged';
-import { WalletHead, movementName } from './finance-screen';
+import { WalletHead, movementName, reasonTone } from './finance-screen';
 
 /**
  * «المحفظة» (spec 2026-11-09-offers-tasks-addons-wallet-esim, 4): the signed-in account's own wallet, for every
@@ -27,10 +27,10 @@ export function WalletScreen() {
   );
   const columns: Column<LedgerRow>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
-    { key: 'kind', header: t.kind, render: (row) => movementName(t, row.kind) },
-    { key: 'detail', header: t.note, render: (row) => [row.msisdn, row.packageName, row.note].filter(Boolean).join(' · ') || '—' },
+    { key: 'kind', header: t.reasonColumn, render: (row) => <span className={`reason ${reasonTone(row.kind)}`}>{movementName(t, row.kind)}</span> },
+    { key: 'detail', header: t.detailsColumn, render: (row) => [row.msisdn, row.packageName, row.note].filter(Boolean).join(' · ') || '—' },
     { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} signed /> },
-    { key: 'after', header: t.balanceAfter, num: true, render: (row) => <Money value={row.balanceAfter} /> },
+    { key: 'after', header: t.balanceAfterShort, num: true, render: (row) => <Money value={row.balanceAfter} /> },
   ];
   return (
     <Desk
@@ -44,7 +44,7 @@ export function WalletScreen() {
       error={summary.error}
       note={soon}
     >
-      {summary.data?.series ? <WalletHead summary={summary.data} /> : null}
+      <WalletHead />
       <div className="section-head"><h2>{t.walletMovements}</h2></div>
       <section className="pane">
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 5 }} />

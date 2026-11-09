@@ -597,6 +597,9 @@ export type FinanceSummary = {
   /** What the signed-in account earned on the sales in its chain over the 30 days, and how many sales. */
   profit: number;
   sales: number;
+  /** Movements made by hand (funding, taking back) in the window, and the window in days. */
+  manual?: number;
+  days?: number;
   series: { day: string; balance: number }[];
 };
 

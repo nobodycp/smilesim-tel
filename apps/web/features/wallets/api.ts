@@ -13,7 +13,7 @@ export const walletsApi = {
   profitReport: (query: { from?: string; to?: string; q?: string }) =>
     request<ProfitReport>('GET', `/office/finance/profits${queryString(query)}`),
   profitExportHref: (query: { from?: string; to?: string; q?: string }) => `/api/office/finance/profits/export${queryString(query)}`,
-  financeSummary: () => request<FinanceSummary>('GET', '/office/finance/summary'),
+  financeSummary: (days = 30) => request<FinanceSummary>('GET', `/office/finance/summary${days === 30 ? '' : `?days=${days}`}`),
   /** A link, not a call: the browser downloads the CSV with the session cookie. */
   financeExportHref: (query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string }) =>
     `/api/office/finance/export${queryString(query)}`,

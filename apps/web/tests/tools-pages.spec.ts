@@ -80,9 +80,9 @@ test.describe('DataTable and EmptyState', () => {
 
     await page.goto(`${admin}/finance`);
     await expect(page.locator('.sheet > .empty')).toHaveText('لا حركات بعد.');
-    // 14 columns since the margin column (roadmap N4); five of them are amounts.
-    await expect(page.locator('.sheet > table.data thead th')).toHaveCount(14);
-    await expect(page.locator('.sheet > table.data thead th.num')).toHaveCount(5);
+    // The design's ledger (Graphite): time, reason, details, amount, my margin, balance after; three are amounts.
+    await expect(page.locator('.sheet > table.data thead th')).toHaveCount(6);
+    await expect(page.locator('.sheet > table.data thead th.num')).toHaveCount(3);
   });
 });
 

@@ -108,24 +108,3 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   font-weight: 500;
 }
 .table-search input:not([type='checkbox']):not([type='radio']):not([type='file']):focus { border: 0; box-shadow: none; }
-.period-chips {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--rd-space-1);
-}
-.period-chips button {
-  height: 28px;
-  padding: 0 var(--rd-space-2);
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-surface);
-  color: var(--rd-muted);
-  font-size: var(--rd-text-xs);
-  font-weight: 600;
-}
-.period-chips button.is-on {
-  border-color: var(--rd-primary-bg);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
-}

@@ -1,4 +1,4 @@
-import { ledgerCsv, walletSummary, windowStart } from './finance-summary';
+import { ledgerCsv, summaryDays, walletSummary, windowStart } from './finance-summary';
 
 const at = (iso: string) => new Date(iso);
 
@@ -7,12 +7,12 @@ describe('walletSummary', () => {
 
   it('sums money in and out and keeps each day at the balance it ended with', () => {
     const entries = [
-      { createdAt: at('2026-11-06T09:00:00.000Z'), amount: 30000, balanceAfter: 30000 },
-      { createdAt: at('2026-11-06T10:00:00.000Z'), amount: -1898, balanceAfter: 28102 },
+      { createdAt: at('2026-11-06T09:00:00.000Z'), amount: 30000, balanceAfter: 30000, kind: 'fund' },
+      { createdAt: at('2026-11-06T10:00:00.000Z'), amount: -1898, balanceAfter: 28102, kind: 'activate' },
       { createdAt: at('2026-11-08T08:00:00.000Z'), amount: -3296, balanceAfter: 24806 },
     ];
     const summary = walletSummary(entries, 24806, now, 5);
-    expect(summary).toMatchObject({ moneyIn: 30000, moneyOut: 5194, count: 3 });
+    expect(summary).toMatchObject({ moneyIn: 30000, moneyOut: 5194, count: 3, manual: 1, days: 5 });
     expect(summary.series).toEqual([
       { day: '2026-11-04', balance: 0 },
       { day: '2026-11-05', balance: 0 },
@@ -26,6 +26,10 @@ describe('walletSummary', () => {
     const summary = walletSummary([], 5000, now, 3);
     expect(summary.series.map((point) => point.balance)).toEqual([5000, 5000, 5000]);
     expect(summary).toMatchObject({ moneyIn: 0, moneyOut: 0, count: 0 });
+  });
+
+  it('takes 7, 30 or 90 days and falls back to 30', () => {
+    expect([summaryDays('7'), summaryDays('90'), summaryDays('45'), summaryDays(undefined)]).toEqual([7, 90, 30, 30]);
   });
 
   it('opens the window at the start of the oldest day', () => {

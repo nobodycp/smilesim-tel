@@ -9,8 +9,8 @@ const series = Array.from({ length: 30 }, (_, index) => ({
 // The finance page opens on the signed-in wallet (spec 2026-11-08-inner-pages-refresh, §6): four cards, the balance
 // over 30 days, what moved, and the statement with a CSV of the filters on screen.
 test('finance shows the wallet, its 30 days, and exports the filtered statement', async ({ page }) => {
-  await serveOffice(page, 'agent', {
-    'GET /finance/summary': () => ({ body: { balance: 24806, ceiling: 0, held: 0, unlimited: false, moneyIn: 30000, moneyOut: 5194, count: 4, profit: 1250, sales: 2, series } }),
+  const calls = await serveOffice(page, 'agent', {
+    'GET /finance/summary': () => ({ body: { balance: 24806, ceiling: 0, held: 0, unlimited: false, moneyIn: 30000, moneyOut: 5194, count: 4, manual: 1, days: 30, profit: 1250, sales: 2, series } }),
     'GET /finance': () => ({ body: { entries: [{
       id: 'e1', at: '2026-11-06T16:27:00.000Z', loginName: 'pos1', layer: 'pos', actorLogin: 'pos1', kind: 'activate', amount: -3800,
       balanceBefore: 30000, balanceAfter: 26200, msisdn: '0550000001', companyName: 'سلكوم', packageName: '150 جيجا', packagePrice: 3800,
@@ -18,19 +18,20 @@ test('finance shows the wallet, its 30 days, and exports the filtered statement'
     }], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://agent.localhost:3910/finance');
-  // Graphite: a figure band (the balance leads), then the ceiling's own cards, then the chart with its range.
-  await expect(page.locator('.wallet-band .figure-tile.lead')).toContainText('248.06 ₪');
-  const cards = page.locator('.stat-row .stat');
-  await expect(cards).toHaveCount(4);
-  await expect(cards.nth(3)).toContainText('248.06 ₪');
-  await expect(page.getByRole('img', { name: 'الرصيد عبر الوقت' }).last()).toBeVisible();
-  await expect(page.locator('.wallet-chart-figures')).toContainText('+248.06 ₪');
-  await expect(page.locator('.wallet-band')).toContainText('300.00 ₪');
-  await expect(page.locator('.wallet-band')).toContainText('51.94 ₪');
-  // What this account earned: over 30 days, and on each sale in the statement.
-  await expect(page.locator('.wallet-profit')).toContainText('+12.50 ₪');
-  await expect(page.locator('.wallet-profit')).toContainText('2 بيعة');
+  // The design's head: the balance leads, money in and out over the window, the movements with those made by hand.
+  const band = page.locator('.wallet-band');
+  await expect(band.locator('.figure-tile.lead')).toContainText('248.06 ₪');
+  await expect(band).toContainText('300.00 ₪');
+  await expect(band).toContainText('-51.94 ₪');
+  await expect(band).toContainText('منها 1 يدوية');
+  await expect(page.getByRole('img', { name: 'الرصيد عبر الوقت' })).toBeVisible();
+  await expect(page.locator('.wallet-chart .pane-head')).toContainText('+248.06 ₪');
+  // The window switch reads the summary again for 7 days, and the tiles follow it.
+  await page.getByRole('button', { name: '7 أيام' }).click();
+  await expect.poll(() => calls.some((call) => call.startsWith('GET /finance/summary?') && call.includes('days=7'))).toBe(true);
+  // The reason is a coloured tag; my margin on each sale stays in the ledger.
   const row = page.locator('table.data tbody tr').first();
+  await expect(row.locator('.reason.r-leaf')).toBeVisible();
   await expect(row).toContainText('+3.00 ₪');
 
   await page.getByLabel('من', { exact: true }).fill('2026-11-01');
