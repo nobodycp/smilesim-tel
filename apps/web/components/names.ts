@@ -57,6 +57,8 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'provider_mode') return t.actProviderMode;
   if (action === 'provider_esim_price') return t.actProviderEsimPrice;
   if (action === 'company_sim') return t.actCompanySim;
+  if (action === 'company_add') return t.actCompanyAdd;
+  if (action === 'package_add') return t.actPackageAdd;
   if (action === 'package_mode') return t.actPackageMode;
   if (action === 'package_price') return t.actPackagePrice;
   if (action === 'package_chain') return t.actPackageChain;

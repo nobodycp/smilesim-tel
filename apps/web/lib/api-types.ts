@@ -640,3 +640,18 @@ export type ReconRunSummary = {
   counts: ReconCounts; open: number; actorLogin: string;
 };
 export type ReconRun = Omit<ReconRunSummary, 'open'> & { providerCode: string; providerName: string; items: ReconItem[] };
+
+/** The provider's catalog, queried to add a company or a package (spec 2026-11-09-admin-review, 3). */
+export type ProviderCatalogCompany = { code: string; name: string; sim: SimRules; esimPrice: number; added: boolean };
+export type ProviderCatalogProduct = {
+  code: string; name: string; dataGb: number | null; smsCount: number | null; minutes: number | null; months: number; details: string;
+  cost: number; renewalCost: number; addons: { name: string; price: number }[]; added: boolean;
+};
+export type PriceLadder = { branchCost: number; mainPrice: number; agentPrice: number; posPrice: number; subscriberPrice: number };
+export type NewPackage = {
+  providerCode: string; companyCode: string; productCode: string; name: string;
+  dataGb: number | null; smsCount: number | null; minutes: number | null; months: number; details: string; suspendAfterDays: number; esimAvailable: boolean;
+  subscription: PriceLadder; renewal: PriceLadder;
+  modes: Record<string, 'auto' | 'manual' | 'off' | 'inherit'>;
+  addons: { name: string; price: number }[];
+};

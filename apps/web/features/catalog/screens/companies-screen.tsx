@@ -17,6 +17,9 @@ import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { DataImage } from '../../../components/data-image';
+import { Plus } from 'lucide-react';
+import { buttonClass } from '../../../components/ui/button';
+import { useOffice } from '../../../lib/office-session';
 
 const BRANCH = ['branch'];
 type Company = Shelf['companies'][number];
@@ -44,6 +47,8 @@ export function CompaniesScreen() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const allowed = useRequireLayer(BRANCH);
+  const { me } = useOffice();
+  const canAdd = Boolean(me && (me.isBranchOwner || me.grants.includes('edit')) && !me.impersonating);
   const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
   const { run } = useAction({ setError, setNote, onDone: shelf.reload });
 
@@ -111,7 +116,14 @@ export function CompaniesScreen() {
   const companies = shelf.data?.companies ?? [];
 
   return (
-    <Desk title={allowed ? t.companiesTitle : ''} lede={t.companiesLede} error={error} note={note}>
+    <Desk
+      title={allowed ? t.companiesTitle : ''}
+      lede={t.companiesLede}
+      // A company the provider sells (spec 2026-11-09-admin-review, 3): owner or the edit grant.
+      action={canAdd ? <Link className={buttonClass({})} href="/companies/new"><Plus size={16} aria-hidden="true" />{t.addCompany}</Link> : undefined}
+      error={error}
+      note={note}
+    >
       <input
         ref={file}
         className="sr-only"

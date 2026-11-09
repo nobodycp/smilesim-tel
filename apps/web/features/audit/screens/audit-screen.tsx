@@ -23,7 +23,7 @@ const ACTIONS = [
   'fund',
   'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim',
   'task_take', 'task_release', 'task_note', 'task_complete', 'task_reject', 'task_cancel',
-  'provider_mode', 'company_sim', 'package_mode', 'package_price', 'package_chain', 'package_reprice', 'user_package', 'user_ops', 'user_transfer', 'sell_price',
+  'provider_mode', 'company_add', 'company_sim', 'package_add', 'package_mode', 'package_price', 'package_chain', 'package_reprice', 'user_package', 'user_ops', 'user_transfer', 'sell_price',
 ] as const;
 
 const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;

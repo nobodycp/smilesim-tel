@@ -27,6 +27,7 @@ import { lineTone, onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { NameField } from '../../../components/name-field';
 import { InheritedModes } from '../inherited-modes';
+import { ChainBoard, type PriceKey } from '../chain-board';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
 import { PackageAddons } from '../package-addons';
@@ -37,18 +38,6 @@ const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
 type Tab = 'overview' | 'details' | 'addons' | 'run' | 'prices' | 'renewals' | 'switches' | 'numbers' | 'offers';
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
-type PriceKey =
-  | 'branchCost'
-  | 'mainPrice'
-  | 'agentPrice'
-  | 'posPrice'
-  | 'subscriberPrice'
-  | 'renewalBranchCost'
-  | 'renewalMainPrice'
-  | 'renewalAgentPrice'
-  | 'renewalPosPrice'
-  | 'renewalSubscriberPrice';
-
 const EMPTY_PRICES: Record<PriceKey, string> = {
   branchCost: '',
   mainPrice: '',
@@ -396,29 +385,6 @@ export function PackageSheetScreen() {
     { key: 'numbers', label: t.numbersTab },
     { key: 'offers', label: t.offersTab },
   ];
-  const priceGroups: { title: string; fields: [PriceKey, string][] }[] = [
-    {
-      title: t.subscriptionPrices,
-      fields: [
-        ['branchCost', t.branchCost],
-        ['mainPrice', t.layerMain],
-        ['agentPrice', t.layerAgent],
-        ['posPrice', t.layerPos],
-        ['subscriberPrice', t.subscriberPrice],
-      ],
-    },
-    {
-      title: t.renewalPrices,
-      fields: [
-        ['renewalBranchCost', t.branchCost],
-        ['renewalMainPrice', t.layerMain],
-        ['renewalAgentPrice', t.layerAgent],
-        ['renewalPosPrice', t.layerPos],
-        ['renewalSubscriberPrice', t.subscriberPrice],
-      ],
-    },
-  ];
-
   function targetList(kind: 'renewals' | 'switches', packages: ShelfPackage[]) {
     const selected = kind === 'renewals' ? renewals : switches;
     return (
@@ -508,32 +474,7 @@ export function PackageSheetScreen() {
                 </div>
               )}
               {tab === 'prices' && (
-                <div className="pane-body price-board" aria-label={t.chainTab}>
-                  {priceGroups.map((group) => (
-                    <div className="account-fund" key={group.title}>
-                      <h3>{group.title}</h3>
-                      {group.fields.map(([key, label], index) => {
-                        // Each layer's margin over the one above it, under its price (the design's ladder).
-                        const here = Number(prices[key]);
-                        const above = index > 0 ? Number(prices[group.fields[index - 1][0]]) : NaN;
-                        const margin = Number.isFinite(here) && Number.isFinite(above) && prices[key] !== '' ? Math.round((here - above) * 100) : null;
-                        return (
-                          <div key={key} className="chain-step">
-                            <label>
-                              {label}
-                              <input
-                                className="num"
-                                inputMode="numeric"
-                                value={prices[key]}
-                                onChange={(event) => setPrices((current) => ({ ...current, [key]: event.target.value }))}
-                              />
-                            </label>
-                            {index > 0 && margin !== null ? <span className="step-note"><Money value={margin} signed /></span> : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                <ChainBoard prices={prices} onChange={(key, value) => setPrices((current) => ({ ...current, [key]: value }))}>
                   <div className="account-fund">
                     <h3>{t.esimPrice}</h3>
                     <label>
@@ -566,7 +507,7 @@ export function PackageSheetScreen() {
                       <Button type="button" variant="secondary" onClick={() => setPricing({ scope: priceScope })}>{t.linePricesOpen}</Button>
                     </div>
                   </div>
-                </div>
+                </ChainBoard>
               )}
               {tab === 'renewals' && targetList('renewals', targetPackages)}
               {tab === 'switches' && targetList('switches', targetPackages)}

@@ -1182,3 +1182,41 @@ input[readonly] { background-color: transparent; }
 .inherit-fold > summary::after { content: ''; inline-size: 8px; block-size: 8px; margin-inline-start: auto; border-inline-end: 2px solid var(--rd-muted); border-block-end: 2px solid var(--rd-muted); transform: rotate(45deg); align-self: center; }
 .inherit-fold[open] > summary::after { transform: rotate(225deg); }
 .inherit-fold > .inherit-body { display: grid; gap: var(--rd-space-3); padding: 0 14px 14px; }
+
+/* «إضافة رزمة» and «إضافة شركة» (spec 2026-11-09-admin-review, 3): numbered steps in one column, the provider query,
+   the provider's offer as cards to pick from (an added one dims), add-on rows, and the actions at the end. */
+.add-step + .add-step { margin-block-start: var(--rd-space-3); }
+.add-step .pane-head h2 { display: inline-flex; align-items: center; gap: 10px; }
+.step-no { display: inline-grid; place-items: center; inline-size: 24px; block-size: 24px; border-radius: 50%; background: var(--rd-accent-soft); color: var(--rd-accent); font-size: 12px; font-weight: 800; }
+.add-query { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--rd-space-2-5); }
+.add-query > label { display: grid; gap: 4px; min-inline-size: min(100%, 18rem); color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 700; }
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--rd-space-2-5); }
+.pick-card {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+  text-align: start;
+  cursor: pointer;
+}
+.pick-card:hover:not(:disabled) { border-color: color-mix(in srgb, var(--rd-accent) 45%, var(--rd-line)); }
+.pick-card.on { border-color: var(--rd-accent); background: var(--rd-accent-soft); }
+.pick-card:disabled { cursor: default; opacity: 0.55; }
+.pick-card:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 1px; }
+.pick-card b { font-size: var(--rd-text-md); }
+.pick-cost { color: var(--rd-ink-2); font-size: var(--rd-text-sm); }
+.pick-tick { position: absolute; inset-block-start: 10px; inset-inline-end: 10px; color: var(--rd-accent); }
+.addon-row { display: grid; grid-template-columns: auto minmax(0, 1fr) 8rem auto; align-items: center; gap: var(--rd-space-2); }
+.pane-hint { margin: 0; padding: 0 var(--rd-space-3-5); }
+.add-actions { display: flex; justify-content: flex-end; gap: var(--rd-space-2); margin-block-start: var(--rd-space-3); }
+@media (max-width: 767px) {
+  .add-query > label { flex: 1 1 100%; }
+  .add-query > .ui-btn { flex: 1; min-height: 44px; }
+  .addon-row { grid-template-columns: auto minmax(0, 1fr) 6rem auto; }
+  .add-actions > * { flex: 1; min-height: 44px; }
+}

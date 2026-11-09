@@ -1,5 +1,5 @@
-import { request, segment } from '../../lib/http';
-import type { PackageAddon, PackageRow, PackageSheet, ProviderRow, ProviderSettings, Shelf, SimRules } from '../../lib/api-types';
+import { queryString, request, segment } from '../../lib/http';
+import type { NewPackage, PackageAddon, PackageRow, PackageSheet, ProviderCatalogCompany, ProviderCatalogProduct, ProviderRow, ProviderSettings, Shelf, SimRules } from '../../lib/api-types';
 
 /** The catalog calls of the office API. Composed into `api` by lib/api.ts. */
 export const catalogApi = {
@@ -27,6 +27,14 @@ export const catalogApi = {
   savePackageAddon: (code: string, id: string, body: Partial<Pick<PackageAddon, 'name' | 'price' | 'active' | 'position'>>) =>
     request<{ addons: PackageAddon[] }>('PATCH', `/office/packages/${segment(code)}/addons/${segment(id)}`, body),
   removePackageAddon: (code: string, id: string) => request<{ addons: PackageAddon[] }>('DELETE', `/office/packages/${segment(code)}/addons/${segment(id)}`),
+  // Adding from the provider (spec 2026-11-09-admin-review, 3): query, then add.
+  providerCatalogCompanies: (code: string) =>
+    request<{ simulated: boolean; companies: ProviderCatalogCompany[] }>('GET', `/office/providers/${segment(code)}/catalog/companies`),
+  providerCatalogProducts: (code: string, company: string) =>
+    request<{ simulated: boolean; products: ProviderCatalogProduct[] }>('GET', `/office/providers/${segment(code)}/catalog/products${queryString({ company })}`),
+  createCompany: (body: { providerCode: string; companyCode: string; name: string; simLength: number | null; simPrefix: string; esim: boolean; esimPrice: number }) =>
+    request<{ ok: true; code: string }>('POST', '/office/companies', body),
+  createPackage: (body: NewPackage) => request<{ ok: true; code: string; companyCode: string }>('POST', '/office/packages', body),
   packageSheet: (code: string) => request<PackageSheet>('GET', `/office/packages/${segment(code)}/sheet`),
   setChain: (code: string, body: Partial<{
     branchCost: number;

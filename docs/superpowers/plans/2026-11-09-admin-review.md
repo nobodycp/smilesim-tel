@@ -79,7 +79,7 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
   (ar copy = API message). Specs incl. duplicate product refused.
 - [x] **3.5 Run tab with inheritance (web).** Package page run tab: the Select table gives way to `ModeCards`
   (already on the provider page), each action «موروث» / «مخصص», folded, «رجوع للموروث».
-- [ ] **3.6 «إضافة رزمة» page (web).** `/companies/[code]/packages/new`: provider → query → pick → details → addons →
+- [x] **3.6 «إضافة رزمة» page (web).** `/companies/[code]/packages/new`: provider → query → pick → details → addons →
   run (folded) → prices → save; reuses the package page editors. e2e on the mock API.
-- [ ] **3.7 «إضافة شركة» page (web).** `/companies/new`: provider → query → pick → SIM rules → save. e2e.
-- [ ] **3.8 Docs and check** (backend + frontend maps, all widths, ar + en, light + dark).
+- [x] **3.7 «إضافة شركة» page (web).** `/companies/new`: provider → query → pick → SIM rules → save. e2e.
+- [x] **3.8 Docs and check** (backend + frontend maps, all widths, ar + en, light + dark).
