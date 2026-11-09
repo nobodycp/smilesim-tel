@@ -35,6 +35,20 @@ test('the home hero shows the live offers, moves by dot and key, and moves on by
   await expect(hero.getByRole('heading', { name: 'عرض الربيع' })).toBeVisible();
 });
 
+test('an offer without a picture is text only and takes the whole width', async ({ page }) => {
+  await serveOffice(page, 'agent', {
+    'GET /home': () => ({ body: home }),
+    'GET /offers/live': () => ({ body: { offers: [{ ...offer('o3', 'تنبيه: صيانة الليلة'), image: null, actionHref: null, actionLabel: null }] } }),
+  });
+  await page.goto('http://agent.localhost:3910/');
+  const hero = page.locator('.offer-hero');
+  await expect(hero.getByRole('heading', { name: 'تنبيه: صيانة الليلة' })).toBeVisible();
+  await expect(hero.locator('.offer-slide')).toHaveClass(/text-only/);
+  await expect(hero.locator('img')).toHaveCount(0);
+  // One offer: no dots and no timer.
+  await expect(hero.getByRole('tab')).toHaveCount(0);
+});
+
 test('a home without live offers has no hero', async ({ page }) => {
   await serveOffice(page, 'agent', { 'GET /home': () => ({ body: home }), 'GET /offers/live': () => ({ body: { offers: [] } }) });
   await page.goto('http://agent.localhost:3910/');

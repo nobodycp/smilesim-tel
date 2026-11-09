@@ -71,7 +71,8 @@ export function OfferHero({ offers }: { offers: Offer[] }) {
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
     >
-      <div className="offer-slide" key={current.id} aria-live={paused ? 'polite' : 'off'}>
+      {/* The picture is optional: without one the offer is text only and takes the whole width. */}
+      <div className={current.image ? 'offer-slide' : 'offer-slide text-only'} key={current.id} aria-live={paused ? 'polite' : 'off'}>
         <div className="offer-copy">
           <h2>{current.title}</h2>
           {current.body ? <p>{current.body}</p> : null}
@@ -81,7 +82,7 @@ export function OfferHero({ offers }: { offers: Offer[] }) {
               : <Link className="offer-action" href={current.actionHref}>{current.actionLabel}</Link>
           ) : null}
         </div>
-        {current.image ? <DataImage className="offer-image" src={current.image} alt="" /> : <div className="offer-image offer-image-empty" aria-hidden="true" />}
+        {current.image ? <DataImage className="offer-image" src={current.image} alt="" /> : null}
       </div>
       {count > 1 ? (
         <>
