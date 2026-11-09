@@ -5,7 +5,11 @@
   .stat-value { font-size: 1.2rem; }
   .sidebar { display: none; }
   .menu-btn.shell-icon, .topbar-brand { display: inline-flex; }
-  .hello { display: none; }
+  /* The path takes its own full-width row under the icons, so it is not squeezed. */
+  .topbar { flex-wrap: wrap; row-gap: var(--rd-space-1-5); padding-block: var(--rd-space-2); }
+  .topbar-start { display: contents; }
+  .topbar-tools { margin-inline-start: auto; }
+  .shell-path { order: 10; flex: 1 0 100%; margin-inline: -4px; padding-block-start: var(--rd-space-1-5); border-block-start: 1px solid var(--rd-line-soft); }
   .shell-search-field kbd { display: none; }
   .topbar-brand { display: block; }
   .user-copy, .user-btn > svg { display: none; }

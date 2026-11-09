@@ -39,8 +39,9 @@ test('the branch reads the full overview, switches the period, and sees its prov
   const sales = page.locator('.overview-sales');
   await expect(sales).toContainText('540.00 ₪');
   await expect(sales).toContainText('+36.00 ₪');
-  await expect(sales.locator('.overview-bar')).toHaveCount(2);
-  await expect(page.locator('.overview-shapes')).toHaveAttribute('aria-hidden', 'true');
+  // The lead figure tile carries the period's trend (Graphite, spec 2026-11-09-graphite-identity).
+  await expect(sales.locator('.figure-tile')).toHaveCount(4);
+  await expect(sales.locator('.figure-tile.lead .sparkline')).toHaveCount(1);
 
   const legend = page.locator('.donut-legend li');
   await expect(legend).toHaveCount(5);

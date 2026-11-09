@@ -33,9 +33,9 @@ export function readTheme(): Theme {
   const fromCookie = readCookie(THEME_KEY);
   if (fromCookie === 'dark' || fromCookie === 'light') return fromCookie;
   try {
-    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+    return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
   } catch {
-    return 'light';
+    return 'dark';
   }
 }
 
@@ -64,7 +64,7 @@ export function applyLocale(locale: Locale) {
 
 type Seed = { locale: Locale; theme: Theme; pageSize: PageSize };
 
-const PrefsSeed = createContext<Seed>({ locale: 'ar', theme: 'light', pageSize: 10 });
+const PrefsSeed = createContext<Seed>({ locale: 'ar', theme: 'dark', pageSize: 10 });
 
 export function PrefsSeedProvider({ locale, theme, pageSize, children }: Seed & { children: ReactNode }) {
   const value = useMemo(() => ({ locale, theme, pageSize }), [locale, theme, pageSize]);

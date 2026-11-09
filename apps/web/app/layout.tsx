@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';
-import { IBM_Plex_Sans_Hebrew, Tajawal } from 'next/font/google';
+import { IBM_Plex_Sans_Hebrew, Noto_Kufi_Arabic } from 'next/font/google';
 import { Bootstrap } from '../components/bootstrap';
 import { Toasts } from '../components/toast';
 import { Doors } from '../components/doors';
@@ -17,9 +17,10 @@ import { QueryProvider } from '../lib/query';
 import { OfficeSession } from '../lib/office-session';
 import './globals.css';
 
-const sans = Tajawal({
+// Graphite (spec 2026-11-09-graphite-identity): Noto Kufi Arabic, angular like a stamp and clear at small sizes, for
+// Arabic and Latin; a variable face, so every weight the sheets use is real.
+const sans = Noto_Kufi_Arabic({
   subsets: ['arabic', 'latin'],
-  weight: ['400', '500', '700', '800'],
   variable: '--font-sans',
   display: 'swap',
 });

@@ -11,17 +11,17 @@ export function ThemeToggle({ shell = false }: { shell?: boolean }) {
   if (shell) {
     return (
       <button type="button" className="shell-icon" onClick={toggleTheme} aria-label={label} title={label}>
-        <Sun className="shell-sun" size={18} strokeWidth={2.2} aria-hidden="true" />
-        <Moon className="shell-moon" size={18} strokeWidth={2.2} aria-hidden="true" />
+        <Sun className="shell-sun" size={18} strokeWidth={1.9} aria-hidden="true" />
+        <Moon className="shell-moon" size={18} strokeWidth={1.9} aria-hidden="true" />
       </button>
     );
   }
   return (
     <button type="button" className="icon-btn" onClick={toggleTheme} aria-label={label} title={label}>
       {theme === 'light' ? (
-        <Moon size={18} strokeWidth={2.2} aria-hidden="true" />
+        <Moon size={18} strokeWidth={1.9} aria-hidden="true" />
       ) : (
-        <Sun size={18} strokeWidth={2.2} aria-hidden="true" />
+        <Sun size={18} strokeWidth={1.9} aria-hidden="true" />
       )}
     </button>
   );

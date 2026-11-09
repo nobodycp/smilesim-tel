@@ -8,11 +8,33 @@
 .sidebar, .drawer {
   display: flex;
   flex-direction: column;
-  background: var(--rd-surface);
+  background: var(--rd-bg);
   border-inline-end: 1px solid var(--rd-line);
 }
-.sidebar { width: 240px; flex: none; }
-.sidebar.collapsed { width: 60px; }
+/* Graphite: the sidebar is the canvas colour with a hairline at its edge; folded, a 76px rail of icons. */
+.sidebar { position: relative; z-index: calc(var(--rd-z-topbar) + 1); width: 248px; flex: none; }
+.sidebar.collapsed { width: 76px; }
+.drawer { background: var(--rd-surface); }
+/* The round handle on the sidebar's edge, half over the hairline. */
+.side-handle {
+  position: absolute;
+  z-index: var(--rd-z-raised);
+  top: 26px;
+  inset-inline-end: -12px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-surface);
+  color: var(--rd-muted);
+  box-shadow: var(--rd-shadow-pop);
+  opacity: 0.85;
+}
+.side-handle:hover { color: var(--rd-ink); border-color: color-mix(in srgb, var(--rd-ink) 25%, transparent); opacity: 1; }
+.side-handle svg { width: 14px; height: 14px; }
 .drawer {
   position: fixed;
   z-index: var(--rd-z-drawer);
@@ -33,63 +55,84 @@
 .brand-block {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: var(--rd-space-1);
-  padding: var(--rd-space-4) var(--rd-space-3) var(--rd-space-3);
-  text-align: center;
+  gap: var(--rd-space-2-5);
+  min-height: 64px;
+  padding: var(--rd-space-3) var(--rd-space-4);
+  text-align: start;
 }
+.brand-block.compact { justify-content: center; }
+.brand-copy { min-width: 0; }
+.brand-copy p { margin: 0; line-height: 1.35; }
+.sidebar .brand-name, .drawer .brand-name { font-size: var(--rd-text-lg); font-weight: 700; }
+.sidebar .brand-sub, .drawer .brand-sub { color: var(--rd-muted); font-size: var(--rd-text-xs); }
+/* One crimson thread under the brand, from the inline start. */
+.sidebar .brand-rule, .drawer .brand-rule {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: var(--rd-space-4);
+  height: 1px;
+  width: auto;
+  background: linear-gradient(to left, transparent, var(--rd-line) 30%, var(--rd-line));
+}
+[dir='rtl'] .sidebar .brand-rule, [dir='rtl'] .drawer .brand-rule { background: linear-gradient(to right, transparent, var(--rd-line) 30%, var(--rd-line)); }
 .brand-block.compact { padding-inline: var(--rd-space-2); }
 .brand-block.compact .brand-rule { width: 20px; }
 /* Hotspot-style brand tile in the shell only (auth keeps base.css mark). */
 .sidebar .brand-mark,
 .drawer .brand-mark {
-  width: 3.5rem;
-  height: 3.5rem;
-  border-radius: var(--rd-radius-panel);
-  background: var(--rd-primary-bg);
-  box-shadow: var(--rd-shadow-card);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-accent);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
 }
+[dir='rtl'] .sidebar .brand-mark, [dir='rtl'] .drawer .brand-mark { clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); }
 .sidebar.collapsed .brand-mark {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: var(--rd-radius-card);
+  width: 2.25rem;
+  height: 2.25rem;
 }
 .sidebar .brand-mark svg,
 .drawer .brand-mark svg {
-  width: 1.75rem;
-  height: 1.75rem;
-  stroke: var(--rd-primary-fg);
+  width: 1.15rem;
+  height: 1.15rem;
+  stroke: var(--rd-on-accent);
 }
 .sidebar.collapsed .brand-mark svg {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.15rem;
+  height: 1.15rem;
 }
 /* A saved logo takes the tile's place and keeps its own proportions. */
 .sidebar .brand-block-logo,
-.drawer .brand-block-logo { max-width: 160px; max-height: 56px; }
+.drawer .brand-block-logo { max-width: 150px; max-height: 40px; }
 .sidebar.collapsed .brand-block-logo { max-width: 40px; max-height: 40px; }
 .drawer-close { position: absolute; top: 8px; inset-inline-end: 8px; }
-.side-nav { flex: 1; overflow: auto; padding: var(--rd-space-2) var(--rd-space-2-5); }
+.side-nav { flex: 1; overflow: auto; padding: var(--rd-space-2) var(--rd-space-3); scrollbar-width: thin; }
 /* The label and the link icons start on the same edge: 12px inside the nav padding. */
 .nav-label {
-  margin: var(--rd-space-4) 0 var(--rd-space-1);
+  margin: var(--rd-space-5) 0 var(--rd-space-1-5);
   padding-inline: var(--rd-space-3);
   color: var(--rd-muted);
-  font-size: var(--rd-text-xs);
-  font-weight: 700;
+  font-size: var(--rd-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
-/* Tajawal loads 400, 500, 700 and 800, so the old 600 drew as 700 and rest looked as heavy as active. Rest is 500, active is 700. */
+/* Rest is 500, current is 600 (Noto Kufi Arabic is variable, every weight is real). */
 .nav-link {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--rd-space-2-5);
   width: 100%;
-  min-height: 40px;
-  margin-top: var(--rd-space-0-5);
+  min-height: 38px;
+  margin-top: 1px;
   padding: 0 var(--rd-space-3);
   border-radius: var(--rd-radius-sm);
+  transition: background-color var(--rd-dur-fast) var(--rd-ease-standard), color var(--rd-dur-fast) var(--rd-ease-standard);
   color: var(--rd-ink-2);
   font-size: var(--rd-text-md);
   font-weight: 500;
@@ -99,31 +142,34 @@
 /* Hover is a lighter wash than the active fill (--rd-surface-2, about 4% ink). The popover items mix 8% ink, which is
    darker than --rd-surface-2 and would make hover stronger than active, so the nav uses the same mix at 3%. */
 .nav-link:hover:not(.locked):not(.active) {
-  background: color-mix(in srgb, var(--rd-ink) 3%, var(--rd-surface));
+  background: var(--rd-surface-2);
   color: var(--rd-ink);
 }
 .nav-link:hover:not(.locked):not(.active) svg { color: var(--rd-ink); }
 .nav-link.active {
-  background: var(--rd-surface-2);
+  background: transparent;
   color: var(--rd-ink);
-  font-weight: 700;
+  font-weight: 600;
 }
-.nav-link.active svg { color: var(--rd-ink); }
-/* The rail is ink, not the accent: the brand rule is the one accent on this screen. */
+/* Graphite: the current page is ink text with the crimson thread at its inline start. */
 .nav-link.active::before {
   content: '';
   position: absolute;
-  inset-block: 25%;
+  inset-block: 11px;
   inset-inline-start: 0;
-  width: 3px;
+  width: 2px;
   border-radius: var(--rd-radius-pill);
-  background: var(--rd-ink);
+  background: var(--rd-accent);
 }
+.nav-link.active svg { color: var(--rd-accent); }
 /* Muted, not faint: a locked page is still a label someone reads (about 5:1, AA). */
 .nav-link.locked { color: var(--rd-muted); cursor: default; }
 .nav-link.locked svg:last-child { width: 13px; height: 13px; margin-inline-start: auto; }
 /* Collapsed rail: the icon is the whole link, so it sits in the middle of the 40px tile. */
-.sidebar.collapsed .nav-link { justify-content: center; padding-inline: 0; }
+.sidebar.collapsed .nav-link { justify-content: center; min-height: 42px; padding-inline: 0; }
+.sidebar.collapsed .nav-link.active { background: var(--rd-surface-2); }
+.sidebar.collapsed .nav-link.active::before { inset-block: 12px; }
+.sidebar.collapsed .side-nav { padding-inline: var(--rd-space-3); }
 /* The drawer only shows on touch widths. */
 .drawer .nav-link { min-height: 44px; }
 /* A collapsible group: the head is a nav-link-sized button with a chevron at the inline end, and
@@ -137,12 +183,15 @@
   height: 14px;
   margin-inline-start: auto;
 }
+.nav-group-chevron { transition: transform var(--rd-dur-base) var(--rd-ease-out); }
 .nav-group-chevron.open { transform: rotate(180deg); }
-.nav-group-body .nav-link { padding-inline-start: 40px; }
-.nav-group-body .nav-link.active::before { inset-inline-start: 28px; }
+/* A folding group's links hang from a hairline, like folders under their parent. */
+.nav-group-body { position: relative; }
+.nav-group-body::before { content: ''; position: absolute; inset-block: 4px; inset-inline-start: 20px; width: 1px; background: var(--rd-line); }
+.nav-group-body .nav-link { padding-inline-start: 34px; min-height: 34px; font-size: var(--rd-text-sm); }
+.nav-group-body .nav-link svg { width: 15px; height: 15px; }
+.nav-group-body .nav-link.active::before { inset-inline-start: 19px; inset-block: 9px; width: 3px; }
 .side-foot { border-top: 1px solid var(--rd-line-soft); padding: var(--rd-space-2); }
-.collapse-btn { display: none; }
-.sidebar .collapse-btn { display: flex; }
 .office-main { display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column; }
 .topbar {
   position: sticky;
@@ -152,7 +201,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--rd-space-3);
-  padding: 0.7rem 1rem;
+  min-height: 60px;
+  padding: 0.6rem 1.25rem;
   border-bottom: 1px solid var(--rd-line);
   container-type: inline-size;
   container-name: topbar;
@@ -162,23 +212,35 @@
 }
 .topbar-start { display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1 1 auto; }
 .topbar-tools { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; flex: none; }
-.hello { display: flex; flex: 0 1 auto; flex-direction: column; min-width: 0; max-width: 100%; overflow: hidden; line-height: 1.3; }
-.hello-title {
-  overflow: hidden;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--rd-ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.hello-date {
-  overflow: hidden;
+/* The path (components/crumbs.tsx, Graphite): ⌂ / section / list / item, like a folder path. Section titles are
+   plain muted text, the levels above the page are links, the page itself is ink. */
+.shell-path { min-width: 0; flex: 1 1 auto; }
+.shell-path ol { display: flex; align-items: center; gap: 2px; margin: 0; padding: 0; list-style: none; overflow: hidden; white-space: nowrap; }
+.shell-path li { display: inline-flex; align-items: center; gap: 2px; min-width: 0; }
+.shell-path li.last { flex: 0 1 auto; overflow: hidden; }
+.shell-path-home {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--rd-radius-sm);
   color: var(--rd-muted);
-  font-size: 0.86rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
+a.shell-path-home:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
+.shell-path-home svg { width: 16px; height: 16px; }
+.shell-path-sep { padding-inline: 3px; color: var(--rd-faint); font-weight: 300; }
+.shell-path a, .shell-path-label, .shell-path [aria-current='page'] {
+  padding: 3px 6px;
+  border-radius: var(--rd-radius-xs);
+  font-size: var(--rd-text-md);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.shell-path-label { color: var(--rd-muted); }
+.shell-path a { color: var(--rd-ink-2); font-weight: 500; }
+.shell-path a:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
+.shell-path [aria-current='page'] { color: var(--rd-ink); font-weight: 600; }
+.shell-path a:focus-visible, a.shell-path-home:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 1px; }
 .menu-btn { display: none; }
 /* One box for every topbar control; the touch size is at the end of this file. The language button is
    .shell-icon.shell-lang, so it takes the same box. The avatar keeps its circle. DESIGN.md defines only

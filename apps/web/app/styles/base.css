@@ -19,7 +19,7 @@ h1, h2, h3, .brand-name {
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
-svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 .icon-btn, .lang button, .user-btn, .nav-link, .menu button, .menu a {
   border: 0;
   background: transparent;
@@ -83,6 +83,11 @@ svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width:
 .dark .brand-logo-dark,
 .on-ink .brand-logo-dark,
 .dark .on-ink .brand-logo-light { display: block; }
+/* Graphite motion (spec 2026-11-09-graphite-identity), used under prefers-reduced-motion: no-preference only. */
+@keyframes rd-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rd-draw { to { stroke-dashoffset: 0; } }
+@keyframes rd-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rd-grow { from { transform: scaleX(0); } to { transform: none; } }
 @keyframes sidebar-settle { from { opacity: 0; } }
 @keyframes sidebar-settle-collapsed { from { opacity: 0; } }
 /* Motion is opt-in: nothing moves unless the user allows it, so no forced reset is needed. */

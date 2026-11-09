@@ -1,4 +1,4 @@
-/* The home page: home grid and shortcuts. */
+/* The home page (Graphite, spec 2026-11-09-graphite-identity): figure band, middle and rankings rows, home grid. */
 .home { display: flex; flex: 1; flex-direction: column; gap: var(--rd-space-3-5); }
 .home > .page-head {
   display: flex;
@@ -10,24 +10,6 @@
 }
 .home > .page-head .lede { margin: 0; }
 .home .section-label { margin: 0 0 var(--rd-space-1-5); }
-.shortcut-row { display: flex; flex-wrap: wrap; gap: var(--rd-space-2); }
-.shortcut {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--rd-space-2);
-  height: 36px;
-  padding-block: 0;
-  padding-inline: var(--rd-space-3) var(--rd-space-3-5);
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-surface);
-  font-size: var(--rd-text-md);
-  font-weight: 700;
-  white-space: nowrap;
-}
-.shortcut svg { flex: none; width: 1rem; height: 1rem; color: var(--rd-muted); }
-.shortcut:hover { border-color: var(--rd-ink); color: var(--rd-ink); }
-.shortcut:hover svg { color: var(--rd-ink); }
 .home-grid { display: grid; flex: 1; gap: var(--rd-space-3); min-height: 240px; }
 @media (min-width: 960px) {
   .home-grid { grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr); align-items: start; }
@@ -46,36 +28,6 @@
 .overview-card .pane-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--rd-space-2); }
 .overview-card .pane-head .hint { margin: 0; }
 .overview-card .pane-body { position: relative; }
-
-/* Geometric layer in the sales card's head, at the end opposite the title: decoration in token colours that never
-   sits under text or figures. */
-.overview-card .pane-head { position: relative; }
-.overview-shapes {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-end: var(--rd-space-3);
-  block-size: 100%;
-  inline-size: auto;
-  aspect-ratio: 4 / 3;
-  pointer-events: none;
-}
-.overview-shapes .shape-ring { fill: none; stroke: var(--rd-accent-soft); stroke-width: 10; }
-.overview-shapes .shape-square { fill: var(--rd-surface-2); }
-.overview-shapes .shape-triangle { fill: var(--rd-success-soft); }
-.overview-shapes .shape-dot { fill: var(--rd-accent); }
-
-.overview-trend {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--rd-space-0-5);
-  justify-content: flex-end;
-  block-size: 72px;
-  margin-block-start: var(--rd-space-3);
-  padding-block-end: var(--rd-space-1);
-  border-block-end: 1px solid var(--rd-line-soft);
-}
-.overview-bar { flex: 1; min-inline-size: 2px; max-inline-size: 28px; border-start-start-radius: var(--rd-radius-2xs); border-start-end-radius: var(--rd-radius-2xs); background: var(--rd-success); opacity: 0.75; }
-.overview-bar:hover { opacity: 1; }
 
 /* Donut with its legend beside it; stacked on a narrow card. */
 .donut { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-4); }
@@ -252,3 +204,104 @@
 .offer-file { cursor: pointer; }
 .offer-layers { display: flex; flex-wrap: wrap; gap: var(--rd-space-3); margin: 0; padding: 0; border: 0; }
 .offer-layers legend { margin-block-end: var(--rd-space-1-5); font-weight: 700; }
+
+/* ── Figure band: four cut-corner tiles, the first one leads ─────────────────────────── */
+.figure-band { display: grid; gap: var(--rd-space-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1100px) { .figure-band { grid-template-columns: 1.6fr repeat(3, minmax(0, 1fr)); } }
+.figure-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-1);
+  min-width: 0;
+  min-height: 112px;
+  padding: var(--rd-space-3-5) var(--rd-space-4);
+  border-radius: var(--rd-radius-card);
+  background: var(--rd-surface);
+  box-shadow: inset 0 0 0 1px var(--rd-line);
+  /* The tag's cut corner at the inline-end top. */
+  clip-path: polygon(0 0, calc(100% - var(--rd-cut)) 0, 100% var(--rd-cut), 100% 100%, 0 100%);
+  overflow: hidden;
+  isolation: isolate;
+}
+[dir='rtl'] .figure-tile { clip-path: polygon(var(--rd-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--rd-cut)); }
+/* The soft light under the pointer (`followPointer` sets --mx / --my). */
+.figure-tile::after, .shortcut-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(180px circle at var(--mx, 50%) var(--my, 0%), var(--rd-glow), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--rd-dur-base) var(--rd-ease-standard);
+  pointer-events: none;
+}
+.figure-tile:hover::after, .shortcut-tile:hover::after { opacity: 1; }
+.figure-tile-head { display: flex; align-items: center; justify-content: space-between; gap: var(--rd-space-2); }
+.figure-tile-label { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 500; }
+.figure-tile-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); color: var(--rd-muted); }
+.figure-tile-icon svg { width: 15px; height: 15px; }
+.figure-tile-value { font-size: 1.45rem; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.figure-tile-value .money { font-size: inherit; }
+.figure-tile-meta { margin-block-start: auto; color: var(--rd-muted); font-size: var(--rd-text-sm); }
+.figure-tile.good .figure-tile-value, .figure-tile.good .figure-tile-icon { color: var(--rd-success); }
+.figure-tile.lead { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-accent) 35%, var(--rd-line)); }
+.figure-tile.lead::before { content: ''; position: absolute; inset-block-start: 0; inset-inline: 0 var(--rd-cut); height: 2px; background: var(--rd-accent); }
+.figure-tile.lead .figure-tile-value { font-size: 1.9rem; }
+.figure-tile.lead .figure-tile-icon { background: var(--rd-accent-soft); color: var(--rd-accent); }
+.sparkline { display: block; width: 100%; height: 36px; overflow: visible; }
+.sparkline-line { fill: none; stroke: var(--rd-accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.sparkline-area { fill: var(--rd-accent-soft); stroke: none; }
+
+/* ── Rows of cards: three across from 1200px, two from 760px ─────────────────────────── */
+.overview { display: flex; flex-direction: column; gap: var(--rd-space-3); }
+.home-row { display: grid; gap: var(--rd-space-3); grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+@media (min-width: 760px) { .home-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .home-row { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); } }
+.home-row > .pane { display: flex; flex-direction: column; min-width: 0; }
+.home-row > .pane > .pane-body { flex: 1; }
+
+/* Shortcuts: square action tiles. */
+.shortcut-grid { display: grid; gap: var(--rd-space-2); grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+.shortcut-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--rd-space-3);
+  min-height: 84px;
+  padding: var(--rd-space-3);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+  font-size: var(--rd-text-md);
+  font-weight: 600;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform var(--rd-dur-base) var(--rd-ease-out), background-color var(--rd-dur-fast) var(--rd-ease-standard);
+}
+.shortcut-tile:hover { background: var(--rd-surface-3); }
+.shortcut-tile:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
+.shortcut-tile-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--rd-radius-sm); background: var(--rd-surface); color: var(--rd-accent); box-shadow: inset 0 0 0 1px var(--rd-line); }
+.shortcut-tile-icon svg { width: 16px; height: 16px; }
+
+/* ── Motion: cards rise in, tiles lift, the sparkline draws ──────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .home > *, .figure-band > *, .home-row > *, .shortcut-grid > * { animation: rd-rise 420ms var(--rd-ease-out) both; }
+  .home > :nth-child(2), .figure-band > :nth-child(2), .home-row > :nth-child(2), .shortcut-grid > :nth-child(2) { animation-delay: 40ms; }
+  .home > :nth-child(3), .figure-band > :nth-child(3), .home-row > :nth-child(3), .shortcut-grid > :nth-child(3) { animation-delay: 80ms; }
+  .home > :nth-child(4), .figure-band > :nth-child(4), .shortcut-grid > :nth-child(4) { animation-delay: 120ms; }
+  .home > :nth-child(n + 5), .shortcut-grid > :nth-child(n + 5) { animation-delay: 160ms; }
+  .figure-tile { transition: transform var(--rd-dur-base) var(--rd-ease-out); }
+  .figure-tile:hover, .shortcut-tile:hover { transform: translateY(-2px); }
+  .sparkline-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: rd-draw 900ms 200ms var(--rd-ease-out) forwards; }
+  .sparkline-area { animation: rd-fade 600ms 500ms both; }
+  .overview-meter .fill { animation: rd-grow 700ms 150ms var(--rd-ease-out) both; transform-origin: left; }
+  [dir='rtl'] .overview-meter .fill { transform-origin: right; }
+}
+/* Lists and tiles start at the top of a stretched card instead of spreading over it. */
+.shortcut-grid, .overview-meters, .overview-rank { align-content: start; }
+/* A card's tabs scroll inside the card when they do not fit beside the title. */
+.overview-card .pane-head > [role='tablist'] { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.overview-card .pane-head:has(> [role='tablist']) { flex-direction: column; align-items: stretch; }

@@ -20,7 +20,7 @@ import { taskTone } from '../../../lib/status-tone';
 import { Fact, Facts } from '../../../components/facts';
 import { useCrumbs } from '../../../lib/crumbs';
 
-const glyph = { size: 14, strokeWidth: 2.25, 'aria-hidden': true as const };
+const glyph = { size: 14, strokeWidth: 1.95, 'aria-hidden': true as const };
 
 type CloseMode = null | 'complete' | 'reject';
 

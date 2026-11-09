@@ -1,18 +1,35 @@
-# Smile Sim — Pearl
+# Smile Sim — Graphite
 
-This is the visual source of truth, carried from account manager's Pearl system into this Next.js office. Calm, warm, RTL-first: off-white paper, ink-black primary actions, one logo-red accent, numbers that line up. `.cursor/rules/pearl-ui.mdc` points here.
+This is the visual source of truth (spec `docs/superpowers/specs/2026-11-09-graphite-identity.md`, from direction 08
+"Night Desk · Graphite" in `design/`). It replaced Pearl on 2026-11-09; nothing of Pearl is kept on purpose. The
+operations desk after hours: neutral graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin
+digits. `.cursor/rules/pearl-ui.mdc` points here.
 
-All CSS reads `--rd-*` tokens. The old blue set (`--bg`, `--accent`, `--ink-3`, ...) is gone. Do not bring it back and do not add another blue.
+All CSS reads `--rd-*` tokens. Do not add another accent colour.
 
 ## Identity
 
-- Paper and ink. Warm off-white page, white surfaces, near-black text. Dark mode is the same system on warm blacks, never pure `#000`.
-- Primary action is ink, not blue and not red.
-- Logo red is the accent: dots, the brand rule, and at most one special action on a screen. Errors are danger red, separate from the accent.
-- Dense and quiet. Hairline borders, light shadows, compact tables.
+- **Dark is the default** (a browser with no saved choice); light is the same system on cool paper. The theme toggle and
+  its cookie work as before.
+- Graphite surfaces, never pure `#000`. Lines are white or ink at 5–8% alpha.
+- Primary action is ink on the canvas (white on dark, black on light). The crimson accent (`--rd-accent`) is the thread:
+  the current nav item's bar and icon, the lead figure tile, sparklines, focus rings, the brand tile, and at most one
+  special action on a screen. Errors are `--rd-danger`, separate from the accent.
+- The tag's **cut corner** (`--rd-cut`, 12px, clip-path on the inline-end top corner) marks figure tiles and the brand
+  tile.
+- Dense and quiet. Hairlines, almost no shadow on dark, compact zebra tables.
 - RTL first. Logical properties only.
-- The brand is data, not a drawing. A saved site identity (`/branding`, owner only) replaces the `SimMark` in the sidebar brand block, the drawer, and the sign-in lockup with `BrandLogo`, and sets the tab title and icon. Without one, the Smile Sim mark and name stay. The logo keeps a browser-derived dark copy (`.brand-logo-light` / `.brand-logo-dark`), so black lettering still reads on dark surfaces and on ink.
-- The sidebar nav may hold one collapsible group (`.nav-group`: a `.nav-group-head` button with a chevron, then indented `.nav-group-body` links). It opens without motion and holds the page that is current. The collapsed sidebar flattens it to icon links.
+- The brand is data, not a drawing. A saved site identity (`/branding`, owner only) replaces the brand tile in the
+  sidebar, the drawer, and the sign-in lockup with `BrandLogo`, and sets the tab title and icon. Without one, the
+  crimson tile with the signal glyph and the name stay. The logo keeps a browser-derived dark copy
+  (`.brand-logo-light` / `.brand-logo-dark`).
+- Sidebar: the canvas colour with a hairline at its edge, brand row on top (tile, name, door). Section titles are small
+  muted labels; the current page is ink with a 2px crimson bar at the inline start and a crimson icon; hover is
+  `--rd-surface-2`. A folding group (`.nav-group`, e.g. «التقارير») hangs its links from a hairline like folders; its
+  chevron turns. The round `.side-handle` on the sidebar's edge (and the `[` key) folds it to a 76px rail of icons.
+- Topbar: the **path** (`ShellPath`, `components/crumbs.tsx`) at the reading start — `⌂ / section / list / item`;
+  section titles plain, the levels above the page links, the page in ink; `Alt+↑` goes one level up. There is no back
+  button. Under 768px the path takes its own full-width row under the icons.
 
 ## Stylesheets
 
@@ -38,34 +55,36 @@ Both themes are defined in `apps/web/app/styles/tokens.css`. Use the token, neve
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `--rd-bg` | `#fafaf8` | `#0b0b0a` | page |
-| `--rd-surface` | `#ffffff` | `#151514` | cards, inputs, menus |
-| `--rd-surface-2` | `#f4f4f2` | `#1f1f1d` | headers, chips, hover rows, active nav |
-| `--rd-surface-3` | `#ececea` | `#2a2a27` | skeletons, pressed or hovered icon buttons |
-| `--rd-line` | `#ececea` | `#2a2a27` | hairline borders |
-| `--rd-line-soft` | `#f3f3f1` | `#222220` | dividers inside a card |
+| `--rd-bg` | `#f5f5f4` | `#111213` | page |
+| `--rd-surface` | `#ffffff` | `#18191b` | cards, inputs, menus |
+| `--rd-surface-2` | `#efefee` | `#1f2023` | headers, chips, hover rows, active nav |
+| `--rd-surface-3` | `#e6e6e4` | `#27282b` | skeletons, pressed or hovered icon buttons |
+| `--rd-line` | ink at 8% | white at 7% | hairline borders |
+| `--rd-line-soft` | ink at 5% | white at 4.5% | dividers inside a card |
 | `--rd-qr-tile` | `#ffffff` | `#ffffff` | the tile behind a QR picture; stays white in dark mode so the code scans |
-| `--rd-field` | `#8a8a86` | `#74746e` | input borders (3:1 against the surface) |
-| `--rd-ink` | `#0a0a0a` | `#f5f5f2` | text, links, active state, focus ring |
-| `--rd-ink-2` | `#3a3a38` | `#c8c8c2` | labels and nav text |
-| `--rd-muted` | `#6b6b68` | `#9a9a94` | secondary text. Passes 4.5:1 on bg, surface, surface-2 and surface-3 |
-| `--rd-faint` | `#a3a39e` | `#6b6b66` | decoration and locked or disabled items only. **Fails 4.5:1: never body text** |
-| `--rd-accent` | `#d00000` | `#ff3b3b` | the one accent |
-| `--rd-accent-soft` | `rgba(208,0,0,.10)` | `rgba(255,59,59,.15)` | accent tint |
-| `--rd-on-accent` | `#ffffff` | `#0a0a0a` | text on accent |
+| `--rd-field` | `#8a8a8a` | `#6e6e72` | input borders (3:1 against the surface) |
+| `--rd-ink` | `#161616` | `#ececec` | text, links, active state, focus ring |
+| `--rd-ink-2` | `#474747` | `#b9b9b9` | labels and nav text |
+| `--rd-muted` | `#6a6a6a` | `#8e8e91` | secondary text. Passes 4.5:1 on bg, surface, surface-2 and surface-3 |
+| `--rd-faint` | `#a8a8a8` | `#545457` | decoration and locked or disabled items only. **Fails 4.5:1: never body text** |
+| `--rd-accent` | `#d93049` | `#ff4d63` | the one accent |
+| `--rd-accent-soft` | accent at 9% | accent at 12% | accent tint |
+| `--rd-on-accent` | `#ffffff` | `#111213` | text on accent |
 | `--rd-on-mark` | `#ffffff` | `#ffffff` | text over a coloured company mark (an inline hue) |
-| `--rd-primary-bg` | `#0a0a0a` | `#f5f5f2` | primary button fill |
-| `--rd-primary-hover` | `#242422` | `#ffffff` | primary button hover |
-| `--rd-primary-fg` | `#ffffff` | `#0a0a0a` | text and icons on the primary fill |
-| `--rd-success` / `--rd-success-soft` | `#0a7a3e` / `#e8f6ee` | `#4ade80` / `rgba(74,222,128,.12)` | active, paid |
-| `--rd-warning` / `--rd-warning-soft` | `#c2410c` / `#fff0e9` | `#fbbf24` / `rgba(251,191,36,.12)` | pending |
-| `--rd-danger` / `--rd-danger-soft` | `#b91c1c` / `#fdecec` | `#f87171` / `rgba(248,113,113,.12)` | failed, destructive |
-| `--rd-chart-frozen` | `#6d28d9` | `#a78bfa` | chart slice for frozen numbers (the home donut); never text |
+| `--rd-primary-bg` | `#161616` | `#ececec` | primary button fill |
+| `--rd-primary-hover` | `#2b2b2b` | `#ffffff` | primary button hover |
+| `--rd-primary-fg` | `#ffffff` | `#111213` | text and icons on the primary fill |
+| `--rd-success` / `--rd-success-soft` | `#0f8a59` / 10% | `#3ddc97` / 12% | active, paid, profit |
+| `--rd-warning` / `--rd-warning-soft` | `#a9670a` / 12% | `#ffb547` / 12% | pending |
+| `--rd-danger` / `--rd-danger-soft` | `#c8291b` / 9% | `#ff6b5b` / 12% | failed, destructive |
+| `--rd-chart-frozen` | `#6d5bd0` | `#a89bff` | chart slice for frozen numbers (the home donut); never text |
 | `--rd-chart-suspended` | `#8a6d3b` | `#d6b37a` | chart slice for suspended numbers (the home donut); never text |
-| `--rd-focus` | `rgba(10,10,10,.16)` | `rgba(245,245,242,.20)` | focus halo around a field |
-| `--rd-scrim` | `rgba(10,10,10,.48)` | `rgba(0,0,0,.72)` | dialog backdrop |
+| `--rd-focus` | accent at 18% | accent at 22% | focus halo around a field |
+| `--rd-scrim` | ink at 48% | black at 70% | dialog backdrop |
 | `--rd-scrim-strong` | `rgba(0,0,0,.50)` | same | drawer backdrop |
-| `--rd-radius-lg` | `1.125rem` | same | cards, panes, filter bars, primary and secondary buttons |
+| `--rd-radius-lg` | `8px` | same | cards, panes, filter bars, primary and secondary buttons |
+| `--rd-cut` | `12px` | same | the tag's cut corner on figure tiles |
+| `--rd-glow` | accent at 10% | accent at 14% | the soft light under the pointer on a hovered figure or shortcut tile |
 
 ### Scales
 
@@ -73,13 +92,13 @@ Theme-independent, in `:root`. They name the values the stylesheets already used
 
 | Token | Value | Token | Value |
 |---|---|---|---|
-| `--rd-radius-2xs` | 4px | `--rd-text-2xs` | 10px |
-| `--rd-radius-xs` | 6px | `--rd-text-xs` | 11px |
-| `--rd-radius-sm` | 8px | `--rd-text-sm` | 12px |
-| `--rd-radius-md` | 10px | `--rd-text-md` | 13px |
-| `--rd-radius-card` | 12px | `--rd-text-base` | 14px |
-| `--rd-radius-tile` | 14px | `--rd-text-lg` / `-xl` / `-2xl` | 15 / 16 / 18px |
-| `--rd-radius-panel` | 16px | | |
+| `--rd-radius-2xs` | 3px | `--rd-text-2xs` | 10px |
+| `--rd-radius-xs` | 4px | `--rd-text-xs` | 11px |
+| `--rd-radius-sm` | 6px | `--rd-text-sm` | 12px |
+| `--rd-radius-md` | 6px | `--rd-text-md` | 13px |
+| `--rd-radius-card` | 8px | `--rd-text-base` | 14px |
+| `--rd-radius-tile` | 8px | `--rd-text-lg` / `-xl` / `-2xl` | 15 / 16 / 18px |
+| `--rd-radius-panel` | 10px | | |
 | `--rd-radius-pill` | 999px | | |
 
 Which radius where: cards, panes, filter bars and the cards in a page grid (`.company-card`, `.pack-card`, `.stat`) take `--rd-radius-lg`; a surface that stands alone on the page or floats over it (`.auth-card`, `.door-card`, `.toast`, `.notice-pop`) takes `--rd-radius-panel`; menus, popovers and tile lists (`.menu`, `.wallet-pop`, `.command-list`, the data-table frame) take `--rd-radius-card`; the marks and skeleton tiles take `--rd-radius-tile`; controls take `sm`/`md`; small inner bits `2xs`/`xs`. There is no `border-radius` literal left in the sheets but `0` and `50%`.
@@ -98,7 +117,7 @@ Where the ink fills a button, use `--rd-primary-bg`. Where ink is a text, border
 
 ## Hotspot-store identity
 
-List chrome that has moved (`/users`, plus the shared dialog, row menu, filter bar, empty state, and skeleton) follows hotspot-store's layout. Colours stay the Pearl tokens above. `--rd-accent` (logo red) is not part of this and stays one accent per screen.
+List chrome that has moved (`/users`, plus the shared dialog, row menu, filter bar, empty state, and skeleton) follows hotspot-store's layout. Colours are the Graphite tokens above; `--rd-accent` (crimson) stays one thread per screen.
 
 There is no Tailwind (removed in Phase 5.4a, ADR 0003); `base.css` is the reset. Icons are `lucide-react`. New controls are `apps/web/components/ui/` (`Button`, `Select`, `Badge`, `Pagination`), styled by `ui.css` with one `ui-` class per part and a modifier class per variant or size (`ui-btn ui-btn-outline ui-btn-sm`). A component joins its classes with `[...].filter(Boolean).join(' ')`; a `className` from the caller comes last and wins only by the cascade, so give it a class from a sheet, not a one-off utility. `Button` sizes: `sm` 32px, `default` 34px (the pane control height), `lg` 40px (sign-in-sized screens: password, two-factor), `icon` 36px square, `iconSm` 28px square; corners are 8px everywhere. Every action button is `Button` (5.4b-4d): no `.btn`, `.btn-sm`, `button.primary` / `.secondary` / `.danger`, and no context rule (`form > button`, `.pane form > button`, `.field-row > button`, `.dialog button.*`) restyles a button by where it sits. A button that is a `form`'s or `.pane-body`'s own child sits at the reading start. A link that must look like a button takes `buttonClass({ variant, size })`. Controls with their own look stay plain `<button>`s with their own class: tabs (`.steps`), the segmented pick (`.seg`), period chips, tiles and cards (`.op-tile`, `.op-card`, `.pack-card`, `.company-card`, `.pack-pick`, `.task-op`), the switch, menu items, shell icons, the sort header, the toast close, and the outage and return bars. `Select` takes `compact` for the 28px pager field. A `Button` never draws the browser's default border (5.4b-4a); `variant="danger"` is the danger outline (border and text, `--rd-danger-soft` on hover), like every destructive button. Every dropdown is `Select` (5.4b-4c: no bare `<select>` in a page); its `className` lands on the wrapper, which carries the layout (width, grid place), and in a `.data` cell the wrapper is inline-block so it follows the cell's centring. A `Select` keeps 2.25rem at its inline end for the chevron in every context, including the 28px filter bar where `.desk .filter-panel select` resets the padding.
 
@@ -112,10 +131,13 @@ The filter bar is its own card, one row, controls at 28px. It does not share a b
 
 Fonts come from `next/font` in `apps/web/app/layout.tsx`. No Google stylesheet link, no new family.
 
-- Arabic and Latin text: **Tajawal** (`--font-sans`, weights 400, 500, 700, 800).
+- Arabic and Latin text: **Noto Kufi Arabic** (`--font-sans`, variable, so 500 and 600 are real weights) — angular like a
+  stamp, clear at small sizes.
 - Hebrew: **IBM Plex Sans Hebrew** (`--font-he`, weights 400 to 700).
 - Stack: `var(--font-sans), var(--font-he), Tahoma, sans-serif`. Headings use the same stack at weight 700.
-- Numbers, money, dates, phone numbers: Latin digits in that same face with `font-variant-numeric: tabular-nums` (`.money`, `.num`, `.when`, `.line-number`, `td.msisdn`). There is no separate numeric family.
+- Numbers, money, dates, phone numbers: **Latin digits only** (dates use `ar-u-nu-latn`), in that same face with
+  `font-variant-numeric: tabular-nums` (`.money`, `.num`, `.when`, `.line-number`, `td.msisdn`).
+- Icons: lucide at stroke 1.9.
 
 ## Inner pages
 
@@ -132,8 +154,10 @@ One of each. A new page uses these, it does not invent a sibling.
 - Badge: label plus a dot. Active, pending, danger, neutral.
 - Chart: `BalanceChart` (`components/balance-chart.tsx`) — SVG, no library; a `--rd-success` line over a 12% area, four `--rd-line-soft` grid lines, muted 11px axis numbers; time runs left to right in every language.
 - Offers hero (home, spec 2026-11-09-offers-tasks-addons-wallet-esim): `OfferHero` (`components/offer-hero.tsx`, `.offer-hero`) — a compact strip — text at the reading start and a small 240px 2:1 picture at the end, stacked picture-first under 760px; the picture is optional, and without one the offer is text only on one column (`.text-only`); a pill dot per offer under it, the current one wide with a `--rd-primary-bg` fill that is its timer (`seconds` per offer); arrows show on hover or focus on desktop; swipe and the arrow keys move it; it pauses on hover, focus and a hidden tab, and does not run with reduced motion. The dot button is the touch target and the 8px bar inside it is what shows.
-- Overview (home, spec 2026-11-08-overview-and-reports-nav): a period `Tabs` (اليوم / هذا الشهر / كل الوقت) in the page head, then `.overview-grid` of `.overview-card` panes (two columns from 960px; `.wide` spans both): sales in detail (`Facts variant="cards"` + a bar trend, time left to right), numbers by status (`Donut`, `components/donut.tsx`: SVG ring in status tokens and the two chart tokens, the legend beside it with every label, count and share, so colour never carries the meaning alone), tasks (`.overview-meters`), providers (a `.data` table, branch only), top lists and most active accounts (`.overview-rank` with `Tabs`), users (`Facts variant="list"`). The only decoration is `Shapes` (`.overview-shapes`): a ring, a square, a triangle and a dot in `--rd-accent-soft`, `--rd-surface-2`, `--rd-success-soft` and `--rd-accent`, inside the sales card's head opposite the title, `aria-hidden`, never under text or figures.
+- Overview (home): under the figure band, `.home-row` rows of `.overview-card` panes — three across from 1200px, two from 760px: numbers by status (`Donut`), tasks by status (meters), shortcuts; then top sellers and most active (each with `Tabs`, which take their own row and scroll inside the card) and the accounts summary; then the providers table full width; then the last operations beside the board (`.home-grid`). The head's lede is the greeting and today's date (`lib/greeting.ts`).
 - KPI: `StatRow` wraps a row of `Stat` items. Each `Stat` is a white card with a hairline and a 12px radius: the `label` at the start and a small `icon` (`IconName`) at the end on the first line, then a large tabular `value`, then optional `meta`. `tone` colours the icon; `highlight` tints the card with `--rd-success-soft` for the one figure that matters most on a screen; `progress` (0–1) draws a thin bar under the value. This is the only KPI pattern; do not use ad-hoc `.stat-card` markup.
+- Figure band (home): `FigureBand` (`features/desk/overview.tsx`, `.figure-band`) — four `.figure-tile`s with the cut corner: label and a small icon tile on the first line, a large tabular figure, an optional meta line. The `.lead` tile (sales) is wider from 1100px, has a crimson top thread and a `Sparkline` (`components/sparkline.tsx`: SVG line plus a soft area, time left to right, draws in once); `.good` colours the figure green. `followPointer` moves a soft `--rd-glow` light under the pointer.
+- Shortcut tiles (home): `ShortcutsCard`, `.shortcut-grid` of square `.shortcut-tile`s (icon tile in crimson, label under it) on `--rd-surface-2`.
 - Filter: `FilterBar` wraps `.filter-bar`/`.filter-panel` — a card of `<label>` fields above the table, with an optional trailing clear button (`onClear`/`clearLabel`). This is the only filter pattern; do not write a bare `.filter-line` or inline filter markup on a new page.
 - Facts: label/value pairs are `<Facts>` + `<Fact label>` (`components/facts.tsx`), never a hand-written `<dl>`. One primitive, three densities: `tiles` (default, `.detail-rows`: label beside value in bordered tiles that repeat across the width; the number card and every dialog), `cards` (`.fact-grid`: a summary card per fact with an `icon` and a `tone` of `good`/`warn`; the head of the user page), `list` (`.task-facts`: a compact ruled list for a narrow rail; the task ticket). Latin identifiers inside a value stay in `<bdi dir="ltr">`.
 - Empty: `EmptyState` inside `.empty` — muted icon in a small circle on `--rd-surface-2`, title (`children`), optional secondary `text`, centered (both axes) in the available `.pane`/`.sheet` space, not pinned to the start edge. Not a lone italic line.
@@ -152,11 +176,14 @@ One of each. A new page uses these, it does not invent a sibling.
 
 ## Motion and access
 
-- Motion is 150–450ms, transform and opacity only, and exists only on the sidebar's contents (they fade in after a collapse or an expand; the width itself snaps), the drawer slide, the notification bell, the spinner, and the skeleton shimmer. All of it sits under `@media (prefers-reduced-motion: no-preference)` in `styles/base.css`, so there is no reduced-motion override and no `!important`. Dialogs, menus, and toasts appear without motion.
+- Motion is transform and opacity only, 150–900ms, and all of it sits under `@media (prefers-reduced-motion: no-preference)`
+  (keyframes `rd-rise`, `rd-fade`, `rd-draw`, `rd-grow` in `styles/base.css`): the sidebar's contents fade after a fold;
+  the drawer slides; the home's cards and tiles rise in with a 40ms stagger; figure and shortcut tiles lift 2px on hover;
+  the sparkline draws in and the meters grow; table rows fade in. Plus the bell, the spinner and the skeleton shimmer.
 - Targets at least 44px on touch widths.
 - Text contrast at least 4.5:1 in both themes. `--rd-faint` is the one token below that; it is never used for body text on the canvas.
 - Visible focus. Text inputs show an ink border plus the `--rd-focus` halo. Page-level buttons and links use a 2px solid `--rd-ink` outline.
-- Check light and dark.
+- Check light and dark (dark is the default).
 
 ## Known gaps
 

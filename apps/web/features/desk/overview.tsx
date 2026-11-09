@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useState, type PointerEvent, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Money } from '../../components/desk';
 import { Donut } from '../../components/donut';
 import { EmptyState } from '../../components/empty-state';
 import { Fact, Facts } from '../../components/facts';
+import { Icon, type IconName } from '../../components/icon';
+import { Sparkline } from '../../components/sparkline';
 import { Tabs } from '../../components/tabs';
 import { Badge } from '../../components/ui/badge';
 import type { OverviewPayload, OverviewRanked } from '../../lib/api';
@@ -15,23 +17,10 @@ import { usePrefs } from '../../lib/prefs';
 // The home page's overview cards (spec 2026-11-08-overview-and-reports-nav, F). Each card draws only what the
 // overview answered for this viewer: a layer without providers or main agents simply gets no such card or tab.
 
-/** A token-coloured geometric layer behind a card (ring, square and triangle); decoration only. */
-export function Shapes() {
-  return (
-    <svg className="overview-shapes" viewBox="0 0 160 120" aria-hidden="true" focusable="false">
-      <circle cx="128" cy="26" r="20" className="shape-ring" />
-      <rect x="92" y="70" width="26" height="26" rx="4" transform="rotate(18 105 83)" className="shape-square" />
-      <path d="M140 72 L156 102 L124 102 Z" className="shape-triangle" />
-      <circle cx="66" cy="18" r="4" className="shape-dot" />
-    </svg>
-  );
-}
-
-function Card({ title, hint, action, wide, decor, children, className = '' }: { title: string; hint?: string; action?: ReactNode; wide?: boolean; decor?: boolean; children: ReactNode; className?: string }) {
+function Card({ title, hint, action, wide, children, className = '' }: { title: string; hint?: string; action?: ReactNode; wide?: boolean; children: ReactNode; className?: string }) {
   return (
     <section className={`pane overview-card${wide ? ' wide' : ''}${className ? ` ${className}` : ''}`}>
       <header className="pane-head">
-        {decor ? <Shapes /> : null}
         <div>
           <h2>{title}</h2>
           {hint ? <p className="hint">{hint}</p> : null}
@@ -43,27 +32,76 @@ function Card({ title, hint, action, wide, decor, children, className = '' }: { 
   );
 }
 
-export function SalesCard({ data }: { data: OverviewPayload }) {
+/** Moves the hover glow of a figure or shortcut tile to the pointer (CSS reads `--mx` / `--my`). */
+export function followPointer(event: PointerEvent<HTMLElement>) {
+  const tile = (event.target as HTMLElement).closest<HTMLElement>('.figure-tile, .shortcut-tile');
+  if (!tile) return;
+  const box = tile.getBoundingClientRect();
+  tile.style.setProperty('--mx', `${event.clientX - box.left}px`);
+  tile.style.setProperty('--my', `${event.clientY - box.top}px`);
+}
+
+function Tile({ label, icon, lead, tone, meta, children }: { label: string; icon: IconName; lead?: boolean; tone?: 'good'; meta?: ReactNode; children: ReactNode }) {
+  return (
+    <div className={`figure-tile${lead ? ' lead' : ''}${tone ? ` ${tone}` : ''}`}>
+      <div className="figure-tile-head">
+        <span className="figure-tile-label">{label}</span>
+        <span className="figure-tile-icon" aria-hidden="true"><Icon name={icon} /></span>
+      </div>
+      <div className="figure-tile-value">{children}</div>
+      {meta ? <div className="figure-tile-meta">{meta}</div> : null}
+    </div>
+  );
+}
+
+/**
+ * The figure band at the top of the home page (Graphite, spec 2026-11-09-graphite-identity): four cut-corner tiles —
+ * sales (the lead, with the period's trend), my profit, net (refunds as its meta line) and the number of sales.
+ */
+export function FigureBand({ data }: { data: OverviewPayload }) {
   const { t } = usePrefs();
   const { sales } = data;
-  const high = Math.max(1, ...sales.trend.map((point) => point.amount));
   return (
-    <Card title={t.overviewSales} wide decor className="overview-sales">
-      <Facts variant="cards">
-        <Fact label={t.overviewSalesAmount}><Money value={sales.amount} /></Fact>
-        <Fact label={t.overviewSalesCount}><span className="num">{sales.count}</span></Fact>
-        <Fact label={t.overviewMyProfit} tone="good"><Money value={sales.profit} signed /></Fact>
-        <Fact label={t.overviewRefunds}><Money value={-sales.refundAmount} /> <span className="hint num">({sales.refunds})</span></Fact>
-        <Fact label={t.overviewNet}><Money value={sales.net} /></Fact>
-      </Facts>
-      {sales.trend.length > 1 ? (
-        // Time runs left to right in every language, like the balance chart.
-        <div className="overview-trend" dir="ltr" role="img" aria-label={`${t.overviewTrend}: ${sales.trend.map((point) => `${point.day} ${(point.amount / 100).toFixed(2)}`).join(', ')}`}>
-          {sales.trend.map((point) => (
-            <span key={point.day} className="overview-bar" style={{ blockSize: `${Math.max(4, (point.amount / high) * 100)}%` }} title={`${point.day} · ${(point.amount / 100).toFixed(2)} ₪`} />
-          ))}
-        </div>
-      ) : null}
+    <section className="figure-band overview-sales" aria-label={t.overviewSales} onPointerMove={followPointer}>
+      <Tile
+        label={t.overviewSalesAmount}
+        icon="reports"
+        lead
+        meta={
+          <Sparkline
+            values={sales.trend.map((point) => point.amount)}
+            label={`${t.overviewTrend}: ${sales.trend.map((point) => `${point.day} ${(point.amount / 100).toFixed(2)}`).join(', ')}`}
+          />
+        }
+      >
+        <Money value={sales.amount} />
+      </Tile>
+      <Tile label={t.overviewMyProfit} icon="wallet" tone="good"><Money value={sales.profit} signed /></Tile>
+      <Tile
+        label={t.overviewNet}
+        icon="plans"
+        meta={<>{t.overviewRefunds}: <Money value={-sales.refundAmount} /> <span className="num">({sales.refunds})</span></>}
+      >
+        <Money value={sales.net} />
+      </Tile>
+      <Tile label={t.overviewSalesCount} icon="numbers"><span className="num">{sales.count}</span></Tile>
+    </section>
+  );
+}
+
+/** «اختصارات» as square action tiles in the middle row (was a row of pills). */
+export function ShortcutsCard({ items }: { items: { href: string; label: string; icon: IconName }[] }) {
+  const { t } = usePrefs();
+  return (
+    <Card title={t.shortcuts} className="shortcuts-card">
+      <div className="shortcut-grid" onPointerMove={followPointer}>
+        {items.map((item) => (
+          <Link key={item.href} className="shortcut-tile" href={item.href}>
+            <span className="shortcut-tile-icon" aria-hidden="true"><Icon name={item.icon} /></span>
+            <span>{item.label}</span>
+          </Link>
+        ))}
+      </div>
     </Card>
   );
 }

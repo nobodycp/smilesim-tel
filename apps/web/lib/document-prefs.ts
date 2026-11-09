@@ -16,7 +16,8 @@ export function parseLocale(value: string | undefined | null): Locale {
 }
 
 export function parseTheme(value: string | undefined | null): Theme {
-  return value === 'dark' ? 'dark' : 'light';
+  // Dark is the default (Graphite, spec 2026-11-09-graphite-identity); only a saved «light» turns it off.
+  return value === 'light' ? 'light' : 'dark';
 }
 
 export function parsePageSize(value: string | undefined | null): PageSize {

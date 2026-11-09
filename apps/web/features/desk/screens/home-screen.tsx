@@ -1,21 +1,21 @@
 'use client';
 
-import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Money, actionName, latinWhen, layerName } from '../../../components/desk';
 import { EmptyState } from '../../../components/empty-state';
-import { Icon, type IconName } from '../../../components/icon';
+import type { IconName } from '../../../components/icon';
 import { LoadFailed } from '../../../components/load-failed';
 import { PageSkeleton, Spinner, TableSkeleton } from '../../../components/loading';
 import { Tabs } from '../../../components/tabs';
 import { OfferHero } from '../../../components/offer-hero';
-import { ActiveCard, LinesCard, ProvidersCard, SalesCard, TasksCard, TopCard, UsersCard } from '../overview';
+import { ActiveCard, FigureBand, LinesCard, ProvidersCard, ShortcutsCard, TasksCard, TopCard, UsersCard } from '../overview';
 import { api, type HomePayload } from '../../../lib/api';
 import { useOffice } from '../../../lib/office-session';
 import { usePageTitle } from '../../../lib/page-title';
 import { usePrefs } from '../../../lib/prefs';
+import { useGreeting } from '../../../lib/greeting';
 import { useAction } from '../../../lib/use-action';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -25,8 +25,9 @@ import { Button } from '../../../components/ui/button';
 type Movement = HomePayload['operations'][number];
 
 export function HomeScreen() {
-  const { t } = usePrefs();
+  const { t, locale } = usePrefs();
   const { ready, me } = useOffice();
+  const greeting = useGreeting();
   usePageTitle(t.homeTitle);
   const layer = me?.layer ?? '';
   const [draft, setDraft] = useState('');
@@ -65,6 +66,8 @@ export function HomeScreen() {
         { href: '/packages', label: t.navPlans, icon: 'plans' },
         { href: '/tasks', label: t.navTasks, icon: 'tasks' },
         { href: '/finance', label: t.navFinance, icon: 'wallet' },
+        { href: '/wallet', label: t.walletPage, icon: 'wallet' },
+        { href: '/reports/sales', label: t.salesTitle, icon: 'reports' },
       ]
     : [
         { href: '/users', label: t.navUsers, icon: 'staff' },
@@ -73,7 +76,11 @@ export function HomeScreen() {
         { href: '/numbers', label: t.navNumbers, icon: 'numbers' },
         { href: '/tasks', label: t.navTasks, icon: 'tasks' },
         ...(layer === 'branch' ? [{ href: '/companies', label: t.navCompanies, icon: 'providers' as const }] : []),
+        ...(me?.isBranchOwner ? [] : [{ href: '/reports/sales', label: t.salesTitle, icon: 'reports' as const }]),
       ];
+  // The lede (Graphite): the greeting and today's date, moved here from the topbar; the layer until the clock is read.
+  const name = me ? me.nickname || me.loginName : '';
+  const lede = greeting && name ? `${greeting.hello}${locale === 'en' ? ',' : '،'} ${name} · ${greeting.today}` : layer ? layerName(t, layer) : '';
 
   if (!ready) return <PageSkeleton />;
 
@@ -84,7 +91,7 @@ export function HomeScreen() {
       <header className="page-head">
         <div>
           <h1>{t.homeTitle}</h1>
-          {layer && <p className="lede">{layerName(t, layer)}</p>}
+          {lede && <p className="lede"><bdi>{lede}</bdi></p>}
         </div>
         <div className="page-actions">
           <Tabs
@@ -102,40 +109,43 @@ export function HomeScreen() {
           {`${t.providerAlertBanner} ${overview.data.providers.filter((row) => row.status === 'problem').map((row) => `${row.name} (${row.problem === 'failures' ? t.providerProblemFailures.replace('{n}', String(row.failures)) : t.providerProblemBalance})`).join('، ')}`}
         </Alert>
       ) : null}
+      {/* Graphite home (spec 2026-11-09-graphite-identity): the figure band, a middle row (numbers, tasks, shortcuts),
+          a rankings row, the providers, then the last operations beside the board. */}
       <section className="overview" aria-busy={!overview.data && !overview.error}>
         {overview.error && !overview.data ? (
           <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section>
         ) : !overview.data ? (
-          <div className="overview-grid">
-            <section className="pane overview-card wide"><TableSkeleton rows={2} columns={5} /></section>
-            <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section>
-            <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section>
+          <div className="figure-band">
+            {[0, 1, 2, 3].map((key) => <div key={key} className={key === 0 ? 'figure-tile lead' : 'figure-tile'}><TableSkeleton rows={2} columns={1} /></div>)}
           </div>
         ) : (
-          <div className="overview-grid">
-            <SalesCard data={overview.data} />
-            <LinesCard data={overview.data} />
-            <TasksCard data={overview.data} />
-            <ProvidersCard data={overview.data} />
-            <TopCard data={overview.data} />
-            {layer !== 'pos' ? <UsersCard data={overview.data} layer={layer} /> : null}
-            {layer !== 'pos' ? <ActiveCard data={overview.data} layer={layer} /> : null}
-          </div>
+          <FigureBand data={overview.data} />
         )}
+        <div className="home-row">
+          {overview.data ? (
+            <>
+              <LinesCard data={overview.data} />
+              <TasksCard data={overview.data} />
+            </>
+          ) : !overview.error ? (
+            <>
+              <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section>
+              <section className="pane overview-card"><TableSkeleton rows={3} columns={2} /></section>
+            </>
+          ) : null}
+          {me ? <ShortcutsCard items={shortcuts} /> : null}
+        </div>
+        {overview.data ? (
+          <>
+            <div className="home-row">
+              <TopCard data={overview.data} />
+              {layer !== 'pos' ? <ActiveCard data={overview.data} layer={layer} /> : null}
+              {layer !== 'pos' ? <UsersCard data={overview.data} layer={layer} /> : null}
+            </div>
+            <ProvidersCard data={overview.data} />
+          </>
+        ) : null}
       </section>
-      {me && (
-        <section>
-          <p className="section-label">{t.shortcuts}</p>
-          <div className="shortcut-row">
-            {shortcuts.map((item) => (
-              <Link key={item.label} className="shortcut" href={item.href}>
-                <Icon name={item.icon} />
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
       <div className="home-grid">
         {broken ? (
           <>

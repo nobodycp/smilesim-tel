@@ -66,7 +66,7 @@ export function BrandingDrop({
               {dark && <DataImage src={dark} alt="" className="brand-logo-dark" />}
             </>
           ) : (
-            <ImageUp strokeWidth={2.2} />
+            <ImageUp strokeWidth={1.9} />
           )}
         </span>
         <span className="drop-text">

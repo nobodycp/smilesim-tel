@@ -30,8 +30,8 @@
   position: sticky;
   top: 0;
   z-index: var(--rd-z-raised);
-  background: var(--rd-surface-3);
-  color: var(--rd-ink-2);
+  background: var(--rd-surface-2);
+  color: var(--rd-muted);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0;
@@ -39,9 +39,13 @@
   box-shadow: 0 1px 0 var(--rd-line);
 }
 .data td { border-bottom: 1px solid var(--rd-line); background: transparent; }
-.data tbody tr:nth-child(even) td { background: var(--rd-surface-2); }
+.data tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--rd-surface-2) 55%, transparent); }
 .data tbody tr:last-child td { border-bottom: 0; }
-.data tbody tr:hover td { background: var(--rd-surface-2); }
+.data tbody tr:hover td { background: var(--rd-surface-3); }
+/* Graphite: rows fade in when a table opens. */
+@media (prefers-reduced-motion: no-preference) {
+  .data tbody tr { animation: rd-fade 320ms var(--rd-ease-out) both; }
+}
 .money { font-variant-numeric: tabular-nums; font-weight: 700; }
 .money.pos { color: var(--rd-success); }
 .money.neg { color: var(--rd-danger); }

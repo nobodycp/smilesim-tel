@@ -31,6 +31,9 @@ test('the branch opens the company shelf', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('الشركات');
   await expect(page.getByRole('link', { name: 'كلام' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  // Dark is the default (spec 2026-11-09-graphite-identity).
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.getByRole('button', { name: 'تفعيل الوضع الفاتح' }).click();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
   await page.getByRole('button', { name: 'تفعيل الوضع الداكن' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);

@@ -8,6 +8,8 @@ import {
   BarChart3,
   Bell,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Home,
   Layers,
@@ -19,8 +21,6 @@ import {
   Receipt,
   ShoppingCart,
   Truck,
-  PanelLeftClose,
-  PanelLeftOpen,
   Phone,
   Settings,
   Shield,
@@ -44,8 +44,7 @@ import { usePopover } from '../lib/use-popover';
 import { BrandLogo } from './brand-logo';
 import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
-import { BackLink } from './back-link';
-import { Crumbs } from './crumbs';
+import { ShellPath, type PathSection } from './crumbs';
 import { OutageBar, OutagePanel } from './outage';
 import { useNotices } from '../lib/use-notices';
 import { tabTitle, usePageTitleValue } from '../lib/page-title';
@@ -81,10 +80,7 @@ function subscribeCollapsed(listener: () => void) {
 }
 const serverCollapsed = () => false;
 
-// The greeting and the date depend on the browser's clock, so the server renders neither; one string, so the snapshot
-// compares equal between reads.
-const noSubscribe = () => () => {};
-const glyph = { size: 18, strokeWidth: 2.2, 'aria-hidden': true as const };
+const glyph = { size: 18, strokeWidth: 1.9, 'aria-hidden': true as const };
 
 type NavItem = { label: string; href: string; icon: LucideIcon; layers?: readonly string[]; grant?: string; owner?: boolean };
 // A collapsible run of items under one head (the Admin section's "Settings"). It opens when one
@@ -94,7 +90,7 @@ type NavEntry = NavItem | NavGroup;
 const isGroup = (entry: NavEntry): entry is NavGroup => 'items' in entry;
 
 export function OfficeShell({ children }: { children: ReactNode }) {
-  const { t, locale } = usePrefs();
+  const { t } = usePrefs();
   const branding = useBranding();
   const pathname = usePathname();
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, serverCollapsed);
@@ -143,6 +139,18 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   function toggleCollapsed() {
     writeCollapsed(!collapsed);
   }
+
+  // «[» folds or opens the sidebar, outside of text fields.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== '[' || event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      writeCollapsed(!readCollapsed());
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
 
   // Signing out revokes this session and then leaves for the sign-in page on purpose: a full load drops every
@@ -249,12 +257,15 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         .filter((entry) => (isGroup(entry) ? entry.items.length > 0 : allowed(entry))),
     }))
     .filter((group) => group.items.length > 0);
-  const flatItems = (entries: NavEntry[]) => entries.flatMap((entry) => (isGroup(entry) ? entry.items : [entry]));
-  const roots = new Set(groups.flatMap((group) => flatItems(group.items).map((item) => item.href)));
-  const backHref = roots.has(pathname) ? '' : pathname.split('/').slice(0, -1).join('/') || '/';
-  // The trail names the section by its sidebar label; a page outside the sidebar keeps the back button.
-  const sections = groups.flatMap((group) => flatItems(group.items)).map((item) => ({ href: item.href, label: item.label }));
-  const inSection = sections.some((item) => item.href !== '/' && pathname.startsWith(`${item.href}/`));
+  // The topbar path (spec 2026-11-09-graphite-identity): each sidebar page with the plain labels above it — the
+  // section's title, then a folding group's label.
+  const sections: PathSection[] = groups.flatMap((group) =>
+    group.items.flatMap((entry) =>
+      isGroup(entry)
+        ? entry.items.map((item) => ({ href: item.href, label: item.label, above: [group.title, entry.label] }))
+        : [{ href: entry.href, label: entry.label, above: [group.title] }],
+    ),
+  );
   const isActive = (href: string) => pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
 
   const navLink = (item: NavItem, compact: boolean) => {
@@ -334,28 +345,26 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className="side-foot">
-          {mobile && (
+        {mobile ? (
+          <div className="side-foot">
             <div className="drawer-prefs">
               <ThemeToggle shell />
               <LanguageSwitch shell />
             </div>
-          )}
+          </div>
+        ) : (
+          // The handle on the sidebar's edge (Graphite): folds the sidebar to a rail of icons and back; «[» too.
           <button
             type="button"
-            className="nav-link collapse-btn"
+            className="side-handle"
             onClick={toggleCollapsed}
-            title={collapsed ? t.expand : t.collapse}
+            title={`${collapsed ? t.expand : t.collapse} ([)`}
             aria-label={collapsed ? t.expand : t.collapse}
+            aria-expanded={!collapsed}
           >
-            {collapsed ? (
-              <PanelLeftOpen {...glyph} className="flip-ltr" />
-            ) : (
-              <PanelLeftClose {...glyph} className="flip-ltr" />
-            )}
-            {!compact && <span>{t.collapse}</span>}
+            {collapsed ? <ChevronLeft {...glyph} size={14} className="flip-ltr" /> : <ChevronRight {...glyph} size={14} className="flip-ltr" />}
           </button>
-        </div>
+        )}
       </>
     );
   };
@@ -365,23 +374,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const sub = me ? (me.nickname ? me.loginName : '') : saved.hint;
   const first = shown.trim().split(/\s+/)[0] || shown;
   const initial = first.charAt(0);
-  const clockText = useSyncExternalStore(
-    noSubscribe,
-    () => {
-      const now = new Date();
-      const hello = now.getHours() < 12 ? t.goodMorning : now.getHours() < 18 ? t.goodAfternoon : t.goodEvening;
-      const today = new Intl.DateTimeFormat(locale === 'en' ? 'en' : locale === 'he' ? 'he' : 'ar', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-      }).format(now);
-      return `${hello}\n${today}`;
-    },
-    () => null,
-  );
-  const [clockHello, clockToday] = clockText ? clockText.split('\n') : [];
-  const clock = clockText ? { hello: clockHello, today: clockToday } : null;
-  const helloMark = locale === 'en' ? ',' : '،';
   const role = me?.layer === 'branch' ? t.layerBranch : me?.layer === 'main_agent' ? t.layerMain : me?.layer === 'agent' ? t.layerAgent : me?.layer === 'pos' ? t.layerPos : me?.layer === 'staff' ? t.staffAccount : '';
 
   return (
@@ -399,13 +391,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
             <button type="button" className="shell-icon menu-btn" onClick={() => setMobileOpen(true)} aria-label={t.openMenu}>
               <Menu {...glyph} />
             </button>
-            <div className="hello">
-              <span className="hello-title">
-                {clock ? `${clock.hello}${helloMark} ` : null}
-                <bdi>{first}</bdi>
-              </span>
-              <span className="hello-date">{clock?.today ?? '\u00a0'}</span>
-            </div>
+            <ShellPath pathname={pathname} sections={sections} />
           </div>
           <div className="topbar-tools">
             <ShellSearch />
@@ -517,7 +503,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           )}
           {ready && !reachable && <OutageBar />}
           <div className="canvas-inner wide">
-            {ready && backHref ? (inSection ? <Crumbs pathname={pathname} sections={sections} /> : <BackLink href={backHref} />) : null}
             {/* The page mounts at once so its loads run beside `/office/me`; `Desk` draws the
                 skeleton until the session answers. Only an API that is down replaces it. */}
             {failed ? <OutagePanel onRetry={retry} busy={retrying} /> : children}
