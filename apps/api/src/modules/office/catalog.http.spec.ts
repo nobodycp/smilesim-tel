@@ -36,6 +36,9 @@ describe('providers and companies over HTTP', () => {
         findMany: async () => [{ ...provider, packages: [pkg('p2', { id: 'c2', name: 'ويكوم', image: null }), pkg('p1', { id: 'c1', name: 'الوها', image: 'data:x' }), pkg('p0', null)] }],
         update: async (args: unknown) => void writes.push({ model: 'provider', args }),
       },
+      // No package inherits a mode here: a provider change writes the provider alone (spec 2026-11-09-admin-review, 3).
+      package: { findMany: async () => [] },
+      $transaction: async (work: Promise<unknown>[]) => Promise.all(work),
       company: {
         findUnique: async ({ where }: { where: { code: string } }) => (where.code === 'wecom' ? { id: 'c2', code: 'wecom' } : null),
         update: async (args: { data: Record<string, unknown> }) => {

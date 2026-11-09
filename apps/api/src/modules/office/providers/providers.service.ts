@@ -3,7 +3,8 @@ import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { nonNegative } from '../kernel/values';
-import { ACTION_KEYS, normalizeActionModes, type ActionKey, type ActionMode } from '../office-rules';
+import type { Prisma } from '../../../generated/prisma/client';
+import { ACTION_KEYS, normalizeActionModes, packageModeData, type ActionKey, type ActionMode } from '../office-rules';
 
 /** Providers, for the branch: the list with each provider's companies and packages, the per-provider action modes, and the provider eSIM price. */
 @Injectable()
@@ -104,10 +105,16 @@ export class ProvidersService {
     if (!(ACTION_KEYS as readonly string[]).includes(action) || !mode) fail(400, 'INVALID');
     const modes = normalizeActionModes(row.actionModes);
     modes[action as ActionKey] = mode as ActionMode;
-    await this.kernel.prisma.provider.update({
-      where: { code },
-      data: { actionModes: modes },
-    });
+    // The packages that inherit this action follow at once (spec 2026-11-09-admin-review, 3); those with a mode of
+    // their own keep it.
+    const following = await this.kernel.prisma.package.findMany({ where: { providerId: row.id, inheritedModes: { has: action } } });
+    await this.kernel.prisma.$transaction([
+      this.kernel.prisma.provider.update({ where: { code }, data: { actionModes: modes } }),
+      ...following.map((pkg) => this.kernel.prisma.package.update({
+        where: { id: pkg.id },
+        data: packageModeData(pkg.actionModes, pkg, action as ActionKey, mode as ActionMode) as Prisma.PackageUpdateInput,
+      })),
+    ]);
     return { ok: true as const };
   }
 }

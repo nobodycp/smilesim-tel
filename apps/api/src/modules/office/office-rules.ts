@@ -454,6 +454,25 @@ export function resolvePackageMode(
   return 'manual';
 }
 
+/**
+ * What to write on a package so `action` runs in `mode`: the whole map (every action as it resolves now, `action`
+ * changed) and, for the eight actions with columns, their boolean pair. Shared by a package's own change and by a
+ * provider's change reaching the packages that inherit it (spec 2026-11-09-admin-review, 3).
+ */
+export function packageModeData(map: unknown, flags: Partial<PackageActionFlags>, action: ActionKey, mode: ActionMode): Record<string, unknown> {
+  const modes = {} as ActionModes;
+  for (const key of ACTION_KEYS) modes[key] = resolvePackageMode(map, flags, key);
+  modes[action] = mode;
+  const data: Record<string, unknown> = { actionModes: modes };
+  const pair = action === 'companySwitch' ? undefined : MODE_FLAG_FIELDS[action];
+  if (pair) {
+    const next = flagsForMode(mode);
+    data[pair.auto] = next.auto;
+    data[pair.allow] = next.allow;
+  }
+  return data;
+}
+
 /** Update is direct unless the package map says otherwise. It has no boolean columns. */
 export function refreshMode(map: unknown): ActionMode {
   if (map && typeof map === 'object' && !Array.isArray(map)) {

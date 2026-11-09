@@ -33,6 +33,8 @@ const PACKAGE_SHEET_KEYS = [
   'renewalBranchCost', 'renewalMainPrice', 'renewalAgentPrice', 'renewalPosPrice', 'renewalSubscriberPrice',
   'esimPrice', 'esimPriceEffective', 'esimPriceSource',
   'lines', 'activeLines', 'renewals', 'switches', 'modes',
+  // Spec 2026-11-09-admin-review, 3: which modes follow the provider, and the provider's own.
+  'inheritedModes', 'providerModes',
 ];
 
 const sorted = (list: string[]) => [...list].sort();

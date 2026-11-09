@@ -254,6 +254,11 @@ model Package {
   allowSim               Boolean          @default(true)
   enabled                Boolean          @default(true)
   actionModes            Json             @default("{}")
+  /// The actions whose run mode follows the provider (spec 2026-11-09-admin-review, 3): the stored mode is the
+  /// provider's, written again whenever the provider changes it. Empty = every mode is the package's own.
+  inheritedModes         String[]         @default([])
+  /// The provider's own product this package was added from; one package per product and provider.
+  providerProductCode    String?
   esimPrice              Int?
   lines                  Line[]
   userTerms              UserPackage[]
@@ -263,6 +268,8 @@ model Package {
   switches               PackageSwitch[]
   switchTargets          PackageSwitch[]  @relation("SwitchTarget")
   addons                 PackageAddon[]
+
+  @@unique([providerId, providerProductCode])
 }
 
 model PackageRenewal {

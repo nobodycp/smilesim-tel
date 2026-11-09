@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-09 (reports trimmed: no sales/orders reports, no `ledger/operations`, finance `scope=operations`; overview `pulse`; task rows `createdAt`; report filters and audit CSV; `finance/summary?days=7|30|90` with `manual`). tsc clean, lint clean, jest 589/589 (+2 DB tests). Booted on fresh Postgres + Redis: 79 office routes, end-to-end fund → eSIM activation → task completion.
+Last verified: 2026-11-09 (inherited run modes, ADR 0009: `Package.inheritedModes`, provider `setMode` writes through, package `setMode` takes `inherit`, sheet `inheritedModes`/`providerModes`; reports trimmed: no sales/orders reports, no `ledger/operations`, finance `scope=operations`; overview `pulse`; task rows `createdAt`; report filters and audit CSV; `finance/summary?days=7|30|90` with `manual`). tsc clean, lint clean, jest 589/589 (+2 DB tests). Booted on fresh Postgres + Redis: 79 office routes, end-to-end fund → eSIM activation → task completion.
 
 ## Stack
 

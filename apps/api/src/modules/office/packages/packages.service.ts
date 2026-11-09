@@ -4,23 +4,12 @@ import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import type { Prisma } from '../../../generated/prisma/client';
 import { nonNegative } from '../kernel/values';
-import { ACTION_KEYS, chainHolds, editableField, esimPriceOf, flagsForMode, resolvePackageMode, simRulesOf, type ActionKey } from '../office-rules';
+import { ACTION_KEYS, chainHolds, editableField, esimPriceOf, normalizeActionModes, packageModeData, resolvePackageMode, simRulesOf, type ActionKey, type ActionMode } from '../office-rules';
 import { buyPriceFor, deniedOpsFor, layerPrice, visibleTo } from '../user-terms';
 import { optionalPrice } from '../kernel/values';
 import type { Prices } from '../office-rules';
 
 // Which package flags a provider mode sets.
-const MODE_FIELDS: Record<string, { auto: string; allow: string }> = {
-  activate: { auto: 'autoActivate', allow: 'allowActivate' },
-  charge: { auto: 'autoCharge', allow: 'allowCharge' },
-  extend: { auto: 'autoExtend', allow: 'allowExtend' },
-  disconnect: { auto: 'autoDisconnect', allow: 'allowDisconnect' },
-  freeze: { auto: 'autoFreeze', allow: 'allowFreeze' },
-  switch: { auto: 'autoSwitch', allow: 'allowSwitch' },
-  rename: { auto: 'autoRename', allow: 'allowRename' },
-  sim: { auto: 'autoSim', allow: 'allowSim' },
-};
-
 function pricesOf(row: Prices): Prices {
   return {
     branchCost: row.branchCost,
@@ -150,19 +139,20 @@ export class PackagesService {
     const data: Record<string, boolean | Prisma.InputJsonValue> = {};
     for (const key of keys) if (typeof body[key] === 'boolean') data[key] = body[key] as boolean;
     const action = typeof body.action === 'string' ? body.action : '';
-    const mode = body.mode === 'auto' || body.mode === 'manual' || body.mode === 'off' ? body.mode : '';
+    const mode = body.mode === 'auto' || body.mode === 'manual' || body.mode === 'off' || body.mode === 'inherit' ? body.mode : '';
     const known = (ACTION_KEYS as readonly string[]).includes(action);
     if (known && mode) {
-      const modes = {} as Record<ActionKey, 'auto' | 'manual' | 'off'>;
-      for (const key of ACTION_KEYS) modes[key] = resolvePackageMode(pkg.actionModes, pkg, key);
-      modes[action as ActionKey] = mode;
-      data.actionModes = modes;
-      const pair = MODE_FIELDS[action];
-      if (pair) {
-        const flags = flagsForMode(mode);
-        data[pair.auto] = flags.auto;
-        data[pair.allow] = flags.allow;
-      }
+      // `inherit` follows the provider again (spec 2026-11-09-admin-review, 3): its mode now, and every change it
+      // makes later; a mode of its own stops following.
+      const inherited = new Set(pkg.inheritedModes);
+      let next = mode;
+      if (mode === 'inherit') {
+        const provider = await this.kernel.prisma.provider.findUnique({ where: { id: pkg.providerId } });
+        next = normalizeActionModes(provider?.actionModes)[action as ActionKey];
+        inherited.add(action);
+      } else inherited.delete(action);
+      Object.assign(data, packageModeData(pkg.actionModes, pkg, action as ActionKey, next as ActionMode));
+      data.inheritedModes = [...inherited];
     }
     if (Object.keys(data).length === 0) fail(400, 'INVALID');
     await this.kernel.prisma.package.update({ where: { code }, data });
@@ -216,6 +206,9 @@ export class PackagesService {
       renewals: pkg.renewals.map((renewal) => renewal.target.code),
       switches: pkg.switches.map((item) => item.target.code),
       modes: Object.fromEntries(ACTION_KEYS.map((key) => [key, resolvePackageMode(pkg.actionModes, pkg, key)])),
+      // Which of them follow the provider, and the provider's own (spec 2026-11-09-admin-review, 3).
+      inheritedModes: (pkg.inheritedModes ?? []).filter((key) => (ACTION_KEYS as readonly string[]).includes(key)),
+      providerModes: normalizeActionModes(pkg.provider.actionModes),
     };
   }
 
