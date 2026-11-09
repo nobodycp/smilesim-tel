@@ -7,7 +7,6 @@ import { Money } from '../../components/desk';
 import { Donut } from '../../components/donut';
 import { EmptyState } from '../../components/empty-state';
 import { Fact, Facts } from '../../components/facts';
-import { Icon, type IconName } from '../../components/icon';
 import { Tabs } from '../../components/tabs';
 import { Badge } from '../../components/ui/badge';
 import type { OverviewPayload, OverviewRanked } from '../../lib/api';
@@ -28,23 +27,6 @@ function Card({ title, hint, action, wide, children, className = '' }: { title: 
       </header>
       <div className="pane-body">{children}</div>
     </section>
-  );
-}
-
-/** «اختصارات» as square action tiles in the middle row (was a row of pills). */
-export function ShortcutsCard({ items }: { items: { href: string; label: string; icon: IconName }[] }) {
-  const { t } = usePrefs();
-  return (
-    <Card title={t.shortcuts} className="shortcuts-card">
-      <div className="shortcut-grid">
-        {items.map((item) => (
-          <Link key={item.href} className="shortcut-tile" href={item.href}>
-            <span className="shortcut-tile-icon" aria-hidden="true"><Icon name={item.icon} /></span>
-            <span>{item.label}</span>
-          </Link>
-        ))}
-      </div>
-    </Card>
   );
 }
 

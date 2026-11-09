@@ -1,36 +1,32 @@
 import { expect, test } from '@playwright/test';
 import { serveOffice } from './desk';
 
-// Graphite topbar: the menu button, search, wallet, notices, the language menu and theme (spec
-// 2026-11-09-admin-review, 2b); under 360px the language moves to the drawer's foot. Nothing in the topbar leaves
-// the screen from 320px up.
+// Graphite topbar: the menu button, search, wallet, then the language menu, the theme and the notices (spec
+// 2026-11-09-admin-review, 2b and 7), at every width; the drawer holds no preference. Nothing in the topbar leaves the
+// screen from 320px up, for the branch (no wallet) and for a point of sale (with its wallet).
 for (const locale of ['ar', 'en']) {
-  test(`the topbar fits from 320px up, with the language in it from 360px and in the drawer below (${locale})`, async ({ page }) => {
-    await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: 'http://admin.localhost:3910' }]);
-    await serveOffice(page, 'branch');
-    for (const width of [320, 360, 390]) {
-      await page.setViewportSize({ width, height: 760 });
-      await page.goto('http://admin.localhost:3910/');
-      await expect(page.locator('.topbar .menu-btn')).toBeVisible();
-      const outside = await page.locator('.topbar').evaluate((header) =>
-        [...header.querySelectorAll('button, a, input')]
-          .map((el) => el.getBoundingClientRect())
-          .filter((r) => r.width > 0 && (r.left < -0.5 || r.right > window.innerWidth + 0.5)).length,
-      );
-      expect(outside, `controls outside the screen at ${width}px`).toBe(0);
-      if (width < 360) await expect(page.locator('.topbar .shell-lang')).toBeHidden();
-      else await expect(page.locator('.topbar .shell-lang')).toBeVisible();
-    }
-
-    await page.setViewportSize({ width: 320, height: 760 });
-    await page.locator('.topbar .menu-btn').click();
-    const prefs = page.locator('.drawer .drawer-prefs');
-    await expect(prefs.locator('.shell-lang')).toBeVisible();
-    // One icon on the theme button, not the sun and the moon together.
-    await expect(prefs.locator('.shell-icon svg:visible')).toHaveCount(1);
-    await prefs.locator('.shell-lang').click();
-    await expect(page.locator('html')).toHaveAttribute('lang', locale === 'ar' ? 'en' : 'he');
-  });
+  for (const layer of ['branch', 'pos'] as const) {
+    test(`the topbar fits from 320px up with the language in it (${locale}, ${layer})`, async ({ page }) => {
+      const origin = layer === 'branch' ? 'http://admin.localhost:3910' : 'http://pos.localhost:3910';
+      await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: origin }]);
+      await serveOffice(page, layer);
+      for (const width of [320, 360, 390]) {
+        await page.setViewportSize({ width, height: 760 });
+        await page.goto(`${origin}/`);
+        await expect(page.locator('.topbar .menu-btn')).toBeVisible();
+        const outside = await page.locator('.topbar').evaluate((header) =>
+          [...header.querySelectorAll('button, a, input')]
+            .map((el) => el.getBoundingClientRect())
+            .filter((r) => r.width > 0 && (r.left < -0.5 || r.right > window.innerWidth + 0.5)).length,
+        );
+        expect(outside, `controls outside the screen at ${width}px`).toBe(0);
+        await expect(page.locator('.topbar .shell-lang')).toBeVisible();
+      }
+      await page.setViewportSize({ width: 320, height: 760 });
+      await page.locator('.topbar .menu-btn').click();
+      await expect(page.locator('.drawer .drawer-prefs, .drawer .shell-lang')).toHaveCount(0);
+    });
+  }
 }
 
 test('the topbar language is the login page\'s menu: the current language, a menu of the others', async ({ page }) => {

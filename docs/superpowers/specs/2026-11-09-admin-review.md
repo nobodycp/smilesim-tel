@@ -222,3 +222,12 @@ Status 2026-11-09: spec and plan agreed; the owner asked not to start yet.
 5. **Sidebar handle** shows on hover of the sidebar (and on keyboard focus), hidden otherwise, as in the Graphite
    design.
 6. **Topbar search** keeps a steady size at every width (checked at 320 / 375 / 768 / 1024 / 1440).
+
+## Section 7 — More trimming (owner 2026-11-09)
+
+1. **Home:** the «اختصارات» card and the «نظرة عامة» heading go (every layer).
+2. **Sidebar:** no language and no theme (also not in the phone drawer): both live in the topbar at every width.
+3. **Topbar order** (reading order, so it follows the language's direction): … search, wallet, then **language,
+   theme, notices**.
+4. **The branch has no wallet:** its balance is unlimited. No wallet chip in its topbar; `/wallet` sends it home;
+   the home and finance already show it no balance. Funding other accounts («المحفظة» on user rows) stays.

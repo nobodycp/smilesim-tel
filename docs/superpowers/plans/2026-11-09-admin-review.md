@@ -95,3 +95,9 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
   motion. Specs + e2e.
 - [x] **6.5** Sidebar handle on hover/focus; topbar search sizes at five widths.
 - [x] **6.6** Docs, CI set, visual check, push on the owner's word.
+
+## Section 7 — More trimming
+
+- [x] **7.1** Home without shortcuts and the overview heading; shell prefs only in the topbar, order language →
+  theme → notices; branch without wallet chip and `/wallet`. e2e updated; checked on the running copy (3000) at
+  320 / 375 / 768 / 1440, ar + en.

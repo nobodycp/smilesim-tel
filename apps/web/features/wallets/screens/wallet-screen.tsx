@@ -11,6 +11,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { usePaged } from '../../../lib/use-paged';
+import { useRequireLayer } from '../../../lib/use-require-layer';
 import { WalletHead } from '../wallet-head';
 import { movementName, reasonTone } from './finance-screen';
 
@@ -21,8 +22,10 @@ import { movementName, reasonTone } from './finance-screen';
  */
 export function WalletScreen() {
   const { t } = usePrefs();
+  // The branch has no wallet: its balance is unlimited (spec 2026-11-09-admin-review, 7). It goes home.
+  const allowed = useRequireLayer(['main_agent', 'agent', 'pos']);
   const [soon, setSoon] = useState('');
-  const summary = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary());
+  const summary = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary(), { enabled: allowed });
   const list = usePaged<LedgerRow>('wallet', async (cursor) =>
     pick(await api.officeLedger('audit', { cursor }), (data) => ({ rows: data.entries, next: data.nextCursor, total: data.total })),
   );
@@ -33,6 +36,7 @@ export function WalletScreen() {
     { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} signed /> },
     { key: 'after', header: t.balanceAfterShort, num: true, render: (row) => <Money value={row.balanceAfter} /> },
   ];
+  if (!allowed) return null;
   return (
     <Desk
       title={t.walletPage}

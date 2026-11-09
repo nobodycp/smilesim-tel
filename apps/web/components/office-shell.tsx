@@ -429,12 +429,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="side-foot">
-          {mobile ? (
-            <div className="drawer-prefs">
-              <ThemeToggle shell />
-              <LanguageSwitch shell />
-            </div>
-          ) : null}
+          {/* Language and theme live in the topbar at every width (spec 2026-11-09-admin-review, 7). */}
           {/* The account at the foot of the sidebar (Graphite): opens the profile; signing out sits under it. */}
           <Link
             href="/settings"
@@ -506,8 +501,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           </div>
           <div className="topbar-tools">
             <ShellSearch pages={sections.map((item) => ({ href: item.href, label: item.label }))} />
-            {/* «المحفظة» (spec 2026-11-09, 4): the balance chip opens the wallet page, where top-up will live. */}
-            <div className="wallet-chip">
+            {/* «المحفظة» (spec 2026-11-09, 4): the balance chip opens the wallet page, where top-up will live. The branch
+                has no wallet: its balance is unlimited (spec 2026-11-09-admin-review, 7). */}
+            {layer === 'branch' ? null : <div className="wallet-chip">
               <Link href="/wallet" className="wallet-btn" aria-label={t.walletPage}>
                 <Wallet {...glyph} />
                 {shownBalance !== null && (
@@ -517,7 +513,10 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                 )}
                 <span className="wallet-word">{t.walletPage}</span>
               </Link>
-            </div>
+            </div>}
+            {/* Then, in reading order, the language, the theme and the notices (spec 2026-11-09-admin-review, 7). */}
+            <LanguageSwitch topbar />
+            <ThemeToggle shell />
             <div className="notice-wrap" ref={noticeRoot}>
               <button
                 ref={noticeTrigger}
@@ -561,10 +560,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                 </div>
               )}
             </div>
-            {/* Graphite topbar: search, wallet, notices, then the language menu beside the theme (spec
-                2026-11-09-admin-review, 2b). Under 360px the language moves to the drawer's foot. */}
-            <span className="topbar-prefs"><LanguageSwitch topbar /></span>
-            <ThemeToggle shell />
           </div>
         </header>
         <main className="canvas">

@@ -304,10 +304,10 @@ a.shell-path-home:hover { background: var(--rd-surface-2); color: var(--rd-ink);
 }
 .menu-btn.shell-icon { display: none; }
 .shell-icon svg { width: 18px; height: 18px; }
-:is(.topbar, .drawer-prefs) .shell-icon .shell-sun,
-:is(.topbar, .drawer-prefs) .shell-icon .shell-moon { display: none; }
-html:not(.dark) :is(.topbar, .drawer-prefs) .shell-icon .shell-moon { display: block; }
-html.dark :is(.topbar, .drawer-prefs) .shell-icon .shell-sun { display: block; }
+.topbar .shell-icon .shell-sun,
+.topbar .shell-icon .shell-moon { display: none; }
+html:not(.dark) .topbar .shell-icon .shell-moon { display: block; }
+html.dark .topbar .shell-icon .shell-sun { display: block; }
 .shell-lang {
   font-size: 0.8rem;
   font-weight: 700;
@@ -693,13 +693,7 @@ html.dark :is(.topbar, .drawer-prefs) .shell-icon .shell-sun { display: block; }
 .notice-pop small { color: var(--rd-muted); }
 /* Touch: the shell turns to the drawer at 767px (responsive.css), so the topbar controls reach 44px there.
    The .topbar prefix lifts the search selectors over the 2.6rem width responsive.css gives them at this width. */
-/* Theme and language: in the topbar, or at the drawer's foot on the narrowest phones (see office-shell). */
-.topbar-prefs { display: contents; }
-.drawer-prefs { display: none; }
-@media (max-width: 359px) {
-  .topbar-prefs { display: none; }
-  .drawer-prefs { display: flex; gap: var(--rd-space-2); padding-block-end: var(--rd-space-2); }
-}
+/* Theme and language live in the topbar at every width (spec 2026-11-09-admin-review, 7). */
 @media (max-width: 767px) {
   .topbar { padding-inline: var(--rd-space-2); gap: var(--rd-space-1-5); }
   .topbar-start { flex: none; gap: var(--rd-space-1-5); }

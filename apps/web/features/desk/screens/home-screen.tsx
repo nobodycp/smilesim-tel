@@ -4,13 +4,12 @@ import { useState } from 'react';
 import { Plus, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { layerName } from '../../../components/desk';
-import type { IconName } from '../../../components/icon';
 import { LoadFailed } from '../../../components/load-failed';
 import { PageSkeleton, TableSkeleton } from '../../../components/loading';
 import { Tabs } from '../../../components/tabs';
 import { OfferHero } from '../../../components/offer-hero';
 import { AccountBand, LastOperations, WaitingTasks } from '../home-top';
-import { ActiveCard, LinesCard, ProvidersCard, ShortcutsCard, TasksCard, TopCard, UsersCard } from '../overview';
+import { ActiveCard, LinesCard, ProvidersCard, TasksCard, TopCard, UsersCard } from '../overview';
 import { api } from '../../../lib/api';
 import { useOffice } from '../../../lib/office-session';
 import { usePageTitle } from '../../../lib/page-title';
@@ -42,25 +41,6 @@ export function HomeScreen() {
   // A failed board is shown once, in its panes.
   const broken = !home && Boolean(board.error);
 
-  const shortcuts: { href: string; label: string; icon: IconName }[] = layer === 'pos'
-    ? [
-        { href: '/numbers', label: t.navNumbers, icon: 'numbers' },
-        { href: '/packages', label: t.navPlans, icon: 'plans' },
-        { href: '/tasks', label: t.navTasks, icon: 'tasks' },
-        { href: '/finance', label: t.navFinance, icon: 'wallet' },
-        { href: '/wallet', label: t.walletPage, icon: 'wallet' },
-        { href: '/profits', label: t.navProfits, icon: 'reports' },
-      ]
-    : [
-        { href: '/users', label: t.navUsers, icon: 'staff' },
-        ...(me?.isBranchOwner ? [{ href: '/roles', label: t.navRoles, icon: 'lock' as const }] : []),
-        // The branch reaches packages through their companies (spec 2026-11-09-admin-review, 4).
-        ...(layer === 'branch' ? [] : [{ href: '/packages', label: t.navPlans, icon: 'plans' as const }]),
-        { href: '/numbers', label: t.navNumbers, icon: 'numbers' },
-        { href: '/tasks', label: t.navTasks, icon: 'tasks' },
-        ...(layer === 'branch' ? [{ href: '/companies', label: t.navCompanies, icon: 'providers' as const }] : []),
-        ...(me?.isBranchOwner ? [] : [{ href: '/profits', label: t.navProfits, icon: 'reports' as const }]),
-      ];
   // The head (Graphite, as in the approved design): the greeting is the title, today's date and the layer the lede.
   const name = me ? me.nickname || me.loginName : '';
   const title = greeting && name ? `${greeting.hello}${locale === 'en' ? ',' : '،'} ${name}` : t.homeTitle;
@@ -107,14 +87,13 @@ export function HomeScreen() {
           <WaitingTasks tasks={waiting.data?.tasks ?? []} open={home?.openTasks ?? waiting.data?.total ?? 0} loading={!waiting.data && !waiting.error} />
         </div>
       )}
-      {/* Below the design's top, the rest of the period's overview (spec 2026-11-08-overview-and-reports-nav, F). */}
-      <header className="section-head home-overview-head"><h2>{t.overviewSection}</h2></header>
+      {/* Below the design's top, the rest of the period's overview (spec 2026-11-08-overview-and-reports-nav, F), with
+          no heading and no shortcuts card (spec 2026-11-09-admin-review, 7). */}
       {overview.error && !data ? <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section> : null}
       <div className="home-columns">
         <div className="home-side">
           {data ? <LinesCard data={data} /> : loadingOverview ? <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section> : null}
           {data ? <TasksCard data={data} /> : null}
-          {me ? <ShortcutsCard items={shortcuts} /> : null}
           {data && layer !== 'pos' ? <UsersCard data={data} layer={layer} /> : null}
         </div>
         <div className="home-main">

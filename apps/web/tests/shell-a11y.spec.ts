@@ -16,12 +16,13 @@ test('the sidebar foot holds the account, which opens the profile, and signing o
 
 // «المحفظة» (spec 2026-11-09, 4): the balance chip is a link to the wallet page, also in the account menu.
 test('the wallet chip opens the wallet page, and Escape on the notices gives the focus back', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  // An agent: the branch has no wallet (spec 2026-11-09-admin-review, 7).
+  await serveOffice(page, 'agent', {
     'GET /home': () => home,
     'GET /ledger/audit': () => ({ body: { entries: [{ id: 'e1', at: '2026-11-08T10:00:00.000Z', kind: 'fund', amount: 5000, balanceBefore: 0, balanceAfter: 5000, note: 'إيداع', packageName: null, msisdn: null, actorLogin: 'admin', loginName: 'admin', layer: 'branch', margin: null }], nextCursor: null, total: 1 } }),
   });
   const session = page.waitForResponse((response) => response.url().endsWith('/office/me'));
-  await page.goto(`${admin}/`);
+  await page.goto('http://agent.localhost:3910/');
   await session;
   const chip = page.getByRole('link', { name: 'المحفظة' }).first();
   await expect(chip).toHaveAttribute('href', '/wallet');
