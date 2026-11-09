@@ -77,3 +77,14 @@ tag), the password and two-step pages too; the topbar loses the account menu and
 foot) and gets the design's command box («ابحث أو انتقل», Ctrl K, pages by name), wallet chip and bare icons; filters
 become chips on the table card's top edge with a «كل الفلاتر» drawer on a phone; tables lose the head band, keep
 cells on one line and get the design's pager; the page's own action is crimson.
+
+## Revision 3 (owner, 2026-11-09): period cards on the home
+
+The home's cards follow the period switch (today / this month / all time), now in the page head. «المبيعات» is the
+number of sale operations (activation, top-up, extension, reactivation) and their volume; «اشتراكات جديدة» is the
+activations; «ربحك» the viewer's profit. Each card shows, in its corner, the relative change against the same elapsed
+span of the period before — today so far against yesterday up to this time, this month so far against the same span of
+last month (so a morning is not compared with a whole day) — as an up or down arrow and a percent; over all time there is
+no arrow. Each card carries its trend: by hour today, by day this month, and over all time by hour, day or month by the
+history's age. The API adds `pulse` to `GET /office/overview`; task list rows add `createdAt` (the home's waiting tasks
+show their age).

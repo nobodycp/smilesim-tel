@@ -9,6 +9,7 @@ import { ProviderHealthService } from '../providers/provider-health.service';
 import { InsightsService } from '../reports/insights.service';
 import { taskWhereFor } from '../task-access';
 import { WalletsService } from '../wallets/wallets.service';
+import { addEntry, axis, bucketOf, emptyTotals, stepOf, previousWindow, type PulsePoint, type PulseTotals } from './pulse';
 
 // The home page's full picture (spec 2026-11-08-overview-and-reports-nav, F): every card of one viewer in one read,
 // scoped to its chain and its grants, over a period (today, this month, all time). Line counts are "now".
@@ -62,7 +63,7 @@ export class OverviewService {
 
     const [lines, money, users, tasks, providers] = await Promise.all([
       this.lines(posIds, now),
-      this.money(actor, from, accounts),
+      this.money(actor, from, accounts, period, now),
       this.users(actor, accounts, visible),
       this.tasks(actor, accounts, now),
       readsProviders ? this.providers(actor, from) : Promise.resolve(null),
@@ -88,7 +89,7 @@ export class OverviewService {
   }
 
   /** Sales, refunds, a daily trend, the rankings and the most active accounts, from the period's ledger. */
-  private async money(actor: Actor, from: Date | null, accounts: Awaited<ReturnType<OfficeKernel['accounts']>>) {
+  private async money(actor: Actor, from: Date | null, accounts: Awaited<ReturnType<OfficeKernel['accounts']>>, period: OverviewPeriod, now: Date) {
     const where = await this.wallets.financeWhere(actor, from ? { from: from.toISOString() } : {});
     const rows = await this.kernel.prisma.walletEntry.findMany({
       where: {
@@ -107,17 +108,26 @@ export class OverviewService {
     const providerOfLine = await this.providerOfLines(rows.map((row) => row.lineId));
 
     const sales = { count: 0, amount: 0, profit: 0, refunds: 0, refundAmount: 0, net: 0 };
-    const trend = new Map<string, { day: string; amount: number; profit: number; count: number }>();
+    const daily = new Map<string, { day: string; amount: number; profit: number; count: number }>();
     const packages = new Map<string, Ranked>();
     const companies = new Map<string, Ranked>();
     const providers = new Map<string, Ranked>();
     const active = new Map<string, Ranked>();
+    const current = emptyTotals();
+    const steps = new Map<string, PulseTotals>();
+    const first = rows.length ? rows[rows.length - 1].createdAt : null;
+    const step = stepOf(period, now, first);
 
     for (const row of rows) {
       const ladder = ladders.get(row.id);
       const profit = ladder ? marginOf(ladder, viewerOf(ladder.chain)) ?? 0 : 0;
+      addEntry(current, row, profit);
+      const bucket = bucketOf(step, row.createdAt);
+      const stepTotals = steps.get(bucket) ?? emptyTotals();
+      addEntry(stepTotals, row, profit);
+      steps.set(bucket, stepTotals);
       const day = row.createdAt.toISOString().slice(0, 10);
-      const point = trend.get(day) ?? { day, amount: 0, profit: 0, count: 0 };
+      const point = daily.get(day) ?? { day, amount: 0, profit: 0, count: 0 };
       if (row.amount < 0) {
         const paid = -row.amount;
         sales.count += 1;
@@ -141,13 +151,18 @@ export class OverviewService {
         sales.profit += profit;
       }
       point.profit += profit;
-      trend.set(day, point);
+      daily.set(day, point);
     }
     sales.net = sales.amount - sales.refundAmount;
+    const trend: PulsePoint[] = axis(period, now, first).map((at) => ({ at, ...(steps.get(at) ?? emptyTotals()) }));
+    const window = previousWindow(period, now);
+    const previous = window ? await this.totalsBetween(actor, window.from, window.to) : null;
     const activeByLayer = (layer: string) => rank(new Map([...active].filter(([id]) => byId.get(id)?.layer === layer)), 'count')
       .map((row) => ({ ...row, nickname: byId.get(row.key)?.nickname ?? '' }));
     return {
-      sales: { ...sales, trend: [...trend.values()].sort((a, b) => (a.day < b.day ? -1 : 1)), capped: rows.length === OVERVIEW_LIMIT },
+      sales: { ...sales, activations: current.activations, trend: [...daily.values()].sort((a, b) => (a.day < b.day ? -1 : 1)), capped: rows.length === OVERVIEW_LIMIT },
+      // The home's period cards: this period, the same span before it (null over all time), and the trend.
+      pulse: { current, previous, trend },
       top: {
         packages: rank(packages, 'count'),
         companies: rank(companies, 'profit'),
@@ -159,6 +174,29 @@ export class OverviewService {
         pos: actor.layer === 'pos' ? [] : activeByLayer('pos'),
       },
     };
+  }
+
+  /** Sales, their volume, activations and the viewer's profit between two instants: the period before, to compare. */
+  private async totalsBetween(actor: Actor, from: Date, to: Date): Promise<PulseTotals> {
+    const where = await this.wallets.financeWhere(actor, { from: from.toISOString(), to: to.toISOString() });
+    const rows = await this.kernel.prisma.walletEntry.findMany({
+      where: {
+        AND: [
+          where,
+          { OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }] },
+        ],
+      },
+      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true },
+      take: OVERVIEW_LIMIT,
+    });
+    const ladders = await this.wallets.laddersFor(rows);
+    const totals = emptyTotals();
+    for (const row of rows) {
+      const ladder = ladders.get(row.id);
+      const viewer = actor.layer === 'branch' && ladder ? ladder.chain[ladder.chain.length - 1] : actor.id;
+      addEntry(totals, row, ladder ? marginOf(ladder, viewer) ?? 0 : 0);
+    }
+    return totals;
   }
 
   private async providerOfLines(lineIds: (string | null)[]) {

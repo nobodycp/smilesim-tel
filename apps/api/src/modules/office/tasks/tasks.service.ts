@@ -96,6 +96,7 @@ export class TasksService {
           resultNote: row.status === 'pending' && !handler ? null : row.resultNote,
           lastNote: row.notes[0]?.body ?? null,
           log: handler ? row.log : '',
+          createdAt: row.createdAt.toISOString(),
           canTake: handler && row.status === 'working' && !row.assigneeId,
           canWork: handler && row.status === 'working',
           canCancel: row.submitterId === actor.id && open,

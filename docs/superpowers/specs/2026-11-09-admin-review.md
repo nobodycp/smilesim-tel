@@ -62,3 +62,134 @@ Every layer. The «التقارير» group is one list shared by all doors, and
 - «المالية» with «العمليات فقط» lists the same rows `/operations` listed (same viewer, same period).
 - lint, check:copy, typecheck, test:api, e2e, build pass; checked ar + en, light + dark, desktop + mobile.
 - `docs/architecture/frontend.md` and `backend.md` say what the code now does.
+
+## Section 2 — Typing instead of lists; the language in the topbar
+
+### 2a. Pick by typing, with the closest names first
+
+Today every entity is picked from a `<select>` (no combobox exists in the app). The owner wants typing everywhere a
+name is picked: suggestions appear from the first letter, closest names first.
+
+**One component, `NameField`** (`components/name-field.tsx`), the ARIA combobox pattern:
+- A text field; from the first character a list of up to 8 suggestions under it; ↑/↓ moves, Enter picks, Esc
+  closes; a click picks. Picked, the field shows the name and a clear (×) button. Empty input with focus shows the
+  first 8 (recent or alphabetical) so a short list can still be browsed.
+- **Ranking:** exact → starts with → a word starts with → contains → one-letter-off (typo), then alphabetical.
+  Matches name and login (accounts), name and code (packages, companies, providers). The matched part is bold.
+- **Arabic-aware matching:** ignore diacritics and tatweel; أ إ آ ا are one letter, ة = ه, ى = ي; Arabic-Indic digits
+  equal Latin digits; case-insensitive for Latin and Hebrew final forms equal their base.
+- No match: «لا يوجد اسم مطابق». The field never accepts free text that is not a picked item.
+- Sources: accounts from the cached `GET /office/users` list (as `ShellSearch` does); packages, companies, providers
+  from their full lists (small). No API change.
+
+**Where it replaces a select** (entity pickers only; fixed enums like status, layer, kind, period stay selects):
+
+| Screen | Picker |
+|---|---|
+| package sheet, offers tab | account to scope prices to; account to give a custom price |
+| users, create form | parent account |
+| account actions, move dialog (`transfer-dialog`) | destination parent |
+| numbers, new activation | point of sale; package |
+| number card | point of sale to move to |
+| tasks, numbers, packages, provider operations, user packages tab | company / provider / package filters |
+
+In a `FilterBar`, the field sits as a chip-sized input; under 768px inside the «كل الفلاتر» drawer.
+
+### 2b. Language in the topbar
+
+The language moves from the sidebar foot to the topbar, beside the theme toggle, as the same menu the login page uses
+(`LanguageSwitch` without `shell`: the current language, a menu of the others). The sidebar foot loses it. Under
+360px it stays in the drawer foot, as theme does today.
+
+## Section 3 — Add a package and a company from the provider
+
+### Today
+
+There is no create flow for packages, companies or providers: all come from a seed in code, and the company list is a
+code constant (`office-catalog.ts`; `CompaniesService.shelf` maps the constant, not the table). No provider API
+adapter exists; matching is simulated. Provider run modes are copied to a package once, at seed, never read again.
+
+### What the owner wants
+
+- **«إضافة رزمة»** (branch, edit grant): pick the company and the provider → «استعلام» → the provider's products for
+  that company → pick one → set its facts, settings, extra operations and how each operation runs (branch task or
+  direct) → set the prices → save. The settings come from the provider and are **folded** unless the owner opens and
+  changes them. The prices are set on the same price-chain editor the package page uses.
+- **«إضافة شركة»** the same way: pick the provider → «استعلام» → the provider's companies (operators) → pick → SIM
+  rules (length, prefix, eSIM, eSIM price) → save.
+
+### Design
+
+1. **Provider adapter interface** (`providers/adapters/`): `companies()`, `products(companyCode)`, each product with
+   the provider's code, name, GB, SMS, minutes, months, provider cost, the extra operations it offers. **For now a
+   simulated adapter** answers from a fixed list per provider (as matching is simulated); a real adapter replaces it
+   per provider when its API documentation exists (`project-plan.md` :319, «مزامنة المنتجات»). Owner 2026-11-09:
+   «ابني وهمي حالياً» — simulated for now.
+2. **Companies from the table.** `CompaniesService.shelf` reads the `Company` rows; the code constant stays only as the
+   seed. New: `POST /office/companies` (from a provider company), `GET /office/providers/:code/catalog/companies`.
+3. **Packages created.** `POST /office/packages` with the picked product, the company and provider, the facts, the
+   addons, the ladders, the mode overrides. `GET /office/providers/:code/catalog/products?company=`. A package
+   remembers `providerProductCode`, so the same product cannot be added twice.
+4. **Real inheritance of run modes.** `Package.actionModes` holds only overrides; a missing action reads the
+   provider's mode at run time (`resolvePackageMode`: package override → provider → manual). Existing packages keep
+   their stored modes as overrides (no behaviour change); the run tab shows each action «موروث من المزود» or «مخصص»
+   with «رجوع للموروث». The same folded block is used in the create flow and on the package page.
+5. **The create flow is a page**, `/packages/new` (and `/companies/new`), steps in one column: company & provider →
+   query & pick → details → extra operations → how it runs (folded, inherited) → prices → save. The package page's
+   editors (details form, addons, modes, price chain) are reused, not copied.
+
+## Section 4 — Companies, providers, packages: one place for each thing
+
+### Today (duplications found)
+
+- Packages are listed in four places (`/packages`, company packages tab, `/companies/[c]/[p]`, provider packages tab),
+  all reading the same shelf, all linking to the same package page (`/providers/[p]/[pkg]`).
+- Run modes are edited twice with two controls (provider ModeCards; package run tab Select table), not linked.
+- eSIM price is edited in three places (company, provider, package); eSIM on/off in two (company, package).
+- Package on/off in two places (`/packages` row, package head).
+- Provider balance and credit in three places (`/providers`, provider page lede, `/provider-accounts`).
+
+### The structure: the company is the root
+
+| Thing | Its one home | Shown elsewhere only as a read-only link |
+|---|---|---|
+| Company: name, image, SIM rules, eSIM default | `/companies/[code]` «الإعدادات» tab | — |
+| Package: facts, prices, addons, run overrides, on/off | the package page, `/companies/[code]/packages/[pkg]` | the company's «الرزم» tab rows |
+| Provider: run defaults, eSIM price | `/providers/[code]` | the company's «المزودين» tab |
+| Provider money: balance, credit, payments, matching | `/provider-accounts/[code]` | — |
+
+- **Sidebar (branch):** «الشركات» is the catalog entry (rename «الشركات والرزم»); «المزودين» stays; «الرزم» for the
+  branch goes (`/packages` redirects to `/companies`). Lower layers keep `/packages` (their own catalog, unchanged).
+- **`/companies/[code]`**, three tabs: **«الرزم»** — every package of the company in one table, with the provider name
+  as a column and a provider filter chip, on/off and margin read-only, «إضافة رزمة»; **«المزودين»** — the providers
+  that serve this company, with package count and a link to each provider; **«الإعدادات»** — SIM rules and the eSIM
+  default.
+- **`/providers/[code]`**: run defaults and eSIM price only; its package tab goes (a «الشركات» list links to each
+  company's «الرزم» filtered by this provider). Balance and credit leave `/providers` and the provider lede; one link
+  «حساب المزود» goes to `/provider-accounts/[code]`.
+- **Package on/off** only on the package page head; the company table shows it as a badge.
+- **Every inherited value shows its source** («موروث من المزود» / «من الشركة») and is edited only where it lives;
+  the package page shows it folded with its override.
+- Old paths redirect: `/providers/[p]/[pkg]` → `/companies/[c]/packages/[pkg]`; `/companies/[c]/[p]` →
+  `/companies/[c]?provider=[p]`.
+- **No prototype** (owner 2026-11-09: «امشي علي الوصف»): built from this description.
+- **Branch only** (owner 2026-11-09: «هادا التعديل عند الاداره»): main agent, agent and point of sale keep their
+  `/packages` catalog and every page they see today, unchanged.
+
+## Section 5 — Layer sign-in rules out of the owner's own settings
+
+«الجلسات حسب الطبقة» (`LayerSessionRulesPane`: open sessions per account and idle timeout, per layer) sits on
+`/settings`, the owner's personal account page. It is a system setting, not the owner's account.
+
+- New page **«قواعد الدخول»** `/settings/access`, branch owner only, in the sidebar's «الإعدادات» group beside
+  «هوية الموقع». It holds the per-layer rules pane, unchanged in behaviour.
+- `/settings` keeps only the signed-in account: profile, password, its own sessions.
+- Per-account rules stay on the account (owner 2026-11-09: «وعلى مستوى الحساب من إعداداته وصلاحياته»): the
+  account's own values in «إعدادات المستخدم» on the user page, beside its permissions, falling back to its layer.
+
+## Order
+
+1 → 2b → 5 (small) → 2a → 4 → 3 (the create flows land in the new structure).
+
+
+Status 2026-11-09: spec and plan agreed; the owner asked not to start yet.

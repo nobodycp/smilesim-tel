@@ -13,6 +13,12 @@ const overview = (period: string, withProviders: boolean) => ({
     count: 12, amount: 54000, profit: 3600, refunds: 1, refundAmount: 2250, net: 51750, capped: false,
     trend: [{ day: '2026-11-07', amount: 18000, profit: 1200, count: 4 }, { day: '2026-11-08', amount: 36000, profit: 2400, count: 8 }],
   },
+  // The period cards (owner 2026-11-09): this period, the same span before (null over all time), the trend.
+  pulse: {
+    current: { count: 12, amount: 54000, activations: 5, profit: 3600 },
+    previous: period === 'all' ? null : { count: 8, amount: 36000, activations: 5, profit: 4000 },
+    trend: [{ at: '2026-11-07', count: 4, amount: 18000, activations: 2, profit: 1200 }, { at: '2026-11-08', count: 8, amount: 36000, activations: 3, profit: 2400 }],
+  },
   top: {
     packages: [ranked('400 جيجا', 8, 2400), ranked('100 جيجا', 4, 1200)],
     companies: [ranked('سلكوم', 9, 2700)],
@@ -36,12 +42,19 @@ test('the branch reads the full overview, switches the period, and sees its prov
   });
   await page.goto('http://admin.localhost:3910/');
   await expect(page.getByRole('tab', { name: 'هذا الشهر' })).toHaveAttribute('aria-selected', 'true');
-  const sales = page.locator('.overview-sales');
-  await expect(sales).toContainText('540.00 ₪');
-  await expect(sales).toContainText('+36.00 ₪');
-  // The lead figure tile carries the period's trend (Graphite, spec 2026-11-09-graphite-identity).
-  await expect(sales.locator('.figure-tile')).toHaveCount(4);
-  await expect(sales.locator('.figure-tile.lead .sparkline')).toHaveCount(1);
+  // The period cards: sales with their volume, new subscriptions and profit, each with its change and its trend.
+  const band = page.locator('.account-band');
+  const cards = band.locator('.pulse-tile');
+  await expect(cards).toHaveCount(3);
+  await expect(cards.nth(0)).toContainText('12');
+  await expect(cards.nth(0)).toContainText('540.00');
+  await expect(cards.nth(0).locator('.change')).toHaveText('50%');
+  await expect(cards.nth(0).locator('.change')).toHaveClass(/up/);
+  await expect(cards.nth(1).locator('.change')).toHaveText('0%');
+  await expect(cards.nth(2)).toContainText('+36.00 ₪');
+  await expect(cards.nth(2).locator('.change')).toHaveClass(/down/);
+  await expect(cards.nth(2).locator('.change')).toHaveText('10%');
+  await expect(band.locator('.trend-line')).toHaveCount(3);
 
   const legend = page.locator('.donut-legend li');
   await expect(legend).toHaveCount(5);
@@ -64,6 +77,9 @@ test('the branch reads the full overview, switches the period, and sees its prov
 
   await page.getByRole('tab', { name: 'اليوم' }).click();
   await expect.poll(() => calls.some((call) => call.startsWith('GET /overview?') && call.includes('period=day'))).toBe(true);
+  // Over all time there is nothing to compare with: no arrow.
+  await page.getByRole('tab', { name: 'كل الوقت' }).click();
+  await expect(cards.nth(0).locator('.change')).toHaveCount(0);
 });
 
 test('an agent sees no providers card and no main-agent tab', async ({ page }) => {
@@ -72,7 +88,7 @@ test('an agent sees no providers card and no main-agent tab', async ({ page }) =
     'GET /overview': () => ({ body: overview('month', false) }),
   });
   await page.goto('http://agent.localhost:3910/');
-  await expect(page.locator('.overview-sales')).toBeVisible();
+  await expect(page.locator('.account-band .pulse-tile')).toHaveCount(3);
   await expect(page.locator('.overview-card table.data')).toHaveCount(0);
   await expect(page.locator('.banner', { hasText: 'مزوّدون فيهم مشكلة الآن' })).toHaveCount(0);
   const top = page.locator('.overview-card').filter({ has: page.getByRole('tab', { name: 'أكثر الرزم مبيعاً' }) });

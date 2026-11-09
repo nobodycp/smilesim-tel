@@ -8,11 +8,9 @@ import { Donut } from '../../components/donut';
 import { EmptyState } from '../../components/empty-state';
 import { Fact, Facts } from '../../components/facts';
 import { Icon, type IconName } from '../../components/icon';
-import { Sparkline } from '../../components/sparkline';
 import { Tabs } from '../../components/tabs';
 import { Badge } from '../../components/ui/badge';
 import type { OverviewPayload, OverviewRanked } from '../../lib/api';
-import { formatShekel } from '../../lib/money';
 import { usePrefs } from '../../lib/prefs';
 
 // The home page's overview cards (spec 2026-11-08-overview-and-reports-nav, F). Each card draws only what the
@@ -29,67 +27,6 @@ function Card({ title, hint, action, wide, children, className = '' }: { title: 
         {action}
       </header>
       <div className="pane-body">{children}</div>
-    </section>
-  );
-}
-
-function Tile({ label, icon, lead, tone, meta, children }: { label: string; icon: IconName; lead?: boolean; tone?: 'good'; meta?: ReactNode; children: ReactNode }) {
-  return (
-    <div className={`figure-tile${lead ? ' lead' : ''}${tone ? ` ${tone}` : ''}`}>
-      <div className="figure-tile-head">
-        <span className="figure-tile-label">{label}</span>
-        <span className="figure-tile-icon" aria-hidden="true"><Icon name={icon} /></span>
-      </div>
-      <div className="figure-tile-value">{children}</div>
-      {meta ? <div className="figure-tile-meta">{meta}</div> : null}
-    </div>
-  );
-}
-
-/**
- * The figure band at the top of the home page (Graphite, spec 2026-11-09-graphite-identity): four cut-corner tiles —
- * sales (the lead, with the period's trend), my profit, net (refunds as its meta line) and the number of sales.
- */
-export function FigureBand({ data }: { data: OverviewPayload }) {
-  const { t } = usePrefs();
-  const { sales } = data;
-  return (
-    <section className="figure-band overview-sales" aria-label={t.overviewSales}>
-      <Tile
-        label={t.overviewSalesAmount}
-        icon="reports"
-        lead
-        meta={
-          <Sparkline
-            values={sales.trend.map((point) => point.amount)}
-            label={`${t.overviewTrend}: ${sales.trend.map((point) => `${point.day} ${(point.amount / 100).toFixed(2)}`).join(', ')}`}
-          />
-        }
-      >
-        <Money value={sales.amount} />
-      </Tile>
-      <Tile
-        label={t.overviewMyProfit}
-        icon="wallet"
-        tone="good"
-        meta={sales.amount > 0 ? <span className="num">{t.overviewMarginMeta.replace('{n}', ((sales.profit / sales.amount) * 100).toFixed(1))}</span> : null}
-      >
-        <Money value={sales.profit} signed />
-      </Tile>
-      <Tile
-        label={t.overviewNet}
-        icon="plans"
-        meta={<>{t.overviewRefunds}: <Money value={-sales.refundAmount} /> <span className="num">({sales.refunds})</span></>}
-      >
-        <Money value={sales.net} />
-      </Tile>
-      <Tile
-        label={t.overviewSalesCount}
-        icon="numbers"
-        meta={sales.count > 0 ? <span className="num">{t.overviewAverageMeta.replace('{amount}', formatShekel(Math.round(sales.amount / sales.count)))}</span> : null}
-      >
-        <span className="num">{sales.count}</span>
-      </Tile>
     </section>
   );
 }

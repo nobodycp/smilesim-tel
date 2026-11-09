@@ -11,7 +11,7 @@ import { PageSkeleton, Spinner, TableSkeleton } from '../../../components/loadin
 import { Tabs } from '../../../components/tabs';
 import { OfferHero } from '../../../components/offer-hero';
 import { AccountBand, LastOperations, WaitingTasks } from '../home-top';
-import { ActiveCard, FigureBand, LinesCard, ProvidersCard, ShortcutsCard, TasksCard, TopCard, UsersCard } from '../overview';
+import { ActiveCard, LinesCard, ProvidersCard, ShortcutsCard, TasksCard, TopCard, UsersCard } from '../overview';
 import { api } from '../../../lib/api';
 import { useOffice } from '../../../lib/office-session';
 import { usePageTitle } from '../../../lib/page-title';
@@ -132,6 +132,13 @@ export function HomeScreen() {
           {lede && <p className="lede">{lede}</p>}
         </div>
         <div className="page-actions">
+          {/* The period every card of the page follows (owner 2026-11-09). */}
+          <Tabs
+            label={t.period}
+            items={[{ key: 'day', label: t.periodToday }, { key: 'month', label: t.periodMonth }, { key: 'all', label: t.periodAll }]}
+            value={period}
+            onChange={setPeriod}
+          />
           {layer && layer !== 'pos' ? (
             <Link className={buttonClass({ variant: 'outline' })} href="/users"><Receipt size={16} aria-hidden="true" />{t.fundAccount}</Link>
           ) : null}
@@ -145,30 +152,14 @@ export function HomeScreen() {
           {`${t.providerAlertBanner} ${data.providers.filter((row) => row.status === 'problem').map((row) => `${row.name} (${row.problem === 'failures' ? t.providerProblemFailures.replace('{n}', String(row.failures)) : t.providerProblemBalance})`).join('، ')}`}
         </Alert>
       ) : null}
-      <AccountBand summary={summary.data} home={home} />
+      <AccountBand summary={summary.data} home={home} overview={data} period={period} />
       <div className="home-top-row">
         <LastOperations home={home} failed={broken ? board.error : ''} onRetry={() => void board.reload()} showAccount={layer !== 'pos'} />
         <WaitingTasks tasks={waiting.data?.tasks ?? []} open={home?.openTasks ?? waiting.data?.total ?? 0} loading={!waiting.data && !waiting.error} />
       </div>
-      {/* Below the design's top, the overview of the period (spec 2026-11-08-overview-and-reports-nav, F). */}
-      <header className="section-head home-overview-head">
-        <h2>{t.overviewSection}</h2>
-        <Tabs
-          label={t.period}
-          items={[{ key: 'day', label: t.periodToday }, { key: 'month', label: t.periodMonth }, { key: 'all', label: t.periodAll }]}
-          value={period}
-          onChange={setPeriod}
-        />
-      </header>
-      {overview.error && !data ? (
-        <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section>
-      ) : data ? (
-        <FigureBand data={data} />
-      ) : (
-        <div className="figure-band" aria-busy="true">
-          {[0, 1, 2, 3].map((key) => <div key={key} className={key === 0 ? 'figure-tile lead' : 'figure-tile'}><TableSkeleton rows={2} columns={1} /></div>)}
-        </div>
-      )}
+      {/* Below the design's top, the rest of the period's overview (spec 2026-11-08-overview-and-reports-nav, F). */}
+      <header className="section-head home-overview-head"><h2>{t.overviewSection}</h2></header>
+      {overview.error && !data ? <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section> : null}
       <div className="home-columns">
         <div className="home-side">
           {data ? <LinesCard data={data} /> : loadingOverview ? <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section> : null}

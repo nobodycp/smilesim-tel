@@ -1053,3 +1053,36 @@ input[readonly] { background-color: transparent; }
 .home-waiting .pane-head .hint, .home-ops .pane-head .ui-btn { margin-inline-start: auto; }
 .home-overview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-block-start: var(--rd-space-2); }
 @media (max-width: 640px) { .op-list li { grid-template-columns: minmax(0, 1fr) auto; } .op-list-detail { display: none; } }
+
+/* Home period cards (owner 2026-11-09): the change against the period before in the corner, the trend inside. */
+.account-band { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 1100px) { .account-band { grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1099px) { .account-band > .figure-tile.lead { grid-column: 1 / -1; } }
+.pulse-tile { position: relative; overflow: hidden; }
+.pulse-unit { margin-inline-start: 6px; color: var(--rd-muted); font-size: 12px; font-weight: 500; }
+.change { position: absolute; inset-block-start: 12px; inset-inline-end: 14px; display: inline-flex; align-items: center; gap: 2px; height: 22px; padding-inline: 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.change.up { background: var(--rd-success-soft); color: var(--rd-success); }
+.change.down { background: var(--rd-danger-soft); color: var(--rd-danger); }
+.change.flat { background: var(--rd-surface-2); color: var(--rd-muted); }
+.trend-line { position: relative; direction: ltr; margin-block-start: auto; margin-inline: -4px; block-size: 52px; }
+.trend-line svg { display: block; inline-size: 100%; block-size: 100%; overflow: visible; cursor: crosshair; }
+.trend-line .trend-stop-top { stop-color: var(--rd-accent); stop-opacity: 0.34; }
+.trend-line .trend-stop-bottom { stop-color: var(--rd-accent); stop-opacity: 0; }
+.trend-line.success .trend-stop-top, .trend-line.success .trend-stop-bottom { stop-color: var(--rd-success); }
+.trend-line .trend-stroke { fill: none; stroke: var(--rd-accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.trend-line .trend-glow { fill: none; stroke: var(--rd-accent); stroke-width: 6; stroke-linecap: round; opacity: 0.18; filter: blur(3px); }
+.trend-line.success .trend-stroke, .trend-line.success .trend-glow { stroke: var(--rd-success); }
+.trend-line .trend-cursor { stroke: var(--rd-muted); stroke-width: 1; stroke-dasharray: 2 3; }
+.trend-dot { position: absolute; inline-size: 8px; block-size: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--rd-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rd-accent) 25%, transparent), 0 0 12px var(--rd-accent); pointer-events: none; }
+.trend-line.success .trend-dot { background: var(--rd-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rd-success) 25%, transparent), 0 0 12px var(--rd-success); }
+.trend-tip { position: absolute; inset-block-end: calc(100% + 4px); transform: translateX(-50%); padding: 3px 7px; border-radius: var(--rd-radius-xs); background: var(--rd-surface-3, var(--rd-surface-2)); box-shadow: 0 0 0 1px var(--rd-line), 0 6px 16px rgb(0 0 0 / 0.25); color: var(--rd-text); font-size: 11px; white-space: nowrap; pointer-events: none; z-index: 2; }
+@media (prefers-reduced-motion: no-preference) {
+  .trend-line .trend-stroke, .trend-line .trend-glow { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trend-draw 1100ms cubic-bezier(0.23, 1, 0.32, 1) 120ms forwards; }
+  .trend-line .trend-area { opacity: 0; animation: trend-fade 700ms ease-out 500ms forwards; }
+  .trend-dot { animation: trend-pop 400ms ease-out 1100ms both, trend-breathe 2.4s ease-in-out 1500ms infinite; }
+}
+@keyframes trend-draw { to { stroke-dashoffset: 0; } }
+@keyframes trend-fade { to { opacity: 1; } }
+@keyframes trend-pop { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes trend-breathe { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent), 0 0 18px var(--rd-accent); } }
+.waiting-age { flex: none; }

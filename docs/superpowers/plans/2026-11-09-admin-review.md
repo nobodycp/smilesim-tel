@@ -27,4 +27,55 @@ New sections are appended as the owner names them.
   scopes); bump "Last verified". Docker check: group and finance filter in ar + en, light + dark, desktop + mobile,
   as branch and pos. Full CI set before push.
 
-## Section 2 — (next owner request)
+## Section 2 — Typing instead of lists; the language in the topbar
+
+- [ ] **2b.1 Language in the topbar.** `office-shell.tsx`: `<LanguageSwitch />` (menu form) beside `<ThemeToggle shell />`;
+  drop it from `.side-prefs`; keep `.drawer-prefs` under 360px. Menu styles for the topbar in the shell stylesheet,
+  tokens only. e2e: topbar menu switches ar → en → he; sidebar foot has no language. Check RTL/LTR, light/dark, phone.
+- [ ] **2a.1 `NameField` component.** `components/name-field.tsx` + `lib/name-match.ts` (normalize + rank, unit
+  tested: diacritics, alef forms, ة/ه, ى/ي, digits, typo). ARIA combobox, keyboard, clear button, no-match line;
+  styles in `DESIGN.md`. e2e on a test page of the mock office.
+- [ ] **2a.2 Account pickers.** Package sheet offers tab (two), users create form parent, transfer dialog
+  destination, numbers new activation point of sale, number card move-to. Same values sent to the API.
+- [ ] **2a.3 Package / company / provider pickers.** Numbers new activation package; the filters on tasks, numbers,
+  packages, provider operations, user packages tab; `FilterBar` chip size and drawer layout.
+- [ ] **2a.4 Docs and check.** `frontend.md` components list; every changed screen at all widths, ar + en.
+
+## Section 5 — Layer sign-in rules out of the owner's settings
+
+- [ ] **5.1** New route `app/settings/access/page.tsx` (owner only, `useRequireLayer(['branch'])` + owner check) with
+  `LayerSessionRulesPane`; entry «قواعد الدخول» in the sidebar settings group; remove the pane from
+  `settings-screen.tsx`; copy keys ar/en/he; route table / permission specs; e2e (owner sees it, staff does not;
+  `/settings` has no layer rules). Docs.
+
+## Section 4 — Companies, providers, packages
+
+Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched — an e2e pins their `/packages`.
+- [ ] **4.1 Routes.** `/companies/[code]/packages/[pkg]` (package page moved, same screen); redirects from
+  `/providers/[p]/[pkg]` and `/companies/[c]/[p]`; branch `/packages` → `/companies`; sidebar entries.
+- [ ] **4.2 Company page tabs** as approved: one packages table with provider column and filter; providers tab;
+  settings tab. Remove `company-packages-screen.tsx`.
+- [ ] **4.3 Provider page** without its packages tab and balance; «حساب المزود» link; `/providers` without balance
+  columns.
+- [ ] **4.4 One home per value.** Package on/off only on the package head; inherited values with their source label;
+  eSIM price/availability shown with source on the package. Response shapes kept; e2e updated.
+- [ ] **4.5 Docs** (frontend map, ADR «company is the catalog root»), full visual check.
+
+## Section 3 — Add a package and a company from the provider
+
+- [ ] **3.1 Run-mode inheritance (API).** `resolvePackageMode`: package override → provider → manual. Existing
+  packages keep their stored modes (no data rewrite). `setMode` can clear an override. Specs for each source. ADR.
+- [ ] **3.2 Companies from the table (API).** `CompaniesService.shelf` reads `Company` rows; the constant only seeds.
+  Response shape pinned unchanged.
+- [ ] **3.3 Provider adapter + simulated catalog (API).** `providers/adapters/` interface, simulated adapter;
+  `GET /office/providers/:code/catalog/companies`, `.../catalog/products?company=`. Route table, permissions (edit
+  grant), specs.
+- [ ] **3.4 Create endpoints (API).** `POST /office/companies`, `POST /office/packages` (migration:
+  `Package.providerProductCode`, unique per provider; `Company.providerCompanyCode`). Validation and error codes
+  (ar copy = API message). Specs incl. duplicate product refused.
+- [ ] **3.5 Run tab with inheritance (web).** Package page run tab: each action «موروث» / «مخصص», folded, «رجوع
+  للموروث»; one control (ModeCards) for provider and package.
+- [ ] **3.6 «إضافة رزمة» page (web).** `/companies/[code]/packages/new`: provider → query → pick → details → addons →
+  run (folded) → prices → save; reuses the package page editors. e2e on the mock API.
+- [ ] **3.7 «إضافة شركة» page (web).** `/companies/new`: provider → query → pick → SIM rules → save. e2e.
+- [ ] **3.8 Docs and check** (backend + frontend maps, all widths, ar + en, light + dark).

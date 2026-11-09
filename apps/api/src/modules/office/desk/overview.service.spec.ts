@@ -84,4 +84,17 @@ describe('OverviewService', () => {
     expect(result.tasks).toMatchObject({ pending: 4, working: 1, done: 1, oldestOpenMinutes: 90 });
     expect(result.providers).toBeNull();
   });
+
+  it('gives the period cards: sales and volume, activations, profit, a daily trend while the history is short, and nothing to compare over all time', async () => {
+    const result = await service().overview(actor('agent', 'agent'), { period: 'all' });
+    expect(result.pulse.current).toMatchObject({ count: 3, amount: 11400, activations: 2 });
+    expect(result.pulse.previous).toBeNull();
+    expect(result.pulse.trend.find((point) => point.at.startsWith('2026-11') && point.count > 0)).toMatchObject({ count: 3, activations: 2 });
+  });
+
+  it('compares today with the same span of yesterday', async () => {
+    const result = await service().overview(actor('agent', 'agent'), { period: 'day' });
+    expect(result.pulse.previous).not.toBeNull();
+    expect(result.pulse.trend.length).toBe(new Date().getUTCHours() + 1);
+  });
 });

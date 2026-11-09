@@ -65,16 +65,19 @@ export type OfficeMe = {
 };
 /** One ranked row of the overview: a package, company, provider or account, by count or profit. */
 export type OverviewRanked = { key: string; label: string; count: number; amount: number; profit: number; nickname?: string };
+export type PulseTotals = { count: number; amount: number; activations: number; profit: number };
 /** `GET /office/overview` (spec 2026-11-08-overview-and-reports-nav, F). */
 export type OverviewPayload = {
   period: 'day' | 'month' | 'all';
   from: string | null;
   lines: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number };
-  sales: { count: number; amount: number; profit: number; refunds: number; refundAmount: number; net: number; trend: { day: string; amount: number; profit: number; count: number }[]; capped: boolean };
+  sales: { count: number; amount: number; profit: number; refunds: number; refundAmount: number; net: number; activations: number; trend: { day: string; amount: number; profit: number; count: number }[]; capped: boolean };
   top: { packages: OverviewRanked[]; companies: OverviewRanked[]; providers: OverviewRanked[] };
   active: { main_agent: OverviewRanked[]; agent: OverviewRanked[]; pos: OverviewRanked[] };
   users: { counts: { main_agent: number; agent: number; pos: number }; frozen: number; debtors: number; debt: number; ceilings: number; used: number };
   tasks: { pending: number; working: number; done: number; rejected: number; cancelled: number; oldestOpenMinutes: number | null };
+  /** The home's period cards: this period, the same span of the one before (null over all time), and the trend. */
+  pulse: { current: PulseTotals; previous: PulseTotals | null; trend: (PulseTotals & { at: string })[] };
   providers: { code: string; name: string; operations: number; cost: number; profit: number; balance: number; creditLimit: number; available: number; status: 'working' | 'problem'; problem: 'failures' | 'balance' | null; failures: number; alertFloor: number }[] | null;
 };
 /** An offer on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1). */
@@ -520,6 +523,8 @@ export type TaskRow = {
   resultNote: string | null;
   lastNote: string | null;
   log?: string;
+  /** When the task was opened (the list since 2026-11-09). */
+  createdAt?: string;
   canTake: boolean;
   canWork: boolean;
   canCancel: boolean;
