@@ -66,6 +66,8 @@ export const sharedKeys = {
   line: (id: string) => ['office', 'line', id] as const,
   home: ['office', 'home'] as const,
   overview: (period: string) => ['office', 'overview', period] as const,
+  liveOffers: ['office', 'offers', 'live'] as const,
+  offers: ['office', 'offers'] as const,
   financeSummary: ['office', 'finance', 'summary'] as const,
   roles: ['office', 'roles'] as const,
   brandingDraft: ['branding', 'draft'] as const,

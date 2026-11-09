@@ -34,6 +34,12 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/finance/profits/export', 'yyyyyy'],
   ['POST /office/handoff', 'yyyyyy'], // no session needed: judged by the one-time code, covered by its domain spec
   ['GET /office/home', 'yyyyyy'],
+  ['GET /office/offers', 'ynynnn'],
+  ['POST /office/offers', 'ynynnn'],
+  ['GET /office/offers/live', 'yyyyyy'],
+  ['PATCH /office/offers/ID1', 'ynynnn'],
+  ['DELETE /office/offers/ID1', 'ynynnn'],
+  ['POST /office/offers/ID1/move', 'ynynnn'],
   ['GET /office/overview', 'yyyyyy'], // every layer; the providers card only for the branch with reports or accounting
   ['POST /office/leave', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/ledger/SCOPE1', 'yyyyyy'], // read/accounting not checked (see spec)

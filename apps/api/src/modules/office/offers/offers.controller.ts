@@ -1,0 +1,73 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseFilters, UseInterceptors } from '@nestjs/common';
+import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiErrorResponse } from '../../../openapi/responses';
+import { OfficeFailureFilter } from '../../shared/office-failure.filter';
+import { Activity, param } from '../activity.decorator';
+import { ActivityInterceptor } from '../activity.interceptor';
+import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
+import { freeFormObject } from '../kernel/query';
+import type { Actor as ActorShape } from '../kernel/types';
+import { OffersService } from './offers.service';
+
+/** Offers on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1). */
+@ApiTags('office')
+@ApiCookieAuth('sid')
+@ApiSecurity('x-door')
+@Controller('office')
+@UseFilters(OfficeFailureFilter)
+@UseInterceptors(ActivityInterceptor, ActorInterceptor)
+export class OffersController {
+  constructor(private readonly offers: OffersService) {}
+
+  @Get('offers/live')
+  @ApiOperation({ summary: 'The offers the signed-in account sees on its home now, in order' })
+  @ApiErrorResponse(401, 403)
+  live(@Actor() actor: ActorShape) {
+    return this.offers.live(actor);
+  }
+
+  @Get('offers')
+  @ApiOperation({ summary: 'Every offer (branch owner or edit grant)' })
+  @ApiErrorResponse(401, 403)
+  list(@Actor() actor: ActorShape) {
+    return this.offers.list(actor);
+  }
+
+  @Post('offers')
+  @ApiOperation({ summary: 'Add an offer: title, text, picture (data URL), action, seconds, layers, dates' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400)
+  @Activity('offer', 'offer', () => '')
+  create(@Actor() actor: ActorShape, @Body() body: Record<string, unknown>) {
+    return this.offers.save(actor, body ?? {});
+  }
+
+  @Patch('offers/:id')
+  @ApiOperation({ summary: 'Change an offer, or switch it on or off' })
+  @ApiParam({ name: 'id' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('offer', 'offer', param('id'))
+  update(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.offers.save(actor, body ?? {}, id);
+  }
+
+  @Post('offers/:id/move')
+  @ApiOperation({ summary: 'Move an offer one place up or down' })
+  @ApiParam({ name: 'id' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('offer', 'offer', param('id'))
+  move(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.offers.move(actor, id, body ?? {});
+  }
+
+  @Delete('offers/:id')
+  @ApiOperation({ summary: 'Delete an offer' })
+  @ApiParam({ name: 'id' })
+  @ApiErrorResponse(401, 403, 404)
+  @Activity('offer', 'offer', param('id'))
+  remove(@Actor() actor: ActorShape, @Param('id') id: string) {
+    return this.offers.remove(actor, id);
+  }
+}

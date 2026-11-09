@@ -128,3 +128,126 @@
 .overview-rank-n { color: var(--rd-muted); font-weight: 700; }
 .overview-rank-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .overview-rank-value { text-align: end; white-space: nowrap; }
+
+/* Offers hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1): text at the reading start, the picture at the
+   end; stacked on a phone. The fill in the current dot is its timer (components/offer-hero.tsx). */
+.offer-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-lg);
+  background: var(--rd-surface);
+  box-shadow: var(--rd-shadow-card);
+}
+.offer-hero:focus-visible { outline: 2px solid var(--rd-ink); outline-offset: 2px; }
+.offer-slide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: var(--rd-space-5);
+  min-block-size: 220px;
+  padding: var(--rd-space-6);
+  padding-block-end: calc(var(--rd-space-6) + var(--rd-space-4));
+  animation: offer-in var(--rd-dur-base) var(--rd-ease-out);
+}
+.offer-copy { display: grid; gap: var(--rd-space-2); align-content: center; justify-items: start; }
+.offer-copy h2 { margin: 0; font-size: calc(var(--rd-text-2xl) * 1.4); line-height: 1.25; }
+.offer-copy p { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-lg); line-height: 1.6; }
+.offer-action {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 40px;
+  margin-block-start: var(--rd-space-2);
+  padding-inline: var(--rd-space-4);
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-primary-bg);
+  color: var(--rd-primary-fg);
+  font-weight: 700;
+}
+.offer-action:hover { background: var(--rd-primary-hover); }
+.offer-image { inline-size: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: var(--rd-radius-card); }
+.offer-image-empty { background: var(--rd-surface-2); }
+.offer-arrow {
+  position: absolute;
+  inset-block-start: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 36px;
+  block-size: 36px;
+  margin-block-start: -18px;
+  border: 1px solid var(--rd-line);
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-surface);
+  color: var(--rd-ink);
+  opacity: 0;
+  transition: opacity var(--rd-dur-fast) var(--rd-ease-out);
+}
+.offer-arrow.prev { inset-inline-start: var(--rd-space-2); }
+.offer-arrow.next { inset-inline-end: var(--rd-space-2); }
+.offer-hero:hover .offer-arrow, .offer-hero:focus-within .offer-arrow { opacity: 1; }
+.offer-dots {
+  position: absolute;
+  inset-block-end: var(--rd-space-1);
+  inset-inline: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0;
+}
+/* The button is a comfortable target (it grows to 44px on touch screens); the visible dot is the bar inside it. */
+.offer-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 20px;
+  min-block-size: 24px;
+  padding: 0 var(--rd-space-0-5);
+  border: 0;
+  background: transparent;
+}
+.offer-dot-bar {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: var(--rd-radius-pill);
+  background: var(--rd-surface-3);
+  transition: inline-size var(--rd-dur-base) var(--rd-ease-out);
+}
+.offer-dot.is-on .offer-dot-bar { inline-size: 36px; }
+.offer-dot-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 100%;
+  border-radius: inherit;
+  background: var(--rd-primary-bg);
+  animation-name: offer-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@keyframes offer-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+[dir='rtl'] .offer-dot-fill { transform-origin: right center; }
+[dir='ltr'] .offer-dot-fill { transform-origin: left center; }
+@keyframes offer-in { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 760px) {
+  .offer-slide { grid-template-columns: minmax(0, 1fr); gap: var(--rd-space-3); padding: var(--rd-space-4); padding-block-end: calc(var(--rd-space-4) + var(--rd-space-4)); }
+  .offer-slide .offer-image { order: -1; }
+  .offer-copy h2 { font-size: var(--rd-text-2xl); }
+  .offer-copy p { font-size: var(--rd-text-base); }
+  .offer-arrow { display: none; }
+}
+/* With reduced motion nothing moves by itself: no fill, so no timer; dots, arrows, swipe and keys still move. */
+@media (prefers-reduced-motion: reduce) {
+  .offer-dot-fill { animation: none; transform: none; }
+  .offer-slide { animation: none; }
+}
+
+/* «الإعلانات» page. */
+.offer-thumb { display: block; inline-size: 64px; aspect-ratio: 2 / 1; object-fit: cover; border-radius: var(--rd-radius-xs); background: var(--rd-surface-2); }
+.offer-thumb.large { inline-size: 200px; }
+.offer-image-field { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--rd-space-3); }
+.offer-file { cursor: pointer; }
+.offer-layers { display: flex; flex-wrap: wrap; gap: var(--rd-space-3); margin: 0; padding: 0; border: 0; }
+.offer-layers legend { margin-block-end: var(--rd-space-1-5); font-weight: 700; }

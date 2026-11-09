@@ -10,6 +10,7 @@ import { Icon, type IconName } from '../../../components/icon';
 import { LoadFailed } from '../../../components/load-failed';
 import { PageSkeleton, Spinner, TableSkeleton } from '../../../components/loading';
 import { Tabs } from '../../../components/tabs';
+import { OfferHero } from '../../../components/offer-hero';
 import { ActiveCard, LinesCard, ProvidersCard, SalesCard, TasksCard, TopCard, UsersCard } from '../overview';
 import { api, type HomePayload } from '../../../lib/api';
 import { useOffice } from '../../../lib/office-session';
@@ -35,6 +36,8 @@ export function HomeScreen() {
   // The full picture (spec 2026-11-08-overview-and-reports-nav, F): one read per period, kept per period in the cache.
   const [period, setPeriod] = useState<'day' | 'month' | 'all'>('month');
   const overview = useApiQuery(sharedKeys.overview(period), () => api.officeOverview(period));
+  // The offers hero (spec 2026-11-09, 1): the live offers for this account's layer, first on the page.
+  const offers = useApiQuery(sharedKeys.liveOffers, () => api.liveOffers()).data?.offers ?? [];
   const home = board.data;
   const { run } = useAction({ setError, setNote, onDone: board.reload });
   // A failed board is shown once, in its panes; the banner is for actions.
@@ -92,6 +95,7 @@ export function HomeScreen() {
           />
         </div>
       </header>
+      {offers.length > 0 ? <OfferHero offers={offers} /> : null}
       {/* Provider alerts (spec G): the same rule as the notices, shown while it holds. */}
       {overview.data?.providers?.some((row) => row.status === 'problem') ? (
         <Alert banner>

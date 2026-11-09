@@ -77,6 +77,12 @@ export type OverviewPayload = {
   tasks: { pending: number; working: number; done: number; rejected: number; cancelled: number; oldestOpenMinutes: number | null };
   providers: { code: string; name: string; operations: number; cost: number; profit: number; balance: number; creditLimit: number; available: number; status: 'working' | 'problem'; problem: 'failures' | 'balance' | null; failures: number; alertFloor: number }[] | null;
 };
+/** An offer on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1). */
+export type Offer = {
+  id: string; title: string; body: string; image: string | null; actionLabel: string | null; actionHref: string | null;
+  seconds: number; active: boolean; position: number; layers: string[]; startsAt: string | null; endsAt: string | null;
+};
+export type OfferInput = Partial<Omit<Offer, 'id' | 'position'>> & { title?: string };
 export type HomePayload = {
   pendingTasks: number;
   activeLines: number;

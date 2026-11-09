@@ -525,3 +525,26 @@ model PackageAddon {
 
   @@index([packageId, position])
 }
+
+/** An offer on the home hero (spec 2026-11-09, 1): a picture and text, for some layers, shown for `seconds`. */
+model Offer {
+  id          String    @id @default(uuid())
+  title       String
+  body        String    @default("")
+  /** A data URL (png, jpeg or webp), at most about 700 KB. */
+  image       String?
+  actionLabel String?
+  /** An office path starting with `/`, or an `https://` address. */
+  actionHref  String?
+  seconds     Int       @default(7)
+  active      Boolean   @default(true)
+  position    Int       @default(0)
+  /** Comma-separated layers that see it: branch, main_agent, agent, pos. */
+  layers      String    @default("branch,main_agent,agent,pos")
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([active, position])
+}

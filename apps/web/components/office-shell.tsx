@@ -12,6 +12,7 @@ import {
   Home,
   Layers,
   LogOut,
+  Megaphone,
   Menu,
   Package,
   Palette,
@@ -220,6 +221,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       items: [
         { label: t.navAudit, href: '/audit', icon: ClipboardList },
         { label: t.navRoles, href: '/roles', icon: Shield, layers: ['branch'], owner: true },
+        { label: t.offersTitle, href: '/offers', icon: Megaphone, layers: ['branch'], grant: 'edit' },
         {
           key: 'settings',
           label: t.navSettings,

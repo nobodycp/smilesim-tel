@@ -249,7 +249,9 @@ export class LinesService {
     if (inputs === 'current-details' && (!currentDetails || iccid.length < 8)) fail(400, 'INVALID');
     if (inputs === 'number-and-sim' && (!requested || iccid.length < 8)) fail(400, 'INVALID');
     const sim = simRulesOf(pkg.company, pkg);
-    if (esim && !sim.esim) fail(400, 'ESIM_UNSUPPORTED');
+    // The company refusing eSIM keeps its own answer; a package switched off says so (spec 2026-11-09, 5).
+    if (esim && !simRulesOf(pkg.company).esim) fail(400, 'ESIM_UNSUPPORTED');
+    if (esim && !sim.esim) fail(400, 'ESIM_PACKAGE_OFF');
     if (!(inputs === 'generated' && esim)) {
       const refusal = simRefusal(sim, iccid);
       if (refusal) fail(400, refusal);
@@ -589,7 +591,8 @@ export class LinesService {
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active') fail(400, 'INVALID');
     if (line.denied.has('esim')) fail(403, 'OPERATION_DENIED');
-    if (!simRulesOf(line.package.company, line.package).esim) fail(400, 'ESIM_UNSUPPORTED');
+    if (!simRulesOf(line.package.company).esim) fail(400, 'ESIM_UNSUPPORTED');
+    if (!simRulesOf(line.package.company, line.package).esim) fail(400, 'ESIM_PACKAGE_OFF');
     const { price } = esimPriceOf({ pkg: line.package, provider: line.package.provider, company: line.package.company });
     const task = await this.tasks.openTask({
       action: 'esim', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: -price, msisdn: line.msisdn, iccid: null, esim: true,

@@ -38,7 +38,7 @@ Owner: «صفحة محفظة خاصة… من الايقونة في الأعلى
 
 Owner: «رزم ما فيها ايسيم… خيار نحدده من داخل الرزمة».
 
-- `Package.esimAvailable` (default true), set in the package's «التفاصيل» tab. A new activation offers eSIM only when both the company and the package allow it; the API refuses an eSIM activation otherwise (`ESIM_UNSUPPORTED`, the code the company rule already used).
+- `Package.esimAvailable` (default true), set in the package's «التفاصيل» tab. A new activation offers eSIM only when both the company and the package allow it; the API refuses an eSIM activation otherwise: `ESIM_UNSUPPORTED` when the company refuses, `ESIM_PACKAGE_OFF` when the package does.
 
 ## Order
 

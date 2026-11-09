@@ -17,6 +17,6 @@ Spec: `docs/superpowers/specs/2026-11-09-offers-tasks-addons-wallet-esim.md`. On
 - [x] Migration `PackageAddon`; CRUD under the package; `POST lines/:id/addon` opens the task with hold; completion moves the price.
 - [x] Web: package tab, line card menu, names in task, history, finance.
 
-## Slice 1: offers hero
-- [ ] Migration `Offer`; CRUD and `GET offers/live`; route table and permission matrix.
-- [ ] Web: `/offers` admin page, `OfferHero` on the home (timer per offer, dots, arrows, swipe, keys, pause, reduced motion), styles, copy.
+## Slice 1: offers hero — done 2026-11-09
+- [x] Migration `Offer`; CRUD and `GET offers/live`; route table and permission matrix.
+- [x] Web: `/offers` admin page, `OfferHero` on the home (timer per offer, dots, arrows, swipe, keys, pause, reduced motion), styles, copy.
