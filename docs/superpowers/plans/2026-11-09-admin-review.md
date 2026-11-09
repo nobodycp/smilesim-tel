@@ -15,17 +15,17 @@ New sections are appended as the owner names them.
   `finance-screen.tsx`; move `WalletHead` to `wallet-screen.tsx` (its only user then), with the imports it needs.
   e2e: «المالية» shows no `.wallet-band` / `.wallet-chart` and opens on the table; move `tests/finance-head.spec.ts`
   to the wallet page (its 7 / 30 / 90 switch and figures stay pinned there).
-- [ ] **1.3 Web: remove the three pages.** `office-shell.tsx` group → five entries. `app/operations/page.tsx`,
+- [x] **1.3 Web: remove the three pages.** (eae1e99) `office-shell.tsx` group → five entries. `app/operations/page.tsx`,
   `app/reports/sales/page.tsx`, `app/reports/orders/page.tsx` become redirects (spec, item 3); `app/reports/page.tsx`
   → `/finance`. Delete `operations-screen.tsx`, `SalesReportScreen`, `OrdersReportScreen`, `reportSales`,
   `reportOrders` and their row types (with the 77799b2 filters); copy keys check:copy reports unused. Home shortcuts
   → `/profits`; `home-top.tsx` «كل المبيعات» → «كل العمليات» `/finance?scope=operations`. Update
   `tests/reports-hub.spec.ts`, `tests/dom-snapshot.mjs`, `audit/screens.audit.ts`. e2e: the group lists five pages
   for branch and pos; each old path lands where the spec says.
-- [ ] **1.4 API: remove the dead endpoints.** `reports.controller.ts` sales/orders, `insights.service.ts`
+- [x] **1.4 API: remove the dead endpoints.** (35c334e) `reports.controller.ts` sales/orders, `insights.service.ts`
   `sales`/`orders` and their CSV branches, the `ledger` `operations` scope; `testing/office-routes.ts`,
   `permissions.http.spec.ts`, `operations-ledger.spec.ts`, `office-lists.spec.ts`, response-shape pins.
-- [ ] **1.5 Docs and check.** `frontend.md` (reports group, routes, redirects), `backend.md` (endpoints, finance
+- [x] **1.5 Docs and check.** `frontend.md` (reports group, routes, redirects), `backend.md` (endpoints, finance
   scopes); bump "Last verified". Docker check: group and finance filter in ar + en, light + dark, desktop + mobile,
   as branch and pos. Full CI set before push.
 

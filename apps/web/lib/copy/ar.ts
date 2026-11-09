@@ -600,7 +600,7 @@ export const ar = {
   moneyOutMeta: 'استرجاع وخصم',
   movementsCount: 'عدد الحركات',
   manualMeta: 'منها {n} يدوية',
-  financeLede: 'رصيدك وكل حركة عليه، مع سببها.',
+  financeLede: 'كل حركة على محفظتك ومحافظ الحسابات تحتك، مع سببها والرصيد قبلها وبعدها.',
   movementsTitle: 'الحركات',
   reasonColumn: 'السبب',
   detailsColumn: 'التفاصيل',

@@ -600,7 +600,7 @@ export const en: Copy = {
   moneyOutMeta: 'Refunds and deductions',
   movementsCount: 'Movements',
   manualMeta: '{n} by hand',
-  financeLede: 'Your balance and every movement on it, with its reason.',
+  financeLede: 'Every movement on your wallet and the wallets under you, with its reason and the balance before and after.',
   movementsTitle: 'Movements',
   reasonColumn: 'Reason',
   detailsColumn: 'Details',

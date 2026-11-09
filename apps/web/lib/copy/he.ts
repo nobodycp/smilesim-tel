@@ -600,7 +600,7 @@ export const he: Copy = {
   moneyOutMeta: 'החזרים וניכויים',
   movementsCount: 'תנועות',
   manualMeta: '{n} ידניות',
-  financeLede: 'היתרה שלך וכל תנועה עליה, עם הסיבה.',
+  financeLede: 'כל תנועה בארנק שלך ובארנקים שתחתיך, עם הסיבה והיתרה לפני ואחרי.',
   movementsTitle: 'תנועות',
   reasonColumn: 'סיבה',
   detailsColumn: 'פרטים',
