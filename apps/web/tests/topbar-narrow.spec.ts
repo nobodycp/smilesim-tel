@@ -43,3 +43,19 @@ test('the topbar language is the login page\'s menu: the current language, a men
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.locator('.topbar').getByRole('button', { name: 'Language' })).toHaveText('EN');
 });
+
+// Wide screens too (spec 2026-11-09-admin-review, 6.5 and 7): at 1280px nothing in the topbar leaves the screen and
+// the page does not scroll sideways; the message lists every topbar control's box if it does.
+test('the topbar fits a 1280px screen without a sideways scroll', async ({ page }) => {
+  await serveOffice(page, 'branch', { 'GET /companies': () => ({ body: { companies: [] } }) });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('http://admin.localhost:3910/companies');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  const report = await page.evaluate(() => {
+    const de = document.documentElement;
+    const boxes = [...document.querySelectorAll('.topbar-tools > *, .topbar-tools kbd, .topbar-start, .topbar')]
+      .map((el) => { const r = el.getBoundingClientRect(); return `${el.tagName}.${String(el.className).slice(0, 30)} ${Math.round(r.left)}→${Math.round(r.right)}`; });
+    return { scroll: de.scrollWidth, client: de.clientWidth, boxes: boxes.join(' ; '), fonts: [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family).join(',') };
+  });
+  expect(report.scroll, JSON.stringify(report)).toBeLessThanOrEqual(report.client);
+});
