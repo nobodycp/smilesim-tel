@@ -14,11 +14,10 @@ import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { PasskeysPane, TwoFactorPane, useSignInMethods } from '../sign-in-methods';
-import { LayerSessionRulesPane } from '../session-rules';
 
 export function SettingsScreen() {
   const { t, apiText, locale } = usePrefs();
-  const { ready, refresh, me } = useOffice();
+  const { ready, refresh } = useOffice();
   usePageTitle(t.settingsTitle);
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
@@ -211,7 +210,6 @@ export function SettingsScreen() {
             </ul>
           </div>
         </section>
-        {me?.isBranchOwner && !me.impersonating ? <LayerSessionRulesPane setError={setError} setNote={setNote} /> : null}
       </div>
     </div>
     </div>

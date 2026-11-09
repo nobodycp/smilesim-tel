@@ -27,7 +27,12 @@ export function ThemeToggle({ shell = false }: { shell?: boolean }) {
   );
 }
 
-export function LanguageSwitch({ shell = false }: { shell?: boolean }) {
+/**
+ * The language. `shell`: one button that steps to the next language (the drawer's foot on the narrowest phones).
+ * Otherwise the menu the login page uses — the current language, a menu of the others; `topbar` draws its trigger
+ * as a topbar control (spec 2026-11-09-admin-review, 2b).
+ */
+export function LanguageSwitch({ shell = false, topbar = false }: { shell?: boolean; topbar?: boolean }) {
   const { locale, setLocale, t } = usePrefs();
   const { open, close, toggle, root, trigger } = usePopover({ menu: true });
 
@@ -49,10 +54,11 @@ export function LanguageSwitch({ shell = false }: { shell?: boolean }) {
   }
 
   return (
-    <div className="lang" ref={root}>
+    <div className={topbar ? 'lang topbar-lang' : 'lang'} ref={root}>
       <button
         ref={trigger}
         type="button"
+        className={topbar ? 'shell-icon shell-lang' : undefined}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t.language}

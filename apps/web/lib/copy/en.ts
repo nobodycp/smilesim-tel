@@ -456,6 +456,8 @@ export const en: Copy = {
   passkeySignIn: 'Sign in with a passkey',
   actPasskeyAdd: 'Passkey added',
   actPasskeyRemove: 'Passkey deleted',
+  accessRulesTitle: 'Sign-in rules',
+  accessRulesLede: 'They apply to every account of a layer, unless the account has its own values in «User settings» on its page.',
   sessionRulesTitle: 'Sessions by layer',
   sessionRulesHint: 'How many open sessions each account may have, and when a session ends with no activity. Any account can have its own values from its page.',
   maxSessionsLabel: 'Sessions allowed',

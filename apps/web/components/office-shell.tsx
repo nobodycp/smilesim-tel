@@ -16,6 +16,7 @@ import {
   Megaphone,
   Menu,
   Package,
+  KeyRound,
   Palette,
   Truck,
   Phone,
@@ -266,7 +267,11 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           key: 'settings',
           label: t.navSettings,
           icon: Settings,
-          items: [{ label: t.navBranding, href: '/branding', icon: Palette, layers: ['branch'], owner: true }],
+          items: [
+            { label: t.navBranding, href: '/branding', icon: Palette, layers: ['branch'], owner: true },
+            // The layers' sign-in rules: a system setting, not the owner's own account (spec 2026-11-09-admin-review, 5).
+            { label: t.accessRulesTitle, href: '/settings/access', icon: KeyRound, layers: ['branch'], owner: true },
+          ],
         },
       ],
     },
@@ -430,11 +435,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
               <ThemeToggle shell />
               <LanguageSwitch shell />
             </div>
-          ) : (
-            <div className="side-prefs label">
-              <LanguageSwitch shell />
-            </div>
-          )}
+          ) : null}
           {/* The account at the foot of the sidebar (Graphite): opens the profile; signing out sits under it. */}
           <Link
             href="/settings"
@@ -561,7 +562,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                 </div>
               )}
             </div>
-            {/* Graphite topbar: search, wallet, notices, theme. The account and the language live in the sidebar's foot. */}
+            {/* Graphite topbar: search, wallet, notices, then the language menu beside the theme (spec
+                2026-11-09-admin-review, 2b). Under 360px the language moves to the drawer's foot. */}
+            <span className="topbar-prefs"><LanguageSwitch topbar /></span>
             <ThemeToggle shell />
           </div>
         </header>

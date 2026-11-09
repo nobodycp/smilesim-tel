@@ -450,10 +450,6 @@ input[readonly] { background-color: transparent; }
 .shell-search-toggle { border: 0; border-radius: var(--rd-radius-sm); background: transparent; color: var(--rd-ink-2); }
 .notice-count { border-radius: var(--rd-radius-xs); background: var(--rd-accent); color: var(--rd-on-accent); box-shadow: 0 0 0 2px var(--rd-bg); }
 /* The language at the sidebar's foot, beside the account. */
-.side-prefs { display: flex; padding: 4px 6px 2px; }
-.side-prefs .shell-icon { width: auto; min-width: 36px; height: 30px; padding-inline: 10px; border: 0; border-radius: var(--rd-radius-sm); background: transparent; color: var(--rd-muted); }
-.side-prefs .shell-icon:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
-.sidebar.collapsed .side-prefs { display: none; }
 
 /* ── Tables (Graphite): no band behind the head — small bold muted names over a stronger rule; 46px rows on
    zebra; the number in each row bold and spaced; a quiet pager under a hairline. ── */

@@ -456,6 +456,8 @@ export const he: Copy = {
   passkeySignIn: 'כניסה עם מפתח גישה',
   actPasskeyAdd: 'הוספת מפתח גישה',
   actPasskeyRemove: 'מחיקת מפתח גישה',
+  accessRulesTitle: 'כללי כניסה',
+  accessRulesLede: 'חלים על כל חשבונות השכבה, אלא אם לחשבון יש ערכים משלו ב«הגדרות משתמש» בעמוד שלו.',
   sessionRulesTitle: 'סשנים לפי שכבה',
   sessionRulesHint: 'כמה סשנים פתוחים מותרים לכל חשבון, ומתי סשן נסגר ללא פעילות. לכל חשבון אפשר ערכים משלו מהדף שלו.',
   maxSessionsLabel: 'סשנים מותרים',

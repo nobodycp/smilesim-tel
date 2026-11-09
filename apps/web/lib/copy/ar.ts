@@ -456,6 +456,8 @@ export const ar = {
   passkeySignIn: 'الدخول بمفتاح المرور',
   actPasskeyAdd: 'إضافة مفتاح مرور',
   actPasskeyRemove: 'حذف مفتاح مرور',
+  accessRulesTitle: 'قواعد الدخول',
+  accessRulesLede: 'تسري على كل حسابات الطبقة، إلا حساباً له قيمة خاصة في «إعدادات المستخدم» على صفحته.',
   sessionRulesTitle: 'الجلسات حسب الطبقة',
   sessionRulesHint: 'كم جلسة مفتوحة مسموحة لكل حساب، ومتى تنتهي الجلسة إذا لم يصر عليها أي نشاط. لكل حساب قيمة خاصة من صفحته.',
   maxSessionsLabel: 'الجلسات المسموحة',

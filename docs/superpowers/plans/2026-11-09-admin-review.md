@@ -31,7 +31,7 @@ New sections are appended as the owner names them.
 
 ## Section 2 — Typing instead of lists; the language in the topbar
 
-- [ ] **2b.1 Language in the topbar.** `office-shell.tsx`: `<LanguageSwitch />` (menu form) beside `<ThemeToggle shell />`;
+- [x] **2b.1 Language in the topbar.** `office-shell.tsx`: `<LanguageSwitch />` (menu form) beside `<ThemeToggle shell />`;
   drop it from `.side-prefs`; keep `.drawer-prefs` under 360px. Menu styles for the topbar in the shell stylesheet,
   tokens only. e2e: topbar menu switches ar → en → he; sidebar foot has no language. Check RTL/LTR, light/dark, phone.
 - [ ] **2a.1 `NameField` component.** `components/name-field.tsx` + `lib/name-match.ts` (normalize + rank, unit
@@ -46,7 +46,7 @@ New sections are appended as the owner names them.
 
 ## Section 5 — Layer sign-in rules out of the owner's settings
 
-- [ ] **5.1** New route `app/settings/access/page.tsx` (owner only, `useRequireLayer(['branch'])` + owner check) with
+- [x] **5.1** New route `app/settings/access/page.tsx` (owner only, `useRequireLayer(['branch'])` + owner check) with
   `LayerSessionRulesPane`; entry «قواعد الدخول» in the sidebar settings group; remove the pane from
   `settings-screen.tsx`; copy keys ar/en/he; route table / permission specs; e2e (owner sees it, staff does not;
   `/settings` has no layer rules). Docs.
