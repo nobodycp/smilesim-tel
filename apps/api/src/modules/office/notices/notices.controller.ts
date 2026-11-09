@@ -1,8 +1,7 @@
-import { Body, Controller, Get, Post, Query, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { OfficeFailureFilter } from '../../shared/office-failure.filter';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
@@ -14,7 +13,6 @@ import { NoticeInboxService } from './notice-inbox.service';
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')
-@UseFilters(OfficeFailureFilter)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class NoticesController {
   constructor(private readonly inbox: NoticeInboxService) {}

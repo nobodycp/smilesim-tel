@@ -1,6 +1,12 @@
 import type { CookieOptions, Request } from 'express';
+import { env } from '../../config';
 
-/** Reads one cookie, from cookie-parser when it ran, else from the raw header. */
+// The session cookies, in one place: how they are read and the options they are written with.
+
+/** What a call is made with: the session, and the owner's own session kept aside while an account is entered. */
+export type Gate = { sessionId?: string; homeId?: string };
+
+/** One cookie, from cookie-parser when it ran, else from the raw header. */
 export function readCookie(req: Request, name: string): string | undefined {
   const parsed = (req as Request & { cookies?: Record<string, unknown> }).cookies?.[name];
   if (typeof parsed === 'string' && parsed) return parsed;
@@ -17,17 +23,17 @@ export function readCookie(req: Request, name: string): string | undefined {
   return undefined;
 }
 
-/** What an office call is made with: the session, and the home session while an account is entered. */
-export function gateOf(req: Request) {
+/** The session cookies of a request. `home` only says where `leave` goes back to; it names nobody (rule 3.5). */
+export function gateOf(req: Request): Gate {
   return { sessionId: readCookie(req, 'sid'), homeId: readCookie(req, 'home') };
 }
 
-/** The options every office cookie (`sid`, `home`) is written with. */
+/** The options every session cookie (`sid`, `home`) is written with. */
 export function cookieBase(): CookieOptions {
   return {
     httpOnly: true,
-    secure: process.env.COOKIE_SECURE === 'true',
-    domain: process.env.COOKIE_DOMAIN || undefined,
+    secure: env('COOKIE_SECURE') === 'true',
+    domain: env('COOKIE_DOMAIN'),
     sameSite: 'lax',
     path: '/',
   };

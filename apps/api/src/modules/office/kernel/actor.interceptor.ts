@@ -1,7 +1,7 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor, createParamDecorator } from '@nestjs/common';
 import type { Request } from 'express';
 import { Observable, from, mergeMap } from 'rxjs';
-import { gateOf } from '../gate';
+import { gateOf } from '../../shared/cookies';
 import { OfficeKernel } from './office-kernel';
 import type { Actor as ActorShape } from './types';
 

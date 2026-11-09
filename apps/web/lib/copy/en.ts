@@ -961,6 +961,8 @@ export const en: Copy = {
     COMPANY_EXISTS: 'This company was already added',
     PACKAGE_EXISTS: 'This package was already added',
     PRODUCT_NOT_FOUND: 'The provider does not offer this product',
+    TOO_LARGE: 'The request is larger than allowed',
+    SERVER_ERROR: 'Something went wrong on the server. Try again',
     NETWORK: 'Could not reach the server',
     GENERIC: 'Something went wrong',
   },

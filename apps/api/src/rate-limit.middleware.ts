@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { Injectable, type NestMiddleware, type OnModuleDestroy } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import IORedis from 'ioredis';
-import { readCookie } from './cookies';
+import { readCookie } from './modules/shared/cookies';
 import { errorBody } from './errors';
 
 // Requests per signed-in session in a one-minute window, shared by every API process through Redis.

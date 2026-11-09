@@ -961,6 +961,8 @@ export const he: Copy = {
     COMPANY_EXISTS: 'החברה כבר נוספה',
     PACKAGE_EXISTS: 'החבילה כבר נוספה',
     PRODUCT_NOT_FOUND: 'הספק לא מציע את המוצר הזה',
+    TOO_LARGE: 'הבקשה גדולה מהמותר',
+    SERVER_ERROR: 'אירעה שגיאה בשרת. נסו שוב',
     NETWORK: 'לא ניתן להתחבר לשרת',
     GENERIC: 'אירעה שגיאה',
   },

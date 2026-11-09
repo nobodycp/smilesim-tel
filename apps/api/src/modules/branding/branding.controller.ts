@@ -1,3 +1,4 @@
+import { gateOf } from '../shared/cookies';
 import { Body, Controller, Get, Param, Put, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -26,22 +27,6 @@ export class BrandingBodyDto {
 }
 
 const IMAGE_KINDS: readonly ImageKind[] = ['logo', 'logo-dark', 'favicon'];
-
-function readCookie(req: Request, name: string): string | undefined {
-  const parsed = (req as Request & { cookies?: Record<string, unknown> }).cookies?.[name];
-  if (typeof parsed === 'string' && parsed) return parsed;
-  for (const part of String(req.headers.cookie ?? '').split(';')) {
-    const index = part.indexOf('=');
-    if (index > 0 && part.slice(0, index).trim() === name) {
-      try {
-        return decodeURIComponent(part.slice(index + 1).trim()) || undefined;
-      } catch {
-        return undefined;
-      }
-    }
-  }
-  return undefined;
-}
 
 @ApiTags('branding')
 @Controller('branding')
@@ -82,7 +67,7 @@ export class BrandingController {
   @ApiBody({ type: BrandingBodyDto })
   @ApiErrorResponse(401, 403, 400)
   async save(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body: BrandingBodyDto) {
-    const gate = { sessionId: readCookie(req, 'sid'), homeId: readCookie(req, 'home') };
+    const gate = gateOf(req);
     const event = { action: 'site_branding' };
     try {
       const summary = await this.branding.save(gate, body);

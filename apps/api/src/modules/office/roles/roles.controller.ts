@@ -1,7 +1,6 @@
-import { Body, Controller, Get, Post, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { OfficeFailureFilter } from '../../shared/office-failure.filter';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { freeFormObject } from '../kernel/query';
@@ -12,7 +11,6 @@ import { RolesService } from './roles.service';
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')
-@UseFilters(OfficeFailureFilter)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class RolesController {
   constructor(private readonly roleDesk: RolesService) {}

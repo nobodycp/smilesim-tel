@@ -5,12 +5,12 @@
   "inline-grant-checks": 0,
   "hand-parsed-input": 68,
   "untyped-body": 38,
-  "conflict-status": 2,
+  "conflict-status": 0,
   "write-without-activity": 9,
   "cross-domain-controller-import": 0,
   "test-code-imported": 1,
   "test-code-in-src": 3,
-  "env-outside-config": 24,
+  "env-outside-config": 22,
   "console-calls": 10,
   "stored-text": 8
 }

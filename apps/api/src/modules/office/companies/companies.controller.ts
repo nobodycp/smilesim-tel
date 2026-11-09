@@ -1,7 +1,6 @@
-import { Body, Controller, Get, Param, Post, Put, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, UseInterceptors } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { OfficeFailureFilter } from '../../shared/office-failure.filter';
 import { Activity, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
@@ -13,7 +12,6 @@ import { CompaniesService } from './companies.service';
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')
-@UseFilters(OfficeFailureFilter)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class CompaniesController {
   constructor(private readonly companyDesk: CompaniesService) {}

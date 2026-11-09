@@ -1,7 +1,6 @@
-import { Controller, Get, Query, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Query, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { OfficeFailureFilter } from '../../shared/office-failure.filter';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
@@ -13,7 +12,6 @@ import { text } from '../kernel/query';
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')
-@UseFilters(OfficeFailureFilter)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class DeskController {
   constructor(private readonly desk: DeskService, private readonly overviews: OverviewService) {}

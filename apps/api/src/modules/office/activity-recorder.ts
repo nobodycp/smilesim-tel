@@ -9,7 +9,7 @@ export type ActivityDraft = {
   subjectRef?: string;
 };
 
-type Gate = { sessionId?: string; homeId?: string };
+import type { Gate } from '../shared/cookies';
 
 @Injectable()
 export class ActivityRecorder {

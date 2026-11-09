@@ -1,12 +1,11 @@
-import { Body, Controller, Post, Req, Res, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { SESSION_COOKIE_SECONDS } from '../../auth/sessions';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { OfficeFailureFilter } from '../../shared/office-failure.filter';
 import { Activity } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
-import { cookieBase, gateOf, readCookie } from '../gate';
+import { cookieBase, gateOf, readCookie } from '../../shared/cookies';
 import { AccountSessionService } from './account-session.service';
 
 /**
@@ -17,7 +16,6 @@ import { AccountSessionService } from './account-session.service';
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')
-@UseFilters(OfficeFailureFilter)
 @UseInterceptors(ActivityInterceptor)
 export class AccountSessionController {
   constructor(private readonly sessions: AccountSessionService) {}

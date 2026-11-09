@@ -3,7 +3,7 @@ import { Body, Controller, INestApplication, Post, UseFilters, UseInterceptors }
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AUTH_STORE, MemoryAuthStore } from '../../auth/auth.store';
-import { OfficeFailureFilter } from '../../shared/office-failure.filter';
+import { ApiExceptionFilter } from '../../shared/api-exception.filter';
 import { ZodPipe } from '../../shared/zod.pipe';
 import { Activity } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
@@ -14,7 +14,7 @@ import { OfficeKernel } from './office-kernel';
 import type { Actor as ActorShape } from './types';
 
 @Controller('probe')
-@UseFilters(OfficeFailureFilter)
+@UseFilters(ApiExceptionFilter)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 class ProbeController {
   @Post('fund')

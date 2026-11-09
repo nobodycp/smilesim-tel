@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { API_PROVIDERS } from '../shared/api-providers';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -894,6 +895,7 @@ describe('the transfer routes under /office', () => {
       controllers: OFFICE_CONTROLLERS,
       providers: [
         ...OFFICE_PROVIDERS.filter((provider) => provider !== OfficeKernel),
+        ...API_PROVIDERS,
         { provide: OfficeKernel, useValue: kernel },
         {
           provide: ActivityRecorder,

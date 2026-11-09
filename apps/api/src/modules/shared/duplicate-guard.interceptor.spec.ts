@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { API_PROVIDERS } from './api-providers';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -28,6 +29,7 @@ describe('DuplicateGuardInterceptor over HTTP', () => {
       controllers: OFFICE_CONTROLLERS,
       providers: [
         ...OFFICE_PROVIDERS,
+        ...API_PROVIDERS,
         { provide: AUTH_STORE, useValue: store },
         { provide: ActivityRecorder, useValue: { recordOffice: async () => undefined } },
       ],

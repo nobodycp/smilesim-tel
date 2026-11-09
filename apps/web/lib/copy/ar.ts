@@ -961,6 +961,8 @@ export const ar = {
     COMPANY_EXISTS: 'الشركة مضافة من قبل',
     PACKAGE_EXISTS: 'الرزمة مضافة من قبل',
     PRODUCT_NOT_FOUND: 'المزود لا يعرض هذا المنتج',
+    TOO_LARGE: 'الطلب أكبر من المسموح',
+    SERVER_ERROR: 'حدث خطأ في الخادم. أعد المحاولة',
     NETWORK: 'تعذّر الاتصال بالخادم',
     GENERIC: 'حدث خطأ',
   },

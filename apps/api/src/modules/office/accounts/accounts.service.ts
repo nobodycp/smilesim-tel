@@ -114,7 +114,7 @@ export class AccountsService {
       const owner = await this.kernel.prisma.user.findFirst({ where: { isBranchOwner: true } });
       if (!owner) fail(400, 'INVALID');
       const existing = await this.kernel.prisma.user.findUnique({ where: { loginName } });
-      if (existing) fail(400, 'LOGIN_TAKEN');
+      if (existing) fail(409, 'LOGIN_TAKEN');
       await this.kernel.prisma.user.create({
         data: {
           loginName,
@@ -143,7 +143,7 @@ export class AccountsService {
     }
     if (!parent) fail(400, 'INVALID');
     const existing = await this.kernel.prisma.user.findUnique({ where: { loginName } });
-    if (existing) fail(400, 'LOGIN_TAKEN');
+    if (existing) fail(409, 'LOGIN_TAKEN');
     await this.kernel.prisma.user.create({
       data: {
         loginName,

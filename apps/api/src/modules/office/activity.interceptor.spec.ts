@@ -6,10 +6,10 @@ import { Activity, param } from './activity.decorator';
 import { ActivityInterceptor } from './activity.interceptor';
 import { ActivityRecorder } from './activity-recorder';
 import { OfficeFailure } from '../shared/office-failure';
-import { OfficeFailureFilter } from '../shared/office-failure.filter';
+import { ApiExceptionFilter } from '../shared/api-exception.filter';
 
 @Controller('t')
-@UseFilters(OfficeFailureFilter)
+@UseFilters(ApiExceptionFilter)
 @UseInterceptors(ActivityInterceptor)
 class ProbeController {
   @Post(':login/:code')
@@ -36,7 +36,7 @@ class ProbeController {
   }
 }
 
-describe('ActivityInterceptor and OfficeFailureFilter', () => {
+describe('ActivityInterceptor and ApiExceptionFilter', () => {
   let app: INestApplication;
   const recorded: unknown[][] = [];
 

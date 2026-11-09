@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { API_PROVIDERS } from '../shared/api-providers';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -38,7 +39,7 @@ describe('office refusals', () => {
       imports: [AuthModule],
       // Every office route, whichever controller holds it (Phase 3 moves routes out of OfficeController).
       controllers: OFFICE_CONTROLLERS,
-      providers: OFFICE_PROVIDERS,
+      providers: [...OFFICE_PROVIDERS, ...API_PROVIDERS],
     })
       .overrideProvider(AUTH_STORE)
       .useValue(store)

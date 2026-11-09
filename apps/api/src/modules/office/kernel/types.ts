@@ -1,6 +1,6 @@
 // Shapes every office domain shares. Moved out of office.service.ts with the kernel (Phase 3.0).
 
-export type Gate = { sessionId?: string; homeId?: string };
+export type { Gate } from '../../shared/cookies';
 
 export type Actor = {
   id: string;

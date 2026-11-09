@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { expectedLayer } from './doors';
 import { errorBody } from './errors';
 import { AUTH_STORE, AuthStore } from './modules/auth/auth.store';
-import { readCookie } from './cookies';
+import { readCookie } from './modules/shared/cookies';
 
 
 @Injectable()

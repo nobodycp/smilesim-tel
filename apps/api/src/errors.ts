@@ -52,6 +52,9 @@ export const ERROR_MESSAGES = {
   COMPANY_EXISTS: 'الشركة مضافة من قبل',
   PACKAGE_EXISTS: 'الرزمة مضافة من قبل',
   PRODUCT_NOT_FOUND: 'المزود لا يعرض هذا المنتج',
+  // Answers that come from no rule of ours: a body over the limit, and a fault in the server itself.
+  TOO_LARGE: 'الطلب أكبر من المسموح',
+  SERVER_ERROR: 'حدث خطأ في الخادم. أعد المحاولة',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;

@@ -3,7 +3,7 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor, type OnModu
 import type { Request } from 'express';
 import IORedis from 'ioredis';
 import { Observable, catchError, from, mergeMap, of, tap, throwError } from 'rxjs';
-import { readCookie } from '../../cookies';
+import { readCookie } from './cookies';
 import { fail } from './office-failure';
 
 // Server-side guard against a write sent twice (a double click, a retried request), spec 2026-11-08-duplicate-writes.

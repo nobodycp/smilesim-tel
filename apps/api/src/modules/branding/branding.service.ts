@@ -10,7 +10,7 @@ import {
 } from './branding-rules';
 import { BRANDING_STORE, BrandingStore } from './branding.store';
 
-type Gate = { sessionId?: string; homeId?: string };
+import type { Gate } from '../shared/cookies';
 export type ImageKind = 'logo' | 'logo-dark' | 'favicon';
 
 @Injectable()

@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import { ActivityRecorder } from '../activity-recorder';
+import { API_PROVIDERS } from '../../shared/api-providers';
 import { NoticeService } from '../notice.service';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
 import { OfficeKernel } from './office-kernel';
@@ -16,6 +17,7 @@ export async function officeTestApp(store: AuthStore, tables: Record<string, unk
     controllers: OFFICE_CONTROLLERS,
     providers: [
       ...OFFICE_PROVIDERS,
+      ...API_PROVIDERS,
       { provide: AUTH_STORE, useValue: store },
       { provide: ActivityRecorder, useValue: { recordOffice: async (...args: unknown[]) => void recorded.push(args) } },
     ],

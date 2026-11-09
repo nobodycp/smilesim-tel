@@ -154,7 +154,7 @@ describe('accounts and roles over HTTP', () => {
     expect(await code(as('ag1', 'post', '/office/users', body({ loginName: 'a b' })))).toBe('400 INVALID');
     expect(await code(as('ag1', 'post', '/office/users', body({ loginName: 'x125', nickname: 'x' })))).toBe('400 FULL_NAME_INVALID');
     expect(await code(as('ag1', 'post', '/office/users', body({ loginName: 'x126', password: 'short' })))).toBe('400 PASSWORD_TOO_SHORT');
-    expect(await code(as('ag1', 'post', '/office/users', body({ loginName: 'pos1' })))).toBe('400 LOGIN_TAKEN');
+    expect(await code(as('ag1', 'post', '/office/users', body({ loginName: 'pos1' })))).toBe('409 LOGIN_TAKEN');
     // The branch places a point of sale under one of the agents it sees, never under nobody.
     expect(await code(as('owner', 'post', '/office/users', body({ loginName: 'x127', parentLogin: 'ag2' })))).toBe('201');
     expect(await code(as('owner', 'post', '/office/users', body({ loginName: 'x128', parentLogin: 'ma1' })))).toBe('400 INVALID');
