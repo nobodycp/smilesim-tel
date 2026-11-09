@@ -717,3 +717,83 @@ input[readonly] { background-color: transparent; }
 [dir='rtl'] .co-mark.big { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
 .terms-group-head .co-mark { width: 32px; height: 32px; }
 .side-flyout { width: max-content; max-width: 280px; inset-inline-end: auto; }
+/* The ticket's actions in its head: take and complete in ink, reject and cancel outlined in danger, the rest raised. */
+.page-head .task-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; }
+.page-head .task-op {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  color: var(--rd-ink);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent);
+}
+.page-head .task-op svg { width: 16px; height: 16px; }
+.page-head .task-op-take, .page-head .task-op-complete { background: var(--rd-primary-bg); color: var(--rd-primary-fg); box-shadow: none; }
+.page-head .task-op-reject, .page-head .task-op-cancel { background: transparent; color: var(--rd-danger); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-danger) 45%, transparent); }
+.page-head .task-op-release { background: transparent; box-shadow: none; color: var(--rd-ink-2); }
+.page-head .task-op.is-on { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
+
+/* ── Settings (Graphite): the two-step methods as cards to choose (the chosen one outlined in crimson); sessions and
+   passkeys as cards with a crimson device mark. ── */
+.method-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.method-card {
+  display: grid;
+  gap: 2px;
+  padding: 12px;
+  border: 0;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  box-shadow: inset 0 0 0 1px var(--rd-line);
+  color: var(--rd-ink);
+  text-align: start;
+}
+.method-card b { font-size: var(--rd-text-md); font-weight: 700; }
+.method-card small { color: var(--rd-muted); font-size: 11.5px; }
+.method-card:hover { background: var(--rd-surface-3); }
+.method-card.on { background: var(--rd-accent-soft); box-shadow: inset 0 0 0 1px var(--rd-accent); }
+.method-card:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
+.sessions { gap: 8px; }
+.sessions li { padding: 12px; border: 0; border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); }
+.sessions li:first-child, .sessions li:last-child { padding: 12px; }
+.sessions .device { border-radius: var(--rd-radius-sm); background: var(--rd-accent-soft); color: var(--rd-accent); }
+.sessions .device { display: grid; place-items: center; width: 32px; height: 32px; } .sessions li { grid-template-columns: 32px minmax(0, 1fr) auto; }
+
+/* ── Finance and wallet (Graphite): the figure band, the ceiling's cards, the chart with its 7 / 30 days switch. ── */
+.figure-tile.bad .figure-tile-value { color: var(--rd-danger); }
+.figure-tile.bad .figure-tile-icon { color: var(--rd-danger); }
+.wallet-band .figure-tile-meta { display: grid; gap: 6px; }
+.wallet-band .figure-tile-meta .money { font-size: inherit; }
+.wallet-chart .pane-head { align-items: flex-start; }
+.wallet-chart-figures { display: flex; flex-wrap: wrap; gap: 14px; margin: 4px 0 0; color: var(--rd-muted); font-size: var(--rd-text-sm); }
+.wallet-chart-figures .money { color: var(--rd-ink); font-weight: 700; }
+
+/* ── Package page price chain (Graphite «سلسلة الأسعار»): each group a row of steps — one cut-corner card per layer,
+   from the branch's cost to the subscriber — joined by a chevron. ── */
+.package-sheet .price-board { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.package-sheet .price-board > .account-fund:not(:last-child) {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.package-sheet .price-board > .account-fund:not(:last-child) h3 { grid-column: 1 / -1; }
+.package-sheet .price-board > .account-fund:not(:last-child) > label {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  box-shadow: inset 0 0 0 1px var(--rd-line);
+  color: var(--rd-muted);
+  font-size: var(--rd-text-sm);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+}
+[dir='rtl'] .package-sheet .price-board > .account-fund:not(:last-child) > label { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
+.package-sheet .price-board > .account-fund:not(:last-child) > label:first-of-type { background: var(--rd-accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-accent) 35%, transparent); }
+.package-sheet .price-board > .account-fund:not(:last-child) > label input { height: 38px; font-size: 18px; font-weight: 700; text-align: center; background: var(--rd-sunken); }
+/* The wallet's head keeps its own height in the page's column; the statement below takes the rest. */
+.desk .wallet-band, .desk .wallet-chart, .desk > .stat-row, .desk .stat-row { flex: none; }

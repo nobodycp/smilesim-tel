@@ -5,7 +5,6 @@ import { useState, useSyncExternalStore, type FormEvent } from 'react';
 import { RowMenu } from '../../components/row-menu';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Select } from '../../components/ui/select';
 import { api } from '../../lib/api';
 import type { SignInMethods, TwoFactorMethod } from '../../lib/api-types';
 import { usePrefs } from '../../lib/prefs';
@@ -101,14 +100,22 @@ export function TwoFactorPane({ methods, reload, setError, setNote }: Notify & {
         {!enrolling && (
           <>
             <p className="hint">{t.twoFactorIdle}</p>
-            <label>
-              {t.twoFactorMethod}
-              <Select value={method} onChange={(event) => setMethod(event.target.value as TwoFactorMethod)}>
-                <option value="app">{t.methodApp}</option>
-                <option value="sms">{t.methodSms}</option>
-                <option value="email">{t.methodEmail}</option>
-              </Select>
-            </label>
+            {/* The methods as cards to choose from (Graphite): the name, then where the code goes. */}
+            <div className="method-cards" role="radiogroup" aria-label={t.twoFactorMethod}>
+              {(['app', 'sms', 'email'] as const).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={method === key}
+                  className={method === key ? 'method-card on' : 'method-card'}
+                  onClick={() => setMethod(key)}
+                >
+                  <b>{methodName(t, key)}</b>
+                  <small dir={key === 'app' ? undefined : 'ltr'}>{key === 'app' ? t.methodAppHint : contact(key) || '—'}</small>
+                </button>
+              ))}
+            </div>
             {method !== 'app' && !reachable ? <p className="hint">{t.contactNeeded}</p> : null}
             {method !== 'app' && reachable ? <p className="hint">{t.codeSentTo} <bdi dir="ltr">{contact(method)}</bdi></p> : null}
             <div className="signin-actions">

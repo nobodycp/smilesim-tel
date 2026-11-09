@@ -18,17 +18,18 @@ test('finance shows the wallet, its 30 days, and exports the filtered statement'
     }], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://agent.localhost:3910/finance');
+  // Graphite: a figure band (the balance leads), then the ceiling's own cards, then the chart with its range.
+  await expect(page.locator('.wallet-band .figure-tile.lead')).toContainText('248.06 ₪');
   const cards = page.locator('.stat-row .stat');
-  await expect(cards).toHaveCount(5);
-  await expect(cards.nth(0)).toContainText('248.06 ₪');
-  await expect(cards.nth(4)).toContainText('248.06 ₪');
-  await expect(page.getByRole('img', { name: 'الرصيد عبر الوقت' })).toBeVisible();
+  await expect(cards).toHaveCount(4);
+  await expect(cards.nth(3)).toContainText('248.06 ₪');
+  await expect(page.getByRole('img', { name: 'الرصيد عبر الوقت' }).last()).toBeVisible();
   await expect(page.locator('.wallet-chart-figures')).toContainText('+248.06 ₪');
-  await expect(page.locator('.wallet-figures')).toContainText('300.00 ₪');
-  await expect(page.locator('.wallet-figures')).toContainText('51.94 ₪');
+  await expect(page.locator('.wallet-band')).toContainText('300.00 ₪');
+  await expect(page.locator('.wallet-band')).toContainText('51.94 ₪');
   // What this account earned: over 30 days, and on each sale in the statement.
-  await expect(page.locator('.wallet-figures .stat').first()).toContainText('+12.50 ₪');
-  await expect(page.locator('.wallet-figures .stat').first()).toContainText('2 بيعة');
+  await expect(page.locator('.wallet-profit')).toContainText('+12.50 ₪');
+  await expect(page.locator('.wallet-profit')).toContainText('2 بيعة');
   const row = page.locator('table.data tbody tr').first();
   await expect(row).toContainText('+3.00 ₪');
 

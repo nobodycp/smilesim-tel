@@ -532,6 +532,7 @@ export const en: Copy = {
   opTextRename: 'A new number, same subscription',
   opTextSwitch: 'To another package of the company',
   opTextTransfer: 'To another point of sale',
+  methodAppHint: 'A code from the app',
   usedCeiling: 'Used from ceiling',
   availableToSell: 'Available to sell',
   moreActions: 'More actions',

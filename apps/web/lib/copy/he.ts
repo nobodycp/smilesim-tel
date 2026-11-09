@@ -532,6 +532,7 @@ export const he: Copy = {
   opTextRename: 'מספר חדש לאותו מנוי',
   opTextSwitch: 'לחבילה אחרת של החברה',
   opTextTransfer: 'לנקודת מכירה אחרת',
+  methodAppHint: 'קוד מהאפליקציה',
   usedCeiling: 'נוצל מהתקרה',
   availableToSell: 'זמין למכירה',
   moreActions: 'פעולות נוספות',

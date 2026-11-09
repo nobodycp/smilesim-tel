@@ -26,7 +26,7 @@ test('settings turns on SMS with the code it sends', async ({ page }) => {
     return route.fulfill(json({ next: 'app' }));
   });
   await page.goto('/settings');
-  await page.getByLabel('الطريقة').selectOption('sms');
+  await page.getByRole('radio', { name: /SMS/ }).click();
   await page.getByRole('button', { name: 'تفعيل التحقق بخطوتين' }).click();
   await expect(page.getByText('أرسلنا الرمز إلى •••••4567')).toBeVisible();
   await page.getByLabel('الرمز').fill('654321');
@@ -38,7 +38,7 @@ test('settings turns on SMS with the code it sends', async ({ page }) => {
 test('a method without a phone or email cannot be chosen', async ({ page }) => {
   await page.route('**/auth/sign-in-methods', (route) => route.fulfill(json(methods({ phone: null }))));
   await page.goto('/settings');
-  await page.getByLabel('الطريقة').selectOption('sms');
+  await page.getByRole('radio', { name: /SMS/ }).click();
   await expect(page.getByText('أضف رقم الهاتف أو البريد في بياناتك لاستخدام هذه الطريقة.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'تفعيل التحقق بخطوتين' })).toBeDisabled();
 });

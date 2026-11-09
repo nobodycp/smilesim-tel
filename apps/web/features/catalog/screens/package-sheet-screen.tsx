@@ -7,6 +7,8 @@ import { DataTable, type Column } from '../../../components/data-table';
 import { Desk, Money, layerName, lineStatus } from '../../../components/desk';
 import { LinePricesDialog } from '../../../components/line-prices-dialog';
 import { LiveSwitch } from '../../../components/live-switch';
+import { markColor, markOf } from '../../../lib/company-mark';
+import { usePageTitle } from '../../../lib/page-title';
 import { TableSkeleton } from '../../../components/loading';
 import { PriceField } from '../../../components/price-field';
 import { RowMenu } from '../../../components/row-menu';
@@ -136,6 +138,7 @@ export function PackageSheetScreen() {
     reload: () => client.invalidateQueries({ queryKey: packageKeys.all(code) }),
   };
   const sheet = card.data?.sheet ?? null;
+  usePageTitle(sheet ? `${sheet.companyName} · ${sheet.name}` : '');
   useCrumbs({
     [`/providers/${encodeURIComponent(params.code)}`]: sheet?.providerName,
     [`/providers/${encodeURIComponent(params.code)}/${encodeURIComponent(code)}`]: sheet?.name,
@@ -460,7 +463,20 @@ export function PackageSheetScreen() {
   }
 
   return (
-    <Desk title={sheet ? `${sheet.companyName} · ${sheet.name}` : ''} lede="" error={error || card.error} note={note}>
+    <Desk
+      title={sheet ? (
+        // Graphite: the company's cut-corner mark, the package's name; its provider and live numbers under it; whether
+        // it is for sale beside it.
+        <span className="ticket-title">
+          <span className="co-mark big" style={{ background: markColor(sheet.companyName || '?') }} aria-hidden="true">{markOf(sheet.companyName || '?')}</span>
+          <span>{`${sheet.companyName} · ${sheet.name}`}</span>
+          <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
+        </span>
+      ) : ''}
+      lede={sheet ? [`${t.provider} ${sheet.providerName}`, `${sheet.activeLines} ${t.activeLines}`].join(' · ') : ''}
+      error={error || card.error}
+      note={note}
+    >
       <div className="stack">
         <section className="pane package-sheet">
           {!card.loaded || !sheet ? <TableSkeleton rows={6} columns={2} /> : (

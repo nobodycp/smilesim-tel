@@ -72,6 +72,17 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   three-way segmented control (مباشر / مهمة فرع / متوقف); a stopped one dims.
 - Company page and package groups: the company's cut-corner mark beside its name.
 - White on crimson: the sidebar count, the notice dot and the page's own action.
+- Task ticket actions sit in the page head (take / complete in ink, reject / cancel outlined in danger); complete and
+  reject open their form in the details column.
+- Company page opens on «الرزم»: the company's packages as `.line-op` cards that open each package.
+- Settings: the two-step methods are cards to choose (`.method-card`, the chosen one outlined in crimson); sessions
+  and passkeys are cards with a crimson device mark.
+- Finance and wallet (`WalletHead`): a figure band — the balance leads (held, available to sell, its 30-day
+  sparkline), money in and out over 30 days, the entries with this account's profit — then the ceiling's cards, then
+  the balance over time with a 7 / 30 days switch.
+- Package page: the company's mark, «company · package» and whether it is for sale as the title; provider and live
+  numbers the lede; the price chain as a row of cut-corner steps per group, the branch's cost first in crimson.
+- Copy: every Arabic string uses Latin digits (no ٠–٩).
 - Sidebar counts: `.nav-count`, a small crimson square at the end of the item (a corner mark on the folded rail) —
   the open tasks beside «المهام», from `/office/home` `openTasks`.
 

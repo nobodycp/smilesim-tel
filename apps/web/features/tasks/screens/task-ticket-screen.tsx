@@ -81,6 +81,52 @@ export function TaskTicketScreen() {
     },
   });
 
+  // The ticket's actions sit beside the title, as in the approved design; complete and reject open their form in the
+  // details column.
+  const toolbar = task ? (
+      <div className="task-toolbar">
+        {task.canTake ? (
+          <button type="button" className="task-op task-op-take" onClick={() => run(() => api.takeTask(task.id), { note: t.take })}>
+            <Hand {...glyph} />
+            {t.take}
+          </button>
+        ) : null}
+        {task.canWork ? (
+          <>
+            {/* Taking only names the handler now (spec 2026-11-09, 2); whoever took it may release it. */}
+            {task.assigneeLogin && task.assigneeLogin === me?.loginName ? (
+              <button type="button" className="task-op task-op-release" onClick={() => run(() => api.releaseTask(task.id), { note: t.release })}>
+                <Undo2 {...glyph} />
+                {t.release}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={`task-op task-op-complete${closeMode === 'complete' ? ' is-on' : ''}`}
+              onClick={() => setCloseMode((mode) => (mode === 'complete' ? null : 'complete'))}
+            >
+              <Check {...glyph} />
+              {t.complete}
+            </button>
+            <button
+              type="button"
+              className={`task-op task-op-reject${closeMode === 'reject' ? ' is-on' : ''}`}
+              onClick={() => setCloseMode((mode) => (mode === 'reject' ? null : 'reject'))}
+            >
+              <X {...glyph} />
+              {t.reject}
+            </button>
+          </>
+        ) : null}
+        {task.canCancel ? (
+          <button type="button" className="task-op task-op-cancel" onClick={() => run(() => api.cancelTask(task.id), { note: t.cancelTask })}>
+            <Ban {...glyph} />
+            {t.cancelTask}
+          </button>
+        ) : null}
+      </div>
+  ) : null;
+
   return (
     <Desk
       title={task ? (
@@ -91,6 +137,7 @@ export function TaskTicketScreen() {
         </span>
       ) : t.taskTicket}
       lede={task ? [task.msisdn, task.companyName, task.packageName].filter(Boolean).join(' · ') : ''}
+      action={toolbar}
       error={error || card.error}
       note={note}
     >
@@ -145,48 +192,6 @@ export function TaskTicketScreen() {
                   </Fact>
                 ) : null}
               </Facts>
-
-              <div className="task-toolbar">
-                {task.canTake ? (
-                  <button type="button" className="task-op task-op-take" onClick={() => run(() => api.takeTask(task.id), { note: t.take })}>
-                    <Hand {...glyph} />
-                    {t.take}
-                  </button>
-                ) : null}
-                {task.canWork ? (
-                  <>
-                    {/* Taking only names the handler now (spec 2026-11-09, 2); whoever took it may release it. */}
-                    {task.assigneeLogin && task.assigneeLogin === me?.loginName ? (
-                      <button type="button" className="task-op task-op-release" onClick={() => run(() => api.releaseTask(task.id), { note: t.release })}>
-                        <Undo2 {...glyph} />
-                        {t.release}
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className={`task-op task-op-complete${closeMode === 'complete' ? ' is-on' : ''}`}
-                      onClick={() => setCloseMode((mode) => (mode === 'complete' ? null : 'complete'))}
-                    >
-                      <Check {...glyph} />
-                      {t.complete}
-                    </button>
-                    <button
-                      type="button"
-                      className={`task-op task-op-reject${closeMode === 'reject' ? ' is-on' : ''}`}
-                      onClick={() => setCloseMode((mode) => (mode === 'reject' ? null : 'reject'))}
-                    >
-                      <X {...glyph} />
-                      {t.reject}
-                    </button>
-                  </>
-                ) : null}
-                {task.canCancel ? (
-                  <button type="button" className="task-op task-op-cancel" onClick={() => run(() => api.cancelTask(task.id), { note: t.cancelTask })}>
-                    <Ban {...glyph} />
-                    {t.cancelTask}
-                  </button>
-                ) : null}
-              </div>
 
               {closeMode === 'complete' ? (
                 <div className="task-close">

@@ -4,6 +4,9 @@ import { Download } from 'lucide-react';
 import { useState } from 'react';
 import { BalanceChart } from '../../../components/balance-chart';
 import { Stat, StatRow } from '../../../components/stat';
+import { Icon } from '../../../components/icon';
+import { Sparkline } from '../../../components/sparkline';
+import { Tabs } from '../../../components/tabs';
 import { buttonClass } from '../../../components/ui/button';
 import { sharedKeys } from '../../../lib/query';
 import { useApiQuery } from '../../../lib/use-api-query';
@@ -176,16 +179,59 @@ export function FinanceScreen() {
   );
 }
 
-/** The signed-in account's wallet: four cards, the balance over 30 days, and what moved in that time. */
+/**
+ * The signed-in account's wallet, as in the Graphite design: a figure band (the balance leads, with what is held and
+ * what is left to sell, and its 30-day line; money in and out over 30 days; the wallet entries with this account's
+ * profit), the ceiling's own cards, then the balance over time with a 7 / 30 days switch.
+ */
 export function WalletHead({ summary }: { summary: FinanceSummary }) {
   const { t } = usePrefs();
+  const [range, setRange] = useState<'7' | '30'>('30');
   const used = Math.max(0, -summary.balance);
-  const first = summary.series[0]?.balance ?? summary.balance;
+  const available = summary.balance + summary.ceiling - (summary.held ?? 0);
+  const series = range === '7' ? summary.series.slice(-7) : summary.series;
+  const first = series[0]?.balance ?? summary.balance;
   const change = summary.balance - first;
   return (
     <>
+      <section className="figure-band wallet-band" aria-label={t.balance}>
+        <div className="figure-tile lead">
+          <div className="figure-tile-head">
+            <span className="figure-tile-label">{t.balance}</span>
+            <span className="figure-tile-icon" aria-hidden="true"><Icon name="wallet" /></span>
+          </div>
+          <div className="figure-tile-value"><Money value={summary.balance} /></div>
+          <div className="figure-tile-meta">
+            <span>{t.held}: <Money value={summary.held ?? 0} /> · {t.availableToSell}: {summary.unlimited ? t.noCeiling : <Money value={available} />}</span>
+            <Sparkline values={summary.series.map((point) => point.balance)} label={t.balanceOverTime} />
+          </div>
+        </div>
+        <div className="figure-tile good">
+          <div className="figure-tile-head">
+            <span className="figure-tile-label">{t.moneyIn30}</span>
+            <span className="figure-tile-icon" aria-hidden="true"><Icon name="wallet" /></span>
+          </div>
+          <div className="figure-tile-value"><Money value={summary.moneyIn} /></div>
+        </div>
+        <div className="figure-tile bad">
+          <div className="figure-tile-head">
+            <span className="figure-tile-label">{t.moneyOut30}</span>
+            <span className="figure-tile-icon" aria-hidden="true"><Icon name="wallet" /></span>
+          </div>
+          <div className="figure-tile-value"><Money value={-summary.moneyOut} /></div>
+        </div>
+        <div className="figure-tile">
+          <div className="figure-tile-head">
+            <span className="figure-tile-label">{t.entries30}</span>
+            <span className="figure-tile-icon" aria-hidden="true"><Icon name="reports" /></span>
+          </div>
+          <div className="figure-tile-value"><span className="num">{summary.count}</span></div>
+          <div className="figure-tile-meta wallet-profit">
+            <span>{t.myProfit30}: <Money value={summary.profit ?? 0} signed /> · {t.salesCount.replace('{n}', String(summary.sales ?? 0))}</span>
+          </div>
+        </div>
+      </section>
       <StatRow>
-        <Stat icon="wallet" label={t.balance} value={<Money value={summary.balance} />} />
         <Stat
           icon="lock"
           label={t.ceiling}
@@ -194,31 +240,24 @@ export function WalletHead({ summary }: { summary: FinanceSummary }) {
         />
         <Stat icon="reports" label={t.usedCeiling} value={summary.unlimited ? '—' : <Money value={used} />} />
         <Stat icon="tasks" tone={summary.held ? 'warning' : 'muted'} label={t.held} value={<Money value={summary.held ?? 0} />} meta={t.heldHint} />
-        <Stat icon="plans" label={t.availableToSell} value={summary.unlimited ? t.noCeiling : <Money value={summary.balance + summary.ceiling - (summary.held ?? 0)} />} highlight />
+        <Stat icon="plans" label={t.availableToSell} value={summary.unlimited ? t.noCeiling : <Money value={available} />} highlight />
       </StatRow>
-      <div className="wallet-board">
-        <section className="pane wallet-chart">
-          <header className="pane-head">
-            <div>
-              <h2>{t.balanceOverTime}</h2>
-              <p className="hint">{t.balanceOverTimeHint}</p>
-            </div>
+      <section className="pane wallet-chart">
+        <header className="pane-head">
+          <div>
+            <h2>{t.balanceOverTime}</h2>
+            <p className="hint">{t.balanceOverTimeHint}</p>
             <p className="wallet-chart-figures">
               <span>{t.nowLabel} <Money value={summary.balance} /></span>
               <span>{t.change30} <Money value={change} signed /></span>
             </p>
-          </header>
-          <div className="pane-body">
-            <BalanceChart series={summary.series} label={t.balanceOverTime} />
           </div>
-        </section>
-        <div className="wallet-figures">
-          <Stat icon="reports" tone="success" label={t.myProfit30} value={<Money value={summary.profit ?? 0} signed />} meta={t.salesCount.replace('{n}', String(summary.sales ?? 0))} />
-          <Stat icon="wallet" label={t.moneyIn30} value={<Money value={summary.moneyIn} />} />
-          <Stat icon="wallet" label={t.moneyOut30} value={<Money value={summary.moneyOut} />} />
-          <Stat icon="reports" label={t.entries30} value={summary.count} />
+          <Tabs label={t.period} items={[{ key: '7', label: t.period7 }, { key: '30', label: t.period30 }]} value={range} onChange={setRange} />
+        </header>
+        <div className="pane-body">
+          <BalanceChart series={series} label={t.balanceOverTime} />
         </div>
-      </div>
+      </section>
     </>
   );
 }

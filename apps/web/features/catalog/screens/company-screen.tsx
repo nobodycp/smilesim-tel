@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { ChevronLeft, Package } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
@@ -19,10 +20,11 @@ import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Button } from '../../../components/ui/button';
 import { Tabs } from '../../../components/tabs';
+import { useFactLine } from '../../../components/package-facts';
 
 const BRANCH = ['branch'];
 type Provider = Shelf['companies'][number]['providers'][number];
-type Tab = 'settings' | 'providers';
+type Tab = 'packages' | 'settings' | 'providers';
 type Draft = { code: string; length: string; prefix: string; esim: boolean; esimPrice: string };
 
 function draftOf(code: string, sim: SimRules, esimPrice: number): Draft {
@@ -39,7 +41,7 @@ export function CompanyScreen() {
   const params = useParams<{ code: string }>();
   const allowed = useRequireLayer(BRANCH);
   const { me } = useOffice();
-  const [tab, setTab] = useState<Tab>('settings');
+  const [tab, setTab] = useState<Tab>('packages');
   const [edited, setEdited] = useState<Draft | null>(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -93,7 +95,11 @@ export function CompanyScreen() {
     },
   ];
 
-  const tabs: { key: Tab; label: string }[] = [
+  // The company's packages first, as cards that open each package (Graphite); then its SIM rules and providers.
+  const factLine = useFactLine();
+  const packageCards = (company?.providers ?? []).flatMap((provider) => provider.packages.map((item) => ({ ...item, providerCode: provider.code, providerName: provider.name })));
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: 'packages', label: t.packagesTab, count: packageCards.length || undefined },
     { key: 'settings', label: t.companySettingsTab },
     { key: 'providers', label: t.providersTitle },
   ];
@@ -162,6 +168,24 @@ export function CompanyScreen() {
             </p>
             {canEdit && <Button type="submit" disabled={busy || !shelf.loaded}>{t.save}</Button>}
           </form>
+        )}
+        {tab === 'packages' && (
+          <div className="pane-body">
+            {packageCards.length === 0 ? (
+              <p className="hint">{shelf.loaded ? t.noLines : ''}</p>
+            ) : (
+              <div className="line-op-grid">
+                {packageCards.map((item) => (
+                  <Link key={`${item.providerCode}-${item.code}`} className="line-op" href={`/providers/${item.providerCode}/${encodeURIComponent(item.code)}`}>
+                    <span className="line-op-mark"><Package size={18} strokeWidth={1.9} aria-hidden="true" /></span>
+                    <b>{item.name}</b>
+                    <span className="line-op-text">{[item.providerName, factLine(item)].filter(Boolean).join(' · ')}</span>
+                    <ChevronLeft className="line-op-go flip-ltr" size={16} aria-hidden="true" />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         )}
         {tab === 'providers' && (
           <DataTable
