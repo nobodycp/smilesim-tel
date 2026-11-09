@@ -12,6 +12,7 @@ import { RowMenu } from '../../../components/row-menu';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
+import { NameField } from '../../../components/name-field';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type UserRow } from '../../../lib/api';
@@ -221,12 +222,13 @@ export function UsersScreen() {
             {(draft.layer || creatable[0]) !== directLayer && (draft.layer || creatable[0]) !== 'staff' && (
               <label>
                 {t.parent}
-                <Select value={draft.parentLogin} onChange={(event) => setDraft((current) => ({ ...current, parentLogin: event.target.value }))}>
-                  <option value="">—</option>
-                  {everyone.filter((row) => row.layer === ((draft.layer || creatable[0]) === 'agent' ? 'main_agent' : 'agent')).map((row) => (
-                    <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>
-                  ))}
-                </Select>
+                <NameField
+                  value={draft.parentLogin}
+                  onChange={(next) => setDraft((current) => ({ ...current, parentLogin: next }))}
+                  options={everyone.filter((row) => row.layer === ((draft.layer || creatable[0]) === 'agent' ? 'main_agent' : 'agent')).map((row) => ({
+                    value: row.loginName, label: accountLabel(row.loginName, row.nickname), keys: [row.loginName],
+                  }))}
+                />
               </label>
             )}
           </div>

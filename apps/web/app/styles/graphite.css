@@ -1093,3 +1093,69 @@ input[readonly] { background-color: transparent; }
 .ledger-detail { display: grid; gap: 2px; min-inline-size: 220px; }
 .ledger-detail .sub { color: var(--rd-muted); font-size: 12px; }
 .wallet-band .figure-tile-meta, .account-band .figure-tile-meta { display: block; line-height: 1.6; }
+
+/* NameField (components/name-field.tsx; spec 2026-11-09-admin-review, 2a): pick a name by typing. The field is a
+   plain text input with a «×» at its end once a name is picked; the list floats under it like the filter chip's own
+   list (.filter-pop), in a portal, so a chip's clipping or a dialog does not cut it. */
+.name-field { position: relative; display: flex; align-items: center; min-width: 0; }
+.name-field > input { flex: 1; width: 100%; min-width: 0; }
+.name-field:has(.name-field-clear) > input { padding-inline-end: 30px; }
+.name-field.invalid > input { border-color: var(--rd-danger); }
+.name-field-clear {
+  position: absolute;
+  inset-inline-end: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--rd-radius-xs);
+  background: transparent;
+  color: var(--rd-muted);
+  cursor: pointer;
+}
+.name-field-clear:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
+.name-field-clear:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 0; }
+.filter-panel > label .name-field > input { width: 11rem; }
+.name-pop {
+  position: fixed;
+  z-index: calc(var(--rd-z-dialog) + 2);
+  display: grid;
+  gap: 1px;
+  max-width: min(360px, 92vw);
+  max-height: min(320px, 50vh);
+  padding: 4px;
+  overflow-y: auto;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent), var(--rd-shadow-pop);
+  scrollbar-width: thin;
+}
+.name-pop [role='option'] {
+  display: grid;
+  gap: 1px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: var(--rd-radius-xs);
+  color: var(--rd-ink-2);
+  font-size: var(--rd-text-md);
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+}
+.name-pop [role='option'].on { background: var(--rd-surface); color: var(--rd-ink); }
+.name-pop [role='option'].sel { color: var(--rd-accent); font-weight: 700; }
+.name-pop b { color: var(--rd-ink); font-weight: 800; }
+.name-pop .sel b { color: inherit; }
+.name-pop small { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 500; }
+.name-pop-none { margin: 0; padding: 8px 10px; color: var(--rd-muted); font-size: var(--rd-text-sm); }
+@media (prefers-reduced-motion: no-preference) {
+  .name-pop { animation: filter-pop-in 140ms ease-out; }
+}
+@media (max-width: 767px) {
+  .name-pop [role='option'] { min-height: 44px; align-content: center; }
+  .name-field-clear { width: 32px; height: 32px; }
+  .filter-bar.drawer-open .filter-panel > label .name-field { flex: 1; }
+  .filter-bar.drawer-open .filter-panel > label .name-field > input { width: 100%; }
+}

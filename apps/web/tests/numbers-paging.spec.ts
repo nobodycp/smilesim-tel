@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { pickName } from './desk';
 
 const mock = 'http://localhost:3911';
 const desk = 'http://admin.localhost:3910';
@@ -37,7 +38,8 @@ test('numbers list pages by the total, reads the next cursor on demand, and filt
   expect((await log()).at(-1)).toEqual({ status: 'frozen' });
 
   // The package options come from the catalog, not from the loaded rows.
-  await page.locator('.filter-panel').getByLabel('الرزمة').selectOption('cell-400');
+  // The package filter is a NameField (spec 2026-11-09-admin-review, 2a): typed, then picked.
+  await pickName(page.locator('.filter-panel').getByLabel('الرزمة'), 'cell-400', /./);
   await expect(async () => expect((await log()).at(-1)).toEqual({ status: 'frozen', packageCode: 'cell-400' })).toPass();
 
   // Search sits in the filter and waits for a pause, then sends the text as typed.

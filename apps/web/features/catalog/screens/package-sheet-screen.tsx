@@ -26,6 +26,7 @@ import { useOffice } from '../../../lib/office-session';
 import { lineTone, onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import { NameField } from '../../../components/name-field';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
 import { PackageAddons } from '../package-addons';
@@ -573,12 +574,12 @@ export function PackageSheetScreen() {
                     <h3>{t.repriceTitle}</h3>
                     <label>
                       {t.linePricesScope}
-                      <Select value={priceScope} onChange={(event) => setPriceScope(event.target.value)}>
-                        <option value="all">{t.linePricesAll}</option>
-                        {users.map((row) => (
-                          <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>
-                        ))}
-                      </Select>
+                      <NameField
+                        value={priceScope === 'all' ? '' : priceScope}
+                        allLabel={t.linePricesAll}
+                        onChange={(next) => setPriceScope(next || 'all')}
+                        options={users.map((row) => ({ value: row.loginName, label: accountLabel(row.loginName, row.nickname), hint: layerName(t, row.layer), keys: [row.loginName] }))}
+                      />
                     </label>
                     <div>
                       <Button type="button" variant="secondary" onClick={() => setPricing({ scope: priceScope })}>{t.linePricesOpen}</Button>
@@ -605,12 +606,11 @@ export function PackageSheetScreen() {
                   <div className="account-fund custom-price-add">
                     <label>
                       {t.accountName}
-                      <Select value={loginName} onChange={(event) => setLoginName(event.target.value)}>
-                        <option value="">—</option>
-                        {users.map((row) => (
-                          <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)} · {layerName(t, row.layer)}</option>
-                        ))}
-                      </Select>
+                      <NameField
+                        value={loginName}
+                        onChange={setLoginName}
+                        options={users.map((row) => ({ value: row.loginName, label: accountLabel(row.loginName, row.nickname), hint: layerName(t, row.layer), keys: [row.loginName] }))}
+                      />
                     </label>
                     <label>
                       {t.subscriptionPrice}

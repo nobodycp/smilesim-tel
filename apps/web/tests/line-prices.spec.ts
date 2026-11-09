@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice, type Routes } from './desk';
+import { pickName, serveOffice, type Routes } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 
@@ -197,7 +197,8 @@ test('the package sheet opens the table for the whole system and then for one ac
   await page.getByRole('tab', { name: 'الأسعار' }).click();
 
   const block = page.locator('.account-fund').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
-  await block.getByRole('combobox').selectOption({ label: 'كل النظام' });
+  // «كل النظام» is the field's empty state: nothing picked is the whole system.
+  await expect(block.getByRole('combobox')).toHaveAttribute('placeholder', 'كل النظام');
   await block.getByRole('button', { name: 'عرض الأرقام' }).click();
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
   await expect(dialog.locator('table.data tbody tr')).toHaveCount(2);
@@ -207,7 +208,7 @@ test('the package sheet opens the table for the whole system and then for one ac
   // Opening it again for an account reads that account's table, not the one just closed.
   await dialog.getByRole('button', { name: 'إلغاء' }).click();
   await expect(dialog).toHaveCount(0);
-  await block.getByRole('combobox').selectOption({ label: 'pos1 (نقطة بيع)' });
+  await pickName(block.getByRole('combobox'), 'pos1', /pos1 \(نقطة بيع\)/);
   await block.getByRole('button', { name: 'عرض الأرقام' }).click();
   await expect(dialog.locator('table.data tbody tr')).toHaveCount(1);
   await expect(dialog.getByRole('button', { name: 'اتباع السعر الحالي (32.00 ₪)' })).toBeVisible();

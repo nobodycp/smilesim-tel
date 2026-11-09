@@ -34,15 +34,15 @@ New sections are appended as the owner names them.
 - [x] **2b.1 Language in the topbar.** `office-shell.tsx`: `<LanguageSwitch />` (menu form) beside `<ThemeToggle shell />`;
   drop it from `.side-prefs`; keep `.drawer-prefs` under 360px. Menu styles for the topbar in the shell stylesheet,
   tokens only. e2e: topbar menu switches ar → en → he; sidebar foot has no language. Check RTL/LTR, light/dark, phone.
-- [ ] **2a.1 `NameField` component.** `components/name-field.tsx` + `lib/name-match.ts` (normalize + rank, unit
+- [x] **2a.1 `NameField` component.** `components/name-field.tsx` + `lib/name-match.ts` (normalize + rank, unit
   tested: diacritics, alef forms, ة/ه, ى/ي, digits, typo). ARIA combobox, keyboard, clear button, no-match line;
   styles in `DESIGN.md`. e2e on a test page of the mock office.
-- [ ] **2a.2 Account pickers.** Package sheet offers tab (two), users create form parent, transfer dialog
+- [x] **2a.2 Account pickers.** Package sheet offers tab (two), users create form parent, transfer dialog
   destination, numbers new activation point of sale, number card move-to. Same values sent to the API.
-- [ ] **2a.3 Package / company / provider pickers.** Numbers new activation package; the filters on tasks, numbers,
+- [x] **2a.3 Package / company / provider pickers.** Numbers new activation package; the filters on tasks, numbers,
   packages, provider operations, user packages tab; in `FilterBar` it matches the chip's own list (0c7967e), and
   the drawer layout under 768px.
-- [ ] **2a.4 Docs and check.** `frontend.md` components list; every changed screen at all widths, ar + en.
+- [x] **2a.4 Docs and check.** `frontend.md` components list; every changed screen at all widths, ar + en.
 
 ## Section 5 — Layer sign-in rules out of the owner's settings
 

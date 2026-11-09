@@ -38,7 +38,9 @@ test('the branch opens the company shelf', async ({ page }) => {
   await page.getByRole('button', { name: 'تفعيل الوضع الداكن' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.getByRole('button', { name: 'تفعيل الوضع الفاتح' }).click();
-  await page.getByRole('button', { name: /EN/ }).click();
+  // The language is the topbar's menu (spec 2026-11-09-admin-review, 2b).
+  await page.locator('.topbar').getByRole('button', { name: 'اللغة' }).click();
+  await page.getByRole('menuitem', { name: 'English' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Companies');
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await page.getByRole('button', { name: 'Switch to dark' }).click();

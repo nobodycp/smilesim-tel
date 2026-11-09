@@ -16,7 +16,7 @@ import { Money } from './desk';
 import { Dialog } from './dialog';
 import { TableSkeleton } from './loading';
 import { Button } from './ui/button';
-import { Select } from './ui/select';
+import { NameField } from './name-field';
 import { Badge } from './ui/badge';
 import { Fact, Facts } from './facts';
 
@@ -248,12 +248,12 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
         <p className="dialog-who"><AccountName login={row.loginName} name={row.nickname} /></p>
         <label>
           {kind === 'pos' ? t.transferDestinationAgent : t.transferDestinationMain}
-          <Select value={parent} disabled={busy} onChange={(event) => choose(event.target.value)}>
-            <option value="">—</option>
-            {destinations.map((item) => (
-              <option key={item.loginName} value={item.loginName}>{accountLabel(item.loginName, item.nickname)}</option>
-            ))}
-          </Select>
+          <NameField
+            value={parent}
+            disabled={busy}
+            onChange={choose}
+            options={destinations.map((item) => ({ value: item.loginName, label: accountLabel(item.loginName, item.nickname), keys: [item.loginName] }))}
+          />
         </label>
         {loading ? (
           <div role="status" aria-label={t.loading}>

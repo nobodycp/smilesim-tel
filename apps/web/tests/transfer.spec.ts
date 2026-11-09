@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { serveOffice, type Routes } from './desk';
+import { expectNames, pickName, serveOffice, type Routes } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const main = 'http://main.localhost:3910';
@@ -93,11 +93,11 @@ test('branch moves an agent: destination, preview, five choices, request body', 
 
   // The destinations are the open main agents that are not its parent; until one is picked there is nothing to decide.
   const destination = dialog.getByLabel('الوكيل الرئيسي الجديد');
-  await expect(destination.locator('option')).toHaveText(['—', 'ma2 (رئيسي ٢)', 'ma4 (رئيسي ٤)']);
+  await expectNames(destination, ['ma2 (رئيسي ٢)', 'ma4 (رئيسي ٤)']);
   await expect(dialog.getByRole('radio')).toHaveCount(0);
   await expect(submit).toBeDisabled();
 
-  await destination.selectOption('ma2');
+  await pickName(destination, 'ma2');
   await expect(dialog.getByText('37 رقماً')).toBeVisible();
   expect(calls).toContain('GET /users/ag1/transfer-preview?parentLogin=ma2');
   await expect(dialog.locator('.ui-badge-warning')).toHaveText('1 سعراً خاصاً أقل من تكلفة الأب الجديد');
@@ -141,8 +141,8 @@ test('a point of sale asks three choices, shows no terms for what is below it, a
 
   // Agents that are open and are not its parent.
   const destination = dialog.getByLabel('الوكيل الجديد');
-  await expect(destination.locator('option')).toHaveText(['—', 'ag2 (وكيل ٢)']);
-  await destination.selectOption('ag2');
+  await expectNames(destination, ['ag2 (وكيل ٢)']);
+  await pickName(destination, 'ag2');
   await expect(dialog.getByText('4 رقماً')).toBeVisible();
   await expect(dialog.locator('.detail-rows > div', { hasText: 'الرصيد المنقول' })).toContainText('3.00 ₪');
   await expect(dialog.getByText('رصيد ما تحته')).toHaveCount(0);
@@ -168,7 +168,7 @@ test('a refused preview shows its message in the dialog and opens no choices', a
   });
   await page.goto(`${admin}/users`);
   const dialog = await openMove(page, 'ag1');
-  await dialog.getByLabel('الوكيل الرئيسي الجديد').selectOption('ma2');
+  await pickName(dialog.getByLabel('الوكيل الرئيسي الجديد'), 'ma2');
   await expect(dialog.getByRole('alert')).toHaveText('غير مسموح');
   await expect(dialog.getByRole('radio')).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'نقل', exact: true })).toBeDisabled();
@@ -185,12 +185,12 @@ test('changing the destination reads its own preview and keeps the choices alrea
   await page.goto(`${admin}/users`);
   const dialog = await openMove(page, 'ag1');
   const destination = dialog.getByLabel('الوكيل الرئيسي الجديد');
-  await destination.selectOption('ma2');
+  await pickName(destination, 'ma2');
   await expect(dialog.getByText('37 رقماً')).toBeVisible();
   await expect(dialog.locator('.ui-badge-warning')).toHaveCount(1);
   await radio(accountGroups(dialog).own, KEEP, 'الأسعار والإخفاء').check();
 
-  await destination.selectOption('ma4');
+  await pickName(destination, 'ma4');
   await expect(dialog.getByText('5 رقماً')).toBeVisible();
   await expect(dialog.locator('.ui-badge-warning')).toHaveCount(0);
   expect(calls).toContain('GET /users/ag1/transfer-preview?parentLogin=ma4');
@@ -212,8 +212,8 @@ test('a late preview of an earlier destination never replaces the one now chosen
   const dialog = await openMove(page, 'ag1');
   const destination = dialog.getByLabel('الوكيل الرئيسي الجديد');
   const late = page.waitForResponse((response) => response.url().includes('parentLogin=ma2'));
-  await destination.selectOption('ma2');
-  await destination.selectOption('ma4');
+  await pickName(destination, 'ma2');
+  await pickName(destination, 'ma4');
   await expect(dialog.getByText('5 رقماً')).toBeVisible();
   await late;
   // Two frames after the late answer, so a stale write would have landed by now.
@@ -237,7 +237,7 @@ test('a main agent sees only its own agents as destinations and no «نقل» on
 
   // A point of sale moves to the agents of the chain, minus the one it sits under and the frozen one.
   const dialog = await openMove(page, 'pos1');
-  await expect(dialog.getByLabel('الوكيل الجديد').locator('option')).toHaveText(['—', 'ag2 (وكيل ٢)']);
+  await expectNames(dialog.getByLabel('الوكيل الجديد'), ['ag2 (وكيل ٢)']);
 });
 
 // The grant says what may move: transferPos a point of sale, transferAgents an agent. A number's grant gives nothing here.
@@ -286,7 +286,7 @@ test('the term groups sit side by side on a wide screen and stack on a narrow on
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${admin}/users`);
   const dialog = await openMove(page, 'ag1');
-  await dialog.getByLabel('الوكيل الرئيسي الجديد').selectOption('ma2');
+  await pickName(dialog.getByLabel('الوكيل الرئيسي الجديد'), 'ma2');
   const { own, below, lines } = accountGroups(dialog);
   await expect(lines).toBeVisible();
 
@@ -362,7 +362,7 @@ for (const locale of ['ar', 'en', 'he'] as const) {
     await page.getByRole('button', { name: /ag1/ }).last().click();
     await page.getByRole('menuitem', { name: w.menu, exact: true }).click();
     const dialog = page.getByRole('dialog', { name: w.menu, exact: true });
-    await dialog.getByLabel(w.destination).selectOption('ma2');
+    await pickName(dialog.getByLabel(w.destination), 'ma2');
 
     const own = dialog.getByRole('group', { name: w.own });
     const below = dialog.getByRole('group', { name: w.below });
@@ -416,7 +416,7 @@ for (const [label, wire] of [[KEEP, 'keep'], [RECAPTURE, 'recapture']] as const)
     // The price question has no default, and the button waits for both the point of sale and the answer.
     await expect(dialog.getByRole('radio', { checked: true })).toHaveCount(0);
     await expect(dialog.getByRole('radio')).toHaveCount(2);
-    await dialog.getByLabel('نقل').selectOption('pos2');
+    await pickName(dialog.getByLabel('نقل'), 'pos2');
     await expect(submit).toBeDisabled();
     const choice = radio(dialog.getByRole('group', { name: 'أسعار الأرقام المنقولة' }), label);
     await choice.check();

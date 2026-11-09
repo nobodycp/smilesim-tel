@@ -24,6 +24,7 @@ import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules'
 import { useAction } from '../../../lib/use-action';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import { NameField } from '../../../components/name-field';
 import { DataImage } from '../../../components/data-image';
 import { Tabs } from '../../../components/tabs';
 import { LiveSwitch } from '../../../components/live-switch';
@@ -314,10 +315,7 @@ function BranchPackages({ error: loadError, note: loadNote }: { error: string; n
         </label>
         <label>
           {t.provider}
-          <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            {providers.map((name) => <option key={name} value={name}>{name}</option>)}
-          </Select>
+          <NameField value={provider} allLabel={t.allRows} onChange={setProvider} options={providers.map((name) => ({ value: name, label: name }))} />
         </label>
         <label>
           {t.status}
@@ -550,12 +548,7 @@ export function PackagesScreen() {
       <FilterBar onClear={() => setCompanyFilter('')} clearLabel={t.clearFilters}>
         <label>
           {t.company}
-          <Select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            {companyNames.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </Select>
+          <NameField value={companyFilter} allLabel={t.allRows} onChange={setCompanyFilter} options={companyNames.map((name) => ({ value: name, label: name }))} />
         </label>
       </FilterBar>
       {listed.length === 0 ? (

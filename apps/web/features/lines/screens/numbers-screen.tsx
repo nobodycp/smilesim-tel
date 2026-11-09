@@ -12,6 +12,7 @@ import { markColor, markOf } from '../../../lib/company-mark';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
+import { NameField } from '../../../components/name-field';
 import { Dialog } from '../../../components/dialog';
 import { DisconnectConfirm } from '../../../components/disconnect-confirm';
 import { EsimDialog, SimBadge } from '../../../components/esim-qr';
@@ -225,39 +226,21 @@ export function NumbersScreen() {
         {providerOptions.length > 0 && (
           <label>
             {t.provider}
-            <Select
-              value={provider}
-              onChange={(event) => setFilters({ provider: event.target.value, company: '', pack: '' })}
-            >
-              <option value="">{t.allRows}</option>
-              {providerOptions.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </Select>
+            <NameField value={provider} allLabel={t.allRows} onChange={(next) => setFilters({ provider: next, company: '', pack: '' })} options={providerOptions.map((name) => ({ value: name, label: name }))} />
           </label>
         )}
         <label>
           {t.company}
-          <Select
-            value={company}
-            onChange={(event) => setFilters({ company: event.target.value, pack: '' })}
-          >
-            <option value="">{t.allRows}</option>
-            {companyOptions.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </Select>
+          <NameField value={company} allLabel={t.allRows} onChange={(next) => setFilters({ company: next, pack: '' })} options={companyOptions.map((name) => ({ value: name, label: name }))} />
         </label>
         <label>
           {t.packageName}
-          <Select value={pack} onChange={(event) => setFilters({ pack: event.target.value })}>
-            <option value="">{t.allRows}</option>
-            {filterPackages.map((row) => (
-              <option key={row.code} value={row.code}>
-                {company ? row.name : `${row.companyName} · ${row.name}`}
-              </option>
-            ))}
-          </Select>
+          <NameField
+            value={pack}
+            allLabel={t.allRows}
+            onChange={(next) => setFilters({ pack: next })}
+            options={filterPackages.map((row) => ({ value: row.code, label: row.name, hint: [company ? '' : row.companyName, provider ? '' : row.providerName ?? ''].filter(Boolean).join(' · ') || undefined, keys: [row.companyName, row.code] }))}
+          />
         </label>
         <label>
           {t.status}
@@ -292,23 +275,24 @@ export function NumbersScreen() {
               <div className="pair">
                 <label>
                   {t.pointOfSale}
-                  <Select value={posLogin || poses[0]?.loginName || ''} onChange={(event) => setPosLogin(event.target.value)}>
-                    {poses.map((pos) => (
-                      <option key={pos.loginName} value={pos.loginName}>
-                        {accountLabel(pos.loginName, pos.nickname)}
-                      </option>
-                    ))}
-                  </Select>
+                  <NameField
+                    value={posLogin || poses[0]?.loginName || ''}
+                    onChange={setPosLogin}
+                    options={poses.map((pos) => ({ value: pos.loginName, label: accountLabel(pos.loginName, pos.nickname), keys: [pos.loginName] }))}
+                  />
                 </label>
                 <label>
                   {t.packageName}
-                  <Select value={chosen?.code || ''} onChange={(event) => pickPackage(event.target.value)}>
-                    {sellable.map((row) => (
-                      <option key={row.code} value={row.code}>
-                        {row.providerName ? `${row.providerName} · ${row.companyName} · ${row.name}` : `${row.companyName} · ${row.name}`}
-                      </option>
-                    ))}
-                  </Select>
+                  <NameField
+                    value={chosen?.code || ''}
+                    onChange={(code) => { if (code) pickPackage(code); }}
+                    options={sellable.map((row) => ({
+                      value: row.code,
+                      label: row.name,
+                      hint: [row.providerName, row.companyName].filter(Boolean).join(' · '),
+                      keys: [row.companyName, row.providerName ?? '', row.code].filter(Boolean),
+                    }))}
+                  />
                 </label>
               </div>
               {chosen ? <PackageFacts facts={chosen} /> : null}

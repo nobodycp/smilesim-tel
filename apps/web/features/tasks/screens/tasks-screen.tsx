@@ -14,6 +14,7 @@ import { Button } from '../../../components/ui/button';
 import { Tabs } from '../../../components/tabs';
 import { Zap } from 'lucide-react';
 import { Select } from '../../../components/ui/select';
+import { NameField } from '../../../components/name-field';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type PackageRow, type TaskRow } from '../../../lib/api';
@@ -159,42 +160,15 @@ export function TasksScreen() {
         </label>
         <label>
           {t.packageName}
-          <Select value={pack} onChange={(event) => setFilters({ pack: event.target.value })}>
-            <option value="">{t.allRows}</option>
-            {packageOptions.map((row) => (
-              <option key={row.code} value={row.code}>
-                {row.name}
-              </option>
-            ))}
-          </Select>
+          <NameField value={pack} allLabel={t.allRows} onChange={(next) => setFilters({ pack: next })} options={packageOptions.map((row) => ({ value: row.code, label: row.name, hint: [row.companyName, row.providerName].filter(Boolean).join(' · '), keys: [row.code] }))} />
         </label>
         <label>
           {t.provider}
-          <Select
-            value={provider}
-            onChange={(event) => setFilters({ provider: event.target.value, pack: '' })}
-          >
-            <option value="">{t.allRows}</option>
-            {providerOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
+          <NameField value={provider} allLabel={t.allRows} onChange={(next) => setFilters({ provider: next, pack: '' })} options={providerOptions.map((name) => ({ value: name, label: name }))} />
         </label>
         <label>
           {t.company}
-          <Select
-            value={company}
-            onChange={(event) => setFilters({ company: event.target.value, pack: '' })}
-          >
-            <option value="">{t.allRows}</option>
-            {companyOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </Select>
+          <NameField value={company} allLabel={t.allRows} onChange={(next) => setFilters({ company: next, pack: '' })} options={companyOptions.map((name) => ({ value: name, label: name }))} />
         </label>
       </FilterBar>
       <section className="pane task-list">

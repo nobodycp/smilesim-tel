@@ -14,6 +14,7 @@ import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import { NameField } from '../../../components/name-field';
 
 const KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'] as const;
 
@@ -88,12 +89,7 @@ export function ProviderOperationsScreen() {
           </label>
           <label>
             {t.provider}
-            <Select value={provider} onChange={(event) => setProvider(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              {providers.map((item) => (
-                <option key={item.code} value={item.code}>{item.name}</option>
-              ))}
-            </Select>
+            <NameField value={provider} allLabel={t.allRows} onChange={setProvider} options={providers.map((item) => ({ value: item.code, label: item.name, keys: [item.code] }))} />
           </label>
           <label>
             {t.operationColumn}

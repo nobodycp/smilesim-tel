@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 export async function asBranch(page: Page) {
   await page.route('**/office/me', (route) =>
@@ -90,4 +90,24 @@ export async function serveOffice(page: Page, layer: keyof typeof accounts, rout
     await route.fulfill({ status: reply.status ?? 200, contentType: 'application/json', body: JSON.stringify(reply.body) });
   });
   return calls;
+}
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * NameField (spec 2026-11-09-admin-review, 2a): type into the field as a person would and pick the first suggestion
+ * that holds `option` (by default, what was typed).
+ */
+export async function pickName(field: Locator, typed: string, option?: string | RegExp) {
+  await field.fill(typed);
+  const name = option ?? new RegExp(escapeRegExp(typed));
+  await field.page().getByRole('listbox').getByRole('option', { name }).first().click();
+}
+
+/** The names a NameField offers when it is opened with nothing typed; the list is closed again after. */
+export async function expectNames(field: Locator, names: string[]) {
+  await field.click();
+  await field.fill('');
+  await expect(field.page().getByRole('listbox').getByRole('option')).toHaveText(names);
+  await field.press('Escape');
 }

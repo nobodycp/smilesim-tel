@@ -26,7 +26,7 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { lineTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
-import { Select } from '../../../components/ui/select';
+import { NameField } from '../../../components/name-field';
 import { DataImage } from '../../../components/data-image';
 import { Fact, Facts } from '../../../components/facts';
 import { useCrumbs } from '../../../lib/crumbs';
@@ -491,10 +491,11 @@ export function LineCardScreen() {
               </Facts>
               <label>
                 {t.transfer}
-                <Select value={posLogin} onChange={(event) => setPosLogin(event.target.value)}>
-                  <option value="">—</option>
-                  {posChoices.map((row) => <option key={row.loginName} value={row.loginName}>{accountLabel(row.loginName, row.nickname)}</option>)}
-                </Select>
+                <NameField
+                  value={posLogin}
+                  onChange={setPosLogin}
+                  options={posChoices.map((row) => ({ value: row.loginName, label: accountLabel(row.loginName, row.nickname), keys: [row.loginName] }))}
+                />
               </label>
               <LineChoice value={linePrices} onChange={setLinePrices} />
             </div>

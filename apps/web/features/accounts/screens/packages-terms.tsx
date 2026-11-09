@@ -12,7 +12,7 @@ import { TableSkeleton } from '../../../components/loading';
 import { RowMenu, type RowAction } from '../../../components/row-menu';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import { Select } from '../../../components/ui/select';
+import { NameField } from '../../../components/name-field';
 import { api, type UserPackageRow } from '../../../lib/api';
 import { markColor, markOf } from '../../../lib/company-mark';
 import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
@@ -153,12 +153,7 @@ export function UserPackagesTab({
           </label>
           <label>
             {t.company}
-            <Select value={company} onChange={(event) => setCompany(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              {(sheet.data?.companies ?? []).map((group) => (
-                <option key={group.code} value={group.code}>{group.name}</option>
-              ))}
-            </Select>
+            <NameField value={company} allLabel={t.allRows} onChange={setCompany} options={(sheet.data?.companies ?? []).map((group) => ({ value: group.code, label: group.name, keys: [group.code] }))} />
           </label>
           {summary ? (
             <span className="hint terms-summary">
