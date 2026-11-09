@@ -514,9 +514,8 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                 <span className="wallet-word">{t.walletPage}</span>
               </Link>
             </div>}
-            {/* Then, in reading order, the language, the theme and the notices (spec 2026-11-09-admin-review, 7). */}
-            <LanguageSwitch topbar />
-            <ThemeToggle shell />
+            {/* Then, in reading order, the notices, the theme and the language — the language at the very end of the bar
+                (the left in Arabic and Hebrew, the right in English; spec 2026-11-09-admin-review, 7 as corrected in 8.6). */}
             <div className="notice-wrap" ref={noticeRoot}>
               <button
                 ref={noticeTrigger}
@@ -560,6 +559,8 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                 </div>
               )}
             </div>
+            <ThemeToggle shell />
+            <LanguageSwitch topbar />
           </div>
         </header>
         <main className="canvas">

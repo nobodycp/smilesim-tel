@@ -41,14 +41,15 @@ test('the branch has no wallet: no chip in the topbar, and /wallet goes home', a
   await expect(page).toHaveURL('http://admin.localhost:3910/');
 });
 
-// The topbar's end, in reading order: the language, the theme, then the notices (spec 2026-11-09-admin-review, 7);
+// The topbar's end, in reading order: the notices, the theme, then the language at the very end (spec
+// 2026-11-09-admin-review, 8.6);
 // the sidebar holds neither language nor theme.
-test('the topbar ends with language, theme and notices, and the sidebar has neither preference', async ({ page }) => {
+test('the topbar ends with notices, theme and language, and the sidebar has neither preference', async ({ page }) => {
   await serveOffice(page, 'branch', { 'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] } }) });
   await page.goto('http://admin.localhost:3910/');
   const order = await page.locator('.topbar-tools').evaluate((tools) =>
     [...tools.querySelectorAll('.lang > button, .shell-icon')].map((el) =>
       el.closest('.lang') ? 'lang' : el.classList.contains('notice-btn') ? 'notices' : el.getAttribute('aria-label')?.includes('الوضع') ? 'theme' : 'other'));
-  expect(order.filter((name) => name !== 'other')).toEqual(['lang', 'theme', 'notices']);
+  expect(order.filter((name) => name !== 'other')).toEqual(['notices', 'theme', 'lang']);
   await expect(page.locator('.sidebar .shell-lang, .sidebar .lang, .drawer-prefs')).toHaveCount(0);
 });

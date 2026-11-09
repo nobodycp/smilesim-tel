@@ -107,3 +107,5 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
 - [x] **8.1** (6003f4d) Donut: butt caps + gap, no stroke on the middle text, legend label → change → count. Users card
   tiles + credit bar. Trend under the figures in the period cards. Short period tab labels (new copy keys). e2e
   updated; checked on 3000 at 320 / 768 / 1440, ar + en, light + dark.
+- [ ] **8.6** Topbar order: notices → theme → language (language at the bar's end). e2e updated; checked on 3000
+  in ar + en.

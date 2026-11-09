@@ -245,3 +245,6 @@ Status 2026-11-09: spec and plan agreed; the owner asked not to start yet.
    part) instead of taking a band of its own; the card gets shorter.
 5. **Period switch** reads «يوم / شهر / الكل» (en Day / Month / All, he יום / חודש / הכל). The cards' caption keeps
    the long name («هذا الشهر»).
+6. **Topbar order, corrected:** the language sits at the very end of the bar (the left edge in Arabic and Hebrew,
+   the right edge in English), then the theme, then the notices toward the search — in reading order: … search,
+   wallet, **notices, theme, language**. Each keeps its place relative to the edge when the direction flips.

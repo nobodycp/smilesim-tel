@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { serveOffice } from './desk';
 
-// Graphite topbar: the menu button, search, wallet, then the language menu, the theme and the notices (spec
-// 2026-11-09-admin-review, 2b and 7), at every width; the drawer holds no preference. Nothing in the topbar leaves the
+// Graphite topbar: the menu button, search, wallet, then the notices, the theme and the language menu (spec
+// 2026-11-09-admin-review, 2b, 7 and 8.6), at every width; the drawer holds no preference. Nothing in the topbar leaves the
 // screen from 320px up, for the branch (no wallet) and for a point of sale (with its wallet).
 for (const locale of ['ar', 'en']) {
   for (const layer of ['branch', 'pos'] as const) {
