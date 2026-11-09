@@ -23,6 +23,7 @@ export function noticeTitle(t: Copy, row: NoticeRow): string {
     case 'transfer.in': return t.noticeTransferIn;
     case 'provider.problem': return t.noticeProviderProblem;
     case 'provider.recovered': return t.noticeProviderRecovered;
+    case 'provider.match_overdue': return t.noticeMatchOverdue;
     default: return row.kind;
   }
 }
@@ -67,6 +68,11 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
     if (row.kind === 'transfer.in' && p.fromLogin) parts.push(`${t.noticeFrom} ${p.fromLogin}`);
     const who = p.actorName || row.actorName;
     if (who) parts.push(`${t.noticeBy} ${who}`);
+    return parts.join(' · ');
+  }
+  if (row.kind === 'provider.match_overdue') {
+    if (p.name) parts.push(p.name);
+    parts.push(t.noticeMatchOverdueDetail.replace('{n}', String(p.matchEveryDays ?? 7)));
     return parts.join(' · ');
   }
   if (row.kind === 'provider.problem' || row.kind === 'provider.recovered') {

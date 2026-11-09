@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Plus, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
@@ -121,7 +121,17 @@ export function UsersScreen() {
       key: 'ops',
       header: t.rowActions,
       actions: true,
-      render: (row) => <RowMenu label={`${t.rowActions} ${accountLabel(row.loginName, row.nickname)}`} items={accountActions.actionsFor(row)} />,
+      render: (row) => {
+        // «المحفظة» (fund, deduct, ceiling, statement) beside ⋯ for the rest, as on the user page.
+        const { wallet, more } = accountActions.groupedFor(row);
+        const who = accountLabel(row.loginName, row.nickname);
+        return (
+          <span className="row-menus">
+            <RowMenu label={`${t.walletActions} ${who}`} items={wallet} trigger={{ className: 'row-menu-btn', content: <Wallet size={16} aria-hidden="true" />, iconOnly: true }} />
+            <RowMenu label={`${t.rowActions} ${who}`} items={more} />
+          </span>
+        );
+      },
     },
   ];
 

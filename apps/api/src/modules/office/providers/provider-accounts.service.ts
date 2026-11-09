@@ -196,7 +196,7 @@ export class ProviderAccountsService {
     const provider = await this.providerByCode(code);
     if (provider.matchSource !== 'statement') fail(400, 'INVALID');
     const lastMatchedAt = new Date();
-    await this.kernel.prisma.provider.update({ where: { code }, data: { lastMatchedAt } });
+    await this.kernel.prisma.provider.update({ where: { code }, data: { lastMatchedAt, matchOverdueNoticeAt: null } });
     return { ok: true, lastMatchedAt: lastMatchedAt.toISOString() };
   }
 

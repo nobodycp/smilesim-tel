@@ -38,7 +38,7 @@ Spec: `docs/superpowers/specs/2026-11-08-overview-and-reports-nav.md`. One slice
 - [x] Migration: `Package.suspendAfterDays Int @default(90)`; package details form and API.
 - [x] `office-paging.ts`: `suspendedWhere`; `GET /office/lines?status=suspended`; numbers filter chip.
 
-## Slice E: provider operations and matching — done 2026-11-09, simulated (API 796, e2e 147). Open: a notice when a statement provider's matching is overdue (shown as a badge for now), and the real provider adapters
+## Slice E: provider operations and matching — done 2026-11-09, simulated `f0c80f4`; overdue-matching notice and the users-list «المحفظة» menu added after. Open: the real provider adapters (owner's decision, later)
 - [x] Migration: `Provider.matchSource` ('api' | 'statement', default 'statement'), `Provider.matchEveryDays` (default 7); `WalletEntry.providerAmount Int?`, `providerMatchedAt DateTime?`.
 - [x] API source: store the provider's charged amount when the operation is answered; difference → «فرق».
 - [x] Statement source: a reconciliation run fills `providerAmount` for the operations it matched; overdue check (worker, daily) → notice.

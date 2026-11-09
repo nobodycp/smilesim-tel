@@ -42,7 +42,7 @@ function Glyph({ name }: { name: RowIcon }) {
  * `trigger` draws a labelled button (the user page's «المحفظة») in place of the ⋯ icon; its look comes from the
  * button classes, so the menu stays one component.
  */
-export function RowMenu({ label, items, boxed = false, trigger }: { label: string; items: RowAction[]; boxed?: boolean; trigger?: { className: string; content: ReactNode } }) {
+export function RowMenu({ label, items, boxed = false, trigger }: { label: string; items: RowAction[]; boxed?: boolean; trigger?: { className: string; content: ReactNode; iconOnly?: boolean } }) {
   const { open, setOpen, toggle, root, panel, trigger: button } = usePopover({ menu: true, deferFocus: true });
   const [box, setBox] = useState<{ top: number; left: number } | null>(null);
 
@@ -91,7 +91,8 @@ export function RowMenu({ label, items, boxed = false, trigger }: { label: strin
         className={trigger ? trigger.className : 'row-menu-btn'}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={trigger ? undefined : label}
+        aria-label={trigger && !trigger.iconOnly ? undefined : label}
+        title={trigger?.iconOnly ? label : undefined}
         onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => {
           event.stopPropagation();

@@ -3,6 +3,8 @@ import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { FAILURE_WINDOW_MINUTES, HEALTH_CHECK_SECONDS, PROVIDER_FAILED_NOTE, healthOf, type Health } from './provider-health';
 import { ProviderAccountsService } from './provider-accounts.service';
+import { matchOverdue } from './match-simulator';
+import type { NoticeDraft } from '../notice-kinds';
 
 /** The sender of the system's own notices: no account, so every recipient hears it. */
 const SYSTEM: Actor = { id: 'system', loginName: 'system', nickname: 'النظام', layer: 'branch', isBranchOwner: false, grants: [], operatorId: 'system', impersonating: false };
@@ -24,7 +26,7 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     if (process.env.NODE_ENV === 'test' || !process.env.DATABASE_URL) return;
-    this.timer = setInterval(() => void this.check().catch((error) => console.warn('provider health check failed', error instanceof Error ? error.message : error)), HEALTH_CHECK_SECONDS * 1000);
+    this.timer = setInterval(() => void this.check().then(() => this.checkMatching()).catch((error) => console.warn('provider health check failed', error instanceof Error ? error.message : error)), HEALTH_CHECK_SECONDS * 1000);
   }
 
   onModuleDestroy() {
@@ -52,6 +54,33 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /**
+   * A statement provider not matched within its period gets «مطابقة متأخرة» once per lapse (spec E): the notice time
+   * is set by compare-and-set, and cleared when the provider is matched again or stops being overdue.
+   */
+  async checkMatching(now: Date = new Date()): Promise<string[]> {
+    const providers = await this.kernel.prisma.provider.findMany({
+      select: { code: true, name: true, matchSource: true, matchEveryDays: true, lastMatchedAt: true, matchOverdueNoticeAt: true },
+    });
+    const sent: string[] = [];
+    for (const provider of providers) {
+      const overdue = matchOverdue(provider, now);
+      if (!overdue) {
+        if (provider.matchOverdueNoticeAt) await this.kernel.prisma.provider.updateMany({ where: { code: provider.code }, data: { matchOverdueNoticeAt: null } });
+        continue;
+      }
+      if (provider.matchOverdueNoticeAt) continue;
+      const won = await this.kernel.prisma.provider.updateMany({ where: { code: provider.code, matchOverdueNoticeAt: null }, data: { matchOverdueNoticeAt: now } });
+      if (won.count === 0) continue;
+      sent.push(provider.code);
+      await this.send({
+        kind: 'provider.match_overdue',
+        payload: { code: provider.code, name: provider.name, matchEveryDays: provider.matchEveryDays, lastMatchedAt: provider.lastMatchedAt?.toISOString() ?? null },
+      });
+    }
+    return sent;
+  }
+
   /** Stores every change and writes its notice once. Answers the providers that changed. */
   async check(now: Date = new Date()): Promise<ProviderHealthRow[]> {
     const rows = await this.current(now);
@@ -70,16 +99,21 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async notify(row: ProviderHealthRow) {
+    await this.send({
+      kind: row.status === 'problem' ? 'provider.problem' : 'provider.recovered',
+      payload: { code: row.code, name: row.name, reason: row.reason, failures: row.failures, available: row.available, alertFloor: row.alertFloor },
+    });
+  }
+
+  /** The branch owner and the staff with the edit grant hear the provider notices. */
+  private async send(draft: NoticeDraft) {
     const accounts = await this.kernel.prisma.user.findMany({
       where: { layer: 'branch', disabledAt: null },
       select: { id: true, isBranchOwner: true, liveGrants: true },
     });
     const recipients = accounts.filter((account) => account.isBranchOwner || account.liveGrants.split(',').includes('edit')).map((account) => account.id);
     await this.kernel.runTx(async (tx) => {
-      this.kernel.queueNotices(tx, await this.kernel.notice.write(tx, recipients, SYSTEM, {
-        kind: row.status === 'problem' ? 'provider.problem' : 'provider.recovered',
-        payload: { code: row.code, name: row.name, reason: row.reason, failures: row.failures, available: row.available, alertFloor: row.alertFloor },
-      }));
+      this.kernel.queueNotices(tx, await this.kernel.notice.write(tx, recipients, SYSTEM, draft));
     });
   }
 }

@@ -477,6 +477,9 @@ export type NoticePayload = {
   failures?: number;
   available?: number;
   alertFloor?: number;
+  /** `provider.match_overdue`: the provider's matching period and its last match. */
+  matchEveryDays?: number;
+  lastMatchedAt?: string | null;
 };
 export type NoticeRow = {
   id: string;

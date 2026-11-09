@@ -691,6 +691,8 @@ export const he: Copy = {
   matchSettings: 'התאמה',
   matchRunStatement: 'התאמת דוח (הדגמה)',
   matchRunDone: 'הדוח הותאם',
+  noticeMatchOverdue: 'התאמה באיחור אצל ספק',
+  noticeMatchOverdueDetail: 'הדוח שלו לא הותאם תוך {n} ימים',
   noticeProviderProblem: 'בעיה אצל ספק',
   noticeProviderRecovered: 'הספק פועל שוב',
   providerProblemFailures: '{n} פעולות נכשלו בשעה האחרונה',

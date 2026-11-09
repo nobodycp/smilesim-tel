@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Dialog } from '../../components/dialog';
@@ -42,6 +43,7 @@ export function useAccountActions({
 }) {
   const { t, apiText } = usePrefs();
   const { me } = useOffice();
+  const router = useRouter();
   const [op, setOp] = useState<{ row: UserRow; kind: AccountOp } | null>(null);
   const [amount, setAmount] = useState('');
   const [fundNote, setFundNote] = useState('');
@@ -109,6 +111,20 @@ export function useAccountActions({
     if (row.canEnter) items.push({ key: 'enter', label: t.enterAccount, icon: 'enter', onClick: () => choose(row, 'enter') });
     if (row.canDelete) items.push({ key: 'delete', label: t.deleteAccount, icon: 'trash', danger: true, onClick: () => choose(row, 'delete') });
     return items;
+  }
+
+  /**
+   * The same actions split in two menus (spec 2026-11-08-overview-and-reports-nav, H), on the users list and on the
+   * user page: «المحفظة» holds fund, deduct, ceiling and the statement; ⋯ holds the rest.
+   */
+  function groupedFor(row: UserRow) {
+    const all = actionsFor(row);
+    const walletKeys = new Set(['fund', 'deduct', 'ceiling']);
+    const wallet: RowAction[] = all.filter((item) => walletKeys.has(item.key));
+    if (row.layer !== 'branch' || row.self) {
+      wallet.push({ label: t.statement, icon: 'receipt', onClick: () => router.push(`/finance?q=${encodeURIComponent(row.loginName)}`) });
+    }
+    return { wallet, more: all.filter((item) => !walletKeys.has(item.key)) };
   }
 
   // Every account operation closes its dialog when it succeeds.
@@ -240,5 +256,5 @@ export function useAccountActions({
     </>
   );
 
-  return { actionsFor, dialogs, busy };
+  return { actionsFor, groupedFor, dialogs, busy };
 }

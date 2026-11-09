@@ -136,13 +136,8 @@ export function AccountScreen() {
     : '';
   // The head groups the wallet's actions under «المحفظة» (fund, deduct, ceiling, statement); every other action of
   // the users list waits behind ⋯.
-  const actions = listed ? accountActions.actionsFor(listed) : [];
-  const walletKeys = new Set(['fund', 'deduct', 'ceiling']);
-  const walletItems = [
-    ...actions.filter((item) => walletKeys.has(item.key)),
-    ...(row && !row.staff ? [{ key: 'statement', label: t.statement, icon: 'receipt' as const, onClick: () => router.push(`/finance?q=${encodeURIComponent(row.loginName)}`) }] : []),
-  ];
-  const more = actions.filter((item) => !walletKeys.has(item.key));
+  const { wallet: walletItems, more } = listed ? accountActions.groupedFor(listed) : { wallet: [], more: [] };
+  const actions = [...walletItems, ...more];
   const head = actions.length > 0 || walletItems.length > 0 ? (
     <div className="page-actions">
       {walletItems.length > 0 ? (

@@ -70,3 +70,46 @@ describe('provider health', () => {
     expect(notices.map((row) => row.kind)).toEqual(['provider.recovered', 'provider.problem']);
   });
 });
+
+describe('overdue matching notice', () => {
+  function setup(rows: { code: string; name: string; matchSource: string; matchEveryDays: number; lastMatchedAt: Date | null; matchOverdueNoticeAt: Date | null }[]) {
+    const kernel = Object.create(OfficeKernel.prototype) as OfficeKernel;
+    const notices: { kind: string; payload: unknown }[] = [];
+    kernel.prismaClient = {
+      provider: {
+        findMany: async () => rows.map((row) => ({ ...row })),
+        updateMany: async ({ where, data }: { where: { code: string; matchOverdueNoticeAt?: null }; data: { matchOverdueNoticeAt: Date | null } }) => {
+          const row = rows.find((item) => item.code === where.code)!;
+          if ('matchOverdueNoticeAt' in where && row.matchOverdueNoticeAt !== null) return { count: 0 };
+          row.matchOverdueNoticeAt = data.matchOverdueNoticeAt;
+          return { count: 1 };
+        },
+      },
+      user: { findMany: async () => [{ id: 'owner', isBranchOwner: true, liveGrants: '' }] },
+      $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({}),
+    } as unknown as OfficeKernel['prismaClient'];
+    (kernel as unknown as { queued: unknown }).queued = new Map();
+    (kernel as unknown as { notice: unknown }).notice = {
+      write: async (_tx: unknown, _ids: string[], _actor: unknown, draft: { kind: string; payload: unknown }) => { notices.push(draft); return []; },
+      publish: async () => undefined,
+    };
+    return { service: new ProviderHealthService(kernel, {} as never), notices, rows };
+  }
+
+  it('sends «مطابقة متأخرة» once per lapse for a statement provider, never for an API one, and again after a new lapse', async () => {
+    const now = new Date('2026-11-20T00:00:00.000Z');
+    const { service, notices, rows } = setup([
+      { code: 'aren', name: 'عرين', matchSource: 'statement', matchEveryDays: 7, lastMatchedAt: null, matchOverdueNoticeAt: null },
+      { code: 'sky', name: 'سكاي', matchSource: 'api', matchEveryDays: 7, lastMatchedAt: null, matchOverdueNoticeAt: null },
+      { code: 'lian', name: 'ليان', matchSource: 'statement', matchEveryDays: 7, lastMatchedAt: new Date('2026-11-18T00:00:00.000Z'), matchOverdueNoticeAt: null },
+    ]);
+    expect(await service.checkMatching(now)).toEqual(['aren']);
+    expect(notices).toEqual([{ kind: 'provider.match_overdue', payload: { code: 'aren', name: 'عرين', matchEveryDays: 7, lastMatchedAt: null } }]);
+    expect(await service.checkMatching(now)).toEqual([]);
+    // Matched again: the notice clears, and the next lapse sends a new one.
+    rows[0].lastMatchedAt = new Date('2026-11-19T00:00:00.000Z');
+    expect(await service.checkMatching(now)).toEqual([]);
+    expect(rows[0].matchOverdueNoticeAt).toBeNull();
+    expect(await service.checkMatching(new Date('2026-12-01T00:00:00.000Z'))).toEqual(['aren', 'lian']);
+  });
+});

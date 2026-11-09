@@ -26,13 +26,17 @@ export type TransferNoticePayload = { kind: TransferKind; subject: string; fromL
 /** A provider turned to a problem, or recovered (spec 2026-11-08-overview-and-reports-nav, G). */
 export type ProviderNoticePayload = { code: string; name: string; reason: 'failures' | 'balance' | null; failures: number; available: number; alertFloor: number };
 
+/** A statement provider was not matched within its period (spec 2026-11-08-overview-and-reports-nav, E). */
+export type MatchOverduePayload = { code: string; name: string; matchEveryDays: number; lastMatchedAt: string | null };
+
 export type NoticeDraft =
   | { kind: 'task.opened' | 'task.taken' | 'task.released' | 'task.note' | 'task.done' | 'task.rejected' | 'task.cancelled'; payload: TaskNoticePayload }
   | { kind: 'fund.received' | 'fund.deducted'; payload: FundNoticePayload }
   | { kind: 'wallet.negative' | 'wallet.ceiling'; payload: WalletNoticePayload }
   | { kind: 'transfer.out' | 'transfer.in'; payload: TransferNoticePayload }
   | { kind: 'announcement'; payload: AnnouncementNoticePayload }
-  | { kind: 'provider.problem' | 'provider.recovered'; payload: ProviderNoticePayload };
+  | { kind: 'provider.problem' | 'provider.recovered'; payload: ProviderNoticePayload }
+  | { kind: 'provider.match_overdue'; payload: MatchOverduePayload };
 
 export type NoticeKind = NoticeDraft['kind'];
 
@@ -40,7 +44,7 @@ export const NOTICE_GROUPS = {
   tasks: ['task.opened', 'task.taken', 'task.released', 'task.note', 'task.done', 'task.rejected', 'task.cancelled'],
   wallet: ['fund.received', 'fund.deducted', 'wallet.negative', 'wallet.ceiling', 'transfer.out', 'transfer.in'],
   announcements: ['announcement'],
-  providers: ['provider.problem', 'provider.recovered'],
+  providers: ['provider.problem', 'provider.recovered', 'provider.match_overdue'],
 } as const satisfies Record<string, readonly NoticeKind[]>;
 
 export type NoticeGroup = keyof typeof NOTICE_GROUPS;
@@ -54,6 +58,7 @@ export function hrefFor(draft: NoticeDraft): string {
   if (draft.kind.startsWith('task.')) return `/tasks/${(draft.payload as TaskNoticePayload).taskId}`;
   if (draft.kind === 'announcement') return '/';
   if (draft.kind === 'transfer.out' || draft.kind === 'transfer.in') return '/users';
+  if (draft.kind === 'provider.match_overdue') return `/provider-accounts/${encodeURIComponent(draft.payload.code)}`;
   if (draft.kind === 'provider.problem' || draft.kind === 'provider.recovered') return `/provider-accounts/${encodeURIComponent((draft.payload as ProviderNoticePayload).code)}`;
   return '/finance';
 }

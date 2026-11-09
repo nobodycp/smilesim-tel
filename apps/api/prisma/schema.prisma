@@ -172,6 +172,8 @@ model Provider {
   matchSource    String       @default("statement")
   matchEveryDays Int          @default(7)
   lastMatchedAt  DateTime?
+  /** When «مطابقة متأخرة» was sent for this lapse; cleared once the provider is matched again. */
+  matchOverdueNoticeAt DateTime?
   packages    Package[]
   entries     ProviderEntry[]
   reconciliations ProviderReconciliation[]

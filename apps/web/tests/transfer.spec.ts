@@ -229,9 +229,9 @@ test('a main agent sees only its own agents as destinations and no «نقل» on
   });
   await page.goto(`${main}/users`);
 
-  // An agent row has a menu, because it can be funded, and the menu holds no «نقل».
+  // An agent row has a menu, and the menu holds no «نقل» (funding sits in the row's «المحفظة» menu).
   await page.getByRole('button', { name: 'إجراءات ag1' }).click();
-  await expect(page.getByRole('menuitem', { name: 'تمويل', exact: true })).toBeVisible();
+  await expect(page.getByRole('menu')).toBeVisible();
   await expect(page.getByRole('menuitem', { name: 'نقل' })).toHaveCount(0);
   await page.keyboard.press('Escape');
 
@@ -254,7 +254,7 @@ for (const ask of [
     await page.goto(`${admin}/users`);
     for (const [login, count] of [['pos1', ask.pos], ['ag1', ask.agent]] as const) {
       await page.getByRole('button', { name: `إجراءات ${login}` }).click();
-      await expect(page.getByRole('menuitem', { name: 'تمويل', exact: true })).toBeVisible();
+      await expect(page.getByRole('menu')).toBeVisible();
       await expect(page.getByRole('menuitem', { name: 'نقل', exact: true })).toHaveCount(count);
       await page.keyboard.press('Escape');
     }
@@ -270,7 +270,7 @@ for (const [why, patch] of [['transfer is stopped on the actor path', { stops: [
     await page.goto(`${admin}/users`);
     for (const login of ['pos1', 'ag1']) {
       await page.getByRole('button', { name: `إجراءات ${login}` }).click();
-      await expect(page.getByRole('menuitem', { name: 'تمويل', exact: true })).toBeVisible();
+      await expect(page.getByRole('menu')).toBeVisible();
       await expect(page.getByRole('menuitem', { name: 'نقل' })).toHaveCount(0);
       await page.keyboard.press('Escape');
     }
@@ -358,7 +358,8 @@ for (const locale of ['ar', 'en', 'he'] as const) {
       'GET /users/ag1/transfer-preview': () => ({ body: agentPreview }),
     });
     await page.goto(`${admin}/users`);
-    await page.getByRole('button', { name: /ag1/ }).click();
+    // A row has «المحفظة» then ⋯; the move is in ⋯, the last of the two.
+    await page.getByRole('button', { name: /ag1/ }).last().click();
     await page.getByRole('menuitem', { name: w.menu, exact: true }).click();
     const dialog = page.getByRole('dialog', { name: w.menu, exact: true });
     await dialog.getByLabel(w.destination).selectOption('ma2');

@@ -691,6 +691,8 @@ export const ar = {
   matchSettings: 'المطابقة',
   matchRunStatement: 'مطابقة كشف (تجريبي)',
   matchRunDone: 'تمت مطابقة الكشف',
+  noticeMatchOverdue: 'مطابقة متأخرة عند مزوّد',
+  noticeMatchOverdueDetail: 'لم يُطابق كشفه خلال {n} أيام',
   noticeProviderProblem: 'مشكلة عند مزوّد',
   noticeProviderRecovered: 'رجع المزوّد يعمل',
   providerProblemFailures: '{n} عمليات فشلت خلال الساعة',

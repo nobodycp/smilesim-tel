@@ -691,6 +691,8 @@ export const en: Copy = {
   matchSettings: 'Matching',
   matchRunStatement: 'Match a statement (demo)',
   matchRunDone: 'Statement matched',
+  noticeMatchOverdue: 'A provider is overdue for matching',
+  noticeMatchOverdueDetail: 'its statement was not matched within {n} days',
   noticeProviderProblem: 'A provider has a problem',
   noticeProviderRecovered: 'The provider is working again',
   providerProblemFailures: '{n} operations failed in the last hour',
