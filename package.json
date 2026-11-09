@@ -16,6 +16,7 @@
     "test:e2e": "npm test --workspace web",
     "test:audit": "npm run build --workspace api && npm run audit --workspace web",
     "build": "npm run build --workspaces",
-    "prisma:generate": "npm run prisma:generate --workspace api"
+    "prisma:generate": "npm run prisma:generate --workspace api",
+    "dev:local": "sh scripts/dev-local.sh"
   }
 }

@@ -7,17 +7,22 @@ alwaysApply: true
 
 The owner's machine does not cope with several copies of the app or with builds. Two rules, for every agent:
 
-## One copy at a time
+## One copy, always running, on port 3000 (owner 2026-11-09)
 
-- At most **one** running copy of the app on the machine: one web (a dev server or the web container), one API with
-  its database and Redis. Never two web servers on different ports, never a second API, never Storybook-style extras.
-- Before starting one, check what runs (`lsof -nP -iTCP -sTCP:LISTEN`, `docker compose ps`) and stop the others.
-- Stop what you started when you are done with it (`preview_stop`, `docker compose stop`).
+- The app runs on the owner's machine as **one** copy, on **port 3000**: `.claude/launch.json` → `smilesim`, which runs
+  `npm run dev:local` (`scripts/dev-local.sh`): postgres and redis in their containers (no image build), the API
+  compiled with `tsc --watch` and restarted on change (port 3001) with its worker, and the web in `next dev` on 3000.
+- Keep it running. Every change is checked on it in the browser (`http://admin.localhost:3000`) before it is called
+  done — a change is not verified by CI alone.
+- Before starting it, look (`lsof -nP -iTCP -sTCP:LISTEN`, `docker compose ps`): if it is already running and current,
+  use it; if it is an older copy (another port, the Docker web/api containers, a stale build), stop that and start
+  this one. Never a second web server on another port, never a second API.
 
 ## Builds run on GitHub Actions, not here
 
 - No `npm run build`, no `docker compose up --build` / `docker build`, no Playwright e2e run (it starts its own
-  servers), no full `npm run test:api` on the owner's machine or on the server.
+  servers), no full `npm run test:api` on the owner's machine or on the server. The running copy's `tsc --watch`
+  and `next dev` are not builds in this sense: they recompile only what changed.
 - Light checks are fine locally: `npm run lint`, `npm run check:copy`, `npm run typecheck`, and one spec file at a
   time with jest when needed.
 - To build and test: push to a **work branch** (not `main`) and let `.github/workflows/ci.yml` run there. Watch the

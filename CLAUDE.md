@@ -45,8 +45,9 @@ docker compose up --build    # web :3000, api :3001, worker, postgres, redis
 ```
 CI (`.github/workflows/ci.yml`) runs lint, check:copy, typecheck, test:api, build.
 
-**Machine limits (owner, `.cursor/rules/machine-limits.mdc`):** only **one** running copy of the app on the owner's
-machine at a time (stop the others first). Builds, Docker builds, e2e and the full test:api run on **GitHub
+**Machine limits (owner, `.cursor/rules/machine-limits.mdc`):** **one** running copy of the app, always on port
+**3000** (`.claude/launch.json` → `smilesim` = `npm run dev:local`); keep it running and check every change on it; an
+older copy is stopped and this one started. Builds, Docker builds, e2e and the full test:api run on **GitHub
 Actions**, never locally or on the server: push to a work branch, wait for the green run, then push to `main` or ask
 the owner. Locally run only lint, check:copy, typecheck and single spec files.
 
