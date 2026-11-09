@@ -476,7 +476,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'} onMouseLeave={() => setFlyout(null)}>{sidebar(false)}</aside>
       {flyout && collapsed ? (
         <div
-          className={flyout.items ? 'side-flyout menu' : 'side-flyout'}
+          className={flyout.items ? 'side-flyout is-menu' : 'side-flyout'}
           style={{ top: flyout.top }}
           role={flyout.items ? 'menu' : 'tooltip'}
           onMouseEnter={() => setFlyout(flyout)}

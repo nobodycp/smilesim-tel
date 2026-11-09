@@ -716,3 +716,4 @@ input[readonly] { background-color: transparent; }
 .co-mark.big { width: 46px; height: 46px; font-size: 18px; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
 [dir='rtl'] .co-mark.big { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
 .terms-group-head .co-mark { width: 32px; height: 32px; }
+.side-flyout { width: max-content; max-width: 280px; inset-inline-end: auto; }
