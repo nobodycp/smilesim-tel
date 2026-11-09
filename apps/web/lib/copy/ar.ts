@@ -516,6 +516,7 @@ export const ar = {
   searchPages: 'الصفحات',
   allFilters: 'كل الفلاتر',
   showResults: 'عرض النتائج',
+  lineEndedShort: 'انتهى',
   usedCeiling: 'المستخدم من السقف',
   availableToSell: 'المتاح للبيع',
   moreActions: 'إجراءات أخرى',

@@ -5,7 +5,9 @@ import { useCallback, useMemo, useState, type FormEvent } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { ActivationResult } from '../../../components/activation-result';
-import { Desk, OutcomePick, applyNote, lineStatus } from '../../../components/desk';
+import { Desk, Money, OutcomePick, applyNote, lineStatus } from '../../../components/desk';
+import { DataImage } from '../../../components/data-image';
+import { markColor, markOf } from '../../../lib/company-mark';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
@@ -131,16 +133,34 @@ export function NumbersScreen() {
   }, [packages, provider, company]);
   const activeFilters = Number(Boolean(query.trim())) + Number(Boolean(status)) + Number(Boolean(pack)) + Number(Boolean(provider)) + Number(Boolean(company));
 
+  // The table as in the approved design (Graphite): the number with its SIM, the package with its company's mark,
+  // the point of sale, the status, what is left (crimson when it ends soon), the price.
   const columns: Column<LineRow>[] = [
-    { key: 'number', header: t.number, cell: 'msisdn', render: (line) => <Link className="num-link" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link> },
-    { key: 'company', header: t.company, render: (line) => line.companyName || '—' },
-    { key: 'package', header: t.packageName, render: (line) => line.packageName },
     {
-      key: 'sim',
-      header: t.simType,
+      key: 'number',
+      header: t.number,
+      cell: 'msisdn',
       render: (line) => (
-        <span className="sim-cell">
+        <span className="line-cell">
+          <Link className="num-link" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
           <SimBadge line={line} label={`${t.showQr} ${line.msisdn}`} onOpen={() => setQrLine(line)} />
+        </span>
+      ),
+    },
+    {
+      key: 'package',
+      header: t.packageName,
+      render: (line) => (
+        <span className="pack-cell">
+          {line.companyImage ? (
+            <DataImage className="co-mark" src={line.companyImage} alt="" />
+          ) : (
+            <span className="co-mark" style={{ background: markColor(line.companyName || '?') }} aria-hidden="true">{markOf(line.companyName || '?')}</span>
+          )}
+          <span>
+            <b>{line.packageName}</b>
+            <span className="sub">{line.companyName || '—'}</span>
+          </span>
         </span>
       ),
     },
@@ -158,17 +178,20 @@ export function NumbersScreen() {
         </Badge>
       ),
     },
-    { key: 'ends', header: t.endsOn, render: (line) => new Date(line.endsAt).toLocaleDateString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar') },
     {
       key: 'days',
       header: t.remainingDays,
-      num: true,
+      cell: 'days-col',
       render: (line) => {
-        if (line.status !== 'active') return '—';
+        const ends = new Date(line.endsAt).toLocaleDateString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar-u-nu-latn');
+        if (line.status !== 'active') return <span className="days off" title={ends}>—</span>;
         const days = daysLeft(line.endsAt);
-        return days <= EXPIRING_DAYS ? <Badge variant="warning" dot>{days} {t.dayUnit}</Badge> : days;
+        if (days <= 0) return <span className="days out" title={ends}>{t.lineEndedShort}</span>;
+        if (days <= EXPIRING_DAYS) return <span className="days soon" title={ends}>{t.expiringSoon} · <span className="num">{days}</span> {t.dayUnit}</span>;
+        return <span className="days" title={ends}><span className="num">{days}</span> {t.dayUnit}</span>;
       },
     },
+    { key: 'price', header: t.price, num: true, render: (line) => <Money value={line.posPrice} /> },
     {
       key: 'ops',
       header: t.rowActions,

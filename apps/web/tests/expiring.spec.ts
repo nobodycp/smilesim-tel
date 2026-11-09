@@ -26,9 +26,10 @@ test('numbers show the days left and filter the lines ending soon; the home coun
   await page.goto('http://admin.localhost:3910/numbers');
   const rows = page.locator('table.data tbody tr');
   await expect(rows).toHaveCount(3);
-  await expect(rows.nth(0).locator('.ui-badge-warning')).toHaveText('2 يوم');
-  await expect(rows.nth(1)).toContainText('20');
-  await expect(rows.nth(2).locator('td.num').last()).toHaveText('—');
+  // Graphite: what is left turns crimson and says so when the number ends soon.
+  await expect(rows.nth(0).locator('td.days-col .days.soon')).toHaveText('ينتهي قريباً · 2 يوم');
+  await expect(rows.nth(1).locator('td.days-col')).toHaveText('20 يوم');
+  await expect(rows.nth(2).locator('td.days-col')).toHaveText('—');
 
   await page.getByRole('combobox', { name: 'الحالة' }).selectOption('expiring');
   await expect.poll(() => calls.some((call) => call.startsWith('GET /lines?') && call.includes('status=expiring'))).toBe(true);

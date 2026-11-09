@@ -39,8 +39,11 @@ export class DeskService {
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
     const chain = this.kernel.chainIds(actor.id, accounts);
     const taskWhere = { ...taskWhereFor(actor, accounts), status: 'pending' };
-    const [pendingTasks, activeLines, inactiveLines, expiringLines, entries, notes] = await Promise.all([
+    // Open tasks (pending or being worked on) for the sidebar's count beside «المهام» (spec 2026-11-09-graphite-identity).
+    const openWhere = { ...taskWhereFor(actor, accounts), status: { in: ['pending', 'working'] } };
+    const [pendingTasks, openTasks, activeLines, inactiveLines, expiringLines, entries, notes] = await Promise.all([
       this.kernel.prisma.officeTask.count({ where: taskWhere }),
+      this.kernel.prisma.officeTask.count({ where: openWhere }),
       posIds.length ? this.kernel.prisma.line.count({ where: { posId: { in: posIds }, status: 'active' } }) : 0,
       posIds.length ? this.kernel.prisma.line.count({ where: { posId: { in: posIds }, status: 'disconnected' } }) : 0,
       posIds.length ? this.kernel.prisma.line.count({ where: { posId: { in: posIds }, ...expiringWhere() } }) : 0,
@@ -61,6 +64,7 @@ export class DeskService {
     ]);
     return {
       pendingTasks,
+      openTasks,
       activeLines,
       inactiveLines,
       expiringLines,

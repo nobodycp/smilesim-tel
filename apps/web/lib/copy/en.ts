@@ -516,6 +516,7 @@ export const en: Copy = {
   searchPages: 'Pages',
   allFilters: 'All filters',
   showResults: 'Show results',
+  lineEndedShort: 'Ended',
   usedCeiling: 'Used from ceiling',
   availableToSell: 'Available to sell',
   moreActions: 'More actions',

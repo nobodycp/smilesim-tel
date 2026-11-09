@@ -12,7 +12,7 @@ import { OfficeFacade } from './testing/office-facade';
 // declare exactly them. Change a shape on one side and this fails until the other side and the list follow.
 
 const ME_KEYS = ['loginName', 'nickname', 'layer', 'isBranchOwner', 'grants', 'stops', 'impersonating', 'balance', 'ceiling'];
-const HOME_KEYS = ['pendingTasks', 'activeLines', 'inactiveLines', 'expiringLines', 'canPost', 'operations', 'announcements'];
+const HOME_KEYS = ['pendingTasks', 'openTasks', 'activeLines', 'inactiveLines', 'expiringLines', 'canPost', 'operations', 'announcements'];
 const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
 const HOME_ANNOUNCEMENT_KEYS = ['id', 'body', 'at', 'authorName', 'authorLayer'];
 const LINES_KEYS = ['lines', 'poses', 'nextCursor', 'total'];

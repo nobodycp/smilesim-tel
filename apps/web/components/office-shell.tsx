@@ -50,6 +50,8 @@ import { tabTitle, usePageTitleValue } from '../lib/page-title';
 import { noticeAge, noticeDetail, noticeTitle } from '../lib/notice-text';
 import { doorUrl } from '../lib/doors';
 import { reloadAt } from '../lib/reload-at';
+import { sharedKeys } from '../lib/query';
+import { useApiQuery } from '../lib/use-api-query';
 
 const COLLAPSE_KEY = 'smilesim-sidebar-collapsed';
 
@@ -81,7 +83,7 @@ const serverCollapsed = () => false;
 
 const glyph = { size: 18, strokeWidth: 1.9, 'aria-hidden': true as const };
 
-type NavItem = { label: string; href: string; icon: LucideIcon; layers?: readonly string[]; grant?: string; owner?: boolean };
+type NavItem = { label: string; href: string; icon: LucideIcon; layers?: readonly string[]; grant?: string; owner?: boolean; count?: number };
 // A collapsible run of items under one head (the Admin section's "Settings"). It opens when one
 // of its items is the page, or when clicked; the collapsed rail shows its items as plain icons.
 type NavGroup = { key: string; label: string; icon: LucideIcon; items: NavItem[] };
@@ -179,6 +181,9 @@ export function OfficeShell({ children }: { children: ReactNode }) {
     window.location.replace('/login');
   }
 
+  // The open tasks beside «المهام» (Graphite): the home board's count, read once and kept in the shared cache.
+  const board = useApiQuery(sharedKeys.home, () => api.officeHome(), { enabled: ready });
+  const openTasks = board.data?.openTasks ?? 0;
   const desk = ['branch', 'main_agent', 'agent'] as const;
   // «التقارير» (spec 2026-11-08-overview-and-reports-nav, C): every report is its own page, folded in one group
   // that starts closed and opens by itself on one of its pages. Each layer sees the reports its data allows.
@@ -204,7 +209,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
         { label: t.homeTitle, href: '/', icon: Home },
         { label: t.navNumbers, href: '/numbers', icon: Phone },
         { label: t.navPlans, href: '/packages', icon: Package },
-        { label: t.navTasks, href: '/tasks', icon: ClipboardList },
+        { label: t.navTasks, href: '/tasks', icon: ClipboardList, count: openTasks },
         reportsGroup,
         { label: t.navAudit, href: '/audit', icon: ListChecks },
       ],
@@ -215,7 +220,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       title: '',
       items: [
         { label: t.homeTitle, href: '/', icon: Home },
-        { label: t.navTasks, href: '/tasks', icon: ClipboardList },
+        { label: t.navTasks, href: '/tasks', icon: ClipboardList, count: openTasks },
         { label: t.navNotices, href: '/notices', icon: Bell },
       ],
     },
@@ -313,6 +318,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       >
         {nested ? <span className="nav-bullet" aria-hidden="true" /> : <ItemIcon {...glyph} />}
         <span className="label">{item.label}</span>
+        {item.count ? <span className="nav-count num" aria-label={`${item.count}`}>{item.count > 99 ? '99+' : item.count}</span> : null}
       </Link>
     );
   };

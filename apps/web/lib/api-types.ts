@@ -85,6 +85,8 @@ export type Offer = {
 export type OfferInput = Partial<Omit<Offer, 'id' | 'position'>> & { title?: string };
 export type HomePayload = {
   pendingTasks: number;
+  /** Pending or being worked on: the sidebar's count beside «المهام». */
+  openTasks: number;
   activeLines: number;
   inactiveLines: number;
   /** Active lines ending within three days. */

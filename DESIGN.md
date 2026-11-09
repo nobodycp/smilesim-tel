@@ -47,6 +47,12 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - Tables: no band behind the head, 46px zebra rows, every cell on one line (a long text column is `cell: 'wrap'`),
   the table scrolls inside its card; the pager is a hairline row with square page numbers, the current one ink.
 - The page's own action (`.page-head` primary button) is the crimson button on the screen.
+- Numbers table (as in the design): the number with its SIM mark; the package beside its company's cut-corner mark
+  (`.co-mark`, the company picture or its letters on `markColor`) with the company under it; the point of sale; the
+  status; «الأيام المتبقية» (`.days` — crimson «ينتهي قريباً · N يوم» within the expiring window, «انتهى» past its
+  end, the end date as the cell's title); the price.
+- Sidebar counts: `.nav-count`, a small crimson square at the end of the item (a corner mark on the folded rail) —
+  the open tasks beside «المهام», from `/office/home` `openTasks`.
 
 ## Stylesheets
 

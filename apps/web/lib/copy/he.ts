@@ -516,6 +516,7 @@ export const he: Copy = {
   searchPages: 'דפים',
   allFilters: 'כל המסננים',
   showResults: 'הצגת תוצאות',
+  lineEndedShort: 'הסתיים',
   usedCeiling: 'נוצל מהתקרה',
   availableToSell: 'זמין למכירה',
   moreActions: 'פעולות נוספות',
