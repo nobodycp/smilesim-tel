@@ -3,16 +3,12 @@
 import { Receipt, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
-import { TrendLine } from '../../../components/trend-line';
-import { formatShekel } from '../../../lib/money';
 import { buttonClass } from '../../../components/ui/button';
-import { sharedKeys } from '../../../lib/query';
-import { useApiQuery } from '../../../lib/use-api-query';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { Desk, Money, actionName, latinWhen, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
-import { api, type FinanceRow, type FinanceSummary } from '../../../lib/api';
+import { api, type FinanceRow } from '../../../lib/api';
 import type { Copy } from '../../../lib/copy';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
@@ -65,8 +61,12 @@ export function FinanceScreen() {
   const [q, setQ] = useState(() => (typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('q') ?? ''));
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  // Every operation by default (owner 2026-11-09); «الحركات المالية فقط» keeps the money movements.
-  const [scope, setScope] = useState('');
+  // Every entry by default (owner 2026-11-09); «الحركات المالية فقط» keeps the money movements, «العمليات فقط» the
+  // line operations (spec 2026-11-09-admin-review, 1; the old «العمليات» page lands here with `?scope=operations`).
+  const [scope, setScope] = useState(() => {
+    const asked = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('scope') ?? '';
+    return asked === 'money' || asked === 'operations' ? asked : '';
+  });
   const [chainOf, setChainOf] = useState<FinanceRow | null>(null);
   const { me } = useOffice();
   const list = usePaged<FinanceRow>(`${kind}|${layer}|${q}|${from}|${to}|${scope}`, async (cursor) =>
@@ -147,7 +147,6 @@ export function FinanceScreen() {
       error=""
       note=""
     >
-      <WalletHead />
       <div className="section-head"><h2>{t.movementsTitle}</h2></div>
       <FilterBar loose onClear={() => { setKind(''); setLayer(''); setQ(''); setFrom(''); setTo(''); setScope(''); }} clearLabel={t.clearFilters}>
         <label>
@@ -155,6 +154,7 @@ export function FinanceScreen() {
           <Select value={scope} onChange={(event) => setScope(event.target.value)}>
             <option value="">{t.financeScopeAll}</option>
             <option value="money">{t.financeScopeMoney}</option>
+            <option value="operations">{t.financeScopeOperations}</option>
           </Select>
         </label>
         <label>
@@ -204,91 +204,5 @@ export function FinanceScreen() {
         ) : null}
       </Dialog>
     </Desk>
-  );
-}
-
-/** The windows the wallet head offers (owner 2026-11-09). */
-const WINDOWS = [7, 30, 90] as const;
-type Window = (typeof WINDOWS)[number];
-
-/**
- * The signed-in account's wallet, as in the approved Graphite design, for the finance and wallet pages: four tiles —
- * the balance (the lead: what is held and what is left to sell, the ceiling as twenty ticks), money in and money out
- * over the window, and the number of movements with how many were made by hand —, then the balance over time with the
- * window's switch (7 days, 30 days, 3 months), which the tiles follow.
- */
-export function WalletHead() {
-  const { t } = usePrefs();
-  const [days, setDays] = useState<Window>(30);
-  const query = useApiQuery(days === 30 ? sharedKeys.financeSummary : [...sharedKeys.financeSummary, days], () => api.financeSummary(days));
-  // The last answer stays on screen while another window loads, so the tiles never blink.
-  const [last, setLast] = useState<FinanceSummary | null>(null);
-  if (query.data && query.data !== last) setLast(query.data);
-  const summary = query.data ?? last;
-  if (!summary?.series) return null;
-  const used = Math.max(0, -summary.balance) + (summary.held ?? 0);
-  const available = summary.balance + summary.ceiling - (summary.held ?? 0);
-  const limited = !summary.unlimited && summary.ceiling > 0;
-  const share = limited ? Math.min(1, used / summary.ceiling) : 0;
-  const first = summary.series[0]?.balance ?? summary.balance;
-  const change = summary.balance - first;
-  const windowName = days === 7 ? t.period7 : days === 30 ? t.period30 : t.period3m;
-  return (
-    <>
-      <section className="figure-band wallet-band" aria-label={t.balance}>
-        <div className="figure-tile lead">
-          <span className="figure-tile-label">{t.yourBalance}</span>
-          <div className="figure-tile-value"><Money value={summary.balance} /></div>
-          {limited ? (
-            <div className="hero-bar" role="img" aria-label={`${t.usedCeiling}: ${Math.round(share * 100)}%`}>
-              {Array.from({ length: 20 }, (_, index) => <i key={index} className={index < Math.round(share * 20) ? 'on' : undefined} />)}
-            </div>
-          ) : null}
-          <div className="figure-tile-meta">
-            {t.heldForTasks}: <Money value={summary.held ?? 0} /> · {t.availableToSell}: {summary.unlimited ? t.noCeiling : <Money value={available} />}
-            {limited ? <> · {t.ceiling}: <Money value={summary.ceiling} /></> : null}
-          </div>
-        </div>
-        <div className="figure-tile">
-          <span className="figure-tile-label">{t.moneyInWindow.replace('{window}', windowName)}</span>
-          <div className="figure-tile-value tone-success"><Money value={summary.moneyIn} /></div>
-          <div className="figure-tile-meta">{t.moneyInMeta}</div>
-        </div>
-        <div className="figure-tile">
-          <span className="figure-tile-label">{t.moneyOutWindow.replace('{window}', windowName)}</span>
-          <div className="figure-tile-value tone-danger"><Money value={-summary.moneyOut} /></div>
-          <div className="figure-tile-meta">{t.moneyOutMeta}</div>
-        </div>
-        <div className="figure-tile">
-          <span className="figure-tile-label">{t.movementsCount}</span>
-          <div className="figure-tile-value"><span className="num">{summary.count}</span></div>
-          <div className="figure-tile-meta">{t.manualMeta.replace('{n}', String(summary.manual ?? 0))}</div>
-        </div>
-      </section>
-      <section className="pane wallet-chart">
-        <header className="pane-head">
-          <div>
-            <h2>{t.balanceOverTime}</h2>
-            <p className="hint">{t.lastDaysMeta.replace('{n}', String(days))} · {t.nowLabel} <Money value={summary.balance} /> · <Money value={change} signed /></p>
-          </div>
-          <div className="period" role="group" aria-label={t.period}>
-            {WINDOWS.map((value) => (
-              <button key={value} type="button" className={days === value ? 'on' : undefined} aria-pressed={days === value} onClick={() => setDays(value)}>
-                {value === 7 ? t.period7 : value === 30 ? t.period30 : t.period3m}
-              </button>
-            ))}
-          </div>
-        </header>
-        <div className="pane-body">
-          <TrendLine
-            size="large"
-            values={summary.series.map((point) => point.balance)}
-            labels={summary.series.map((point) => point.day.slice(5))}
-            format={(value) => `${formatShekel(value)} ₪`}
-            label={t.balanceOverTime}
-          />
-        </div>
-      </section>
-    </>
   );
 }

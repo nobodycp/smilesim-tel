@@ -365,6 +365,7 @@ export const he: Copy = {
   financeScope: 'תצוגה',
   financeScopeAll: 'כל הפעולות',
   financeScopeMoney: 'תנועות כספיות בלבד',
+  financeScopeOperations: 'פעולות בלבד',
   sharesTitle: 'רווחי השרשרת',
   sharesHint: 'מה הרוויח כל חשבון בשרשרת מהפעולה הזאת.',
   sharesOpen: 'הצגת רווחי השרשרת',

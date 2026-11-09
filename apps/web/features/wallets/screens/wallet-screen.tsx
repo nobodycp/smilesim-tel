@@ -11,7 +11,8 @@ import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { usePaged } from '../../../lib/use-paged';
-import { WalletHead, movementName, reasonTone } from './finance-screen';
+import { WalletHead } from '../wallet-head';
+import { movementName, reasonTone } from './finance-screen';
 
 /**
  * «المحفظة» (spec 2026-11-09-offers-tasks-addons-wallet-esim, 4): the signed-in account's own wallet, for every
