@@ -94,9 +94,7 @@ export type HomePayload = {
   inactiveLines: number;
   /** Active lines ending within three days. */
   expiringLines: number;
-  canPost: boolean;
   operations: { id: string; at: string; kind: string; amount: number; note: string | null; packageName: string | null; loginName: string }[];
-  announcements: { id: string; body: string; at: string; authorName: string; authorLayer: string }[];
 };
 export type PackageRow = {
   code: string;
@@ -484,7 +482,6 @@ export type NoticePayload = {
   ceiling?: number;
   attempted?: number;
   loginName?: string;
-  announcementId?: string;
   /** `transfer.out` and `transfer.in`: what moved, its msisdn or login, and the other account. */
   kind?: 'line' | 'pos' | 'agent';
   subject?: string;

@@ -3,7 +3,7 @@ import { serveOffice } from './desk';
 
 // Offers (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1): a hero carousel on the home, moving on after each
 // offer's seconds, and the «الإعلانات» page that manages them.
-const home = { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, canPost: false, operations: [], announcements: [] };
+const home = { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] };
 const picture = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 const offer = (id: string, title: string, seconds = 3) => ({
   id, title, body: `${title} — تفاصيل`, image: picture, actionLabel: 'اطلب الآن', actionHref: '/packages', seconds, active: true,

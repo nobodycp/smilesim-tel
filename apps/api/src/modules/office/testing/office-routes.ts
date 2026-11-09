@@ -5,7 +5,6 @@
 export type RouteRow = [method: string, path: string, event: [action: string, kind: string, subject: string] | null];
 
 export const ROUTES: RouteRow[] = [
-  ['POST', '/office/announcements', null],
   ['GET', '/office/audit', null],
   ['GET', '/office/audit/export', null],
   ['GET', '/office/companies', null],

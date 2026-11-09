@@ -12,9 +12,9 @@ import { OfficeFacade } from './testing/office-facade';
 // declare exactly them. Change a shape on one side and this fails until the other side and the list follow.
 
 const ME_KEYS = ['loginName', 'nickname', 'layer', 'isBranchOwner', 'grants', 'stops', 'impersonating', 'balance', 'ceiling'];
-const HOME_KEYS = ['pendingTasks', 'openTasks', 'activeLines', 'inactiveLines', 'expiringLines', 'canPost', 'operations', 'announcements'];
+// The announcements board left the home (spec 2026-11-09-admin-review, 6.2): no `canPost`, no `announcements`.
+const HOME_KEYS = ['pendingTasks', 'openTasks', 'activeLines', 'inactiveLines', 'expiringLines', 'operations'];
 const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
-const HOME_ANNOUNCEMENT_KEYS = ['id', 'body', 'at', 'authorName', 'authorLayer'];
 const LINES_KEYS = ['lines', 'poses', 'nextCursor', 'total'];
 const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'esimQr', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'posLogin', 'posPrice', 'createdAt', 'endsAt', 'operations'];
 const LINE_OPTIONAL_KEYS = ['addons', 'opsLocked', 'dataGb', 'subscriberPrice', 'companyImage', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
@@ -110,14 +110,10 @@ describe('office response shapes', () => {
       walletEntry: {
         findMany: async () => [{ id: 'e1', createdAt: at, kind: 'activate', amount: -5, note: null, user: { loginName: 'pos1' } }],
       },
-      announcement: {
-        findMany: async () => [{ id: 'a1', body: 'hello', createdAt: at, author: { nickname: 'الإدارة', loginName: 'admin', layer: 'branch' } }],
-      },
     });
     const home = await service.home(gate);
     expect(keysOf(home)).toEqual(sorted(HOME_KEYS));
     expect(keysOf(home.operations[0])).toEqual(sorted(HOME_OPERATION_KEYS));
-    expect(keysOf(home.announcements[0])).toEqual(sorted(HOME_ANNOUNCEMENT_KEYS));
   });
 
   it('answers /office/lines with the keys of its envelope, of LineRow and of PosChoice', async () => {
@@ -374,7 +370,6 @@ describeWeb('web types match the pinned shapes', () => {
     const body = typeBody(source, 'HomePayload');
     expect(declared(body)).toEqual({ required: sorted(HOME_KEYS), optional: [] });
     expect(inlineKeys(body, 'operations')).toEqual(sorted(HOME_OPERATION_KEYS));
-    expect(inlineKeys(body, 'announcements')).toEqual(sorted(HOME_ANNOUNCEMENT_KEYS));
   });
 
   it('LineRow, PosChoice and the officeLines envelope', () => {

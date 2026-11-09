@@ -1,10 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-export class AnnouncementBodyDto {
-  @ApiPropertyOptional()
-  body?: string;
-}
-
 export class FundBodyDto {
   @ApiPropertyOptional({ example: 100 })
   amount?: number;

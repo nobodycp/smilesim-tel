@@ -35,7 +35,7 @@ for (const locale of ['ar', 'en', 'he'] as const) {
   test(`the shell words a transfer notice in ${locale}: what moved, to or from which account, and who moved it`, async ({ page }) => {
     await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: admin }]);
     await serveOffice(page, 'branch', {
-      'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, canPost: false, operations: [], announcements: [] } }),
+      'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /notices': () => ({ body: { unread: notices.length, nextCursor: null, notices } }),
     });
     await page.goto(`${admin}/`);

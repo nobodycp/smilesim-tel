@@ -15,7 +15,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 
-const GROUPS = ['tasks', 'wallet', 'announcements', 'providers'] as const;
+const GROUPS = ['tasks', 'wallet', 'providers'] as const;
 
 export function NoticesScreen() {
   const { t, apiText } = usePrefs();

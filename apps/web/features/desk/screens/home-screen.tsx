@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Plus, Receipt } from 'lucide-react';
 import Link from 'next/link';
-import { latinWhen, layerName } from '../../../components/desk';
-import { EmptyState } from '../../../components/empty-state';
+import { layerName } from '../../../components/desk';
 import type { IconName } from '../../../components/icon';
 import { LoadFailed } from '../../../components/load-failed';
-import { PageSkeleton, Spinner, TableSkeleton } from '../../../components/loading';
+import { PageSkeleton, TableSkeleton } from '../../../components/loading';
 import { Tabs } from '../../../components/tabs';
 import { OfferHero } from '../../../components/offer-hero';
 import { AccountBand, LastOperations, WaitingTasks } from '../home-top';
@@ -17,11 +16,10 @@ import { useOffice } from '../../../lib/office-session';
 import { usePageTitle } from '../../../lib/page-title';
 import { usePrefs } from '../../../lib/prefs';
 import { useGreeting } from '../../../lib/greeting';
-import { useAction } from '../../../lib/use-action';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { Alert } from '../../../components/alert';
-import { Button, buttonClass } from '../../../components/ui/button';
+import { buttonClass } from '../../../components/ui/button';
 
 export function HomeScreen() {
   const { t, locale } = usePrefs();
@@ -29,9 +27,6 @@ export function HomeScreen() {
   const greeting = useGreeting();
   usePageTitle(t.homeTitle);
   const layer = me?.layer ?? '';
-  const [draft, setDraft] = useState('');
-  const [error, setError] = useState('');
-  const [note, setNote] = useState('');
   const board = useApiQuery(sharedKeys.home, () => api.officeHome());
   // The full picture (spec 2026-11-08-overview-and-reports-nav, F): one read per period, kept per period in the cache.
   const [period, setPeriod] = useState<'day' | 'month' | 'all'>('month');
@@ -42,15 +37,8 @@ export function HomeScreen() {
   // The design's top: the account's own wallet, and the tasks waiting for it.
   const summary = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary());
   const waiting = useApiQuery(['office', 'tasks', 'home-waiting'], () => api.officeTasks({ status: 'working' }));
-  const { run } = useAction({ setError, setNote, onDone: board.reload });
-  // A failed board is shown once, in its panes; the banner is for actions.
-  const failure = error;
+  // A failed board is shown once, in its panes.
   const broken = !home && Boolean(board.error);
-
-  async function publish(event: FormEvent) {
-    event.preventDefault();
-    await run(() => api.postAnnouncement(draft), { note: t.posted, then: () => setDraft('') });
-  }
 
   const shortcuts: { href: string; label: string; icon: IconName }[] = layer === 'pos'
     ? [
@@ -81,52 +69,8 @@ export function HomeScreen() {
 
   if (!ready) return <PageSkeleton />;
 
-  const boardCard = broken ? (
-    <section className="pane">
-      <header className="pane-head"><h2>{t.board}</h2></header>
-      <LoadFailed message={board.error} onRetry={() => void board.reload()} />
-    </section>
-  ) : !home ? (
-    <section className="pane">
-      <header className="pane-head"><h2>{t.board}</h2><Spinner /></header>
-      <TableSkeleton rows={3} columns={1} />
-    </section>
-  ) : (
-    <section className="pane home-board">
-      <header className="pane-head"><h2>{t.board}</h2></header>
-      <div className="pane-body">
-        {home.canPost && (
-          <form onSubmit={publish}>
-            <label>
-              {t.announcementText}
-              <textarea value={draft} maxLength={400} onChange={(event) => setDraft(event.target.value)} />
-            </label>
-            <p className="hint">{t.announcementHint}</p>
-            <Button type="submit" disabled={!draft.trim()}>{t.postAnnouncement}</Button>
-          </form>
-        )}
-        {home.announcements.length === 0 ? (
-          <EmptyState>{t.noAnnouncements}</EmptyState>
-        ) : (
-          <ul className="notices">
-            {home.announcements.map((row) => (
-              <li key={row.id}>
-                <p>{row.body}</p>
-                <small>
-                  <bdi>{row.authorName}</bdi> · {layerName(t, row.authorLayer)} · <bdi dir="ltr">{latinWhen(row.at)}</bdi>
-                </small>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </section>
-  );
-
   return (
     <div className="home">
-      <Alert banner>{failure}</Alert>
-      <Alert tone="success" banner>{note}</Alert>
       <header className="page-head home-head">
         <div>
           <h1><bdi>{title}</bdi></h1>
@@ -172,7 +116,6 @@ export function HomeScreen() {
           {data ? <TopCard data={data} /> : null}
           {data && layer !== 'pos' ? <ActiveCard data={data} layer={layer} /> : null}
           {data ? <ProvidersCard data={data} /> : null}
-          {boardCard}
         </div>
       </div>
     </div>

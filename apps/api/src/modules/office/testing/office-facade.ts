@@ -290,10 +290,6 @@ export class OfficeFacade {
     return this.deskDesk.home(await this.actor(gate));
   }
 
-  async postAnnouncement(gate: Gate, body: { body?: unknown }) {
-    return this.deskDesk.postAnnouncement(await this.actor(gate), body);
-  }
-
   // Facades (Phase 3): specs still call these; the routes live in wallets/wallets.controller.ts.
   async wallets(gate: Gate) {
     return this.walletDesk.list(await this.actor(gate));

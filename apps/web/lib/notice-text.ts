@@ -18,7 +18,6 @@ export function noticeTitle(t: Copy, row: NoticeRow): string {
     case 'fund.deducted': return t.noticeDeducted;
     case 'wallet.negative': return t.noticeNegative;
     case 'wallet.ceiling': return t.noticeCeiling;
-    case 'announcement': return t.noticeAnnouncement;
     case 'transfer.out': return t.noticeTransferOut;
     case 'transfer.in': return t.noticeTransferIn;
     case 'provider.problem': return t.noticeProviderProblem;
@@ -56,11 +55,6 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
     if (typeof p.ceiling === 'number') parts.push(`${t.noticeCeilingWord} ${formatShekel(p.ceiling)}`);
     return parts.join(' · ');
   }
-  if (row.kind === 'announcement') {
-    if (p.authorName) parts.push(p.authorName);
-    if (p.excerpt) parts.push(p.excerpt);
-    return parts.join(' · ');
-  }
   if (row.kind === 'transfer.out' || row.kind === 'transfer.in') {
     // What moved, then the account it went to (out) or came from (in), then who moved it.
     if (p.subject) parts.push(p.subject);
@@ -94,9 +88,8 @@ export function noticeAge(t: Copy, iso: string, now = Date.now()): string {
   return t.daysAgo.replace('{n}', String(Math.floor(hours / 24)));
 }
 
-export function noticeGroup(kind: string): 'tasks' | 'wallet' | 'announcements' | 'providers' {
+export function noticeGroup(kind: string): 'tasks' | 'wallet' | 'providers' {
   if (kind.startsWith('task.')) return 'tasks';
   if (kind.startsWith('provider.')) return 'providers';
-  if (kind === 'announcement') return 'announcements';
   return 'wallet';
 }

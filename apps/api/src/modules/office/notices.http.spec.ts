@@ -25,7 +25,7 @@ describe('notices over HTTP', () => {
   beforeEach(async () => {
     calls.findMany = []; calls.count = []; calls.updateMany = [];
     subscribed = [];
-    rows = [row('n3', 'task.opened', 3), row('n2', 'fund.received', 2, at(5)), row('n1', 'announcement', 1)];
+    rows = [row('n3', 'task.opened', 3), row('n2', 'fund.received', 2, at(5)), row('n1', 'transfer.in', 1)];
     const store = new MemoryAuthStore();
     store.addUser({
       id: 'pos1', loginName: 'pos1', nickname: 'نقطة', disabledAt: null, mustChangePassword: false, layer: 'pos',
@@ -73,7 +73,7 @@ describe('notices over HTTP', () => {
       notices: [
         { id: 'n3', kind: 'task.opened', payload: { n: 'n3' }, actorName: 'الفرع', href: '/tasks/n3', read: false, createdAt: at(3).toISOString() },
         { id: 'n2', kind: 'fund.received', payload: { n: 'n2' }, actorName: 'الفرع', href: '/tasks/n2', read: true, createdAt: at(2).toISOString() },
-        { id: 'n1', kind: 'announcement', payload: { n: 'n1' }, actorName: 'الفرع', href: '/tasks/n1', read: false, createdAt: at(1).toISOString() },
+        { id: 'n1', kind: 'transfer.in', payload: { n: 'n1' }, actorName: 'الفرع', href: '/tasks/n1', read: false, createdAt: at(1).toISOString() },
       ],
       nextCursor: null,
     });

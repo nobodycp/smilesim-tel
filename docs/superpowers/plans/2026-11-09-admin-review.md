@@ -88,7 +88,7 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
 
 - [x] **6.1** Remove `/settings/access` (redirect to `/roles`) and its sidebar entry; layer role dialog gets the
   session fields (`RuleSelects`, saved with `setLayerSessionRules`). e2e.
-- [ ] **6.2** Delete the old announcements board: API route/service/DTO/notice kind/group, home payload keys
+- [x] **6.2** Delete the old announcements board: API route/service/DTO/notice kind/group, home payload keys
   (pins updated), migration dropping `Announcement` and its notices; web board pane, notices group, copy. Specs.
 - [ ] **6.3** Branch home: drop the two panes, the two tiles and the two head buttons. e2e.
 - [ ] **6.4** Donut: `LineCountSnapshot` (migration), overview `lines.change`, hover share in the middle, arrows,

@@ -1,11 +1,10 @@
-import { Body, Controller, Get, Post, Query, UseFilters, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Query, UseFilters, UseInterceptors } from '@nestjs/common';
+import { ApiCookieAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { OfficeFailureFilter } from '../../shared/office-failure.filter';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
-import { AnnouncementBodyDto } from '../office.dto';
 import { DeskService } from './desk.service';
 import { OverviewService } from './overview.service';
 import { text } from '../kernel/query';
@@ -39,13 +38,5 @@ export class DeskController {
   @ApiErrorResponse(401, 403)
   overview(@Actor() actor: ActorShape, @Query('period') period?: string) {
     return this.overviews.overview(actor, { period: text(period) });
-  }
-
-  @Post('announcements')
-  @ApiOperation({ summary: 'Post a desk announcement' })
-  @ApiBody({ type: AnnouncementBodyDto })
-  @ApiErrorResponse(401, 403, 400)
-  postAnnouncement(@Actor() actor: ActorShape, @Body() body: AnnouncementBodyDto) {
-    return this.desk.postAnnouncement(actor, body);
   }
 }

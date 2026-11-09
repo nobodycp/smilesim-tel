@@ -14,5 +14,4 @@ export const deskApi = {
   moveOffer: (id: string, direction: 'up' | 'down') => request<{ offers: Offer[] }>('POST', `/office/offers/${encodeURIComponent(id)}/move`, { direction }),
   removeOffer: (id: string) => request<{ offers: Offer[] }>('DELETE', `/office/offers/${encodeURIComponent(id)}`),
   officeOverview: (period: string) => request<OverviewPayload>('GET', `/office/overview?period=${encodeURIComponent(period)}`),
-  postAnnouncement: (body: string) => request<{ ok: true }>('POST', '/office/announcements', { body }),
 };

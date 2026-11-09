@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { serveOffice } from './desk';
 
 const admin = 'http://admin.localhost:3910';
-const home = { body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, canPost: false, operations: [], announcements: [] } };
+const home = { body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } };
 
 // Graphite (spec 2026-11-09-graphite-identity): the account is at the sidebar's foot, not in the topbar.
 test('the sidebar foot holds the account, which opens the profile, and signing out', async ({ page }) => {

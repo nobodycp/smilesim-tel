@@ -61,11 +61,11 @@ describe('office refusals', () => {
     expect(response.body).toEqual({ message: 'يلزم تسجيل الدخول', code: 'LOGIN_REQUIRED' });
   });
 
-  it('answers 403 FORBIDDEN when a point of sale posts an announcement', async () => {
+  it('answers 403 FORBIDDEN when a point of sale adds a company', async () => {
     const response = await request(app.getHttpServer())
-      .post('/office/announcements')
+      .post('/office/companies')
       .set('Cookie', `sid=${posSession}`)
-      .send({ body: 'hello' });
+      .send({ providerCode: 'sky', companyCode: 'golan' });
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ message: 'غير مسموح', code: 'FORBIDDEN' });
   });

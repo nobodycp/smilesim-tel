@@ -48,7 +48,6 @@ model User {
   submittedTasks         OfficeTask[]     @relation("TaskSubmitter")
   assignedTasks          OfficeTask[]     @relation("TaskAssignee")
   taskNotes              OfficeTaskNote[]
-  announcements          Announcement[]
   notices                Notice[]
   accessLogs             AccessLog[]
   packageTerms           UserPackage[]
@@ -439,16 +438,6 @@ model Notice {
 
   @@index([userId, createdAt])
   @@index([userId, readAt])
-}
-
-model Announcement {
-  id        String   @id @default(uuid())
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  body      String
-  createdAt DateTime @default(now())
-
-  @@index([authorId, createdAt])
 }
 
 // Office identity: one row (id = 1) the branch owner edits from /branding.

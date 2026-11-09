@@ -21,7 +21,6 @@ const COLUMNS = ['owner', 'staff0', 'staffall', 'main', 'agent', 'pos'] as const
 // never checks the `read` or `accounting` grants. Owner decision (ADR 0006): left as is until the staff roles are
 // defined; enforcing the grants then changes these rows on purpose.
 const EXPECTED: [route: string, access: string][] = [
-  ['POST /office/announcements', 'yyyyyn'],
   ['GET /office/audit', 'yyyyyy'], // read/accounting not checked (see spec)
   ['GET /office/audit/export', 'yyyyyy'], // the log's own filter, as a CSV
   ['GET /office/companies', 'yyynnn'],

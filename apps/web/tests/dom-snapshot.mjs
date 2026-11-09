@@ -81,9 +81,8 @@ const sheet = {
   offers: [{ loginName: 'main1', nickname: 'رئيسي', layer: 'main_agent', price: 21 }],
 };
 const home = {
-  pendingTasks: 2, activeLines: 5, inactiveLines: 1, canPost: true,
+  pendingTasks: 2, activeLines: 5, inactiveLines: 1,
   operations: [{ id: 'o1', at: '2026-10-02T10:30:00.000Z', kind: 'extend', amount: -26, note: null, loginName: 'pos' }],
-  announcements: [{ id: 'a1', body: 'إعلان', at: '2026-10-02T10:30:00.000Z', authorName: 'الإدارة', authorLayer: 'branch' }],
 };
 const reports = {
   providers: { rows: [{ providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', price: 20, lines: 4 }] },

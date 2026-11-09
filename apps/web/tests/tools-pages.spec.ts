@@ -304,7 +304,7 @@ test.describe('reports', () => {
 test.describe('shell', () => {
   test('the shell search reads the first page of numbers and ignores nextCursor', async ({ page }) => {
     const calls = await serveOffice(page, 'branch', {
-      'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, canPost: false, operations: [], announcements: [] } }),
+      'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
       'GET /lines': () => ({ body: { lines: [line('ln1'), line('ln2')], poses: [], nextCursor: 'c9' } }),
     });
@@ -318,7 +318,7 @@ test.describe('shell', () => {
   test('the shell search reads the accounts once, however much is typed', async ({ page }) => {
     const user = (loginName: string, nickname: string) => ({ loginName, nickname, layer: 'pos', roleName: '', parentLogin: null, balance: 0, ceiling: 0, frozen: false, self: false, directChild: true, canEnter: false, canFreeze: false, canDelete: false });
     const calls = await serveOffice(page, 'branch', {
-      'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, canPost: false, operations: [], announcements: [] } }),
+      'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /users': () => ({ body: { users: [user('samir1', 'سمير'), user('sara2', 'سارة')] } }),
       'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null } }),
     });
@@ -333,7 +333,7 @@ test.describe('shell', () => {
 
   test('a notice names its action with the same words as the desk', async ({ page }) => {
     await serveOffice(page, 'branch', {
-      'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, canPost: false, operations: [], announcements: [] } }),
+      'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /notices': () => ({
         body: {
           unread: 2,

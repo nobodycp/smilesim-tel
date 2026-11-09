@@ -58,7 +58,7 @@ test('the branch opens the company shelf', async ({ page }) => {
 test('an agent is sent away without loading the company shelf', async ({ page }) => {
   const calls = await serveOffice(page, 'agent', {
     'GET /home': () => ({
-      body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, canPost: false, operations: [], announcements: [] },
+      body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] },
     }),
   });
 

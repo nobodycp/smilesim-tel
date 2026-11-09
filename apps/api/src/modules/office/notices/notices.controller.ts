@@ -22,7 +22,7 @@ export class NoticesController {
   @Get('notices')
   @ApiOperation({ summary: 'Notices inbox (paged)' })
   @ApiQuery({ name: 'cursor', required: false })
-  @ApiQuery({ name: 'group', required: false, enum: ['tasks', 'wallet', 'announcements'] })
+  @ApiQuery({ name: 'group', required: false, enum: ['tasks', 'wallet', 'providers'] })
   @ApiQuery({ name: 'unread', required: false })
   @ApiErrorResponse(401, 403)
   notices(

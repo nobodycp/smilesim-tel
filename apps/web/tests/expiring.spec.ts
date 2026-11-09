@@ -20,7 +20,7 @@ test('numbers show the days left and filter the lines ending soon; the home coun
   const calls = await serveOffice(page, 'branch', {
     'GET /lines': () => ({ body: { lines: [line('l1', '0550000001', 2), line('l2', '0550000002', 20), line('l3', '0550000003', 1, 'disconnected')], poses: [], nextCursor: null, total: 3 } }),
     'GET /packages': () => ({ body: { packages: [], companies: [] } }),
-    'GET /home': () => ({ body: { pendingTasks: 1, activeLines: 2, inactiveLines: 1, expiringLines: 1, canPost: true, operations: [], announcements: [] } }),
+    'GET /home': () => ({ body: { pendingTasks: 1, activeLines: 2, inactiveLines: 1, expiringLines: 1, operations: [] } }),
     'GET /overview': () => ({ body: overview }),
   });
   await page.goto('http://admin.localhost:3910/numbers');

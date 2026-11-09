@@ -3,7 +3,7 @@ import { serveOffice } from './desk';
 
 // The home overview (spec 2026-11-08-overview-and-reports-nav, F): a period switch, then one card per part of the
 // picture, each shown only to the layers its data belongs to.
-const home = { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, canPost: false, operations: [], announcements: [] };
+const home = { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] };
 const ranked = (label: string, count: number, profit: number, nickname?: string) => ({ key: label, label, count, amount: count * 4500, profit, ...(nickname ? { nickname } : {}) });
 const overview = (period: string, withProviders: boolean) => ({
   period,
