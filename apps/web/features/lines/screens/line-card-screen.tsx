@@ -174,7 +174,7 @@ export function LineCardScreen() {
       action={quick.length ? (
         <div className="page-actions">
           {quick.map((item, index) => (
-            <Button key={item.label} type="button" variant={index === quick.length - 1 ? 'primary' : 'secondary'} onClick={item.onClick} disabled={busy}>{item.label}</Button>
+            <Button key={item.label} type="button" variant={index === quick.length - 1 ? 'primary' : 'secondary'} className={index === quick.length - 1 ? 'ui-btn-accent' : undefined} onClick={item.onClick} disabled={busy}>{index === quick.length - 1 ? <Zap size={16} aria-hidden="true" /> : null}{item.label}</Button>
           ))}
         </div>
       ) : undefined}

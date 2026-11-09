@@ -16,7 +16,7 @@ test('tabs move with the arrow keys and keep one tab in the Tab order', async ({
   });
   await page.goto('http://admin.localhost:3910/users/pos1');
   const tabs = page.getByRole('tab');
-  await expect(tabs).toHaveCount(2);
+  await expect(tabs).toHaveCount(4);
   await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
   await expect(tabs.nth(1)).toHaveAttribute('tabindex', '-1');
   await tabs.nth(0).focus();
@@ -27,7 +27,7 @@ test('tabs move with the arrow keys and keep one tab in the Tab order', async ({
   await page.keyboard.press('Home');
   await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('End');
-  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(tabs.nth(3)).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('Home');
   await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
 });

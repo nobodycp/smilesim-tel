@@ -175,7 +175,7 @@ export type ProviderRow = {
   companies: {
     name: string;
     image: string;
-    packages: { code: string; name: string; dataGb: number | null; months: number; price: number; enabled: boolean }[];
+    packages: { code: string; name: string; dataGb: number | null; months: number; price: number; enabled: boolean; autoActivate?: boolean }[];
   }[];
 };
 export type ProviderSettings = {

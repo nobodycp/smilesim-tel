@@ -10,7 +10,9 @@ import { Desk } from '../../../components/desk';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api } from '../../../lib/api';
-import { parseShekel, shekelField } from '../../../lib/money';
+import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
+import { Link2 } from 'lucide-react';
+import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
@@ -103,6 +105,13 @@ export function ProviderPackagesScreen() {
     await run(() => api.setProviderEsimPrice(params.code, price), { note: t.save, then: () => setPriceDraft(null) });
   }
 
+  // The head as in the design: the companies it supplies, its packages and your balance with it; the account beside.
+  const { me } = useOffice();
+  const canAccount = Boolean(me?.isBranchOwner || me?.grants?.includes('accounting'));
+  const accounts = useApiQuery(['office', 'provider-accounts'], () => api.providerAccounts(), { enabled: canAccount });
+  const account = accounts.data?.rows.find((row) => row.code === params.code);
+  const companiesOf = [...new Set(rows.map((row) => row.company).filter(Boolean))];
+
   const columns: Column<PackageLine>[] = [
     {
       key: 'package',
@@ -116,17 +125,43 @@ export function ProviderPackagesScreen() {
     { key: 'stopped', header: t.stoppedLines, num: true, render: (row) => row.stopped },
   ];
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'settings', label: t.providerSettingsTab },
-    { key: 'packages', label: t.packagesTab },
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: 'settings', label: t.runMethodTab },
+    { key: 'packages', label: t.packagesTab, count: rows.length || undefined },
   ];
 
   return (
-    <Desk title={title} lede="" error={error} note={note}>
-      <section className="pane">
+    <Desk
+      title={title}
+      lede={[
+        companiesOf.length ? t.suppliesCompanies.replace('{companies}', companiesOf.join(' · ')) : '',
+        t.coPackages.replace('{n}', String(rows.length)),
+        account ? t.yourBalanceThere.replace('{amount}', formatShekel(account.balance)) : '',
+      ].filter(Boolean).join(' · ')}
+      action={canAccount ? (
+        <Link className="ui-btn ui-btn-secondary ui-btn-md" href={`/provider-accounts/${params.code}`}>
+          <Link2 size={16} strokeWidth={1.9} aria-hidden="true" />
+          {t.providerAccountLink}
+        </Link>
+      ) : undefined}
+      error={error}
+      note={note}
+    >
+      <section className={tab === 'settings' ? 'pane line-pane' : 'pane'}>
         <Tabs items={tabs} value={tab} onChange={setTab} />
         {tab === 'settings' && (
           <div className="pane-body stack">
+            {settings.error ? (
+              <LoadFailed message={settings.error} onRetry={() => void settings.reload()} />
+            ) : (
+              <ModeCards
+                actions={actions}
+                names={names}
+                modes={settings.data?.modes ?? {}}
+                disabled={!settings.loaded}
+                onChange={(action, mode) => void saveMode(action, mode)}
+              />
+            )}
             <form className="switch-row" onSubmit={savePrice}>
               <label>
                 {t.esimPrice}
@@ -142,17 +177,6 @@ export function ProviderPackagesScreen() {
               </label>
               <Button type="submit" disabled={!settings.loaded}>{t.save}</Button>
             </form>
-            {settings.error ? (
-              <LoadFailed message={settings.error} onRetry={() => void settings.reload()} />
-            ) : (
-              <ModeCards
-                actions={actions}
-                names={names}
-                modes={settings.data?.modes ?? {}}
-                disabled={!settings.loaded}
-                onChange={(action, mode) => void saveMode(action, mode)}
-              />
-            )}
           </div>
         )}
         {tab === 'packages' && (

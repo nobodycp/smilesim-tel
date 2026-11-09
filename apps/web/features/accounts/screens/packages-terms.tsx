@@ -14,6 +14,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
 import { api, type UserPackageRow } from '../../../lib/api';
+import { markColor, markOf } from '../../../lib/company-mark';
 import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
@@ -187,9 +188,12 @@ export function UserPackagesTab({
               return (
                 <section key={group.code} className={open ? 'terms-group open' : 'terms-group'}>
                   <button type="button" className="terms-group-head" aria-expanded={open} aria-controls={body} onClick={() => toggleGroup(group.code)}>
+                    <span className="co-mark" style={{ background: markColor(group.name) }} aria-hidden="true">{markOf(group.name)}</span>
+                    <span className="group-name">
+                      <strong>{group.name}</strong>
+                      <span className="hint">{summaryOf(group.packages)}</span>
+                    </span>
                     <ChevronDown className="terms-chevron" aria-hidden="true" />
-                    <strong>{group.name}</strong>
-                    <span className="hint">{summaryOf(group.packages)}</span>
                   </button>
                   {open ? (
                     <div id={body} className="terms-rows">

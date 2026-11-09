@@ -45,18 +45,14 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   await expect(cards.nth(3)).toContainText('20.00 ₪');
   await expect(cards.nth(4)).toContainText('130.00 ₪');
   await expect(cards.nth(4)).toHaveClass(/highlight/);
-  await expect(page.getByRole('tab')).toHaveText(['الحساب', /الرزم والأسعار/]);
+  // Graphite: every part of the account is a tab, packages and prices first (as in the approved design).
+  await expect(page.getByRole('tab')).toHaveText([/الرزم والأسعار/, /عمليات الأرقام/, 'أرقام الحساب', 'صلاحيات الحساب']);
   await expect(page.getByRole('tab', { name: /الرزم والأسعار/ }).locator('.step-count')).toHaveText('2');
-  // The sections start closed; the number operations show their count on the closed head.
-  const ops = page.locator('details.fold', { hasText: 'عمليات الأرقام' });
-  await expect(ops).not.toHaveAttribute('open', '');
-  await expect(ops.locator('summary .ui-badge')).toHaveText('1');
-  const numbers = page.locator('details.fold', { hasText: 'أرقام الحساب' });
-  await expect(numbers).not.toHaveAttribute('open', '');
-  // The numbers are read only once their section opens, narrowed to this account.
+  await expect(page.getByRole('tab', { name: /عمليات الأرقام/ }).locator('.step-count')).toHaveText('1');
+  // The numbers are read only once their tab opens, narrowed to this account.
   expect(calls.some((call) => call.startsWith('GET /lines'))).toBe(false);
-  await numbers.locator('summary').click();
-  await expect(numbers.locator('table.data tbody tr')).toHaveCount(1);
+  await page.getByRole('tab', { name: 'أرقام الحساب' }).click();
+  await expect(page.locator('table.data tbody tr')).toHaveCount(1);
   expect(calls.some((call) => call.startsWith('GET /lines?') && call.includes('account=pos1'))).toBe(true);
 
   await wallet.click();

@@ -478,9 +478,9 @@ input[readonly] { background-color: transparent; }
 .ui-pager-nav .ui-btn-outline { height: 30px; background: transparent; box-shadow: none; color: var(--rd-ink-2); }
 .ui-pager-nav .ui-btn-outline:hover { background: var(--rd-surface-2); }
 
-/* ── The page's own action is the one crimson button on the screen (Graphite «btn-accent»). ── */
-.page-head .ui-btn-primary, .page-actions .ui-btn-primary { background-color: var(--rd-accent); color: var(--rd-on-accent); }
-.page-head .ui-btn-primary:hover, .page-actions .ui-btn-primary:hover { background-color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
+/* ── The design's special action, crimson («btn-accent»): «تفعيل رقم», «تمديد». Every other page action stays ink. ── */
+.ui-btn.ui-btn-accent { background-color: var(--rd-accent); color: var(--rd-on-mark); box-shadow: none; }
+.ui-btn.ui-btn-accent:hover { background-color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
 /* A choice made of segments (the provider outcome) sits in the chip row with its name beside it. */
 .filter-panel > .stack { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
 .filter-panel > .stack > .hint { color: var(--rd-muted); font-size: 12px; font-weight: 600; }
@@ -597,7 +597,6 @@ input[readonly] { background-color: transparent; }
 .desk > .steps { align-self: flex-start; }
 /* White figures on crimson, as in the design: the sidebar count and the page's own action. */
 .nav-count, .notice-count { color: var(--rd-on-mark); }
-.page-head .ui-btn-primary, .page-actions .ui-btn-primary { color: var(--rd-on-mark); }
 
 /* ── Number card (Graphite, as in the design): the number as the title with its status and what is left, one line on
    where it lives, four cut-corner facts, then the tabs; operations are cards with a crimson mark, a name, one line on
@@ -968,3 +967,11 @@ input[readonly] { background-color: transparent; }
 .co-nums b { color: var(--rd-ink); font-weight: 700; }
 
 .chain-step > label { display: grid; gap: 6px; color: var(--rd-muted); font-size: var(--rd-text-sm); }
+
+/* ── Providers list (Graphite): how a provider's operations run, as a soft tag; its companies muted. ── */
+.reason { display: inline-flex; align-items: center; height: 22px; padding-inline: 8px; border-radius: var(--rd-radius-xs); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.reason.r-leaf { background: var(--rd-success-soft); color: var(--rd-success); }
+.reason.r-amber { background: var(--rd-warning-soft); color: var(--rd-warning); }
+.reason.r-mute { background: var(--rd-surface-2); color: var(--rd-muted); }
+.muted-cell { color: var(--rd-muted); }
+.line-pane form.switch-row { margin-block-start: 14px; padding: 14px 18px; border-radius: var(--rd-radius-sm); background: var(--rd-surface); box-shadow: inset 0 0 0 1px var(--rd-line); }

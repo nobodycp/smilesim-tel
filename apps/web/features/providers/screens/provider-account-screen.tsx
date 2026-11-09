@@ -1,6 +1,6 @@
 'use client';
 
-import { Download } from 'lucide-react';
+import { Coins, Download } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
@@ -8,7 +8,6 @@ import { Desk, Money, actionName, latinWhen } from '../../../components/desk';
 import { Dialog } from '../../../components/dialog';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
-import { Badge } from '../../../components/ui/badge';
 import { Button, buttonClass } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
 import { api, type ProviderLedgerRow } from '../../../lib/api';
@@ -86,9 +85,9 @@ export function ProviderAccountScreen() {
     {
       key: 'kind',
       header: t.movement,
-      render: (row) => (row.kind === 'payment' || row.kind === 'settlement'
-        ? <Badge variant={row.kind === 'payment' ? 'success' : 'muted'} dot>{kindName(row.kind)}</Badge>
-        : kindName(row.kind)),
+      render: (row) => (
+        <span className={`reason ${row.kind === 'payment' ? 'r-leaf' : row.kind === 'settlement' ? 'r-mute' : 'r-amber'}`}>{kindName(row.kind)}</span>
+      ),
     },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
     { key: 'package', header: t.packageName, render: (row) => row.packageName || '—' },
@@ -99,12 +98,17 @@ export function ProviderAccountScreen() {
 
   return (
     <Desk
-      title={summary?.name ?? ''}
-      lede={t.providerAccountsLede}
-      action={canWrite && summary ? (
+      title={summary ? `${t.providerAccountLink} · ${summary.name}` : ''}
+      lede={summary ? t.providerAccountLede.replace('{name}', summary.name) : ''}
+      action={summary ? (
+        // As in the design: edit the credit, then record a payment (the page's action); the CSV beside them.
         <div className="page-actions">
-          <Button type="button" onClick={() => open('entry')}>{t.recordPayment}</Button>
-          <Button type="button" variant="outline" onClick={() => open('credit')}>{t.creditLimit}</Button>
+          <a className={buttonClass({ variant: 'outline' })} href={api.providerAccountExportHref(params.code, query)} download>
+            <Download size={15} aria-hidden="true" />
+            {t.exportCsv}
+          </a>
+          {canWrite ? <Button type="button" variant="outline" onClick={() => open('credit')}>{t.editCredit}</Button> : null}
+          {canWrite ? <Button type="button" onClick={() => open('entry')}><Coins size={16} aria-hidden="true" />{t.recordPayment}</Button> : null}
         </div>
       ) : null}
       error={error || read.error}
@@ -116,17 +120,15 @@ export function ProviderAccountScreen() {
         <Stat icon="tasks" tone="warning" label={t.held} value={summary ? <Money value={summary.held} /> : '—'} meta={t.heldHint} />
         <Stat icon="plans" label={t.available} value={summary ? <Money value={summary.available} /> : '—'} highlight />
       </StatRow>
-      {summary ? <MatchingPane summary={summary} canWrite={canWrite} run={run} busy={busy} /> : null}
       <Tabs items={[{ key: 'ledger', label: t.providerLedger }, { key: 'recon', label: t.reconTitle }]} value={tab} onChange={setTab} />
-      {tab === 'recon' ? <Reconciliation code={params.code} canWrite={canWrite} setError={setError} setNote={setNote} /> : (
+      {tab === 'recon' ? (
         <>
-      <div className="section-head">
-        <h2>{t.providerLedger}</h2>
-        <a className={buttonClass({ variant: 'outline', size: 'sm' })} href={api.providerAccountExportHref(params.code, query)} download>
-          <Download size={15} aria-hidden="true" />
-          {t.exportCsv}
-        </a>
-      </div>
+          {/* The matching's source and schedule live with the matching (design: «المطابقة» tab). */}
+          {summary ? <MatchingPane summary={summary} canWrite={canWrite} run={run} busy={busy} /> : null}
+          <Reconciliation code={params.code} canWrite={canWrite} setError={setError} setNote={setNote} />
+        </>
+      ) : (
+        <>
       <FilterBar onClear={() => { setFrom(''); setTo(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.from}

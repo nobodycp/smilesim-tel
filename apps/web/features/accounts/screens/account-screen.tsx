@@ -1,8 +1,8 @@
 'use client';
 
-import { ChevronDown, ListChecks, Phone, Shield, Wallet } from 'lucide-react';
+import { ChevronDown, Wallet } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { Desk, Money, layerName } from '../../../components/desk';
 import { lineStatus } from '../../../components/names';
@@ -38,8 +38,10 @@ const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 type Choice = 'role' | 'allow' | 'deny';
 // Two tabs since spec 2026-11-08-overview-and-reports-nav, H: «الحساب» (permissions, number operations and the
 // account's numbers, each a closed section) and «الرزم والأسعار». An old `#ops` link opens «الحساب».
-type Tab = 'access' | 'packages';
-const TABS: readonly Tab[] = ['access', 'packages'];
+// Graphite (as in the approved design): every part of the account is its own tab — packages and prices first, then
+// the number operations, the account's numbers, and its access. An old `#ops` link opens the operations.
+type Tab = 'packages' | 'ops' | 'numbers' | 'access';
+const TABS: readonly Tab[] = ['packages', 'ops', 'numbers', 'access'];
 
 function subscribeHash(onChange: () => void) {
   window.addEventListener('hashchange', onChange);
@@ -49,7 +51,7 @@ function subscribeHash(onChange: () => void) {
 /** The open tab lives in the URL hash so a link can open it. */
 function useHashTab(): [Tab, (next: Tab) => void] {
   const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => '');
-  const tab = TABS.find((item) => `#${item}` === hash) ?? 'access';
+  const tab = TABS.find((item) => `#${item}` === hash) ?? ('' as Tab);
   return [tab, (next) => {
     window.history.replaceState(null, '', `#${next}`);
     window.dispatchEvent(new HashChangeEvent('hashchange'));
@@ -158,11 +160,14 @@ export function AccountScreen() {
   const showExtras = Boolean(row?.canEdit && (row.staff || jobRoles.length > 0));
   // The API refuses to read the terms of an account the actor may not edit, so the two tabs
   // exist only for the direct parent and the branch; a hash to a hidden tab falls back to access.
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'access', label: t.accountTab },
-    ...(canEditTerms ? [{ key: 'packages' as const, label: t.packagesPricesTab }] : []),
+  const withTerms = Boolean(canEditTerms && row && !row.staff);
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    ...(withTerms ? [{ key: 'packages' as const, label: t.packagesPricesTab, count: counts.packages || undefined }] : []),
+    ...(withTerms ? [{ key: 'ops' as const, label: t.lineOpsTab, count: counts.ops || undefined }] : []),
+    ...(row && !row.staff && row.layer !== 'branch' ? [{ key: 'numbers' as const, label: t.accountNumbers }] : []),
+    { key: 'access', label: t.accountAccess },
   ];
-  const openTab: Tab = tabs.some((item) => item.key === tab) ? tab : 'access';
+  const openTab: Tab = tabs.some((item) => item.key === tab) ? tab : tabs[0].key;
 
   return (
     <Desk
@@ -179,10 +184,9 @@ export function AccountScreen() {
       ) : row && (
         <div className="stack flow">
           {listed ? <MoneyCards row={listed} /> : null}
-          <Tabs items={tabs.map((item) => ({ ...item, count: item.key === 'packages' ? counts.packages : undefined, disabled: item.key !== 'access' && row.staff }))} value={openTab} onChange={setTab} />
+          <Tabs items={tabs} value={openTab} onChange={setTab} />
           {openTab === 'access' && (
-          <>
-          <Fold icon={<Shield aria-hidden="true" />} title={t.accountAccess}>
+          <section className="pane">
             <div className="pane-body access-sheet">
               <div className="grant-head">
                 <div className="grant-line head">
@@ -257,19 +261,18 @@ export function AccountScreen() {
                 </div>
               )}
             </div>
-          </Fold>
-          {canEditTerms && !row.staff ? (
-            <Fold icon={<ListChecks aria-hidden="true" />} title={t.lineOpsTab} count={counts.ops}>
-              <UserOpsTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />
-            </Fold>
-          ) : null}
-          {!row.staff && row.layer !== 'branch' ? (
-            <Fold icon={<Phone aria-hidden="true" />} title={t.accountNumbers}>
-              <AccountLines login={row.loginName} />
-            </Fold>
-          ) : null}
-          </>
+          </section>
           )}
+          {openTab === 'ops' && withTerms ? (
+            <section className="pane">
+              <UserOpsTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />
+            </section>
+          ) : null}
+          {openTab === 'numbers' ? (
+            <section className="pane">
+              <AccountLines login={row.loginName} />
+            </section>
+          ) : null}
           {openTab === 'packages' && !row.staff && <UserPackagesTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
         </div>
       )}
@@ -298,24 +301,6 @@ function MoneyCards({ row }: { row: UserRow }) {
       <Stat icon="tasks" tone={row.held ? 'warning' : 'muted'} label={t.held} value={<Money value={row.held ?? 0} />} meta={t.heldHint} />
       <Stat icon="plans" label={t.availableToSell} value={unlimited ? t.noCeiling : <Money value={available} />} highlight />
     </StatRow>
-  );
-}
-
-/**
- * One closed section of the «الحساب» tab. Its body mounts the first time it opens, so a section's reads (the
- * number operations, the account's numbers) run only when they are wanted.
- */
-function Fold({ icon, title, count, children }: { icon: ReactNode; title: string; count?: number; children: ReactNode }) {
-  const [seen, setSeen] = useState(false);
-  return (
-    <details className="pane fold" onToggle={(event) => { if (event.currentTarget.open) setSeen(true); }}>
-      <summary className="pane-head">
-        <h2>{icon}{title}</h2>
-        {count ? <Badge variant="muted">{count}</Badge> : null}
-        <ChevronDown className="fold-mark" size={16} aria-hidden="true" />
-      </summary>
-      {seen ? children : null}
-    </details>
   );
 }
 

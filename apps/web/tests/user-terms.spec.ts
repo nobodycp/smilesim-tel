@@ -33,8 +33,8 @@ test('the packages tab folds each company, keeps one line per package, and edits
     'PUT /users/pos1/packages/alloha-150': () => ({ body: { ...row('alloha-150', '150 جيجا', 'alloha'), hidden: true } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1#packages');
-  await expect(page.getByRole('tab')).toHaveCount(2);
-  await expect(page.getByRole('tab', { name: 'الرزم والأسعار' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab')).toHaveCount(4);
+  await expect(page.getByRole('tab', { name: /الرزم والأسعار/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('3 رزمة · 2 ظاهرة · 1 بسعر خاص')).toBeVisible();
   // No bulk actions, no company switch, and every company starts folded.
   await expect(page.getByRole('button', { name: 'تشغيل الكل' })).toHaveCount(0);
@@ -92,13 +92,13 @@ test('a main agent opening a grandchild sees only the access tab, and a hash to 
     'GET /users/pos1': () => ({ body: { ...account, canEdit: false } }),
   });
   await page.goto('http://main.localhost:3910/users/pos1#packages');
-  await expect(page.getByRole('tab')).toHaveCount(1);
-  await expect(page.getByRole('tab', { name: 'الحساب' })).toHaveAttribute('aria-selected', 'true');
+  // Without the terms only the account's numbers and its access remain; a hash to a hidden tab opens the first.
+  await expect(page.getByRole('tab')).toHaveCount(2);
+  await expect(page.getByRole('tab', { name: 'أرقام الحساب' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('لا رزم معروضة للبيع.')).toHaveCount(0);
 });
 
-// Since spec 2026-11-08-overview-and-reports-nav (H) the number operations are a closed section of «الحساب»;
-// an old `#ops` link opens that tab.
+// Graphite: the number operations are their own tab; an old `#ops` link opens it.
 test('the number operations section shows ten cards and marks an inherited stop', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await serveOffice(page, 'branch', {
@@ -106,8 +106,7 @@ test('the number operations section shows ten cards and marks an inherited stop'
     'GET /users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [{ op: 'charge', login: 'ma1' }] } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1#ops');
-  await expect(page.getByRole('tab', { name: 'الحساب' })).toHaveAttribute('aria-selected', 'true');
-  await page.locator('details.fold', { hasText: 'عمليات الأرقام' }).locator('summary').click();
+  await expect(page.getByRole('tab', { name: /عمليات الأرقام/ })).toHaveAttribute('aria-selected', 'true');
   const cards = page.locator('.op-card');
   await expect(cards).toHaveCount(10);
   const charge = cards.filter({ hasText: 'شحن' }).first();
