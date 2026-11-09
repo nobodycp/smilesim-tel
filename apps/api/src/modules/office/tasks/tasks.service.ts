@@ -1,3 +1,4 @@
+import { lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
@@ -310,8 +311,16 @@ export class TasksService {
     esim?: boolean;
     esimQr?: string | null;
     note: string;
+    /** The price of what the task sells, fixed now so completion charges and records the same number (rule 1.5). */
+    unitPrice?: number;
   }) {
     const { task, written } = await this.kernel.runTx(async (tx) => {
+      // One open task per number and operation (rule 2.3). The line's row serialises two requests for it.
+      if (input.lineId && input.action !== 'addon') {
+        await lockLine(tx, input.lineId);
+        const open = await tx.officeTask.findFirst({ where: { lineId: input.lineId, action: input.action, status: 'working' }, select: { id: true } });
+        if (open) fail(409, 'DUPLICATE_REQUEST');
+      }
       // A task that will charge holds its price first (roadmap N6): refused before anything is written when the
       // wallet cannot cover it, released when the task closes.
       const held = input.posDelta < 0
@@ -334,6 +343,7 @@ export class TasksService {
           esimQr: input.esimQr ?? null,
           note: input.note,
           held,
+          unitPrice: input.unitPrice ?? null,
         },
       });
       const named = await tx.package.findUnique({ where: { id: input.nextPackageId ?? input.packageId }, select: { name: true } });
@@ -348,14 +358,14 @@ export class TasksService {
   }
 
   /** Branch users who may take a task: the owner and anyone holding the handling grant. */
-  private async handlerIds(): Promise<string[]> {
-    const users = await this.kernel.prisma.user.findMany({
+  private async handlerIds(db: Prisma.TransactionClient): Promise<string[]> {
+    const users = await db.user.findMany({
       where: { layer: 'branch', disabledAt: null },
       include: { role: true, extraRoles: { include: { role: true } } },
     });
     const ids: string[] = [];
     for (const user of users) {
-      if (user.isBranchOwner || (await this.kernel.grantsFor(user)).includes('tasks')) ids.push(user.id);
+      if (user.isBranchOwner || (await this.kernel.grantsFor(user, db)).includes('tasks')) ids.push(user.id);
     }
     return ids;
   }
@@ -368,10 +378,10 @@ export class TasksService {
     extra: Partial<TaskNoticePayload> = {},
     branchOnly = false,
   ): Promise<WrittenNotice[]> {
-    const handlers = await this.handlerIds();
+    const handlers = await this.handlerIds(tx);
     let audience = taskAudience(event, task, handlers, { id: actor.id, handler: canHandleTasks(actor) });
     if (branchOnly) {
-      const branch = new Set((await this.kernel.accounts()).filter((account) => account.layer === 'branch').map((account) => account.id));
+      const branch = new Set((await this.kernel.accounts(tx)).filter((account) => account.layer === 'branch').map((account) => account.id));
       audience = audience.filter((id) => branch.has(id));
     }
     const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, ...extra };

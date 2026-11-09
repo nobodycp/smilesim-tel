@@ -12,7 +12,11 @@ import { type TaskEvent } from '../task-access';
 import { NoticeService, type WrittenNotice } from '../notice.service';
 import { type LadderRows } from '../kernel/office-kernel';
 import { OfficeKernel } from '../kernel/office-kernel';
+import { LinePricing } from '../lines/line-pricing';
+import { LineReads } from '../lines/line-reads';
 import { LinesService } from '../lines/lines.service';
+import { TaskCompletion } from '../lines/task-completion';
+import { SimulatedProviderGateway } from '../providers/gateway/simulated-gateway';
 import { TransfersService } from '../transfers/transfers.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { DeskService } from '../desk/desk.service';
@@ -190,13 +194,24 @@ export class OfficeFacade {
   private lineDeskInstance: LinesService | null = null;
 
   private get lineDesk(): LinesService {
-    this.lineDeskInstance ??= new LinesService(this.kernel, this.tasksDomain);
+    this.lineDeskInstance ??= new LinesService(this.kernel, this.tasksDomain, this.linePricing, new TaskCompletion(this.kernel, this.tasksDomain, this.linePricing), new SimulatedProviderGateway());
     return this.lineDeskInstance;
   }
 
+  private linePricingInstance: LinePricing | null = null;
+
+  private get linePricing(): LinePricing {
+    this.linePricingInstance ??= new LinePricing(this.kernel);
+    return this.linePricingInstance;
+  }
+
+  private get lineReads(): LineReads {
+    return new LineReads(this.kernel);
+  }
+
   // user-terms-service.spec stamps terms through the service; the stamping lives in LinesService.
-  private stampFor(...args: Parameters<LinesService['stampFor']>) {
-    return this.lineDesk.stampFor(...args);
+  private stampFor(...args: Parameters<LinePricing['stampFor']>) {
+    return this.linePricing.stampFor(...args);
   }
 
   // One-line delegators: the methods still in this file call the kernel through the names they always used.
@@ -380,11 +395,11 @@ export class OfficeFacade {
 
   // Facades (Phase 3): specs still call these; the routes live in lines/lines.controller.ts.
   async lines(gate: Gate, query: LineFilter & { cursor?: string; account?: string } = {}) {
-    return this.lineDesk.list(await this.actor(gate), query);
+    return this.lineReads.list(await this.actor(gate), query);
   }
 
   async line(gate: Gate, id: string) {
-    return this.lineDesk.detail(await this.actor(gate), id);
+    return this.lineReads.detail(await this.actor(gate), id);
   }
 
   async activate(gate: Gate, body: Record<string, unknown>) {
@@ -395,7 +410,7 @@ export class OfficeFacade {
     return this.lineDesk.requestAddon(await this.actor(gate), lineId, body);
   }
 
-  async operate(gate: Gate, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim' | 'addon'>, body: { outcome?: unknown }) {
+  async operate(gate: Gate, lineId: string, action: 'charge' | 'disconnect' | 'freeze' | 'unfreeze', body: { outcome?: unknown }) {
     return this.lineDesk.operate(await this.actor(gate), lineId, action, body);
   }
 

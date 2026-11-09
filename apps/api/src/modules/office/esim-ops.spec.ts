@@ -59,7 +59,17 @@ async function office() {
   const lineModel = {
     findUnique: async ({ where }: { where: { id?: string; msisdn?: string } }) => (where.id ? lineById(where.id) : lineByMsisdn(where.msisdn)),
     findMany: async () => [line],
+    // The live number that holds a SIM serial, as the uniqueness check asks for it.
+    findFirst: async ({ where }: { where: { iccid: string; id?: { not: string } } }) =>
+      [line, ...otherLines].find((row) => row.iccid === where.iccid && row.status !== 'disconnected' && row.id !== where.id?.not) ?? null,
     update: async ({ where, data }: { where: { id: string }; data: Row }) => Object.assign(lineById(where.id) as Row, data),
+    // A guarded status change: only from one of the statuses named.
+    updateMany: async ({ where, data }: { where: { id: string; status: { in: string[] } }; data: Row }) => {
+      const row = lineById(where.id);
+      if (!row || !where.status.in.includes(row.status as string)) return { count: 0 };
+      Object.assign(row, data);
+      return { count: 1 };
+    },
     create: async ({ data }: { data: Row }) => {
       const row = { id: `ln${otherLines.length + 2}`, createdAt: new Date(), opsLocked: false, ...data, package: pkg, pos: { loginName: 'pos1' } };
       otherLines.push(row);
@@ -73,6 +83,7 @@ async function office() {
       return row;
     },
     findUnique: async ({ where }: { where: { id: string } }) => tasks.find((row) => row.id === where.id) ?? null,
+    findFirst: async ({ where }: { where: Row }) => tasks.find((row) => Object.entries(where).every(([key, value]) => row[key] === value)) ?? null,
     findMany: async () => [],
     update: async ({ where, data }: { where: { id: string }; data: Row }) => Object.assign(tasks.find((row) => row.id === where.id) as Row, data),
     updateMany: async ({ where, data }: { where: { id: string }; data: Row }) => {
@@ -107,7 +118,7 @@ async function office() {
     // Closing an activation task stamps the renewal price, which reads the terms tables inside the transaction.
     userPackage: { findMany: async () => [] },
     sellPrice: { findMany: async () => [] },
-    user: { findUnique: async ({ where }: { where: { id: string } }) => accounts.find((row) => row.id === where.id) ?? null },
+    user: { findUnique: async ({ where }: { where: { id: string } }) => accounts.find((row) => row.id === where.id) ?? null, findMany: async () => accounts },
     notice: { createMany: async () => ({ count: 0 }) },
   };
   (service as unknown as { prismaClient: unknown }).prismaClient = {
@@ -158,6 +169,8 @@ describe('eSIM request', () => {
     provider.esimPrice = 600;
     await service.requestEsim(gate, 'ln1');
     expect(tasks[0].posDelta).toBe(-600);
+    // One open request per number: the first is closed before the next is priced.
+    tasks[0].status = 'cancelled';
     pkg.esimPrice = 700;
     await service.requestEsim(gate, 'ln1');
     expect(tasks[1].posDelta).toBe(-700);

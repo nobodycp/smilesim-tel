@@ -8,6 +8,7 @@ import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { freeFormObject, text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
 import { CompleteTaskBodyDto, ExtendBodyDto, OutcomeBodyDto, RenameLineBodyDto, SwapSimBodyDto, SwitchPackageBodyDto } from '../office.dto';
+import { LineReads } from './line-reads';
 import { LinesService } from './lines.service';
 
 @ApiTags('office')
@@ -17,7 +18,7 @@ import { LinesService } from './lines.service';
 @UseFilters(OfficeFailureFilter)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class LinesController {
-  constructor(private readonly lineDesk: LinesService) {}
+  constructor(private readonly lineDesk: LinesService, private readonly reads: LineReads) {}
 
   @Get('lines')
   @ApiOperation({ summary: 'Paged lines / SIMs' })
@@ -39,15 +40,15 @@ export class LinesController {
     @Query('company') company?: string,
     @Query('account') account?: string,
   ) {
-    return this.lineDesk.list(actor, {
-        account: text(account),
-        cursor: text(cursor),
-        q: text(q),
-        status: text(status),
-        packageCode: text(packageCode),
-        provider: text(provider),
-        company: text(company),
-      });
+    return this.reads.list(actor, {
+      account: text(account),
+      cursor: text(cursor),
+      q: text(q),
+      status: text(status),
+      packageCode: text(packageCode),
+      provider: text(provider),
+      company: text(company),
+    });
   }
 
   @Get('lines/:id')
@@ -55,7 +56,7 @@ export class LinesController {
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
   line(@Actor() actor: ActorShape, @Param('id') id: string) {
-    return this.lineDesk.detail(actor, id);
+    return this.reads.detail(actor, id);
   }
 
   @Post('lines')

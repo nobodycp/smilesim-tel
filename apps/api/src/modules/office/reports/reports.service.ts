@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
-import { LinesService } from '../lines/lines.service';
+import { LineReads } from '../lines/line-reads';
 import { TasksService } from '../tasks/tasks.service';
 import { feedPosition } from '../kernel/feed';
 import { FEED_PAGE, NEWEST_FIRST, afterFeed, mergeFeed } from '../office-paging';
@@ -14,7 +14,7 @@ export class ReportsService {
   constructor(
     private readonly kernel: OfficeKernel,
     private readonly tasks: TasksService,
-    private readonly lines: LinesService,
+    private readonly lines: LineReads,
   ) {}
 
   async report(actor: Actor, kind: string, cursor?: string) {

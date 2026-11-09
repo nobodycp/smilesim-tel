@@ -45,6 +45,7 @@ model User {
   walletEntries          WalletEntry[]    @relation("WalletOwner")
   actedEntries           WalletEntry[]    @relation("WalletActor")
   posLines               Line[]           @relation("LinePos")
+  posTasks               OfficeTask[]     @relation("TaskPos")
   submittedTasks         OfficeTask[]     @relation("TaskSubmitter")
   assignedTasks          OfficeTask[]     @relation("TaskAssignee")
   taskNotes              OfficeTaskNote[]
@@ -129,6 +130,7 @@ model WalletEntry {
   note         String?
   msisdn       String?
   lineId       String?
+  line         Line?     @relation(fields: [lineId], references: [id], onDelete: SetNull)
   companyName  String?
   packageName  String?
   packagePrice Int?
@@ -260,6 +262,8 @@ model Package {
   providerProductCode    String?
   esimPrice              Int?
   lines                  Line[]
+  tasks                  OfficeTask[]     @relation("TaskPackage")
+  nextTasks              OfficeTask[]     @relation("TaskNextPackage")
   userTerms              UserPackage[]
   sellPrices             SellPrice[]
   renewals               PackageRenewal[]
@@ -340,6 +344,7 @@ model Line {
   terms         Json
   createdAt     DateTime     @default(now())
   tasks         OfficeTask[]
+  entries       WalletEntry[]
 
   @@index([posId, createdAt])
   @@index([status])
@@ -355,6 +360,9 @@ model OfficeTask {
   packageId     String
   lineId        String?
   line          Line?            @relation(fields: [lineId], references: [id])
+  pos           User             @relation("TaskPos", fields: [posId], references: [id])
+  package       Package          @relation("TaskPackage", fields: [packageId], references: [id])
+  nextPackage   Package?         @relation("TaskNextPackage", fields: [nextPackageId], references: [id], onDelete: SetNull)
   submitterId   String
   submitter     User             @relation("TaskSubmitter", fields: [submitterId], references: [id])
   assigneeId    String?
@@ -362,6 +370,8 @@ model OfficeTask {
   posDelta      Int
   /** What opening this task held on the point of sale's wallet, released when it closes. */
   held          Int              @default(0)
+  /** The price of what the task sells, fixed when it opened; null on tasks that sell nothing new. */
+  unitPrice     Int?
   msisdn        String?
   iccid         String?
   esim          Boolean          @default(false)

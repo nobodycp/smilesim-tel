@@ -16,10 +16,12 @@ code is split by domain with no dead code.
    (ratchet baseline) and ESLint size limits. Every later phase lowers a baseline.
 2. **Line lock.** Every transaction that changes a line starts with `lockLine(tx, id)` (`SELECT … FOR UPDATE`),
    re-reads the line and validates its status for the action. Order: line, then wallets (sorted by id).
-3. **One open task per line and action.** `openTask` refuses a second with `409 TASK_ALREADY_OPEN`; a partial
-   unique index backs it.
+3. **One open task per line and action** (add-ons excepted: two different add-ons are two requests). `openTask`
+   locks the line and refuses a second with `409 DUPLICATE_REQUEST`. No partial unique index: Prisma cannot
+   describe one, so it would show as drift; the line lock makes the check race-free.
 4. **A task stores its unit price** (`OfficeTask.unitPrice`) when it opens; completion charges and records it.
-5. **A live ICCID is unique**: `SIM_TAKEN` (409) and a partial unique index on lines that are not disconnected.
+5. **A live ICCID is unique**: `SIM_TAKEN` (409), checked under a transaction-level advisory lock on the serial
+   (same reason as 3 for not using a partial index).
 6. **Freezing a staff account** returns its tasks to the pool: `assigneeId: null`, status stays `working`.
    Existing `pending` rows are migrated to `working`.
 7. **Entering**: only an account below the branch layer can be entered. An entered session cannot use `/auth`
@@ -34,8 +36,10 @@ code is split by domain with no dead code.
 11. **Validation**: every body goes through a zod schema. Messages and codes stay what they are today
     (`INVALID` unless the service has a specific code).
 12. **Provider gateway**: `ProviderGateway` port with `SimulatedProviderGateway`. The simulated gateway is the only
-    reader of the request's `outcome`; it is refused when `NODE_ENV=production` unless `PROVIDER_SIMULATION=1`.
+    reader of the request's `outcome`. It stays on by default so staging keeps working, warns at boot when it
+    runs in production, and `PROVIDER_SIMULATION=0` switches it off (every operation then goes to a branch task).
     The web keeps sending `outcome` until real providers exist; the field is documented as simulation-only.
+    Before real sales: connect a real gateway or set `PROVIDER_SIMULATION=0`.
 13. **Structure**: kernel split into focused services behind the same `OfficeKernel` surface first, then callers
     move; rule files move into their domains; test helpers move to `testing/`; dead code is deleted.
 14. **No path or response-shape change** except the ones named here (8, 10). `routes.http.spec.ts` and

@@ -7,7 +7,12 @@ import { ReportsController } from './reports/reports.controller';
 import { ReportsService } from './reports/reports.service';
 import { InsightsService } from './reports/insights.service';
 import { LinesController } from './lines/lines.controller';
+import { LinePricing } from './lines/line-pricing';
+import { LineReads } from './lines/line-reads';
 import { LinesService } from './lines/lines.service';
+import { TaskCompletion } from './lines/task-completion';
+import { PROVIDER_GATEWAY } from './providers/gateway/provider-gateway';
+import { SimulatedProviderGateway } from './providers/gateway/simulated-gateway';
 import { TransfersController } from './transfers/transfers.controller';
 import { TransfersService } from './transfers/transfers.service';
 import { AccountsController } from './accounts/accounts.controller';
@@ -47,7 +52,7 @@ import { TasksService } from './tasks/tasks.service';
 
 // Exported so HTTP specs build the same set of office routes the app serves, whichever controller holds them.
 export const OFFICE_CONTROLLERS = [NoticesController, AuditController, TasksController, WalletsController, ProvidersController, ProviderCatalogController, CompaniesController, PackagesController, TermsController, RolesController, DeskController, AccountsController, AccountSessionController, TransfersController, LinesController, ReportsController, ProviderAccountsController, OffersController];
-export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, ProviderCatalogService, CompaniesService, PackagesService, TermsService, RolesService, DeskService, AccountsService, AccountSessionService, TransfersService, LinesService, ReportsService, InsightsService, ProviderAccountsService, ProviderHealthService, OverviewService, OffersService, CatalogSeed];
+export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, ProviderCatalogService, CompaniesService, PackagesService, TermsService, RolesService, DeskService, AccountsService, AccountSessionService, TransfersService, LinePricing, LineReads, TaskCompletion, LinesService, { provide: PROVIDER_GATEWAY, useClass: SimulatedProviderGateway }, ReportsService, InsightsService, ProviderAccountsService, ProviderHealthService, OverviewService, OffersService, CatalogSeed];
 
 @Module({
   imports: [AuthModule],

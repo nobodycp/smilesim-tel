@@ -1,16 +1,16 @@
 {
   "wallet-writes": 0,
   "root-client-in-tx": 0,
-  "unguarded-status-write": 10,
+  "unguarded-status-write": 0,
   "inline-grant-checks": 83,
-  "hand-parsed-input": 73,
+  "hand-parsed-input": 68,
   "untyped-body": 38,
-  "conflict-status": 5,
+  "conflict-status": 2,
   "write-without-activity": 9,
   "cross-domain-controller-import": 0,
   "test-code-imported": 1,
   "test-code-in-src": 3,
   "env-outside-config": 24,
   "console-calls": 10,
-  "stored-text": 18
+  "stored-text": 8
 }

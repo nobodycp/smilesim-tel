@@ -944,6 +944,7 @@ export const ar = {
     NOTE_REQUIRED: 'أضف ملاحظة للتمويل',
     HAS_HISTORY: 'لا يُحذف حساب فيه سجل. جمّده.',
     NUMBER_TAKEN: 'الرقم مستخدم',
+    SIM_TAKEN: 'رقم الشريحة مستخدم على رقم آخر',
     LOGIN_TAKEN: 'اسم الدخول مستخدم',
     PACKAGE_DISABLED: 'الرزمة متوقفة',
     PACKAGE_HIDDEN: 'الرزمة غير معروضة للبيع',

@@ -17,6 +17,7 @@ function service() {
   const kernel = {
     accounts: async () => accounts,
     runTx: async (work: (tx: unknown) => Promise<unknown>) => work({}),
+    lockWallets: async () => undefined,
     move: async (...args: unknown[]) => void moves.push(args.slice(1)),
     notice: { write: async () => [] },
     queueNotices: () => undefined,

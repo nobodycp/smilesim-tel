@@ -113,11 +113,11 @@ export class OfficeKernel {
     deniedGrants?: string | null;
     role?: { grants: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean } | null;
     extraRoles?: { role: { grants: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean } }[];
-  } | null): Promise<string[]> {
+  } | null, db: Prisma.TransactionClient | PrismaClient = this.prisma): Promise<string[]> {
     if (stored?.isBranchOwner) return [...GRANT_CODES];
-    if (!stored?.layer || !this.prisma.role) return (stored?.liveGrants ?? '').split(',').filter(Boolean);
+    if (!stored?.layer || !db.role) return (stored?.liveGrants ?? '').split(',').filter(Boolean);
     const staff = stored.layer === 'branch' && Boolean(stored.roleId);
-    const layerRole = staff ? null : await this.prisma.role.findUnique({ where: { layer: stored.layer } });
+    const layerRole = staff ? null : await db.role.findUnique({ where: { layer: stored.layer } });
     return effectiveGrantCodes({
       owner: false,
       staff,
@@ -135,8 +135,9 @@ export class OfficeKernel {
     return actor;
   }
 
-  async accounts(): Promise<Account[]> {
-    return this.prisma.user.findMany({
+  /** Every account, as the tree is walked. Inside a transaction pass its client (rule 1.3). */
+  async accounts(db: Prisma.TransactionClient | PrismaClient = this.prisma): Promise<Account[]> {
+    return db.user.findMany({
       select: { id: true, loginName: true, nickname: true, layer: true, parentId: true, deniedOps: true, disabledAt: true },
       orderBy: { loginName: 'asc' },
     });
@@ -192,9 +193,19 @@ export class OfficeKernel {
     }
   }
 
-  async actorName(id: string): Promise<string> {
-    const user = await this.prisma.user.findUnique({ where: { id }, select: { nickname: true, loginName: true } });
+  async actorName(id: string, db: Prisma.TransactionClient | PrismaClient = this.prisma): Promise<string> {
+    const user = await db.user.findUnique({ where: { id }, select: { nickname: true, loginName: true } });
     return user?.nickname || user?.loginName || '';
+  }
+
+  /**
+   * Locks several wallets in one fixed order (by user id), so two transactions that touch the same pair never wait
+   * on each other in a circle (rule 1.4). Call it before the first `move` of a transfer between accounts.
+   */
+  async lockWallets(tx: Prisma.TransactionClient, userIds: string[]): Promise<void> {
+    for (const userId of [...new Set(userIds)].sort()) {
+      await tx.$queryRaw`SELECT "userId" FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE`;
+    }
   }
 
   /**
@@ -210,7 +221,7 @@ export class OfficeKernel {
     if (!withinCeiling(user.layer, wallet.balance - (wallet.held ?? 0), wallet.ceiling, amount)) fail(400, 'BALANCE_CEILING');
     await tx.wallet.update({ where: { userId }, data: { held: { increment: amount } } });
     await tx.walletEntry.create({
-      data: { userId, actorId, amount: 0, balanceAfter: wallet.balance, kind: 'hold', held: amount, note: note || null, msisdn: sale?.msisdn, lineId: sale?.lineId, packageName: sale?.packageName, companyName: sale?.companyName },
+      data: { userId, actorId, amount: 0, balanceAfter: wallet.balance, kind: 'hold', held: amount, note: note || null, msisdn: sale?.msisdn, lineId: sale?.lineId || null, packageName: sale?.packageName, companyName: sale?.companyName },
     });
     return amount;
   }
@@ -248,7 +259,7 @@ export class OfficeKernel {
     }
     const balanceAfter = wallet.balance + amount;
     if (wallet.balance >= 0 && balanceAfter < 0) {
-      const actor = { id: actorId, nickname: await this.actorName(actorId) };
+      const actor = { id: actorId, nickname: await this.actorName(actorId, tx) };
       const audience = [userId, ...(user.parentId ? [user.parentId] : [])];
       this.queueNotices(tx, await this.notice.write(tx, audience, actor, {
         kind: 'wallet.negative',
@@ -274,7 +285,7 @@ export class OfficeKernel {
         note: note || null,
         reason: reason ?? null,
         msisdn: sale?.msisdn,
-        lineId: sale?.lineId,
+        lineId: sale?.lineId || null,
         companyName: sale?.companyName,
         packageName: sale?.packageName,
         packagePrice: sale?.packagePrice,
@@ -309,7 +320,7 @@ export class OfficeKernel {
     const line = await db.line.findUnique({ where: { id: sale.lineId }, select: { terms: true } });
     const code = (line?.terms as { packageCode?: string } | null)?.packageCode;
     if (!code) return null;
-    const path = this.pathOf(posId, await this.accounts());
+    const path = this.pathOf(posId, await this.accounts(db));
     const [rows, subscriber] = await Promise.all([
       this.ladderRows([code], path.map((node) => node.id), db),
       db.package.findUnique({ where: { code }, select: { subscriberPrice: true, renewalSubscriberPrice: true } }),
@@ -337,7 +348,7 @@ export class OfficeKernel {
         balanceAfter: wallet.balance,
         kind,
         msisdn: sale.msisdn,
-        lineId: sale.lineId,
+        lineId: sale.lineId || null,
         companyName: sale.companyName,
         packageName: sale.packageName,
         packagePrice: sale.packagePrice,
@@ -360,10 +371,10 @@ export class OfficeKernel {
     return path;
   }
 
-  async termsFor(packageId: string): Promise<{ terms: TermRow[]; sells: SellRow[] }> {
+  async termsFor(packageId: string, db: Prisma.TransactionClient | PrismaClient = this.prisma): Promise<{ terms: TermRow[]; sells: SellRow[] }> {
     const [terms, sells] = await Promise.all([
-      this.prisma.userPackage.findMany({ where: { packageId }, select: { userId: true, hidden: true, price: true, renewalPrice: true } }),
-      this.prisma.sellPrice.findMany({ where: { packageId }, select: { ownerId: true, price: true, renewalPrice: true } }),
+      db.userPackage.findMany({ where: { packageId }, select: { userId: true, hidden: true, price: true, renewalPrice: true } }),
+      db.sellPrice.findMany({ where: { packageId }, select: { ownerId: true, price: true, renewalPrice: true } }),
     ]);
     return { terms, sells };
   }

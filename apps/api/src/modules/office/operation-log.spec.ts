@@ -92,7 +92,17 @@ async function office() {
         return row;
       },
     },
-    line: { update: async ({ data }: { data: Row }) => Object.assign(line, data) },
+    line: {
+      findUnique: async () => line,
+      findFirst: async () => null,
+      update: async ({ data }: { data: Row }) => Object.assign(line, data),
+      // A guarded status change: only from one of the statuses named.
+      updateMany: async ({ where, data }: { where: { status: { in: string[] } }; data: Row }) => {
+        if (!where.status.in.includes(line.status as string)) return { count: 0 };
+        Object.assign(line, data);
+        return { count: 1 };
+      },
+    },
   };
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: {

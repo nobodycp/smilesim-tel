@@ -143,6 +143,7 @@ export async function tree() {
       return row ? { ...row, terms: structuredClone(row.terms) } : null;
     },
     findMany: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)),
+    findFirst: async (args?: { where?: Record<string, unknown> }) => lines.find((row) => whereMatch(row, args?.where)) ?? null,
     count: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)).length,
     groupBy: async ({ by, where, _count }: { by: string[]; where?: Record<string, unknown>; _count: { _all: true } }) => {
       if (by.join(',') !== 'packageId' || !_count?._all) return [];
@@ -169,6 +170,7 @@ export async function tree() {
   const taskModel = {
     create: async ({ data }: { data: Data }) => { const row = { id: `t${tasks.length + 1}`, createdAt: new Date(), updatedAt: new Date(), log: '', assigneeId: null, ...data }; tasks.push(row); return row; },
     findUnique: async ({ where }: { where: { id: string } }) => tasks.find((row) => row.id === where.id) ?? null,
+    findFirst: async (args?: { where?: Record<string, unknown> }) => tasks.find((row) => whereMatch(row, args?.where)) ?? null,
     findMany: async () => [],
     count: async () => 0,
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(tasks.find((row) => row.id === where.id) as Row, data),
@@ -196,7 +198,16 @@ export async function tree() {
   const walletModel = {
     findUnique: async ({ where }: { where: { userId: string } }) => wallets.find((row) => row.userId === where.userId) ?? null,
     findMany: async (args?: { where?: Record<string, unknown> }) => wallets.filter((row) => whereMatch(row, args?.where)),
-    update: async ({ where, data }: { where: { userId: string }; data: Data }) => Object.assign(wallets.find((row) => row.userId === where.userId) as Row, data),
+    // `held` moves by increment and decrement, as the ledger writes it; every other field is set.
+    update: async ({ where, data }: { where: { userId: string }; data: Data }) => {
+      const row = wallets.find((item) => item.userId === where.userId) as Row;
+      for (const [key, value] of Object.entries(data)) {
+        const step = value as { increment?: number; decrement?: number } | null;
+        if (step && typeof step === 'object' && ('increment' in step || 'decrement' in step)) row[key] = ((row[key] as number) ?? 0) + (step.increment ?? 0) - (step.decrement ?? 0);
+        else row[key] = value;
+      }
+      return row;
+    },
   };
   const tx = {
     // `move()` locks the wallet row with raw SQL; the in-memory store has nothing to lock.
@@ -248,6 +259,8 @@ export async function tree() {
         lines: new Map(lines.map((row) => [row, { ...row, terms: structuredClone(row.terms) }] as const)),
         entries: entries.map((row) => ({ ...row })),
         notices: notices.map((row) => ({ ...row })),
+        tasks: tasks.map((row) => ({ ...row })),
+        wallets: new Map(wallets.map((row) => [row, { ...row }] as const)),
       };
       try {
         return await run(tx);
@@ -258,6 +271,8 @@ export async function tree() {
         for (const [row, stored] of keep.lines) Object.assign(row, stored);
         entries.splice(0, entries.length, ...keep.entries);
         notices.splice(0, notices.length, ...keep.notices);
+        tasks.splice(0, tasks.length, ...keep.tasks);
+        for (const [row, stored] of keep.wallets) Object.assign(row, stored);
         throw error;
       }
     },

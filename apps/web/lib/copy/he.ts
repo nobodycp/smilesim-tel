@@ -944,6 +944,7 @@ export const he: Copy = {
     NOTE_REQUIRED: 'הוסף הערה למימון',
     HAS_HISTORY: 'חשבון עם היסטוריה לא נמחק. הקפא אותו.',
     NUMBER_TAKEN: 'המספר כבר בשימוש',
+    SIM_TAKEN: 'מספר ה-SIM כבר משויך למספר אחר',
     LOGIN_TAKEN: 'שם הכניסה כבר בשימוש',
     PACKAGE_DISABLED: 'החבילה מושבתת',
     PACKAGE_HIDDEN: 'החבילה אינה מוצעת למכירה',

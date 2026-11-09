@@ -5,7 +5,6 @@ import tseslint from 'typescript-eslint';
 const SIZE_EXCEPTIONS = [
   'src/modules/office/companies/companies.service.ts',
   'src/modules/office/desk/overview.service.ts',
-  'src/modules/office/lines/lines.service.ts',
   'src/modules/office/providers/provider-catalog.service.ts',
   'src/modules/office/tasks/tasks.service.ts',
   'src/modules/office/tree-fixture.ts',

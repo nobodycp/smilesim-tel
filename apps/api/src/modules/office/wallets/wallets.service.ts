@@ -59,6 +59,7 @@ export class WalletsService {
       fail(403, 'FORBIDDEN');
     }
     await this.kernel.runTx(async (tx) => {
+      await this.kernel.lockWallets(tx, [actor.id, target.id]);
       if (!self) await this.kernel.move(tx, actor.id, -amount, actor.operatorId, 'fund', note, undefined, reason);
       await this.kernel.move(tx, target.id, amount, actor.operatorId, self ? 'self_fund' : 'fund', note, undefined, reason);
       if (!self) {
@@ -86,6 +87,7 @@ export class WalletsService {
     if (!visible.has(target.id) || target.id === actor.id) fail(403, 'FORBIDDEN');
     if (actor.layer !== 'branch' && target.parentId !== actor.id) fail(403, 'FORBIDDEN');
     await this.kernel.runTx(async (tx) => {
+      await this.kernel.lockWallets(tx, [actor.id, target.id]);
       await this.kernel.move(tx, target.id, -amount, actor.operatorId, 'deduct', note, undefined, reason);
       await this.kernel.move(tx, actor.id, amount, actor.operatorId, 'deduct_in', note, undefined, reason);
       this.kernel.queueNotices(tx, await this.kernel.notice.write(tx, [target.id], actor, {

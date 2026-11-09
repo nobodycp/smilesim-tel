@@ -9,6 +9,7 @@ import type { Actor } from '../kernel/types';
 import { GRANT_CODES, effectiveGrantCodes, roleGrantCodes, splitGrants } from '../office-grants';
 import { visibleAccountIds } from '../office-rules';
 import { stampTaskLog } from '../task-log';
+import { HANDLER_FROZEN_NOTE } from '../tasks/task-notes';
 import { HANDOFF_SECONDS, handoffKey } from './handoff';
 import { usersPage, type UsersFilter } from './users-page';
 
@@ -272,16 +273,13 @@ export class AccountsService {
     if (target.role?.staff && !actor.isBranchOwner) fail(403, 'FORBIDDEN');
     await this.kernel.prisma.user.update({ where: { id: target.id }, data: { disabledAt: frozen ? new Date() : null } });
     if (frozen) {
-      const held = await this.kernel.prisma.officeTask.findMany({ where: { assigneeId: target.id, status: 'working' } });
-      for (const task of held) {
-        await this.kernel.prisma.officeTask.update({
-          where: { id: task.id },
-          data: {
-            status: 'pending',
-            assigneeId: null,
-            resultNote: 'رجع لأن الحساب أُوقف',
-            log: stampTaskLog(task.log, 'رجعت لأن الحساب أُوقف'),
-          },
+      // The tasks it was handling go back to the pool: still open, nobody's (rule 2.4 — no status nothing handles).
+      // One guarded write, so a task finished at this moment is left as it is.
+      const handled = await this.kernel.prisma.officeTask.findMany({ where: { assigneeId: target.id, status: 'working' }, select: { id: true, log: true } });
+      for (const task of handled) {
+        await this.kernel.prisma.officeTask.updateMany({
+          where: { id: task.id, assigneeId: target.id, status: 'working' },
+          data: { assigneeId: null, log: stampTaskLog(task.log, HANDLER_FROZEN_NOTE) },
         });
       }
       await this.kernel.auth.dropLiveSessions(target.id);

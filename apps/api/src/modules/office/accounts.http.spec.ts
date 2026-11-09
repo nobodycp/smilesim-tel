@@ -65,7 +65,12 @@ function world() {
     userRole: { findMany: async () => [] },
     officeTask: {
       findMany: async () => tasks.filter((task) => task.status === 'working'),
-      update: async (args: { where: { id: string }; data: Record<string, unknown> }) => { written.push({ op: 'task.update', args }); Object.assign(tasks.find((task) => task.id === args.where.id)!, args.data); },
+      // The guarded write of a freeze: only a task this account still handles.
+      updateMany: async (args: { where: { id: string; assigneeId: string; status: string }; data: Record<string, unknown> }) => {
+        const task = tasks.find((row) => row.id === args.where.id && row.assigneeId === args.where.assigneeId && row.status === args.where.status);
+        if (task) Object.assign(task, args.data);
+        return { count: task ? 1 : 0 };
+      },
       count: async () => counts.tasks,
     },
     line: { count: async () => counts.lines },
@@ -181,7 +186,9 @@ describe('accounts and roles over HTTP', () => {
     expect(await code(as('owner', 'post', '/office/users/owner/freeze'))).toBe('403 FORBIDDEN');
     expect(await code(as('owner', 'post', '/office/users/clerk/freeze'))).toBe('201');
     expect(w.users.find((user) => user.id === 'clerk')!.disabledAt).toBeInstanceOf(Date);
-    expect(w.tasks[0]).toMatchObject({ status: 'pending', assigneeId: null, resultNote: 'رجع لأن الحساب أُوقف' });
+    // Back in the pool, still open: nothing handles a status of its own for this (review 2026-11-10, M5).
+    expect(w.tasks[0]).toMatchObject({ status: 'working', assigneeId: null });
+    expect(w.tasks[0].log).toContain('رجعت لأن الحساب أُوقف');
     expect((await store.liveSession(sessions.clerk))).toBeNull();
     expect(await code(as('owner', 'post', '/office/users/clerk/restore'))).toBe('201');
     expect(w.users.find((user) => user.id === 'clerk')!.disabledAt).toBeNull();

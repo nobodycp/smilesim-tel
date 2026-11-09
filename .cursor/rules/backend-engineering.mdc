@@ -31,7 +31,7 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
    `updateMany({ where: { id, status: <expected> } })` and fail when the count is 0. Never `update({ where: { id } })`
    to change a status. *(architecture.spec: `unguarded-status-write`)*
 2. A value read before the transaction is not trusted inside it: re-read under the lock, then validate.
-3. One open task per line and action. `openTask` refuses a second one (`TASK_ALREADY_OPEN`).
+3. One open task per line and action. `openTask` locks the line and refuses a second one (`409 DUPLICATE_REQUEST`).
 4. A status that the code does not handle must not be written. Statuses, kinds, layers and actions are exported
    unions (and Prisma enums); `status: string` in a signature is refused. One declaration per concept.
 5. Every bug fix in sections 1–2 lands with a test that failed before the fix.
@@ -57,7 +57,7 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
 2. Every string has a maximum; every number is an integer with bounds; an unknown enum value is 400, not ignored.
 3. Errors are always `{ message, code }` with a code from `src/errors.ts`. Status table:
    400 invalid input or a rule refused · 401 no session · 403 not allowed · 404 missing or not visible ·
-   409 conflict (`*_TAKEN`, `*_EXISTS`, `DUPLICATE_REQUEST`, `TASK_ALREADY_OPEN`) · 429 rate limit.
+   409 conflict (`*_TAKEN`, `*_EXISTS`, `DUPLICATE_REQUEST`) · 429 rate limit.
    *(architecture.spec: `conflict-status`)*
 4. Every write route under `/office` carries `@Activity(...)`. *(architecture.spec: `write-without-activity`)*
 5. The provider's answer never comes from the client. Line operations go through `ProviderGateway`.

@@ -117,7 +117,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   });
 
   it('4.3 conflict-status: a conflict answers 409', () => {
-    check('conflict-status', hits(production, /fail\(4(?!09)\d\d, '\w+_(TAKEN|EXISTS)'|fail\(4(?!09)\d\d, '(DUPLICATE_REQUEST|TASK_ALREADY_OPEN)'/));
+    check('conflict-status', hits(production, /fail\(4(?!09)\d\d, '(\w+_(TAKEN|EXISTS)|DUPLICATE_REQUEST)'/));
   });
 
   it('4.4 write-without-activity: every office write is recorded', () => {
