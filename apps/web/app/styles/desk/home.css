@@ -40,7 +40,25 @@
 .donut-legend li > a:hover { background: var(--rd-surface-2); }
 .donut-dot { inline-size: 10px; block-size: 10px; border-radius: var(--rd-radius-pill); }
 .donut-value { font-weight: 700; }
-.donut-share { color: var(--rd-muted); font-size: var(--rd-text-sm); min-inline-size: 3ch; text-align: end; }
+/* The donut's change and pointing (spec 2026-11-09-admin-review, 6.4): beside each count a green ↑ or a red ↓ with
+   the number; the slice pointed at thickens, the others dim, and its share takes the middle. */
+.donut-change { display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px; min-inline-size: 3.5ch; font-size: var(--rd-text-xs); font-weight: 700; }
+.donut-change.up { color: var(--rd-success); }
+.donut-change.down { color: var(--rd-danger); }
+.donut-slice { cursor: pointer; transition: stroke-width 180ms var(--rd-ease-out), opacity 180ms var(--rd-ease-out); }
+.donut.pointing .donut-slice:not(.on) { opacity: 0.35; }
+.donut-slice.on { stroke-width: 28px; }
+.donut-legend li { transition: opacity 180ms var(--rd-ease-out); }
+.donut.pointing .donut-legend li:not(.on) { opacity: 0.55; }
+.donut-legend li.on > a, .donut-legend li.on > span { background: var(--rd-surface-2); }
+.donut-total.share { font-size: calc(var(--rd-text-2xl) * 1.25); }
+.donut-caption { fill: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .donut-slice { animation: donut-draw 700ms var(--rd-ease-out) both; }
+  .donut-total, .donut-caption { animation: donut-fade 220ms ease-out; }
+}
+@keyframes donut-draw { from { stroke-dasharray: 0 999; } }
+@keyframes donut-fade { from { opacity: 0; } }
 
 /* Meters: tasks by status and the ranked lists share one bar. */
 .overview-meters, .overview-rank { display: grid; gap: var(--rd-space-1); margin: 0; padding: 0; list-style: none; }

@@ -475,6 +475,8 @@ export const he: Copy = {
   stepSim: 'כרטיס SIM',
   saveCompany: 'הוספת החברה',
   noProviderCompanies: 'הספק לא מציע חברות.',
+  changeMore: '{n} יותר מתחילת התקופה',
+  changeFewer: '{n} פחות מתחילת התקופה',
   layerSessionHint: 'חלים על כל חשבון בשכבה הזו שאין לו ערכים משלו ב«הגדרות משתמש».',
   sessionRulesTitle: 'סשנים לפי שכבה',
   sessionRulesHint: 'כמה סשנים פתוחים מותרים לכל חשבון, ומתי סשן נסגר ללא פעילות. לכל חשבון אפשר ערכים משלו מהדף שלו.',

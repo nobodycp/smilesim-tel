@@ -71,6 +71,8 @@ export type OverviewPayload = {
   period: 'day' | 'month' | 'all';
   from: string | null;
   lines: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number };
+  /** Each slice's change over the period (spec 2026-11-09-admin-review, 6.4); null before the first earlier snapshot. */
+  lineChange?: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number } | null;
   sales: { count: number; amount: number; profit: number; refunds: number; refundAmount: number; net: number; activations: number; trend: { day: string; amount: number; profit: number; count: number }[]; capped: boolean };
   top: { packages: OverviewRanked[]; companies: OverviewRanked[]; providers: OverviewRanked[] };
   active: { main_agent: OverviewRanked[]; agent: OverviewRanked[]; pos: OverviewRanked[] };

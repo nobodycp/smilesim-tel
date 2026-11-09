@@ -9,6 +9,7 @@ const overview = (period: string, withProviders: boolean) => ({
   period,
   from: null,
   lines: { active: 6, expiring: 2, frozen: 1, disconnected: 3, suspended: 1 },
+  lineChange: { active: 3, expiring: 0, frozen: -2, disconnected: 0, suspended: 0 },
   sales: {
     count: 12, amount: 54000, profit: 3600, refunds: 1, refundAmount: 2250, net: 51750, capped: false,
     trend: [{ day: '2026-11-07', amount: 18000, profit: 1200, count: 4 }, { day: '2026-11-08', amount: 36000, profit: 2400, count: 8 }],
@@ -67,6 +68,16 @@ test('the branch reads the full overview, switches the period, and sees its prov
   await expect(legend).toHaveCount(5);
   await expect(page.locator('.donut-total')).toHaveText('13');
   await expect(page.locator('.donut-legend a[href="/numbers?status=suspended"]')).toContainText('معلق');
+  // Each slice's change over the period (spec 2026-11-09-admin-review, 6.4): green ↑3, red ↓2, nothing for 0.
+  await expect(legend.nth(0).locator('.donut-change.up')).toHaveText('3');
+  await expect(page.locator('.donut-legend a[href="/numbers?status=frozen"] .donut-change.down')).toHaveText('2');
+  await expect(legend.nth(1).locator('.donut-change.up, .donut-change.down')).toHaveCount(0);
+  // Pointing at a slice puts its share in the ring's middle; leaving brings the total back.
+  await legend.nth(0).hover();
+  await expect(page.locator('.donut-total')).toHaveText('46%');
+  await expect(page.locator('.donut-caption')).toHaveText('فعال');
+  await page.locator('.home-head h1').hover();
+  await expect(page.locator('.donut-total')).toHaveText('13');
 
   const providers = page.locator('.overview-card', { hasText: 'المزودون' }).first();
   await expect(providers.locator('tbody tr')).toHaveCount(2);

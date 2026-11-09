@@ -51,6 +51,7 @@ export function ShortcutsCard({ items }: { items: { href: string; label: string;
 export function LinesCard({ data }: { data: OverviewPayload }) {
   const { t } = usePrefs();
   const { lines } = data;
+  const change = data.lineChange ?? null;
   const total = lines.active + lines.expiring + lines.frozen + lines.disconnected + lines.suspended;
   return (
     <Card title={t.overviewLines} hint={t.overviewLinesHint}>
@@ -58,11 +59,11 @@ export function LinesCard({ data }: { data: OverviewPayload }) {
         label={t.overviewLines}
         total={String(total)}
         slices={[
-          { key: 'active', label: t.lineActive, value: lines.active, tone: '--rd-success', href: '/numbers?status=active' },
-          { key: 'expiring', label: t.expiringSoon, value: lines.expiring, tone: '--rd-warning', href: '/numbers?status=expiring' },
-          { key: 'frozen', label: t.lineFrozen, value: lines.frozen, tone: '--rd-chart-frozen', href: '/numbers?status=frozen' },
-          { key: 'suspended', label: t.lineSuspended, value: lines.suspended, tone: '--rd-chart-suspended', href: '/numbers?status=suspended' },
-          { key: 'disconnected', label: t.lineDisconnected, value: lines.disconnected, tone: '--rd-danger', href: '/numbers?status=disconnected' },
+          { key: 'active', label: t.lineActive, value: lines.active, tone: '--rd-success', href: '/numbers?status=active', change: change?.active },
+          { key: 'expiring', label: t.expiringSoon, value: lines.expiring, tone: '--rd-warning', href: '/numbers?status=expiring', change: change?.expiring },
+          { key: 'frozen', label: t.lineFrozen, value: lines.frozen, tone: '--rd-chart-frozen', href: '/numbers?status=frozen', change: change?.frozen },
+          { key: 'suspended', label: t.lineSuspended, value: lines.suspended, tone: '--rd-chart-suspended', href: '/numbers?status=suspended', change: change?.suspended },
+          { key: 'disconnected', label: t.lineDisconnected, value: lines.disconnected, tone: '--rd-danger', href: '/numbers?status=disconnected', change: change?.disconnected },
         ]}
       />
     </Card>

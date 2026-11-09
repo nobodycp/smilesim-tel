@@ -20,7 +20,7 @@ const entries = [
   { id: 'r1', userId: 'pos', kind: 'disconnect', lineId: 'l1', packagePrice: 3800, amount: 1900, ladder: { ...ladder('pos'), share: -0.5 }, createdAt: at, packageName: '400 جيجا', companyName: 'سلكوم', providerCost: 0 },
 ];
 
-function service() {
+function service(snapshots: { userId: string; day: string; active: number; expiring: number; frozen: number; disconnected: number; suspended: number }[] = []) {
   const kernel = Object.create(OfficeKernel.prototype) as OfficeKernel;
   const lineCounts: Record<string, number> = { active: 10, frozen: 2, disconnected: 3 };
   kernel.prismaClient = {
@@ -34,6 +34,15 @@ function service() {
       ],
     },
     walletEntry: { findMany: async () => entries },
+    lineCountSnapshot: {
+      upsert: async ({ create }: { create: (typeof snapshots)[number] }) => {
+        const index = snapshots.findIndex((row) => row.userId === create.userId && row.day === create.day);
+        if (index >= 0) snapshots[index] = create;
+        else snapshots.push(create);
+      },
+      findFirst: async ({ where }: { where: { userId: string; day: { lt: string } } }) =>
+        snapshots.filter((row) => row.userId === where.userId && row.day < where.day.lt).sort((a, b) => (a.day < b.day ? 1 : -1))[0] ?? null,
+    },
     wallet: { findMany: async () => [{ userId: 'pos', balance: -2000, ceiling: 5000 }, { userId: 'pos2', balance: 700, ceiling: 1000 }, { userId: 'agent', balance: -500, ceiling: 300 }] },
     officeTask: {
       count: async ({ where }: { where: { AND: { status?: string }[] } }) => (where.AND[1]?.status === 'pending' ? 4 : 1),
@@ -58,6 +67,24 @@ describe('OverviewService', () => {
     const result = await service().overview(actor('agent', 'agent'), { period: 'all' });
     expect(result.period).toBe('all');
     expect(result.lines).toEqual({ active: 7, expiring: 2, frozen: 2, disconnected: 3, suspended: 1 });
+  });
+
+  it('counts each slice\'s change against the last snapshot before the period, and writes today\'s', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const snapshots = [
+      { userId: 'agent', day: '2000-01-01', active: 1, expiring: 0, frozen: 0, disconnected: 0, suspended: 0 },
+      { userId: 'agent', day: '2000-01-02', active: 4, expiring: 2, frozen: 3, disconnected: 3, suspended: 1 },
+    ];
+    const day = await service(snapshots).overview(actor('agent', 'agent'), { period: 'day' });
+    // Now: active 7, expiring 2, frozen 2, disconnected 3, suspended 1 — against the latest day before today.
+    expect(day.lineChange).toEqual({ active: 3, expiring: 0, frozen: -1, disconnected: 0, suspended: 0 });
+    expect(snapshots.find((row) => row.day === today)).toMatchObject({ userId: 'agent', active: 7, frozen: 2 });
+    // All time compares with nothing: the change is the count itself.
+    expect((await service(snapshots).overview(actor('agent', 'agent'), { period: 'all' })).lineChange).toEqual({ active: 7, expiring: 2, frozen: 2, disconnected: 3, suspended: 1 });
+  });
+
+  it('has no change to show before the first snapshot of an earlier day', async () => {
+    expect((await service().overview(actor('agent', 'agent'), { period: 'month' })).lineChange).toBeNull();
   });
 
   it('sums the sales with the viewer\'s profit, takes refunds back, and ranks packages and companies', async () => {

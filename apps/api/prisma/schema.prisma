@@ -440,6 +440,21 @@ model Notice {
   @@index([userId, readAt])
 }
 
+/// One viewer's line counts on one UTC day, the last read of that day (spec 2026-11-09-admin-review, 6.4): the home
+/// donut's change is now minus the snapshot before the period.
+model LineCountSnapshot {
+  userId       String
+  day          String
+  active       Int
+  expiring     Int
+  frozen       Int
+  disconnected Int
+  suspended    Int
+  updatedAt    DateTime @updatedAt
+
+  @@id([userId, day])
+}
+
 // Office identity: one row (id = 1) the branch owner edits from /branding.
 // Images are data URLs, the same storage as Company.image.
 model SiteBranding {

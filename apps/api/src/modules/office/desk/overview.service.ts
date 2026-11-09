@@ -27,6 +27,7 @@ export function periodStart(period: OverviewPeriod, now: Date = new Date()): Dat
   return null;
 }
 
+type LineCounts = { active: number; expiring: number; frozen: number; disconnected: number; suspended: number };
 type Ranked = { key: string; label: string; count: number; amount: number; profit: number };
 
 function rank(map: Map<string, Ranked>, by: 'count' | 'profit') {
@@ -68,11 +69,34 @@ export class OverviewService {
       this.tasks(actor, accounts, now),
       readsProviders ? this.providers(actor, from) : Promise.resolve(null),
     ]);
-    return { period, from: from?.toISOString() ?? null, lines, ...money, users, tasks, providers };
+    const lineChange = await this.lineChange(actor, period, lines, now);
+    return { period, from: from?.toISOString() ?? null, lines, lineChange, ...money, users, tasks, providers };
+  }
+
+  /**
+   * How each slice moved over the period (spec 2026-11-09-admin-review, 6.4): now minus the viewer's last snapshot
+   * before it — yesterday's for today, the previous month's last for this month, nothing (zero) for all time. Today's
+   * snapshot is written here, so history builds as the home is read. Null when there is no snapshot to compare with.
+   */
+  private async lineChange(actor: Actor, period: OverviewPeriod, lines: LineCounts, now: Date): Promise<LineCounts | null> {
+    const store = this.kernel.prisma.lineCountSnapshot;
+    const today = now.toISOString().slice(0, 10);
+    await store.upsert({ where: { userId_day: { userId: actor.id, day: today } }, update: lines, create: { userId: actor.id, day: today, ...lines } });
+    if (period === 'all') return lines;
+    const before = (periodStart(period, now) as Date).toISOString().slice(0, 10);
+    const base = await store.findFirst({ where: { userId: actor.id, day: { lt: before } }, orderBy: { day: 'desc' } });
+    if (!base) return null;
+    return {
+      active: lines.active - base.active,
+      expiring: lines.expiring - base.expiring,
+      frozen: lines.frozen - base.frozen,
+      disconnected: lines.disconnected - base.disconnected,
+      suspended: lines.suspended - base.suspended,
+    };
   }
 
   /** Lines now, under the viewer: each a slice of the donut (suspended and expiring are read from the end date). */
-  private async lines(posIds: string[], now: Date) {
+  private async lines(posIds: string[], now: Date): Promise<LineCounts> {
     const prisma = this.kernel.prisma;
     const scope = { posId: { in: posIds } };
     const periods = (await prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } })).map((row) => row.suspendAfterDays);

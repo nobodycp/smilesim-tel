@@ -475,6 +475,8 @@ export const ar = {
   stepSim: 'الشريحة',
   saveCompany: 'إضافة الشركة',
   noProviderCompanies: 'لا يعرض المزود شركات.',
+  changeMore: '{n} أكثر من بداية الفترة',
+  changeFewer: '{n} أقل من بداية الفترة',
   layerSessionHint: 'تسري على كل حساب في هذه الطبقة ليس له قيمة خاصة في «إعدادات المستخدم».',
   sessionRulesTitle: 'الجلسات حسب الطبقة',
   sessionRulesHint: 'كم جلسة مفتوحة مسموحة لكل حساب، ومتى تنتهي الجلسة إذا لم يصر عليها أي نشاط. لكل حساب قيمة خاصة من صفحته.',
