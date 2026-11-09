@@ -1,3 +1,4 @@
+import { refuseEntered, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Offer } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
@@ -46,7 +47,8 @@ export class OffersService {
   constructor(private readonly kernel: OfficeKernel) {}
 
   private gate(actor: Actor) {
-    if (actor.layer !== 'branch' || actor.impersonating || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    refuseEntered(actor);
+    requireGrant(actor, 'edit');
   }
 
   /** The offers the signed-in account sees on its home now, in order. */

@@ -26,7 +26,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/companies', 'yyynnn'],
   ['POST /office/companies', 'ynynnn'], // spec 2026-11-09-admin-review, 3: owner or edit grant
   ['PUT /office/companies/CODE1/sim', 'ynynnn'],
-  ['POST /office/companies/image', 'yyynnn'],
+  ['POST /office/companies/image', 'ynynnn'], // review 2026-11-10, S11: owner or edit grant
   ['GET /office/directory', 'yyyyyy'],
   ['GET /office/finance', 'yyyyyy'], // read/accounting not checked (see spec)
   ['GET /office/finance/export', 'yyyyyy'], // read/accounting not checked (see spec)
@@ -118,7 +118,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['POST /office/tasks/ID1/release', 'ynynnn'],
   ['POST /office/tasks/ID1/take', 'ynynnn'],
   ['GET /office/users', 'yyyyyy'], // read/accounting not checked (see spec)
-  ['POST /office/users', 'yyyyyn'],
+  ['POST /office/users', 'ynyyyn'], // review 2026-11-10, S11: in the branch, owner or edit (staff: owner or staff grant)
   ['DELETE /office/users/LOGIN1', 'nnnnnn'],
   ['GET /office/users/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PATCH /office/users/LOGIN1/access', 'ynnnnn'],
@@ -129,7 +129,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/users/LOGIN1/packages', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PUT /office/users/LOGIN1/packages', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PUT /office/users/LOGIN1/packages/CODE1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['POST /office/users/LOGIN1/password', 'yyyyyn'],
+  ['POST /office/users/LOGIN1/password', 'ynyyyn'], // review 2026-11-10, S3: in the branch, owner or staff grant
   ['POST /office/users/LOGIN1/restore', 'nnnnnn'],
   ['POST /office/users/LOGIN1/transfer', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/users/LOGIN1/transfer-preview', 'ynyyyn'],

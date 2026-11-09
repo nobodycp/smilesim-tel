@@ -67,6 +67,8 @@ model Session {
   ip         String
   scope      String
   kind       String
+  /** On an entered (impersonation) session: the branch account that entered. Who acted is read from here. */
+  operatorId String?
   createdAt  DateTime  @default(now())
   lastSeenAt DateTime  @default(now())
   expiresAt  DateTime

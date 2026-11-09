@@ -1,3 +1,4 @@
+import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
@@ -19,7 +20,7 @@ export class ReportsService {
 
   async report(actor: Actor, kind: string, cursor?: string) {
     if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
-    if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, 'REPORTS_BRANCH_ONLY');
+    requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
     if (kind === 'providers') return this.providerReport();
     if (kind === 'operations') return this.entryReport(cursor, PROVIDER_OPERATION_KINDS);
     if (kind === 'tasks') {

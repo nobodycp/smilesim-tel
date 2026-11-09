@@ -1,3 +1,4 @@
+import { holds } from './policy';
 import { type AccountNode, visibleAccountIds } from './office-rules';
 
 export type TaskSubject = { submitterId: string; posId: string };
@@ -26,8 +27,7 @@ export function taskWhereFor(actor: { id: string; layer: string }, accounts: Acc
 
 /** Handling (take, release, complete, reject) stays with the branch owner and the `tasks` grant. */
 export function canHandleTasks(actor: Handler): boolean {
-  if (actor.layer !== 'branch') return false;
-  return actor.isBranchOwner || actor.grants.includes('tasks');
+  return holds(actor, 'tasks');
 }
 
 /** The chain side of a task: its submitter and the point of sale that owns the number. */

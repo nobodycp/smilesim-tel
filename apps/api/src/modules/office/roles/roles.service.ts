@@ -1,3 +1,4 @@
+import { isOwner, requireOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
@@ -11,7 +12,7 @@ export class RolesService {
   constructor(private readonly kernel: OfficeKernel) {}
 
   async list(actor: Actor) {
-    if (!actor.isBranchOwner) fail(403, 'FORBIDDEN');
+    if (!isOwner(actor)) fail(403, 'FORBIDDEN');
     await this.kernel.ensureLayerRoles();
     const roles = await this.kernel.prisma.role.findMany();
     const rank = (role: { kind: string; layer: string | null; name: string }) =>
@@ -36,7 +37,7 @@ export class RolesService {
   }
 
   async save(actor: Actor, body: { id?: unknown; name?: unknown; grants?: unknown; read?: unknown; edit?: unknown; accounting?: unknown; tasks?: unknown; reports?: unknown; staff?: unknown; enter?: unknown }) {
-    if (!actor.isBranchOwner || actor.impersonating) fail(403, 'FORBIDDEN');
+    requireOwner(actor);
     const listed = Array.isArray(body.grants)
       ? splitGrants(body.grants.filter((code): code is string => typeof code === 'string').join(','))
       : FLAG_CODES.filter((code) => body[code] === true);

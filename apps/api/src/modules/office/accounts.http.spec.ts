@@ -171,10 +171,12 @@ describe('accounts and roles over HTTP', () => {
   });
 
   it('resets a password only below the actor, never its own or the owner\'s', async () => {
-    expect(await code(as('ma1', 'post', '/office/users/ag1/password', { password: 'longenough' }))).toBe('201');
-    expect(w.written.at(-1)).toMatchObject({ op: 'user.update', args: { where: { id: 'ag1' }, data: { mustChangePassword: true } } });
     expect(await code(as('ag1', 'post', '/office/users/ma1/password', { password: 'longenough' }))).toBe('403 FORBIDDEN');
     expect(await code(as('ag1', 'post', '/office/users/ag2/password', { password: 'longenough' }))).toBe('403 FORBIDDEN');
+    expect(await code(as('ma1', 'post', '/office/users/ag1/password', { password: 'longenough' }))).toBe('201');
+    expect(w.written.at(-1)).toMatchObject({ op: 'user.update', args: { where: { id: 'ag1' }, data: { mustChangePassword: true } } });
+    // Whoever held the old password is signed out (review 2026-11-10, S3).
+    expect(await store.liveSession(sessions.ag1)).toBeNull();
     expect(await code(as('ma1', 'post', '/office/users/ma1/password', { password: 'longenough' }))).toBe('403 FORBIDDEN');
     expect(await code(as('ma1', 'post', '/office/users/owner/password', { password: 'longenough' }))).toBe('403 FORBIDDEN');
     expect(await code(as('ma1', 'post', '/office/users/ag1/password', { password: 'short' }))).toBe('400 PASSWORD_TOO_SHORT');
@@ -230,6 +232,16 @@ describe('accounts and roles over HTTP', () => {
     expect(left.status).toBe(201);
     expect(String(left.headers['set-cookie'])).toContain(`sid=${sessions.owner}`);
     expect(await store.liveSession(sid)).toBeNull();
+  });
+
+  it('never enters a branch account, and keeps who entered on the session itself (review 2026-11-10, S1, S7)', async () => {
+    // The owner's own account and another employee: entering either would hand over the office.
+    expect(await code(as('owner', 'post', '/office/users/clerk/enter'))).toBe('403 FORBIDDEN');
+    const entered = await as('owner', 'post', '/office/users/pos1/enter');
+    const handed = await request(app.getHttpServer()).post('/office/handoff').send({ code: entered.body.code });
+    const sid = /sid=([^;]+)/.exec(String(handed.headers['set-cookie']))![1];
+    // No `home` cookie is needed, or trusted, to know who is acting.
+    expect((await store.liveSession(sid))?.session).toMatchObject({ kind: 'impersonation', operatorId: 'owner' });
   });
 
   it('refuses an expired or unknown handoff code', async () => {

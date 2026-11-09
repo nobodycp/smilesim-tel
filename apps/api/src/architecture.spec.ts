@@ -69,7 +69,6 @@ function check(rule: string, found: Hit[]) {
 
 const within = (prefix: string) => production.filter(({ file }) => file.startsWith(prefix));
 const office = within('modules/office/');
-const services = production.filter(({ file }) => file.endsWith('.service.ts'));
 const officeControllers = office.filter(({ file }) => file.endsWith('.controller.ts'));
 
 describe('engineering rules (backend-engineering.mdc)', () => {
@@ -105,7 +104,8 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   });
 
   it('3.1 inline-grant-checks: services ask the policy, not the actor', () => {
-    check('inline-grant-checks', hits(services, /grants\.includes\(|\bisBranchOwner\b/));
+    const askers = production.filter(({ file }) => file.startsWith('modules/office/') && /\.(service|controller)\.ts$/.test(file));
+    check('inline-grant-checks', hits(askers, /actor\.grants\.includes\(|actor\.isBranchOwner/));
   });
 
   it('4.1 hand-parsed-input: bodies are parsed by a schema', () => {

@@ -1,3 +1,4 @@
+import { granted } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
@@ -195,7 +196,7 @@ export class TransfersService {
     const moved = accounts.find((account) => account.loginName === loginName);
     const kind = moved ? transferKind(moved.layer) : null;
     if (!moved || !kind) {
-      const mayMove = !actor.impersonating && (actor.grants.includes(TRANSFER_GRANT.pos) || actor.grants.includes(TRANSFER_GRANT.agent));
+      const mayMove = !actor.impersonating && (granted(actor, TRANSFER_GRANT.pos) || granted(actor, TRANSFER_GRANT.agent));
       if (!mayMove) fail(403, 'FORBIDDEN');
       fail(400, 'INVALID');
     }

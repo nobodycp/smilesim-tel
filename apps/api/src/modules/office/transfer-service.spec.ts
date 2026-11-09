@@ -251,7 +251,7 @@ describe('transfer preview: the refusals are the move\'s', () => {
 
   it('refuses an impersonating session, even when it is the branch owner entered', async () => {
     const { service, auth } = await tree();
-    const sessionId = await auth.saveImpersonation({ userId: 'branch', userAgent: '', ip: '' });
+    const sessionId = await auth.saveImpersonation({ userId: 'branch', operatorId: 'branch', userAgent: '', ip: '' });
     for (const login of ['ag1', 'pos1', 'ma1', 'ghost']) {
       await expect(service.transferPreview({ sessionId }, login, { parentLogin: 'ma2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
     }
@@ -632,7 +632,7 @@ describe('transfer: refusals', () => {
 
   it('refuses an impersonating session, even when it is the branch owner entered, and asks for a session', async () => {
     const { service, auth, accounts } = await tree();
-    const sessionId = await auth.saveImpersonation({ userId: 'branch', userAgent: '', ip: '' });
+    const sessionId = await auth.saveImpersonation({ userId: 'branch', operatorId: 'branch', userAgent: '', ip: '' });
     await expect(service.transferAccount({ sessionId }, 'ag1', agentMove())).rejects.toEqual(refused(403, 'FORBIDDEN'));
     await expect(service.transferAccount({}, 'ag1', agentMove())).rejects.toEqual(refused(401, 'LOGIN_REQUIRED'));
     expect(rowOf(accounts, 'ag1').parentId).toBe('ma1');
@@ -809,7 +809,7 @@ describe('transfer: a number', () => {
 
   it('refuses an impersonating session, even when it is the branch owner entered, and asks for a session', async () => {
     const { service, auth, line } = await tree();
-    const sessionId = await auth.saveImpersonation({ userId: 'branch', userAgent: '', ip: '' });
+    const sessionId = await auth.saveImpersonation({ userId: 'branch', operatorId: 'branch', userAgent: '', ip: '' });
     await expect(service.transferLine({ sessionId }, 'ln1', lineMove())).rejects.toEqual(refused(403, 'FORBIDDEN'));
     await expect(service.transferLine({}, 'ln1', lineMove())).rejects.toEqual(refused(401, 'LOGIN_REQUIRED'));
     expect(line.posId).toBe('pos1');

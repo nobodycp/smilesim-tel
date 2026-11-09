@@ -1,3 +1,4 @@
+import { requireGrant, seesLayer } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
@@ -57,6 +58,7 @@ export class PackagesService {
     // The layer the actor sells to; null for the branch (no sell price) and the point of sale.
     const sellsTo = actor.layer === 'main_agent' ? 'agent' : actor.layer === 'agent' ? 'pos' : null;
     const ownSell = (packageId: string) => sellRows.find((row) => row.packageId === packageId && row.ownerId === actor.id) ?? null;
+    const branch = actor.layer === 'branch';
     const images = new Map<string, string>();
     for (const row of rows) {
       const name = row.company?.name ?? '';
@@ -85,17 +87,19 @@ export class PackagesService {
         minutes: row.minutes,
         details: row.details ?? '',
         months: row.months,
-        branchCost: row.branchCost,
-        mainPrice: row.mainPrice,
-        agentPrice: row.agentPrice,
+        // A layer sees its own column and the ones below it, never what the layers above pay (rule 3.4).
+        branchCost: seesLayer(actor.layer, 'branch') ? row.branchCost : null,
+        mainPrice: seesLayer(actor.layer, 'main_agent') ? row.mainPrice : null,
+        agentPrice: seesLayer(actor.layer, 'agent') ? row.agentPrice : null,
         posPrice: row.posPrice,
         subscriberPrice: row.subscriberPrice,
         editableField: field,
-        autoActivate: row.autoActivate,
-        autoCharge: row.autoCharge,
-        autoDisconnect: row.autoDisconnect,
-        autoFreeze: row.autoFreeze,
-        autoSwitch: row.autoSwitch,
+        // How the provider runs each operation is the branch's business.
+        autoActivate: branch ? row.autoActivate : null,
+        autoCharge: branch ? row.autoCharge : null,
+        autoDisconnect: branch ? row.autoDisconnect : null,
+        autoFreeze: branch ? row.autoFreeze : null,
+        autoSwitch: branch ? row.autoSwitch : null,
       })),
     };
   }
@@ -132,7 +136,7 @@ export class PackagesService {
 
   async setMode(actor: Actor, code: string, body: Record<string, unknown>) {
     // Package modes apply to every account, so only the branch sets them, like the chain and the targets.
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const keys = ['autoActivate', 'autoCharge', 'autoDisconnect', 'autoFreeze', 'autoSwitch', 'autoExtend', 'autoRename', 'autoSim', 'allowActivate', 'allowCharge', 'allowDisconnect', 'allowFreeze', 'allowSwitch', 'allowExtend', 'allowRename', 'allowSim', 'enabled'] as const;
@@ -214,7 +218,7 @@ export class PackagesService {
 
   /** GB, minutes, messages (null = not stated, -1 = unlimited) and up to 300 characters of extra details. */
   async setDetails(actor: Actor, code: string, body: Record<string, unknown>) {
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     const amount = (value: unknown) => value === null || (typeof value === 'number' && Number.isInteger(value) && value >= -1 && value <= 1_000_000);
     if (!amount(body.dataGb) || !amount(body.smsCount) || !amount(body.minutes)) fail(400, 'INVALID');
     if (typeof body.details !== 'string' || body.details.trim().length > PACKAGE_DETAILS_LIMIT) fail(400, 'INVALID');
@@ -248,7 +252,7 @@ export class PackagesService {
 
   /** Adds an extra operation, or changes one when `id` is given: name, price (agorot) and on/off. */
   async saveAddon(actor: Actor, code: string, body: Record<string, unknown>, id?: string) {
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const name = typeof body.name === 'string' ? body.name.trim() : undefined;
@@ -276,7 +280,7 @@ export class PackagesService {
   }
 
   async removeAddon(actor: Actor, code: string, id: string) {
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     const row = await this.kernel.prisma.packageAddon.findUnique({ where: { id } });
     if (!pkg || !row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
@@ -285,7 +289,7 @@ export class PackagesService {
   }
 
   async setChain(actor: Actor, code: string, body: Record<string, unknown>) {
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const next = { ...pricesOf(pkg) };
@@ -333,7 +337,7 @@ export class PackagesService {
   }
 
   async setTargets(actor: Actor, code: string, kind: 'renewals' | 'switches', body: { targets?: unknown }) {
-    if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     if (!Array.isArray(body.targets) || body.targets.some((target) => typeof target !== 'string' || !target)) {
       fail(400, 'INVALID');
     }

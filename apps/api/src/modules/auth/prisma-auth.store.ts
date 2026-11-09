@@ -79,6 +79,7 @@ function toSessionRow(row: SessionRecord): SessionRow {
     userId: row.userId,
     scope: row.scope as SessionScope,
     kind: row.kind as SessionKind,
+    operatorId: row.operatorId,
     userAgent: row.userAgent,
     ip: row.ip,
     createdAt: row.createdAt,
@@ -295,7 +296,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     await this.prisma.user.update({ where: { id: userId }, data: { liveGrants: grants } });
   }
 
-  async saveImpersonation(input: { userId: string; userAgent: string; ip: string }): Promise<string> {
+  async saveImpersonation(input: { userId: string; operatorId: string; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
     const idle = await this.idleOf(input.userId);
     const row = await this.prisma.session.create({
@@ -303,6 +304,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
         userId: input.userId,
         scope: 'full',
         kind: 'impersonation',
+        operatorId: input.operatorId,
         userAgent: input.userAgent,
         ip: input.ip,
         createdAt: now,

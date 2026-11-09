@@ -14,7 +14,7 @@ describe('DoorMiddleware', () => {
     store.addUser(user('owner', 'branch', true));
     store.addUser(user('pos1', 'pos'));
     const home = await store.saveSession({ userId: 'owner', scope: 'full', userAgent: '', ip: '' });
-    const entered = await store.saveImpersonation({ userId: 'pos1', userAgent: '', ip: '' });
+    const entered = await store.saveImpersonation({ userId: 'pos1', operatorId: 'owner', userAgent: '', ip: '' });
     return { middleware: new DoorMiddleware(store), home, entered };
   }
 

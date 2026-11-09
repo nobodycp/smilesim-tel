@@ -1,3 +1,4 @@
+import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
@@ -85,8 +86,7 @@ export class ProvidersService {
   }
 
   async setEsimPrice(actor: Actor, code: string, body: { price?: unknown }) {
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     const row = await this.kernel.prisma.provider.findUnique({ where: { code } });
     if (!row) fail(404, 'NOT_FOUND');
     const price = body.price === null ? null : nonNegative(body.price);
@@ -96,8 +96,7 @@ export class ProvidersService {
   }
 
   async setMode(actor: Actor, code: string, body: Record<string, unknown>) {
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     const row = await this.kernel.prisma.provider.findUnique({ where: { code } });
     if (!row) fail(404, 'NOT_FOUND');
     const action = typeof body.action === 'string' ? body.action : '';

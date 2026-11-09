@@ -8,6 +8,7 @@ import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { GRANT_CODES, effectiveGrantCodes, roleGrantCodes, splitGrants } from '../office-grants';
 import { visibleAccountIds } from '../office-rules';
+import { holds, isBranch, isOwner, layerRank, requireGrant, requireOwner } from '../policy';
 import { stampTaskLog } from '../task-log';
 import { HANDLER_FROZEN_NOTE } from '../tasks/task-notes';
 import { HANDOFF_SECONDS, handoffKey } from './handoff';
@@ -64,8 +65,8 @@ export class AccountsService {
       frozen: account.disabledAt !== null,
       self: account.id === actor.id,
       directChild: account.parentId === actor.id,
-      canEnter: (actor.isBranchOwner || actor.grants.includes('enter')) && !actor.impersonating && account.id !== actor.id && account.disabledAt === null,
-      canFreeze: (actor.isBranchOwner || actor.grants.includes('staff')) && !account.isBranchOwner && !(account.role?.staff && !actor.isBranchOwner),
+      canEnter: holds(actor, 'enter') && !actor.impersonating && account.layer !== 'branch' && account.disabledAt === null,
+      canFreeze: holds(actor, 'staff') && !account.isBranchOwner && !(account.role?.staff && !isOwner(actor)),
       canDelete: branch && !account.isBranchOwner && account.id !== actor.id,
     }));
   }
@@ -88,6 +89,8 @@ export class AccountsService {
 
   async create(actor: Actor, body: { loginName?: unknown; nickname?: unknown; password?: unknown; layer?: unknown; parentLogin?: unknown; roleId?: unknown }) {
     if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
+    // In the branch, opening an account is an edit and opening an employee is staff work (review S11).
+    if (isBranch(actor)) requireGrant(actor, body.layer === 'staff' ? 'staff' : 'edit');
     const loginName = typeof body.loginName === 'string' ? body.loginName.trim().toLowerCase() : '';
     const nickname = typeof body.nickname === 'string' ? body.nickname.trim() : '';
     const password = typeof body.password === 'string' ? body.password : '';
@@ -104,10 +107,10 @@ export class AccountsService {
       agent: ['pos'],
     };
     if (layer === 'staff') {
-      if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('staff'))) fail(403, 'FORBIDDEN');
+      requireGrant(actor, 'staff');
       const roleId = typeof body.roleId === 'string' ? body.roleId : '';
       const role = roleId ? await this.kernel.prisma.role.findUnique({ where: { id: roleId } }) : null;
-      if (!role || (role.staff && !actor.isBranchOwner)) fail(403, 'FORBIDDEN');
+      if (!role || (role.staff && !isOwner(actor))) fail(403, 'FORBIDDEN');
       const owner = await this.kernel.prisma.user.findFirst({ where: { isBranchOwner: true } });
       if (!owner) fail(400, 'INVALID');
       const existing = await this.kernel.prisma.user.findUnique({ where: { loginName } });
@@ -129,7 +132,9 @@ export class AccountsService {
     if (!allowed[actor.layer]?.includes(layer)) fail(403, 'FORBIDDEN');
     const accounts = await this.kernel.accounts();
     const direct: Record<string, string> = { branch: 'main_agent', main_agent: 'agent', agent: 'pos' };
-    let parent = accounts.find((account) => account.id === actor.id) ?? null;
+    // A main agent opened by an employee hangs under the owner, as every main agent does: the tree has one root.
+    const self = isBranch(actor) && !isOwner(actor) ? await this.kernel.prisma.user.findFirst({ where: { isBranchOwner: true }, select: { id: true } }) : { id: actor.id };
+    let parent = accounts.find((account) => account.id === self?.id) ?? null;
     if (layer !== direct[actor.layer]) {
       const chosen = accounts.find((account) => account.loginName === parentLogin);
       const visible = visibleAccountIds(actor.id, actor.layer, accounts);
@@ -155,6 +160,8 @@ export class AccountsService {
 
   async setPassword(actor: Actor, loginName: string, body: { password?: unknown }) {
     if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
+    // In the branch a reset is staff work (review S3). Permission before anything is read (rule 3).
+    if (isBranch(actor)) requireGrant(actor, 'staff');
     const password = typeof body.password === 'string' ? body.password : '';
     const passError = newPasswordProblem(password);
     if (passError) fail(400, passError);
@@ -162,14 +169,16 @@ export class AccountsService {
     if (!target || target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
     const accounts = await this.kernel.accounts();
     if (!visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(403, 'FORBIDDEN');
-    const rank: Record<string, number> = { branch: 0, main_agent: 1, agent: 2, pos: 3 };
-    if (target.roleId) {
-      if (!actor.isBranchOwner && !actor.grants.includes('staff')) fail(403, 'FORBIDDEN');
-    } else if ((rank[target.layer] ?? 9) <= (rank[actor.layer] ?? 9)) fail(403, 'FORBIDDEN');
+    if (isBranch(actor)) {
+      // An employee's password is the owner's alone to reset.
+      if (target.layer === 'branch' && !isOwner(actor)) fail(403, 'FORBIDDEN');
+    } else if (layerRank(target.layer) <= layerRank(actor.layer)) fail(403, 'FORBIDDEN');
     await this.kernel.prisma.user.update({
       where: { id: target.id },
       data: { passwordHash: await hashPassword(password), mustChangePassword: true },
     });
+    // Whoever held the old password is signed out (rule 3.6).
+    await this.kernel.auth.dropLiveSessions(target.id);
     return { ok: true as const };
   }
 
@@ -225,13 +234,13 @@ export class AccountsService {
       extraRoleIds: extra.map((link) => link.roleId),
       grants,
       roles: jobs.map((role) => ({ id: role.id, name: role.name, grants: roleGrantCodes(role) })),
-      canEdit: actor.isBranchOwner && !actor.impersonating && !target.isBranchOwner,
+      canEdit: isOwner(actor) && !actor.impersonating && !target.isBranchOwner,
       listed,
     };
   }
 
   async saveAccess(actor: Actor, loginName: string, body: { extraGrants?: unknown; deniedGrants?: unknown; extraRoleIds?: unknown; roleId?: unknown }) {
-    if (!actor.isBranchOwner || actor.impersonating) fail(403, 'FORBIDDEN');
+    requireOwner(actor);
     const target = await this.kernel.visibleAccount(actor, loginName);
     if (target.isBranchOwner) fail(403, 'FORBIDDEN');
     const extraGrants = splitGrants(Array.isArray(body.extraGrants) ? body.extraGrants.filter((code): code is string => typeof code === 'string').join(',') : '');
@@ -269,8 +278,8 @@ export class AccountsService {
     if (actor.impersonating) fail(403, 'FORBIDDEN');
     const target = await this.kernel.prisma.user.findUnique({ where: { loginName }, include: { role: true } });
     if (!target || target.isBranchOwner) fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('staff')) fail(403, 'FORBIDDEN');
-    if (target.role?.staff && !actor.isBranchOwner) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'staff');
+    if (target.role?.staff && !isOwner(actor)) fail(403, 'FORBIDDEN');
     await this.kernel.prisma.user.update({ where: { id: target.id }, data: { disabledAt: frozen ? new Date() : null } });
     if (frozen) {
       // The tasks it was handling go back to the pool: still open, nobody's (rule 2.4 — no status nothing handles).
@@ -292,6 +301,8 @@ export class AccountsService {
     if (actor.impersonating) fail(403, 'FORBIDDEN');
     const target = await this.kernel.prisma.user.findUnique({ where: { loginName } });
     if (!target || target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
+    // Removing an employee is staff work; removing any other account is an edit (review S11).
+    requireGrant(actor, target.layer === 'branch' ? 'staff' : 'edit');
     const [children, lines, tasks, entries] = await Promise.all([
       this.kernel.prisma.user.count({ where: { parentId: target.id } }),
       this.kernel.prisma.line.count({ where: { posId: target.id } }),
@@ -310,11 +321,13 @@ export class AccountsService {
 
   async enter(actor: Actor, loginName: string, meta: { userAgent: string; ip: string; homeId?: string }) {
     if (actor.impersonating || actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('enter')) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'enter');
     const target = await this.kernel.prisma.user.findUnique({ where: { loginName } });
     if (!target || target.disabledAt || target.id === actor.id) fail(400, 'INVALID');
+    // Only an account below the branch is entered: never the owner, never another employee (review S1).
+    if (target.layer === 'branch') fail(403, 'FORBIDDEN');
     await this.kernel.prisma.accessLog.create({ data: { actorId: actor.operatorId, targetLogin: target.loginName, ip: meta.ip } });
-    const sessionId = await this.kernel.auth.saveImpersonation({ userId: target.id, userAgent: meta.userAgent, ip: meta.ip });
+    const sessionId = await this.kernel.auth.saveImpersonation({ userId: target.id, operatorId: actor.id, userAgent: meta.userAgent, ip: meta.ip });
     // The entered account opens on its own layer's door. Cookies there are set by `handoff`, so the browser carries
     // a one-time code to that host instead of the session itself (the admin host's cookies are left as they are).
     const code = randomBytes(32).toString('base64url');

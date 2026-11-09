@@ -1,3 +1,4 @@
+import { holds, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
@@ -361,7 +362,7 @@ export class TermsService {
   private async lineScope(actor: Actor, accounts: Account[], scope: unknown): Promise<LineScope> {
     if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
     if (scope === 'all') {
-      if (actor.layer !== 'branch' || (!actor.isBranchOwner && !actor.grants.includes('edit'))) fail(403, 'FORBIDDEN');
+      requireGrant(actor, 'edit');
       return { kind: 'all' };
     }
     if (typeof scope !== 'string' || !scope) fail(400, 'INVALID');
@@ -465,6 +466,6 @@ export class TermsService {
   private canEditTerms(actor: Actor, target: Account): boolean {
     if (actor.impersonating) return false;
     if (target.parentId === actor.id) return true;
-    return actor.layer === 'branch' && (actor.isBranchOwner || actor.grants.includes('edit'));
+    return holds(actor, 'edit');
   }
 }

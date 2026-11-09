@@ -1,3 +1,4 @@
+import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
@@ -199,7 +200,7 @@ export class WalletsService {
 
   async providerOperations(actor: Actor, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string; match?: string } = {}) {
     if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
-    if (!actor.isBranchOwner && !actor.grants.includes('reports')) fail(403, 'REPORTS_BRANCH_ONLY');
+    requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
     const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
     const needle = (query.q ?? '').replace(/\s/g, '');
     const from = query.from ? new Date(query.from) : null;

@@ -1,3 +1,4 @@
+import { refuseEntered, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
@@ -20,8 +21,8 @@ const MODE_COLUMNS: Record<Exclude<ActionKey, 'companySwitch'>, [string, string]
 };
 
 function canEdit(actor: Actor) {
-  if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'FORBIDDEN');
-  if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
+  refuseEntered(actor);
+  requireGrant(actor, 'edit');
 }
 
 function ladderOf(raw: unknown): Ladder {

@@ -77,12 +77,10 @@ export class ActivityRecorder {
       include: { user: { select: { id: true, loginName: true, layer: true } } },
     });
     if (!session) return null;
-    if (session.kind === 'impersonation' && gate.homeId) {
-      const home = await db.session.findUnique({
-        where: { id: gate.homeId },
-        include: { user: { select: { id: true, loginName: true, layer: true } } },
-      });
-      if (home?.user) return home.user;
+    // An entered session is recorded under the account that entered, as kept on the session (rule 3.5).
+    if (session.kind === 'impersonation' && session.operatorId) {
+      const operator = await db.user.findUnique({ where: { id: session.operatorId }, select: { id: true, loginName: true, layer: true } });
+      if (operator) return operator;
     }
     return session.user;
   }

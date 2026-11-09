@@ -74,6 +74,8 @@ export type SessionRow = {
   userId: string;
   scope: SessionScope;
   kind: SessionKind;
+  /** On an entered session: the account that entered. */
+  operatorId?: string | null;
   userAgent: string;
   ip: string;
   createdAt: Date;
@@ -92,7 +94,7 @@ export interface AuthStore {
   listFullSessions(userId: string): Promise<FullSessionRow[]>;
   saveSession(input: { userId: string; scope: SessionScope; userAgent: string; ip: string }): Promise<string>;
   /** A full session that does not take one of the account's three slots. */
-  saveImpersonation(input: { userId: string; userAgent: string; ip: string }): Promise<string>;
+  saveImpersonation(input: { userId: string; operatorId: string; userAgent: string; ip: string }): Promise<string>;
   revokeSessions(ids: string[]): Promise<void>;
   userBySession(sessionId: string): Promise<LoginUser | null>;
   /** The live session, its owner and the owner's rules; null when missing, revoked, expired, or idle past the rules. */
@@ -126,6 +128,7 @@ export type MemorySession = {
   userId: string;
   scope: SessionScope;
   kind: SessionKind;
+  operatorId?: string | null;
   userAgent: string;
   ip: string;
   createdAt: Date;
@@ -248,7 +251,7 @@ export class MemoryAuthStore implements AuthStore {
     return id;
   }
 
-  async saveImpersonation(input: { userId: string; userAgent: string; ip: string }): Promise<string> {
+  async saveImpersonation(input: { userId: string; operatorId: string; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
     const id = randomUUID();
     const idle = await this.idleOf(input.userId);
@@ -257,6 +260,7 @@ export class MemoryAuthStore implements AuthStore {
       userId: input.userId,
       scope: 'full',
       kind: 'impersonation',
+      operatorId: input.operatorId,
       userAgent: input.userAgent,
       ip: input.ip,
       createdAt: now,

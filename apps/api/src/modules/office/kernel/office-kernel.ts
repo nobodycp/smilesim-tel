@@ -82,11 +82,8 @@ export class OfficeKernel {
     if (!live || live.session.scope !== 'full' || live.user.disabledAt) fail(401, 'LOGIN_REQUIRED');
     await this.auth.touchSession(sessionId, live.rules.idleSeconds);
     const impersonating = live.session.kind === 'impersonation';
-    let operatorId = live.user.id;
-    if (impersonating && gate.homeId) {
-      const home = await this.auth.liveSession(gate.homeId);
-      if (home && home.session.scope === 'full' && home.user.layer === 'branch' && !home.user.disabledAt) operatorId = home.user.id;
-    }
+    // Who really acted is kept on the entered session itself, never read from a cookie (rule 3.5).
+    const operatorId = (impersonating && live.session.operatorId) || live.user.id;
     const stored = await this.prisma.user.findUnique({
       where: { id: live.user.id },
       include: { role: true, extraRoles: { include: { role: true } } },

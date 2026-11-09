@@ -149,6 +149,8 @@ export class AuthService {
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     const { session, user } = authed;
     if (session.scope !== 'password_change' && session.scope !== 'full') return fail(403, 'FORBIDDEN');
+    // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
+    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
     if (typeof body?.password !== 'string' || typeof body?.nextPassword !== 'string') return fail(400, 'INVALID');
     if (!(await passwordMatches(user.passwordHash, body.password))) return fail(401, 'WRONG_CURRENT_PASSWORD');
     const invalid = newPasswordProblem(body.nextPassword);
@@ -160,7 +162,8 @@ export class AuthService {
     const decision = decideLogin({ user: updated, passwordMatches: true, policy: await this.store.policy() });
     if (decision.kind === 'error') return fail(decision.status, decision.code);
 
-    await this.store.revokeSessions([session.id]);
+    // A new password ends every session opened with the old one (rule 3.6); this browser gets a fresh one below.
+    await this.store.dropLiveSessions(user.id);
     if (decision.scope === 'full') await this.makeRoom(user);
     const newSessionId = await this.store.saveSession({
       userId: user.id,
@@ -188,6 +191,8 @@ export class AuthService {
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     const { session, user } = authed;
     if (session.scope !== 'full') return fail(403, 'FORBIDDEN');
+    // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
+    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
     const input = body ?? {};
     const { nickname, email, phone, city, address, nextPassword, currentPassword } = input;
     for (const value of [nickname, email, phone, city, address, nextPassword, currentPassword]) {
@@ -243,12 +248,17 @@ export class AuthService {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'full' || !authed.user.isBranchOwner) return fail(403, 'FORBIDDEN');
+    // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
+    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
     if (typeof body?.password !== 'string') return fail(400, 'INVALID');
     const invalid = newPasswordProblem(body.password);
     if (invalid) return fail(400, invalid);
     const target = await this.store.findByLogin(loginName);
     if (!target) return fail(404, 'NOT_FOUND');
+    // The owner's own password changes through `changePassword`, which asks for the current one.
+    if (target.id === authed.user.id) return fail(403, 'FORBIDDEN');
     await this.store.updateUser(target.id, { passwordHash: await hashPassword(body.password), mustChangePassword: true });
+    await this.store.dropLiveSessions(target.id);
     return { kind: 'ok' };
   }
 
@@ -264,6 +274,8 @@ export class AuthService {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
+    // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
+    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
     const rows = await this.listedSessions(authed.user.id);
     return {
       kind: 'ok',
@@ -282,6 +294,8 @@ export class AuthService {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
+    // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
+    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
     const rows = await this.listedSessions(authed.user.id);
     if (!rows.some((row) => row.id === targetId)) return fail(404, 'NOT_FOUND');
     await this.store.revokeSessions([targetId]);
@@ -300,6 +314,8 @@ export class AuthService {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'two_factor' && authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
+    // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
+    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
     // A password-only (two_factor scope) session of an account that already has two-factor on could swap the secret
     // and skip the code, so it may not enrol. A full session has passed the second step and may change its method.
     if (authed.user.twoFactorEnabled && authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
@@ -488,6 +504,8 @@ export class AuthService {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
+    // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
+    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
     const { user } = authed;
     const required = (await this.store.policy())[user.layer];
     if (required && !user.twoFactorExempt) return fail(403, 'FORBIDDEN');
@@ -499,6 +517,8 @@ export class AuthService {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'full' || !authed.user.isBranchOwner) return fail(403, 'FORBIDDEN');
+    // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
+    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
     return { kind: 'ok', ...authed };
   }
 
@@ -575,6 +595,8 @@ export class AuthService {
     if (owner.kind === 'error') return owner;
     const target = await this.store.findByLogin(loginName);
     if (!target) return fail(404, 'NOT_FOUND');
+    // The owner cannot lock the office out of itself.
+    if (target.isBranchOwner || target.id === owner.user.id) return fail(403, 'FORBIDDEN');
     await this.store.updateUser(target.id, { disabledAt: new Date() });
     await this.store.dropLiveSessions(target.id);
     return { kind: 'ok' };

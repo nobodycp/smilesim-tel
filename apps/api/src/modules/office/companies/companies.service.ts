@@ -1,3 +1,4 @@
+import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
@@ -95,8 +96,7 @@ export class CompaniesService {
   }
 
   async setSim(actor: Actor, code: string, body: { length?: unknown; prefix?: unknown; esim?: unknown; esimPrice?: unknown }) {
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    if (!actor.isBranchOwner && !actor.grants.includes('edit')) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     const rules = readSimRules(body);
     if (!rules) fail(400, 'INVALID');
     const esimPrice = body.esimPrice === undefined ? undefined : nonNegative(body.esimPrice);
@@ -111,7 +111,8 @@ export class CompaniesService {
   }
 
   async setImage(actor: Actor, body: { name?: unknown; image?: unknown }) {
-    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'FORBIDDEN');
+    if (actor.impersonating) fail(403, 'FORBIDDEN');
+    requireGrant(actor, 'edit');
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) fail(400, 'INVALID');
     const found = await this.kernel.prisma.company.count({ where: { name } });

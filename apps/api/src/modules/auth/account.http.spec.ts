@@ -220,6 +220,31 @@ describe('account endpoints', () => {
     expect(anonymous.status).toBe(401);
   });
 
+  it('lets an entered session work as the account but not touch its credentials or sessions (review 2026-11-10, S1, S5)', async () => {
+    const entered = `sid=${await store.saveImpersonation({ userId: 'owner', operatorId: 'pos', userAgent: '', ip: '' })}`;
+    const call = (method: 'get' | 'post' | 'patch' | 'delete', path: string, body?: object) =>
+      request(app.getHttpServer())[method](path).set('Cookie', entered).send(body);
+    // Even a session standing on the owner's account gets nothing from the owner-only routes.
+    expect((await call('post', '/auth/users/pos/password', { password: '87654321' })).status).toBe(403);
+    expect((await call('post', '/auth/users/pos/disable')).status).toBe(403);
+    expect((await call('patch', '/auth/profile', { nickname: 'آخر' })).status).toBe(403);
+    expect((await call('get', '/auth/sessions')).status).toBe(403);
+    expect((await call('delete', '/auth/two-factor')).status).toBe(403);
+    expect((await call('post', '/auth/two-factor/setup')).status).toBe(403);
+    expect((await call('post', '/auth/password', { password: 'ownerpass1', nextPassword: 'ownerpass2' })).status).toBe(403);
+    expect(await passwordMatches(store.users.get('pos')!.passwordHash, '123456')).toBe(true);
+  });
+
+  it('signs the account out everywhere when the owner sets its password, and refuses the owner as a target', async () => {
+    const before = fullCookie.split('=')[1];
+    await request(app.getHttpServer()).post('/auth/users/pos/password').set('Cookie', ownerCookie).send({ password: '87654321' });
+    expect(await store.liveSession(before)).toBeNull();
+    const self = await request(app.getHttpServer()).post('/auth/users/owner/password').set('Cookie', ownerCookie).send({ password: '87654321' });
+    expect(self.status).toBe(403);
+    const lockout = await request(app.getHttpServer()).post('/auth/users/owner/disable').set('Cookie', ownerCookie);
+    expect(lockout.status).toBe(403);
+  });
+
   it('lists only full account sessions and marks the current one', async () => {
     await login('newpos', '12345678');
     const second = cookieOf(await login('pos', '123456'));

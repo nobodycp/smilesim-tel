@@ -1,3 +1,4 @@
+import { holdsAny } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
@@ -60,7 +61,7 @@ export class OverviewService {
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
     const isBranch = actor.layer === 'branch';
-    const readsProviders = isBranch && !actor.impersonating && (actor.isBranchOwner || actor.grants.includes('reports') || actor.grants.includes('accounting'));
+    const readsProviders = isBranch && !actor.impersonating && holdsAny(actor, ['reports', 'accounting']);
 
     const [lines, money, users, tasks, providers] = await Promise.all([
       this.lines(posIds, now),

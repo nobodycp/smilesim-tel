@@ -1,3 +1,4 @@
+import { requireAnyGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { fail } from '../../shared/office-failure';
@@ -41,9 +42,7 @@ export class ProviderAccountsService {
   /** Reading needs the branch owner or the accounting or reports grant; writing the owner or accounting. */
   private gate(actor: Actor, write: boolean) {
     if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'FORBIDDEN');
-    if (actor.isBranchOwner) return;
-    const allowed = write ? actor.grants.includes('accounting') : actor.grants.includes('accounting') || actor.grants.includes('reports');
-    if (!allowed) fail(403, 'FORBIDDEN');
+    requireAnyGrant(actor, write ? ['accounting'] : ['accounting', 'reports']);
   }
 
   /** Purchases, entries and open-task cost of every provider, from one read of each. */

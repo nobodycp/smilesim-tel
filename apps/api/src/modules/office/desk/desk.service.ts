@@ -1,3 +1,4 @@
+import { isOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
@@ -20,7 +21,7 @@ export class DeskService {
       loginName: actor.loginName,
       nickname: actor.nickname,
       layer: actor.layer,
-      isBranchOwner: actor.isBranchOwner,
+      isBranchOwner: isOwner(actor),
       grants: actor.grants,
       // The stops on the actor's own path, own node included. `transfer` is judged on the actor, so the
       // browser needs them to hide what the server would refuse.

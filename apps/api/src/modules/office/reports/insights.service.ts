@@ -1,3 +1,4 @@
+import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
@@ -81,7 +82,8 @@ export class InsightsService {
 
   /** Per provider over the dates (branch, with the reports grant): operations, what they cost, and the branch's profit. */
   async supply(actor: Actor, query: Period = {}) {
-    if (actor.layer !== 'branch' || actor.impersonating || (!actor.isBranchOwner && !actor.grants.includes('reports'))) fail(403, 'REPORTS_BRANCH_ONLY');
+    if (actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
+    requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
     const createdAt = dateRange(query);
     const rows = await this.kernel.prisma.walletEntry.findMany({
       where: { kind: { in: PROVIDER_OPERATION_KINDS }, ...(createdAt ? { createdAt } : {}) },
