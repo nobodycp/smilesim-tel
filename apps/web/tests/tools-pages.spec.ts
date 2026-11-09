@@ -48,13 +48,14 @@ test.describe('DataTable and EmptyState', () => {
     msisdn: `055000000${id}`, packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: false, canWork: false, canCancel: false, ...extra,
   });
 
+  // Graphite: a task is one card row (task, amount, actions); the head stays for screen readers.
   test('the tasks table writes num and row-actions on header and cells, shows a skeleton while loading, and a RowMenu on every row', async ({ page }) => {
     await serveOffice(page, 'branch', { 'GET /tasks': () => ({ body: { tasks: [task('1', { canTake: true }), task('2')], nextCursor: null }, delay: 700 }) });
     await page.goto(`${admin}/tasks`);
     await expect(page.locator('.sheet .table-skeleton')).toBeVisible();
     await expect(page.locator('table.data tbody tr')).toHaveCount(2);
     await expect(page.locator('.table-skeleton')).toHaveCount(0);
-    await expect(page.locator('table.data thead th')).toHaveCount(10);
+    await expect(page.locator('table.data thead th')).toHaveCount(3);
     await expect(page.locator('table.data th.num')).toHaveCount(1);
     await expect(page.locator('table.data td.num')).toHaveCount(2);
     await expect(page.locator('table.data th.row-actions')).toHaveCount(1);

@@ -337,7 +337,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           )}
           <div className="brand-copy label">
             <p className="brand-name">{branding.name}</p>
-            <p className="brand-sub">{t[door.label]}</p>
+            <p className="brand-sub">{role ? `${t[door.label]} · ${role}` : t[door.label]}</p>
           </div>
           {mobile && (
             <button type="button" className="icon-btn drawer-close" onClick={() => setMobileOpen(false)} aria-label={t.closeMenu}>

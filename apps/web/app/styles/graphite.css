@@ -539,3 +539,58 @@ input[readonly] { background-color: transparent; }
   font-weight: 700;
 }
 .sidebar.collapsed .nav-count { position: absolute; top: 5px; inset-inline-end: 8px; min-width: 16px; height: 16px; padding-inline: 4px; font-size: 10px; }
+
+/* ── Shell details, matched to the design side by side ── */
+/* The current page sits on a raised fill, with the crimson thread at its start. */
+.sidebar .nav-link.active:not(.nested), .drawer .nav-link.active:not(.nested) { background: var(--rd-surface-2); }
+/* The fold handle stays in sight on the edge, brighter on hover. */
+.side-handle { opacity: 0.75; }
+/* A crimson hairline under the topbar. */
+.topbar { position: sticky; }
+.topbar::after { content: ''; position: absolute; inset-inline: 0; bottom: -1px; height: 1px; background: var(--rd-accent); opacity: 0.35; pointer-events: none; }
+/* The path sits in an inset box. */
+.shell-path { flex: 0 1 auto; }
+.shell-path ol { height: 34px; padding-inline: 4px 10px; border-radius: var(--rd-radius-md); background: var(--rd-sunken); box-shadow: inset 0 0 0 1px var(--rd-line); }
+@media (max-width: 899px) { .shell-path { flex: 1 0 100%; } }
+/* The balance in ink beside the crimson mark. */
+.topbar .wallet-btn .money { color: var(--rd-ink); }
+/* Unread notices: a glowing crimson dot on the bell. */
+.notice-count { top: 7px; inset-inline-end: 7px; min-width: 0; width: 8px; height: 8px; padding: 0; overflow: hidden; border-radius: 50%; font-size: 0; line-height: 0; box-shadow: 0 0 0 2px var(--rd-bg), 0 0 8px var(--rd-accent); }
+@media (max-width: 899px) { .shell-path { margin-inline: 0; padding-block-start: 0; border-block-start: 0; } }
+/* Users list: the layer as an outlined tag in its own hue; the account's square mark with a crimson letter. */
+.layer-tag { display: inline-flex; align-items: center; height: 22px; padding-inline: 8px; border-radius: var(--rd-radius-xs); font-size: 11.5px; font-weight: 700; box-shadow: inset 0 0 0 1px currentColor; white-space: nowrap; }
+.layer-tag.l-branch { color: var(--rd-layer-branch); }
+.layer-tag.l-main_agent { color: var(--rd-layer-main); }
+.layer-tag.l-agent { color: var(--rd-layer-agent); }
+.layer-tag.l-pos { color: var(--rd-layer-pos); }
+.account-mark { width: 32px; height: 32px; border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); color: var(--rd-accent); font-size: 13px; box-shadow: inset 0 0 0 1px var(--rd-line); }
+.account-cell { gap: 10px; }
+.account-id strong { font-weight: 700; }
+
+/* ── Tasks as card rows (Graphite): the operation's mark, its name and status, the number with its company, package
+   and point of sale; the amount; take or open. The head is kept for screen readers only. ── */
+.task-list .data thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.task-list .data td { height: 64px; }
+.task-list .data td.task-cell { width: 100%; font-weight: 400; letter-spacing: 0; }
+.task-card { display: flex; align-items: center; gap: 14px; color: inherit; text-decoration: none; }
+.task-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-accent-soft);
+  color: var(--rd-accent);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+}
+[dir='rtl'] .task-mark { clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); }
+.task-main { display: grid; gap: 3px; min-width: 0; }
+.task-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.task-title b { color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }
+.task-meta { display: flex; flex-wrap: wrap; gap: 6px; color: var(--rd-muted); font-size: 12px; }
+.task-msisdn { color: var(--rd-ink-2); font-weight: 600; letter-spacing: 0.03em; }
+.task-note { max-width: 24rem; overflow: hidden; text-overflow: ellipsis; }
+.task-act { display: inline-flex; align-items: center; gap: 6px; }
+.task-card:hover .task-title b { color: var(--rd-accent); }
+.desk > .steps { align-self: flex-start; }

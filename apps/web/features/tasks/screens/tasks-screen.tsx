@@ -10,6 +10,9 @@ import { FilterBar } from '../../../components/filter-bar';
 import { RowMenu } from '../../../components/row-menu';
 import { TableSearch } from '../../../components/table-search';
 import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { Tabs } from '../../../components/tabs';
+import { Zap } from 'lucide-react';
 import { Select } from '../../../components/ui/select';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -76,44 +79,41 @@ export function TasksScreen() {
       .sort((left, right) => left.name.localeCompare(right.name));
   }, [packages, company, provider]);
 
+  // The status tabs (Graphite): all, in progress, done, closed — with the counts of the whole picture.
+  const counts = useApiQuery(sharedKeys.overview('all'), () => api.officeOverview('all')).data?.tasks;
+  const tabs: { key: string; label: string; count?: number }[] = [
+    { key: '', label: t.tasksAllTab },
+    { key: 'working', label: taskStatus(t, 'working'), count: counts ? counts.pending + counts.working : undefined },
+    { key: 'done', label: taskStatus(t, 'done'), count: counts?.done },
+    { key: 'cancelled', label: taskStatus(t, 'cancelled'), count: counts ? counts.rejected + counts.cancelled : undefined },
+  ];
+
+  // Each task is one card row, as in the approved design: the operation's mark, its name and status, the number with
+  // its company, package and point of sale under it; the amount; then take or open, and the rest in ⋯.
   const columns: Column<TaskRow>[] = [
     {
-      key: 'number',
-      header: t.number,
-      cell: 'msisdn',
-      render: (row) =>
-        row.msisdn ? (
-          <Link href={`/tasks/${row.id}`}>
-            <bdi dir="ltr">{row.msisdn}</bdi>
-          </Link>
-        ) : (
-          '—'
-        ),
-    },
-    {
-      key: 'status',
-      header: t.status,
+      key: 'task',
+      header: t.tasksTitle,
+      cell: 'msisdn task-cell',
       render: (row) => (
-        <Badge variant={taskTone(row.status)} dot>
-          {taskStatus(t, row.status)}
-        </Badge>
+        <Link className="task-card" href={`/tasks/${row.id}`}>
+          <span className="task-mark" aria-hidden="true"><Zap size={18} strokeWidth={1.9} /></span>
+          <span className="task-main">
+            <span className="task-title">
+              <b>{actionName(t, row.action)}</b>
+              <Badge variant={taskTone(row.status)} dot>{taskStatus(t, row.status)}</Badge>
+            </span>
+            <span className="task-meta">
+              {row.msisdn ? <bdi dir="ltr" className="task-msisdn">{row.msisdn}</bdi> : null}
+              {[row.companyName, row.packageName].filter(Boolean).map((part) => <span key={part}>· {part}</span>)}
+              <span>· <AccountName login={row.posLogin} /></span>
+              {row.lastNote ? <span className="task-note">· {row.lastNote}</span> : null}
+            </span>
+          </span>
+        </Link>
       ),
     },
-    {
-      key: 'movement',
-      header: t.movement,
-      render: (row) => <Link href={`/tasks/${row.id}`}>{actionName(t, row.action)}</Link>,
-    },
-    { key: 'package', header: t.packageName, render: (row) => row.packageName || '—' },
-    { key: 'company', header: t.company, render: (row) => row.companyName || '—' },
-    { key: 'provider', header: t.provider, render: (row) => row.providerName || '—' },
-    { key: 'pos', header: t.pointOfSale, render: (row) => <AccountName login={row.posLogin} /> },
     { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.posDelta} /> },
-    {
-      key: 'note',
-      header: t.note,
-      render: (row) => row.lastNote || '—',
-    },
     {
       key: 'ops',
       header: t.rowActions,
@@ -124,13 +124,23 @@ export function TasksScreen() {
           ...(row.canTake ? [{ label: t.take, icon: 'enter' as const, onClick: () => run(() => api.takeTask(row.id), { note: t.take }) }] : []),
           ...(row.canCancel ? [{ label: t.cancelTask, icon: 'ban' as const, danger: true, onClick: () => run(() => api.cancelTask(row.id), { note: t.cancelTask }) }] : []),
         ];
-        return <RowMenu label={`${t.rowActions} ${row.msisdn ?? row.id}`} items={items} />;
+        return (
+          <span className="task-act">
+            {row.canTake ? (
+              <Button type="button" size="sm" onClick={() => run(() => api.takeTask(row.id), { note: t.take })}>{t.take}</Button>
+            ) : (
+              <Link className="ui-btn ui-btn-secondary ui-btn-sm" href={`/tasks/${row.id}`}>{t.openTask}</Link>
+            )}
+            <RowMenu label={`${t.rowActions} ${row.msisdn ?? row.id}`} items={items} />
+          </span>
+        );
       },
     },
   ];
 
   return (
-    <Desk title={t.tasksTitle} lede="" error={error || catalog.error} note={note}>
+    <Desk title={t.tasksTitle} lede={t.tasksLede} error={error || catalog.error} note={note}>
+      <Tabs label={t.status} items={tabs} value={status} onChange={(next) => setFilters({ status: next })} />
       <FilterBar
         onClear={() => setFilters({ q: '', status: '', action: '', pack: '', company: '', provider: '' })}
         clearLabel={t.clearFilters}
@@ -186,18 +196,9 @@ export function TasksScreen() {
             ))}
           </Select>
         </label>
-        <label>
-          {t.status}
-          <Select value={status} onChange={(event) => setFilters({ status: event.target.value })}>
-            <option value="">{t.allRows}</option>
-            <option value="working">{taskStatus(t, 'working')}</option>
-            <option value="done">{taskStatus(t, 'done')}</option>
-            <option value="cancelled">{taskStatus(t, 'cancelled')}</option>
-          </Select>
-        </label>
       </FilterBar>
-      <section className="pane">
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noTasks} skeleton={{ rows: 5, columns: 8 }} />
+      <section className="pane task-list">
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noTasks} skeleton={{ rows: 5, columns: 3 }} />
       </section>
     </Desk>
   );

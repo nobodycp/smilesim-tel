@@ -51,6 +51,15 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   (`.co-mark`, the company picture or its letters on `markColor`) with the company under it; the point of sale; the
   status; «الأيام المتبقية» (`.days` — crimson «ينتهي قريباً · N يوم» within the expiring window, «انتهى» past its
   end, the end date as the cell's title); the price.
+- Shell details: the current sidebar page sits on `--rd-surface-2` with the crimson thread; the fold handle stays in
+  sight (75%); a crimson hairline under the topbar; the path in an inset box; the wallet balance in ink; unread
+  notices as a glowing crimson dot on the bell; the brand row reads «door · layer».
+- Users list: the account's square mark with a crimson letter, the name over the login; the layer as an outlined tag
+  in its own hue (`--rd-layer-*`).
+- Tasks: status tabs above the filters (all, in progress, done, closed — counts from the overview of all time); each
+  task a card row (`.task-list`): a crimson cut-corner mark, the operation and its status, the number · company ·
+  package · point of sale under it, the amount, «استلام» or «فتح التذكرة», and ⋯.
+- Page ledes: numbers and tasks have one line under the title, as in the design.
 - Sidebar counts: `.nav-count`, a small crimson square at the end of the item (a corner mark on the folded rail) —
   the open tasks beside «المهام», from `/office/home` `openTasks`.
 

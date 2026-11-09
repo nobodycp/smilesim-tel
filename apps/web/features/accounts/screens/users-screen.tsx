@@ -97,13 +97,17 @@ export function UsersScreen() {
       key: 'account',
       header: t.accountName,
       render: (row) => (
-        <Link className="row-link account-cell" href={`/users/${row.loginName}`}>
-          <span className="account-mark" aria-hidden="true">{row.nickname.trim().charAt(0) || '?'}</span>
-          <strong className="account-id"><AccountName login={row.loginName} name={row.nickname} /></strong>
+        // Graphite: the name over the login, beside a square mark.
+        <Link className="row-link account-cell" href={`/users/${row.loginName}`} aria-label={accountLabel(row.loginName, row.nickname)}>
+          <span className="account-mark" aria-hidden="true">{(row.nickname.trim() || row.loginName).charAt(0)}</span>
+          <span className="account-id">
+            <strong><bdi>{row.nickname.trim() || row.loginName}</bdi></strong>
+            {row.nickname.trim() && row.nickname.trim() !== row.loginName ? <span className="sub" dir="ltr">{row.loginName}</span> : null}
+          </span>
         </Link>
       ),
     },
-    { key: 'layer', header: t.layer, fit: true, render: (row) => layerName(t, row.layer) },
+    { key: 'layer', header: t.layer, fit: true, render: (row) => <span className={`layer-tag l-${row.layer}`}>{layerName(t, row.layer)}</span> },
     { key: 'parent', header: t.parent, fit: true, render: (row) => <AccountName login={row.parentLogin} /> },
     { key: 'balance', header: t.balance, num: true, render: (row) => <Money value={row.balance} /> },
     { key: 'ceiling', header: t.ceiling, num: true, render: (row) => (row.layer === 'branch' ? '—' : <Money value={row.ceiling} />) },

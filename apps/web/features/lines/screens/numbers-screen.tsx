@@ -205,7 +205,7 @@ export function NumbersScreen() {
   return (
     <Desk
       title={t.numbersTitle}
-      lede=""
+      lede={t.numbersLede}
       action={ready && me && me.layer !== 'pos' && sellable.length > 0 ? (
         <Button type="button" onClick={openActivate}>{t.activateLine}</Button>
       ) : undefined}

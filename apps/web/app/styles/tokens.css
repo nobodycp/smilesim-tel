@@ -7,6 +7,11 @@
   --rd-surface-3: #e6e6e4;
   /* Inset fields and search boxes sit a step below the surface. */
   --rd-sunken: #ebebea;
+  /* The four layers' tags (users list): one hue each, outlined. */
+  --rd-layer-branch: #c22a45;
+  --rd-layer-main: #a8306f;
+  --rd-layer-agent: #8b3aa0;
+  --rd-layer-pos: #5c46b8;
   --rd-line: rgba(0, 0, 0, 0.08);
   --rd-line-soft: rgba(0, 0, 0, 0.05);
   --rd-qr-tile: #ffffff;
@@ -113,6 +118,10 @@
   --rd-surface-2: #1f2023;
   --rd-surface-3: #27282b;
   --rd-sunken: #0c0d0e;
+  --rd-layer-branch: #ff7c8e;
+  --rd-layer-main: #e36aa8;
+  --rd-layer-agent: #c47ad8;
+  --rd-layer-pos: #9a86f0;
   --rd-line: rgba(255, 255, 255, 0.07);
   --rd-line-soft: rgba(255, 255, 255, 0.045);
   --rd-qr-tile: #ffffff;
