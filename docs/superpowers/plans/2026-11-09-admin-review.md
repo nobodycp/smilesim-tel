@@ -70,11 +70,12 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
   packages keep their stored modes (no data rewrite). `setMode` can clear an override. Specs for each source. ADR.
 - [x] **3.2 Companies from the table (API).** `CompaniesService.shelf` reads `Company` rows; the constant only seeds.
   Response shape pinned unchanged.
-- [ ] **3.3 Provider adapter + simulated catalog (API).** `providers/adapters/` interface, simulated adapter;
+- [x] **3.3 Provider adapter + simulated catalog (API).** `providers/adapters/` interface, simulated adapter;
   `GET /office/providers/:code/catalog/companies`, `.../catalog/products?company=`. Route table, permissions (edit
   grant), specs.
-- [ ] **3.4 Create endpoints (API).** `POST /office/companies`, `POST /office/packages` (migration:
-  `Package.providerProductCode`, unique per provider; `Company.providerCompanyCode`). Validation and error codes
+- [x] **3.4 Create endpoints (API).** `POST /office/companies`, `POST /office/packages` (migration:
+  `Package.providerProductCode`, unique per provider; a company keeps the provider's company code as its own code, so
+  no `Company.providerCompanyCode` column was needed). Validation and error codes
   (ar copy = API message). Specs incl. duplicate product refused.
 - [ ] **3.5 Run tab with inheritance (web).** Package page run tab: the Select table gives way to `ModeCards`
   (already on the provider page), each action «موروث» / «مخصص», folded, «رجوع للموروث».

@@ -30,6 +30,8 @@ import { CompaniesController } from './companies/companies.controller';
 import { CompaniesService } from './companies/companies.service';
 import { ProvidersController } from './providers/providers.controller';
 import { ProvidersService } from './providers/providers.service';
+import { ProviderCatalogController } from './providers/provider-catalog.controller';
+import { ProviderCatalogService } from './providers/provider-catalog.service';
 import { ProviderAccountsController } from './providers/provider-accounts.controller';
 import { ProviderAccountsService } from './providers/provider-accounts.service';
 import { WalletsController } from './wallets/wallets.controller';
@@ -44,8 +46,8 @@ import { TasksController } from './tasks/tasks.controller';
 import { TasksService } from './tasks/tasks.service';
 
 // Exported so HTTP specs build the same set of office routes the app serves, whichever controller holds them.
-export const OFFICE_CONTROLLERS = [NoticesController, AuditController, TasksController, WalletsController, ProvidersController, CompaniesController, PackagesController, TermsController, RolesController, DeskController, AccountsController, AccountSessionController, TransfersController, LinesController, ReportsController, ProviderAccountsController, OffersController];
-export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, CompaniesService, PackagesService, TermsService, RolesService, DeskService, AccountsService, AccountSessionService, TransfersService, LinesService, ReportsService, InsightsService, ProviderAccountsService, ProviderHealthService, OverviewService, OffersService, CatalogSeed];
+export const OFFICE_CONTROLLERS = [NoticesController, AuditController, TasksController, WalletsController, ProvidersController, ProviderCatalogController, CompaniesController, PackagesController, TermsController, RolesController, DeskController, AccountsController, AccountSessionController, TransfersController, LinesController, ReportsController, ProviderAccountsController, OffersController];
+export const OFFICE_PROVIDERS = [NoticeService, OfficeKernel, NoticeInboxService, AuditService, TasksService, WalletsService, ProvidersService, ProviderCatalogService, CompaniesService, PackagesService, TermsService, RolesService, DeskService, AccountsService, AccountSessionService, TransfersService, LinesService, ReportsService, InsightsService, ProviderAccountsService, ProviderHealthService, OverviewService, OffersService, CatalogSeed];
 
 @Module({
   imports: [AuthModule],

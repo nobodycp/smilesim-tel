@@ -25,6 +25,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/audit', 'yyyyyy'], // read/accounting not checked (see spec)
   ['GET /office/audit/export', 'yyyyyy'], // the log's own filter, as a CSV
   ['GET /office/companies', 'yyynnn'],
+  ['POST /office/companies', 'ynynnn'], // spec 2026-11-09-admin-review, 3: owner or edit grant
   ['PUT /office/companies/CODE1/sim', 'ynynnn'],
   ['POST /office/companies/image', 'yyynnn'],
   ['GET /office/directory', 'yyyyyy'],
@@ -66,6 +67,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/notices', 'yyyyyy'],
   ['POST /office/notices/read', 'yyyyyy'],
   ['GET /office/packages', 'yyyyyy'],
+  ['POST /office/packages', 'ynynnn'],
   ['PATCH /office/packages/CODE1/chain', 'ynynnn'],
   ['PATCH /office/packages/CODE1/details', 'ynynnn'],
   ['GET /office/packages/CODE1/addons', 'yyynnn'],
@@ -96,6 +98,8 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/provider-operations', 'ynynnn'],
   ['GET /office/providers', 'yyynnn'],
   ['PATCH /office/providers/CODE1/esim-price', 'ynynnn'],
+  ['GET /office/providers/CODE1/catalog/companies', 'ynynnn'],
+  ['GET /office/providers/CODE1/catalog/products', 'ynynnn'],
   ['GET /office/providers/CODE1/settings', 'yyynnn'],
   ['PATCH /office/providers/CODE1/settings', 'ynynnn'],
   ['GET /office/reports/KIND1', 'ynynnn'],

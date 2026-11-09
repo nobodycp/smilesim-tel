@@ -48,7 +48,7 @@ export class ProvidersController {
   }
 
   @Patch('providers/:code/settings')
-  @ApiOperation({ summary: 'Set one provider default run mode (does not touch packages)' })
+  @ApiOperation({ summary: 'Set one provider default run mode; the packages that inherit that action follow' })
   @ApiParam({ name: 'code' })
   @ApiBody({ type: ProviderModeBodyDto })
   @ApiErrorResponse(401, 403, 400, 404)
