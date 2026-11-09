@@ -64,7 +64,8 @@ export function HomeScreen() {
     : [
         { href: '/users', label: t.navUsers, icon: 'staff' },
         ...(me?.isBranchOwner ? [{ href: '/roles', label: t.navRoles, icon: 'lock' as const }] : []),
-        { href: '/packages', label: t.navPlans, icon: 'plans' },
+        // The branch reaches packages through their companies (spec 2026-11-09-admin-review, 4).
+        ...(layer === 'branch' ? [] : [{ href: '/packages', label: t.navPlans, icon: 'plans' as const }]),
         { href: '/numbers', label: t.navNumbers, icon: 'numbers' },
         { href: '/tasks', label: t.navTasks, icon: 'tasks' },
         ...(layer === 'branch' ? [{ href: '/companies', label: t.navCompanies, icon: 'providers' as const }] : []),

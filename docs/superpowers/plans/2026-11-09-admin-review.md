@@ -54,15 +54,15 @@ New sections are appended as the owner names them.
 ## Section 4 — Companies, providers, packages
 
 Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched — an e2e pins their `/packages`.
-- [ ] **4.1 Routes.** `/companies/[code]/packages/[pkg]` (package page moved, same screen); redirects from
+- [x] **4.1 Routes.** `/companies/[code]/packages/[pkg]` (package page moved, same screen); redirects from
   `/providers/[p]/[pkg]` and `/companies/[c]/[p]`; branch `/packages` → `/companies`; sidebar entries.
-- [ ] **4.2 Company page tabs** as approved: one packages table with provider column and filter; providers tab;
+- [x] **4.2 Company page tabs** as approved: one packages table with provider column and filter; providers tab;
   settings tab. Remove `company-packages-screen.tsx`.
-- [ ] **4.3 Provider page** without its packages tab; its balance (lede) and the `/providers` balance / credit
+- [x] **4.3 Provider page** without its packages tab; its balance (lede) and the `/providers` balance / credit
   columns stay read-only, each a link to `/provider-accounts/[code]`.
-- [ ] **4.4 One home per value.** Package on/off only on the package head; inherited values with their source label;
+- [x] **4.4 One home per value.** Package on/off only on the package head; inherited values with their source label;
   eSIM price/availability shown with source on the package. Response shapes kept; e2e updated.
-- [ ] **4.5 Docs** (frontend map, ADR «company is the catalog root»), full visual check.
+- [x] **4.5 Docs** (frontend map, ADR «company is the catalog root»), full visual check.
 
 ## Section 3 — Add a package and a company from the provider
 

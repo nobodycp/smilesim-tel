@@ -46,11 +46,12 @@ test('the branch opens the company shelf', async ({ page }) => {
   await page.getByRole('button', { name: 'Switch to dark' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.getByRole('link', { name: 'ويكوم' }).click();
-  await page.getByRole('tab', { name: 'Providers' }).click();
-  await expect(page.getByRole('link', { name: 'ليان' })).toBeVisible();
-  await page.getByRole('link', { name: 'ليان' }).click();
-  await expect(page.getByRole('link', { name: '500 جيجا', exact: true })).toHaveAttribute('href', '/providers/lian/lian-wecom-500');
-  await expect(page.getByText('Hidden from sale')).toHaveCount(2);
+  // The company lists its packages first (spec 2026-11-09-admin-review, 4); each opens under the company.
+  await expect(page.getByRole('link', { name: '500 جيجا', exact: true })).toHaveAttribute('href', '/companies/wecom/packages/lian-wecom-500');
+  await page.getByRole('tab', { name: /Providers/ }).click();
+  await expect(page.getByRole('tab', { name: /Providers/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('columnheader', { name: 'Active numbers' })).toBeVisible();
+  await expect(page.locator('tbody tr').filter({ hasText: 'ليان' }).getByRole('link', { name: 'ليان' })).toHaveAttribute('href', '/providers/lian');
   expect(calls).toContain('GET /companies');
 });
 

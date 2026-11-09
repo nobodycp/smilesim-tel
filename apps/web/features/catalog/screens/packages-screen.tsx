@@ -1,9 +1,7 @@
 'use client';
 
-import { ChevronDown, Search } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { ActivationResult } from '../../../components/activation-result';
 import { Desk, Money } from '../../../components/desk';
@@ -11,10 +9,10 @@ import { EmptyState } from '../../../components/empty-state';
 import { FilterBar } from '../../../components/filter-bar';
 import { RowMenu } from '../../../components/row-menu';
 import { Button } from '../../../components/ui/button';
-import { Spinner, TableSkeleton } from '../../../components/loading';
+import { PageSkeleton, Spinner, TableSkeleton } from '../../../components/loading';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
-import { api, type ApplyResult, type PackageRow, type Shelf } from '../../../lib/api';
+import { api, type ApplyResult, type PackageRow } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
 import { markColor, markOf } from '../../../lib/company-mark';
 import { useDoor } from '../../../lib/door-context';
@@ -23,12 +21,10 @@ import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { Badge } from '../../../components/ui/badge';
-import { Select } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
 import { DataImage } from '../../../components/data-image';
 import { Tabs } from '../../../components/tabs';
-import { LiveSwitch } from '../../../components/live-switch';
-import { PackageFacts, useFactLine } from '../../../components/package-facts';
+import { PackageFacts } from '../../../components/package-facts';
 
 function PosCatalog({
   rows,
@@ -194,175 +190,16 @@ function CompanyTitle({ name, image, label, heading = false }: { name: string; i
   );
 }
 
-type BranchRow = Shelf['companies'][number]['providers'][number]['packages'][number] & {
-  companyCode: string;
-  companyName: string;
-  providerCode: string;
-  providerName: string;
-};
-
 /**
- * The branch's packages (spec 2026-11-08-branch-packages-and-details), shaped like the users' packages tab: grouped
- * by company, each company folds, one line per package with its facts, provider, the main agent's price (the child in
- * the chain), the margin over the branch cost, the on/off switch and a menu that opens the package.
+ * The branch has no packages list of its own (spec 2026-11-09-admin-review, 4): the company is the catalog's root,
+ * and each company's page lists its packages. `/packages` moves the branch to «الشركات والرزم».
  */
-function BranchPackages({ error: loadError, note: loadNote }: { error: string; note: string }) {
-  const { t } = usePrefs();
+function BranchToCompanies() {
   const router = useRouter();
-  const factLine = useFactLine();
-  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies());
-  const [error, setError] = useState('');
-  const [note, setNote] = useState('');
-  const { run, busy } = useAction({ setError, setNote, onDone: shelf.reload });
-  const [query, setQuery] = useState('');
-  const [company, setCompany] = useState('');
-  const [provider, setProvider] = useState('');
-  const [status, setStatus] = useState('');
-  // The first company opens with the page, as in the design; the others when pressed.
-  const [unfolded, setUnfolded] = useState<ReadonlySet<string> | null>(null);
-  const groups = (shelf.data?.companies ?? []).map((companyRow) => ({
-    code: companyRow.code,
-    name: companyRow.name,
-    image: companyRow.image,
-    rows: companyRow.providers.flatMap((providerRow): BranchRow[] => providerRow.packages.map((item) => ({
-      ...item,
-      companyCode: companyRow.code,
-      companyName: companyRow.name,
-      providerCode: providerRow.code,
-      providerName: providerRow.name,
-    }))),
-  }));
-  const all = groups.flatMap((group) => group.rows);
-  const providers = [...new Set(all.filter((row) => !company || row.companyCode === company).map((row) => row.providerName))].sort((left, right) => left.localeCompare(right, 'ar'));
-  const needle = query.trim();
-  const filtering = Boolean(needle || company || provider || status);
-  const shown = groups
-    .map((group) => ({
-      ...group,
-      rows: group.rows.filter((row) => {
-        if (needle && !row.name.includes(needle) && !row.code.includes(needle)) return false;
-        if (company && row.companyCode !== company) return false;
-        if (provider && row.providerName !== provider) return false;
-        if (status === 'on' && !row.enabled) return false;
-        if (status === 'off' && row.enabled) return false;
-        return true;
-      }),
-    }))
-    .filter((group) => group.rows.length > 0);
-  // A search or a filter opens what it found; otherwise a company opens when its header is pressed.
-  const isOpen = (code: string) => filtering || (unfolded ?? new Set(shown.slice(0, 1).map((group) => group.code))).has(code);
-  const openPage = (row: BranchRow) => `/providers/${row.providerCode}/${encodeURIComponent(row.code)}`;
-
-  function toggleGroup(code: string) {
-    setUnfolded((current) => {
-      const next = new Set(current ?? shown.slice(0, 1).map((group) => group.code));
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
-  }
-
-  const columns: Column<BranchRow>[] = [
-    {
-      key: 'package',
-      header: t.packageName,
-      render: (row) => (
-        <span className="terms-name">
-          <Link className="row-link" href={openPage(row)}><strong>{row.name}</strong></Link>
-          {factLine(row) ? <span className="hint">{factLine(row)}</span> : null}
-        </span>
-      ),
-    },
-    { key: 'provider', header: t.provider, render: (row) => row.providerName },
-    {
-      key: 'child',
-      header: t.mainSellPair,
-      num: true,
-      render: (row) => (
-        <span className="terms-pair">
-          <Money value={row.mainPrice} />
-          <span className="terms-pair-sep" aria-hidden="true">/</span>
-          <Money value={row.renewalMainPrice} />
-        </span>
-      ),
-    },
-    { key: 'margin', header: t.margin, num: true, render: (row) => <Money value={row.mainPrice - row.branchCost} signed /> },
-    {
-      key: 'switch',
-      header: <span className="sr-only">{t.status}</span>,
-      fit: true,
-      render: (row) => (
-        <LiveSwitch label={row.name} checked={row.enabled} disabled={busy} onChange={(next) => void run(() => api.setPackageMode(row.code, { enabled: next }), { note: t.saved })} />
-      ),
-    },
-    {
-      key: 'actions',
-      header: <span className="sr-only">{t.rowActions}</span>,
-      actions: true,
-      render: (row) => <RowMenu label={`${t.rowActions} ${row.name}`} items={[{ label: t.openPackage, icon: 'enter', onClick: () => router.push(openPage(row)) }]} />,
-    },
-  ];
-
-  return (
-    <Desk title={t.plansTitle} lede={t.packagesLede} error={loadError || error} note={loadNote || note}>
-      {/* As in the design: a search box, then the provider and status chips, above the list (the companies are its
-          groups, so they need no chip). */}
-      <FilterBar loose onClear={() => { setQuery(''); setCompany(''); setProvider(''); setStatus(''); }} clearLabel={t.clearFilters}>
-        <label className="filter-search">
-          <Search size={16} strokeWidth={1.9} aria-hidden="true" />
-          <span className="sr-only">{t.packageName}</span>
-          <input value={query} placeholder={t.searchPackages} onChange={(event) => setQuery(event.target.value)} />
-        </label>
-        <label>
-          {t.provider}
-          <NameField value={provider} allLabel={t.allRows} onChange={setProvider} options={providers.map((name) => ({ value: name, label: name }))} />
-        </label>
-        <label>
-          {t.status}
-          <Select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            <option value="on">{t.lineActive}</option>
-            <option value="off">{t.stopped}</option>
-          </Select>
-        </label>
-      </FilterBar>
-      <section className="pane">
-        {!shelf.loaded ? (
-          <TableSkeleton rows={6} columns={5} />
-        ) : shelf.error ? (
-          <EmptyState icon="plans">{shelf.error}</EmptyState>
-        ) : shown.length === 0 ? (
-          <EmptyState icon="plans">{filtering ? t.noMatches : t.noLines}</EmptyState>
-        ) : (
-          <div className="sheet terms-sheet">
-            {shown.map((group) => {
-              const open = isOpen(group.code);
-              const body = `packages-${group.code}`;
-              return (
-                <section key={group.code} className={open ? 'terms-group open' : 'terms-group'}>
-                  <button type="button" className="terms-group-head" aria-expanded={open} aria-controls={body} onClick={() => toggleGroup(group.code)}>
-                    {group.image ? <DataImage className="co-mark" src={group.image} alt="" /> : <span className="co-mark" style={{ background: markColor(group.name) }} aria-hidden="true">{markOf(group.name)}</span>}
-                    <span className="group-name">
-                      <strong>{group.name}</strong>
-                      <span className="hint">
-                        {t.packagesGroupSummary.replace('{total}', String(group.rows.length)).replace('{off}', String(group.rows.filter((row) => !row.enabled).length))}
-                      </span>
-                    </span>
-                    <ChevronDown className="terms-chevron" aria-hidden="true" />
-                  </button>
-                  {open ? (
-                    <div id={body} className="terms-rows">
-                      <DataTable bare sortable={false} columns={columns} rows={group.rows} rowKey={(row) => row.code} />
-                    </div>
-                  ) : null}
-                </section>
-              );
-            })}
-          </div>
-        )}
-      </section>
-    </Desk>
-  );
+  useEffect(() => {
+    router.replace('/companies');
+  }, [router]);
+  return <PageSkeleton />;
 }
 
 type SellDraft = { price: string; renewal: string };
@@ -530,7 +367,7 @@ export function PackagesScreen() {
     return <PosCatalog rows={rows} marks={marks} loginName={loginName} loadError={failure} />;
   }
   if (door.layer === 'branch' || layer === 'branch') {
-    return <BranchPackages error={failure} note={note} />;
+    return <BranchToCompanies />;
   }
   if (!me) {
     return (

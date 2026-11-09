@@ -48,8 +48,10 @@ export function ProvidersScreen() {
       },
     },
     ...(canAccount ? [
-      { key: 'balance', header: t.balanceWithProvider, num: true, render: (provider: ProviderRow) => { const row = accountOf(provider.code); return row ? <Money value={row.balance} /> : '—'; } },
-      { key: 'credit', header: t.creditLimit, num: true, render: (provider: ProviderRow) => { const row = accountOf(provider.code); return row ? <Money value={row.creditLimit} muted /> : '—'; } },
+      // Read-only here, each a link to the provider's account, the one place that changes them (spec
+      // 2026-11-09-admin-review, 4).
+      { key: 'balance', header: t.balanceWithProvider, num: true, render: (provider: ProviderRow) => { const row = accountOf(provider.code); return row ? <Link className="row-link" href={`/provider-accounts/${provider.code}`}><Money value={row.balance} /></Link> : '—'; } },
+      { key: 'credit', header: t.creditLimit, num: true, render: (provider: ProviderRow) => { const row = accountOf(provider.code); return row ? <Link className="row-link" href={`/provider-accounts/${provider.code}`}><Money value={row.creditLimit} muted /></Link> : '—'; } },
     ] : []),
     {
       key: 'ops',

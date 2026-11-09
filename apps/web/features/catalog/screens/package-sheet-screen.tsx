@@ -141,9 +141,11 @@ export function PackageSheetScreen() {
   };
   const sheet = card.data?.sheet ?? null;
   usePageTitle(sheet ? `${sheet.companyName} · ${sheet.name}` : '');
+  // The package lives under its company, the catalog's root (spec 2026-11-09-admin-review, 4).
   useCrumbs({
-    [`/providers/${encodeURIComponent(params.code)}`]: sheet?.providerName,
-    [`/providers/${encodeURIComponent(params.code)}/${encodeURIComponent(code)}`]: sheet?.name,
+    [`/companies/${encodeURIComponent(params.code)}`]: sheet?.companyName,
+    [`/companies/${encodeURIComponent(params.code)}/packages`]: t.packagesTab,
+    [`/companies/${encodeURIComponent(params.code)}/packages/${encodeURIComponent(code)}`]: sheet?.name,
   });
   const users = card.data?.users ?? [];
   // The layer column the picked account would pay without a custom price; the pos column until one is picked.

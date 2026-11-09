@@ -22,15 +22,18 @@ import { Tabs } from '../../../components/tabs';
 const BRANCH = ['branch'];
 const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
 type ModeAction = (typeof actions)[number];
-type Tab = 'settings' | 'packages';
+type Tab = 'settings' | 'companies';
 
 type PackageLine = {
   code: string;
   name: string;
   company: string;
+  companyCode: string;
   active: number;
   stopped: number;
 };
+/** A company this provider serves, with its packages here and their numbers. */
+type CompanyLine = { code: string; name: string; packages: number; active: number; stopped: number };
 
 export function ProviderPackagesScreen() {
   const { t } = usePrefs();
@@ -58,6 +61,7 @@ export function ProviderPackagesScreen() {
         code: item.code,
         name: item.name,
         company: company.name,
+        companyCode: company.code,
         active: item.activeLines,
         stopped: item.stoppedLines,
       }));
@@ -69,6 +73,8 @@ export function ProviderPackagesScreen() {
       code: item.code,
       name: item.name,
       company: company.name,
+      // The providers list names its companies without their code; the shelf, read beside it, has it.
+      companyCode: '',
       active: 0,
       stopped: 0,
     }))
@@ -112,22 +118,33 @@ export function ProviderPackagesScreen() {
   const account = accounts.data?.rows.find((row) => row.code === params.code);
   const companiesOf = [...new Set(rows.map((row) => row.company).filter(Boolean))];
 
-  const columns: Column<PackageLine>[] = [
+  // Its packages live under their companies (spec 2026-11-09-admin-review, 4): this page lists the companies it
+  // serves, each opening that company's «الرزم» filtered by this provider. Run defaults and the eSIM price stay here.
+  const companies = rows.reduce<CompanyLine[]>((list, row) => {
+    const found = list.find((item) => item.name === row.company);
+    if (found) {
+      found.packages += 1;
+      found.active += row.active;
+      found.stopped += row.stopped;
+    } else list.push({ code: row.companyCode, name: row.company, packages: 1, active: row.active, stopped: row.stopped });
+    return list;
+  }, []);
+  const columns: Column<CompanyLine>[] = [
     {
-      key: 'package',
-      header: t.packageName,
-      render: (row) => (
-        <Link className="row-link" href={`/providers/${params.code}/${encodeURIComponent(row.code)}`}>{row.name}</Link>
-      ),
+      key: 'company',
+      header: t.company,
+      render: (row) => (row.code
+        ? <Link className="row-link" href={`/companies/${encodeURIComponent(row.code)}?provider=${encodeURIComponent(params.code)}`}>{row.name}</Link>
+        : row.name),
     },
-    { key: 'company', header: t.company, render: (row) => row.company },
+    { key: 'packages', header: t.navPlans, num: true, render: (row) => row.packages },
     { key: 'active', header: t.activeNumbers, num: true, render: (row) => row.active },
     { key: 'stopped', header: t.stoppedLines, num: true, render: (row) => row.stopped },
   ];
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'settings', label: t.runMethodTab },
-    { key: 'packages', label: t.packagesTab, count: rows.length || undefined },
+    { key: 'companies', label: t.companiesColumn, count: companies.length || undefined },
   ];
 
   return (
@@ -179,16 +196,16 @@ export function ProviderPackagesScreen() {
             </form>
           </div>
         )}
-        {tab === 'packages' && (
+        {tab === 'companies' && (
           <DataTable
             columns={columns}
-            rows={rows}
-            rowKey={(row) => row.code}
+            rows={companies}
+            rowKey={(row) => row.name}
             loading={!providers.loaded && !shelf.loaded}
             failed={providers.error || shelf.error}
             onRetry={() => { void providers.reload(); void shelf.reload(); }}
             skeleton={{ rows: 6, columns: 4 }}
-            empty={t.noPackages}
+            empty={t.noLines}
           />
         )}
       </section>

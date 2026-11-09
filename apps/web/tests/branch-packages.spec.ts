@@ -22,44 +22,51 @@ const shelf = {
   ],
 };
 
-test('the branch list folds by company and shows the main agent price, the margin and a switch', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
-    'GET /companies': () => ({ body: shelf }),
-    'PATCH /packages/lian-wecom-300/mode': () => ({ body: { ok: true } }),
-  });
+// The company is the catalog's root for the branch (spec 2026-11-09-admin-review, 4): /packages sends it to the
+// companies, and a company lists its packages in one table — provider, the main agent's price and renewal, the margin,
+// on or off as a badge (the switch lives on the package's own head) — with a provider filter.
+const twoProviders = {
+  companies: [{
+    ...shelf.companies[0],
+    providers: [...shelf.companies[0].providers, { code: 'sky', name: 'سكاي', packages: [pkg({ code: 'sky-wecom-200', name: '200 جيجا', dataGb: 200 })] }],
+  }, shelf.companies[1]],
+};
+
+test('the branch reaches packages through their company: one table, provider, prices, margin, status', async ({ page }) => {
+  await serveOffice(page, 'branch', { 'GET /companies': () => ({ body: twoProviders }) });
   await page.goto(`${admin}/packages`);
-  const head = page.getByRole('button', { name: /ويكوم/ });
-  await expect(head).toContainText('2 رزمة · 1 متوقفة');
-  // Graphite: the first company opens with the page, as in the design.
-  await expect(head).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.getByRole('button', { name: /كلام/ })).toHaveCount(0);
+  await expect(page).toHaveURL(`${admin}/companies`);
+  await expect(page.locator('.sidebar').getByRole('link', { name: 'الرزم', exact: true })).toHaveCount(0);
+  await page.locator('.sidebar').getByRole('link', { name: 'الشركات والرزم' }).click();
+  await page.getByRole('link', { name: 'ويكوم' }).first().click();
+  await expect(page.getByRole('tab', { name: /الرزم/ })).toHaveAttribute('aria-selected', 'true');
   const row = page.locator('tr', { hasText: '500 جيجا' });
   await expect(row).toContainText('500 جيجا · دقائق غير محدودة · 100 رسالة');
   await expect(row).toContainText('ليان');
   await expect(row).toContainText('23.00');
   await expect(row).toContainText('28.00');
   await expect(row).toContainText('+3.00');
-  await expect(page.getByRole('columnheader', { name: 'أرقام فعالة' })).toHaveCount(0);
-
-  const off = page.getByRole('switch', { name: '300 جيجا' });
-  await expect(off).toHaveAttribute('aria-checked', 'false');
-  const sent = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/office/packages/lian-wecom-300/mode'));
-  await off.click();
-  expect((await sent).postDataJSON()).toEqual({ enabled: true });
-  expect(calls).toContain('PATCH /packages/lian-wecom-300/mode');
+  await expect(page.locator('tr', { hasText: '300 جيجا' })).toContainText('متوقف');
+  await expect(page.getByRole('switch')).toHaveCount(0);
+  await expect(page.locator('tr', { hasText: '200 جيجا' })).toContainText('سكاي');
 
   await page.getByRole('button', { name: 'إجراءات 500 جيجا' }).click();
   await page.getByRole('menuitem', { name: 'فتح الرزمة' }).click();
-  await expect(page).toHaveURL(`${admin}/providers/lian/lian-wecom-500`);
+  await expect(page).toHaveURL(`${admin}/companies/wecom/packages/lian-wecom-500`);
 });
 
-test('a filter opens the companies it found', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /companies': () => ({ body: shelf }) });
-  await page.goto(`${admin}/packages`);
-  await page.getByLabel('الحالة').selectOption('off');
-  await expect(page.getByRole('button', { name: /ويكوم/ })).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.locator('tr', { hasText: '300 جيجا' })).toBeVisible();
-  await expect(page.locator('tr', { hasText: '500 جيجا' })).toHaveCount(0);
+test('the provider filter narrows a company\'s packages, and the old company-provider page lands on it', async ({ page }) => {
+  await serveOffice(page, 'branch', { 'GET /companies': () => ({ body: twoProviders }) });
+  await page.goto(`${admin}/companies/wecom/sky`);
+  await expect(page).toHaveURL(`${admin}/companies/wecom?provider=sky`);
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await expect(page.locator('tbody tr')).toContainText('200 جيجا');
+  await page.getByRole('button', { name: /امسح الاختيار/ }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(3);
+  // From the providers tab, a provider's package count opens its packages here.
+  await page.getByRole('tab', { name: /المزودون/ }).click();
+  await page.locator('tr', { hasText: 'ليان' }).getByRole('button', { name: '2' }).click();
+  await expect(page.locator('tbody tr')).toHaveCount(2);
 });
 
 test('the package page edits its details', async ({ page }) => {
@@ -79,7 +86,9 @@ test('the package page edits its details', async ({ page }) => {
     'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null, total: 0 } }),
     'PATCH /packages/lian-wecom-500/details': () => ({ body: { ok: true } }),
   });
+  // The package page's old address moves to its company's (spec 2026-11-09-admin-review, 4).
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
+  await expect(page).toHaveURL(`${admin}/companies/wecom/packages/lian-wecom-500`);
   // The page opens on the price chain (as in the design); the facts are on the overview.
   await page.getByRole('tab', { name: 'نظرة عامة' }).click();
   await expect(page.getByText('500 جيجا · دقائق غير محدودة')).toBeVisible();

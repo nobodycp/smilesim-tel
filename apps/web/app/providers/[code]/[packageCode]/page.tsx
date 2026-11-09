@@ -1,3 +1,3 @@
-import { PackageSheetScreen } from '../../../../features/catalog/screens/package-sheet-screen';
+import { PackageMoved } from '../../../../features/catalog/screens/package-moved';
 
-export default PackageSheetScreen;
+export default PackageMoved;

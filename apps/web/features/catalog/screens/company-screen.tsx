@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, Package } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
@@ -20,11 +19,14 @@ import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Button } from '../../../components/ui/button';
 import { Tabs } from '../../../components/tabs';
-import { useFactLine } from '../../../components/package-facts';
+import { useUrlFilters } from '../../../lib/url-state';
+import { CompanyPackages } from '../company-packages';
 
 const BRANCH = ['branch'];
 type Provider = Shelf['companies'][number]['providers'][number];
-type Tab = 'packages' | 'settings' | 'providers';
+type Tab = 'packages' | 'providers' | 'settings';
+const TABS: readonly Tab[] = ['packages', 'providers', 'settings'];
+const URL_KEYS = ['tab', 'provider'] as const;
 type Draft = { code: string; length: string; prefix: string; esim: boolean; esimPrice: string };
 
 function draftOf(code: string, sim: SimRules, esimPrice: number): Draft {
@@ -41,7 +43,11 @@ export function CompanyScreen() {
   const params = useParams<{ code: string }>();
   const allowed = useRequireLayer(BRANCH);
   const { me } = useOffice();
-  const [tab, setTab] = useState<Tab>('packages');
+  // The tab and the provider filter live in the address: `/companies/[c]?provider=[p]` opens its packages filtered
+  // (the old `/companies/[c]/[p]` page lands there; spec 2026-11-09-admin-review, 4).
+  const [filters, setFilters] = useUrlFilters(URL_KEYS);
+  const tab: Tab = TABS.includes(filters.tab as Tab) ? (filters.tab as Tab) : 'packages';
+  const setTab = (next: Tab) => setFilters({ tab: next === 'packages' ? '' : next });
   const [edited, setEdited] = useState<Draft | null>(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -77,10 +83,20 @@ export function CompanyScreen() {
       key: 'provider',
       header: t.provider,
       render: (provider) => (
-        <Link className="row-link" href={`/companies/${params.code}/${provider.code}`}>{provider.name}</Link>
+        <Link className="row-link" href={`/providers/${encodeURIComponent(provider.code)}`}>{provider.name}</Link>
       ),
     },
-    { key: 'packages', header: t.navPlans, num: true, render: (provider) => provider.packages.length },
+    {
+      key: 'packages',
+      header: t.navPlans,
+      num: true,
+      // Its packages for this company: the «الرزم» tab filtered by it.
+      render: (provider) => (
+        <button type="button" className="link-btn" onClick={() => setFilters({ tab: '', provider: provider.code })}>
+          {provider.packages.length}
+        </button>
+      ),
+    },
     {
       key: 'active',
       header: t.activeNumbers,
@@ -95,13 +111,13 @@ export function CompanyScreen() {
     },
   ];
 
-  // The company's packages first, as cards that open each package (Graphite); then its SIM rules and providers.
-  const factLine = useFactLine();
-  const packageCards = (company?.providers ?? []).flatMap((provider) => provider.packages.map((item) => ({ ...item, providerCode: provider.code, providerName: provider.name })));
+  // The company is the catalog's root (spec 2026-11-09-admin-review, 4): its packages in one table with their
+  // provider, the providers that serve it, and its own settings (SIM rules and the eSIM default).
+  const packageCount = (company?.providers ?? []).reduce((sum, provider) => sum + provider.packages.length, 0);
   const tabs: { key: Tab; label: string; count?: number }[] = [
-    { key: 'packages', label: t.packagesTab, count: packageCards.length || undefined },
-    { key: 'settings', label: t.simRulesTab },
-    { key: 'providers', label: t.providersTitle },
+    { key: 'packages', label: t.packagesTab, count: packageCount || undefined },
+    { key: 'providers', label: t.providersTitle, count: company?.providers.length || undefined },
+    { key: 'settings', label: t.settingsTitle },
   ];
 
   return (
@@ -113,11 +129,11 @@ export function CompanyScreen() {
           <span>{company.name}</span>
         </span>
       ) : ''}
-      lede={company ? [t.coPackages.replace('{n}', String(packageCards.length)), t.coProviders.replace('{n}', String(company.providers.length)), company.sim?.esim ? t.esimSupported : ''].filter(Boolean).join(' · ') : ''}
+      lede={company ? [t.coPackages.replace('{n}', String(packageCount)), t.coProviders.replace('{n}', String(company.providers.length)), company.sim?.esim ? t.esimSupported : ''].filter(Boolean).join(' · ') : ''}
       error={error}
       note={note}
     >
-      <section className={tab === 'settings' ? 'pane fit' : tab === 'packages' ? 'pane line-pane' : 'pane'}>
+      <section className={tab === 'settings' ? 'pane fit' : 'pane'}>
         <Tabs items={tabs} value={tab} onChange={setTab} />
         {tab === 'settings' && (
           <form className="pane-body company-sim" onSubmit={save}>
@@ -170,22 +186,12 @@ export function CompanyScreen() {
           </form>
         )}
         {tab === 'packages' && (
-          <div className="pane-body">
-            {packageCards.length === 0 ? (
-              <p className="hint">{shelf.loaded ? t.noLines : ''}</p>
-            ) : (
-              <div className="line-op-grid">
-                {packageCards.map((item) => (
-                  <Link key={`${item.providerCode}-${item.code}`} className="line-op" href={`/providers/${item.providerCode}/${encodeURIComponent(item.code)}`}>
-                    <span className="line-op-mark"><Package size={18} strokeWidth={1.9} aria-hidden="true" /></span>
-                    <b>{item.name}</b>
-                    <span className="line-op-text">{[item.providerName, factLine(item)].filter(Boolean).join(' · ')}</span>
-                    <ChevronLeft className="line-op-go flip-ltr" size={16} aria-hidden="true" />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
+          <CompanyPackages
+            company={company}
+            provider={filters.provider}
+            onProvider={(code) => setFilters({ provider: code })}
+            loading={!shelf.loaded}
+          />
         )}
         {tab === 'providers' && (
           <DataTable

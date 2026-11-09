@@ -251,8 +251,10 @@ export function OfficeShell({ children }: { children: ReactNode }) {
     {
       title: t.navOps,
       items: [
-        { label: t.navPlans, href: '/packages', icon: Package },
-        { label: t.navCompanies, href: '/companies', icon: Layers, layers: ['branch'], grant: 'edit' },
+        // The branch reaches packages through their company, the catalog's root (spec 2026-11-09-admin-review, 4);
+        // the agents keep their own «الرزم» catalog.
+        { label: t.navPlans, href: '/packages', icon: Package, layers: ['main_agent', 'agent'] },
+        { label: t.navCompanies, href: '/companies', icon: Layers, layers: ['branch'] },
         { label: t.providersTitle, href: '/providers', icon: Radio, layers: ['branch'], grant: 'edit' },
         { label: t.providerAccounts, href: '/provider-accounts', icon: Wallet, layers: ['branch'], grant: 'accounting' },
       ],
