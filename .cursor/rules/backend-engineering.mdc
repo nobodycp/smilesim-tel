@@ -1,0 +1,94 @@
+---
+description: Strict engineering rules for apps/api — money, state, permissions, contract, structure. Enforced by architecture.spec.ts and ESLint.
+alwaysApply: true
+---
+
+# Backend engineering rules (owner 2026-11-10)
+
+These rules exist because of the defects found in `docs/reviews/2026-11-10-backend-review.md`. Each one names the
+check that enforces it. A rule without a check is a review rule: the reviewer refuses the change.
+
+`apps/api/src/architecture.spec.ts` scans the source on every `test:api` run. It holds a **baseline** of the
+violations that existed when a rule was written. The count may only go **down**: a new violation fails CI; when you
+fix one, lower the baseline in the same commit. Never raise a baseline number.
+
+## 1. Money
+
+1. Money is integer agorot. No float arithmetic on money; one `Math.round` per proration, in a pure rule file.
+2. A wallet row is written only by the wallet ledger (`move`, `hold`, `release` in `kernel/`). Nothing else calls
+   `wallet.update` / `wallet.create` except account creation. *(architecture.spec: `wallet-writes`)*
+3. Every money movement happens inside `runTx`, and every read inside the transaction uses the transaction client
+   (`tx`), never `this.kernel.prisma`. *(review rule; architecture.spec: `root-client-in-tx` for the known shapes)*
+4. Two wallets in one transaction are locked in **sorted id order** (`lockWallets`). A line and a wallet: the
+   **line first**, then the wallet.
+5. The price charged and the price recorded are the same number, fixed when the debit is decided (a task stores it
+   when it opens).
+6. A sale stores its `providerCost` on the wallet entry. Reports never price history from today's package.
+
+## 2. State changes (lines, tasks, accounts)
+
+1. A status is changed only by a **guarded write**: lock the row (`lockLine`) or
+   `updateMany({ where: { id, status: <expected> } })` and fail when the count is 0. Never `update({ where: { id } })`
+   to change a status. *(architecture.spec: `unguarded-status-write`)*
+2. A value read before the transaction is not trusted inside it: re-read under the lock, then validate.
+3. One open task per line and action. `openTask` refuses a second one (`TASK_ALREADY_OPEN`).
+4. A status that the code does not handle must not be written. Statuses, kinds, layers and actions are exported
+   unions (and Prisma enums); `status: string` in a signature is refused. One declaration per concept.
+5. Every bug fix in sections 1–2 lands with a test that failed before the fix.
+
+## 3. Permissions and sessions
+
+1. Every office route states its permission in the policy table (`office/policy.ts`) and the service asks the
+   policy (`can.…(actor)` / `require…(actor)`). No new inline `actor.grants.includes(...)` or `isBranchOwner`
+   checks in services. *(architecture.spec: `inline-grant-checks`)*
+2. `permissions.http.spec.ts` has a row for every write route. A new route without a row fails.
+3. An entered (impersonation) session may not change credentials, second step, sessions, roles, grants or
+   passwords of anyone. `/auth` writes require `session.kind === 'account'`.
+4. A lower layer never receives a higher layer's price, cost, margin, provider code or run mode. A response that
+   carries prices is shaped by the viewer's layer in one place and pinned by a spec.
+5. Who acted is stored on the server (session row), never read from a cookie.
+6. A password change or reset revokes the target's other sessions.
+
+## 4. API contract
+
+1. Every `@Body()` and every filtering `@Query()` is parsed by a zod schema in `<domain>.schemas.ts` through
+   `parseInput`. No `typeof body.x === 'string'` in services or controllers.
+   *(architecture.spec: `hand-parsed-input`, `untyped-body`)*
+2. Every string has a maximum; every number is an integer with bounds; an unknown enum value is 400, not ignored.
+3. Errors are always `{ message, code }` with a code from `src/errors.ts`. Status table:
+   400 invalid input or a rule refused · 401 no session · 403 not allowed · 404 missing or not visible ·
+   409 conflict (`*_TAKEN`, `*_EXISTS`, `DUPLICATE_REQUEST`, `TASK_ALREADY_OPEN`) · 429 rate limit.
+   *(architecture.spec: `conflict-status`)*
+4. Every write route under `/office` carries `@Activity(...)`. *(architecture.spec: `write-without-activity`)*
+5. The provider's answer never comes from the client. Line operations go through `ProviderGateway`.
+6. A route lives in the controller of its own domain. Paths and response shapes change only with a spec, and
+   `routes.http.spec.ts` / `response-shape.spec.ts` are updated in the same commit.
+7. Lists are paged or capped; a new list endpoint without a limit is refused.
+
+## 5. Structure
+
+1. One folder per domain under `modules/office/<domain>/`:
+   `*.controller.ts` (HTTP only) → `*.schemas.ts` (zod) → `*.service.ts` (use cases) → `*.rules.ts` (pure, tested)
+   → Prisma access. A controller holds no rule; a rule file imports no Nest, no Prisma.
+2. A domain imports `shared/`, `kernel/`, and another domain's **service or rules**, never its controller.
+   *(architecture.spec: `cross-domain-controller-import`)*
+3. A function is at most 80 lines; a file at most 600. *(ESLint `max-lines-per-function`, `max-lines`; the files
+   listed as exceptions in `eslint.config.mjs` may only leave that list.)*
+4. No copy of a helper. Before writing one, search (`graphify query`, `grep`). Cookies, CSV, date ranges, paging
+   cursors, money formatting each have one home in `shared/` or `kernel/`.
+5. No dead code: an export nobody imports, a parameter nobody reads, a route nobody calls is deleted in the same
+   change that orphans it. `export` only what another file imports.
+6. Test helpers live in `apps/api/src/**/testing/` or beside specs as `*.fixture.ts`; production code never imports
+   them. *(architecture.spec: `test-code-imported`)*
+7. `process.env` is read only in `src/config.ts`. *(architecture.spec: `env-outside-config`)*
+8. No `console.*`; use Nest `Logger`. *(architecture.spec: `console-calls`)*
+9. The API stores codes, not sentences: no Arabic/Hebrew/English user-facing text written to the database from
+   `src/` outside seeds. *(architecture.spec: `stored-text`)*
+10. Comments say why, in English, and never name a file or class that no longer exists.
+
+## 6. Definition of done for a backend change
+
+- Spec + plan first when behaviour, money, status or permissions change (`work-plan.mdc`).
+- A test that fails before and passes after.
+- `npm run lint`, `npm run typecheck`, the touched spec files, and `architecture.spec.ts` pass locally.
+- `docs/architecture/backend.md` says what the code now does; baselines lowered where violations were removed.
