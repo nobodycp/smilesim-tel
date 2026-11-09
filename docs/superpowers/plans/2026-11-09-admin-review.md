@@ -68,7 +68,7 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
 
 - [x] **3.1 Run-mode inheritance (API).** Written through instead of resolved at read (ADR 0009): `Package.inheritedModes`; the provider's change reaches the inheriting packages. Existing
   packages keep their stored modes (no data rewrite). `setMode` can clear an override. Specs for each source. ADR.
-- [ ] **3.2 Companies from the table (API).** `CompaniesService.shelf` reads `Company` rows; the constant only seeds.
+- [x] **3.2 Companies from the table (API).** `CompaniesService.shelf` reads `Company` rows; the constant only seeds.
   Response shape pinned unchanged.
 - [ ] **3.3 Provider adapter + simulated catalog (API).** `providers/adapters/` interface, simulated adapter;
   `GET /office/providers/:code/catalog/companies`, `.../catalog/products?company=`. Route table, permissions (edit

@@ -176,6 +176,20 @@ describe('office response shapes', () => {
     expect(shelf.companies.find((company) => company.code === 'symphony')?.providers).toEqual([]);
   });
 
+  it('adds the companies stored since the seed after the seeded ones, by name, in the same shape', async () => {
+    const { service, gate } = await serviceWith({
+      package: { findMany: async () => [] },
+      company: { findMany: async () => [
+        { code: 'zain', name: 'زين', image: '', iccidLength: null, iccidPrefix: null, esim: true, esimPrice: 500 },
+        { code: 'golan', name: 'جولان', image: '', iccidLength: null, iccidPrefix: null, esim: false, esimPrice: 300 },
+      ] },
+    });
+    const shelf = await service.companiesShelf(gate);
+    expect(shelf.companies.map((company) => company.code)).toEqual([...companies.map((company) => company.code), 'golan', 'zain']);
+    expect(keysOf(shelf.companies.at(-1)!)).toEqual(sorted(SHELF_COMPANY_KEYS));
+    expect(shelf.companies.find((company) => company.code === 'golan')).toMatchObject({ name: 'جولان', esimPrice: 300, providers: [] });
+  });
+
   it('answers the package sheet with both price ladders, counts, and saved targets', async () => {
     const pkg = {
       id: 'pkg-1',

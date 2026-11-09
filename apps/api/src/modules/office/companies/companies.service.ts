@@ -73,11 +73,17 @@ export class CompaniesService {
       byCompany.set(row.company.code, providers);
     }
     const stored = await this.kernel.prisma.company.findMany({
-      select: { code: true, image: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
+      select: { code: true, name: true, image: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
     });
     const byCode = new Map(stored.map((row) => [row.code, row]));
+    // The seeded companies in their order, then the ones added since (spec 2026-11-09-admin-review, 3), by name.
+    const seeded = new Set<string>(companies.map((company) => company.code));
+    const added = stored
+      .filter((row) => !seeded.has(row.code))
+      .map((row) => ({ code: row.code, name: row.name ?? row.code }))
+      .sort((left, right) => left.name.localeCompare(right.name, 'ar'));
     return {
-      companies: companies.map((company) => ({
+      companies: [...companies, ...added].map((company) => ({
         code: company.code,
         name: company.name,
         image: byCode.get(company.code)?.image ?? '',
