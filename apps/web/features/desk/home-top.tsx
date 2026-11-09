@@ -116,7 +116,7 @@ export function LastOperations({ home, failed, onRetry, showAccount }: { home: H
   const head = (
     <header className="pane-head">
       <h2>{t.lastOps}</h2>
-      <Link className="ui-btn ui-btn-ghost ui-btn-sm" href="/reports/sales">{t.allSales}</Link>
+      <Link className="ui-btn ui-btn-ghost ui-btn-sm" href="/finance?scope=operations">{t.allOperations}</Link>
     </header>
   );
   if (!home) {

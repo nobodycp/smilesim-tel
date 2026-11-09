@@ -1,162 +1,28 @@
 'use client';
 
 import { Search } from 'lucide-react';
-import Link from 'next/link';
 import { useState } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
-import { Desk, Money, actionName, latinWhen, layerName } from '../../../components/desk';
+import { Desk, Money, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { queryString } from '../../../lib/http';
-import { api, type BalanceReportRow, type OrderReportRow, type SaleReportRow, type SupplyReportRow } from '../../../lib/api';
+import { api, type BalanceReportRow, type SupplyReportRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { accountTone } from '../../../lib/status-tone';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../report-kit';
 
-/** The movements a sale can be (API `SALE_KINDS`). */
-const SALE_KINDS = ['activate', 'charge', 'extend', 'reactivate'];
-/** The line operations an order can be (API `PROVIDER_OPERATION_KINDS`). */
-const ORDER_ACTIONS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'];
-
-/** A task's short reference (the first six characters of its id), a link to its ticket. */
-const taskRef = (id: string) => `#${id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
-
-const exportHref = (kind: string, query: Record<string, string>) => `/api/office/reports/${kind}/export${queryString(query)}`;
-
 /**
- * The reports (spec 2026-11-08-reports, roadmap N5; one page each since spec 2026-11-08-overview-and-reports-nav, C),
- * in the Graphite report layout: the title, its lede and the CSV; the period and the filter chips; three figures with
- * a meta line; the table. Each covers the signed-in account's own chain and exports its filters as CSV. They sit in
- * the sidebar's «التقارير» group; `/reports` opens the first.
+ * The reports (spec 2026-11-08-reports; one page each since spec 2026-11-08-overview-and-reports-nav, C), in the
+ * Graphite report layout. Balances and providers live here; «المبيعات» and «الطلبات» left by spec
+ * 2026-11-09-admin-review, 1 (their rows are in «المالية» and «المهام»).
  */
-export function SalesReportScreen() {
-  const { t } = usePrefs();
-  const [days, setDays] = useState<PeriodDays>(30);
-  const [q, setQ] = useState('');
-  const [account, setAccount] = useState('');
-  const [kind, setKind] = useState('');
-  const query = { from: periodFrom(days), to: '', q: q.trim(), account, kind };
-  const report = useApiQuery(['office', 'reports', 'sales', query], () => api.reportSales(query));
-  const data = report.data;
-  const count = data?.totals.count ?? 0;
-  const columns: Column<SaleReportRow>[] = [
-    { key: 'at', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
-    { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.loginName} /> },
-    { key: 'kind', header: t.movement, render: (row) => actionName(t, row.kind) },
-    { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr" className="msisdn">{row.msisdn}</bdi> : '—') },
-    { key: 'package', header: t.packageName, render: (row) => <><bdi>{row.packageName || '—'}</bdi>{row.companyName ? <span className="sub">{row.companyName}</span> : null}</> },
-    { key: 'amount', header: t.amount, num: true, sortValue: (row) => row.amount, render: (row) => <Money value={row.amount} /> },
-    { key: 'margin', header: t.yourProfit, num: true, sortValue: (row) => row.margin ?? 0, render: (row) => (row.margin == null ? '—' : <Money value={row.margin} signed />) },
-  ];
-  return (
-    <Desk title={t.salesTitle} lede={t.salesLede} action={<CsvLink href={exportHref('sales', query)} />} error="" note="">
-      <ReportFilters>
-        <Period days={days} onPick={setDays} />
-        <FilterBar loose onClear={() => { setQ(''); setAccount(''); setKind(''); }} clearLabel={t.clearFilters}>
-          <label className="filter-search">
-            <Search size={16} strokeWidth={1.9} aria-hidden="true" />
-            <span className="sr-only">{t.financeSearch}</span>
-            <input value={q} placeholder={t.financeSearch} onChange={(event) => setQ(event.target.value)} />
-          </label>
-          <label>
-            {t.accountName}
-            <Select value={account} onChange={(event) => setAccount(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              {(data?.accounts ?? []).map((row) => <option key={row.loginName} value={row.loginName}>{row.nickname ? `${row.nickname} (${row.loginName})` : row.loginName}</option>)}
-            </Select>
-          </label>
-          <label>
-            {t.movement}
-            <Select value={kind} onChange={(event) => setKind(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              {SALE_KINDS.map((value) => <option key={value} value={value}>{actionName(t, value)}</option>)}
-            </Select>
-          </label>
-        </FilterBar>
-      </ReportFilters>
-      <StatRow>
-        <Stat label={t.salesTotal} value={data ? <Money value={data.totals.amount} /> : '—'} meta={t.opsCountMeta.replace('{n}', String(count))} />
-        <Stat label={t.yourProfit} value={data ? <Money value={data.totals.profit} signed /> : '—'} meta={t.afterRefunds} highlight />
-        <Stat label={t.avgOperation} value={data ? <Money value={count ? Math.round(data.totals.amount / count) : 0} /> : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
-      </StatRow>
-      <section className="pane">
-        <DataTable columns={columns} rows={data?.rows ?? []} rowKey={(row) => row.id} loading={!report.loaded} failed={report.error} onRetry={() => void report.reload()} empty={t.noRows} keepHead skeleton={{ rows: 5, columns: 7 }} />
-      </section>
-    </Desk>
-  );
-}
-
-export function OrdersReportScreen() {
-  const { t } = usePrefs();
-  const [days, setDays] = useState<PeriodDays>(30);
-  const [q, setQ] = useState('');
-  const [status, setStatus] = useState('');
-  const [action, setAction] = useState('');
-  const query = { from: periodFrom(days), to: '', q: q.trim(), status, action };
-  const report = useApiQuery(['office', 'reports', 'orders', query], () => api.reportOrders(query));
-  const data = report.data;
-  const statusName = (value: string) => (value === 'done' ? t.orderDone : value === 'open' ? t.orderOpen : t.orderCancelled);
-  const share = data && data.totals.count ? Math.round((data.totals.done / data.totals.count) * 100) : 0;
-  const columns: Column<OrderReportRow>[] = [
-    { key: 'at', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
-    {
-      key: 'task',
-      header: t.taskColumn,
-      fit: true,
-      render: (row) => (row.taskId ? <Link className="task-ref" href={`/tasks/${row.taskId}`}><bdi dir="ltr">{taskRef(row.taskId)}</bdi></Link> : '—'),
-    },
-    { key: 'action', header: t.operationColumn, render: (row) => actionName(t, row.action) },
-    { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr" className="msisdn">{row.msisdn}</bdi> : '—') },
-    { key: 'account', header: t.pointOfSale, render: (row) => <AccountName login={row.loginName} /> },
-    { key: 'package', header: t.packageName, render: (row) => <><bdi>{row.packageName || '—'}</bdi>{row.companyName ? <span className="sub">{row.companyName}</span> : null}</> },
-    { key: 'status', header: t.status, render: (row) => <Badge variant={row.status === 'done' ? 'success' : row.status === 'open' ? 'warning' : 'danger'} dot>{statusName(row.status)}</Badge> },
-    { key: 'handler', header: t.handledBy, render: (row) => (row.handlerLogin ? <AccountName login={row.handlerLogin} /> : '—') },
-    { key: 'amount', header: t.amount, num: true, sortValue: (row) => row.amount, render: (row) => <Money value={row.amount} /> },
-  ];
-  return (
-    <Desk title={t.ordersTitle} lede={t.ordersLede} action={<CsvLink href={exportHref('orders', query)} />} error="" note="">
-      <ReportFilters>
-        <Period days={days} onPick={setDays} />
-        <FilterBar loose onClear={() => { setQ(''); setStatus(''); setAction(''); }} clearLabel={t.clearFilters}>
-          <label className="filter-search">
-            <Search size={16} strokeWidth={1.9} aria-hidden="true" />
-            <span className="sr-only">{t.financeSearch}</span>
-            <input value={q} placeholder={t.financeSearch} onChange={(event) => setQ(event.target.value)} />
-          </label>
-          <label>
-            {t.status}
-            <Select value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              <option value="done">{t.orderDone}</option>
-              <option value="open">{t.orderOpen}</option>
-              <option value="cancelled">{t.orderCancelled}</option>
-            </Select>
-          </label>
-          <label>
-            {t.operationColumn}
-            <Select value={action} onChange={(event) => setAction(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              {ORDER_ACTIONS.map((value) => <option key={value} value={value}>{actionName(t, value)}</option>)}
-            </Select>
-          </label>
-        </FilterBar>
-      </ReportFilters>
-      <StatRow>
-        <Stat label={t.allOrders} value={data ? data.totals.count : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
-        <Stat tone="success" label={t.orderDone} value={data ? <span className="tone-success">{data.totals.done}</span> : '—'} meta={`${share}%`} />
-        <Stat tone="danger" label={t.orderCancelled} value={data ? <span className="tone-danger">{data.totals.cancelled}</span> : '—'} meta={t.openMeta.replace('{n}', String(data?.totals.open ?? 0))} />
-      </StatRow>
-      <section className="pane">
-        <DataTable columns={columns} rows={data?.rows ?? []} rowKey={(row) => row.id} loading={!report.loaded} failed={report.error} onRetry={() => void report.reload()} empty={t.noRows} keepHead skeleton={{ rows: 5, columns: 7 }} />
-      </section>
-    </Desk>
-  );
-}
+const exportHref = (kind: string, query: Record<string, string>) => `/api/office/reports/${kind}/export${queryString(query)}`;
 
 /** Main agent, agent and the branch: the wallets under the account, now (no period). */
 export function BalancesReportScreen() {

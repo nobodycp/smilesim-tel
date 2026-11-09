@@ -1,3 +1,6 @@
-import { OperationsScreen } from '../../features/wallets/screens/operations-screen';
+import { redirect } from 'next/navigation';
 
-export default OperationsScreen;
+// «العمليات» became «المالية» → «العمليات فقط» (spec 2026-11-09-admin-review, 1).
+export default function Page() {
+  redirect('/finance?scope=operations');
+}

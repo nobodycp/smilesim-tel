@@ -59,7 +59,7 @@ export function HomeScreen() {
         { href: '/tasks', label: t.navTasks, icon: 'tasks' },
         { href: '/finance', label: t.navFinance, icon: 'wallet' },
         { href: '/wallet', label: t.walletPage, icon: 'wallet' },
-        { href: '/reports/sales', label: t.salesTitle, icon: 'reports' },
+        { href: '/profits', label: t.navProfits, icon: 'reports' },
       ]
     : [
         { href: '/users', label: t.navUsers, icon: 'staff' },
@@ -68,7 +68,7 @@ export function HomeScreen() {
         { href: '/numbers', label: t.navNumbers, icon: 'numbers' },
         { href: '/tasks', label: t.navTasks, icon: 'tasks' },
         ...(layer === 'branch' ? [{ href: '/companies', label: t.navCompanies, icon: 'providers' as const }] : []),
-        ...(me?.isBranchOwner ? [] : [{ href: '/reports/sales', label: t.salesTitle, icon: 'reports' as const }]),
+        ...(me?.isBranchOwner ? [] : [{ href: '/profits', label: t.navProfits, icon: 'reports' as const }]),
       ];
   // The head (Graphite, as in the approved design): the greeting is the title, today's date and the layer the lede.
   const name = me ? me.nickname || me.loginName : '';

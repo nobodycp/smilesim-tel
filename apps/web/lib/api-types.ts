@@ -608,8 +608,6 @@ export type ProfitRow = { packageName: string; companyName: string; sales: numbe
 export type ProfitReport = { packages: ProfitRow[]; totals: { sales: number; refunds: number; profit: number }; capped: boolean };
 
 /** Rows of the «التقارير» page (`GET /office/reports/{sales,orders,balances,supply}`). */
-export type SaleReportRow = { id: string; at: string; loginName: string; kind: string; msisdn: string; companyName: string; packageName: string; amount: number; margin: number | null };
-export type OrderReportRow = { id: string; at: string; loginName: string; action: string; msisdn: string; companyName: string; packageName: string; status: 'done' | 'open' | 'cancelled'; amount: number; taskId?: string | null; handlerLogin?: string };
 export type BalanceReportRow = {
   loginName: string; nickname: string; layer: string; parentLogin: string | null; balance: number; ceiling: number; used: number; held: number; available: number; frozen: boolean; lastAt: string | null;
 };

@@ -91,7 +91,6 @@ test.describe('usePaged', () => {
     ['finance', 'GET /finance', 'entries', 'المالية'],
     ['provider-operations', 'GET /provider-operations', 'entries', 'عمليات المزودين'],
     ['audit', 'GET /audit', 'entries', 'سجل النشاط'],
-    ['operations', 'GET /ledger/operations', 'entries', 'العمليات'],
   ] as const) {
     // The first answer fills one page of the saved size (10) and names a cursor; page 2 reads it.
     test(`${path} counts its pages from the total and reads the next cursor for page 2`, async ({ page }) => {

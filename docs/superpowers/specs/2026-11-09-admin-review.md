@@ -36,10 +36,16 @@ Also: the «المبيعات» lede says it lists refunds; the query does not (i
    - `/reports/orders` → `/tasks`
    - `/reports` → `/finance` (was `/reports/sales`)
 4. **Home shortcuts:** the «المبيعات» shortcut (point of sale, and non-owner desks) becomes «الأرباح» → `/profits`.
+   The «آخر العمليات» card's «كل المبيعات» link becomes «كل العمليات» → `/finance?scope=operations` (it lists
+   operations, not totals).
+   Commit 77799b2 added filters to «المبيعات» (point of sale, movement) and to «الطلبات» (operation, task link,
+   handler). They go with the pages (owner 2026-11-09: «تمام نشيلهم»): the search and kind filters of «المالية» and
+   the «المهام» list cover them.
 5. **«المالية» is a statement only** (owner 2026-11-09: «هدفي منها تتبع حركات كل المحافظ لو حصل عند حدا خطأ اقدر
    اراجع»). The head goes: the figure band (balance, money in/out 30 days, entries and profit 30 days), the ceiling
    cards and the balance chart. They describe the signed-in account's own wallet, not the wallets being reviewed, and
-   the same `WalletHead` stays on «المحفظة» `/wallet`, so nothing is lost. The page opens straight on the statement
+   the same `WalletHead` stays on «المحفظة» `/wallet` (with its 7 / 30 / 90 days switch and trend line, commit
+   95fcac5), so nothing is lost. The page opens straight on the statement
    table with its filters (scope, kind, layer, search, from/to) and the CSV; the shares dialog stays.
    `GET /office/finance/summary` stays (the wallet page and home read it).
 6. **API removed** once no page calls it: `GET /office/reports/sales`, `GET /office/reports/orders`, their CSV kinds,
@@ -93,7 +99,7 @@ name is picked: suggestions appear from the first letter, closest names first.
 | number card | point of sale to move to |
 | tasks, numbers, packages, provider operations, user packages tab | company / provider / package filters |
 
-In a `FilterBar`, the field sits as a chip-sized input; under 768px inside the «كل الفلاتر» drawer.
+In a `FilterBar`, the field sits as a chip-sized input with the same look as the chip's own list (commit 0c7967e); under 768px inside the «كل الفلاتر» drawer.
 
 ### 2b. Language in the topbar
 
@@ -165,8 +171,9 @@ adapter exists; matching is simulated. Provider run modes are copied to a packag
   that serve this company, with package count and a link to each provider; **«الإعدادات»** — SIM rules and the eSIM
   default.
 - **`/providers/[code]`**: run defaults and eSIM price only; its package tab goes (a «الشركات» list links to each
-  company's «الرزم» filtered by this provider). Balance and credit leave `/providers` and the provider lede; one link
-  «حساب المزود» goes to `/provider-accounts/[code]`.
+  company's «الرزم» filtered by this provider). Balance and credit stay **read-only** where the Graphite design shows
+  them (the provider lede «رصيدك عنده», the `/providers` columns), each a link to `/provider-accounts/[code]`, which
+  alone edits them (owner 2026-11-09).
 - **Package on/off** only on the package page head; the company table shows it as a badge.
 - **Every inherited value shows its source** («موروث من المزود» / «من الشركة») and is edited only where it lives;
   the package page shows it folded with its override.

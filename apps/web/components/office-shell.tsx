@@ -17,8 +17,6 @@ import {
   Menu,
   Package,
   Palette,
-  Receipt,
-  ShoppingCart,
   Truck,
   Phone,
   Settings,
@@ -205,17 +203,15 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const openTasks = board.data?.openTasks ?? 0;
   const desk = ['branch', 'main_agent', 'agent'] as const;
   // «التقارير» (spec 2026-11-08-overview-and-reports-nav, C): every report is its own page, folded in one group
-  // that starts closed and opens by itself on one of its pages. Each layer sees the reports its data allows.
+  // that starts closed and opens by itself on one of its pages. Each layer sees the reports its data allows. Five
+  // since spec 2026-11-09-admin-review, 1: «العمليات», «المبيعات» and «الطلبات» repeated «المالية» and «المهام».
   const reportsGroup: NavGroup = {
     key: 'reports',
     label: t.navReports,
     icon: BarChart3,
     items: [
       { label: t.navFinance, href: '/finance', icon: Wallet },
-      { label: t.navOperations, href: '/operations', icon: Package },
       { label: t.navProfits, href: '/profits', icon: TrendingUp },
-      { label: t.salesTitle, href: '/reports/sales', icon: ShoppingCart },
-      { label: t.ordersTitle, href: '/reports/orders', icon: Receipt },
       { label: t.balancesTitle, href: '/reports/balances', icon: Wallet, layers: desk },
       { label: t.reportProviders, href: '/reports/supply', icon: Truck, layers: ['branch'], grant: 'reports' },
       { label: t.navProviderOps, href: '/provider-operations', icon: ListChecks, layers: ['branch'], grant: 'reports' },

@@ -5,19 +5,21 @@ New sections are appended as the owner names them.
 
 ## Section 1 — Reports: from eight to five
 
-- [ ] **1.1 API: `scope=operations` on finance.** `wallets.service.ts` `financeWhere`: `scope === 'operations'` keeps
+- [x] **1.1 API: `scope=operations` on finance.** (aba4ab9) `wallets.service.ts` `financeWhere`: `scope === 'operations'` keeps
   `kind in PROVIDER_OPERATION_KINDS`. CSV follows (same where). Spec in `finance-ledger.spec.ts`: the rows equal what
   `ledger(actor, 'operations')` returns for the branch, an agent and a point of sale. Additive; no shape change.
-- [ ] **1.2 Web: «العمليات فقط» in «المالية».** New option in the scope select of `finance-screen.tsx`; initial scope
+- [x] **1.2 Web: «العمليات فقط» in «المالية».** (c1bbc95) New option in the scope select of `finance-screen.tsx`; initial scope
   from `?scope=`; copy key in ar/en/he. e2e: picking it sends `scope=operations`; opening `/finance?scope=operations`
   starts on it.
-- [ ] **1.2b Web: «المالية» without the head.** Drop `WalletHead` and its `financeSummary` query from
+- [x] **1.2b Web: «المالية» without the head.** (c1bbc95) Drop `WalletHead` and its `financeSummary` query from
   `finance-screen.tsx`; move `WalletHead` to `wallet-screen.tsx` (its only user then), with the imports it needs.
-  e2e: «المالية» shows no `.figure-band` / `.wallet-chart` and opens on the table; «المحفظة» still shows them.
+  e2e: «المالية» shows no `.wallet-band` / `.wallet-chart` and opens on the table; move `tests/finance-head.spec.ts`
+  to the wallet page (its 7 / 30 / 90 switch and figures stay pinned there).
 - [ ] **1.3 Web: remove the three pages.** `office-shell.tsx` group → five entries. `app/operations/page.tsx`,
   `app/reports/sales/page.tsx`, `app/reports/orders/page.tsx` become redirects (spec, item 3); `app/reports/page.tsx`
   → `/finance`. Delete `operations-screen.tsx`, `SalesReportScreen`, `OrdersReportScreen`, `reportSales`,
-  `reportOrders` and their row types; copy keys check:copy reports unused. Home shortcuts → `/profits`. Update
+  `reportOrders` and their row types (with the 77799b2 filters); copy keys check:copy reports unused. Home shortcuts
+  → `/profits`; `home-top.tsx` «كل المبيعات» → «كل العمليات» `/finance?scope=operations`. Update
   `tests/reports-hub.spec.ts`, `tests/dom-snapshot.mjs`, `audit/screens.audit.ts`. e2e: the group lists five pages
   for branch and pos; each old path lands where the spec says.
 - [ ] **1.4 API: remove the dead endpoints.** `reports.controller.ts` sales/orders, `insights.service.ts`
@@ -38,7 +40,8 @@ New sections are appended as the owner names them.
 - [ ] **2a.2 Account pickers.** Package sheet offers tab (two), users create form parent, transfer dialog
   destination, numbers new activation point of sale, number card move-to. Same values sent to the API.
 - [ ] **2a.3 Package / company / provider pickers.** Numbers new activation package; the filters on tasks, numbers,
-  packages, provider operations, user packages tab; `FilterBar` chip size and drawer layout.
+  packages, provider operations, user packages tab; in `FilterBar` it matches the chip's own list (0c7967e), and
+  the drawer layout under 768px.
 - [ ] **2a.4 Docs and check.** `frontend.md` components list; every changed screen at all widths, ar + en.
 
 ## Section 5 — Layer sign-in rules out of the owner's settings
@@ -55,8 +58,8 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
   `/providers/[p]/[pkg]` and `/companies/[c]/[p]`; branch `/packages` → `/companies`; sidebar entries.
 - [ ] **4.2 Company page tabs** as approved: one packages table with provider column and filter; providers tab;
   settings tab. Remove `company-packages-screen.tsx`.
-- [ ] **4.3 Provider page** without its packages tab and balance; «حساب المزود» link; `/providers` without balance
-  columns.
+- [ ] **4.3 Provider page** without its packages tab; its balance (lede) and the `/providers` balance / credit
+  columns stay read-only, each a link to `/provider-accounts/[code]`.
 - [ ] **4.4 One home per value.** Package on/off only on the package head; inherited values with their source label;
   eSIM price/availability shown with source on the package. Response shapes kept; e2e updated.
 - [ ] **4.5 Docs** (frontend map, ADR «company is the catalog root»), full visual check.
@@ -73,8 +76,8 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
 - [ ] **3.4 Create endpoints (API).** `POST /office/companies`, `POST /office/packages` (migration:
   `Package.providerProductCode`, unique per provider; `Company.providerCompanyCode`). Validation and error codes
   (ar copy = API message). Specs incl. duplicate product refused.
-- [ ] **3.5 Run tab with inheritance (web).** Package page run tab: each action «موروث» / «مخصص», folded, «رجوع
-  للموروث»; one control (ModeCards) for provider and package.
+- [ ] **3.5 Run tab with inheritance (web).** Package page run tab: the Select table gives way to `ModeCards`
+  (already on the provider page), each action «موروث» / «مخصص», folded, «رجوع للموروث».
 - [ ] **3.6 «إضافة رزمة» page (web).** `/companies/[code]/packages/new`: provider → query → pick → details → addons →
   run (folded) → prices → save; reuses the package page editors. e2e on the mock API.
 - [ ] **3.7 «إضافة شركة» page (web).** `/companies/new`: provider → query → pick → SIM rules → save. e2e.

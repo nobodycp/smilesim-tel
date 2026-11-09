@@ -133,8 +133,6 @@ const cases = [
   ['finance-empty', '/finance', 'branch', true],
   ['audit', '/audit', 'branch'],
   ['audit-empty', '/audit', 'branch', true],
-  ['operations', '/operations', 'branch'],
-  ['operations-empty', '/operations', 'branch', true],
   ['numbers', '/numbers', 'branch'],
   ['numbers-pos', '/numbers', 'pos'],
   ['numbers-empty', '/numbers', 'branch', true],
