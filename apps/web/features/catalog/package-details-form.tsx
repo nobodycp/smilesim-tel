@@ -38,6 +38,7 @@ export function PackageDetailsForm({
   const [smsCount, setSmsCount] = useState(amountOf(sheet.smsCount));
   const [details, setDetails] = useState(sheet.details);
   const [suspendAfter, setSuspendAfter] = useState(String(sheet.suspendAfterDays ?? 90));
+  const [esimAvailable, setEsimAvailable] = useState(sheet.esimAvailable ?? true);
 
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -48,7 +49,7 @@ export function PackageDetailsForm({
       return;
     }
     const [gb, sms, mins] = values as (number | null)[];
-    await run(() => api.setPackageDetails(sheet.code, { dataGb: gb, smsCount: sms, minutes: mins, details: details.trim(), suspendAfterDays: suspendDays }), { note: t.saved });
+    await run(() => api.setPackageDetails(sheet.code, { dataGb: gb, smsCount: sms, minutes: mins, details: details.trim(), suspendAfterDays: suspendDays, esimAvailable }), { note: t.saved });
   }
 
   const field = (label: string, amount: Amount, set: (next: Amount) => void) => (
@@ -84,6 +85,11 @@ export function PackageDetailsForm({
         <input className="num" inputMode="numeric" dir="ltr" value={suspendAfter} onChange={(event) => setSuspendAfter(event.target.value)} />
         <span className="hint">{t.suspendAfterHint}</span>
       </label>
+      <label className="check">
+        <input type="checkbox" checked={esimAvailable} onChange={(event) => setEsimAvailable(event.target.checked)} />
+        <span>{t.packageEsimAvailable}</span>
+      </label>
+      <p className="hint">{t.packageEsimHint}</p>
       <label>
         {t.extraDetails}
         <textarea rows={3} maxLength={DETAILS_LIMIT} value={details} onChange={(event) => setDetails(event.target.value)} />

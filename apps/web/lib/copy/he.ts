@@ -500,6 +500,8 @@ export const he: Copy = {
   unlimited: 'ללא הגבלה',
   suspendAfterDays: 'ימים עד השהיית המספר',
   suspendAfterHint: 'מספר הופך ל«מושהה» כעבור מספר הימים הזה מסיום המנוי. ברירת המחדל היא 90.',
+  packageEsimAvailable: 'החבילה זמינה כ-eSIM',
+  packageEsimHint: 'כשזה כבוי, הפעלה חדשה בחבילה לא מציעה eSIM, והמספרים שלה לא מציעים בקשת eSIM.',
   extraDetails: 'פרטים נוספים',
   mainSellPair: 'מחיר לסוכן ראשי (מנוי / חידוש)',
   packagesGroupSummary: '{total} חבילות · {off} מושהות',

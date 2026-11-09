@@ -28,7 +28,7 @@ const SHELF_PROVIDER_KEYS = ['code', 'name', 'packages'];
 const SHELF_PACKAGE_KEYS = ['code', 'name', 'months', 'dataGb', 'smsCount', 'minutes', 'branchCost', 'mainPrice', 'renewalBranchCost', 'renewalMainPrice', 'forSale', 'enabled', 'lines', 'activeLines', 'stoppedLines'];
 const PACKAGE_SHEET_KEYS = [
   'code', 'name', 'providerCode', 'providerName', 'companyCode', 'companyName', 'enabled', 'forSale',
-  'dataGb', 'suspendAfterDays', 'smsCount', 'minutes', 'details', 'months',
+  'dataGb', 'suspendAfterDays', 'esimAvailable', 'smsCount', 'minutes', 'details', 'months',
   'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice',
   'renewalBranchCost', 'renewalMainPrice', 'renewalAgentPrice', 'renewalPosPrice', 'renewalSubscriberPrice',
   'esimPrice', 'esimPriceEffective', 'esimPriceSource',

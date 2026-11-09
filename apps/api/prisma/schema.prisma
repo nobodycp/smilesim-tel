@@ -222,6 +222,8 @@ model Package {
   details                String?
   /// Days after the subscription ends before the line counts as suspended (spec 2026-11-08-overview-and-reports-nav, I).
   suspendAfterDays       Int      @default(90)
+  /// Whether this package may be sold or served as an eSIM; the company must allow it too (spec 2026-11-09, 5).
+  esimAvailable          Boolean  @default(true)
   months                 Int              @default(1)
   branchCost             Int
   mainPrice              Int

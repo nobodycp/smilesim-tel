@@ -89,7 +89,7 @@ export class PackagesService {
         providerName: actor.layer === 'branch' ? row.provider.name : '',
         activateMode: resolvePackageMode(row.actionModes, row, 'activate'),
         companyName: row.company?.name ?? '',
-        sim: simRulesOf(row.company),
+        sim: simRulesOf(row.company, row),
         esimPrice: esimPriceOf({ pkg: row, provider: row.provider, company: row.company }).price,
         dataGb: row.dataGb,
         smsCount: row.smsCount,
@@ -193,6 +193,7 @@ export class PackagesService {
       forSale: pkg.forSale,
       dataGb: pkg.dataGb,
       suspendAfterDays: pkg.suspendAfterDays,
+      esimAvailable: pkg.esimAvailable,
       smsCount: pkg.smsCount,
       minutes: pkg.minutes,
       details: pkg.details ?? '',
@@ -227,6 +228,7 @@ export class PackagesService {
     // Days after the end before a line counts as suspended (spec 2026-11-08-overview-and-reports-nav, I); optional.
     const suspend = body.suspendAfterDays;
     if (suspend !== undefined && !(typeof suspend === 'number' && Number.isInteger(suspend) && suspend >= 1 && suspend <= 3650)) fail(400, 'INVALID');
+    if (body.esimAvailable !== undefined && typeof body.esimAvailable !== 'boolean') fail(400, 'INVALID');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     await this.kernel.prisma.package.update({
@@ -237,6 +239,7 @@ export class PackagesService {
         minutes: body.minutes as number | null,
         details: body.details.trim() || null,
         ...(typeof suspend === 'number' ? { suspendAfterDays: suspend } : {}),
+        ...(typeof body.esimAvailable === 'boolean' ? { esimAvailable: body.esimAvailable } : {}),
       },
     });
     return { ok: true as const };

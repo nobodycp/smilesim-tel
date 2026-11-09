@@ -199,7 +199,7 @@ export class LinesService {
         dataGb: line.package.dataGb,
         subscriberPrice: line.package.subscriberPrice,
         companyImage: line.package.company?.image ?? '',
-        sim: simRulesOf(line.package.company),
+        sim: simRulesOf(line.package.company, line.package),
         switchTargets: await this.visibleSwitchTargets(line.packageId, posPath),
         opsLocked: line.opsLocked,
         createdAt: line.createdAt.toISOString(),
@@ -242,7 +242,7 @@ export class LinesService {
     if (inputs === 'generated' && !esim && !iccid) fail(400, 'INVALID');
     if (inputs === 'current-details' && (!currentDetails || iccid.length < 8)) fail(400, 'INVALID');
     if (inputs === 'number-and-sim' && (!requested || iccid.length < 8)) fail(400, 'INVALID');
-    const sim = simRulesOf(pkg.company);
+    const sim = simRulesOf(pkg.company, pkg);
     if (esim && !sim.esim) fail(400, 'ESIM_UNSUPPORTED');
     if (!(inputs === 'generated' && esim)) {
       const refusal = simRefusal(sim, iccid);
@@ -542,7 +542,7 @@ export class LinesService {
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     this.assertRunnable(line.package, 'sim', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
-    const rules = simRulesOf(line.package.company);
+    const rules = simRulesOf(line.package.company, line.package);
     if (esim && !rules.esim) fail(400, 'ESIM_UNSUPPORTED');
     const refusal = simRefusal(rules, iccid);
     if (refusal) fail(400, refusal);
@@ -566,7 +566,7 @@ export class LinesService {
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active') fail(400, 'INVALID');
     if (line.denied.has('esim')) fail(403, 'OPERATION_DENIED');
-    if (!simRulesOf(line.package.company).esim) fail(400, 'ESIM_UNSUPPORTED');
+    if (!simRulesOf(line.package.company, line.package).esim) fail(400, 'ESIM_UNSUPPORTED');
     const { price } = esimPriceOf({ pkg: line.package, provider: line.package.provider, company: line.package.company });
     const task = await this.tasks.openTask({
       action: 'esim', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: -price, msisdn: line.msisdn, iccid: null, esim: true,
@@ -837,7 +837,7 @@ export class LinesService {
     status: string;
     endsAt: Date;
     opsLocked?: boolean;
-    package: Parameters<LinesService['assertRunnable']>[0] & { company?: { esim?: boolean } | null };
+    package: Parameters<LinesService['assertRunnable']>[0] & { company?: { esim?: boolean } | null; esimAvailable?: boolean };
     denied?: ReadonlySet<OpKey>;
   }): string[] {
     const denied = line.denied ?? new Set<OpKey>();
@@ -846,7 +846,7 @@ export class LinesService {
       (action) => resolvePackageMode(line.package.actionModes, line.package, action),
     );
     // An eSIM request is always a branch task: the employee attaches the serial and the QR picture.
-    if (line.status === 'active' && !line.opsLocked && simRulesOf(line.package.company ?? null).esim) keys.push('esim');
+    if (line.status === 'active' && !line.opsLocked && simRulesOf(line.package.company ?? null, line.package).esim) keys.push('esim');
     // A refresh is a provider operation on a live subscription: active numbers only, like the rest.
     if (line.status === 'active' && !line.opsLocked && refreshMode(line.package.actionModes) !== 'off') keys.push('refresh');
     return keys.filter((key) => {

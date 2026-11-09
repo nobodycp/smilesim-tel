@@ -500,6 +500,8 @@ export const ar = {
   unlimited: 'غير محدود',
   suspendAfterDays: 'مدة تعليق الرقم (بالأيام)',
   suspendAfterHint: 'يصير الرقم «معلّق» بعد انتهاء اشتراكه بهذا العدد من الأيام. الافتراضي 90.',
+  packageEsimAvailable: 'الرزمة متاحة كـ eSIM',
+  packageEsimHint: 'إذا ألغيتها لا يظهر خيار eSIM عند تفعيل رقم جديد على هذه الرزمة ولا طلب eSIM على أرقامها.',
   extraDetails: 'تفاصيل إضافية',
   mainSellPair: 'سعر الوكيل الرئيسي (اشتراك / تجديد)',
   packagesGroupSummary: '{total} رزمة · {off} متوقفة',

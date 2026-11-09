@@ -500,6 +500,8 @@ export const en: Copy = {
   unlimited: 'Unlimited',
   suspendAfterDays: 'Days until the number is suspended',
   suspendAfterHint: 'A number becomes «suspended» this many days after its subscription ends. The default is 90.',
+  packageEsimAvailable: 'This package can be an eSIM',
+  packageEsimHint: 'When off, a new activation on this package offers no eSIM, and its numbers offer no eSIM request.',
   extraDetails: 'Extra details',
   mainSellPair: 'Main agent price (subscription / renewal)',
   packagesGroupSummary: '{total} packages · {off} stopped',

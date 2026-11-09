@@ -218,6 +218,8 @@ export type PackageSheet = {
   dataGb: number | null;
   /** Days after the end before a line counts as suspended (90 by default). */
   suspendAfterDays: number;
+  /** Whether this package may be sold or served as an eSIM (its company must allow it too). */
+  esimAvailable?: boolean;
   smsCount: number | null;
   minutes: number | null;
   details: string;
