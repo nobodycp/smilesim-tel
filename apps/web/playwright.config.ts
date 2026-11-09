@@ -6,7 +6,9 @@ const webOrigin = `http://pos.localhost:${webPort}`;
 
 export default defineConfig({
   testDir: './tests',
-  use: { baseURL: webOrigin },
+  // A failed test keeps its trace (actions, DOM snapshots, console) in the CI report, so it can be read without
+  // running Playwright on the owner's machine (.cursor/rules/machine-limits.mdc).
+  use: { baseURL: webOrigin, trace: 'retain-on-failure' },
   webServer: [
     {
       command: 'node tests/mock-api.mjs',
