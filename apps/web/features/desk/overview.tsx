@@ -63,7 +63,7 @@ export function TasksCard({ data }: { data: OverviewPayload }) {
   ];
   const all = Math.max(1, rows.reduce((sum, row) => sum + row.value, 0));
   const age = tasks.oldestOpenMinutes;
-  const ageText = age === null ? t.noOpenTasks : t.oldestOpenTask.replace('{time}', age < 60 ? `${age}m` : age < 1440 ? `${Math.floor(age / 60)}h` : `${Math.floor(age / 1440)}d`);
+  const ageText = age === null ? t.noOpenTasks : t.oldestOpenTask.replace('{time}', (age < 60 ? t.minutesAgo.replace('{n}', String(age)) : age < 1440 ? t.hoursAgo.replace('{n}', String(Math.floor(age / 60))) : t.daysAgo.replace('{n}', String(Math.floor(age / 1440)))));
   return (
     <Card title={t.overviewTasks} hint={ageText}>
       <ul className="overview-meters">

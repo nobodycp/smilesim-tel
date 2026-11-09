@@ -145,6 +145,9 @@ input[readonly] { background-color: transparent; }
    empty block under short lists) and never squeezes its rows; the page scrolls when the content is longer. */
 .desk > .pane, .desk > section.pane, .desk > .stack > .pane { flex: none; }
 .desk .sheet { flex: none; min-height: 0; overflow-x: auto; }
+/* Under a kept table head the empty block takes its own height: «100%» of a sheet sized by its content is circular
+   and cut the last line off by the head's height. */
+.sheet > .empty.empty-state { min-height: auto; }
 
 /* ── Filters (Graphite, from design/night-desk-family): chips in one wrapping row — the field's name on a raised
    segment, the field beside it, an accent edge once it holds a value — on the top edge of the table card below.
@@ -204,7 +207,10 @@ input[readonly] { background-color: transparent; }
 .filter-panel > label .ui-select { display: flex; }
 .filter-panel > label .ui-select-field { min-width: 7rem; }
 .filter-panel > label input:not([type='date']):not([type='checkbox']) { width: 12rem; }
-.filter-panel > label:has(input[type='checkbox']) { gap: 8px; padding-inline: 10px; }
+/* A yes/no filter is a toggle chip: the chip lights when it is on, the box itself stays for keyboards and readers. */
+.filter-panel > label:has(input[type='checkbox']) { position: relative; align-items: center; gap: 8px; padding-inline: 12px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
+.filter-panel > label > input[type='checkbox'] { position: absolute; inset: 0; width: 100%; max-width: none; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.filter-panel > label:has(input[type='checkbox']:focus-visible) { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
 .filter-panel > label :is(input, select):focus { outline: none; box-shadow: inset 0 -2px 0 var(--rd-accent); }
 .filter-panel > .seg, .filter-panel > .steps { height: 32px; }
 .filter-panel .filter-clear { height: 32px; margin-inline-start: auto; color: var(--rd-accent); }
@@ -261,6 +267,10 @@ input[readonly] { background-color: transparent; }
 
 /* A card's body and stacks keep their rows at their own height when the card is stretched by a neighbour. */
 .pane-body, .stack, .settings-col, form { align-content: start; }
+/* Four figure cards sit in one row when they fit, else two by two: never three and one left alone. */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .stat-row:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 767px) {
   /* An odd last figure card takes the whole row instead of standing alone in half of it. */
   .stat-row > :last-child:nth-child(odd) { grid-column: 1 / -1; }
@@ -704,7 +714,10 @@ input[readonly] { background-color: transparent; }
 
 /* ── «طريقة التنفيذ» cards (components/mode-cards.tsx): a crimson mark, the operation, a three-way segmented control;
    a stopped operation's card dims. ── */
-.mode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.mode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+/* The switch spans the card in three equal parts, so a longer language («Branch task») never spills past its edge. */
+.mode-card .seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); inline-size: 100%; }
+.mode-card .seg button { padding-inline: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mode-card {
   position: relative;
   display: grid;
@@ -1010,7 +1023,7 @@ input[readonly] { background-color: transparent; }
   .period { inline-size: 100%; }
   .period button { flex: 1; padding-inline: 6px; }
 }
-.stat .stat-name { display: block; font-size: 1.15rem; line-height: 1.35; }
+.stat .stat-name { display: inline-block; max-inline-size: 100%; font-size: 1.15rem; line-height: 1.35; }
 
 /* Notices as card rows (Graphite): the group's mark, the title over its detail, the age, a crimson diamond while unread. */
 .notice-list .data thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

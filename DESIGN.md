@@ -71,7 +71,13 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - Task ticket: the operation and its state are the title, number · company · package the lede; the log is the wide
   side at the reading start, the details the narrow side, each its own card.
 - Provider «طريقة التنفيذ»: `ModeCards` (`components/mode-cards.tsx`) — one cut-corner card per operation with a
-  three-way segmented control (مباشر / مهمة فرع / متوقف); a stopped one dims.
+  three-way segmented control (مباشر / مهمة فرع / متوقف) that spans the card in three equal parts, so longer languages
+  never spill past its edge; a stopped one dims. Cards are at least 250px wide.
+- Figure cards (`.stat-row`): four cards sit in one row when they fit and two by two from 768 to 1100px, never three
+  and one; under 768px an odd last card spans the row. A name as a figure (`.stat-name`) starts at the reading start.
+- A yes/no filter in `FilterBar` (e.g. «السالب فقط») is a toggle chip: the chip lights when on; the checkbox stays
+  over it, invisible, for keyboards and screen readers.
+- An empty table that keeps its head shows its empty block at its own height under the head (never cut off).
 - Company page and package groups: the company's cut-corner mark beside its name.
 - White on crimson: the sidebar count, the notice dot and the page's own action.
 - Task ticket actions sit in the page head (take / complete in ink, reject / cancel outlined in danger); complete and

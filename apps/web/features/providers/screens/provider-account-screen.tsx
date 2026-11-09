@@ -1,6 +1,6 @@
 'use client';
 
-import { Coins, Download } from 'lucide-react';
+import { Coins } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
@@ -8,7 +8,8 @@ import { Desk, Money, actionName, latinWhen } from '../../../components/desk';
 import { Dialog } from '../../../components/dialog';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
-import { Button, buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
+import { CsvLink } from '../../reports/report-kit';
 import { Select } from '../../../components/ui/select';
 import { api, type ProviderLedgerRow } from '../../../lib/api';
 import { useCrumbs } from '../../../lib/crumbs';
@@ -103,10 +104,7 @@ export function ProviderAccountScreen() {
       action={summary ? (
         // As in the design: edit the credit, then record a payment (the page's action); the CSV beside them.
         <div className="page-actions">
-          <a className={buttonClass({ variant: 'outline' })} href={api.providerAccountExportHref(params.code, query)} download>
-            <Download size={15} aria-hidden="true" />
-            {t.exportCsv}
-          </a>
+          <CsvLink href={api.providerAccountExportHref(params.code, query)} />
           {canWrite ? <Button type="button" variant="outline" onClick={() => open('credit')}>{t.editCredit}</Button> : null}
           {canWrite ? <Button type="button" onClick={() => open('entry')}><Coins size={16} aria-hidden="true" />{t.recordPayment}</Button> : null}
         </div>

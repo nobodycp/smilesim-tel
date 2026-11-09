@@ -849,7 +849,7 @@ export const ar = {
   activeAgents: 'وكلاء',
   activePos: 'نقاط بيع',
   overviewTasks: 'المهام',
-  oldestOpenTask: 'أقدم مهمة مفتوحة منذ {time}',
+  oldestOpenTask: 'أقدم مهمة مفتوحة: {time}',
   noOpenTasks: 'لا مهام مفتوحة',
   overviewEmpty: 'لا شيء في هذه الفترة.',
   salesCountShort: '{n} بيعة',
