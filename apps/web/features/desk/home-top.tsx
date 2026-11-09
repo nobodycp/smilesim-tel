@@ -41,7 +41,7 @@ const stepLabel = (period: Period, at: string) => (at.length === 13 ? (period ==
  * subscriptions (activations) and profit — each with its change against the same span of yesterday or last month in
  * the corner and its trend inside, and the active numbers with those ending within three days.
  */
-export function AccountBand({ summary, home, overview, period }: { summary: FinanceSummary | null | undefined; home: HomePayload | null | undefined; overview: OverviewPayload | null | undefined; period: Period }) {
+export function AccountBand({ summary, home, overview, period, branch = false }: { summary: FinanceSummary | null | undefined; home: HomePayload | null | undefined; overview: OverviewPayload | null | undefined; period: Period; branch?: boolean }) {
   const { t } = usePrefs();
   const held = summary?.held ?? 0;
   const available = summary ? (summary.unlimited ? summary.balance : summary.balance + summary.ceiling - held) : 0;
@@ -66,8 +66,10 @@ export function AccountBand({ summary, home, overview, period }: { summary: Fina
     />
   ) : null);
   return (
-    <section className="figure-band account-band" aria-label={t.homeTitle}>
-      <div className="figure-tile lead">
+    <section className={branch ? 'figure-band account-band branch' : 'figure-band account-band'} aria-label={t.homeTitle}>
+      {/* The branch's band is the period's three figures: no available balance, no active numbers (spec
+          2026-11-09-admin-review, 6.3; the numbers are in the donut below). */}
+      {branch ? null : <div className="figure-tile lead">
         <span className="figure-tile-label">{t.homeAvailable}</span>
         <div className="figure-tile-value">{summary ? <Money value={available} /> : '—'}</div>
         {summary && !summary.unlimited && summary.ceiling > 0 ? (
@@ -76,7 +78,7 @@ export function AccountBand({ summary, home, overview, period }: { summary: Fina
           </div>
         ) : null}
         <div className="figure-tile-meta">{summary ? ceilingMeta : null}</div>
-      </div>
+      </div>}
       <div className="figure-tile pulse-tile">
         <span className="figure-tile-label">{t.homeSales}</span>
         {now ? <Change now={now.amount} before={before?.amount} period={period} /> : null}
@@ -98,13 +100,13 @@ export function AccountBand({ summary, home, overview, period }: { summary: Fina
         <div className="figure-tile-meta">{periodName}</div>
         {trend((point) => point.profit, true, t.homeProfit, 'success')}
       </div>
-      <div className="figure-tile">
+      {branch ? null : <div className="figure-tile">
         <span className="figure-tile-label">{t.homeActiveLines}</span>
         <div className="figure-tile-value"><span className="num">{home ? home.activeLines : '—'}</span></div>
         <div className="figure-tile-meta">
           {home ? <><span className={home.expiringLines ? 'tone-accent' : undefined}>{t.expiringMeta.replace('{n}', String(home.expiringLines))}</span> · <Link className="row-link" href="/numbers?status=expiring">{t.showThem}</Link></> : null}
         </div>
-      </div>
+      </div>}
     </section>
   );
 }

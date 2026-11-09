@@ -55,6 +55,13 @@ test('the branch reads the full overview, switches the period, and sees its prov
   await expect(cards.nth(2).locator('.change')).toHaveClass(/down/);
   await expect(cards.nth(2).locator('.change')).toHaveText('10%');
   await expect(band.locator('.trend-line')).toHaveCount(3);
+  // The branch's home, trimmed (spec 2026-11-09-admin-review, 6.3): the three period cards alone in the band, no
+  // «آخر العمليات» or «مهام بانتظارك», no «تمويل حساب» or «تفعيل رقم» in the head.
+  await expect(band.locator('.figure-tile')).toHaveCount(3);
+  await expect(page.locator('.home-top-row')).toHaveCount(0);
+  await expect(page.locator('.home-head').getByRole('link', { name: 'تمويل حساب' })).toHaveCount(0);
+  await expect(page.locator('.home-head').getByRole('link', { name: 'تفعيل رقم' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'لوحة الإعلانات' })).toHaveCount(0);
 
   const legend = page.locator('.donut-legend li');
   await expect(legend).toHaveCount(5);
@@ -89,6 +96,10 @@ test('an agent sees no providers card and no main-agent tab', async ({ page }) =
   });
   await page.goto('http://agent.localhost:3910/');
   await expect(page.locator('.account-band .pulse-tile')).toHaveCount(3);
+  // The other layers keep their home: the balance, the active numbers, the two panes and the head buttons.
+  await expect(page.locator('.account-band .figure-tile')).toHaveCount(5);
+  await expect(page.locator('.home-top-row')).toHaveCount(1);
+  await expect(page.locator('.home-head').getByRole('link', { name: 'تفعيل رقم' })).toHaveCount(1);
   await expect(page.locator('.overview-card table.data')).toHaveCount(0);
   await expect(page.locator('.banner', { hasText: 'مزوّدون فيهم مشكلة الآن' })).toHaveCount(0);
   const top = page.locator('.overview-card').filter({ has: page.getByRole('tab', { name: 'أكثر الرزم مبيعاً' }) });

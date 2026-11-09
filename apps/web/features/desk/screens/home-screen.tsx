@@ -36,7 +36,9 @@ export function HomeScreen() {
   const home = board.data;
   // The design's top: the account's own wallet, and the tasks waiting for it.
   const summary = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary());
-  const waiting = useApiQuery(['office', 'tasks', 'home-waiting'], () => api.officeTasks({ status: 'working' }));
+  // The branch's home has no «مهام بانتظارك» and no «آخر العمليات» (spec 2026-11-09-admin-review, 6.3).
+  const branch = layer === 'branch';
+  const waiting = useApiQuery(['office', 'tasks', 'home-waiting'], () => api.officeTasks({ status: 'working' }), { enabled: Boolean(layer) && !branch });
   // A failed board is shown once, in its panes.
   const broken = !home && Boolean(board.error);
 
@@ -84,10 +86,11 @@ export function HomeScreen() {
             value={period}
             onChange={setPeriod}
           />
-          {layer && layer !== 'pos' ? (
+          {/* The branch's head carries the period alone (spec 2026-11-09-admin-review, 6.3). */}
+          {layer && layer !== 'pos' && !branch ? (
             <Link className={buttonClass({ variant: 'outline' })} href="/users"><Receipt size={16} aria-hidden="true" />{t.fundAccount}</Link>
           ) : null}
-          <Link className={`${buttonClass()} ui-btn-accent`} href="/numbers"><Plus size={16} aria-hidden="true" />{t.activateLine}</Link>
+          {layer && !branch ? <Link className={`${buttonClass()} ui-btn-accent`} href="/numbers"><Plus size={16} aria-hidden="true" />{t.activateLine}</Link> : null}
         </div>
       </header>
       {offers.length > 0 ? <OfferHero offers={offers} /> : null}
@@ -97,11 +100,13 @@ export function HomeScreen() {
           {`${t.providerAlertBanner} ${data.providers.filter((row) => row.status === 'problem').map((row) => `${row.name} (${row.problem === 'failures' ? t.providerProblemFailures.replace('{n}', String(row.failures)) : t.providerProblemBalance})`).join('، ')}`}
         </Alert>
       ) : null}
-      <AccountBand summary={summary.data} home={home} overview={data} period={period} />
-      <div className="home-top-row">
-        <LastOperations home={home} failed={broken ? board.error : ''} onRetry={() => void board.reload()} showAccount={layer !== 'pos'} />
-        <WaitingTasks tasks={waiting.data?.tasks ?? []} open={home?.openTasks ?? waiting.data?.total ?? 0} loading={!waiting.data && !waiting.error} />
-      </div>
+      <AccountBand summary={summary.data} home={home} overview={data} period={period} branch={branch} />
+      {branch ? null : (
+        <div className="home-top-row">
+          <LastOperations home={home} failed={broken ? board.error : ''} onRetry={() => void board.reload()} showAccount={layer !== 'pos'} />
+          <WaitingTasks tasks={waiting.data?.tasks ?? []} open={home?.openTasks ?? waiting.data?.total ?? 0} loading={!waiting.data && !waiting.error} />
+        </div>
+      )}
       {/* Below the design's top, the rest of the period's overview (spec 2026-11-08-overview-and-reports-nav, F). */}
       <header className="section-head home-overview-head"><h2>{t.overviewSection}</h2></header>
       {overview.error && !data ? <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section> : null}

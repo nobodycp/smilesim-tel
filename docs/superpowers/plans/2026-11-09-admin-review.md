@@ -90,7 +90,7 @@ Branch only; no prototype (owner 2026-11-09). Lower layers' pages are untouched 
   session fields (`RuleSelects`, saved with `setLayerSessionRules`). e2e.
 - [x] **6.2** Delete the old announcements board: API route/service/DTO/notice kind/group, home payload keys
   (pins updated), migration dropping `Announcement` and its notices; web board pane, notices group, copy. Specs.
-- [ ] **6.3** Branch home: drop the two panes, the two tiles and the two head buttons. e2e.
+- [x] **6.3** Branch home: drop the two panes, the two tiles and the two head buttons. e2e.
 - [ ] **6.4** Donut: `LineCountSnapshot` (migration), overview `lines.change`, hover share in the middle, arrows,
   motion. Specs + e2e.
 - [ ] **6.5** Sidebar handle on hover/focus; topbar search sizes at five widths.
