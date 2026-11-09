@@ -99,7 +99,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, serverCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { open: menuOpen, close: closeMenu, toggle: toggleMenu, root: menuRoot, trigger: menuTrigger } = usePopover({ menu: true });
-  const { open: walletOpen, toggle: toggleWallet, root: walletRoot, trigger: walletTrigger } = usePopover();
   const { open: noticeOpen, close: closeNotices, toggle: toggleNotices, root: noticeRoot, trigger: noticeTrigger } = usePopover();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { ready, failed, retrying, retry, me, initialName, initialBalance } = useOffice();
@@ -110,7 +109,6 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const layer = door.layer;
   const balance = me ? me.balance : null;
   const shownBalance = balance !== null ? balance : initialBalance;
-  const ceiling = me?.ceiling ?? 0;
   const impersonating = me?.impersonating ?? false;
   const saved = useIdentity();
 
@@ -409,40 +407,18 @@ export function OfficeShell({ children }: { children: ReactNode }) {
           </div>
           <div className="topbar-tools">
             <ShellSearch />
-            <div className="wallet-chip" ref={walletRoot}>
-                <button
-                  ref={walletTrigger}
-                  type="button"
-                  className="wallet-btn"
-                  aria-haspopup="dialog"
-                  aria-expanded={walletOpen}
-                  aria-label={t.walletMenu}
-                  onClick={() => { if (balance !== null) toggleWallet(); }}
-                >
-                  <Wallet {...glyph} />
-                  {shownBalance !== null && (
-                    <span className={shownBalance < 0 ? 'money neg' : shownBalance > 0 ? 'money pos' : 'money'} dir="ltr">
-                      {formatShekel(shownBalance)}
-                    </span>
-                  )}
-                </button>
-                {walletOpen && balance !== null && (
-                  <div className="wallet-pop" role="dialog" aria-label={t.walletMenu}>
-                    <p>
-                      <span>{t.balance}</span>
-                      <strong className={balance < 0 ? 'money neg' : balance > 0 ? 'money pos' : 'money'} dir="ltr">{formatShekel(balance)}</strong>
-                    </p>
-                    <p>
-                      <span>{t.ceiling}</span>
-                      <strong dir="ltr">{layer === 'branch' ? t.noCeiling : formatShekel(ceiling)}</strong>
-                    </p>
-                    <p>
-                      <span>{t.available}</span>
-                      <strong dir="ltr">{layer === 'branch' ? t.noCeiling : formatShekel(balance + ceiling)}</strong>
-                    </p>
-                  </div>
+            {/* «المحفظة» (spec 2026-11-09, 4): the balance chip opens the wallet page, where top-up will live. */}
+            <div className="wallet-chip">
+              <Link href="/wallet" className="wallet-btn" aria-label={t.walletPage}>
+                <Wallet {...glyph} />
+                {shownBalance !== null && (
+                  <span className={shownBalance < 0 ? 'money neg' : shownBalance > 0 ? 'money pos' : 'money'} dir="ltr">
+                    {formatShekel(shownBalance)}
+                  </span>
                 )}
-              </div>
+                <span className="wallet-word">{t.walletPage}</span>
+              </Link>
+            </div>
             <div className="notice-wrap" ref={noticeRoot}>
               <button
                 ref={noticeTrigger}
@@ -515,6 +491,10 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                   <Link href="/settings" role="menuitem" onClick={closeMenu}>
                     <Settings {...glyph} />
                     {t.accountSettings}
+                  </Link>
+                  <Link href="/wallet" role="menuitem" onClick={closeMenu}>
+                    <Wallet {...glyph} />
+                    {t.walletPage}
                   </Link>
                   <span className="shell-rule" />
                   <button type="button" className="danger" role="menuitem" onClick={logout}>

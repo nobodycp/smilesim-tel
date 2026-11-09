@@ -28,7 +28,7 @@ const KINDS = [
 
 const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;
 
-function movementName(t: Copy, kind: string): string {
+export function movementName(t: Copy, kind: string): string {
   if (kind === 'fund') return t.supplyBalance;
   if (kind === 'deduct') return t.moveDeduct;
   if (kind === 'deduct_in') return t.moveDeductIn;
@@ -177,7 +177,7 @@ export function FinanceScreen() {
 }
 
 /** The signed-in account's wallet: four cards, the balance over 30 days, and what moved in that time. */
-function WalletHead({ summary }: { summary: FinanceSummary }) {
+export function WalletHead({ summary }: { summary: FinanceSummary }) {
   const { t } = usePrefs();
   const used = Math.max(0, -summary.balance);
   const first = summary.series[0]?.balance ?? summary.balance;
