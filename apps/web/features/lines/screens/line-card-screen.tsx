@@ -1,8 +1,9 @@
 'use client';
 
-import { ArrowRightLeft, CalendarPlus, Hash, Layers, PhoneOff, PlusCircle, QrCode, RefreshCw, Smartphone, Snowflake, Sun, Zap } from 'lucide-react';
+import { ArrowRightLeft, CalendarPlus, ChevronLeft, Hash, Layers, PhoneOff, PlusCircle, QrCode, RefreshCw, Smartphone, Snowflake, Sun, Zap } from 'lucide-react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk, Money, OutcomePick, actionName, applyNote, latinWhen, lineStatus } from '../../../components/desk';
@@ -29,14 +30,15 @@ import { Select } from '../../../components/ui/select';
 import { DataImage } from '../../../components/data-image';
 import { Fact, Facts } from '../../../components/facts';
 import { useCrumbs } from '../../../lib/crumbs';
+import { usePageTitle } from '../../../lib/page-title';
 import { Tabs } from '../../../components/tabs';
-import { daysLeft } from '../../../lib/days-left';
+import { EXPIRING_DAYS, daysLeft } from '../../../lib/days-left';
 
-const tabs = ['ops', 'details', 'log'] as const;
+const tabs = ['ops', 'log', 'details'] as const;
 type Tab = (typeof tabs)[number];
 type DialogName = 'sim' | 'esim' | 'rename' | 'switch' | 'transfer' | 'qr' | 'addon' | null;
 
-const glyph = { size: 22, strokeWidth: 2, 'aria-hidden': true as const };
+const glyph = { size: 18, strokeWidth: 1.9, 'aria-hidden': true as const };
 
 function tileIcon(item: RowAction) {
   if (item.danger) return <PhoneOff {...glyph} />;
@@ -47,6 +49,28 @@ function tileIcon(item: RowAction) {
   return <CalendarPlus {...glyph} />;
 }
 
+
+/** One operation on the number as a card (Graphite «op-card»): a crimson mark, the name, one line on what it does. */
+function LineOp({ icon, title, text, danger, now, onClick }: { icon: ReactNode; title: string; text: string; danger?: boolean; now?: boolean; onClick: () => void }) {
+  // `now`: an immediate operation (lineActions), as opposed to one that opens a form.
+  return (
+    <button type="button" className={danger ? 'line-op danger' : 'line-op'} data-now={now ? '' : undefined} aria-label={title} onClick={onClick}>
+      <span className="line-op-mark">{icon}</span>
+      <b>{title}</b>
+      <span className="line-op-text">{text}</span>
+      <ChevronLeft className="line-op-go flip-ltr" size={16} aria-hidden="true" />
+    </button>
+  );
+}
+
+/** What is left on an active number: crimson and worded when it ends soon. */
+function LeftDays({ endsAt }: { endsAt: string }) {
+  const { t } = usePrefs();
+  const days = daysLeft(endsAt);
+  if (days <= 0) return <span className="days out">{t.lineEndedShort}</span>;
+  if (days <= EXPIRING_DAYS) return <span className="days soon">{t.expiringSoon} · <span className="num">{days}</span> {t.dayUnit}</span>;
+  return <span className="days"><span className="num">{days}</span> {t.dayUnit}</span>;
+}
 
 const NO_PACKAGES: PackageRow[] = [];
 const NO_COMPANIES: Shelf['companies'] = [];
@@ -111,6 +135,18 @@ export function LineCardScreen() {
 
   const names: Record<Tab, string> = { ops: t.lineOps, details: t.lineDetails, log: t.lineLog };
   const items = line ? lineActions(line, verdict, run, t, { freeze: true, onDisconnect: setEnding }) : [];
+  const opTexts: Record<string, string> = {
+    [t.extend]: t.opTextExtend,
+    [t.updateNumber]: t.opTextRefresh,
+    [t.actCharge]: t.opTextCharge,
+    [t.freeze]: t.opTextFreeze,
+    [t.unfreeze]: t.opTextUnfreeze,
+    [t.disconnect]: t.opTextDisconnect,
+  };
+  const opText = (label: string) => opTexts[label] ?? '';
+  // The design's head: the number's two quick renewals (charge, extend) beside the title; extend is the crimson one.
+  const quick = [t.actCharge, t.extend].map((label) => items.find((item) => item.label === label)).filter((item): item is RowAction => Boolean(item));
+  usePageTitle(line ? line.msisdn : t.lineCard);
   const allows = (key: string, fallback: boolean) => (line?.operations ? line.operations.includes(key) : fallback);
   const targets = new Set(line?.switchTargets ?? []);
   const switchChoices = packages.filter((row) => targets.has(row.code));
@@ -127,7 +163,22 @@ export function LineCardScreen() {
   const simLabel = (row: LineRow) => (row.iccid ? <bdi dir="ltr">{row.iccid}</bdi> : row.esim ? t.esim : '—');
 
   return (
-    <Desk title={t.lineCard} lede="" error={error || card.error} note={note}>
+    <Desk
+      title={line ? (
+        <span className="line-hero-title">
+          <bdi dir="ltr" className="line-number">{line.msisdn}</bdi>
+          <Badge variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge>
+          {line.status === 'active' ? <LeftDays endsAt={line.endsAt} /> : null}
+        </span>
+      ) : t.lineCard}
+      action={quick.length ? (
+        <div className="page-actions">
+          {quick.map((item, index) => (
+            <Button key={item.label} type="button" variant={index === quick.length - 1 ? 'primary' : 'secondary'} onClick={item.onClick} disabled={busy}>{item.label}</Button>
+          ))}
+        </div>
+      ) : undefined}
+      lede="" error={error || card.error} note={note}>
       <div className="stack">
         {!card.loaded ? (
           <section className="pane">
@@ -135,62 +186,49 @@ export function LineCardScreen() {
             <TableSkeleton rows={4} columns={2} />
           </section>
         ) : line && (
-          <section className="pane">
-            <header className="line-head">
-              <p className="line-number"><bdi dir="ltr">{line.msisdn}</bdi></p>
-              <Badge variant={lineTone(line.status)} dot>{lineStatus(t, line.status)}</Badge>
+          <>
+            {/* The number's head, as in the approved design: status and what is left beside it, then where it lives. */}
+            <header className="line-hero">
+              <p className="lede">
+                {[line.companyName, line.packageName].filter(Boolean).join(' · ')}
+                {!isPos && line.posLogin ? (
+                  <> · {t.pointOfSale} <Link className="line-pos" href={`/users/${encodeURIComponent(line.posLogin)}`}><AccountName login={line.posLogin} /></Link></>
+                ) : null}
+              </p>
             </header>
-            <Tabs items={tabs.map((item) => ({ key: item, label: names[item] }))} value={tab} onChange={setTab} />
+            <Facts variant="cards">
+              <Fact label={t.packageName}>{line.packageName}</Fact>
+              <Fact label={t.endsOn}><bdi dir="ltr" className="num">{latinWhen(line.endsAt).slice(0, 10)}</bdi></Fact>
+              <Fact label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Fact>
+              <Fact label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr" className="num">{latinWhen(line.lastRechargeAt).slice(0, 10)}</bdi> : '—'}</Fact>
+            </Facts>
+          <section className="pane line-pane">
+            <Tabs items={tabs.map((item) => ({ key: item, label: names[item], count: item === 'log' && history.length ? history.length : undefined }))} value={tab} onChange={setTab} />
             {tab === 'ops' && (
               <div className="pane-body line-ops">
                 {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
-                <div className="op-board">
-                  {items.length > 0 && (
-                    <div className="command-list">
-                      {items.map((item) => (
-                        <button key={item.label} type="button" className={item.danger ? 'op-card danger' : 'op-card'} onClick={item.onClick}>
-                          {tileIcon(item)}
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div className="line-op-grid">
+                  {items.map((item) => (
+                    <LineOp key={item.label} icon={tileIcon(item)} title={item.label} text={opText(item.label)} danger={item.danger} now onClick={item.onClick} />
+                  ))}
                   {allows('sim', line.status === 'active' && !line.opsLocked) && (
-                    <button type="button" className="op-tile" onClick={() => { setNextIccid(simRules.prefix); setDialog('sim'); }}>
-                      <Smartphone {...glyph} />
-                      {t.swapSim}
-                    </button>
+                    <LineOp icon={<Smartphone {...glyph} />} title={t.swapSim} text={t.opTextSim} onClick={() => { setNextIccid(simRules.prefix); setDialog('sim'); }} />
                   )}
                   {allows('esim', false) && (
-                    <button type="button" className="op-tile" onClick={() => setDialog('esim')}>
-                      <QrCode {...glyph} />
-                      {t.requestEsim}
-                    </button>
+                    <LineOp icon={<QrCode {...glyph} />} title={t.requestEsim} text={t.opTextEsim} onClick={() => setDialog('esim')} />
                   )}
                   {/* The package's extra operations (spec 2026-11-09, 3): each opens a manual task. */}
                   {(line.addons?.length ?? 0) > 0 && (
-                    <button type="button" className="op-tile" onClick={() => { setAddonId(line.addons?.[0]?.id ?? ''); setDialog('addon'); }}>
-                      <PlusCircle {...glyph} />
-                      {t.lineAddons}
-                    </button>
+                    <LineOp icon={<PlusCircle {...glyph} />} title={t.lineAddons} text={t.opTextAddons} onClick={() => { setAddonId(line.addons?.[0]?.id ?? ''); setDialog('addon'); }} />
                   )}
                   {allows('rename', line.status === 'active' && !line.opsLocked) && (
-                    <button type="button" className="op-tile" onClick={() => setDialog('rename')}>
-                      <Hash {...glyph} />
-                      {t.changeNumber}
-                    </button>
+                    <LineOp icon={<Hash {...glyph} />} title={t.changeNumber} text={t.opTextRename} onClick={() => setDialog('rename')} />
                   )}
                   {allows('switch', line.status === 'active' || Boolean(line.opsLocked)) && (
-                    <button type="button" className="op-tile" onClick={() => setDialog('switch')}>
-                      <Layers {...glyph} />
-                      {t.actSwitch}
-                    </button>
+                    <LineOp icon={<Layers {...glyph} />} title={t.actSwitch} text={t.opTextSwitch} onClick={() => setDialog('switch')} />
                   )}
                   {canTransfer && (
-                    <button type="button" className="op-tile" onClick={() => setDialog('transfer')}>
-                      <ArrowRightLeft {...glyph} />
-                      {t.transfer}
-                    </button>
+                    <LineOp icon={<ArrowRightLeft {...glyph} />} title={t.transfer} text={t.opTextTransfer} onClick={() => setDialog('transfer')} />
                   )}
                 </div>
               </div>
@@ -235,6 +273,7 @@ export function LineCardScreen() {
             )}
             {tab === 'log' && <DataTable columns={logColumns} rows={history} rowKey={(row) => row.id} empty={t.noHistory} />}
           </section>
+          </>
         )}
       </div>
       {line && (

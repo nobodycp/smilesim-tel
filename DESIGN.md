@@ -60,6 +60,18 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   task a card row (`.task-list`): a crimson cut-corner mark, the operation and its status, the number · company ·
   package · point of sale under it, the amount, «استلام» or «فتح التذكرة», and ⋯.
 - Page ledes: numbers and tasks have one line under the title, as in the design.
+- Number card: the number is the title, with its status and what is left (crimson when it ends soon); under it the
+  company · package · point of sale (a crimson link); «شحن» and «تمديد» (crimson) beside the title; four cut-corner
+  facts (package, ends on, price, last recharge); tabs العمليات / السجل (count) / التفاصيل; every operation a
+  `.line-op` card — crimson mark, name, one line on what it does, a chevron that slides on hover; disconnect in danger.
+- Folded sidebar: pressing or hovering a group (التقارير) opens its pages in the flyout menu; it never leaves the page.
+- User page head: a 48px cut-corner crimson mark, the name, the layer tag, the state; wallet actions are secondary.
+- Task ticket: the operation and its state are the title, number · company · package the lede; the log is the wide
+  side at the reading start, the details the narrow side, each its own card.
+- Provider «طريقة التنفيذ»: `ModeCards` (`components/mode-cards.tsx`) — one cut-corner card per operation with a
+  three-way segmented control (مباشر / مهمة فرع / متوقف); a stopped one dims.
+- Company page and package groups: the company's cut-corner mark beside its name.
+- White on crimson: the sidebar count, the notice dot and the page's own action.
 - Sidebar counts: `.nav-count`, a small crimson square at the end of the item (a corner mark on the folded rail) —
   the open tasks beside «المهام», from `/office/home` `openTasks`.
 

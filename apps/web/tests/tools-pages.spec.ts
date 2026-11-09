@@ -170,7 +170,7 @@ test.describe('useAction and lineActions', () => {
       'POST /lines/ln1/extend': () => ({ body: { applied: true, debited: true }, delay: 400 }),
     });
     await page.goto(`${admin}/numbers/ln1`);
-    const extend = page.getByRole('button', { name: 'تمديد', exact: true });
+    const extend = page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true });
     await expect(extend).toBeVisible();
     // The card reads once per load (the session answer can re-run the load once); the action adds exactly one reload.
     const before = reads;
@@ -190,10 +190,10 @@ test.describe('useAction and lineActions', () => {
       'POST /lines/ln1/extend': () => ({ body: { applied: true, debited: true } }),
     });
     await page.goto(`${admin}/numbers/ln1`);
-    await expect(page.getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
+    await expect(page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
     const count = (prefix: string) => calls.filter((call) => call === prefix).length;
     const before = { line: count('GET /lines/ln1'), packages: count('GET /packages'), users: count('GET /users') };
-    await page.getByRole('button', { name: 'تمديد', exact: true }).click();
+    await page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true }).click();
     await expect(page.getByRole('status')).toHaveText('تم التنفيذ وخصم الرصيد.');
     await expect.poll(() => count('GET /lines/ln1')).toBe(before.line + 1);
     await page.waitForTimeout(300);
@@ -212,7 +212,7 @@ test.describe('useAction and lineActions', () => {
     });
     await page.goto(`${admin}/numbers/ln1`);
     const disconnect = async () => {
-      await page.locator('.command-list').getByRole('button', { name: 'فصل', exact: true }).click();
+      await page.locator('.line-op-grid').getByRole('button', { name: 'فصل', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'فصل الرقم' });
       await expect(dialog.locator('.money')).toHaveText('28.50 ₪');
       await dialog.getByRole('button', { name: 'فصل', exact: true }).click();
@@ -244,7 +244,7 @@ test.describe('useAction and lineActions', () => {
     const cardItems = async (id: string) => {
       await page.goto(`${admin}/numbers/${id}`);
       await expect(page.locator('.line-number')).toBeVisible();
-      return page.locator('.command-list .op-card').allTextContents();
+      return page.locator('.line-op[data-now] b').allTextContents();
     };
     expect((await listItems(0)).map((text) => text.trim())).toEqual(['تمديد', 'تحديث الرقم', 'فصل']);
     expect((await cardItems('ln1')).map((text) => text.trim())).toEqual(['تمديد', 'تحديث الرقم', 'تجميد', 'فصل']);
@@ -257,7 +257,7 @@ test.describe('useAction and lineActions', () => {
     await page.goto(`${admin}/numbers`);
     await expect(page.locator('table.data tbody tr').nth(3).getByRole('button', { name: /إجراءات/ })).toHaveCount(0);
     expect(await cardItems('ln4')).toEqual([]);
-    await expect(page.locator('.command-list')).toHaveCount(0);
+    await expect(page.locator('.line-op[data-now]')).toHaveCount(0);
   });
 });
 

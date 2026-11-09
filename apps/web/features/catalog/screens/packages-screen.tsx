@@ -221,6 +221,7 @@ function BranchPackages({ error: loadError, note: loadNote }: { error: string; n
   const groups = (shelf.data?.companies ?? []).map((companyRow) => ({
     code: companyRow.code,
     name: companyRow.name,
+    image: companyRow.image,
     rows: companyRow.providers.flatMap((providerRow): BranchRow[] => providerRow.packages.map((item) => ({
       ...item,
       companyCode: companyRow.code,
@@ -350,6 +351,7 @@ function BranchPackages({ error: loadError, note: loadNote }: { error: string; n
                 <section key={group.code} className={open ? 'terms-group open' : 'terms-group'}>
                   <button type="button" className="terms-group-head" aria-expanded={open} aria-controls={body} onClick={() => toggleGroup(group.code)}>
                     <ChevronDown className="terms-chevron" aria-hidden="true" />
+                    {group.image ? <DataImage className="co-mark" src={group.image} alt="" /> : <span className="co-mark" style={{ background: markColor(group.name) }} aria-hidden="true">{markOf(group.name)}</span>}
                     <strong>{group.name}</strong>
                     <span className="hint">
                       {t.packagesGroupSummary.replace('{total}', String(group.rows.length)).replace('{off}', String(group.rows.filter((row) => !row.enabled).length))}

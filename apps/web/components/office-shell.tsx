@@ -144,7 +144,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   // Graphite: figure, fact and action cards carry a soft light under the pointer (CSS reads --mx / --my).
   useEffect(() => {
     const move = (event: PointerEvent) => {
-      const card = (event.target as Element | null)?.closest<HTMLElement>('.figure-tile, .shortcut-tile, .stat, .fact-grid > div, .op-card, .op-tile, .company-card, .pack-card');
+      const card = (event.target as Element | null)?.closest<HTMLElement>('.figure-tile, .shortcut-tile, .stat, .fact-grid > div, .op-card, .op-tile, .line-op, .company-card, .pack-card');
       if (!card) return;
       const box = card.getBoundingClientRect();
       card.style.setProperty('--mx', `${event.clientX - box.left}px`);
@@ -153,6 +153,25 @@ export function OfficeShell({ children }: { children: ReactNode }) {
     window.addEventListener('pointermove', move, { passive: true });
     return () => window.removeEventListener('pointermove', move);
   }, []);
+
+  // A flyout menu opened by a press closes on a press elsewhere or on Escape.
+  useEffect(() => {
+    if (!flyout?.items) return;
+    const onDown = (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest('.side-flyout, .sidebar')) return;
+      setFlyout(null);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFlyout(null);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [flyout]);
 
   // «[» folds or opens the sidebar, outside of text fields.
   useEffect(() => {
@@ -371,17 +390,20 @@ export function OfficeShell({ children }: { children: ReactNode }) {
                 return (
                   <div key={entry.key} className={open ? 'nav-group open' : 'nav-group'}>
                     {rail ? (
-                      // Folded: the head opens the group's first page; its pages come as a flyout menu on hover.
-                      <Link
-                        href={entry.items[0].href}
+                      // Folded: the head never leaves the page; hovering or pressing it opens its pages as a flyout menu
+                      // beside the rail (Graphite).
+                      <button
+                        type="button"
                         className={holds ? 'nav-link nav-group-head holds' : 'nav-link nav-group-head'}
                         aria-label={entry.label}
+                        aria-haspopup="menu"
+                        aria-expanded={flyout?.label === entry.label}
                         onMouseEnter={(event) => hint(event, entry.label, entry.items)}
-                        onFocus={(event) => hint(event, entry.label, entry.items)}
+                        onClick={(event) => hint(event, entry.label, entry.items)}
                       >
                         <HeadIcon {...glyph} />
                         <span className="label">{entry.label}</span>
-                      </Link>
+                      </button>
                     ) : (
                       <button
                         type="button"

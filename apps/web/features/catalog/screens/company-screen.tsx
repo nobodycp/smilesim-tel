@@ -5,6 +5,9 @@ import { useParams } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk } from '../../../components/desk';
+import { DataImage } from '../../../components/data-image';
+import { markColor, markOf } from '../../../lib/company-mark';
+import { usePageTitle } from '../../../lib/page-title';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type Shelf, type SimRules } from '../../../lib/api';
@@ -43,6 +46,7 @@ export function CompanyScreen() {
   const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
   const { run, busy } = useAction({ setError, setNote, onDone: shelf.reload });
   const company = shelf.data?.companies.find((item) => item.code === params.code) ?? null;
+  usePageTitle(company?.name ?? '');
   const canEdit = Boolean(me?.isBranchOwner || me?.grants?.includes('edit'));
   const draft = edited?.code === params.code ? edited : draftOf(params.code, company?.sim ?? OPEN_SIM, company?.esimPrice ?? 500);
   const shown = rulesOf(draft);
@@ -95,7 +99,18 @@ export function CompanyScreen() {
   ];
 
   return (
-    <Desk title={company?.name ?? ''} lede="" error={error} note={note}>
+    <Desk
+      title={company ? (
+        // Graphite: the company's cut-corner mark beside its name.
+        <span className="ticket-title">
+          {company.image ? <DataImage className="co-mark big" src={company.image} alt="" /> : <span className="co-mark big" style={{ background: markColor(company.name) }} aria-hidden="true">{markOf(company.name)}</span>}
+          <span>{company.name}</span>
+        </span>
+      ) : ''}
+      lede={company ? `${t.packagesGroupSummary.replace('{total}', String(company.providers.reduce((sum, item) => sum + item.packages.length, 0))).replace(/ · .*$/, '')} · ${company.providers.length} ${t.providersTitle}` : ''}
+      error={error}
+      note={note}
+    >
       <section className={tab === 'settings' ? 'pane fit' : 'pane'}>
         <Tabs items={tabs} value={tab} onChange={setTab} />
         {tab === 'settings' && (

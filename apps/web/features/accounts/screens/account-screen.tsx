@@ -126,8 +126,11 @@ export function AccountScreen() {
   const roleHas = new Set(row?.roleGrants ?? []);
   const listed = row?.listed ?? null;
   const title = row ? (
+    // Graphite: the account's cut-corner mark, the name, its layer as a tag, then its state.
     <span className="account-title">
+      <span className="account-hero-mark" aria-hidden="true">{(row.nickname.trim() || row.loginName).charAt(0)}</span>
       <AccountName login={row.loginName} name={row.nickname} />
+      <span className={`layer-tag l-${row.layer}`}>{layerName(t, row.layer)}</span>
       <Badge variant={accountTone(row.frozen)} dot>{row.frozen ? t.frozen : t.accountOpen}</Badge>
     </span>
   ) : t.accountName;
@@ -145,7 +148,7 @@ export function AccountScreen() {
           boxed
           label={t.walletActions}
           items={walletItems}
-          trigger={{ className: buttonClass({}), content: <><Wallet size={16} aria-hidden="true" />{t.walletActions}<ChevronDown size={14} aria-hidden="true" /></> }}
+          trigger={{ className: buttonClass({ variant: 'secondary' }), content: <><Wallet size={16} aria-hidden="true" />{t.walletActions}<ChevronDown size={14} aria-hidden="true" /></> }}
         />
       ) : null}
       {more.length > 0 ? <RowMenu boxed label={t.moreActions} items={more} /> : null}

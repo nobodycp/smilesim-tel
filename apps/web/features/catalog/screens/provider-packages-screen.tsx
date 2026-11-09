@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
+import { ModeCards } from '../../../components/mode-cards';
+import { LoadFailed } from '../../../components/load-failed';
 import { Desk } from '../../../components/desk';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -12,7 +14,6 @@ import { parseShekel, shekelField } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
-import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { Tabs } from '../../../components/tabs';
 
@@ -102,26 +103,6 @@ export function ProviderPackagesScreen() {
     await run(() => api.setProviderEsimPrice(params.code, price), { note: t.save, then: () => setPriceDraft(null) });
   }
 
-  const modeColumns: Column<ModeAction>[] = [
-    { key: 'kind', header: t.kind, render: (action) => names[action] },
-    {
-      key: 'run',
-      header: t.runTab,
-      render: (action) => (
-        <Select
-          className="mode-pick"
-          aria-label={`${t.runTab} ${names[action]}`}
-          value={settings.data?.modes[action] ?? 'manual'}
-          onChange={(event) => void saveMode(action, event.target.value)}
-        >
-          <option value="auto">{t.automatic}</option>
-          <option value="manual">{t.manual}</option>
-          <option value="off">{t.stopped}</option>
-        </Select>
-      ),
-    },
-  ];
-
   const columns: Column<PackageLine>[] = [
     {
       key: 'package',
@@ -161,16 +142,17 @@ export function ProviderPackagesScreen() {
               </label>
               <Button type="submit" disabled={!settings.loaded}>{t.save}</Button>
             </form>
-            <DataTable
-              bare
-              columns={modeColumns}
-              rows={[...actions]}
-              rowKey={(action) => action}
-              loading={!settings.loaded}
-              failed={settings.error}
-              onRetry={() => void settings.reload()}
-              skeleton={{ rows: 8, columns: 2 }}
-            />
+            {settings.error ? (
+              <LoadFailed message={settings.error} onRetry={() => void settings.reload()} />
+            ) : (
+              <ModeCards
+                actions={actions}
+                names={names}
+                modes={settings.data?.modes ?? {}}
+                disabled={!settings.loaded}
+                onChange={(action, mode) => void saveMode(action, mode)}
+              />
+            )}
           </div>
         )}
         {tab === 'packages' && (

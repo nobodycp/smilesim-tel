@@ -17,6 +17,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { taskTone } from '../../../lib/status-tone';
+import { usePageTitle } from '../../../lib/page-title';
 import { Fact, Facts } from '../../../components/facts';
 import { useCrumbs } from '../../../lib/crumbs';
 
@@ -48,6 +49,7 @@ export function TaskTicketScreen() {
 
   const card = useApiQuery(sharedKeys.task(params.id), () => api.officeTask(params.id));
   const task = card.data?.task ?? null;
+  usePageTitle(task ? actionName(t, task.action) : t.taskTicket);
   useCrumbs({ [`/tasks/${encodeURIComponent(params.id)}`]: task ? `${actionName(t, task.action)}${task.msisdn ? ` · ${task.msisdn}` : ''}` : null });
   const events = card.data?.events ?? [];
   // What closing this task hands back: an eSIM request needs the serial and the QR, a number change needs the number.
@@ -80,7 +82,18 @@ export function TaskTicketScreen() {
   });
 
   return (
-    <Desk title={t.taskTicket} lede="" error={error || card.error} note={note}>
+    <Desk
+      title={task ? (
+        // Graphite: the operation is the title, with the task's state beside it; the number and package under it.
+        <span className="ticket-title">
+          <span>{actionName(t, task.action)}</span>
+          <Badge variant={taskTone(task.status)} dot>{taskStatus(t, task.status)}</Badge>
+        </span>
+      ) : t.taskTicket}
+      lede={task ? [task.msisdn, task.companyName, task.packageName].filter(Boolean).join(' · ') : ''}
+      error={error || card.error}
+      note={note}
+    >
       {!card.loaded ? (
         <section className="pane">
           <header className="pane-head" />

@@ -38,6 +38,6 @@ test('a number with no extra operations shows no such tile', async ({ page }) =>
     'GET /users': () => ({ body: { users: [] } }),
   });
   await page.goto(`${admin}/numbers/ln1`);
-  await expect(page.getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
+  await expect(page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'العمليات الإضافية' })).toHaveCount(0);
 });
