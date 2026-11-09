@@ -48,8 +48,9 @@ CI (`.github/workflows/ci.yml`) runs lint, check:copy, typecheck, test:api, buil
 **Machine limits (owner, `.cursor/rules/machine-limits.mdc`):** **one** running copy of the app, always on port
 **3000** (`.claude/launch.json` → `smilesim` = `npm run dev:local`); keep it running and check every change on it; an
 older copy is stopped and this one started. Builds, Docker builds, e2e and the full test:api run on **GitHub
-Actions**, never locally or on the server: push to a work branch, wait for the green run, then push to `main` or ask
-the owner. Locally run only lint, check:copy, typecheck and single spec files.
+Actions**, never locally or on the server. Locally run only lint, check:copy, typecheck and single spec files.
+**Push only when the owner asks** — no push after each change; commit locally and check on 3000. «ادمج في المين»
+on a branch = merge it into `main`, push, watch the run.
 
 ## Conventions
 

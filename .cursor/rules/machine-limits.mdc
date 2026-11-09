@@ -25,6 +25,13 @@ The owner's machine does not cope with several copies of the app or with builds.
   and `next dev` are not builds in this sense: they recompile only what changed.
 - Light checks are fine locally: `npm run lint`, `npm run check:copy`, `npm run typecheck`, and one spec file at a
   time with jest when needed.
-- To build and test: push to a **work branch** (not `main`) and let `.github/workflows/ci.yml` run there. Watch the
-  run (`gh run watch <id>`). When it is green, merge to `main` / push it — or tell the owner it is ready and push on
-  their word. A red run is fixed on the branch first.
+- To build and test, when the owner asks for a push (below): push to the **work branch** and let
+  `.github/workflows/ci.yml` run there. Watch the run (`gh run watch <id>`). A red run is fixed on the branch first.
+
+## Push only when the owner asks (owner 2026-11-10)
+
+- Do **not** push to GitHub after each change, small or large. Commit locally and check on the running copy; push only
+  when the owner says to push («ارفع»).
+- «ادمج في المين» / «ارفع للمين» while work is on a branch means: merge that branch into `main` and push `main` (a
+  fast-forward when it can be), then watch the run on `main` and report it.
+- When a slice is ready, say so and ask whether to push; do not push on your own.
