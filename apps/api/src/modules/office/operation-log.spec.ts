@@ -107,6 +107,7 @@ async function office() {
     },
     officeTask: { findMany: async () => [] },
     package: { findMany: async () => [pkg] },
+    packageAddon: { findMany: async () => [] },
     packageSwitch: { findMany: async () => [] },
     provider: { findMany: async () => [{ code: 'sky', name: 'سكاي' }] },
     walletEntry: {

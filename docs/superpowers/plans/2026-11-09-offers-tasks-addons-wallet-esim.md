@@ -13,9 +13,9 @@ Spec: `docs/superpowers/specs/2026-11-09-offers-tasks-addons-wallet-esim.md`. On
 - [x] Migration: `OfficeTaskNote.internal`, `pending` → `working`; open tasks as `working`; complete/reject by any handler; internal notes hidden from non-branch readers and notices.
 - [x] Web: status words, no take step, internal note checkbox and badge.
 
-## Slice 3: line add-ons
-- [ ] Migration `PackageAddon`; CRUD under the package; `POST lines/:id/addon` opens the task with hold; completion moves the price.
-- [ ] Web: package tab, line card menu, names in task, history, finance.
+## Slice 3: line add-ons — done 2026-11-09
+- [x] Migration `PackageAddon`; CRUD under the package; `POST lines/:id/addon` opens the task with hold; completion moves the price.
+- [x] Web: package tab, line card menu, names in task, history, finance.
 
 ## Slice 1: offers hero
 - [ ] Migration `Offer`; CRUD and `GET offers/live`; route table and permission matrix.

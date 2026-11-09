@@ -205,6 +205,12 @@ export class LinesService {
         createdAt: line.createdAt.toISOString(),
         endsAt: line.endsAt.toISOString(),
         operations: this.operationsFor({ ...line, denied }),
+        // The package's extra operations the number may ask for (spec 2026-11-09, 3).
+        addons: line.status === 'disconnected' ? [] : (await this.kernel.prisma.packageAddon.findMany({
+          where: { packageId: line.packageId, active: true },
+          orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+          select: { id: true, name: true, price: true },
+        })),
       },
       history,
     };
@@ -310,7 +316,7 @@ export class LinesService {
     };
   }
 
-  async operate(actor: Actor, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim'>, body: { outcome?: unknown }) {
+  async operate(actor: Actor, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim' | 'addon'>, body: { outcome?: unknown }) {
     const outcome = asOutcome(body.outcome);
     if (!outcome) fail(400, 'INVALID');
     const line = await this.kernel.visibleLine(actor, lineId);
@@ -556,6 +562,23 @@ export class LinesService {
     const task = await this.tasks.openTask({
       action: 'sim', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: 0, msisdn: line.msisdn, iccid, esim, esimQr: qr,
       note: outcome === 'fail' ? PROVIDER_FAILED_NOTE : 'مهمة فرع',
+    });
+    return { applied: false, taskId: task.id };
+  }
+
+  /**
+   * An extra operation of the line's package (spec 2026-11-09, 3): always a manual branch task that holds the
+   * add-on's price, charged when the task is done and released if it is closed.
+   */
+  async requestAddon(actor: Actor, lineId: string, body: Record<string, unknown>) {
+    const line = await this.kernel.visibleLine(actor, lineId);
+    const addonId = typeof body.addonId === 'string' ? body.addonId : '';
+    const addon = addonId ? await this.kernel.prisma.packageAddon.findUnique({ where: { id: addonId } }) : null;
+    if (!addon || addon.packageId !== line.packageId || !addon.active) fail(400, 'INVALID');
+    if (line.status === 'disconnected') fail(400, 'INVALID');
+    const task = await this.tasks.openTask({
+      action: 'addon', actor, posId: line.posId, packageId: line.packageId, lineId: line.id, posDelta: -addon.price, msisdn: line.msisdn,
+      iccid: null, note: addon.name,
     });
     return { applied: false, taskId: task.id };
   }
@@ -808,7 +831,8 @@ export class LinesService {
         if (current) sale = task.action === 'esim' ? { ...saleOf(current), providerCost: -task.posDelta, esimPrice: -task.posDelta } : saleOf(current);
       }
       if (task.action !== 'disconnect' && task.action !== 'switch' && task.posDelta !== 0) {
-        await this.kernel.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, note, sale);
+        // An add-on's wallet entry carries its name when the handler wrote no note.
+        await this.kernel.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, task.action === 'addon' ? note || task.note || '' : note, sale);
         posted = true;
       }
       if (!posted && sale) await this.kernel.recordOp(tx, task.posId, actor.operatorId, task.action, sale);

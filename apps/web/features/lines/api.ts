@@ -16,6 +16,8 @@ export const linesApi = {
   swapSim: (id: string, sim: { iccid: string; esim?: boolean; qr?: string | null }, outcome: Outcome) =>
     request<ApplyResult>('POST', `/office/lines/${segment(id)}/sim`, { ...sim, outcome }),
   requestEsim: (id: string) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/esim`),
+  /** One of the package's extra operations (spec 2026-11-09, 3): always a manual task. */
+  requestAddon: (id: string, addonId: string) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/addon`, { addonId }),
   disconnectQuote: (id: string) => request<DisconnectQuote>('GET', `/office/lines/${segment(id)}/disconnect-quote`),
   disconnectLine: (id: string, outcome: Outcome) =>
     request<ApplyResult>('POST', `/office/lines/${segment(id)}/disconnect`, { outcome }),

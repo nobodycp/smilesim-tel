@@ -40,6 +40,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/lines', 'yyyyyy'], // read/accounting not checked (see spec)
   ['POST /office/lines', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/lines/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['POST /office/lines/ID1/addon', 'yyyyyy'], // judged after the lookup: covered by its domain spec
   ['POST /office/lines/ID1/charge', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /office/lines/ID1/company-switch', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /office/lines/ID1/disconnect', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
@@ -60,6 +61,10 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/packages', 'yyyyyy'],
   ['PATCH /office/packages/CODE1/chain', 'ynynnn'],
   ['PATCH /office/packages/CODE1/details', 'ynynnn'],
+  ['GET /office/packages/CODE1/addons', 'yyynnn'],
+  ['POST /office/packages/CODE1/addons', 'ynynnn'],
+  ['PATCH /office/packages/CODE1/addons/ID1', 'ynynnn'],
+  ['DELETE /office/packages/CODE1/addons/ID1', 'ynynnn'],
   ['GET /office/packages/CODE1/custom-prices', 'yyynnn'],
   ['DELETE /office/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PUT /office/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec

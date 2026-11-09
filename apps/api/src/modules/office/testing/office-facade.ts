@@ -395,7 +395,11 @@ export class OfficeFacade {
     return this.lineDesk.activate(await this.actor(gate), body);
   }
 
-  async operate(gate: Gate, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim'>, body: { outcome?: unknown }) {
+  async requestAddon(gate: Gate, lineId: string, body: Record<string, unknown>) {
+    return this.lineDesk.requestAddon(await this.actor(gate), lineId, body);
+  }
+
+  async operate(gate: Gate, lineId: string, action: Exclude<Action, 'activate' | 'switch' | 'reactivate' | 'refresh' | 'esim' | 'addon'>, body: { outcome?: unknown }) {
     return this.lineDesk.operate(await this.actor(gate), lineId, action, body);
   }
 

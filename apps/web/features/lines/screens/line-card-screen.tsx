@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRightLeft, CalendarPlus, Hash, Layers, PhoneOff, QrCode, RefreshCw, Smartphone, Snowflake, Sun, Zap } from 'lucide-react';
+import { ArrowRightLeft, CalendarPlus, Hash, Layers, PhoneOff, PlusCircle, QrCode, RefreshCw, Smartphone, Snowflake, Sun, Zap } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
@@ -34,7 +34,7 @@ import { daysLeft } from '../../../lib/days-left';
 
 const tabs = ['ops', 'details', 'log'] as const;
 type Tab = (typeof tabs)[number];
-type DialogName = 'sim' | 'esim' | 'rename' | 'switch' | 'transfer' | 'qr' | null;
+type DialogName = 'sim' | 'esim' | 'rename' | 'switch' | 'transfer' | 'qr' | 'addon' | null;
 
 const glyph = { size: 22, strokeWidth: 2, 'aria-hidden': true as const };
 
@@ -62,6 +62,7 @@ export function LineCardScreen() {
   const [tab, setTab] = useState<Tab>('ops');
   const [outcome, setOutcome] = useState<Outcome>('success');
   const [dialog, setDialog] = useState<DialogName>(null);
+  const [addonId, setAddonId] = useState('');
   const [ending, setEnding] = useState<LineRow | null>(null);
   const [switchTo, setSwitchTo] = useState('');
   const [nextIccid, setNextIccid] = useState('');
@@ -164,6 +165,13 @@ export function LineCardScreen() {
                     <button type="button" className="op-tile" onClick={() => setDialog('esim')}>
                       <QrCode {...glyph} />
                       {t.requestEsim}
+                    </button>
+                  )}
+                  {/* The package's extra operations (spec 2026-11-09, 3): each opens a manual task. */}
+                  {(line.addons?.length ?? 0) > 0 && (
+                    <button type="button" className="op-tile" onClick={() => { setAddonId(line.addons?.[0]?.id ?? ''); setDialog('addon'); }}>
+                      <PlusCircle {...glyph} />
+                      {t.lineAddons}
                     </button>
                   )}
                   {allows('rename', line.status === 'active' && !line.opsLocked) && (
@@ -311,6 +319,40 @@ export function LineCardScreen() {
                 <Fact label={t.esimPrice}><Money value={line.esimPrice ?? 0} /></Fact>
               </Facts>
               <p className="hint">{t.requestEsimHint.replace('{price}', formatShekel(line.esimPrice ?? 0))}</p>
+            </div>
+          </Dialog>
+          <Dialog
+            open={dialog === 'addon'}
+            title={t.lineAddons}
+            closeLabel={t.closeMenu}
+            onClose={closeDialog}
+            size="confirm"
+            mark="plus"
+            footer={(
+              <>
+                <Button type="button" variant="secondary" onClick={closeDialog}>{t.cancel}</Button>
+                <Button
+                  type="button"
+                  disabled={busy || !addonId}
+                  onClick={() => act(() => api.requestAddon(line.id, addonId), { note: (data) => applyNote(t, data), then: closeDialog })}
+                >
+                  {t.requestAddon}
+                </Button>
+              </>
+            )}
+          >
+            <div className="stack">
+              <fieldset className="addon-choices">
+                <legend className="sr-only">{t.lineAddons}</legend>
+                {(line.addons ?? []).map((addon) => (
+                  <label key={addon.id} className="check">
+                    <input type="radio" name="addon" checked={addonId === addon.id} onChange={() => setAddonId(addon.id)} />
+                    <span>{addon.name}</span>
+                    <Money value={addon.price} />
+                  </label>
+                ))}
+              </fieldset>
+              <p className="hint">{t.requestAddonHint}</p>
             </div>
           </Dialog>
           <Dialog

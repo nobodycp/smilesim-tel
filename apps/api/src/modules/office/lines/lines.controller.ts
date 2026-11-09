@@ -196,6 +196,16 @@ export class LinesController {
     return this.lineDesk.requestEsim(actor, id);
   }
 
+  @Post('lines/:id/addon')
+  @ApiOperation({ summary: "Request one of the package's extra operations; always a manual branch task holding its price" })
+  @ApiParam({ name: 'id' })
+  @ApiBody({ schema: freeFormObject })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('addon', 'line', param('id'))
+  requestAddon(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.lineDesk.requestAddon(actor, id, body ?? {});
+  }
+
   @Post('lines/:id/sim')
   @ApiOperation({ summary: 'Swap to a SIM the branch already holds (physical or eSIM); free' })
   @ApiParam({ name: 'id' })

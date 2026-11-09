@@ -262,6 +262,7 @@ model Package {
   renewalTargets         PackageRenewal[] @relation("RenewalTarget")
   switches               PackageSwitch[]
   switchTargets          PackageSwitch[]  @relation("SwitchTarget")
+  addons                 PackageAddon[]
 }
 
 model PackageRenewal {
@@ -508,4 +509,19 @@ model Passkey {
   lastUsedAt   DateTime?
 
   @@index([userId])
+}
+
+/** An extra operation named by hand for a package (spec 2026-11-09, 3): requested on a number, it becomes a manual task. */
+model PackageAddon {
+  id        String   @id @default(uuid())
+  packageId String
+  package   Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  name      String
+  /** What the point of sale pays, in agorot; 0 for a free one. */
+  price     Int      @default(0)
+  active    Boolean  @default(true)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([packageId, position])
 }

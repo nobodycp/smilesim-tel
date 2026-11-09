@@ -206,6 +206,8 @@ export type Shelf = {
     }[];
   }[];
 };
+/** A package's extra operation (spec 2026-11-09, 3). */
+export type PackageAddon = { id: string; name: string; price: number; active: boolean; position: number };
 export type PackageSheet = {
   code: string;
   name: string;
@@ -348,6 +350,8 @@ export type LineRow = {
   esimPrice?: number;
   sim?: SimRules;
   switchTargets?: string[];
+  /** The package's live extra operations (spec 2026-11-09, 3), on the number's card. */
+  addons?: { id: string; name: string; price: number }[];
 };
 export type LineHistory = {
   id: string;

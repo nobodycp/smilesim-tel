@@ -24,6 +24,7 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'refresh') return t.updateNumber;
   if (action === 'rename') return t.changeNumber;
   if (action === 'esim') return t.actEsim;
+  if (action === 'addon') return t.actAddon;
   if (action === 'companySwitch') return t.actCompanySwitch;
   if (action === 'sim') return t.swapSim;
   if (action === 'disconnect') return t.actDisconnect;
