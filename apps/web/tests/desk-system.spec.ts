@@ -37,7 +37,7 @@ test('desk buttons are ink and 34px on a desktop width', async ({ page }) => {
   expect(style.primaryHeight).toBe('34px');
   expect(style.primaryBg).toBe('rgb(236, 236, 236)');
   expect(style.secondaryHeight).toBe('34px');
-  expect(style.secondaryBg).toBe('rgb(24, 25, 27)');
+  expect(style.secondaryBg).toBe('rgb(31, 32, 35)');
   expect(style.secondaryBorder).toBe('1px');
   expect(style.primaryRadius).toBe('6px');
   expect(style.fieldHeight).toBe('34px');

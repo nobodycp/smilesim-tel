@@ -1,0 +1,193 @@
+/*
+ * Graphite on the shared parts of every inner page (spec 2026-11-09-graphite-identity, G4), ported from
+ * design/night-desk-family: square segmented tabs lit underneath, raised secondary buttons, inset fields, diamond
+ * status marks, cut-corner figure and fact cards, a crimson thread on dialogs, dense table heads. Imported last, so
+ * each rule here overrides the older sheet's look at equal specificity; structure and behaviour stay in those sheets.
+ */
+
+/* ── Page head ── */
+.page-head h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+.page-head .lede { color: var(--rd-muted); font-size: var(--rd-text-md); }
+
+/* ── Cards (panes) ── */
+.pane { border: 0; border-radius: var(--rd-radius-sm); box-shadow: inset 0 0 0 1px var(--rd-line); }
+.pane-head { min-height: 52px; padding: 14px 18px; border-bottom-color: var(--rd-line); }
+.pane-head h2 { font-size: var(--rd-text-base); font-weight: 700; }
+.pane-head .count { border-radius: var(--rd-radius-xs); background: var(--rd-accent-soft); color: var(--rd-accent); }
+.pane-body { padding: 14px 18px 18px; }
+
+/* ── Buttons ── */
+.ui-btn { border-radius: var(--rd-radius-sm); }
+.ui-btn:active:not(:disabled) { transform: scale(0.97); }
+.ui-btn-primary { --ui-btn-shadow: none; }
+.ui-btn-secondary, .ui-btn-outline { --ui-btn-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); border-color: transparent; background-color: var(--rd-surface-2); color: var(--rd-ink); }
+.ui-btn-secondary:hover, .ui-btn-outline:hover { background-color: var(--rd-surface-3); }
+.ui-btn-danger { border-color: color-mix(in srgb, var(--rd-danger) 45%, transparent); }
+.ui-btn:focus-visible { box-shadow: 0 0 0 2px var(--rd-bg), 0 0 0 4px var(--rd-accent); }
+
+/* ── Tabs: square segments, the current one lit underneath ── */
+.steps { gap: 0; padding: 0; border: 0; border-radius: var(--rd-radius-sm); background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); }
+.steps button { height: 36px; padding: 0 16px; border: 0; border-radius: 0; color: var(--rd-muted); font-size: var(--rd-text-md); }
+.steps button + button { border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent); }
+.steps button:hover:not(:disabled) { background: var(--rd-surface-2); }
+.steps button[aria-selected='true'] { border-color: color-mix(in srgb, var(--rd-ink) 11%, transparent); background: var(--rd-surface-2); color: var(--rd-ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--rd-accent); }
+.step-count { border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-accent); }
+.seg { padding: 0; gap: 0; border: 0; border-radius: var(--rd-radius-sm); background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); overflow: hidden; }
+.seg button { height: 32px; border-radius: 0; }
+.seg button + button { border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent); }
+.seg button[aria-pressed='true'] { background: var(--rd-surface-2); box-shadow: inset 0 -2px 0 var(--rd-accent); }
+
+/* ── Fields: inset, a step below the surface; focus is the crimson thread ── */
+input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea,
+.ui-select-field, .pane-body textarea {
+  background-color: var(--rd-sunken);
+  border-color: color-mix(in srgb, var(--rd-field) 70%, transparent);
+}
+input:not([type='checkbox']):not([type='radio']):not([type='file']):focus, select:focus, textarea:focus,
+.ui-select-field:focus, .pane-body textarea:focus {
+  outline: none;
+  border-color: var(--rd-accent);
+  box-shadow: 0 0 0 3px var(--rd-focus);
+}
+input[readonly] { background-color: transparent; }
+
+/* ── Status: a small glowing diamond beside the word, no pill ── */
+.ui-badge { border-radius: var(--rd-radius-xs); }
+.ui-badge:has(> .ui-badge-dot) { gap: 7px; padding-inline: 0; background-color: transparent; box-shadow: none; font-size: 12.5px; }
+.ui-badge-dot { width: 7px; height: 7px; border-radius: 1px; transform: rotate(45deg); box-shadow: 0 0 8px currentColor; }
+.ui-badge-muted:has(> .ui-badge-dot) .ui-badge-dot { box-shadow: none; }
+
+/* ── Switch: square track and knob ── */
+.live-switch .track { border-radius: var(--rd-radius-xs); }
+.live-switch .track span { border-radius: 2px; }
+
+/* ── Figure cards (StatRow) and fact cards: the tag's cut corner, a light under the pointer ── */
+.stat, .fact-grid > div {
+  position: relative;
+  border: 0;
+  border-radius: var(--rd-radius-sm);
+  box-shadow: inset 0 0 0 1px var(--rd-line);
+  clip-path: polygon(0 0, calc(100% - var(--rd-cut)) 0, 100% var(--rd-cut), 100% 100%, 0 100%);
+  isolation: isolate;
+}
+[dir='rtl'] .stat, [dir='rtl'] .fact-grid > div { clip-path: polygon(var(--rd-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--rd-cut)); }
+.stat-value { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.01em; }
+.stat-icon { color: var(--rd-muted); }
+.stat::after, .fact-grid > div::after, .op-card::after, .company-card::after, .pack-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(180px circle at var(--mx, 50%) var(--my, 0%), var(--rd-glow), transparent 70%);
+  opacity: 0;
+  transition: opacity var(--rd-dur-base) var(--rd-ease-standard);
+  pointer-events: none;
+}
+.stat:hover::after, .fact-grid > div:hover::after, .op-card:hover::after, .company-card:hover::after, .pack-card:hover::after { opacity: 1; }
+.op-card, .company-card, .pack-card { position: relative; isolation: isolate; }
+
+/* ── Dialog: the crimson thread on top ── */
+.dialog { border: 0; border-radius: var(--rd-radius-sm); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent), var(--rd-shadow-pop); }
+.dialog::before { content: ''; display: block; flex: none; height: 2px; background: var(--rd-accent); }
+
+/* ── Tables: a quiet dense head ── */
+.data th { height: 38px; color: var(--rd-muted); font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; }
+.data td { height: 44px; }
+
+/* ── Filter bar: a card, fields inset ── */
+.filter-bar, .filters { border-radius: var(--rd-radius-sm); }
+
+/* ── Motion on inner pages: cards rise in with a stagger, lift under the pointer ── */
+@media (prefers-reduced-motion: no-preference) {
+  .canvas-inner > * > .page-head, .stat-row > *, .fact-grid > *, .op-grid > *, .company-grid > *, .pack-grid > * {
+    animation: rd-rise 420ms var(--rd-ease-out) both;
+  }
+  .stat-row > :nth-child(2), .fact-grid > :nth-child(2), .op-grid > :nth-child(2) { animation-delay: 40ms; }
+  .stat-row > :nth-child(3), .fact-grid > :nth-child(3), .op-grid > :nth-child(3) { animation-delay: 80ms; }
+  .stat-row > :nth-child(4), .fact-grid > :nth-child(4), .op-grid > :nth-child(4) { animation-delay: 120ms; }
+  .stat-row > :nth-child(n + 5), .fact-grid > :nth-child(n + 5), .op-grid > :nth-child(n + 5) { animation-delay: 160ms; }
+  .stat, .fact-grid > div, .op-card, .company-card, .pack-card { transition: transform var(--rd-dur-base) var(--rd-ease-out); }
+  .stat:hover, .fact-grid > div:hover, .op-card:hover, .company-card:hover, .pack-card:hover { transform: translateY(-2px); }
+  .dialog { animation: rd-drop 200ms var(--rd-ease-out); }
+}
+@keyframes rd-drop { from { opacity: 0; transform: translateY(-8px) scale(0.98); } }
+
+/* ── Number card: action tiles stack icon over word; tabs sit inside the card's padding ── */
+.op-board .op-card, .op-tile {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  border: 0;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface);
+  box-shadow: inset 0 0 0 1px var(--rd-line);
+}
+.op-board .command-list .op-card, .op-board .command-list .op-card:last-child { border: 0; }
+.op-board .op-card svg, .op-tile svg { color: var(--rd-muted); transition: color var(--rd-dur-fast) var(--rd-ease-standard); }
+.op-board .op-card:hover svg, .op-tile:hover svg { color: var(--rd-accent); }
+.op-board .op-card.danger svg { color: var(--rd-danger); }
+.op-tile { position: relative; isolation: isolate; }
+.op-tile::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: radial-gradient(160px circle at var(--mx, 50%) var(--my, 0%), var(--rd-glow), transparent 70%); opacity: 0; transition: opacity var(--rd-dur-base) var(--rd-ease-standard); pointer-events: none; }
+.op-tile:hover::after { opacity: 1; }
+.line-head { padding: 18px 18px 6px; }
+.pane > .steps { margin-inline: 18px; margin-block: 6px 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .op-board > *, .op-board .command-list > * { animation: rd-rise 380ms var(--rd-ease-out) both; }
+  .op-tile { transition: transform var(--rd-dur-base) var(--rd-ease-out); }
+  .op-tile:hover, .op-board .op-card:hover { transform: translateY(-2px); }
+}
+
+/* Folded groups (packages, user prices) keep their own height in a sheet that fills the page. */
+.terms-sheet { align-content: start; }
+.terms-group-head:hover { background: var(--rd-surface-2); }
+
+/* A list that shares the page with figures and a chart keeps room for its rows; the page scrolls instead of
+   squeezing the table to one line. */
+.desk .sheet { min-height: min(440px, 70dvh); }
+
+/* ── Filters on narrower screens: the one-row bar becomes a grid of labelled fields (label above), so nothing is
+   squeezed or hidden behind a sideways scroll. ── */
+@media (max-width: 1279px) {
+  .filter-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    align-items: end;
+    gap: var(--rd-space-2);
+    padding-block: var(--rd-space-1-5);
+    overflow: visible;
+  }
+  .filter-panel label,
+  .filter-panel label:has(input[type='date']) {
+    display: grid;
+    align-items: stretch;
+    gap: 4px;
+    height: auto;
+    min-width: 0;
+    white-space: normal;
+  }
+  .filter-panel label > :is(input, select, .ui-select) { width: 100%; min-width: 0; }
+  .filter-panel .filter-clear { justify-self: start; }
+  .filter-bar { padding-block: var(--rd-space-1-5); }
+}
+/* Phone: table cells keep one line; the table scrolls inside its card instead of breaking words. */
+@media (max-width: 639px) {
+  .data td { white-space: nowrap; }
+}
+
+/* A card's body and stacks keep their rows at their own height when the card is stretched by a neighbour. */
+.pane-body, .stack, .settings-col, form { align-content: start; }
+@media (max-width: 767px) {
+  /* An odd last figure card takes the whole row instead of standing alone in half of it. */
+  .stat-row > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+/* A wide table inside a card body scrolls within it instead of widening the whole card. */
+.pane-body > *, .stack > * { min-width: 0; }
+@media (max-width: 767px) {
+  /* Stacked field rows: each field keeps its own height (a 16rem flex basis turned into 16rem of height). */
+  .field-row > label, .switch-row > label { flex: none; width: 100%; max-width: none; }
+  .field-row > label :is(input, select, .ui-select) { width: 100%; }
+}
+
+/* The dialog's mark: a crimson tile with the tag's cut corner. */
+.dialog-mark { border-radius: var(--rd-radius-sm); background: var(--rd-accent-soft); color: var(--rd-accent); clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%); }
+[dir='rtl'] .dialog-mark { clip-path: polygon(8px 0, 100% 0, 100% 100%, 0 100%, 0 8px); }

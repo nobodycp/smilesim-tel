@@ -5,6 +5,8 @@
   --rd-surface: #ffffff;
   --rd-surface-2: #efefee;
   --rd-surface-3: #e6e6e4;
+  /* Inset fields and search boxes sit a step below the surface. */
+  --rd-sunken: #ebebea;
   --rd-line: rgba(0, 0, 0, 0.08);
   --rd-line-soft: rgba(0, 0, 0, 0.05);
   --rd-qr-tile: #ffffff;
@@ -110,6 +112,7 @@
   --rd-surface: #18191b;
   --rd-surface-2: #1f2023;
   --rd-surface-3: #27282b;
+  --rd-sunken: #0c0d0e;
   --rd-line: rgba(255, 255, 255, 0.07);
   --rd-line-soft: rgba(255, 255, 255, 0.045);
   --rd-qr-tile: #ffffff;

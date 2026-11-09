@@ -52,6 +52,7 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 | 9 | `controls.css` | checkbox and radio size, last so it beats every `input` height rule |
 | 10 | `responsive.css` | shell and layout breakpoints, the 44px touch-target block |
 | 11 | `ui.css` | the `components/ui` primitives (`.ui-btn*`, `.ui-badge*`, `.ui-select*`, `.ui-pager*`) and the direction helpers `.only-rtl`, `.only-ltr`, `.flip-ltr` |
+| 12 | `graphite.css` | Graphite on the shared parts of inner pages (G4): square segmented tabs lit underneath, raised secondary buttons, inset fields (`--rd-sunken`), diamond status marks on `Badge dot`, cut-corner `Stat` and fact cards with the pointer light, number-card action tiles, the dialog's crimson thread and cut-corner mark, dense table heads, filter bars that become a grid of labelled fields under 1280px, one-line table cells on a phone, rise-in and lift motion. It overrides the older sheets' look only. |
 
 ## Tokens
 
@@ -63,6 +64,7 @@ Both themes are defined in `apps/web/app/styles/tokens.css`. Use the token, neve
 | `--rd-surface` | `#ffffff` | `#18191b` | cards, inputs, menus |
 | `--rd-surface-2` | `#efefee` | `#1f2023` | headers, chips, hover rows, active nav |
 | `--rd-surface-3` | `#e6e6e4` | `#27282b` | skeletons, pressed or hovered icon buttons |
+| `--rd-sunken` | `#ebebea` | `#0c0d0e` | fields and search boxes, a step below the surface |
 | `--rd-line` | ink at 8% | white at 7% | hairline borders |
 | `--rd-line-soft` | ink at 5% | white at 4.5% | dividers inside a card |
 | `--rd-qr-tile` | `#ffffff` | `#ffffff` | the tile behind a QR picture; stays white in dark mode so the code scans |

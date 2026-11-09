@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type PointerEvent, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Money } from '../../components/desk';
 import { Donut } from '../../components/donut';
@@ -33,15 +33,6 @@ function Card({ title, hint, action, wide, children, className = '' }: { title: 
   );
 }
 
-/** Moves the hover glow of a figure or shortcut tile to the pointer (CSS reads `--mx` / `--my`). */
-export function followPointer(event: PointerEvent<HTMLElement>) {
-  const tile = (event.target as HTMLElement).closest<HTMLElement>('.figure-tile, .shortcut-tile');
-  if (!tile) return;
-  const box = tile.getBoundingClientRect();
-  tile.style.setProperty('--mx', `${event.clientX - box.left}px`);
-  tile.style.setProperty('--my', `${event.clientY - box.top}px`);
-}
-
 function Tile({ label, icon, lead, tone, meta, children }: { label: string; icon: IconName; lead?: boolean; tone?: 'good'; meta?: ReactNode; children: ReactNode }) {
   return (
     <div className={`figure-tile${lead ? ' lead' : ''}${tone ? ` ${tone}` : ''}`}>
@@ -63,7 +54,7 @@ export function FigureBand({ data }: { data: OverviewPayload }) {
   const { t } = usePrefs();
   const { sales } = data;
   return (
-    <section className="figure-band overview-sales" aria-label={t.overviewSales} onPointerMove={followPointer}>
+    <section className="figure-band overview-sales" aria-label={t.overviewSales}>
       <Tile
         label={t.overviewSalesAmount}
         icon="reports"
@@ -108,7 +99,7 @@ export function ShortcutsCard({ items }: { items: { href: string; label: string;
   const { t } = usePrefs();
   return (
     <Card title={t.shortcuts} className="shortcuts-card">
-      <div className="shortcut-grid" onPointerMove={followPointer}>
+      <div className="shortcut-grid">
         {items.map((item) => (
           <Link key={item.href} className="shortcut-tile" href={item.href}>
             <span className="shortcut-tile-icon" aria-hidden="true"><Icon name={item.icon} /></span>

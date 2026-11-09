@@ -140,6 +140,19 @@ export function OfficeShell({ children }: { children: ReactNode }) {
     writeCollapsed(!collapsed);
   }
 
+  // Graphite: figure, fact and action cards carry a soft light under the pointer (CSS reads --mx / --my).
+  useEffect(() => {
+    const move = (event: PointerEvent) => {
+      const card = (event.target as Element | null)?.closest<HTMLElement>('.figure-tile, .shortcut-tile, .stat, .fact-grid > div, .op-card, .op-tile, .company-card, .pack-card');
+      if (!card) return;
+      const box = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${event.clientX - box.left}px`);
+      card.style.setProperty('--my', `${event.clientY - box.top}px`);
+    };
+    window.addEventListener('pointermove', move, { passive: true });
+    return () => window.removeEventListener('pointermove', move);
+  }, []);
+
   // «[» folds or opens the sidebar, outside of text fields.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
