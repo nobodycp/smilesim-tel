@@ -218,6 +218,8 @@ Graphite page details, matched to the prototype page by page (2026-11-09): crims
 
 The report pages (sales, profits, orders, balances, provider costs, activity log) share one layout from `features/reports/report-kit.tsx`: the title and lede with «CSV» in the head (`CsvLink`), then `.report-filters` — the `Period` switch (`.period`: today / 7 days / 30 days / 3 months, the chosen one raised with a crimson underline; full width under 768px) beside the loose filter chips —, three figure tiles with a meta line and no icon (`Stat` without `icon`; a red or green figure through `.tone-danger` / `.tone-success`, a name as `.stat-name`), and the table. A package cell is the package over its company (`.sub`); a share is a `.cap` bar. Balances have no period (they are a snapshot).
 
+Notices are card rows (`.notice-list`: the group's mark, the title over its detail, the age, a crimson `.unread-dot` while unread, the unread row tinted) under «الكل / غير مقروءة» tabs. Roles are the design's matrix (`.roles-matrix`: a green `.grant.on` tick per grant held, an empty `.grant` tile otherwise, a dash where the layer can never use it). Settings: the account card has one «حفظ» for every field, a crimson square account mark, and the sign-in methods three across. The home opens with the design's top — the head's «تمويل حساب» and crimson «تفعيل رقم», the `AccountBand` (available balance with the ceiling as twenty `.hero-bar` ticks, active numbers, numbers ending within three days, profit of the last 30 days), then `.home-top-row`: the last operations (`.op-list`) beside «مهام بانتظارك» (`.waiting-list`); the period's overview («نظرة عامة») follows below it.
+
 ## Components
 
 One of each. A new page uses these, it does not invent a sibling.

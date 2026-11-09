@@ -25,9 +25,8 @@ test('ending the current session returns to login', async ({ page }) => {
     });
   });
   await page.goto('/settings');
-  // Ending a session lives in the row menu: open it for the session, then choose the item.
-  await page.getByRole('button', { name: /^إنهاء/ }).click();
-  await page.getByRole('menuitem', { name: 'إنهاء' }).click();
+  // Each session ends from its own «إنهاء», as in the design.
+  await page.getByRole('button', { name: /^إنهاء/ }).first().click();
   await expect(page).toHaveURL(/\/login$/);
 });
 
@@ -55,7 +54,7 @@ test('settings starts authenticator enrollment and confirms it', async ({ page }
 test('settings reads the login name and details from the profile, not from sessionStorage', async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('loginName', 'stale-name'));
   await page.goto('/settings');
-  await expect(page.getByLabel('اسم الدخول')).toHaveValue('pos');
+  await expect(page.locator('.identity-login')).toHaveText('pos');
   await expect(page.getByLabel('الاسم الكامل')).toHaveValue('الكاشير');
   await expect(page.getByLabel('المدينة')).toHaveValue('ramallah');
   await expect(page.getByLabel('العنوان')).toHaveValue('شارع الإرسال');

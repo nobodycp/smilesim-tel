@@ -68,14 +68,16 @@ const everyTransferLabel = [
 ];
 
 for (const locale of ['ar', 'en', 'he'] as const) {
-  test(`the roles table names each transfer grant for the layer of the role in ${locale}`, async ({ page }) => {
+  test(`the roles matrix names each transfer grant for the layer of the role in ${locale}`, async ({ page }) => {
     await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: admin }]);
     await serveOffice(page, 'branch', { 'GET /roles': () => ({ body: { roles: cases.map((item) => item.row) } }) });
     await page.goto(`${admin}/roles`);
     const rows = page.locator('.data tbody tr');
     await expect(rows).toHaveCount(cases.length);
     for (const [index, item] of cases.entries()) {
-      await expect(rows.nth(index).locator('td').nth(2)).toHaveText(item.cell[locale]);
+      // The matrix names each grant a row holds, in its layer's words, on its tick.
+      const held = await rows.nth(index).locator('.grant.on').evaluateAll((ticks) => ticks.map((tick) => (tick.getAttribute('aria-label') ?? '').split(': ')[0]));
+      expect(held.join(' · ')).toBe(item.cell[locale]);
     }
   });
 }

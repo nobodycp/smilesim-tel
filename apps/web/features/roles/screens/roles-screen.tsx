@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
+import { Check, Plus } from 'lucide-react';
 import { Desk, layerName } from '../../../components/desk';
 import { Dialog } from '../../../components/dialog';
 import { RowMenu } from '../../../components/row-menu';
@@ -62,15 +63,29 @@ export function RolesScreen() {
     return row.kind === 'layer' && row.layer ? layerName(t, row.layer) : row.name;
   }
 
-  function labels(row: RoleRow) {
-    const layer = layerOf(row);
-    return codesOf(row).filter((code) => grantUsable(code, layer)).map((code) => grantLabel(t, code, layer)).join(' · ') || '—';
-  }
-
+  // The design's matrix: one column per grant, a green tick where the role holds it, an empty box where it does not,
+  // a dash where its layer can never use it.
+  const shortLabel = (code: string) =>
+    code === 'transferLines' ? t.grantShortLines : code === 'transferPos' ? t.grantShortPos : code === 'transferAgents' ? t.grantShortAgents : grantLabel(t, code);
   const columns: Column<RoleRow>[] = [
-    { key: 'role', header: t.role, render: (row) => <strong>{roleTitle(row)}</strong> },
-    { key: 'kind', header: t.layer, render: (row) => row.kind === 'layer' ? t.layerRole : t.jobRole },
-    { key: 'permissions', header: t.permissions, cell: 'wrap', render: (row) => labels(row) },
+    {
+      key: 'role',
+      header: t.role,
+      render: (row) => <><strong>{roleTitle(row)}</strong><span className="sub">{row.kind === 'layer' ? t.layerRole : t.jobRole}</span></>,
+    },
+    ...GRANT_CODES.map((code): Column<RoleRow> => ({
+      key: code,
+      header: shortLabel(code),
+      cell: 'grant-cell',
+      render: (row) => {
+        const layer = layerOf(row);
+        if (!grantUsable(code, layer)) return <span className="grant-none" aria-label={t.grantUnusable}>—</span>;
+        const on = codesOf(row).includes(code);
+        return on
+          ? <span className="grant on" role="img" aria-label={`${grantLabel(t, code, layer)}: ${t.grantAllowed}`}><Check size={14} strokeWidth={2.4} /></span>
+          : <span className="grant" role="img" aria-label={`${grantLabel(t, code, layer)}: ${t.grantDenied}`} />;
+      },
+    })),
     {
       key: 'ops',
       header: t.rowActions,
@@ -82,15 +97,12 @@ export function RolesScreen() {
   return (
     <Desk
       title={t.rolesTitle}
-      lede=""
-      action={<Button type="button" onClick={() => edit()}>{t.role}</Button>}
+      lede={t.rolesLede}
+      action={<Button type="button" onClick={() => edit()}><Plus size={16} aria-hidden="true" />{t.newRole}</Button>}
       error={failure}
       note={note}
     >
-      <section className="pane fit">
-        <header className="pane-head">
-          <h2>{t.rolesList}{roles.loaded ? <span className="count">{rows.length}</span> : null}</h2>
-        </header>
+      <section className="pane fit roles-matrix">
         <Dialog
           open={open}
           title={draft.kind === 'layer' ? roleTitle(draft) : t.role}

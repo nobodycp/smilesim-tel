@@ -2,7 +2,6 @@
 
 import { useState, type FormEvent } from 'react';
 import { PageSkeleton } from '../../../components/loading';
-import { RowMenu } from '../../../components/row-menu';
 import { api } from '../../../lib/api';
 import { sharedKeys } from '../../../lib/query';
 import { useApiQuery } from '../../../lib/use-api-query';
@@ -67,25 +66,21 @@ export function SettingsScreen() {
     return true;
   }
 
-  const saveFullName = (e: FormEvent) => {
+  // One «حفظ» for the account card, as in the design: it sends only the fields that changed.
+  const saveAccount = (e: FormEvent) => {
     e.preventDefault();
-    return saveProfile({ nickname }, t.savedFullName);
-  };
-  const saveCity = (e: FormEvent) => {
-    e.preventDefault();
-    return saveProfile({ city }, t.savedCity);
-  };
-  const saveAddress = (e: FormEvent) => {
-    e.preventDefault();
-    return saveProfile({ address }, t.savedAddress);
-  };
-  const saveEmail = (e: FormEvent) => {
-    e.preventDefault();
-    return saveProfile({ email }, t.savedEmail);
-  };
-  const savePhone = (e: FormEvent) => {
-    e.preventDefault();
-    return saveProfile({ phone }, t.savedPhone);
+    const was = profile.data;
+    const patch: Parameters<typeof api.updateProfile>[0] = {};
+    if (nickname !== (was?.nickname ?? '')) patch.nickname = nickname;
+    if (email !== (was?.email ?? '')) patch.email = email;
+    if (phone !== (was?.phone ?? '')) patch.phone = phone;
+    if (city !== (was?.city ?? '')) patch.city = city;
+    if (address !== (was?.address ?? '')) patch.address = address;
+    if (Object.keys(patch).length === 0) {
+      setNote(t.savedProfile);
+      return;
+    }
+    void saveProfile(patch, t.savedProfile).then((ok) => (ok ? profile.reload() : undefined));
   };
   async function savePassword(e: FormEvent) {
     e.preventDefault();
@@ -134,54 +129,40 @@ export function SettingsScreen() {
               <div className="identity-mark" aria-hidden="true">{initial}</div>
               <div>
                 <strong><bdi>{shownName}</bdi></strong>
-                {nickname && nickname !== loginName ? <small>{loginName}</small> : null}
+                <small className="identity-login" dir="ltr">{loginName}</small>
               </div>
             </div>
-            <form>
-              <label>
-                {t.loginName}
-                <input value={loginName} readOnly />
-              </label>
-            </form>
-            <form className="field-row" onSubmit={saveFullName}>
+            <form className="account-form" onSubmit={saveAccount}>
               <label>
                 {t.fullName}
                 <input value={nickname} onChange={(e) => setNickname(e.target.value)} autoComplete="name" />
               </label>
-              <Button type="submit">{t.save}</Button>
-            </form>
-            <form className="field-row" onSubmit={saveEmail}>
-              <label>
-                {t.email}
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" />
-              </label>
-              <Button type="submit">{t.save}</Button>
-            </form>
-            <form className="field-row" onSubmit={savePhone}>
-              <label>
-                {t.phone}
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" />
-              </label>
-              <Button type="submit">{t.save}</Button>
-            </form>
-            <form className="field-row" onSubmit={saveCity}>
-              <label>
-                {t.city}
-                <Select value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2">
-                  <option value="">{t.cityNone}</option>
-                  {cities.map((row) => (
-                    <option key={row.key} value={row.key}>{row[locale]}</option>
-                  ))}
-                </Select>
-              </label>
-              <Button type="submit">{t.save}</Button>
-            </form>
-            <form className="field-row" onSubmit={saveAddress}>
-              <label>
-                {t.address}
-                <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={120} autoComplete="street-address" />
-              </label>
-              <Button type="submit">{t.save}</Button>
+              <div className="pair">
+                <label>
+                  {t.email}
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" />
+                </label>
+                <label>
+                  {t.phone}
+                  <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" placeholder="05x xxx xxxx" />
+                </label>
+              </div>
+              <div className="pair">
+                <label>
+                  {t.city}
+                  <Select value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2">
+                    <option value="">{t.cityNone}</option>
+                    {cities.map((row) => (
+                      <option key={row.key} value={row.key}>{row[locale]}</option>
+                    ))}
+                  </Select>
+                </label>
+                <label>
+                  {t.address}
+                  <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={120} autoComplete="street-address" />
+                </label>
+              </div>
+              <div><Button type="submit">{t.save}</Button></div>
             </form>
           </div>
         </section>
@@ -199,7 +180,7 @@ export function SettingsScreen() {
                 <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" dir="ltr" />
               </label>
             </div>
-            <Button type="submit">{t.changePassword}</Button>
+            <div><Button type="submit" variant="secondary">{t.changePassword}</Button></div>
           </form>
         </section>
       </div>
@@ -209,7 +190,7 @@ export function SettingsScreen() {
         <PasskeysPane methods={methods.data} reload={methods.reload} setError={setError} setNote={setNote} when={when} />
 
         <section className="pane">
-          <header className="pane-head"><h2>{t.sessions}</h2></header>
+          <header className="pane-head"><h2>{t.sessions}</h2>{sessions.length ? <span className="hint">{t.sessionsOpenMeta.replace('{n}', String(sessions.length))}</span> : null}</header>
           <div className="pane-body">
             <ul className="sessions">
               {sessions.map((session) => (
@@ -222,10 +203,9 @@ export function SettingsScreen() {
                     </strong>
                     <small className="session-meta" dir="ltr">{session.ip} · {when(session.lastSeenAt)}</small>
                   </span>
-                  <RowMenu
-                    label={`${t.endSession} ${deviceLabel(session.userAgent)}`}
-                    items={[{ label: t.endSession, icon: 'ban', danger: true, onClick: () => revoke(session.id) }]}
-                  />
+                  <Button type="button" variant="ghost" size="sm" aria-label={`${t.endSession} ${deviceLabel(session.userAgent)}`} onClick={() => void revoke(session.id)}>
+                    {t.endSession}
+                  </Button>
                 </li>
               ))}
             </ul>

@@ -1,19 +1,19 @@
 'use client';
 
+import { Check, Info, RadioTower, Wallet, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { Desk, latinWhen } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
-import { Badge } from '../../../components/ui/badge';
+import { Tabs } from '../../../components/tabs';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
 import { api, type NoticeRow } from '../../../lib/api';
-import { noticeDetail, noticeGroup, noticeTitle } from '../../../lib/notice-text';
+import { noticeAge, noticeDetail, noticeGroup, noticeTitle } from '../../../lib/notice-text';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
-import { noticeTone } from '../../../lib/status-tone';
 
 const GROUPS = ['tasks', 'wallet', 'announcements', 'providers'] as const;
 
@@ -60,65 +60,69 @@ export function NoticesScreen() {
     await list.reload();
   }
 
+  // One card per notice, as in the design: the group's mark, the title over its detail, the age, a crimson diamond
+  // while unread. The table head stays for screen readers only.
+  const markOf = (row: NoticeRow) => {
+    const group = noticeGroup(row.kind);
+    if (row.kind === 'task.done') return Check;
+    if (group === 'tasks') return Zap;
+    if (group === 'wallet') return Wallet;
+    if (group === 'providers') return RadioTower;
+    return Info;
+  };
   const columns: Column<NoticeRow>[] = [
     {
-      key: 'when',
-      header: t.when,
-      cell: 'when',
-      fit: true,
-      render: (row) => <bdi dir="ltr">{latinWhen(row.createdAt)}</bdi>,
-    },
-    {
-      key: 'group',
-      header: t.noticeGroup,
-      fit: true,
-      render: (row) => <Badge variant={noticeTone(row.read)} dot={!row.read}>{groupLabel(noticeGroup(row.kind))}</Badge>,
-    },
-    {
-      key: 'title',
+      key: 'notice',
       header: t.notices,
-      render: (row) => (
-        <button type="button" className="link-btn" onClick={() => void open(row)}>
-          {row.read ? noticeTitle(t, row) : <strong>{noticeTitle(t, row)}</strong>}
-        </button>
-      ),
+      cell: 'notice-cell',
+      render: (row) => {
+        const Mark = markOf(row);
+        return (
+          <button type="button" className={row.read ? 'notice-card' : 'notice-card unread'} onClick={() => void open(row)}>
+            <span className="notice-mark" aria-hidden="true"><Mark size={17} strokeWidth={1.9} /></span>
+            <span className="notice-main">
+              <strong>{noticeTitle(t, row)}</strong>
+              <span className="notice-text">{noticeDetail(t, row) || groupLabel(noticeGroup(row.kind))}</span>
+            </span>
+            <span className="notice-age" title={latinWhen(row.createdAt)}>{noticeAge(t, row.createdAt)}</span>
+            {row.read ? null : <i className="unread-dot" aria-label={t.unreadOnly} />}
+          </button>
+        );
+      },
     },
-    { key: 'detail', header: t.note, cell: 'wrap', render: (row) => noticeDetail(t, row) || '—' },
   ];
 
   return (
     <Desk
       title={t.notices}
-      lede=""
+      lede={t.noticesLede}
       error={error}
       note=""
-      action={unread > 0 ? <Button type="button" variant="secondary" size="sm" onClick={() => void markAll()}>{t.markAllRead}</Button> : undefined}
+      action={unread > 0 ? <Button type="button" variant="ghost" onClick={() => void markAll()}>{t.markAllRead}</Button> : undefined}
     >
-      <FilterBar
-        onClear={() => {
-          setGroup('');
-          setUnreadOnly(false);
-        }}
-        clearLabel={t.clearFilters}
-      >
-        <label>
-          {t.noticeGroup}
-          <Select value={group} onChange={(event) => setGroup(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            {GROUPS.map((code) => (
-              <option key={code} value={code}>
-                {groupLabel(code)}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="check">
-          <input type="checkbox" checked={unreadOnly} onChange={(event) => setUnreadOnly(event.target.checked)} />
-          {t.unreadOnly}
-        </label>
-      </FilterBar>
-      <section className="pane">
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noNotices} skeleton={{ rows: 6, columns: 4 }} />
+      <div className="report-filters">
+        <Tabs
+          label={t.notices}
+          items={[{ key: 'all', label: t.tasksAllTab }, { key: 'unread', label: t.unreadTab, count: unread }]}
+          value={unreadOnly ? 'unread' : 'all'}
+          onChange={(next) => setUnreadOnly(next === 'unread')}
+        />
+        <FilterBar loose onClear={() => setGroup('')} clearLabel={t.clearFilters}>
+          <label>
+            {t.noticeGroup}
+            <Select value={group} onChange={(event) => setGroup(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {GROUPS.map((code) => (
+                <option key={code} value={code}>
+                  {groupLabel(code)}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </FilterBar>
+      </div>
+      <section className="pane notice-list">
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noNotices} skeleton={{ rows: 6, columns: 1 }} />
       </section>
     </Desk>
   );

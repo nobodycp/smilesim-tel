@@ -997,3 +997,59 @@ input[readonly] { background-color: transparent; }
   .period button { flex: 1; padding-inline: 6px; }
 }
 .stat .stat-name { display: block; font-size: 1.15rem; line-height: 1.35; }
+
+/* Notices as card rows (Graphite): the group's mark, the title over its detail, the age, a crimson diamond while unread. */
+.notice-list .data thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.notice-list .data td.notice-cell { width: 100%; padding: 0; white-space: normal; }
+.notice-list .data tbody tr:nth-child(even) td { background: transparent; }
+.notice-card { display: flex; align-items: center; gap: 14px; inline-size: 100%; padding: 12px 18px; border: 0; background: transparent; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.notice-card:hover { background: var(--rd-surface-2); }
+.notice-card.unread { background: var(--rd-accent-soft); }
+.notice-card.unread:hover { background: color-mix(in srgb, var(--rd-accent-soft) 70%, var(--rd-surface-2)); }
+.notice-mark { display: grid; place-items: center; flex: none; inline-size: 36px; block-size: 36px; border-radius: var(--rd-radius-sm); background: var(--rd-accent-soft); color: var(--rd-accent); }
+.notice-main { display: grid; gap: 2px; flex: 1; min-inline-size: 0; }
+.notice-main strong { font-weight: 600; }
+.notice-card.unread .notice-main strong { font-weight: 700; }
+.notice-text { color: var(--rd-muted); font-size: 12.5px; }
+.notice-age { flex: none; color: var(--rd-muted); font-size: 11.5px; white-space: nowrap; }
+.unread-dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: 1px; transform: rotate(45deg); background: var(--rd-accent); box-shadow: 0 0 8px var(--rd-accent); }
+.report-filters > .tabs, .report-filters > [role='tablist'] { flex: none; }
+
+/* Roles as the design's matrix: a tick tile per grant held, an empty tile per grant not held, a dash where it never applies. */
+.roles-matrix .data th:not(:first-child):not(.row-actions), .roles-matrix .data td.grant-cell { text-align: center; }
+.grant { display: inline-grid; place-items: center; inline-size: 22px; block-size: 22px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--rd-line-strong, var(--rd-line)); vertical-align: middle; }
+.grant.on { background: var(--rd-success-soft); color: var(--rd-success); box-shadow: inset 0 0 0 1px var(--rd-success); }
+.grant-none { color: var(--rd-muted); opacity: 0.5; }
+
+/* Settings (Graphite): the account's crimson square mark, the sign-in methods three across. */
+.settings-page .identity-mark { inline-size: 44px; block-size: 44px; border-radius: var(--rd-radius-sm); background: var(--rd-accent); color: #fff; font-size: 18px; font-weight: 700; box-shadow: none; }
+.settings-page .identity-login { color: var(--rd-muted); font-size: 12.5px; }
+.settings-page .method-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 520px) { .settings-page .method-cards { grid-template-columns: 1fr; } }
+.settings-page .pane-head .hint { margin-inline-start: auto; color: var(--rd-muted); font-size: 12px; }
+.account-form { display: grid; gap: 12px; }
+
+/* Home top (the approved design): the account band, then the last operations beside the tasks waiting. */
+.home-head .page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.account-band .figure-tile { display: flex; flex-direction: column; gap: 6px; }
+.hero-bar { display: flex; gap: 3px; margin-block-start: 4px; }
+.hero-bar i { flex: 1; block-size: 6px; border-radius: 1px; background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); }
+.hero-bar i.on { background: var(--rd-accent); box-shadow: none; }
+.tone-accent { color: var(--rd-accent); }
+.home-top-row { display: grid; gap: var(--rd-space-3); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 1000px) { .home-top-row { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
+.op-list { margin: 0; padding: 0; list-style: none; }
+.op-list li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; align-items: center; gap: 12px; padding: 10px 18px; border-block-start: 1px solid var(--rd-line); }
+.op-list li:first-child { border-block-start: 0; }
+.op-list li:nth-child(even) { background: color-mix(in srgb, var(--rd-surface-2) 45%, transparent); }
+.op-list-main, .op-list-end { display: grid; gap: 2px; }
+.op-list-end { text-align: end; }
+.op-list-detail { color: var(--rd-muted); font-size: 12.5px; }
+.op-list .sub, .waiting-list .sub { color: var(--rd-muted); font-size: 12px; }
+.waiting-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.waiting-list a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); color: inherit; text-decoration: none; }
+.waiting-list a:hover { box-shadow: inset 0 0 0 1px var(--rd-line); }
+.waiting-main { display: grid; gap: 2px; flex: 1; min-inline-size: 0; }
+.home-waiting .pane-head .hint, .home-ops .pane-head .ui-btn { margin-inline-start: auto; }
+.home-overview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-block-start: var(--rd-space-2); }
+@media (max-width: 640px) { .op-list li { grid-template-columns: minmax(0, 1fr) auto; } .op-list-detail { display: none; } }

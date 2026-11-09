@@ -8,7 +8,7 @@ test('roles puts the create button on the title row', async ({ page }) => {
   );
   await page.goto('http://admin.localhost:3910/roles');
   await expectFullTable(page, 'الأدوار', { fit: true });
-  await expect(page.getByRole('button', { name: 'الدور' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'دور جديد' })).toBeVisible();
 });
 
 test('package steps stay on the point-of-sale door', async ({ page }) => {
