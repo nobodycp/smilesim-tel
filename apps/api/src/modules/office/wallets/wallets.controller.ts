@@ -169,7 +169,7 @@ export class WalletsController {
   @ApiQuery({ name: 'q', required: false })
   @ApiQuery({ name: 'from', required: false })
   @ApiQuery({ name: 'to', required: false })
-  @ApiQuery({ name: 'scope', required: false, description: '`money` keeps the money movements; every entry otherwise' })
+  @ApiQuery({ name: 'scope', required: false, description: '`money` keeps the money movements, `operations` the line operations; every entry otherwise' })
   @ApiErrorResponse(401, 403)
   finance(
     @Actor() actor: ActorShape,

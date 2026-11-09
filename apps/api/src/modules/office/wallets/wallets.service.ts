@@ -292,6 +292,8 @@ export class WalletsService {
       // operations that move no money included. `scope=money` keeps the money movements, and the holds and releases
       // of open tasks, which move no money but change what is spendable.
       ...(query.scope === 'money' ? { AND: [{ OR: [{ amount: { not: 0 } }, { kind: { in: ['hold', 'release'] } }] }] } : {}),
+      // `scope=operations` keeps the line operations only (spec 2026-11-09-admin-review, 1): what «العمليات» listed.
+      ...(query.scope === 'operations' ? { AND: [{ kind: { in: PROVIDER_OPERATION_KINDS } }] } : {}),
       ...(query.kind ? { kind: query.kind } : {}),
       ...(query.layer ? { user: { layer: query.layer } } : {}),
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
