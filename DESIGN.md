@@ -216,6 +216,8 @@ New screens compose `.page-head`, `.filter-bar`, `.pane`, `Tabs` (`components/ta
 
 Graphite page details, matched to the prototype page by page (2026-11-09): crimson fills only the page action that starts a sale or an extension (`.ui-btn.ui-btn-accent`: «تفعيل رقم», «تمديد»); every other page action is the ink button. A list page opens with a lede under its title. A company is shown by its `.co-mark` (logo or a cut-corner tile with its initials) wherever packages are grouped: the packages list, a user's «الرزم والأسعار» tab, the numbers table. A ledger's movement type is a `.reason` tag (`r-leaf` payment, `r-mute` settlement, `r-amber` a line operation). The user page is four tabs — packages and prices, number operations, the account's numbers, access; the provider account page is the ledger and the matching as two tabs under the figure row, with CSV, edit credit and record payment in the head.
 
+The report pages (sales, profits, orders, balances, provider costs, activity log) share one layout from `features/reports/report-kit.tsx`: the title and lede with «CSV» in the head (`CsvLink`), then `.report-filters` — the `Period` switch (`.period`: today / 7 days / 30 days / 3 months, the chosen one raised with a crimson underline; full width under 768px) beside the loose filter chips —, three figure tiles with a meta line and no icon (`Stat` without `icon`; a red or green figure through `.tone-danger` / `.tone-success`, a name as `.stat-name`), and the table. A package cell is the package over its company (`.sub`); a share is a `.cap` bar. Balances have no period (they are a snapshot).
+
 ## Components
 
 One of each. A new page uses these, it does not invent a sibling.

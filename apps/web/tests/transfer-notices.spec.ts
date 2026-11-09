@@ -63,7 +63,7 @@ test('the activity log names an account transfer and offers it as a filter', asy
   await page.goto(`${admin}/audit`);
   await expect(page.locator('.data tbody tr')).toHaveCount(1);
   await expect(page.locator('.data tbody tr').first()).toContainText('نقل حساب');
-  const filter = page.getByLabel('النوع');
+  const filter = page.getByLabel('الحدث');
   await expect(filter.getByRole('option', { name: 'نقل حساب', exact: true })).toHaveCount(1);
   await filter.selectOption('user_transfer');
   await expect.poll(() => calls.some((call) => call.startsWith('GET /audit') && call.includes('action=user_transfer'))).toBe(true);

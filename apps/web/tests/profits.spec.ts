@@ -18,9 +18,11 @@ test('profits show the totals and each package, follow the dates, and export the
   await page.goto('http://agent.localhost:3910/profits');
   await expect(page.getByRole('heading', { name: 'الأرباح', level: 1 })).toBeVisible();
   const cards = page.locator('.stat-row .stat');
-  await expect(cards.nth(0)).toContainText('5');
+  await expect(cards.nth(0)).toContainText('+16.50 ₪');
+  await expect(cards.nth(1)).toContainText('5');
   await expect(cards.nth(1)).toContainText('1');
-  await expect(cards.nth(2)).toContainText('+16.50 ₪');
+  // The best package and its profit per sale.
+  await expect(cards.nth(2)).toContainText('سلكوم 400 جيجا');
   const rows = page.locator('table.data tbody tr');
   await expect(rows).toHaveCount(2);
   await expect(rows.first()).toContainText('+10.50 ₪');
@@ -28,6 +30,7 @@ test('profits show the totals and each package, follow the dates, and export the
   expect(calls.some((call) => call.startsWith('GET /finance/profits?from='))).toBe(true);
   await expect(page.getByRole('link', { name: 'الأرباح' })).toHaveAttribute('aria-current', 'page');
 
-  await page.getByLabel('إلى').fill('2026-11-30');
-  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', /\/api\/office\/finance\/profits\/export\?from=\d{4}-\d{2}-\d{2}&to=2026-11-30/);
+  await page.getByRole('button', { name: 'اليوم' }).click();
+  const today = new Date().toISOString().slice(0, 10);
+  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', new RegExp(`/api/office/finance/profits/export\\?from=${today}`));
 });

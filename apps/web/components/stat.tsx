@@ -17,7 +17,8 @@ export function Stat({
   highlight = false,
   progress,
 }: {
-  icon: IconName;
+  /** Left out on the report pages, whose tiles carry no icon in the design. */
+  icon?: IconName;
   tone?: StatTone;
   value: ReactNode;
   label: string;
@@ -29,9 +30,11 @@ export function Stat({
   return (
     <article className={highlight ? `stat ${tone} highlight` : `stat ${tone}`}>
       <span className="stat-label">{label}</span>
-      <span className="stat-icon" aria-hidden="true">
-        <Icon name={icon} />
-      </span>
+      {icon ? (
+        <span className="stat-icon" aria-hidden="true">
+          <Icon name={icon} />
+        </span>
+      ) : null}
       <strong className="stat-value">{value}</strong>
       {share === null ? null : (
         <span className="stat-bar" role="presentation">

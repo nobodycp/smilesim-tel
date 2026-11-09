@@ -152,7 +152,7 @@ test.describe('usePaged', () => {
     await expect(failed.getByRole('button', { name: 'إعادة المحاولة' })).toBeVisible();
     await expect(page.locator('p.error')).toHaveCount(0);
     await expect(page.locator('.table-skeleton')).toHaveCount(0);
-    await page.getByLabel('النوع').selectOption('extend');
+    await page.getByLabel('الحدث').selectOption('extend');
     await expect(page.locator('.load-failed')).toHaveCount(0);
     await expect(page.locator('.empty')).toHaveText('لا حركات بعد.');
   });

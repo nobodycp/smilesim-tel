@@ -975,3 +975,25 @@ input[readonly] { background-color: transparent; }
 .reason.r-mute { background: var(--rd-surface-2); color: var(--rd-muted); }
 .muted-cell { color: var(--rd-muted); }
 .line-pane form.switch-row { margin-block-start: 14px; padding: 14px 18px; border-radius: var(--rd-radius-sm); background: var(--rd-surface); box-shadow: inset 0 0 0 1px var(--rd-line); }
+
+/* Report pages (Graphite report layout): the period switch and the chips on one row above three figures. */
+.report-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-block-end: 14px; }
+.report-filters > .filter-bar.loose { flex: 1 1 auto; margin: 0; }
+.period { display: inline-flex; flex: none; border-radius: var(--rd-radius-xs); box-shadow: inset 0 0 0 1px var(--rd-line); overflow: hidden; }
+.period button { height: 34px; padding-inline: 12px; border: 0; background: transparent; color: var(--rd-muted); font: inherit; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.period button + button { border-inline-start: 1px solid var(--rd-line); }
+.period button:hover { color: var(--rd-text); }
+.period button.on { background: var(--rd-surface-2); color: var(--rd-text); box-shadow: inset 0 -2px 0 var(--rd-accent); }
+.period button:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: -2px; }
+.report-filters + .stat-row { margin-block-start: 0; }
+.stat .tone-success { color: var(--rd-success); }
+.stat .tone-danger { color: var(--rd-danger); }
+.cap { display: flex; align-items: center; gap: 8px; min-inline-size: 160px; font-size: 11.5px; color: var(--rd-muted); }
+.cap-bar { flex: 1; block-size: 6px; border-radius: 1px; background: var(--rd-surface-2); overflow: hidden; min-inline-size: 80px; }
+.cap-bar i { display: block; block-size: 100%; background: var(--rd-accent); }
+.who-cell { display: inline-flex; align-items: center; gap: 8px; }
+@media (max-width: 767px) {
+  .period { inline-size: 100%; }
+  .period button { flex: 1; padding-inline: 6px; }
+}
+.stat .stat-name { display: block; font-size: 1.15rem; line-height: 1.35; }

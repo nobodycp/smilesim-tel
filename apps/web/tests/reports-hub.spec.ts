@@ -31,7 +31,10 @@ test('an agent reads its sales, orders and balances on their own pages, and expo
   await page.goto('http://agent.localhost:3910/reports');
   await expect(page).toHaveURL(/\/reports\/sales$/);
   await expect(page.locator('table.data tbody tr')).toHaveCount(1);
-  await expect(page.locator('.stat-row .stat').nth(2)).toContainText('+4.00 ₪');
+  await expect(page.locator('.stat-row .stat').nth(1)).toContainText('+4.00 ₪');
+  // The period switch opens on 30 days and moves the window.
+  await page.getByRole('button', { name: '7 أيام' }).click();
+  await expect(page.getByRole('button', { name: '7 أيام' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', /\/api\/office\/reports\/sales\/export\?from=/);
 
   // The pages are reached from the sidebar group, as a user moves between them.
@@ -58,7 +61,7 @@ test('the sidebar folds the reports in one group that starts closed and opens on
   await expect(head).toHaveAttribute('aria-expanded', 'false');
   await head.click();
   await expect(nav.getByRole('link')).toContainText(['المالية', 'العمليات', 'الأرباح', 'المبيعات', 'الطلبات', 'الأرصدة']);
-  await expect(nav.getByRole('link', { name: 'تقارير المزودين' })).toHaveCount(0);
+  await expect(nav.getByRole('link', { name: 'تكلفة المزودين' })).toHaveCount(0);
   await expect(nav.getByText('غير جاهز')).toHaveCount(0);
   await page.goto('http://agent.localhost:3910/reports/sales');
   await expect(nav.getByRole('button', { name: 'التقارير' })).toHaveAttribute('aria-expanded', 'true');

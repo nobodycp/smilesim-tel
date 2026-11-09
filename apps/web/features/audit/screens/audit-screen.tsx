@@ -1,16 +1,21 @@
 'use client';
 
+import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { Desk, actionName, latinWhen, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
+import { Stat, StatRow } from '../../../components/stat';
+import { Badge } from '../../../components/ui/badge';
 import { api, type ActivityRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { Select } from '../../../components/ui/select';
+import { useApiQuery } from '../../../lib/use-api-query';
+import { Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
 
 const ACTIONS = [
   'login', 'logout', 'password', 'two_factor',
@@ -30,37 +35,49 @@ export function AuditScreen() {
   const [result, setResult] = useState('');
   const [layer, setLayer] = useState('');
   const [q, setQ] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [days, setDays] = useState<PeriodDays>(30);
+  const from = periodFrom(days);
+  const to = '';
+  // The figures: the events of the period under the filters, failed sign-ins and price changes.
+  const failed = useApiQuery(['office', 'audit', 'failed-logins', from], () => api.officeAudit({ action: 'login', result: 'fail', from }));
+  const prices = useApiQuery(['office', 'audit', 'price-edits', from], () => api.officeAudit({ action: 'package_price', from }));
   const list = usePaged<ActivityRow>(`${action}|${result}|${layer}|${q}|${from}|${to}`, async (cursor) =>
     pick(await api.officeAudit({ action, result, layer, q, from, to, cursor }), (data) => ({ rows: data.entries, next: data.nextCursor, total: data.total })),
   );
 
   const columns: Column<ActivityRow>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
-    { key: 'layer', header: t.layer, render: (row) => (row.actorLayer ? layerName(t, row.actorLayer) : '—') },
-    { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.actorLogin} /> },
-    { key: 'action', header: t.kind, render: (row) => actionName(t, row.action) },
     {
-      key: 'result',
-      header: t.activityResult,
+      key: 'account',
+      header: t.auditWho,
       render: (row) => (
-        <span className={row.result === 'fail' ? 'result-fail' : 'result-ok'}>
-          {row.result === 'fail' ? t.activityFailure : t.activitySuccess}
+        <span className="who-cell">
+          <AccountName login={row.actorLogin} />
+          {row.actorLayer ? <span className={`layer-tag l-${row.actorLayer}`}>{layerName(t, row.actorLayer)}</span> : null}
         </span>
       ),
     },
-    { key: 'reason', header: t.activityReason, render: (row) => (row.reason ? (errors[row.reason] ?? row.reason) : '—') },
+    { key: 'action', header: t.auditEvent, render: (row) => actionName(t, row.action) },
     {
       key: 'subject',
-      header: t.activitySubject,
+      header: t.auditOn,
       render: (row) => {
         if (!row.subjectRef) return '—';
         if (row.subjectKind === 'task') return <Link className="row-link" href={`/tasks/${row.subjectRef}`}>{t.openTask}</Link>;
         return <bdi dir="ltr">{row.subjectRef}</bdi>;
       },
     },
-    { key: 'ip', header: t.activityIp, render: (row) => (row.ip ? <bdi dir="ltr">{row.ip.replace(/^::ffff:/, '')}</bdi> : '—') },
+    {
+      key: 'result',
+      header: t.activityResult,
+      render: (row) => (
+        <>
+          <Badge variant={row.result === 'fail' ? 'danger' : 'success'} dot>{row.result === 'fail' ? t.activityFailure : t.activitySuccess}</Badge>
+          {row.result === 'fail' && row.reason ? <span className="sub">{errors[row.reason] ?? row.reason}</span> : null}
+        </>
+      ),
+    },
+    { key: 'ip', header: t.auditAddress, render: (row) => (row.ip ? <bdi dir="ltr" className="muted">{row.ip.replace(/^::ffff:/, '')}</bdi> : '—') },
   ];
 
   function clear() {
@@ -68,54 +85,53 @@ export function AuditScreen() {
     setResult('');
     setLayer('');
     setQ('');
-    setFrom('');
-    setTo('');
   }
 
   return (
-    <Desk title={t.navAudit} lede="" error="" note="">
-      <FilterBar onClear={clear} clearLabel={t.clearFilters}>
-        <label>
-          {t.kind}
-          <Select value={action} onChange={(event) => setAction(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            {ACTIONS.map((value) => (
-              <option key={value} value={value}>{actionName(t, value)}</option>
-            ))}
-          </Select>
-        </label>
-        <label>
-          {t.activityResult}
-          <Select value={result} onChange={(event) => setResult(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            <option value="ok">{t.activitySuccess}</option>
-            <option value="fail">{t.activityFailure}</option>
-          </Select>
-        </label>
-        <label>
-          {t.layer}
-          <Select value={layer} onChange={(event) => setLayer(event.target.value)}>
-            <option value="">{t.allRows}</option>
-            {LAYERS.map((value) => (
-              <option key={value} value={value}>{layerName(t, value)}</option>
-            ))}
-          </Select>
-        </label>
-        <label>
-          {t.activitySearch}
-          <input value={q} onChange={(event) => setQ(event.target.value)} />
-        </label>
-        <label>
-          {t.from}
-          <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-        </label>
-        <label>
-          {t.to}
-          <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-        </label>
-      </FilterBar>
+    <Desk title={t.navAudit} lede={t.auditLede} error="" note="">
+      <ReportFilters>
+        <Period days={days} onPick={setDays} />
+        <FilterBar loose onClear={clear} clearLabel={t.clearFilters}>
+          <label className="filter-search">
+            <Search size={16} strokeWidth={1.9} aria-hidden="true" />
+            <span className="sr-only">{t.activitySearch}</span>
+            <input value={q} placeholder={t.activitySearch} onChange={(event) => setQ(event.target.value)} />
+          </label>
+          <label>
+            {t.auditEvent}
+            <Select value={action} onChange={(event) => setAction(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {ACTIONS.map((value) => (
+                <option key={value} value={value}>{actionName(t, value)}</option>
+              ))}
+            </Select>
+          </label>
+          <label>
+            {t.activityResult}
+            <Select value={result} onChange={(event) => setResult(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              <option value="ok">{t.activitySuccess}</option>
+              <option value="fail">{t.activityFailure}</option>
+            </Select>
+          </label>
+          <label>
+            {t.layer}
+            <Select value={layer} onChange={(event) => setLayer(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {LAYERS.map((value) => (
+                <option key={value} value={value}>{layerName(t, value)}</option>
+              ))}
+            </Select>
+          </label>
+        </FilterBar>
+      </ReportFilters>
+      <StatRow>
+        <Stat label={t.auditEvents} value={list.total ?? '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
+        <Stat tone="danger" label={t.failedLogins} value={failed.data ? <span className={failed.data.total ? 'tone-danger' : undefined}>{failed.data.total}</span> : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
+        <Stat label={t.priceEdits} value={prices.data ? prices.data.total : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
+      </StatRow>
       <section className="pane">
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 8 }} />
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 6 }} />
       </section>
     </Desk>
   );
