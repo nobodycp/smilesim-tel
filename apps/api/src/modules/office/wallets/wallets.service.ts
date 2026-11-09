@@ -106,10 +106,10 @@ export class WalletsService {
   }
 
   async ledger(actor: Actor, scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string }) {
-    const operationKinds = PROVIDER_OPERATION_KINDS;
-    const auditKinds = [...operationKinds, 'fund', 'self_fund', 'deduct', 'deduct_in'];
-    if (scope !== 'operations' && scope !== 'audit') fail(404, 'NOT_FOUND');
-    const allowed = scope === 'operations' ? operationKinds : auditKinds;
+    // The signed-in account's own wallet («المحفظة»). The tree-wide `operations` scope left with its page (spec
+    // 2026-11-09-admin-review, 1): «المالية» with `scope=operations` reads the same rows.
+    if (scope !== 'audit') fail(404, 'NOT_FOUND');
+    const allowed = [...PROVIDER_OPERATION_KINDS, 'fund', 'self_fund', 'deduct', 'deduct_in'];
     const kind = query.kind && allowed.includes(query.kind) ? query.kind : '';
     const from = query.from ? new Date(query.from) : null;
     const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59` : query.to) : null;
@@ -117,16 +117,8 @@ export class WalletsService {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
       ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),
     };
-    // Operations cover the viewer's whole tree: a sale debits only the point of sale's wallet, so the layers above
-    // have no operation entries of their own (spec 2026-11-08-overview-and-reports-nav, B). The audit scope stays
-    // the viewer's own wallet.
-    let owners: Prisma.WalletEntryWhereInput = { userId: actor.id };
-    if (scope === 'operations') {
-      const accounts = await this.kernel.accounts();
-      owners = actor.layer === 'branch' ? {} : { userId: { in: [...visibleAccountIds(actor.id, actor.layer, accounts)] } };
-    }
     const where: Prisma.WalletEntryWhereInput = {
-      ...owners,
+      userId: actor.id,
       kind: { in: kind ? [kind] : allowed },
       ...(query.direction === 'in' ? { amount: { gt: 0 } } : {}),
       ...(query.direction === 'out' ? { amount: { lt: 0 } } : {}),
@@ -142,13 +134,12 @@ export class WalletsService {
       this.kernel.prisma.walletEntry.count({ where }),
     ]);
     const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
-    const margins = scope === 'operations' ? await this.marginsFor(actor, rows) : new Map<string, number | null>();
     return {
       entries: rows.map((row) => ({
-        /** The account whose wallet the operation moved, and what the viewer earned on it (null when nothing). */
+        /** The wallet's account; `margin` stays in the shape and is null (the viewer's own wallet carries none). */
         loginName: row.user?.loginName ?? actor.loginName,
         layer: row.user?.layer ?? actor.layer,
-        margin: margins.get(row.id) ?? null,
+        margin: null as number | null,
         id: row.id,
         at: row.createdAt.toISOString(),
         kind: row.kind,

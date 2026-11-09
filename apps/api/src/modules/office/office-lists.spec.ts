@@ -348,13 +348,13 @@ describe('time-ordered lists', () => {
   it('pages the ledger and keeps its own filters on every page', async () => {
     const rows = Array.from({ length: 100 }, (_, i) => entry(i, { kind: i % 2 ? 'charge' : 'activate' }));
     const { service, gate } = await serviceWith({ walletEntry: table(rows) });
-    const first = await service.ledger(gate, 'operations', { kind: 'charge' });
+    const first = await service.ledger(gate, 'audit', { kind: 'charge' });
     expect(first.entries).toHaveLength(50);
     expect(first.entries.every((row) => row.kind === 'charge')).toBe(true);
     expect(first.nextCursor).toBeNull();
-    const all = await service.ledger(gate, 'operations', {});
+    const all = await service.ledger(gate, 'audit', {});
     expect(all.entries).toHaveLength(80);
-    const rest = await service.ledger(gate, 'operations', { cursor: all.nextCursor ?? undefined });
+    const rest = await service.ledger(gate, 'audit', { cursor: all.nextCursor ?? undefined });
     expect(rest.entries).toHaveLength(20);
     expect(new Set([...all.entries, ...rest.entries].map((row) => row.id)).size).toBe(100);
   });

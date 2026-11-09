@@ -23,40 +23,11 @@ function insights(tables: Record<string, unknown>) {
 }
 
 describe('InsightsService', () => {
-  it('lists sales with what was paid and my margin, and totals them', async () => {
-    const report = await insights({
-      walletEntry: { findMany: async () => [{ id: 'e1', createdAt: new Date('2026-11-06T10:00:00Z'), user: { loginName: 'pos1' }, kind: 'activate', msisdn: '055', companyName: 'وي', packageName: '150', amount: -3800 }] },
-    }).sales(actor);
-    expect(report.rows[0]).toMatchObject({ loginName: 'pos1', amount: 3800, margin: 300 });
-    expect(report.totals).toEqual({ count: 1, amount: 3800, profit: 300 });
-    // The «الحساب» chip lists the points of sale under me.
-    expect(report.accounts.map((row) => row.loginName)).toEqual(['pos1', 'pos2']);
-  });
-
-  it('filters sales by the point of sale and by the movement, and ignores a movement that is not a sale', async () => {
-    const seen: unknown[] = [];
-    const service = insights({ walletEntry: { findMany: async (args: { where: unknown }) => { seen.push(args.where); return []; } } });
-    await service.sales(actor, { account: 'pos1', kind: 'charge' });
-    await service.sales(actor, { kind: 'freeze' });
-    expect(JSON.stringify(seen[0])).toContain('"loginName":"pos1"');
-    expect(JSON.stringify(seen[0])).toContain('"kind":"charge"');
-    expect(JSON.stringify(seen[1])).toContain('"kind":{"in":["activate","charge","extend","reactivate"]}');
-  });
-
-  it('merges done operations with open and cancelled tasks, newest first', async () => {
-    const report = await insights({
-      walletEntry: { findMany: async () => [{ id: 'e1', createdAt: new Date('2026-11-06T10:00:00Z'), user: { loginName: 'pos1' }, actor: { loginName: 'agent' }, kind: 'charge', msisdn: '055', companyName: 'وي', packageName: '150', amount: -3500 }] },
-      officeTask: { findMany: async () => [
-        { id: 't1', createdAt: new Date('2026-11-07T10:00:00Z'), posId: 'pos1', assigneeId: 'branch', action: 'switch', msisdn: '056', packageId: 'pk', status: 'pending', posDelta: -500 },
-        { id: 't2', createdAt: new Date('2026-11-05T10:00:00Z'), posId: 'pos2', action: 'sim', msisdn: '057', packageId: 'pk', status: 'cancelled', posDelta: 0 },
-      ] },
-      package: { findMany: async () => [{ id: 'pk', name: '150 جيجا', company: { name: 'وي' } }] },
-    }).orders(actor);
-    expect(report.rows.map((row) => [row.id, row.status])).toEqual([['t1', 'open'], ['e1', 'done'], ['t2', 'cancelled']]);
-    expect(report.totals).toEqual({ count: 3, done: 1, open: 1, cancelled: 1 });
-    expect(report.rows[0]).toMatchObject({ loginName: 'pos1', packageName: '150 جيجا', taskId: 't1', handlerLogin: 'branch' });
-    // A done operation names who ran it and has no task.
-    expect(report.rows[1]).toMatchObject({ taskId: null, handlerLogin: 'agent' });
+  it('has no sales or orders report any more (spec 2026-11-09-admin-review, 1)', async () => {
+    const service = insights({}) as unknown as Record<string, unknown>;
+    expect(service.sales).toBeUndefined();
+    expect(service.orders).toBeUndefined();
+    await expect(insights({}).csv(actor, 'sales', {})).rejects.toMatchObject({ status: 404 });
   });
 
   it('lists the wallets under me with used and available, and keeps only the negative ones on demand', async () => {

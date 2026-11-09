@@ -101,8 +101,6 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/reports/KIND1', 'ynynnn'],
   ['GET /office/reports/KIND1/export', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/reports/balances', 'yyyyyy'],
-  ['GET /office/reports/orders', 'yyyyyy'],
-  ['GET /office/reports/sales', 'yyyyyy'],
   ['GET /office/reports/supply', 'ynynnn'],
   ['GET /office/roles', 'ynnnnn'],
   ['POST /office/roles', 'ynnnnn'],

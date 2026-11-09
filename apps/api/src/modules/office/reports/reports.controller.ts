@@ -23,20 +23,6 @@ export class ReportsController {
   ) {}
 
   // The «التقارير» page (spec 2026-11-08-reports). Static paths, declared before `reports/:kind`, win over it.
-  @Get('reports/sales')
-  @ApiOperation({ summary: 'Sales under the signed-in account, with its margin on each' })
-  @ApiErrorResponse(401, 403)
-  sales(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string, @Query('account') account?: string, @Query('kind') kind?: string) {
-    return this.insights.sales(actor, { from: text(from), to: text(to), q: text(q), account: text(account), kind: text(kind) });
-  }
-
-  @Get('reports/orders')
-  @ApiOperation({ summary: 'Line operations under the signed-in account: done, open and cancelled' })
-  @ApiErrorResponse(401, 403)
-  orders(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string, @Query('status') status?: string, @Query('action') action?: string) {
-    return this.insights.orders(actor, { from: text(from), to: text(to), q: text(q), status: text(status), action: text(action) });
-  }
-
   @Get('reports/balances')
   @ApiOperation({ summary: 'Wallets of the accounts under the signed-in account' })
   @ApiErrorResponse(401, 403)
