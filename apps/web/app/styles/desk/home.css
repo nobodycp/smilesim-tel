@@ -23,7 +23,9 @@
 
 /* Donut with its legend beside it; stacked on a narrow card. */
 .donut { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-4); }
-.donut-ring { inline-size: 168px; block-size: 168px; flex: none; }
+.donut-ring { inline-size: 168px; block-size: 168px; flex: none; stroke-linecap: butt; }
+/* The global icon rule strokes every SVG; the ring's words are plain fills (spec 2026-11-09-admin-review, 8.1). */
+.donut-ring text { stroke: none; }
 .donut-track { fill: none; stroke: var(--rd-surface-2); }
 .donut-total { fill: var(--rd-ink); font-size: calc(var(--rd-text-2xl) * 1.5); font-weight: 800; font-variant-numeric: tabular-nums; }
 .donut-legend { flex: 1; min-inline-size: 180px; display: grid; gap: var(--rd-space-1); margin: 0; padding: 0; list-style: none; }
@@ -39,7 +41,7 @@
 }
 .donut-legend li > a:hover { background: var(--rd-surface-2); }
 .donut-dot { inline-size: 10px; block-size: 10px; border-radius: var(--rd-radius-pill); }
-.donut-value { font-weight: 700; }
+.donut-value { min-inline-size: 2ch; font-weight: 700; text-align: end; }
 /* The donut's change and pointing (spec 2026-11-09-admin-review, 6.4): beside each count a green ↑ or a red ↓ with
    the number; the slice pointed at thickens, the others dim, and its share takes the middle. */
 .donut-change { display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px; min-inline-size: 3.5ch; font-size: var(--rd-text-xs); font-weight: 700; }
@@ -342,3 +344,60 @@
 .shortcut-grid, .overview-meters, .overview-rank { align-content: start; }
 /* A card's tabs scroll inside the card when they do not fit beside the title. */
 .overview-card .pane-head > [role='tablist'] { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+
+/* «المستخدمون» (spec 2026-11-09-admin-review, 8.3): a tile per layer in its colour, the ceilings in use as a bar,
+   then the debtors (with the debt) and the frozen accounts as two quiet rows. */
+.users-layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--rd-space-2); }
+.users-layer {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "mark count" "label label";
+  align-items: center;
+  gap: var(--rd-space-1-5) var(--rd-space-2);
+  padding: var(--rd-space-2-5, 10px) var(--rd-space-3);
+  border-radius: var(--rd-radius-md, 12px);
+  background: color-mix(in srgb, var(--tone) 8%, var(--rd-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent);
+  color: var(--rd-ink);
+  text-decoration: none;
+  transition: box-shadow 160ms var(--rd-ease-out), transform 160ms var(--rd-ease-out);
+}
+.users-layer:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent); }
+.users-layer:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
+.users-layer-mark {
+  grid-area: mark;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: var(--rd-radius-sm);
+  background: color-mix(in srgb, var(--tone) 16%, transparent);
+  color: var(--tone);
+}
+.users-layer-count { grid-area: count; justify-self: end; font-size: var(--rd-text-xl, 1.25rem); font-weight: 800; line-height: 1; }
+.users-layer-label { grid-area: label; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; line-height: 1.35; }
+.users-credit { display: grid; gap: var(--rd-space-1-5); margin-block-start: var(--rd-space-4); }
+.users-credit-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--rd-space-2); font-size: var(--rd-text-sm); color: var(--rd-muted); }
+.users-credit-figures { color: var(--rd-ink); font-weight: 700; white-space: nowrap; }
+.users-meter { block-size: 8px; border-radius: var(--rd-radius-pill); background: var(--rd-surface-2); overflow: hidden; }
+.users-meter i { display: block; block-size: 100%; border-radius: inherit; background: var(--rd-accent); }
+.users-credit-caption { display: flex; justify-content: space-between; gap: var(--rd-space-2); margin: 0; color: var(--rd-muted); font-size: var(--rd-text-xs); }
+.users-flags { display: grid; margin: var(--rd-space-3) 0 0; padding: 0; list-style: none; }
+.users-flags li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rd-space-3);
+  padding-block: var(--rd-space-2);
+  border-block-start: 1px solid var(--rd-line);
+  font-size: var(--rd-text-sm);
+}
+.users-flag-label { display: inline-flex; align-items: center; gap: var(--rd-space-1-5); color: var(--rd-muted); }
+.users-flag-count { display: inline-grid; place-items: center; min-inline-size: 20px; block-size: 20px; padding-inline: 5px; border-radius: var(--rd-radius-pill); background: var(--rd-surface-2); color: var(--rd-ink); font-size: var(--rd-text-xs); font-weight: 700; }
+.users-flag-value { font-weight: 700; }
+.users-flags li.warn .users-flag-count { background: var(--rd-warning-soft, var(--rd-surface-2)); color: var(--rd-warning); }
+.users-flags li.warn .users-flag-value { color: var(--rd-warning); }
+@media (prefers-reduced-motion: no-preference) {
+  .users-meter i { animation: users-fill 700ms var(--rd-ease-out) both; }
+}
+@keyframes users-fill { from { inline-size: 0; } }

@@ -62,7 +62,7 @@ export function HomeScreen() {
           {/* The period every card of the page follows (owner 2026-11-09). */}
           <Tabs
             label={t.period}
-            items={[{ key: 'day', label: t.periodToday }, { key: 'month', label: t.periodMonth }, { key: 'all', label: t.periodAll }]}
+            items={[{ key: 'day', label: t.periodTabDay }, { key: 'month', label: t.periodTabMonth }, { key: 'all', label: t.periodTabAll }]}
             value={period}
             onChange={setPeriod}
           />

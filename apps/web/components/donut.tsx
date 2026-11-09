@@ -19,13 +19,16 @@ const SIZE = 168;
 const STROKE = 22;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+/** The clear gap between two slices, in the ring's units (none when one slice fills the ring). */
+const GAP = 2.5;
 
 /**
  * A donut drawn in SVG (no chart library) with its legend beside it: each slice is a ring segment in the slice's
  * `tone` (a `--rd-*` colour token), and the legend repeats every label with its count, so colour never carries the
  * meaning alone. The total sits in the middle; pointing at a slice — on the ring or in the legend, or focusing its
  * link — puts that slice's share and name there instead (spec 2026-11-09-admin-review, 6.4). Beside each count, its
- * change over the period: a green ↑ with the number for more, a red ↓ for fewer. The ring draws in; the slice pointed
+ * change over the period sits before it: a green ↑ with the number for more, a red ↓ for fewer, and the count closes
+ * the line (spec 2026-11-09-admin-review, 8.2). The ring draws in; the slice pointed
  * at thickens and the others dim (no motion with reduced motion).
  */
 export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: string; label: string }) {
@@ -45,8 +48,9 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
     <div className={active ? 'donut pointing' : 'donut'}>
       <svg className="donut-ring" viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={`${label}: ${slices.map((slice) => `${slice.label} ${slice.value}`).join('، ')}`}>
         <circle className="donut-track" cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} strokeWidth={STROKE} />
-        {sum > 0 && slices.filter((slice) => slice.value > 0).map((slice, index) => {
-          const length = (slice.value / sum) * CIRCUMFERENCE;
+        {sum > 0 && slices.filter((slice) => slice.value > 0).map((slice, index, drawn) => {
+          const full = (slice.value / sum) * CIRCUMFERENCE;
+          const length = drawn.length > 1 ? Math.max(full - GAP, 1) : full;
           const ring = (
             <circle
               key={slice.key}
@@ -63,7 +67,7 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
               {...point(slice.key)}
             />
           );
-          offset += length;
+          offset += full;
           return ring;
         })}
         {shown ? (
@@ -82,7 +86,6 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
             <>
               <span className="donut-dot" style={{ background: `var(${slice.tone})` }} aria-hidden="true" />
               <span className="donut-label">{slice.label}</span>
-              <span className="donut-value num">{slice.value}</span>
               {change !== 0 ? (
                 <span
                   className={change > 0 ? 'donut-change up' : 'donut-change down'}
@@ -92,6 +95,7 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
                   <bdi className="num" dir="ltr">{Math.abs(change)}</bdi>
                 </span>
               ) : <span className="donut-change none" aria-hidden="true" />}
+              <span className="donut-value num">{slice.value}</span>
             </>
           );
           return (

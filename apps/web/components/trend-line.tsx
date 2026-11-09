@@ -59,8 +59,8 @@ export function TrendLine({ values, labels, format, label, tone = 'accent', size
         </defs>
         {size === 'large' ? [0.25, 0.5, 0.75].map((at) => <line key={at} className="trend-guide" x1={0} x2={width} y1={height * at} y2={height * at} vectorEffect="non-scaling-stroke" />) : null}
         <path className="trend-area" d={area} fill={`url(#trend-fill-${id})`} />
-        <path className="trend-glow" d={line} pathLength={1} vectorEffect="non-scaling-stroke" />
-        <path className="trend-stroke" d={line} pathLength={1} vectorEffect="non-scaling-stroke" />
+        <path className="trend-glow" d={line} vectorEffect="non-scaling-stroke" />
+        <path className="trend-stroke" d={line} vectorEffect="non-scaling-stroke" />
         {shown !== null ? <line className="trend-cursor" x1={points[shown][0]} x2={points[shown][0]} y1={0} y2={height} vectorEffect="non-scaling-stroke" /> : null}
       </svg>
       <span className="trend-dot" style={{ left: `${(lastX / width) * 100}%`, top: `${(lastY / height) * 100}%` }} aria-hidden="true" />

@@ -231,3 +231,17 @@ Status 2026-11-09: spec and plan agreed; the owner asked not to start yet.
    theme, notices**.
 4. **The branch has no wallet:** its balance is unlimited. No wallet chip in its topbar; `/wallet` sends it home;
    the home and finance already show it no balance. Funding other accounts («المحفظة» on user rows) stays.
+
+## Section 8 — Home cards polish (owner 2026-11-10)
+
+1. **Numbers donut, sharp:** the ring and its middle number are drawn clean — square slice ends with a thin gap
+   between slices (no rounded ends overlapping the next colour), and the middle number without the outline the
+   global icon rule gave every SVG.
+2. **Legend order:** label, then the change (arrow + count), then the count **at the line's end**.
+3. **«المستخدمون» card, redesigned:** one tile per layer the viewer manages (count, label, link to the list), then
+   the credit picture — used of all ceilings as a bar, the debt with the debtors count, and the frozen count.
+   Same data, same links.
+4. **Period cards:** the trend line sits inside the card under the figures (behind them, along the card's lower
+   part) instead of taking a band of its own; the card gets shorter.
+5. **Period switch** reads «يوم / شهر / الكل» (en Day / Month / All, he יום / חודש / הכל). The cards' caption keeps
+   the long name («هذا الشهر»).

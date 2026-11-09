@@ -1,12 +1,12 @@
 'use client';
 
+import { Network, Store, UsersRound } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Money } from '../../components/desk';
 import { Donut } from '../../components/donut';
 import { EmptyState } from '../../components/empty-state';
-import { Fact, Facts } from '../../components/facts';
 import { Tabs } from '../../components/tabs';
 import { Badge } from '../../components/ui/badge';
 import type { OverviewPayload, OverviewRanked } from '../../lib/api';
@@ -162,18 +162,42 @@ export function TopCard({ data }: { data: OverviewPayload }) {
 export function UsersCard({ data, layer }: { data: OverviewPayload; layer: string }) {
   const { t } = usePrefs();
   const { users } = data;
+  // One tile per layer this viewer manages, then the credit picture (spec 2026-11-09-admin-review, 8.3).
+  const layers = [
+    ...(layer === 'branch' ? [{ key: 'main_agent', label: t.activeMainAgents, value: users.counts.main_agent, tone: '--rd-layer-main', icon: <Network size={16} /> }] : []),
+    ...(layer === 'branch' || layer === 'main_agent' ? [{ key: 'agent', label: t.activeAgents, value: users.counts.agent, tone: '--rd-layer-agent', icon: <UsersRound size={16} /> }] : []),
+    { key: 'pos', label: t.activePos, value: users.counts.pos, tone: '--rd-layer-pos', icon: <Store size={16} /> },
+  ];
+  const usedShare = users.ceilings > 0 ? Math.min(100, Math.round((users.used / users.ceilings) * 100)) : 0;
   return (
-    <Card title={t.overviewUsers}>
-      <Facts variant="list">
-        {layer === 'branch' ? <Fact label={t.activeMainAgents}><Link className="num" href="/users?layer=main_agent">{users.counts.main_agent}</Link></Fact> : null}
-        {layer === 'branch' || layer === 'main_agent' ? <Fact label={t.activeAgents}><Link className="num" href="/users?layer=agent">{users.counts.agent}</Link></Fact> : null}
-        <Fact label={t.activePos}><Link className="num" href="/users?layer=pos">{users.counts.pos}</Link></Fact>
-        <Fact label={t.usersFrozen}><span className="num">{users.frozen}</span></Fact>
-        <Fact label={t.usersDebtors} tone={users.debtors ? 'warn' : undefined}><span className="num">{users.debtors}</span></Fact>
-        <Fact label={t.usersDebt} tone={users.debt ? 'warn' : undefined}><Money value={users.debt} /></Fact>
-        <Fact label={t.usersCeilings}><Money value={users.ceilings} /></Fact>
-        <Fact label={t.usedCeiling}><Money value={users.used} /></Fact>
-      </Facts>
+    <Card title={t.overviewUsers} className="users-card">
+      <div className="users-layers">
+        {layers.map((item) => (
+          <Link key={item.key} className="users-layer" href={`/users?layer=${item.key}`} style={{ ['--tone' as string]: `var(${item.tone})` }}>
+            <span className="users-layer-mark" aria-hidden="true">{item.icon}</span>
+            <span className="users-layer-count num">{item.value}</span>
+            <span className="users-layer-label">{item.label}</span>
+          </Link>
+        ))}
+      </div>
+      <div className="users-credit">
+        <div className="users-credit-head">
+          <span>{t.usedCeiling}</span>
+          <span className="users-credit-figures"><Money value={users.used} /></span>
+        </div>
+        <div className="users-meter" role="img" aria-label={`${t.usedCeiling}: ${usedShare}%`}><i style={{ inlineSize: `${usedShare}%` }} /></div>
+        <p className="users-credit-caption"><span>{t.usersCeilings} <Money value={users.ceilings} /></span><span className="num">{usedShare}%</span></p>
+      </div>
+      <ul className="users-flags">
+        <li className={users.debtors ? 'warn' : undefined}>
+          <span className="users-flag-label">{t.usersDebtors} <span className="users-flag-count num">{users.debtors}</span></span>
+          <span className="users-flag-value" title={t.usersDebt}><Money value={users.debt} /></span>
+        </li>
+        <li>
+          <span className="users-flag-label">{t.usersFrozen}</span>
+          <span className="users-flag-value num">{users.frozen}</span>
+        </li>
+      </ul>
     </Card>
   );
 }

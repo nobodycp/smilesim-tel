@@ -42,7 +42,7 @@ test('the branch reads the full overview, switches the period, and sees its prov
     'GET /overview': (url) => ({ body: overview(new URL(url, 'http://x').searchParams.get('period') ?? 'month', true) }),
   });
   await page.goto('http://admin.localhost:3910/');
-  await expect(page.getByRole('tab', { name: 'هذا الشهر' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'شهر', exact: true })).toHaveAttribute('aria-selected', 'true');
   // The period cards: sales with their volume, new subscriptions and profit, each with its change and its trend.
   const band = page.locator('.account-band');
   const cards = band.locator('.pulse-tile');
@@ -72,6 +72,18 @@ test('the branch reads the full overview, switches the period, and sees its prov
   await expect(legend.nth(0).locator('.donut-change.up')).toHaveText('3');
   await expect(page.locator('.donut-legend a[href="/numbers?status=frozen"] .donut-change.down')).toHaveText('2');
   await expect(legend.nth(1).locator('.donut-change.up, .donut-change.down')).toHaveCount(0);
+  // The count closes the line, the change before it (spec 2026-11-09-admin-review, 8.2).
+  await expect(legend.nth(0).locator('a > *').last()).toHaveClass(/donut-value/);
+  // The period switch is short (8.5); the cards keep the long name.
+  await expect(page.locator('.home-head').getByRole('tab')).toHaveText(['يوم', 'شهر', 'الكل']);
+  await expect(cards.nth(1)).toContainText('هذا الشهر');
+  // «المستخدمون» (8.3): a tile per layer linking to its list, the ceilings bar, debtors and frozen.
+  const users = page.locator('.users-card');
+  await expect(users.locator('.users-layer')).toHaveCount(3);
+  await expect(users.locator('.users-layer').first()).toHaveAttribute('href', '/users?layer=main_agent');
+  await expect(users.locator('.users-layer').first()).toContainText('وكلاء رئيسيون');
+  await expect(users.locator('.users-meter i')).toHaveAttribute('style', /14%/);
+  await expect(users.locator('.users-flags li.warn')).toContainText('70.00');
   // Pointing at a slice puts its share in the ring's middle; leaving brings the total back.
   await legend.nth(0).hover();
   await expect(page.locator('.donut-total')).toHaveText('46%');
@@ -93,10 +105,10 @@ test('the branch reads the full overview, switches the period, and sees its prov
   const active = page.locator('.overview-card', { hasText: 'الأنشط' });
   await expect(active.getByRole('tab')).toHaveText(['وكلاء رئيسيون', 'وكلاء', 'نقاط بيع']);
 
-  await page.getByRole('tab', { name: 'اليوم' }).click();
+  await page.getByRole('tab', { name: 'يوم', exact: true }).click();
   await expect.poll(() => calls.some((call) => call.startsWith('GET /overview?') && call.includes('period=day'))).toBe(true);
   // Over all time there is nothing to compare with: no arrow.
-  await page.getByRole('tab', { name: 'كل الوقت' }).click();
+  await page.getByRole('tab', { name: 'الكل', exact: true }).click();
   await expect(cards.nth(0).locator('.change')).toHaveCount(0);
 });
 
@@ -118,4 +130,5 @@ test('an agent sees no providers card and no main-agent tab', async ({ page }) =
   const active = page.locator('.overview-card', { hasText: 'الأنشط' });
   await expect(active.locator('.overview-rank li').first()).toContainText('pos');
   await expect(active.getByRole('tab')).toHaveCount(0);
+  await expect(page.locator('.users-card .users-layer')).toHaveCount(1);
 });
