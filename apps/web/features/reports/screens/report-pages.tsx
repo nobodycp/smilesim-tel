@@ -1,6 +1,7 @@
 'use client';
 
 import { Search } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
@@ -17,6 +18,14 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../report-kit';
 
+/** The movements a sale can be (API `SALE_KINDS`). */
+const SALE_KINDS = ['activate', 'charge', 'extend', 'reactivate'];
+/** The line operations an order can be (API `PROVIDER_OPERATION_KINDS`). */
+const ORDER_ACTIONS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'];
+
+/** A task's short reference (the first six characters of its id), a link to its ticket. */
+const taskRef = (id: string) => `#${id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
+
 const exportHref = (kind: string, query: Record<string, string>) => `/api/office/reports/${kind}/export${queryString(query)}`;
 
 /**
@@ -29,7 +38,9 @@ export function SalesReportScreen() {
   const { t } = usePrefs();
   const [days, setDays] = useState<PeriodDays>(30);
   const [q, setQ] = useState('');
-  const query = { from: periodFrom(days), to: '', q: q.trim() };
+  const [account, setAccount] = useState('');
+  const [kind, setKind] = useState('');
+  const query = { from: periodFrom(days), to: '', q: q.trim(), account, kind };
   const report = useApiQuery(['office', 'reports', 'sales', query], () => api.reportSales(query));
   const data = report.data;
   const count = data?.totals.count ?? 0;
@@ -46,11 +57,25 @@ export function SalesReportScreen() {
     <Desk title={t.salesTitle} lede={t.salesLede} action={<CsvLink href={exportHref('sales', query)} />} error="" note="">
       <ReportFilters>
         <Period days={days} onPick={setDays} />
-        <FilterBar loose onClear={() => setQ('')} clearLabel={t.clearFilters}>
+        <FilterBar loose onClear={() => { setQ(''); setAccount(''); setKind(''); }} clearLabel={t.clearFilters}>
           <label className="filter-search">
             <Search size={16} strokeWidth={1.9} aria-hidden="true" />
             <span className="sr-only">{t.financeSearch}</span>
             <input value={q} placeholder={t.financeSearch} onChange={(event) => setQ(event.target.value)} />
+          </label>
+          <label>
+            {t.accountName}
+            <Select value={account} onChange={(event) => setAccount(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {(data?.accounts ?? []).map((row) => <option key={row.loginName} value={row.loginName}>{row.nickname ? `${row.nickname} (${row.loginName})` : row.loginName}</option>)}
+            </Select>
+          </label>
+          <label>
+            {t.movement}
+            <Select value={kind} onChange={(event) => setKind(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {SALE_KINDS.map((value) => <option key={value} value={value}>{actionName(t, value)}</option>)}
+            </Select>
           </label>
         </FilterBar>
       </ReportFilters>
@@ -71,25 +96,33 @@ export function OrdersReportScreen() {
   const [days, setDays] = useState<PeriodDays>(30);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
-  const query = { from: periodFrom(days), to: '', q: q.trim(), status };
+  const [action, setAction] = useState('');
+  const query = { from: periodFrom(days), to: '', q: q.trim(), status, action };
   const report = useApiQuery(['office', 'reports', 'orders', query], () => api.reportOrders(query));
   const data = report.data;
   const statusName = (value: string) => (value === 'done' ? t.orderDone : value === 'open' ? t.orderOpen : t.orderCancelled);
   const share = data && data.totals.count ? Math.round((data.totals.done / data.totals.count) * 100) : 0;
   const columns: Column<OrderReportRow>[] = [
     { key: 'at', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
-    { key: 'action', header: t.movement, render: (row) => actionName(t, row.action) },
+    {
+      key: 'task',
+      header: t.taskColumn,
+      fit: true,
+      render: (row) => (row.taskId ? <Link className="task-ref" href={`/tasks/${row.taskId}`}><bdi dir="ltr">{taskRef(row.taskId)}</bdi></Link> : '—'),
+    },
+    { key: 'action', header: t.operationColumn, render: (row) => actionName(t, row.action) },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr" className="msisdn">{row.msisdn}</bdi> : '—') },
     { key: 'account', header: t.pointOfSale, render: (row) => <AccountName login={row.loginName} /> },
     { key: 'package', header: t.packageName, render: (row) => <><bdi>{row.packageName || '—'}</bdi>{row.companyName ? <span className="sub">{row.companyName}</span> : null}</> },
     { key: 'status', header: t.status, render: (row) => <Badge variant={row.status === 'done' ? 'success' : row.status === 'open' ? 'warning' : 'danger'} dot>{statusName(row.status)}</Badge> },
+    { key: 'handler', header: t.handledBy, render: (row) => (row.handlerLogin ? <AccountName login={row.handlerLogin} /> : '—') },
     { key: 'amount', header: t.amount, num: true, sortValue: (row) => row.amount, render: (row) => <Money value={row.amount} /> },
   ];
   return (
     <Desk title={t.ordersTitle} lede={t.ordersLede} action={<CsvLink href={exportHref('orders', query)} />} error="" note="">
       <ReportFilters>
         <Period days={days} onPick={setDays} />
-        <FilterBar loose onClear={() => { setQ(''); setStatus(''); }} clearLabel={t.clearFilters}>
+        <FilterBar loose onClear={() => { setQ(''); setStatus(''); setAction(''); }} clearLabel={t.clearFilters}>
           <label className="filter-search">
             <Search size={16} strokeWidth={1.9} aria-hidden="true" />
             <span className="sr-only">{t.financeSearch}</span>
@@ -102,6 +135,13 @@ export function OrdersReportScreen() {
               <option value="done">{t.orderDone}</option>
               <option value="open">{t.orderOpen}</option>
               <option value="cancelled">{t.orderCancelled}</option>
+            </Select>
+          </label>
+          <label>
+            {t.operationColumn}
+            <Select value={action} onChange={(event) => setAction(event.target.value)}>
+              <option value="">{t.allRows}</option>
+              {ORDER_ACTIONS.map((value) => <option key={value} value={value}>{actionName(t, value)}</option>)}
             </Select>
           </label>
         </FilterBar>

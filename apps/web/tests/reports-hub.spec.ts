@@ -4,11 +4,12 @@ import { serveOffice } from './desk';
 const sales = {
   rows: [{ id: 's1', at: '2026-11-06T10:00:00.000Z', loginName: 'pos', kind: 'activate', msisdn: '0550000001', companyName: 'سلكوم', packageName: '400 جيجا', amount: 4500, margin: 400 }],
   totals: { count: 1, amount: 4500, profit: 400 },
+  accounts: [{ loginName: 'pos', nickname: 'الكاشير' }],
   capped: false,
 };
 const orders = {
   rows: [
-    { id: 't1', at: '2026-11-07T10:00:00.000Z', loginName: 'pos', action: 'switch', msisdn: '0550000002', companyName: 'وي', packageName: '150 جيجا', status: 'open', amount: -500 },
+    { id: 'ab12cd34-0000-0000-0000-000000000000', at: '2026-11-07T10:00:00.000Z', loginName: 'pos', action: 'switch', msisdn: '0550000002', companyName: 'وي', packageName: '150 جيجا', status: 'open', amount: -500, taskId: 'ab12cd34-0000-0000-0000-000000000000', handlerLogin: 'branch' },
     { id: 'e1', at: '2026-11-06T10:00:00.000Z', loginName: 'pos', action: 'charge', msisdn: '0550000001', companyName: 'سلكوم', packageName: '400 جيجا', status: 'done', amount: -4200 },
   ],
   totals: { count: 2, done: 1, open: 1, cancelled: 0 },
@@ -33,6 +34,11 @@ test('an agent reads its sales, orders and balances on their own pages, and expo
   await expect(page.locator('table.data tbody tr')).toHaveCount(1);
   await expect(page.locator('.stat-row .stat').nth(1)).toContainText('+4.00 ₪');
   // The period switch opens on 30 days and moves the window.
+  // The «الحساب» and «الحركة» chips filter on the server and the CSV follows them.
+  await page.getByRole('combobox', { name: 'الحساب', exact: true }).selectOption('pos');
+  await page.getByRole('combobox', { name: 'الحركة', exact: true }).selectOption('charge');
+  await expect.poll(() => calls.some((call) => call.startsWith('GET /reports/sales?') && call.includes('account=pos') && call.includes('kind=charge'))).toBe(true);
+  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', /account=pos&kind=charge/);
   await page.getByRole('button', { name: '7 أيام' }).click();
   await expect(page.getByRole('button', { name: '7 أيام' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', /\/api\/office\/reports\/sales\/export\?from=/);
@@ -43,6 +49,10 @@ test('an agent reads its sales, orders and balances on their own pages, and expo
   await expect(page).toHaveURL(/\/reports\/orders$/);
   await expect(page.locator('table.data tbody tr')).toHaveCount(2);
   await expect(page.locator('table.data tbody tr').first()).toContainText('مفتوح');
+  // The task's reference opens its ticket; the handler is named.
+  await expect(page.locator('table.data tbody tr').first().getByRole('link', { name: '#AB12CD' })).toHaveAttribute('href', '/tasks/ab12cd34-0000-0000-0000-000000000000');
+  await page.getByRole('combobox', { name: 'العملية' }).selectOption('switch');
+  await expect.poll(() => calls.some((call) => call.startsWith('GET /reports/orders?') && call.includes('action=switch'))).toBe(true);
   await page.getByRole('combobox', { name: 'الحالة' }).selectOption('open');
   await expect.poll(() => calls.some((call) => call.startsWith('GET /reports/orders?') && call.includes('status=open'))).toBe(true);
 
@@ -75,4 +85,14 @@ test('the providers report is the branch reader\'s', async ({ page }) => {
   await page.goto('http://admin.localhost:3910/reports/supply');
   await expect(page.locator('table.data tbody tr').first()).toContainText('سكاي');
   await expect(page.locator('table.data tbody tr').first()).toContainText('+21.00 ₪');
+});
+
+test('the activity log exports its filters and names the addresses of failed sign-ins', async ({ page }) => {
+  await serveOffice(page, 'branch', {
+    'GET /audit': (url) => ({ body: { entries: [], nextCursor: null, total: url.searchParams.get('result') === 'fail' ? 4 : 10, ...(url.searchParams.get('addresses') ? { addresses: 2 } : {}) } }),
+  });
+  await page.goto('http://admin.localhost:3910/audit');
+  await expect(page.locator('.stat-row .stat').nth(1)).toContainText('من 2 عناوين');
+  await page.getByRole('combobox', { name: 'النتيجة' }).selectOption('fail');
+  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', /^\/api\/office\/audit\/export\?.*result=fail/);
 });

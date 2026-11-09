@@ -26,15 +26,15 @@ export class ReportsController {
   @Get('reports/sales')
   @ApiOperation({ summary: 'Sales under the signed-in account, with its margin on each' })
   @ApiErrorResponse(401, 403)
-  sales(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string) {
-    return this.insights.sales(actor, { from: text(from), to: text(to), q: text(q) });
+  sales(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string, @Query('account') account?: string, @Query('kind') kind?: string) {
+    return this.insights.sales(actor, { from: text(from), to: text(to), q: text(q), account: text(account), kind: text(kind) });
   }
 
   @Get('reports/orders')
   @ApiOperation({ summary: 'Line operations under the signed-in account: done, open and cancelled' })
   @ApiErrorResponse(401, 403)
-  orders(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string, @Query('status') status?: string) {
-    return this.insights.orders(actor, { from: text(from), to: text(to), q: text(q), status: text(status) });
+  orders(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string, @Query('q') q?: string, @Query('status') status?: string, @Query('action') action?: string) {
+    return this.insights.orders(actor, { from: text(from), to: text(to), q: text(q), status: text(status), action: text(action) });
   }
 
   @Get('reports/balances')
@@ -61,7 +61,7 @@ export class ReportsController {
     @Param('kind') kind: string,
     @Query() query: Record<string, unknown>,
   ) {
-    const filters = Object.fromEntries(['from', 'to', 'q', 'status', 'layer', 'negative'].map((key) => [key, text(query[key])]));
+    const filters = Object.fromEntries(['from', 'to', 'q', 'status', 'layer', 'negative', 'account', 'kind', 'action'].map((key) => [key, text(query[key])]));
     const csv = await this.insights.csv(actor, kind, filters);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${kind}.csv"`);

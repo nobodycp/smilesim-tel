@@ -1086,3 +1086,5 @@ input[readonly] { background-color: transparent; }
 @keyframes trend-pop { from { transform: scale(0); } to { transform: scale(1); } }
 @keyframes trend-breathe { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent), 0 0 18px var(--rd-accent); } }
 .waiting-age { flex: none; }
+.task-ref { display: inline-flex; align-items: center; height: 22px; padding-inline: 7px; border-radius: var(--rd-radius-xs); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); color: var(--rd-text); font-size: 11.5px; font-weight: 700; text-decoration: none; }
+.task-ref:hover { box-shadow: inset 0 0 0 1px var(--rd-accent); }

@@ -23,6 +23,7 @@ const COLUMNS = ['owner', 'staff0', 'staffall', 'main', 'agent', 'pos'] as const
 const EXPECTED: [route: string, access: string][] = [
   ['POST /office/announcements', 'yyyyyn'],
   ['GET /office/audit', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /office/audit/export', 'yyyyyy'], // the log's own filter, as a CSV
   ['GET /office/companies', 'yyynnn'],
   ['PUT /office/companies/CODE1/sim', 'ynynnn'],
   ['POST /office/companies/image', 'yyynnn'],

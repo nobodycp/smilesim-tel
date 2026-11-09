@@ -7,6 +7,7 @@ export type RouteRow = [method: string, path: string, event: [action: string, ki
 export const ROUTES: RouteRow[] = [
   ['POST', '/office/announcements', null],
   ['GET', '/office/audit', null],
+  ['GET', '/office/audit/export', null],
   ['GET', '/office/companies', null],
   ['PUT', '/office/companies/CODE1/sim', ['company_sim', 'company', 'CODE1']],
   ['POST', '/office/companies/image', null],

@@ -1,4 +1,5 @@
-import { Controller, Get, Query, UseFilters, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Query, Res, UseFilters, UseInterceptors } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { OfficeFailureFilter } from '../../shared/office-failure.filter';
@@ -36,8 +37,10 @@ export class AuditController {
     @Query('q') q?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('addresses') addresses?: string,
   ) {
     return this.auditLog.list(actor, {
+      addresses: text(addresses),
       cursor: text(cursor),
       action: text(action),
       result: text(result),
@@ -46,5 +49,20 @@ export class AuditController {
       from: text(from),
       to: text(to),
     });
+  }
+
+  @Get('audit/export')
+  @ApiOperation({ summary: 'Activity log as CSV, with the same filters' })
+  @ApiErrorResponse(401, 403)
+  async export(
+    @Res({ passthrough: true }) res: Response,
+    @Actor() actor: ActorShape,
+    @Query() query: Record<string, unknown>,
+  ) {
+    const filters = Object.fromEntries(['action', 'result', 'layer', 'q', 'from', 'to'].map((key) => [key, text(query[key])]));
+    const csv = await this.auditLog.csv(actor, filters);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="activity.csv"');
+    return csv;
   }
 }

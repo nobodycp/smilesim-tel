@@ -15,7 +15,7 @@ import { pick } from '../../../lib/fetched';
 import { usePaged } from '../../../lib/use-paged';
 import { Select } from '../../../components/ui/select';
 import { useApiQuery } from '../../../lib/use-api-query';
-import { Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
+import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
 
 const ACTIONS = [
   'login', 'logout', 'password', 'two_factor',
@@ -39,7 +39,7 @@ export function AuditScreen() {
   const from = periodFrom(days);
   const to = '';
   // The figures: the events of the period under the filters, failed sign-ins and price changes.
-  const failed = useApiQuery(['office', 'audit', 'failed-logins', from], () => api.officeAudit({ action: 'login', result: 'fail', from }));
+  const failed = useApiQuery(['office', 'audit', 'failed-logins', from], () => api.officeAudit({ action: 'login', result: 'fail', from, addresses: '1' }));
   const prices = useApiQuery(['office', 'audit', 'price-edits', from], () => api.officeAudit({ action: 'package_price', from }));
   const list = usePaged<ActivityRow>(`${action}|${result}|${layer}|${q}|${from}|${to}`, async (cursor) =>
     pick(await api.officeAudit({ action, result, layer, q, from, to, cursor }), (data) => ({ rows: data.entries, next: data.nextCursor, total: data.total })),
@@ -88,7 +88,7 @@ export function AuditScreen() {
   }
 
   return (
-    <Desk title={t.navAudit} lede={t.auditLede} error="" note="">
+    <Desk title={t.navAudit} lede={t.auditLede} action={<CsvLink href={api.auditExportHref({ action, result, layer, q, from, to })} />} error="" note="">
       <ReportFilters>
         <Period days={days} onPick={setDays} />
         <FilterBar loose onClear={clear} clearLabel={t.clearFilters}>
@@ -127,7 +127,7 @@ export function AuditScreen() {
       </ReportFilters>
       <StatRow>
         <Stat label={t.auditEvents} value={list.total ?? '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
-        <Stat tone="danger" label={t.failedLogins} value={failed.data ? <span className={failed.data.total ? 'tone-danger' : undefined}>{failed.data.total}</span> : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
+        <Stat tone="danger" label={t.failedLogins} value={failed.data ? <span className={failed.data.total ? 'tone-danger' : undefined}>{failed.data.total}</span> : '—'} meta={failed.data?.addresses !== undefined ? (failed.data.addresses === 1 ? t.fromOneAddressMeta : t.fromAddressesMeta.replace('{n}', String(failed.data.addresses))) : t.lastDaysMeta.replace('{n}', String(days))} />
         <Stat label={t.priceEdits} value={prices.data ? prices.data.total : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
       </StatRow>
       <section className="pane">

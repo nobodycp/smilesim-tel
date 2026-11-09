@@ -3,9 +3,9 @@ import type { BalanceReportRow, OrderReportRow, ReportPayload, SaleReportRow, Su
 
 /** The reports calls of the office API. Composed into `api` by lib/api.ts. */
 export const reportsApi = {
-  reportSales: (query: { from?: string; to?: string; q?: string }) =>
-    request<{ rows: SaleReportRow[]; totals: { count: number; amount: number; profit: number }; capped: boolean }>('GET', `/office/reports/sales${queryString(query)}`),
-  reportOrders: (query: { from?: string; to?: string; q?: string; status?: string }) =>
+  reportSales: (query: { from?: string; to?: string; q?: string; account?: string; kind?: string }) =>
+    request<{ rows: SaleReportRow[]; totals: { count: number; amount: number; profit: number }; accounts?: { loginName: string; nickname: string }[]; capped: boolean }>('GET', `/office/reports/sales${queryString(query)}`),
+  reportOrders: (query: { from?: string; to?: string; q?: string; status?: string; action?: string }) =>
     request<{ rows: OrderReportRow[]; totals: { count: number; done: number; open: number; cancelled: number }; capped: boolean }>('GET', `/office/reports/orders${queryString(query)}`),
   reportBalances: (query: { q?: string; layer?: string; negative?: string }) =>
     request<{ rows: BalanceReportRow[]; totals: { count: number; balance: number; used: number }; capped: boolean }>('GET', `/office/reports/balances${queryString(query)}`),

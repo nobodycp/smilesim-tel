@@ -36,9 +36,17 @@ export class InsightsService {
   ) {}
 
   /** Every sale under the viewer: what the point of sale paid and what the viewer earned on it. */
-  async sales(actor: Actor, query: Period = {}) {
+  async sales(actor: Actor, query: Period & { account?: string; kind?: string } = {}) {
+    const kind = query.kind && query.kind in SALE_KINDS ? query.kind : undefined;
+    const account = (query.account ?? '').trim();
     const rows = await this.kernel.prisma.walletEntry.findMany({
-      where: { AND: [await this.wallets.financeWhere(actor, query), { kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }] },
+      where: {
+        AND: [
+          await this.wallets.financeWhere(actor, { from: query.from, to: query.to, q: query.q }),
+          { kind: kind ?? { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } },
+          ...(account ? [{ user: { loginName: account } }] : []),
+        ],
+      },
       include: { user: true },
       orderBy: [...NEWEST_FIRST],
       take: REPORT_LIMIT,
@@ -55,6 +63,13 @@ export class InsightsService {
       amount: -row.amount,
       margin: margins.get(row.id) ?? null,
     }));
+    // The «الحساب» chip: the points of sale under the viewer, whatever the filters.
+    const accounts = await this.kernel.accounts();
+    const visible = visibleAccountIds(actor.id, actor.layer, accounts);
+    const points = accounts
+      .filter((row) => row.layer === 'pos' && visible.has(row.id))
+      .map((row) => ({ loginName: row.loginName, nickname: row.nickname ?? '' }))
+      .sort((a, b) => a.loginName.localeCompare(b.loginName));
     return {
       rows: list,
       totals: {
@@ -62,12 +77,14 @@ export class InsightsService {
         amount: list.reduce((sum, row) => sum + row.amount, 0),
         profit: list.reduce((sum, row) => sum + (row.margin ?? 0), 0),
       },
+      accounts: points,
       capped: rows.length === REPORT_LIMIT,
     };
   }
 
   /** Every line operation: the done ones from the ledger, and the tasks still open or cancelled. */
-  async orders(actor: Actor, query: Period & { status?: string } = {}) {
+  async orders(actor: Actor, query: Period & { status?: string; action?: string } = {}) {
+    const action = (query.action ?? '').trim();
     const createdAt = dateRange(query);
     const needle = (query.q ?? '').trim();
     const wantDone = !query.status || query.status === 'done';
@@ -76,8 +93,8 @@ export class InsightsService {
     const [entries, tasks] = await Promise.all([
       wantDone
         ? this.kernel.prisma.walletEntry.findMany({
-          where: { AND: [await this.wallets.financeWhere(actor, query), { kind: { in: PROVIDER_OPERATION_KINDS } }] },
-          include: { user: true },
+          where: { AND: [await this.wallets.financeWhere(actor, { from: query.from, to: query.to, q: query.q }), { kind: action ? { in: PROVIDER_OPERATION_KINDS.filter((kind) => kind === action) } : { in: PROVIDER_OPERATION_KINDS } }] },
+          include: { user: true, actor: true },
           orderBy: [...NEWEST_FIRST],
           take: REPORT_LIMIT,
         })
@@ -88,6 +105,7 @@ export class InsightsService {
             AND: [
               taskWhereFor(actor, accounts),
               { status: { in: taskStatuses } },
+              ...(action ? [{ action }] : []),
               ...(createdAt ? [{ createdAt }] : []),
               ...(needle ? [{ OR: [{ msisdn: { contains: needle.replace(/\s/g, '') } }, { note: { contains: needle, mode: 'insensitive' as const } }] }] : []),
             ],
@@ -114,6 +132,9 @@ export class InsightsService {
         packageName: row.packageName ?? '',
         status: 'done',
         amount: row.amount,
+        // Who did it: the account that ran the operation; a ledger entry has no task.
+        taskId: null as string | null,
+        handlerLogin: row.actor?.loginName ?? '',
       })),
       ...tasks.map((task) => ({
         id: task.id,
@@ -125,6 +146,8 @@ export class InsightsService {
         packageName: packageOf.get(task.packageId)?.name ?? '',
         status: task.status === 'cancelled' ? 'cancelled' : 'open',
         amount: task.posDelta,
+        taskId: task.id as string | null,
+        handlerLogin: task.assigneeId ? loginOf.get(task.assigneeId) ?? '' : '',
       })),
     ].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)).slice(0, REPORT_LIMIT);
     return {
@@ -226,7 +249,7 @@ export class InsightsService {
     }
     if (kind === 'orders') {
       const { rows } = await this.orders(actor, query);
-      return csvOf(['at', 'account', 'action', 'number', 'company', 'package', 'status', 'amount'], rows.map((row) => [row.at, row.loginName, row.action, row.msisdn, row.companyName, row.packageName, row.status, { money: row.amount }]));
+      return csvOf(['at', 'task', 'account', 'action', 'number', 'company', 'package', 'status', 'handler', 'amount'], rows.map((row) => [row.at, row.taskId ?? '', row.loginName, row.action, row.msisdn, row.companyName, row.packageName, row.status, row.handlerLogin, { money: row.amount }]));
     }
     if (kind === 'balances') {
       const { rows } = await this.balances(actor, query);
