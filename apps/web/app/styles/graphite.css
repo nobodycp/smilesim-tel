@@ -797,3 +797,46 @@ input[readonly] { background-color: transparent; }
 .package-sheet .price-board > .account-fund:has(> label + label) > label input { height: 38px; font-size: 18px; font-weight: 700; text-align: center; background: var(--rd-sunken); }
 /* The wallet's head keeps its own height in the page's column; the statement below takes the rest. */
 .desk .wallet-band, .desk .wallet-chart, .desk > .stat-row, .desk .stat-row { flex: none; }
+
+/* ── The chip's list (FilterBar, Graphite «pop»): under the chip, raised, one 34px row per option; the chosen one in
+   crimson with a tick; drops in. ── */
+.filter-pop {
+  position: fixed;
+  z-index: calc(var(--rd-z-dialog) + 2);
+  display: grid;
+  gap: 1px;
+  max-width: min(320px, 92vw);
+  max-height: min(360px, 60vh);
+  padding: 4px;
+  overflow-y: auto;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent), var(--rd-shadow-pop);
+  scrollbar-width: thin;
+}
+.filter-pop button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--rd-radius-xs);
+  background: transparent;
+  color: var(--rd-ink-2);
+  font-size: var(--rd-text-md);
+  font-weight: 500;
+  text-align: start;
+}
+.filter-pop button:hover, .filter-pop button:focus-visible { background: var(--rd-surface); color: var(--rd-ink); outline: none; }
+.filter-pop button.sel { color: var(--rd-accent); font-weight: 700; }
+.filter-pop .tick { flex: none; margin-inline-start: auto; }
+@media (prefers-reduced-motion: no-preference) {
+  .filter-pop { animation: filter-pop-in 140ms ease-out; transform-origin: top; }
+}
+@keyframes filter-pop-in { from { opacity: 0; translate: 0 -4px; } }
+/* The chip itself reads like the design: the value in ink, a pointer on the whole chip. */
+.filter-panel > label:has(select) { cursor: pointer; }
+.filter-panel > label select { cursor: pointer; }
+/* A chip is as wide as its value (the list shows the rest). */
+.filter-panel > label .ui-select-field, .filter-panel > label select { field-sizing: content; min-width: 4.5rem; max-width: 16rem; }

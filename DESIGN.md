@@ -42,7 +42,9 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   (`components/auth-art.tsx`: the crimson tag rising from its corner, one line about the office); stacked under 860px
   with the art below.
 - Filters (`FilterBar`): chips in one wrapping row on the top edge of the table card below — the field's name on a
-  raised segment, the field beside it, crimson once it holds a value; «مسح» in crimson at the end. Under 768px only
+  raised segment, the field beside it (as wide as its value), crimson once it holds a value; «مسح» in crimson at the
+  end. Pressing a chip opens the design's own list under it (`.filter-pop`: raised, 34px rows, the chosen one in
+  crimson with a tick), not the browser's; the `<select>` stays the field for the keyboard and assistive tech. Under 768px only
   «كل الفلاتر» shows; it opens the fields in a drawer from the inline end, with «عرض النتائج».
 - Tables: no band behind the head, 46px zebra rows, every cell on one line (a long text column is `cell: 'wrap'`),
   the table scrolls inside its card; the pager is a hairline row with square page numbers, the current one ink.
