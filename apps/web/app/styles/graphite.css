@@ -351,7 +351,18 @@ input[readonly] { background-color: transparent; }
   font-size: var(--rd-text-base);
 }
 .gauth .gauth-box input:focus { box-shadow: none; }
-.gauth-reveal { flex: none; height: 28px; padding: 0 8px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 600; }
+.gauth-reveal { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-muted); }
+.gauth-reveal svg { width: 18px; height: 18px; }
+/* A saved login fills the fields: the browser's own autofill colour would paint a pale block inside the field, so the
+   field keeps its own surface and ink (owner 2026-11-09). */
+.gauth .gauth-box input:not([type='checkbox']):not([type='radio']):not([type='file']):is(:autofill, :-webkit-autofill),
+.gauth .gauth-box input:not([type='checkbox']):not([type='radio']):not([type='file']):is(:autofill, :-webkit-autofill):is(:hover, :focus) {
+  -webkit-text-fill-color: var(--rd-ink);
+  caret-color: var(--rd-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--rd-sunken) inset;
+  box-shadow: 0 0 0 1000px var(--rd-sunken) inset;
+  transition: background-color 600000s 0s, color 600000s 0s;
+}
 .gauth-reveal:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
 .gauth-go, .gauth-passkey {
   display: inline-flex;
@@ -419,12 +430,19 @@ input[readonly] { background-color: transparent; }
 .topbar .shell-icon { border: 0; border-radius: var(--rd-radius-sm); background: transparent; color: var(--rd-ink-2); }
 .topbar .shell-icon:hover, .topbar .shell-icon[aria-expanded='true'] { background: var(--rd-surface-2); color: var(--rd-ink); }
 @media (min-width: 768px) {
-  .topbar .shell-icon { width: 36px; min-width: 36px; height: 36px; }
+  .topbar .shell-icon, .topbar .shell-search-toggle { width: 36px; min-width: 36px; height: 36px; }
   .topbar .wallet-btn { height: 36px; }
-  /* The search gives way to the path on a narrower window. */
-  .shell-search { width: clamp(190px, 20vw, 280px); }
+  /* The search keeps a steady size (owner 2026-11-09, spec 2026-11-09-admin-review 6.5): two widths, not one that
+     follows the window, so it never jumps while the window is resized. The keyboard hint shows on the wide one. */
+  .shell-search { width: 200px; }
   .shell-search-field { height: 36px; }
+  .shell-search-field kbd { display: none; }
 }
+@media (min-width: 1200px) {
+  .shell-search { width: 260px; }
+  .shell-search-field kbd { display: inline-block; }
+}
+.topbar .shell-search-field input::placeholder { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar .wallet-btn {
   gap: 8px;
   padding-inline: 12px;
@@ -536,8 +554,8 @@ input[readonly] { background-color: transparent; }
 /* ── Shell details, matched to the design side by side ── */
 /* The current page sits on a raised fill, with the crimson thread at its start. */
 .sidebar .nav-link.active:not(.nested), .drawer .nav-link.active:not(.nested) { background: var(--rd-surface-2); }
-/* The fold handle stays in sight on the edge, brighter on hover. */
-.side-handle { opacity: 0.75; }
+/* The fold handle shows on hover of the sidebar or on keyboard focus, hidden otherwise, as in the Graphite design
+   (shell.css; owner 2026-11-09, spec 2026-11-09-admin-review 6.5). */
 /* A crimson hairline under the topbar. */
 .topbar { position: sticky; }
 .topbar::after { content: ''; position: absolute; inset-inline: 0; bottom: -1px; height: 1px; background: var(--rd-accent); opacity: 0.35; pointer-events: none; }

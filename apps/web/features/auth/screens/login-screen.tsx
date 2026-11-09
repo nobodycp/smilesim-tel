@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useRef, useState, type FormEvent } from 'react';
-import { KeyRound } from 'lucide-react';
+import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { AuthArt, AuthBrand } from '../../../components/auth-art';
 import { LanguageSwitch, ThemeToggle } from '../../../components/chrome';
 import { api, routeFor } from '../../../lib/api';
@@ -103,9 +103,12 @@ export function LoginScreen() {
                   type="button"
                   className="gauth-reveal"
                   aria-pressed={showPassword}
+                  aria-label={showPassword ? t.hidePassword : t.showPassword}
+                  title={showPassword ? t.hidePassword : t.showPassword}
                   onClick={() => setShowPassword((value) => !value)}
                 >
-                  {showPassword ? t.hidePassword : t.showPassword}
+                  {/* An eye, as sign-in fields show it (owner 2026-11-09); the words stay its name. */}
+                  {showPassword ? <EyeOff size={18} strokeWidth={1.9} aria-hidden="true" /> : <Eye size={18} strokeWidth={1.9} aria-hidden="true" />}
                 </button>
               </div>
             </div>
