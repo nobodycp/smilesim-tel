@@ -17,7 +17,7 @@ not pushed, not deployed; migrations applied to a throwaway test database only.
   `providerDispatchOn`), `.env.example`.
 - [x] **D.8 Specs.** `operation-dispatcher.db.spec.ts`, `office/outbox/outbox-relay.db.spec.ts` (PostgreSQL, and
   Redis for the queue part), `worker.spec.ts`; `.github/workflows/ci.yml` gives the `db` job a Redis.
-- [x] **D.9 Maps.** `docs/architecture/backend.md`, ADR 0018 (0017 notes the late verdict).
+- [x] **D.9 Maps.** (slice commit 6fd4ea3) `docs/architecture/backend.md`, ADR 0018 (0017 notes the late verdict).
 
 ## Not started (waits for review)
 
