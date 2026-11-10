@@ -17,5 +17,6 @@
   "prisma-in-service": 10,
   "flat-office-module": 0,
   "cross-domain-repository-import": 0,
-  "session-id-as-token": 0
+  "session-id-as-token": 0,
+  "list-envelope": 3
 }

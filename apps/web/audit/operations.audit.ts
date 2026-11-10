@@ -67,17 +67,17 @@ async function catalog(): Promise<{ P: Pack; Q: Pack; M: Pack }> {
 
 async function snap(line: Line): Promise<Snap> {
   const [ops, card, finance] = await Promise.all([
-    apiCall<{ entries: { kind: string; cost: number }[] }>(admin, 'admin', 'GET', `/office/provider-operations?q=${line.msisdn}`),
+    apiCall<{ items: { kind: string; cost: number }[] }>(admin, 'admin', 'GET', `/office/provider-operations?q=${line.msisdn}`),
     apiCall<{ history: { action: string }[] }>(admin, 'admin', 'GET', `/office/lines/${line.id}`),
-    apiCall<{ entries: { kind: string }[] }>(admin, 'admin', 'GET', `/office/finance?q=${line.msisdn}`),
+    apiCall<{ items: { kind: string }[] }>(admin, 'admin', 'GET', `/office/finance?q=${line.msisdn}`),
   ]);
   const entries = await sql<Entry>(`SELECT id, kind, amount, note, "packageName", "periodDays" FROM "WalletEntry" WHERE "lineId" = $1 ORDER BY "createdAt"`, [line.id]);
   return {
     balance: await balance(line.owner),
     entries: entries.map((row) => ({ ...row, amount: Number(row.amount) })),
-    ops: ops.entries,
+    ops: ops.items,
     log: card.history,
-    finance: finance.entries,
+    finance: finance.items,
   };
 }
 

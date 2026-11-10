@@ -1,10 +1,10 @@
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { Inject, Injectable } from '@nestjs/common';
-import { feedPosition } from '../kernel/feed';
 import type { Actor } from '../kernel/types';
 import { NOTICE_GROUPS, noticeGroupOf } from './notice-kinds';
-import { NEWEST_FIRST, NOTICES_PAGE, afterFeed, mergeFeed } from '../rules/office-paging';
+import { NEWEST_FIRST, after, cursorPosition, page } from '../../shared/paging';
+import { NOTICES_PAGE } from '../rules/office-paging';
 
 /** The signed-in account's own notices: the paged inbox, marking read, and the live channel. */
 @Injectable()
@@ -14,7 +14,7 @@ export class NoticeInboxService {
   async list(actor: Actor, query: { cursor?: string; group?: string; unread?: string } = {}) {
     const group = noticeGroupOf(query.group);
     const onlyUnread = query.unread === '1' || query.unread === 'true';
-    const position = query.cursor ? feedPosition(query.cursor) : undefined;
+    const position = cursorPosition(query.cursor);
     const where = {
       userId: actor.id,
       ...(group ? { kind: { in: [...NOTICE_GROUPS[group]] } } : {}),
@@ -23,18 +23,18 @@ export class NoticeInboxService {
     const prisma = this.uow.prisma;
     const [rows, unread, total] = await Promise.all([
       prisma.notice.findMany({
-        where: { ...where, AND: afterFeed(position) },
+        where: { ...where, AND: after(position) },
         orderBy: [...NEWEST_FIRST],
         take: NOTICES_PAGE + 1,
       }),
       prisma.notice.count({ where: { userId: actor.id, readAt: null } }),
       prisma.notice.count({ where }),
     ]);
-    const { page, nextCursor } = mergeFeed([rows], NOTICES_PAGE);
+    const { items, nextCursor } = page(rows, NOTICES_PAGE);
     return {
       unread,
       total,
-      notices: page.map((row) => ({
+      items: items.map((row) => ({
         id: row.id,
         kind: row.kind,
         payload: row.payload,

@@ -3,7 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { officeTestApp } from '../testing/office-test-app';
-import { encodeFeedCursor } from '../rules/office-paging';
+import { encodeCursor } from '../../shared/paging';
 
 // The notice inbox over HTTP: written before the notices routes left office.controller.ts, so the move is
 // checked against what the routes answered before it.
@@ -70,7 +70,7 @@ describe('notices over HTTP', () => {
     expect(response.body).toEqual({
       unread: 2,
       total: 3,
-      notices: [
+      items: [
         { id: 'n3', kind: 'task.opened', payload: { n: 'n3' }, actorName: 'الفرع', href: '/tasks/n3', read: false, createdAt: at(3).toISOString() },
         { id: 'n2', kind: 'fund.received', payload: { n: 'n2' }, actorName: 'الفرع', href: '/tasks/n2', read: true, createdAt: at(2).toISOString() },
         { id: 'n1', kind: 'transfer.in', payload: { n: 'n1' }, actorName: 'الفرع', href: '/tasks/n1', read: false, createdAt: at(1).toISOString() },
@@ -81,7 +81,7 @@ describe('notices over HTTP', () => {
   });
 
   it('filters by group and unread, and pages from a cursor', async () => {
-    const cursor = encodeFeedCursor({ createdAt: at(2), id: 'n2' });
+    const cursor = encodeCursor(at(2), 'n2');
     const response = await get(`/office/notices?group=tasks&unread=1&cursor=${cursor}`);
     expect(response.status).toBe(200);
     const where = (calls.findMany[0] as { where: Record<string, unknown> }).where;

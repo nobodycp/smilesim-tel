@@ -25,7 +25,7 @@ test('the custom prices tab lists priced accounts and edits them inline', async 
     'DELETE /packages/lian-wecom-500/custom-prices/pos1': () => ({ body: { ok: true } }),
     'GET /users': () => ({ body: { users: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos' }] } }),
     'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null } }),
+    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();

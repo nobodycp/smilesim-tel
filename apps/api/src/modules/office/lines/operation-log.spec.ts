@@ -149,7 +149,7 @@ describe('refresh is an operation on an active number only', () => {
       const { service, gate, entries } = await office();
       line.status = status;
       const listed = await service.lines(gate);
-      expect(listed.lines[0].operations).not.toContain('refresh');
+      expect(listed.items[0].operations).not.toContain('refresh');
       const card = await service.line(gate, 'ln1');
       expect(card.line.operations).not.toContain('refresh');
       await expect(service.refreshLine(gate, 'ln1', { outcome: 'success' })).rejects.toMatchObject({ status: 400 });
@@ -173,7 +173,7 @@ describe('an applied operation with no charge', () => {
     expect(entries).toEqual([expect.objectContaining({ kind: 'refresh', amount: 0, balanceAfter: 10000, msisdn: '0521000001', lineId: 'ln1' })]);
 
     const report = await service.providerOperations(gate, { q: '0521000001' });
-    expect(report.entries.map((row) => row.kind)).toEqual(['refresh']);
+    expect(report.items.map((row) => row.kind)).toEqual(['refresh']);
     expect(report.stats.cost).toBe(0);
 
     const card = await service.line(gate, 'ln1');
@@ -181,9 +181,9 @@ describe('an applied operation with no charge', () => {
 
     // Finance lists every operation (owner 2026-11-09), the free ones included; the money view leaves them out.
     const all = await service.finance(gate, { q: '0521000001' });
-    expect(all.entries.map((row) => [row.kind, row.amount])).toEqual([['refresh', 0]]);
+    expect(all.items.map((row) => [row.kind, row.amount])).toEqual([['refresh', 0]]);
     const money = await service.finance(gate, { q: '0521000001', scope: 'money' });
-    expect(money.entries).toEqual([]);
+    expect(money.items).toEqual([]);
   });
 
   it('records a SIM swap the same way', async () => {
@@ -193,6 +193,6 @@ describe('an applied operation with no charge', () => {
     expect(wallet.balance).toBe(10000);
     expect(entries).toEqual([expect.objectContaining({ kind: 'sim', amount: 0, msisdn: '0521000001' })]);
     const report = await service.providerOperations(gate, {});
-    expect(report.entries.map((row) => row.kind)).toEqual(['sim']);
+    expect(report.items.map((row) => row.kind)).toEqual(['sim']);
   });
 });

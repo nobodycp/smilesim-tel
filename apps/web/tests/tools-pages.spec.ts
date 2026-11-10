@@ -50,7 +50,7 @@ test.describe('DataTable and EmptyState', () => {
 
   // Graphite: a task is one card row (task, amount, actions); the head stays for screen readers.
   test('the tasks table writes num and row-actions on header and cells, shows a skeleton while loading, and a RowMenu on every row', async ({ page }) => {
-    await serveOffice(page, 'branch', { 'GET /tasks': () => ({ body: { tasks: [task('1', { canTake: true }), task('2')], nextCursor: null }, delay: 700 }) });
+    await serveOffice(page, 'branch', { 'GET /tasks': () => ({ body: { items: [task('1', { canTake: true }), task('2')], nextCursor: null }, delay: 700 }) });
     await page.goto(`${admin}/tasks`);
     await expect(page.locator('.sheet .table-skeleton')).toBeVisible();
     await expect(page.locator('table.data tbody tr')).toHaveCount(2);
@@ -68,9 +68,9 @@ test.describe('DataTable and EmptyState', () => {
 
   test('an empty list shows .empty inside the pane with no inline style; the ledger lists keep their head', async ({ page }) => {
     await serveOffice(page, 'branch', {
-      'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null } }),
+      'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
       'GET /packages': () => ({ body: { packages: [], companies: [] } }),
-      'GET /finance': () => ({ body: { entries: [], nextCursor: null } }),
+      'GET /finance': () => ({ body: { items: [], nextCursor: null } }),
     });
     await page.goto(`${admin}/numbers`);
     const empty = page.locator('.pane > .empty');
@@ -88,9 +88,9 @@ test.describe('DataTable and EmptyState', () => {
 
 test.describe('usePaged', () => {
   for (const [path, route, key, name] of [
-    ['finance', 'GET /finance', 'entries', 'المالية'],
-    ['provider-operations', 'GET /provider-operations', 'entries', 'عمليات المزودين'],
-    ['audit', 'GET /audit', 'entries', 'سجل النشاط'],
+    ['finance', 'GET /finance', 'items', 'المالية'],
+    ['provider-operations', 'GET /provider-operations', 'items', 'عمليات المزودين'],
+    ['audit', 'GET /audit', 'items', 'سجل النشاط'],
   ] as const) {
     // The first answer fills one page of the saved size (10) and names a cursor; page 2 reads it.
     test(`${path} counts its pages from the total and reads the next cursor for page 2`, async ({ page }) => {
@@ -121,9 +121,9 @@ test.describe('usePaged', () => {
     await serveOffice(page, 'branch', {
       'GET /finance': (url) => {
         const q = url.searchParams.get('q');
-        if (q === '111') return { body: { entries: [account('slow', '0551110000')], nextCursor: null }, delay: 1500 };
-        if (q === '222') return { body: { entries: [account('fast', '0552220000')], nextCursor: null } };
-        return { body: { entries: [], nextCursor: null } };
+        if (q === '111') return { body: { items: [account('slow', '0551110000')], nextCursor: null }, delay: 1500 };
+        if (q === '222') return { body: { items: [account('fast', '0552220000')], nextCursor: null } };
+        return { body: { items: [], nextCursor: null } };
       },
     });
     await page.goto(`${admin}/finance`);
@@ -141,7 +141,7 @@ test.describe('usePaged', () => {
   test('a failed load shows the failed state with its error and a retry inside the pane, then recovers on the next filter', async ({ page }) => {
     await serveOffice(page, 'branch', {
       'GET /audit': (url) => (url.searchParams.get('action') === 'extend'
-        ? { body: { entries: [], nextCursor: null } }
+        ? { body: { items: [], nextCursor: null } }
         : { status: 400, body: { message: 'بيانات غير صالحة' } }),
     });
     await page.goto(`${admin}/audit`);
@@ -225,7 +225,7 @@ test.describe('useAction and lineActions', () => {
 
   test('the list menu and the line card come from the same rules; only the card offers freeze', async ({ page }) => {
     await serveOffice(page, 'branch', {
-      'GET /lines': () => ({ body: { lines: [line('ln1', 'active'), line('ln2', 'frozen'), line('ln3', 'disconnected'), line('ln4', 'active', { opsLocked: true })], poses: [], nextCursor: null } }),
+      'GET /lines': () => ({ body: { items: [line('ln1', 'active'), line('ln2', 'frozen'), line('ln3', 'disconnected'), line('ln4', 'active', { opsLocked: true })], poses: [], nextCursor: null } }),
       'GET /lines/ln1': () => ({ body: card('active') }),
       'GET /lines/ln2': () => ({ body: card('frozen') }),
       'GET /lines/ln3': () => ({ body: card('disconnected') }),
@@ -290,8 +290,8 @@ test.describe('reports', () => {
     const first = Array.from({ length: 10 }, (_, index) => entry(`e${index + 1}`));
     await serveOffice(page, 'branch', {
       'GET /reports/operations': (url) => (url.searchParams.get('cursor') === 'c2'
-        ? { body: { entries: [entry('e11')], nextCursor: null, total: 11 } }
-        : { body: { entries: first, nextCursor: 'c2', total: 11 } }),
+        ? { body: { items: [entry('e11')], nextCursor: null, total: 11 } }
+        : { body: { items: first, nextCursor: 'c2', total: 11 } }),
     });
     await page.goto(`${admin}/reports/operations`);
     await expect(page.locator('table.data tbody tr')).toHaveCount(10);
@@ -306,7 +306,7 @@ test.describe('shell', () => {
     const calls = await serveOffice(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
-      'GET /lines': () => ({ body: { lines: [line('ln1'), line('ln2')], poses: [], nextCursor: 'c9' } }),
+      'GET /lines': () => ({ body: { items: [line('ln1'), line('ln2')], poses: [], nextCursor: 'c9' } }),
     });
     await page.goto(`${admin}/`);
     await page.locator('.shell-search-field input').fill('055');
@@ -320,7 +320,7 @@ test.describe('shell', () => {
     const calls = await serveOffice(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /users': () => ({ body: { users: [user('samir1', 'سمير'), user('sara2', 'سارة')] } }),
-      'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null } }),
+      'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
     });
     await page.goto(`${admin}/`);
     const field = page.locator('.shell-search-field input');
@@ -338,7 +338,7 @@ test.describe('shell', () => {
         body: {
           unread: 2,
           nextCursor: null,
-          notices: [
+          items: [
             { id: 'n1', kind: 'task.done', payload: { taskId: 't1', action: 'sim', msisdn: '0550000001', handlerName: 'الفرع' }, actorName: 'الفرع', href: '/tasks/t1', read: false, createdAt: '2026-10-02T10:30:00.000Z' },
             { id: 'n2', kind: 'task.opened', payload: { taskId: 't2', action: 'reactivate', msisdn: null }, actorName: 'نقطة', href: '/tasks/t2', read: false, createdAt: '2026-10-02T10:30:00.000Z' },
           ],

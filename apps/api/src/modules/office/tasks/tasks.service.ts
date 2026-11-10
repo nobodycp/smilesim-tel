@@ -10,11 +10,11 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
-import { feedPosition } from '../kernel/feed';
 import type { Action, Actor } from '../kernel/types';
 import type { WrittenNotice } from '../notices/notice.service';
 import { excerpt, type TaskNoticePayload } from '../notices/notice-kinds';
-import { TASKS_PAGE, afterFeed, mergeFeed, taskStatusOf } from '../rules/office-paging';
+import { after, cursorPosition, page } from '../../shared/paging';
+import { TASKS_PAGE, taskStatusOf } from '../rules/office-paging';
 import { simRulesOf } from '../rules/office-rules';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { stampTaskLog } from './task-log';
@@ -48,7 +48,7 @@ export class TasksService {
     const digits = (typeof query.q === 'string' ? query.q : '').replace(/\s/g, '');
     const matchedPackages = await this.packagesMatching({ packageCode, company, provider });
     if (matchedPackages && matchedPackages.length === 0) {
-      return { tasks: [], nextCursor: null, total: 0 };
+      return { items: [], nextCursor: null, total: 0 };
     }
     const where = {
       ...taskWhereFor(actor, accounts),
@@ -59,15 +59,15 @@ export class TasksService {
     };
     const [read, total] = await Promise.all([
       // The list's last note skips internal notes for accounts outside the branch.
-      this.repo.tasksPage({ ...where, AND: afterFeed(feedPosition(query.cursor)) }, actor.layer === 'branch' ? {} : { internal: false }),
+      this.repo.tasksPage({ ...where, AND: after(cursorPosition(query.cursor)) }, actor.layer === 'branch' ? {} : { internal: false }),
       this.repo.countTasks(where),
     ]);
-    const { page: rows, nextCursor } = mergeFeed([read], TASKS_PAGE);
+    const { items: rows, nextCursor } = page(read, TASKS_PAGE);
     const byId = new Map(accounts.map((account) => [account.id, account]));
     const packages = await this.repo.packagesWithCompany();
     const byPackage = new Map(packages.map((row) => [row.id, row]));
     return {
-      tasks: rows.map((row) => {
+      items: rows.map((row) => {
         const pkg = byPackage.get(row.packageId);
         const open = row.status === 'pending' || row.status === 'working';
         return {

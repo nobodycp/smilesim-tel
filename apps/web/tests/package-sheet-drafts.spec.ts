@@ -25,7 +25,7 @@ test('a reload keeps typed chain prices and refreshes untouched ones', async ({ 
     },
     'GET /users': () => ({ body: { users: [] } }),
     'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null, total: 0 } }),
+    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'الأسعار' }).click();
@@ -60,8 +60,8 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
     'GET /companies': () => ({ body: { companies: [] } }),
     'GET /lines': (url) => ({
       body: url.searchParams.get('cursor') === 'p2'
-        ? { lines: [line('03')], poses: [], nextCursor: null, total: 3 }
-        : { lines: [line('01'), line('02')], poses: [], nextCursor: 'p2', total: 3 },
+        ? { items: [line('03')], poses: [], nextCursor: null, total: 3 }
+        : { items: [line('01'), line('02')], poses: [], nextCursor: 'p2', total: 3 },
     }),
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
@@ -78,7 +78,7 @@ test('a mode change re-reads the sheet, its numbers and its custom prices, not t
     'PATCH /packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
     'GET /users': () => ({ body: { users: [] } }),
     'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null, total: 0 } }),
+    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();

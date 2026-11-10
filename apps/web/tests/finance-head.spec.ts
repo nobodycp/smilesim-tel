@@ -18,7 +18,7 @@ const entry = {
 test('finance opens on the statement, without the wallet head, and exports the filtered statement', async ({ page }) => {
   const calls = await serveOffice(page, 'agent', {
     'GET /finance/summary': () => ({ body: summary }),
-    'GET /finance': () => ({ body: { entries: [entry], nextCursor: null, total: 1 } }),
+    'GET /finance': () => ({ body: { items: [entry], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://agent.localhost:3910/finance');
   const row = page.locator('table.data tbody tr').first();
@@ -34,7 +34,7 @@ test('finance opens on the statement, without the wallet head, and exports the f
 
 test('finance opened with ?scope=operations lists the operations only', async ({ page }) => {
   const calls = await serveOffice(page, 'branch', {
-    'GET /finance': () => ({ body: { entries: [entry], nextCursor: null, total: 1 } }),
+    'GET /finance': () => ({ body: { items: [entry], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://admin.localhost:3910/finance?scope=operations');
   await expect(page.locator('table.data tbody tr').first()).toContainText('0550000001');
@@ -47,7 +47,7 @@ test('finance opened with ?scope=operations lists the operations only', async ({
 test('the wallet page shows the head and its window switch', async ({ page }) => {
   const calls = await serveOffice(page, 'agent', {
     'GET /finance/summary': () => ({ body: summary }),
-    'GET /ledger/audit': () => ({ body: { entries: [], nextCursor: null, total: 0 } }),
+    'GET /ledger/audit': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://agent.localhost:3910/wallet');
   const band = page.locator('.wallet-band');

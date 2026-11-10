@@ -10,7 +10,7 @@ import { pick } from '../../../lib/fetched';
 import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
 import { useApiQuery } from '../../../lib/use-api-query';
-import { usePaged } from '../../../lib/use-paged';
+import { pageRows, usePaged } from '../../../lib/use-paged';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { WalletHead } from '../wallet-head';
 import { movementName, reasonTone } from './finance-screen';
@@ -27,7 +27,7 @@ export function WalletScreen() {
   const [soon, setSoon] = useState('');
   const summary = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary(), { enabled: allowed });
   const list = usePaged<LedgerRow>('wallet', async (cursor) =>
-    pick(await api.officeLedger('audit', { cursor }), (data) => ({ rows: data.entries, next: data.nextCursor, total: data.total })),
+    pick(await api.officeLedger('audit', { cursor }), pageRows),
   );
   const columns: Column<LedgerRow>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },

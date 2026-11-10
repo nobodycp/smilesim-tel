@@ -11,7 +11,7 @@ import { reasonTone } from './finance-screen';
 import { api, type ProviderOpRow, type ProviderOpStats } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
-import { usePaged } from '../../../lib/use-paged';
+import { pageRows, usePaged } from '../../../lib/use-paged';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
@@ -32,9 +32,7 @@ export function ProviderOperationsScreen() {
   const list = usePaged<ProviderOpRow, { stats: ProviderOpStats; providers: { code: string; name: string }[] }>(
     `${provider}|${kind}|${q}|${from}|${to}|${match}`,
     async (cursor) => pick(await api.officeProviderOperations({ provider, kind, q, from, to, match, cursor }), (data) => ({
-      rows: data.entries,
-      next: data.nextCursor,
-      total: data.total,
+      ...pageRows(data),
       extra: { stats: data.stats ?? EMPTY_STATS, providers: data.providers ?? [] },
     })),
   );

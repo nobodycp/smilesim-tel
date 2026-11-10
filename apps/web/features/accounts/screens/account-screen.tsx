@@ -11,7 +11,7 @@ import { Button, buttonClass } from '../../../components/ui/button';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { latinWhen } from '../../../components/desk';
 import { pick } from '../../../lib/fetched';
-import { usePaged } from '../../../lib/use-paged';
+import { pageRows, usePaged } from '../../../lib/use-paged';
 import { lineTone } from '../../../lib/status-tone';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -308,7 +308,7 @@ function MoneyCards({ row }: { row: UserRow }) {
 function AccountLines({ login }: { login: string }) {
   const { t } = usePrefs();
   const list = usePaged<LineRow>(`account:${login}`, async (cursor) =>
-    pick(await api.officeLines({ account: login, cursor }), (data) => ({ rows: data.lines, next: data.nextCursor, total: data.total })),
+    pick(await api.officeLines({ account: login, cursor }), pageRows),
   );
   const columns: Column<LineRow>[] = [
     { key: 'number', header: t.number, render: (line) => <a href={`/numbers/${encodeURIComponent(line.id)}`}><bdi dir="ltr">{line.msisdn}</bdi></a> },

@@ -65,7 +65,10 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
 5. The provider's answer never comes from the client. Line operations go through `ProviderGateway`.
 6. A route lives in the controller of its own domain. Paths and response shapes change only with a spec, and
    `routes.http.spec.ts` / `response-shape.spec.ts` are updated in the same commit.
-7. Lists are paged or capped; a new list endpoint without a limit is refused.
+7. Lists are paged or capped; a new list endpoint without a limit is refused. A paged list answers
+   `{ items, nextCursor, total }` plus its own extra keys and takes `?cursor=` only: the cursor, `after()` and
+   `page()` come from `shared/paging.ts`, never a second cursor format or Prisma's row cursor.
+   *(architecture.spec: `list-envelope`; `shared/paging.spec.ts`)*
 
 ## 5. Structure
 

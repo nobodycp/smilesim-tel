@@ -12,7 +12,7 @@ import { Badge } from '../../../components/ui/badge';
 import { api, type ActivityRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
-import { usePaged } from '../../../lib/use-paged';
+import { pageRows, usePaged } from '../../../lib/use-paged';
 import { Select } from '../../../components/ui/select';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
@@ -46,7 +46,7 @@ export function AuditScreen() {
   const failed = useApiQuery(['office', 'audit', 'failed-logins', from], () => api.officeAudit({ action: 'login', result: 'fail', from, addresses: '1' }));
   const prices = useApiQuery(['office', 'audit', 'price-edits', from], () => api.officeAudit({ action: 'package_price', from }));
   const list = usePaged<ActivityRow>(`${action}|${result}|${layer}|${q}|${from}|${to}`, async (cursor) =>
-    pick(await api.officeAudit({ action, result, layer, q, from, to, cursor }), (data) => ({ rows: data.entries, next: data.nextCursor, total: data.total })),
+    pick(await api.officeAudit({ action, result, layer, q, from, to, cursor }), pageRows),
   );
 
   const columns: Column<ActivityRow>[] = [

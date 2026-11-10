@@ -7,6 +7,12 @@ import { useConnection } from './connection';
 import { usePrefs } from './prefs';
 import { ApiFailure } from './query';
 import type { Fetched } from './fetched';
+import type { Page } from './api-types';
+
+/** One answer of the API's list envelope as the pager reads it. A list with extra keys adds `extra` beside it. */
+export function pageRows<Row>(data: Page<Row>): { rows: Row[]; next: string | null; total: number } {
+  return { rows: data.items, next: data.nextCursor, total: data.total };
+}
 
 export type PageOf<Row, Extra = undefined> = {
   rows: Row[];

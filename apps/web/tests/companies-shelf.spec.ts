@@ -105,7 +105,7 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
     'GET /companies': () => ({ body: shelf }),
     'GET /lines': () => ({
       body: {
-        lines: [{
+        items: [{
           id: 'line-1',
           msisdn: '0550000001',
           iccid: null,

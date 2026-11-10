@@ -84,7 +84,7 @@ export async function serveOffice(page: Page, layer: keyof typeof accounts, rout
     if (routes[key]) reply = key === 'GET /users' ? asUsersPage(url, routes[key](url)) : routes[key](url);
     else if (key === 'GET /me') reply = { body: { ...accounts[layer], stops: [], impersonating: false, balance: 1000, ceiling: 0 } };
     else if (key === 'GET /directory') reply = { body: { names: Object.fromEntries(Object.values(accounts).map((row) => [row.loginName, row.nickname])) } };
-    else if (key === 'GET /notices') reply = { body: { unread: 0, notices: [], nextCursor: null } };
+    else if (key === 'GET /notices') reply = { body: { unread: 0, items: [], nextCursor: null } };
     else if (key === 'GET /notices/stream') reply = { body: {}, status: 204 };
     if (reply.delay) await new Promise((resolve) => setTimeout(resolve, reply.delay));
     await route.fulfill({ status: reply.status ?? 200, contentType: 'application/json', body: JSON.stringify(reply.body) });

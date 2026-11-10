@@ -1,5 +1,5 @@
 import { request, segment, queryString } from '../../lib/http';
-import type { CompleteTaskBody, TaskDetail, TaskEvent, TaskRow } from '../../lib/api-types';
+import type { CompleteTaskBody, TaskDetail, TaskEvent, TaskRow, Page } from '../../lib/api-types';
 
 /** The tasks calls of the office API. Composed into `api` by lib/api.ts. */
 export const tasksApi = {
@@ -11,7 +11,7 @@ export const tasksApi = {
     company?: string;
     provider?: string;
     cursor?: string | null;
-  }) => request<{ tasks: TaskRow[]; nextCursor: string | null; total: number }>('GET', `/office/tasks${queryString(query)}`),
+  }) => request<Page<TaskRow>>('GET', `/office/tasks${queryString(query)}`),
   officeTask: (id: string) => request<{ task: TaskDetail; events: TaskEvent[] }>('GET', `/office/tasks/${segment(id)}`),
   addTaskNote: (id: string, text: string, internal = false) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/notes`, { text, ...(internal ? { internal: true } : {}) }),
   takeTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/take`),

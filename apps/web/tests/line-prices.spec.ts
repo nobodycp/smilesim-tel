@@ -180,7 +180,7 @@ function sheetRoutes(): Routes {
     }),
     'GET /users': () => ({ body: { users: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos' }] } }),
     'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null } }),
+    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   };
 }
 

@@ -4,7 +4,8 @@ import type { Layer } from '../../auth/decide-login';
 import { hashOnce } from './test-hash';
 import { OfficeFailure } from '../../shared/office-failure';
 import { OfficeFacade } from './office-facade';
-import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, afterFeed, decodeFeedCursor, encodeFeedCursor, expiringWhere, isSuspended, linesWhere, mergeFeed, suspendedWhere } from '../rules/office-paging';
+import { after, decodeCursor, encodeCursor } from '../../shared/paging';
+import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhere, suspendedWhere } from '../rules/office-paging';
 
 // A small in-memory stand-in for the Prisma client: it reads the `where`, `orderBy`, `cursor`,
 // `skip` and `take` the service sends, so the lists are proven to page in the query and not in memory.
@@ -143,7 +144,7 @@ describe('numbers list paging', () => {
     let cursor: string | undefined;
     do {
       const result = await service.lines(gate, { ...query, cursor });
-      pages.push(result.lines.map((line) => line.id));
+      pages.push(result.items.map((line) => line.id));
       cursor = result.nextCursor ?? undefined;
     } while (cursor);
     return { pages, calls };
@@ -158,16 +159,17 @@ describe('numbers list paging', () => {
     expect(all).toEqual(newestFirst.map((line) => line.id));
     expect(calls.map((call) => call.take)).toEqual([31, 31, 31]);
     expect(calls[0].orderBy).toEqual([{ createdAt: 'desc' }, { id: 'desc' }]);
-    expect(calls[0].cursor).toBeUndefined();
-    expect(calls[1].cursor).toEqual({ id: pages[0][29] });
-    expect(calls[1].skip).toBe(1);
+    // The one cursor: a condition in the query, never Prisma's row cursor (shared/paging.ts).
+    expect(calls.every((call) => call.cursor === undefined && call.skip === undefined)).toBe(true);
+    const last = lines.find((line) => line.id === pages[0][29])!;
+    expect(JSON.stringify(calls[1].where)).toContain(JSON.stringify({ createdAt: last.createdAt, id: { lt: last.id } }));
   });
 
   it('sends no next cursor when the last page is exactly full', async () => {
     const exact = lines.slice(0, 30);
     const { service, gate } = await serviceWith({ line: table(exact) });
     const result = await service.lines(gate);
-    expect(result.lines).toHaveLength(30);
+    expect(result.items).toHaveLength(30);
     expect(result.nextCursor).toBeNull();
   });
 
@@ -253,7 +255,7 @@ describe('numbers list paging', () => {
     const serial = { ...lines[0], id: 'by-serial', msisdn: '0590000001', iccid: '8997200000000000001' };
     const { service, gate } = await serviceWith({ line: table([serial, lines[1]]) });
     const found = await service.lines(gate, { q: '899 7200' });
-    expect(found.lines.map((line) => line.id)).toEqual(['by-serial']);
+    expect(found.items.map((line) => line.id)).toEqual(['by-serial']);
   });
 
   it('filters by provider and company together', async () => {
@@ -271,9 +273,9 @@ describe('numbers list paging', () => {
     ];
     const { service, gate } = await serviceWith({ line: table(mixed) });
     const found = await service.lines(gate, { q: '400' });
-    expect(found.lines.map((line) => line.id).sort()).toEqual(['by-number', 'by-package']);
+    expect(found.items.map((line) => line.id).sort()).toEqual(['by-number', 'by-package']);
     const spaced = await service.lines(gate, { q: '054 0012' });
-    expect(spaced.lines.map((line) => line.id)).toEqual(['by-number']);
+    expect(spaced.items.map((line) => line.id)).toEqual(['by-number']);
   });
 
   it('finds lines by company name and by package name', async () => {
@@ -318,8 +320,8 @@ describe('time-ordered lists', () => {
     let cursor: string | undefined;
     do {
       const result = await service.finance(gate, { cursor });
-      sizes.push(result.entries.length);
-      seen.push(...result.entries.map((row) => row.id));
+      sizes.push(result.items.length);
+      seen.push(...result.items.map((row) => row.id));
       cursor = result.nextCursor ?? undefined;
     } while (cursor);
     expect(sizes).toEqual([80, 80, 10]);
@@ -331,7 +333,7 @@ describe('time-ordered lists', () => {
     const rows = [entry(0, { amount: -15, esimPrice: 5 }), entry(1, { esimPrice: null }), entry(2)];
     const { service, gate } = await serviceWith({ walletEntry: table(rows) });
     const result = await service.finance(gate, {});
-    const byId = new Map(result.entries.map((row) => [row.id, row.esimPrice]));
+    const byId = new Map(result.items.map((row) => [row.id, row.esimPrice]));
     expect(byId.get('en-000')).toBe(5);
     expect(byId.get('en-001')).toBeNull();
     expect(byId.get('en-002')).toBeNull();
@@ -341,7 +343,7 @@ describe('time-ordered lists', () => {
     const rows = Array.from({ length: 100 }, (_, i) => entry(i));
     const { service, gate } = await serviceWith({ walletEntry: table(rows) });
     const result = await service.finance(gate, { q: '055 000 007' });
-    expect(result.entries.map((row) => row.msisdn).sort()).toEqual(Array.from({ length: 10 }, (_, i) => `05500000${70 + i}`));
+    expect(result.items.map((row) => row.msisdn).sort()).toEqual(Array.from({ length: 10 }, (_, i) => `05500000${70 + i}`));
     expect(result.nextCursor).toBeNull();
   });
 
@@ -349,14 +351,14 @@ describe('time-ordered lists', () => {
     const rows = Array.from({ length: 100 }, (_, i) => entry(i, { kind: i % 2 ? 'charge' : 'activate' }));
     const { service, gate } = await serviceWith({ walletEntry: table(rows) });
     const first = await service.ledger(gate, 'audit', { kind: 'charge' });
-    expect(first.entries).toHaveLength(50);
-    expect(first.entries.every((row) => row.kind === 'charge')).toBe(true);
+    expect(first.items).toHaveLength(50);
+    expect(first.items.every((row) => row.kind === 'charge')).toBe(true);
     expect(first.nextCursor).toBeNull();
     const all = await service.ledger(gate, 'audit', {});
-    expect(all.entries).toHaveLength(80);
+    expect(all.items).toHaveLength(80);
     const rest = await service.ledger(gate, 'audit', { cursor: all.nextCursor ?? undefined });
-    expect(rest.entries).toHaveLength(20);
-    expect(new Set([...all.entries, ...rest.entries].map((row) => row.id)).size).toBe(100);
+    expect(rest.items).toHaveLength(20);
+    expect(new Set([...all.items, ...rest.items].map((row) => row.id)).size).toBe(100);
   });
 
   it('refuses a cursor that is not ours', async () => {
@@ -381,13 +383,13 @@ describe('time-ordered lists', () => {
     }));
     const { service, gate } = await serviceWith({ activityEvent: table(rows) });
     const first = await service.audit(gate, {});
-    expect(first.entries).toHaveLength(80);
+    expect(first.items).toHaveLength(80);
     const second = await service.audit(gate, { cursor: first.nextCursor ?? undefined });
-    expect(second.entries).toHaveLength(20);
-    expect(new Set([...first.entries, ...second.entries].map((row) => row.id)).size).toBe(100);
+    expect(second.items).toHaveLength(20);
+    expect(new Set([...first.items, ...second.items].map((row) => row.id)).size).toBe(100);
     const onlyEnter = await service.audit(gate, { action: 'enter' });
-    expect(onlyEnter.entries.every((row) => row.action === 'enter')).toBe(true);
-    expect(onlyEnter.entries).toHaveLength(50);
+    expect(onlyEnter.items.every((row) => row.action === 'enter')).toBe(true);
+    expect(onlyEnter.items).toHaveLength(50);
   });
 
   it('pages tasks by position and filters by status in the query', async () => {
@@ -415,15 +417,15 @@ describe('time-ordered lists', () => {
     let cursor: string | undefined;
     do {
       const result = await service.tasks(gate, { cursor });
-      sizes.push(result.tasks.length);
-      ids.push(...result.tasks.map((task) => task.id));
+      sizes.push(result.items.length);
+      ids.push(...result.items.map((task) => task.id));
       cursor = result.nextCursor ?? undefined;
     } while (cursor);
     expect(sizes).toEqual([50, 50, 20]);
     expect(new Set(ids).size).toBe(120);
     const done = await service.tasks(gate, { status: 'done' });
-    expect(done.tasks).toHaveLength(30);
-    expect(done.tasks.every((task) => task.status === 'done')).toBe(true);
+    expect(done.items).toHaveLength(30);
+    expect(done.items.every((task) => task.status === 'done')).toBe(true);
     expect(done.nextCursor).toBeNull();
   });
 });
@@ -485,29 +487,29 @@ describe('task reading follows the number', () => {
   it('shows the pos a task its agent opened on its number, without any grant', async () => {
     const { service, gate } = await as('pos1', 'pos', 'read');
     const list = await service.tasks(gate, {});
-    expect(list.tasks.map((row) => row.id)).toEqual(['t-agent']);
-    expect(list.tasks[0].lastNote).toBe('ملاحظة');
-    expect(list.tasks[0].canTake).toBe(false);
+    expect(list.items.map((row) => row.id)).toEqual(['t-agent']);
+    expect(list.items[0].lastNote).toBe('ملاحظة');
+    expect(list.items[0].canTake).toBe(false);
   });
 
   it('shows an agent every task under it and nothing from a sibling branch user', async () => {
     const { service, gate } = await as('agent1', 'agent', 'read');
     const list = await service.tasks(gate, {});
-    expect(list.tasks.map((row) => row.id).sort()).toEqual(['t-agent', 't-pos2']);
+    expect(list.items.map((row) => row.id).sort()).toEqual(['t-agent', 't-pos2']);
   });
 
   it('lets a branch user without the grant read everything but not take', async () => {
     const { service, gate } = await as('clerk', 'branch', 'read');
     const list = await service.tasks(gate, {});
-    expect(list.tasks).toHaveLength(2);
-    expect(list.tasks.every((row) => row.canTake === false && row.log === '')).toBe(true);
+    expect(list.items).toHaveLength(2);
+    expect(list.items.every((row) => row.canTake === false && row.log === '')).toBe(true);
     await expect(service.takeTask(gate, 't-agent')).rejects.toBeInstanceOf(OfficeFailure);
   });
 
   it('lets the branch owner take', async () => {
     const { service, gate } = await as('admin', 'branch', '', true);
     const list = await service.tasks(gate, {});
-    expect(list.tasks.every((row) => row.canTake && row.log !== '')).toBe(true);
+    expect(list.items.every((row) => row.canTake && row.log !== '')).toBe(true);
   });
 
   describe('directory', () => {
@@ -531,34 +533,15 @@ describe('task reading follows the number', () => {
   });
 });
 
-describe('feed cursor', () => {
+describe('the list cursor against the rows a list reads', () => {
   const stamp = (i: number) => ({ id: `r-${pad(i)}`, createdAt: new Date(t0 + Math.floor(i / 3) * 1000) });
 
-  it('round-trips a position and rejects garbage', () => {
-    const row = stamp(7);
-    expect(decodeFeedCursor(encodeFeedCursor(row))).toEqual({ at: row.createdAt, id: row.id });
-    expect(decodeFeedCursor(undefined)).toBeUndefined();
-    expect(decodeFeedCursor('')).toBeUndefined();
-    expect(decodeFeedCursor('!!')).toBeNull();
-    expect(decodeFeedCursor(Buffer.from('abc~x').toString('base64url'))).toBeNull();
-  });
-
   it('turns a position into a condition that skips exactly the rows already served', () => {
-    expect(afterFeed(undefined)).toEqual([]);
     const rows = Array.from({ length: 20 }, (_, i) => ({ ...stamp(i) }));
-    const cursor = decodeFeedCursor(encodeFeedCursor(stamp(9)));
-    const rest = rows.filter((row) => matches(row, { AND: afterFeed(cursor ?? undefined) }));
+    const cursor = decodeCursor(encodeCursor(stamp(9).createdAt, stamp(9).id));
+    const rest = rows.filter((row) => matches(row, { AND: after(cursor ?? undefined) }));
     const ordered = [...rows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1));
     const served = ordered.findIndex((row) => row.id === 'r-009');
     expect(rest.map((row) => row.id).sort()).toEqual(ordered.slice(served + 1).map((row) => row.id).sort());
-  });
-
-  it('reports a next cursor only when a source still had more rows', () => {
-    const a = Array.from({ length: 5 }, (_, i) => stamp(i));
-    const b = Array.from({ length: 5 }, (_, i) => stamp(i + 5));
-    expect(mergeFeed([a, b], 10).nextCursor).toBeNull();
-    const merged = mergeFeed([a, b], 9);
-    expect(merged.page).toHaveLength(9);
-    expect(merged.nextCursor).toBe(encodeFeedCursor(merged.page[8]));
   });
 });

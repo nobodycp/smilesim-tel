@@ -84,7 +84,7 @@ export function HomeScreen() {
       {branch ? null : (
         <div className="home-top-row">
           <LastOperations home={home} failed={broken ? board.error : ''} onRetry={() => void board.reload()} showAccount={layer !== 'pos'} />
-          <WaitingTasks tasks={waiting.data?.tasks ?? []} open={home?.openTasks ?? waiting.data?.total ?? 0} loading={!waiting.data && !waiting.error} />
+          <WaitingTasks tasks={waiting.data?.items ?? []} open={home?.openTasks ?? waiting.data?.total ?? 0} loading={!waiting.data && !waiting.error} />
         </div>
       )}
       {/* Below the design's top, the rest of the period's overview (spec 2026-11-08-overview-and-reports-nav, F), with

@@ -89,7 +89,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
         }
       }
       if (lines.ok) {
-        for (const row of lines.data.lines) {
+        for (const row of lines.data.items) {
           next.push({
             key: `line-${row.id}`,
             href: `/numbers/${row.id}`,

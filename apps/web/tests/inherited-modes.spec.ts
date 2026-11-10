@@ -21,7 +21,7 @@ test('the run tab shows which modes follow the provider and sends «inherit» to
     'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
     'GET /users': () => ({ body: { users: [] } }),
     'GET /companies': () => ({ body: { companies: [] } }),
-    'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null, total: 0 } }),
+    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
     'PATCH /packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
   });
   page.on('request', (request) => {

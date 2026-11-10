@@ -21,7 +21,7 @@ test('numbers row actions live in the menu', async ({ page }) => {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ lines: [line], poses: [] }),
+      body: JSON.stringify({ items: [line], poses: [] }),
     }),
   );
   await page.route('**/office/packages', (route) =>
@@ -43,7 +43,7 @@ test('numbers row actions live in the menu', async ({ page }) => {
 
 test('a row menu opens on its first item, walks with the arrows, and Escape gives the focus back', async ({ page }) => {
   await page.route('**/office/lines**', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ lines: [line], poses: [] }) }),
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [line], poses: [] }) }),
   );
   await page.route('**/office/packages', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),

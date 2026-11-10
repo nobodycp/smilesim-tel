@@ -66,7 +66,7 @@ async function packageLines(packageCode: string): Promise<Fetched<LineRow[]>> {
   for (let page = 0; page < MAX_LINE_PAGES; page += 1) {
     const result = await api.officeLines({ packageCode, cursor });
     if (!result.ok) return result;
-    rows.push(...result.data.lines);
+    rows.push(...result.data.items);
     cursor = result.data.nextCursor;
     if (!cursor) break;
   }

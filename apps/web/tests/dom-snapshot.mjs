@@ -95,20 +95,20 @@ const reports = {
 function answer(path, layer, empty) {
   const list = (rows) => (empty ? [] : rows);
   if (path === '/office/me') return me(layer);
-  if (path === '/office/notices') return { unread: 0, notices: [] };
+  if (path === '/office/notices') return { unread: 0, items: [] };
   if (path === '/office/home') return home;
-  if (path === '/office/lines') return { lines: list(lines), poses: [{ loginName: 'pos', nickname: 'الكاشير' }], nextCursor: empty ? null : 'c2' };
+  if (path === '/office/lines') return { items: list(lines), poses: [{ loginName: 'pos', nickname: 'الكاشير' }], nextCursor: empty ? null : 'c2' };
   if (path.startsWith('/office/lines/')) return { line: lines[0], history: [{ id: 'h1', action: 'extend', at: '2026-10-02T10:30:00.000Z', msisdn: '0550000001', companyName: 'سلكوم', packageName: '400 جيجا', actorName: 'الكاشير' }] };
   if (path === '/office/packages') return { packages: list(packages), companies: [{ name: 'سلكوم', image: '' }] };
   if (path.endsWith('/sheet')) return sheet;
   if (path === '/office/providers') return { providers: [provider] };
-  if (path === '/office/tasks') return { tasks: list([task('t1', 'pending'), task('t2', 'working'), task('t3', 'done')]), nextCursor: empty ? null : 'c2' };
+  if (path === '/office/tasks') return { items: list([task('t1', 'pending'), task('t2', 'working'), task('t3', 'done')]), nextCursor: empty ? null : 'c2' };
   if (path === '/office/users') return { users: list(users) };
   if (path === '/office/roles') return { roles: list(roles) };
-  if (path === '/office/audit') return { entries: list([audit('a1'), audit('a2')]), nextCursor: empty ? null : 'c2' };
-  if (path === '/office/finance') return { entries: list([finance('c1'), finance('c2')]), nextCursor: empty ? null : 'c2' };
+  if (path === '/office/audit') return { items: list([audit('a1'), audit('a2')]), nextCursor: empty ? null : 'c2' };
+  if (path === '/office/finance') return { items: list([finance('c1'), finance('c2')]), nextCursor: empty ? null : 'c2' };
   if (path === '/office/provider-operations') return {
-    entries: list([{
+    items: list([{
       id: 'p1', at: '2026-10-02T10:30:00.000Z', kind: 'charge', msisdn: '0550000001',
       providerCode: 'cell', providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', cost: 20,
     }]),
@@ -116,7 +116,7 @@ function answer(path, layer, empty) {
     stats: empty ? { count: 0, cost: 0, monthCost: 0 } : { count: 1, cost: 20, monthCost: 20 },
     providers: [{ code: 'cell', name: 'مزود' }],
   };
-  if (path.startsWith('/office/ledger/')) return { entries: list([ledger('l1'), ledger('l2')]), nextCursor: empty ? null : 'c2' };
+  if (path.startsWith('/office/ledger/')) return { items: list([ledger('l1'), ledger('l2')]), nextCursor: empty ? null : 'c2' };
   if (path.startsWith('/office/reports/')) {
     const body = reports[path.split('/').pop()];
     return empty ? { ...body, rows: body.rows && [], entries: body.entries && [], lines: body.lines && [], tasks: body.tasks && [], nextCursor: null } : body;

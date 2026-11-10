@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { UnitOfWork, type Db } from '../kernel/unit-of-work';
-import { NEWEST_FIRST } from '../rules/office-paging';
+import { NEWEST_FIRST } from '../../shared/paging';
 
 /**
  * The database as this domain reads and writes it: numbers, and the packages and add-ons an operation on a number reads. One method per query, named for what it
@@ -20,12 +20,12 @@ export class LinesRepository {
   }
 
   /** One page of numbers (and one row more), newest first, each with its package, company and point of sale. */
-  linesPage(where: Prisma.LineWhereInput, paging: Pick<Prisma.LineFindManyArgs, 'take' | 'cursor' | 'skip'>) {
+  linesPage(where: Prisma.LineWhereInput, take: number) {
     return this.uow.prisma.line.findMany({
       where,
       include: { package: { include: { company: true } }, pos: true },
       orderBy: [...NEWEST_FIRST],
-      ...paging,
+      take,
     });
   }
 

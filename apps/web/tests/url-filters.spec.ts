@@ -10,7 +10,7 @@ test('numbers read their filters from the address, write them back, and follow b
   await serveOffice(page, 'branch', {
     'GET /lines': (url) => {
       asked.push(url.searchParams.get('status') ?? '');
-      return { body: { lines: [], poses: [], nextCursor: null, total: 0 } };
+      return { body: { items: [], poses: [], nextCursor: null, total: 0 } };
     },
     'GET /packages': () => ({ body: { packages: [], companies: [] } }),
   });

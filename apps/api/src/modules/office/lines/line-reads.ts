@@ -4,7 +4,8 @@ import { UnitOfWork } from '../kernel/unit-of-work';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
-import { LINES_PAGE, idCursorArgs, isSuspended, linesWhere, pageOf, type LineFilter } from '../rules/office-paging';
+import { after, cursorPosition, page } from '../../shared/paging';
+import { LINES_PAGE, isSuspended, linesWhere, type LineFilter } from '../rules/office-paging';
 import { esimPriceOf, offeredOperations, refreshMode, resolvePackageMode, simRulesOf, visibleAccountIds } from '../rules/office-rules';
 import { deniedOpsFor, visibleTo, type OpKey, type PathNode } from '../rules/user-terms';
 import { lineHistory } from './line-history';
@@ -35,13 +36,13 @@ export class LineReads {
     const periods = query.status === 'suspended' ? await this.suspendPeriods() : [];
     const where = linesWhere(posIds, query, periods);
     const [rows, total] = await Promise.all([
-      this.repo.linesPage(where, idCursorArgs(query.cursor || undefined, LINES_PAGE)),
+      this.repo.linesPage({ ...where, AND: after(cursorPosition(query.cursor)) }, LINES_PAGE + 1),
       this.repo.countLines(where),
     ]);
-    const { page, nextCursor } = pageOf(rows, LINES_PAGE);
+    const { items, nextCursor } = page(rows, LINES_PAGE);
     return {
       total,
-      lines: page.map((row) => ({
+      items: items.map((row) => ({
         id: row.id,
         msisdn: row.msisdn,
         iccid: row.iccid,

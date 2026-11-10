@@ -65,20 +65,20 @@ describe('WalletsService.finance', () => {
 
   it('gives the branch every account\'s share of a sale, branch first, and nothing for other entries', async () => {
     const result = await service({}).finance(actor('branch', 'branch'), {});
-    const sale = result.entries.find((row) => row.id === 'e1');
+    const sale = result.items.find((row) => row.id === 'e1');
     expect(sale?.shares).toEqual([
       { loginName: 'branch', layer: 'branch', margin: 500 },
       { loginName: 'main', layer: 'main_agent', margin: 500 },
       { loginName: 'agent', layer: 'agent', margin: 300 },
       { loginName: 'pos', layer: 'pos', margin: 700 },
     ]);
-    expect(result.entries.find((row) => row.id === 'e2')?.shares).toBeNull();
-    expect(result.entries.find((row) => row.id === 'e3')?.shares).toBeNull();
+    expect(result.items.find((row) => row.id === 'e2')?.shares).toBeNull();
+    expect(result.items.find((row) => row.id === 'e3')?.shares).toBeNull();
   });
 
   it('keeps the shares from the layers below the branch, with their own margin only', async () => {
     const result = await service({}).finance(actor('agent', 'agent'), {});
-    const sale = result.entries.find((row) => row.id === 'e1');
+    const sale = result.items.find((row) => row.id === 'e1');
     expect(sale?.shares).toBeNull();
     expect(sale?.margin).toBe(300);
   });

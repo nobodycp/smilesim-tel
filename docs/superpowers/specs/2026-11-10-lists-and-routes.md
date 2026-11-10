@@ -2,8 +2,8 @@
 
 Review 2026-11-10: A7 (lists), A8 (naming), A4 (not-found codes), A12 (two generations of `/office/reports`).
 **API and web together**: every slice changes one endpoint group in the API, its caller in `apps/web`, the web's
-mock API used by the Playwright tests, and the pinned specs, in one commit. This plan needs the owner's decisions
-below before its first slice.
+mock API used by the Playwright tests, and the pinned specs, in one commit. **The owner approved all seven
+decisions below as proposed on 2026-11-10.**
 
 ## Today (commit 314d290)
 
@@ -36,7 +36,7 @@ the route.
 The web reaches the API through 135 distinct calls in `apps/web/features/*/api.ts`; 18 files read `nextCursor`
 (through `lib/use-paged.ts`); 21 test and audit files mock paged answers.
 
-## Decisions for the owner (the plan cannot start without them)
+## Decisions (approved by the owner as proposed, 2026-11-10)
 
 1. **Envelope.** Proposed: every list answers `{ items, nextCursor, total }` plus its own extra keys (`unread`,
    `stats`, `poses`). The alternative is to keep each collection key and only align cursors.
@@ -81,5 +81,6 @@ The web reaches the API through 135 distinct calls in `apps/web/features/*/api.t
 
 - Paging a list that a screen shows whole (`wallets`, `directory`) changes how that screen loads: each needs the
   "load more" or search pattern the paged screens already use (`usePaged`), checked at every width in ar and en.
-- The Playwright suite runs on GitHub Actions only; each slice updates the mock API beside the web caller and is
-  pushed before the next one starts.
+- The Playwright suite runs on GitHub Actions only; each slice updates the mock API beside the web caller. Pushes
+  happen when the owner asks (machine limits), so several slices may wait for one run: each is checked on the
+  running copy (port 3000) and by `grep` for the old key in `apps/web/tests` before its commit.

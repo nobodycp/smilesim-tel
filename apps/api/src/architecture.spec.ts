@@ -116,6 +116,16 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('untyped-body', hits(production.filter(({ file }) => file.endsWith('.controller.ts')), /@Body\(\) \w+: (Record<string, unknown>|unknown)|schema: freeFormObject/));
   });
 
+  it('4.7 list-envelope: a paged answer is { items, nextCursor, total } (shared/paging.ts)', () => {
+    // An object that carries `nextCursor` names its rows `items`. Left on purpose until their slices of the
+    // lists-and-routes plan: the users page (L.9) and the three report shapes (L.17).
+    const answers = hits(office, /return \{/, (match, text) => {
+      const body = blockAt(text, match.index);
+      return /\bnextCursor\b/.test(body) && !/\bitems\b/.test(body);
+    });
+    check('list-envelope', answers);
+  });
+
   it('4.3 conflict-status: a conflict answers 409', () => {
     check('conflict-status', hits(production, /fail\(4(?!09)\d\d, '(\w+_(TAKEN|EXISTS)|DUPLICATE_REQUEST)'/));
   });

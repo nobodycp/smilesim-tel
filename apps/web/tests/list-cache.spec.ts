@@ -11,8 +11,8 @@ test('a filter change keeps the previous rows until the new list arrives', async
   await serveOffice(page, 'branch', {
     'GET /audit': (url) =>
       url.searchParams.get('result') === 'fail'
-        ? { body: { total: 1, entries: [event('f1', 'fail')], nextCursor: null }, delay: 1500 }
-        : { body: { total: 2, entries: [event('o1', 'ok'), event('o2', 'ok')], nextCursor: null } },
+        ? { body: { total: 1, items: [event('f1', 'fail')], nextCursor: null }, delay: 1500 }
+        : { body: { total: 2, items: [event('o1', 'ok'), event('o2', 'ok')], nextCursor: null } },
   });
   await page.goto(`${admin}/audit`);
   const rows = page.locator('table.data tbody tr');
@@ -37,7 +37,7 @@ test('taking a task on page 3 keeps the reader on page 3, with rows on screen wh
     'GET /tasks': (url) => {
       const start = Number(url.searchParams.get('cursor') ?? 0);
       return {
-        body: { tasks: all.slice(start, start + 10), total: all.length, nextCursor: start + 10 < all.length ? String(start + 10) : null },
+        body: { items: all.slice(start, start + 10), total: all.length, nextCursor: start + 10 < all.length ? String(start + 10) : null },
         delay: taken ? 800 : 0,
       };
     },

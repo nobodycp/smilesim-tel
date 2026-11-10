@@ -83,7 +83,7 @@ test('the package page edits its details', async ({ page }) => {
     'GET /packages/lian-wecom-500/prices': () => ({ body: { offers: [] } }),
     'GET /users': () => ({ body: { users: [] } }),
     'GET /companies': () => ({ body: shelf }),
-    'GET /lines': () => ({ body: { lines: [], poses: [], nextCursor: null, total: 0 } }),
+    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
     'PATCH /packages/lian-wecom-500/details': () => ({ body: { ok: true } }),
   });
   // The package page's old address moves to its company's (spec 2026-11-09-admin-review, 4).

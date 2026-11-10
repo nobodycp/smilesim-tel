@@ -128,7 +128,7 @@ createServer((req, res) => {
         const [from, count, next] = status ? [100, 3, null] : cursor === 'c31' ? [32, 5, null] : [1, 31, 'c31'];
         res.writeHead(200, json).end(
           JSON.stringify({
-            lines: Array.from({ length: count }, (_, i) => mockLine(from + i, status || 'active')),
+            items: Array.from({ length: count }, (_, i) => mockLine(from + i, status || 'active')),
             nextCursor: next,
             total: status ? 3 : 36,
             poses: [{ loginName: 'pos', nickname: 'الكاشير' }],

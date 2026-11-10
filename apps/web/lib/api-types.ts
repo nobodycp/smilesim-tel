@@ -331,6 +331,11 @@ export type TransferPreview = {
   child: { customPrices: number; hidden: number; stops: number; sellPrices: number } | null;
   lines: number;
 };
+/**
+ * Every list of the API answers this envelope (API `shared/paging.ts`): the rows of one page, the cursor of the
+ * next one or null at the end, and how many rows match across every page. A list's own extra keys sit beside it.
+ */
+export type Page<Row> = { items: Row[]; nextCursor: string | null; total: number };
 export type ReportPayload = {
   rows?: { providerName: string; companyName: string; packageName: string; price: number; lines: number }[];
   entries?: ReportRow[];

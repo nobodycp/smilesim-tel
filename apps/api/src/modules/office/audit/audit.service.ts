@@ -4,9 +4,9 @@ import { dayRange } from '../../shared/dates';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { activityActorFilter, clampActivityRange } from '../activity/activity-log';
-import { feedPosition } from '../kernel/feed';
 import type { Actor } from '../kernel/types';
-import { FEED_PAGE, encodeFeedCursor } from '../rules/office-paging';
+import { after, cursorPosition, page } from '../../shared/paging';
+import { FEED_PAGE } from '../rules/office-paging';
 import { visibleAccountIds } from '../rules/office-rules';
 import { csvOf } from '../reports/report-csv';
 
@@ -41,15 +41,10 @@ export class AuditService {
 
   async list(actor: Actor, query: AuditQuery = {}) {
     const where = await this.whereFor(actor, query);
-    const position = feedPosition(query.cursor);
+    const position = cursorPosition(query.cursor);
     const [rows, total, addresses] = await Promise.all([
       this.uow.prisma.activityEvent.findMany({
-        where: {
-          ...where,
-          ...(position
-            ? { AND: [{ OR: [{ at: { lt: position.at } }, { at: position.at, id: { lt: position.id } }] }] }
-            : {}),
-        },
+        where: { ...where, AND: after(position, 'at') },
         orderBy: [{ at: 'desc' }, { id: 'desc' }],
         take: FEED_PAGE + 1,
       }),
@@ -59,12 +54,11 @@ export class AuditService {
         ? this.uow.prisma.activityEvent.groupBy({ by: ['ip'], where: { AND: [where, { ip: { not: '' } }] } }).then((groups) => groups.length)
         : Promise.resolve(undefined),
     ]);
-    const page = rows.slice(0, FEED_PAGE);
-    const last = page[page.length - 1];
+    const { items, nextCursor } = page(rows, FEED_PAGE, (row) => row.at);
     return {
       total,
       ...(addresses === undefined ? {} : { addresses }),
-      entries: page.map((row) => ({
+      items: items.map((row) => ({
         id: row.id,
         at: row.at.toISOString(),
         action: row.action,
@@ -76,7 +70,7 @@ export class AuditService {
         subjectKind: row.subjectKind,
         subjectRef: row.subjectRef,
       })),
-      nextCursor: rows.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.at, id: last.id }) : null,
+      nextCursor,
     };
   }
 

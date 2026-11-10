@@ -15,7 +15,7 @@ const ME_KEYS = ['loginName', 'nickname', 'layer', 'isBranchOwner', 'grants', 's
 // The announcements board left the home (spec 2026-11-09-admin-review, 6.2): no `canPost`, no `announcements`.
 const HOME_KEYS = ['pendingTasks', 'openTasks', 'activeLines', 'inactiveLines', 'expiringLines', 'operations'];
 const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
-const LINES_KEYS = ['lines', 'poses', 'nextCursor', 'total'];
+const LINES_KEYS = ['items', 'poses', 'nextCursor', 'total'];
 const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'esimQr', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'posLogin', 'posPrice', 'createdAt', 'endsAt', 'operations'];
 const LINE_OPTIONAL_KEYS = ['addons', 'opsLocked', 'dataGb', 'subscriberPrice', 'companyImage', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
 const POS_CHOICE_KEYS = ['loginName', 'nickname'];
@@ -132,7 +132,7 @@ describe('office response shapes', () => {
     const { service, gate } = await serviceWith({ line: { findMany: async () => [row], count: async () => 1 } });
     const listed = await service.lines(gate);
     expect(keysOf(listed)).toEqual(sorted(LINES_KEYS));
-    expect(keysOf(listed.lines[0])).toEqual(sorted(LINE_KEYS));
+    expect(keysOf(listed.items[0])).toEqual(sorted(LINE_KEYS));
     expect(listed.poses.length).toBeGreaterThan(0);
     expect(keysOf(listed.poses[0])).toEqual(sorted(POS_CHOICE_KEYS));
   });
@@ -376,8 +376,11 @@ describeWeb('web types match the pinned shapes', () => {
     expect(declared(typeBody(source, 'LineRow'))).toEqual({ required: sorted(LINE_KEYS), optional: sorted(LINE_OPTIONAL_KEYS) });
     const pos = /export type PosChoice = \{([^}]*)\}/.exec(source);
     expect(sorted([...(pos?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]))).toEqual(sorted(POS_CHOICE_KEYS));
-    const envelope = /officeLines:[\s\S]*?request<\{([^}]*)\}>/.exec(source);
-    expect(sorted([...(envelope?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]))).toEqual(sorted(LINES_KEYS));
+    // The envelope is the shared `Page<Row>` plus the list's own keys (shared/paging.ts on this side).
+    const page = /export type Page<Row> = \{([^}]*)\}/.exec(source);
+    const own = /officeLines:[\s\S]*?request<Page<LineRow> & \{([^}]*)\}>/.exec(source);
+    const keys = [page?.[1] ?? '', own?.[1] ?? ''].flatMap((body) => [...body.matchAll(/(\w+):/g)].map((match) => match[1]));
+    expect(sorted(keys)).toEqual(sorted(LINES_KEYS));
   });
 
   it('DisconnectQuote', () => {

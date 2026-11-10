@@ -11,7 +11,7 @@ const balances = {
 // 2026-11-09-admin-review, 1): finance, profits and balances for an agent; providers for the branch with reports.
 test('an agent reads its balances on their own page, and exports them with their filters', async ({ page }) => {
   await serveOffice(page, 'agent', {
-    'GET /finance': () => ({ body: { entries: [], nextCursor: null, total: 0 } }),
+    'GET /finance': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
     'GET /reports/balances': () => ({ body: balances }),
   });
   await page.goto('http://agent.localhost:3910/reports');
@@ -42,8 +42,8 @@ test('the sidebar folds five reports in one group that starts closed and opens o
 
 test('the old report paths land where their rows now live', async ({ page }) => {
   await serveOffice(page, 'branch', {
-    'GET /finance': () => ({ body: { entries: [], nextCursor: null, total: 0 } }),
-    'GET /tasks': () => ({ body: { tasks: [], nextCursor: null, total: 0 } }),
+    'GET /finance': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
+    'GET /tasks': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://admin.localhost:3910/operations');
   await expect(page).toHaveURL(/\/finance\?scope=operations$/);

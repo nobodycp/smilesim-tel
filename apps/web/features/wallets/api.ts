@@ -1,5 +1,5 @@
 import { request, segment, queryString } from '../../lib/http';
-import type { FinanceRow, FinanceSummary, ProfitReport, LedgerRow, ProviderOpRow, ProviderOpStats } from '../../lib/api-types';
+import type { FinanceRow, FinanceSummary, ProfitReport, LedgerRow, ProviderOpRow, ProviderOpStats, Page } from '../../lib/api-types';
 
 /** The wallets calls of the office API. Composed into `api` by lib/api.ts. */
 export const walletsApi = {
@@ -18,9 +18,9 @@ export const walletsApi = {
   financeExportHref: (query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string }) =>
     `/api/office/finance/export${queryString(query)}`,
   officeFinance: (query?: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string; cursor?: string | null }) =>
-    request<{ entries: FinanceRow[]; nextCursor: string | null; total: number }>('GET', `/office/finance${queryString(query)}`),
+    request<Page<FinanceRow>>('GET', `/office/finance${queryString(query)}`),
   officeProviderOperations: (query?: { kind?: string; provider?: string; q?: string; from?: string; to?: string; match?: string; cursor?: string | null }) =>
-    request<{ entries: ProviderOpRow[]; nextCursor: string | null; total: number; stats: ProviderOpStats; providers: { code: string; name: string }[] }>('GET', `/office/provider-operations${queryString(query)}`),
+    request<Page<ProviderOpRow> & { stats: ProviderOpStats; providers: { code: string; name: string }[] }>('GET', `/office/provider-operations${queryString(query)}`),
   officeLedger: (scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string | null }) =>
-    request<{ entries: LedgerRow[]; nextCursor: string | null; total: number }>('GET', `/office/ledger/${segment(scope)}${queryString(query)}`),
+    request<Page<LedgerRow>>('GET', `/office/ledger/${segment(scope)}${queryString(query)}`),
 };

@@ -21,7 +21,7 @@ export function useNotices(ready: boolean) {
   const pull = useCallback(async () => {
     const result = await api.officeNotices();
     if (!result.ok) return;
-    setNotices(result.data.notices.slice(0, PANEL));
+    setNotices(result.data.items.slice(0, PANEL));
     setUnread(result.data.unread);
   }, []);
 

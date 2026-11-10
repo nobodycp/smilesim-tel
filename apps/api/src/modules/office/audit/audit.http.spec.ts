@@ -46,7 +46,7 @@ describe('GET /office/audit', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       total: 1,
-      entries: [{ id: 'ev1', at: '2026-11-08T10:00:00.000Z', action: 'fund', result: 'fail', reason: 'FORBIDDEN', ip: '1.2.3.4', actorLogin: 'pos1', actorLayer: 'pos', subjectKind: 'account', subjectRef: 'ag1' }],
+      items: [{ id: 'ev1', at: '2026-11-08T10:00:00.000Z', action: 'fund', result: 'fail', reason: 'FORBIDDEN', ip: '1.2.3.4', actorLogin: 'pos1', actorLayer: 'pos', subjectKind: 'account', subjectRef: 'ag1' }],
       nextCursor: null,
     });
     expect(asked[0].where).toMatchObject({

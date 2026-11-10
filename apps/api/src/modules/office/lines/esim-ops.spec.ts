@@ -318,10 +318,10 @@ describe('immediate eSIM activation', () => {
     const task = await work();
     await service.completeTask(gate, String(task.id), { iccid: '8997202000000000002', qr: QR });
     const listed = await service.providerOperations(gate);
-    const byKind = Object.fromEntries(listed.entries.map((row) => [row.kind, row.cost]));
+    const byKind = Object.fromEntries(listed.items.map((row) => [row.kind, row.cost]));
     expect(byKind).toEqual({ activate: 2400, esim: 400 });
     // Each row also names the eSIM fee inside its cost, so the page can tag it.
-    expect(listed.entries.map((row) => row.esimPrice)).toEqual([400, 400]);
+    expect(listed.items.map((row) => row.esimPrice)).toEqual([400, 400]);
     expect(listed.stats.cost).toBe(2800);
   });
 

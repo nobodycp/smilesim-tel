@@ -9,9 +9,9 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
 import { parseInput } from '../../shared/input';
-import { feedPosition } from '../kernel/feed';
 import type { Actor } from '../kernel/types';
-import { FEED_PAGE, afterFeed, encodeFeedCursor, mergeFeed } from '../rules/office-paging';
+import { after, cursorPosition, page } from '../../shared/paging';
+import { FEED_PAGE } from '../rules/office-paging';
 import { visibleAccountIds } from '../rules/office-rules';
 import { CeilingBody, DeductBody, FundBody } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
@@ -132,12 +132,12 @@ export class WalletsService {
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
     };
     const [read, total] = await Promise.all([
-      this.repo.entriesWithAccounts({ ...where, AND: afterFeed(feedPosition(query.cursor)) }, FEED_PAGE + 1),
+      this.repo.entriesWithAccounts({ ...where, AND: after(cursorPosition(query.cursor)) }, FEED_PAGE + 1),
       this.repo.countEntries(where),
     ]);
-    const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
+    const { items: rows, nextCursor } = page(read, FEED_PAGE);
     return {
-      entries: rows.map((row) => ({
+      items: rows.map((row) => ({
         /** The wallet's account; `margin` stays in the shape and is null (the viewer's own wallet carries none). */
         loginName: row.user?.loginName ?? actor.loginName,
         layer: row.user?.layer ?? actor.layer,
@@ -219,14 +219,13 @@ export class WalletsService {
     const monthCost = chosen
       .filter((row) => row.at.getFullYear() === now.getFullYear() && row.at.getMonth() === now.getMonth())
       .reduce((sum, row) => sum + row.cost, 0);
-    const position = query.cursor ? feedPosition(query.cursor) : undefined;
+    const position = cursorPosition(query.cursor);
     const window = position
       ? ranged.filter((row) => row.at < position.at || (row.at.getTime() === position.at.getTime() && row.id < position.id))
       : ranged;
-    const page = window.slice(0, FEED_PAGE);
-    const last = page[page.length - 1];
+    const { items, nextCursor } = page(window, FEED_PAGE, (row) => row.at);
     return {
-      entries: page.map((row) => ({
+      items: items.map((row) => ({
         id: row.id,
         at: row.at.toISOString(),
         kind: row.kind,
@@ -242,7 +241,7 @@ export class WalletsService {
         providerAmount: matches.get(row.id)?.providerAmount ?? null,
         difference: matches.get(row.id)?.difference ?? null,
       })),
-      nextCursor: window.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.at, id: last.id }) : null,
+      nextCursor,
       total: ranged.length,
       stats: {
         count: ranged.length,
@@ -441,22 +440,21 @@ export class WalletsService {
   }
 
   async finance(actor: Actor, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
-    const position = feedPosition(query.cursor);
+    const position = cursorPosition(query.cursor);
     const where = await this.financeWhere(actor, query);
     const [rows, total] = await Promise.all([
       // The page cursor joins the ledger filter instead of replacing its own conditions.
-      this.repo.entriesWithAccounts(position ? { AND: [where, { OR: [{ createdAt: { lt: position.at } }, { createdAt: position.at, id: { lt: position.id } }] }] } : where, FEED_PAGE + 1),
+      this.repo.entriesWithAccounts(position ? { AND: [where, ...after(position)] } : where, FEED_PAGE + 1),
       this.repo.countEntries(where),
     ]);
-    const page = rows.slice(0, FEED_PAGE);
-    const last = page[page.length - 1];
-    const ladders = await this.laddersFor(page);
-    const margins = await this.marginsFor(actor, page);
+    const { items, nextCursor } = page(rows, FEED_PAGE);
+    const ladders = await this.laddersFor(items);
+    const margins = await this.marginsFor(actor, items);
     const accounts = actor.layer === 'branch' ? await this.tree.accounts() : [];
     const byId = new Map(accounts.map((account) => [account.id, account]));
     return {
       total,
-      entries: page.map((row) => ({
+      items: items.map((row) => ({
         /**
          * For the branch: what every account in the sale's chain earned on it, branch first. Null for other viewers
          * and for entries that are not a sale or a refund.
@@ -483,7 +481,7 @@ export class WalletsService {
         esimPrice: row.esimPrice ?? null,
         note: row.note ?? '',
       })),
-      nextCursor: rows.length > FEED_PAGE && last ? encodeFeedCursor({ createdAt: last.createdAt, id: last.id }) : null,
+      nextCursor,
     };
   }
 }

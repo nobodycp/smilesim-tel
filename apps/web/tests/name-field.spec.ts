@@ -14,7 +14,7 @@ const packages = [
 test('a filter is typed: closest names first, keys move, Enter picks, × clears', async ({ page }) => {
   const calls = await serveOffice(page, 'branch', {
     'GET /packages': () => ({ body: { packages, companies: [] } }),
-    'GET /tasks': () => ({ body: { tasks: [], nextCursor: null, total: 0 } }),
+    'GET /tasks': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://admin.localhost:3910/tasks');
   const company = page.locator('.filter-panel').getByRole('combobox', { name: 'الشركة' });
@@ -56,7 +56,7 @@ test('a filter is typed: closest names first, keys move, Enter picks, × clears'
 
 test('Esc closes the list and leaves a dialog around the field open', async ({ page }) => {
   await serveOffice(page, 'branch', {
-    'GET /lines': () => ({ body: { lines: [], nextCursor: null, total: 0, poses: [{ loginName: 'pos1', nickname: 'محل الأمل' }, { loginName: 'pos2', nickname: 'نقطة النور' }] } }),
+    'GET /lines': () => ({ body: { items: [], nextCursor: null, total: 0, poses: [{ loginName: 'pos1', nickname: 'محل الأمل' }, { loginName: 'pos2', nickname: 'نقطة النور' }] } }),
     'GET /packages': () => ({ body: { packages: packages.map((row) => ({ ...row, forSale: true, enabled: true })), companies: [] } }),
   });
   await page.goto('http://admin.localhost:3910/numbers');

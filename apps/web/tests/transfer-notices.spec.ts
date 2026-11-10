@@ -36,7 +36,7 @@ for (const locale of ['ar', 'en', 'he'] as const) {
     await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: admin }]);
     await serveOffice(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
-      'GET /notices': () => ({ body: { unread: notices.length, nextCursor: null, notices } }),
+      'GET /notices': () => ({ body: { unread: notices.length, nextCursor: null, items: notices } }),
     });
     await page.goto(`${admin}/`);
     await page.getByRole('button', { name: { ar: 'الإشعارات', en: 'Notices', he: 'התראות' }[locale], exact: true }).click();
@@ -51,7 +51,7 @@ test('the activity log names an account transfer and offers it as a filter', asy
   const calls = await serveOffice(page, 'branch', {
     'GET /audit': () => ({
       body: {
-        entries: [{
+        items: [{
           id: 'a1', at, action: 'user_transfer', result: 'ok', reason: '', ip: '', actorLogin: 'admin', actorLayer: 'branch',
           subjectKind: 'user', subjectRef: 'pos1',
         }],

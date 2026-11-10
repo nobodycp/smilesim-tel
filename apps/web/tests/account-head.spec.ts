@@ -20,7 +20,7 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
     'GET /users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [] } }),
     'POST /wallets/pos1/fund': () => ({ body: { ok: true } }),
     'POST /wallets/pos1/deduct': () => ({ body: { ok: true } }),
-    'GET /lines': () => ({ body: { lines: [{ id: 'ln1', msisdn: '0550000001', status: 'active', packageName: '400 جيجا', posLogin: 'pos1', endsAt: '2026-12-01T00:00:00.000Z' }], poses: [], nextCursor: null, total: 1 } }),
+    'GET /lines': () => ({ body: { items: [{ id: 'ln1', msisdn: '0550000001', status: 'active', packageName: '400 جيجا', posLogin: 'pos1', endsAt: '2026-12-01T00:00:00.000Z' }], poses: [], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1');
   const head = page.locator('.page-head');

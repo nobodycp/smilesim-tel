@@ -21,7 +21,7 @@ import { api, type PackageRow, type TaskRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { pick } from '../../../lib/fetched';
-import { usePaged } from '../../../lib/use-paged';
+import { pageRows, usePaged } from '../../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { taskTone } from '../../../lib/status-tone';
 
@@ -58,7 +58,7 @@ export function TasksScreen() {
           provider,
           cursor,
         }),
-        (data) => ({ rows: data.tasks, next: data.nextCursor, total: data.total }),
+        pageRows,
       ),
   );
   const { run } = useAction({ setError, setNote, onDone: list.reload });

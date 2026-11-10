@@ -13,7 +13,7 @@ import { api, type NoticeRow } from '../../../lib/api';
 import { noticeAge, noticeDetail, noticeGroup, noticeTitle } from '../../../lib/notice-text';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
-import { usePaged } from '../../../lib/use-paged';
+import { pageRows, usePaged } from '../../../lib/use-paged';
 
 const GROUPS = ['tasks', 'wallet', 'providers'] as const;
 
@@ -28,7 +28,7 @@ export function NoticesScreen() {
     async (cursor) =>
       pick(
         await api.officeNotices({ cursor, group: group || undefined, unread: unreadOnly }),
-        (data) => ({ rows: data.notices, next: data.nextCursor, total: data.total, extra: { unread: data.unread } }),
+        (data) => ({ ...pageRows(data), extra: { unread: data.unread } }),
       ),
   );
   const unread = list.extra?.unread ?? 0;
