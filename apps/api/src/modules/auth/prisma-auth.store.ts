@@ -1,3 +1,4 @@
+import { open, seal } from '../shared/secret-box';
 import { hashSessionToken, newSessionToken } from './session-token';
 import { logger } from '../shared/log';
 import { env as readEnv, wholeEnv } from '../../config';
@@ -69,11 +70,21 @@ function toStoredUser(row: UserRecord): StoredUser {
     phone: row.phone ?? undefined,
     city: row.city,
     address: row.address,
-    twoFactorSecret: row.twoFactorSecret,
-    pendingTwoFactorSecret: row.pendingTwoFactorSecret,
+    // Sealed at rest (shared/secret-box.ts); a row written before sealing reads as it is.
+    twoFactorSecret: row.twoFactorSecret ? open(row.twoFactorSecret) : row.twoFactorSecret,
+    pendingTwoFactorSecret: row.pendingTwoFactorSecret ? open(row.pendingTwoFactorSecret) : row.pendingTwoFactorSecret,
     twoFactorMethod: TWO_FACTOR_METHODS.find((method) => method === row.twoFactorMethod) ?? 'app',
     maxSessions: row.maxSessions ?? null,
     sessionMinutes: row.sessionMinutes ?? null,
+  };
+}
+
+/** The patch with its authenticator secrets sealed; everything else untouched. */
+function sealedSecrets<P extends { twoFactorSecret?: string | null; pendingTwoFactorSecret?: string | null }>(patch: P): P {
+  return {
+    ...patch,
+    ...(typeof patch.twoFactorSecret === 'string' ? { twoFactorSecret: seal(patch.twoFactorSecret) } : {}),
+    ...(typeof patch.pendingTwoFactorSecret === 'string' ? { pendingTwoFactorSecret: seal(patch.pendingTwoFactorSecret) } : {}),
   };
 }
 
@@ -401,7 +412,23 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   }
 
   async updateUser(userId: string, patch: UserPatch): Promise<void> {
-    await this.prisma.user.updateMany({ where: { id: userId }, data: patch });
+    await this.prisma.user.updateMany({ where: { id: userId }, data: sealedSecrets(patch) });
+  }
+
+  /** Seals every authenticator secret still stored as written. Safe to run again; answers how many it sealed. */
+  async sealStoredSecrets(): Promise<number> {
+    const rows = await this.prisma.user.findMany({
+      where: { OR: [{ twoFactorSecret: { not: null } }, { pendingTwoFactorSecret: { not: null } }] },
+      select: { id: true, twoFactorSecret: true, pendingTwoFactorSecret: true },
+    });
+    let sealedRows = 0;
+    for (const row of rows) {
+      const next = sealedSecrets({ twoFactorSecret: row.twoFactorSecret, pendingTwoFactorSecret: row.pendingTwoFactorSecret });
+      if (next.twoFactorSecret === row.twoFactorSecret && next.pendingTwoFactorSecret === row.pendingTwoFactorSecret) continue;
+      await this.prisma.user.updateMany({ where: { id: row.id }, data: next });
+      sealedRows += 1;
+    }
+    return sealedRows;
   }
 
   async putSecret(key: string, value: string, ttlSeconds: number): Promise<void> {

@@ -120,6 +120,9 @@ Every route is in a domain controller (table above). `testing/routes.http.spec.t
 - **Sessions:** the `sid` cookie is a random token (`auth/session-token.ts`); PostgreSQL keeps `Session.tokenHash`
   and Redis the key `session:<tokenHash>`. `Session.id` is the public handle (list, revoke, `operatorId`) and opens
   nothing. `saveSession` answers the token; `liveSession(token)` reads by its hash.
+- **Secrets at rest:** `shared/secret-box.ts` (`seal`, `open`; AES-256-GCM, `v1:` prefix). `PrismaAuthStore` seals
+  `twoFactorSecret` / `pendingTwoFactorSecret` on write and opens them on read; a value stored before sealing reads
+  as it is. `src/seal-secrets.ts` seals what is already stored.
 - **Config and logs:** `config.ts` only; Nest `Logger` only (`shared/log.ts`).
 
 ## Data model (`prisma/schema.prisma`, 50 migrations)
@@ -150,8 +153,9 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
   six services still receive a `UnitOfWork` they no longer use; `AccountsService.remove` deletes outside a
   transaction; a rename applied by a task answers 500, not 409, when it loses a race for the number.
 - `rules/office-rules.ts` mixes modes, SIM rules and refund periods; split by topic.
-- TOTP secrets are stored in clear (review S12): part 2 of
-  `docs/superpowers/plans/2026-11-10-session-and-secret-storage.md`. The old-Redis-key fallback in
+- Authenticator (2FA) secrets are sealed only where `SECRETS_KEY` is set (32 bytes, base64); no environment has
+  one yet. After setting it, run `npm run seal-secrets --workspace api` once to seal the secrets already stored. A
+  lost key locks app-2FA users out (the owner can clear 2FA per account). The old-Redis-key fallback in
   `PrismaAuthStore.hasLiveKey` is to be removed after 2026-12-15.
 - Lists without paging (`wallets`, `directory`, `packages`, `companies`, `offers`) and the three cursor formats
   (review A7); route naming and the two `reports/:kind` generations (A8, A12) need the web app to move with them.

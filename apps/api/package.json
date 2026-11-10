@@ -7,7 +7,8 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --watchman=false",
     "start": "node dist/main.js",
     "start:worker": "node dist/worker.js",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "seal-secrets": "node dist/seal-secrets.js"
   },
   "dependencies": {
     "@nestjs/common": "^12.3.2",

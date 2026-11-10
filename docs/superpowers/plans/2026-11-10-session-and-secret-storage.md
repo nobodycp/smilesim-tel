@@ -44,17 +44,17 @@ not in the session list; enter, handoff and leave work.
 
 ## Part 2 — sealed 2FA secrets
 
-- [ ] **T.1 `secret-box`.** `src/modules/shared/secret-box.ts`: `seal`, `open`, `isSealed`; key from
+- [x] **T.1 (this commit) `secret-box`.** `src/modules/shared/secret-box.ts`: `seal`, `open`, `isSealed`; key from
   `config.ts` (`SECRETS_KEY` added to `ENV_NAMES`, validated as 32 bytes). Spec: round trip, a tampered value is
   refused, a plain value passes through `open` unchanged, no key → `seal` returns the plain text.
-- [ ] **T.2 Store seals and opens.** `prisma-auth.store.ts`: `updateUser` seals `twoFactorSecret` and
+- [x] **T.2 (this commit) Store seals and opens.** `prisma-auth.store.ts`: `updateUser` seals `twoFactorSecret` and
   `pendingTwoFactorSecret`; `toStoredUser` opens them. `prisma-auth.store.spec.ts`: what is written is sealed, what
   is read is plain, an old plain row still reads.
-- [ ] **T.3 Production without a key.** `config.ts` `productionWarnings()` line; `auth.service.ts`
+- [ ] **T.3 Production without a key.** Half done: the boot warning is in. **Not done, owner's decision:** refusing new app-2FA enrolment in production without a key (spec decision 7); today such a process stores the secret unsealed, as before. `config.ts` `productionWarnings()` line; `auth.service.ts`
   `setupTwoFactor` refuses in production when `SECRETS_KEY` is unset (spec decision 7 — confirm with the owner
   first). Spec in `auth/two-factor.http.spec.ts`.
-- [ ] **T.4 Backfill.** `apps/api/scripts/seal-secrets.ts` + `"seal-secrets"` script: reads users with a plain
+- [x] **T.4 (this commit; `src/seal-secrets.ts`, `npm run seal-secrets --workspace api` after a build — not run on any environment: none has a key yet) Backfill.** `apps/api/scripts/seal-secrets.ts` + `"seal-secrets"` script: reads users with a plain
   secret, seals, writes; prints counts; safe to run twice. Run locally against the dev database; document the
   command in `docs/architecture/backend.md` ("before real sales").
-- [ ] **T.5 Docs.** ADR `0013-session-tokens-and-sealed-secrets.md`; backend map; the review file's S6 / S12 marked
+- [ ] **T.5 Partly: the backend map says it; no ADR yet, and `docker-compose.yml` / the Coolify env list do not name `SECRETS_KEY` (the owner sets it). Docs.** ADR `0013-session-tokens-and-sealed-secrets.md`; backend map; the review file's S6 / S12 marked
   done; `docker-compose.yml` and the Coolify env list name `SECRETS_KEY`.

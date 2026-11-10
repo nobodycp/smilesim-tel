@@ -362,6 +362,25 @@ describe('PrismaAuthStore', () => {
       expect(await store.findByLogin('pos')).toMatchObject({ twoFactorEnabled: true, twoFactorSecret: 'PENDING', pendingTwoFactorSecret: null });
     });
 
+    it('seals an authenticator secret at rest when a key is set, reads it back plain, and still reads an old plain row (review 2026-11-10, S12)', async () => {
+      const previous = process.env.SECRETS_KEY;
+      process.env.SECRETS_KEY = Buffer.alloc(32, 3).toString('base64');
+      try {
+        await store.seedTrialAccountsIfEmpty();
+        const row = prisma.users.find((u) => u.loginName === 'pos')!;
+        await store.updateUser(row.id as string, { twoFactorEnabled: true, twoFactorSecret: 'JBSWY3DPEHPK3PXP' });
+        expect(row.twoFactorSecret).toMatch(/^v1:/);
+        expect(String(row.twoFactorSecret)).not.toContain('JBSWY3DPEHPK3PXP');
+        expect((await store.findByLogin('pos'))?.twoFactorSecret).toBe('JBSWY3DPEHPK3PXP');
+        // A row written before sealing existed.
+        row.twoFactorSecret = 'OLDPLAINSECRET';
+        expect((await store.findByLogin('pos'))?.twoFactorSecret).toBe('OLDPLAINSECRET');
+      } finally {
+        if (previous === undefined) delete process.env.SECRETS_KEY;
+        else process.env.SECRETS_KEY = previous;
+      }
+    });
+
     it('defaults every layer to not required and saves a change', async () => {
       expect(await store.policy()).toEqual({ branch: false, main_agent: false, agent: false, pos: false });
       await store.setPolicy('agent', true);
