@@ -41,7 +41,7 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
     repository's `upsert` is never called), `line-snapshots.service.spec.ts` (two runs in a day leave one row).
   - Guard: `architecture.spec.ts` `write-in-get` — a controller `@Get` whose service method reaches `runTx`, or a
     repository write, fails. Baseline from today's count.
-- [x] **A.4 Query filters by schema (after D2).** (COMMIT; D2 = `400 INVALID`, the owner said «اكمل» to the
+- [x] **A.4 Query filters by schema (after D2).** (f2272b1; D2 = `400 INVALID`, the owner said «اكمل» to the
   proposal. One commit, not one a controller: every `@Get` with a query takes `@Query() query: XQuery` and its
   service parses it after its permission check. `queryText` / `queryOneOf` / `queryFlag` / `queryDay` /
   `queryCursor` in `shared/schemas.ts`, `ApiZodQuery` in `openapi/query.ts`, guard `untyped-query` 73 → 0.
