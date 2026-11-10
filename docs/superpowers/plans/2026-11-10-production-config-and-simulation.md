@@ -13,7 +13,7 @@ unless said. Local only: not pushed, not deployed.
 - [x] **P.3 Sign-in limit.** `src/rate-limit.middleware.ts`: no production skip; one log line for `TRUST_PROXY=0`
   with a forwarded header. `src/rate-limit.middleware.spec.ts`.
 - [x] **P.4 Deployment files.** Root `docker-compose.yml`, `docker-compose.override.yml`, `.env.example`.
-- [x] **P.5 Maps.** `docs/architecture/backend.md`, ADR 0016 (0011 marked as changed by it).
+- [x] **P.5 Maps.** (slice commit b07a6b6) `docs/architecture/backend.md`, ADR 0016 (0011 marked as changed by it).
 
 ## Before a deploy (owner; nothing here was done on the server)
 
