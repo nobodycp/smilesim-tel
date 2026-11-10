@@ -1,3 +1,4 @@
+import { hashSessionToken, newSessionToken } from './session-token';
 import { logger } from '../shared/log';
 import { env as readEnv, wholeEnv } from '../../config';
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
@@ -29,7 +30,8 @@ export type AuthStoreClients = { prisma: PrismaClient; redis: Redis };
 
 const LAYERS: readonly Layer[] = ['branch', 'main_agent', 'agent', 'pos'];
 
-const sessionKey = (sessionId: string) => `session:${sessionId}`;
+/** The live key of a session, named by the hash of its token: Redis holds no token either. */
+const sessionKey = (tokenHash: string) => `session:${tokenHash}`;
 const failureKey = (loginName: string) => `login-fail:${loginName}`;
 const secretKey = (key: string) => `auth-secret:${key}`;
 
@@ -249,9 +251,9 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   }
 
   /** Keeps only the ids whose live key is still present in Redis. */
-  private async withLiveKey<T extends { id: string }>(rows: T[]): Promise<T[]> {
+  private async withLiveKey<T extends { tokenHash: string }>(rows: T[]): Promise<T[]> {
     if (rows.length === 0) return rows;
-    const values = await this.redis.mget(rows.map((row) => sessionKey(row.id)));
+    const values = await this.redis.mget(rows.map((row) => sessionKey(row.tokenHash)));
     return rows.filter((_, index) => values[index] !== null);
   }
 
@@ -272,8 +274,11 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   async saveSession(input: { userId: string; scope: SessionScope; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
     const idle = await this.idleOf(input.userId);
-    const row = await this.prisma.session.create({
+    const token = newSessionToken();
+    const tokenHash = hashSessionToken(token);
+    await this.prisma.session.create({
       data: {
+        tokenHash,
         userId: input.userId,
         scope: input.scope,
         kind: 'account',
@@ -284,9 +289,9 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
         expiresAt: new Date(now.getTime() + idle * 1000),
       },
     });
-    await this.redis.set(sessionKey(row.id), input.userId, 'EX', idle);
+    await this.redis.set(sessionKey(tokenHash), input.userId, 'EX', idle);
     if (input.scope === 'full') await this.freezeGrants(input.userId);
-    return row.id;
+    return token;
   }
 
   private async freezeGrants(userId: string) {
@@ -301,8 +306,11 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   async saveImpersonation(input: { userId: string; operatorId: string; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
     const idle = await this.idleOf(input.userId);
-    const row = await this.prisma.session.create({
+    const token = newSessionToken();
+    const tokenHash = hashSessionToken(token);
+    await this.prisma.session.create({
       data: {
+        tokenHash,
         userId: input.userId,
         scope: 'full',
         kind: 'impersonation',
@@ -314,14 +322,15 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
         expiresAt: new Date(now.getTime() + idle * 1000),
       },
     });
-    await this.redis.set(sessionKey(row.id), input.userId, 'EX', idle);
-    return row.id;
+    await this.redis.set(sessionKey(tokenHash), input.userId, 'EX', idle);
+    return token;
   }
 
   async revokeSessions(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
+    const rows = await this.prisma.session.findMany({ where: { id: { in: ids } }, select: { tokenHash: true } });
     await this.prisma.session.updateMany({ where: { id: { in: ids }, revokedAt: null }, data: { revokedAt: new Date() } });
-    await this.redis.del(...ids.map(sessionKey));
+    if (rows.length > 0) await this.redis.del(...rows.map((row) => sessionKey(row.tokenHash)));
   }
 
   async dropLiveSessions(userId: string): Promise<void> {
@@ -329,9 +338,22 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     await this.revokeSessions(rows.map((row) => row.id));
   }
 
-  async liveSession(sessionId: string): Promise<{ session: SessionRow; user: StoredUser; rules: SessionRules } | null> {
-    if (!(await this.redis.exists(sessionKey(sessionId)))) return null;
-    const row = await this.prisma.session.findUnique({ where: { id: sessionId }, include: { user: true } });
+  /**
+   * Whether the token's live key exists. Sessions opened before 2026-11-10 kept their key under the cookie value
+   * itself: such a key is renamed to its hash the first time it is seen. Remove this fallback after 2026-12-15
+   * (longer than any idle rule lets a session live untouched).
+   */
+  private async hasLiveKey(token: string, tokenHash: string): Promise<boolean> {
+    if (await this.redis.exists(sessionKey(tokenHash))) return true;
+    if (!(await this.redis.exists(`session:${token}`))) return false;
+    await this.redis.rename(`session:${token}`, sessionKey(tokenHash));
+    return true;
+  }
+
+  async liveSession(token: string): Promise<{ session: SessionRow; user: StoredUser; rules: SessionRules } | null> {
+    const tokenHash = hashSessionToken(token);
+    if (!(await this.hasLiveKey(token, tokenHash))) return null;
+    const row = await this.prisma.session.findUnique({ where: { tokenHash }, include: { user: true } });
     if (!row || row.revokedAt || row.expiresAt.getTime() <= Date.now()) return null;
     const user = toStoredUser(row.user);
     const rules = await this.rulesFor(user);
@@ -340,8 +362,8 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     return { session: toSessionRow(row), user, rules };
   }
 
-  async userBySession(sessionId: string): Promise<LoginUser | null> {
-    const found = await this.liveSession(sessionId);
+  async userBySession(token: string): Promise<LoginUser | null> {
+    const found = await this.liveSession(token);
     if (!found) return null;
     const { user } = found;
     return {
@@ -357,16 +379,17 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
   }
 
   /** Renews the key's TTL, and only for a key that still exists; the row follows. */
-  async touchSession(sessionId: string, idleSeconds?: number): Promise<void> {
+  async touchSession(token: string, idleSeconds?: number): Promise<void> {
+    const tokenHash = hashSessionToken(token);
     let idle = idleSeconds;
     if (idle === undefined) {
-      const row = await this.prisma.session.findUnique({ where: { id: sessionId }, include: { user: true } });
+      const row = await this.prisma.session.findUnique({ where: { tokenHash }, include: { user: true } });
       idle = row ? (await this.rulesFor(toStoredUser(row.user))).idleSeconds : effectiveRules(null, null).idleSeconds;
     }
-    if ((await this.redis.expire(sessionKey(sessionId), idle)) !== 1) return;
+    if ((await this.redis.expire(sessionKey(tokenHash), idle)) !== 1) return;
     const now = new Date();
     await this.prisma.session.updateMany({
-      where: { id: sessionId, revokedAt: null },
+      where: { tokenHash, revokedAt: null },
       data: { lastSeenAt: now, expiresAt: new Date(now.getTime() + idle * 1000) },
     });
   }

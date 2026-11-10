@@ -89,13 +89,14 @@ export interface AuthStore {
   policy(): Promise<Record<Layer, boolean>>;
   setPolicy(layer: Layer, required: boolean): Promise<void>;
   listFullSessions(userId: string): Promise<FullSessionRow[]>;
+  /** Opens a session and answers its **token**, the cookie value. The session's `id` is a different thing. */
   saveSession(input: { userId: string; scope: SessionScope; userAgent: string; ip: string }): Promise<string>;
   /** A full session that does not take one of the account's three slots. */
   saveImpersonation(input: { userId: string; operatorId: string; userAgent: string; ip: string }): Promise<string>;
   revokeSessions(ids: string[]): Promise<void>;
   userBySession(sessionId: string): Promise<LoginUser | null>;
   /** The live session, its owner and the owner's rules; null when missing, revoked, expired, or idle past the rules. */
-  liveSession(sessionId: string): Promise<{ session: SessionRow; user: StoredUser; rules: SessionRules } | null>;
+  liveSession(token: string): Promise<{ session: SessionRow; user: StoredUser; rules: SessionRules } | null>;
   /** Sets lastSeenAt to now and pushes the expiry the owner's idle time ahead (given, or read from the rules). */
   touchSession(sessionId: string, idleSeconds?: number): Promise<void>;
   /** Each layer's own session values (null follows the default). */

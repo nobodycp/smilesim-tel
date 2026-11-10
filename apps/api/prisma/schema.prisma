@@ -67,6 +67,8 @@ model Session {
   ip         String
   scope      String
   kind       String
+  /** SHA-256 of the cookie token. The token itself is stored nowhere; `id` is the public handle. */
+  tokenHash  String    @unique
   /** On an entered (impersonation) session: the branch account that entered. Who acted is read from here. */
   operatorId String?
   createdAt  DateTime  @default(now())

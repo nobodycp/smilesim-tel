@@ -1,3 +1,4 @@
+import { hashSessionToken } from './session-token';
 import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { PrismaClient } from '../../generated/prisma/client';
@@ -292,49 +293,61 @@ describe('PrismaAuthStore', () => {
 
     const save = (scope: 'full' | 'two_factor' = 'full') => store.saveSession({ userId, scope, userAgent: 'ua', ip: '127.0.0.1' });
 
+    // What is stored for a token: its hash names the Redis key and the row; the row's id is a different value.
+    const keyOf = (token: string) => `session:${hashSessionToken(token)}`;
+    const idOf = (token: string) => prisma.sessions.find((row) => row.tokenHash === hashSessionToken(token))!.id as string;
+
     it('keeps the row in PostgreSQL and the live key in Redis with the session TTL', async () => {
-      const id = await save();
+      const token = await save();
       expect(prisma.sessions).toHaveLength(1);
-      expect(redis.ttl(`session:${id}`)).toBe(SESSION_TTL_SECONDS);
-      const live = await store.liveSession(id);
-      expect(live?.session).toMatchObject({ id, userId, scope: 'full', kind: 'account' });
+      expect(redis.ttl(keyOf(token))).toBe(SESSION_TTL_SECONDS);
+      const live = await store.liveSession(token);
+      expect(live?.session).toMatchObject({ id: idOf(token), userId, scope: 'full', kind: 'account' });
       expect(live?.user.loginName).toBe('pos');
     });
 
+    it('stores the token nowhere: not in the row, not in the key, and the id opens nothing (review 2026-11-10, S6)', async () => {
+      const token = await save();
+      expect(JSON.stringify(prisma.sessions)).not.toContain(token);
+      expect(await redis.exists(`session:${token}`)).toBe(0);
+      expect(idOf(token)).not.toBe(token);
+      expect(await store.liveSession(idOf(token))).toBeNull();
+    });
+
     it('renews the key on touch', async () => {
-      const id = await save();
+      const token = await save();
       redis.advance(1000);
-      expect(redis.ttl(`session:${id}`)).toBe(SESSION_TTL_SECONDS - 1000);
-      await store.touchSession(id);
-      expect(redis.ttl(`session:${id}`)).toBe(SESSION_TTL_SECONDS);
+      expect(redis.ttl(keyOf(token))).toBe(SESSION_TTL_SECONDS - 1000);
+      await store.touchSession(token);
+      expect(redis.ttl(keyOf(token))).toBe(SESSION_TTL_SECONDS);
     });
 
     it('treats a session whose key has expired as gone, and does not revive it on touch', async () => {
-      const id = await save();
+      const token = await save();
       redis.advance(SESSION_TTL_SECONDS);
-      expect(await store.liveSession(id)).toBeNull();
-      await store.touchSession(id);
-      expect(await redis.exists(`session:${id}`)).toBe(0);
+      expect(await store.liveSession(token)).toBeNull();
+      await store.touchSession(token);
+      expect(await redis.exists(keyOf(token))).toBe(0);
       expect(await store.listSessions(userId)).toEqual([]);
     });
 
     it('deletes the key and marks the row revoked when a session ends', async () => {
       const first = await save();
       const second = await save();
-      await store.revokeSessions([first]);
-      expect(await redis.exists(`session:${first}`)).toBe(0);
-      expect(await redis.exists(`session:${second}`)).toBe(1);
-      expect(prisma.sessions.find((s) => s.id === first)!.revokedAt).toBeInstanceOf(Date);
+      await store.revokeSessions([idOf(first)]);
+      expect(await redis.exists(keyOf(first))).toBe(0);
+      expect(await redis.exists(keyOf(second))).toBe(1);
+      expect(prisma.sessions.find((s) => s.id === idOf(first))!.revokedAt).toBeInstanceOf(Date);
       expect(await store.liveSession(first)).toBeNull();
-      expect((await store.listFullSessions(userId)).map((s) => s.id)).toEqual([second]);
+      expect((await store.listFullSessions(userId)).map((s) => s.id)).toEqual([idOf(second)]);
     });
 
     it('deletes every key of a user whose account is disabled', async () => {
       const full = await save();
       const pending = await save('two_factor');
       await store.dropLiveSessions(userId);
-      expect(await redis.exists(`session:${full}`)).toBe(0);
-      expect(await redis.exists(`session:${pending}`)).toBe(0);
+      expect(await redis.exists(keyOf(full))).toBe(0);
+      expect(await redis.exists(keyOf(pending))).toBe(0);
       expect(await store.liveSession(full)).toBeNull();
     });
   });

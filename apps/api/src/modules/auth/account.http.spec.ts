@@ -262,13 +262,13 @@ describe('account endpoints', () => {
     expect(listed.status).toBe(200);
     expect(listed.body.sessions).toHaveLength(2);
     expect(listed.body.sessions.filter((s: { current: boolean }) => s.current)).toHaveLength(1);
-    const current = listed.body.sessions.find((s: { current: boolean }) => s.current);
-    expect(current.id).toBe(second.split('=')[1]);
+    // The list names sessions by their id; the cookie's token appears nowhere in it (review 2026-11-10, S6).
+    expect(JSON.stringify(listed.body)).not.toContain(second.split('=')[1]);
   });
 
   it('omits an expired full session from the list', async () => {
     const second = cookieOf(await login('pos', '123456'));
-    const secondId = second.split('=')[1];
+    const secondId = (await store.liveSession(second.split('=')[1]))!.session.id;
     store.sessions.find((s) => s.id === secondId)!.expiresAt = new Date(Date.now() - 1000);
     const listed = await request(app.getHttpServer()).get('/auth/sessions').set('Cookie', fullCookie);
     expect(listed.status).toBe(200);

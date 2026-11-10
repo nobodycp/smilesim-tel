@@ -1,3 +1,4 @@
+import { hashSessionToken, newSessionToken } from '../session-token';
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { AuthStore, FullSessionRow, NewPasskey, PasskeyRow, SessionKind, SessionRow, SessionScope, StoredUser, UserPatch } from '../auth.store';
@@ -9,6 +10,8 @@ import { failureWindowExpired } from '../validators';
 
 export type MemorySession = {
   id: string;
+  /** SHA-256 of the cookie token, as the real store keeps it. */
+  tokenHash: string;
   userId: string;
   scope: SessionScope;
   kind: SessionKind;
@@ -116,9 +119,11 @@ export class MemoryAuthStore implements AuthStore {
   async saveSession(input: { userId: string; scope: SessionScope; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
     const id = randomUUID();
+    const token = newSessionToken();
     const idle = await this.idleOf(input.userId);
     this.sessions.push({
       id,
+      tokenHash: hashSessionToken(token),
       userId: input.userId,
       scope: input.scope,
       kind: 'account',
@@ -132,15 +137,17 @@ export class MemoryAuthStore implements AuthStore {
     this.liveSessionKeys.add(id);
     const owner = this.userById(input.userId);
     if (owner) this.liveKeys.add(owner.loginName);
-    return id;
+    return token;
   }
 
   async saveImpersonation(input: { userId: string; operatorId: string; userAgent: string; ip: string }): Promise<string> {
     const now = new Date();
     const id = randomUUID();
+    const token = newSessionToken();
     const idle = await this.idleOf(input.userId);
     this.sessions.push({
       id,
+      tokenHash: hashSessionToken(token),
       userId: input.userId,
       scope: 'full',
       kind: 'impersonation',
@@ -153,7 +160,7 @@ export class MemoryAuthStore implements AuthStore {
       revokedAt: null,
     });
     this.liveSessionKeys.add(id);
-    return id;
+    return token;
   }
 
   async revokeSessions(ids: string[]): Promise<void> {
@@ -185,9 +192,11 @@ export class MemoryAuthStore implements AuthStore {
     return null;
   }
 
-  private liveRow(sessionId: string): MemorySession | null {
-    const session = this.sessions.find((s) => s.id === sessionId);
-    if (!session || !this.liveSessionKeys.has(sessionId) || session.revokedAt || session.expiresAt.getTime() <= Date.now()) return null;
+  /** The live session a cookie token opens; the token is looked up by its hash, never by the session's id. */
+  private liveRow(token: string): MemorySession | null {
+    const tokenHash = hashSessionToken(token);
+    const session = this.sessions.find((s) => s.tokenHash === tokenHash);
+    if (!session || !this.liveSessionKeys.has(session.id) || session.revokedAt || session.expiresAt.getTime() <= Date.now()) return null;
     return session;
   }
 

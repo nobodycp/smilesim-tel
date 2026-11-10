@@ -171,6 +171,12 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('cross-domain-repository-import', found);
   });
 
+  it('3.5 session-id-as-token: a session id is never the cookie and never a Redis key', () => {
+    // The cookie is a token; only its hash is stored (session-token.ts). A cookie written from `.id`, or a live key
+    // built from an id, would put the bearer secret back into the database and the session list.
+    check('session-id-as-token', hits(production, /res\.cookie\('(sid|home)',\s*[\w.]*\.id\b|sessionKey\((row|session)\.id\)|sessionKey\(sessionId\)/));
+  });
+
   it('5.6 test-code-imported: production code never imports test helpers', () => {
     check('test-code-imported', hits(production, /from '[^']*(\/testing\/[^']*|\.fixture|\.spec)'/));
   });

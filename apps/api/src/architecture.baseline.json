@@ -16,5 +16,6 @@
   "kernel-use": 0,
   "prisma-in-service": 10,
   "flat-office-module": 0,
-  "cross-domain-repository-import": 0
+  "cross-domain-repository-import": 0,
+  "session-id-as-token": 0
 }

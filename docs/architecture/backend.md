@@ -117,6 +117,9 @@ Every route is in a domain controller (table above). `testing/routes.http.spec.t
 - **Prices by layer:** `GET /office/packages` gives a layer its own column and the ones below; the rest is `null`.
 - **Visibility:** `accounts()` loads all users and filters in memory.
 - **Seeding:** `CatalogSeed.onModuleInit` runs `ensureCatalog` and the layer roles on every start (idempotent).
+- **Sessions:** the `sid` cookie is a random token (`auth/session-token.ts`); PostgreSQL keeps `Session.tokenHash`
+  and Redis the key `session:<tokenHash>`. `Session.id` is the public handle (list, revoke, `operatorId`) and opens
+  nothing. `saveSession` answers the token; `liveSession(token)` reads by its hash.
 - **Config and logs:** `config.ts` only; Nest `Logger` only (`shared/log.ts`).
 
 ## Data model (`prisma/schema.prisma`, 50 migrations)
@@ -147,8 +150,9 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
   six services still receive a `UnitOfWork` they no longer use; `AccountsService.remove` deletes outside a
   transaction; a rename applied by a task answers 500, not 409, when it loses a race for the number.
 - `rules/office-rules.ts` mixes modes, SIM rules and refund periods; split by topic.
-- Session ids are stored as written (review S6) and TOTP secrets in clear (S12); both need a migration of live
-  sessions and secrets.
+- TOTP secrets are stored in clear (review S12): part 2 of
+  `docs/superpowers/plans/2026-11-10-session-and-secret-storage.md`. The old-Redis-key fallback in
+  `PrismaAuthStore.hasLiveKey` is to be removed after 2026-12-15.
 - Lists without paging (`wallets`, `directory`, `packages`, `companies`, `offers`) and the three cursor formats
   (review A7); route naming and the two `reports/:kind` generations (A8, A12) need the web app to move with them.
 - Query-string filters are not schema-validated; an unknown filter value is still ignored.

@@ -1,3 +1,4 @@
+import { hashSessionToken } from '../../auth/session-token';
 import { logger, reason as why } from '../../shared/log';
 import { env } from '../../../config';
 import { Injectable, Optional } from '@nestjs/common';
@@ -77,7 +78,7 @@ export class ActivityRecorder {
   private async actorFromGate(db: PrismaClient, gate: Gate): Promise<{ id: string; loginName: string; layer: string } | null> {
     if (!gate.sessionId) return null;
     const session = await db.session.findUnique({
-      where: { id: gate.sessionId },
+      where: { tokenHash: hashSessionToken(gate.sessionId) },
       include: { user: { select: { id: true, loginName: true, layer: true } } },
     });
     if (!session) return null;
