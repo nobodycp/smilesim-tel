@@ -59,7 +59,7 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
   `updateRole`), `notices/notices.repository.ts` (`inboxPage`, `unreadCount`, `inboxCount`, `markRead`). Each
   registered in its module. `prisma-in-service` 10 → 0; the "fewer than five" sentence leaves
   `backend-engineering.mdc` 5.1 and the guard's comment.
-- [x] **B.2 Unused injections.** (COMMIT; checked by the running API's boot instead of a compiled one) Remove `uow` from the eight constructors named in the spec and from
+- [x] **B.2 Unused injections.** (399e446; checked by the running API's boot instead of a compiled one) Remove `uow` from the eight constructors named in the spec and from
   `testing/office-graph.ts` / `office-facade.ts`. Guard `unused-injection` at 0. Boot the compiled API once
   (`PORT=3099 node dist/main.js`, `/health`): dependency injection errors show only at boot.
 - [ ] **B.3 `office-rules.ts` by topic.** Create `rules/periods.ts`, `rules/prices.ts`, `rules/run-modes.ts`,
