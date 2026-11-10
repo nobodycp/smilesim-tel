@@ -7,12 +7,11 @@ import { GRANT_CODES } from '../rules/office-grants';
 const flag = z.boolean().optional();
 
 /**
- * POST roles — a new job role, or a change to the role `id` names. The grants come as a list of codes; without a
- * list, the seven older yes/no flags are read instead. A layer role keeps its name, so the name's minimum is the
- * service's to check.
+ * POST roles (a new job role) and PUT roles/:id (a change to that role). The grants come as a list of codes;
+ * without a list, the seven older yes/no flags are read instead. A layer role keeps its name, so the name's
+ * minimum is the service's to check.
  */
 export const RoleBody = z.object({
-  id: z.string().max(64).optional(),
   name: z.string().trim().max(60).optional(),
   grants: z.array(z.enum(GRANT_CODES)).max(64).optional(),
   read: flag,

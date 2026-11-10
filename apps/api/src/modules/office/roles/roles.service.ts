@@ -41,26 +41,31 @@ export class RolesService {
     };
   }
 
-  async save(actor: Actor, body: unknown) {
+  /** A new job role. */
+  async create(actor: Actor, body: unknown) {
     requireOwner(actor);
+    const { name, listed, flags } = this.read(body);
+    if (name.length < 2) fail(400, 'INVALID');
+    await this.uow.prisma.role.create({ data: { name, kind: 'job', ...flags, grants: listed.join(',') } });
+    return { ok: true as const };
+  }
+
+  /** A role's grants, and its name unless it is a layer role (a layer role keeps the name it was made with). */
+  async update(actor: Actor, id: string, body: unknown) {
+    requireOwner(actor);
+    const { name: sent, listed, flags } = this.read(body);
+    const existing = await this.uow.prisma.role.findUnique({ where: { id } });
+    if (!existing) fail(404, 'NOT_FOUND');
+    const name = existing.kind === 'layer' ? existing.name : sent;
+    if (name.length < 2) fail(400, 'INVALID');
+    await this.uow.prisma.role.update({ where: { id }, data: { name, ...flags, grants: listed.join(',') } });
+    return { ok: true as const };
+  }
+
+  private read(body: unknown) {
     const input = parseInput(RoleBody, body);
     // `splitGrants` drops a code named twice.
     const listed = input.grants ? splitGrants(input.grants.join(',')) : FLAG_CODES.filter((code) => input[code] === true);
-    const flags = flagsFor(listed);
-    const sent = input.name ?? '';
-    if (input.id) {
-      const existing = await this.uow.prisma.role.findUnique({ where: { id: input.id } });
-      if (!existing) fail(404, 'NOT_FOUND');
-      const name = existing.kind === 'layer' ? existing.name : sent;
-      if (name.length < 2) fail(400, 'INVALID');
-      await this.uow.prisma.role.update({
-        where: { id: input.id },
-        data: { name, ...flags, grants: listed.join(',') },
-      });
-    } else {
-      if (sent.length < 2) fail(400, 'INVALID');
-      await this.uow.prisma.role.create({ data: { name: sent, kind: 'job', ...flags, grants: listed.join(',') } });
-    }
-    return { ok: true as const };
+    return { name: input.name ?? '', listed, flags: flagsFor(listed) };
   }
 }

@@ -28,11 +28,10 @@ export const COMPANY_IMAGE_BYTES = 150_000;
 export const COMPANY_IMAGE_CHARS = 210_000;
 
 /**
- * POST companies/image — the company by its name and its picture as a data URL; an empty or absent picture clears
- * it. The service checks the picture's type and its size in bytes.
+ * PUT companies/:code/image — the company's picture as a data URL; an empty or absent picture clears it. The
+ * service checks the picture's type and its size in bytes.
  */
 export const CompanyImageBody = z.object({
-  name: z.string().trim().min(1).max(80),
   image: dataUrl(COMPANY_IMAGE_CHARS).nullish(),
 });
 export type CompanyImageBody = z.input<typeof CompanyImageBody>;

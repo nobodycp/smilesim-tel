@@ -4,50 +4,44 @@ import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
-import { LineReads } from '../lines/line-reads';
-import { TasksService } from '../tasks/tasks.service';
-import { after, cursorPosition, page } from '../../shared/paging';
+import { after, capList, cursorPosition, page } from '../../shared/paging';
 import { FEED_PAGE } from '../rules/office-paging';
 import { PROVIDER_OPERATION_KINDS } from '../wallets/provider-cost';
 
-/** Branch reports: providers and packages, the provider-operations ledger, and the task and number lists. */
+/** Branch reports: providers and packages, and the provider-operations ledger. */
 @Injectable()
 export class ReportsService {
   constructor(
     readonly uow: UnitOfWork,
-    private readonly tasks: TasksService,
-    private readonly lines: LineReads,
     private readonly repo: ReportsRepository,
   ) {}
 
-  async report(actor: Actor, kind: string, cursor?: string) {
-    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
-    requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
-    if (kind === 'providers') return this.providerReport();
-    if (kind === 'operations') return this.entryReport(cursor, PROVIDER_OPERATION_KINDS);
-    if (kind === 'tasks') {
-      const listed = await this.tasks.list(actor, { cursor });
-      return { tasks: listed.items, nextCursor: listed.nextCursor, total: listed.total };
-    }
-    if (kind === 'numbers') {
-      const listed = await this.lines.list(actor, { cursor });
-      return { lines: listed.items, nextCursor: listed.nextCursor, total: listed.total };
-    }
-    fail(404, 'NOT_FOUND');
-  }
-
-  private async providerReport() {
-    const rows = await this.repo.packagesByProvider();
+  /** Every package by provider, with what it costs the branch and how many numbers are on it. */
+  async providers(actor: Actor) {
+    this.gate(actor);
+    const { rows } = capList(await this.repo.packagesByProvider());
     return {
-      total: rows.length,
-      rows: rows.map((row) => ({
+      items: rows.map((row) => ({
         providerName: row.provider.name,
         companyName: row.company?.name ?? '',
         packageName: row.name,
         price: row.branchCost,
         lines: row._count.lines,
       })),
+      nextCursor: null,
+      total: rows.length,
     };
+  }
+
+  /** One page of the wallet entries of provider operations, newest first. */
+  async operations(actor: Actor, cursor?: string) {
+    this.gate(actor);
+    return this.entryReport(cursor, PROVIDER_OPERATION_KINDS);
+  }
+
+  private gate(actor: Actor) {
+    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
+    requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
   }
 
   private async entryReport(cursor: string | undefined, kinds?: string[]) {
@@ -59,7 +53,7 @@ export class ReportsService {
     const { items: rows, nextCursor } = page(read, FEED_PAGE);
     return {
       total,
-      entries: rows.map((row) => ({
+      items: rows.map((row) => ({
         id: row.id,
         at: row.createdAt.toISOString(),
         loginName: row.user.loginName,

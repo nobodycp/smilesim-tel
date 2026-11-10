@@ -85,10 +85,8 @@ const home = {
   operations: [{ id: 'o1', at: '2026-10-02T10:30:00.000Z', kind: 'extend', amount: -26, note: null, loginName: 'pos' }],
 };
 const reports = {
-  providers: { rows: [{ providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', price: 20, lines: 4 }] },
-  tasks: { tasks: [task('t1', 'done')], nextCursor: null },
-  numbers: { lines, nextCursor: 'c2' },
-  operations: { entries: [{ id: 'e2', at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLogin: 'admin', kind: 'activate', amount: -26, balanceAfter: 74, note: 'ن' }] },
+  providers: { items: [{ providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', price: 20, lines: 4 }], nextCursor: null, total: 1 },
+  operations: { items: [{ id: 'e2', at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLogin: 'admin', kind: 'activate', amount: -26, balanceAfter: 74, note: 'ن' }] },
 };
 
 // What each office endpoint answers. `empty` swaps the lists for empty ones.
@@ -117,10 +115,10 @@ function answer(path, layer, empty) {
     stats: empty ? { count: 0, cost: 0, monthCost: 0 } : { count: 1, cost: 20, monthCost: 20 },
     providers: [{ code: 'cell', name: 'مزود' }],
   };
-  if (path.startsWith('/office/ledger/')) return { items: list([ledger('l1'), ledger('l2')]), nextCursor: empty ? null : 'c2' };
+  if (path === '/office/ledger') return { items: list([ledger('l1'), ledger('l2')]), nextCursor: empty ? null : 'c2' };
   if (path.startsWith('/office/reports/')) {
     const body = reports[path.split('/').pop()];
-    return empty ? { ...body, rows: body.rows && [], entries: body.entries && [], lines: body.lines && [], tasks: body.tasks && [], nextCursor: null } : body;
+    return empty ? { ...body, items: [], nextCursor: null } : body;
   }
   return null;
 }

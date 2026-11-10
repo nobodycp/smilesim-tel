@@ -193,9 +193,8 @@ export class WalletsController {
     });
   }
 
-  @Get('ledger/:scope')
-  @ApiOperation({ summary: 'Ledger for a scope' })
-  @ApiParam({ name: 'scope' })
+  @Get('ledger')
+  @ApiOperation({ summary: 'One page of the signed-in account\'s own wallet ledger ({ items, nextCursor, total })' })
   @ApiQuery({ name: 'kind', required: false })
   @ApiQuery({ name: 'direction', required: false })
   @ApiQuery({ name: 'from', required: false })
@@ -204,13 +203,12 @@ export class WalletsController {
   @ApiErrorResponse(401, 403)
   ledger(
     @Actor() actor: ActorShape,
-    @Param('scope') scope: string,
     @Query('kind') kind?: string,
     @Query('direction') direction?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('cursor') cursor?: string,
   ) {
-    return this.walletDesk.ledger(actor, scope, { kind, direction, from, to, cursor: text(cursor) });
+    return this.walletDesk.ledger(actor, { kind, direction, from, to, cursor: text(cursor) });
   }
 }

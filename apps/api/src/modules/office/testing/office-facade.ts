@@ -204,8 +204,8 @@ export class OfficeFacade {
     return this.walletDesk.setCeiling(await this.actor(gate), loginName, body);
   }
 
-  async ledger(gate: Gate, scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string }) {
-    return this.walletDesk.ledger(await this.actor(gate), scope, query);
+  async ledger(gate: Gate, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string }) {
+    return this.walletDesk.ledger(await this.actor(gate), query);
   }
 
   async providerOperations(gate: Gate, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string } = {}) {
@@ -256,10 +256,6 @@ export class OfficeFacade {
 
   async setCompanySim(gate: Gate, code: string, body: { length?: unknown; prefix?: unknown; esim?: unknown; esimPrice?: unknown }) {
     return this.companyDesk.setSim(await this.actor(gate), code, body);
-  }
-
-  async setCompanyImage(gate: Gate, body: { name?: unknown; image?: unknown }) {
-    return this.companyDesk.setImage(await this.actor(gate), body);
   }
 
   // Spec entry points; the routes live in providers/providers.controller.ts.
@@ -413,10 +409,6 @@ export class OfficeFacade {
   // Spec entry points; the routes live in roles/roles.controller.ts.
   async roles(gate: Gate) {
     return this.roleDesk.list(await this.actor(gate));
-  }
-
-  async saveRole(gate: Gate, body: { id?: unknown; name?: unknown; grants?: unknown; read?: unknown; edit?: unknown; accounting?: unknown; tasks?: unknown; reports?: unknown; staff?: unknown; enter?: unknown }) {
-    return this.roleDesk.save(await this.actor(gate), body);
   }
 
   // Spec entry points; the routes live in transfers/transfers.controller.ts.

@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Param, Post, Put, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, bodyField, param } from '../activity/activity.decorator';
+import { Activity, param } from '../activity/activity.decorator';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
@@ -24,13 +24,13 @@ export class CompaniesController {
     return this.companyDesk.shelf(actor);
   }
 
-  @Post('companies/image')
-  @Activity('company_image', 'company', bodyField('name'))
-  @ApiOperation({ summary: 'Set company mark / image' })
+  @Put('companies/:code/image')
+  @Activity('company_image', 'company', param('code'))
+  @ApiOperation({ summary: 'Set or clear a company mark / image' })
   @ApiZodBody(CompanyImageBody)
-  @ApiErrorResponse(401, 403, 400)
-  companyImage(@Actor() actor: ActorShape, @Body() body: CompanyImageBody) {
-    return this.companyDesk.setImage(actor, body);
+  @ApiErrorResponse(401, 403, 400, 404)
+  companyImage(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: CompanyImageBody) {
+    return this.companyDesk.setImage(actor, code, body);
   }
 
   @Put('companies/:code/sim')

@@ -47,7 +47,7 @@ test('finance opened with ?scope=operations lists the operations only', async ({
 test('the wallet page shows the head and its window switch', async ({ page }) => {
   const calls = await serveOffice(page, 'agent', {
     'GET /finance/summary': () => ({ body: summary }),
-    'GET /ledger/audit': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
+    'GET /ledger': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://agent.localhost:3910/wallet');
   const band = page.locator('.wallet-band');

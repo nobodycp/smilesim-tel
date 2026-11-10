@@ -110,11 +110,11 @@ export class CompaniesService {
     return { ok: true, sim: rules, esimPrice: saved.esimPrice };
   }
 
-  async setImage(actor: Actor, body: unknown) {
+  async setImage(actor: Actor, code: string, body: unknown) {
     if (actor.impersonating) fail(403, 'FORBIDDEN');
     requireGrant(actor, 'edit');
-    const { name, image: sent } = parseInput(CompanyImageBody, body);
-    const found = await this.repo.companiesNamed(name);
+    const { image: sent } = parseInput(CompanyImageBody, body);
+    const found = await this.repo.companyByCode(code);
     if (!found) fail(404, 'NOT_FOUND');
     let image: string | null = null;
     if (sent) {
@@ -124,7 +124,7 @@ export class CompaniesService {
       if (bytes.length < 32 || bytes.length > COMPANY_IMAGE_BYTES) fail(400, 'INVALID');
       image = `data:image/${match[1]};base64,${match[2]}`;
     }
-    await this.repo.setImageByName(name, image);
+    await this.repo.setImage(found.id, image);
     return { ok: true };
   }
 }

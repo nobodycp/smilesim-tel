@@ -104,7 +104,7 @@ test('an agent role form has no checkbox for points of sale or agents and still 
   const agent = cases[2];
   await serveOffice(page, 'branch', {
     'GET /roles': () => ({ body: { roles: [agent.row] } }),
-    'POST /roles': () => ({ body: { ok: true } }),
+    'PUT /roles/r-agent': () => ({ body: { ok: true } }),
   });
   await page.goto(`${admin}/roles`);
   await page.getByRole('button', { name: 'إجراءات وكيل', exact: true }).click();
@@ -112,7 +112,7 @@ test('an agent role form has no checkbox for points of sale or agents and still 
   const form = page.getByRole('dialog');
   await expect(form.getByRole('checkbox', { name: /نقل نقاط البيع/ })).toHaveCount(0);
   await expect(form.getByRole('checkbox', { name: /نقل الوكلاء/ })).toHaveCount(0);
-  const saved = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/office/roles'));
+  const saved = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/office/roles/r-agent'));
   await form.getByRole('button', { name: 'حفظ' }).click();
-  expect((await saved).postDataJSON()).toMatchObject({ id: 'r-agent', grants: ['read', 'transferLines'] });
+  expect((await saved).postDataJSON()).toMatchObject({ grants: ['read', 'transferLines'] });
 });

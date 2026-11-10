@@ -89,7 +89,7 @@ describe('office refusals', () => {
     (kernel as unknown as { prismaClient: unknown }).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: true }), findMany: async () => [] },
     };
-    const response = await request(app.getHttpServer()).get('/office/ledger/nothing').set('Cookie', `sid=${admin}`);
+    const response = await request(app.getHttpServer()).get('/office/reports/nothing').set('Cookie', `sid=${admin}`);
     expect(response.status).toBe(404);
     expect(response.body).toEqual({ message: 'غير موجود', code: 'NOT_FOUND' });
   });

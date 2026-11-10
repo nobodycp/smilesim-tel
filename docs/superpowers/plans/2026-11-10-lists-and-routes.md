@@ -64,11 +64,18 @@ the screen's `usePaged` call, the mock in `apps/web/tests/` / `audit/`, `respons
 Each: controller route, `testing/office-routes.ts` row, `permissions.http.spec.ts` row, the web `api.ts` function,
 mocks, both maps.
 
-- [ ] **L.14** `PUT /office/companies/:code/image`.
-- [ ] **L.15** `POST /office/roles` (create) and `PUT /office/roles/:id`.
-- [ ] **L.16** `PUT /office/packages/:code/chain`; `GET /office/ledger`.
-- [ ] **L.17** Reports: four fixed routes with `export` beside each; `reports/tasks` and `reports/numbers`
-  removed with `ReportsService.report`'s branches for them; web `features/reports`.
+- [x] **L.14** (COMMIT) `PUT /office/companies/:code/image`: the company by its code in the path, the body is the
+  picture alone.
+- [x] **L.15** (COMMIT) `POST /office/roles` creates a job role, `PUT /office/roles/:id` changes one; the body has
+  no `id`.
+- [x] **L.16** (COMMIT) `GET /office/ledger` (the scope segment is gone). **`PATCH /office/packages/:code/chain`
+  stays PATCH:** the spec said it replaces the chain, but its body is partial (any of the prices), so PATCH is the
+  right verb and `PUT …/renewals` beside it is right too (it replaces the whole target list). The spec is corrected.
+- [x] **L.17** (COMMIT) Reports: `GET /office/reports/{providers,operations}` answer the envelope;
+  `…/reports/balances/export` and `…/reports/supply/export` are fixed routes; `reports/:kind` and
+  `reports/:kind/export` are gone, with `ReportsService`'s dependency on the tasks and lines services. The web's
+  `/reports/tasks` and `/reports/numbers` pages stay and read `/office/tasks` and `/office/lines`. No export was
+  added for `providers` and `operations`: they had none, and a new export is a feature, not a rename.
 - [ ] **L.18** Field names: `loginName`, `parentLoginName`, `posLoginName`, `?loginName=` in the schemas
   (`accounts.schemas.ts`, `lines.schemas.ts`, `transfers.schemas.ts`), the services that read them, and every web
   caller. One commit per schema file.

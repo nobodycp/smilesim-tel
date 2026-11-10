@@ -343,14 +343,8 @@ export type TransferPreview = {
  * next one or null at the end, and how many rows match across every page. A list's own extra keys sit beside it.
  */
 export type Page<Row> = { items: Row[]; nextCursor: string | null; total: number };
-export type ReportPayload = {
-  rows?: { providerName: string; companyName: string; packageName: string; price: number; lines: number }[];
-  entries?: ReportRow[];
-  lines?: LineRow[];
-  tasks?: TaskRow[];
-  nextCursor?: string | null;
-  total?: number;
-};
+/** One package of the branch's providers report: what it costs the branch and how many numbers are on it. */
+export type ProviderReportRow = { providerName: string; companyName: string; packageName: string; price: number; lines: number };
 export type LineRow = {
   id: string;
   msisdn: string;

@@ -55,15 +55,15 @@ export function CompaniesScreen() {
   async function onImage(event: ChangeEvent<HTMLInputElement>) {
     const picked = event.target.files?.[0];
     event.target.value = '';
-    const name = pending.current;
+    const code = pending.current;
     pending.current = '';
-    if (!picked || !name) return;
+    if (!picked || !code) return;
     const image = await compactImage(picked);
     if (!image) {
       setError(apiText('بيانات غير صالحة'));
       return;
     }
-    await run(() => api.setCompanyImage(name, image), { note: t.save });
+    await run(() => api.setCompanyImage(code, image), { note: t.save });
   }
 
   // Each company a cut-corner card, as in the approved design: its mark (and «eSIM» when it offers one), its name,
@@ -103,7 +103,7 @@ export function CompaniesScreen() {
                 label: t.companyImage,
                 icon: 'image',
                 onClick: () => {
-                  pending.current = company.name;
+                  pending.current = company.code;
                   file.current?.click();
                 },
               },

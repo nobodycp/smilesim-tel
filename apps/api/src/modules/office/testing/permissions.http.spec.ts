@@ -26,7 +26,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/companies', 'yyynnn'],
   ['POST /office/companies', 'ynynnn'], // spec 2026-11-09-admin-review, 3: owner or edit grant
   ['PUT /office/companies/CODE1/sim', 'ynynnn'],
-  ['POST /office/companies/image', 'ynynnn'], // review 2026-11-10, S11: owner or edit grant
+  ['PUT /office/companies/CODE1/image', 'ynynnn'], // review 2026-11-10, S11: owner or edit grant
   ['GET /office/directory', 'yyyyyy'],
   ['GET /office/finance', 'yyyyyy'], // read/accounting not checked (see spec)
   ['GET /office/finance/export', 'yyyyyy'], // read/accounting not checked (see spec)
@@ -43,7 +43,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['POST /office/offers/ID1/move', 'ynynnn'],
   ['GET /office/overview', 'yyyyyy'], // every layer; the providers card only for the branch with reports or accounting
   ['POST /office/leave', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
-  ['GET /office/ledger/SCOPE1', 'yyyyyy'], // read/accounting not checked (see spec)
+  ['GET /office/ledger', 'yyyyyy'], // read/accounting not checked (see spec)
   ['GET /office/lines', 'yyyyyy'], // read/accounting not checked (see spec)
   ['POST /office/lines', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/lines/ID1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
@@ -101,12 +101,15 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/providers/CODE1/catalog/products', 'ynynnn'],
   ['GET /office/providers/CODE1/settings', 'yyynnn'],
   ['PATCH /office/providers/CODE1/settings', 'ynynnn'],
-  ['GET /office/reports/KIND1', 'ynynnn'],
-  ['GET /office/reports/KIND1/export', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /office/reports/providers', 'ynynnn'],
+  ['GET /office/reports/operations', 'ynynnn'],
+  ['GET /office/reports/balances/export', 'yyyyyy'],
+  ['GET /office/reports/supply/export', 'ynynnn'],
   ['GET /office/reports/balances', 'yyyyyy'],
   ['GET /office/reports/supply', 'ynynnn'],
   ['GET /office/roles', 'ynnnnn'],
   ['POST /office/roles', 'ynnnnn'],
+  ['PUT /office/roles/ID1', 'ynnnnn'],
   ['DELETE /office/sell-prices/CODE1', 'nnnyyn'],
   ['PUT /office/sell-prices/CODE1', 'nnnyyn'],
   ['GET /office/tasks', 'yyyyyy'], // read/accounting not checked (see spec)

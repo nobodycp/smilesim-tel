@@ -45,8 +45,6 @@ describe('providers and companies over HTTP', () => {
           writes.push({ model: 'company', args });
           return { esimPrice: args.data.esimPrice ?? 0 };
         },
-        count: async ({ where }: { where: { name: string } }) => (where.name === 'ويكوم' ? 1 : 0),
-        updateMany: async (args: unknown) => void writes.push({ model: 'company', args }),
       },
     };
     ({ app } = await officeTestApp(store, tables));
@@ -113,16 +111,17 @@ describe('providers and companies over HTTP', () => {
     expect((await as('owner', 'put', '/office/companies/none/sim', { length: 19, prefix: '', esim: false })).status).toBe(404);
   });
 
-  it('sets or clears a company image by name and checks the picture', async () => {
+  it('sets or clears a company image by its code and checks the picture', async () => {
     const png = `data:image/png;base64,${Buffer.alloc(64, 1).toString('base64')}`;
-    expect((await as('owner', 'post', '/office/companies/image', { name: ' ويكوم ', image: png })).body).toEqual({ ok: true });
-    expect((await as('owner', 'post', '/office/companies/image', { name: 'ويكوم', image: '' })).body).toEqual({ ok: true });
+    expect((await as('owner', 'put', '/office/companies/wecom/image', { image: png })).body).toEqual({ ok: true });
+    expect((await as('owner', 'put', '/office/companies/wecom/image', { image: '' })).body).toEqual({ ok: true });
     expect(writes.map((w) => w.args)).toEqual([
-      { where: { name: 'ويكوم' }, data: { image: png } },
-      { where: { name: 'ويكوم' }, data: { image: null } },
+      { where: { id: 'c2' }, data: { image: png } },
+      { where: { id: 'c2' }, data: { image: null } },
     ]);
-    expect((await as('owner', 'post', '/office/companies/image', { name: 'ويكوم', image: 'data:image/gif;base64,AAAA' })).body).toMatchObject({ code: 'INVALID' });
-    expect((await as('owner', 'post', '/office/companies/image', { name: 'غيرها', image: '' })).status).toBe(404);
-    expect((await as('owner', 'post', '/office/companies/image', { name: '' })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('owner', 'put', '/office/companies/wecom/image', { image: 'data:image/gif;base64,AAAA' })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('owner', 'put', '/office/companies/none/image', { image: '' })).status).toBe(404);
+    expect((await as('owner', 'put', '/office/companies/wecom/image', { image: 7 })).body).toMatchObject({ code: 'INVALID' });
+    expect((await as('pos1', 'put', '/office/companies/wecom/image', { image: '' })).status).toBe(403);
   });
 });

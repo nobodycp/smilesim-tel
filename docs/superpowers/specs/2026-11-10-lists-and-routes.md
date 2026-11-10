@@ -51,7 +51,8 @@ The web reaches the API through 135 distinct calls in `apps/web/features/*/api.t
 5. **Route names.** Proposed, smallest set that removes the traps without renaming the product's nouns:
    - `PUT /office/companies/:code/image` replaces `POST /office/companies/image`.
    - `PUT /office/roles/:id` and `POST /office/roles` (create) replace the upsert.
-   - `PUT /office/packages/:code/chain` (it replaces the chain) instead of PATCH.
+   - ~~`PUT /office/packages/:code/chain` instead of PATCH~~ — withdrawn while building it (2026-11-10): the body
+     is partial (any of the prices), so PATCH is correct and stays.
    - `GET /office/ledger` instead of `/ledger/:scope`.
    - `GET /office/reports/{providers,operations,balances,supply}` as fixed routes with `…/export` beside each;
      `reports/tasks` and `reports/numbers` removed (they are `/office/tasks` and `/office/lines`).

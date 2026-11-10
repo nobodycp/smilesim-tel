@@ -43,11 +43,7 @@ export class CompaniesRepository {
   }
 
   /** How many companies carry this name. */
-  companiesNamed(name: string) {
-    return this.uow.prisma.company.count({ where: { name } });
-  }
-
-  setImageByName(name: string, image: string | null) {
-    return this.uow.prisma.company.updateMany({ where: { name }, data: { image } });
+  setImage(id: string, image: string | null) {
+    return this.uow.prisma.company.update({ where: { id }, data: { image } });
   }
 }

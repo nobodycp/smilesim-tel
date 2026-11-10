@@ -117,10 +117,8 @@ export class WalletsService {
     return { ok: true };
   }
 
-  async ledger(actor: Actor, scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string }) {
-    // The signed-in account's own wallet («المحفظة»). The tree-wide `operations` scope left with its page (spec
-    // 2026-11-09-admin-review, 1): «المالية» with `scope=operations` reads the same rows.
-    if (scope !== 'audit') fail(404, 'NOT_FOUND');
+  /** The signed-in account's own wallet («المحفظة»). The tree's entries are «المالية» (`finance`). */
+  async ledger(actor: Actor, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string }) {
     const allowed = [...PROVIDER_OPERATION_KINDS, 'fund', 'self_fund', 'deduct', 'deduct_in'];
     const kind = query.kind && allowed.includes(query.kind) ? query.kind : '';
     const { from, to } = dayRange(query.from, query.to);

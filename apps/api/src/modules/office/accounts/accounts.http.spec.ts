@@ -270,7 +270,8 @@ describe('accounts and roles over HTTP', () => {
     expect(await code(as('owner', 'post', '/office/roles', { name: 'محاسب', grants: ['accounting', 'bogus'] }))).toBe('400 INVALID');
     expect(await code(as('owner', 'post', '/office/roles', { name: 'محاسب', grants: ['accounting'] }))).toBe('201');
     expect(w.written.filter((entry) => entry.op === 'role.create').at(-1)!.args).toMatchObject({ data: { name: 'محاسب', kind: 'job', grants: 'accounting', accounting: true } });
-    expect(await code(as('owner', 'post', '/office/roles', { id: 'missing', name: 'دور' }))).toBe('404 NOT_FOUND');
+    expect(await code(as('owner', 'put', '/office/roles/missing', { name: 'دور' }))).toBe('404 NOT_FOUND');
+    expect(await code(as('clerk', 'put', '/office/roles/missing', { name: 'دور' }))).toBe('403 FORBIDDEN');
   });
 
   it('shows an account\'s access and lets the owner change it', async () => {

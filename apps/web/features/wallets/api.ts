@@ -21,6 +21,7 @@ export const walletsApi = {
     request<Page<FinanceRow>>('GET', `/office/finance${queryString(query)}`),
   officeProviderOperations: (query?: { kind?: string; provider?: string; q?: string; from?: string; to?: string; match?: string; cursor?: string | null }) =>
     request<Page<ProviderOpRow> & { stats: ProviderOpStats; providers: { code: string; name: string }[] }>('GET', `/office/provider-operations${queryString(query)}`),
-  officeLedger: (scope: string, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string | null }) =>
-    request<Page<LedgerRow>>('GET', `/office/ledger/${segment(scope)}${queryString(query)}`),
+  /** The signed-in account's own wallet ledger. */
+  officeLedger: (query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string | null }) =>
+    request<Page<LedgerRow>>('GET', `/office/ledger${queryString(query)}`),
 };

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { UnitOfWork } from '../kernel/unit-of-work';
-import { NEWEST_FIRST } from '../../shared/paging';
+import { LIST_CAP, NEWEST_FIRST } from '../../shared/paging';
 
 /**
  * The database as this domain reads and writes it: the rows the branch reports list. One method per query, named for what it
@@ -18,6 +18,7 @@ export class ReportsRepository {
       where: { companyId: { not: null } },
       include: { provider: true, company: true, _count: { select: { lines: true } } },
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' } ],
+      take: LIST_CAP + 1,
     });
   }
 

@@ -262,15 +262,16 @@ test.describe('useAction and lineActions', () => {
 
 test.describe('reports', () => {
   const kinds = {
-    providers: { rows: [{ providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', price: 20, lines: 4 }] },
-    tasks: { tasks: [{ id: 't1', action: 'activate', status: 'done', posLogin: 'pos', submitterLogin: 'pos', assigneeLogin: null, posDelta: -26, msisdn: '0550000001', packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: false, canWork: false, canCancel: false }] },
-    numbers: { lines: [line('ln1')] },
-    operations: { entries: [] },
+    providers: { items: [{ providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', price: 20, lines: 4 }], nextCursor: null, total: 1 },
+    tasks: { items: [{ id: 't1', action: 'activate', status: 'done', posLogin: 'pos', submitterLogin: 'pos', assigneeLogin: null, posDelta: -26, msisdn: '0550000001', packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: false, canWork: false, canCancel: false }] },
+    numbers: { items: [line('ln1')], poses: [] },
+    operations: { items: [] },
   } as const;
 
   test('each report draws the table its answer calls for', async ({ page }) => {
     await serveOffice(page, 'branch', Object.fromEntries(
-      Object.entries(kinds).map(([kind, body]) => [`GET /reports/${kind}`, () => ({ body })]),
+      // The tasks and numbers reports read the lists themselves; the other two have their own routes.
+      Object.entries(kinds).map(([kind, body]) => [kind === 'tasks' ? 'GET /tasks' : kind === 'numbers' ? 'GET /lines' : `GET /reports/${kind}`, () => ({ body })]),
     ));
     const head = (selector: string) => page.locator(`table.data ${selector}`);
     await page.goto(`${admin}/reports/providers`);

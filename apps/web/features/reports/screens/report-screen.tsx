@@ -4,10 +4,10 @@ import { useParams } from 'next/navigation';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column, type PagedView } from '../../../components/data-table';
 import { Desk, Money, actionName, latinWhen, lineStatus, taskStatus } from '../../../components/desk';
-import { api, type LineRow, type ReportPayload, type TaskRow } from '../../../lib/api';
+import { api, type LineRow, type ProviderReportRow, type ReportRow, type TaskRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
-import { pick } from '../../../lib/fetched';
-import { usePaged } from '../../../lib/use-paged';
+import { pick, type Fetched } from '../../../lib/fetched';
+import { pageRows, usePaged, type PageOf } from '../../../lib/use-paged';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 
 const BRANCH = ['branch'];
@@ -21,18 +21,21 @@ const kinds = {
 
 type Kind = keyof typeof kinds;
 
-// A report answers with one list under one of four names; the name says which table to draw.
-type Shape = 'rows' | 'entries' | 'lines' | 'tasks';
-type ProviderLine = NonNullable<ReportPayload['rows']>[number];
-type MoneyLine = NonNullable<ReportPayload['entries']>[number];
+// Each report reads its own list of the API; the kind says which table to draw.
+type ProviderLine = ProviderReportRow;
+type MoneyLine = ReportRow;
 
-// `usePaged` holds the rows of whichever list the report answered with; the shape says which, so the cast is exact.
+// `usePaged` holds the rows of whichever list the kind reads, so the cast is exact.
 function viewOf<Row>(list: PagedView<unknown>): PagedView<Row> {
   return list as PagedView<Row>;
 }
 
-function shapeOf(payload: ReportPayload): Shape {
-  return payload.rows ? 'rows' : payload.lines ? 'lines' : payload.tasks ? 'tasks' : 'entries';
+/** One page of the report `kind`: the providers and operations reports, or the tasks and numbers lists themselves. */
+async function readReport(kind: Kind, cursor: string | null): Promise<Fetched<PageOf<unknown>>> {
+  if (kind === 'providers') return pick(await api.reportProviders(), pageRows);
+  if (kind === 'tasks') return pick(await api.officeTasks({ cursor }), pageRows);
+  if (kind === 'numbers') return pick(await api.officeLines({ cursor }), pageRows);
+  return pick(await api.reportOperations(cursor), pageRows);
 }
 
 export function ReportScreen() {
@@ -40,16 +43,7 @@ export function ReportScreen() {
   const params = useParams<{ kind: string }>();
   const kind = typeof params.kind === 'string' && params.kind in kinds ? (params.kind as Kind) : '';
   const allowed = useRequireLayer(BRANCH);
-  const list = usePaged<unknown, Shape>(
-    kind,
-    async (cursor) =>
-      pick(await api.officeReport(kind, cursor), (payload) => {
-        const shape = shapeOf(payload);
-        return { rows: payload[shape] ?? [], next: payload.nextCursor, total: payload.total, extra: shape };
-      }),
-    { enabled: allowed && kind !== '' },
-  );
-  const shape = list.extra ?? 'entries';
+  const list = usePaged<unknown>(kind, async (cursor) => readReport(kind as Kind, cursor), { enabled: allowed && kind !== '' });
 
   const providerColumns: Column<ProviderLine>[] = [
     { key: 'provider', header: t.provider, render: (row) => row.providerName },
@@ -93,11 +87,11 @@ export function ReportScreen() {
   return (
     <Desk title={allowed ? title : ''} lede="" error={list.error} note="">
       <section className="pane">
-        {!kind || list.error ? null : shape === 'rows' ? (
+        {!kind || list.error ? null : kind === 'providers' ? (
           <PagedTable list={viewOf<ProviderLine>(list)} columns={providerColumns} rowKey={(row) => `${row.providerName}-${row.companyName}-${row.packageName}`} />
-        ) : shape === 'lines' ? (
+        ) : kind === 'numbers' ? (
           <PagedTable list={viewOf<LineRow>(list)} columns={lineColumns} rowKey={(row) => row.id} empty={t.noLines} />
-        ) : shape === 'tasks' ? (
+        ) : kind === 'tasks' ? (
           <PagedTable list={viewOf<TaskRow>(list)} columns={taskColumns} rowKey={(row) => row.id} empty={t.noTasks} />
         ) : (
           <PagedTable list={viewOf<MoneyLine>(list)} columns={entryColumns} rowKey={(row) => row.id} empty={t.noMovements} />

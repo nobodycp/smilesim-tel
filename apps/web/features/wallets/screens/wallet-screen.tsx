@@ -27,7 +27,7 @@ export function WalletScreen() {
   const [soon, setSoon] = useState('');
   const summary = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary(), { enabled: allowed });
   const list = usePaged<LedgerRow>('wallet', async (cursor) =>
-    pick(await api.officeLedger('audit', { cursor }), pageRows),
+    pick(await api.officeLedger({ cursor }), pageRows),
   );
   const columns: Column<LedgerRow>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },

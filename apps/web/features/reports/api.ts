@@ -1,6 +1,6 @@
-import { request, segment, queryString } from '../../lib/http';
+import { request, queryString } from '../../lib/http';
 import { allPages } from '../../lib/all-pages';
-import type { ApiResult, BalanceReportRow, Page, ReportPayload, SupplyReportRow } from '../../lib/api-types';
+import type { ApiResult, BalanceReportRow, Page, ProviderReportRow, ReportRow, SupplyReportRow } from '../../lib/api-types';
 
 type BalanceTotals = { count: number; balance: number; used: number };
 
@@ -14,6 +14,7 @@ export const reportsApi = {
   },
   reportSupply: (query: { from?: string; to?: string }) =>
     request<{ rows: SupplyReportRow[]; totals: { operations: number; cost: number; profit: number }; capped: boolean }>('GET', `/office/reports/supply${queryString(query)}`),
-  officeReport: (kind: string, cursor?: string | null) =>
-    request<ReportPayload>('GET', `/office/reports/${segment(kind)}${queryString({ cursor })}`),
+  /** The branch's reports by URL: every package by provider (one page, capped), and the provider operations ledger. */
+  reportProviders: () => request<Page<ProviderReportRow>>('GET', '/office/reports/providers'),
+  reportOperations: (cursor?: string | null) => request<Page<ReportRow>>('GET', `/office/reports/operations${queryString({ cursor })}`),
 };

@@ -21,7 +21,7 @@ test('the owner sets a layer’s sessions and idle time on that layer\'s role', 
   const posRole = { id: 'r-pos', name: 'pos', kind: 'layer', layer: 'pos', grants: ['read'], read: true, edit: false, accounting: false, tasks: false, reports: false, staff: false, enter: false };
   await serveOffice(page, 'branch', {
     'GET /roles': () => ({ body: { roles: [posRole] } }),
-    'POST /roles': () => ({ body: { ok: true } }),
+    'PUT /roles/r-pos': () => ({ body: { ok: true } }),
   });
   await page.route('**/auth/session-rules', (route) => route.fulfill(json({ defaults: { maxSessions: 3, sessionMinutes: 360 }, layers: { branch: none, main_agent: none, agent: none, pos: none } })));
   await page.route('**/auth/session-rules/pos', (route) => {

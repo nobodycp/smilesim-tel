@@ -60,11 +60,11 @@ describe('reports and line refusals over HTTP', () => {
 
   it('reports providers and packages, and the operations ledger', async () => {
     expect((await as('owner', 'get', '/office/reports/providers')).body).toEqual({
-      total: 1, rows: [{ providerName: 'ليان', companyName: 'ويكوم', packageName: 'باقة', price: 2000, lines: 4 }],
+      items: [{ providerName: 'ليان', companyName: 'ويكوم', packageName: 'باقة', price: 2000, lines: 4 }], nextCursor: null, total: 1,
     });
     expect((await as('owner', 'get', '/office/reports/operations')).body).toEqual({
       total: 1,
-      entries: [{ id: 'e1', at: '2026-11-08T09:00:00.000Z', loginName: 'pos1', actorLogin: 'owner', amount: -2000, balanceAfter: 500, kind: 'activate', note: null }],
+      items: [{ id: 'e1', at: '2026-11-08T09:00:00.000Z', loginName: 'pos1', actorLogin: 'owner', amount: -2000, balanceAfter: 500, kind: 'activate', note: null }],
       nextCursor: null,
     });
   });
