@@ -51,7 +51,7 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
 
 ## Phase B — clean-ups
 
-- [x] **B.1 The last queries leave the services.** (COMMIT; `NoticeService`'s one insert is
+- [x] **B.1 The last queries leave the services.** (2d05e36; `NoticeService`'s one insert is
   `notices/notice-insert.repository.ts`, a function with no import of the unit of work, because the unit of work
   builds the notice writer; `NoticeInboxService` now injects `NoticeService` itself instead of reaching it through
   the unit of work.) `audit/audit.repository.ts` (`eventsPage`, `eventCount`,
