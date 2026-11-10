@@ -152,14 +152,20 @@ come; the money must be safe in every state of the operation.
 
 ## As built in S.4 (`WalletLedger.capture`)
 
-- `capture` takes a debit that its hold covers whole and nothing else; a hold smaller than the wallet's own
-  record of it is a `409` that changes nothing. It checks no ceiling.
-- It writes the same two rows as before (`release`, then the sale), through the posting code `move` uses, so the
+- `capture` gives a hold back and posts a debit under the wallet's lock. Up to the hold the debit is covered and
+  the ceiling is not checked again; beyond the hold only the excess is checked, with the hold still counted as
+  held; what the hold has beyond the debit goes back. A hold larger than the wallet's own record of it is a `409`
+  that changes nothing.
+- It writes the same rows as before (`release`, then the sale), through the posting code `move` uses, so the
   finance screens, the profit ladder and the below-zero notice are unchanged.
-- Which tasks are captured is a pure rule (`taskCharge`): those that carry a debit fixed at opening and hold
-  exactly that. A disconnect and a switch still post their own amount; a task with no hold is debited under the
-  ceiling as before.
-- Not solved by this slice: a switch task's hold and its charge are different amounts (the plan lists it).
+- How a completed task is charged is a pure rule (`taskCharge`): a debit fixed at opening and held exactly is
+  captured; a switch is **re-quoted** and settled against its hold; a disconnect posts its own refund; a debit with
+  no hold is checked against the ceiling as before.
+- **A switch's price is the price of the day it is completed** (owner): the days left are fewer the longer the task
+  waits. D10's first wording ("only a debit the hold covers whole") was written for fixed prices and is widened
+  here; the alternative, fixing the difference at opening, would charge for days already used.
+- If the wallet cannot cover the increase, the completion is refused and rolled back: the line and the task do not
+  change.
 
 ## Consequences
 

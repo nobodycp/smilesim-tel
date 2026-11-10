@@ -110,22 +110,37 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     writes the `release` entry and then the sale entry, the rows a release and a debit wrote before.
   - `lines/task-charge.rules.ts` (pure) `taskCharge(task)`: `capture` for a debit fixed at opening that the task
     holds exactly (activation, extension, charge, reactivation, eSIM request, add-on); `own` for a disconnect and a
-    switch, which post an amount worked out at completion; `none`; `debit` for a debit with no hold of that size
+    switch (see below; a switch became `requote`), which post an amount worked out at completion; `none`; `debit` for a debit with no hold of that size
     (a task opened before holds existed), released and debited with the ceiling check as before.
   - `lines/task-completion.ts`: the hold is no longer released before the handler when it will be captured; the
     capture runs after the handler, so the order is task → line → keys → wallet.
   - *Transactions:* T8. *Specs:* `wallets/wallet-capture.db.spec.ts` (spec items 17 and 18, a failed line
     creation, the same ledger rows as before, mixed operations, no deadlock), `lines/task-charge.rules.spec.ts`.
   - **Visible:** a ceiling lowered after a task opened no longer blocks its completion.
-  - **Found while reading the completion paths, not changed here** (each needs the owner's word):
-    1. **A switch task is charged a different amount from the one it held.** It holds the difference quoted when
-       it opened, and completion quotes again (the proration moves every day), releases the hold and posts the new
-       amount under the ceiling check. So the audit's A2 is still open for a switch, and the price charged is not
-       the price fixed at opening (rule 1.5).
-    2. **A plain (non-eSIM) activation stores no `providerCost` on its wallet entry** (`rules/prices.ts`
+  - **A package switch is re-quoted at completion, on purpose** (owner, 2026-11-10: the value of the days left
+    changes while the task waits, and a task may wait a week; fixing the difference at opening was considered and
+    withdrawn the same day). What changed is how that amount of the day meets the hold taken at opening, in the
+    same transaction:
+    - `taskCharge` answers `requote` for a switch; its hold is kept for the handler, which settles through
+      `requotedSettlement(held, amount)`.
+    - **Owed today, up to the hold:** captured, no ceiling check; what the hold has beyond it goes back.
+    - **Owed today, more than the hold:** only the increase is checked, against what the wallet can spend with
+      this task's hold still counted as held (`rules/prices.ts` `uncoveredDebit`). If it does not fit:
+      `400 BALANCE_CEILING`, and the completion rolls back whole, so the line stays on its package and the task
+      stays open with its hold.
+    - **Nothing owed, or money back:** the hold is given back whole; a credit is posted as before; no capture.
+    - `capture` therefore takes a hold and a debit of any two sizes (a hold of 0 is a plain checked debit).
+    - A disconnect is the same idea and needed no change: its refund is worked out at completion, it is a credit,
+      and its task holds nothing.
+    - Provider cost, the price ladder and the amount itself are computed exactly as before; a spec compares a
+      switch completed from a task with one applied at once on the same day, field by field.
+    - *Specs:* `lines/switch-settlement.db.spec.ts`, `wallets/wallet-capture.db.spec.ts`,
+      `lines/task-charge.rules.spec.ts`.
+  - **Found while reading the completion paths, not changed here** (the owner reviews them separately):
+    1. **A plain (non-eSIM) activation stores no `providerCost` on its wallet entry** (`rules/prices.ts`
        `activationProviderCost` answers a cost only for an eSIM), on the direct route and on the task route. The
        provider reports then price it from today's package, against rule 1.6.
-    3. A renewal task (extend, charge, reactivate) stores no `unitPrice`; its charge is its `posDelta`, which is
+    2. A renewal task (extend, charge, reactivate) stores no `unitPrice`; its charge is its `posDelta`, which is
        fixed at opening, so the amount is right; only the column is empty.
 
 - [ ] **S.5 eSIM data (D17). Visible. Three steps, each its own commit and deploy, in this order; a step is not

@@ -169,20 +169,57 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     expect(await wallet()).toMatchObject({ balance: START, held: 0 });
   });
 
-  it('accepts only a debit that the hold covers whole, and changes nothing otherwise', async () => {
+  it('takes a debit and a hold of any two sizes: covered up to the hold, the excess checked, the surplus given back', async () => {
     await setWallet({ held: 5000 });
-    const capture = (held: number, amount: number) => runTx((tx) => ledger.capture(tx, ids.pos, held, amount, ids.pos, 'activate', ''));
-    for (const [held, amount] of [[0, -100], [-100, -100], [100, 0], [100, 100], [100, -101], [100.5, -100], [100, -99.5]]) {
+    const capture = (held: number, amount: number) => runTx((tx) => ledger.capture(tx, ids.pos, held, amount, ids.pos, 'switch', ''));
+    // Not a debit, not whole numbers, a negative hold: refused, nothing changed.
+    for (const [held, amount] of [[100, 0], [100, 100], [-100, -100], [100.5, -100], [100, -99.5]]) {
       expect([held, amount, (await outcomes([capture(held, amount)])).refused]).toEqual([held, amount, ['400 INVALID']]);
     }
-    // More than the wallet holds: refused although the debit itself would fit.
+    // A hold larger than what the wallet holds was already given back: refused although the debit would fit.
     expect((await outcomes([capture(5001, -100)])).refused).toEqual(['409 DUPLICATE_REQUEST']);
     expect(await wallet()).toMatchObject({ balance: START, held: 5000 });
     expect(await entryRows()).toHaveLength(0);
-    // A debit smaller than its hold gives the whole hold back and charges the debit.
+
+    // A debit smaller than its hold: the whole hold goes back and only the debit is charged.
     await capture(3000, -2500);
     expect(await wallet()).toMatchObject({ balance: START - 2500, held: 2000 });
-    expect((await entryRows()).map((row) => [row.kind, row.amount, row.held]).sort()).toEqual([['activate', -2500, null], ['release', 0, -3000]]);
+    // A debit larger than its hold: the hold goes back and the whole debit is charged (the wallet has the excess).
+    await capture(1500, -1800);
+    expect(await wallet()).toMatchObject({ balance: START - 2500 - 1800, held: 500 });
+    // No hold at all: a plain debit, with one entry and no release.
+    await capture(0, -700);
+    expect(await wallet()).toMatchObject({ balance: START - 2500 - 1800 - 700, held: 500 });
+    expect((await entryRows()).map((row) => [row.kind, row.amount, row.held]).sort()).toEqual([['release', 0, -1500], ['release', 0, -3000], ['switch', -1800, null], ['switch', -2500, null], ['switch', -700, null]].sort());
+  });
+
+  it('checks only the excess over the hold against the ceiling, with the hold still counted as held', async () => {
+    const capture = (held: number, amount: number) => runTx((tx) => ledger.capture(tx, ids.pos, held, amount, ids.pos, 'switch', ''));
+    // 1,000 in the wallet, 800 of it held for this task, no credit.
+    await setWallet({ balance: 1000, held: 800, ceiling: 0 });
+    // 200 more than the hold fits exactly: 1,000 − 800 held = 200 spendable.
+    notices = [];
+    expect((await outcomes([capture(800, -1001)])).refused).toEqual(['400 BALANCE_CEILING']);
+    expect(notices).toEqual(['wallet.ceiling']);
+    expect(await wallet()).toMatchObject({ balance: 1000, held: 800 });
+    expect(await entryRows()).toHaveLength(0);
+    await capture(800, -1000);
+    expect(await wallet()).toMatchObject({ balance: 0, held: 0 });
+
+    // Money held for OTHER tasks is not there for the excess: 1,000 in the wallet, 800 held for this task and
+    // 150 for another leaves 50 spendable.
+    await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
+    await setWallet({ balance: 1000, held: 950, ceiling: 0 });
+    expect((await outcomes([capture(800, -851)])).refused).toEqual(['400 BALANCE_CEILING']);
+    await capture(800, -850);
+    expect(await wallet()).toMatchObject({ balance: 150, held: 150 });
+
+    // A ceiling lowered below the debt already owed stops the excess, never the covered part.
+    await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
+    await setWallet({ balance: -2000, held: 800, ceiling: 0 });
+    expect((await outcomes([capture(800, -801)])).refused).toEqual(['400 BALANCE_CEILING']);
+    await capture(800, -800);
+    expect(await wallet()).toMatchObject({ balance: -2800, held: 0 });
   });
 
   it('charges once when a task is completed twice, or by several at the same moment (spec 18)', async () => {

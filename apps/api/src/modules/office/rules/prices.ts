@@ -95,6 +95,14 @@ export function withinCeiling(layer: string, balance: number, ceiling: number, d
   return balance - debit >= -ceiling;
 }
 
+/**
+ * The part of a debit that a hold does not cover: new money, to be checked against the ceiling. A hold covers a
+ * debit up to its own size; what it has beyond the debit simply goes back.
+ */
+export function uncoveredDebit(held: number, debit: number): number {
+  return Math.max(0, debit - Math.max(0, held));
+}
+
 export function chainHolds(prices: Prices): boolean {
   return (
     prices.mainPrice >= prices.branchCost &&

@@ -5,7 +5,7 @@ import { fail } from '../../shared/office-failure';
 import { AccountTree } from '../kernel/account-tree';
 import type { Sale } from '../kernel/types';
 import { UnitOfWork, type Db } from '../kernel/unit-of-work';
-import { withinCeiling } from '../rules/prices';
+import { uncoveredDebit, withinCeiling } from '../rules/prices';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder } from '../rules/profit-ladder';
 import { PriceLadder } from '../terms/price-ladder';
 
@@ -73,29 +73,54 @@ export class WalletLedger {
 
   /**
    * Turns a task's hold into its charge (ADR 0019, D10): under the wallet's lock, the hold is given back and the
-   * debit is posted, in the caller's transaction. The ceiling is **not** checked again: it was checked when the
-   * hold was taken, and held money could not be spent by anything else since. The rows it writes are the ones a
-   * release followed by a debit writes (a `release` entry, then the sale entry with its price ladder), so reports
-   * read the same ledger.
+   * debit is posted, in the caller's transaction. The rows it writes are the ones a release followed by a debit
+   * writes (a `release` entry, then the sale entry with its price ladder), so reports read the same ledger.
    *
-   * Only for a debit the hold covers whole (`amount` negative, `-amount <= held`). It refuses, and changes nothing,
-   * when the wallet holds less than `held`: that hold was already given back, and charging again would be a
-   * second charge. The caller runs it only inside the transaction that claimed the task, so it runs once.
+   * The debit need not be the amount held: a task whose price is worked out when it is completed (a package
+   * switch, whose difference moves with every day that passes) brings the amount of that day.
+   * - **Up to the hold**, the debit is covered: the ceiling is not checked again. It was checked when the hold was
+   *   taken, and held money could not be spent by anything else since. What the hold has beyond the debit goes
+   *   back to the wallet in the same write.
+   * - **Beyond the hold**, only the excess is new money: it is checked like any debit, against what the wallet
+   *   can spend now with this hold still counted as held. If it does not fit, the whole capture is refused
+   *   (`BALANCE_CEILING`) and nothing changes.
+   *
+   * It refuses, and changes nothing, when the wallet holds less than `held`: that hold was already given back,
+   * and charging again would be a second charge. The caller runs it only inside the transaction that claimed the
+   * task, so it runs once. `held` may be 0 (a task that held nothing): the debit is then all excess.
    */
   async capture(tx: Prisma.TransactionClient, userId: string, held: number, amount: number, actorId: string, kind: string, note: string, sale?: Sale) {
     const debit = -amount;
-    if (!Number.isInteger(held) || !Number.isInteger(amount) || held <= 0 || debit <= 0 || debit > held) fail(400, 'INVALID');
+    if (!Number.isInteger(held) || !Number.isInteger(amount) || held < 0 || debit <= 0) fail(400, 'INVALID');
     await tx.$queryRaw`SELECT "userId" FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE`;
     const wallet = await tx.wallet.findUnique({ where: { userId } });
     const user = await tx.user.findUnique({ where: { id: userId } });
     if (!wallet || !user) fail(404, 'NOT_FOUND');
-    if ((wallet.held ?? 0) < held) {
+    const walletHeld = wallet.held ?? 0;
+    if (walletHeld < held) {
       log.error(`capture refused for wallet ${userId}: it holds less than the ${kind} task's hold; nothing was changed`);
       fail(409, 'DUPLICATE_REQUEST');
     }
-    await tx.wallet.update({ where: { userId }, data: { held: { decrement: held } } });
-    await tx.walletEntry.create({ data: { userId, actorId, amount: 0, balanceAfter: wallet.balance, kind: 'release', held: -held, note: note || null } });
+    const excess = uncoveredDebit(held, debit);
+    // The excess is judged with this task's hold still held: the covered part is not spendable twice.
+    if (!withinCeiling(user.layer, wallet.balance - walletHeld, wallet.ceiling, excess)) await this.refuseCeiling(wallet, user, actorId, excess);
+    if (held > 0) {
+      await tx.wallet.update({ where: { userId }, data: { held: { decrement: held } } });
+      await tx.walletEntry.create({ data: { userId, actorId, amount: 0, balanceAfter: wallet.balance, kind: 'release', held: -held, note: note || null } });
+    }
     await this.post(tx, { ...wallet, layer: user.layer, parentId: user.parentId, loginName: user.loginName }, amount, actorId, kind, note, sale);
+  }
+
+  /** Tells the account and its parent that a debit did not fit, and refuses it. The notice is written outside the transaction, which rolls back. */
+  private async refuseCeiling(wallet: { userId: string; balance: number; ceiling: number }, user: { parentId: string | null; loginName: string }, actorId: string, attempted: number): Promise<never> {
+    const actor = { id: actorId, nickname: await this.actorName(actorId) };
+    const audience = [wallet.userId, ...(user.parentId ? [user.parentId] : [])];
+    const rows = await this.uow.notice.write(this.uow.prisma, audience, actor, {
+      kind: 'wallet.ceiling',
+      payload: { balance: wallet.balance, ceiling: wallet.ceiling, attempted, loginName: user.loginName },
+    });
+    await this.uow.publishQuietly(rows);
+    fail(400, 'BALANCE_CEILING');
   }
 
   async move(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, kind: string, note: string, sale?: Sale, reason?: string) {
@@ -107,17 +132,7 @@ export class WalletLedger {
     if (!wallet || !user) fail(404, 'NOT_FOUND');
     const debit = amount < 0 ? -amount : 0;
     // Money held for open tasks is not spendable (roadmap N6): the check runs on the balance less what is held.
-    if (!withinCeiling(user.layer, wallet.balance - (wallet.held ?? 0), wallet.ceiling, debit)) {
-      // The transaction rolls back, so this notice is written on its own and published at once.
-      const actor = { id: actorId, nickname: await this.actorName(actorId) };
-      const audience = [userId, ...(user.parentId ? [user.parentId] : [])];
-      const rows = await this.uow.notice.write(this.uow.prisma, audience, actor, {
-        kind: 'wallet.ceiling',
-        payload: { balance: wallet.balance, ceiling: wallet.ceiling, attempted: debit, loginName: user.loginName },
-      });
-      await this.uow.publishQuietly(rows);
-      fail(400, 'BALANCE_CEILING');
-    }
+    if (!withinCeiling(user.layer, wallet.balance - (wallet.held ?? 0), wallet.ceiling, debit)) await this.refuseCeiling(wallet, user, actorId, debit);
     await this.post(tx, { ...wallet, layer: user.layer, parentId: user.parentId, loginName: user.loginName }, amount, actorId, kind, note, sale, reason);
   }
 

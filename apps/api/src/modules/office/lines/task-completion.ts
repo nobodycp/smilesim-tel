@@ -19,7 +19,7 @@ import { TasksService } from '../tasks/tasks.service';
 import { LinePricing } from './line-pricing';
 import { assertClaimFree, lockClaim, lockedTaskLine, moveLineStatus, numberTaken } from './line-state';
 import { completionClaim, type Claim } from './reservation.rules';
-import { taskCharge } from './task-charge.rules';
+import { keepsHoldForHandler, requotedSettlement, taskCharge } from './task-charge.rules';
 import { MSISDN, periodOf, readQr } from './line-input';
 import { CompleteTaskBody } from './lines.schemas';
 
@@ -94,9 +94,10 @@ export class TaskCompletion {
       const wanted = completionClaim(task, handed);
       const claim = task.action === 'activate' && !wanted.msisdn ? { ...wanted, msisdn: await this.pricing.freshMsisdn(tx) } : wanted;
       await lockClaim(tx, claim);
-      // A hold that is exactly the task's debit is captured when the charge is posted, after the handler (ADR 0019,
-      // D10). Any other hold gives way now, before the handler moves money of its own (roadmap N6).
-      if (taskCharge(task) !== 'capture') await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
+      // A hold that the charge will be settled against stays until then: a fixed debit is captured after the
+      // handler, a switch settles its re-quoted amount inside its handler (ADR 0019, D10). Any other hold gives way
+      // now, before the handler moves money of its own (roadmap N6).
+      if (!keepsHoldForHandler(task)) await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
       const job: Completion = { tx, task, actor, note, line, handed, handedQr, claim };
       const applied = await this.handlers[task.action as Action](job);
       const sale = applied.sale ?? (await this.plainSale(job));
@@ -146,7 +147,7 @@ export class TaskCompletion {
    */
   private async charge({ tx, task, actor, note }: Completion, sale: Sale | undefined): Promise<boolean> {
     const how = taskCharge(task);
-    if (how === 'own' || how === 'none') return false;
+    if (how === 'requote' || how === 'own' || how === 'none') return false;
     // An add-on's wallet entry carries its name when the handler wrote no note.
     const entryNote = task.action === 'addon' ? note || task.note || '' : note;
     if (how === 'capture') await this.ledger.capture(tx, task.posId, task.held, task.posDelta, actor.operatorId, task.action, entryNote, sale);
@@ -252,7 +253,11 @@ export class TaskCompletion {
   }
 
   private async switch({ tx, task, actor, note, line }: Completion): Promise<Applied> {
-    if (!line || !task.nextPackageId) return {};
+    if (!line || !task.nextPackageId) {
+      // Nothing to switch: the hold was kept for this handler, so it is given back here.
+      await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
+      return {};
+    }
     const [source, target] = await Promise.all([
       this.repo.packageWithSwitches(tx, task.packageId),
       this.repo.packageById(tx, task.nextPackageId),
@@ -272,8 +277,17 @@ export class TaskCompletion {
       providerCost: quote.providerCost,
       period: periodOf(target.months, null),
     };
-    if (amount !== 0) await this.ledger.move(tx, task.posId, amount, actor.operatorId, 'switch', note, sale);
-    else await this.ledger.recordOp(tx, task.posId, actor.operatorId, 'switch', sale);
+    // The difference is the one of today, not of the day the task opened: the days left are fewer now. It is
+    // settled against the hold taken then. If the wallet cannot cover what the hold does not, this throws and the
+    // whole completion rolls back: the line and the task stay as they were.
+    const settlement = requotedSettlement(task.held, amount);
+    if (settlement.by === 'capture') {
+      await this.ledger.capture(tx, task.posId, settlement.held, settlement.amount, actor.operatorId, 'switch', note, sale);
+    } else {
+      await this.ledger.release(tx, task.posId, settlement.held, actor.operatorId, note);
+      if (settlement.credit > 0) await this.ledger.move(tx, task.posId, settlement.credit, actor.operatorId, 'switch', note, sale);
+      else await this.ledger.recordOp(tx, task.posId, actor.operatorId, 'switch', sale);
+    }
     // Same as an immediate switch: the line carries the renewal price its point of sale pays today.
     const stamped = await this.pricing.stampFor(switched.terms, line.posId, undefined, tx);
     await this.repo.switchLine(tx, line.id, stamped as unknown as Prisma.InputJsonValue, target.id);
