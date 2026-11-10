@@ -74,13 +74,13 @@
 .detail-rows dd { min-width: 0; overflow-wrap: anywhere; }
 /* A control inside a value cell keeps the row at text height: 28px tall, pulled into the cell padding. */
 .detail-rows dd > button { height: 28px; min-height: 0; margin-block: -4px; }
-/* The number's facts (owner 2026-11-11): six cards, three a row — two on a phone —, no details tab. The SIM card holds
-   the kind, the serial in a smaller Latin line that wraps, and the eSIM code's button. */
-.desk .line-facts .fact-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.sim-fact { display: grid; justify-items: start; gap: 4px; }
-.sim-fact .sim-serial { color: var(--rd-ink-2); font-size: var(--rd-text-sm); font-weight: 500; letter-spacing: 0.02em; overflow-wrap: anywhere; }
-@media (max-width: 640px) {
-  .desk .line-facts .fact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* «التفاصيل» (owner 2026-11-11): key and value rows (`Facts variant="list"`), no cards; two columns of rows on a wide
+   canvas, one on a phone. */
+.line-details .task-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--rd-space-6); }
+.line-details .task-facts > div { min-height: 44px; padding-block: var(--rd-space-2-5); border-block-end: 1px solid var(--rd-line-soft); align-items: center; }
+.line-details .task-facts dt { font-size: var(--rd-text-sm); font-weight: 600; }
+@media (max-width: 760px) {
+  .line-details .task-facts { grid-template-columns: minmax(0, 1fr); }
 }
 /* The eSIM badge as a button: the badge is the visible part, the padding gives the 44px target. */
 .esim-open {

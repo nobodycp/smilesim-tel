@@ -42,9 +42,10 @@ beside an operation that is also in the list below it), keep one.
 ### D4 — The number page
 
 - The head's quick-action buttons go: every operation is in the «العمليات» grid below, once.
-- No «التفاصيل» tab (owner, after seeing fact cards nested in a card): the head holds six fact cards — package, SIM
-  (kind, serial, eSIM code), price, activated on, ends on, last recharge; the company and the point of sale are in the
-  lede. The usage dials go: the API has no usage data, so they only ever showed «—».
+- No fact cards above the tabs (they crowd the page; owner, 2026-11-11). Tabs: «العمليات», «التفاصيل», «السجل».
+  «التفاصيل» is key and value rows — the task ticket's `Facts variant="list"` —, two columns of rows on a wide
+  canvas: company, package, SIM kind, serial, eSIM code, price, activated on, ends on, days left, last recharge, point
+  of sale. The usage dials go: the API has no usage data, so they only ever showed «—».
 - Its dialogs use the shared `Dialog` with the same head (mark, title, lede), body (`.dialog-form` fields) and footer
   (cancel secondary, action primary) as every other dialog.
 

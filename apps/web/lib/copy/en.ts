@@ -628,6 +628,7 @@ export const en: Copy = {
   settingsAccessTab: 'Settings and permissions',
   grantsSummary: '{n} of {total} allowed',
   activatedOn: 'Activated on',
+  lineDetails: 'Details',
   usedCeiling: 'Used from ceiling',
   availableToSell: 'Available to sell',
   moreActions: 'More actions',

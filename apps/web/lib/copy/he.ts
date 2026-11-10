@@ -628,6 +628,7 @@ export const he: Copy = {
   settingsAccessTab: 'הגדרות והרשאות',
   grantsSummary: '{n} מתוך {total} מותרות',
   activatedOn: 'תאריך הפעלה',
+  lineDetails: 'פרטים',
   usedCeiling: 'נוצל מהתקרה',
   availableToSell: 'זמין למכירה',
   moreActions: 'פעולות נוספות',

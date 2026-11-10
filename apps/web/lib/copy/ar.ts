@@ -628,6 +628,7 @@ export const ar = {
   settingsAccessTab: 'الإعدادات والصلاحيات',
   grantsSummary: '{n} مسموحة من {total}',
   activatedOn: 'تاريخ التفعيل',
+  lineDetails: 'التفاصيل',
   usedCeiling: 'المستخدم من السقف',
   availableToSell: 'المتاح للبيع',
   moreActions: 'إجراءات أخرى',
