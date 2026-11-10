@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Content UI
 
-The shell (topbar, sidebar, drawer) is in active Pearl rebuild — see `docs/superpowers/specs/2026-11-01-pearl-rebuild-phase1-shell-home-design.md`. Work on this phase may restyle `.topbar`, `.sidebar`, `.drawer`, and `.shell-*`. Inner canvas pages still follow the patterns below.
+The shell (topbar, sidebar, drawer) and the inner pages follow the Graphite identity (`DESIGN.md`; spec `docs/superpowers/specs/2026-11-09-graphite-identity.md`). Inner canvas pages follow the patterns below.
 
 Inner pages live in `.canvas` and use the shared pieces:
 
@@ -22,4 +22,4 @@ Inner pages live in `.canvas` and use the shared pieces:
 - Dialog: `Dialog` from `components/dialog.tsx`. Sizes are `confirm`, `form` (default, about 600px), and `wide`. Put fields in the children and actions in `footer` (`secondary` cancel, `primary` save). Permission lists use `.perm-grid`. A dialog with several independent operations uses `.op-blocks` and keeps destructive actions in the footer. Checkboxes use `label.check`; do not give them text-field dimensions. Do not build a second overlay.
 - Empty: `.empty` inside the pane. It already has 14px padding; never add `style={{ padding }}`.
 
-Tokens stay `--rd-*` in `app/styles/tokens.css`. Arabic and Latin text stays Tajawal, Hebrew stays IBM Plex Sans Hebrew, and numbers use `font-variant-numeric: tabular-nums` on the same font. No new font and no raw hex.
+Tokens stay `--rd-*` in `app/styles/tokens.css`. Arabic and Latin text stays Noto Kufi Arabic, Hebrew stays IBM Plex Sans Hebrew, and numbers use `font-variant-numeric: tabular-nums` on the same font. No new font and no raw hex.

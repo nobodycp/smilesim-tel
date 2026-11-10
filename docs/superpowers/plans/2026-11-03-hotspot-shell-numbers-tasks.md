@@ -33,4 +33,4 @@
 ### Task 3: Verify
 
 - [x] `npm run typecheck:web`
-- [ ] Browser RTL/theme spot check
+- [x] Browser RTL/theme spot check (covered by the later all-screens passes: `2026-11-08-architecture-refactor.md` 5.x, 29 screens in ar/en, light/dark)

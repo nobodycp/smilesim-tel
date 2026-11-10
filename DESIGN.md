@@ -113,7 +113,7 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 | Order | File | Holds |
 |---|---|---|
 | 1 | `tokens.css` | every `--rd-*` token, light and dark |
-| 2 | `base.css` | reset, element defaults, default SVG `stroke-width: 2.2`, `.icon-btn`, language switch, brand mark, motion opt-in |
+| 2 | `base.css` | reset, element defaults, default SVG `stroke-width: 1.9`, `.icon-btn`, language switch, brand mark, motion opt-in |
 | 3 | `doors.css` | door picker on the bare host |
 | 4 | `auth.css` | sign-in frame |
 | 5 | `forms.css` | page type, fields, `.error` / `.note` |
