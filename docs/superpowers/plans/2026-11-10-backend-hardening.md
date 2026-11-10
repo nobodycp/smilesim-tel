@@ -56,11 +56,13 @@ commit. Local checks per slice: `npm run lint`, `npm run typecheck`, the touched
 - [x] **6.3** (42a1c1b; a boot warning and no code in the production log, not a refusal to start — ADR 0011) `LogSender` refused in production; `COOKIE_SECURE` required in production.
 - [x] **6.4** (42a1c1b) Idempotency key bound to method, path and body; passkey user verification; `GETDEL` secrets.
 
-## Left for a later plan
+## Left for a later plan — each now has its own spec and plan (2026-11-10)
 
-- Kernel split and per-domain Nest modules, a repository layer (5.5).
-- Session ids hashed at rest (review S6) and TOTP secrets encrypted (S12).
-- Paging and one list envelope (A7), route naming (A8), the two `reports/:kind` generations (A12): with the web app.
-- Activity events for `/auth` `session-rules` and `contact` (needs web labels).
-- Schema validation of query filters.
-- The web's `PackageRow` type still says `number` for the price columns that are now `null` for lower layers.
+- Kernel split, per-domain Nest modules, repositories (5.5): `2026-11-10-office-kernel-split.md`.
+- Session tokens hashed at rest (review S6) and 2FA secrets sealed (S12): `2026-11-10-session-and-secret-storage.md`.
+- One list envelope and cursor, bounded lists, route names, not-found codes (A4, A7, A8, A12), with the web app:
+  `2026-11-10-lists-and-routes.md` — blocked on seven owner decisions listed in its spec.
+- Activity events for `/auth` session rules and contact, and a web label for every logged action:
+  `2026-11-10-auth-activity-and-audit-labels.md`.
+- Still without a plan: schema validation of query filters; splitting `rules/office-rules.ts` by topic; the web's
+  `PackageRow` type (`number` for price columns that are `null` for lower layers).
