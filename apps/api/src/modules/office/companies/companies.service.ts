@@ -4,8 +4,8 @@ import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { parseInput } from '../../shared/input';
-import { companies } from '../office-catalog';
-import { ESIM_PRICE_DEFAULT, readSimRules, simRulesOf } from '../office-rules';
+import { companies } from '../catalog/office-catalog';
+import { ESIM_PRICE_DEFAULT, readSimRules, simRulesOf } from '../rules/office-rules';
 import { COMPANY_IMAGE_BYTES, CompanyImageBody, CompanySimBody } from './companies.schemas';
 
 /** A package as the branch's shelf lists it under its provider. */

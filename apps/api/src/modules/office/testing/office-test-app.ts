@@ -1,9 +1,9 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
-import { ActivityRecorder } from '../activity-recorder';
+import { ActivityRecorder } from '../activity/activity-recorder';
 import { API_PROVIDERS } from '../../shared/api-providers';
-import { NoticeService } from '../notice.service';
+import { NoticeService } from '../notices/notice.service';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
 import { OfficeKernel } from '../kernel/office-kernel';
 

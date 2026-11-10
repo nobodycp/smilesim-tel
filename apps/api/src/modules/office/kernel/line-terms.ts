@@ -1,8 +1,8 @@
 // The terms a line carries (its prices and renewal targets), read back from the JSON column. Shared by the
 // line operations and the terms module.
 
-import { captureTerms, type LineTerms, type Prices } from '../office-rules';
-import { packageTermsOf, type PackagePriceRow } from '../office-terms';
+import { captureTerms, type LineTerms, type Prices } from '../rules/office-rules';
+import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
 export function lineTermsOf(value: unknown, pkg: PackagePriceRow): LineTerms {
   if (value === null) return captureTerms(packageTermsOf(pkg), []);
   if (!isLineTerms(value)) throw new Error(`Invalid saved terms for package ${pkg.code}`);

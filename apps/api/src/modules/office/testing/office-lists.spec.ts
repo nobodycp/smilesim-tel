@@ -1,10 +1,10 @@
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import type { Layer } from '../auth/decide-login';
-import { hashOnce } from './testing/test-hash';
-import { OfficeFailure } from '../shared/office-failure';
-import { OfficeFacade } from './testing/office-facade';
-import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, afterFeed, decodeFeedCursor, encodeFeedCursor, expiringWhere, isSuspended, linesWhere, mergeFeed, suspendedWhere } from './office-paging';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import type { Layer } from '../../auth/decide-login';
+import { hashOnce } from './test-hash';
+import { OfficeFailure } from '../../shared/office-failure';
+import { OfficeFacade } from './office-facade';
+import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, afterFeed, decodeFeedCursor, encodeFeedCursor, expiringWhere, isSuspended, linesWhere, mergeFeed, suspendedWhere } from '../rules/office-paging';
 
 // A small in-memory stand-in for the Prisma client: it reads the `where`, `orderBy`, `cursor`,
 // `skip` and `take` the service sends, so the lists are proven to page in the query and not in memory.

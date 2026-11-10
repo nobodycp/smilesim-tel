@@ -6,7 +6,7 @@ import type { Actor } from '../kernel/types';
 import { LineReads } from '../lines/line-reads';
 import { TasksService } from '../tasks/tasks.service';
 import { feedPosition } from '../kernel/feed';
-import { FEED_PAGE, NEWEST_FIRST, afterFeed, mergeFeed } from '../office-paging';
+import { FEED_PAGE, NEWEST_FIRST, afterFeed, mergeFeed } from '../rules/office-paging';
 import { PROVIDER_OPERATION_KINDS } from '../wallets/provider-cost';
 
 /** Branch reports: providers and packages, the provider-operations ledger, and the task and number lists. */

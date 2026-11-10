@@ -3,8 +3,8 @@ import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags }
 import type { Response } from 'express';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, NoActivity, param } from '../activity.decorator';
-import { ActivityInterceptor } from '../activity.interceptor';
+import { Activity, NoActivity, param } from '../activity/activity.decorator';
+import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';

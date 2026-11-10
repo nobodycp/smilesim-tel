@@ -7,12 +7,12 @@ import { fail } from '../../shared/office-failure';
 import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
 import { feedPosition } from '../kernel/feed';
 import type { Action, Actor } from '../kernel/types';
-import type { WrittenNotice } from '../notice.service';
-import { excerpt, type TaskNoticePayload } from '../notice-kinds';
-import { NEWEST_FIRST, TASKS_PAGE, afterFeed, mergeFeed, taskStatusOf } from '../office-paging';
-import { simRulesOf } from '../office-rules';
-import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from '../task-access';
-import { stampTaskLog } from '../task-log';
+import type { WrittenNotice } from '../notices/notice.service';
+import { excerpt, type TaskNoticePayload } from '../notices/notice-kinds';
+import { NEWEST_FIRST, TASKS_PAGE, afterFeed, mergeFeed, taskStatusOf } from '../rules/office-paging';
+import { simRulesOf } from '../rules/office-rules';
+import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
+import { stampTaskLog } from './task-log';
 import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 
 /**

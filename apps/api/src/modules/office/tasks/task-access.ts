@@ -1,5 +1,5 @@
-import { holds } from './policy';
-import { type AccountNode, visibleAccountIds } from './office-rules';
+import { holds } from '../policy';
+import { type AccountNode, visibleAccountIds } from '../rules/office-rules';
 
 export type TaskSubject = { submitterId: string; posId: string };
 export type Handler = { layer: string; isBranchOwner: boolean; grants: string[] };

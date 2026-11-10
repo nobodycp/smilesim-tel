@@ -1,4 +1,4 @@
-import { catalog, companies as seededCompanies, packageCode, packageName, type CatalogPackage } from '../../office-catalog';
+import { catalog, companies as seededCompanies, packageCode, packageName, type CatalogPackage } from '../../catalog/office-catalog';
 import type { ProviderAdapter, ProviderCompany, ProviderProduct } from './provider-adapter';
 
 const AGOROT = 100;

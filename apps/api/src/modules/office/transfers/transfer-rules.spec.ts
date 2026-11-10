@@ -1,4 +1,4 @@
-import type { GrantCode } from './office-grants';
+import type { GrantCode } from '../rules/office-grants';
 import {
   DESTINATION_LAYER,
   TRANSFER_GRANT,
@@ -8,7 +8,7 @@ import {
   previewOf,
   transferKind,
 } from './transfer-rules';
-import type { OpKey, PathNode, SellRow, TermRow } from './user-terms';
+import type { OpKey, PathNode, SellRow, TermRow } from '../rules/user-terms';
 
 type Input = Parameters<typeof canTransfer>[0];
 

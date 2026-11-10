@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ActivityModule } from '../office/activity.module';
+import { ActivityModule } from '../office/activity/activity.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AUTH_STORE } from './auth.store';

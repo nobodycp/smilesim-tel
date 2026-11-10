@@ -1,8 +1,8 @@
 import { PrismaService } from '../../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { AuthStore } from '../../auth/auth.store';
-import type { LineFilter } from '../office-paging';
-import { NoticeService } from '../notice.service';
+import type { LineFilter } from '../rules/office-paging';
+import { NoticeService } from '../notices/notice.service';
 import { OfficeKernel } from '../kernel/office-kernel';
 import { LinePricing } from '../lines/line-pricing';
 import { LineReads } from '../lines/line-reads';

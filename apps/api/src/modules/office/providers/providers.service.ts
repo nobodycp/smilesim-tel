@@ -5,7 +5,7 @@ import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { parseInput } from '../../shared/input';
 import type { Prisma } from '../../../generated/prisma/client';
-import { normalizeActionModes, packageModeData } from '../office-rules';
+import { normalizeActionModes, packageModeData } from '../rules/office-rules';
 import { ProviderEsimPriceBody, ProviderModeBody } from './providers.schemas';
 
 /** Providers, for the branch: the list with each provider's companies and packages, the per-provider action modes, and the provider eSIM price. */

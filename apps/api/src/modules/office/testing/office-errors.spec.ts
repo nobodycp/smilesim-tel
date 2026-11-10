@@ -1,15 +1,15 @@
 import 'reflect-metadata';
-import { API_PROVIDERS } from '../shared/api-providers';
+import { API_PROVIDERS } from '../../shared/api-providers';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { AuthModule } from '../auth/auth.module';
-import { AUTH_STORE } from '../auth/auth.store';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { hashOnce } from './testing/test-hash';
-import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from './office.module';
-import { OfficeFailure } from '../shared/office-failure';
-import { OfficeKernel } from './kernel/office-kernel';
+import { AuthModule } from '../../auth/auth.module';
+import { AUTH_STORE } from '../../auth/auth.store';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { hashOnce } from './test-hash';
+import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
+import { OfficeFailure } from '../../shared/office-failure';
+import { OfficeKernel } from '../kernel/office-kernel';
 
 // A refusal from any office route carries `{ message, code }`. The Arabic message is the one the
 // web app has always shown; the code is what it now routes and translates on.

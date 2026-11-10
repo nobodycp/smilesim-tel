@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, Res, UseInterceptors } from '@nestjs/com
 import type { Response } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../activity.interceptor';
+import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';

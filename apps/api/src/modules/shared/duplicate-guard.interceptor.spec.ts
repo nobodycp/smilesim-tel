@@ -5,7 +5,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AUTH_STORE } from '../auth/auth.store';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { ActivityRecorder } from '../office/activity-recorder';
+import { ActivityRecorder } from '../office/activity/activity-recorder';
 import { OfficeKernel } from '../office/kernel/office-kernel';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office/office.module';
 import { DuplicateGuardInterceptor, SAME_WRITE_SECONDS, memoryWrites } from './duplicate-guard.interceptor';

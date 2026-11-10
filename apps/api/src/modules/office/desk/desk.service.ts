@@ -2,10 +2,10 @@ import { isOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
-import { visibleAccountIds } from '../office-rules';
-import { taskWhereFor } from '../task-access';
-import { deniedOpsFor, parseOps, serializeOps } from '../user-terms';
-import { expiringWhere } from '../office-paging';
+import { visibleAccountIds } from '../rules/office-rules';
+import { taskWhereFor } from '../tasks/task-access';
+import { deniedOpsFor, parseOps, serializeOps } from '../rules/user-terms';
+import { expiringWhere } from '../rules/office-paging';
 
 /** The signed-in account's desk: who it is (identity, balance, grants, stops), and the home board. */
 @Injectable()

@@ -3,9 +3,9 @@ import type { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
 import { lineTermsOf } from '../kernel/line-terms';
 import { OfficeKernel } from '../kernel/office-kernel';
-import { lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf, type LineTerms } from '../office-rules';
-import { packageTermsOf, type PackagePriceRow } from '../office-terms';
-import { buyPriceFor, visibleTo, type LayerPrices, type PathNode, type PriceKind } from '../user-terms';
+import { lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf, type LineTerms } from '../rules/office-rules';
+import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
+import { buyPriceFor, visibleTo, type LayerPrices, type PathNode, type PriceKind } from '../rules/user-terms';
 
 type Db = Prisma.TransactionClient | PrismaClient;
 type PricedLine = { id: string; endsAt: Date; terms: Prisma.JsonValue; package: PackagePriceRow };

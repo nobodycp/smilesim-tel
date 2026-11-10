@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { hashOnce } from './testing/test-hash';
-import { companies } from './office-catalog';
-import { OfficeFacade } from './testing/office-facade';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { hashOnce } from './test-hash';
+import { companies } from '../catalog/office-catalog';
+import { OfficeFacade } from './office-facade';
 
 // The web app keeps its own copy of the shape of these answers (apps/web/lib/api-types.ts and features/lines/api.ts: OfficeMe,
 // HomePayload, LineRow, PosChoice). There is no shared package, so this test is the guard: the key
@@ -330,9 +330,9 @@ describe('office response shapes', () => {
 });
 
 // The same lists against the web declarations. Skipped where the web app is not checked out beside the API.
-const webApi = join(__dirname, '../../../../web/lib/api-types.ts');
+const webApi = join(__dirname, '../../../../../web/lib/api-types.ts');
 // The officeLines envelope is declared with its call (phase 4.3 split the web client by domain).
-const webLines = join(__dirname, '../../../../web/features/lines/api.ts');
+const webLines = join(__dirname, '../../../../../web/features/lines/api.ts');
 const describeWeb = existsSync(webApi) ? describe : describe.skip;
 
 /** The text between `export type NAME = {` and the `};` that closes it. */

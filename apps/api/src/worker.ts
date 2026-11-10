@@ -4,7 +4,7 @@ import 'reflect-metadata';
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
 import { createPrismaClient } from './db';
-import { purgeBefore } from './modules/office/activity-log';
+import { purgeBefore } from './modules/office/activity/activity-log';
 
 const log = logger('Worker');
 

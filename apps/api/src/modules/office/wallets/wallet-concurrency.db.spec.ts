@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { createPrismaClient } from '../../db';
-import type { NoticeService } from './notice.service';
-import { OfficeFacade } from './testing/office-facade';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { createPrismaClient } from '../../../db';
+import type { NoticeService } from '../notices/notice.service';
+import { OfficeFacade } from '../testing/office-facade';
 
 // Runs against a real PostgreSQL only: in-memory stores cannot show a lost update.
 // The compose postgres does not publish a host port, so use a throwaway one:

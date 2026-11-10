@@ -7,13 +7,13 @@ import { OfficeKernel } from '../kernel/office-kernel';
 import { parseInput } from '../../shared/input';
 import { feedPosition } from '../kernel/feed';
 import type { Actor } from '../kernel/types';
-import { FEED_PAGE, NEWEST_FIRST, afterFeed, encodeFeedCursor, mergeFeed } from '../office-paging';
-import { visibleAccountIds } from '../office-rules';
+import { FEED_PAGE, NEWEST_FIRST, afterFeed, encodeFeedCursor, mergeFeed } from '../rules/office-paging';
+import { visibleAccountIds } from '../rules/office-rules';
 import { CeilingBody, DeductBody, FundBody } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 import { matchOf } from '../providers/match-simulator';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
-import { REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../profit-ladder';
+import { REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../rules/profit-ladder';
 import type { Account } from '../kernel/types';
 
 const FINANCE_CSV_LIMIT = 10_000;

@@ -5,19 +5,19 @@ import { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { AUTH_STORE, AuthStore } from '../../auth/auth.store';
 import { fail } from '../../shared/office-failure';
 import { PrismaService } from '../../shared/prisma.service';
-import { NoticeService, type WrittenNotice } from '../notice.service';
-import { GRANT_CODES, effectiveGrantCodes } from '../office-grants';
-import { visibleAccountIds, withinCeiling } from '../office-rules';
+import { NoticeService, type WrittenNotice } from '../notices/notice.service';
+import { GRANT_CODES, effectiveGrantCodes } from '../rules/office-grants';
+import { visibleAccountIds, withinCeiling } from '../rules/office-rules';
 import type { Account, Actor, Gate, Sale } from './types';
-import type { PathNode, SellRow, TermRow } from '../user-terms';
-import { stampRenewal } from '../line-prices';
-import type { LineTerms } from '../office-rules';
-import { buyPriceFor } from '../user-terms';
-import type { LayerPrices } from '../user-terms';
-import { LAYER_GRANTS, flagsFor } from '../office-grants';
+import type { PathNode, SellRow, TermRow } from '../rules/user-terms';
+import { stampRenewal } from '../rules/line-prices';
+import type { LineTerms } from '../rules/office-rules';
+import { buyPriceFor } from '../rules/user-terms';
+import type { LayerPrices } from '../rules/user-terms';
+import { LAYER_GRANTS, flagsFor } from '../rules/office-grants';
 import { LAYER_ORDER } from './values';
-import { deniedOpsFor } from '../user-terms';
-import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder } from '../profit-ladder';
+import { deniedOpsFor } from '../rules/user-terms';
+import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder } from '../rules/profit-ladder';
 
 /**
  * What every office domain shares: the PostgreSQL client, the signed-in actor and their grants, the account

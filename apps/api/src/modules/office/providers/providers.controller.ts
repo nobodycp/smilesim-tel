@@ -2,8 +2,8 @@ import { Body, Controller, Get, Param, Patch, UseInterceptors } from '@nestjs/co
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, param } from '../activity.decorator';
-import { ActivityInterceptor } from '../activity.interceptor';
+import { Activity, param } from '../activity/activity.decorator';
+import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { ProviderEsimPriceBody, ProviderModeBody } from './providers.schemas';

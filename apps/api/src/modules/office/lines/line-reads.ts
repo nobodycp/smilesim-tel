@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
-import { LINES_PAGE, NEWEST_FIRST, idCursorArgs, isSuspended, linesWhere, pageOf, type LineFilter } from '../office-paging';
-import { esimPriceOf, offeredOperations, refreshMode, resolvePackageMode, simRulesOf, visibleAccountIds } from '../office-rules';
-import { deniedOpsFor, visibleTo, type OpKey, type PathNode } from '../user-terms';
+import { LINES_PAGE, NEWEST_FIRST, idCursorArgs, isSuspended, linesWhere, pageOf, type LineFilter } from '../rules/office-paging';
+import { esimPriceOf, offeredOperations, refreshMode, resolvePackageMode, simRulesOf, visibleAccountIds } from '../rules/office-rules';
+import { deniedOpsFor, visibleTo, type OpKey, type PathNode } from '../rules/user-terms';
 import { lineHistory } from './line-history';
 import { canActivateFor, opKeyOf, type RunnablePackage } from './line-ops';
 

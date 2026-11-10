@@ -4,8 +4,8 @@
 // request, asks here, and performs the writes. See
 // docs/superpowers/specs/2026-11-06-transfer-permissions-design.md.
 
-import type { GrantCode } from './office-grants';
-import { floorFor, parseOps, type LayerPrices, type OpKey, type PathNode, type PriceKind, type SellRow, type TermRow } from './user-terms';
+import type { GrantCode } from '../rules/office-grants';
+import { floorFor, parseOps, type LayerPrices, type OpKey, type PathNode, type PriceKind, type SellRow, type TermRow } from '../rules/user-terms';
 
 /** What moves: a number between points of sale, a point of sale between agents, an agent between main agents. */
 export type TransferKind = 'line' | 'pos' | 'agent';

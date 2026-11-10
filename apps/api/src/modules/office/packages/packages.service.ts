@@ -5,10 +5,10 @@ import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
-import { ACTION_KEYS, chainHolds, editableField, esimPriceOf, normalizeActionModes, packageModeData, resolvePackageMode, simRulesOf, type ActionMode } from '../office-rules';
-import { buyPriceFor, deniedOpsFor, layerPrice, visibleTo } from '../user-terms';
+import { ACTION_KEYS, chainHolds, editableField, esimPriceOf, normalizeActionModes, packageModeData, resolvePackageMode, simRulesOf, type ActionMode } from '../rules/office-rules';
+import { buyPriceFor, deniedOpsFor, layerPrice, visibleTo } from '../rules/user-terms';
 import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody, SellPriceBody } from './packages.schemas';
-import type { Prices } from '../office-rules';
+import type { Prices } from '../rules/office-rules';
 
 // Which package flags a provider mode sets.
 function pricesOf(row: Prices): Prices {

@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { officeTestApp } from './testing/office-test-app';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { officeTestApp } from '../testing/office-test-app';
 
 // Accounts and roles over HTTP: who may list, create, reset, freeze, delete, enter and leave accounts, and edit
 // roles and access. Written before these routes left office.controller.ts, so the move is checked against the

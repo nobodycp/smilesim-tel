@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { officeTestApp } from './testing/office-test-app';
-import { GRANT_CODES } from './office-grants';
-import { ROUTES } from './testing/office-routes';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { officeTestApp } from './office-test-app';
+import { GRANT_CODES } from '../rules/office-grants';
+import { ROUTES } from './office-routes';
 
 // Who gets past the gate of each office route (improvement 2, spec 2026-11-08-sorting-permissions-api-guards.md).
 // Six accounts call every route over tables that hold only the caller: `y` = the route lets this account through

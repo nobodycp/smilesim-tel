@@ -2,13 +2,13 @@ import { holdsAny } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
-import { visibleAccountIds } from '../office-rules';
-import { NEWEST_FIRST, expiringWhere, suspendedWhere } from '../office-paging';
-import { REFUND_KINDS, SALE_KINDS, marginOf } from '../profit-ladder';
+import { visibleAccountIds } from '../rules/office-rules';
+import { NEWEST_FIRST, expiringWhere, suspendedWhere } from '../rules/office-paging';
+import { REFUND_KINDS, SALE_KINDS, marginOf } from '../rules/profit-ladder';
 import { ProviderAccountsService } from '../providers/provider-accounts.service';
 import { ProviderHealthService } from '../providers/provider-health.service';
 import { InsightsService } from '../reports/insights.service';
-import { taskWhereFor } from '../task-access';
+import { taskWhereFor } from '../tasks/task-access';
 import { WalletsService } from '../wallets/wallets.service';
 import { addEntry, axis, bucketOf, emptyTotals, stepOf, previousWindow, type PulsePoint, type PulseTotals } from './pulse';
 

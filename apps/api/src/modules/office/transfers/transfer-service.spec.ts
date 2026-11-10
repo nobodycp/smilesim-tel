@@ -1,16 +1,16 @@
 import 'reflect-metadata';
-import { API_PROVIDERS } from '../shared/api-providers';
+import { API_PROVIDERS } from '../../shared/api-providers';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { ActivityRecorder } from './activity-recorder';
-import { NOTICE_GROUPS, hrefFor, type NoticeDraft } from './notice-kinds';
-import type { NoticeService, WrittenNotice } from './notice.service';
-import { OfficeKernel } from './kernel/office-kernel';
-import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from './office.module';
-import { OfficeFacade } from './testing/office-facade';
-import type { LineTerms } from './office-rules';
-import { account, tree, type Row } from './testing/tree.fixture';
+import { ActivityRecorder } from '../activity/activity-recorder';
+import { NOTICE_GROUPS, hrefFor, type NoticeDraft } from '../notices/notice-kinds';
+import type { NoticeService, WrittenNotice } from '../notices/notice.service';
+import { OfficeKernel } from '../kernel/office-kernel';
+import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
+import { OfficeFacade } from '../testing/office-facade';
+import type { LineTerms } from '../rules/office-rules';
+import { account, tree, type Row } from '../testing/tree.fixture';
 
 // Moving an account or a number, and what the office is told before it does.
 // The tree is the one in tree-fixture.ts: branch → ma1 → ag1 → pos1 and ma1 → ag2 → pos2, plus ma2 with nothing under it.

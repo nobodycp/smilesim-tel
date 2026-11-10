@@ -1,8 +1,8 @@
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { hashOnce } from './testing/test-hash';
-import type { NoticeService } from './notice.service';
-import { OfficeFacade } from './testing/office-facade';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { hashOnce } from '../testing/test-hash';
+import type { NoticeService } from '../notices/notice.service';
+import { OfficeFacade } from '../testing/office-facade';
 
 // An eSIM request is a branch task priced from the package, the provider, or the company; the employee
 // closes it with the serial and the QR picture, which land on the line. A SIM swap stays free.

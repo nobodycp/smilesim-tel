@@ -1,6 +1,6 @@
 /** What the browser needs to word a notice. The API stores no sentence. */
 
-import type { TransferKind } from './transfer-rules';
+import type { TransferKind } from '../transfers/transfer-rules';
 
 export type TaskNoticePayload = {
   taskId: string;

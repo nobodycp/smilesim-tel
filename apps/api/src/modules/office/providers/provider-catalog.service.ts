@@ -4,7 +4,7 @@ import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { parseInput } from '../../shared/input';
-import { ACTION_KEYS, chainHolds, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../office-rules';
+import { ACTION_KEYS, chainHolds, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../rules/office-rules';
 import { adapterFor } from './adapters/simulated-adapter';
 import { CompanyCreateBody, PackageCreateBody } from './providers.schemas';
 

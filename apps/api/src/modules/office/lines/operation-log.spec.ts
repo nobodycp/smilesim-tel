@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { hashOnce } from './testing/test-hash';
-import { OfficeFacade } from './testing/office-facade';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { hashOnce } from '../testing/test-hash';
+import { OfficeFacade } from '../testing/office-facade';
 
 // A refresh or a SIM swap that the provider accepts immediately does not move money.
 // It still has to land in the provider-operations report and on the line's own log,

@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { officeTestApp } from './testing/office-test-app';
-import { ROUTES } from './testing/office-routes';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { officeTestApp } from './office-test-app';
+import { ROUTES } from './office-routes';
 
 // Every office route as the app serves it, whichever controller holds it: the method and path, and the activity
 // event it writes. Called without a session, each one refuses with 401 and logs the refusal under its own event.

@@ -1,9 +1,9 @@
-import { logger, reason as why } from '../shared/log';
-import { env } from '../../config';
+import { logger, reason as why } from '../../shared/log';
+import { env } from '../../../config';
 import { Injectable, Optional } from '@nestjs/common';
-import { createPrismaClient } from '../../db';
-import { PrismaClient } from '../../generated/prisma/client';
-import { PrismaService } from '../shared/prisma.service';
+import { createPrismaClient } from '../../../db';
+import { PrismaClient } from '../../../generated/prisma/client';
+import { PrismaService } from '../../shared/prisma.service';
 
 export type ActivityDraft = {
   action: string;
@@ -11,7 +11,7 @@ export type ActivityDraft = {
   subjectRef?: string;
 };
 
-import type { Gate } from '../shared/cookies';
+import type { Gate } from '../../shared/cookies';
 
 const log = logger('ActivityLog');
 

@@ -5,8 +5,8 @@ import request from 'supertest';
 import { Activity, param } from './activity.decorator';
 import { ActivityInterceptor } from './activity.interceptor';
 import { ActivityRecorder } from './activity-recorder';
-import { OfficeFailure } from '../shared/office-failure';
-import { ApiExceptionFilter } from '../shared/api-exception.filter';
+import { OfficeFailure } from '../../shared/office-failure';
+import { ApiExceptionFilter } from '../../shared/api-exception.filter';
 
 @Controller('t')
 @UseFilters(ApiExceptionFilter)

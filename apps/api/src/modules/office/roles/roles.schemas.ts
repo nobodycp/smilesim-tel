@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GRANT_CODES } from '../office-grants';
+import { GRANT_CODES } from '../rules/office-grants';
 
 // The body of the role route (backend-engineering.mdc 4.1). The service parses it with `parseInput` after its
 // permission check; the controller documents the route from the same schema.

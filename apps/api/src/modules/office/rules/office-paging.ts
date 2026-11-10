@@ -1,4 +1,4 @@
-import type { Prisma } from '../../generated/prisma/client';
+import type { Prisma } from '../../../generated/prisma/client';
 
 // Paging rules shared by the office lists. Everything here is pure: the service hands the
 // result to Prisma, so filters and cursors run in the database and never over loaded rows.

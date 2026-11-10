@@ -1,8 +1,8 @@
-import { env } from '../../config';
+import { env } from '../../../config';
 import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import IORedis, { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
-import type { Prisma } from '../../generated/prisma/client';
+import type { Prisma } from '../../../generated/prisma/client';
 import { hrefFor, type NoticeDraft } from './notice-kinds';
 
 /** Pub/sub behind the live channel. Redis in the app, memory in tests. */

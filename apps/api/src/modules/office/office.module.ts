@@ -41,7 +41,7 @@ import { ProviderAccountsController } from './providers/provider-accounts.contro
 import { ProviderAccountsService } from './providers/provider-accounts.service';
 import { WalletsController } from './wallets/wallets.controller';
 import { WalletsService } from './wallets/wallets.service';
-import { NoticeService } from './notice.service';
+import { NoticeService } from './notices/notice.service';
 import { OfficeKernel } from './kernel/office-kernel';
 import { NoticeInboxService } from './notices/notice-inbox.service';
 import { NoticesController } from './notices/notices.controller';

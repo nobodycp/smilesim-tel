@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { officeTestApp } from './testing/office-test-app';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { officeTestApp } from '../testing/office-test-app';
 
 // Providers and companies over HTTP, written before these routes left office.controller.ts.
 

@@ -1,8 +1,8 @@
 import 'reflect-metadata';
-import { groupLinePrices } from './line-prices';
-import { captureTerms, type LineTerms } from './office-rules';
-import { packageTermsOf, type PackagePriceRow } from './office-terms';
-import { account, tree, type Row } from './testing/tree.fixture';
+import { groupLinePrices } from '../rules/line-prices';
+import { captureTerms, type LineTerms } from '../rules/office-rules';
+import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
+import { account, tree, type Row } from '../testing/tree.fixture';
 
 /** A number beside the tree's first line: the same package and point of sale, carrying `posPrice` at renewal. */
 const at = (line: Row, id: string, posPrice: number, status = 'active'): Row => ({

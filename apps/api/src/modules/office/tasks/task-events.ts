@@ -1,4 +1,4 @@
-import { parseTaskLogLine } from '../task-log';
+import { parseTaskLogLine } from './task-log';
 
 // What happened on a task, newest first, as its page shows it. Pure.
 

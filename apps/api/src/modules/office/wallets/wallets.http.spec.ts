@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { officeTestApp } from './testing/office-test-app';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { officeTestApp } from '../testing/office-test-app';
 
 // GET /office/wallets over HTTP, written before the wallet routes left office.controller.ts.
 describe('GET /office/wallets', () => {

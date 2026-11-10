@@ -2,7 +2,7 @@ import { fail } from '../shared/office-failure';
 import type { ErrorCode } from '../../errors';
 import type { Actor } from './kernel/types';
 import { LAYER_ORDER } from './kernel/values';
-import type { GrantCode } from './office-grants';
+import type { GrantCode } from './rules/office-grants';
 
 // Who may do what in the office (backend-engineering.mdc 3.1). Services ask these functions; they do not read
 // `actor.grants` or `actor.isBranchOwner` themselves, so `permissions.http.spec.ts` and the code say one thing.

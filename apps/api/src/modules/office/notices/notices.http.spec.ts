@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { officeTestApp } from './testing/office-test-app';
-import { encodeFeedCursor } from './office-paging';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { officeTestApp } from '../testing/office-test-app';
+import { encodeFeedCursor } from '../rules/office-paging';
 
 // The notice inbox over HTTP: written before the notices routes left office.controller.ts, so the move is
 // checked against what the routes answered before it.

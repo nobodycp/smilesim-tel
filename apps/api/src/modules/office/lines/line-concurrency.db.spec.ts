@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { OfficeFailure } from '../../shared/office-failure';
-import type { NoticeService } from '../notice.service';
-import { captureTerms } from '../office-rules';
-import { packageTermsOf, type PackagePriceRow } from '../office-terms';
+import type { NoticeService } from '../notices/notice.service';
+import { captureTerms } from '../rules/office-rules';
+import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
 import { OfficeFacade } from '../testing/office-facade';
 
 // Runs against a real PostgreSQL only (see wallet-concurrency.db.spec.ts for how to give it one): in-memory

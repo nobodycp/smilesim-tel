@@ -2,8 +2,8 @@ import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nes
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, bodyField } from '../activity.decorator';
-import { ActivityInterceptor } from '../activity.interceptor';
+import { Activity, bodyField } from '../activity/activity.decorator';
+import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';

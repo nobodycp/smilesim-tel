@@ -1,12 +1,12 @@
 import { dayRange } from '../../shared/dates';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { activityActorFilter, clampActivityRange } from '../activity-log';
+import { activityActorFilter, clampActivityRange } from '../activity/activity-log';
 import { feedPosition } from '../kernel/feed';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
-import { FEED_PAGE, encodeFeedCursor } from '../office-paging';
-import { visibleAccountIds } from '../office-rules';
+import { FEED_PAGE, encodeFeedCursor } from '../rules/office-paging';
+import { visibleAccountIds } from '../rules/office-rules';
 import { csvOf } from '../reports/report-csv';
 
 type AuditQuery = { cursor?: string; action?: string; result?: string; layer?: string; q?: string; from?: string; to?: string; addresses?: string };

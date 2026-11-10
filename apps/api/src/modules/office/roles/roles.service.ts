@@ -5,7 +5,7 @@ import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { LAYER_ORDER } from '../kernel/values';
-import { FLAG_CODES, flagsFor, roleGrantCodes, splitGrants } from '../office-grants';
+import { FLAG_CODES, flagsFor, roleGrantCodes, splitGrants } from '../rules/office-grants';
 import { RoleBody } from './roles.schemas';
 
 /** Roles, for the branch owner: the four layer roles and the job roles, with their grants. */

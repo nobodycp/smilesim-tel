@@ -1,4 +1,4 @@
-import type { Prices } from './office-rules';
+import type { Prices } from '../rules/office-rules';
 
 export const companies = [
   { code: 'cellcom', name: 'سلكوم' },

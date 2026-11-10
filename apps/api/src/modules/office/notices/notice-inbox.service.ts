@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { feedPosition } from '../kernel/feed';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
-import { NOTICE_GROUPS, noticeGroupOf } from '../notice-kinds';
-import { NEWEST_FIRST, NOTICES_PAGE, afterFeed, mergeFeed } from '../office-paging';
+import { NOTICE_GROUPS, noticeGroupOf } from './notice-kinds';
+import { NEWEST_FIRST, NOTICES_PAGE, afterFeed, mergeFeed } from '../rules/office-paging';
 
 /** The signed-in account's own notices: the paged inbox, marking read, and the live channel. */
 @Injectable()

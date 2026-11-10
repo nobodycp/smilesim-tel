@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { PrismaBrandingStore } from '../branding/prisma-branding.store';
-import { ActivityRecorder } from '../office/activity-recorder';
-import type { NoticeService } from '../office/notice.service';
+import { ActivityRecorder } from '../office/activity/activity-recorder';
+import type { NoticeService } from '../office/notices/notice.service';
 import { OfficeKernel } from '../office/kernel/office-kernel';
 import { PrismaService } from './prisma.service';
 

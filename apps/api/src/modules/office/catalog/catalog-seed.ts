@@ -1,8 +1,8 @@
 import { env, isTest } from '../../../config';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { OfficeKernel } from '../kernel/office-kernel';
-import { catalog, companies, packageCode, packageName } from '../office-catalog';
-import { AGOROT, normalizeActionModes, packageFlagsFromModes } from '../office-rules';
+import { catalog, companies, packageCode, packageName } from './office-catalog';
+import { AGOROT, normalizeActionModes, packageFlagsFromModes } from '../rules/office-rules';
 
 /**
  * At boot, makes sure the shipped catalog (providers, companies, packages) and the four layer roles exist. Skipped
