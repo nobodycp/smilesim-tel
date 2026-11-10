@@ -106,10 +106,15 @@ export type HomePayload = {
 export type PackageRow = {
   code: string;
   name: string;
-  providerCode: string;
-  /** The provider's name: told to the branch only, empty for every other layer. */
+  /** The provider's code and name: told to the branch only (null and empty for every other layer). */
+  providerCode: string | null;
   providerName: string;
-  activateMode: 'auto' | 'manual' | 'off';
+  /** How an activation runs: the branch's business, null for every other layer. */
+  activateMode: 'auto' | 'manual' | 'off' | null;
+  /** Whether the package may be sold now (its activation is not turned off). */
+  sellable: boolean;
+  /** What the activation form asks for: a number the office makes up, the subscriber's current details, or a number and a SIM. */
+  activateInput: 'generated' | 'current-details' | 'number-and-sim';
   companyName: string;
   sim: SimRules;
   esimPrice: number;

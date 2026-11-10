@@ -10,7 +10,7 @@ import type { Actor } from '../kernel/types';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
 import { chainHolds, editableField, esimPriceOf } from '../rules/prices';
-import { ACTION_KEYS, normalizeActionModes, packageModeData, resolvePackageMode, type ActionMode } from '../rules/run-modes';
+import { ACTION_KEYS, activateInputs, normalizeActionModes, packageModeData, resolvePackageMode, type ActionMode } from '../rules/run-modes';
 import { simRulesOf } from '../rules/sim-rules';
 import { buyPriceFor, deniedOpsFor, layerPrice, visibleTo } from '../rules/user-terms';
 import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody, SellPriceBody } from './packages.schemas';
@@ -74,9 +74,14 @@ export class PackagesService {
         sellRenewalDefault: sellsTo ? layerPrice(sellsTo, row, 'renewal') : null,
         code: row.code,
         name: row.name,
-        providerCode: row.provider.code,
-        providerName: actor.layer === 'branch' ? row.provider.name : '',
-        activateMode: resolvePackageMode(row.actionModes, row, 'activate'),
+        // Which provider a package comes from, and whether it runs by itself or through a branch task, is the
+        // branch's business (rule 3.4). The other layers are told what they need to sell it: whether it is on
+        // sale, and what the activation form must ask for.
+        providerCode: branch ? row.provider.code : null,
+        providerName: branch ? row.provider.name : '',
+        activateMode: branch ? resolvePackageMode(row.actionModes, row, 'activate') : null,
+        sellable: resolvePackageMode(row.actionModes, row, 'activate') !== 'off',
+        activateInput: activateInputs(row.provider.code),
         companyName: row.company?.name ?? '',
         sim: simRulesOf(row.company, row),
         esimPrice: esimPriceOf({ pkg: row, provider: row.provider, company: row.company }).price,

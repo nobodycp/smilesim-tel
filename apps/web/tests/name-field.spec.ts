@@ -3,7 +3,7 @@ import { serveOffice } from './desk';
 
 // NameField (spec 2026-11-09-admin-review, 2a): names are picked by typing, closest first, with the keyboard or the
 // pointer; a picked name has a «×»; leaving the field puts the picked name back.
-const pack = (code: string, name: string, companyName: string, providerName: string) => ({ code, name, companyName, providerName });
+const pack = (code: string, name: string, companyName: string, providerName: string) => ({ code, name, companyName, providerName, sellable: true, activateInput: 'generated' });
 const packages = [
   pack('cell-400', '400 جيجا', 'سلكوم', 'سكاي'),
   pack('wecom-150', '150 جيجا', 'ويكوم', 'ليان'),

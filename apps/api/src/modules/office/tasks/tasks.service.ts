@@ -81,7 +81,8 @@ export class TasksService {
           msisdn: row.msisdn,
           packageName: pkg?.name ?? '',
           companyName: pkg?.company?.name ?? '',
-          providerName: pkg?.provider?.name ?? '',
+          // The provider is the branch's business (rule 3.4): a lower layer sees the package and its company.
+          providerName: actor.layer === 'branch' ? pkg?.provider?.name ?? '' : '',
           note: row.note,
           resultNote: row.status === 'pending' && !handler ? null : row.resultNote,
           lastNote: row.notes[0]?.body ?? null,
@@ -137,7 +138,7 @@ export class TasksService {
         lineStatus: row.line?.status ?? null,
         packageName: pkg?.name ?? '',
         companyName: pkg?.company?.name ?? '',
-        providerName: pkg?.provider?.name ?? '',
+        providerName: actor.layer === 'branch' ? pkg?.provider?.name ?? '' : '',
         note: row.note,
         resultNote,
         log: handler ? row.log : '',

@@ -40,7 +40,7 @@ const line = (n, status, extra = {}) => ({
 });
 const lines = [line(1, 'active'), line(2, 'frozen'), line(3, 'disconnected')];
 const pack = (code, name, extra = {}) => ({
-  code, name, providerName: 'مزود', companyName: 'سلكوم', dataGb: 400, months: 1, branchCost: 20, mainPrice: 22,
+  code, name, providerName: 'مزود', sellable: true, activateInput: 'generated', companyName: 'سلكوم', dataGb: 400, months: 1, branchCost: 20, mainPrice: 22,
   agentPrice: 24, posPrice: 26, subscriberPrice: 30, editableField: null, autoActivate: true, autoCharge: true,
   autoDisconnect: false, autoFreeze: false, autoSwitch: false, ...extra,
 });

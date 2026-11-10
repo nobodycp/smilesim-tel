@@ -41,7 +41,7 @@ const PACKAGE_SHEET_KEYS = [
 // GET /office/packages: one row a package on sale. The price columns above the viewer and the run modes come as
 // null outside the branch (plan backend-loose-ends B.4).
 const PACKAGE_ROW_KEYS = [
-  'code', 'name', 'providerCode', 'providerName', 'activateMode', 'companyName', 'sim', 'esimPrice', 'dataGb', 'smsCount', 'minutes',
+  'code', 'name', 'providerCode', 'providerName', 'activateMode', 'sellable', 'activateInput', 'companyName', 'sim', 'esimPrice', 'dataGb', 'smsCount', 'minutes',
   'details', 'months', 'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice', 'editableField',
   'autoActivate', 'autoCharge', 'autoDisconnect', 'autoFreeze', 'autoSwitch',
   'price', 'renewalPrice', 'canActivate', 'sellPrice', 'sellRenewalPrice', 'sellDefault', 'sellRenewalDefault',
@@ -353,15 +353,23 @@ describe('office response shapes', () => {
     const asBranch = await serviceWith(tables);
     const branchRow = (await asBranch.service.packages(asBranch.gate)).packages[0];
     expect(keysOf(branchRow)).toEqual(sorted(PACKAGE_ROW_KEYS));
-    expect(branchRow).toMatchObject({ branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, autoActivate: true, providerName: 'ليان' });
+    expect(branchRow).toMatchObject({
+      branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, autoActivate: true,
+      providerCode: 'lian', providerName: 'ليان', activateMode: 'auto', sellable: true, activateInput: 'generated',
+    });
     const asPos = await posServiceWith(tables);
     const posRow = (await asPos.service.packages(asPos.gate)).packages[0];
     expect(keysOf(posRow)).toEqual(sorted(PACKAGE_ROW_KEYS));
     // Null, never 0: a hidden price must not read as a free one.
     expect(posRow).toMatchObject({
       branchCost: null, mainPrice: null, agentPrice: null, posPrice: 3500, subscriberPrice: 3800,
-      autoActivate: null, autoCharge: null, autoDisconnect: null, autoFreeze: null, autoSwitch: null, providerName: '',
+      autoActivate: null, autoCharge: null, autoDisconnect: null, autoFreeze: null, autoSwitch: null,
+      // Which provider, and how it runs, is not a point of sale's to know (rule 3.4): only what it needs to sell.
+      providerCode: null, providerName: '', activateMode: null, sellable: true, activateInput: 'generated',
     });
+    // No other field carries the provider either. The package's own `code` is left out of this check: catalog
+    // codes are written `<provider>-<company>-<size>` today, which is a naming matter (see backend.md, known gaps).
+    expect(JSON.stringify({ ...posRow, code: '' })).not.toMatch(/lian|ليان/);
   });
 });
 

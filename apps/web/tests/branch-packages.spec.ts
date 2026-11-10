@@ -109,7 +109,7 @@ test('the package page edits its details', async ({ page }) => {
 
 test('the point of sale sees the details on the package card and the subscribe step', async ({ page }) => {
   const row = {
-    code: 'lian-wecom-500', name: '500 جيجا', providerCode: 'lian', providerName: '', companyName: 'ويكوم',
+    code: 'lian-wecom-500', name: '500 جيجا', providerCode: null, providerName: '', activateMode: null, sellable: true, activateInput: 'generated', companyName: 'ويكوم',
     sim: { length: null, prefix: '', esim: false }, esimPrice: 0, dataGb: 500, smsCount: -1, minutes: 1000, details: 'تجوال في الأردن', months: 3,
     branchCost: 0, mainPrice: 0, agentPrice: 0, posPrice: 2700, subscriberPrice: 3000, editableField: null,
     autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true,

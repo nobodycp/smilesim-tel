@@ -168,7 +168,7 @@ export function TaskTicketScreen() {
                 ) : null}
                 <Fact label={t.packageName}>{task.packageName || '—'}</Fact>
                 <Fact label={t.company}>{task.companyName || '—'}</Fact>
-                <Fact label={t.provider}>{task.providerName || '—'}</Fact>
+                {task.providerName ? <Fact label={t.provider}>{task.providerName}</Fact> : null}
                 {task.posLoginName ? (
                   <Fact label={t.pointOfSale}>
                     <AccountName login={task.posLoginName} />

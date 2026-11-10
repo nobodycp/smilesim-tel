@@ -3,7 +3,7 @@ import { serveOffice } from './desk';
 
 const sim = { length: 19, prefix: '8997', esim: true };
 const base = {
-  providerCode: 'lian', providerName: '', activateMode: 'auto', sim, esimPrice: 0, dataGb: 150, months: 1,
+  providerCode: null, providerName: '', activateMode: null, sellable: true, activateInput: 'generated', sim, esimPrice: 0, dataGb: 150, months: 1,
   branchCost: 2500, mainPrice: 2800, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800,
   autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true,
 };

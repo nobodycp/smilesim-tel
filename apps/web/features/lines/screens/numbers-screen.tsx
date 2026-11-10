@@ -83,9 +83,9 @@ export function NumbersScreen() {
 
   const applied = { note: (data: { applied: boolean; debited?: boolean }) => applyNote(t, data) };
 
-  const sellable = packages.filter((row) => row.activateMode !== 'off');
+  const sellable = packages.filter((row) => row.sellable);
   const chosen = sellable.find((row) => row.code === packageCode) ?? sellable[0];
-  const activation = chosen?.providerCode === 'neod' ? 'details' : chosen?.providerCode === 'tokman' ? 'number' : 'generated';
+  const activation = chosen?.activateInput === 'current-details' ? 'details' : chosen?.activateInput === 'number-and-sim' ? 'number' : 'generated';
   const rules = chosen?.sim ?? OPEN_SIM;
   const offersEsim = activation === 'generated' && rules.esim;
   const withEsim = offersEsim && esim;

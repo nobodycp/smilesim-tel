@@ -152,6 +152,10 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
   one yet. After setting it, run `npm run seal-secrets --workspace api` once to seal the secrets already stored. A
   lost key locks app-2FA users out (the owner can clear 2FA per account). The old-Redis-key fallback in
   `PrismaAuthStore.hasLiveKey` is to be removed after 2026-12-15.
+- A package's code is written `<provider>-<company>-<size>` (`sky-cellcom-400`) and every layer sees it (URLs,
+  number and task rows), so the provider's code can be read out of it although rule 3.4 hides the provider's code
+  and name everywhere else. Fixing it means renaming the codes (a data migration) or giving lower layers an
+  opaque id: the owner's call.
 - A cut catalog list answers `capped: true` (`LIST_CAP`, 1,000) but no screen says so yet.
 - Provider accounts still add purchases in memory (an operation without a stored cost falls back to the package's
   price); `provider-operations` filters its match state in memory (it is computed, not stored).

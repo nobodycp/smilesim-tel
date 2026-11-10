@@ -65,7 +65,7 @@ function PosCatalog({
     setStep('details');
   }
 
-  const activation = picked?.providerCode === 'neod' ? 'details' : picked?.providerCode === 'tokman' ? 'number' : 'generated';
+  const activation = picked?.activateInput === 'current-details' ? 'details' : picked?.activateInput === 'number-and-sim' ? 'number' : 'generated';
   const rules = picked?.sim ?? OPEN_SIM;
   const offersEsim = activation === 'generated' && rules.esim;
   const withEsim = offersEsim && esim;

@@ -117,7 +117,7 @@ createServer((req, res) => {
           JSON.stringify({
             packages: [
               {
-                code: 'cell-400', name: '400 جيجا', providerName: 'سلكوم', companyName: 'سلكوم', dataGb: 400, months: 1,
+                code: 'cell-400', name: '400 جيجا', providerName: 'سلكوم', sellable: true, activateInput: 'generated', companyName: 'سلكوم', dataGb: 400, months: 1,
                 sim: { length: null, prefix: '', esim: true },
                 branchCost: 20, mainPrice: 22, agentPrice: 24, posPrice: 26, subscriberPrice: 30, editableField: null,
                 autoActivate: true, autoCharge: true, autoDisconnect: false, autoFreeze: false, autoSwitch: false,
