@@ -1,7 +1,7 @@
 # Terms follow-ups and e2e repair — Implementation Plan
 
 **Spec:** `docs/superpowers/specs/2026-11-06-terms-followups-and-e2e-repair.md`
-**Status:** Done on 2026-11-06. Deviation: the bulk summary reuses `userPackageRow` + `summarize` over the rows loaded for the write (no second `termTarget`); the reset on `/packages` is a one-item `RowMenu` (the only per-row trigger allowed by `content-ui`), not a bare icon button; `expectFullTable` gained `{ fit: true }` for paged cards (users, roles) because the Pearl pass (`d372b56`) deliberately sizes those to content.
+**Status:** Done on 2026-11-06. Deviation: the bulk summary reuses `userPackageRow` + `summarize` over the rows loaded for the write (no second `termTarget`); the reset on `/packages` is a one-item `RowMenu` (the only per-row trigger allowed by `content-ui`), not a bare icon button; `expectFullTable` gained `{ fit: true }` for paged cards (users, roles) because an earlier visual pass (`d372b56`) deliberately sizes those to content.
 
 Verification for every task: `npm run lint`, `npm run check:copy`, `npm run typecheck`, API tests as
 `cd apps/api && npm test -- --runInBand`, and the named Playwright file as
