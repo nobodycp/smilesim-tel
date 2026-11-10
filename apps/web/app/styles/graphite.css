@@ -811,7 +811,8 @@ input[readonly] { background-color: transparent; }
 .chain-grid tr.chain-cost > * { background: var(--rd-accent-soft); }
 .chain-cell { display: inline-flex; align-items: center; gap: 10px; }
 .chain-cell input { inline-size: 7rem; height: 34px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
-.chain-cell .step-note { min-inline-size: 4.5rem; color: var(--rd-muted); font-size: var(--rd-text-sm); }
+.chain-cell .step-note { min-inline-size: 4.5rem; font-size: var(--rd-text-sm); font-weight: 700; }
+.chain-cell .step-note .money { font-size: inherit; }
 .price-board > .ui-btn { grid-column: 1 / -1; justify-self: start; }
 .package-sheet .price-board > .account-fund:last-child { grid-column: auto; }
 @media (max-width: 720px) {
@@ -936,27 +937,8 @@ input[readonly] { background-color: transparent; }
 .terms-name { display: grid; gap: 1px; }
 .terms-name .hint { font-size: 11.5px; }
 .terms-rows .data td { height: 56px; }
-/* Package page: whether it is for sale and its switch beside the title; each step's margin under its price. */
+/* Package page: its on/off and whether it is for sale beside the title. */
 .sheet-head-actions { display: inline-flex; align-items: center; gap: 10px; }
-.package-sheet .step-note { color: var(--rd-success); font-size: 12px; font-weight: 700; text-align: center; }
-.package-sheet .step-note .money { font-size: inherit; }
-/* The chain's steps fill the row, five across (two on a phone), and each price reads as a figure that is edited in
-   place: no box until it is hovered or focused. */
-.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; }
-@media (max-width: 767px) { .package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step { align-content: start; text-align: start; }
-.pane.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step input {
-  height: 40px;
-  padding-inline: 6px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--rd-ink);
-  font-size: 22px;
-  text-align: start;
-}
-.pane.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step input:hover { border-color: color-mix(in srgb, var(--rd-ink) 15%, transparent); }
-.pane.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step input:focus { border-color: var(--rd-accent); background: var(--rd-sunken); }
-.package-sheet .step-note { text-align: start; padding-inline: 6px; }
 
 /* ── Companies (Graphite «co-card»): a grid of cut-corner cards — the company's mark, the name, its SIM rules, then its
    counts under a hairline; the whole card opens the company (spec 2026-11-11-ui-consistency-pass, D2). ── */
@@ -1011,7 +993,6 @@ input[readonly] { background-color: transparent; }
 .settings-block .sim-toggle { align-content: center; }
 .settings-block .sim-toggle .live-switch { justify-content: flex-start; }
 
-.chain-step > label { display: grid; gap: 6px; color: var(--rd-muted); font-size: var(--rd-text-sm); }
 
 /* ── Providers list (Graphite): how a provider's operations run, as a soft tag; its companies muted. ── */
 .reason { display: inline-flex; align-items: center; height: 22px; padding-inline: 8px; border-radius: var(--rd-radius-xs); font-size: 11.5px; font-weight: 700; white-space: nowrap; }

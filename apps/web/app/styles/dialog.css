@@ -59,7 +59,6 @@
   box-shadow: var(--rd-shadow-pop);
 }
 .dialog[data-size='confirm'] { width: min(460px, 100%); }
-.dialog[data-size='confirm'] .dialog-foot .danger { margin-inline-end: 0; }
 /* The account a dialog acts on. `AccountName` keeps the login and the full name in parentheses on one line; a block
    `bdi` here split them across four lines. */
 .dialog-who { margin: 0; font-size: var(--rd-text-base); font-weight: 700; }
@@ -87,7 +86,7 @@
 }
 .dialog-mark.danger { background: var(--rd-danger-soft); color: var(--rd-danger); }
 .dialog-mark.success { background: var(--rd-success-soft); color: var(--rd-success); }
-/* The activation result: a hand-off the customer reads, so the check is large and the facts stay in one column. */
+/* The activation result: a hand-off the customer reads, so its check mark is larger. */
 .dialog-result .dialog-mark { width: 56px; height: 56px; }
 .dialog-result .dialog-mark svg { width: 28px; height: 28px; }
 .dialog-mark svg { width: 18px; height: 18px; }
