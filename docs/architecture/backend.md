@@ -2,8 +2,8 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-10 (production settings checked at start, no simulation in production, plan `docs/superpowers/plans/2026-11-10-production-config-and-simulation.md`; before it backend loose ends, plan `docs/superpowers/plans/2026-11-10-backend-loose-ends.md`: reads do not write, queries parsed by schema, package codes without the provider; before it one list contract and route names, plan `docs/superpowers/plans/2026-11-10-lists-and-routes.md`; before it backend hardening, plan `docs/superpowers/plans/2026-11-10-backend-hardening.md`). tsc clean
-with `noUnusedLocals`, lint clean with no size exceptions, 890 specs + 5 PostgreSQL specs, every guard in
+Last verified: 2026-11-10 (provider operation lifecycle foundation, plan `docs/superpowers/plans/2026-11-10-provider-operation-lifecycle.md`; before it production settings checked at start, no simulation in production, plan `docs/superpowers/plans/2026-11-10-production-config-and-simulation.md`; before it backend loose ends, plan `docs/superpowers/plans/2026-11-10-backend-loose-ends.md`: reads do not write, queries parsed by schema, package codes without the provider; before it one list contract and route names, plan `docs/superpowers/plans/2026-11-10-lists-and-routes.md`; before it backend hardening, plan `docs/superpowers/plans/2026-11-10-backend-hardening.md`). tsc clean
+with `noUnusedLocals`, lint clean with no size exceptions, 1098 specs (the PostgreSQL ones included), every guard in
 `src/architecture.spec.ts` at 0. History of what changed lives in git and in the plans, not on this line.
 
 ## Rules
@@ -68,6 +68,7 @@ NestJS 12 · Prisma 7 (`@prisma/adapter-pg`, PostgreSQL) · BullMQ + ioredis · 
 | `office/providers/` (health) | `provider-health.ts` (pure: `healthOf` — problem after `FAILURE_THRESHOLD` 3 tasks noted `PROVIDER_FAILED_NOTE` in `FAILURE_WINDOW_MINUTES` 60, or available under `Provider.alertFloor`), `provider-health.service.ts` (`ProviderHealthService`: `current()` for the overview; every `HEALTH_CHECK_SECONDS` 120 `check()` compares with `Provider.health` by compare-and-set and writes `provider.problem` / `provider.recovered` to the branch owner and staff with `edit`, sender «النظام»; `checkMatching()` on the same timer sends `provider.match_overdue` once per lapse for a statement provider past `matchEveryDays` (`Provider.matchOverdueNoticeAt`, cleared by a new match); off under tests and without a DB) | the overview's providers card and banner; `PATCH provider-accounts/:code/credit` also takes `alertFloor` |
 | `office/providers/` (matching) | `match-simulator.ts` (pure, simulated until real providers are connected: `simulatedCharge` — our cost, a stable 1–5 ₪ difference for about one operation in twelve; `matchOf` — `api` matched at once, `statement` only up to `Provider.lastMatchedAt`; `matchOverdue` past `matchEveryDays`) | `GET provider-operations` rows carry `matchSource`, `matchState`, `providerAmount`, `difference` (filter `match=`), its stats `matched`/`differences`/`pending`/`differenceAmount`; provider summaries carry `matchSource`, `matchEveryDays`, `lastMatchedAt`, `matchOverdue`, `openDifferences`; `PATCH provider-accounts/:code/matching`, `POST provider-accounts/:code/simulate-statement` (owner or `accounting`) |
 | `office/providers/gateway/` | `provider-gateway.ts` (`ProviderGateway` port: `accept(hint)`, `run(request)`; token `PROVIDER_GATEWAY`), `simulated-gateway.ts` (outside production answers the request's `outcome` hint; in production, or with `PROVIDER_SIMULATION=0`, `simulated` is false and it answers `NOT_CONNECTED`, which `LinesService.route()` stores as a plain branch task) | every line operation; a real provider is a new class bound to the token |
+| `office/providers/operations/` | `provider-operation.rules.ts` (pure: the states `requested`, `pending`, `succeeded`, `failed`, `unknown`, `canMove`, `maySend`, `afterAttempt`, `MAX_ATTEMPTS` 5, `validKey`, `requestHash`), `provider-operations.service.ts` (`ProviderOperationsService`: `record` / `recordIn(tx, key, request)` — one operation per idempotency key, written with its outbox message in the caller's transaction; the same key and request answers the first, another request is `400 INVALID` — `status`, `claim` (`requested` → `pending`, counted), `settle`, `resolveUnknown`), `provider-operations.repository.ts` (Prisma; insert with `ON CONFLICT DO NOTHING`, guarded status writes, the outbox); models `ProviderOperation`, `OutboxMessage` (ADR 0017) | the durable record of what is asked of a provider. **Foundation only: nothing calls it yet**, it sends nothing, and `LinesService` does not use it |
 | `office/providers/` (catalog) | `adapters/provider-adapter.ts` (`ProviderAdapter`: `companies()`, `products(company)`), `adapters/simulated-adapter.ts` (`SimulatedProviderAdapter`, `adapterFor` — every provider simulated until its real adapter exists: the seeded packages under their codes, more tiers, two new companies), `provider-catalog.service.ts` (`ProviderCatalogService`: companies/products marked `added`, createCompany, createPackage — inherited modes, own modes, add-ons, ladders checked; owner or `edit`; spec 2026-11-09-admin-review, 3), `provider-catalog.controller.ts` | `GET /office/providers/:code/catalog/companies`, `GET …/catalog/products?company=`, `POST /office/companies`, `POST /office/packages`; errors `COMPANY_EXISTS`, `PACKAGE_EXISTS`, `PRODUCT_NOT_FOUND` |
 | `office/offers/` | `offers.service.ts` (`OffersService`: live — the account's active offers for its layer inside their dates, in order; list, save, move, remove — branch owner or `edit`; picture a png/jpeg/webp data URL ≤ ~700 KB, `IMAGE_TOO_LARGE`; link a `/path` or `https://`; seconds 3–60; `offers.service.spec.ts`), `offers.controller.ts`; model `Offer` | `GET /office/offers/live`, `GET|POST /office/offers`, `PATCH|DELETE /office/offers/:id`, `POST /office/offers/:id/move` |
 | `office/companies/` | `companies.service.ts` (`CompaniesService`: shelf, setSim, setImage), `companies.controller.ts` | `GET /office/companies`, `PUT companies/:code/sim`, `PUT companies/:code/image` |
@@ -126,11 +127,12 @@ Every route is in a domain controller (table above). `testing/routes.http.spec.t
   as it is. `src/seal-secrets.ts` seals what is already stored.
 - **Config and logs:** `config.ts` only; Nest `Logger` only (`shared/log.ts`).
 
-## Data model (`prisma/schema.prisma`, 50 migrations)
+## Data model (`prisma/schema.prisma`, 51 migrations)
 
 User, Session, Role, UserRole, LayerPolicy, Wallet, WalletEntry, Provider, ProviderEntry, Company, Package,
 PackageRenewal, PackageSwitch, UserPackage, SellPrice, Line, OfficeTask, OfficeTaskNote, ActivityEvent, AccessLog,
-Notice, LineCountSnapshot, SiteBranding, ProviderReconciliation, ProviderReconItem, Passkey, PackageAddon, Offer.
+Notice, LineCountSnapshot, SiteBranding, ProviderReconciliation, ProviderReconItem, Passkey, PackageAddon, Offer,
+ProviderOperation, OutboxMessage.
 
 Status/kind/layer fields are `String`; the database refuses unknown values with CHECK constraints added as
 `NOT VALID` (`Line.status`, `OfficeTask.status`, `Wallet.held >= 0`). Foreign keys (2026-11-10):
@@ -141,9 +143,9 @@ against the migrations is empty.
 
 ## Tests
 
-84 spec files beside what they test. Service specs run on `office/testing/tree.fixture.ts` through
+99 spec files beside what they test. Service specs run on `office/testing/tree.fixture.ts` through
 `office/testing/office-facade.ts`; HTTP specs through `office/testing/office-test-app.ts` (or `Test.createTestingModule`
-with `API_PROVIDERS`). Two `*.db.spec.ts` files need PostgreSQL (`TEST_DATABASE_URL`; the CI `db` job gives them
+with `API_PROVIDERS`). Four `*.db.spec.ts` files need PostgreSQL (`TEST_DATABASE_URL`; the CI `db` job gives them
 one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec file at a time with
 `npm test --workspace api -- --forceExit <path>` (plain `npx jest` fails on ESM).
 
@@ -155,6 +157,8 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
 - A cut catalog list answers `capped: true` (`LIST_CAP`, 1,000) but no screen says so yet.
 - Provider accounts still add purchases in memory (an operation without a stored cost falls back to the package's
   price); `provider-operations` filters its match state in memory (it is computed, not stored).
+- Provider operations have a stored life (`office/providers/operations/`, ADR 0017) but no dispatcher, no status
+  check and no caller: the next phase is in plan `2026-11-10-provider-operation-lifecycle.md`.
 - Real provider adapters and the SMS/email gateways do not exist: `SimulatedProviderGateway` and `LogSender`.
   In production every line operation is therefore a branch task. The catalog adapter and the provider charges
   (`match-simulator.ts`) are still simulated everywhere.

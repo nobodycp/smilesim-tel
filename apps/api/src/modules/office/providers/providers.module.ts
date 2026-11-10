@@ -3,6 +3,8 @@ import { KernelModule } from '../kernel/kernel.module';
 import { WalletsModule } from '../wallets/wallets.module';
 import { PROVIDER_GATEWAY } from './gateway/provider-gateway';
 import { SimulatedProviderGateway } from './gateway/simulated-gateway';
+import { ProviderOperationsRepository } from './operations/provider-operations.repository';
+import { ProviderOperationsService } from './operations/provider-operations.service';
 import { ProviderAccountsController } from './provider-accounts.controller';
 import { ProviderAccountsService } from './provider-accounts.service';
 import { ProviderCatalogController } from './provider-catalog.controller';
@@ -14,7 +16,7 @@ import { Module } from '@nestjs/common';
 
 /** Providers: settings, what they sell, what the office owes them, their health, and the gateway line operations go through. */
 export const PROVIDERS_CONTROLLERS = [ProvidersController, ProviderCatalogController, ProviderAccountsController];
-export const PROVIDERS_PROVIDERS = [ProvidersRepository, ProvidersService, ProviderCatalogService, ProviderAccountsService, ProviderHealthService, { provide: PROVIDER_GATEWAY, useClass: SimulatedProviderGateway }];
+export const PROVIDERS_PROVIDERS = [ProvidersRepository, ProvidersService, ProviderCatalogService, ProviderAccountsService, ProviderHealthService, ProviderOperationsRepository, ProviderOperationsService, { provide: PROVIDER_GATEWAY, useClass: SimulatedProviderGateway }];
 
 @Module({
   imports: [KernelModule, WalletsModule],
