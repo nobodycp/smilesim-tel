@@ -90,6 +90,14 @@ mocks, both maps.
 
 ## Phase 4 — close
 
-- [ ] **L.20** `rules/office-paging.ts` keeps only filters (cursor code gone); `list-envelope` baseline 0;
-  `.cursor/rules/backend-engineering.mdc` 4.7 final text; `docs/architecture/{backend,frontend}.md`; ADR
-  `0014-list-contract-and-route-names.md`; the review file's A4, A7, A8, A12 marked done.
+- [x] **L.20** (COMMIT) `rules/office-paging.ts` keeps only page sizes and filters; `list-envelope` baseline 0;
+  rules 4.7 and 4.8 in `.cursor/rules/backend-engineering.mdc`; both maps; ADR
+  `0014-list-contract-and-route-names.md`; the review file's A4, A7, A8 marked.
+
+## Open after this plan
+
+- L.18's body fields (`posLogin`, `parentLogin`): the owner's call, both sides or neither.
+- The Playwright suite has not run on these commits (GitHub Actions only): the mocks were updated by hand and
+  checked by `tsc` and by `grep` for the old keys.
+- A web note when a catalog list is `capped`; search-as-you-type account pickers; provider purchases summed in the
+  database (needs a stored cost on every operation row).
