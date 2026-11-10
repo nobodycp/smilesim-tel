@@ -32,6 +32,7 @@ import { DataImage } from '../../../components/data-image';
 import { Fact, Facts } from '../../../components/facts';
 import { useCrumbs } from '../../../lib/crumbs';
 import { usePageTitle } from '../../../lib/page-title';
+import { LineDetails } from '../line-details';
 import { Tabs } from '../../../components/tabs';
 import { EXPIRING_DAYS, daysLeft } from '../../../lib/days-left';
 
@@ -220,26 +221,7 @@ export function LineCardScreen() {
                 </div>
               </div>
             )}
-            {tab === 'details' && (
-              // Key and value rows, as the task ticket's facts (owner, 2026-11-11): no cards.
-              <div className="pane-body line-details">
-                <Facts variant="list">
-                  <Fact label={t.company}>{line.companyName || '—'}</Fact>
-                  <Fact label={t.packageName}>{line.packageName}</Fact>
-                  <Fact label={t.simType}>{line.esim ? t.esim : t.physicalSim}</Fact>
-                  <Fact label={t.simSerial}>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</Fact>
-                  {line.esim && line.esimQr ? (
-                    <Fact label={t.esimQr}><Button type="button" variant="secondary" size="sm" onClick={() => setDialog('qr')}><QrCode size={15} strokeWidth={1.75} aria-hidden="true" />{t.showQr}</Button></Fact>
-                  ) : null}
-                  <Fact label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Fact>
-                  <Fact label={t.activatedOn}><bdi dir="ltr">{latinWhen(line.createdAt).slice(0, 10)}</bdi></Fact>
-                  <Fact label={t.endsOn}><bdi dir="ltr">{latinWhen(line.endsAt).slice(0, 10)}</bdi></Fact>
-                  <Fact label={t.remainingDays}>{daysLeft(line.endsAt)} {t.dayUnit}</Fact>
-                  <Fact label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</Fact>
-                  {!isPos && line.posLoginName ? <Fact label={t.pointOfSale}><AccountName login={line.posLoginName} /></Fact> : null}
-                </Facts>
-              </div>
-            )}
+            {tab === 'details' && <LineDetails line={line} isPos={isPos} onQr={() => setDialog('qr')} />}
             {tab === 'log' && <DataTable columns={logColumns} rows={history} rowKey={(row) => row.id} empty={t.noHistory} />}
           </section>
           </>

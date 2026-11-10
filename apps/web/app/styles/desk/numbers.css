@@ -74,13 +74,52 @@
 .detail-rows dd { min-width: 0; overflow-wrap: anywhere; }
 /* A control inside a value cell keeps the row at text height: 28px tall, pulled into the cell padding. */
 .detail-rows dd > button { height: 28px; min-height: 0; margin-block: -4px; }
-/* «التفاصيل» (owner 2026-11-11): key and value rows (`Facts variant="list"`), no cards; two columns of rows on a wide
-   canvas, one on a phone. */
-.line-details .task-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--rd-space-6); }
-.line-details .task-facts > div { min-height: 44px; padding-block: var(--rd-space-2-5); border-block-end: 1px solid var(--rd-line-soft); align-items: center; }
-.line-details .task-facts dt { font-size: var(--rd-text-sm); font-weight: 600; }
-@media (max-width: 760px) {
-  .line-details .task-facts { grid-template-columns: minmax(0, 1fr); }
+/* «التفاصيل» (features/lines/line-details.tsx; owner 2026-11-11): the period as a timeline, the usage as three rings,
+   then two titled groups of key and value rows. No cards: sections divided by hairlines. */
+.line-details { display: grid; gap: 0; padding: 0; }
+.line-details > * { padding: var(--rd-space-4) var(--rd-space-5); }
+.line-details > * + * { border-block-start: 1px solid var(--rd-line); }
+.ld-title { display: inline-flex; align-items: center; gap: 8px; margin: 0; color: var(--rd-ink); font-size: var(--rd-text-md); font-weight: 700; }
+.ld-title svg { color: var(--rd-accent); }
+.ld-section-head, .ld-period-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; }
+.ld-left { color: var(--rd-ink-2); font-size: var(--rd-text-sm); }
+.ld-left b { color: var(--rd-ink); font-size: var(--rd-text-xl); font-weight: 700; }
+.ld-left.soon b { color: var(--rd-warning); }
+.ld-bar { position: relative; height: 8px; margin-block: 14px 10px; overflow: hidden; border-radius: var(--rd-radius-pill); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); }
+.ld-bar > span { display: block; min-inline-size: 8px; height: 100%; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--rd-accent) 55%, transparent), var(--rd-accent)); }
+[dir='rtl'] .ld-bar > span { margin-inline-start: 0; background: linear-gradient(270deg, color-mix(in srgb, var(--rd-accent) 55%, transparent), var(--rd-accent)); }
+.ld-period-ends { display: flex; justify-content: space-between; gap: 12px; }
+.ld-period-ends > span { display: grid; gap: 2px; color: var(--rd-ink); font-size: var(--rd-text-md); font-weight: 700; }
+.ld-period-ends > span:last-child { text-align: end; }
+.ld-period-ends small { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
+.ld-meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--rd-space-4); margin-block-start: var(--rd-space-3); }
+.ld-meter { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ld-ring { position: relative; display: grid; flex: none; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--rd-accent-soft); }
+.ld-ring .ld-ring-track { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ld-ring .ld-ring-track circle { fill: none; stroke: color-mix(in srgb, var(--rd-ink) 12%, transparent); stroke-width: 3; stroke-dasharray: 3 4; }
+.ld-ring .ld-ring-icon { width: 20px; height: 20px; color: var(--rd-accent); }
+.ld-meter-text { display: grid; gap: 1px; min-width: 0; }
+.ld-meter-label { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
+.ld-meter-text b { color: var(--rd-ink); font-size: var(--rd-text-xl); font-weight: 700; line-height: 1.2; }
+.ld-meter-text small { color: var(--rd-ink-2); font-size: var(--rd-text-sm); }
+.ld-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rd-space-6); }
+.ld-group dl { display: grid; margin: var(--rd-space-2) 0 0; }
+.ld-row { display: grid; grid-template-columns: minmax(7rem, 40%) minmax(0, 1fr); align-items: center; gap: var(--rd-space-3); min-height: 44px; border-block-end: 1px solid var(--rd-line-soft); }
+.ld-row:last-child { border-block-end: 0; }
+.ld-row dt { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 600; }
+.ld-row dd { margin: 0; min-width: 0; color: var(--rd-ink); font-size: var(--rd-text-md); font-weight: 700; overflow-wrap: anywhere; }
+.ld-kind { display: inline-flex; align-items: center; height: 24px; padding-inline: 10px; border-radius: var(--rd-radius-xs); background: var(--rd-accent-soft); color: var(--rd-accent); font-size: var(--rd-text-sm); font-weight: 700; }
+.ld-copy { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.ld-copy bdi { letter-spacing: 0.02em; overflow-wrap: anywhere; }
+.ld-copy .icon-btn { display: inline-grid; flex: none; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-faint); cursor: pointer; }
+.ld-copy .icon-btn:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
+@media (max-width: 900px) {
+  .ld-groups { grid-template-columns: minmax(0, 1fr); gap: var(--rd-space-4); }
+}
+@media (max-width: 640px) {
+  .line-details > * { padding: var(--rd-space-3-5); }
+  .ld-meters { grid-template-columns: minmax(0, 1fr); gap: var(--rd-space-3); }
+  .ld-copy .icon-btn { width: 40px; height: 40px; }
 }
 /* The eSIM badge as a button: the badge is the visible part, the padding gives the 44px target. */
 .esim-open {

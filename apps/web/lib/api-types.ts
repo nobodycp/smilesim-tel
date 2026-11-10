@@ -375,6 +375,10 @@ export type LineRow = {
   operations: string[];
   opsLocked?: boolean;
   dataGb?: number | null;
+  /** The package's allowance on the number's card: -1 unlimited, null not set. */
+  smsCount?: number | null;
+  minutes?: number | null;
+  months?: number;
   subscriberPrice?: number;
   companyImage?: string;
   lastRechargeAt?: string | null;

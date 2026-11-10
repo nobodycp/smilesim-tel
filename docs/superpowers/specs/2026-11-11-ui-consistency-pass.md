@@ -43,9 +43,11 @@ beside an operation that is also in the list below it), keep one.
 
 - The head's quick-action buttons go: every operation is in the «العمليات» grid below, once.
 - No fact cards above the tabs (they crowd the page; owner, 2026-11-11). Tabs: «العمليات», «التفاصيل», «السجل».
-  «التفاصيل» is key and value rows — the task ticket's `Facts variant="list"` —, two columns of rows on a wide
-  canvas: company, package, SIM kind, serial, eSIM code, price, activated on, ends on, days left, last recharge, point
-  of sale. The usage dials go: the API has no usage data, so they only ever showed «—».
+  «التفاصيل» (owner: more professional, and the usage back): the subscription period as a timeline (from the last
+  recharge or the activation to the end, days left), «الاستهلاك» as three rings — internet, minutes, messages — each
+  against the package's allowance (the line detail now carries `smsCount`, `minutes`, `months`); used amounts show «—»
+  until providers report usage. Then «الاشتراك» and «الشريحة» as titled key and value rows; the number and the serial
+  have a copy button. No cards.
 - Its dialogs use the shared `Dialog` with the same head (mark, title, lede), body (`.dialog-form` fields) and footer
   (cancel secondary, action primary) as every other dialog.
 

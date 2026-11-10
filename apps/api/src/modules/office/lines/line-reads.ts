@@ -110,6 +110,10 @@ export class LineReads {
         posLoginName: actor.layer === 'pos' ? '' : line.pos.loginName,
         posPrice: line.package.posPrice,
         dataGb: line.package.dataGb,
+        // The package's allowance, for the number's «الاستهلاك» (-1 unlimited, null not set; owner 2026-11-11).
+        smsCount: line.package.smsCount,
+        minutes: line.package.minutes,
+        months: line.package.months,
         subscriberPrice: line.package.subscriberPrice,
         companyImage: line.package.company?.image ?? '',
         sim: simRulesOf(line.package.company, line.package),
