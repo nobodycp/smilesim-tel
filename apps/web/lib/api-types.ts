@@ -193,6 +193,8 @@ export type ProviderSettings = {
   esimPrice: number | null;
 };
 export type Shelf = {
+  /** True when the shelf was cut at the API's cap: what is listed is not every package. */
+  capped?: boolean;
   companies: {
     code: string;
     name: string;

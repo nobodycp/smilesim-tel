@@ -21,7 +21,8 @@ const LINE_OPTIONAL_KEYS = ['addons', 'opsLocked', 'dataGb', 'subscriberPrice', 
 const POS_CHOICE_KEYS = ['loginName', 'nickname'];
 const DISCONNECT_QUOTE_KEYS = ['amount', 'runsNow'];
 const SIM_RULES_KEYS = ['length', 'prefix', 'esim'];
-const SHELF_KEYS = ['companies'];
+// `capped`: the shelf was cut at LIST_CAP packages (shared/paging.ts).
+const SHELF_KEYS = ['companies', 'capped'];
 const SHELF_COMPANY_KEYS = ['code', 'name', 'image', 'sim', 'esimPrice', 'providers'];
 const SHELF_PROVIDER_KEYS = ['code', 'name', 'packages'];
 // Prices and details joined in spec 2026-11-08-branch-packages-and-details (additions only).

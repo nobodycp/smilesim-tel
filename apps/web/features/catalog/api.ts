@@ -3,7 +3,7 @@ import type { NewPackage, PackageAddon, PackageRow, PackageSheet, ProviderCatalo
 
 /** The catalog calls of the office API. Composed into `api` by lib/api.ts. */
 export const catalogApi = {
-  officePackages: () => request<{ packages: PackageRow[]; companies: { name: string; image: string }[] }>('GET', '/office/packages'),
+  officePackages: () => request<{ packages: PackageRow[]; companies: { name: string; image: string }[]; capped?: boolean }>('GET', '/office/packages'),
   officeCompanies: () => request<Shelf>('GET', '/office/companies'),
   setCompanyImage: (name: string, image: string) => request<{ ok: true }>('POST', '/office/companies/image', { name, image }),
   setCompanySim: (code: string, sim: SimRules & { esimPrice: number }) =>

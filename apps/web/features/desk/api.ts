@@ -9,7 +9,7 @@ export const deskApi = {
   officeHome: () => request<HomePayload>('GET', '/office/home'),
   /** Offers (spec 2026-11-09, 1): the live ones for the home hero, and the «الإعلانات» page's management. */
   liveOffers: () => request<{ offers: Offer[] }>('GET', '/office/offers/live'),
-  offers: () => request<{ offers: Offer[] }>('GET', '/office/offers'),
+  offers: () => request<{ offers: Offer[]; capped?: boolean }>('GET', '/office/offers'),
   addOffer: (body: OfferInput) => request<{ offers: Offer[] }>('POST', '/office/offers', body),
   saveOffer: (id: string, body: OfferInput) => request<{ offers: Offer[] }>('PATCH', `/office/offers/${encodeURIComponent(id)}`, body),
   moveOffer: (id: string, direction: 'up' | 'down') => request<{ offers: Offer[] }>('POST', `/office/offers/${encodeURIComponent(id)}/move`, { direction }),

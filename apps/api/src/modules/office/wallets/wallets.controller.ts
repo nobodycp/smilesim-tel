@@ -21,10 +21,11 @@ export class WalletsController {
   constructor(private readonly walletDesk: WalletsService) {}
 
   @Get('wallets')
-  @ApiOperation({ summary: 'List wallets visible to the session' })
-  @ApiErrorResponse(401, 403)
-  wallets(@Actor() actor: ActorShape) {
-    return this.walletDesk.list(actor);
+  @ApiOperation({ summary: 'One page of the wallets visible to the session ({ items, nextCursor, total })' })
+  @ApiQuery({ name: 'cursor', required: false })
+  @ApiErrorResponse(400, 401, 403)
+  wallets(@Actor() actor: ActorShape, @Query('cursor') cursor?: string) {
+    return this.walletDesk.list(actor, text(cursor));
   }
 
   @Post('wallets/:loginName/deduct')

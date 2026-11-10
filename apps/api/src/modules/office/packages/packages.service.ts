@@ -1,3 +1,4 @@
+import { capList } from '../../shared/paging';
 import { PackagesRepository } from './packages.repository';
 import { PriceLadder } from '../terms/price-ladder';
 import { AccountTree } from '../kernel/account-tree';
@@ -37,6 +38,7 @@ export class PackagesService {
       this.repo.packagesOnSale(),
       this.tree.accounts(),
     ]);
+    const { rows: onSale, capped } = capList(all);
     const path = this.tree.pathOf(actor.id, accounts);
     // Only the rows on the actor's path matter: its own terms and sell prices plus its ancestors'.
     const pathIds = path.map((node) => node.id);
@@ -47,7 +49,7 @@ export class PackagesService {
     const canActivate = !deniedOpsFor(path).has('activate');
     const termsOf = (packageId: string) => termRows.filter((row) => row.packageId === packageId);
     const sellsOf = (packageId: string) => sellRows.filter((row) => row.packageId === packageId);
-    const rows = all.filter((row) => visibleTo(path, termsOf(row.id), row));
+    const rows = onSale.filter((row) => visibleTo(path, termsOf(row.id), row));
     // The layer the actor sells to; null for the branch (no sell price) and the point of sale.
     const sellsTo = actor.layer === 'main_agent' ? 'agent' : actor.layer === 'agent' ? 'pos' : null;
     const ownSell = (packageId: string) => sellRows.find((row) => row.packageId === packageId && row.ownerId === actor.id) ?? null;
@@ -58,6 +60,7 @@ export class PackagesService {
       if (name && row.company?.image) images.set(name, row.company.image);
     }
     return {
+      capped,
       companies: [...images].map(([name, image]) => ({ name, image })),
       packages: rows.map((row) => ({
         price: buyPriceFor(path, termsOf(row.id), sellsOf(row.id), row, 'subscription'),

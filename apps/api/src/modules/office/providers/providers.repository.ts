@@ -92,8 +92,14 @@ export class ProvidersRepository {
   // ── Our account with each provider ─────────────────────────────────────────────────────────────────────────
 
   /** Every payment and settlement, newest first. */
-  entriesNewestFirst() {
-    return this.uow.prisma.providerEntry.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] });
+  /** What each provider was paid and settled, summed by the database: one row per provider and kind. */
+  entrySums() {
+    return this.uow.prisma.providerEntry.groupBy({ by: ['providerId', 'kind'], _sum: { amount: true } });
+  }
+
+  /** One provider's payments and settlements, newest first: its ledger page reads the rows. */
+  entriesOf(providerId: string) {
+    return this.uow.prisma.providerEntry.findMany({ where: { providerId }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] });
   }
 
   /** The action and package of every task in these statuses: what open tasks are about to cost. */

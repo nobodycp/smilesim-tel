@@ -7,6 +7,8 @@ export const LINES_PAGE = 30;
 export const TASKS_PAGE = 50;
 export const FEED_PAGE = 80;
 export const NOTICES_PAGE = 40;
+/** The balances report and the wallets list: one short row an account, in the tree's order (by login). */
+export const BALANCES_PAGE = 200;
 
 export const LINE_STATUSES = ['active', 'frozen', 'disconnected', 'suspended'] as const;
 export const TASK_STATUSES = ['pending', 'working', 'done', 'cancelled'] as const;

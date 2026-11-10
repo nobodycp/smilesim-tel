@@ -19,9 +19,14 @@ function service() {
         update: async (args: unknown) => void updated.push(args),
       },
       providerEntry: {
-        findMany: async () => [
+        findMany: async ({ where }: { where: { providerId: string } }) => [
           { id: 'x2', providerId: 'p1', kind: 'settlement', amount: -500, note: 'فرق', actorLogin: 'branch', createdAt: new Date('2026-11-05T00:00:00Z') },
           { id: 'x1', providerId: 'p1', kind: 'payment', amount: 20000, note: 'دفعة', actorLogin: 'branch', createdAt: new Date('2026-11-02T00:00:00Z') },
+        ].filter((row) => row.providerId === where.providerId),
+        // The list reads sums, never the rows.
+        groupBy: async () => [
+          { providerId: 'p1', kind: 'settlement', _sum: { amount: -500 } },
+          { providerId: 'p1', kind: 'payment', _sum: { amount: 20000 } },
         ],
         create: async (args: unknown) => void created.push(args),
       },

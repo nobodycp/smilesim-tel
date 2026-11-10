@@ -1,3 +1,4 @@
+import { LIST_CAP } from '../../shared/paging';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { UnitOfWork, type Db } from '../kernel/unit-of-work';
@@ -18,7 +19,7 @@ export class OffersRepository {
 
   /** Every offer, in its order. */
   allOffers() {
-    return this.uow.prisma.offer.findMany({ orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+    return this.uow.prisma.offer.findMany({ orderBy: [{ position: 'asc' }, { createdAt: 'asc' }], take: LIST_CAP + 1 });
   }
 
   offerById(id: string) {

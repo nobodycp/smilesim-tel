@@ -38,11 +38,12 @@ describe('InsightsService', () => {
       walletEntry: { groupBy: async () => [{ userId: 'pos1', _max: { createdAt: new Date('2026-11-06T10:00:00Z') } }] },
     });
     const all = await service.balances(actor);
-    expect(all.rows.map((row) => row.loginName)).toEqual(['pos1', 'pos2']);
-    expect(all.rows[0]).toMatchObject({ used: 2000, available: 3000, parentLogin: 'agent', lastAt: '2026-11-06T10:00:00.000Z' });
-    expect(all.rows[1]).toMatchObject({ frozen: true, lastAt: null });
+    expect(all.items.map((row) => row.loginName)).toEqual(['pos1', 'pos2']);
+    expect(all.items[0]).toMatchObject({ used: 2000, available: 3000, parentLogin: 'agent', lastAt: '2026-11-06T10:00:00.000Z' });
+    expect(all.items[1]).toMatchObject({ frozen: true, lastAt: null });
+    expect({ nextCursor: all.nextCursor, total: all.total }).toEqual({ nextCursor: null, total: 2 });
     expect(all.totals).toEqual({ count: 2, balance: -1000, used: 2000 });
-    expect((await service.balances(actor, { negative: '1' })).rows.map((row) => row.loginName)).toEqual(['pos1']);
+    expect((await service.balances(actor, { negative: '1' })).items.map((row) => row.loginName)).toEqual(['pos1']);
   });
 
   it('keeps the providers report for the branch with the reports grant', async () => {

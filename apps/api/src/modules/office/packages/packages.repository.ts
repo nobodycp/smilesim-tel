@@ -1,3 +1,4 @@
+import { LIST_CAP } from '../../shared/paging';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { UnitOfWork, type Db } from '../kernel/unit-of-work';
@@ -17,6 +18,7 @@ export class PackagesRepository {
       where: { companyId: { not: null }, enabled: true, forSale: true },
       include: { provider: true, company: true },
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
+      take: LIST_CAP + 1,
     });
   }
 

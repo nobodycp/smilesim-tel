@@ -1,5 +1,5 @@
 import { OfficeFailure } from './office-failure';
-import { after, cursorPosition, decodeCursor, encodeCursor, encodeKeyCursor, keyCursor, page } from './paging';
+import { after, cursorPosition, decodeCursor, encodeCursor, encodeKeyCursor, capList, keyCursor, keyPage, page } from './paging';
 
 const at = (second: number) => new Date(Date.UTC(2026, 10, 1, 0, 0, second));
 const row = (id: string, second: number) => ({ id, createdAt: at(second) });
@@ -51,5 +51,37 @@ describe('the key cursor', () => {
     expect(keyCursor(undefined)).toBeUndefined();
     expect(() => keyCursor(encodeCursor(at(1), 'x'))).toThrow(OfficeFailure);
     expect(() => keyCursor('???')).toThrow(OfficeFailure);
+  });
+});
+
+describe('keyPage()', () => {
+  const rows = ['a', 'b', 'c', 'd', 'e'].map((loginName) => ({ loginName }));
+  const key = (row: { loginName: string }) => row.loginName;
+
+  it('walks a keyed list page after page and counts every row', () => {
+    const first = keyPage(rows, 2, undefined, key);
+    expect(first).toMatchObject({ items: [{ loginName: 'a' }, { loginName: 'b' }], total: 5 });
+    const second = keyPage(rows, 2, first.nextCursor ?? undefined, key);
+    expect(second.items.map(key)).toEqual(['c', 'd']);
+    const third = keyPage(rows, 2, second.nextCursor ?? undefined, key);
+    expect(third).toMatchObject({ items: [{ loginName: 'e' }], nextCursor: null });
+  });
+
+  it('keeps its place when the row the cursor names is gone', () => {
+    const first = keyPage(rows, 2, undefined, key);
+    const without = rows.filter((row) => row.loginName !== 'b');
+    expect(keyPage(without, 2, first.nextCursor ?? undefined, key).items.map(key)).toEqual(['c', 'd']);
+  });
+
+  it('ends without a cursor on an exact page and refuses a foreign cursor', () => {
+    expect(keyPage(rows.slice(0, 2), 2, undefined, key).nextCursor).toBeNull();
+    expect(() => keyPage(rows, 2, 'junk', key)).toThrow(OfficeFailure);
+  });
+});
+
+describe('capList()', () => {
+  it('cuts a list read one past the cap and says so', () => {
+    expect(capList([1, 2, 3], 2)).toEqual({ rows: [1, 2], capped: true });
+    expect(capList([1, 2], 2)).toEqual({ rows: [1, 2], capped: false });
   });
 });

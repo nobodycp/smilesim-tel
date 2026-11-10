@@ -24,8 +24,8 @@ export class ReportsController {
   @Get('reports/balances')
   @ApiOperation({ summary: 'Wallets of the accounts under the signed-in account' })
   @ApiErrorResponse(401, 403)
-  balances(@Actor() actor: ActorShape, @Query('q') q?: string, @Query('layer') layer?: string, @Query('negative') negative?: string) {
-    return this.insights.balances(actor, { q: text(q), layer: text(layer), negative: text(negative) });
+  balances(@Actor() actor: ActorShape, @Query('q') q?: string, @Query('layer') layer?: string, @Query('negative') negative?: string, @Query('cursor') cursor?: string) {
+    return this.insights.balances(actor, { q: text(q), layer: text(layer), negative: text(negative), cursor: text(cursor) });
   }
 
   @Get('reports/supply')

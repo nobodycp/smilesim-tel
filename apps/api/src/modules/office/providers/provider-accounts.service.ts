@@ -37,10 +37,10 @@ export class ProviderAccountsService {
 
   /** Purchases, entries and open-task cost of every provider, from one read of each. */
   private async books() {
-    const [providers, operations, entries, tasks, packages] = await Promise.all([
+    const [providers, operations, sums, tasks, packages] = await Promise.all([
       this.repo.providersByName(),
       this.wallets.pricedOperations(),
-      this.repo.entriesNewestFirst(),
+      this.repo.entrySums(),
       this.repo.tasksInStatuses(OPEN_TASKS),
       this.repo.packagesWithProvider(),
     ]);
@@ -51,7 +51,10 @@ export class ProviderAccountsService {
       if (!pkg) continue;
       held.set(pkg.provider.code, (held.get(pkg.provider.code) ?? 0) + providerBranchCost(task.action, null, pkg));
     }
-    return { providers, operations, entries, held };
+    // Payments and settlements are summed in the database. Purchases are still added here: an operation's cost
+    // falls back to the package's price when its row stored none, which a query cannot do.
+    const paid = new Map(sums.map((row) => [`${row.providerId}:${row.kind}`, row._sum.amount ?? 0]));
+    return { providers, operations, paid, held };
   }
 
   private summaryOf(provider: { id: string; code: string; name: string; creditLimit: number; matchSource?: string; matchEveryDays?: number; lastMatchedAt?: Date | null }, books: Awaited<ReturnType<ProviderAccountsService['books']>>) {
@@ -63,9 +66,8 @@ export class ProviderAccountsService {
     // Open differences (simulated matching, spec E): this provider's operations whose «charged» amount differs.
     const openDifferences = books.operations.filter((row) => row.providerCode === provider.code && matchOf(row, matching).state === 'difference').length;
     const purchases = books.operations.filter((row) => row.providerCode === provider.code).reduce((sum, row) => sum + row.cost, 0);
-    const own = books.entries.filter((row) => row.providerId === provider.id);
-    const payments = own.filter((row) => row.kind === 'payment').reduce((sum, row) => sum + row.amount, 0);
-    const settlements = own.filter((row) => row.kind === 'settlement').reduce((sum, row) => sum + row.amount, 0);
+    const payments = books.paid.get(`${provider.id}:payment`) ?? 0;
+    const settlements = books.paid.get(`${provider.id}:settlement`) ?? 0;
     const balance = payments + settlements - purchases;
     const held = books.held.get(provider.code) ?? 0;
     return {
@@ -113,11 +115,12 @@ export class ProviderAccountsService {
     const books = await this.books();
     const provider = books.providers.find((row) => row.code === code);
     if (!provider) fail(404, 'NOT_FOUND');
+    const entries = await this.repo.entriesOf(provider.id);
     const rows: LedgerRow[] = [
       ...books.operations.filter((row) => row.providerCode === code && row.cost !== 0).map((row) => ({
         id: row.id, at: row.at, kind: row.kind, amount: -row.cost, note: '', msisdn: row.msisdn, packageName: row.packageName, actorLogin: '',
       })),
-      ...books.entries.filter((row) => row.providerId === provider.id).map((row) => ({
+      ...entries.map((row) => ({
         id: row.id, at: row.createdAt, kind: row.kind, amount: row.amount, note: row.note, msisdn: '', packageName: '', actorLogin: row.actorLogin,
       })),
     ].sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id));

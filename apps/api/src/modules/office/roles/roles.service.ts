@@ -1,3 +1,4 @@
+import { LIST_CAP, capList } from '../../shared/paging';
 import { LayerRoles } from './layer-roles';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { isOwner, requireOwner } from '../policy';
@@ -17,7 +18,7 @@ export class RolesService {
   async list(actor: Actor) {
     if (!isOwner(actor)) fail(403, 'FORBIDDEN');
     await this.layerRoles.ensureLayerRoles();
-    const roles = await this.uow.prisma.role.findMany();
+    const { rows: roles, capped } = capList(await this.uow.prisma.role.findMany({ take: LIST_CAP + 1 }));
     const rank = (role: { kind: string; layer: string | null; name: string }) =>
       role.kind === 'layer' ? LAYER_ORDER.indexOf(role.layer ?? '') : LAYER_ORDER.length;
     roles.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
@@ -36,6 +37,7 @@ export class RolesService {
         staff: role.staff,
         enter: role.enter,
       })),
+      capped,
     };
   }
 

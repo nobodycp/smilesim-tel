@@ -1,3 +1,4 @@
+import { capList } from '../../shared/paging';
 import { OffersRepository } from './offers.repository';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { refuseEntered, requireGrant } from '../policy';
@@ -62,8 +63,8 @@ export class OffersService {
   /** Every offer, for the «الإعلانات» page. */
   async list(actor: Actor) {
     this.gate(actor);
-    const rows = await this.repo.allOffers();
-    return { offers: rows.map(viewOf) };
+    const { rows, capped } = capList(await this.repo.allOffers());
+    return { offers: rows.map(viewOf), capped };
   }
 
   async save(actor: Actor, body: unknown, id?: string) {

@@ -1,3 +1,4 @@
+import { capList } from '../../shared/paging';
 import { CompaniesRepository } from './companies.repository';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { requireGrant } from '../policy';
@@ -72,7 +73,7 @@ export class CompaniesService {
 
   async shelf(actor: Actor) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const rows = await this.repo.shelfPackages();
+    const { rows, capped } = capList(await this.repo.shelfPackages());
     const byCompany = shelfByCompany(rows);
     const stored = await this.repo.storedCompanies();
     const byCode = new Map(stored.map((row) => [row.code, row]));
@@ -83,6 +84,7 @@ export class CompaniesService {
       .map((row) => ({ code: row.code, name: row.name ?? row.code }))
       .sort((left, right) => left.name.localeCompare(right.name, 'ar'));
     return {
+      capped,
       companies: [...companies, ...added].map((company) => ({
         code: company.code,
         name: company.name,

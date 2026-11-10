@@ -68,3 +68,27 @@ export function keyCursor(raw: string | undefined): string | undefined {
   if (!text.startsWith('k~') || text.length < 3) fail(400, 'INVALID');
   return text.slice(2);
 }
+
+/**
+ * One page of a list that is already in its order and whose rows carry a unique text key (accounts by login). The
+ * cursor names the last row served; when that row is gone the page starts at the first key after it.
+ */
+export function keyPage<Row>(rows: Row[], size: number, cursor: string | undefined, keyOf: (row: Row) => string): Page<Row> {
+  const last = keyCursor(cursor);
+  const at = last === undefined ? -1 : rows.findIndex((row) => keyOf(row) === last);
+  const next = last !== undefined && at < 0 ? rows.findIndex((row) => keyOf(row) > last) : at + 1;
+  const from = next < 0 ? rows.length : next;
+  const items = rows.slice(from, from + size);
+  const tail = items[items.length - 1];
+  return { items, nextCursor: from + size < rows.length && tail ? encodeKeyCursor(keyOf(tail)) : null, total: rows.length };
+}
+
+/**
+ * A short list served whole (the catalog: packages, companies, offers, roles) stops here. It is read with
+ * `take: LIST_CAP + 1` and answers `capped: true` when it was cut, so a caller never mistakes a part for the whole.
+ */
+export const LIST_CAP = 1000;
+
+export function capList<Row>(rows: Row[], limit = LIST_CAP): { rows: Row[]; capped: boolean } {
+  return { rows: rows.slice(0, limit), capped: rows.length > limit };
+}

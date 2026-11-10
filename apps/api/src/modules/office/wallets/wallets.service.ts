@@ -10,8 +10,8 @@ import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
 import { parseInput } from '../../shared/input';
 import type { Actor } from '../kernel/types';
-import { after, cursorPosition, page } from '../../shared/paging';
-import { FEED_PAGE } from '../rules/office-paging';
+import { after, cursorPosition, keyPage, page } from '../../shared/paging';
+import { BALANCES_PAGE, FEED_PAGE } from '../rules/office-paging';
 import { visibleAccountIds } from '../rules/office-rules';
 import { CeilingBody, DeductBody, FundBody } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
@@ -28,14 +28,15 @@ const PROFIT_REPORT_LIMIT = 50_000;
 export class WalletsService {
   constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly ladder: PriceLadder, private readonly repo: WalletsRepository) {}
 
-  async list(actor: Actor) {
+  /** One page of the wallets the actor may see, in the tree's order. */
+  async list(actor: Actor, cursor?: string) {
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const rows = await this.repo.walletsOf([...visible]);
     const byUser = new Map(rows.map((row) => [row.userId, row]));
     const byId = new Map(accounts.map((account) => [account.id, account]));
-    return {
-      wallets: accounts
+    return keyPage(
+      accounts
         .filter((account) => visible.has(account.id))
         .map((account) => ({
           loginName: account.loginName,
@@ -47,7 +48,10 @@ export class WalletsService {
           self: account.id === actor.id,
           directChild: account.parentId === actor.id,
         })),
-    };
+      BALANCES_PAGE,
+      cursor,
+      (row) => row.loginName,
+    );
   }
 
   async fund(actor: Actor, loginName: string, body: unknown) {

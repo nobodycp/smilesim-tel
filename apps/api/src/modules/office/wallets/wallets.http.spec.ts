@@ -44,10 +44,14 @@ describe('GET /office/wallets', () => {
     const response = await request(app.getHttpServer()).get('/office/wallets').set('Cookie', `sid=${session}`);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      wallets: [
+      items: [
         { loginName: 'ag1', nickname: 'n-ag1', layer: 'agent', balance: 5000, ceiling: 1000, parentLogin: 'ma1', self: true, directChild: false },
         { loginName: 'pos1', nickname: 'n-pos1', layer: 'pos', balance: -200, ceiling: 300, parentLogin: 'ag1', self: false, directChild: true },
       ],
+      nextCursor: null,
+      total: 2,
     });
+    const junk = await request(app.getHttpServer()).get('/office/wallets?cursor=junk').set('Cookie', `sid=${session}`);
+    expect(junk.status).toBe(400);
   });
 });

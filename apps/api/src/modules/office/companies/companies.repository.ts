@@ -1,3 +1,4 @@
+import { LIST_CAP } from '../../shared/paging';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { UnitOfWork } from '../kernel/unit-of-work';
@@ -21,6 +22,7 @@ export class CompaniesRepository {
         lines: { select: { status: true } },
       },
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
+      take: LIST_CAP + 1,
     });
   }
 

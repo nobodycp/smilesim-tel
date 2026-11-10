@@ -2,6 +2,8 @@ import { ReportsRepository } from './reports.repository';
 import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { dayRange } from '../../shared/dates';
+import { keyPage } from '../../shared/paging';
+import { BALANCES_PAGE } from '../rules/office-paging';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -39,7 +41,21 @@ export class InsightsService {
   ) {}
 
   /** The accounts under the viewer, with their wallets and their last movement. */
-  async balances(actor: Actor, query: { q?: string; layer?: string; negative?: string } = {}) {
+  /** One page of the balances report, with the totals of every matching account beside it. */
+  async balances(actor: Actor, query: { q?: string; layer?: string; negative?: string; cursor?: string } = {}) {
+    const rows = await this.balanceRows(actor, query);
+    return {
+      ...keyPage(rows, BALANCES_PAGE, query.cursor, (row) => row.loginName),
+      totals: {
+        count: rows.length,
+        balance: rows.reduce((sum, row) => sum + row.balance, 0),
+        used: rows.reduce((sum, row) => sum + row.used, 0),
+      },
+    };
+  }
+
+  /** Every account of the report under its filters: the page above and the CSV export read it. */
+  private async balanceRows(actor: Actor, query: { q?: string; layer?: string; negative?: string } = {}) {
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const needle = (query.q ?? '').trim();
@@ -54,7 +70,7 @@ export class InsightsService {
     ]);
     const walletOf = new Map(wallets.map((row) => [row.userId, row]));
     const lastOf = new Map(last.map((row) => [row.userId, row._max.createdAt]));
-    const rows = listed.map((account) => {
+    return listed.map((account) => {
       const balance = walletOf.get(account.id)?.balance ?? 0;
       const ceiling = account.layer === 'branch' ? 0 : walletOf.get(account.id)?.ceiling ?? 0;
       const held = walletOf.get(account.id)?.held ?? 0;
@@ -72,15 +88,6 @@ export class InsightsService {
         lastAt: lastOf.get(account.id)?.toISOString() ?? null,
       };
     }).filter((row) => query.negative !== '1' || row.balance < 0);
-    return {
-      rows,
-      totals: {
-        count: rows.length,
-        balance: rows.reduce((sum, row) => sum + row.balance, 0),
-        used: rows.reduce((sum, row) => sum + row.used, 0),
-      },
-      capped: false,
-    };
   }
 
   /** Per provider over the dates (branch, with the reports grant): operations, what they cost, and the branch's profit. */
@@ -113,7 +120,7 @@ export class InsightsService {
   /** A report as CSV: the same rows, money in shekels. */
   async csv(actor: Actor, kind: string, query: Record<string, string | undefined>) {
     if (kind === 'balances') {
-      const { rows } = await this.balances(actor, query);
+      const rows = await this.balanceRows(actor, query);
       return csvOf(['account', 'name', 'layer', 'parent', 'balance', 'ceiling', 'used', 'held', 'available', 'frozen', 'last_movement'], rows.map((row) => [row.loginName, row.nickname, row.layer, row.parentLogin ?? '', { money: row.balance }, { money: row.ceiling }, { money: row.used }, { money: row.held }, { money: row.available }, row.frozen ? 'yes' : 'no', row.lastAt ?? '']));
     }
     if (kind === 'supply') {
