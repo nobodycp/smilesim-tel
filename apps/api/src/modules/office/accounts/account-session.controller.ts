@@ -1,12 +1,15 @@
+import { NoActivity } from '../activity.decorator';
 import { Body, Controller, Post, Req, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { SESSION_COOKIE_SECONDS } from '../../auth/sessions';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { cookieBase, gateOf, readCookie } from '../../shared/cookies';
 import { AccountSessionService } from './account-session.service';
+import { HandoffBody } from './accounts.schemas';
 
 /**
  * Leaving an entered account. It reads the impersonation session itself (any scope, any layer), so it has no
@@ -38,9 +41,11 @@ export class AccountSessionController {
    * entered session, `home` the owner's, so leaving can put the owner back. Not logged: `enter` already was.
    */
   @Post('handoff')
+  @NoActivity('trades the one-time code of an `enter`, which is the logged event')
   @ApiOperation({ summary: 'Open an entered account on its door: trades the one-time code for the `sid` + `home` cookies' })
+  @ApiZodBody(HandoffBody)
   @ApiErrorResponse(400)
-  async handoff(@Body() body: unknown, @Res({ passthrough: true }) res: Response) {
+  async handoff(@Body() body: HandoffBody, @Res({ passthrough: true }) res: Response) {
     const { sessionId, homeId } = await this.sessions.handoff(body);
     res.cookie('sid', sessionId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
     if (homeId) res.cookie('home', homeId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });

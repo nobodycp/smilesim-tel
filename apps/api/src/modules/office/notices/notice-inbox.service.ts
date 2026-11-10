@@ -55,6 +55,13 @@ export class NoticeInboxService {
     return { ok: true as const };
   }
 
+  /** Whether the session a stream was opened with is still live: not signed out, frozen, revoked or idle out. */
+  async sessionLive(sessionId: string | undefined): Promise<boolean> {
+    if (!sessionId) return false;
+    const live = await this.kernel.auth.liveSession(sessionId).catch(() => null);
+    return Boolean(live && !live.user.disabledAt);
+  }
+
   /** One live channel per signed-in user. Resolves an unsubscribe function. */
   subscribe(actor: Actor, handler: (message: string) => void) {
     return this.kernel.notice.subscribe(actor.id, handler);

@@ -1,13 +1,14 @@
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, bodyField, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import { freeFormObject, text } from '../kernel/query';
+import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
-import { CompleteTaskBodyDto, ExtendBodyDto, OutcomeBodyDto, RenameLineBodyDto, SwapSimBodyDto, SwitchPackageBodyDto } from '../office.dto';
 import { LineReads } from './line-reads';
+import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
 import { LinesService } from './lines.service';
 
 @ApiTags('office')
@@ -59,23 +60,23 @@ export class LinesController {
 
   @Post('lines')
   @ApiOperation({ summary: 'Activate a new line' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(ActivateBody)
   @ApiErrorResponse(401, 403, 400)
   @Activity('activate', 'line', bodyField('msisdn'))
-  activate(@Actor() actor: ActorShape, @Body() body: Record<string, unknown>) {
+  activate(@Actor() actor: ActorShape, @Body() body: ActivateBody) {
     return this.lineDesk.activate(actor, body);
   }
 
   @Post('lines/:id/charge')
   @ApiOperation({ summary: 'Charge / top-up a line' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: OutcomeBodyDto })
+  @ApiZodBody(OutcomeBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('charge', 'line', param('id'))
   charge(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: OutcomeBodyDto,
+    @Body() body: OutcomeBody,
   ) {
     return this.lineDesk.operate(actor, id, 'charge', body);
   }
@@ -83,13 +84,13 @@ export class LinesController {
   @Post('lines/:id/refresh')
   @ApiOperation({ summary: 'Update a line without changing its fields' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: OutcomeBodyDto })
+  @ApiZodBody(OutcomeBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('refresh', 'line', param('id'))
   refresh(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: OutcomeBodyDto,
+    @Body() body: OutcomeBody,
   ) {
     return this.lineDesk.refresh(actor, id, body);
   }
@@ -105,13 +106,13 @@ export class LinesController {
   @Post('lines/:id/disconnect')
   @ApiOperation({ summary: 'Disconnect a line' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: OutcomeBodyDto })
+  @ApiZodBody(OutcomeBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('disconnect', 'line', param('id'))
   disconnect(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: OutcomeBodyDto,
+    @Body() body: OutcomeBody,
   ) {
     return this.lineDesk.operate(actor, id, 'disconnect', body);
   }
@@ -119,13 +120,13 @@ export class LinesController {
   @Post('lines/:id/unfreeze')
   @ApiOperation({ summary: 'Unfreeze a line' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: OutcomeBodyDto })
+  @ApiZodBody(OutcomeBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('unfreeze', 'line', param('id'))
   unfreeze(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: OutcomeBodyDto,
+    @Body() body: OutcomeBody,
   ) {
     return this.lineDesk.operate(actor, id, 'unfreeze', body);
   }
@@ -133,13 +134,13 @@ export class LinesController {
   @Post('lines/:id/freeze')
   @ApiOperation({ summary: 'Freeze a line' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: OutcomeBodyDto })
+  @ApiZodBody(OutcomeBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('freeze', 'line', param('id'))
   freeze(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: OutcomeBodyDto,
+    @Body() body: OutcomeBody,
   ) {
     return this.lineDesk.operate(actor, id, 'freeze', body);
   }
@@ -147,13 +148,13 @@ export class LinesController {
   @Post('lines/:id/extend')
   @ApiOperation({ summary: 'Extend a line subscription' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: ExtendBodyDto })
+  @ApiZodBody(ExtendBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('extend', 'line', param('id'))
   extend(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: ExtendBodyDto,
+    @Body() body: ExtendBody,
   ) {
     return this.lineDesk.extend(actor, id, body);
   }
@@ -161,13 +162,13 @@ export class LinesController {
   @Post('lines/:id/reactivate')
   @ApiOperation({ summary: 'Reactivate a line' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: OutcomeBodyDto })
+  @ApiZodBody(OutcomeBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('reactivate', 'line', param('id'))
   reactivate(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: OutcomeBodyDto,
+    @Body() body: OutcomeBody,
   ) {
     return this.lineDesk.reactivate(actor, id, body);
   }
@@ -175,13 +176,13 @@ export class LinesController {
   @Post('lines/:id/rename')
   @ApiOperation({ summary: 'Rename / change MSISDN on a line' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: RenameLineBodyDto })
+  @ApiZodBody(RenameLineBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('rename', 'line', param('id'))
   rename(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: RenameLineBodyDto,
+    @Body() body: RenameLineBody,
   ) {
     return this.lineDesk.rename(actor, id, body);
   }
@@ -198,23 +199,23 @@ export class LinesController {
   @Post('lines/:id/addon')
   @ApiOperation({ summary: "Request one of the package's extra operations; always a manual branch task holding its price" })
   @ApiParam({ name: 'id' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(AddonBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('addon', 'line', param('id'))
-  requestAddon(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.lineDesk.requestAddon(actor, id, body ?? {});
+  requestAddon(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: AddonBody) {
+    return this.lineDesk.requestAddon(actor, id, body);
   }
 
   @Post('lines/:id/sim')
   @ApiOperation({ summary: 'Swap to a SIM the branch already holds (physical or eSIM); free' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: SwapSimBodyDto })
+  @ApiZodBody(SwapSimBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('sim', 'line', param('id'))
   swapSim(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: SwapSimBodyDto,
+    @Body() body: SwapSimBody,
   ) {
     return this.lineDesk.swapSim(actor, id, body);
   }
@@ -222,13 +223,13 @@ export class LinesController {
   @Post('lines/:id/switch')
   @ApiOperation({ summary: 'Switch package on a line' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: SwitchPackageBodyDto })
+  @ApiZodBody(SwitchPackageBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('switch', 'line', param('id'))
   switchPackage(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: SwitchPackageBodyDto,
+    @Body() body: SwitchPackageBody,
   ) {
     return this.lineDesk.switchPackage(actor, id, body);
   }
@@ -236,13 +237,13 @@ export class LinesController {
   @Post('tasks/:id/complete')
   @ApiOperation({ summary: 'Complete a task; an eSIM request takes the serial and QR, a number change takes the new number' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: CompleteTaskBodyDto })
+  @ApiZodBody(CompleteTaskBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('task_complete', 'task', param('id'))
   complete(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: CompleteTaskBodyDto,
+    @Body() body: CompleteTaskBody,
   ) {
     return this.lineDesk.completeTask(actor, id, body);
   }

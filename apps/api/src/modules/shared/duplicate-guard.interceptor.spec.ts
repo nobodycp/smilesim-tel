@@ -99,9 +99,18 @@ describe('DuplicateGuardInterceptor over HTTP', () => {
     expect(updates).toBe(1);
   });
 
-  it('treats one Idempotency-Key as one write whatever the body', async () => {
-    await post('u1', { id: 'a' }, 'k-1');
-    await post('u1', { id: 'b' }, 'k-1');
+  it('runs one Idempotency-Key once and marks the repeat as a replay', async () => {
+    const first = await post('u1', { id: 'a' }, 'k-1');
+    const again = await post('u1', { id: 'a' }, 'k-1');
+    expect(updates).toBe(1);
+    expect(first.headers['idempotent-replay']).toBeUndefined();
+    expect(again.headers['idempotent-replay']).toBe('true');
+  });
+
+  it('refuses an Idempotency-Key reused for another request instead of answering with the first one (review 2026-11-10, M7)', async () => {
+    await post('u1', { id: 'a' }, 'k-2');
+    const other = await post('u1', { id: 'b' }, 'k-2');
+    expect([other.status, other.body.code]).toEqual([400, 'INVALID']);
     expect(updates).toBe(1);
   });
 });

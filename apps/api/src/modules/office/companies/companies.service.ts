@@ -3,9 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
-import { nonNegative } from '../kernel/values';
+import { parseInput } from '../../shared/input';
 import { companies } from '../office-catalog';
 import { ESIM_PRICE_DEFAULT, readSimRules, simRulesOf } from '../office-rules';
+import { COMPANY_IMAGE_BYTES, CompanyImageBody, CompanySimBody } from './companies.schemas';
 
 /** Companies: the shelf of companies, providers and packages an account sees, the company SIM rules and eSIM price, and the company image. */
 @Injectable()
@@ -95,12 +96,12 @@ export class CompaniesService {
     };
   }
 
-  async setSim(actor: Actor, code: string, body: { length?: unknown; prefix?: unknown; esim?: unknown; esimPrice?: unknown }) {
+  async setSim(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
-    const rules = readSimRules(body);
+    const { esimPrice, ...sim } = parseInput(CompanySimBody, body);
+    // The prefix must be shorter than the length: a rule across two fields, kept where the other readers use it.
+    const rules = readSimRules(sim);
     if (!rules) fail(400, 'INVALID');
-    const esimPrice = body.esimPrice === undefined ? undefined : nonNegative(body.esimPrice);
-    if (esimPrice === null) fail(400, 'INVALID');
     const row = await this.kernel.prisma.company.findUnique({ where: { code } });
     if (!row) fail(404, 'NOT_FOUND');
     const saved = await this.kernel.prisma.company.update({
@@ -110,19 +111,18 @@ export class CompaniesService {
     return { ok: true, sim: rules, esimPrice: saved.esimPrice };
   }
 
-  async setImage(actor: Actor, body: { name?: unknown; image?: unknown }) {
+  async setImage(actor: Actor, body: unknown) {
     if (actor.impersonating) fail(403, 'FORBIDDEN');
     requireGrant(actor, 'edit');
-    const name = typeof body.name === 'string' ? body.name.trim() : '';
-    if (!name) fail(400, 'INVALID');
+    const { name, image: sent } = parseInput(CompanyImageBody, body);
     const found = await this.kernel.prisma.company.count({ where: { name } });
     if (!found) fail(404, 'NOT_FOUND');
     let image: string | null = null;
-    if (typeof body.image === 'string' && body.image) {
-      const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(body.image);
+    if (sent) {
+      const match = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(sent);
       if (!match) fail(400, 'INVALID');
       const bytes = Buffer.from(match[2], 'base64');
-      if (bytes.length < 32 || bytes.length > 150_000) fail(400, 'INVALID');
+      if (bytes.length < 32 || bytes.length > COMPANY_IMAGE_BYTES) fail(400, 'INVALID');
       image = `data:image/${match[1]};base64,${match[2]}`;
     }
     await this.kernel.prisma.company.updateMany({ where: { name }, data: { image } });

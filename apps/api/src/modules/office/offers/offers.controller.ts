@@ -1,11 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import { freeFormObject } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
+import { OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
 import { OffersService } from './offers.service';
 
 /** Offers on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1). */
@@ -33,31 +34,31 @@ export class OffersController {
 
   @Post('offers')
   @ApiOperation({ summary: 'Add an offer: title, text, picture (data URL), action, seconds, layers, dates' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(OfferBody)
   @ApiErrorResponse(401, 403, 400)
   @Activity('offer', 'offer', () => '')
-  create(@Actor() actor: ActorShape, @Body() body: Record<string, unknown>) {
-    return this.offers.save(actor, body ?? {});
+  create(@Actor() actor: ActorShape, @Body() body: OfferBody) {
+    return this.offers.save(actor, body);
   }
 
   @Patch('offers/:id')
   @ApiOperation({ summary: 'Change an offer, or switch it on or off' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(OfferUpdateBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('offer', 'offer', param('id'))
-  update(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.offers.save(actor, body ?? {}, id);
+  update(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: OfferUpdateBody) {
+    return this.offers.save(actor, body, id);
   }
 
   @Post('offers/:id/move')
   @ApiOperation({ summary: 'Move an offer one place up or down' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(OfferMoveBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('offer', 'offer', param('id'))
-  move(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.offers.move(actor, id, body ?? {});
+  move(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: OfferMoveBody) {
+    return this.offers.move(actor, id, body);
   }
 
   @Delete('offers/:id')

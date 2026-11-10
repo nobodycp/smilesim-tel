@@ -1,3 +1,4 @@
+import { env, isTest } from '../../../config';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { OfficeKernel } from '../kernel/office-kernel';
 import { catalog, companies, packageCode, packageName } from '../office-catalog';
@@ -12,7 +13,7 @@ export class CatalogSeed implements OnModuleInit {
   constructor(private readonly kernel: OfficeKernel) {}
 
   async onModuleInit(): Promise<void> {
-    if (process.env.NODE_ENV === 'test' || !process.env.DATABASE_URL) return;
+    if (isTest() || !env('DATABASE_URL')) return;
     await this.ensureCatalog();
     await this.kernel.ensureLayerRoles();
   }

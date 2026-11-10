@@ -1,3 +1,4 @@
+import { env } from './config';
 import type { INestApplication } from '@nestjs/common';
 import { DOOR_HOSTS } from './doors';
 
@@ -7,7 +8,7 @@ const LOCAL_DOORS = DOOR_HOSTS.map((door) => `http://${door.host}.localhost:3000
 
 /** The web origins the API answers; passkeys check the page's origin against the same list. */
 export function allowedOrigins(): string[] {
-  const configured = (process.env.WEB_ORIGIN ?? '')
+  const configured = (env('WEB_ORIGIN') ?? '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);

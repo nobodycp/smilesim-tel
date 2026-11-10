@@ -47,4 +47,4 @@ export const dataUrl = (max: number) => z.string().max(max);
  * Simulation only: what the simulated provider answers (`success` or `fail`). A real gateway ignores it; the
  * gateway itself refuses a request it cannot run (providers/gateway).
  */
-export const providerHint = z.unknown();
+export const providerHint = z.unknown().optional();

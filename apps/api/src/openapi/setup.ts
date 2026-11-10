@@ -1,9 +1,10 @@
+import { isProduction } from '../config';
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 /** Mount Swagger UI at `/docs` outside production. */
 export function setupOpenApi(app: INestApplication): void {
-  if (process.env.NODE_ENV === 'production') return;
+  if (isProduction()) return;
 
   const document = SwaggerModule.createDocument(
     app,

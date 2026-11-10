@@ -114,6 +114,8 @@ export interface AuthStore {
   putSecret(key: string, value: string, ttlSeconds: number): Promise<void>;
   getSecret(key: string): Promise<string | null>;
   dropSecret(key: string): Promise<void>;
+  /** Reads a one-time secret and removes it in one step, so two requests cannot both redeem it. */
+  takeSecret(key: string): Promise<string | null>;
   listPasskeys(userId: string): Promise<PasskeyRow[]>;
   passkeyByCredential(credentialId: string): Promise<{ passkey: PasskeyRow; user: StoredUser } | null>;
   addPasskey(input: NewPasskey): Promise<PasskeyRow>;
@@ -371,6 +373,12 @@ export class MemoryAuthStore implements AuthStore {
 
   async dropSecret(key: string): Promise<void> {
     this.secrets.delete(key);
+  }
+
+  async takeSecret(key: string): Promise<string | null> {
+    const value = await this.getSecret(key);
+    this.secrets.delete(key);
+    return value;
   }
 
   async listPasskeys(userId: string): Promise<PasskeyRow[]> {

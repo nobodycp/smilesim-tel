@@ -47,6 +47,24 @@ export const ACTIVITY_ACTIONS = [
   'user_package',
   'user_ops',
   'sell_price',
+  // Registered 2026-11-10: every name a route logs under is listed, and `Activity()` takes only these.
+  'addon',
+  'ceiling',
+  'company_add',
+  'company_image',
+  'company_switch',
+  'esim',
+  'offer',
+  'package_add',
+  'package_addon',
+  'package_renewals',
+  'package_switches',
+  'provider_esim_price',
+  'provider_matching',
+  'provider_statement',
+  'refresh',
+  'role_save',
+  'transfer',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];

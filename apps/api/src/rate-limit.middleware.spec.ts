@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { RATE_LIMIT_ALL, RATE_LIMIT_WRITES, RateLimitMiddleware, memoryCounter } from './rate-limit.middleware';
+import { RATE_LIMIT_ALL, RATE_LIMIT_SIGN_IN, RATE_LIMIT_WRITES, RateLimitMiddleware, memoryCounter } from './rate-limit.middleware';
 
 function call(middleware: RateLimitMiddleware, method: string, url: string, sid?: string) {
   const req = { method, originalUrl: url, headers: { cookie: sid ? `sid=${sid}` : '' } } as unknown as Request;
@@ -41,8 +41,15 @@ describe('RateLimitMiddleware', () => {
     expect((await call(middleware, 'GET', '/office/home', 's1')).status).toBe(429);
     expect((await call(middleware, 'GET', '/office/notices/stream', 's1')).passed).toBe(true);
     expect((await call(middleware, 'GET', '/health', 's1')).passed).toBe(true);
-    for (let index = 0; index < RATE_LIMIT_ALL + 5; index += 1) await call(middleware, 'POST', '/auth/login');
-    expect((await call(middleware, 'POST', '/auth/login')).passed).toBe(true);
+    for (let index = 0; index < RATE_LIMIT_ALL + 5; index += 1) await call(middleware, 'GET', '/branding');
+    expect((await call(middleware, 'GET', '/branding')).passed).toBe(true);
+  });
+
+  it('caps sign-in attempts from one address, whatever the login name (review 2026-11-10, S9)', async () => {
+    for (let index = 0; index < RATE_LIMIT_SIGN_IN; index += 1) expect((await call(middleware, 'POST', '/auth/login')).passed).toBe(true);
+    const refused = await call(middleware, 'POST', '/auth/login');
+    expect([refused.status, refused.passed]).toEqual([429, false]);
+    expect((await call(middleware, 'POST', '/office/handoff')).status).toBe(429);
   });
 
   it('lets the request through when the counter fails', async () => {

@@ -112,8 +112,12 @@ describe('notices over HTTP', () => {
     const one = await request(app.getHttpServer()).post('/office/notices/read').set('Cookie', `sid=${session}`).send({ id: 'n3' });
     expect(one.status).toBe(201);
     expect(one.body).toEqual({ ok: true });
-    const all = await request(app.getHttpServer()).post('/office/notices/read').set('Cookie', `sid=${session}`).send({ id: 42 });
+    const all = await request(app.getHttpServer()).post('/office/notices/read').set('Cookie', `sid=${session}`).send({});
     expect(all.status).toBe(201);
+    // An id that is not text is refused, not read as "all of them".
+    const malformed = await request(app.getHttpServer()).post('/office/notices/read').set('Cookie', `sid=${session}`).send({ id: 42 });
+    expect(malformed.status).toBe(400);
+    expect(malformed.body.code).toBe('INVALID');
     expect(calls.updateMany).toEqual([
       { where: { userId: 'pos1', readAt: null, id: 'n3' }, data: { readAt: expect.any(Date) } },
       { where: { userId: 'pos1', readAt: null }, data: { readAt: expect.any(Date) } },

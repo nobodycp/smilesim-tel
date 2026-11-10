@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { DOOR_HOSTS } from '../../../doors';
 import { hashPassword } from '../../auth/password';
 import { fullNameProblem, newPasswordProblem } from '../../auth/validators';
+import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
@@ -11,6 +12,7 @@ import { visibleAccountIds } from '../office-rules';
 import { holds, isBranch, isOwner, layerRank, requireGrant, requireOwner } from '../policy';
 import { stampTaskLog } from '../task-log';
 import { HANDLER_FROZEN_NOTE } from '../tasks/task-notes';
+import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { HANDOFF_SECONDS, handoffKey } from './handoff';
 import { usersPage, type UsersFilter } from './users-page';
 
@@ -87,16 +89,12 @@ export class AccountsService {
     return { names };
   }
 
-  async create(actor: Actor, body: { loginName?: unknown; nickname?: unknown; password?: unknown; layer?: unknown; parentLogin?: unknown; roleId?: unknown }) {
+  /** `body` is a `CreateUserBody`, judged after the permission checks; only its layer is read before that. */
+  async create(actor: Actor, body: { layer?: unknown }) {
     if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
     // In the branch, opening an account is an edit and opening an employee is staff work (review S11).
     if (isBranch(actor)) requireGrant(actor, body.layer === 'staff' ? 'staff' : 'edit');
-    const loginName = typeof body.loginName === 'string' ? body.loginName.trim().toLowerCase() : '';
-    const nickname = typeof body.nickname === 'string' ? body.nickname.trim() : '';
-    const password = typeof body.password === 'string' ? body.password : '';
-    const layer = typeof body.layer === 'string' ? body.layer : '';
-    const parentLogin = typeof body.parentLogin === 'string' ? body.parentLogin.trim() : '';
-    if (!/^[a-z0-9._-]{3,32}$/.test(loginName)) fail(400, 'INVALID');
+    const { loginName, nickname, password, layer, parentLogin, roleId } = parseInput(CreateUserBody, body);
     const nickError = fullNameProblem(nickname);
     if (nickError) fail(400, nickError);
     const passError = newPasswordProblem(password);
@@ -108,7 +106,6 @@ export class AccountsService {
     };
     if (layer === 'staff') {
       requireGrant(actor, 'staff');
-      const roleId = typeof body.roleId === 'string' ? body.roleId : '';
       const role = roleId ? await this.kernel.prisma.role.findUnique({ where: { id: roleId } }) : null;
       if (!role || (role.staff && !isOwner(actor))) fail(403, 'FORBIDDEN');
       const owner = await this.kernel.prisma.user.findFirst({ where: { isBranchOwner: true } });
@@ -158,11 +155,11 @@ export class AccountsService {
     return { ok: true as const };
   }
 
-  async setPassword(actor: Actor, loginName: string, body: { password?: unknown }) {
+  async setPassword(actor: Actor, loginName: string, body: unknown) {
     if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
     // In the branch a reset is staff work (review S3). Permission before anything is read (rule 3).
     if (isBranch(actor)) requireGrant(actor, 'staff');
-    const password = typeof body.password === 'string' ? body.password : '';
+    const { password } = parseInput(SetAccountPasswordBody, body);
     const passError = newPasswordProblem(password);
     if (passError) fail(400, passError);
     const target = await this.kernel.prisma.user.findUnique({ where: { loginName } });
@@ -239,14 +236,15 @@ export class AccountsService {
     };
   }
 
-  async saveAccess(actor: Actor, loginName: string, body: { extraGrants?: unknown; deniedGrants?: unknown; extraRoleIds?: unknown; roleId?: unknown }) {
+  async saveAccess(actor: Actor, loginName: string, body: unknown) {
     requireOwner(actor);
     const target = await this.kernel.visibleAccount(actor, loginName);
     if (target.isBranchOwner) fail(403, 'FORBIDDEN');
-    const extraGrants = splitGrants(Array.isArray(body.extraGrants) ? body.extraGrants.filter((code): code is string => typeof code === 'string').join(',') : '');
-    const denied = new Set(splitGrants(Array.isArray(body.deniedGrants) ? body.deniedGrants.filter((code): code is string => typeof code === 'string').join(',') : ''));
+    const input = parseInput(AccessBody, body);
+    const extraGrants = splitGrants(input.extraGrants.join(','));
+    const denied = new Set(splitGrants(input.deniedGrants.join(',')));
     for (const code of extraGrants) denied.delete(code);
-    const wanted = Array.isArray(body.extraRoleIds) ? body.extraRoleIds.filter((id): id is string => typeof id === 'string' && id.length > 0) : [];
+    const wanted = input.extraRoleIds.filter((id) => id.length > 0);
     const jobs = wanted.length === 0
       ? []
       : await this.kernel.prisma.role.findMany({ where: { id: { in: wanted }, kind: 'job' }, select: { id: true } });
@@ -254,7 +252,7 @@ export class AccountsService {
     const staff = target.layer === 'branch' && Boolean(target.roleId);
     let roleId = target.roleId;
     if (staff) {
-      const next = typeof body.roleId === 'string' ? body.roleId : '';
+      const next = input.roleId;
       const primary = next ? await this.kernel.prisma.role.findUnique({ where: { id: next } }) : null;
       if (!primary || primary.kind === 'layer') fail(400, 'INVALID');
       roleId = primary.id;

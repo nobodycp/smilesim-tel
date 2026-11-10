@@ -1,12 +1,13 @@
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
-import { TaskInspectionNoteBodyDto, TaskRejectBodyDto } from '../office.dto';
+import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 import { TasksService } from './tasks.service';
 
 // POST /office/tasks/:id/complete stays in OfficeController until the lines slice: closing a task applies a line operation.
@@ -60,13 +61,13 @@ export class TasksController {
   @Post('tasks/:id/notes')
   @ApiOperation({ summary: 'Add inspection note without closing the task' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: TaskInspectionNoteBodyDto })
+  @ApiZodBody(TaskNoteBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('task_note', 'task', param('id'))
   addTaskNote(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: TaskInspectionNoteBodyDto,
+    @Body() body: TaskNoteBody,
   ) {
     return this.taskDesk.addNote(actor, id, body);
   }
@@ -92,13 +93,13 @@ export class TasksController {
   @Post('tasks/:id/reject')
   @ApiOperation({ summary: 'Reject a task' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: TaskRejectBodyDto })
+  @ApiZodBody(TaskRejectBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('task_reject', 'task', param('id'))
   reject(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: TaskRejectBodyDto,
+    @Body() body: TaskRejectBody,
   ) {
     return this.taskDesk.reject(actor, id, body);
   }

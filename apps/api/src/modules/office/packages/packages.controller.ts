@@ -1,12 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import { freeFormObject } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
-import { PackageTargetsBodyDto, SellPriceBodyDto } from '../office.dto';
+import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody, SellPriceBody } from './packages.schemas';
 import { PackagesService } from './packages.service';
 
 @ApiTags('office')
@@ -35,10 +35,10 @@ export class PackagesController {
   @Patch('packages/:code/details')
   @ApiOperation({ summary: 'Set package details: GB, minutes, messages (null not stated, -1 unlimited) and extra text' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(PackageDetailsBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('package_details', 'package', param('code'))
-  packageDetails(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: Record<string, unknown>) {
+  packageDetails(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: PackageDetailsBody) {
     return this.packageDesk.setDetails(actor, code, body);
   }
 
@@ -53,22 +53,22 @@ export class PackagesController {
   @Post('packages/:code/addons')
   @ApiOperation({ summary: 'Add an extra operation to a package: name and price' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(PackageAddonBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('package_addon', 'package', param('code'))
-  addPackageAddon(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: Record<string, unknown>) {
-    return this.packageDesk.saveAddon(actor, code, body ?? {});
+  addPackageAddon(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: PackageAddonBody) {
+    return this.packageDesk.saveAddon(actor, code, body);
   }
 
   @Patch('packages/:code/addons/:id')
   @ApiOperation({ summary: "Change a package's extra operation: name, price, on/off, position" })
   @ApiParam({ name: 'code' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(PackageAddonUpdateBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('package_addon', 'package', param('code'))
-  savePackageAddon(@Actor() actor: ActorShape, @Param('code') code: string, @Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.packageDesk.saveAddon(actor, code, body ?? {}, id);
+  savePackageAddon(@Actor() actor: ActorShape, @Param('code') code: string, @Param('id') id: string, @Body() body: PackageAddonUpdateBody) {
+    return this.packageDesk.saveAddon(actor, code, body, id);
   }
 
   @Delete('packages/:code/addons/:id')
@@ -84,39 +84,41 @@ export class PackagesController {
   @Patch('packages/:code/chain')
   @ApiOperation({ summary: 'Update package price chain' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(PackageChainBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('package_chain', 'package', param('code'))
   packageChain(
     @Actor() actor: ActorShape,
     @Param('code') code: string,
-    @Body() body: Record<string, unknown>,
+    @Body() body: PackageChainBody,
   ) {
     return this.packageDesk.setChain(actor, code, body);
   }
 
   @Put('packages/:code/renewals')
+  @Activity('package_renewals', 'package', param('code'))
   @ApiOperation({ summary: 'Set renewal targets for a package' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ type: PackageTargetsBodyDto })
+  @ApiZodBody(PackageTargetsBody)
   @ApiErrorResponse(401, 403, 400, 404)
   packageRenewals(
     @Actor() actor: ActorShape,
     @Param('code') code: string,
-    @Body() body: PackageTargetsBodyDto,
+    @Body() body: PackageTargetsBody,
   ) {
     return this.packageDesk.setTargets(actor, code, 'renewals', body);
   }
 
   @Put('packages/:code/switches')
+  @Activity('package_switches', 'package', param('code'))
   @ApiOperation({ summary: 'Set switch targets for a package' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ type: PackageTargetsBodyDto })
+  @ApiZodBody(PackageTargetsBody)
   @ApiErrorResponse(401, 403, 400, 404)
   packageSwitches(
     @Actor() actor: ActorShape,
     @Param('code') code: string,
-    @Body() body: PackageTargetsBodyDto,
+    @Body() body: PackageTargetsBody,
   ) {
     return this.packageDesk.setTargets(actor, code, 'switches', body);
   }
@@ -124,13 +126,13 @@ export class PackagesController {
   @Patch('packages/:code/mode')
   @ApiOperation({ summary: 'Set package sale/visibility mode flags' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ schema: freeFormObject })
+  @ApiZodBody(PackageModeBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('package_mode', 'package', param('code'))
   packageMode(
     @Actor() actor: ActorShape,
     @Param('code') code: string,
-    @Body() body: Record<string, unknown>,
+    @Body() body: PackageModeBody,
   ) {
     return this.packageDesk.setMode(actor, code, body);
   }
@@ -138,13 +140,13 @@ export class PackagesController {
   @Put('sell-prices/:code')
   @ApiOperation({ summary: "Set the caller's own sell price for a package (main agent or agent)" })
   @ApiParam({ name: 'code' })
-  @ApiBody({ type: SellPriceBodyDto })
+  @ApiZodBody(SellPriceBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('sell_price', 'package', param('code'))
   setSellPrice(
     @Actor() actor: ActorShape,
     @Param('code') code: string,
-    @Body() body: SellPriceBodyDto,
+    @Body() body: SellPriceBody,
   ) {
     return this.packageDesk.setSellPrice(actor, code, body);
   }

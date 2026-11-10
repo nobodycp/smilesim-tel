@@ -1,11 +1,12 @@
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
-import { TransferAccountBodyDto, TransferLineBodyDto } from '../office.dto';
+import { TransferAccountBody, TransferLineBody } from './transfers.schemas';
 import { TransfersService } from './transfers.service';
 
 @ApiTags('office')
@@ -19,12 +20,13 @@ export class TransfersController {
   @Post('lines/:id/transfer')
   @ApiOperation({ summary: 'Transfer a line to another POS' })
   @ApiParam({ name: 'id' })
-  @ApiBody({ type: TransferLineBodyDto })
+  @ApiZodBody(TransferLineBody)
   @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('transfer', 'line', param('id'))
   transferLine(
     @Actor() actor: ActorShape,
     @Param('id') id: string,
-    @Body() body: TransferLineBodyDto,
+    @Body() body: TransferLineBody,
   ) {
     return this.transferDesk.transferLine(actor, id, body);
   }
@@ -32,13 +34,13 @@ export class TransfersController {
   @Post('users/:loginName/transfer')
   @ApiOperation({ summary: 'Transfer a point of sale or an agent to another parent, with an explicit choice for what travels with it' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: TransferAccountBodyDto })
+  @ApiZodBody(TransferAccountBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('user_transfer', 'user', param('loginName'))
   transferAccount(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
-    @Body() body: TransferAccountBodyDto,
+    @Body() body: TransferAccountBody,
   ) {
     return this.transferDesk.transferAccount(actor, loginName, body);
   }

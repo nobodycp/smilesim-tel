@@ -60,7 +60,8 @@ describe('ProviderCatalogService', () => {
   it('keeps the query and the adding to the owner and the edit grant', async () => {
     await expect(world().service.companies(clerk, 'sky')).rejects.toMatchObject({ status: 403 });
     await expect(world().service.companies(agent, 'sky')).rejects.toMatchObject({ status: 403 });
-    await expect(world().service.createPackage({ ...clerk, grants: ['edit'] }, {})).rejects.toMatchObject({ status: 404 });
+    // Past the gate: an empty body is judged (400), where a clerk without the grant never gets that far (403).
+    await expect(world().service.createPackage({ ...clerk, grants: ['edit'] }, {})).rejects.toMatchObject({ status: 400 });
   });
 
   it('adds a company the provider sells, and refuses one the office has', async () => {

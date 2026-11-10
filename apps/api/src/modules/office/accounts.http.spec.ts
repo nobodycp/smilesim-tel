@@ -259,7 +259,9 @@ describe('accounts and roles over HTTP', () => {
     expect(listed.body.roles.map((role: { kind: string; layer: string }) => `${role.kind}:${role.layer}`)).toEqual(['layer:branch', 'layer:main_agent', 'layer:agent', 'layer:pos', 'job:']);
     expect(await code(as('clerk', 'post', '/office/roles', { name: 'دور' }))).toBe('403 FORBIDDEN');
     expect(await code(as('owner', 'post', '/office/roles', { name: 'x' }))).toBe('400 INVALID');
-    expect(await code(as('owner', 'post', '/office/roles', { name: 'محاسب', grants: ['accounting', 'bogus'] }))).toBe('201');
+    // A grant code the office does not know is refused, not dropped (backend-engineering.mdc 4.2).
+    expect(await code(as('owner', 'post', '/office/roles', { name: 'محاسب', grants: ['accounting', 'bogus'] }))).toBe('400 INVALID');
+    expect(await code(as('owner', 'post', '/office/roles', { name: 'محاسب', grants: ['accounting'] }))).toBe('201');
     expect(w.written.filter((entry) => entry.op === 'role.create').at(-1)!.args).toMatchObject({ data: { name: 'محاسب', kind: 'job', grants: 'accounting', accounting: true } });
     expect(await code(as('owner', 'post', '/office/roles', { id: 'missing', name: 'دور' }))).toBe('404 NOT_FOUND');
   });

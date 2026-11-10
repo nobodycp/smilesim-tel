@@ -1,3 +1,4 @@
+import { env } from '../../config';
 import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import IORedis, { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
@@ -35,7 +36,7 @@ class RedisBus implements NoticeBus {
   private readonly handlers = new Map<string, Set<(message: string) => void>>();
 
   private url() {
-    const url = process.env.REDIS_URL;
+    const url = env('REDIS_URL');
     if (!url) throw new Error('REDIS_URL is required');
     return url;
   }

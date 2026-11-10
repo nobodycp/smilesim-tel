@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
+import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import { isUniqueViolation } from '../../shared/prisma-errors';
 import { lineTermsOf } from '../kernel/line-terms';
@@ -14,9 +15,10 @@ import { PROVIDER_FAILED_NOTE } from '../providers/provider-health';
 import { BRANCH_TASK_NOTE } from '../tasks/task-notes';
 import { TasksService } from '../tasks/tasks.service';
 import { deniedOpsFor, visibleTo } from '../user-terms';
-import { MSISDN, periodOf, readQr } from './line-input';
+import { periodOf, readQr } from './line-input';
 import { assertRunnable, canActivateFor, runsNow, type RunnablePackage } from './line-ops';
 import { LinePricing } from './line-pricing';
+import { ActivateBody, AddonBody, ExtendBody, OutcomeBody, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
 import { assertSimFree, lockUnchanged, moveLineStatus } from './line-state';
 import { TaskCompletion } from './task-completion';
 
@@ -25,8 +27,6 @@ type OpenTask = Parameters<TasksService['openTask']>[0];
 /** How an operation goes: applied at the provider now, or left to the branch as a task with this note. */
 type Route = { now: true } | { now: false; note: string };
 type RoutedPackage = RunnablePackage & { code: string; provider: { code: string } | null };
-
-const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 
 /** A write that hit the unique number: two requests for one number at the same moment, and the database let one through. */
 const numberTaken = (error: unknown) => (isUniqueViolation(error) ? fail(409, 'NUMBER_TAKEN') : Promise.reject(error));
@@ -62,16 +62,10 @@ export class LinesService {
     return { applied: false as const, taskId: opened.id };
   }
 
-  async activate(actor: Actor, body: Record<string, unknown>) {
-    this.gateway.accept(body.outcome);
-    const esim = body.esim === true;
-    const iccid = text(body.iccid);
-    const packageCode = typeof body.packageCode === 'string' ? body.packageCode : '';
-    const posLogin = typeof body.posLogin === 'string' ? body.posLogin : '';
-    const requested = text(body.msisdn);
-    const currentDetails = text(body.currentDetails);
-    if (!packageCode || !posLogin) fail(400, 'INVALID');
-    if (requested && !MSISDN.test(requested)) fail(400, 'INVALID');
+  async activate(actor: Actor, body: unknown) {
+    const input = parseInput(ActivateBody, body);
+    this.gateway.accept(input.outcome);
+    const { esim, iccid, packageCode, posLogin, msisdn: requested, currentDetails } = input;
     const accounts = await this.kernel.accounts();
     const pos = accounts.find((account) => account.loginName === posLogin && account.layer === 'pos');
     if (!pos || !canActivateFor(actor, pos, accounts)) fail(403, 'FORBIDDEN');
@@ -91,7 +85,7 @@ export class LinesService {
     // Providers that take the serial from the seller keep it; the line is still an eSIM and still pays the fee.
     const generatesEsim = inputs === 'generated' && esim;
     const storedIccid = generatesEsim ? null : iccid || null;
-    const route = await this.route('activate', pkg, runsNow(pkg, 'activate'), body.outcome, { msisdn, iccid: storedIccid });
+    const route = await this.route('activate', pkg, runsNow(pkg, 'activate'), input.outcome, { msisdn, iccid: storedIccid });
     if (!route.now) {
       const task = await this.tasks.openTask({
         action: 'activate', actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: storedIccid, esim, unitPrice: unit,
@@ -165,16 +159,17 @@ export class LinesService {
     return sim;
   }
 
-  async operate(actor: Actor, lineId: string, action: 'charge' | 'disconnect' | 'freeze' | 'unfreeze', body: { outcome?: unknown }) {
-    this.gateway.accept(body.outcome);
+  async operate(actor: Actor, lineId: string, action: 'charge' | 'disconnect' | 'freeze' | 'unfreeze', body: unknown) {
+    const input = parseInput(OutcomeBody, body);
+    this.gateway.accept(input.outcome);
     const line = await this.kernel.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
-    if (action === 'charge') return this.restartDisconnected(actor, line, body.outcome);
+    if (action === 'charge') return this.restartDisconnected(actor, line, input.outcome);
     assertRunnable(line.package, action, line.denied);
     if (line.status === 'disconnected') fail(400, 'INVALID');
     if ((action === 'disconnect' || action === 'freeze') && line.status !== 'active') fail(400, 'INVALID');
     if (action === 'unfreeze' && line.status !== 'frozen') fail(400, 'INVALID');
-    const route = await this.route(action, line.package, runsNow(line.package, action), body.outcome, line);
+    const route = await this.route(action, line.package, runsNow(line.package, action), input.outcome, line);
     if (!route.now) return this.defer(actor, line, { action, posDelta: 0, msisdn: line.msisdn, note: route.note });
     if (action === 'disconnect') return this.disconnectNow(actor, line);
     await this.kernel.runTx(async (tx) => {
@@ -215,10 +210,10 @@ export class LinesService {
     return { amount: settled?.amount ?? 0, runsNow: runsNow(line.package, 'disconnect') };
   }
 
-  async switchPackage(actor: Actor, lineId: string, body: { packageCode?: unknown; outcome?: unknown }) {
-    this.gateway.accept(body.outcome);
-    const packageCode = typeof body.packageCode === 'string' ? body.packageCode : '';
-    if (!packageCode) fail(400, 'INVALID');
+  async switchPackage(actor: Actor, lineId: string, body: unknown) {
+    const input = parseInput(SwitchPackageBody, body);
+    this.gateway.accept(input.outcome);
+    const { packageCode } = input;
     const line = await this.kernel.visibleLine(actor, lineId);
     if (!line.opsLocked && line.status !== 'active') fail(400, 'INVALID');
     assertRunnable(line.package, 'switch', line.denied);
@@ -231,7 +226,7 @@ export class LinesService {
     if ('error' in switched) fail(400, 'INVALID');
     if (!(await this.pricing.visibleFor(line.posId, next, line.posPath))) fail(400, 'PACKAGE_HIDDEN');
     assertRunnable(next, 'switch', line.denied);
-    const route = await this.route('switch', line.package, runsNow(line.package, 'switch'), body.outcome, line);
+    const route = await this.route('switch', line.package, runsNow(line.package, 'switch'), input.outcome, line);
     if (!route.now) {
       const quote = await this.pricing.switchQuote(this.kernel.prisma, line, next, new Date());
       return this.defer(actor, line, { action: 'switch', nextPackageId: next.id, posDelta: -quote.difference, msisdn: line.msisdn, note: route.note });
@@ -252,10 +247,10 @@ export class LinesService {
     return { applied: true, debited };
   }
 
-  async extend(actor: Actor, lineId: string, body: { outcome?: unknown; targetCode?: unknown }) {
-    this.gateway.accept(body.outcome);
-    const targetCode = body.targetCode === undefined ? '' : typeof body.targetCode === 'string' ? body.targetCode : null;
-    if (targetCode === null) fail(400, 'INVALID');
+  async extend(actor: Actor, lineId: string, body: unknown) {
+    const input = parseInput(ExtendBody, body);
+    this.gateway.accept(input.outcome);
+    const { targetCode } = input;
     const line = await this.kernel.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active' || line.endsAt.getTime() <= Date.now()) fail(400, 'INVALID');
@@ -270,7 +265,7 @@ export class LinesService {
     if ('error' in renewal) fail(400, 'INVALID');
     // A number pays the renewal price its own terms carry, stay or target entry; no account row is read.
     const posDelta = -renewal.debit;
-    const route = await this.route('extend', line.package, runsNow(line.package, 'extend'), body.outcome, line);
+    const route = await this.route('extend', line.package, runsNow(line.package, 'extend'), input.outcome, line);
     if (!route.now) return this.defer(actor, line, { action: 'extend', nextPackageId: target?.id, posDelta, msisdn: line.msisdn, note: route.note });
     await this.kernel.runTx(async (tx) => {
       await lockUnchanged(tx, line);
@@ -288,21 +283,23 @@ export class LinesService {
     return { applied: true, debited: posDelta < 0 };
   }
 
-  async reactivate(actor: Actor, lineId: string, body: { outcome?: unknown }) {
-    this.gateway.accept(body.outcome);
+  async reactivate(actor: Actor, lineId: string, body: unknown) {
+    const input = parseInput(OutcomeBody, body);
+    this.gateway.accept(input.outcome);
     const line = await this.kernel.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
-    return this.restartDisconnected(actor, line, body.outcome);
+    return this.restartDisconnected(actor, line, input.outcome);
   }
 
-  async refresh(actor: Actor, lineId: string, body: { outcome?: unknown }) {
-    this.gateway.accept(body.outcome);
+  async refresh(actor: Actor, lineId: string, body: unknown) {
+    const input = parseInput(OutcomeBody, body);
+    this.gateway.accept(input.outcome);
     const line = await this.kernel.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active') fail(400, 'INVALID');
     const mode = refreshMode(line.package.actionModes);
     if (mode === 'off') fail(400, 'OPERATION_DISABLED');
-    const route = await this.route('refresh', line.package, mode === 'auto', body.outcome, line);
+    const route = await this.route('refresh', line.package, mode === 'auto', input.outcome, line);
     if (!route.now) return this.defer(actor, line, { action: 'refresh', posDelta: 0, msisdn: line.msisdn, note: route.note });
     await this.kernel.runTx(async (tx) => {
       await this.kernel.recordOp(tx, line.posId, actor.operatorId, 'refresh', saleOf(line));
@@ -311,17 +308,17 @@ export class LinesService {
   }
 
   /** The new number may be unknown until the branch has it: a task takes it at completion. */
-  async rename(actor: Actor, lineId: string, body: { msisdn?: unknown; outcome?: unknown }) {
-    this.gateway.accept(body.outcome);
-    const msisdn = text(body.msisdn);
-    if (msisdn && !MSISDN.test(msisdn)) fail(400, 'INVALID');
+  async rename(actor: Actor, lineId: string, body: unknown) {
+    const input = parseInput(RenameLineBody, body);
+    this.gateway.accept(input.outcome);
+    const { msisdn } = input;
     const line = await this.kernel.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     assertRunnable(line.package, 'rename', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
     if (msisdn === line.msisdn) fail(400, 'INVALID');
     if (msisdn && (await this.kernel.prisma.line.findUnique({ where: { msisdn } }))) fail(409, 'NUMBER_TAKEN');
-    const route = await this.route('rename', line.package, runsNow(line.package, 'rename'), body.outcome, { msisdn: msisdn || null });
+    const route = await this.route('rename', line.package, runsNow(line.package, 'rename'), input.outcome, { msisdn: msisdn || null });
     if (!route.now) return this.defer(actor, line, { action: 'rename', posDelta: 0, msisdn: msisdn || null, note: route.note });
     if (!msisdn) fail(400, 'INVALID');
     await this.kernel.runTx(async (tx) => {
@@ -333,11 +330,11 @@ export class LinesService {
   }
 
   /** A SIM the branch already holds, physical or eSIM. Free. A new eSIM is `requestEsim`. */
-  async swapSim(actor: Actor, lineId: string, body: { iccid?: unknown; esim?: unknown; qr?: unknown; outcome?: unknown }) {
-    this.gateway.accept(body.outcome);
-    const iccid = text(body.iccid);
-    const esim = body.esim === true;
-    const qr = esim ? readQr(body.qr) ?? null : null;
+  async swapSim(actor: Actor, lineId: string, body: unknown) {
+    const input = parseInput(SwapSimBody, body);
+    this.gateway.accept(input.outcome);
+    const { iccid, esim } = input;
+    const qr = esim ? readQr(input.qr) ?? null : null;
     if (iccid.length < 8) fail(400, 'INVALID');
     const line = await this.kernel.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
@@ -347,7 +344,7 @@ export class LinesService {
     if (esim && !rules.esim) fail(400, 'ESIM_UNSUPPORTED');
     const refusal = simRefusal(rules, iccid);
     if (refusal) fail(400, refusal);
-    const route = await this.route('sim', line.package, runsNow(line.package, 'sim'), body.outcome, { msisdn: line.msisdn, iccid });
+    const route = await this.route('sim', line.package, runsNow(line.package, 'sim'), input.outcome, { msisdn: line.msisdn, iccid });
     if (!route.now) return this.defer(actor, line, { action: 'sim', posDelta: 0, msisdn: line.msisdn, iccid, esim, esimQr: qr, note: route.note });
     await this.kernel.runTx(async (tx) => {
       await lockUnchanged(tx, line);
@@ -362,10 +359,10 @@ export class LinesService {
    * An extra operation of the line's package (spec 2026-11-09, 3): always a manual branch task that holds the
    * add-on's price, charged when the task is done and released if it is closed.
    */
-  async requestAddon(actor: Actor, lineId: string, body: Record<string, unknown>) {
+  async requestAddon(actor: Actor, lineId: string, body: unknown) {
     const line = await this.kernel.visibleLine(actor, lineId);
-    const addonId = typeof body.addonId === 'string' ? body.addonId : '';
-    const addon = addonId ? await this.kernel.prisma.packageAddon.findUnique({ where: { id: addonId } }) : null;
+    const { addonId } = parseInput(AddonBody, body);
+    const addon = await this.kernel.prisma.packageAddon.findUnique({ where: { id: addonId } });
     if (!addon || addon.packageId !== line.packageId || !addon.active) fail(400, 'INVALID');
     if (line.status === 'disconnected') fail(400, 'INVALID');
     return this.defer(actor, line, { action: 'addon', posDelta: -addon.price, msisdn: line.msisdn, iccid: null, note: addon.name });
@@ -384,7 +381,7 @@ export class LinesService {
   }
 
   /** Closing a branch task applies the operation it deferred (task-completion.ts). */
-  completeTask(actor: Actor, id: string, body: { note?: unknown; iccid?: unknown; qr?: unknown; msisdn?: unknown }) {
+  completeTask(actor: Actor, id: string, body: unknown) {
     return this.completion.complete(actor, id, body);
   }
 

@@ -1,5 +1,6 @@
 import { granted } from '../policy';
 import { Injectable } from '@nestjs/common';
+import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
@@ -9,10 +10,11 @@ import { PRICE_COLUMNS, nodeOf } from '../kernel/office-kernel';
 import type { Account } from '../kernel/types';
 import { RENEWABLE_STATUSES } from '../line-prices';
 import { visibleAccountIds } from '../office-rules';
-import { TRANSFER_GRANT, canTransfer, parseLineChoice, previewOf, transferKind, type TransferKind } from '../transfer-rules';
+import { TRANSFER_GRANT, canTransfer, previewOf, transferKind, type TransferKind } from '../transfer-rules';
 import { deniedOpsFor } from '../user-terms';
 import { saleOf } from '../kernel/sale';
-import { parseChoice } from '../transfer-rules';
+import type { z } from 'zod';
+import { TransferAccountBody as AccountMove, TransferLineBody } from './transfers.schemas';
 
 /** What a move is asked to do. Every field is checked before it is used, so each arrives as `unknown`. */
 export type TransferAccountBody = {
@@ -25,28 +27,12 @@ export type TransferAccountBody = {
 };
 
 /**
- * The choices that hold whatever is moved. None has a default: a move that leaves one out, or words one in
- * any other way, is `null`. A choice about what is below the account may be left out here, because only an
- * agent has anything below it, but one that is stated has to be a word. Nothing here reads an account, so a
- * body that cannot be a move is refused before any is read, and says nothing about what exists.
- */
-function statedChoices(body: TransferAccountBody) {
-  const ownPrices = parseChoice(body.ownPrices);
-  const ownStops = parseChoice(body.ownStops);
-  const linePrices = parseLineChoice(body.linePrices);
-  if (!ownPrices || !ownStops || !linePrices) return null;
-  const childPrices = body.childPrices === undefined ? undefined : parseChoice(body.childPrices);
-  const childStops = body.childStops === undefined ? undefined : parseChoice(body.childStops);
-  if (childPrices === null || childStops === null) return null;
-  return { ownPrices, ownStops, linePrices, childPrices, childStops };
-}
-
-/**
  * The choices of a move once its kind is known. Only an agent has anything below it to choose for, so a
  * point of sale that states a choice about what is below it is as wrong as an agent that leaves one out.
  */
-function transferChoices(kind: 'pos' | 'agent', stated: NonNullable<ReturnType<typeof statedChoices>>) {
-  const { childPrices, childStops, ...own } = stated;
+function transferChoices(kind: 'pos' | 'agent', stated: z.output<typeof AccountMove>) {
+  const { childPrices, childStops, ownPrices, ownStops, linePrices } = stated;
+  const own = { ownPrices, ownStops, linePrices };
   if (kind === 'pos') return childPrices === undefined && childStops === undefined ? { ...own, child: null } : null;
   return childPrices && childStops ? { ...own, child: { prices: childPrices, stops: childStops } } : null;
 }
@@ -65,11 +51,11 @@ export class TransfersService {
    * account, which depends on its kind. Wallets and numbers go with the account as they are. Everything
    * happens in one transaction, so a move either carries all its choices and both notices, or nothing.
    */
-  async transferAccount(actor: Actor, loginName: string, body: TransferAccountBody) {
-    const stated = statedChoices(body);
-    if (!stated) fail(400, 'INVALID');
+  async transferAccount(actor: Actor, loginName: string, body: unknown) {
+    // The words of the choices need no account, so a body that cannot be a move is refused before any is read.
+    const stated = parseInput(AccountMove, body);
     const accounts = await this.kernel.accounts();
-    const { moved, next, from, kind } = this.resolveTransfer(actor, accounts, loginName, body.parentLogin);
+    const { moved, next, from, kind } = this.resolveTransfer(actor, accounts, loginName, stated.parentLogin);
     const choices = transferChoices(kind, stated);
     if (!choices) fail(400, 'INVALID');
     const posIds = accounts.filter((account) => account.parentId === moved.id).map((account) => account.id);
@@ -158,12 +144,11 @@ export class TransfersService {
    * of sale named, and what the caller can see. The move, its operation record, the recapture, and both
    * notices are one transaction.
    */
-  async transferLine(actor: Actor, lineId: string, body: { posLogin?: unknown; linePrices?: unknown }) {
-    const linePrices = parseLineChoice(body.linePrices);
-    if (!linePrices) fail(400, 'INVALID');
+  async transferLine(actor: Actor, lineId: string, body: unknown) {
+    const { posLogin, linePrices } = parseInput(TransferLineBody, body);
     const line = await this.kernel.visibleLine(actor, lineId);
     const accounts = await this.kernel.accounts();
-    const next = typeof body.posLogin === 'string' ? accounts.find((account) => account.loginName === body.posLogin) : undefined;
+    const next = posLogin === undefined ? undefined : accounts.find((account) => account.loginName === posLogin);
     const from = accounts.find((account) => account.id === line.posId);
     const refusal = this.transferRefusal(actor, accounts, { kind: 'line', currentParentId: line.posId, next });
     if (refusal === 'FORBIDDEN') fail(403, 'FORBIDDEN');

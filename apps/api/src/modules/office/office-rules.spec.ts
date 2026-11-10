@@ -3,8 +3,6 @@ import {
   type ActionKey,
   type ActionMode,
   captureTerms,
-  chargeDebit,
-  disconnectSettlement,
   ESIM_PRICE_DEFAULT,
   activationProviderCost,
   esimPriceOf,
@@ -21,21 +19,55 @@ import {
   renewStay,
   providerBranchCost,
   readSimRules,
+  lastWindow,
   settleDisconnect,
   issueSerial,
   simRefusal,
   simRulesOf,
-  subscriptionDebit,
-  switchDifference,
   switchOnto,
   switchOver,
   visibleAccountIds,
   withinCeiling,
-  withPrice,
   type PackageTerms,
+  type PriceField,
+  type Prices,
 } from './office-rules';
 
 const trial = { branchCost: 25, mainPrice: 30, agentPrice: 35, posPrice: 38, subscriberPrice: 45 };
+
+// Short ways into the rules for the cases below: one paid window, valued the way the services value it.
+function disconnectSettlement(input: {
+  now: Date;
+  endsAt: Date;
+  months: number;
+  posPrice: number;
+  branchCost: number;
+}): { amount: number; providerCost: number } | null {
+  return settleDisconnect(lastWindow(input.now, input.endsAt, input.months, input.posPrice, false), () => input.branchCost);
+}
+
+/**
+ * Value of the days still left on the new package, minus the same days on the current one.
+ * A positive difference is a debit. The open window length is the denominator of the current price.
+ */
+function switchDifference(input: {
+  now: Date;
+  endsAt: Date;
+  windowMonths: number;
+  currentPrice: number;
+  newPrice: number;
+  newMonths: number;
+}): { currentValue: number; newValue: number; difference: number } {
+  const window = lastWindow(input.now, input.endsAt, input.windowMonths, input.currentPrice, false);
+  return switchOver(window, input.newPrice, input.newMonths);
+}
+
+function withPrice(prices: Prices, field: PriceField, price: number): Prices {
+  if (field === 'main') return { ...prices, mainPrice: price };
+  if (field === 'agent') return { ...prices, agentPrice: price };
+  if (field === 'pos') return { ...prices, posPrice: price };
+  return { ...prices, subscriberPrice: price };
+}
 
 describe('office money and price rules', () => {
   it('counts a started day as a whole day and adds half a shekel', () => {
@@ -182,8 +214,6 @@ const fiveG: PackageTerms = {
 describe('subscription and renewal price rules', () => {
   it('charges a new number the subscription price and an existing line the saved renewal', () => {
     const line = captureTerms(month, [three]);
-    expect(subscriptionDebit(month)).toBe(25);
-    expect(chargeDebit(line)).toBe(30);
     expect(line.subscription.posPrice).toBe(25);
     expect(line.renewal.posPrice).toBe(30);
   });

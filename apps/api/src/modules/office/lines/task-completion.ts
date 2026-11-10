@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import type { z } from 'zod';
 import type { OfficeTask, Prisma } from '../../../generated/prisma/client';
+import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import { lineTermsOf } from '../kernel/line-terms';
 import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
@@ -12,6 +14,7 @@ import { TasksService } from '../tasks/tasks.service';
 import { LinePricing } from './line-pricing';
 import { assertSimFree, lockedTaskLine, moveLineStatus } from './line-state';
 import { MSISDN, periodOf, readQr } from './line-input';
+import { CompleteTaskBody } from './lines.schemas';
 
 type TaskLine = Awaited<ReturnType<typeof lockedTaskLine>>;
 
@@ -59,15 +62,16 @@ export class TaskCompletion {
   };
 
   /** Closing a task may carry what the provider handed back: an eSIM serial and QR, or the new number. */
-  async complete(actor: Actor, id: string, body: { note?: unknown; iccid?: unknown; qr?: unknown; msisdn?: unknown }) {
+  async complete(actor: Actor, id: string, body: unknown) {
     assertBranch(actor);
     if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
-    const note = typeof body.note === 'string' ? body.note.trim() : '';
+    const input = parseInput(CompleteTaskBody, body);
+    const { note } = input;
     const task = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
     // Any branch account that handles tasks may finish an open one (spec 2026-11-09, 2); the claim below makes sure
     // only one of two at the same moment does.
     if (!task || task.status !== 'working') fail(400, 'INVALID');
-    const { handed, handedQr } = await this.handedBack(task, body);
+    const { handed, handedQr } = await this.handedBack(task, input);
     const written = await this.kernel.runTx(async (tx) => {
       // Claim the task first: a second handler finishing it at the same moment waits on this row, then finds it done.
       const claimed = await tx.officeTask.updateMany({ where: { id, status: 'working' }, data: { status: 'done', assigneeId: actor.id } });
@@ -101,10 +105,9 @@ export class TaskCompletion {
   }
 
   /** Checks what the branch attached to the completion: the new number of a rename, the serial and QR of an eSIM. */
-  private async handedBack(task: OfficeTask, body: { iccid?: unknown; qr?: unknown; msisdn?: unknown }) {
-    const givenIccid = typeof body.iccid === 'string' ? body.iccid.trim() : '';
-    const givenQr = readQr(body.qr) ?? null;
-    const givenMsisdn = typeof body.msisdn === 'string' ? body.msisdn.trim() : '';
+  private async handedBack(task: OfficeTask, given: z.output<typeof CompleteTaskBody>) {
+    const { iccid: givenIccid, msisdn: givenMsisdn } = given;
+    const givenQr = readQr(given.qr) ?? null;
     const handed: { iccid?: string; msisdn?: string } = {};
     if (task.action === 'esim' && (!givenIccid || !givenQr)) fail(400, 'INVALID');
     if (task.action === 'rename') {

@@ -1,6 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, Res } from '@nestjs/common';
 import {
-  ApiBody,
   ApiCookieAuth,
   ApiOkResponse,
   ApiOperation,
@@ -8,62 +7,39 @@ import {
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
-import type { CookieOptions, Request, Response } from 'express';
-import { ActivityRecorder } from '../office/activity-recorder';
-import { AuthService, Failure } from './auth.service';
+import type { Request, Response } from 'express';
+import { ActivityRecorder, type ActivityDraft } from '../office/activity-recorder';
+import { cookieBase, readCookie } from '../shared/cookies';
+import { AuthService, Failure, type Outcome } from './auth.service';
 import { SESSION_COOKIE_SECONDS } from './sessions';
 import { expectedLayer } from '../../doors';
 import { errorBody } from '../../errors';
+import { ApiZodBody } from '../../openapi/body';
 import { ApiErrorResponse } from '../../openapi/responses';
+import { NextAppDto, OkDto, OtpauthDto, ProfileDto, SessionsListDto, TwoFactorExemptDto } from './auth.dto';
 import {
-  ChangePasswordBodyDto,
-  ExemptionBodyDto,
-  LoginBodyDto,
-  NextAppDto,
-  OkDto,
-  OtpauthDto,
-  PolicyBodyDto,
-  ProfileDto,
-  SessionsListDto,
-  SetPasswordBodyDto,
-  TwoFactorCodeBodyDto,
-  TwoFactorExemptDto,
-  TwoFactorMethodBodyDto,
-  PasskeyBodyDto,
-  PasskeyLoginBodyDto,
-  SessionRulesBodyDto,
-  UpdateProfileBodyDto,
-} from './auth.dto';
+  ChangePasswordBody,
+  ConfirmMethodBody,
+  ExemptionBody,
+  LoginBody,
+  PasskeyBody,
+  PasskeyLoginBody,
+  PolicyBody,
+  SessionRulesBody,
+  SetPasswordBody,
+  TwoFactorCodeBody,
+  TwoFactorMethodBody,
+  UpdateProfileBody,
+  UserContactBody,
+  parseBody,
+} from './auth.schemas';
 import { PasskeyService } from './passkeys';
-
-function cookieBase(): CookieOptions {
-  return {
-    httpOnly: true,
-    secure: process.env.COOKIE_SECURE === 'true',
-    domain: process.env.COOKIE_DOMAIN || undefined,
-    sameSite: 'lax',
-  };
-}
 
 function setSessionCookie(res: Response, sessionId: string): void {
   res.cookie('sid', sessionId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
 }
 
-function sessionIdOf(req: Request): string | undefined {
-  const parsed = (req as Request & { cookies?: Record<string, unknown> }).cookies?.sid;
-  if (typeof parsed === 'string' && parsed) return parsed;
-  for (const part of String(req.headers.cookie ?? '').split(';')) {
-    const index = part.indexOf('=');
-    if (index > 0 && part.slice(0, index).trim() === 'sid') {
-      try {
-        return decodeURIComponent(part.slice(index + 1).trim()) || undefined;
-      } catch {
-        return undefined;
-      }
-    }
-  }
-  return undefined;
-}
+const sessionIdOf = (req: Request) => readCookie(req, 'sid');
 
 function metaOf(req: Request) {
   return { userAgent: String(req.headers['user-agent'] ?? ''), ip: req.ip ?? '' };
@@ -93,17 +69,24 @@ export class AuthController {
     private readonly passkeys: PasskeyService,
   ) {}
 
+  /** One activity event for an owner-only action on another account or on a layer, done or refused. */
+  private async recordOwner(req: Request, event: ActivityDraft, result: Outcome<unknown>): Promise<void> {
+    const failed = result.kind === 'error';
+    await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, event, failed ? 'fail' : 'ok', failed ? result.code : '');
+  }
+
   @Post('login')
   @HttpCode(200)
   @ApiOperation({ summary: 'Log in; sets `sid` cookie on success' })
-  @ApiBody({ type: LoginBodyDto })
+  @ApiZodBody(LoginBody)
   @ApiErrorResponse(401, 403, 429)
   async login(
-    @Body() body: LoginBodyDto,
+    @Body() body: LoginBody,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    if (typeof body?.loginName !== 'string' || typeof body?.password !== 'string') {
+    const input = parseBody(LoginBody, body);
+    if (!input) {
       res.status(401);
       return errorBody('BAD_CREDENTIALS');
     }
@@ -112,13 +95,13 @@ export class AuthController {
       res.status(403);
       return errorBody('DOOR_MISMATCH');
     }
-    const result = await this.auth.login({ loginName: body.loginName, password: body.password }, metaOf(req), door);
+    const result = await this.auth.login(input, metaOf(req), door);
     if (result.kind === 'error') {
-      await this.activity.recordLogin({ loginName: body.loginName ?? '', ip: metaOf(req).ip, result: 'fail', reason: result.code });
+      await this.activity.recordLogin({ loginName: input.loginName, ip: metaOf(req).ip, result: 'fail', reason: result.code });
       res.status(result.status);
       return { message: result.message, code: result.code };
     }
-    await this.activity.recordLogin({ loginName: body.loginName ?? '', ip: metaOf(req).ip, result: 'ok', reason: '' });
+    await this.activity.recordLogin({ loginName: input.loginName, ip: metaOf(req).ip, result: 'ok', reason: '' });
     setSessionCookie(res, result.sessionId);
     res.status(200);
     return result.body;
@@ -128,14 +111,14 @@ export class AuthController {
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Change password (forced or voluntary)' })
-  @ApiBody({ type: ChangePasswordBodyDto })
+  @ApiZodBody(ChangePasswordBody)
   @ApiErrorResponse(401, 403, 400)
   async changePassword(
-    @Body() body: ChangePasswordBodyDto,
+    @Body() body: ChangePasswordBody,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.changePassword(sessionIdOf(req), body ?? {}, metaOf(req));
+    const result = await this.auth.changePassword(sessionIdOf(req), body, metaOf(req));
     if (result.kind === 'error') {
       await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'password' }, 'fail', result.code);
       return failWith(res, result);
@@ -160,15 +143,15 @@ export class AuthController {
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Update profile fields and/or password' })
-  @ApiBody({ type: UpdateProfileBodyDto })
+  @ApiZodBody(UpdateProfileBody)
   @ApiOkResponse({ type: ProfileDto })
   @ApiErrorResponse(401, 400)
   async profile(
-    @Body() body: UpdateProfileBodyDto,
+    @Body() body: UpdateProfileBody,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.updateProfile(sessionIdOf(req), body ?? {});
+    const result = await this.auth.updateProfile(sessionIdOf(req), body);
     if (result.kind === 'error') return failWith(res, result);
     return result.profile;
   }
@@ -178,16 +161,17 @@ export class AuthController {
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Set another user password (privileged)' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: SetPasswordBodyDto })
+  @ApiZodBody(SetPasswordBody)
   @ApiOkResponse({ type: OkDto })
   @ApiErrorResponse(401, 403, 404, 400)
   async setUserPassword(
     @Param('loginName') loginName: string,
-    @Body() body: SetPasswordBodyDto,
+    @Body() body: SetPasswordBody,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.setUserPassword(sessionIdOf(req), loginName, body ?? {});
+    const result = await this.auth.setUserPassword(sessionIdOf(req), loginName, body);
+    await this.recordOwner(req, { action: 'password', subjectKind: 'account', subjectRef: loginName }, result);
     if (result.kind === 'error') return failWith(res, result);
     return { ok: true };
   }
@@ -237,15 +221,15 @@ export class AuthController {
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Confirm 2FA enrollment with a TOTP code' })
-  @ApiBody({ type: TwoFactorCodeBodyDto })
+  @ApiZodBody(TwoFactorCodeBody)
   @ApiOkResponse({ type: NextAppDto })
   @ApiErrorResponse(401, 400)
   async confirmTwoFactor(
-    @Body() body: TwoFactorCodeBodyDto,
+    @Body() body: TwoFactorCodeBody,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.confirmTwoFactor(sessionIdOf(req), body ?? {}, metaOf(req));
+    const result = await this.auth.confirmTwoFactor(sessionIdOf(req), body, metaOf(req));
     if (result.kind === 'error') {
       await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
       return failWith(res, result);
@@ -259,15 +243,15 @@ export class AuthController {
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Verify 2FA code during login challenge' })
-  @ApiBody({ type: TwoFactorCodeBodyDto })
+  @ApiZodBody(TwoFactorCodeBody)
   @ApiOkResponse({ type: NextAppDto })
   @ApiErrorResponse(401, 400)
   async verifyTwoFactor(
-    @Body() body: TwoFactorCodeBodyDto,
+    @Body() body: TwoFactorCodeBody,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.verifyTwoFactor(sessionIdOf(req), body ?? {}, metaOf(req));
+    const result = await this.auth.verifyTwoFactor(sessionIdOf(req), body, metaOf(req));
     if (result.kind === 'error') {
       await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
       return failWith(res, result);
@@ -302,6 +286,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.clearUserTwoFactor(sessionIdOf(req), loginName);
+    await this.recordOwner(req, { action: 'two_factor', subjectKind: 'account', subjectRef: loginName }, result);
     if (result.kind === 'error') return failWith(res, result);
     return { ok: true };
   }
@@ -319,6 +304,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.disableUser(sessionIdOf(req), loginName);
+    await this.recordOwner(req, { action: 'user_freeze', subjectKind: 'account', subjectRef: loginName }, result);
     if (result.kind === 'error') return failWith(res, result);
     return { ok: true };
   }
@@ -327,14 +313,15 @@ export class AuthController {
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Set 2FA policy for a layer' })
-  @ApiBody({ type: PolicyBodyDto })
+  @ApiZodBody(PolicyBody)
   @ApiErrorResponse(401, 403, 400)
   async policy(
-    @Body() body: PolicyBodyDto,
+    @Body() body: PolicyBody,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.setPolicy(sessionIdOf(req), body ?? {});
+    const result = await this.auth.setPolicy(sessionIdOf(req), body);
+    await this.recordOwner(req, { action: 'two_factor', subjectKind: 'layer', subjectRef: result.kind === 'ok' ? String(body?.layer ?? '') : '' }, result);
     if (result.kind === 'error') return failWith(res, result);
     return { policy: result.policy };
   }
@@ -344,16 +331,17 @@ export class AuthController {
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Set 2FA exemption for a login' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: ExemptionBodyDto })
+  @ApiZodBody(ExemptionBody)
   @ApiOkResponse({ type: TwoFactorExemptDto })
   @ApiErrorResponse(401, 403, 404)
   async exemption(
     @Param('loginName') loginName: string,
-    @Body() body: ExemptionBodyDto,
+    @Body() body: ExemptionBody,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.setExemption(sessionIdOf(req), loginName, body ?? {});
+    const result = await this.auth.setExemption(sessionIdOf(req), loginName, body);
+    await this.recordOwner(req, { action: 'two_factor', subjectKind: 'account', subjectRef: loginName }, result);
     if (result.kind === 'error') return failWith(res, result);
     return { twoFactorExempt: result.twoFactorExempt };
   }
@@ -371,10 +359,10 @@ export class AuthController {
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Choose SMS or email as the 2FA method; sends a code to confirm it' })
-  @ApiBody({ type: TwoFactorMethodBodyDto })
+  @ApiZodBody(TwoFactorMethodBody)
   @ApiErrorResponse(401, 403, 400)
-  async chooseMethod(@Body() body: TwoFactorMethodBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const result = await this.auth.chooseCodeMethod(sessionIdOf(req), body ?? {});
+  async chooseMethod(@Body() body: TwoFactorMethodBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.chooseCodeMethod(sessionIdOf(req), body);
     if (result.kind === 'error') return failWith(res, result);
     return { sentTo: result.sentTo, sent: result.sent, retryIn: result.retryIn };
   }
@@ -383,11 +371,11 @@ export class AuthController {
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Confirm the SMS or email method with the code it sent; turns 2FA on' })
-  @ApiBody({ type: TwoFactorMethodBodyDto })
+  @ApiZodBody(ConfirmMethodBody)
   @ApiOkResponse({ type: NextAppDto })
   @ApiErrorResponse(401, 403, 400)
-  async confirmMethod(@Body() body: TwoFactorMethodBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const result = await this.auth.confirmCodeMethod(sessionIdOf(req), body ?? {}, metaOf(req));
+  async confirmMethod(@Body() body: ConfirmMethodBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.confirmCodeMethod(sessionIdOf(req), body, metaOf(req));
     if (result.kind === 'error') {
       await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
       return failWith(res, result);
@@ -433,10 +421,10 @@ export class AuthController {
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Finish adding a passkey with the browser answer' })
-  @ApiBody({ type: PasskeyBodyDto })
+  @ApiZodBody(PasskeyBody)
   @ApiErrorResponse(401, 403, 400)
-  async addPasskey(@Body() body: PasskeyBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const result = await this.passkeys.register(sessionIdOf(req), body ?? {});
+  async addPasskey(@Body() body: PasskeyBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.passkeys.register(sessionIdOf(req), body);
     if (result.kind === 'error') {
       await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_add' }, 'fail', result.code);
       return failWith(res, result);
@@ -472,16 +460,16 @@ export class AuthController {
   @Post('passkey-login')
   @HttpCode(200)
   @ApiOperation({ summary: 'Sign in with a passkey; sets `sid` cookie on success' })
-  @ApiBody({ type: PasskeyLoginBodyDto })
+  @ApiZodBody(PasskeyLoginBody)
   @ApiOkResponse({ type: NextAppDto })
   @ApiErrorResponse(400, 401, 403)
-  async passkeyLogin(@Body() body: PasskeyLoginBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async passkeyLogin(@Body() body: PasskeyLoginBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const door = doorOf(req);
     if (door === 'conflict') {
       res.status(403);
       return errorBody('DOOR_MISMATCH');
     }
-    const result = await this.passkeys.login(body ?? {}, metaOf(req), door);
+    const result = await this.passkeys.login(body, metaOf(req), door);
     const loginName = 'loginName' in result ? (result.loginName ?? '') : '';
     if (result.kind === 'error') {
       if (loginName) await this.activity.recordLogin({ loginName, ip: metaOf(req).ip, result: 'fail', reason: result.code });
@@ -507,10 +495,10 @@ export class AuthController {
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Branch owner: set a layer session rules; null follows the default' })
   @ApiParam({ name: 'layer' })
-  @ApiBody({ type: SessionRulesBodyDto })
+  @ApiZodBody(SessionRulesBody)
   @ApiErrorResponse(401, 403, 400)
-  async setLayerSessionRules(@Param('layer') layer: string, @Body() body: SessionRulesBodyDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const result = await this.auth.setLayerSessionRules(sessionIdOf(req), layer, body ?? {});
+  async setLayerSessionRules(@Param('layer') layer: string, @Body() body: SessionRulesBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.setLayerSessionRules(sessionIdOf(req), layer, body);
     if (result.kind === 'error') return failWith(res, result);
     return { layers: result.layers };
   }
@@ -531,9 +519,10 @@ export class AuthController {
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Branch owner: set an account email and mobile; an empty string clears one' })
   @ApiParam({ name: 'loginName' })
+  @ApiZodBody(UserContactBody)
   @ApiErrorResponse(401, 403, 404, 400)
-  async setUserContact(@Param('loginName') loginName: string, @Body() body: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const result = await this.auth.setUserContact(sessionIdOf(req), loginName, (body ?? {}) as { email?: unknown; phone?: unknown });
+  async setUserContact(@Param('loginName') loginName: string, @Body() body: UserContactBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.setUserContact(sessionIdOf(req), loginName, body);
     if (result.kind === 'error') return failWith(res, result);
     return result.settings;
   }
@@ -554,15 +543,15 @@ export class AuthController {
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Branch owner: set an account session rules; null follows its layer' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: SessionRulesBodyDto })
+  @ApiZodBody(SessionRulesBody)
   @ApiErrorResponse(401, 403, 404, 400)
   async setUserSessionRules(
     @Param('loginName') loginName: string,
-    @Body() body: SessionRulesBodyDto,
+    @Body() body: SessionRulesBody,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.setUserSessionRules(sessionIdOf(req), loginName, body ?? {});
+    const result = await this.auth.setUserSessionRules(sessionIdOf(req), loginName, body);
     if (result.kind === 'error') return failWith(res, result);
     return result.view;
   }

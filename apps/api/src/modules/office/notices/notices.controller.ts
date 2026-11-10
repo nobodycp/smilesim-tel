@@ -1,13 +1,20 @@
+import { readCookie } from '../../shared/cookies';
+import { NoActivity } from '../activity.decorator';
 import { Body, Controller, Get, Post, Query, Req, Res, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
+import { parseInput } from '../../shared/input';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
-import { NoticeReadBodyDto } from '../office.dto';
 import { text } from '../kernel/query';
 import { NoticeInboxService } from './notice-inbox.service';
+import { NoticeReadBody } from './notices.schemas';
+
+/** How often an open notices stream is pinged and its session checked again. */
+const STREAM_BEAT_MS = 25_000;
 
 @ApiTags('office')
 @ApiCookieAuth('sid')
@@ -47,22 +54,32 @@ export class NoticesController {
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
     res.write(': open\n\n');
-    const heartbeat = setInterval(() => res.write(': ping\n\n'), 25_000);
     const close = () => {
       clearInterval(heartbeat);
       void unsubscribe?.();
       unsubscribe = null;
     };
+    // An open stream outlives the request that opened it, so the session is looked at again on every beat: a
+    // signed-out, frozen or revoked account stops receiving (review 2026-11-10, S12).
+    const sessionId = readCookie(req, 'sid');
+    const heartbeat = setInterval(() => {
+      res.write(': ping\n\n');
+      void this.inbox.sessionLive(sessionId).then((live) => {
+        if (live) return;
+        close();
+        res.end();
+      });
+    }, STREAM_BEAT_MS);
     req.on('close', close);
     res.on('error', close);
   }
 
   @Post('notices/read')
   @ApiOperation({ summary: 'Mark notice(s) read' })
-  @ApiBody({ type: NoticeReadBodyDto })
-  @ApiErrorResponse(401, 403)
-  readNotices(@Actor() actor: ActorShape, @Body() body: NoticeReadBodyDto) {
-    const id = typeof body.id === 'string' ? body.id : undefined;
-    return this.inbox.read(actor, id);
+  @ApiZodBody(NoticeReadBody)
+  @ApiErrorResponse(401, 403, 400)
+  @NoActivity('marks the caller\'s own notices read; a log row per read is noise')
+  readNotices(@Actor() actor: ActorShape, @Body() body: NoticeReadBody) {
+    return this.inbox.read(actor, parseInput(NoticeReadBody, body).id);
   }
 }

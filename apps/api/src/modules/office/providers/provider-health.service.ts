@@ -1,3 +1,5 @@
+import { logger, reason } from '../../shared/log';
+import { env, isTest } from '../../../config';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
@@ -5,6 +7,8 @@ import { FAILURE_WINDOW_MINUTES, HEALTH_CHECK_SECONDS, PROVIDER_FAILED_NOTE, hea
 import { ProviderAccountsService } from './provider-accounts.service';
 import { matchOverdue } from './match-simulator';
 import type { NoticeDraft } from '../notice-kinds';
+
+const log = logger('ProviderHealth');
 
 /** The sender of the system's own notices: no account, so every recipient hears it. */
 const SYSTEM: Actor = { id: 'system', loginName: 'system', nickname: 'النظام', layer: 'branch', isBranchOwner: false, grants: [], operatorId: 'system', impersonating: false };
@@ -25,8 +29,8 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly kernel: OfficeKernel, private readonly accounts: ProviderAccountsService) {}
 
   onModuleInit() {
-    if (process.env.NODE_ENV === 'test' || !process.env.DATABASE_URL) return;
-    this.timer = setInterval(() => void this.check().then(() => this.checkMatching()).catch((error) => console.warn('provider health check failed', error instanceof Error ? error.message : error)), HEALTH_CHECK_SECONDS * 1000);
+    if (isTest() || !env('DATABASE_URL')) return;
+    this.timer = setInterval(() => void this.check().then(() => this.checkMatching()).catch((error) => log.warn(`check failed: ${reason(error)}`)), HEALTH_CHECK_SECONDS * 1000);
   }
 
   onModuleDestroy() {

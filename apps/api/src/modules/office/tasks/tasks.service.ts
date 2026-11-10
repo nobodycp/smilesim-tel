@@ -1,6 +1,7 @@
 import { lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
+import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
 import { feedPosition } from '../kernel/feed';
@@ -11,6 +12,7 @@ import { NEWEST_FIRST, TASKS_PAGE, afterFeed, mergeFeed, taskStatusOf } from '..
 import { simRulesOf } from '../office-rules';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from '../task-access';
 import { parseTaskLogLine, stampTaskLog } from '../task-log';
+import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 
 /**
  * Branch tasks: the inbox and one task, inspection notes, take and release, reject and cancel, plus the helpers
@@ -209,11 +211,9 @@ export class TasksService {
     };
   }
 
-  async addNote(actor: Actor, id: string, body: { text?: unknown; internal?: unknown }) {
-    const text = typeof body.text === 'string' ? body.text.trim() : '';
-    if (!text || text.length > 2000) fail(400, 'INVALID');
+  async addNote(actor: Actor, id: string, body: unknown) {
     // An internal note is written and read by the branch only (spec 2026-11-09, 2).
-    const internal = body.internal === true;
+    const { text, internal } = parseInput(TaskNoteBody, body);
     if (internal && actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const current = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
     if (!current) fail(404, 'NOT_FOUND');
@@ -262,11 +262,10 @@ export class TasksService {
     return { ok: true };
   }
 
-  async reject(actor: Actor, id: string, body: { reason?: unknown }) {
+  async reject(actor: Actor, id: string, body: unknown) {
     assertBranch(actor);
     if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
-    const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
-    if (!reason) fail(400, 'INVALID');
+    const { reason } = parseInput(TaskRejectBody, body);
     const task = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
     if (!task || task.status !== 'working') fail(400, 'INVALID');
     const written = await this.kernel.runTx(async (tx) => {

@@ -86,6 +86,23 @@ describe('two-factor endpoints', () => {
     expect(store.sessions.some((session) => session.scope === 'full')).toBe(false);
   });
 
+  it('stops guessing: wrong codes count with wrong passwords, the pending session closes at the limit, and a used code is not taken twice (review 2026-11-10, S4)', async () => {
+    store.addUser(await user({ loginName: 'coded', layer: 'branch' }, 'codedpass1'));
+    const secret = enableTwoFactor('coded');
+    const pending = cookieOf(await login('coded', 'codedpass1'));
+    const verify = (cookie: string, code: string) => http().post('/auth/two-factor/verify').set('Cookie', cookie).send({ code });
+    for (let guess = 0; guess < 10; guess += 1) expect((await verify(pending, '000000')).status).toBe(401);
+    // The eleventh is refused even with the right code, and the session it was guessed on is gone.
+    expect((await verify(pending, currentTotp(secret))).status).toBe(429);
+    expect((await verify(pending, currentTotp(secret))).status).toBe(401);
+    expect(store.sessions.some((session) => session.scope === 'full')).toBe(false);
+
+    await store.clearFailures('coded');
+    const code = currentTotp(secret);
+    expect((await verify(cookieOf(await login('coded', 'codedpass1')), code)).status).toBe(200);
+    expect((await verify(cookieOf(await login('coded', 'codedpass1')), code)).status).toBe(401);
+  });
+
   it('replaces the cookie with a full session for a correct code and applies the session limit', async () => {
     store.addUser(await user({ loginName: 'coded', layer: 'branch' }, 'codedpass1'));
     const secret = enableTwoFactor('coded');

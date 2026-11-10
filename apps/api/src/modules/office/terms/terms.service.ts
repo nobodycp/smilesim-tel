@@ -1,16 +1,17 @@
 import { holds, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
+import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import type { Prisma } from '../../../generated/prisma/client';
 import type { Account } from '../kernel/types';
-import { RENEWABLE_STATUSES, groupChanges, groupLinePrices, repriceLine, type PriceGroup } from '../line-prices';
+import { RENEWABLE_STATUSES, groupLinePrices, repriceLine, type PriceGroup } from '../line-prices';
 import { captureTerms, visibleAccountIds, type LineTerms, type PackageTerms } from '../office-rules';
 import { packageTermsOf } from '../office-terms';
-import { buyPriceFor, deniedAbove, floorFor, hiddenAbove, isOpKey, parseOps, priceSource, serializeOps, type LayerPrices, type PathNode, type SellRow, type TermRow } from '../user-terms';
+import { buyPriceFor, deniedAbove, floorFor, hiddenAbove, parseOps, priceSource, serializeOps, type LayerPrices, type PathNode, type SellRow, type TermRow } from '../user-terms';
 import { lineTermsOf } from '../kernel/line-terms';
-import { optionalPrice } from '../kernel/values';
+import { CustomPriceBody, LinePricesBody, UserOpsBody, UserPackageBody, UserPackagesBulkBody } from './terms.schemas';
 import type { PackagePriceRow } from '../office-terms';
 import type { PriceSource } from '../user-terms';
 import type { PrismaClient } from '../../../generated/prisma/client';
@@ -51,20 +52,14 @@ type LineScope = { kind: 'all' } | { kind: 'account'; id: string; loginName: str
 export type LineTarget = { to: number | 'current' };
 export type RepriceLine = { id: string; posId: string; terms: Prisma.JsonValue; package: PackagePriceRow & { id: string } };
 
-/** Validates a user-package patch body. `null` when any field is malformed or nothing is set. */
-function termPatch(body: { hidden?: unknown; price?: unknown; renewalPrice?: unknown }): TermPatch | null {
+/** The fields a user-package body sets, once the schema has checked them. A body that sets nothing is refused. */
+function termPatch(input: TermPatch): TermPatch {
   const patch: TermPatch = {};
-  if (body.hidden !== undefined) {
-    if (typeof body.hidden !== 'boolean') return null;
-    patch.hidden = body.hidden;
-  }
-  for (const key of ['price', 'renewalPrice'] as const) {
-    if (body[key] === undefined) continue;
-    const price = optionalPrice(body[key]);
-    if (price === undefined) return null;
-    patch[key] = price;
-  }
-  return Object.keys(patch).length ? patch : null;
+  if (input.hidden !== undefined) patch.hidden = input.hidden;
+  if (input.price !== undefined) patch.price = input.price;
+  if (input.renewalPrice !== undefined) patch.renewalPrice = input.renewalPrice;
+  if (!Object.keys(patch).length) fail(400, 'INVALID');
+  return patch;
 }
 
 function summarize(rows: UserPackageRow[]) {
@@ -103,9 +98,8 @@ export class TermsService {
     return { summary: summarize(rows.map((item) => item.row)), companies: [...companies.values()] };
   }
 
-  async setUserPackage(actor: Actor, loginName: string, code: string, body: { hidden?: unknown; price?: unknown; renewalPrice?: unknown }) {
-    const patch = termPatch(body);
-    if (!patch) fail(400, 'INVALID');
+  async setUserPackage(actor: Actor, loginName: string, code: string, body: unknown) {
+    const patch = termPatch(parseInput(UserPackageBody, body));
     const { path, target, accounts } = await this.termTarget(actor, loginName);
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
@@ -115,10 +109,10 @@ export class TermsService {
   }
 
   /** Hide or show several packages at once. Packages hidden higher up are left alone. */
-  async setUserPackagesBulk(actor: Actor, loginName: string, body: { codes?: unknown; hidden?: unknown }) {
-    if (!Array.isArray(body.codes) || body.codes.some((code) => typeof code !== 'string' || !code) || typeof body.hidden !== 'boolean') fail(400, 'INVALID');
-    const codes = new Set(body.codes as string[]);
-    const hidden = body.hidden as boolean;
+  async setUserPackagesBulk(actor: Actor, loginName: string, body: unknown) {
+    const input = parseInput(UserPackagesBulkBody, body);
+    const codes = new Set(input.codes);
+    const { hidden } = input;
     const { path, target, accounts } = await this.termTarget(actor, loginName);
     const pathIds = path.map((node) => node.id);
     const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
@@ -150,10 +144,10 @@ export class TermsService {
     return { denied: parseOps(target.deniedOps), deniedAbove: deniedAbove(path) };
   }
 
-  async setUserOps(actor: Actor, loginName: string, body: { denied?: unknown }) {
-    if (!Array.isArray(body.denied) || body.denied.some((key) => typeof key !== 'string' || !isOpKey(key))) fail(400, 'INVALID');
+  async setUserOps(actor: Actor, loginName: string, body: unknown) {
+    const { denied } = parseInput(UserOpsBody, body);
     const { target, path } = await this.termTarget(actor, loginName);
-    const deniedOps = serializeOps(body.denied as string[]);
+    const deniedOps = serializeOps(denied);
     await this.kernel.prisma.user.update({ where: { id: target.id }, data: { deniedOps } });
     return { denied: parseOps(deniedOps), deniedAbove: deniedAbove(path) };
   }
@@ -171,9 +165,8 @@ export class TermsService {
       .sort((a, b) => a.loginName.localeCompare(b.loginName));
   }
 
-  async setCustomPrice(actor: Actor, code: string, loginName: string, body: { price?: unknown; renewalPrice?: unknown }) {
-    const patch = termPatch({ price: body.price, renewalPrice: body.renewalPrice });
-    if (!patch) fail(400, 'INVALID');
+  async setCustomPrice(actor: Actor, code: string, loginName: string, body: unknown) {
+    const patch = termPatch(parseInput(CustomPriceBody, body));
     const { target, accounts, path } = await this.termTarget(actor, loginName);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
@@ -216,11 +209,12 @@ export class TermsService {
    * carrying `from` takes `to`, a flat price or what a new activation would carry now. Numbers in no
    * listed group stay as they are. One transaction, so a refusal anywhere applies nothing.
    */
-  async setLinePrices(actor: Actor, code: string, body: { scope?: unknown; groups?: unknown }): Promise<{ ok: true; lines: number }> {
-    const changes = groupChanges(body.groups);
-    if (!changes) fail(400, 'INVALID');
+  async setLinePrices(actor: Actor, code: string, body: unknown): Promise<{ ok: true; lines: number }> {
+    const input = parseInput(LinePricesBody, body);
+    // A group that keeps its price changes nothing.
+    const changes = input.groups.filter((group) => group.to !== group.from);
     const accounts = await this.kernel.accounts();
-    const scope = await this.lineScope(actor, accounts, body.scope);
+    const scope = await this.lineScope(actor, accounts, input.scope);
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code }, select: { id: true } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const lines = await this.kernel.runTx(async (tx) => {

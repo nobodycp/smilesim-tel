@@ -1,3 +1,4 @@
+import { wholeEnv } from '../../config';
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import {
@@ -10,6 +11,7 @@ import {
 } from '@simplewebauthn/server';
 import { allowedOrigins } from '../../cors';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
+import { PasskeyBody, PasskeyLoginBody, parseBody } from './auth.schemas';
 import { AUTH_STORE, AuthStore, PasskeyRow } from './auth.store';
 import { AuthService, type Failure, type Outcome } from './auth.service';
 import { Layer } from './decide-login';
@@ -34,7 +36,7 @@ const loginKey = (loginId: string) => `passkey-login:${loginId}`;
  * The relying party for a page origin: `WEBAUTHN_RP_ID` when set, else the host without its first label, so every
  * door (admin., main., agent., pos.) shares one passkey. Null when the origin is not one the API serves.
  */
-export function relyingParty(origin: string | undefined, env: Record<string, string | undefined> = process.env): Challenge | null {
+export function relyingParty(origin: string | undefined, env: Record<string, string | undefined> = wholeEnv()): Challenge | null {
   if (!origin || !allowedOrigins().includes(origin)) return null;
   let host: string;
   try {
@@ -63,9 +65,9 @@ export class PasskeyService {
   }
 
   private async takeChallenge(key: string): Promise<Challenge | null> {
-    const raw = await this.store.getSecret(key);
+    // Read and removed in one step: a challenge answers one request.
+    const raw = await this.store.takeSecret(key);
     if (!raw) return null;
-    await this.store.dropSecret(key);
     return JSON.parse(raw) as Challenge;
   }
 
@@ -90,7 +92,7 @@ export class PasskeyService {
       userID: new TextEncoder().encode(user.id),
       attestationType: 'none',
       excludeCredentials: existing.map((row) => ({ id: row.credentialId, transports: row.transports })),
-      authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
+      authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
     });
     await this.store.putSecret(registerKey(session.id), JSON.stringify({ ...party, challenge: options.challenge }), CHALLENGE_SECONDS);
     return { kind: 'ok', options };
@@ -98,15 +100,15 @@ export class PasskeyService {
 
   async register(
     sessionId: string | undefined,
-    body: { response?: unknown; name?: unknown },
+    body: PasskeyBody,
   ): Promise<Outcome<{ passkey: PasskeyView }>> {
     const authed = await this.fullSession(sessionId);
     if (authed.kind === 'error') return authed;
-    if (!body?.response || typeof body.response !== 'object') return fail(400, 'INVALID');
-    if (body.name !== undefined && typeof body.name !== 'string') return fail(400, 'INVALID');
+    const input = parseBody(PasskeyBody, body);
+    if (!input) return fail(400, 'INVALID');
     const challenge = await this.takeChallenge(registerKey(authed.session.id));
     if (!challenge) return fail(400, 'CODE_EXPIRED');
-    const response = body.response as RegistrationResponseJSON;
+    const response = input.response as unknown as RegistrationResponseJSON;
     let verified: Awaited<ReturnType<typeof verifyRegistrationResponse>>;
     try {
       verified = await verifyRegistrationResponse({
@@ -114,7 +116,8 @@ export class PasskeyService {
         expectedChallenge: challenge.challenge,
         expectedOrigin: challenge.origin,
         expectedRPID: challenge.rpID,
-        requireUserVerification: false,
+        // A passkey stands for the password and the second step, so the device must have checked its holder.
+        requireUserVerification: true,
       });
     } catch {
       return fail(400, 'PASSKEY_FAILED');
@@ -122,7 +125,7 @@ export class PasskeyService {
     if (!verified.verified) return fail(400, 'PASSKEY_FAILED');
     const { credential } = verified.registrationInfo;
     if (await this.store.passkeyByCredential(credential.id)) return fail(400, 'PASSKEY_FAILED');
-    const name = (typeof body.name === 'string' ? body.name.trim() : '').slice(0, NAME_LIMIT) || RP_NAME;
+    const name = (input.name ?? '').trim().slice(0, NAME_LIMIT) || RP_NAME;
     const row = await this.store.addPasskey({
       userId: authed.user.id,
       credentialId: credential.id,
@@ -145,7 +148,7 @@ export class PasskeyService {
   async loginOptions(origin: string | undefined): Promise<Outcome<{ loginId: string; options: unknown }>> {
     const party = relyingParty(origin);
     if (!party) return fail(400, 'INVALID');
-    const options = await generateAuthenticationOptions({ rpID: party.rpID, userVerification: 'preferred' });
+    const options = await generateAuthenticationOptions({ rpID: party.rpID, userVerification: 'required' });
     const loginId = randomUUID();
     await this.store.putSecret(loginKey(loginId), JSON.stringify({ ...party, challenge: options.challenge }), CHALLENGE_SECONDS);
     return { kind: 'ok', loginId, options };
@@ -156,14 +159,15 @@ export class PasskeyService {
    * password change and the session limit apply as they do to a password sign-in.
    */
   async login(
-    body: { loginId?: unknown; response?: unknown },
+    body: PasskeyLoginBody,
     meta: Meta,
     door: Layer | null,
   ): Promise<Outcome<{ next: 'app' | 'password'; sessionId: string; loginName: string }> | (Failure & { loginName?: string })> {
-    if (typeof body?.loginId !== 'string' || !body.response || typeof body.response !== 'object') return fail(400, 'INVALID');
-    const challenge = await this.takeChallenge(loginKey(body.loginId));
+    const input = parseBody(PasskeyLoginBody, body);
+    if (!input) return fail(400, 'INVALID');
+    const challenge = await this.takeChallenge(loginKey(input.loginId));
     if (!challenge) return fail(401, 'CODE_EXPIRED');
-    const response = body.response as AuthenticationResponseJSON;
+    const response = input.response as unknown as AuthenticationResponseJSON;
     const found = typeof response.id === 'string' ? await this.store.passkeyByCredential(response.id) : null;
     if (!found) return fail(401, 'PASSKEY_FAILED');
     const { passkey, user } = found;
@@ -175,7 +179,8 @@ export class PasskeyService {
         expectedOrigin: challenge.origin,
         expectedRPID: challenge.rpID,
         credential: { id: passkey.credentialId, publicKey: new Uint8Array(passkey.publicKey), counter: passkey.counter, transports: passkey.transports },
-        requireUserVerification: false,
+        // A passkey stands for the password and the second step, so the device must have checked its holder.
+        requireUserVerification: true,
       });
     } catch {
       return { ...fail(401, 'PASSKEY_FAILED'), loginName: user.loginName };

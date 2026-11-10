@@ -1,11 +1,12 @@
 import { Body, Controller, Get, Param, Post, Put, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, param } from '../activity.decorator';
+import { Activity, bodyField, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
-import { CompanyImageBodyDto, CompanySimBodyDto } from '../office.dto';
+import { CompanyImageBody, CompanySimBody } from './companies.schemas';
 import { CompaniesService } from './companies.service';
 
 @ApiTags('office')
@@ -24,23 +25,24 @@ export class CompaniesController {
   }
 
   @Post('companies/image')
+  @Activity('company_image', 'company', bodyField('name'))
   @ApiOperation({ summary: 'Set company mark / image' })
-  @ApiBody({ type: CompanyImageBodyDto })
+  @ApiZodBody(CompanyImageBody)
   @ApiErrorResponse(401, 403, 400)
-  companyImage(@Actor() actor: ActorShape, @Body() body: CompanyImageBodyDto) {
+  companyImage(@Actor() actor: ActorShape, @Body() body: CompanyImageBody) {
     return this.companyDesk.setImage(actor, body);
   }
 
   @Put('companies/:code/sim')
   @ApiOperation({ summary: 'Set company SIM rules (ICCID length, prefix, eSIM)' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ type: CompanySimBodyDto })
+  @ApiZodBody(CompanySimBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('company_sim', 'company', param('code'))
   companySim(
     @Actor() actor: ActorShape,
     @Param('code') code: string,
-    @Body() body: CompanySimBodyDto,
+    @Body() body: CompanySimBody,
   ) {
     return this.companyDesk.setSim(actor, code, body);
   }

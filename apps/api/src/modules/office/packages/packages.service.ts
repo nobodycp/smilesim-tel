@@ -4,10 +4,10 @@ import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import type { Prisma } from '../../../generated/prisma/client';
-import { nonNegative } from '../kernel/values';
-import { ACTION_KEYS, chainHolds, editableField, esimPriceOf, normalizeActionModes, packageModeData, resolvePackageMode, simRulesOf, type ActionKey, type ActionMode } from '../office-rules';
+import { parseInput } from '../../shared/input';
+import { ACTION_KEYS, chainHolds, editableField, esimPriceOf, normalizeActionModes, packageModeData, resolvePackageMode, simRulesOf, type ActionMode } from '../office-rules';
 import { buyPriceFor, deniedOpsFor, layerPrice, visibleTo } from '../user-terms';
-import { optionalPrice } from '../kernel/values';
+import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody, SellPriceBody } from './packages.schemas';
 import type { Prices } from '../office-rules';
 
 // Which package flags a provider mode sets.
@@ -22,7 +22,7 @@ function pricesOf(row: Prices): Prices {
 }
 
 /** The package catalog: what an account may sell with its prices, its own sell prices, and for the branch the package sheet, the price chain, renewal and switch targets, and the operation modes. */
-export const PACKAGE_DETAILS_LIMIT = 300;
+export { PACKAGE_DETAILS_LIMIT } from './packages.schemas';
 
 @Injectable()
 export class PackagesService {
@@ -105,11 +105,9 @@ export class PackagesService {
   }
 
   /** A main agent's or agent's own sell price for a package. The floor is what the actor itself pays. */
-  async setSellPrice(actor: Actor, code: string, body: { price?: unknown; renewalPrice?: unknown }) {
+  async setSellPrice(actor: Actor, code: string, body: unknown) {
     if (actor.layer !== 'main_agent' && actor.layer !== 'agent') fail(403, 'FORBIDDEN');
-    const price = nonNegative(body.price);
-    const renewalPrice = optionalPrice(body.renewalPrice);
-    if (price === null || renewalPrice === undefined) fail(400, 'INVALID');
+    const { price, renewalPrice } = parseInput(SellPriceBody, body);
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const [accounts, { terms, sells }] = await Promise.all([this.kernel.accounts(), this.kernel.termsFor(pkg.id)]);
@@ -134,28 +132,28 @@ export class PackagesService {
     return { ok: true };
   }
 
-  async setMode(actor: Actor, code: string, body: Record<string, unknown>) {
+  async setMode(actor: Actor, code: string, body: unknown) {
     // Package modes apply to every account, so only the branch sets them, like the chain and the targets.
     requireGrant(actor, 'edit');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    const keys = ['autoActivate', 'autoCharge', 'autoDisconnect', 'autoFreeze', 'autoSwitch', 'autoExtend', 'autoRename', 'autoSim', 'allowActivate', 'allowCharge', 'allowDisconnect', 'allowFreeze', 'allowSwitch', 'allowExtend', 'allowRename', 'allowSim', 'enabled'] as const;
+    const { action, mode, ...flags } = parseInput(PackageModeBody, body);
     const data: Record<string, boolean | Prisma.InputJsonValue> = {};
-    for (const key of keys) if (typeof body[key] === 'boolean') data[key] = body[key] as boolean;
-    const action = typeof body.action === 'string' ? body.action : '';
-    const mode = body.mode === 'auto' || body.mode === 'manual' || body.mode === 'off' || body.mode === 'inherit' ? body.mode : '';
-    const known = (ACTION_KEYS as readonly string[]).includes(action);
-    if (known && mode) {
+    for (const [key, value] of Object.entries(flags)) if (value !== undefined) data[key] = value;
+    if (action && mode) {
       // `inherit` follows the provider again (spec 2026-11-09-admin-review, 3): its mode now, and every change it
       // makes later; a mode of its own stops following.
       const inherited = new Set(pkg.inheritedModes);
-      let next = mode;
+      let next: ActionMode;
       if (mode === 'inherit') {
         const provider = await this.kernel.prisma.provider.findUnique({ where: { id: pkg.providerId } });
-        next = normalizeActionModes(provider?.actionModes)[action as ActionKey];
+        next = normalizeActionModes(provider?.actionModes)[action];
         inherited.add(action);
-      } else inherited.delete(action);
-      Object.assign(data, packageModeData(pkg.actionModes, pkg, action as ActionKey, next as ActionMode));
+      } else {
+        next = mode;
+        inherited.delete(action);
+      }
+      Object.assign(data, packageModeData(pkg.actionModes, pkg, action, next));
       data.inheritedModes = [...inherited];
     }
     if (Object.keys(data).length === 0) fail(400, 'INVALID');
@@ -217,26 +215,20 @@ export class PackagesService {
   }
 
   /** GB, minutes, messages (null = not stated, -1 = unlimited) and up to 300 characters of extra details. */
-  async setDetails(actor: Actor, code: string, body: Record<string, unknown>) {
+  async setDetails(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
-    const amount = (value: unknown) => value === null || (typeof value === 'number' && Number.isInteger(value) && value >= -1 && value <= 1_000_000);
-    if (!amount(body.dataGb) || !amount(body.smsCount) || !amount(body.minutes)) fail(400, 'INVALID');
-    if (typeof body.details !== 'string' || body.details.trim().length > PACKAGE_DETAILS_LIMIT) fail(400, 'INVALID');
-    // Days after the end before a line counts as suspended (spec 2026-11-08-overview-and-reports-nav, I); optional.
-    const suspend = body.suspendAfterDays;
-    if (suspend !== undefined && !(typeof suspend === 'number' && Number.isInteger(suspend) && suspend >= 1 && suspend <= 3650)) fail(400, 'INVALID');
-    if (body.esimAvailable !== undefined && typeof body.esimAvailable !== 'boolean') fail(400, 'INVALID');
+    const input = parseInput(PackageDetailsBody, body);
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     await this.kernel.prisma.package.update({
       where: { id: pkg.id },
       data: {
-        dataGb: body.dataGb as number | null,
-        smsCount: body.smsCount as number | null,
-        minutes: body.minutes as number | null,
-        details: body.details.trim() || null,
-        ...(typeof suspend === 'number' ? { suspendAfterDays: suspend } : {}),
-        ...(typeof body.esimAvailable === 'boolean' ? { esimAvailable: body.esimAvailable } : {}),
+        dataGb: input.dataGb,
+        smsCount: input.smsCount,
+        minutes: input.minutes,
+        details: input.details || null,
+        ...(input.suspendAfterDays === undefined ? {} : { suspendAfterDays: input.suspendAfterDays }),
+        ...(input.esimAvailable === undefined ? {} : { esimAvailable: input.esimAvailable }),
       },
     });
     return { ok: true as const };
@@ -251,30 +243,22 @@ export class PackagesService {
   }
 
   /** Adds an extra operation, or changes one when `id` is given: name, price (agorot) and on/off. */
-  async saveAddon(actor: Actor, code: string, body: Record<string, unknown>, id?: string) {
+  async saveAddon(actor: Actor, code: string, body: unknown, id?: string) {
     requireGrant(actor, 'edit');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    const name = typeof body.name === 'string' ? body.name.trim() : undefined;
-    if (name !== undefined && (!name || name.length > 60)) fail(400, 'INVALID');
-    const price = body.price;
-    if (price !== undefined && !(typeof price === 'number' && Number.isInteger(price) && price >= 0 && price <= 10_000_000)) fail(400, 'INVALID');
-    if (body.active !== undefined && typeof body.active !== 'boolean') fail(400, 'INVALID');
-    if (body.position !== undefined && !(typeof body.position === 'number' && Number.isInteger(body.position))) fail(400, 'INVALID');
-    const data = {
-      ...(name !== undefined ? { name } : {}),
-      ...(typeof price === 'number' ? { price } : {}),
-      ...(typeof body.active === 'boolean' ? { active: body.active } : {}),
-      ...(typeof body.position === 'number' ? { position: body.position } : {}),
-    };
     if (id) {
+      const input = parseInput(PackageAddonUpdateBody, body);
+      // Only what was sent changes.
+      const data = Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
       const row = await this.kernel.prisma.packageAddon.findUnique({ where: { id } });
       if (!row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
       await this.kernel.prisma.packageAddon.update({ where: { id }, data });
     } else {
-      if (!name) fail(400, 'INVALID');
+      // A new operation goes last; a position sent with it is checked and not used, as before.
+      const { name, price, active } = parseInput(PackageAddonBody, body);
       const count = await this.kernel.prisma.packageAddon.count({ where: { packageId: pkg.id } });
-      await this.kernel.prisma.packageAddon.create({ data: { packageId: pkg.id, name, price: typeof price === 'number' ? price : 0, active: body.active !== false, position: count } });
+      await this.kernel.prisma.packageAddon.create({ data: { packageId: pkg.id, name, price: price ?? 0, active: active !== false, position: count } });
     }
     return this.addons(actor, code);
   }
@@ -288,10 +272,11 @@ export class PackagesService {
     return this.addons(actor, code);
   }
 
-  async setChain(actor: Actor, code: string, body: Record<string, unknown>) {
+  async setChain(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
     const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
+    const input = parseInput(PackageChainBody, body);
     const next = { ...pricesOf(pkg) };
     const renewal = {
       branchCost: pkg.renewalBranchCost,
@@ -301,10 +286,8 @@ export class PackagesService {
       subscriberPrice: pkg.renewalSubscriberPrice,
     };
     for (const key of ['branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice'] as const) {
-      if (body[key] === undefined) continue;
-      const price = nonNegative(body[key]);
-      if (price === null) fail(400, 'INVALID');
-      next[key] = price;
+      const price = input[key];
+      if (price !== undefined) next[key] = price;
     }
     for (const [key, renewalKey] of [
       ['branchCost', 'renewalBranchCost'],
@@ -313,14 +296,11 @@ export class PackagesService {
       ['posPrice', 'renewalPosPrice'],
       ['subscriberPrice', 'renewalSubscriberPrice'],
     ] as const) {
-      if (body[renewalKey] === undefined) continue;
-      const price = nonNegative(body[renewalKey]);
-      if (price === null) fail(400, 'INVALID');
-      renewal[key] = price;
+      const price = input[renewalKey];
+      if (price !== undefined) renewal[key] = price;
     }
     if (!chainHolds(next) || !chainHolds(renewal)) fail(400, 'PRICE_BELOW_FLOOR');
-    const esimPrice = body.esimPrice === undefined ? undefined : body.esimPrice === null ? null : nonNegative(body.esimPrice);
-    if (esimPrice === null && body.esimPrice !== null) fail(400, 'INVALID');
+    const esimPrice = input.esimPrice;
     await this.kernel.prisma.package.update({
       where: { id: pkg.id },
       data: {
@@ -336,12 +316,9 @@ export class PackagesService {
     return { ok: true as const };
   }
 
-  async setTargets(actor: Actor, code: string, kind: 'renewals' | 'switches', body: { targets?: unknown }) {
+  async setTargets(actor: Actor, code: string, kind: 'renewals' | 'switches', body: unknown) {
     requireGrant(actor, 'edit');
-    if (!Array.isArray(body.targets) || body.targets.some((target) => typeof target !== 'string' || !target)) {
-      fail(400, 'INVALID');
-    }
-    const targetCodes = body.targets as string[];
+    const { targets: targetCodes } = parseInput(PackageTargetsBody, body);
     if (new Set(targetCodes).size !== targetCodes.length || targetCodes.includes(code)) fail(400, 'INVALID');
     const [pkg, targets] = await Promise.all([
       this.kernel.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } }),

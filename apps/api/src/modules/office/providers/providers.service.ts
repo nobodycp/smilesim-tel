@@ -3,9 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
-import { nonNegative } from '../kernel/values';
+import { parseInput } from '../../shared/input';
 import type { Prisma } from '../../../generated/prisma/client';
-import { ACTION_KEYS, normalizeActionModes, packageModeData, type ActionKey, type ActionMode } from '../office-rules';
+import { normalizeActionModes, packageModeData } from '../office-rules';
+import { ProviderEsimPriceBody, ProviderModeBody } from './providers.schemas';
 
 /** Providers, for the branch: the list with each provider's companies and packages, the per-provider action modes, and the provider eSIM price. */
 @Injectable()
@@ -85,25 +86,22 @@ export class ProvidersService {
     };
   }
 
-  async setEsimPrice(actor: Actor, code: string, body: { price?: unknown }) {
+  async setEsimPrice(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
     const row = await this.kernel.prisma.provider.findUnique({ where: { code } });
     if (!row) fail(404, 'NOT_FOUND');
-    const price = body.price === null ? null : nonNegative(body.price);
-    if (price === null && body.price !== null) fail(400, 'INVALID');
+    const { price } = parseInput(ProviderEsimPriceBody, body);
     await this.kernel.prisma.provider.update({ where: { code }, data: { esimPrice: price } });
     return { ok: true as const, esimPrice: price };
   }
 
-  async setMode(actor: Actor, code: string, body: Record<string, unknown>) {
+  async setMode(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
     const row = await this.kernel.prisma.provider.findUnique({ where: { code } });
     if (!row) fail(404, 'NOT_FOUND');
-    const action = typeof body.action === 'string' ? body.action : '';
-    const mode = body.mode === 'auto' || body.mode === 'manual' || body.mode === 'off' ? body.mode : '';
-    if (!(ACTION_KEYS as readonly string[]).includes(action) || !mode) fail(400, 'INVALID');
+    const { action, mode } = parseInput(ProviderModeBody, body);
     const modes = normalizeActionModes(row.actionModes);
-    modes[action as ActionKey] = mode as ActionMode;
+    modes[action] = mode;
     // The packages that inherit this action follow at once (spec 2026-11-09-admin-review, 3); those with a mode of
     // their own keep it.
     const following = await this.kernel.prisma.package.findMany({ where: { providerId: row.id, inheritedModes: { has: action } } });
@@ -111,7 +109,7 @@ export class ProvidersService {
       this.kernel.prisma.provider.update({ where: { code }, data: { actionModes: modes } }),
       ...following.map((pkg) => this.kernel.prisma.package.update({
         where: { id: pkg.id },
-        data: packageModeData(pkg.actionModes, pkg, action as ActionKey, mode as ActionMode) as Prisma.PackageUpdateInput,
+        data: packageModeData(pkg.actionModes, pkg, action, mode) as Prisma.PackageUpdateInput,
       })),
     ]);
     return { ok: true as const };

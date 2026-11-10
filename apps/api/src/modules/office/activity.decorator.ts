@@ -1,5 +1,6 @@
 import { SetMetadata } from '@nestjs/common';
 import type { Request } from 'express';
+import type { ActivityAction } from './activity-log';
 
 export const ACTIVITY_KEY = 'office:activity';
 
@@ -28,5 +29,13 @@ const none = (): string => '';
  * Logs the route in the activity log: once with `ok` after it answers, or with `fail` and the refusal code
  * when it throws an OfficeFailure. See ActivityInterceptor.
  */
-export const Activity = (action: string, subjectKind: string, subject: (req: Request) => string = none) =>
+export const Activity = (action: ActivityAction, subjectKind: string, subject: (req: Request) => string = none) =>
   SetMetadata(ACTIVITY_KEY, { action, subjectKind, subject } satisfies ActivityMeta);
+
+export const NO_ACTIVITY_KEY = 'office:no-activity';
+
+/**
+ * Says on purpose that a write is not logged, and why (backend-engineering.mdc 4.4): every office write carries
+ * `@Activity` or this. For writes that only change what the caller itself sees, where a log row per call is noise.
+ */
+export const NoActivity = (why: string) => SetMetadata(NO_ACTIVITY_KEY, why);

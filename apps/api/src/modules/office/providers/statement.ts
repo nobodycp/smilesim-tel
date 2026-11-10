@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { fail } from '../../shared/office-failure';
 
 // A provider's statement and its comparison with our operations (spec 2026-11-08-provider-reconciliation, roadmap N8).
 // Reading turns an .xlsx or .csv file into header + rows of text; matching is pure and works on normalized lines.
@@ -47,12 +48,29 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
+/** The most an uploaded workbook may unpack to, in bytes. */
+export const STATEMENT_UNPACKED_LIMIT = 50 * 1024 * 1024;
+
+/**
+ * What a zip says its entries unpack to, read from its central directory (each entry's header starts with
+ * `PK\x01\x02` and holds the size at offset 24). Nothing is unpacked to find out.
+ */
+export function unpackedSize(zip: Buffer): number {
+  let total = 0;
+  for (let at = zip.indexOf('PK\u0001\u0002', 0, 'latin1'); at >= 0 && at + 28 <= zip.length; at = zip.indexOf('PK\u0001\u0002', at + 4, 'latin1')) {
+    total += zip.readUInt32LE(at + 24);
+  }
+  return total;
+}
+
 /** The file's first sheet (or the CSV) as a header and rows; empty rows dropped; at most STATEMENT_ROW_LIMIT rows. */
 export async function readSheet(fileName: string, content: Buffer): Promise<Sheet> {
   let table: string[][];
   if (/\.csv$/i.test(fileName)) {
     table = parseCsv(content.toString('utf8'));
   } else {
+    // An xlsx is a zip: a small file can unpack to gigabytes. Refused before anything is unpacked.
+    if (unpackedSize(content) > STATEMENT_UNPACKED_LIMIT) fail(400, 'INVALID');
     const book = new ExcelJS.Workbook();
     await book.xlsx.load(content as unknown as ArrayBuffer);
     const sheet = book.worksheets[0];

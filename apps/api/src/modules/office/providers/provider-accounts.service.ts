@@ -1,6 +1,5 @@
 import { requireAnyGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
-import { z } from 'zod';
 import { fail } from '../../shared/office-failure';
 import { parseInput } from '../../shared/input';
 import { OfficeKernel } from '../kernel/office-kernel';
@@ -8,26 +7,14 @@ import { matchOf, matchOverdue } from './match-simulator';
 import type { Actor } from '../kernel/types';
 import { providerBranchCost } from '../office-rules';
 import { csvOf } from '../reports/report-csv';
-import { MAX_AGOROT, ceilingValue } from '../wallet.schemas';
 import { WalletsService } from '../wallets/wallets.service';
+import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from './providers.schemas';
 import { linesOf, readSheet, reconcile, suggestMap, type StatementMap } from './statement';
 
 // Our account with each provider (spec 2026-11-08-provider-accounts, roadmap N7): what we bought through our operations,
 // what we paid and settled, the credit limit, what open tasks are about to cost, and a ledger with a running balance.
 export const LEDGER_LIMIT = 1_000;
 
-const note = z.unknown().transform((value) => (typeof value === 'string' ? value.trim() : ''));
-const EntryBody = z.object({
-  kind: z.enum(['payment', 'settlement']),
-  amount: z.number().int().min(-MAX_AGOROT).max(MAX_AGOROT),
-  note,
-});
-const MatchingBody = z.object({ matchSource: z.enum(['api', 'statement']), matchEveryDays: z.number().int().min(1).max(90) });
-const CreditBody = z.object({ creditLimit: ceilingValue, alertFloor: z.number().int().min(-100_000_000).max(100_000_000).optional() });
-const FileBody = z.object({ fileName: z.string().min(1).max(200), content: z.string().min(1) });
-const column = z.number().int().min(0).max(200);
-const RunBody = FileBody.extend({ map: z.object({ msisdn: column, date: column, amount: column, reference: column.nullable().optional() }) });
-const ItemBody = z.object({ status: z.enum(['open', 'resolved']), note });
 const OPEN_TASKS = ['pending', 'working'];
 
 type LedgerRow = { id: string; at: Date; kind: string; amount: number; note: string; msisdn: string; packageName: string; actorLogin: string };
@@ -159,7 +146,7 @@ export class ProviderAccountsService {
   /** A payment (positive) or a settlement (either sign) with a note, entered by the accountant. */
   async addEntry(actor: Actor, code: string, body: unknown) {
     this.gate(actor, true);
-    const { kind, amount, note: text } = parseInput(EntryBody, body);
+    const { kind, amount, note: text } = parseInput(ProviderEntryBody, body);
     if (!text) fail(400, 'NOTE_REQUIRED');
     if (amount === 0 || (kind === 'payment' && amount < 0)) fail(400, 'INVALID');
     const provider = await this.kernel.prisma.provider.findUnique({ where: { code } });
@@ -170,7 +157,7 @@ export class ProviderAccountsService {
 
   async setCredit(actor: Actor, code: string, body: unknown) {
     this.gate(actor, true);
-    const { creditLimit, alertFloor } = parseInput(CreditBody, body);
+    const { creditLimit, alertFloor } = parseInput(ProviderCreditBody, body);
     const provider = await this.kernel.prisma.provider.findUnique({ where: { code } });
     if (!provider) fail(404, 'NOT_FOUND');
     await this.kernel.prisma.provider.update({ where: { code }, data: { creditLimit, ...(alertFloor !== undefined ? { alertFloor } : {}) } });
@@ -180,7 +167,7 @@ export class ProviderAccountsService {
   /** The matching source and, for a statement provider, how often it must be matched (owner or accounting). */
   async setMatching(actor: Actor, code: string, body: unknown) {
     this.gate(actor, true);
-    const { matchSource, matchEveryDays } = parseInput(MatchingBody, body);
+    const { matchSource, matchEveryDays } = parseInput(ProviderMatchingBody, body);
     await this.providerByCode(code);
     await this.kernel.prisma.provider.update({ where: { code }, data: { matchSource, matchEveryDays } });
     return { ok: true };
@@ -216,7 +203,7 @@ export class ProviderAccountsService {
   /** The statement's columns, a few rows, and the columns to use: the provider's saved choice, else a guess. */
   async previewStatement(actor: Actor, code: string, body: unknown) {
     this.gate(actor, true);
-    const file = parseInput(FileBody, body);
+    const file = parseInput(StatementFileBody, body);
     const provider = await this.providerByCode(code);
     const sheet = await this.sheetOf(file);
     const saved = provider.statementMap as StatementMap | null;
@@ -230,7 +217,7 @@ export class ProviderAccountsService {
    */
   async runReconciliation(actor: Actor, code: string, body: unknown) {
     this.gate(actor, true);
-    const { fileName, content, map } = parseInput(RunBody, body);
+    const { fileName, content, map } = parseInput(ReconciliationBody, body);
     const provider = await this.providerByCode(code);
     const sheet = await this.sheetOf({ fileName, content });
     const { lines, skipped } = linesOf(sheet, map);
@@ -312,7 +299,7 @@ export class ProviderAccountsService {
   /** Marks a difference handled (with a note) or opens it again. */
   async updateItem(actor: Actor, id: string, body: unknown) {
     this.gate(actor, true);
-    const { status, note: text } = parseInput(ItemBody, body);
+    const { status, note: text } = parseInput(ReconciliationItemBody, body);
     if (status === 'resolved' && !text) fail(400, 'NOTE_REQUIRED');
     const item = await this.kernel.prisma.providerReconItem.findUnique({ where: { id } });
     if (!item) fail(404, 'NOT_FOUND');

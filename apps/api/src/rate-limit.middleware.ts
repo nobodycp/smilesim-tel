@@ -1,3 +1,4 @@
+import { env, isProduction } from './config';
 import { createHash } from 'node:crypto';
 import { Injectable, type NestMiddleware, type OnModuleDestroy } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
@@ -10,8 +11,12 @@ import { errorBody } from './errors';
 export const RATE_WINDOW_SECONDS = 60;
 export const RATE_LIMIT_ALL = 600;
 export const RATE_LIMIT_WRITES = 60;
+/** Sign-in attempts per network address in the window, across every login name (review 2026-11-10, S9). */
+export const RATE_LIMIT_SIGN_IN = 30;
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+/** The routes a caller with no session uses to get one. */
+const SIGN_IN = [/^\/auth\/login$/, /^\/auth\/passkey-login(\/options)?$/, /^\/office\/handoff$/];
 // Not counted: the long-lived notices stream (one per open tab) and the health probe.
 const EXEMPT = [/\/office\/notices\/stream$/, /^\/health$/];
 
@@ -49,16 +54,35 @@ export function redisCounter(redis: IORedis): RateCounter {
 
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware, OnModuleDestroy {
-  private readonly redis = process.env.REDIS_URL ? new IORedis(process.env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 }) : null;
+  private readonly redis = env('REDIS_URL') ? new IORedis(env('REDIS_URL') as string, { lazyConnect: true, maxRetriesPerRequest: 1 }) : null;
   counter: RateCounter = this.redis ? redisCounter(this.redis) : memoryCounter();
 
   async onModuleDestroy() {
     await this.redis?.quit().catch(() => undefined);
   }
 
+  /**
+   * Counts a sign-in attempt against the caller's address and answers 429 when it is over. Only where the address
+   * is the caller's own: not in production behind a proxy the API was not told to trust (every caller would share
+   * the proxy's address and lock each other out).
+   */
+  private async signInOver(req: Request, res: Response): Promise<boolean> {
+    if (isProduction() && !env('TRUST_PROXY')) return false;
+    try {
+      const hit = await this.counter.hit(`rate:signin:${createHash('sha256').update(req.ip ?? '').digest('hex').slice(0, 32)}`);
+      if (hit.count <= RATE_LIMIT_SIGN_IN) return false;
+      res.setHeader('Retry-After', String(hit.ttl));
+      res.status(429).json(errorBody('RATE_LIMITED'));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async use(req: Request, res: Response, next: NextFunction) {
     const sessionId = readCookie(req, 'sid');
     const path = req.originalUrl.split('?')[0] ?? '';
+    if (req.method === 'POST' && SIGN_IN.some((pattern) => pattern.test(path)) && (await this.signInOver(req, res))) return;
     if (!sessionId || EXEMPT.some((pattern) => pattern.test(path))) return next();
     // The key holds a hash, never the session id itself.
     const id = createHash('sha256').update(sessionId).digest('hex').slice(0, 32);

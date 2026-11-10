@@ -1,3 +1,4 @@
+import { isProduction } from '../../config';
 import { Injectable, Logger } from '@nestjs/common';
 
 // One way out for sign-in codes, by SMS or by email (spec 2026-11-08-signin-methods). The owner picks the gateways
@@ -16,6 +17,9 @@ export class LogSender implements MessageSender {
   private readonly logger = new Logger('MessageSender');
 
   async send(message: OutgoingMessage): Promise<void> {
-    this.logger.log(`[${message.channel}] to ${message.to}: ${message.text}`);
+    // A sign-in code is a secret: outside production the log is how a developer reads it; in production the log
+    // only says that nothing was delivered (review 2026-11-10, S10).
+    if (isProduction()) this.logger.warn(`[${message.channel}] not delivered: no gateway is configured`);
+    else this.logger.log(`[${message.channel}] to ${message.to}: ${message.text}`);
   }
 }

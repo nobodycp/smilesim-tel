@@ -78,11 +78,6 @@ function daysLeft(now: Date, endsAt: Date, periodDays: number): number {
   return periodDays - usedDays;
 }
 
-/** Whole days left in the paid window. A started day counts, and a closed window has none. */
-export function remainingDays(now: Date, endsAt: Date, months: number): number {
-  return daysLeft(now, endsAt, PERIOD_DAYS * Math.max(1, months));
-}
-
 export function windowMonthsOf(line: { months: number; windowMonths?: number }): number {
   return line.windowMonths ?? line.months;
 }
@@ -150,16 +145,6 @@ export function settleDisconnect(
   return { amount: refund - DISCONNECT_FEE, providerCost: used + DISCONNECT_FEE };
 }
 
-export function disconnectSettlement(input: {
-  now: Date;
-  endsAt: Date;
-  months: number;
-  posPrice: number;
-  branchCost: number;
-}): { amount: number; providerCost: number } | null {
-  return settleDisconnect(lastWindow(input.now, input.endsAt, input.months, input.posPrice, false), () => input.branchCost);
-}
-
 export function captureTerms(pkg: PackageTerms, targets: PackageTerms[]): LineTerms {
   return {
     packageCode: pkg.code,
@@ -172,14 +157,6 @@ export function captureTerms(pkg: PackageTerms, targets: PackageTerms[]): LineTe
       renewal: { ...target.renewal },
     })),
   };
-}
-
-export function subscriptionDebit(pkg: PackageTerms): number {
-  return pkg.subscription.posPrice;
-}
-
-export function chargeDebit(line: LineTerms): number {
-  return line.renewal.posPrice;
 }
 
 const RENEWAL_COST_KINDS = new Set(['charge', 'extend', 'reactivate']);
@@ -228,22 +205,6 @@ export function renewOnto(
       windowMonths: saved.months,
     },
   };
-}
-
-/**
- * Value of the days still left on the new package, minus the same days on the current one.
- * A positive difference is a debit. The open window length is the denominator of the current price.
- */
-export function switchDifference(input: {
-  now: Date;
-  endsAt: Date;
-  windowMonths: number;
-  currentPrice: number;
-  newPrice: number;
-  newMonths: number;
-}): { currentValue: number; newValue: number; difference: number } {
-  const window = lastWindow(input.now, input.endsAt, input.windowMonths, input.currentPrice, false);
-  return switchOver(window, input.newPrice, input.newMonths);
 }
 
 /** Every day left in the open periods, valued on the new package, against what those days are worth now. */
@@ -300,13 +261,6 @@ export function chainHolds(prices: Prices): boolean {
     prices.posPrice >= prices.agentPrice &&
     prices.subscriberPrice >= prices.posPrice
   );
-}
-
-export function withPrice(prices: Prices, field: PriceField, price: number): Prices {
-  if (field === 'main') return { ...prices, mainPrice: price };
-  if (field === 'agent') return { ...prices, agentPrice: price };
-  if (field === 'pos') return { ...prices, posPrice: price };
-  return { ...prices, subscriberPrice: price };
 }
 
 export function editableField(layer: string): PriceField | null {
@@ -531,14 +485,15 @@ export function issueSerial(rules: SimRules, random: () => number = Math.random)
   return serial.slice(0, length);
 }
 
-export function readSimRules(body: { length?: unknown; prefix?: unknown; esim?: unknown }): SimRules | null {
-  const length = body.length ?? null;
+/** SIM settings that fit together: the length in range, a numeric prefix shorter than the length. Null otherwise. */
+export function readSimRules(given: { length?: unknown; prefix?: unknown; esim?: unknown }): SimRules | null {
+  const length = given.length ?? null;
   if (length !== null && (!Number.isInteger(length) || (length as number) < SIM_LENGTH_MIN || (length as number) > SIM_LENGTH_MAX)) return null;
-  if (typeof body.prefix !== 'string' || typeof body.esim !== 'boolean') return null;
-  const prefix = body.prefix.trim();
+  if (typeof given.prefix !== 'string' || typeof given.esim !== 'boolean') return null;
+  const prefix = given.prefix.trim();
   if (prefix && (!/^\d+$/.test(prefix) || prefix.length > SIM_PREFIX_MAX)) return null;
   if (length !== null && prefix.length >= (length as number)) return null;
-  return { length: length as number | null, prefix, esim: body.esim };
+  return { length: length as number | null, prefix, esim: given.esim };
 }
 
 export type RunKey = Exclude<ActionKey, 'companySwitch' | 'activate'> | 'unfreeze';
@@ -560,26 +515,3 @@ export function offeredOperations(
   return allowed(keys);
 }
 
-export function isAutomatic(
-  flags: {
-    autoActivate: boolean;
-    autoCharge: boolean;
-    autoDisconnect: boolean;
-    autoFreeze: boolean;
-    autoSwitch: boolean;
-    autoExtend?: boolean;
-    autoRename?: boolean;
-    autoSim?: boolean;
-  },
-  action: string,
-): boolean {
-  if (action === 'activate' || action === 'reactivate') return flags.autoActivate;
-  if (action === 'charge') return flags.autoCharge;
-  if (action === 'extend') return flags.autoExtend ?? flags.autoCharge;
-  if (action === 'disconnect') return flags.autoDisconnect;
-  if (action === 'freeze' || action === 'unfreeze') return flags.autoFreeze;
-  if (action === 'switch') return flags.autoSwitch;
-  if (action === 'rename') return flags.autoRename ?? false;
-  if (action === 'sim') return flags.autoSim ?? false;
-  return false;
-}

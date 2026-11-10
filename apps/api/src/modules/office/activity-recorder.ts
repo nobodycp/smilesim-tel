@@ -1,3 +1,5 @@
+import { logger, reason as why } from '../shared/log';
+import { env } from '../../config';
 import { Injectable, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../db';
 import { PrismaClient } from '../../generated/prisma/client';
@@ -11,6 +13,8 @@ export type ActivityDraft = {
 
 import type { Gate } from '../shared/cookies';
 
+const log = logger('ActivityLog');
+
 @Injectable()
 export class ActivityRecorder {
   private prismaClient: PrismaClient | null = null;
@@ -18,7 +22,7 @@ export class ActivityRecorder {
   constructor(@Optional() private readonly db?: PrismaService) {}
 
   private client(): PrismaClient | null {
-    if (!process.env.DATABASE_URL) return null;
+    if (!env('DATABASE_URL')) return null;
     this.prismaClient ??= this.db?.client ?? createPrismaClient();
     return this.prismaClient;
   }
@@ -43,7 +47,7 @@ export class ActivityRecorder {
         },
       });
     } catch (error) {
-      console.error('activity log:', error instanceof Error ? error.message : error);
+      log.error(why(error));
     }
   }
 
@@ -66,7 +70,7 @@ export class ActivityRecorder {
         },
       });
     } catch (error) {
-      console.error('activity log:', error instanceof Error ? error.message : error);
+      log.error(why(error));
     }
   }
 

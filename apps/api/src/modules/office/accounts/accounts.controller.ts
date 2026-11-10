@@ -1,14 +1,15 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, bodyField, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { readCookie } from '../../shared/cookies';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
-import { AccessBodyDto, CreateUserBodyDto, SetAccountPasswordBodyDto } from '../office.dto';
 import { text } from '../kernel/query';
+import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { AccountsService } from './accounts.service';
 
 @ApiTags('office')
@@ -54,25 +55,25 @@ export class AccountsController {
   @Patch('users/:loginName/access')
   @ApiOperation({ summary: 'Save grants / roles for an account' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: AccessBodyDto })
+  @ApiZodBody(AccessBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('access', 'account', param('loginName'))
   saveAccess(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
-    @Body() body: AccessBodyDto,
+    @Body() body: AccessBody,
   ) {
     return this.accountDesk.saveAccess(actor, loginName, body);
   }
 
   @Post('users')
   @ApiOperation({ summary: 'Create an account under this door' })
-  @ApiBody({ type: CreateUserBodyDto })
+  @ApiZodBody(CreateUserBody)
   @ApiErrorResponse(401, 403, 400)
   @Activity('user_create', 'account', bodyField('loginName'))
   createUser(
     @Actor() actor: ActorShape,
-    @Body() body: CreateUserBodyDto,
+    @Body() body: CreateUserBody,
   ) {
     return this.accountDesk.create(actor, body);
   }
@@ -80,13 +81,13 @@ export class AccountsController {
   @Post('users/:loginName/password')
   @ApiOperation({ summary: 'Set account password (office)' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: SetAccountPasswordBodyDto })
+  @ApiZodBody(SetAccountPasswordBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('password', 'account', param('loginName'))
   setUserPassword(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
-    @Body() body: SetAccountPasswordBodyDto,
+    @Body() body: SetAccountPasswordBody,
   ) {
     return this.accountDesk.setPassword(actor, loginName, body);
   }

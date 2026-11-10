@@ -1,10 +1,23 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Layer, decideLogin } from './decide-login';
+import {
+  ChangePasswordBody,
+  ConfirmMethodBody,
+  ExemptionBody,
+  PolicyBody,
+  SessionRulesBody,
+  SetPasswordBody,
+  TwoFactorCodeBody,
+  TwoFactorMethodBody,
+  UpdateProfileBody,
+  UserContactBody,
+  parseBody,
+} from './auth.schemas';
 import { AUTH_STORE, AuthStore, SessionRow, StoredUser, TwoFactorMethod } from './auth.store';
 import { MESSAGE_SENDER, type MessageSender } from './message-sender';
 import { CODE_TRIES, CODE_TTL_SECONDS, RESEND_SECONDS, codeMatches, hashCode, maskContact, newCode, type PendingCode } from './one-time-code';
 import { hashPassword, passwordMatches } from './password';
-import { SessionRuleValues, effectiveRules, idsToRevoke, isListedAccountSession, ruleValuesProblem } from './sessions';
+import { SessionRuleValues, effectiveRules, idsToRevoke, isListedAccountSession } from './sessions';
 import { createTotpSecret, totpKeyUri, totpMatches } from './totp';
 import { addressProblem, cityProblem, fullNameProblem, loginBlocked, newPasswordProblem } from './validators';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
@@ -13,7 +26,7 @@ export type LoginResult =
   | { kind: 'error'; status: number; message: string; code: ErrorCode }
   | { kind: 'ok'; status: 200; body: { next: string }; sessionId: string };
 
-export type Failure = { kind: 'error'; status: 400 | 401 | 403 | 404; message: string; code: ErrorCode };
+export type Failure = { kind: 'error'; status: 400 | 401 | 403 | 404 | 429; message: string; code: ErrorCode };
 export type Outcome<T> = Failure | ({ kind: 'ok' } & T);
 type Meta = { userAgent: string; ip: string };
 export type Authed = { session: SessionRow; user: StoredUser };
@@ -39,6 +52,9 @@ const profileView = (user: StoredUser): ProfileView => ({
   city: user.city ?? undefined,
   address: user.address ?? undefined,
 });
+
+/** How long an accepted authenticator code is remembered: longer than the window it stays valid in. */
+const TOTP_REPLAY_SECONDS = 120;
 
 @Injectable()
 export class AuthService {
@@ -98,12 +114,13 @@ export class AuthService {
     return { kind: 'ok', view: { defaults: ruleView(effectiveRules(null, null)), layers: await this.store.sessionRules() } };
   }
 
-  async setLayerSessionRules(sessionId: string | undefined, layerName: string, body: { maxSessions?: unknown; sessionMinutes?: unknown }): Promise<Outcome<{ layers: Record<Layer, SessionRuleValues> }>> {
+  async setLayerSessionRules(sessionId: string | undefined, layerName: string, body: SessionRulesBody): Promise<Outcome<{ layers: Record<Layer, SessionRuleValues> }>> {
     const owner = await this.ownerSession(sessionId);
     if (owner.kind === 'error') return owner;
     const layer = LAYERS.find((candidate) => candidate === layerName);
-    if (!layer || ruleValuesProblem(body ?? {})) return fail(400, 'INVALID');
-    await this.store.setSessionRules(layer, { maxSessions: body.maxSessions as number | null, sessionMinutes: body.sessionMinutes as number | null });
+    const rules = parseBody(SessionRulesBody, body);
+    if (!layer || !rules) return fail(400, 'INVALID');
+    await this.store.setSessionRules(layer, rules);
     return { kind: 'ok', layers: await this.store.sessionRules() };
   }
 
@@ -119,14 +136,14 @@ export class AuthService {
   async setUserSessionRules(
     sessionId: string | undefined,
     loginName: string,
-    body: { maxSessions?: unknown; sessionMinutes?: unknown },
+    body: SessionRulesBody,
   ): Promise<Outcome<{ view: { own: SessionRuleValues; layer: RuleView; effective: RuleView } }>> {
     const owner = await this.ownerSession(sessionId);
     if (owner.kind === 'error') return owner;
-    if (ruleValuesProblem(body ?? {})) return fail(400, 'INVALID');
+    const own = parseBody(SessionRulesBody, body);
+    if (!own) return fail(400, 'INVALID');
     const target = await this.store.findByLogin(loginName);
     if (!target) return fail(404, 'NOT_FOUND');
-    const own = { maxSessions: body.maxSessions as number | null, sessionMinutes: body.sessionMinutes as number | null };
     await this.store.updateUser(target.id, own);
     return { kind: 'ok', view: await this.userRuleView({ ...target, ...own }) };
   }
@@ -142,7 +159,7 @@ export class AuthService {
 
   async changePassword(
     sessionId: string | undefined,
-    body: { password?: unknown; nextPassword?: unknown },
+    body: ChangePasswordBody,
     meta: Meta,
   ): Promise<Outcome<{ body: { next: string }; sessionId: string }>> {
     const authed = await this.authenticate(sessionId);
@@ -151,12 +168,13 @@ export class AuthService {
     if (session.scope !== 'password_change' && session.scope !== 'full') return fail(403, 'FORBIDDEN');
     // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
     if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
-    if (typeof body?.password !== 'string' || typeof body?.nextPassword !== 'string') return fail(400, 'INVALID');
-    if (!(await passwordMatches(user.passwordHash, body.password))) return fail(401, 'WRONG_CURRENT_PASSWORD');
-    const invalid = newPasswordProblem(body.nextPassword);
+    const input = parseBody(ChangePasswordBody, body);
+    if (!input) return fail(400, 'INVALID');
+    if (!(await passwordMatches(user.passwordHash, input.password))) return fail(401, 'WRONG_CURRENT_PASSWORD');
+    const invalid = newPasswordProblem(input.nextPassword);
     if (invalid) return fail(400, invalid);
 
-    const passwordHash = await hashPassword(body.nextPassword);
+    const passwordHash = await hashPassword(input.nextPassword);
     await this.store.updateUser(user.id, { passwordHash, mustChangePassword: false });
     const updated = (await this.store.findByLogin(user.loginName)) ?? { ...user, passwordHash, mustChangePassword: false };
     const decision = decideLogin({ user: updated, passwordMatches: true, policy: await this.store.policy() });
@@ -185,7 +203,7 @@ export class AuthService {
 
   async updateProfile(
     sessionId: string | undefined,
-    body: { nickname?: unknown; email?: unknown; phone?: unknown; city?: unknown; address?: unknown; nextPassword?: unknown; currentPassword?: unknown },
+    body: UpdateProfileBody,
   ): Promise<Outcome<{ profile: ProfileView }>> {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
@@ -193,11 +211,9 @@ export class AuthService {
     if (session.scope !== 'full') return fail(403, 'FORBIDDEN');
     // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
     if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
-    const input = body ?? {};
+    const input = parseBody(UpdateProfileBody, body);
+    if (!input) return fail(400, 'INVALID');
     const { nickname, email, phone, city, address, nextPassword, currentPassword } = input;
-    for (const value of [nickname, email, phone, city, address, nextPassword, currentPassword]) {
-      if (value !== undefined && typeof value !== 'string') return fail(400, 'INVALID');
-    }
 
     const sensitive = email !== undefined || phone !== undefined || nextPassword !== undefined;
     if (sensitive) {
@@ -243,21 +259,22 @@ export class AuthService {
   async setUserPassword(
     sessionId: string | undefined,
     loginName: string,
-    body: { password?: unknown },
+    body: SetPasswordBody,
   ): Promise<Outcome<unknown>> {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'full' || !authed.user.isBranchOwner) return fail(403, 'FORBIDDEN');
     // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
     if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
-    if (typeof body?.password !== 'string') return fail(400, 'INVALID');
-    const invalid = newPasswordProblem(body.password);
+    const input = parseBody(SetPasswordBody, body);
+    if (!input) return fail(400, 'INVALID');
+    const invalid = newPasswordProblem(input.password);
     if (invalid) return fail(400, invalid);
     const target = await this.store.findByLogin(loginName);
     if (!target) return fail(404, 'NOT_FOUND');
     // The owner's own password changes through `changePassword`, which asks for the current one.
     if (target.id === authed.user.id) return fail(403, 'FORBIDDEN');
-    await this.store.updateUser(target.id, { passwordHash: await hashPassword(body.password), mustChangePassword: true });
+    await this.store.updateUser(target.id, { passwordHash: await hashPassword(input.password), mustChangePassword: true });
     await this.store.dropLiveSessions(target.id);
     return { kind: 'ok' };
   }
@@ -332,15 +349,15 @@ export class AuthService {
 
   async confirmTwoFactor(
     sessionId: string | undefined,
-    body: { code?: unknown },
+    body: TwoFactorCodeBody,
     meta: Meta,
   ): Promise<Outcome<{ sessionId?: string }>> {
     const enrolling = await this.enrollmentSession(sessionId);
     if (enrolling.kind === 'error') return enrolling;
     const { session, user } = enrolling;
-    if (typeof body?.code !== 'string') return fail(400, 'INVALID');
-    if (!user.pendingTwoFactorSecret) return fail(400, 'INVALID');
-    if (!totpMatches(user.pendingTwoFactorSecret, body.code)) return fail(401, 'WRONG_CODE');
+    const input = parseBody(TwoFactorCodeBody, body);
+    if (!input || !user.pendingTwoFactorSecret) return fail(400, 'INVALID');
+    if (!totpMatches(user.pendingTwoFactorSecret, input.code)) return fail(401, 'WRONG_CODE');
     await this.store.updateUser(user.id, {
       twoFactorEnabled: true,
       twoFactorSecret: user.pendingTwoFactorSecret,
@@ -353,24 +370,46 @@ export class AuthService {
 
   async verifyTwoFactor(
     sessionId: string | undefined,
-    body: { code?: unknown },
+    body: TwoFactorCodeBody,
     meta: Meta,
   ): Promise<Outcome<{ sessionId: string }>> {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     const { session, user } = authed;
     if (session.scope !== 'two_factor') return fail(403, 'FORBIDDEN');
-    if (typeof body?.code !== 'string') return fail(400, 'INVALID');
+    const input = parseBody(TwoFactorCodeBody, body);
+    if (!input) return fail(400, 'INVALID');
     if (!user.twoFactorEnabled) return fail(403, 'FORBIDDEN');
     const method = user.twoFactorMethod ?? 'app';
     if (method === 'app') {
       if (!user.twoFactorSecret) return fail(403, 'FORBIDDEN');
-      if (!totpMatches(user.twoFactorSecret, body.code)) return fail(401, 'WRONG_CODE');
+      const refused = await this.checkAppCode(session, user, user.twoFactorSecret, input.code);
+      if (refused) return refused;
     } else {
-      const checked = await this.checkCode(user, 'challenge', method, body.code);
+      const checked = await this.checkCode(user, 'challenge', method, input.code);
       if (checked) return checked;
     }
     return { kind: 'ok', sessionId: await this.promoteToFull(session, user, meta) };
+  }
+
+  /**
+   * The authenticator's six digits at sign-in. Wrong guesses count with the account's wrong passwords, so the
+   * six-digit space cannot be walked through fresh sessions (review 2026-11-10, S4): at the limit the pending
+   * session is closed. A code that was accepted is not accepted again while it is still valid.
+   */
+  private async checkAppCode(session: SessionRow, user: StoredUser, secret: string, code: string): Promise<Failure | null> {
+    if (loginBlocked(await this.store.failedCount(user.loginName))) {
+      await this.store.revokeSessions([session.id]);
+      return fail(429, 'RATE_LIMITED');
+    }
+    const usedKey = `totp-used:${user.id}`;
+    if (!totpMatches(secret, code) || (await this.store.getSecret(usedKey)) === code) {
+      await this.store.recordFailure(user.loginName);
+      return fail(401, 'WRONG_CODE');
+    }
+    await this.store.putSecret(usedKey, code, TOTP_REPLAY_SECONDS);
+    await this.store.clearFailures(user.loginName);
+    return null;
   }
 
   /** Where a code for `method` goes: the account's phone or email. */
@@ -434,28 +473,30 @@ export class AuthService {
   }
 
   /** Enrolment by SMS or email: sends a code to the account's phone or email. */
-  async chooseCodeMethod(sessionId: string | undefined, body: { method?: unknown }): Promise<Outcome<{ sentTo: string; sent: boolean; retryIn: number }>> {
+  async chooseCodeMethod(sessionId: string | undefined, body: TwoFactorMethodBody): Promise<Outcome<{ sentTo: string; sent: boolean; retryIn: number }>> {
     const enrolling = await this.enrollmentSession(sessionId);
     if (enrolling.kind === 'error') return enrolling;
-    if (body?.method !== 'sms' && body?.method !== 'email') return fail(400, 'INVALID');
-    return this.sendCode(enrolling.user, 'enroll', body.method);
+    const input = parseBody(TwoFactorMethodBody, body);
+    if (!input) return fail(400, 'INVALID');
+    return this.sendCode(enrolling.user, 'enroll', input.method);
   }
 
   /** The code sent by chooseCodeMethod turns two-factor on with that method. */
   async confirmCodeMethod(
     sessionId: string | undefined,
-    body: { method?: unknown; code?: unknown },
+    body: ConfirmMethodBody,
     meta: Meta,
   ): Promise<Outcome<{ sessionId?: string }>> {
     const enrolling = await this.enrollmentSession(sessionId);
     if (enrolling.kind === 'error') return enrolling;
     const { session, user } = enrolling;
-    if ((body?.method !== 'sms' && body?.method !== 'email') || typeof body?.code !== 'string') return fail(400, 'INVALID');
-    const checked = await this.checkCode(user, 'enroll', body.method, body.code);
+    const input = parseBody(ConfirmMethodBody, body);
+    if (!input) return fail(400, 'INVALID');
+    const checked = await this.checkCode(user, 'enroll', input.method, input.code);
     if (checked) return checked;
     await this.store.updateUser(user.id, {
       twoFactorEnabled: true,
-      twoFactorMethod: body.method,
+      twoFactorMethod: input.method,
       twoFactorSecret: null,
       pendingTwoFactorSecret: null,
     });
@@ -532,13 +573,14 @@ export class AuthService {
   }
 
   /** The branch owner sets another account's email and mobile; an empty string clears one. */
-  async setUserContact(sessionId: string | undefined, loginName: string, body: { email?: unknown; phone?: unknown }): Promise<Outcome<{ settings: UserSettingsView }>> {
+  async setUserContact(sessionId: string | undefined, loginName: string, body: UserContactBody): Promise<Outcome<{ settings: UserSettingsView }>> {
     const owner = await this.ownerSession(sessionId);
     if (owner.kind === 'error') return owner;
     const target = await this.store.findByLogin(loginName);
     if (!target) return fail(404, 'NOT_FOUND');
-    const { email, phone } = body ?? {};
-    if ((email !== undefined && typeof email !== 'string') || (phone !== undefined && typeof phone !== 'string')) return fail(400, 'INVALID');
+    const input = parseBody(UserContactBody, body);
+    if (!input) return fail(400, 'INVALID');
+    const { email, phone } = input;
     const patch: Parameters<AuthStore['updateUser']>[1] = {};
     if (typeof email === 'string') {
       const value = email.trim();
@@ -566,28 +608,29 @@ export class AuthService {
 
   async setPolicy(
     sessionId: string | undefined,
-    body: { layer?: unknown; required?: unknown },
+    body: PolicyBody,
   ): Promise<Outcome<{ policy: Record<Layer, boolean> }>> {
     const owner = await this.ownerSession(sessionId);
     if (owner.kind === 'error') return owner;
-    const layer = LAYERS.find((candidate) => candidate === body?.layer);
-    if (!layer || typeof body?.required !== 'boolean') return fail(400, 'INVALID');
-    await this.store.setPolicy(layer, body.required);
+    const input = parseBody(PolicyBody, body);
+    if (!input) return fail(400, 'INVALID');
+    await this.store.setPolicy(input.layer, input.required);
     return { kind: 'ok', policy: await this.store.policy() };
   }
 
   async setExemption(
     sessionId: string | undefined,
     loginName: string,
-    body: { exempt?: unknown },
+    body: ExemptionBody,
   ): Promise<Outcome<{ twoFactorExempt: boolean }>> {
     const owner = await this.ownerSession(sessionId);
     if (owner.kind === 'error') return owner;
-    if (typeof body?.exempt !== 'boolean') return fail(400, 'INVALID');
+    const input = parseBody(ExemptionBody, body);
+    if (!input) return fail(400, 'INVALID');
     const target = await this.store.findByLogin(loginName);
     if (!target) return fail(404, 'NOT_FOUND');
-    await this.store.updateUser(target.id, { twoFactorExempt: body.exempt });
-    return { kind: 'ok', twoFactorExempt: body.exempt };
+    await this.store.updateUser(target.id, { twoFactorExempt: input.exempt });
+    return { kind: 'ok', twoFactorExempt: input.exempt };
   }
 
   async disableUser(sessionId: string | undefined, loginName: string): Promise<Outcome<unknown>> {

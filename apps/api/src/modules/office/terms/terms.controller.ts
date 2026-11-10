@@ -1,11 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Put, Query, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
-import { CustomPriceBodyDto, LinePricesBodyDto, UserOpsBodyDto, UserPackageBodyDto, UserPackagesBulkBodyDto } from '../office.dto';
+import { CustomPriceBody, LinePricesBody, UserOpsBody, UserPackageBody, UserPackagesBulkBody } from './terms.schemas';
 import { TermsService } from './terms.service';
 
 @ApiTags('office')
@@ -28,14 +29,14 @@ export class TermsController {
   @ApiOperation({ summary: 'Set a special price for one account on this package' })
   @ApiParam({ name: 'code' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: CustomPriceBodyDto })
+  @ApiZodBody(CustomPriceBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('user_package', 'user', (req) => `${param('loginName')(req)}:${param('code')(req)}`)
   setCustomPrice(
     @Actor() actor: ActorShape,
     @Param('code') code: string,
     @Param('loginName') loginName: string,
-    @Body() body: CustomPriceBodyDto,
+    @Body() body: CustomPriceBody,
   ) {
     return this.termDesk.setCustomPrice(actor, code, loginName, body);
   }
@@ -70,13 +71,13 @@ export class TermsController {
   @Put('packages/:code/line-prices')
   @ApiOperation({ summary: 'Reprice the renewable numbers of this package, one price group at a time' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ type: LinePricesBodyDto })
+  @ApiZodBody(LinePricesBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('package_reprice', 'package', param('code'))
   setLinePrices(
     @Actor() actor: ActorShape,
     @Param('code') code: string,
-    @Body() body: LinePricesBodyDto,
+    @Body() body: LinePricesBody,
   ) {
     return this.termDesk.setLinePrices(actor, code, body);
   }
@@ -92,13 +93,13 @@ export class TermsController {
   @Put('users/:loginName/packages')
   @ApiOperation({ summary: 'Hide or show several packages for this account' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: UserPackagesBulkBodyDto })
+  @ApiZodBody(UserPackagesBulkBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('user_package', 'user', param('loginName'))
   setUserPackagesBulk(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
-    @Body() body: UserPackagesBulkBodyDto,
+    @Body() body: UserPackagesBulkBody,
   ) {
     return this.termDesk.setUserPackagesBulk(actor, loginName, body);
   }
@@ -107,14 +108,14 @@ export class TermsController {
   @ApiOperation({ summary: 'Hide, show, or price one package for this account' })
   @ApiParam({ name: 'loginName' })
   @ApiParam({ name: 'code' })
-  @ApiBody({ type: UserPackageBodyDto })
+  @ApiZodBody(UserPackageBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('user_package', 'user', (req) => `${param('loginName')(req)}:${param('code')(req)}`)
   setUserPackage(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
     @Param('code') code: string,
-    @Body() body: UserPackageBodyDto,
+    @Body() body: UserPackageBody,
   ) {
     return this.termDesk.setUserPackage(actor, loginName, code, body);
   }
@@ -130,13 +131,13 @@ export class TermsController {
   @Put('users/:loginName/ops')
   @ApiOperation({ summary: 'Set the line operations stopped on this account' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: UserOpsBodyDto })
+  @ApiZodBody(UserOpsBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('user_ops', 'user', param('loginName'))
   setUserOps(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
-    @Body() body: UserOpsBodyDto,
+    @Body() body: UserOpsBody,
   ) {
     return this.termDesk.setUserOps(actor, loginName, body);
   }

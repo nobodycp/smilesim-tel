@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { linesOf, normalizeMsisdn, parseAmount, parseDate, readSheet, reconcile, suggestMap } from './statement';
+import { STATEMENT_UNPACKED_LIMIT, linesOf, normalizeMsisdn, parseAmount, parseDate, readSheet, reconcile, suggestMap, unpackedSize } from './statement';
 
 describe('provider statements', () => {
   it('reads a CSV with quotes, a BOM and semicolons, and an xlsx', async () => {
@@ -55,5 +55,24 @@ describe('provider statements', () => {
     ]);
     expect(result.statementTotal).toBe(14500);
     expect(result.ourTotal).toBe(10000);
+  });
+});
+
+// Review 2026-11-10, S12: a workbook is a zip, and its directory says what it unpacks to before anything is unpacked.
+describe('unpackedSize', () => {
+  const entry = (size: number) => {
+    const header = Buffer.alloc(46);
+    header.write('PK\u0001\u0002', 0, 'latin1');
+    header.writeUInt32LE(size, 24);
+    return header;
+  };
+
+  it('adds up what the entries of a zip unpack to', () => {
+    expect(unpackedSize(Buffer.concat([Buffer.from('data'), entry(1000), entry(2500)]))).toBe(3500);
+    expect(unpackedSize(Buffer.from('not a zip'))).toBe(0);
+  });
+
+  it('is over the limit for a small file that unpacks to gigabytes', () => {
+    expect(unpackedSize(Buffer.concat([entry(0xffffffff), entry(0xffffffff)]))).toBeGreaterThan(STATEMENT_UNPACKED_LIMIT);
   });
 });

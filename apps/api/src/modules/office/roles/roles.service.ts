@@ -1,10 +1,12 @@
 import { isOwner, requireOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
+import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { LAYER_ORDER } from '../kernel/values';
 import { FLAG_CODES, flagsFor, roleGrantCodes, splitGrants } from '../office-grants';
+import { RoleBody } from './roles.schemas';
 
 /** Roles, for the branch owner: the four layer roles and the job roles, with their grants. */
 @Injectable()
@@ -36,26 +38,25 @@ export class RolesService {
     };
   }
 
-  async save(actor: Actor, body: { id?: unknown; name?: unknown; grants?: unknown; read?: unknown; edit?: unknown; accounting?: unknown; tasks?: unknown; reports?: unknown; staff?: unknown; enter?: unknown }) {
+  async save(actor: Actor, body: unknown) {
     requireOwner(actor);
-    const listed = Array.isArray(body.grants)
-      ? splitGrants(body.grants.filter((code): code is string => typeof code === 'string').join(','))
-      : FLAG_CODES.filter((code) => body[code] === true);
+    const input = parseInput(RoleBody, body);
+    // `splitGrants` drops a code named twice.
+    const listed = input.grants ? splitGrants(input.grants.join(',')) : FLAG_CODES.filter((code) => input[code] === true);
     const flags = flagsFor(listed);
-    const id = typeof body.id === 'string' ? body.id : '';
-    if (id) {
-      const existing = await this.kernel.prisma.role.findUnique({ where: { id } });
+    const sent = input.name ?? '';
+    if (input.id) {
+      const existing = await this.kernel.prisma.role.findUnique({ where: { id: input.id } });
       if (!existing) fail(404, 'NOT_FOUND');
-      const name = existing.kind === 'layer' ? existing.name : (typeof body.name === 'string' ? body.name.trim() : '');
+      const name = existing.kind === 'layer' ? existing.name : sent;
       if (name.length < 2) fail(400, 'INVALID');
       await this.kernel.prisma.role.update({
-        where: { id },
+        where: { id: input.id },
         data: { name, ...flags, grants: listed.join(',') },
       });
     } else {
-      const name = typeof body.name === 'string' ? body.name.trim() : '';
-      if (name.length < 2) fail(400, 'INVALID');
-      await this.kernel.prisma.role.create({ data: { name, kind: 'job', ...flags, grants: listed.join(',') } });
+      if (sent.length < 2) fail(400, 'INVALID');
+      await this.kernel.prisma.role.create({ data: { name: sent, kind: 'job', ...flags, grants: listed.join(',') } });
     }
     return { ok: true as const };
   }

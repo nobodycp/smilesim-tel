@@ -1,8 +1,9 @@
+import { isProduction } from './config';
 import type { NextFunction, Request, Response } from 'express';
 
 // Headers every API answer carries. The API serves JSON, images and an event stream, never a page to frame,
 // so the policy denies everything; the Swagger page (/docs, outside production) needs its scripts and is left out.
-export function securityHeaders(production = process.env.NODE_ENV === 'production') {
+export function securityHeaders(production = isProduction()) {
   return (req: Request, res: Response, next: NextFunction) => {
     res.removeHeader('X-Powered-By');
     res.setHeader('X-Content-Type-Options', 'nosniff');

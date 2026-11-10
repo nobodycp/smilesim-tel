@@ -1,3 +1,5 @@
+import { logger } from '../shared/log';
+import { env as readEnv, wholeEnv } from '../../config';
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../db';
 import { PrismaService } from '../shared/prisma.service';
@@ -90,10 +92,10 @@ function toSessionRow(row: SessionRecord): SessionRow {
 }
 
 function createRedis(): Redis {
-  const url = process.env.REDIS_URL;
+  const url = readEnv('REDIS_URL');
   if (!url) throw new Error('REDIS_URL is required');
   const client = new IORedis(url);
-  client.on('error', (error) => console.error('auth redis error:', error.message));
+  client.on('error', (error) => logger('AuthStore').error(`redis: ${error.message}`));
   return client;
 }
 
@@ -126,7 +128,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
    * Boot-time entry for the trial accounts. They are created only when the environment asks for it
    * (see trialSeedDecision). When it does not, an empty users table is reported, never filled.
    */
-  async seedTrialAccountsIfAllowed(env: Record<string, string | undefined> = process.env): Promise<boolean> {
+  async seedTrialAccountsIfAllowed(env: Record<string, string | undefined> = wholeEnv()): Promise<boolean> {
     const decision = trialSeedDecision(env);
     if (!decision.allowed) {
       if (decision.reason === 'production-blocked') {
@@ -390,6 +392,10 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
 
   async dropSecret(key: string): Promise<void> {
     await this.redis.del(secretKey(key));
+  }
+
+  async takeSecret(key: string): Promise<string | null> {
+    return this.redis.getdel(secretKey(key));
   }
 
   async listPasskeys(userId: string): Promise<PasskeyRow[]> {

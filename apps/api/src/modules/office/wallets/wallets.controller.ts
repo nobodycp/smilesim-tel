@@ -55,6 +55,7 @@ export class WalletsController {
   }
 
   @Patch('wallets/:loginName/ceiling')
+  @Activity('ceiling', 'account', param('loginName'))
   @ApiOperation({ summary: 'Set wallet overdraft ceiling' })
   @ApiParam({ name: 'loginName' })
   @ApiBody({ type: CeilingBodyDto })

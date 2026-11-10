@@ -1,3 +1,4 @@
+import { logger, reason } from '../../shared/log';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../../db';
 import { Prisma, PrismaClient } from '../../../generated/prisma/client';
@@ -23,6 +24,8 @@ import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder } from '.
  * list, transactions that publish their notices after commit, and the wallet moves. One instance per process;
  * The domain services under `modules/office/<domain>/` all read through it.
  */
+const log = logger('Office');
+
 /** The price columns a renewal stamp reads from a package. */
 export const PRICE_COLUMNS = {
   branchCost: true,
@@ -186,7 +189,7 @@ export class OfficeKernel {
     try {
       await this.notice.publish(rows);
     } catch (error) {
-      console.warn('notice publish failed', error instanceof Error ? error.message : error);
+      log.warn(`notice publish failed: ${reason(error)}`);
     }
   }
 

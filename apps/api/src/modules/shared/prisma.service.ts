@@ -1,3 +1,4 @@
+import { env } from '../../config';
 import { Global, Injectable, Module, OnModuleDestroy } from '@nestjs/common';
 import { createPrismaClient } from '../../db';
 import type { PrismaClient } from '../../generated/prisma/client';
@@ -13,7 +14,7 @@ export class PrismaService implements OnModuleDestroy {
 
   /** Whether a database is configured. Optional writers (the activity log) skip their work without one. */
   get available(): boolean {
-    return Boolean(process.env.DATABASE_URL);
+    return Boolean(env('DATABASE_URL'));
   }
 
   get client(): PrismaClient {
