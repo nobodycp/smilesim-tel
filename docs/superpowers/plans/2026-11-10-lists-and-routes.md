@@ -64,14 +64,14 @@ the screen's `usePaged` call, the mock in `apps/web/tests/` / `audit/`, `respons
 Each: controller route, `testing/office-routes.ts` row, `permissions.http.spec.ts` row, the web `api.ts` function,
 mocks, both maps.
 
-- [x] **L.14** (COMMIT) `PUT /office/companies/:code/image`: the company by its code in the path, the body is the
+- [x] **L.14** (98251f8) `PUT /office/companies/:code/image`: the company by its code in the path, the body is the
   picture alone.
-- [x] **L.15** (COMMIT) `POST /office/roles` creates a job role, `PUT /office/roles/:id` changes one; the body has
+- [x] **L.15** (98251f8) `POST /office/roles` creates a job role, `PUT /office/roles/:id` changes one; the body has
   no `id`.
-- [x] **L.16** (COMMIT) `GET /office/ledger` (the scope segment is gone). **`PATCH /office/packages/:code/chain`
+- [x] **L.16** (98251f8) `GET /office/ledger` (the scope segment is gone). **`PATCH /office/packages/:code/chain`
   stays PATCH:** the spec said it replaces the chain, but its body is partial (any of the prices), so PATCH is the
   right verb and `PUT …/renewals` beside it is right too (it replaces the whole target list). The spec is corrected.
-- [x] **L.17** (COMMIT) Reports: `GET /office/reports/{providers,operations}` answer the envelope;
+- [x] **L.17** (98251f8) Reports: `GET /office/reports/{providers,operations}` answer the envelope;
   `…/reports/balances/export` and `…/reports/supply/export` are fixed routes; `reports/:kind` and
   `reports/:kind/export` are gone, with `ReportsService`'s dependency on the tasks and lines services. The web's
   `/reports/tasks` and `/reports/numbers` pages stay and read `/office/tasks` and `/office/lines`. No export was
