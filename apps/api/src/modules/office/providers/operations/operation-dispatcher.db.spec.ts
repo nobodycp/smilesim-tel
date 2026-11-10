@@ -289,16 +289,19 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     });
     const thrown = await record();
     const reset = await record();
-    gateway.next(async () => { throw leaky(); }, async () => { throw Object.assign(leaky(), { code: 'ECONNRESET' }); });
+    const disguised = await record();
+    gateway.next(async () => { throw leaky(); }, async () => { throw Object.assign(leaky(), { code: 'ECONNRESET' }); }, async () => { throw Object.assign(leaky(), { code: 'EAPIKEYABC123456789' }); });
     const output = await capturedOutput(async () => {
       expect(await dispatcher.handle(thrown)).toBe('unknown');
       expect(await dispatcher.handle(reset)).toBe('unknown');
+      expect(await dispatcher.handle(disguised)).toBe('unknown');
     });
     // The lines are there, and say what happened in codes.
     expect(output).toContain('the gateway failed without evidence (unclassified)');
     expect(output).toContain('the gateway failed without evidence (ECONNRESET)');
     expect(output).toContain(`operation ${thrown} attempt 1: no-answer -> unknown`);
-    for (const secret of [...secrets, 'api-pass', 'Authorization', 'password', 'adapter.ts']) expect(output).not.toContain(secret);
+    // A "code" that is not on the list is not written either, though it is shaped like one.
+    for (const secret of [...secrets, 'api-pass', 'Authorization', 'password', 'adapter.ts', 'EAPIKEY', 'ABC123456789']) expect(output).not.toContain(secret);
     // Nor in the database.
     const stored = JSON.stringify(await prisma.providerOperation.findMany({ where: { id: { in: [thrown, reset] } } }));
     for (const secret of secrets) expect(stored).not.toContain(secret);

@@ -30,6 +30,9 @@ not pushed, not deployed; migrations applied to a throwaway test database only.
   (`leaseUntil > now` in the guarded write). Specs: a worker that wakes up after its lease and before recovery
   (the provider is not called), `beginSend` against `recover` on one clock and on disagreeing clocks.
 
+- [x] **D.12 The codes are listed by name.** `modules/shared/log.ts`: `errorCode` answers a code only from
+  `KNOWN_ERROR_CODES` (no pattern); spec `shared/log.spec.ts` and the two captured-output specs.
+
 ## Not started (waits for review)
 
 1. A provider status check on the gateway and its use for `unknown`.

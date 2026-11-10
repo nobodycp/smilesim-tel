@@ -41,8 +41,10 @@ recovery (timer): pending and lease over ─┬─ no sentAt → requested + new
 
 11. **Logs carry codes, not error text** (review of `afb7d1f`). A gateway's or a driver's error may quote the
     request it sent, a header, a reply or a connection string. The dispatcher, the relay, the dispatch timers and
-    the relay's Redis listener log `errorCode(error)` (`shared/log.ts`): the error's own `code` when it is a plain
-    system, Node, undici or Prisma code, `timeout`, or `unclassified`. A job that fails is rethrown as
+    the relay's Redis listener log `errorCode(error)` (`shared/log.ts`): the error's own `code` only when it is one of
+    the codes listed by name there (`KNOWN_ERROR_CODES`: sockets and DNS, Node streams and TLS, undici, Prisma),
+    `timeout` for a `TimeoutError`, else `unclassified`. A pattern was tried first and dropped: it let through any
+    word shaped like a code, such as a key spelled after an `E`. A job that fails is rethrown as
     `JobFailure` with that code and no stack, because BullMQ keeps a failed job's reason and stack in Redis.
 12. **The lease also binds the worker** (same review). `beginSend` writes the mark only
     `WHERE id AND status = 'pending' AND attempts = n AND sentAt IS NULL AND leaseUntil > now`, in one statement.

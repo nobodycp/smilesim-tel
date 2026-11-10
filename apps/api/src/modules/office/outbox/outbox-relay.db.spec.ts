@@ -276,6 +276,21 @@ withRedis('outbox relay and dispatcher on a real queue (PostgreSQL + Redis)', ()
     });
     expect(output).toContain(`operation ${id}: the job failed (P1001)`);
     expect(failed?.failedReason).toBe('provider-operation job failed: P1001');
+
+    // The same with a made-up code that carries data: the log and the queue get `unclassified`.
+    const other = await record();
+    dispatch.dispatcher.handle = async () => {
+      throw Object.assign(new Error(secret), { code: 'ERR_SECRET_ABCDEF123456' });
+    };
+    let unlisted: typeof failed;
+    const second = await capturedOutput(async () => {
+      await relay.runOnce();
+      await until(async () => (await queue.getJobCountByTypes('failed')) === 2);
+      unlisted = (await queue.getJobs(['failed'])).find((job) => (job.data as { operationId: string }).operationId === other);
+    });
+    expect(second).toContain(`operation ${other}: the job failed (unclassified)`);
+    expect(unlisted?.failedReason).toBe('provider-operation job failed: unclassified');
+    for (const text of [second, JSON.stringify(unlisted?.toJSON?.() ?? null)]) expect(text).not.toContain('ERR_SECRET');
     // What Redis holds for the job: its reason and its stack trace.
     for (const text of [output, JSON.stringify(failed?.toJSON?.() ?? null), JSON.stringify(failed?.stacktrace ?? null)]) {
       for (const part of [secret, 'db-pass-456', 'db.internal']) expect(text).not.toContain(part);
