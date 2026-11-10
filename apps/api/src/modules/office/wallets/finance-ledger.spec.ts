@@ -1,5 +1,5 @@
+import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { WalletsService } from './wallets.service';
 
@@ -22,7 +22,7 @@ const entries = [
 ];
 
 function service(seen: { where?: Record<string, unknown> }) {
-  const kernel = new OfficeKernel(new MemoryAuthStore());
+  const kernel = new OfficeGraph(new MemoryAuthStore());
   const user = (id: string) => accounts.find((account) => account.id === id);
   kernel.prismaClient = {
     user: { findMany: async () => accounts },
@@ -33,7 +33,7 @@ function service(seen: { where?: Record<string, unknown> }) {
       },
       count: async () => entries.length,
     },
-  } as unknown as OfficeKernel['prismaClient'];
+  } as unknown as OfficeGraph['prismaClient'];
   return new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder);
 }
 

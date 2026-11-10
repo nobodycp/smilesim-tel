@@ -137,10 +137,10 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('cross-domain-controller-import', hits(production.filter(({ file }) => !file.endsWith('.module.ts')), /from '[^']+\.controller'/));
   });
 
-  it('5.1 kernel-use: a domain names what it depends on, not the kernel', () => {
-    // Plan 2026-11-10-office-kernel-split: every file that imports OfficeKernel, outside the kernel itself.
-    const users = production.filter(({ file, text }) => !file.startsWith('modules/office/kernel/') && /\bOfficeKernel\b/.test(text));
-    check('kernel-use', users.map(({ file }) => ({ file, line: 1, text: 'imports OfficeKernel' })));
+  it('5.1 kernel-use: a domain names what it depends on, not a catch-all', () => {
+    // OfficeKernel was taken apart on 2026-11-10 (plan office-kernel-split). No class comes back in its place:
+    // a provider that most domains inject and that reaches into several of them is the same thing renamed.
+    check('kernel-use', hits(production, /\bOfficeKernel\b|class \w*Kernel\b/));
   });
 
   it('5.1 prisma-in-service: queries live in a repository, not in a service', () => {

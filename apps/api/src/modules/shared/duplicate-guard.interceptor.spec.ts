@@ -1,3 +1,4 @@
+import { UnitOfWork } from '../office/kernel/unit-of-work';
 import 'reflect-metadata';
 import { API_PROVIDERS } from './api-providers';
 import type { INestApplication } from '@nestjs/common';
@@ -6,7 +7,6 @@ import request from 'supertest';
 import { AUTH_STORE } from '../auth/auth.store';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { ActivityRecorder } from '../office/activity/activity-recorder';
-import { OfficeKernel } from '../office/kernel/office-kernel';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office/office.module';
 import { DuplicateGuardInterceptor, SAME_WRITE_SECONDS, memoryWrites } from './duplicate-guard.interceptor';
 
@@ -35,7 +35,7 @@ describe('DuplicateGuardInterceptor over HTTP', () => {
         { provide: ActivityRecorder, useValue: { recordOffice: async () => undefined } },
       ],
     }).compile();
-    moduleRef.get(OfficeKernel).prismaClient = {
+    moduleRef.get(UnitOfWork).prismaClient = {
       user: { findUnique: async () => ({ id: 'u1', liveGrants: 'read' }) },
       notice: {
         updateMany: async () => {
@@ -46,7 +46,7 @@ describe('DuplicateGuardInterceptor over HTTP', () => {
         count: async () => 0,
         findMany: async () => [],
       },
-    } as unknown as OfficeKernel['prismaClient'];
+    } as unknown as UnitOfWork['prismaClient'];
     app = moduleRef.createNestApplication();
     // Global, as OfficeModule registers it (APP_INTERCEPTOR): it runs before each controller's own interceptors.
     guard = new DuplicateGuardInterceptor();

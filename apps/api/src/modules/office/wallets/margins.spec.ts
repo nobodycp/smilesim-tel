@@ -1,5 +1,5 @@
+import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { WalletsService } from './wallets.service';
 
@@ -19,7 +19,7 @@ const pkg = {
 };
 
 function service() {
-  const kernel = new OfficeKernel(new MemoryAuthStore());
+  const kernel = new OfficeGraph(new MemoryAuthStore());
   kernel.prismaClient = {
     user: { findMany: async () => accounts },
     line: { findMany: async () => [{ id: 'l1', terms: { packageCode: 'we-150' } }] },
@@ -27,7 +27,7 @@ function service() {
     userPackage: { findMany: async () => [] },
     sellPrice: { findMany: async () => [{ packageId: 'pk', ownerId: 'pos', price: 5000, renewalPrice: null }] },
     walletEntry: { findMany: async () => [{ id: 'e1', userId: 'pos', kind: 'activate', lineId: 'l1', packagePrice: 3800, ladder: null, createdAt: new Date('2026-11-01T00:00:00.000Z') }] },
-  } as unknown as OfficeKernel['prismaClient'];
+  } as unknown as OfficeGraph['prismaClient'];
   return new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder);
 }
 

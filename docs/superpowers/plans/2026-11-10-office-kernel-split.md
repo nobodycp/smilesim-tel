@@ -5,8 +5,8 @@ All paths are under `apps/api/src/modules/office/` unless they start with `src/`
 
 ## Before the first slice
 
-- [ ] **P.1** The nine hardening commits are pushed and the run on `main` is green (owner's word needed to push).
-- [ ] **P.2** The local copy runs from one `smilesim` start (web 3000, API 3001), and `/health` answers.
+- [x] **P.1** (run 42732381673 green) The nine hardening commits are pushed and the run on `main` is green (owner's word needed to push).
+- [x] **P.2** The local copy runs from one `smilesim` start (web 3000, API 3001), and `/health` answers.
 
 ## The check every slice ends with
 
@@ -26,47 +26,47 @@ A slice that touches money (K.4, R.3, R.4) also runs the two `*.db.spec.ts` file
 
 ## Phase K — take the kernel apart (behaviour-preserving, delegates first)
 
-- [ ] **K.0 Ratchets.** `src/architecture.spec.ts`: add `kernel-use` (production files outside `kernel/` importing
+- [x] **K.0 Ratchets.** (9263287) `src/architecture.spec.ts`: add `kernel-use` (production files outside `kernel/` importing
   `OfficeKernel`; today 26), `prisma-in-service` (matches of `\.prisma\.\w+\.|\btx\.\w+\.(find|create|update|delete|upsert|count|group|aggregate)`
   in `*.service.ts`; record today's number), `flat-office-module` (entries in `OFFICE_PROVIDERS`; today 29).
   Baselines in `architecture.baseline.json`. Rule text in `.cursor/rules/backend-engineering.mdc` section 5.
   Specs: `src/architecture.spec.ts`.
 
-- [ ] **K.1 `UnitOfWork`.** New `kernel/unit-of-work.ts`: `prismaClient` (spec hook), `prisma` getter, `runTx`,
+- [x] **K.1 (eb1fbd8) `UnitOfWork`.** New `kernel/unit-of-work.ts`: `prismaClient` (spec hook), `prisma` getter, `runTx`,
   `queueNotices`, `publishQuietly`, the `queued` WeakMap; constructor `(@Optional() notice?: NoticeService,
   @Optional() db?: PrismaService)`. `OfficeKernel` takes a `UnitOfWork` and keeps `prisma`, `prismaClient`
   (get/set forwarding), `runTx`, `queueNotices`, `publishQuietly`, `notice` as delegates. `testing/office-facade.ts`
   and `testing/office-test-app.ts`: build/forward to the `UnitOfWork`. `office.module.ts`: provider added.
   Specs: `lines/line-state`, `wallets/deduct`, `tasks/task-notes`, `testing/office-errors`, `kernel/actor.interceptor`.
 
-- [ ] **K.2 `AccountTree`.** New `kernel/account-tree.ts`: `accounts(db)`, `pathOf`, `chainIds`, `visibleAccount`,
+- [x] **K.2 (eb1fbd8) `AccountTree`.** New `kernel/account-tree.ts`: `accounts(db)`, `pathOf`, `chainIds`, `visibleAccount`,
   `nodeOf` (function). Depends on `UnitOfWork`. Kernel delegates. Specs: `transfers/transfer-service`,
   `terms/user-terms-service`, `accounts/accounts.http`.
 
-- [ ] **K.3 `ActorResolver` and `LayerRoles`.** New `kernel/actor-resolver.ts`: `actor(gate)`, `grantsFor(user, db)`
+- [x] **K.3 (eb1fbd8) `ActorResolver` and `LayerRoles`.** New `kernel/actor-resolver.ts`: `actor(gate)`, `grantsFor(user, db)`
   (needs `AUTH_STORE`, `UnitOfWork`). New `roles/layer-roles.ts`: `ensureLayerRoles()`. `kernel/actor.interceptor.ts`
   injects `ActorResolver`. Kernel delegates `actor`, `grantsFor`, `ensureLayerRoles`, `auth`.
   Specs: `kernel/actor.interceptor`, `testing/permissions.http`, `testing/routes.http`, `accounts/accounts.http`.
 
-- [ ] **K.4 `WalletLedger`.** New `wallets/wallet-ledger.ts`: `lockWallets`, `hold`, `release`, `move`, `recordOp`,
+- [x] **K.4 (eb1fbd8) `WalletLedger`.** New `wallets/wallet-ledger.ts`: `lockWallets`, `hold`, `release`, `move`, `recordOp`,
   private `saleLadder`, `refundOf`. Depends on `UnitOfWork`, `AccountTree`, `PriceLadder` (K.5 lands first if the
   ladder read is needed: do K.5 before K.4 when `saleLadder` moves). Kernel delegates.
   Guard `wallet-writes` in `architecture.spec.ts`: allowed prefix becomes `modules/office/wallets/wallet-ledger.ts`.
   Specs: `wallets/deduct`, `wallets/wallets.http`, `wallets/finance-ledger`, `wallets/margins`, `lines/line-state`,
   `lines/esim-ops`, `lines/operation-log`, both `*.db.spec.ts`.
 
-- [ ] **K.5 `PriceLadder`.** New `terms/price-ladder.ts`: `PRICE_COLUMNS`, `LadderRows`, `termsFor(packageId, db)`,
+- [x] **K.5 (eb1fbd8) `PriceLadder`.** New `terms/price-ladder.ts`: `PRICE_COLUMNS`, `LadderRows`, `termsFor(packageId, db)`,
   `ladderRows(codes, pathIds, db)`, `stampWith(terms, path, rows)`. Kernel delegates.
   Specs: `terms/user-terms-service`, `rules/line-prices`, `rules/profit-ladder`, `wallets/margins`.
 
-- [ ] **K.6 `LineAccess`.** New `lines/line-access.ts`: `visibleLine(actor, lineId)` (needs `UnitOfWork`,
+- [x] **K.6 (eb1fbd8) `LineAccess`.** New `lines/line-access.ts`: `visibleLine(actor, lineId)` (needs `UnitOfWork`,
   `AccountTree`). Kernel delegate. Specs: `lines/line-state`, `lines/addons`, `transfers/transfer-service`.
 
 After K.6 the kernel is a file of delegates only. Next, each domain stops using it. For each slice: change the
 service constructors, update `testing/office-facade.ts` where it builds that service, update the hand-built kernels
 in the named specs, lower `kernel-use`.
 
-- [ ] **K.7 Leaf domains** (only `prisma`, `runTx`): `offers`, `companies`, `providers/providers.service`,
+- [x] **K.7 (1c4faf1) Leaf domains** (only `prisma`, `runTx`): `offers`, `companies`, `providers/providers.service`,
   `providers/provider-catalog.service`, `providers/provider-accounts.service`, `reports/reports.service`,
   `audit` (+`AccountTree`), `reports/insights.service` (+`AccountTree`), `desk/overview.service` (+`AccountTree`),
   `desk/desk.service` (+`AccountTree`). → `UnitOfWork` (+ `AccountTree`).
@@ -74,31 +74,41 @@ in the named specs, lower `kernel-use`.
   `providers/provider-catalog.service.spec`, `desk/overview.service.spec`, `reports/insights.service.spec`,
   `packages/mode-inheritance.spec`. Specs: those + `catalog/catalog.http`, `reports/reports-lines.http`, `audit/audit.http`.
 
-- [ ] **K.8 Roles, catalog seed, notices, provider health.** `roles` → `UnitOfWork`, `LayerRoles`;
+- [x] **K.8 (1c4faf1) Roles, catalog seed, notices, provider health.** `roles` → `UnitOfWork`, `LayerRoles`;
   `catalog/catalog-seed` → `UnitOfWork`, `LayerRoles`; `notices/notice-inbox.service` → `UnitOfWork`,
   `NoticeService`, `AUTH_STORE`; `providers/provider-health.service` → `UnitOfWork`, `NoticeService`.
   Specs: `accounts/accounts.http` (roles), `notices/notices.http`, `notices/notice.service`, `providers/provider-health`.
 
-- [ ] **K.9 Accounts.** `accounts.service` → `UnitOfWork`, `AccountTree`, `LayerRoles`, `AUTH_STORE`;
+- [x] **K.9 (1c4faf1) Accounts.** `accounts.service` → `UnitOfWork`, `AccountTree`, `LayerRoles`, `AUTH_STORE`;
   `account-session.service` → `AUTH_STORE`. Specs: `accounts/accounts.http`, `testing/permissions.http`.
 
-- [ ] **K.10 Packages and terms.** `packages.service` → `UnitOfWork`, `AccountTree`, `PriceLadder`;
+- [x] **K.10 (1c4faf1) Packages and terms.** `packages.service` → `UnitOfWork`, `AccountTree`, `PriceLadder`;
   `terms.service` → the same three. Specs: `packages/package-prices`, `packages/package-catalog.http`,
   `packages/mode-inheritance`, `terms/user-terms-service`, `rules/user-terms`.
 
-- [ ] **K.11 Wallets and tasks.** `wallets.service` → `UnitOfWork`, `AccountTree`, `WalletLedger`, `PriceLadder`,
+- [x] **K.11 (1c4faf1) Wallets and tasks.** `wallets.service` → `UnitOfWork`, `AccountTree`, `WalletLedger`, `PriceLadder`,
   `NoticeService`; `tasks.service` → `UnitOfWork`, `AccountTree`, `WalletLedger`, `ActorResolver` (`grantsFor`),
   `NoticeService`. Specs: `wallets/*`, `tasks/task-notes`, `lines/line-state`, `testing/office-lists`.
 
-- [ ] **K.12 Lines and transfers.** `lines.service`, `line-reads`, `line-pricing`, `task-completion` →
+- [x] **K.12 (1c4faf1) Lines and transfers.** `lines.service`, `line-reads`, `line-pricing`, `task-completion` →
   `UnitOfWork`, `AccountTree`, `WalletLedger`, `PriceLadder`, `LineAccess` as each uses them (table in the spec);
   `transfers.service` → `UnitOfWork`, `AccountTree`, `LineAccess`, `WalletLedger`, `NoticeService`.
   Specs: every spec under `lines/`, `transfers/`, `testing/response-shape`, both `*.db.spec.ts`.
 
-- [ ] **K.13 Delete `OfficeKernel`.** `kernel/office-kernel.ts` removed; `assertBranch` moves to `policy.ts`;
+- [x] **K.13 Delete `OfficeKernel`.** (this commit) `kernel/office-kernel.ts` removed; `assertBranch` moves to `policy.ts`;
   `testing/office-facade.ts` holds the collaborators itself; `kernel-use` rule becomes "no file named
   office-kernel" (baseline 0). Map: `docs/architecture/backend.md` kernel row and "Known gaps".
   Specs: the whole `src/modules/office` folder with `--runInBand`.
+
+### How phase K was done (2026-11-10)
+
+- K.1–K.6 landed as one commit: the kernel built the six collaborators itself and delegated, so no spec changed
+  except nine that had built a kernel without its constructor.
+- `ActorInterceptor` moved to `ActorResolver` with K.7–K.12 (it needed the collaborators as providers), not in K.3.
+- `WalletsService` names its ledger `money`, because it has a `ledger()` method.
+- Specs build services from `testing/office-graph.ts` (`OfficeGraph`: the collaborators wired by hand, with the
+  `prismaClient` hook and `providers()` for spec apps). `KERNEL_PROVIDERS` in `kernel/kernel.providers.ts` lists the
+  seven classes until phase M gives each its module.
 
 ## Phase M — one Nest module per domain
 

@@ -1,3 +1,4 @@
+import { UnitOfWork } from './unit-of-work';
 import { KERNEL_PROVIDERS } from './kernel.providers';
 import 'reflect-metadata';
 import { Body, Controller, INestApplication, Post, UseFilters, UseInterceptors } from '@nestjs/common';
@@ -12,7 +13,6 @@ import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { ActivityRecorder } from '../activity/activity-recorder';
 import { FundBody } from '../wallets/wallets.schemas';
 import { Actor, ActorInterceptor } from './actor.interceptor';
-import { OfficeKernel } from './office-kernel';
 import type { Actor as ActorShape } from './types';
 
 @Controller('probe')
@@ -48,9 +48,9 @@ describe('ActorInterceptor with ActivityInterceptor and a body pipe', () => {
         { provide: ActivityRecorder, useValue: { recordOffice: async (...args: unknown[]) => void recorded.push(args) } },
       ],
     }).compile();
-    moduleRef.get(OfficeKernel).prismaClient = {
+    moduleRef.get(UnitOfWork).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: false }) },
-    } as unknown as OfficeKernel['prismaClient'];
+    } as unknown as UnitOfWork['prismaClient'];
     app = moduleRef.createNestApplication();
     await app.init();
   });

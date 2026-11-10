@@ -1,9 +1,8 @@
+import { UnitOfWork } from '../office/kernel/unit-of-work';
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { PrismaBrandingStore } from '../branding/prisma-branding.store';
 import { ActivityRecorder } from '../office/activity/activity-recorder';
 import type { NoticeService } from '../office/notices/notice.service';
-import { OfficeKernel } from '../office/kernel/office-kernel';
 import { PrismaService } from './prisma.service';
 
 // One process, one PostgreSQL pool: the services and stores take the client PrismaService holds.
@@ -19,7 +18,7 @@ describe('PrismaService', () => {
     const db = { client: shared, available: true } as unknown as PrismaService;
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
 
-    const office = new OfficeKernel(new MemoryAuthStore(), notice, db);
+    const office = new UnitOfWork(notice, db);
     const activity = new ActivityRecorder(db) as unknown as { client: () => unknown };
     const branding = new PrismaBrandingStore(db) as unknown as { prisma: unknown };
 

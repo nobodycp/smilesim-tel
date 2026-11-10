@@ -1,3 +1,5 @@
+import { OfficeGraph } from '../testing/office-graph';
+import { KERNEL_PROVIDERS } from '../kernel/kernel.providers';
 import { AUTH_STORE } from '../../auth/auth.store';
 import 'reflect-metadata';
 import { API_PROVIDERS } from '../../shared/api-providers';
@@ -7,7 +9,6 @@ import request from 'supertest';
 import { ActivityRecorder } from '../activity/activity-recorder';
 import { NOTICE_GROUPS, hrefFor, type NoticeDraft } from '../notices/notice-kinds';
 import type { NoticeService, WrittenNotice } from '../notices/notice.service';
-import { OfficeKernel } from '../kernel/office-kernel';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
 import { OfficeFacade } from '../testing/office-facade';
 import type { LineTerms } from '../rules/office-rules';
@@ -890,15 +891,16 @@ describe('the transfer routes under /office', () => {
   });
 
   async function appFor(service: OfficeFacade) {
-    // Every office route, whichever controller holds it, over this service's kernel (its in-memory tables).
-    const kernel = (service as unknown as { kernel: OfficeKernel }).kernel;
+    // Every office route, whichever controller holds it, over this service's own collaborators (its in-memory tables).
+    const graph = (service as unknown as { graph: OfficeGraph }).graph;
     const moduleRef = await Test.createTestingModule({
       controllers: OFFICE_CONTROLLERS,
       providers: [
-        ...OFFICE_PROVIDERS.filter((provider) => provider !== OfficeKernel),
+        // Everything but the shared collaborators, which come from this service's own graph.
+        ...OFFICE_PROVIDERS.filter((provider) => !(KERNEL_PROVIDERS as unknown[]).includes(provider)),
         ...API_PROVIDERS,
-        { provide: OfficeKernel, useValue: kernel },
-        { provide: AUTH_STORE, useValue: kernel.auth },
+        ...graph.providers(),
+        { provide: AUTH_STORE, useValue: graph.auth },
         {
           provide: ActivityRecorder,
           useValue: {

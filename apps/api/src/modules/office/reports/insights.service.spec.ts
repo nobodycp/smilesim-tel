@@ -1,5 +1,5 @@
+import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import type { WalletsService } from '../wallets/wallets.service';
 import { InsightsService } from './insights.service';
@@ -14,8 +14,8 @@ const accounts = [
 const actor: Actor = { id: 'agent', loginName: 'agent', nickname: 'وكيل', layer: 'agent', isBranchOwner: false, grants: [], operatorId: 'agent', impersonating: false };
 
 function insights(tables: Record<string, unknown>) {
-  const kernel = new OfficeKernel(new MemoryAuthStore());
-  kernel.prismaClient = { user: { findMany: async () => accounts }, ...tables } as unknown as OfficeKernel['prismaClient'];
+  const kernel = new OfficeGraph(new MemoryAuthStore());
+  kernel.prismaClient = { user: { findMany: async () => accounts }, ...tables } as unknown as OfficeGraph['prismaClient'];
   const wallets = {
     financeWhere: async () => ({}),
     marginsFor: async (_actor: Actor, rows: { id: string }[]) => new Map(rows.map((row) => [row.id, 300])),

@@ -1,5 +1,5 @@
+import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { ProvidersService } from '../providers/providers.service';
 import { PackagesService } from './packages.service';
@@ -20,7 +20,7 @@ function world() {
     { id: 'k1', code: 'sky-a', providerId: 'p1', ...flags, actionModes: {}, inheritedModes: ['charge'] },
     { id: 'k2', code: 'sky-b', providerId: 'p1', ...flags, actionModes: {}, inheritedModes: [] as string[] },
   ];
-  const kernel = new OfficeKernel(new MemoryAuthStore());
+  const kernel = new OfficeGraph(new MemoryAuthStore());
   const apply = (row: Record<string, unknown>, data: Record<string, unknown>) => Object.assign(row, data);
   kernel.prismaClient = {
     provider: {
@@ -35,7 +35,7 @@ function world() {
         apply(packages.find((row) => row.id === where.id || row.code === where.code) as Record<string, unknown>, data),
     },
     $transaction: async (work: Promise<unknown>[]) => Promise.all(work),
-  } as unknown as OfficeKernel['prismaClient'];
+  } as unknown as OfficeGraph['prismaClient'];
   return { provider, packages, providers: new ProvidersService(kernel.uow), catalog: new PackagesService(kernel.uow, kernel.tree, kernel.ladder) };
 }
 

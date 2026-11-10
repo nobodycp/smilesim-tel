@@ -1,5 +1,5 @@
+import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { WalletsService } from '../wallets/wallets.service';
 import { OverviewService, periodStart } from './overview.service';
@@ -22,7 +22,7 @@ const entries = [
 ];
 
 function service(snapshots: { userId: string; day: string; active: number; expiring: number; frozen: number; disconnected: number; suspended: number }[] = []) {
-  const kernel = new OfficeKernel(new MemoryAuthStore());
+  const kernel = new OfficeGraph(new MemoryAuthStore());
   const lineCounts: Record<string, number> = { active: 10, frozen: 2, disconnected: 3 };
   kernel.prismaClient = {
     user: { findMany: async () => accounts },
@@ -49,7 +49,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
       count: async ({ where }: { where: { AND: { status?: string }[] } }) => (where.AND[1]?.status === 'pending' ? 4 : 1),
       findFirst: async () => ({ createdAt: new Date(Date.now() - 90 * 60_000) }),
     },
-  } as unknown as OfficeKernel['prismaClient'];
+  } as unknown as OfficeGraph['prismaClient'];
   const wallets = new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder);
   return new OverviewService(kernel.uow, kernel.tree, wallets, {} as never, {} as never, {} as never);
 }

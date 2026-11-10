@@ -1,3 +1,4 @@
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
@@ -5,7 +6,6 @@ import { ActivityRecorder } from '../activity/activity-recorder';
 import { API_PROVIDERS } from '../../shared/api-providers';
 import { NoticeService } from '../notices/notice.service';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
-import { OfficeKernel } from '../kernel/office-kernel';
 
 /**
  * For HTTP specs: every office route, as the app serves it, over the given auth store and in-memory tables.
@@ -24,7 +24,7 @@ export async function officeTestApp(store: AuthStore, tables: Record<string, unk
   });
   if (notice) builder = builder.overrideProvider(NoticeService).useValue(notice);
   const moduleRef = await builder.compile();
-  moduleRef.get(OfficeKernel).prismaClient = tables as unknown as OfficeKernel['prismaClient'];
+  moduleRef.get(UnitOfWork).prismaClient = tables as unknown as UnitOfWork['prismaClient'];
   const app: INestApplication = moduleRef.createNestApplication();
   await app.init();
   return { app, recorded };

@@ -1,5 +1,5 @@
+import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { OfficeFailure } from '../../shared/office-failure';
 import { TasksService } from './tasks.service';
@@ -13,7 +13,7 @@ const accounts = [
 ];
 
 function setup() {
-  const kernel = new OfficeKernel(new MemoryAuthStore());
+  const kernel = new OfficeGraph(new MemoryAuthStore());
   const task = { id: 't1', action: 'switch', status: 'working', posId: 'pos', submitterId: 'pos', assigneeId: null as string | null, msisdn: '0550000001', log: '', packageId: 'p1', held: 0 };
   const notes: { body: string; internal: boolean }[] = [];
   const noticed: string[][] = [];
@@ -34,7 +34,7 @@ function setup() {
     },
     officeTaskNote: { create: async ({ data }: { data: { body: string; internal: boolean } }) => { notes.push({ body: data.body, internal: data.internal }); return data; } },
     $transaction: async (run: (tx: unknown) => Promise<unknown>) => run(kernel.prismaClient),
-  } as unknown as OfficeKernel['prismaClient'];
+  } as unknown as OfficeGraph['prismaClient'];
   (kernel.uow as unknown as { notice: unknown }).notice = {
     write: async (_tx: unknown, ids: string[]) => { noticed.push(ids); return []; },
     publish: async () => undefined,

@@ -1,3 +1,4 @@
+import { UnitOfWork } from '../kernel/unit-of-work';
 import 'reflect-metadata';
 import { API_PROVIDERS } from '../../shared/api-providers';
 import { INestApplication } from '@nestjs/common';
@@ -9,7 +10,6 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
 import { OfficeFailure } from '../../shared/office-failure';
-import { OfficeKernel } from '../kernel/office-kernel';
 
 // A refusal from any office route carries `{ message, code }`. The Arabic message is the one the
 // web app has always shown; the code is what it now routes and translates on.
@@ -18,7 +18,7 @@ describe('office refusals', () => {
   let app: INestApplication;
   let store: MemoryAuthStore;
   // The routes read the kernel's client; the specs swap in in-memory tables there.
-  let kernel: OfficeKernel;
+  let kernel: UnitOfWork;
   let posSession: string;
 
   beforeEach(async () => {
@@ -47,7 +47,7 @@ describe('office refusals', () => {
       .compile();
     app = moduleRef.createNestApplication();
     await app.init();
-    kernel = moduleRef.get(OfficeKernel);
+    kernel = moduleRef.get(UnitOfWork);
     (kernel as unknown as { prismaClient: unknown }).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: false }), findMany: async () => [] },
     };

@@ -1,9 +1,9 @@
+import { OfficeGraph } from './office-graph';
 import { PrismaService } from '../../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { AuthStore } from '../../auth/auth.store';
 import type { LineFilter } from '../rules/office-paging';
 import { NoticeService } from '../notices/notice.service';
-import { OfficeKernel } from '../kernel/office-kernel';
 import { LinePricing } from '../lines/line-pricing';
 import { LineReads } from '../lines/line-reads';
 import { LinesService } from '../lines/lines.service';
@@ -29,39 +29,39 @@ import type { TransferAccountBody } from '../transfers/transfers.service';
  * every route lives in a domain controller under `modules/office/<domain>/`.
  */
 export class OfficeFacade {
-  /** Shared by every office domain: the client, the actor, accounts, transactions, wallet moves (kernel/office-kernel.ts). */
-  private readonly kernel: OfficeKernel;
+  /** Shared by every office domain: the client, the actor, accounts, transactions, wallet moves (testing/office-graph.ts). */
+  private readonly graph: OfficeGraph;
 
   // The members below without `private` are the hooks specs reach in by: the client, the notice writer, a
   // transaction, a wallet move, the price stamp.
-  // Specs replace the client through this property; it lives on the kernel so the domain services see the same one.
+  // Specs replace the client through this property; it lives on the unit of work so the domain services see the same one.
   get prismaClient(): PrismaClient | null {
-    return this.kernel.prismaClient;
+    return this.graph.prismaClient;
   }
 
   set prismaClient(client: PrismaClient | null) {
-    this.kernel.prismaClient = client;
+    this.graph.prismaClient = client;
   }
 
   get prisma(): PrismaClient {
-    return this.kernel.prisma;
+    return this.graph.uow.prisma;
   }
 
   get notice(): NoticeService {
-    return this.kernel.notice;
+    return this.graph.uow.notice;
   }
 
   private auditService: AuditService | null = null;
 
   private get auditLog(): AuditService {
-    this.auditService ??= new AuditService(this.kernel.uow, this.kernel.tree);
+    this.auditService ??= new AuditService(this.graph.uow, this.graph.tree);
     return this.auditService;
   }
 
   private tasksService: TasksService | null = null;
 
   private get tasksDomain(): TasksService {
-    this.tasksService ??= new TasksService(this.kernel.uow, this.kernel.tree, this.kernel.actors, this.kernel.ledger);
+    this.tasksService ??= new TasksService(this.graph.uow, this.graph.tree, this.graph.actors, this.graph.ledger);
     return this.tasksService;
   }
 
@@ -69,90 +69,90 @@ export class OfficeFacade {
     auth: AuthStore,
     notice?: NoticeService,
     db?: PrismaService,
-    kernel?: OfficeKernel,
+    graph?: OfficeGraph,
   ) {
-    this.kernel = kernel ?? new OfficeKernel(auth, notice, db);
+    this.graph = graph ?? new OfficeGraph(auth, notice, db);
   }
 
   private walletDeskInstance: WalletsService | null = null;
 
   private get walletDesk(): WalletsService {
-    this.walletDeskInstance ??= new WalletsService(this.kernel.uow, this.kernel.tree, this.kernel.ledger, this.kernel.ladder);
+    this.walletDeskInstance ??= new WalletsService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.ladder);
     return this.walletDeskInstance;
   }
 
   private providerDeskInstance: ProvidersService | null = null;
 
   private get providerDesk(): ProvidersService {
-    this.providerDeskInstance ??= new ProvidersService(this.kernel.uow);
+    this.providerDeskInstance ??= new ProvidersService(this.graph.uow);
     return this.providerDeskInstance;
   }
 
   private companyDeskInstance: CompaniesService | null = null;
 
   private get companyDesk(): CompaniesService {
-    this.companyDeskInstance ??= new CompaniesService(this.kernel.uow);
+    this.companyDeskInstance ??= new CompaniesService(this.graph.uow);
     return this.companyDeskInstance;
   }
 
   private packageDeskInstance: PackagesService | null = null;
 
   private get packageDesk(): PackagesService {
-    this.packageDeskInstance ??= new PackagesService(this.kernel.uow, this.kernel.tree, this.kernel.ladder);
+    this.packageDeskInstance ??= new PackagesService(this.graph.uow, this.graph.tree, this.graph.ladder);
     return this.packageDeskInstance;
   }
 
   private termDeskInstance: TermsService | null = null;
 
   private get termDesk(): TermsService {
-    this.termDeskInstance ??= new TermsService(this.kernel.uow, this.kernel.tree, this.kernel.ladder);
+    this.termDeskInstance ??= new TermsService(this.graph.uow, this.graph.tree, this.graph.ladder);
     return this.termDeskInstance;
   }
 
   private roleDeskInstance: RolesService | null = null;
 
   private get roleDesk(): RolesService {
-    this.roleDeskInstance ??= new RolesService(this.kernel.uow, this.kernel.layerRoles);
+    this.roleDeskInstance ??= new RolesService(this.graph.uow, this.graph.layerRoles);
     return this.roleDeskInstance;
   }
 
   private deskDeskInstance: DeskService | null = null;
 
   private get deskDesk(): DeskService {
-    this.deskDeskInstance ??= new DeskService(this.kernel.uow, this.kernel.tree);
+    this.deskDeskInstance ??= new DeskService(this.graph.uow, this.graph.tree);
     return this.deskDeskInstance;
   }
 
   private accountDeskInstance: AccountsService | null = null;
 
   private get accountDesk(): AccountsService {
-    this.accountDeskInstance ??= new AccountsService(this.kernel.uow, this.kernel.tree, this.kernel.layerRoles, this.kernel.auth);
+    this.accountDeskInstance ??= new AccountsService(this.graph.uow, this.graph.tree, this.graph.layerRoles, this.graph.auth);
     return this.accountDeskInstance;
   }
 
   private transferDeskInstance: TransfersService | null = null;
 
   private get transferDesk(): TransfersService {
-    this.transferDeskInstance ??= new TransfersService(this.kernel.uow, this.kernel.tree, this.kernel.ledger, this.kernel.lineAccess, this.termDesk);
+    this.transferDeskInstance ??= new TransfersService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.lineAccess, this.termDesk);
     return this.transferDeskInstance;
   }
 
   private lineDeskInstance: LinesService | null = null;
 
   private get lineDesk(): LinesService {
-    this.lineDeskInstance ??= new LinesService(this.kernel.uow, this.kernel.tree, this.kernel.ledger, this.kernel.ladder, this.kernel.lineAccess, this.tasksDomain, this.linePricing, new TaskCompletion(this.kernel.uow, this.kernel.ledger, this.tasksDomain, this.linePricing), new SimulatedProviderGateway());
+    this.lineDeskInstance ??= new LinesService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.ladder, this.graph.lineAccess, this.tasksDomain, this.linePricing, new TaskCompletion(this.graph.uow, this.graph.ledger, this.tasksDomain, this.linePricing), new SimulatedProviderGateway());
     return this.lineDeskInstance;
   }
 
   private linePricingInstance: LinePricing | null = null;
 
   private get linePricing(): LinePricing {
-    this.linePricingInstance ??= new LinePricing(this.kernel.uow, this.kernel.tree, this.kernel.ladder);
+    this.linePricingInstance ??= new LinePricing(this.graph.uow, this.graph.tree, this.graph.ladder);
     return this.linePricingInstance;
   }
 
   private get lineReads(): LineReads {
-    return new LineReads(this.kernel.uow, this.kernel.tree);
+    return new LineReads(this.graph.uow, this.graph.tree);
   }
 
   // user-terms-service.spec stamps terms through the service; the stamping lives in LinesService.
@@ -161,15 +161,15 @@ export class OfficeFacade {
   }
 
   private actor(gate: Gate) {
-    return this.kernel.actor(gate);
+    return this.graph.actors.actor(gate);
   }
 
   runTx<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) {
-    return this.kernel.runTx(fn);
+    return this.graph.uow.runTx(fn);
   }
 
   move(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, kind: string, note: string, sale?: Sale) {
-    return this.kernel.move(tx, userId, amount, actorId, kind, note, sale);
+    return this.graph.ledger.move(tx, userId, amount, actorId, kind, note, sale);
   }
 
   // Spec entry points; the routes live in desk/desk.controller.ts.
