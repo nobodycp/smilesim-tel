@@ -17,6 +17,16 @@ simulation; with a real provider a lost answer cannot be told from a failure, an
    neither exists without the other and neither survives a rollback.
 3. The provider is called between two short guarded writes (`claim`, `settle`), never inside a transaction.
 4. The rules are a pure file; the service coordinates; the repository holds Prisma. No new route.
+5. **Attempt fencing** (review of `5020495`). An attempt is named by its number: `claim(id)` answers it (1, 2, …)
+   and `settle(id, attempt, outcome)` writes only `WHERE id AND status = 'pending' AND attempts = attempt`. An
+   answer that arrives after the operation went back to `requested` and was taken again belongs to an earlier
+   number and changes nothing (`409`). `claim` is a compare-and-set on the same count, so two workers that read
+   the same row cannot both take it.
+6. **A retry is scheduled durably.** When an attempt is known not to have left (`pending → requested`), the same
+   transaction writes a new `OutboxMessage` for the next send; the first message may long have been consumed.
+   `OutboxMessage.sequence` is the number of attempts already made (0 for the first send) and
+   `(topic, aggregateId, sequence)` is unique, so one send has one message whoever writes it. `unknown`,
+   `succeeded` and `failed` write none.
 
 ## Alternatives
 
@@ -28,13 +38,19 @@ simulation; with a real provider a lost answer cannot be told from a failure, an
 - **Unique-violation and catch** instead of `ON CONFLICT DO NOTHING`: a violation aborts the whole PostgreSQL
   transaction, which would throw away the caller's own writes.
 - **Retry after a timeout**: the provider may have run it. That is the double sale this record exists to prevent.
+- **A random token per attempt** instead of the count: the count already changes on every claim and only then, so
+  it names the attempt without a new column.
+- **Leave the retry to a sweeper that looks for `requested` rows**: it would work, but the retry would then depend
+  on a second mechanism being present and correct; the message commits with the state or not at all.
+- **Re-open the first outbox message** (clear `publishedAt`): races with a relay that is stamping it.
 
 ## Wiring an activation later (no double charge)
 
 1. In the sale's transaction, on the locked line and wallet: hold the price as an open task does today
    (`WalletLedger.hold`), and `recordIn(tx, key, request)` with a key made from the sale (not from the HTTP retry),
    so a repeated request finds the same operation.
-2. After commit the dispatcher claims and calls the provider with that key.
+2. After commit the dispatcher claims, keeps the attempt number, calls the provider with that key, and settles
+   with that number.
 3. `succeeded`: one transaction turns the hold into the charge and activates the line, guarded by the operation's
    state so it happens once. `failed`: release the hold, or open the branch task as today.
 4. `unknown`: the hold stays, nothing is charged twice or refunded; the status check or the branch decides.

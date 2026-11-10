@@ -1,4 +1,4 @@
-import { MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, canMove, isSettled, maySend, requestHash, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
+import { MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, isSettled, maySend, requestHash, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
 
 const request: OperationRequest = { action: 'activate', providerCode: 'sky', packageCode: 'p-1', msisdn: '0500000001', iccid: '8997202000000000777', lineId: null };
 
@@ -36,6 +36,14 @@ describe('provider operation rules', () => {
     expect(afterAttempt({ kind: 'not-sent', error: 'unreachable' }, 1)).toMatchObject({ status: 'requested', error: 'unreachable' });
     expect(afterAttempt({ kind: 'not-sent', error: 'unreachable' }, MAX_ATTEMPTS - 1)).toMatchObject({ status: 'requested' });
     expect(afterAttempt({ kind: 'not-sent', error: 'unreachable' }, MAX_ATTEMPTS)).toMatchObject({ status: 'failed', error: 'unreachable' });
+  });
+
+  it('numbers attempts from 1, and schedules a new send only for a state that may be sent', () => {
+    expect([attemptAfter(0), attemptAfter(1), attemptAfter(4)]).toEqual([1, 2, 5]);
+    const next = (kind: 'confirmed' | 'refused' | 'not-sent' | 'no-answer') => afterAttempt(kind === 'confirmed' ? { kind, providerRef: null } : { kind, error: 'timeout' }, 1).status;
+    expect((['confirmed', 'refused', 'not-sent', 'no-answer'] as const).map((kind) => [kind, maySend(next(kind))])).toEqual([['confirmed', false], ['refused', false], ['not-sent', true], ['no-answer', false]]);
+    // The last allowed attempt that never left is failed, not scheduled again.
+    expect(maySend(afterAttempt({ kind: 'not-sent', error: 'unreachable' }, MAX_ATTEMPTS).status)).toBe(false);
   });
 
   it('accepts a key of 8 to 120 safe characters', () => {

@@ -6,7 +6,7 @@ import type { Action } from '../../kernel/types';
 //   requested ──claim──▶ pending ──▶ succeeded
 //       │                   │──────▶ failed
 //       │                   │──────▶ unknown ──(status check or a person)──▶ succeeded | failed
-//       │                   └──(never sent)──▶ requested
+//       │                   └──(never sent)──▶ requested, with a new outbox message
 //       └──(never sent, given up)──▶ failed
 //
 // `unknown` is the state that protects money: the request may have reached the provider, so it is never sent
@@ -29,6 +29,14 @@ const MOVES: Record<OperationStatus, readonly OperationStatus[]> = {
   succeeded: [],
   failed: [],
 };
+
+/**
+ * An attempt is named by its number: the first is 1, and each claim makes the next. A result is accepted only for
+ * the attempt the operation is on, so an answer from an earlier attempt can never settle a later one.
+ */
+export function attemptAfter(attemptsMade: number): number {
+  return attemptsMade + 1;
+}
 
 export function canMove(from: OperationStatus, to: OperationStatus): boolean {
   return MOVES[from].includes(to);
@@ -58,12 +66,12 @@ export type AttemptOutcome =
 
 export type Settlement = { status: OperationStatus; providerRef: string | null; error: OperationError | null };
 
-/** The state a pending operation moves to after an attempt; `attempts` counts this one. */
-export function afterAttempt(outcome: AttemptOutcome, attempts: number): Settlement {
+/** The state a pending operation moves to after attempt number `attempt`. */
+export function afterAttempt(outcome: AttemptOutcome, attempt: number): Settlement {
   if (outcome.kind === 'confirmed') return { status: 'succeeded', providerRef: outcome.providerRef, error: null };
   if (outcome.kind === 'refused') return { status: 'failed', providerRef: null, error: outcome.error };
   if (outcome.kind === 'no-answer') return { status: 'unknown', providerRef: null, error: outcome.error };
-  return { status: attempts >= MAX_ATTEMPTS ? 'failed' : 'requested', providerRef: null, error: outcome.error };
+  return { status: attempt >= MAX_ATTEMPTS ? 'failed' : 'requested', providerRef: null, error: outcome.error };
 }
 
 /** What closes an unknown operation: an answer about the request already sent, never a new send. */

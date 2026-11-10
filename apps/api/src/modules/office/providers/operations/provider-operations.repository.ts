@@ -29,8 +29,12 @@ export class ProviderOperationsRepository {
     return (await db.provider.findUnique({ where: { code }, select: { id: true } }))?.id ?? null;
   }
 
-  addOutbox(db: Db, topic: string, aggregateId: string) {
-    return db.outboxMessage.create({ data: { topic, aggregateId, payload: { operationId: aggregateId } } });
+  /**
+   * Says the operation waits to be sent. `sequence` is the number of attempts already made: the database holds one
+   * message per send, so two writers of the same one cannot both commit.
+   */
+  addOutbox(db: Db, topic: string, aggregateId: string, sequence: number) {
+    return db.outboxMessage.create({ data: { topic, aggregateId, sequence, payload: { operationId: aggregateId } } });
   }
 
   operationById(db: Db, id: string) {
@@ -41,10 +45,13 @@ export class ProviderOperationsRepository {
     return db.providerOperation.findUnique({ where: { idempotencyKey } });
   }
 
-  /** Guarded: changes the row only while it is still in `from`. Answers whether it did. */
-  async moveStatus(db: Db, id: string, from: OperationStatus, change: StatusChange): Promise<boolean> {
+  /**
+   * Guarded: changes the row only while it is still in `from` and has made exactly `attempts` attempts, so a write
+   * that belongs to an earlier attempt finds nothing to change. Answers whether it did.
+   */
+  async moveStatus(db: Db, id: string, from: { status: OperationStatus; attempts?: number }, change: StatusChange): Promise<boolean> {
     const moved = await db.providerOperation.updateMany({
-      where: { id, status: from },
+      where: { id, status: from.status, ...(from.attempts !== undefined ? { attempts: from.attempts } : {}) },
       data: {
         status: change.status,
         lastError: change.error,

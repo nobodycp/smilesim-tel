@@ -13,6 +13,15 @@ Local only: not pushed, the migration applied to a throwaway test database only.
 - [x] **O.4 PostgreSQL spec.** `operations/provider-operations.db.spec.ts` (CI `db` job).
 - [x] **O.5 Maps.** (slice commit 83a9f81) `docs/architecture/backend.md`, ADR 0017.
 
+## Corrections after the review of `5020495`
+
+- [x] **O.6 Attempt fencing.** `provider-operation.rules.ts` (`attemptAfter`), repository `moveStatus` guarded by
+  the attempt count, service `claim` → attempt number, `settle(id, attempt, outcome)`.
+- [x] **O.7 Durable retry.** `settle` runs in `runTx` and writes the next send's `OutboxMessage` with the return
+  to `requested`; `OutboxMessage.sequence`, unique `(topic, aggregateId, sequence)`, migration
+  `20261110170000_outbox_sequence`. Specs: late answer refused, one result per attempt, message after
+  `not-sent`, none for `unknown`, rollback when the message cannot be written, several workers.
+
 ## Next phase (not started; waits for review)
 
 1. **Dispatcher** in the worker: read unpublished `OutboxMessage` rows (`FOR UPDATE SKIP LOCKED`), `claim`, call

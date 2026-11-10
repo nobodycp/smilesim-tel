@@ -57,6 +57,13 @@ no route, response, price, balance or task changes. Nothing in production code c
    `operations/provider-operations.service.ts`; infrastructure `operations/provider-operations.repository.ts`
    (Prisma, outbox). No controller: no route is needed yet.
 
+10. **Attempt fencing** (added after the review of `5020495`). `claim` answers the attempt's number;
+    `settle(id, attempt, outcome)` is guarded by id, `pending` and that number. A late answer of an earlier attempt
+    is refused and changes nothing.
+11. **Durable retry.** `pending → requested` writes, in the same transaction, the outbox message of the next send
+    (`OutboxMessage.sequence` = attempts made; unique with topic and aggregate, migration
+    `20261110170000_outbox_sequence`). An operation that becomes `unknown` gets no message.
+
 ## Non-goals
 
 A real adapter; a dispatcher or worker; the outbox relay and `publishedAt`; sweeping stale `pending` rows; any

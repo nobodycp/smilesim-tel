@@ -224,9 +224,12 @@ model OutboxMessage {
   topic       String
   aggregateId String
   payload     Json
+  /// Which send of the aggregate this announces: the attempts already made (0 for the first). One message each.
+  sequence    Int       @default(0)
   createdAt   DateTime  @default(now())
   publishedAt DateTime?
 
+  @@unique([topic, aggregateId, sequence])
   @@index([publishedAt, createdAt])
   @@index([aggregateId])
 }
