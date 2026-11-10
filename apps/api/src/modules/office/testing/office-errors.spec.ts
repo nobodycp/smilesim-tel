@@ -38,7 +38,7 @@ describe('office refusals', () => {
     posSession = await store.saveSession({ userId: 'pos1', scope: 'full', userAgent: '', ip: '' });
     const moduleRef = await Test.createTestingModule({
       imports: [AuthModule],
-      // Every office route, whichever controller holds it (Phase 3 moves routes out of OfficeController).
+      // Every office route, whichever controller holds it.
       controllers: OFFICE_CONTROLLERS,
       providers: [...OFFICE_PROVIDERS, ...API_PROVIDERS],
     })

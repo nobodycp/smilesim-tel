@@ -1,4 +1,4 @@
-// Shapes every office domain shares. Moved out of office.service.ts with the kernel (Phase 3.0).
+// Shapes every office domain shares.
 
 export type { Gate } from '../../shared/cookies';
 

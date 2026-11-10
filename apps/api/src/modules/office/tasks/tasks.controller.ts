@@ -10,7 +10,8 @@ import type { Actor as ActorShape } from '../kernel/types';
 import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 import { TasksService } from './tasks.service';
 
-// POST /office/tasks/:id/complete stays in OfficeController until the lines slice: closing a task applies a line operation.
+// POST /office/tasks/:id/complete is served by LinesController: closing a task applies a line operation
+// (lines/task-completion.ts).
 @ApiTags('office')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')

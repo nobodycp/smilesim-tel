@@ -24,7 +24,7 @@ import type { Gate, Sale } from '../kernel/types';
 import type { TransferAccountBody } from '../transfers/transfers.service';
 
 /**
- * Test-only adapter (Phase 3.11): the office methods as the specs have always called them, `(gate, ...)`, each
+ * Test-only adapter: the office methods as the specs have always called them, `(gate, ...)`, each
  * resolving the actor and handing the call to the domain service that owns it. Production code never uses it;
  * every route lives in a domain controller under `modules/office/<domain>/`.
  */
@@ -172,7 +172,7 @@ export class OfficeFacade {
     return this.kernel.move(tx, userId, amount, actorId, kind, note, sale);
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in desk/desk.controller.ts.
+  // Spec entry points; the routes live in desk/desk.controller.ts.
   async me(gate: Gate) {
     return this.deskDesk.me(await this.actor(gate));
   }
@@ -181,7 +181,7 @@ export class OfficeFacade {
     return this.deskDesk.home(await this.actor(gate));
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in wallets/wallets.controller.ts.
+  // Spec entry points; the routes live in wallets/wallets.controller.ts.
   async wallets(gate: Gate) {
     return this.walletDesk.list(await this.actor(gate));
   }
@@ -206,7 +206,7 @@ export class OfficeFacade {
     return this.walletDesk.finance(await this.actor(gate), query);
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in packages/packages.controller.ts.
+  // Spec entry points; the routes live in packages/packages.controller.ts.
   async packages(gate: Gate) {
     return this.packageDesk.list(await this.actor(gate));
   }
@@ -239,7 +239,7 @@ export class OfficeFacade {
     return this.packageDesk.setTargets(await this.actor(gate), code, kind, body);
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in companies/companies.controller.ts.
+  // Spec entry points; the routes live in companies/companies.controller.ts.
   async companiesShelf(gate: Gate) {
     return this.companyDesk.shelf(await this.actor(gate));
   }
@@ -252,7 +252,7 @@ export class OfficeFacade {
     return this.companyDesk.setImage(await this.actor(gate), body);
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in providers/providers.controller.ts.
+  // Spec entry points; the routes live in providers/providers.controller.ts.
   async providers(gate: Gate) {
     return this.providerDesk.list(await this.actor(gate));
   }
@@ -269,7 +269,7 @@ export class OfficeFacade {
     return this.providerDesk.setMode(await this.actor(gate), code, body);
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in lines/lines.controller.ts.
+  // Spec entry points; the routes live in lines/lines.controller.ts.
   async lines(gate: Gate, query: LineFilter & { cursor?: string; account?: string } = {}) {
     return this.lineReads.list(await this.actor(gate), query);
   }
@@ -326,7 +326,7 @@ export class OfficeFacade {
     return this.lineDesk.completeTask(await this.actor(gate), id, body);
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in tasks/tasks.controller.ts.
+  // Spec entry points; the routes live in tasks/tasks.controller.ts.
   async tasks(gate: Gate, query: {
       cursor?: string;
       q?: string;
@@ -363,7 +363,7 @@ export class OfficeFacade {
     return this.tasksDomain.cancel(await this.actor(gate), id);
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in accounts/accounts.controller.ts.
+  // Spec entry points; the routes live in accounts/accounts.controller.ts.
   async users(gate: Gate) {
     return this.accountDesk.list(await this.actor(gate));
   }
@@ -400,7 +400,7 @@ export class OfficeFacade {
     return this.accountDesk.enter(await this.actor(gate), loginName, meta);
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in roles/roles.controller.ts.
+  // Spec entry points; the routes live in roles/roles.controller.ts.
   async roles(gate: Gate) {
     return this.roleDesk.list(await this.actor(gate));
   }
@@ -409,7 +409,7 @@ export class OfficeFacade {
     return this.roleDesk.save(await this.actor(gate), body);
   }
 
-  // Facades (Phase 3): specs still call these; the routes live in transfers/transfers.controller.ts.
+  // Spec entry points; the routes live in transfers/transfers.controller.ts.
   async transferAccount(gate: Gate, loginName: string, body: TransferAccountBody) {
     return this.transferDesk.transferAccount(await this.actor(gate), loginName, body);
   }
@@ -424,7 +424,7 @@ export class OfficeFacade {
 
   // ---- Per-user package terms and operation stops -------------------------------------------
 
-  // Facades (Phase 3): specs still call these; the routes live in terms/terms.controller.ts.
+  // Spec entry points; the routes live in terms/terms.controller.ts.
   async userPackages(gate: Gate, loginName: string) {
     return this.termDesk.userPackages(await this.actor(gate), loginName);
   }
@@ -465,7 +465,7 @@ export class OfficeFacade {
     return this.termDesk.setLinePrices(await this.actor(gate), code, body);
   }
 
-  // Facade (Phase 3): specs still call the service; the route lives in audit/audit.controller.ts.
+  // Spec entry point; the route lives in audit/audit.controller.ts.
   async audit(gate: Gate, query: Parameters<AuditService['list']>[1] = {}) {
     return this.auditLog.list(await this.actor(gate), query);
   }

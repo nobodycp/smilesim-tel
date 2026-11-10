@@ -2,7 +2,6 @@ import type { Prisma } from '../../../generated/prisma/client';
 import { providerBranchCost } from '../rules/office-rules';
 
 // What an operation in the ledger cost the branch at the provider, for the provider-operations report.
-// Moved out of office.service.ts with the wallets slice (Phase 3.4).
 
 export const PROVIDER_OPERATION_KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'];
 
