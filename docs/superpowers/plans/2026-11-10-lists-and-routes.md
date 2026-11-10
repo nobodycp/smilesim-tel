@@ -90,7 +90,7 @@ mocks, both maps.
 
 ## Phase 4 — close
 
-- [x] **L.20** (COMMIT) `rules/office-paging.ts` keeps only page sizes and filters; `list-envelope` baseline 0;
+- [x] **L.20** (2dadf1b) `rules/office-paging.ts` keeps only page sizes and filters; `list-envelope` baseline 0;
   rules 4.7 and 4.8 in `.cursor/rules/backend-engineering.mdc`; both maps; ADR
   `0014-list-contract-and-route-names.md`; the review file's A4, A7, A8 marked.
 
