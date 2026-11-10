@@ -30,7 +30,7 @@ commit. Each slice ends with `tsc`, ESLint, `architecture.spec` and the named sp
   `GET /auth/sessions` body equals the caller's cookie.
 - [x] **S.6 (this commit) Guard.** `src/architecture.spec.ts` rule `session-id-as-token`: no `sessionKey(` call with anything but
   a hash, and no `res.cookie('sid'|'home', <x>.id`. Baseline 0. `docs/architecture/backend.md` auth row.
-- [ ] **S.7 (later, dated)** Remove the old Redis key fallback once the date in S.3 has passed.
+- [x] **S.7** Removed on 2026-11-10 at the owner's word, ahead of the date: `PrismaAuthStore.liveSession` reads only the hashed key. A session opened before 2026-11-10 and not used since signs in again.
 
 ### How part 1 was done (2026-11-10)
 
@@ -50,11 +50,11 @@ not in the session list; enter, handoff and leave work.
 - [x] **T.2 (this commit) Store seals and opens.** `prisma-auth.store.ts`: `updateUser` seals `twoFactorSecret` and
   `pendingTwoFactorSecret`; `toStoredUser` opens them. `prisma-auth.store.spec.ts`: what is written is sealed, what
   is read is plain, an old plain row still reads.
-- [ ] **T.3 Production without a key.** Half done: the boot warning is in. **Not done, owner's decision:** refusing new app-2FA enrolment in production without a key (spec decision 7); today such a process stores the secret unsealed, as before. `config.ts` `productionWarnings()` line; `auth.service.ts`
+- [x] **T.3 Production without a key.** Done 2026-11-10 (owner: do it): `setupTwoFactor` answers `403 APP_CODE_UNAVAILABLE` in production without a key; spec in `auth/two-factor.http.spec.ts`; the boot warning says so. `config.ts` `productionWarnings()` line; `auth.service.ts`
   `setupTwoFactor` refuses in production when `SECRETS_KEY` is unset (spec decision 7 — confirm with the owner
   first). Spec in `auth/two-factor.http.spec.ts`.
 - [x] **T.4 (this commit; `src/seal-secrets.ts`, `npm run seal-secrets --workspace api` after a build — not run on any environment: none has a key yet) Backfill.** `apps/api/scripts/seal-secrets.ts` + `"seal-secrets"` script: reads users with a plain
   secret, seals, writes; prints counts; safe to run twice. Run locally against the dev database; document the
   command in `docs/architecture/backend.md` ("before real sales").
-- [ ] **T.5 Partly: the backend map says it and ADR 0013 is written (2026-11-10); and `docker-compose.yml` / the Coolify env list do not name `SECRETS_KEY` (the owner sets it). Docs.** ADR `0013-session-tokens-and-sealed-secrets.md`; backend map; the review file's S6 / S12 marked
+- [x] **T.5 Done 2026-11-10: `docker-compose.yml` passes `SECRETS_KEY` to the api and its header says how to make it; the value itself is set by the owner on each environment. Docs.** ADR `0013-session-tokens-and-sealed-secrets.md`; backend map; the review file's S6 / S12 marked
   done; `docker-compose.yml` and the Coolify env list name `SECRETS_KEY`.

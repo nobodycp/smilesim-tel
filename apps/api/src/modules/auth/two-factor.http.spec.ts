@@ -243,6 +243,25 @@ describe('two-factor endpoints', () => {
     expect((await login('employee', '12345678')).body.next).toBe('two_factor_code');
   });
 
+  it('refuses a new authenticator enrolment in production without a sealing key, and allows it with one', async () => {
+    const posCookie = cookieOf(await login('pos', '123456'));
+    const before = { env: process.env.NODE_ENV, key: process.env.SECRETS_KEY };
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.SECRETS_KEY;
+      const refused = await http().post('/auth/two-factor/setup').set('Cookie', posCookie);
+      expect(refused.status).toBe(403);
+      expect(refused.body.code).toBe('APP_CODE_UNAVAILABLE');
+      expect(stored('pos').pendingTwoFactorSecret ?? null).toBeNull();
+      process.env.SECRETS_KEY = Buffer.alloc(32, 5).toString('base64');
+      expect((await http().post('/auth/two-factor/setup').set('Cookie', posCookie)).status).toBe(200);
+    } finally {
+      process.env.NODE_ENV = before.env;
+      if (before.key === undefined) delete process.env.SECRETS_KEY;
+      else process.env.SECRETS_KEY = before.key;
+    }
+  });
+
   it('refuses to replace the secret of an account that already has two-factor on', async () => {
     store.addUser(await user({ loginName: 'coded', layer: 'branch' }, 'codedpass1'));
     const secret = enableTwoFactor('coded');

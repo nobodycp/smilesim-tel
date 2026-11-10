@@ -972,6 +972,7 @@ export const he: Copy = {
     SIM_LENGTH: 'אורך מספר הסים אינו תואם לחברה',
     SIM_PREFIX: 'מספר הסים אינו מתחיל בקידומת של החברה',
     ESIM_UNSUPPORTED: 'החברה אינה תומכת ב-eSIM',
+    APP_CODE_UNAVAILABLE: 'אימות באפליקציה אינו זמין כעת. בחרו שיטה אחרת',
     QR_INVALID: 'תמונת קוד ה-QR אינה תקינה',
     IMAGE_TOO_LARGE: 'התמונה גדולה מדי (עד 700 KB)',
     ESIM_PACKAGE_OFF: 'החבילה לא זמינה כ-eSIM',

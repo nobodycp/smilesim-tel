@@ -3,6 +3,9 @@
 #   COOKIE_SECURE = true
 #   WEB_ORIGIN = the public web URL (the one browser origin the api allows, with cookies)
 #   NEXT_PUBLIC_API_URL = the public api URL (a build argument of web)
+#   SECRETS_KEY = 32 random bytes, base64 (`openssl rand -base64 32`); seals authenticator secrets. Without it a
+#     production api refuses new authenticator enrolments. After setting it once: `npm run seal-secrets --workspace api`.
+#     Losing it locks authenticator users out (the owner can clear 2FA per account).
 #
 # Trial accounts (branch/main/agent/pos with the published password 123456) are OFF here.
 # TRIAL_SEED and TRIAL_SEED_ALLOW_PRODUCTION default to false, so a deployment that reads
@@ -35,6 +38,7 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      SECRETS_KEY: ${SECRETS_KEY:-}
       TRIAL_SEED: ${TRIAL_SEED:-false}
       TRIAL_SEED_ALLOW_PRODUCTION: ${TRIAL_SEED_ALLOW_PRODUCTION:-false}
     depends_on:

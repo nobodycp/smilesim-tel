@@ -349,21 +349,9 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     await this.revokeSessions(rows.map((row) => row.id));
   }
 
-  /**
-   * Whether the token's live key exists. Sessions opened before 2026-11-10 kept their key under the cookie value
-   * itself: such a key is renamed to its hash the first time it is seen. Remove this fallback after 2026-12-15
-   * (longer than any idle rule lets a session live untouched).
-   */
-  private async hasLiveKey(token: string, tokenHash: string): Promise<boolean> {
-    if (await this.redis.exists(sessionKey(tokenHash))) return true;
-    if (!(await this.redis.exists(`session:${token}`))) return false;
-    await this.redis.rename(`session:${token}`, sessionKey(tokenHash));
-    return true;
-  }
-
   async liveSession(token: string): Promise<{ session: SessionRow; user: StoredUser; rules: SessionRules } | null> {
     const tokenHash = hashSessionToken(token);
-    if (!(await this.hasLiveKey(token, tokenHash))) return null;
+    if (!(await this.redis.exists(sessionKey(tokenHash)))) return null;
     const row = await this.prisma.session.findUnique({ where: { tokenHash }, include: { user: true } });
     if (!row || row.revokedAt || row.expiresAt.getTime() <= Date.now()) return null;
     const user = toStoredUser(row.user);

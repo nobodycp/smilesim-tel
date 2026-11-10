@@ -148,10 +148,10 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
 
 ## Known gaps (not done yet)
 
-- Authenticator (2FA) secrets are sealed only where `SECRETS_KEY` is set (32 bytes, base64); no environment has
-  one yet. After setting it, run `npm run seal-secrets --workspace api` once to seal the secrets already stored. A
-  lost key locks app-2FA users out (the owner can clear 2FA per account). The old-Redis-key fallback in
-  `PrismaAuthStore.hasLiveKey` is to be removed after 2026-12-15.
+- No environment has a `SECRETS_KEY` yet (32 bytes, base64; `docker-compose.yml` passes it to the api). Until one
+  is set a production api refuses new authenticator enrolments (`403 APP_CODE_UNAVAILABLE`) and secrets stored
+  before stay unsealed. After setting it, run `npm run seal-secrets --workspace api` once. A lost key locks app-2FA
+  users out (the owner can clear 2FA per account).
 - A cut catalog list answers `capped: true` (`LIST_CAP`, 1,000) but no screen says so yet.
 - Provider accounts still add purchases in memory (an operation without a stored cost falls back to the package's
   price); `provider-operations` filters its match state in memory (it is computed, not stored).

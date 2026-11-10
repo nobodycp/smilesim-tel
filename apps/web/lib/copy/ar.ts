@@ -972,6 +972,7 @@ export const ar = {
     SIM_LENGTH: 'عدد خانات الشريحة لا يطابق الشركة',
     SIM_PREFIX: 'رقم الشريحة لا يبدأ بمقدّمة الشركة',
     ESIM_UNSUPPORTED: 'الشركة لا تدعم eSIM',
+    APP_CODE_UNAVAILABLE: 'التحقق بتطبيق المصادقة غير متاح الآن. اختر طريقة أخرى',
     QR_INVALID: 'صورة رمز QR غير صالحة',
     IMAGE_TOO_LARGE: 'الصورة أكبر من المسموح (700 كيلوبايت)',
     ESIM_PACKAGE_OFF: 'الرزمة غير متاحة كـ eSIM',

@@ -83,6 +83,11 @@ describe('branding endpoints', () => {
     expect(pos.body.code).toBe('FORBIDDEN');
     const staff = await request(app.getHttpServer()).put('/branding').set('Cookie', staffCookie).send(body);
     expect(staff.status).toBe(403);
+    // Someone who entered the owner's account acts as the owner everywhere else, but may not change the identity.
+    const token = await store.saveImpersonation({ userId: 'owner', operatorId: 'staff', userAgent: 'spec', ip: '127.0.0.1' });
+    const entered = await request(app.getHttpServer()).put('/branding').set('Cookie', `${ownerCookie.split('=')[0]}=${token}`).send(body);
+    expect(entered.status).toBe(403);
+    expect(entered.body.code).toBe('FORBIDDEN');
     expect((await request(app.getHttpServer()).get('/branding')).body).toEqual(EMPTY);
   });
 

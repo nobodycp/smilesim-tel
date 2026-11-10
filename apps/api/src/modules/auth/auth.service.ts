@@ -20,7 +20,9 @@ import { hashPassword, passwordMatches } from './password';
 import { SessionRuleValues, effectiveRules, idsToRevoke, isListedAccountSession } from './sessions';
 import { createTotpSecret, totpKeyUri, totpMatches } from './totp';
 import { addressProblem, cityProblem, fullNameProblem, loginBlocked, newPasswordProblem } from './validators';
+import { isProduction } from '../../config';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
+import { secretsKey } from '../shared/secret-box';
 
 export type LoginResult =
   | { kind: 'error'; status: number; message: string; code: ErrorCode }
@@ -354,6 +356,8 @@ export class AuthService {
   async setupTwoFactor(sessionId: string | undefined): Promise<Outcome<{ otpauth: string }>> {
     const enrolling = await this.enrollmentSession(sessionId);
     if (enrolling.kind === 'error') return enrolling;
+    // A production process without a key would store the secret unsealed: it refuses the enrolment instead.
+    if (isProduction() && !secretsKey()) return fail(403, 'APP_CODE_UNAVAILABLE');
     const secret = createTotpSecret();
     await this.store.updateUser(enrolling.user.id, { pendingTwoFactorSecret: secret });
     return { kind: 'ok', otpauth: totpKeyUri(secret, enrolling.user.loginName, TOTP_ISSUER) };

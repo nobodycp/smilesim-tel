@@ -972,6 +972,7 @@ export const en: Copy = {
     SIM_LENGTH: 'The SIM number length does not match this company',
     SIM_PREFIX: "The SIM number does not start with this company's prefix",
     ESIM_UNSUPPORTED: 'This company does not take eSIM',
+    APP_CODE_UNAVAILABLE: 'Authenticator app sign-in is not available right now. Choose another method',
     QR_INVALID: 'The QR picture is not valid',
     IMAGE_TOO_LARGE: 'The picture is too large (700 KB at most)',
     ESIM_PACKAGE_OFF: 'This package is not offered as an eSIM',
