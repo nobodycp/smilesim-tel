@@ -19,3 +19,4 @@ dump.rdb
 graphify-out/
 screenshots/
 .claude/settings.local.json
+design/
