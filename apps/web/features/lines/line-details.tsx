@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarRange, Check, Copy, Gauge, MessageSquare, Phone, QrCode, Smartphone, Wifi, type LucideIcon } from 'lucide-react';
+import { Banknote, Building2, CalendarCheck, CalendarClock, CalendarRange, Check, Copy, Gauge, Hash, MessageSquare, Package, Phone, QrCode, RefreshCw, Smartphone, Store, Wifi, type LucideIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Money, latinWhen } from '../../components/desk';
@@ -56,21 +56,21 @@ export function LineDetails({ line, isPos, onQr }: { line: LineRow; isPos: boole
 
       <div className="ld-groups">
         <Group icon={CalendarRange} title={t.subscriptionSection}>
-          <Row label={t.company}>{line.companyName || '—'}</Row>
-          <Row label={t.packageName}>{line.packageName}</Row>
-          {line.months ? <Row label={t.packagePeriod}>{line.months === 1 ? t.monthOne : line.months === 2 ? t.monthTwo : <><span className="num">{line.months}</span> {t.months}</>}</Row> : null}
-          <Row label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Row>
-          <Row label={t.activatedOn}><bdi dir="ltr" className="num">{latinWhen(line.createdAt).slice(0, 10)}</bdi></Row>
-          <Row label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr" className="num">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</Row>
-          {!isPos && line.posLoginName ? <Row label={t.pointOfSale}><AccountName login={line.posLoginName} /></Row> : null}
+          <Row icon={Building2} label={t.company}>{line.companyName || '—'}</Row>
+          <Row icon={Package} label={t.packageName}>{line.packageName}</Row>
+          {line.months ? <Row icon={CalendarClock} label={t.packagePeriod}>{line.months === 1 ? t.monthOne : line.months === 2 ? t.monthTwo : <><span className="num">{line.months}</span> {t.months}</>}</Row> : null}
+          <Row icon={Banknote} label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Row>
+          <Row icon={CalendarCheck} label={t.activatedOn}><bdi dir="ltr" className="num">{latinWhen(line.createdAt).slice(0, 10)}</bdi></Row>
+          <Row icon={RefreshCw} label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr" className="num">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</Row>
+          {!isPos && line.posLoginName ? <Row icon={Store} label={t.pointOfSale} wide><AccountName login={line.posLoginName} /></Row> : null}
         </Group>
         <Group icon={Smartphone} title={t.simSection}>
-          <Row label={t.simType}><span className="ld-kind">{line.esim ? t.esim : t.physicalSim}</span></Row>
-          <Row label={t.simSerial}>{line.iccid ? <CopyValue value={line.iccid} /> : '—'}</Row>
+          <Row icon={Smartphone} label={t.simType}><span className="ld-kind">{line.esim ? t.esim : t.physicalSim}</span></Row>
+          <Row icon={Phone} label={t.number}><CopyValue value={line.msisdn} /></Row>
+          <Row icon={Hash} label={t.simSerial} wide>{line.iccid ? <CopyValue value={line.iccid} /> : '—'}</Row>
           {line.esim && line.esimQr ? (
-            <Row label={t.esimQr}><Button type="button" variant="secondary" size="sm" onClick={onQr}><QrCode size={15} strokeWidth={1.75} aria-hidden="true" />{t.showQr}</Button></Row>
+            <Row icon={QrCode} label={t.esimQr} wide><Button type="button" variant="secondary" size="sm" onClick={onQr}><QrCode size={15} strokeWidth={1.75} aria-hidden="true" />{t.showQr}</Button></Row>
           ) : null}
-          <Row label={t.number}><CopyValue value={line.msisdn} /></Row>
         </Group>
       </div>
     </div>
@@ -103,8 +103,14 @@ function Group({ icon: Icon, title, children }: { icon: LucideIcon; title: strin
   );
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="ld-row"><dt>{label}</dt><dd>{children}</dd></div>;
+/** One fact: a small tinted mark, its name above its value, close together so the eye reads them as one. */
+function Row({ icon: Icon, label, wide = false, children }: { icon: LucideIcon; label: string; wide?: boolean; children: ReactNode }) {
+  return (
+    <div className={wide ? 'ld-item wide' : 'ld-item'}>
+      <span className="ld-item-mark" aria-hidden="true"><Icon size={16} strokeWidth={1.8} /></span>
+      <span className="ld-item-text"><dt>{label}</dt><dd>{children}</dd></span>
+    </div>
+  );
 }
 
 /** A Latin value (number, serial) with a copy button beside it. */
