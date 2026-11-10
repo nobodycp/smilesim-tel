@@ -642,6 +642,7 @@ export const ar = {
   copy: 'نسخ',
   monthOne: 'شهر',
   monthTwo: 'شهران',
+  esimQrLede: 'امسحه من كاميرا الهاتف لتثبيت eSIM على الرقم.',
   usedCeiling: 'المستخدم من السقف',
   availableToSell: 'المتاح للبيع',
   moreActions: 'إجراءات أخرى',

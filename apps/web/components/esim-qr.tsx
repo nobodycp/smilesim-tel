@@ -46,9 +46,9 @@ export function EsimMark({ src, label, onOpen }: { src: string; label: string; o
 export function EsimDialog({ line, onClose }: { line: LineLike | null; onClose: () => void }) {
   const { t } = usePrefs();
   return (
-    <Dialog open={Boolean(line?.esimQr)} title={t.esimQr} closeLabel={t.closeMenu} onClose={onClose} size="confirm" footer={<Button type="button" variant="secondary" onClick={onClose}>{t.closeMenu}</Button>}>
+    <Dialog open={Boolean(line?.esimQr)} title={t.esimQr} lede={t.esimQrLede} closeLabel={t.closeMenu} onClose={onClose} size="confirm" className="dialog-qr" footer={<Button type="button" variant="secondary" onClick={onClose}>{t.closeMenu}</Button>}>
       {line?.esimQr ? (
-        <div className="stack">
+        <div className="qr-sheet">
           <QrTile src={line.esimQr} />
           <Facts>
             <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>

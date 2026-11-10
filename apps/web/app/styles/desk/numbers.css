@@ -55,25 +55,23 @@
 .op-tile:hover { background: var(--rd-surface-2); }
 .op-board .op-card.danger { color: var(--rd-danger); }
 /* Label/value cards. The grid repeats the pair across the width: three columns on a wide canvas, one in a dialog or a narrow window. */
+/* A dialog's summary (`Facts`, default variant; owner 2026-11-11): one soft panel, each fact its name over its value,
+   side by side as room allows — the same reading as the number's «التفاصيل», no grey label cells. */
 .detail-rows {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-  gap: var(--rd-space-1-5);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  gap: var(--rd-space-3) var(--rd-space-4);
   margin: 0;
-}
-.detail-rows > div {
-  display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
-  align-items: stretch;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--rd-line);
+  padding: var(--rd-space-3) var(--rd-space-3-5);
   border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface);
+  background: var(--rd-surface-2);
+  box-shadow: inset 0 0 0 1px var(--rd-line-soft);
 }
-.detail-rows dd { min-width: 0; overflow-wrap: anywhere; }
-/* A control inside a value cell keeps the row at text height: 28px tall, pulled into the cell padding. */
-.detail-rows dd > button { height: 28px; min-height: 0; margin-block: -4px; }
+.detail-rows > div { display: grid; align-content: start; gap: 3px; min-width: 0; }
+.detail-rows dt { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; text-align: start; }
+.detail-rows dd { margin: 0; min-width: 0; color: var(--rd-ink); font-size: var(--rd-text-md); font-weight: 700; line-height: 1.35; text-align: start; overflow-wrap: anywhere; }
+.detail-rows dd bdi { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.detail-rows dd > button { justify-self: start; }
 /* «التفاصيل» (features/lines/line-details.tsx; owner 2026-11-11): the period as a timeline, the usage as three rings,
    then two titled groups of key and value rows. No cards: sections divided by hairlines. */
 .line-details { display: grid; gap: 0; padding: 0; }
@@ -168,32 +166,13 @@
   background: var(--rd-qr-tile);
 }
 .qr-tile img { display: block; width: 100%; height: auto; image-rendering: pixelated; }
+/* The eSIM code dialog: the code on its white tile, centred, then the summary panel under it. */
+.qr-sheet { display: grid; gap: var(--rd-space-3); }
+.dialog-qr .qr-tile { width: min(100%, 240px); padding: var(--rd-space-3-5); box-shadow: var(--rd-shadow-sm); }
 .qr-picker { display: grid; gap: var(--rd-space-2); justify-items: start; }
 .qr-picker .qr-tile { width: min(100%, 160px); margin-inline: 0; padding: var(--rd-space-2); }
 .qr-picker-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2); }
 .qr-picker-row .quiet-file { margin-inline-start: 0; }
-.detail-rows dt,
-.detail-rows dd {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin: 0;
-  padding: var(--rd-space-1) var(--rd-space-2);
-  text-align: start;
-}
-.detail-rows dt {
-  color: var(--rd-ink-2);
-  font-size: var(--rd-text-sm);
-  font-weight: 700;
-  background: var(--rd-surface-3);
-  border-inline-end: 1px solid var(--rd-line);
-}
-.detail-rows dd {
-  color: var(--rd-ink);
-  font-size: var(--rd-text-md);
-  font-weight: 700;
-  background: var(--rd-surface);
-}
 /* The extra operations dialog on a number's card (spec 2026-11-09, 3): one radio row per operation, its price at the end. */
 .addon-choices { display: grid; gap: var(--rd-space-1); margin: 0; padding: 0; border: 0; }
 .addon-choices .check { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--rd-space-2); padding-block: var(--rd-space-1-5); border-block-end: 1px solid var(--rd-line-soft); }

@@ -642,6 +642,7 @@ export const he: Copy = {
   copy: 'העתקה',
   monthOne: 'חודש',
   monthTwo: 'חודשיים',
+  esimQrLede: 'סרקו אותו במצלמת הטלפון כדי להתקין את ה-eSIM למספר.',
   usedCeiling: 'נוצל מהתקרה',
   availableToSell: 'זמין למכירה',
   moreActions: 'פעולות נוספות',

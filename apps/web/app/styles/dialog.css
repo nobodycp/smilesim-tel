@@ -187,8 +187,6 @@
 .choice-set .check { min-height: 44px; }
 /* The two groups of terms share a row once each has room for its rows, and stack when it does not. */
 .transfer-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: var(--rd-space-3); }
-/* A point of sale has one balance, an agent has two: the cards share the row between them instead of leaving it half empty. */
-.dialog-transfer .detail-rows { grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
 /* A wide screen gives the transfer dialog the room for those two groups side by side. */
 @media (min-width: 1100px) {
   .dialog.dialog-transfer { width: min(760px, 100%); }
