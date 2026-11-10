@@ -19,7 +19,8 @@ run (a ratchet: a rule's violation count may only go down). Read it before the f
    `ApiExceptionFilter` (every error is `{ message, code }`) and `EmptyBodyPipe` (a missing body is `{}`).
 3. Office controllers: `ActivityInterceptor` then `ActorInterceptor`; the handler gets `@Actor()`.
 4. The service: permission through `office/policy.ts` → `parseInput(<Schema>, body)` from `<domain>.schemas.ts` →
-   rules (`office/rules/`, pure) → Prisma. Money and status changes run in `kernel.runTx` on locked rows.
+   rules (`office/rules/`, pure) → `<domain>.repository.ts` (one named method per query; a method that may run in
+   a transaction takes the client). Money and status changes run in `kernel.runTx` on locked rows.
 5. A line operation asks `ProviderGateway` whether the provider ran it; a refusal or a manual mode opens a task.
 
 ## Stack
@@ -141,9 +142,10 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
 
 ## Known gaps (not done yet)
 
-- Services still call Prisma directly (228 call sites, guard `prisma-in-service`): a repository per domain is
-  phase R of `docs/superpowers/plans/2026-11-10-office-kernel-split.md`. Phases K (the kernel is gone) and M (one
-  Nest module per domain) are done.
+- Left from the kernel split (`docs/superpowers/plans/2026-11-10-office-kernel-split.md`, all three phases done):
+  `audit`, `roles` and `notices` keep their few queries in the service (10 call sites, guard `prisma-in-service`);
+  six services still receive a `UnitOfWork` they no longer use; `AccountsService.remove` deletes outside a
+  transaction; a rename applied by a task answers 500, not 409, when it loses a race for the number.
 - `rules/office-rules.ts` mixes modes, SIM rules and refund periods; split by topic.
 - Session ids are stored as written (review S6) and TOTP secrets in clear (S12); both need a migration of live
   sessions and secrets.

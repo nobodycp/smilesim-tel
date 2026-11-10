@@ -4,7 +4,7 @@ import { UnitOfWork } from '../kernel/unit-of-work';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
-import { LINES_PAGE, NEWEST_FIRST, idCursorArgs, isSuspended, linesWhere, pageOf, type LineFilter } from '../rules/office-paging';
+import { LINES_PAGE, idCursorArgs, isSuspended, linesWhere, pageOf, type LineFilter } from '../rules/office-paging';
 import { esimPriceOf, offeredOperations, refreshMode, resolvePackageMode, simRulesOf, visibleAccountIds } from '../rules/office-rules';
 import { deniedOpsFor, visibleTo, type OpKey, type PathNode } from '../rules/user-terms';
 import { lineHistory } from './line-history';
@@ -16,11 +16,11 @@ const RECHARGE_KINDS = ['activate', 'charge', 'extend', 'reactivate'];
 /** Numbers as they are read: the paged list and one number's card with its history and the operations it offers. */
 @Injectable()
 export class LineReads {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, readonly repo: LinesRepository) {}
+  constructor(readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly repo: LinesRepository) {}
 
   /** The suspension periods the packages use, so the suspended filter has one cut-off per period. */
   async suspendPeriods(): Promise<number[]> {
-    const rows = await this.uow.prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } });
+    const rows = await this.repo.suspendPeriods();
     return rows.map((row) => row.suspendAfterDays);
   }
 
@@ -35,13 +35,8 @@ export class LineReads {
     const periods = query.status === 'suspended' ? await this.suspendPeriods() : [];
     const where = linesWhere(posIds, query, periods);
     const [rows, total] = await Promise.all([
-      this.uow.prisma.line.findMany({
-        where,
-        include: { package: { include: { company: true } }, pos: true },
-        orderBy: [...NEWEST_FIRST],
-        ...idCursorArgs(query.cursor || undefined, LINES_PAGE),
-      }),
-      this.uow.prisma.line.count({ where }),
+      this.repo.linesPage(where, idCursorArgs(query.cursor || undefined, LINES_PAGE)),
+      this.repo.countLines(where),
     ]);
     const { page, nextCursor } = pageOf(rows, LINES_PAGE);
     return {
@@ -72,41 +67,25 @@ export class LineReads {
   }
 
   async detail(actor: Actor, id: string) {
-    const line = await this.uow.prisma.line.findUnique({
-      where: { id },
-      include: { package: { include: { company: true, provider: true } }, pos: true },
-    });
+    const line = await this.repo.lineCard(id);
     if (!line) fail(404, 'NOT_FOUND');
     const accounts = await this.tree.accounts();
     if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
     const posPath = this.tree.pathOf(line.posId, accounts);
     const denied = deniedOpsFor(posPath);
     const [tasks, entries] = await Promise.all([
-      this.uow.prisma.officeTask.findMany({
-        where: { lineId: line.id },
-        orderBy: { createdAt: 'desc' },
-        take: 40,
-        include: {
-          submitter: { select: { loginName: true, nickname: true } },
-          assignee: { select: { loginName: true, nickname: true } },
-        },
-      }),
-      this.uow.prisma.walletEntry.findMany({
-        where: { lineId: line.id },
-        orderBy: { createdAt: 'desc' },
-        take: 40,
-        include: { actor: { select: { loginName: true, nickname: true } } },
-      }),
+      this.repo.tasksOfLine(line.id),
+      this.repo.entriesOfLine(line.id),
     ]);
     const packageIds = [...new Set(tasks.flatMap((task) => [task.packageId, task.nextPackageId].filter((id): id is string => !!id)))];
     const packages = packageIds.length
-      ? await this.uow.prisma.package.findMany({ where: { id: { in: packageIds } }, include: { company: true } })
+      ? await this.repo.packagesByIds(packageIds)
       : [];
     const byPackage = new Map(packages.map((row) => [row.id, row]));
     const history = lineHistory(line, entries, tasks, byPackage);
     const recharge = entries.find((entry) => RECHARGE_KINDS.includes(entry.kind))
       ?? (entries.length >= 40
-        ? await this.uow.prisma.walletEntry.findFirst({ where: { lineId: line.id, kind: { in: RECHARGE_KINDS } }, orderBy: { createdAt: 'desc' }, select: { kind: true, createdAt: true } })
+        ? await this.repo.lastEntryOfKinds(line.id, RECHARGE_KINDS)
         : null);
     return {
       line: {
@@ -133,11 +112,7 @@ export class LineReads {
         endsAt: line.endsAt.toISOString(),
         operations: this.operationsFor({ ...line, denied }),
         // The package's extra operations the number may ask for (spec 2026-11-09, 3).
-        addons: line.status === 'disconnected' ? [] : (await this.uow.prisma.packageAddon.findMany({
-          where: { packageId: line.packageId, active: true },
-          orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-          select: { id: true, name: true, price: true },
-        })),
+        addons: line.status === 'disconnected' ? [] : (await this.repo.activeAddons(line.packageId)),
       },
       history,
     };
@@ -167,15 +142,9 @@ export class LineReads {
 
   /** Switch targets saved on the package that the selling account may see. */
   private async visibleSwitchTargets(packageId: string, posPath: PathNode[]): Promise<string[]> {
-    const saved = await this.uow.prisma.packageSwitch.findMany({
-      where: { packageId },
-      select: { target: { select: { id: true, code: true, enabled: true, forSale: true } } },
-    });
+    const saved = await this.repo.switchTargets(packageId);
     if (saved.length === 0) return [];
-    const terms = await this.uow.prisma.userPackage.findMany({
-      where: { packageId: { in: saved.map((item) => item.target.id) }, userId: { in: posPath.map((node) => node.id) } },
-      select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
-    });
+    const terms = await this.repo.accountTerms(saved.map((item) => item.target.id), posPath.map((node) => node.id));
     return saved
       .filter((item) => visibleTo(posPath, terms.filter((row) => row.packageId === item.target.id), item.target))
       .map((item) => item.target.code);

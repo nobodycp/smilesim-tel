@@ -11,7 +11,7 @@ import { fail } from '../../shared/office-failure';
 import { parseInput } from '../../shared/input';
 import { feedPosition } from '../kernel/feed';
 import type { Actor } from '../kernel/types';
-import { FEED_PAGE, NEWEST_FIRST, afterFeed, encodeFeedCursor, mergeFeed } from '../rules/office-paging';
+import { FEED_PAGE, afterFeed, encodeFeedCursor, mergeFeed } from '../rules/office-paging';
 import { visibleAccountIds } from '../rules/office-rules';
 import { CeilingBody, DeductBody, FundBody } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
@@ -26,12 +26,12 @@ const PROFIT_REPORT_LIMIT = 50_000;
 /** Wallets and money reads: the wallets an account sees, funding and ceilings, the ledger, the finance report and provider operations. Branch reports are in ReportsService. */
 @Injectable()
 export class WalletsService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly ladder: PriceLadder, readonly repo: WalletsRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly ladder: PriceLadder, private readonly repo: WalletsRepository) {}
 
   async list(actor: Actor) {
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const rows = await this.uow.prisma.wallet.findMany({ where: { userId: { in: [...visible] } } });
+    const rows = await this.repo.walletsOf([...visible]);
     const byUser = new Map(rows.map((row) => [row.userId, row]));
     const byId = new Map(accounts.map((account) => [account.id, account]));
     return {
@@ -109,7 +109,7 @@ export class WalletsService {
     const accounts = await this.tree.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target || target.parentId !== actor.id) fail(403, 'FORBIDDEN');
-    await this.uow.prisma.wallet.update({ where: { userId: target.id }, data: { ceiling } });
+    await this.repo.setCeiling(target.id, ceiling);
     return { ok: true };
   }
 
@@ -132,13 +132,8 @@ export class WalletsService {
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
     };
     const [read, total] = await Promise.all([
-      this.uow.prisma.walletEntry.findMany({
-        where: { ...where, AND: afterFeed(feedPosition(query.cursor)) },
-        include: { actor: true, user: true },
-        orderBy: [...NEWEST_FIRST],
-        take: FEED_PAGE + 1,
-      }),
-      this.uow.prisma.walletEntry.count({ where }),
+      this.repo.entriesWithAccounts({ ...where, AND: afterFeed(feedPosition(query.cursor)) }, FEED_PAGE + 1),
+      this.repo.countEntries(where),
     ]);
     const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
     return {
@@ -168,22 +163,14 @@ export class WalletsService {
    * entry), newest first. Shared by the provider-operations report and the provider accounts (roadmap N7).
    */
   async pricedOperations(filter: { kind?: string; msisdn?: string } = {}) {
-    const rows = await this.uow.prisma.walletEntry.findMany({
-      where: {
-        kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
-        ...(filter.msisdn ? { msisdn: { contains: filter.msisdn } } : {}),
-      },
-      orderBy: [...NEWEST_FIRST],
+    const rows = await this.repo.operationEntries({
+      kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
+      ...(filter.msisdn ? { msisdn: { contains: filter.msisdn } } : {}),
     });
     const lineIds = [...new Set(rows.flatMap((row) => (row.lineId ? [row.lineId] : [])))];
     const [lines, packages] = await Promise.all([
-      lineIds.length
-        ? this.uow.prisma.line.findMany({
-            where: { id: { in: lineIds } },
-            include: { package: { include: { provider: true, company: true } } },
-          })
-        : [],
-      this.uow.prisma.package.findMany({ include: { provider: true, company: true } }),
+      lineIds.length ? this.repo.linesWithPackage(lineIds) : [],
+      this.repo.packagesWithProvider(),
     ]);
     const lineById = new Map(lines.map((line) => [line.id, line]));
     return rows.map((row) => {
@@ -210,7 +197,7 @@ export class WalletsService {
     const { from, to } = dayRange(query.from, query.to);
     const [resolved, providers] = await Promise.all([
       this.pricedOperations({ kind: kind || undefined, msisdn: needle || undefined }),
-      this.uow.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
+      this.repo.providersByName(),
     ]);
     const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
     // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
@@ -314,14 +301,14 @@ export class WalletsService {
     for (const row of rows) if (row.ladder) ladders.set(row.id, row.ladder as Ladder);
     if (!missing.length) return ladders;
     const accounts = await this.tree.accounts();
-    const lines = await this.uow.prisma.line.findMany({ where: { id: { in: [...new Set(missing.map((row) => row.lineId as string))] } }, select: { id: true, terms: true } });
+    const lines = await this.repo.lineTerms([...new Set(missing.map((row) => row.lineId as string))]);
     const codeOf = new Map(lines.map((line) => [line.id, (line.terms as { packageCode?: string } | null)?.packageCode ?? '']));
     const paths = new Map(missing.map((row) => [row.userId, this.tree.pathOf(row.userId, accounts)]));
     const codes = [...new Set([...codeOf.values()].filter(Boolean))];
     const ids = [...new Set([...paths.values()].flat().map((node) => node.id))];
     const [ladderRows, subscribers] = await Promise.all([
       this.ladder.ladderRows(codes, ids, this.uow.prisma),
-      this.uow.prisma.package.findMany({ where: { code: { in: codes } }, select: { code: true, subscriberPrice: true, renewalSubscriberPrice: true } }),
+      this.repo.subscriberPrices(codes),
     ]);
     for (const row of missing) {
       const pkg = ladderRows.packages.find((item) => item.code === codeOf.get(row.lineId as string));
@@ -356,11 +343,7 @@ export class WalletsService {
     const oldRefunds = refunds.filter((row) => !row.ladder);
     for (const row of refunds) if (row.ladder) ladders.set(row.id, row.ladder as Ladder);
     if (oldRefunds.length) {
-      const earlier = await this.uow.prisma.walletEntry.findMany({
-        where: { lineId: { in: [...new Set(oldRefunds.map((row) => row.lineId as string))] }, kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } },
-        select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, ladder: true, createdAt: true },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      });
+      const earlier = await this.repo.salesOfLines([...new Set(oldRefunds.map((row) => row.lineId as string))], Object.keys(SALE_KINDS));
       const bases = await this.laddersOf(earlier);
       for (const row of oldRefunds) {
         const sale = earlier.find((item) => item.lineId === row.lineId && (!row.createdAt || item.createdAt <= row.createdAt));
@@ -390,17 +373,12 @@ export class WalletsService {
    * package sold in its chain, newest package first, with the totals. Same filters as the ledger (`from`, `to`, `q`).
    */
   async profitReport(actor: Actor, query: { from?: string; to?: string; q?: string } = {}) {
-    const rows = await this.uow.prisma.walletEntry.findMany({
-      where: {
-        AND: [
-          await this.financeWhere(actor, query),
-          { OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }] },
-        ],
-      },
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, packageName: true, companyName: true },
-      orderBy: [...NEWEST_FIRST],
-      take: PROFIT_REPORT_LIMIT,
-    });
+    const rows = await this.repo.profitEntries({
+      AND: [
+        await this.financeWhere(actor, query),
+        { OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }] },
+      ],
+    }, PROFIT_REPORT_LIMIT);
     const margins = await this.marginsFor(actor, rows);
     const groups = new Map<string, { packageName: string; companyName: string; sales: number; refunds: number; profit: number }>();
     for (const row of rows) {
@@ -427,22 +405,15 @@ export class WalletsService {
   /** The signed-in account's own wallet over the last `days` (7, 30 or 90): the finance page's cards and chart. */
   async financeSummary(actor: Actor, now = new Date(), days = SUMMARY_DAYS) {
     const [wallet, entries] = await Promise.all([
-      this.uow.prisma.wallet.findUnique({ where: { userId: actor.id } }),
-      this.uow.prisma.walletEntry.findMany({
-        where: { userId: actor.id, amount: { not: 0 }, createdAt: { gte: windowStart(now, days) } },
-        select: { createdAt: true, amount: true, balanceAfter: true, kind: true },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      }),
+      this.repo.walletOf(actor.id),
+      this.repo.movementsSince(actor.id, windowStart(now, days)),
     ]);
     const balance = wallet?.balance ?? 0;
     // What this account earned on the sales under it (or its own) over the same window.
-    const sold = await this.uow.prisma.walletEntry.findMany({
-      where: {
-        ...(await this.financeWhere(actor, {})),
-        OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }],
-        createdAt: { gte: windowStart(now, days) },
-      },
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true },
+    const sold = await this.repo.soldEntries({
+      ...(await this.financeWhere(actor, {})),
+      OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }],
+      createdAt: { gte: windowStart(now, days) },
     });
     const margins = await this.marginsFor(actor, sold);
     const profit = [...margins.values()].reduce((sum: number, value) => sum + (value ?? 0), 0);
@@ -452,12 +423,7 @@ export class WalletsService {
 
   /** The ledger with the page's filters as a CSV, newest first, at most 10,000 rows. */
   async financeCsv(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
-    const rows = await this.uow.prisma.walletEntry.findMany({
-      where: await this.financeWhere(actor, query),
-      include: { user: true, actor: true },
-      orderBy: [...NEWEST_FIRST],
-      take: FINANCE_CSV_LIMIT,
-    });
+    const rows = await this.repo.entriesWithAccounts(await this.financeWhere(actor, query), FINANCE_CSV_LIMIT);
     return ledgerCsv(rows.map((row) => ({
       at: row.createdAt.toISOString(),
       loginName: row.user.loginName,
@@ -478,14 +444,9 @@ export class WalletsService {
     const position = feedPosition(query.cursor);
     const where = await this.financeWhere(actor, query);
     const [rows, total] = await Promise.all([
-      this.uow.prisma.walletEntry.findMany({
-        // The page cursor joins the ledger filter instead of replacing its own conditions.
-        where: position ? { AND: [where, { OR: [{ createdAt: { lt: position.at } }, { createdAt: position.at, id: { lt: position.id } }] }] } : where,
-        include: { user: true, actor: true },
-        orderBy: [...NEWEST_FIRST],
-        take: FEED_PAGE + 1,
-      }),
-      this.uow.prisma.walletEntry.count({ where }),
+      // The page cursor joins the ledger filter instead of replacing its own conditions.
+      this.repo.entriesWithAccounts(position ? { AND: [where, { OR: [{ createdAt: { lt: position.at } }, { createdAt: position.at, id: { lt: position.id } }] }] } : where, FEED_PAGE + 1),
+      this.repo.countEntries(where),
     ]);
     const page = rows.slice(0, FEED_PAGE);
     const last = page[page.length - 1];

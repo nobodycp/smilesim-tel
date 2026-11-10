@@ -5,7 +5,7 @@ import { holdsAny } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../kernel/types';
 import { visibleAccountIds } from '../rules/office-rules';
-import { NEWEST_FIRST, expiringWhere, suspendedWhere } from '../rules/office-paging';
+import { expiringWhere, suspendedWhere } from '../rules/office-paging';
 import { REFUND_KINDS, SALE_KINDS, marginOf } from '../rules/profit-ladder';
 import { ProviderAccountsService } from '../providers/provider-accounts.service';
 import { ProviderHealthService } from '../providers/provider-health.service';
@@ -48,13 +48,13 @@ function bump(map: Map<string, Ranked>, key: string, label: string, amount: numb
 @Injectable()
 export class OverviewService {
   constructor(
-    private readonly uow: UnitOfWork,
+    readonly uow: UnitOfWork,
     private readonly tree: AccountTree,
     private readonly wallets: WalletsService,
     private readonly insights: InsightsService,
     private readonly providerAccounts: ProviderAccountsService,
     private readonly health: ProviderHealthService,
-    readonly repo: DeskRepository,
+    private readonly repo: DeskRepository,
   ) {}
 
   async overview(actor: Actor, query: { period?: string } = {}) {
@@ -84,12 +84,11 @@ export class OverviewService {
    * snapshot is written here, so history builds as the home is read. Null when there is no snapshot to compare with.
    */
   private async lineChange(actor: Actor, period: OverviewPeriod, lines: LineCounts, now: Date): Promise<LineCounts | null> {
-    const store = this.uow.prisma.lineCountSnapshot;
     const today = now.toISOString().slice(0, 10);
-    await store.upsert({ where: { userId_day: { userId: actor.id, day: today } }, update: lines, create: { userId: actor.id, day: today, ...lines } });
+    await this.repo.saveLineSnapshot(actor.id, today, lines);
     if (period === 'all') return lines;
     const before = (periodStart(period, now) as Date).toISOString().slice(0, 10);
-    const base = await store.findFirst({ where: { userId: actor.id, day: { lt: before } }, orderBy: { day: 'desc' } });
+    const base = await this.repo.lineSnapshotBefore(actor.id, before);
     if (!base) return null;
     return {
       active: lines.active - base.active,
@@ -102,16 +101,15 @@ export class OverviewService {
 
   /** Lines now, under the viewer: each a slice of the donut (suspended and expiring are read from the end date). */
   private async lines(posIds: string[], now: Date): Promise<LineCounts> {
-    const prisma = this.uow.prisma;
     const scope = { posId: { in: posIds } };
-    const periods = (await prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } })).map((row) => row.suspendAfterDays);
+    const periods = (await this.repo.suspendPeriods()).map((row) => row.suspendAfterDays);
     const suspendedScope = { AND: [scope, suspendedWhere(periods, now)] };
     const [active, expiring, frozen, disconnected, suspended] = await Promise.all([
-      prisma.line.count({ where: { ...scope, status: 'active' } }),
-      prisma.line.count({ where: { AND: [scope, expiringWhere(now)] } }),
-      prisma.line.count({ where: { ...scope, status: 'frozen' } }),
-      prisma.line.count({ where: { ...scope, status: 'disconnected' } }),
-      prisma.line.count({ where: suspendedScope }),
+      this.repo.lineCountInStatus(posIds, 'active'),
+      this.repo.lineCount({ AND: [scope, expiringWhere(now)] }),
+      this.repo.lineCountInStatus(posIds, 'frozen'),
+      this.repo.lineCountInStatus(posIds, 'disconnected'),
+      this.repo.lineCount(suspendedScope),
     ]);
     // A suspended line is still stored as active: it leaves the active slice, and so does an expiring one.
     return { active: Math.max(0, active - expiring - suspended), expiring, frozen, disconnected, suspended };
@@ -120,17 +118,15 @@ export class OverviewService {
   /** The sales and refunds of the period that the viewer may see, newest first, up to the overview's limit. */
   private async periodEntries(actor: Actor, from: Date | null) {
     const where = await this.wallets.financeWhere(actor, from ? { from: from.toISOString() } : {});
-    return this.uow.prisma.walletEntry.findMany({
-      where: {
+    return this.repo.periodEntries(
+      {
         AND: [
           where,
           { OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }] },
         ],
       },
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, packageName: true, companyName: true, providerCost: true },
-      orderBy: [...NEWEST_FIRST],
-      take: OVERVIEW_LIMIT,
-    });
+      OVERVIEW_LIMIT,
+    );
   }
 
   /** Sales, refunds, a daily trend, the rankings and the most active accounts, from the period's ledger. */
@@ -213,16 +209,15 @@ export class OverviewService {
   /** Sales, their volume, activations and the viewer's profit between two instants: the period before, to compare. */
   private async totalsBetween(actor: Actor, from: Date, to: Date): Promise<PulseTotals> {
     const where = await this.wallets.financeWhere(actor, { from: from.toISOString(), to: to.toISOString() });
-    const rows = await this.uow.prisma.walletEntry.findMany({
-      where: {
+    const rows = await this.repo.entriesForTotals(
+      {
         AND: [
           where,
           { OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }] },
         ],
       },
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true },
-      take: OVERVIEW_LIMIT,
-    });
+      OVERVIEW_LIMIT,
+    );
     const ladders = await this.wallets.laddersFor(rows);
     const totals = emptyTotals();
     for (const row of rows) {
@@ -236,7 +231,7 @@ export class OverviewService {
   private async providerOfLines(lineIds: (string | null)[]) {
     const ids = [...new Set(lineIds.filter((id): id is string => Boolean(id)))];
     if (!ids.length) return new Map<string, { code: string; name: string }>();
-    const lines = await this.uow.prisma.line.findMany({ where: { id: { in: ids } }, select: { id: true, package: { select: { provider: { select: { code: true, name: true } } } } } });
+    const lines = await this.repo.providersOfLines(ids);
     return new Map(lines.map((line) => [line.id, line.package.provider]));
   }
 
@@ -244,7 +239,7 @@ export class OverviewService {
   private async users(actor: Actor, accounts: Awaited<ReturnType<AccountTree['accounts']>>, visible: Set<string>) {
     const below = accounts.filter((account) => visible.has(account.id) && account.id !== actor.id && account.layer !== 'branch');
     const wallets = below.length
-      ? await this.uow.prisma.wallet.findMany({ where: { userId: { in: below.map((account) => account.id) } }, select: { userId: true, balance: true, ceiling: true } })
+      ? await this.repo.walletsOf(below.map((account) => account.id))
       : [];
     const debtors = wallets.filter((wallet) => wallet.balance < 0);
     return {
@@ -264,9 +259,8 @@ export class OverviewService {
   /** Tasks the viewer may see, by status, and how long the oldest open one has waited. */
   private async tasks(actor: Actor, accounts: Awaited<ReturnType<AccountTree['accounts']>>, now: Date) {
     const where = taskWhereFor(actor, accounts);
-    const prisma = this.uow.prisma;
-    const counts = await Promise.all(TASK_STATUSES.map((status) => prisma.officeTask.count({ where: { AND: [where, { status }] } })));
-    const oldest = await prisma.officeTask.findFirst({ where: { AND: [where, { status: { in: ['pending', 'working'] } }] }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } });
+    const counts = await Promise.all(TASK_STATUSES.map((status) => this.repo.taskCountInStatus(where, status)));
+    const oldest = await this.repo.oldestOpenTask(where);
     return {
       ...Object.fromEntries(TASK_STATUSES.map((status, index) => [status, counts[index]])),
       oldestOpenMinutes: oldest ? Math.max(0, Math.round((now.getTime() - oldest.createdAt.getTime()) / 60_000)) : null,

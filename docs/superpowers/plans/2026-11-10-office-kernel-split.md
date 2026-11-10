@@ -153,18 +153,34 @@ permissions, parsing, rules, response shaping. Lower `prisma-in-service`. No que
 
 | Slice | Service (Prisma calls today) | Specs |
 |---|---|---|
-| - [ ] **R.1** | `accounts/accounts.service` (33 + 3 in tx) | `accounts/accounts.http`, `testing/permissions.http` |
-| - [ ] **R.2** | `packages/packages.service` (26 + 4) | `packages/*`, `testing/response-shape` |
-| - [ ] **R.3** | `wallets/wallets.service` (19) and `wallets/wallet-ledger` (11 in tx) | `wallets/*`, both `*.db.spec.ts` |
-| - [ ] **R.4** | `lines/*` (`line-reads` 11, `lines.service` 9 + 5, `task-completion` 3 + 13, `line-state` 4) → `lines/lines.repository.ts` | every spec under `lines/`, both `*.db.spec.ts` |
-| - [ ] **R.5** | `terms/terms.service` (17 + 3), `transfers/transfers.service` (5 + 9) | `terms/*`, `transfers/*` |
-| - [ ] **R.6** | `tasks/tasks.service` (11 + 8) | `tasks/*`, `testing/office-lists` |
-| - [ ] **R.7** | `providers/provider-accounts.service` (16), `providers.service` (9), `provider-catalog.service` (8), `provider-health.service` (6) → `providers/providers.repository.ts` | every spec under `providers/`, `catalog/catalog.http` |
-| - [ ] **R.8** | `offers` (9), `companies` (6), `desk/*` (14), `reports/*` (7), `audit` (4), `roles` (4), `notices` (2): only where five or more queries remain in one service | their specs |
+| - [x] **R.1** | `accounts/accounts.service` (33 + 3 in tx) | `accounts/accounts.http`, `testing/permissions.http` |
+| - [x] **R.2** | `packages/packages.service` (26 + 4) | `packages/*`, `testing/response-shape` |
+| - [x] **R.3** | `wallets/wallets.service` (19) and `wallets/wallet-ledger` (11 in tx) | `wallets/*`, both `*.db.spec.ts` |
+| - [x] **R.4** | `lines/*` (`line-reads` 11, `lines.service` 9 + 5, `task-completion` 3 + 13, `line-state` 4) → `lines/lines.repository.ts` | every spec under `lines/`, both `*.db.spec.ts` |
+| - [x] **R.5** | `terms/terms.service` (17 + 3), `transfers/transfers.service` (5 + 9) | `terms/*`, `transfers/*` |
+| - [x] **R.6** | `tasks/tasks.service` (11 + 8) | `tasks/*`, `testing/office-lists` |
+| - [x] **R.7** | `providers/provider-accounts.service` (16), `providers.service` (9), `provider-catalog.service` (8), `provider-health.service` (6) → `providers/providers.repository.ts` | every spec under `providers/`, `catalog/catalog.http` |
+| - [x] **R.8** | `offers` (9), `companies` (6), `desk/*` (14), `reports/*` (7), `audit` (4), `roles` (4), `notices` (2): only where five or more queries remain in one service | their specs |
 
-- [ ] **R.9 Close.** `prisma-in-service` baseline is what R.8 deliberately left (listed by file in the rule's
+- [x] **R.9 Close.** (this commit; pushing waits for the owner's word) `prisma-in-service` baseline is what R.8 deliberately left (listed by file in the rule's
   comment). `docs/architecture/backend.md` rewritten sections: entry table, kernel row, modules, "Known gaps".
   ADR `0012-kernel-split-and-domain-modules.md`. Whole `src` suite with `--runInBand`. Ask the owner to push.
+
+### How phase R was done (2026-11-10)
+
+Two commits: the groundwork (an empty repository per domain wired into every constructor, module and hand-built
+call site), then the move itself, done by domain in parallel and reviewed as one diff. Thirteen repositories:
+accounts, offers, companies, packages, terms, transfers, wallets, tasks, lines (shared by `LinesService`,
+`LineReads`, `TaskCompletion`, `LinePricing`), providers (shared by its four services), desk (two), reports (two).
+`prisma-in-service` 228 → 10: `audit` (4), `roles` (4) and `notices` (2) keep their few queries, as the spec's
+decision 6 allows. `WalletLedger` and `line-state.ts` keep their own writes: they are the guarded money and status
+primitives, not services. Reviewed for the two ways a move can break money: no write moved from a transaction
+client to the root client, and no repository call inside `runTx` without the transaction's client.
+
+Left as they were, noted during the move (none is new): `AccountsService.remove` deletes in several statements
+outside a transaction; a rename applied by a task has no unique-violation mapping (500 instead of 409 on a race);
+`OverviewService` writes the day's line snapshot on a read; `termRowsOf` / `sellRowsOf` exist in three
+repositories; six services still receive a `uow` they no longer use.
 
 ## Order and size
 

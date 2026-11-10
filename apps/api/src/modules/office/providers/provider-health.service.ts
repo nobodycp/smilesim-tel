@@ -28,7 +28,7 @@ export type ProviderHealthRow = Health & { code: string; name: string; failures:
 export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly uow: UnitOfWork, private readonly accounts: ProviderAccountsService, readonly repo: ProvidersRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly accounts: ProviderAccountsService, private readonly repo: ProvidersRepository) {}
 
   onModuleInit() {
     if (isTest() || !env('DATABASE_URL')) return;
@@ -41,14 +41,10 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
 
   /** Each provider's health now: the overview reads it, and `check` compares it with the stored one. */
   async current(now: Date = new Date()): Promise<ProviderHealthRow[]> {
-    const prisma = this.uow.prisma;
     const [summaries, providers, failed] = await Promise.all([
       this.accounts.summaries(),
-      prisma.provider.findMany({ select: { code: true, alertFloor: true, packages: { select: { id: true } } } }),
-      prisma.officeTask.findMany({
-        where: { note: PROVIDER_FAILED_NOTE, createdAt: { gte: new Date(now.getTime() - FAILURE_WINDOW_MINUTES * 60_000) } },
-        select: { packageId: true },
-      }),
+      this.repo.providerFloorsAndPackages(),
+      this.repo.tasksNotedSince(PROVIDER_FAILED_NOTE, new Date(now.getTime() - FAILURE_WINDOW_MINUTES * 60_000)),
     ]);
     const byCode = new Map(providers.map((row) => [row.code, row]));
     return summaries.map((summary) => {
@@ -65,18 +61,16 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
    * is set by compare-and-set, and cleared when the provider is matched again or stops being overdue.
    */
   async checkMatching(now: Date = new Date()): Promise<string[]> {
-    const providers = await this.uow.prisma.provider.findMany({
-      select: { code: true, name: true, matchSource: true, matchEveryDays: true, lastMatchedAt: true, matchOverdueNoticeAt: true },
-    });
+    const providers = await this.repo.providersMatchingState();
     const sent: string[] = [];
     for (const provider of providers) {
       const overdue = matchOverdue(provider, now);
       if (!overdue) {
-        if (provider.matchOverdueNoticeAt) await this.uow.prisma.provider.updateMany({ where: { code: provider.code }, data: { matchOverdueNoticeAt: null } });
+        if (provider.matchOverdueNoticeAt) await this.repo.clearMatchOverdueNotice(provider.code);
         continue;
       }
       if (provider.matchOverdueNoticeAt) continue;
-      const won = await this.uow.prisma.provider.updateMany({ where: { code: provider.code, matchOverdueNoticeAt: null }, data: { matchOverdueNoticeAt: now } });
+      const won = await this.repo.claimMatchOverdueNotice(provider.code, now);
       if (won.count === 0) continue;
       sent.push(provider.code);
       await this.send({
@@ -93,10 +87,7 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
     const changed: ProviderHealthRow[] = [];
     for (const row of rows) {
       const stored = row.status === 'problem' ? 'working' : 'problem';
-      const won = await this.uow.prisma.provider.updateMany({
-        where: { code: row.code, health: stored },
-        data: { health: row.status, healthReason: row.reason, healthAt: now },
-      });
+      const won = await this.repo.claimHealthChange(row.code, stored, { health: row.status, healthReason: row.reason, healthAt: now });
       if (won.count === 0) continue;
       changed.push(row);
       await this.notify(row);
@@ -113,10 +104,7 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
 
   /** The branch owner and the staff with the edit grant hear the provider notices. */
   private async send(draft: NoticeDraft) {
-    const accounts = await this.uow.prisma.user.findMany({
-      where: { layer: 'branch', disabledAt: null },
-      select: { id: true, isBranchOwner: true, liveGrants: true },
-    });
+    const accounts = await this.repo.branchAccounts();
     const recipients = accounts.filter((account) => account.isBranchOwner || account.liveGrants.split(',').includes('edit')).map((account) => account.id);
     await this.uow.runTx(async (tx) => {
       this.uow.queueNotices(tx, await this.uow.notice.write(tx, recipients, SYSTEM, draft));

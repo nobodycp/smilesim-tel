@@ -7,17 +7,17 @@ import type { Actor } from '../kernel/types';
 import { LineReads } from '../lines/line-reads';
 import { TasksService } from '../tasks/tasks.service';
 import { feedPosition } from '../kernel/feed';
-import { FEED_PAGE, NEWEST_FIRST, afterFeed, mergeFeed } from '../rules/office-paging';
+import { FEED_PAGE, afterFeed, mergeFeed } from '../rules/office-paging';
 import { PROVIDER_OPERATION_KINDS } from '../wallets/provider-cost';
 
 /** Branch reports: providers and packages, the provider-operations ledger, and the task and number lists. */
 @Injectable()
 export class ReportsService {
   constructor(
-    private readonly uow: UnitOfWork,
+    readonly uow: UnitOfWork,
     private readonly tasks: TasksService,
     private readonly lines: LineReads,
-    readonly repo: ReportsRepository,
+    private readonly repo: ReportsRepository,
   ) {}
 
   async report(actor: Actor, kind: string, cursor?: string) {
@@ -37,11 +37,7 @@ export class ReportsService {
   }
 
   private async providerReport() {
-    const rows = await this.uow.prisma.package.findMany({
-      where: { companyId: { not: null } },
-      include: { provider: true, company: true, _count: { select: { lines: true } } },
-      orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' } ],
-    });
+    const rows = await this.repo.packagesByProvider();
     return {
       total: rows.length,
       rows: rows.map((row) => ({
@@ -57,13 +53,8 @@ export class ReportsService {
   private async entryReport(cursor: string | undefined, kinds?: string[]) {
     const where = kinds ? { kind: { in: kinds } } : {};
     const [read, total] = await Promise.all([
-      this.uow.prisma.walletEntry.findMany({
-        where: { ...where, AND: afterFeed(feedPosition(cursor)) },
-        include: { user: true, actor: true },
-        orderBy: [...NEWEST_FIRST],
-        take: FEED_PAGE + 1,
-      }),
-      this.uow.prisma.walletEntry.count({ where }),
+      this.repo.entriesPage({ ...where, AND: afterFeed(feedPosition(cursor)) }, FEED_PAGE + 1),
+      this.repo.entryCount(where),
     ]);
     const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
     return {

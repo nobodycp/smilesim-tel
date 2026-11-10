@@ -76,16 +76,16 @@ function summarize(rows: UserPackageRow[]) {
 /** Terms an account sets for the accounts below it: which packages they see and at what price, which operations they may run, the branch's custom prices, and repricing the renewable lines of a package. */
 @Injectable()
 export class TermsService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder, readonly repo: TermsRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder, private readonly repo: TermsRepository) {}
 
   /** Every sellable package, grouped by company, with what `loginName` sees and pays. */
   async userPackages(actor: Actor, loginName: string) {
     const { path, target, accounts } = await this.termTarget(actor, loginName);
     const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
     const [packages, terms, sells] = await Promise.all([
-      this.uow.prisma.package.findMany({ where: { enabled: true, forSale: true }, include: { company: true }, orderBy: [{ company: { name: 'asc' } }, { name: 'asc' }] }),
-      this.uow.prisma.userPackage.findMany({ where: { userId: { in: path.map((node) => node.id) } } }),
-      this.uow.prisma.sellPrice.findMany({ where: { ownerId: { in: path.map((node) => node.id) } } }),
+      this.repo.packagesOnSaleByCompany(),
+      this.repo.termsOf(path.map((node) => node.id)),
+      this.repo.sellPricesOf(path.map((node) => node.id)),
     ]);
     const rows = packages.map((pkg) => ({
       pkg,
@@ -104,7 +104,7 @@ export class TermsService {
   async setUserPackage(actor: Actor, loginName: string, code: string, body: unknown) {
     const patch = termPatch(parseInput(UserPackageBody, body));
     const { path, target, accounts } = await this.termTarget(actor, loginName);
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const { terms, sells } = await this.ladder.termsFor(pkg.id);
     const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
@@ -122,9 +122,9 @@ export class TermsService {
     // The path's rows for every package on sale, loaded once: the picked ones are written, all of
     // them feed the summary. Every write sits in one transaction so a refusal midway applies nothing.
     const [packages, terms, sells] = await Promise.all([
-      this.uow.prisma.package.findMany({ where: { enabled: true, forSale: true } }),
-      this.uow.prisma.userPackage.findMany({ where: { userId: { in: pathIds } }, select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true } }),
-      this.uow.prisma.sellPrice.findMany({ where: { ownerId: { in: pathIds } }, select: { packageId: true, ownerId: true, price: true, renewalPrice: true } }),
+      this.repo.packagesOnSale(),
+      this.repo.termRowsOf(pathIds),
+      this.repo.sellRowsOf(pathIds),
     ]);
     const termsOf = (packageId: string) => terms.filter((row) => row.packageId === packageId);
     const sellsOf = (packageId: string) => sells.filter((row) => row.packageId === packageId);
@@ -151,14 +151,14 @@ export class TermsService {
     const { denied } = parseInput(UserOpsBody, body);
     const { target, path } = await this.termTarget(actor, loginName);
     const deniedOps = serializeOps(denied);
-    await this.uow.prisma.user.update({ where: { id: target.id }, data: { deniedOps } });
+    await this.repo.saveDeniedOps(target.id, deniedOps);
     return { denied: parseOps(deniedOps), deniedAbove: deniedAbove(path) };
   }
 
   /** Users whose price for `code` differs from what they would pay by default. Branch only. */
   async customPrices(actor: Actor, code: string): Promise<CustomPriceRow[]> {
     assertBranch(actor);
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const [accounts, { terms, sells }] = await Promise.all([this.tree.accounts(), this.ladder.termsFor(pkg.id)]);
     return terms
@@ -172,7 +172,7 @@ export class TermsService {
     const patch = termPatch(parseInput(CustomPriceBody, body));
     const { target, accounts, path } = await this.termTarget(actor, loginName);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const { terms, sells } = await this.ladder.termsFor(pkg.id);
     await this.writeUserPackage(actor, path, pkg, patch, terms, sells);
@@ -184,7 +184,7 @@ export class TermsService {
   async clearCustomPrice(actor: Actor, code: string, loginName: string) {
     const { path } = await this.termTarget(actor, loginName);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const { terms, sells } = await this.ladder.termsFor(pkg.id);
     await this.writeUserPackage(actor, path, pkg, { price: null, renewalPrice: null }, terms, sells);
@@ -198,9 +198,9 @@ export class TermsService {
   async linePrices(actor: Actor, code: string, query: { scope?: unknown }): Promise<{ current: number | null; groups: PriceGroup[] }> {
     const accounts = await this.tree.accounts();
     const scope = await this.lineScope(actor, accounts, query.scope);
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } });
+    const pkg = await this.repo.packageWithCompany(code);
     if (!pkg) fail(404, 'NOT_FOUND');
-    const lines = await this.uow.prisma.line.findMany({ where: this.scopeLineWhere(scope, accounts, pkg.id), select: { terms: true } });
+    const lines = await this.repo.lineTermsIn(this.scopeLineWhere(scope, accounts, pkg.id));
     const groups = groupLinePrices(lines.map((line) => ({ terms: lineTermsOf(line.terms, pkg) })));
     if (scope.kind === 'all') return { current: null, groups };
     const { terms, sells } = await this.ladder.termsFor(pkg.id);
@@ -218,13 +218,10 @@ export class TermsService {
     const changes = input.groups.filter((group) => group.to !== group.from);
     const accounts = await this.tree.accounts();
     const scope = await this.lineScope(actor, accounts, input.scope);
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code }, select: { id: true } });
+    const pkg = await this.repo.packageIdByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const lines = await this.uow.runTx(async (tx) => {
-      const found = await tx.line.findMany({
-        where: this.scopeLineWhere(scope, accounts, pkg.id),
-        include: { package: { include: { company: true, provider: true } } },
-      });
+      const found = await this.repo.linesToReprice(tx, this.scopeLineWhere(scope, accounts, pkg.id));
       return this.repriceLines(
         tx,
         found,
@@ -278,15 +275,14 @@ export class TermsService {
     // rise of the parent's buy price must not block the hide/show switch on an older row.
     if (patch.price != null && patch.price < floorFor(path, terms, sells, pkg, 'subscription')) fail(400, 'PRICE_BELOW_FLOOR');
     if (patch.renewalPrice != null && patch.renewalPrice < floorFor(path, terms, sells, pkg, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
-    const where = { packageId_userId: { packageId: pkg.id, userId } };
     if (!next.hidden && next.price === null && next.renewalPrice === null) {
       if (own) {
-        await db.userPackage.delete({ where });
+        await this.repo.removeTerm(pkg.id, userId, db);
         terms.splice(index, 1);
       }
     } else {
       const data = { hidden: next.hidden, price: next.price, renewalPrice: next.renewalPrice, setById: actor.id };
-      await db.userPackage.upsert({ where, update: data, create: { packageId: pkg.id, userId, ...data } });
+      await this.repo.saveTerm(pkg.id, userId, data, db);
       if (own) terms[index] = next;
       else terms.push(next);
     }
@@ -297,11 +293,7 @@ export class TermsService {
   private async renewableLinesByPackage(targetId: string, targetLayer: string, accounts: Account[]): Promise<Map<string, number>> {
     const posIds = [...visibleAccountIds(targetId, targetLayer, accounts)];
     if (posIds.length === 0) return new Map();
-    const groups = await this.uow.prisma.line.groupBy({
-      by: ['packageId'],
-      where: { status: { in: [...RENEWABLE_STATUSES] }, posId: { in: posIds } },
-      _count: { _all: true },
-    });
+    const groups = await this.repo.renewableLineCounts(posIds);
     return new Map(groups.map((row) => [row.packageId, row._count._all]));
   }
 
@@ -408,10 +400,7 @@ export class TermsService {
 
     // `'current'` needs the renewal targets each package lists today.
     const renewals = plans.some(({ to }) => to === 'current')
-      ? await tx.packageRenewal.findMany({
-          where: { packageId: { in: packageIds } },
-          include: { target: { include: { company: true, provider: true } } },
-        })
+      ? await this.repo.renewalTargetsOf(tx, packageIds)
       : [];
     const targetsOf = new Map<string, PackageTerms[]>();
     for (const renewal of renewals) {
@@ -455,7 +444,7 @@ export class TermsService {
       changes.push({ id: line.id, terms: repriceLine(terms, { to }) });
     }
     for (const { id, terms } of changes) {
-      await tx.line.update({ where: { id }, data: { terms: terms as unknown as Prisma.InputJsonValue } });
+      await this.repo.saveLineTerms(tx, id, terms as unknown as Prisma.InputJsonValue);
     }
     return changes.length;
   }

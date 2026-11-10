@@ -68,23 +68,13 @@ function shelfByCompany(rows: ShelfRow[]): Map<string, Map<string, ShelfProvider
 /** Companies: the shelf of companies, providers and packages an account sees, the company SIM rules and eSIM price, and the company image. */
 @Injectable()
 export class CompaniesService {
-  constructor(private readonly uow: UnitOfWork, readonly repo: CompaniesRepository) {}
+  constructor(readonly uow: UnitOfWork, private readonly repo: CompaniesRepository) {}
 
   async shelf(actor: Actor) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const rows = await this.uow.prisma.package.findMany({
-      where: { companyId: { not: null } },
-      include: {
-        provider: true,
-        company: true,
-        lines: { select: { status: true } },
-      },
-      orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
-    });
+    const rows = await this.repo.shelfPackages();
     const byCompany = shelfByCompany(rows);
-    const stored = await this.uow.prisma.company.findMany({
-      select: { code: true, name: true, image: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
-    });
+    const stored = await this.repo.storedCompanies();
     const byCode = new Map(stored.map((row) => [row.code, row]));
     // The seeded companies in their order, then the ones added since (spec 2026-11-09-admin-review, 3), by name.
     const seeded = new Set<string>(companies.map((company) => company.code));
@@ -110,11 +100,10 @@ export class CompaniesService {
     // The prefix must be shorter than the length: a rule across two fields, kept where the other readers use it.
     const rules = readSimRules(sim);
     if (!rules) fail(400, 'INVALID');
-    const row = await this.uow.prisma.company.findUnique({ where: { code } });
+    const row = await this.repo.companyByCode(code);
     if (!row) fail(404, 'NOT_FOUND');
-    const saved = await this.uow.prisma.company.update({
-      where: { id: row.id },
-      data: { iccidLength: rules.length, iccidPrefix: rules.prefix || null, esim: rules.esim, ...(esimPrice === undefined ? {} : { esimPrice }) },
+    const saved = await this.repo.saveSimRules(row.id, {
+      iccidLength: rules.length, iccidPrefix: rules.prefix || null, esim: rules.esim, ...(esimPrice === undefined ? {} : { esimPrice }),
     });
     return { ok: true, sim: rules, esimPrice: saved.esimPrice };
   }
@@ -123,7 +112,7 @@ export class CompaniesService {
     if (actor.impersonating) fail(403, 'FORBIDDEN');
     requireGrant(actor, 'edit');
     const { name, image: sent } = parseInput(CompanyImageBody, body);
-    const found = await this.uow.prisma.company.count({ where: { name } });
+    const found = await this.repo.companiesNamed(name);
     if (!found) fail(404, 'NOT_FOUND');
     let image: string | null = null;
     if (sent) {
@@ -133,7 +122,7 @@ export class CompaniesService {
       if (bytes.length < 32 || bytes.length > COMPANY_IMAGE_BYTES) fail(400, 'INVALID');
       image = `data:image/${match[1]};base64,${match[2]}`;
     }
-    await this.uow.prisma.company.updateMany({ where: { name }, data: { image } });
+    await this.repo.setImageByName(name, image);
     return { ok: true };
   }
 }

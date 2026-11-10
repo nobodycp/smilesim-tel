@@ -22,7 +22,7 @@ export const PREPAID_KINDS = ['activate', 'charge', 'extend', 'reactivate', 'swi
  */
 @Injectable()
 export class LinePricing {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder, readonly repo: LinesRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder, private readonly repo: LinesRepository) {}
 
   async visibleFor(userId: string, pkg: { id: string; enabled: boolean; forSale: boolean }, path?: PathNode[]): Promise<boolean> {
     const [known, { terms }] = await Promise.all([path ? Promise.resolve(path) : this.tree.pathOf(userId, await this.tree.accounts()), this.ladder.termsFor(pkg.id)]);
@@ -66,11 +66,7 @@ export class LinePricing {
   /** The line's paid periods still open. Rows written before periods were stored fall back to the last window. */
   private async openPeriodsOf(db: Db, line: PricedLine, now: Date) {
     const terms = lineTermsOf(line.terms, line.package);
-    const rows = await db.walletEntry.findMany({
-      where: { lineId: line.id, kind: { in: PREPAID_KINDS } },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: { kind: true, packagePrice: true, periodDays: true, periodEndsAt: true },
-    });
+    const rows = await this.repo.paidEntries(db, line.id, PREPAID_KINDS);
     const last = rows[0];
     const renewal = Boolean(last && (last.kind === 'charge' || last.kind === 'extend' || last.kind === 'reactivate'));
     const lastPrice = last?.packagePrice ?? (renewal ? terms.renewal.posPrice : terms.subscription.posPrice);
@@ -94,7 +90,7 @@ export class LinePricing {
   async freshMsisdn(db: Db = this.uow.prisma): Promise<string> {
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const msisdn = `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
-      const existing = await db.line.findUnique({ where: { msisdn } });
+      const existing = await this.repo.lineByMsisdn(msisdn, db);
       if (!existing) return msisdn;
     }
     fail(400, 'INVALID');

@@ -26,7 +26,7 @@ export class ProviderAccountsService {
   constructor(
     private readonly uow: UnitOfWork,
     private readonly wallets: WalletsService,
-    readonly repo: ProvidersRepository,
+    private readonly repo: ProvidersRepository,
   ) {}
 
   /** Reading needs the branch owner or the accounting or reports grant; writing the owner or accounting. */
@@ -38,11 +38,11 @@ export class ProviderAccountsService {
   /** Purchases, entries and open-task cost of every provider, from one read of each. */
   private async books() {
     const [providers, operations, entries, tasks, packages] = await Promise.all([
-      this.uow.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
+      this.repo.providersByName(),
       this.wallets.pricedOperations(),
-      this.uow.prisma.providerEntry.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] }),
-      this.uow.prisma.officeTask.findMany({ where: { status: { in: OPEN_TASKS } }, select: { action: true, packageId: true } }),
-      this.uow.prisma.package.findMany({ include: { provider: true } }),
+      this.repo.entriesNewestFirst(),
+      this.repo.tasksInStatuses(OPEN_TASKS),
+      this.repo.packagesWithProvider(),
     ]);
     const packageById = new Map(packages.map((row) => [row.id, row]));
     const held = new Map<string, number>();
@@ -151,18 +151,18 @@ export class ProviderAccountsService {
     const { kind, amount, note: text } = parseInput(ProviderEntryBody, body);
     if (!text) fail(400, 'NOTE_REQUIRED');
     if (amount === 0 || (kind === 'payment' && amount < 0)) fail(400, 'INVALID');
-    const provider = await this.uow.prisma.provider.findUnique({ where: { code } });
+    const provider = await this.repo.providerByCode(code);
     if (!provider) fail(404, 'NOT_FOUND');
-    await this.uow.prisma.providerEntry.create({ data: { providerId: provider.id, kind, amount, note: text, actorLogin: actor.loginName } });
+    await this.repo.addEntry({ providerId: provider.id, kind, amount, note: text, actorLogin: actor.loginName });
     return { ok: true };
   }
 
   async setCredit(actor: Actor, code: string, body: unknown) {
     this.gate(actor, true);
     const { creditLimit, alertFloor } = parseInput(ProviderCreditBody, body);
-    const provider = await this.uow.prisma.provider.findUnique({ where: { code } });
+    const provider = await this.repo.providerByCode(code);
     if (!provider) fail(404, 'NOT_FOUND');
-    await this.uow.prisma.provider.update({ where: { code }, data: { creditLimit, ...(alertFloor !== undefined ? { alertFloor } : {}) } });
+    await this.repo.setCredit(code, creditLimit, alertFloor);
     return { ok: true };
   }
 
@@ -171,7 +171,7 @@ export class ProviderAccountsService {
     this.gate(actor, true);
     const { matchSource, matchEveryDays } = parseInput(ProviderMatchingBody, body);
     await this.providerByCode(code);
-    await this.uow.prisma.provider.update({ where: { code }, data: { matchSource, matchEveryDays } });
+    await this.repo.setMatching(code, matchSource, matchEveryDays);
     return { ok: true };
   }
 
@@ -184,12 +184,12 @@ export class ProviderAccountsService {
     const provider = await this.providerByCode(code);
     if (provider.matchSource !== 'statement') fail(400, 'INVALID');
     const lastMatchedAt = new Date();
-    await this.uow.prisma.provider.update({ where: { code }, data: { lastMatchedAt, matchOverdueNoticeAt: null } });
+    await this.repo.markMatched(code, lastMatchedAt);
     return { ok: true, lastMatchedAt: lastMatchedAt.toISOString() };
   }
 
   private async providerByCode(code: string) {
-    const provider = await this.uow.prisma.provider.findUnique({ where: { code } });
+    const provider = await this.repo.providerByCode(code);
     if (!provider) fail(404, 'NOT_FOUND');
     return provider;
   }
@@ -232,19 +232,17 @@ export class ProviderAccountsService {
       .map((op) => ({ id: op.id, msisdn: op.msisdn, at: op.at, amount: op.cost }));
     const result = reconcile(lines, ours);
     const run = await this.uow.prisma.$transaction(async (tx) => {
-      await tx.provider.update({ where: { id: provider.id }, data: { statementMap: map } });
-      return tx.providerReconciliation.create({
-        data: {
-          providerId: provider.id,
-          fileName,
-          periodFrom: new Date(Math.min(...times)),
-          periodTo: new Date(Math.max(...times)),
-          statementTotal: result.statementTotal,
-          ourTotal: result.ourTotal,
-          counts: { ...result.counts, skipped },
-          actorLogin: actor.loginName,
-          items: { create: result.rows.map((row) => ({ ...row, status: 'open' })) },
-        },
+      await this.repo.saveStatementMap(tx, provider.id, map);
+      return this.repo.saveReconciliation(tx, {
+        providerId: provider.id,
+        fileName,
+        periodFrom: new Date(Math.min(...times)),
+        periodTo: new Date(Math.max(...times)),
+        statementTotal: result.statementTotal,
+        ourTotal: result.ourTotal,
+        counts: { ...result.counts, skipped },
+        actorLogin: actor.loginName,
+        items: { create: result.rows.map((row) => ({ ...row, status: 'open' })) },
       });
     });
     return this.reconciliation(actor, run.id);
@@ -253,12 +251,7 @@ export class ProviderAccountsService {
   async reconciliations(actor: Actor, code: string) {
     this.gate(actor, false);
     const provider = await this.providerByCode(code);
-    const runs = await this.uow.prisma.providerReconciliation.findMany({
-      where: { providerId: provider.id },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-      include: { items: { select: { status: true } } },
-    });
+    const runs = await this.repo.reconciliationsOfProvider(provider.id);
     return {
       runs: runs.map((run) => ({
         id: run.id,
@@ -277,7 +270,7 @@ export class ProviderAccountsService {
 
   async reconciliation(actor: Actor, id: string) {
     this.gate(actor, false);
-    const run = await this.uow.prisma.providerReconciliation.findUnique({ where: { id }, include: { items: true, provider: true } });
+    const run = await this.repo.reconciliationById(id);
     if (!run) fail(404, 'NOT_FOUND');
     const order = ['different', 'missing_ours', 'missing_theirs', 'duplicate'];
     return {
@@ -303,14 +296,14 @@ export class ProviderAccountsService {
     this.gate(actor, true);
     const { status, note: text } = parseInput(ReconciliationItemBody, body);
     if (status === 'resolved' && !text) fail(400, 'NOTE_REQUIRED');
-    const item = await this.uow.prisma.providerReconItem.findUnique({ where: { id } });
+    const item = await this.repo.reconItemById(id);
     if (!item) fail(404, 'NOT_FOUND');
-    await this.uow.prisma.providerReconItem.update({
-      where: { id },
-      data: status === 'resolved'
+    await this.repo.updateReconItem(
+      id,
+      status === 'resolved'
         ? { status, note: text, resolvedBy: actor.loginName, resolvedAt: new Date() }
         : { status, resolvedBy: null, resolvedAt: null, ...(text ? { note: text } : {}) },
-    });
+    );
     return { ok: true };
   }
 }

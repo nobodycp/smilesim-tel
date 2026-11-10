@@ -45,7 +45,7 @@ export function offerShows(offer: Pick<OfferView, 'active' | 'layers' | 'startsA
 
 @Injectable()
 export class OffersService {
-  constructor(private readonly uow: UnitOfWork, readonly repo: OffersRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly repo: OffersRepository) {}
 
   private gate(actor: Actor) {
     refuseEntered(actor);
@@ -54,7 +54,7 @@ export class OffersService {
 
   /** The offers the signed-in account sees on its home now, in order. */
   async live(actor: Actor) {
-    const rows = await this.uow.prisma.offer.findMany({ where: { active: true }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+    const rows = await this.repo.activeOffers();
     const now = new Date();
     return { offers: rows.map(viewOf).filter((offer) => offerShows(offer, actor.layer, now)) };
   }
@@ -62,7 +62,7 @@ export class OffersService {
   /** Every offer, for the «الإعلانات» page. */
   async list(actor: Actor) {
     this.gate(actor);
-    const rows = await this.uow.prisma.offer.findMany({ orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+    const rows = await this.repo.allOffers();
     return { offers: rows.map(viewOf) };
   }
 
@@ -70,21 +70,21 @@ export class OffersService {
     this.gate(actor);
     const data = this.parse(body, !id);
     if (id) {
-      const found = await this.uow.prisma.offer.findUnique({ where: { id } });
+      const found = await this.repo.offerById(id);
       if (!found) fail(404, 'NOT_FOUND');
-      await this.uow.prisma.offer.update({ where: { id }, data });
+      await this.repo.updateOffer(id, data);
     } else {
-      const count = await this.uow.prisma.offer.count();
-      await this.uow.prisma.offer.create({ data: { title: data.title as string, ...data, position: data.position ?? count } });
+      const count = await this.repo.offerCount();
+      await this.repo.addOffer({ title: data.title as string, ...data, position: data.position ?? count });
     }
     return this.list(actor);
   }
 
   async remove(actor: Actor, id: string) {
     this.gate(actor);
-    const found = await this.uow.prisma.offer.findUnique({ where: { id } });
+    const found = await this.repo.offerById(id);
     if (!found) fail(404, 'NOT_FOUND');
-    await this.uow.prisma.offer.delete({ where: { id } });
+    await this.repo.removeOffer(id);
     return this.list(actor);
   }
 
@@ -92,7 +92,7 @@ export class OffersService {
   async move(actor: Actor, id: string, body: unknown) {
     this.gate(actor);
     const { direction } = parseInput(OfferMoveBody, body);
-    const rows = await this.uow.prisma.offer.findMany({ orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+    const rows = await this.repo.allOffers();
     const at = rows.findIndex((row) => row.id === id);
     if (at < 0) fail(404, 'NOT_FOUND');
     const other = direction === 'up' ? at - 1 : at + 1;
@@ -100,7 +100,7 @@ export class OffersService {
       const order = rows.map((row) => row.id);
       [order[at], order[other]] = [order[other], order[at]];
       await this.uow.runTx(async (tx) => {
-        for (const [index, rowId] of order.entries()) await tx.offer.update({ where: { id: rowId }, data: { position: index } });
+        for (const [index, rowId] of order.entries()) await this.repo.setPosition(tx, rowId, index);
       });
     }
     return this.list(actor);

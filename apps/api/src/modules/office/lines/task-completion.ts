@@ -47,7 +47,7 @@ export class TaskCompletion {
     private readonly ledger: WalletLedger,
     private readonly tasks: TasksService,
     private readonly pricing: LinePricing,
-    readonly repo: LinesRepository,
+    private readonly repo: LinesRepository,
   ) {}
 
   private readonly handlers: Record<Action, (job: Completion) => Promise<Applied>> = {
@@ -72,14 +72,14 @@ export class TaskCompletion {
     if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
     const input = parseInput(CompleteTaskBody, body);
     const { note } = input;
-    const task = await this.uow.prisma.officeTask.findUnique({ where: { id } });
+    const task = await this.repo.task(id);
     // Any branch account that handles tasks may finish an open one (spec 2026-11-09, 2); the claim below makes sure
     // only one of two at the same moment does.
     if (!task || task.status !== 'working') fail(400, 'INVALID');
     const { handed, handedQr } = await this.handedBack(task, input);
     const written = await this.uow.runTx(async (tx) => {
       // Claim the task first: a second handler finishing it at the same moment waits on this row, then finds it done.
-      const claimed = await tx.officeTask.updateMany({ where: { id, status: 'working' }, data: { status: 'done', assigneeId: actor.id } });
+      const claimed = await this.repo.claimTask(tx, id, actor.id);
       if (claimed.count !== 1) fail(400, 'INVALID');
       // The line before any wallet (rule 1.4), and only if it is still where the task expects it.
       const line = task.lineId ? await lockedTaskLine(tx, task.action as Action, task.lineId) : null;
@@ -90,14 +90,11 @@ export class TaskCompletion {
       const sale = applied.sale ?? (await this.plainSale(job));
       const posted = (await this.charge(job, sale)) || applied.posted === true;
       if (!posted && sale) await this.ledger.recordOp(tx, task.posId, actor.operatorId, task.action, sale);
-      await tx.officeTask.update({
-        where: { id },
-        data: {
-          resultNote: note || null,
-          ...(handed.iccid ? { iccid: handed.iccid } : {}),
-          ...(handed.msisdn ? { msisdn: handed.msisdn } : {}),
-          ...(applied.amount !== undefined ? { posDelta: applied.amount } : {}),
-        },
+      await this.repo.recordTaskResult(tx, id, {
+        resultNote: note || null,
+        ...(handed.iccid ? { iccid: handed.iccid } : {}),
+        ...(handed.msisdn ? { msisdn: handed.msisdn } : {}),
+        ...(applied.amount !== undefined ? { posDelta: applied.amount } : {}),
       });
       return this.tasks.taskNotice(tx, 'done', task, actor, {
         packageName: sale?.packageName ?? '',
@@ -117,12 +114,12 @@ export class TaskCompletion {
     if (task.action === 'esim' && (!givenIccid || !givenQr)) fail(400, 'INVALID');
     if (task.action === 'rename') {
       if (!MSISDN.test(givenMsisdn)) fail(400, 'INVALID');
-      const taken = await this.uow.prisma.line.findUnique({ where: { msisdn: givenMsisdn } });
+      const taken = await this.repo.lineByMsisdn(givenMsisdn);
       if (taken && taken.id !== task.lineId) fail(409, 'NUMBER_TAKEN');
       handed.msisdn = givenMsisdn;
     }
     if (givenIccid && (task.action === 'esim' || (task.esim && (task.action === 'activate' || task.action === 'sim')))) {
-      const taskPkg = await this.uow.prisma.package.findUnique({ where: { id: task.packageId }, include: { company: true } });
+      const taskPkg = await this.repo.packageWithCompany(task.packageId);
       const refusal = simRefusal(simRulesOf(taskPkg?.company ?? null), givenIccid);
       if (refusal) fail(400, refusal);
       handed.iccid = givenIccid;
@@ -142,17 +139,14 @@ export class TaskCompletion {
   /** The sale of an operation that sells nothing new: the line as it stands after the handler ran. */
   private async plainSale({ tx, task }: Completion): Promise<Sale | undefined> {
     if (!task.lineId) return undefined;
-    const current = await tx.line.findUnique({ where: { id: task.lineId }, include: { package: { include: { company: true } } } });
+    const current = await this.repo.lineWithCompany(tx, task.lineId);
     if (!current) return undefined;
     // An eSIM request's debit is the eSIM fee, and that fee is what the provider charges for it.
     return task.action === 'esim' ? { ...saleOf(current), providerCost: -task.posDelta, esimPrice: -task.posDelta } : saleOf(current);
   }
 
   private async activate({ tx, task, handed, handedQr }: Completion): Promise<Applied> {
-    const pkg = await tx.package.findUnique({
-      where: { id: task.packageId },
-      include: { company: true, provider: true, renewals: { include: { target: { include: { company: true, provider: true } } } } },
-    });
+    const pkg = await this.repo.packageWithRenewalsById(tx, task.packageId);
     if (!pkg) fail(404, 'NOT_FOUND');
     if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
     if (pkg.renewals.some((renewal) => !renewal.target.company || !renewal.target.provider)) fail(400, 'INVALID');
@@ -160,18 +154,16 @@ export class TaskCompletion {
     const terms = await this.pricing.stampFor(captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target))), task.posId, undefined, tx);
     const iccid = task.esim ? handed.iccid ?? null : task.iccid;
     if (iccid) await assertSimFree(tx, iccid);
-    const created = await tx.line.create({
-      data: {
-        msisdn: task.msisdn || (await this.pricing.freshMsisdn(tx)),
-        iccid,
-        esim: task.esim,
-        esimQr: task.esim ? handedQr : null,
-        status: 'active',
-        packageId: task.packageId,
-        posId: task.posId,
-        terms: terms as unknown as Prisma.InputJsonValue,
-        endsAt: periodEnd(new Date(), pkg.months),
-      },
+    const created = await this.repo.createLine(tx, {
+      msisdn: task.msisdn || (await this.pricing.freshMsisdn(tx)),
+      iccid,
+      esim: task.esim,
+      esimQr: task.esim ? handedQr : null,
+      status: 'active',
+      packageId: task.packageId,
+      posId: task.posId,
+      terms: terms as unknown as Prisma.InputJsonValue,
+      endsAt: periodEnd(new Date(), pkg.months),
     });
     // The price the task was opened at is the price charged, so it is the price recorded (rule 1.5). Tasks opened
     // before the price was stored fall back to today's.
@@ -219,7 +211,7 @@ export class TaskCompletion {
     const extending = task.action === 'extend';
     const base = extending && line.endsAt > new Date() ? line.endsAt : new Date();
     const target = extending && task.nextPackageId
-      ? await tx.package.findUnique({ where: { id: task.nextPackageId }, include: { company: true, provider: true } })
+      ? await this.repo.packageById(tx, task.nextPackageId)
       : null;
     if (extending && task.nextPackageId && (!target || !target.company || !target.provider)) fail(400, 'INVALID');
     const lineTerms = lineTermsOf(line.terms, line.package);
@@ -228,7 +220,7 @@ export class TaskCompletion {
     const terms = renewal ? renewal.terms : { ...lineTerms, windowMonths: line.package.months };
     const endsAt = renewal?.endsAt ?? periodEnd(base, line.package.months);
     const data = { endsAt, terms: terms as unknown as Prisma.InputJsonValue, ...(target ? { packageId: target.id } : {}) };
-    if (extending) await tx.line.update({ where: { id: line.id }, data });
+    if (extending) await this.repo.extendLine(tx, line.id, data);
     else await moveLineStatus(tx, line.id, ['disconnected'], 'active', data);
     return {
       sale: {
@@ -243,8 +235,8 @@ export class TaskCompletion {
   private async switch({ tx, task, actor, note, line }: Completion): Promise<Applied> {
     if (!line || !task.nextPackageId) return {};
     const [source, target] = await Promise.all([
-      tx.package.findUnique({ where: { id: task.packageId }, include: { company: true, provider: true, switches: { include: { target: { select: { code: true } } } } } }),
-      tx.package.findUnique({ where: { id: task.nextPackageId }, include: { company: true, provider: true } }),
+      this.repo.packageWithSwitches(tx, task.packageId),
+      this.repo.packageById(tx, task.nextPackageId),
     ]);
     const whole = (pkg: { company: unknown; provider: unknown } | null) => Boolean(pkg && pkg.company && pkg.provider);
     if (!whole(line.package) || !source || !whole(source) || !target || !whole(target)) fail(400, 'INVALID');
@@ -265,26 +257,26 @@ export class TaskCompletion {
     else await this.ledger.recordOp(tx, task.posId, actor.operatorId, 'switch', sale);
     // Same as an immediate switch: the line carries the renewal price its point of sale pays today.
     const stamped = await this.pricing.stampFor(switched.terms, line.posId, undefined, tx);
-    await tx.line.update({ where: { id: line.id }, data: { terms: stamped as unknown as Prisma.InputJsonValue, packageId: target.id, opsLocked: false } });
+    await this.repo.switchLine(tx, line.id, stamped as unknown as Prisma.InputJsonValue, target.id);
     return { sale, posted: true, amount };
   }
 
   private async rename({ tx, line, handed }: Completion): Promise<Applied> {
-    if (line && handed.msisdn) await tx.line.update({ where: { id: line.id }, data: { msisdn: handed.msisdn } });
+    if (line && handed.msisdn) await this.repo.renameLine(tx, line.id, handed.msisdn);
     return {};
   }
 
   private async swapSim({ tx, task, line, handedQr }: Completion): Promise<Applied> {
     if (!line || !task.iccid) return {};
     await assertSimFree(tx, task.iccid, line.id);
-    await tx.line.update({ where: { id: line.id }, data: { iccid: task.iccid, esim: task.esim, esimQr: task.esim ? handedQr : null } });
+    await this.repo.setLineSim(tx, line.id, { iccid: task.iccid, esim: task.esim, esimQr: task.esim ? handedQr : null });
     return {};
   }
 
   private async issueEsim({ tx, line, handed, handedQr }: Completion): Promise<Applied> {
     if (!line || !handed.iccid) return {};
     await assertSimFree(tx, handed.iccid, line.id);
-    await tx.line.update({ where: { id: line.id }, data: { iccid: handed.iccid, esim: true, esimQr: handedQr } });
+    await this.repo.setLineSim(tx, line.id, { iccid: handed.iccid, esim: true, esimQr: handedQr });
     return {};
   }
 }

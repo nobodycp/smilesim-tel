@@ -11,7 +11,6 @@ import type { Actor } from '../kernel/types';
 import { TermsService } from '../terms/terms.service';
 import type { Prisma } from '../../../generated/prisma/client';
 import { nodeOf } from '../kernel/account-tree';
-import { PRICE_COLUMNS } from '../terms/price-ladder';
 import type { Account } from '../kernel/types';
 import { RENEWABLE_STATUSES } from '../rules/line-prices';
 import { visibleAccountIds } from '../rules/office-rules';
@@ -45,7 +44,7 @@ function transferChoices(kind: 'pos' | 'agent', stated: z.output<typeof AccountM
 /** Moving an account (a point of sale under another agent, an agent under another main agent) or a number to another point of sale, with the preview that asks the same questions first. */
 @Injectable()
 export class TransfersService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ledger: WalletLedger, private readonly lineAccess: LineAccess, private readonly terms: TermsService, readonly repo: TransfersRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ledger: WalletLedger, private readonly lineAccess: LineAccess, private readonly terms: TermsService, private readonly repo: TransfersRepository) {}
 
   /**
    * Moves a point of sale under another agent, or an agent under another main agent. The caller states
@@ -67,24 +66,21 @@ export class TransfersService {
     const lines = await this.uow.runTx(async (tx) => {
       // A point of sale's numbers remember the agent they were first sold under.
       if (kind === 'pos') {
-        await tx.line.updateMany({ where: { posId: moved.id, originAgentId: null }, data: { originAgentId: moved.parentId } });
+        await this.repo.rememberOriginAgent(tx, moved.id, moved.parentId);
       }
-      await tx.user.update({ where: { id: moved.id }, data: { parentId: next.id } });
+      await this.repo.moveAccount(tx, moved.id, next.id);
       // What the old parent wrote about the moved account goes only if the caller said so.
-      if (choices.ownPrices === 'reset') await tx.userPackage.deleteMany({ where: { userId: moved.id } });
-      if (choices.ownStops === 'reset') await tx.user.update({ where: { id: moved.id }, data: { deniedOps: '' } });
+      if (choices.ownPrices === 'reset') await this.repo.clearTermsOf(tx, moved.id);
+      if (choices.ownStops === 'reset') await this.repo.clearStopsOf(tx, moved.id);
       if (choices.child?.prices === 'reset') {
-        await tx.userPackage.deleteMany({ where: { userId: { in: posIds } } });
-        await tx.sellPrice.deleteMany({ where: { ownerId: moved.id } });
+        await this.repo.clearTermsOfAll(tx, posIds);
+        await this.repo.clearSellPricesOf(tx, moved.id);
       }
-      if (choices.child?.stops === 'reset') await tx.user.updateMany({ where: { id: { in: posIds } }, data: { deniedOps: '' } });
+      if (choices.child?.stops === 'reset') await this.repo.clearStopsOfAll(tx, posIds);
       let repriced = 0;
       if (choices.linePrices === 'recapture') {
         // After the resets, so the numbers are priced by the rows that are left, and through the new parent.
-        const renewable = await tx.line.findMany({
-          where: { posId: { in: [moved.id, ...posIds] }, status: { in: [...RENEWABLE_STATUSES] } },
-          include: { package: { include: { company: true, provider: true } } },
-        });
+        const renewable = await this.repo.renewableLinesOn(tx, [moved.id, ...posIds]);
         const accountsAfter = accounts.map((account) => (account.id === moved.id ? { ...account, parentId: next.id } : account));
         repriced = await this.terms.repriceLines(tx, renewable, () => ({ to: 'current' }), accountsAfter);
       }
@@ -111,17 +107,11 @@ export class TransfersService {
     // The moved account heads the new chain, so one list serves its own rows and the rows that set its floor.
     const chainIds = nextPath.map((node) => node.id);
     const [terms, sells, packages, wallets, lines] = await Promise.all([
-      this.uow.prisma.userPackage.findMany({
-        where: { userId: { in: [...chainIds, ...belowIds] } },
-        select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
-      }),
-      this.uow.prisma.sellPrice.findMany({
-        where: { ownerId: { in: chainIds } },
-        select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
-      }),
-      this.uow.prisma.package.findMany({ select: { id: true, ...PRICE_COLUMNS } }),
-      this.uow.prisma.wallet.findMany({ where: { userId: { in: subtree } }, select: { userId: true, balance: true } }),
-      this.uow.prisma.line.count({ where: { posId: { in: subtree }, status: { in: [...RENEWABLE_STATUSES] } } }),
+      this.repo.termRowsOf([...chainIds, ...belowIds]),
+      this.repo.sellRowsOf(chainIds),
+      this.repo.packagePrices(),
+      this.repo.balancesOf(subtree),
+      this.repo.renewableLineCount(subtree),
     ]);
     const balances = new Map(wallets.map((wallet) => [wallet.userId, wallet.balance]));
     return {
@@ -160,10 +150,7 @@ export class TransfersService {
     if (refusal || !next || !from) fail(400, 'INVALID');
     const locked = !line.package.companyId;
     await this.uow.runTx(async (tx) => {
-      await tx.line.update({
-        where: { id: line.id },
-        data: { posId: next.id, opsLocked: locked },
-      });
+      await this.repo.moveLine(tx, line.id, next.id, locked);
       await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'transfer', saleOf(line));
       // After the move, so the number is priced through the point of sale it is on now and the chain above it.
       // Only a number that can still renew is priced again, as in the move of an account; any other moves with its terms.

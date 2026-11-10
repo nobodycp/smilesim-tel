@@ -29,30 +29,20 @@ export { PACKAGE_DETAILS_LIMIT } from './packages.schemas';
 
 @Injectable()
 export class PackagesService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder, readonly repo: PackagesRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder, private readonly repo: PackagesRepository) {}
 
   async list(actor: Actor) {
     const field = editableField(actor.layer);
     const [all, accounts] = await Promise.all([
-      this.uow.prisma.package.findMany({
-        where: { companyId: { not: null }, enabled: true, forSale: true },
-        include: { provider: true, company: true },
-        orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
-      }),
+      this.repo.packagesOnSale(),
       this.tree.accounts(),
     ]);
     const path = this.tree.pathOf(actor.id, accounts);
     // Only the rows on the actor's path matter: its own terms and sell prices plus its ancestors'.
     const pathIds = path.map((node) => node.id);
     const [termRows, sellRows] = await Promise.all([
-      this.uow.prisma.userPackage.findMany({
-        where: { userId: { in: pathIds } },
-        select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
-      }),
-      this.uow.prisma.sellPrice.findMany({
-        where: { ownerId: { in: pathIds } },
-        select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
-      }),
+      this.repo.termRowsOf(pathIds),
+      this.repo.sellRowsOf(pathIds),
     ]);
     const canActivate = !deniedOpsFor(path).has('activate');
     const termsOf = (packageId: string) => termRows.filter((row) => row.packageId === packageId);
@@ -111,34 +101,30 @@ export class PackagesService {
   async setSellPrice(actor: Actor, code: string, body: unknown) {
     if (actor.layer !== 'main_agent' && actor.layer !== 'agent') fail(403, 'FORBIDDEN');
     const { price, renewalPrice } = parseInput(SellPriceBody, body);
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const [accounts, { terms, sells }] = await Promise.all([this.tree.accounts(), this.ladder.termsFor(pkg.id)]);
     const path = this.tree.pathOf(actor.id, accounts);
     if (path.length === 0) fail(404, 'NOT_FOUND');
     if (price < buyPriceFor(path, terms, sells, pkg, 'subscription')) fail(400, 'PRICE_BELOW_FLOOR');
     if (renewalPrice !== null && renewalPrice < buyPriceFor(path, terms, sells, pkg, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
-    await this.uow.prisma.sellPrice.upsert({
-      where: { packageId_ownerId: { packageId: pkg.id, ownerId: actor.id } },
-      update: { price, renewalPrice },
-      create: { packageId: pkg.id, ownerId: actor.id, price, renewalPrice },
-    });
+    await this.repo.saveSellPrice(pkg.id, actor.id, price, renewalPrice);
     return { price, renewalPrice };
   }
 
   /** Drops the caller's own sell price so the layer column applies again; a missing row is already clear. */
   async clearSellPrice(actor: Actor, code: string) {
     if (actor.layer !== 'main_agent' && actor.layer !== 'agent') fail(403, 'FORBIDDEN');
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
-    await this.uow.prisma.sellPrice.deleteMany({ where: { packageId: pkg.id, ownerId: actor.id } });
+    await this.repo.clearSellPrice(pkg.id, actor.id);
     return { ok: true };
   }
 
   async setMode(actor: Actor, code: string, body: unknown) {
     // Package modes apply to every account, so only the branch sets them, like the chain and the targets.
     requireGrant(actor, 'edit');
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const { action, mode, ...flags } = parseInput(PackageModeBody, body);
     const data: Record<string, boolean | Prisma.InputJsonValue> = {};
@@ -149,7 +135,7 @@ export class PackagesService {
       const inherited = new Set(pkg.inheritedModes);
       let next: ActionMode;
       if (mode === 'inherit') {
-        const provider = await this.uow.prisma.provider.findUnique({ where: { id: pkg.providerId } });
+        const provider = await this.repo.providerById(pkg.providerId);
         next = normalizeActionModes(provider?.actionModes)[action];
         inherited.add(action);
       } else {
@@ -160,22 +146,13 @@ export class PackagesService {
       data.inheritedModes = [...inherited];
     }
     if (Object.keys(data).length === 0) fail(400, 'INVALID');
-    await this.uow.prisma.package.update({ where: { code }, data });
+    await this.repo.saveModes(code, data);
     return { ok: true as const };
   }
 
   async sheet(actor: Actor, code: string) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.uow.prisma.package.findUnique({
-      where: { code },
-      include: {
-        provider: true,
-        company: true,
-        lines: { select: { status: true } },
-        renewals: { include: { target: { select: { code: true } } } },
-        switches: { include: { target: { select: { code: true } } } },
-      },
-    });
+    const pkg = await this.repo.packageSheet(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     return {
       code: pkg.code,
@@ -221,18 +198,15 @@ export class PackagesService {
   async setDetails(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
     const input = parseInput(PackageDetailsBody, body);
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
-    await this.uow.prisma.package.update({
-      where: { id: pkg.id },
-      data: {
-        dataGb: input.dataGb,
-        smsCount: input.smsCount,
-        minutes: input.minutes,
-        details: input.details || null,
-        ...(input.suspendAfterDays === undefined ? {} : { suspendAfterDays: input.suspendAfterDays }),
-        ...(input.esimAvailable === undefined ? {} : { esimAvailable: input.esimAvailable }),
-      },
+    await this.repo.savePackage(pkg.id, {
+      dataGb: input.dataGb,
+      smsCount: input.smsCount,
+      minutes: input.minutes,
+      details: input.details || null,
+      ...(input.suspendAfterDays === undefined ? {} : { suspendAfterDays: input.suspendAfterDays }),
+      ...(input.esimAvailable === undefined ? {} : { esimAvailable: input.esimAvailable }),
     });
     return { ok: true as const };
   }
@@ -240,7 +214,7 @@ export class PackagesService {
   /** A package's extra operations (spec 2026-11-09, 3), in their order. */
   async addons(actor: Actor, code: string) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code }, include: { addons: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } } });
+    const pkg = await this.repo.packageWithAddons(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     return { addons: pkg.addons.map((row) => ({ id: row.id, name: row.name, price: row.price, active: row.active, position: row.position })) };
   }
@@ -248,36 +222,36 @@ export class PackagesService {
   /** Adds an extra operation, or changes one when `id` is given: name, price (agorot) and on/off. */
   async saveAddon(actor: Actor, code: string, body: unknown, id?: string) {
     requireGrant(actor, 'edit');
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     if (id) {
       const input = parseInput(PackageAddonUpdateBody, body);
       // Only what was sent changes.
       const data = Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
-      const row = await this.uow.prisma.packageAddon.findUnique({ where: { id } });
+      const row = await this.repo.addonById(id);
       if (!row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
-      await this.uow.prisma.packageAddon.update({ where: { id }, data });
+      await this.repo.saveAddon(id, data);
     } else {
       // A new operation goes last; a position sent with it is checked and not used, as before.
       const { name, price, active } = parseInput(PackageAddonBody, body);
-      const count = await this.uow.prisma.packageAddon.count({ where: { packageId: pkg.id } });
-      await this.uow.prisma.packageAddon.create({ data: { packageId: pkg.id, name, price: price ?? 0, active: active !== false, position: count } });
+      const count = await this.repo.addonCount(pkg.id);
+      await this.repo.addAddon({ packageId: pkg.id, name, price: price ?? 0, active: active !== false, position: count });
     }
     return this.addons(actor, code);
   }
 
   async removeAddon(actor: Actor, code: string, id: string) {
     requireGrant(actor, 'edit');
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
-    const row = await this.uow.prisma.packageAddon.findUnique({ where: { id } });
+    const pkg = await this.repo.packageByCode(code);
+    const row = await this.repo.addonById(id);
     if (!pkg || !row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
-    await this.uow.prisma.packageAddon.delete({ where: { id } });
+    await this.repo.removeAddon(id);
     return this.addons(actor, code);
   }
 
   async setChain(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
-    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const input = parseInput(PackageChainBody, body);
     const next = { ...pricesOf(pkg) };
@@ -304,17 +278,14 @@ export class PackagesService {
     }
     if (!chainHolds(next) || !chainHolds(renewal)) fail(400, 'PRICE_BELOW_FLOOR');
     const esimPrice = input.esimPrice;
-    await this.uow.prisma.package.update({
-      where: { id: pkg.id },
-      data: {
-        ...next,
-        ...(esimPrice === undefined ? {} : { esimPrice }),
-        renewalBranchCost: renewal.branchCost,
-        renewalMainPrice: renewal.mainPrice,
-        renewalAgentPrice: renewal.agentPrice,
-        renewalPosPrice: renewal.posPrice,
-        renewalSubscriberPrice: renewal.subscriberPrice,
-      },
+    await this.repo.savePackage(pkg.id, {
+      ...next,
+      ...(esimPrice === undefined ? {} : { esimPrice }),
+      renewalBranchCost: renewal.branchCost,
+      renewalMainPrice: renewal.mainPrice,
+      renewalAgentPrice: renewal.agentPrice,
+      renewalPosPrice: renewal.posPrice,
+      renewalSubscriberPrice: renewal.subscriberPrice,
     });
     return { ok: true as const };
   }
@@ -324,12 +295,9 @@ export class PackagesService {
     const { targets: targetCodes } = parseInput(PackageTargetsBody, body);
     if (new Set(targetCodes).size !== targetCodes.length || targetCodes.includes(code)) fail(400, 'INVALID');
     const [pkg, targets] = await Promise.all([
-      this.uow.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } }),
+      this.repo.packageWithCompany(code),
       targetCodes.length
-        ? this.uow.prisma.package.findMany({
-            where: { code: { in: targetCodes } },
-            include: { company: true, provider: true },
-          })
+        ? this.repo.packagesByCodes(targetCodes)
         : [],
     ]);
     if (!pkg) fail(404, 'NOT_FOUND');
@@ -347,18 +315,14 @@ export class PackagesService {
     ) fail(400, 'INVALID');
     await this.uow.runTx(async (tx) => {
       if (kind === 'renewals') {
-        await tx.packageRenewal.deleteMany({ where: { packageId: pkg.id } });
+        await this.repo.clearRenewalTargets(tx, pkg.id);
         if (targets.length) {
-          await tx.packageRenewal.createMany({
-            data: targets.map((target) => ({ packageId: pkg.id, targetPackageId: target.id })),
-          });
+          await this.repo.addRenewalTargets(tx, targets.map((target) => ({ packageId: pkg.id, targetPackageId: target.id })));
         }
       } else {
-        await tx.packageSwitch.deleteMany({ where: { packageId: pkg.id } });
+        await this.repo.clearSwitchTargets(tx, pkg.id);
         if (targets.length) {
-          await tx.packageSwitch.createMany({
-            data: targets.map((target) => ({ packageId: pkg.id, targetPackageId: target.id })),
-          });
+          await this.repo.addSwitchTargets(tx, targets.map((target) => ({ packageId: pkg.id, targetPackageId: target.id })));
         }
       }
     });

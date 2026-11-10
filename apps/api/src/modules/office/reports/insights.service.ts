@@ -8,7 +8,6 @@ import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
 import { visibleAccountIds } from '../rules/office-rules';
-import { NEWEST_FIRST } from '../rules/office-paging';
 import { REFUND_KINDS, SALE_KINDS } from '../rules/profit-ladder';
 import { PROVIDER_OPERATION_KINDS } from '../wallets/provider-cost';
 import { WalletsService } from '../wallets/wallets.service';
@@ -33,10 +32,10 @@ function dateRange(query: Period): Prisma.DateTimeFilter | undefined {
 @Injectable()
 export class InsightsService {
   constructor(
-    private readonly uow: UnitOfWork,
+    readonly uow: UnitOfWork,
     private readonly tree: AccountTree,
     private readonly wallets: WalletsService,
-    readonly repo: ReportsRepository,
+    private readonly repo: ReportsRepository,
   ) {}
 
   /** The accounts under the viewer, with their wallets and their last movement. */
@@ -50,8 +49,8 @@ export class InsightsService {
       .filter((account) => !needle || account.loginName.includes(needle) || account.nickname.includes(needle));
     const ids = listed.map((account) => account.id);
     const [wallets, last] = await Promise.all([
-      this.uow.prisma.wallet.findMany({ where: { userId: { in: ids } } }),
-      this.uow.prisma.walletEntry.groupBy({ by: ['userId'], where: { userId: { in: ids } }, _max: { createdAt: true } }),
+      this.repo.walletsOf(ids),
+      this.repo.lastMovementOf(ids),
     ]);
     const walletOf = new Map(wallets.map((row) => [row.userId, row]));
     const lastOf = new Map(last.map((row) => [row.userId, row._max.createdAt]));
@@ -89,16 +88,8 @@ export class InsightsService {
     if (actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
     const createdAt = dateRange(query);
-    const rows = await this.uow.prisma.walletEntry.findMany({
-      where: { kind: { in: PROVIDER_OPERATION_KINDS }, ...(createdAt ? { createdAt } : {}) },
-      select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, providerCost: true },
-      orderBy: [...NEWEST_FIRST],
-      take: REPORT_LIMIT,
-    });
-    const lines = await this.uow.prisma.line.findMany({
-      where: { id: { in: [...new Set(rows.map((row) => row.lineId).filter((id): id is string => Boolean(id)))] } },
-      select: { id: true, package: { select: { provider: { select: { code: true, name: true } } } } },
-    });
+    const rows = await this.repo.providerOperations(PROVIDER_OPERATION_KINDS, createdAt, REPORT_LIMIT);
+    const lines = await this.repo.providersOfLines([...new Set(rows.map((row) => row.lineId).filter((id): id is string => Boolean(id)))]);
     const providerOf = new Map(lines.map((line) => [line.id, line.package.provider]));
     const margins = await this.wallets.marginsFor(actor, rows.filter((row) => SALE_KINDS[row.kind] || REFUND_KINDS.has(row.kind)));
     const groups = new Map<string, { providerCode: string; providerName: string; operations: number; cost: number; profit: number }>();

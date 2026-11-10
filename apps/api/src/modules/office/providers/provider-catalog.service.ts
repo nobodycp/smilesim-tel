@@ -32,10 +32,10 @@ function canEdit(actor: Actor) {
  */
 @Injectable()
 export class ProviderCatalogService {
-  constructor(private readonly uow: UnitOfWork, readonly repo: ProvidersRepository) {}
+  constructor(readonly uow: UnitOfWork, private readonly repo: ProvidersRepository) {}
 
   private async provider(code: string) {
-    const row = await this.uow.prisma.provider.findUnique({ where: { code } });
+    const row = await this.repo.providerByCode(code);
     if (!row) fail(404, 'NOT_FOUND');
     return row;
   }
@@ -46,7 +46,7 @@ export class ProviderCatalogService {
     await this.provider(code);
     const adapter = adapterFor(code);
     const offered = await adapter.companies();
-    const stored = await this.uow.prisma.company.findMany({ where: { code: { in: offered.map((row) => row.code) } }, select: { code: true } });
+    const stored = await this.repo.storedCompanyCodes(offered.map((row) => row.code));
     const have = new Set(stored.map((row) => row.code));
     return { simulated: adapter.simulated, companies: offered.map((row) => ({ ...row, added: have.has(row.code) })) };
   }
@@ -58,10 +58,7 @@ export class ProviderCatalogService {
     if (!companyCode) fail(400, 'INVALID');
     const adapter = adapterFor(code);
     const offered = await adapter.products(companyCode);
-    const stored = await this.uow.prisma.package.findMany({
-      where: { OR: [{ code: { in: offered.map((row) => row.code) } }, { providerId: provider.id, providerProductCode: { in: offered.map((row) => row.code) } }] },
-      select: { code: true, providerProductCode: true },
-    });
+    const stored = await this.repo.packagesOfProducts(provider.id, offered.map((row) => row.code));
     const have = new Set(stored.flatMap((row) => [row.code, row.providerProductCode ?? '']));
     return { simulated: adapter.simulated, products: offered.map((row) => ({ ...row, added: have.has(row.code) })) };
   }
@@ -74,16 +71,14 @@ export class ProviderCatalogService {
     await this.provider(providerCode);
     const offered = (await adapterFor(providerCode).companies()).find((row) => row.code === companyCode);
     if (!offered) fail(404, 'PRODUCT_NOT_FOUND');
-    if (await this.uow.prisma.company.findUnique({ where: { code: companyCode } })) fail(409, 'COMPANY_EXISTS');
-    const company = await this.uow.prisma.company.create({
-      data: {
-        code: companyCode,
-        name: input.name || offered.name,
-        iccidLength: input.simLength ?? null,
-        iccidPrefix: input.simPrefix || null,
-        esim: input.esim ?? offered.sim.esim,
-        esimPrice: input.esimPrice ?? offered.esimPrice,
-      },
+    if (await this.repo.companyByCode(companyCode)) fail(409, 'COMPANY_EXISTS');
+    const company = await this.repo.addCompany({
+      code: companyCode,
+      name: input.name || offered.name,
+      iccidLength: input.simLength ?? null,
+      iccidPrefix: input.simPrefix || null,
+      esim: input.esim ?? offered.sim.esim,
+      esimPrice: input.esimPrice ?? offered.esimPrice,
     });
     return { ok: true as const, code: company.code };
   }
@@ -97,14 +92,11 @@ export class ProviderCatalogService {
     const input = parseInput(PackageCreateBody, body);
     const { providerCode, companyCode, productCode, subscription, renewal } = input;
     const provider = await this.provider(providerCode);
-    const company = await this.uow.prisma.company.findUnique({ where: { code: companyCode } });
+    const company = await this.repo.companyByCode(companyCode);
     if (!company) fail(404, 'NOT_FOUND');
     const product = (await adapterFor(providerCode).products(companyCode)).find((row) => row.code === productCode);
     if (!product) fail(404, 'PRODUCT_NOT_FOUND');
-    const taken = await this.uow.prisma.package.findFirst({
-      where: { OR: [{ code: productCode }, { providerId: provider.id, providerProductCode: productCode }] },
-      select: { id: true },
-    });
+    const taken = await this.repo.packageOfProduct(provider.id, productCode);
     if (taken) fail(409, 'PACKAGE_EXISTS');
 
     const details = input.details ?? product.details;
@@ -132,33 +124,31 @@ export class ProviderCatalogService {
 
     const addonRows = (input.addons ?? []).map((row, position) => ({ ...row, position }));
 
-    const created = await this.uow.prisma.package.create({
-      data: {
-        code: productCode,
-        providerProductCode: productCode,
-        name: input.name || product.name,
-        providerId: provider.id,
-        companyId: company.id,
-        dataGb: input.dataGb ?? product.dataGb,
-        smsCount: input.smsCount ?? product.smsCount,
-        minutes: input.minutes ?? product.minutes,
-        details: details || null,
-        months: input.months ?? product.months,
-        suspendAfterDays: input.suspendAfterDays ?? 90,
-        esimAvailable: input.esimAvailable ?? true,
-        forSale: input.forSale ?? true,
-        enabled: input.enabled ?? true,
-        ...subscription,
-        renewalBranchCost: renewal.branchCost,
-        renewalMainPrice: renewal.mainPrice,
-        renewalAgentPrice: renewal.agentPrice,
-        renewalPosPrice: renewal.posPrice,
-        renewalSubscriberPrice: renewal.subscriberPrice,
-        ...(columns as Record<string, boolean> & { autoActivate: boolean; autoCharge: boolean; autoDisconnect: boolean; autoFreeze: boolean; autoSwitch: boolean }),
-        actionModes: modes,
-        inheritedModes,
-        addons: addonRows.length ? { create: addonRows } : undefined,
-      },
+    const created = await this.repo.addPackage({
+      code: productCode,
+      providerProductCode: productCode,
+      name: input.name || product.name,
+      providerId: provider.id,
+      companyId: company.id,
+      dataGb: input.dataGb ?? product.dataGb,
+      smsCount: input.smsCount ?? product.smsCount,
+      minutes: input.minutes ?? product.minutes,
+      details: details || null,
+      months: input.months ?? product.months,
+      suspendAfterDays: input.suspendAfterDays ?? 90,
+      esimAvailable: input.esimAvailable ?? true,
+      forSale: input.forSale ?? true,
+      enabled: input.enabled ?? true,
+      ...subscription,
+      renewalBranchCost: renewal.branchCost,
+      renewalMainPrice: renewal.mainPrice,
+      renewalAgentPrice: renewal.agentPrice,
+      renewalPosPrice: renewal.posPrice,
+      renewalSubscriberPrice: renewal.subscriberPrice,
+      ...(columns as Record<string, boolean> & { autoActivate: boolean; autoCharge: boolean; autoDisconnect: boolean; autoFreeze: boolean; autoSwitch: boolean }),
+      actionModes: modes,
+      inheritedModes,
+      addons: addonRows.length ? { create: addonRows } : undefined,
     });
     return { ok: true as const, code: created.code, companyCode: company.code };
   }

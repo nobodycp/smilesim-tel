@@ -12,15 +12,11 @@ import { ProviderEsimPriceBody, ProviderModeBody } from './providers.schemas';
 /** Providers, for the branch: the list with each provider's companies and packages, the per-provider action modes, and the provider eSIM price. */
 @Injectable()
 export class ProvidersService {
-  constructor(private readonly uow: UnitOfWork, readonly repo: ProvidersRepository) {}
+  constructor(readonly uow: UnitOfWork, private readonly repo: ProvidersRepository) {}
 
   async list(actor: Actor) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const rows = await this.uow.prisma.provider.findMany({
-      where: { packages: { some: { companyId: { not: null } } } },
-      include: { packages: { include: { company: true }, orderBy: { code: 'asc' } } },
-      orderBy: { name: 'asc' },
-    });
+    const rows = await this.repo.providersWithCatalog();
     return {
       providers: rows.map((row) => {
         const byCompany = new Map<string, { name: string; image: string; packages: Array<{
@@ -77,7 +73,7 @@ export class ProvidersService {
 
   async settings(actor: Actor, code: string) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const row = await this.uow.prisma.provider.findUnique({ where: { code } });
+    const row = await this.repo.providerByCode(code);
     if (!row) fail(404, 'NOT_FOUND');
     return {
       code: row.code,
@@ -89,30 +85,27 @@ export class ProvidersService {
 
   async setEsimPrice(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
-    const row = await this.uow.prisma.provider.findUnique({ where: { code } });
+    const row = await this.repo.providerByCode(code);
     if (!row) fail(404, 'NOT_FOUND');
     const { price } = parseInput(ProviderEsimPriceBody, body);
-    await this.uow.prisma.provider.update({ where: { code }, data: { esimPrice: price } });
+    await this.repo.setEsimPrice(code, price);
     return { ok: true as const, esimPrice: price };
   }
 
   async setMode(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
-    const row = await this.uow.prisma.provider.findUnique({ where: { code } });
+    const row = await this.repo.providerByCode(code);
     if (!row) fail(404, 'NOT_FOUND');
     const { action, mode } = parseInput(ProviderModeBody, body);
     const modes = normalizeActionModes(row.actionModes);
     modes[action] = mode;
     // The packages that inherit this action follow at once (spec 2026-11-09-admin-review, 3); those with a mode of
     // their own keep it.
-    const following = await this.uow.prisma.package.findMany({ where: { providerId: row.id, inheritedModes: { has: action } } });
-    await this.uow.prisma.$transaction([
-      this.uow.prisma.provider.update({ where: { code }, data: { actionModes: modes } }),
-      ...following.map((pkg) => this.uow.prisma.package.update({
-        where: { id: pkg.id },
-        data: packageModeData(pkg.actionModes, pkg, action, mode) as Prisma.PackageUpdateInput,
-      })),
-    ]);
+    const following = await this.repo.packagesInheriting(row.id, action);
+    await this.repo.saveModes(code, modes, following.map((pkg) => ({
+      id: pkg.id,
+      data: packageModeData(pkg.actionModes, pkg, action, mode) as Prisma.PackageUpdateInput,
+    })));
     return { ok: true as const };
   }
 }

@@ -12,11 +12,11 @@ import { expiringWhere } from '../rules/office-paging';
 /** The signed-in account's desk: who it is (identity, balance, grants, stops), and the home board. */
 @Injectable()
 export class DeskService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, readonly repo: DeskRepository) {}
+  constructor(readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly repo: DeskRepository) {}
 
   async me(actor: Actor) {
     const [wallet, accounts] = await Promise.all([
-      this.uow.prisma.wallet.findUnique({ where: { userId: actor.id } }),
+      this.repo.walletOf(actor.id),
       this.tree.accounts(),
     ]);
     return {
@@ -42,19 +42,12 @@ export class DeskService {
     // Open tasks (pending or being worked on) for the sidebar's count beside «المهام» (spec 2026-11-09-graphite-identity).
     const openWhere = { ...taskWhereFor(actor, accounts), status: { in: ['pending', 'working'] } };
     const [pendingTasks, openTasks, activeLines, inactiveLines, expiringLines, entries] = await Promise.all([
-      this.uow.prisma.officeTask.count({ where: taskWhere }),
-      this.uow.prisma.officeTask.count({ where: openWhere }),
-      posIds.length ? this.uow.prisma.line.count({ where: { posId: { in: posIds }, status: 'active' } }) : 0,
-      posIds.length ? this.uow.prisma.line.count({ where: { posId: { in: posIds }, status: 'disconnected' } }) : 0,
-      posIds.length ? this.uow.prisma.line.count({ where: { posId: { in: posIds }, ...expiringWhere() } }) : 0,
-      posIds.length
-        ? this.uow.prisma.walletEntry.findMany({
-            where: { userId: { in: posIds }, kind: { in: ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch'] } },
-            orderBy: { createdAt: 'desc' },
-            take: 8,
-            include: { user: true },
-          })
-        : [],
+      this.repo.taskCount(taskWhere),
+      this.repo.taskCount(openWhere),
+      posIds.length ? this.repo.lineCountInStatus(posIds, 'active') : 0,
+      posIds.length ? this.repo.lineCountInStatus(posIds, 'disconnected') : 0,
+      posIds.length ? this.repo.lineCount({ posId: { in: posIds }, ...expiringWhere() }) : 0,
+      posIds.length ? this.repo.latestOperations(posIds) : [],
     ]);
     return {
       pendingTasks,

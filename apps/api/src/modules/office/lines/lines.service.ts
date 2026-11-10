@@ -53,7 +53,7 @@ export class LinesService {
     private readonly pricing: LinePricing,
     private readonly completion: TaskCompletion,
     @Inject(PROVIDER_GATEWAY) private readonly gateway: ProviderGateway,
-    readonly repo: LinesRepository,
+    private readonly repo: LinesRepository,
   ) {}
 
   /**
@@ -89,7 +89,7 @@ export class LinesService {
     const esimFee = esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price;
     const posDelta = -(unit + (esim ? esimFee : 0));
     const msisdn = inputs === 'number-and-sim' ? requested : requested || (await this.pricing.freshMsisdn());
-    if (requested && (await this.uow.prisma.line.findUnique({ where: { msisdn } }))) fail(409, 'NUMBER_TAKEN');
+    if (requested && (await this.repo.lineByMsisdn(msisdn))) fail(409, 'NUMBER_TAKEN');
     // A generated eSIM has no serial yet: the provider (or the branch, through a task) issues it.
     // Providers that take the serial from the seller keep it; the line is still an eSIM and still pays the fee.
     const generatesEsim = inputs === 'generated' && esim;
@@ -110,10 +110,8 @@ export class LinesService {
     const terms = await this.pricing.stampFor(captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target))), pos.id, posPath);
     const created = await this.uow.runTx(async (tx) => {
       if (issuedIccid) await assertSimFree(tx, issuedIccid);
-      const line = await tx.line
-        .create({
-          data: { msisdn, iccid: issuedIccid, esim, esimQr: issuedQr, status: 'active', packageId: pkg.id, posId: pos.id, terms: terms as unknown as Prisma.InputJsonValue, endsAt: periodEnd(new Date(), pkg.months) },
-        })
+      const line = await this.repo
+        .createLine(tx, { msisdn, iccid: issuedIccid, esim, esimQr: issuedQr, status: 'active', packageId: pkg.id, posId: pos.id, terms: terms as unknown as Prisma.InputJsonValue, endsAt: periodEnd(new Date(), pkg.months) })
         .catch(numberTaken);
       await this.ledger.move(tx, pos.id, posDelta, actor.operatorId, 'activate', '', {
         msisdn,
@@ -136,10 +134,7 @@ export class LinesService {
 
   /** A package that can be sold: it exists, and it and every renewal target have a company and a provider. */
   private async sellablePackage(code: string) {
-    const pkg = await this.uow.prisma.package.findUnique({
-      where: { code },
-      include: { company: true, provider: true, renewals: { include: { target: { include: { company: true, provider: true } } } } },
-    });
+    const pkg = await this.repo.packageWithRenewals(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const { company, provider } = pkg;
     if (!company || !provider) fail(400, 'INVALID');
@@ -227,8 +222,8 @@ export class LinesService {
     if (!line.opsLocked && line.status !== 'active') fail(400, 'INVALID');
     assertRunnable(line.package, 'switch', line.denied);
     const [next, allowed] = await Promise.all([
-      this.uow.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true, provider: true } }),
-      this.uow.prisma.packageSwitch.findMany({ where: { packageId: line.packageId }, include: { target: { select: { code: true } } } }),
+      this.repo.packageByCode(packageCode),
+      this.repo.switchesOf(line.packageId),
     ]);
     if (!next || !next.company || !next.provider) fail(400, 'INVALID');
     const switched = switchOnto(lineTermsOf(line.terms, line.package), packageTermsOf(line.package), packageTermsOf(next), allowed.map((item) => item.target.code));
@@ -251,7 +246,7 @@ export class LinesService {
       const sale = { ...saleOf(line, next, quote.newPrice), providerCost: quote.providerCost, period: periodOf(next.months, null) };
       if (posDelta !== 0) await this.ledger.move(tx, line.posId, posDelta, actor.operatorId, 'switch', '', sale);
       else await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'switch', sale);
-      await tx.line.update({ where: { id: line.id }, data: { terms: stamped as unknown as Prisma.InputJsonValue, packageId: next.id, opsLocked: false } });
+      await this.repo.switchLine(tx, line.id, stamped as unknown as Prisma.InputJsonValue, next.id);
     });
     return { applied: true, debited };
   }
@@ -267,7 +262,7 @@ export class LinesService {
     const terms = lineTermsOf(line.terms, line.package);
     const base = line.endsAt > new Date() ? line.endsAt : new Date();
     const target = targetCode
-      ? await this.uow.prisma.package.findUnique({ where: { code: targetCode }, include: { company: true, provider: true } })
+      ? await this.repo.packageByCode(targetCode)
       : null;
     if (targetCode && (!target || !target.company || !target.provider)) fail(400, 'INVALID');
     const renewal = target ? renewOnto(terms, packageTermsOf(target), base) : renewStay(terms, base);
@@ -284,10 +279,7 @@ export class LinesService {
         providerCost: providerBranchCost('extend', renewal.terms, target ?? line.package),
         period: periodOf(windowMonthsOf(renewal.terms), renewal.endsAt),
       });
-      await tx.line.update({
-        where: { id: line.id },
-        data: { endsAt: renewal.endsAt, terms: renewal.terms as unknown as Prisma.InputJsonValue, ...(target ? { packageId: target.id } : {}) },
-      });
+      await this.repo.extendLine(tx, line.id, { endsAt: renewal.endsAt, terms: renewal.terms as unknown as Prisma.InputJsonValue, ...(target ? { packageId: target.id } : {}) });
     });
     return { applied: true, debited: posDelta < 0 };
   }
@@ -326,13 +318,13 @@ export class LinesService {
     assertRunnable(line.package, 'rename', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
     if (msisdn === line.msisdn) fail(400, 'INVALID');
-    if (msisdn && (await this.uow.prisma.line.findUnique({ where: { msisdn } }))) fail(409, 'NUMBER_TAKEN');
+    if (msisdn && (await this.repo.lineByMsisdn(msisdn))) fail(409, 'NUMBER_TAKEN');
     const route = await this.route('rename', line.package, runsNow(line.package, 'rename'), input.outcome, { msisdn: msisdn || null });
     if (!route.now) return this.defer(actor, line, { action: 'rename', posDelta: 0, msisdn: msisdn || null, note: route.note });
     if (!msisdn) fail(400, 'INVALID');
     await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
-      await tx.line.update({ where: { id: line.id }, data: { msisdn } }).catch(numberTaken);
+      await this.repo.renameLine(tx, line.id, msisdn).catch(numberTaken);
       await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'rename', saleOf({ ...line, msisdn }));
     });
     return { applied: true, debited: false };
@@ -358,7 +350,7 @@ export class LinesService {
     await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
       await assertSimFree(tx, iccid, line.id);
-      await tx.line.update({ where: { id: line.id }, data: { iccid, esim, esimQr: qr } });
+      await this.repo.setLineSim(tx, line.id, { iccid, esim, esimQr: qr });
       await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'sim', saleOf(line));
     });
     return { applied: true, debited: false };
@@ -371,7 +363,7 @@ export class LinesService {
   async requestAddon(actor: Actor, lineId: string, body: unknown) {
     const line = await this.lineAccess.visibleLine(actor, lineId);
     const { addonId } = parseInput(AddonBody, body);
-    const addon = await this.uow.prisma.packageAddon.findUnique({ where: { id: addonId } });
+    const addon = await this.repo.addon(addonId);
     if (!addon || addon.packageId !== line.packageId || !addon.active) fail(400, 'INVALID');
     if (line.status === 'disconnected') fail(400, 'INVALID');
     return this.defer(actor, line, { action: 'addon', posDelta: -addon.price, msisdn: line.msisdn, iccid: null, note: addon.name });
