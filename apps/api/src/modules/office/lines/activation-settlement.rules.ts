@@ -163,7 +163,7 @@ export type DecisionRefusal =
   /** A proposal waits for its answer: it is approved or refused before anything else is decided. */
   | 'proposal-open'
   | 'no-proposal'
-  /** Nobody approves their own decision. */
+  /** Nobody answers their own proposal: it is approved, or refused, by another account. */
   | 'own-proposal'
   | 'evidence-missing'
   | 'note-too-short'
@@ -203,9 +203,14 @@ function evidenceRefusal(decision: Decision, evidence: DecisionEvidence): Decisi
  * Who: the branch owner or a branch account holding `accounting`, in a session of their own, and never the task's
  * submitter. What: a decision is stated with evidence; the two that keep the sale (`confirm-success`,
  * `apply-corrected`) take effect at once, the two that let money go back (`declare-failure`,
- * `release-after-success`) are a proposal that changes nothing until **another** account approves it. A proposal
- * may be refused by another authorised account, or withdrawn by the account that made it; either closes it and
- * changes nothing. While a proposal is open nothing else is decided.
+ * `release-after-success`) are a proposal that changes nothing until **another** authorised account approves it.
+ * That other account may refuse it instead, which closes it and changes nothing. The account that made a proposal
+ * answers it in neither way. While a proposal is open no other decision by a person is taken; the provider's own
+ * answer is not a decision and is never held back by one (`ProviderOperationsService.settle`, ADR 0018).
+ *
+ * A proposal is about the state the operation was in. Once the operation has left that state (the provider
+ * answered late, or the settlement ran), the proposal is stale: it cannot be approved, so it moves no money, and
+ * another account can only close it.
  */
 export function decisionStep(events: readonly DecisionEvent[], actor: DecisionActor, request: DecisionRequest): DecisionStep {
   if (actor.impersonating) return refuse('entered-session');
@@ -227,9 +232,10 @@ export function decisionStep(events: readonly DecisionEvent[], actor: DecisionAc
   }
 
   if (!proposal) return refuse('no-proposal');
-  // The operation moved on while the proposal waited (the provider answered late): it can only be closed.
-  if (request.act === 'refuse') return { ok: true, event: { sequence, type: 'refused', decision: proposal.decision }, effect: 'none' };
-  if (DECIDES[proposal.decision] !== phase) return refuse('not-applicable');
+  // Approving and refusing are both the second account's: the proposer does neither.
   if (proposal.accountId === actor.id) return refuse('own-proposal');
+  if (request.act === 'refuse') return { ok: true, event: { sequence, type: 'refused', decision: proposal.decision }, effect: 'none' };
+  // Stale: the operation is no longer in the state the proposal was made about. It can only be refused (above).
+  if (DECIDES[proposal.decision] !== phase) return refuse('not-applicable');
   return { ok: true, event: { sequence, type: 'approved', decision: proposal.decision }, effect: proposal.decision };
 }

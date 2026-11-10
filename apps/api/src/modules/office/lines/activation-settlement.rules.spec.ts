@@ -182,15 +182,30 @@ describe('decisions by people (D15)', () => {
     expect(openProposal(events)).toEqual(events[0]);
   });
 
-  it('closes a proposal by another account\'s refusal or the proposer\'s withdrawal, with no effect, and then a new decision may be made', () => {
+  it('closes a proposal only by another account\'s refusal, with no effect, and then a new decision may be made', () => {
     const events = [proposed('declare-failure', 'owner')];
     expect(decisionStep(events, accountant, answer('refuse', PHASES.unknown))).toEqual({ ok: true, event: { sequence: 2, type: 'refused', decision: 'declare-failure' }, effect: 'none' });
-    expect(decisionStep(events, owner, answer('refuse', PHASES.unknown))).toEqual({ ok: true, event: { sequence: 2, type: 'refused', decision: 'declare-failure' }, effect: 'none' });
     const closed: DecisionEvent[] = [...events, { sequence: 2, type: 'refused', decision: 'declare-failure', accountId: 'accountant' }];
     expect(openProposal(closed)).toBeNull();
     expect(refusal(decisionStep(closed, accountant, answer('approve', PHASES.unknown)))).toBe('no-proposal');
     expect(decisionStep(closed, accountant, decide('confirm-success', PHASES.unknown))).toEqual({ ok: true, event: { sequence: 3, type: 'applied', decision: 'confirm-success' }, effect: 'confirm-success' });
     expect(decisionStep(closed, accountant, decide('declare-failure', PHASES.unknown))).toMatchObject({ ok: true, event: { sequence: 3, type: 'proposed' } });
+  });
+
+  it('gives the account that made a proposal no way to answer it: it can neither approve nor withdraw it', () => {
+    for (const [decision, phase] of [['declare-failure', 'unknown'], ['release-after-success', 'exception']] as const) {
+      for (const proposer of [owner, accountant]) {
+        const events = [proposed(decision, proposer.id)];
+        expect(refusal(decisionStep(events, proposer, answer('approve', PHASES[phase])))).toBe('own-proposal');
+        expect(refusal(decisionStep(events, proposer, answer('refuse', PHASES[phase])))).toBe('own-proposal');
+        // Nor by deciding something else over it, nor once it has gone stale.
+        expect(refusal(decisionStep(events, proposer, decide(decision, PHASES[phase])))).toBe('proposal-open');
+        expect(refusal(decisionStep(events, proposer, answer('refuse', PHASES.applied)))).toBe('own-proposal');
+        // Only another authorised account closes it.
+        const other = proposer.id === 'owner' ? accountant : owner;
+        expect(decisionStep(events, other, answer('refuse', PHASES[phase]))).toMatchObject({ ok: true, event: { type: 'refused' }, effect: 'none' });
+      }
+    }
   });
 
   it('refuses an entered session, an account that is not authorised, and the task\'s submitter, for every step', () => {
@@ -229,11 +244,32 @@ describe('decisions by people (D15)', () => {
     expect(refusal(decisionStep([], owner, decide('release-after-success', PHASES.unapplied)))).toBe('not-applicable');
   });
 
-  it('cannot approve a proposal once the provider itself has answered, only close it', () => {
-    const events = [proposed('declare-failure', 'owner')];
-    for (const moved of [PHASES.applied, PHASES.unapplied, PHASES.failed, PHASES.exception]) {
-      expect(refusal(decisionStep(events, accountant, answer('approve', moved)))).toBe('not-applicable');
-      expect(decisionStep(events, accountant, answer('refuse', moved))).toMatchObject({ ok: true, event: { type: 'refused' }, effect: 'none' });
+  it('never approves a stale proposal, so it moves no money: once the operation left the state it was made about, it can only be refused', () => {
+    // What each proposal was made about, and every state the operation can have moved to since.
+    const stale: [Decision, OperationPhase[]][] = [
+      // The provider answered late (ADR 0018), or the settlement then ran.
+      ['declare-failure', ['unapplied', 'applied', 'exception', 'failed']],
+      // The exception was closed, or (never by a rule, but whatever the row says) the operation is elsewhere.
+      ['release-after-success', ['applied', 'unapplied', 'unknown', 'failed']],
+    ];
+    for (const [decision, moved] of stale) {
+      const events = [proposed(decision, 'owner')];
+      for (const phase of moved) {
+        for (const approver of [accountant, second]) {
+          const step = decisionStep(events, approver, answer('approve', PHASES[phase]));
+          expect([decision, phase, approver.id, refusal(step)]).toEqual([decision, phase, approver.id, 'not-applicable']);
+        }
+        // Closing it writes a refusal and has no effect.
+        expect(decisionStep(events, accountant, answer('refuse', PHASES[phase]))).toEqual({ ok: true, event: { sequence: 2, type: 'refused', decision }, effect: 'none' });
+      }
+    }
+    // The only step that carries a money-moving effect is an approval, and only on the state the proposal is about.
+    for (const decision of ['declare-failure', 'release-after-success'] as const) {
+      for (const phase of phases) {
+        const step = decisionStep([proposed(decision, 'owner')], accountant, answer('approve', PHASES[phase]));
+        const about = decision === 'declare-failure' ? 'unknown' : 'exception';
+        expect([decision, phase, step.ok && step.effect]).toEqual([decision, phase, phase === about ? decision : false]);
+      }
     }
   });
 

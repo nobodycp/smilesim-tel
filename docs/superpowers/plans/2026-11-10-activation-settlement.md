@@ -87,12 +87,18 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     anywhere yet**: S.5 seals the code and S.8 stores the result.
   - *Specs:* `lines/activation-settlement.rules.spec.ts` (every row of D6, every rule of D15, and that the lists
     equal the migration's CHECK lists), `provider-operation.rules.spec.ts`.
-  - **Decided while writing the rule, beyond the spec's words:** the account that made a proposal may withdraw
-    it (a `refused` event of its own); it still cannot approve it. An open proposal blocks every other decision
-    on the operation, including a confirmation of success, until it is refused or withdrawn. A proposal whose
-    operation has moved on (the provider answered late) can only be closed. What an activation "hands back when
-    the provider chose it" is checked by the service of S.9, which knows the provider; the rule checks the
-    evidence kind, the note and the reference.
+  - **As D15 says, with nothing added** (corrected after the owner's review: a first version let the proposer
+    withdraw their own proposal; that is removed): a proposal is answered only by **another** authorised account,
+    which approves or refuses it; the account that made it does neither. An open proposal blocks every other
+    decision *by a person* on the operation, until it is refused.
+  - **The provider's own answer is never held back by a proposal.** `ProviderOperationsService.settle` reads no
+    decision event; `settlement-schema.db.spec.ts` shows a late `confirmed` or `refused` for the same attempt
+    recorded while a failure proposal is open (ADR 0018).
+  - **A stale proposal cannot be approved.** Once the operation has left the state the proposal was made about,
+    an approval is `not-applicable`, so it moves no money; another account can only refuse it, which has no
+    effect. The unit spec checks every proposal against every state.
+  - What an activation "hands back when the provider chose it" is checked by the service of S.9, which knows the
+    provider; the rule checks the evidence kind, the note and the reference.
   - Also in this commit: the report's PostgreSQL test moved to `src/reservation-conflicts.db.spec.ts`, so the CI
     job that has a database runs it.
 

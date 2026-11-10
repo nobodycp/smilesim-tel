@@ -141,9 +141,12 @@ come; the money must be safe in every state of the operation.
 - An operation's state for its task is one of eight phases, and the table of D6, the settlement's next step and
   who may decide what are functions of that phase alone (`lines/activation-settlement.rules.ts`).
 - The lists the rules use are the lists the database checks; a spec reads the migration and compares them.
-- A proposal may be withdrawn by the account that made it; it can be approved only by another. While it is open
-  nothing else is decided on the operation. Once the operation has moved on by the provider's own answer, a
-  proposal can only be closed.
+- A proposal is approved or refused only by another authorised account; the account that made it answers it in
+  neither way (no withdrawal). While it is open no other decision by a person is taken on the operation.
+- The provider's own late verdict for the same attempt is recorded whatever proposals are open: settling reads no
+  decision event.
+- A proposal whose operation has left the state it was made about is stale: it cannot be approved, so it moves
+  no money, and can only be refused.
 - What a confirmed activation hands back travels with the evidence and is normalised by a rule; storing it is
   S.5 and S.8.
 

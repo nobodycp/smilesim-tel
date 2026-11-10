@@ -2,9 +2,12 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../../db';
 import type { Prisma } from '../../../../generated/prisma/client';
+import { OfficeFailure } from '../../../shared/office-failure';
 import { seal } from '../../../shared/secret-box';
 import { UnitOfWork } from '../../kernel/unit-of-work';
+import { decisionStep, type DecisionActor, type DecisionEvent } from '../../lines/activation-settlement.rules';
 import type { NoticeService } from '../../notices/notice.service';
+import { ATTEMPT_LEASE_MS, type OperationStatus } from './provider-operation.rules';
 import { ProviderOperationsRepository } from './provider-operations.repository';
 import { ProviderOperationsService } from './provider-operations.service';
 
@@ -229,6 +232,84 @@ suite('activation settlement schema (PostgreSQL)', () => {
       // The provider cannot be deleted from under its credentials.
       await refused(tx, () => tx.provider.delete({ where: { id: provider.id } }), /Foreign key/);
       expect(JSON.stringify(await tx.providerCredential.findMany({ where: { providerId: provider.id } }))).not.toContain(secret);
+    });
+  });
+
+  describe('a person\'s open proposal and the provider\'s own verdict (ADR 0018, ADR 0019 D15)', () => {
+    /** The service on the test's own transaction, so the decision events it writes are rolled back with it. */
+    const serviceIn = (tx: Tx) => {
+      class SameTransaction extends UnitOfWork {
+        override runTx<T>(run: (inner: Tx) => Promise<T>): Promise<T> {
+          return run(tx);
+        }
+      }
+      const uow = new SameTransaction({ write: async () => [], publish: async () => undefined } as unknown as NoticeService);
+      uow.prismaClient = tx as unknown as typeof prisma;
+      return new ProviderOperationsService(uow, new ProviderOperationsRepository());
+    };
+    const accountant: DecisionActor = { id: 'accountant', layer: 'branch', isBranchOwner: false, grants: ['accounting'], impersonating: false };
+    const second: DecisionActor = { id: 'accountant-2', layer: 'branch', isBranchOwner: false, grants: ['accounting'], impersonating: false };
+
+    /** An operation that recovery marked unknown after its attempt was sent, with a failure proposed by a person. */
+    const unknownWithProposal = async (tx: Tx) => {
+      const { provider, pkg } = await seed(tx);
+      const service = serviceIn(tx);
+      const { id } = await service.record(`s3:${randomUUID()}`, { action: 'activate', providerCode: provider.code, packageCode: pkg.code, msisdn: null, iccid: null, lineId: null });
+      const attempt = (await service.claim(id)) as number;
+      expect(await service.beginSend(id, attempt)).not.toBeNull();
+      expect(await service.recover(id, new Date(Date.now() + ATTEMPT_LEASE_MS + 1_000))).toBe('unknown');
+      await tx.providerDecisionEvent.create({ data: event(id, 1, { type: 'proposed', decision: 'declare-failure', accountId: 'owner', accountLoginName: 'owner' }) });
+      return { service, id, attempt };
+    };
+    /** What the rules are given: the stored events and the stored operation. */
+    const stored = async (tx: Tx, id: string) => {
+      const [events, row] = await Promise.all([tx.providerDecisionEvent.findMany({ where: { operationId: id }, orderBy: { sequence: 'asc' } }), tx.providerOperation.findUniqueOrThrow({ where: { id } })]);
+      return { events: events as unknown as DecisionEvent[], operation: { status: row.status as OperationStatus, appliedAt: row.appliedAt, applyError: row.applyError }, row };
+    };
+    const approval = (operation: Awaited<ReturnType<typeof stored>>['operation']) => ({ act: 'approve' as const, operation, submitterId: 'pos-1' });
+
+    it.each([
+      ['confirms', { kind: 'confirmed', providerRef: 'LATE-REF' }, 'succeeded'],
+      ['refuses', { kind: 'refused', error: 'refused' }, 'failed'],
+    ] as const)('records the verdict when the provider %s the same attempt late, although a proposal is open', async (_name, outcome, status) => {
+      await scratch(async (tx) => {
+        const { service, id, attempt } = await unknownWithProposal(tx);
+        // Before the answer: the proposal is open and another account could approve it.
+        const before = await stored(tx, id);
+        expect(before.row.status).toBe('unknown');
+        expect(decisionStep(before.events, accountant, approval(before.operation))).toMatchObject({ ok: true, effect: 'declare-failure' });
+
+        // The provider's own answer for that attempt arrives. No decision event is consulted or needed.
+        expect(await service.settle(id, attempt, outcome)).toBe(status);
+        const after = await stored(tx, id);
+        expect(after.row).toMatchObject({ status, attempts: 1, providerRef: outcome.kind === 'confirmed' ? 'LATE-REF' : null });
+        // The record of the proposal is untouched: one event, still the proposal.
+        expect(after.events).toHaveLength(1);
+        expect(after.events[0]).toMatchObject({ sequence: 1, type: 'proposed', decision: 'declare-failure', accountId: 'owner' });
+
+        // The proposal is stale now: no account can approve it, so nothing moves on its account; it can be closed.
+        for (const approver of [accountant, second]) expect(decisionStep(after.events, approver, approval(after.operation))).toEqual({ ok: false, refusal: 'not-applicable' });
+        expect(decisionStep(after.events, accountant, { act: 'refuse', operation: after.operation, submitterId: 'pos-1' })).toEqual({ ok: true, event: { sequence: 2, type: 'refused', decision: 'declare-failure' }, effect: 'none' });
+        // And the verdict is final: a second answer for the attempt is refused.
+        await expect(service.settle(id, attempt, { kind: 'refused', error: 'refused' })).rejects.toBeInstanceOf(OfficeFailure);
+        expect((await stored(tx, id)).row.status).toBe(status);
+      });
+    });
+
+    it('keeps the operation unknown, and the proposal answerable, when what arrives late says nothing certain', async () => {
+      await scratch(async (tx) => {
+        const { service, id, attempt } = await unknownWithProposal(tx);
+        for (const uncertain of [{ kind: 'no-answer', error: 'timeout' }, { kind: 'not-sent', error: 'unreachable' }] as const) {
+          await tx.$executeRawUnsafe('SAVEPOINT late');
+          await expect(service.settle(id, attempt, uncertain)).rejects.toMatchObject({ status: 409 });
+          await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT late');
+        }
+        // An answer under another attempt's number is not this attempt's verdict either.
+        await expect(service.settle(id, attempt + 1, { kind: 'confirmed', providerRef: 'OTHER' })).rejects.toMatchObject({ status: 409 });
+        const now = await stored(tx, id);
+        expect(now.row).toMatchObject({ status: 'unknown', providerRef: null });
+        expect(decisionStep(now.events, accountant, approval(now.operation))).toMatchObject({ ok: true, effect: 'declare-failure' });
+      });
     });
   });
 
