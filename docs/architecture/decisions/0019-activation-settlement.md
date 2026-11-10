@@ -2,7 +2,8 @@
 
 Date: 2026-11-10. Status: **accepted** (the owner approved the design and ordered slice S.1 the same day, task
 05). The design is fixed; it is built slice by slice, and the plan says which slices exist: **S.1 (the schema, read
-by nothing yet) and S.2 (the reservation of a serial and a number, which changes the manual path) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
+by nothing yet), S.2 (the reservation of a serial and a number, which changes the manual path) and S.3 (the pure
+rules, called by nothing yet) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
 `docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
 
 ## Context
@@ -134,6 +135,17 @@ come; the money must be safe in every state of the operation.
 - The migration file was rewritten after it had been applied on development, test and CI databases only. Deploy
   and status do not compare checksums; `migrate dev` does and asks for a reset. Both versions build the same
   indexes. The plan records the measurements.
+
+## As built in S.3 (pure rules)
+
+- An operation's state for its task is one of eight phases, and the table of D6, the settlement's next step and
+  who may decide what are functions of that phase alone (`lines/activation-settlement.rules.ts`).
+- The lists the rules use are the lists the database checks; a spec reads the migration and compares them.
+- A proposal may be withdrawn by the account that made it; it can be approved only by another. While it is open
+  nothing else is decided on the operation. Once the operation has moved on by the provider's own answer, a
+  proposal can only be closed.
+- What a confirmed activation hands back travels with the evidence and is normalised by a rule; storing it is
+  S.5 and S.8.
 
 ## Consequences
 

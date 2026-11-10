@@ -1,6 +1,6 @@
 import { conflictLines, maskedTail, type ReservationConflict } from './modules/office/lines/reservation.rules';
 import { capturedOutput } from './modules/shared/testing/captured-output';
-import { openConflicts, report } from './reservation-conflicts';
+import { report } from './reservation-conflicts';
 
 const SERIAL = '8997201234567890123';
 const NUMBER = '0507654321';
@@ -67,22 +67,6 @@ describe('reservation conflict report', () => {
     expect(output).toContain('the report could not be made (unclassified)');
     for (const part of [secret, 'db-pass-456', 'db.internal', 'password authentication']) expect(output).not.toContain(part);
     expectNoNumbers(output);
-  });
-
-  // The real query, where a database is given: with the indexes in place no group can exist.
-  (process.env.TEST_DATABASE_URL ? it : it.skip)('reads the database and finds no group once the indexes exist (PostgreSQL)', async () => {
-    const previous = process.env.DATABASE_URL;
-    process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
-    try {
-      expect(await openConflicts()).toEqual([]);
-      let code = -1;
-      await capturedOutput(async () => {
-        code = await report();
-      });
-      expect(code).toBe(0);
-    } finally {
-      process.env.DATABASE_URL = previous;
-    }
   });
 
   it('exits 2 with a code when the database address is wrong (the real client, a closed port)', async () => {

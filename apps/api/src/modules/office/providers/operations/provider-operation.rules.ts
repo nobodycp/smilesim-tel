@@ -59,19 +59,20 @@ export function maySend(status: OperationStatus): boolean {
  * - `no-answer`: the request left, or may have, and no answer came back.
  */
 export type AttemptOutcome =
-  | { kind: 'confirmed'; providerRef: string | null }
+  | { kind: 'confirmed'; providerRef: string | null; result?: ActivationResult | null }
   | { kind: 'refused'; error: OperationError }
   | { kind: 'not-sent'; error: OperationError }
   | { kind: 'no-answer'; error: OperationError };
 
-export type Settlement = { status: OperationStatus; providerRef: string | null; error: OperationError | null };
+/** `result` is what a confirmed activation handed back, as it may be stored; null for every other outcome. */
+export type Settlement = { status: OperationStatus; providerRef: string | null; error: OperationError | null; result: StoredResult | null };
 
 /** The state a pending operation moves to after attempt number `attempt`. */
 export function afterAttempt(outcome: AttemptOutcome, attempt: number): Settlement {
-  if (outcome.kind === 'confirmed') return { status: 'succeeded', providerRef: outcome.providerRef, error: null };
-  if (outcome.kind === 'refused') return { status: 'failed', providerRef: null, error: outcome.error };
-  if (outcome.kind === 'no-answer') return { status: 'unknown', providerRef: null, error: outcome.error };
-  return { status: attempt >= MAX_ATTEMPTS ? 'failed' : 'requested', providerRef: null, error: outcome.error };
+  if (outcome.kind === 'confirmed') return { status: 'succeeded', providerRef: outcome.providerRef, error: null, result: storedResult(outcome.result) };
+  if (outcome.kind === 'refused') return { status: 'failed', providerRef: null, error: outcome.error, result: null };
+  if (outcome.kind === 'no-answer') return { status: 'unknown', providerRef: null, error: outcome.error, result: null };
+  return { status: attempt >= MAX_ATTEMPTS ? 'failed' : 'requested', providerRef: null, error: outcome.error, result: null };
 }
 
 /** How long the provider is given to answer one attempt before the dispatcher stops waiting. */
@@ -88,7 +89,7 @@ export const ATTEMPT_LEASE_MS = CALL_TIMEOUT_MS + 60_000;
  */
 export type SendEvidence =
   | { left: false; error: OperationError }
-  | { left: true; answer: 'confirmed'; providerRef: string | null }
+  | { left: true; answer: 'confirmed'; providerRef: string | null; result?: ActivationResult | null }
   | { left: true; answer: 'refused'; error: OperationError }
   | { left: true; answer: 'none'; error: OperationError };
 
@@ -99,7 +100,7 @@ export type SendEvidence =
 export function outcomeOf(evidence: SendEvidence | null): AttemptOutcome {
   if (!evidence) return { kind: 'no-answer', error: 'no-evidence' };
   if (!evidence.left) return { kind: 'not-sent', error: evidence.error };
-  if (evidence.answer === 'confirmed') return { kind: 'confirmed', providerRef: evidence.providerRef };
+  if (evidence.answer === 'confirmed') return { kind: 'confirmed', providerRef: evidence.providerRef, result: evidence.result ?? null };
   if (evidence.answer === 'refused') return { kind: 'refused', error: evidence.error };
   return { kind: 'no-answer', error: evidence.error };
 }
@@ -135,7 +136,7 @@ export function recoveryOutcome(attempt: PendingAttempt, now: Date): AttemptOutc
 }
 
 /** What closes an unknown operation: an answer about the request already sent, never a new send. */
-export type Verdict = { status: 'succeeded'; providerRef: string | null } | { status: 'failed'; error: OperationError };
+export type Verdict = { status: 'succeeded'; providerRef: string | null; result?: ActivationResult | null } | { status: 'failed'; error: OperationError };
 
 /** What is asked of the provider. It holds no credential: those belong to the adapter that sends it. */
 /** What the dispatcher hands the gateway: the request, the key the provider dedupes on, and the attempt. */
@@ -159,6 +160,39 @@ export function validKey(key: string): boolean {
 export function requestHash(request: OperationRequest): string {
   const fields = [request.action, request.providerCode, request.packageCode, request.msisdn, request.iccid, request.lineId];
   return createHash('sha256').update(JSON.stringify(fields)).digest('hex');
+}
+
+/**
+ * What a provider hands back with a confirmed activation (ADR 0019, D11): the number it assigned, the serial it
+ * issued, and for an eSIM the activation code. Each part is there only when the provider chose it; a part the
+ * seller gave comes back empty. The activation code is a secret: it is sealed before it is stored and is never
+ * logged, queued or put in a notice (D17). It never appears in an error or a log line built from an outcome.
+ */
+export type ActivationResult = { msisdn?: string | null; iccid?: string | null; esimCode?: string | null };
+
+/** The same, as it may be stored: every part present, trimmed and bounded, or null. */
+export type StoredResult = { msisdn: string | null; iccid: string | null; esimCode: string | null };
+
+export const RESULT_LIMITS = { msisdn: 20, iccid: 22, esimCode: 512 } as const;
+
+/**
+ * A confirmed activation's result as it may be stored: digits only for the number and the serial, the code as
+ * given; each trimmed; a part that is empty, too long, or not what it should be is dropped, not cut (half a
+ * serial is worse than none). Null when nothing usable was handed back.
+ */
+export function storedResult(result: ActivationResult | null | undefined): StoredResult | null {
+  if (!result) return null;
+  const digits = (value: string | null | undefined, max: number) => {
+    const text = value?.trim() ?? '';
+    return /^\d+$/.test(text) && text.length <= max ? text : null;
+  };
+  const code = result.esimCode?.trim() ?? '';
+  const stored: StoredResult = {
+    msisdn: digits(result.msisdn, RESULT_LIMITS.msisdn),
+    iccid: digits(result.iccid, RESULT_LIMITS.iccid),
+    esimCode: code && code.length <= RESULT_LIMITS.esimCode ? code : null,
+  };
+  return stored.msisdn || stored.iccid || stored.esimCode ? stored : null;
 }
 
 /** A provider's reference as it is stored: trimmed, at most 120 characters, or nothing. */

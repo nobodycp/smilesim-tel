@@ -1,4 +1,4 @@
-import { ATTEMPT_LEASE_MS, CALL_TIMEOUT_MS, MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, closesUnknown, leaseRuns, outcomeOf, recoveryOutcome, isSettled, maySend, requestHash, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
+import { ATTEMPT_LEASE_MS, CALL_TIMEOUT_MS, MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, RESULT_LIMITS, closesUnknown, leaseRuns, outcomeOf, recoveryOutcome, storedResult, isSettled, maySend, requestHash, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
 
 const request: OperationRequest = { action: 'activate', providerCode: 'sky', packageCode: 'p-1', msisdn: '0500000001', iccid: '8997202000000000777', lineId: null };
 
@@ -25,10 +25,10 @@ describe('provider operation rules', () => {
   });
 
   it('settles an attempt by what is known about it', () => {
-    expect(afterAttempt({ kind: 'confirmed', providerRef: 'R-1' }, 1)).toEqual({ status: 'succeeded', providerRef: 'R-1', error: null });
-    expect(afterAttempt({ kind: 'refused', error: 'refused' }, 1)).toEqual({ status: 'failed', providerRef: null, error: 'refused' });
+    expect(afterAttempt({ kind: 'confirmed', providerRef: 'R-1' }, 1)).toEqual({ status: 'succeeded', providerRef: 'R-1', error: null, result: null });
+    expect(afterAttempt({ kind: 'refused', error: 'refused' }, 1)).toEqual({ status: 'failed', providerRef: null, error: 'refused', result: null });
     // The request left and nothing came back: not a failure, and not sent again.
-    expect(afterAttempt({ kind: 'no-answer', error: 'timeout' }, 1)).toEqual({ status: 'unknown', providerRef: null, error: 'timeout' });
+    expect(afterAttempt({ kind: 'no-answer', error: 'timeout' }, 1)).toEqual({ status: 'unknown', providerRef: null, error: 'timeout', result: null });
     expect(afterAttempt({ kind: 'no-answer', error: 'connection-lost' }, MAX_ATTEMPTS)).toMatchObject({ status: 'unknown' });
   });
 
@@ -48,7 +48,7 @@ describe('provider operation rules', () => {
 
   it('calls an attempt not-sent only on the adapter\'s own statement that nothing left', () => {
     expect(outcomeOf({ left: false, error: 'unreachable' })).toEqual({ kind: 'not-sent', error: 'unreachable' });
-    expect(outcomeOf({ left: true, answer: 'confirmed', providerRef: 'R' })).toEqual({ kind: 'confirmed', providerRef: 'R' });
+    expect(outcomeOf({ left: true, answer: 'confirmed', providerRef: 'R' })).toEqual({ kind: 'confirmed', providerRef: 'R', result: null });
     expect(outcomeOf({ left: true, answer: 'refused', error: 'refused' })).toEqual({ kind: 'refused', error: 'refused' });
     expect(outcomeOf({ left: true, answer: 'none', error: 'timeout' })).toEqual({ kind: 'no-answer', error: 'timeout' });
     // No evidence at all is never "not sent".
@@ -87,6 +87,32 @@ describe('provider operation rules', () => {
   it('lets only the provider\'s own verdict close an unknown operation late', () => {
     expect([closesUnknown({ kind: 'confirmed', providerRef: null }), closesUnknown({ kind: 'refused', error: 'refused' })]).toEqual([true, true]);
     expect([closesUnknown({ kind: 'no-answer', error: 'timeout' }), closesUnknown({ kind: 'not-sent', error: 'unreachable' })]).toEqual([false, false]);
+  });
+
+  it('carries what a confirmed activation handed back from the evidence to the settlement, and nothing for any other outcome', () => {
+    const result = { msisdn: '0501234567', iccid: '8997201234567890123', esimCode: 'LPA:1$smdp.example.com$CODE-123' };
+    const outcome = outcomeOf({ left: true, answer: 'confirmed', providerRef: 'R', result });
+    expect(outcome).toEqual({ kind: 'confirmed', providerRef: 'R', result });
+    expect(afterAttempt(outcome, 1)).toEqual({ status: 'succeeded', providerRef: 'R', error: null, result });
+    // A provider that hands nothing back, and every outcome that is not a confirmation, settle with no result.
+    expect(afterAttempt(outcomeOf({ left: true, answer: 'confirmed', providerRef: 'R', result: null }), 1).result).toBeNull();
+    for (const evidence of [{ left: true, answer: 'refused', error: 'refused' }, { left: true, answer: 'none', error: 'timeout' }, { left: false, error: 'unreachable' }] as const) {
+      expect(afterAttempt(outcomeOf(evidence), 1).result).toBeNull();
+    }
+    expect(afterAttempt(outcomeOf(null), 1).result).toBeNull();
+  });
+
+  it('stores a result trimmed and whole: a part that is empty, too long or not digits is dropped, never cut', () => {
+    expect(storedResult({ msisdn: ' 0501234567 ', iccid: '8997201234567890123', esimCode: ' LPA:1$a$b ' })).toEqual({ msisdn: '0501234567', iccid: '8997201234567890123', esimCode: 'LPA:1$a$b' });
+    // Only what the provider chose: the rest is null.
+    expect(storedResult({ msisdn: '0501234567' })).toEqual({ msisdn: '0501234567', iccid: null, esimCode: null });
+    expect(storedResult({ esimCode: 'CODE' })).toEqual({ msisdn: null, iccid: null, esimCode: 'CODE' });
+    // Not digits, or longer than the field: dropped.
+    expect(storedResult({ msisdn: '05-0123', iccid: '8997 2012', esimCode: 'ok' })).toEqual({ msisdn: null, iccid: null, esimCode: 'ok' });
+    expect(storedResult({ msisdn: '1'.repeat(RESULT_LIMITS.msisdn + 1), iccid: '1'.repeat(RESULT_LIMITS.iccid + 1), esimCode: 'x'.repeat(RESULT_LIMITS.esimCode + 1) })).toBeNull();
+    expect(storedResult({ msisdn: '1'.repeat(RESULT_LIMITS.msisdn), iccid: '1'.repeat(RESULT_LIMITS.iccid), esimCode: 'x'.repeat(RESULT_LIMITS.esimCode) })).not.toBeNull();
+    // Nothing usable is nothing.
+    for (const empty of [null, undefined, {}, { msisdn: '', iccid: '   ', esimCode: null }]) expect(storedResult(empty)).toBeNull();
   });
 
   it('accepts a key of 8 to 120 safe characters', () => {

@@ -1,7 +1,7 @@
 # Activation through a provider — plan
 
 Spec: `docs/superpowers/specs/2026-11-10-activation-settlement.md` (decisions D1–D19, transactions T1–T11, specs
-1–29). ADR 0019 (accepted). **S.1 and S.2 are built; each later slice starts on the owner's word.** Paths under `apps/api/`
+1–29). ADR 0019 (accepted). **S.1, S.2 and S.3 are built; each later slice starts on the owner's word.** Paths under `apps/api/`
 unless said. Each slice is one commit, leaves every existing spec green on CI (including the PostgreSQL and Redis
 job), and changes nothing a user can see unless it says **Visible**.
 
@@ -73,11 +73,28 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   - **Not reserved (unchanged):** a SIM-swap, eSIM or rename task names what it will take and takes it at
     completion; a serial among live lines stays the advisory-lock rule.
 
-- [ ] **S.3 Rules (pure).**
-  `src/modules/office/lines/activation-settlement.rules.ts`: `operationKey(taskId)`, `taskActions(operation)` (the
-  table of D6), `settlementOf(operation)`, `decisionStep(events, actor, decision)` (who may propose, who may
-  approve, never one's own). `provider-operation.rules.ts`: `confirmed` evidence carries the result fields.
-  *Transactions:* none. *Specs:* unit specs covering every row of D6 and every rule of D15.
+- [x] **S.3 Rules (pure).** No Nest, no Prisma, no HTTP; nothing calls them yet.
+  - `src/modules/office/lines/activation-settlement.rules.ts`: `phaseOf` (none, requested, pending, unknown,
+    unapplied, exception, applied, failed), `operationKey(taskId)` (`activate:<taskId>`), `taskActions(operation)`
+    (the table of D6; cancel is `allowed`, `abandons-operation` or `refused`), `inFlight`, `settlementOf`
+    (`none`, `wait`, `apply`, `hand-to-branch`, `await-decision`, `settled`), `sweepable`, and
+    `decisionStep(events, actor, request)` with `needsSecondAccount`, `openProposal` and the closed lists the
+    database also holds (`DECISIONS`, `EVIDENCE_KINDS`, `DECISION_EVENT_TYPES`, `APPLY_ERRORS`,
+    `MIN_DECISION_NOTE`).
+  - `providers/operations/provider-operation.rules.ts`: a `confirmed` evidence, outcome and verdict may carry an
+    `ActivationResult` (number, serial, eSIM code); `afterAttempt` answers it as a `StoredResult` through
+    `storedResult` (digits only, trimmed, bounded; a bad part is dropped, never cut). **It is not written
+    anywhere yet**: S.5 seals the code and S.8 stores the result.
+  - *Specs:* `lines/activation-settlement.rules.spec.ts` (every row of D6, every rule of D15, and that the lists
+    equal the migration's CHECK lists), `provider-operation.rules.spec.ts`.
+  - **Decided while writing the rule, beyond the spec's words:** the account that made a proposal may withdraw
+    it (a `refused` event of its own); it still cannot approve it. An open proposal blocks every other decision
+    on the operation, including a confirmation of success, until it is refused or withdrawn. A proposal whose
+    operation has moved on (the provider answered late) can only be closed. What an activation "hands back when
+    the provider chose it" is checked by the service of S.9, which knows the provider; the rule checks the
+    evidence kind, the note and the reference.
+  - Also in this commit: the report's PostgreSQL test moved to `src/reservation-conflicts.db.spec.ts`, so the CI
+    job that has a database runs it.
 
 - [ ] **S.4 Ledger `capture` (O2). Visible.**
   `wallets/wallet-ledger.ts` `capture`; manual completion uses it in place of release-then-debit.
