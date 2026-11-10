@@ -52,6 +52,7 @@ export function CompanyPackages({ company, provider, onProvider, loading }: {
       key: 'child',
       header: t.mainSellPair,
       num: true,
+      sortValue: (row) => row.mainPrice,
       render: (row) => (
         <span className="terms-pair">
           <Money value={row.mainPrice} />

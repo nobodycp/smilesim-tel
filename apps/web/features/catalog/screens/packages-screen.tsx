@@ -318,6 +318,8 @@ export function PackagesScreen() {
       key: 'sell',
       header: t.sellPrice,
       num: true,
+      // The cell holds the edit fields; the header sorts by the price in force (own, else the default).
+      sortValue: (row) => (row.editableField ? row.sellPrice ?? row.sellDefault : null),
       render: (row) => row.editableField && (
         <div className="sell-cell">
           <label className="terms-price">

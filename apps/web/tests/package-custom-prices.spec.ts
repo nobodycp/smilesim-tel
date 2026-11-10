@@ -45,3 +45,37 @@ test('the custom prices tab lists priced accounts and edits them inline', async 
   await page.getByRole('menuitem', { name: 'إرجاع للافتراضي' }).click();
   await expect.poll(() => calls).toContain('DELETE /packages/lian-wecom-500/custom-prices/pos1');
 });
+
+test('the custom prices table sorts by each account own price and by a signed difference', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // Same default price, so the old text sort (by the muted default) could not order them; one difference is -6.00.
+  const rows = [
+    { ...customRow, loginName: 'pos1', nickname: 'أ', price: 2900 },
+    { ...customRow, loginName: 'pos2', nickname: 'ب', price: 3400 },
+    { ...customRow, loginName: 'pos3', nickname: 'ج', price: 3700 },
+  ];
+  await serveOffice(page, 'branch', {
+    'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
+    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: rows }),
+    'GET /users': () => ({ body: { users: [] } }),
+    'GET /companies': () => ({ body: { companies: [] } }),
+    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
+  });
+  await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
+  await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
+
+  const table = page.locator('.data');
+  const order = () => table.locator('tbody tr').evaluateAll((trs) => trs.map((tr) => /pos\d/.exec(tr.textContent ?? '')?.[0]));
+  await expect.poll(order).toEqual(['pos1', 'pos2', 'pos3']);
+
+  const diff = table.locator('thead th', { hasText: 'الفرق' }).getByRole('button');
+  await diff.click();
+  await expect.poll(order).toEqual(['pos1', 'pos2', 'pos3']);
+  await diff.click();
+  await expect.poll(order).toEqual(['pos3', 'pos2', 'pos1']);
+
+  const price = table.locator('thead th', { hasText: 'سعر الاشتراك' }).getByRole('button');
+  await price.click();
+  await price.click();
+  await expect.poll(order).toEqual(['pos3', 'pos2', 'pos1']);
+});

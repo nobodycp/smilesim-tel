@@ -277,6 +277,7 @@ export function PackageSheetScreen() {
       key: 'price',
       header: t.subscriptionPrice,
       num: true,
+      sortValue: (offer) => offer.price ?? offer.defaultPrice,
       render: (offer) => (
         <span className="price-pair">
           <Money value={offer.defaultPrice} muted />
@@ -293,6 +294,7 @@ export function PackageSheetScreen() {
       key: 'renewal',
       header: t.renewalPrice,
       num: true,
+      sortValue: (offer) => offer.renewalPrice ?? offer.defaultRenewalPrice,
       render: (offer) => (
         <span className="price-pair">
           <Money value={offer.defaultRenewalPrice} muted />
@@ -309,6 +311,8 @@ export function PackageSheetScreen() {
       key: 'diff',
       header: t.difference,
       num: true,
+      // By the subscription difference; a row without its own subscription price falls back to the renewal one.
+      sortValue: (offer) => (offer.price !== null ? offer.price - offer.defaultPrice : offer.renewalPrice !== null ? offer.renewalPrice - offer.defaultRenewalPrice : null),
       render: (offer) => (
         <span className="price-pair">
           {offer.price === null ? <span className="hint">—</span> : <Money value={offer.price - offer.defaultPrice} signed />}
