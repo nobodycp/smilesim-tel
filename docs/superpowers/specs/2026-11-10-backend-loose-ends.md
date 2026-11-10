@@ -52,6 +52,26 @@ body. Proposed: a known parameter with a value outside its set is `400 INVALID`;
 ignored (browsers and proxies add their own). The web sends only values from its own selects, so no screen
 changes; `apps/web` gets a check that every filter value it can send is one the schema accepts.
 
+### A5. A package's code names its provider (added 2026-11-10, owner: «ضيف الثغرة إلى خطة العمل وكملها»)
+
+A package's public `code` is the provider's product code: `sky-cellcom-400`, `lian-wecom-500`. Every layer sees it
+(URLs, `packageCode` on a number, task rows, the audit's subject), so the provider can be read out of it although
+rule 3.4 hides the provider's code and name everywhere else. Measured on the dev database: 24 packages, all with
+the provider as the first segment; four providers sell a `cellcom-400`, so the prefix cannot simply be dropped.
+
+`Package.providerProductCode` already holds the provider's own code; only the public `code` has to change.
+
+**Target.**
+- A public code names the company and the product, never the provider: the product code without the provider's
+  prefix, then four characters taken from the package's id to keep it unique (`cellcom-400-3f9a`). The id is
+  random, so the suffix says nothing about the provider. Pure rule `rules/package-code.ts`.
+- New packages get it when they are created (`provider-catalog.service.ts`, the seeds); the gateway is handed
+  `providerProductCode`, never `code`.
+- One migration renames the 24 codes and everything stored that quotes them: `Line.terms` (`packageCode` and each
+  `renewalTargets[].code`), and the `subjectRef` of activity events about a package (`CODE`, `LOGIN:CODE`).
+- Old links (`/providers/sky/sky-cellcom-400`) stop working: codes are not bookmarked identifiers outside the
+  office, and keeping a lookup by the old code would keep the leak.
+
 ## Part B — clean-ups
 
 ### B1. Queries left in three services

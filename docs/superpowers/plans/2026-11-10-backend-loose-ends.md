@@ -54,6 +54,19 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
     fails when one sends a value its schema does not list.
   - Guard: `untyped-query` — `@Query('name')` with a bare `string` in an office controller; baseline 73 → 0.
 
+- [ ] **A.5 Package codes without the provider** (added 2026-11-10).
+  - `rules/package-code.ts`: `publicPackageCode(providerCode, productCode, id)`; spec (the prefix goes, the
+    suffix comes from the id, a product code that does not start with the provider's keeps its text).
+  - `providers/provider-catalog.service.ts` `createPackage` and `auth/trial-seed.ts` / `catalog/` seeds build the
+    code with it (the id is made first); `lines/lines.service.ts` and `task-completion.ts` hand the gateway
+    `providerProductCode`.
+  - Migration `…_package_public_codes`: a temporary old→new map; `Package.code`; `Line.terms`; `ActivityEvent`
+    `subjectRef` for `subjectKind` `package` and the `LOGIN:CODE` form. Run on a copy of the dev database first,
+    and the numbers of rows touched are written here.
+  - Specs: `package-code.spec.ts`; `response-shape.spec.ts` (a point of sale's package row, number row and task
+    row carry no provider code anywhere, the `code` included); guard `provider-in-package-code` is that spec.
+  - `backend.md` known gap removed; `.cursor/rules/backend-engineering.mdc` 3.4 names the code.
+
 ## Phase B — clean-ups
 
 - [x] **B.1 The last queries leave the services.** (2d05e36; `NoticeService`'s one insert is
