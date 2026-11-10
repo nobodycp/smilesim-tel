@@ -133,15 +133,17 @@ export function DataTable<Row>({
   const current = Math.min(stamp !== seen ? 1 : page, pageCount);
   const visible = paging ? ordered.slice((current - 1) * size, current * size) : ordered;
   const table = (
-    <table className="data">
-      <thead>
-        <tr>
+    // Explicit roles: a phone draws the rows as cards (display: block), which drops the implicit table roles.
+    <table className="data" role="table">
+      <thead role="rowgroup">
+        <tr role="row">
           {columns.map((item) => {
             const active = sort?.key === item.key;
             const dir = active ? sort.dir : null;
             return (
               <th
                 key={item.key}
+                role="columnheader"
                 className={classes(item.fit && 'fit', item.num && 'num', item.actions && 'row-actions')}
                 aria-sort={item.actions || !sortable ? undefined : dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none'}
               >
@@ -167,12 +169,12 @@ export function DataTable<Row>({
           })}
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
         {visible.map((row) => (
-          <tr key={rowKey(row)}>
+          <tr key={rowKey(row)} role="row">
             {columns.map((column) => (
               // `data-label` names the value when a phone draws the row as a card (spec 2026-11-11-ui-consistency-pass, D7).
-              <td key={column.key} data-label={typeof column.header === 'string' ? column.header : undefined} className={classes(column.fit && 'fit', column.num && 'num', column.actions && 'row-actions', column.cell)}>
+              <td key={column.key} role="cell" data-label={column.actions ? undefined : nodeText(column.header) || undefined} className={classes(column.fit && 'fit', column.num && 'num', column.actions && 'row-actions', column.cell)}>
                 {column.render(row)}
               </td>
             ))}

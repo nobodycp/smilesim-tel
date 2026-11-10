@@ -64,3 +64,10 @@ were raised to 40px on phones. What is left, on purpose:
 - A checkbox inside a `label.check` reports 18px; the whole label is the target.
 
 Native controls: none left (checkboxes and radios are drawn by the system since phase 4).
+
+The second-model review of phase 5 then found, and the follow-up commit fixed: the zebra tint painted each value of
+a phone card instead of the card; a tab strip inside a pane (company page) still cut its last tab — tab strips are now
+an even grid on phones (three a row, two a row for two or four tabs); the offers table made its picture the card
+title; a cell whose header is hidden text (status) had no label. Known and accepted: on phones the column headers are
+hidden, so a list cannot be re-sorted there (it keeps the server's order); the table keeps its roles for screen
+readers through explicit `role` attributes.

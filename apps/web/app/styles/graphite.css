@@ -1304,14 +1304,26 @@ input[readonly] { background-color: transparent; }
   table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.row-actions { position: absolute; inset-block-start: 8px; inset-inline-end: 8px; width: auto; }
   table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.row-actions::before { display: none; }
   table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td:empty { display: none; }
+  /* The zebra and hover tints paint the whole card, not each value inside it. */
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td,
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody tr:nth-child(even) td,
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody tr:hover td { background: transparent; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody tr:nth-child(even) { background: color-mix(in srgb, var(--rd-ink) 3%, transparent); }
+  /* A narrow picture first (offers) sits beside the title instead of being it. */
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.fit:first-child { grid-column: auto; padding-inline-end: 0; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.fit:first-child + td { grid-column: 1 / -1; padding-inline-end: 44px; font-size: var(--rd-text-md); }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.fit:first-child + td::before { display: none; }
   .sheet:has(> table.data td[data-label]) { overflow-x: visible; }
 }
 
 /* Phones, continued: every tab in view (the strip wraps instead of hiding the last tabs off its edge), 40px pager and
    page-size controls, two cards a row where the card is short, and the run-mode card's mark beside its name. */
 @media (max-width: 640px) {
-  .steps { flex-wrap: wrap; width: 100%; overflow-x: visible; }
-  .steps button { flex: 1 1 auto; justify-content: center; min-height: 40px; }
+  /* Every tab in view: a grid of equal cells — three a row, two a row for four tabs — never one left alone. */
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: auto; max-width: none; align-self: stretch; overflow-x: visible; }
+  .steps:has(> :nth-child(2):last-child), .steps:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .steps:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+  .steps button { justify-content: center; min-height: 40px; padding-inline: 8px; white-space: normal; text-align: center; }
   .ui-pager-page { min-width: 40px; height: 40px; }
   .ui-select-compact, select.ui-select-field.ui-select-compact, .ui-pager .ui-select-field { height: 40px; min-height: 40px; }
   .line-pos { display: inline-flex; align-items: center; min-height: 40px; }
