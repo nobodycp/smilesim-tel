@@ -5,6 +5,17 @@ import { errorBody } from './errors';
 import { AUTH_STORE, AuthStore } from './modules/auth/auth.store';
 import { readCookie } from './modules/shared/cookies';
 
+/**
+ * The routes that start a session on this door. The `sid` cookie is shared by every door of the site
+ * (`COOKIE_DOMAIN`), so a browser signed in on another door brings that session here; refusing it would leave the
+ * door with no way in. These routes replace the cookie, so they pass whatever session came with them.
+ */
+const STARTS_SESSION = new Set(['/auth/login', '/auth/passkey-login/options', '/auth/passkey-login', '/office/handoff']);
+
+function startsSession(req: Request): boolean {
+  const path = String(req.originalUrl ?? req.url ?? '').split('?')[0].replace(/\/+$/, '');
+  return req.method === 'POST' && STARTS_SESSION.has(path);
+}
 
 @Injectable()
 export class DoorMiddleware implements NestMiddleware {
@@ -20,7 +31,7 @@ export class DoorMiddleware implements NestMiddleware {
       res.status(403).json(errorBody('DOOR_MISMATCH'));
       return;
     }
-    if (!expected) return next();
+    if (!expected || startsSession(req)) return next();
     const sessionId = readCookie(req, 'sid');
     if (!sessionId) return next();
     const live = await this.store.liveSession(sessionId);

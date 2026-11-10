@@ -19,13 +19,13 @@ describe('DoorMiddleware', () => {
     return { middleware: new DoorMiddleware(store), home, entered };
   }
 
-  async function run(middleware: DoorMiddleware, door: string, cookie: string) {
+  async function run(middleware: DoorMiddleware, door: string, cookie: string, route = { method: 'GET', url: '/office/me' }) {
     const sent: { status?: number; code?: string; passed: boolean } = { passed: false };
     const res = {
       status(code: number) { sent.status = code; return this; },
       json(body: { code: string }) { sent.code = body.code; return this; },
     };
-    const req = { headers: { 'x-door': door, cookie } };
+    const req = { headers: { 'x-door': door, cookie }, method: route.method, originalUrl: route.url };
     await middleware.use(req as never, res as never, () => { sent.passed = true; });
     return sent;
   }
@@ -44,5 +44,16 @@ describe('DoorMiddleware', () => {
     const { middleware, home } = await setup();
     expect((await run(middleware, 'admin', `sid=${home}`)).passed).toBe(true);
     expect((await run(middleware, 'pos', `sid=${home}`)).code).toBe('DOOR_MISMATCH');
+  });
+
+  // The `sid` cookie is shared by every door: the owner's session must not lock the point-of-sale door's own sign-in
+  // or the handoff that opens an entered account there.
+  it('lets a sign-in and the handoff through a door whatever session the browser brings', async () => {
+    const { middleware, home } = await setup();
+    for (const url of ['/auth/login', '/auth/passkey-login', '/auth/passkey-login/options', '/office/handoff', '/office/handoff?x=1']) {
+      expect((await run(middleware, 'pos', `sid=${home}`, { method: 'POST', url })).passed).toBe(true);
+    }
+    expect((await run(middleware, 'pos', `sid=${home}`, { method: 'GET', url: '/auth/login' })).code).toBe('DOOR_MISMATCH');
+    expect((await run(middleware, 'pos', `sid=${home}`, { method: 'POST', url: '/office/leave' })).code).toBe('DOOR_MISMATCH');
   });
 });
