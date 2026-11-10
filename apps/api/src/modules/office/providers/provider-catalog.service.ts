@@ -4,7 +4,8 @@ import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
 import { parseInput } from '../../shared/input';
-import { ACTION_KEYS, chainHolds, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../rules/office-rules';
+import { chainHolds } from '../rules/prices';
+import { ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../rules/run-modes';
 import { adapterFor } from './adapters/simulated-adapter';
 import { CompanyCreateBody, PackageCreateBody } from './providers.schemas';
 

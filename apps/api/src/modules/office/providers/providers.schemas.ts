@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MAX_AGOROT, agorot, code, optionalText } from '../../shared/schemas';
 import { simLength, simPrefix } from '../companies/companies.schemas';
-import { ACTION_KEYS, type ActionKey } from '../rules/office-rules';
+import { ACTION_KEYS, type ActionKey } from '../rules/run-modes';
 import { ceilingValue } from '../wallets/wallets.schemas';
 
 // The bodies of the provider routes (backend-engineering.mdc 4.1): provider settings, adding to the catalog from

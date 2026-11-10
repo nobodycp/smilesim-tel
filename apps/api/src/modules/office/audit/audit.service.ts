@@ -7,7 +7,7 @@ import { activityActorFilter, clampActivityRange } from '../activity/activity-lo
 import type { Actor } from '../kernel/types';
 import { after, cursorPosition, page } from '../../shared/paging';
 import { FEED_PAGE } from '../rules/office-paging';
-import { visibleAccountIds } from '../rules/office-rules';
+import { visibleAccountIds } from '../rules/account-visibility';
 import { csvOf } from '../reports/report-csv';
 
 type AuditQuery = { cursor?: string; action?: string; result?: string; layer?: string; q?: string; from?: string; to?: string; addresses?: string };

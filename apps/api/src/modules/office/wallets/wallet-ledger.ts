@@ -4,7 +4,7 @@ import { fail } from '../../shared/office-failure';
 import { AccountTree } from '../kernel/account-tree';
 import type { Sale } from '../kernel/types';
 import { UnitOfWork, type Db } from '../kernel/unit-of-work';
-import { withinCeiling } from '../rules/office-rules';
+import { withinCeiling } from '../rules/prices';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder } from '../rules/profit-ladder';
 import { PriceLadder } from '../terms/price-ladder';
 

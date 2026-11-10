@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { UnitOfWork, type Db } from '../kernel/unit-of-work';
 import { stampRenewal } from '../rules/line-prices';
-import type { LineTerms } from '../rules/office-rules';
+import type { LineTerms } from '../rules/prices';
 import { buyPriceFor, type LayerPrices, type PathNode, type SellRow, type TermRow } from '../rules/user-terms';
 
 /** The price columns a renewal stamp reads from a package. */

@@ -3,7 +3,7 @@ import { AccountTree } from '../kernel/account-tree';
 import { holdsAny } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../kernel/types';
-import { visibleAccountIds } from '../rules/office-rules';
+import { visibleAccountIds } from '../rules/account-visibility';
 import { expiringWhere, suspendedWhere } from '../rules/office-paging';
 import { REFUND_KINDS, SALE_KINDS, marginOf } from '../rules/profit-ladder';
 import { ProviderAccountsService } from '../providers/provider-accounts.service';

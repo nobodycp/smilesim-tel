@@ -8,7 +8,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
-import { visibleAccountIds } from '../rules/office-rules';
+import { visibleAccountIds } from '../rules/account-visibility';
 import { REFUND_KINDS, SALE_KINDS } from '../rules/profit-ladder';
 import { PROVIDER_OPERATION_KINDS } from '../wallets/provider-cost';
 import { WalletsService } from '../wallets/wallets.service';

@@ -2,7 +2,7 @@
 //
 // Plain data only: no database reads or writes. Callers load `LineTerms` and apply these helpers.
 
-import type { LineTerms } from './office-rules';
+import type { LineTerms } from './prices';
 
 export const RENEWABLE_STATUSES = ['active', 'frozen'] as const;
 

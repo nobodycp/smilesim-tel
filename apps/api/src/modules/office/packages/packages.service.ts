@@ -9,10 +9,12 @@ import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
-import { ACTION_KEYS, chainHolds, editableField, esimPriceOf, normalizeActionModes, packageModeData, resolvePackageMode, simRulesOf, type ActionMode } from '../rules/office-rules';
+import { chainHolds, editableField, esimPriceOf } from '../rules/prices';
+import { ACTION_KEYS, normalizeActionModes, packageModeData, resolvePackageMode, type ActionMode } from '../rules/run-modes';
+import { simRulesOf } from '../rules/sim-rules';
 import { buyPriceFor, deniedOpsFor, layerPrice, visibleTo } from '../rules/user-terms';
 import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody, SellPriceBody } from './packages.schemas';
-import type { Prices } from '../rules/office-rules';
+import type { Prices } from '../rules/prices';
 
 // Which package flags a provider mode sets.
 function pricesOf(row: Prices): Prices {

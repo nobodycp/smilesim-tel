@@ -3,7 +3,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashPassword } from '../../auth/password';
 import { NoticeService } from '../notices/notice.service';
 import { OfficeFacade } from './office-facade';
-import { captureTerms } from '../rules/office-rules';
+import { captureTerms } from '../rules/prices';
 import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
 
 // The tree the office service specs run on: branch → ma1 → ag1 → pos1 and ma1 → ag2 → pos2, plus a second

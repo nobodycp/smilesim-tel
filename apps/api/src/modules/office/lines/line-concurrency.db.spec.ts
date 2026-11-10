@@ -4,7 +4,7 @@ import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { OfficeFailure } from '../../shared/office-failure';
 import type { NoticeService } from '../notices/notice.service';
-import { captureTerms } from '../rules/office-rules';
+import { captureTerms } from '../rules/prices';
 import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
 import { OfficeFacade } from '../testing/office-facade';
 

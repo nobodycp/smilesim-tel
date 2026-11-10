@@ -13,7 +13,7 @@ import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
 import { GRANT_CODES, effectiveGrantCodes, roleGrantCodes, splitGrants } from '../rules/office-grants';
-import { visibleAccountIds } from '../rules/office-rules';
+import { visibleAccountIds } from '../rules/account-visibility';
 import { holds, isBranch, isOwner, layerRank, requireAnyGrant, requireGrant, requireOwner, assertBranch } from '../policy';
 import { stampTaskLog } from '../tasks/task-log';
 import { HANDLER_FROZEN_NOTE } from '../stored-text';

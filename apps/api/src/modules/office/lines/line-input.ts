@@ -1,5 +1,5 @@
 import { fail } from '../../shared/office-failure';
-import { PERIOD_DAYS } from '../rules/office-rules';
+import { PERIOD_DAYS } from '../rules/periods';
 
 /** A mobile number as the office writes it. */
 export const MSISDN = /^05\d{8}$/;

@@ -3,7 +3,7 @@ import { AccountTree } from '../kernel/account-tree';
 import { isOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../kernel/types';
-import { visibleAccountIds } from '../rules/office-rules';
+import { visibleAccountIds } from '../rules/account-visibility';
 import { taskWhereFor } from '../tasks/task-access';
 import { deniedOpsFor, parseOps, serializeOps } from '../rules/user-terms';
 import { expiringWhere } from '../rules/office-paging';

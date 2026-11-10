@@ -6,7 +6,8 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
 import { lineTermsOf } from '../kernel/line-terms';
-import { lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf, type LineTerms } from '../rules/office-rules';
+import { lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf } from '../rules/periods';
+import { type LineTerms } from '../rules/prices';
 import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
 import { buyPriceFor, visibleTo, type LayerPrices, type PathNode, type PriceKind } from '../rules/user-terms';
 

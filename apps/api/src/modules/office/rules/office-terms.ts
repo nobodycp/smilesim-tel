@@ -1,4 +1,4 @@
-import { type PackageTerms, type Prices } from './office-rules';
+import { type PackageTerms, type Prices } from './prices';
 
 export type PackagePriceRow = Prices & {
   code: string;

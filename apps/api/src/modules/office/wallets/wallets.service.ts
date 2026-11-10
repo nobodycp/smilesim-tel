@@ -12,7 +12,7 @@ import { parseInput } from '../../shared/input';
 import type { Actor } from '../kernel/types';
 import { after, cursorPosition, keyPage, page } from '../../shared/paging';
 import { BALANCES_PAGE, FEED_PAGE } from '../rules/office-paging';
-import { visibleAccountIds } from '../rules/office-rules';
+import { visibleAccountIds } from '../rules/account-visibility';
 import { CeilingBody, DeductBody, FundBody } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 import { matchOf } from '../providers/match-simulator';

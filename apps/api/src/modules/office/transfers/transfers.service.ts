@@ -13,7 +13,7 @@ import type { Prisma } from '../../../generated/prisma/client';
 import { nodeOf } from '../kernel/account-tree';
 import type { Account } from '../kernel/types';
 import { RENEWABLE_STATUSES } from '../rules/line-prices';
-import { visibleAccountIds } from '../rules/office-rules';
+import { visibleAccountIds } from '../rules/account-visibility';
 import { TRANSFER_GRANT, canTransfer, previewOf, transferKind, type TransferKind } from './transfer-rules';
 import { deniedOpsFor } from '../rules/user-terms';
 import { saleOf } from '../kernel/sale';

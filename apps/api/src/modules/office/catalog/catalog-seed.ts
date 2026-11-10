@@ -3,7 +3,8 @@ import { UnitOfWork } from '../kernel/unit-of-work';
 import { env, isTest } from '../../../config';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { catalog, companies, packageCode, packageName } from './office-catalog';
-import { AGOROT, normalizeActionModes, packageFlagsFromModes } from '../rules/office-rules';
+import { AGOROT } from '../rules/prices';
+import { normalizeActionModes, packageFlagsFromModes } from '../rules/run-modes';
 
 /**
  * At boot, makes sure the shipped catalog (providers, companies, packages) and the four layer roles exist. Skipped

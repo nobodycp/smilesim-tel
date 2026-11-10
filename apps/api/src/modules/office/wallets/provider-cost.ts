@@ -1,5 +1,5 @@
 import type { Prisma } from '../../../generated/prisma/client';
-import { providerBranchCost } from '../rules/office-rules';
+import { providerBranchCost } from '../rules/prices';
 
 // What an operation in the ledger cost the branch at the provider, for the provider-operations report.
 

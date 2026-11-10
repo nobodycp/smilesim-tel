@@ -3,7 +3,7 @@ import { fail } from '../../shared/office-failure';
 import { AccountTree } from '../kernel/account-tree';
 import type { Actor } from '../kernel/types';
 import { UnitOfWork } from '../kernel/unit-of-work';
-import { visibleAccountIds } from '../rules/office-rules';
+import { visibleAccountIds } from '../rules/account-visibility';
 import { deniedOpsFor } from '../rules/user-terms';
 
 /** A number as the actor may reach it. */

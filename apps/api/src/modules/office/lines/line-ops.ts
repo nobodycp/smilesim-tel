@@ -1,6 +1,7 @@
 import { fail } from '../../shared/office-failure';
 import type { Account, Actor } from '../kernel/types';
-import { resolvePackageMode, visibleAccountIds, type ActionKey } from '../rules/office-rules';
+import { visibleAccountIds } from '../rules/account-visibility';
+import { resolvePackageMode, type ActionKey } from '../rules/run-modes';
 import { isOpKey, type OpKey } from '../rules/user-terms';
 
 // Pure rules about which operation may run on a number. No database, no Nest.

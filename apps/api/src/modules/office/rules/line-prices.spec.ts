@@ -1,4 +1,4 @@
-import { captureTerms, type LineTerms, type PackageTerms } from './office-rules';
+import { captureTerms, type LineTerms, type PackageTerms } from './prices';
 import { groupChanges, groupLinePrices, repriceLine, stampRenewal } from './line-prices';
 
 const basePrices = { branchCost: 30, mainPrice: 30, agentPrice: 30, posPrice: 30, subscriberPrice: 30 };

@@ -7,7 +7,7 @@ import { fail } from '../../shared/office-failure';
 import { parseInput } from '../../shared/input';
 import { matchOf, matchOverdue } from './match-simulator';
 import type { Actor } from '../kernel/types';
-import { providerBranchCost } from '../rules/office-rules';
+import { providerBranchCost } from '../rules/prices';
 import { csvOf } from '../reports/report-csv';
 import { WalletsService } from '../wallets/wallets.service';
 import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from './providers.schemas';

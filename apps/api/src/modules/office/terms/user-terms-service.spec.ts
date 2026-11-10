@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { groupLinePrices } from '../rules/line-prices';
-import { captureTerms, type LineTerms } from '../rules/office-rules';
+import { captureTerms, type LineTerms } from '../rules/prices';
 import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
 import { account, tree, type Row } from '../testing/tree.fixture';
 

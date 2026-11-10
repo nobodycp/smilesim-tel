@@ -11,7 +11,7 @@ import { NOTICE_GROUPS, hrefFor, type NoticeDraft } from '../notices/notice-kind
 import type { NoticeService, WrittenNotice } from '../notices/notice.service';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
 import { OfficeFacade } from '../testing/office-facade';
-import type { LineTerms } from '../rules/office-rules';
+import type { LineTerms } from '../rules/prices';
 import { account, tree, type Row } from '../testing/tree.fixture';
 
 // Moving an account or a number, and what the office is told before it does.

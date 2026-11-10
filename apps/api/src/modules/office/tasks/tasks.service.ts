@@ -15,7 +15,7 @@ import type { WrittenNotice } from '../notices/notice.service';
 import { excerpt, type TaskNoticePayload } from '../notices/notice-kinds';
 import { after, cursorPosition, page } from '../../shared/paging';
 import { TASKS_PAGE, taskStatusOf } from '../rules/office-paging';
-import { simRulesOf } from '../rules/office-rules';
+import { simRulesOf } from '../rules/sim-rules';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { stampTaskLog } from './task-log';
 import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';

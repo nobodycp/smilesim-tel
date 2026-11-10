@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { agorot, dataUrl } from '../../shared/schemas';
-import { SIM_LENGTH_MAX, SIM_LENGTH_MIN } from '../rules/office-rules';
+import { SIM_LENGTH_MAX, SIM_LENGTH_MIN } from '../rules/sim-rules';
 
 // The bodies of the company routes (backend-engineering.mdc 4.1). The service parses them with `parseInput`
 // after its permission checks; the controller documents each route from the same schema.
@@ -12,7 +12,7 @@ export const simPrefix = z.string().trim().regex(/^\d{0,10}$/);
 export const simLength = z.number().int().min(SIM_LENGTH_MIN).max(SIM_LENGTH_MAX);
 
 /**
- * PUT companies/:code/sim — the SIM rules and, when sent, the eSIM price. `readSimRules` (office-rules) still
+ * PUT companies/:code/sim — the SIM rules and, when sent, the eSIM price. `readSimRules` (rules/sim-rules.ts) still
  * checks the prefix against the length.
  */
 export const CompanySimBody = z.object({
