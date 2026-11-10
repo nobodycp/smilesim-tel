@@ -55,23 +55,25 @@
 .op-tile:hover { background: var(--rd-surface-2); }
 .op-board .op-card.danger { color: var(--rd-danger); }
 /* Label/value cards. The grid repeats the pair across the width: three columns on a wide canvas, one in a dialog or a narrow window. */
-/* A dialog's summary (`Facts`, default variant; owner 2026-11-11): one soft panel, each fact its name over its value,
-   side by side as room allows — the same reading as the number's «التفاصيل», no grey label cells. */
-.detail-rows {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
-  gap: var(--rd-space-3) var(--rd-space-4);
-  margin: 0;
-  padding: var(--rd-space-3) var(--rd-space-3-5);
+/* A dialog's summary (`Facts`, default variant; owner 2026-11-11), drawn like the filter chips: each fact one framed row
+   — its name on the soft track, a hairline, the value on the surface. Rows stack, and pair up when the dialog is wide. */
+.detail-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 8px; margin: 0; }
+.detail-rows > div {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  min-height: 38px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent);
   border-radius: var(--rd-radius-sm);
   background: var(--rd-surface-2);
-  box-shadow: inset 0 0 0 1px var(--rd-line-soft);
 }
-.detail-rows > div { display: grid; align-content: start; gap: 3px; min-width: 0; }
-.detail-rows dt { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; text-align: start; }
-.detail-rows dd { margin: 0; min-width: 0; color: var(--rd-ink); font-size: var(--rd-text-md); font-weight: 700; line-height: 1.35; text-align: start; overflow-wrap: anywhere; }
+.detail-rows dt { display: flex; flex: none; align-items: center; min-inline-size: 7.5rem; margin: 0; padding-inline: 12px; color: var(--rd-muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.detail-rows dd { display: flex; flex: 1; align-items: center; min-width: 0; margin: 0; padding: 6px 12px; border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent); background: var(--rd-surface); color: var(--rd-ink); font-size: 13.5px; font-weight: 700; overflow-wrap: anywhere; }
 .detail-rows dd bdi { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
-.detail-rows dd > button { justify-self: start; }
+@media (max-width: 420px) {
+  .detail-rows dt { min-inline-size: 6.5rem; padding-inline: 10px; }
+}
 /* «التفاصيل» (features/lines/line-details.tsx; owner 2026-11-11): the period as a timeline, the usage as three rings,
    then two titled groups of key and value rows. No cards: sections divided by hairlines. */
 .line-details { display: grid; gap: 0; padding: 0; }
