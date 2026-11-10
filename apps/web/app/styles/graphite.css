@@ -1268,3 +1268,59 @@ input[readonly] { background-color: transparent; }
 .account-band.branch { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (min-width: 1100px) { .account-band.branch { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 767px) { .account-band.branch { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Phones (spec 2026-11-11-ui-consistency-pass, D7). ──
+   A table row becomes a card under 640px: the first cell is its title across the card, every other value sits under
+   its column's name (`data-label`, set by DataTable) two to a row, and the row's ⋯ stays in the card's corner. The
+   lists already drawn as cards (tasks, notices) and the roles matrix keep their own layout. */
+@media (max-width: 640px) {
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) { display: block; width: 100%; min-width: 0; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody { display: block; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+    padding: 14px 16px;
+    border-block-end: 1px solid var(--rd-line);
+  }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td {
+    display: grid;
+    align-content: start;
+    justify-items: start;
+    gap: 3px;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    border: 0;
+    text-align: start;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td[data-label]::before { content: attr(data-label); color: var(--rd-muted); font-size: 11.5px; font-weight: 600; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td:first-child { grid-column: 1 / -1; padding-inline-end: 44px; font-size: var(--rd-text-md); }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td:first-child::before { display: none; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.row-actions { position: absolute; inset-block-start: 8px; inset-inline-end: 8px; width: auto; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.row-actions::before { display: none; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td:empty { display: none; }
+  .sheet:has(> table.data td[data-label]) { overflow-x: visible; }
+}
+
+/* Phones, continued: every tab in view (the strip wraps instead of hiding the last tabs off its edge), 40px pager and
+   page-size controls, two cards a row where the card is short, and the run-mode card's mark beside its name. */
+@media (max-width: 640px) {
+  .steps { flex-wrap: wrap; width: 100%; overflow-x: visible; }
+  .steps button { flex: 1 1 auto; justify-content: center; min-height: 40px; }
+  .ui-pager-page { min-width: 40px; height: 40px; }
+  .ui-select-compact { height: 40px; }
+  .fact-grid, .desk .fact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .line-op-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .line-op { padding: 14px; }
+  .line-op-go { display: none; }
+  .mode-card { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 10px; padding: 14px; }
+  .mode-card .mode-mark { width: 30px; height: 30px; }
+  .mode-card > .seg, .mode-card > .mode-source { grid-column: 1 / -1; }
+  .mode-card .seg button { height: 40px; }
+  .donut-legend a, .donut-legend button { min-height: 40px; }
+}

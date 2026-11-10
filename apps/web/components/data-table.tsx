@@ -171,7 +171,8 @@ export function DataTable<Row>({
         {visible.map((row) => (
           <tr key={rowKey(row)}>
             {columns.map((column) => (
-              <td key={column.key} className={classes(column.fit && 'fit', column.num && 'num', column.actions && 'row-actions', column.cell)}>
+              // `data-label` names the value when a phone draws the row as a card (spec 2026-11-11-ui-consistency-pass, D7).
+              <td key={column.key} data-label={typeof column.header === 'string' ? column.header : undefined} className={classes(column.fit && 'fit', column.num && 'num', column.actions && 'row-actions', column.cell)}>
                 {column.render(row)}
               </td>
             ))}
