@@ -8,9 +8,9 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const DOOR_LABELS: readonly string[] = DOOR_HOSTS.map((door) => door.host);
 
 /**
- * Whether `origin` is the web app: one of the configured origins, or another door of the same site (the four
- * doors are sibling hosts, `admin.` / `main.` / `agent.` / `pos.`, so naming one names them all). Any other host,
- * a sibling subdomain included, is not.
+ * Whether `origin` is the web app: one of the configured origins, or a door of the same site. The four doors are
+ * the hosts `admin.` / `main.` / `agent.` / `pos.` in front of the site's name, so naming the site or one door
+ * names them all. Any other host, another subdomain of the site included, is not.
  */
 export function isWebOrigin(origin: string, allowed: string[] = allowedOrigins()): boolean {
   if (allowed.includes(origin)) return true;
@@ -22,11 +22,14 @@ export function isWebOrigin(origin: string, allowed: string[] = allowedOrigins()
   }
   const [label, ...rest] = asked.hostname.split('.');
   if (!DOOR_LABELS.includes(label) || rest.length === 0) return false;
+  const site = rest.join('.');
   return allowed.some((entry) => {
     try {
       const known = new URL(entry);
+      if (known.protocol !== asked.protocol || known.port !== asked.port) return false;
       const [knownLabel, ...knownRest] = known.hostname.split('.');
-      return DOOR_LABELS.includes(knownLabel) && knownRest.join('.') === rest.join('.') && known.protocol === asked.protocol && known.port === asked.port;
+      // A door of the configured site itself (`admin.` + `smilesim.example`), or a sibling of a configured door.
+      return known.hostname === site || (DOOR_LABELS.includes(knownLabel) && knownRest.join('.') === site);
     } catch {
       return false;
     }

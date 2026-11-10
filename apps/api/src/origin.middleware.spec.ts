@@ -18,8 +18,11 @@ describe('isWebOrigin', () => {
     expect(isWebOrigin('not a url', allowed)).toBe(false);
   });
 
-  it('keeps a single-host setup exact', () => {
+  it('accepts the doors in front of a configured site name, as the local copy runs', () => {
     expect(isWebOrigin('http://localhost:3000', ['http://localhost:3000'])).toBe(true);
-    expect(isWebOrigin('http://localhost:4000', ['http://localhost:3000'])).toBe(false);
+    expect(isWebOrigin('http://admin.localhost:3000', ['http://localhost:3000'])).toBe(true);
+    expect(isWebOrigin('http://pos.localhost:3000', ['http://localhost:3000'])).toBe(true);
+    expect(isWebOrigin('http://evil.localhost:3000', ['http://localhost:3000'])).toBe(false);
+    expect(isWebOrigin('http://admin.localhost:4000', ['http://localhost:3000'])).toBe(false);
   });
 });

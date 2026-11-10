@@ -34,7 +34,8 @@ export async function lockLine(tx: Prisma.TransactionClient, lineId: string): Pr
 
 /** Serialises every transaction that names the same key (a SIM serial has no row of its own to lock). */
 export async function lockKey(tx: Prisma.TransactionClient, key: string): Promise<void> {
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+  // The function returns `void`, which the client cannot read back: cast it to text.
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text AS locked`;
 }
 
 /** Refuses a task whose line is no longer in a state its action applies to. A locked switch is still a switch. */
