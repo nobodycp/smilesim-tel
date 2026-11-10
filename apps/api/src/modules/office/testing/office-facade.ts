@@ -96,14 +96,14 @@ export class OfficeFacade {
   private providerDeskInstance: ProvidersService | null = null;
 
   private get providerDesk(): ProvidersService {
-    this.providerDeskInstance ??= new ProvidersService(this.graph.uow, new ProvidersRepository(this.graph.uow));
+    this.providerDeskInstance ??= new ProvidersService(new ProvidersRepository(this.graph.uow));
     return this.providerDeskInstance;
   }
 
   private companyDeskInstance: CompaniesService | null = null;
 
   private get companyDesk(): CompaniesService {
-    this.companyDeskInstance ??= new CompaniesService(this.graph.uow, new CompaniesRepository(this.graph.uow));
+    this.companyDeskInstance ??= new CompaniesService(new CompaniesRepository(this.graph.uow));
     return this.companyDeskInstance;
   }
 
@@ -131,7 +131,7 @@ export class OfficeFacade {
   private deskDeskInstance: DeskService | null = null;
 
   private get deskDesk(): DeskService {
-    this.deskDeskInstance ??= new DeskService(this.graph.uow, this.graph.tree, new DeskRepository(this.graph.uow));
+    this.deskDeskInstance ??= new DeskService(this.graph.tree, new DeskRepository(this.graph.uow));
     return this.deskDeskInstance;
   }
 
@@ -164,7 +164,7 @@ export class OfficeFacade {
   }
 
   private get lineReads(): LineReads {
-    return new LineReads(this.graph.uow, this.graph.tree, new LinesRepository(this.graph.uow));
+    return new LineReads(this.graph.tree, new LinesRepository(this.graph.uow));
   }
 
   // user-terms-service.spec stamps terms through the service; the stamping lives in LinesService.

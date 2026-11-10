@@ -1,6 +1,5 @@
 import { DeskRepository } from './desk.repository';
 import { AccountTree } from '../kernel/account-tree';
-import { UnitOfWork } from '../kernel/unit-of-work';
 import { holdsAny } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../kernel/types';
@@ -48,7 +47,6 @@ function bump(map: Map<string, Ranked>, key: string, label: string, amount: numb
 @Injectable()
 export class OverviewService {
   constructor(
-    readonly uow: UnitOfWork,
     private readonly tree: AccountTree,
     private readonly wallets: WalletsService,
     private readonly insights: InsightsService,

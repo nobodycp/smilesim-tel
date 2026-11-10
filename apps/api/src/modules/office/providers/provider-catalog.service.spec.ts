@@ -40,7 +40,7 @@ function world() {
       },
     },
   } as unknown as OfficeGraph['prismaClient'];
-  return { service: new ProviderCatalogService(kernel.uow, new ProvidersRepository(kernel.uow)), created, companies };
+  return { service: new ProviderCatalogService(new ProvidersRepository(kernel.uow)), created, companies };
 }
 
 describe('ProviderCatalogService', () => {

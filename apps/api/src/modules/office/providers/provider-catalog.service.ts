@@ -1,5 +1,4 @@
 import { ProvidersRepository } from './providers.repository';
-import { UnitOfWork } from '../kernel/unit-of-work';
 import { refuseEntered, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
@@ -32,7 +31,7 @@ function canEdit(actor: Actor) {
  */
 @Injectable()
 export class ProviderCatalogService {
-  constructor(readonly uow: UnitOfWork, private readonly repo: ProvidersRepository) {}
+  constructor(private readonly repo: ProvidersRepository) {}
 
   private async provider(code: string) {
     const row = await this.repo.providerByCode(code);

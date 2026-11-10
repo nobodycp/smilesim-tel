@@ -148,8 +148,6 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
 
 ## Known gaps (not done yet)
 
-- Left from the kernel split (`docs/superpowers/plans/2026-11-10-office-kernel-split.md`, all three phases done):
-  eight services still receive a `UnitOfWork` they no longer use (plan backend-loose-ends B.2).
 - `rules/office-rules.ts` mixes modes, SIM rules and refund periods; split by topic.
 - Authenticator (2FA) secrets are sealed only where `SECRETS_KEY` is set (32 bytes, base64); no environment has
   one yet. After setting it, run `npm run seal-secrets --workspace api` once to seal the secrets already stored. A

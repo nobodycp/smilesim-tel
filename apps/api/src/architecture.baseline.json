@@ -20,5 +20,6 @@
   "session-id-as-token": 0,
   "list-envelope": 0,
   "login-field-name": 0,
-  "multi-write-outside-tx": 0
+  "multi-write-outside-tx": 0,
+  "unused-injection": 0
 }

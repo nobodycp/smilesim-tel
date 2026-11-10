@@ -1,5 +1,4 @@
 import { ProvidersRepository } from './providers.repository';
-import { UnitOfWork } from '../kernel/unit-of-work';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
@@ -12,7 +11,7 @@ import { ProviderEsimPriceBody, ProviderModeBody } from './providers.schemas';
 /** Providers, for the branch: the list with each provider's companies and packages, the per-provider action modes, and the provider eSIM price. */
 @Injectable()
 export class ProvidersService {
-  constructor(readonly uow: UnitOfWork, private readonly repo: ProvidersRepository) {}
+  constructor(private readonly repo: ProvidersRepository) {}
 
   async list(actor: Actor) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');

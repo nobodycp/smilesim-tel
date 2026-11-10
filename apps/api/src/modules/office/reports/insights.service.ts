@@ -1,6 +1,5 @@
 import { ReportsRepository } from './reports.repository';
 import { AccountTree } from '../kernel/account-tree';
-import { UnitOfWork } from '../kernel/unit-of-work';
 import { dayRange } from '../../shared/dates';
 import { keyPage } from '../../shared/paging';
 import { BALANCES_PAGE } from '../rules/office-paging';
@@ -34,7 +33,6 @@ function dateRange(query: Period): Prisma.DateTimeFilter | undefined {
 @Injectable()
 export class InsightsService {
   constructor(
-    readonly uow: UnitOfWork,
     private readonly tree: AccountTree,
     private readonly wallets: WalletsService,
     private readonly repo: ReportsRepository,

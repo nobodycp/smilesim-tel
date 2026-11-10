@@ -53,7 +53,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
     },
   } as unknown as OfficeGraph['prismaClient'];
   const wallets = new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder, new WalletsRepository(kernel.uow));
-  return new OverviewService(kernel.uow, kernel.tree, wallets, {} as never, {} as never, {} as never, new DeskRepository(kernel.uow));
+  return new OverviewService(kernel.tree, wallets, {} as never, {} as never, {} as never, new DeskRepository(kernel.uow));
 }
 
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: false, grants: [], operatorId: id, impersonating: false });

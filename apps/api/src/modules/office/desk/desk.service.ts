@@ -1,6 +1,5 @@
 import { DeskRepository } from './desk.repository';
 import { AccountTree } from '../kernel/account-tree';
-import { UnitOfWork } from '../kernel/unit-of-work';
 import { isOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../kernel/types';
@@ -12,7 +11,7 @@ import { expiringWhere } from '../rules/office-paging';
 /** The signed-in account's desk: who it is (identity, balance, grants, stops), and the home board. */
 @Injectable()
 export class DeskService {
-  constructor(readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly repo: DeskRepository) {}
+  constructor(private readonly tree: AccountTree, private readonly repo: DeskRepository) {}
 
   async me(actor: Actor) {
     const [wallet, accounts] = await Promise.all([

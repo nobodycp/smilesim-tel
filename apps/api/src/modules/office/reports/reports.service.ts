@@ -1,5 +1,4 @@
 import { ReportsRepository } from './reports.repository';
-import { UnitOfWork } from '../kernel/unit-of-work';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
@@ -12,7 +11,6 @@ import { PROVIDER_OPERATION_KINDS } from '../wallets/provider-cost';
 @Injectable()
 export class ReportsService {
   constructor(
-    readonly uow: UnitOfWork,
     private readonly repo: ReportsRepository,
   ) {}
 

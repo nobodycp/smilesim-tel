@@ -185,6 +185,24 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('prisma-in-service', hits(services, /\.prisma\.\w+\.\w+\(|\btx\.\w+\.(find\w*|create\w*|update\w*|delete\w*|upsert|count|groupBy|aggregate)\(/));
   });
 
+  it('5.1 unused-injection: a class injects only what it uses', () => {
+    // A constructor parameter kept as a property (`private readonly x: X`) that the class never reads as `this.x`:
+    // left from a refactor, it hides what the class depends on (eight of them on 2026-11-10, plan loose-ends B.2).
+    const found: Hit[] = [];
+    for (const { file, text } of office) {
+      const ctor = /constructor\(([^{]*)\)\s*\{/g;
+      for (let match = ctor.exec(text); match; match = ctor.exec(text)) {
+        for (const param of match[1].matchAll(/(?:private |protected |public )?readonly (\w+)\s*:/g)) {
+          const used = new RegExp(`this\\.${param[1]}\\b`).test(text);
+          // A public property may be read from outside (`unit-of-work.ts` hands out `notice`); only private ones count.
+          if (!used && /private |protected /.test(param[0])) found.push({ file, line: lineOf(text, match.index), text: param[1] });
+          if (!used && !/private |protected |public /.test(param[0]) && file.endsWith('.service.ts')) found.push({ file, line: lineOf(text, match.index), text: param[1] });
+        }
+      }
+    }
+    check('unused-injection', found);
+  });
+
   it('5.1 flat-office-module: each domain registers its own providers', () => {
     const module = production.find(({ file }) => file === 'modules/office/office.module.ts');
     const list = /export const OFFICE_PROVIDERS = \[([^\]]*)\]/.exec(module?.text ?? '')?.[1] ?? '';
