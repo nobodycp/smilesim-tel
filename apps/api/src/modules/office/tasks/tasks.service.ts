@@ -6,7 +6,7 @@ import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { assertBranch } from '../policy';
 import { taskEvents } from './task-events';
-import { lockLine } from '../lines/line-state';
+import { assertClaimFree, lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
@@ -245,12 +245,13 @@ export class TasksService {
         const open = await this.repo.openTaskOn(tx, input.lineId, input.action);
         if (open) fail(409, 'DUPLICATE_REQUEST');
       }
-      // A task that will charge holds its price first (roadmap N6): refused before anything is written when the
-      // wallet cannot cover it, released when the task closes.
-      const held = input.posDelta < 0
-        ? await this.ledger.hold(tx, input.posId, -input.posDelta, input.actor.operatorId, input.note, input.msisdn ? { msisdn: input.msisdn, lineId: input.lineId ?? '', companyName: '', packageName: '', packagePrice: -input.posDelta } : undefined)
-        : 0;
-      const created = await this.repo.createTask(tx, {
+      // An activation reserves its serial and its number (ADR 0019, D5): refused here, under their locks, when a
+      // line holds one of them or another open activation has reserved it. Before the task and before any money.
+      const claim = input.action === 'activate' ? { iccid: input.iccid, msisdn: input.msisdn } : {};
+      await assertClaimFree(tx, claim);
+      // The task is written first, the hold second: a request the database refuses has held nothing.
+      const price = input.posDelta < 0 ? -input.posDelta : 0;
+      const created = await this.repo.insertTask(tx, {
         action: input.action,
         // No «بانتظار الاستلام» (spec 2026-11-09, 2): a task is in progress from the moment it opens.
         status: 'working',
@@ -265,9 +266,20 @@ export class TasksService {
         esim: input.esim ?? false,
         esimQr: input.esimQr ?? null,
         note: input.note,
-        held,
+        held: price,
         unitPrice: input.unitPrice ?? null,
       });
+      if (!created) {
+        // The reservation indexes refused it although the check above passed: someone wrote past the locks. The
+        // check says which of the two it was; if it finds neither, the request is still a duplicate.
+        await assertClaimFree(tx, claim);
+        fail(409, 'DUPLICATE_REQUEST');
+      }
+      // A task that will charge holds its price (roadmap N6): refused, and the task with it, when the wallet
+      // cannot cover it; released when the task closes.
+      if (price > 0) {
+        await this.ledger.hold(tx, input.posId, price, input.actor.operatorId, input.note, input.msisdn ? { msisdn: input.msisdn, lineId: input.lineId ?? '', companyName: '', packageName: '', packagePrice: price } : undefined);
+      }
       const named = await this.repo.packageName(tx, input.nextPackageId ?? input.packageId);
       const notices = await this.taskNotice(tx, 'opened', created, input.actor, {
         packageName: named?.name ?? '',

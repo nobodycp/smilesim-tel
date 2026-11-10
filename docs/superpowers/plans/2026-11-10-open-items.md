@@ -7,8 +7,8 @@ or replaced by a later design. They stay in git history.
 ## Waiting for an owner decision (`docs/project-plan.md` «مفتوح»)
 
 - [ ] **Activation through a provider: the owner's word for each slice after S.1**
-  (plan `2026-11-10-activation-settlement.md`, ADR 0019 accepted). S.1, the schema, is built; S.2 is next and
-  changes the manual path (a second task for the same card is refused when opened).
+  (plan `2026-11-10-activation-settlement.md`, ADR 0019 accepted). S.1 (the schema) and S.2 (the reservation) are built; S.3 (pure
+  rules) is next. Before deploying S.2 anywhere: `npm run reservation-conflicts --workspace api`.
 - [ ] **Branch direct-sale price floor** when two main agents' prices differ (the 40 / 25 / 30 example,
   project-plan 2026-10-24). Today `floorFor` (`rules/user-terms.ts`) takes the floor from the account's own parent
   path; nothing chooses between the three options.

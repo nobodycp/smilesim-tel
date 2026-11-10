@@ -17,7 +17,8 @@ import { packageTermsOf } from '../rules/office-terms';
 import { canHandleTasks } from '../tasks/task-access';
 import { TasksService } from '../tasks/tasks.service';
 import { LinePricing } from './line-pricing';
-import { assertSimFree, lockedTaskLine, moveLineStatus, numberTaken } from './line-state';
+import { assertClaimFree, lockClaim, lockedTaskLine, moveLineStatus, numberTaken } from './line-state';
+import { completionClaim, type Claim } from './reservation.rules';
 import { MSISDN, periodOf, readQr } from './line-input';
 import { CompleteTaskBody } from './lines.schemas';
 
@@ -32,6 +33,8 @@ type Completion = {
   line: TaskLine | null;
   handed: { iccid?: string; msisdn?: string };
   handedQr: string | null;
+  /** The serial and the number this completion puts on a line, locked before the wallet. */
+  claim: Claim;
 };
 
 /** What a handler did: the sale to record, whether it already wrote its wallet entry, and the amount it moved. */
@@ -85,9 +88,14 @@ export class TaskCompletion {
       if (claimed.count !== 1) fail(400, 'INVALID');
       // The line before any wallet (rule 1.4), and only if it is still where the task expects it.
       const line = task.lineId ? await lockedTaskLine(tx, task.action as Action, task.lineId) : null;
+      // What the handler will put on a line is locked now: the keys come before any wallet (ADR 0019, lock order),
+      // and an activation with no number yet is given one here for the same reason.
+      const wanted = completionClaim(task, handed);
+      const claim = task.action === 'activate' && !wanted.msisdn ? { ...wanted, msisdn: await this.pricing.freshMsisdn(tx) } : wanted;
+      await lockClaim(tx, claim);
       // The hold made when the task opened gives way to the charge itself (roadmap N6), before any money moves.
       await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
-      const job: Completion = { tx, task, actor, note, line, handed, handedQr };
+      const job: Completion = { tx, task, actor, note, line, handed, handedQr, claim };
       const applied = await this.handlers[task.action as Action](job);
       const sale = applied.sale ?? (await this.plainSale(job));
       const posted = (await this.charge(job, sale)) || applied.posted === true;
@@ -147,17 +155,18 @@ export class TaskCompletion {
     return task.action === 'esim' ? { ...saleOf(current), providerCost: -task.posDelta, esimPrice: -task.posDelta } : saleOf(current);
   }
 
-  private async activate({ tx, task, handed, handedQr }: Completion): Promise<Applied> {
+  private async activate({ tx, task, handedQr, claim }: Completion): Promise<Applied> {
     const pkg = await this.repo.packageWithRenewalsById(tx, task.packageId);
     if (!pkg) fail(404, 'NOT_FOUND');
     if (!pkg.company || !pkg.provider) fail(400, 'INVALID');
     if (pkg.renewals.some((renewal) => !renewal.target.company || !renewal.target.provider)) fail(400, 'INVALID');
     const pkgTerms = packageTermsOf(pkg);
     const terms = await this.pricing.stampFor(captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target))), task.posId, undefined, tx);
-    const iccid = task.esim ? handed.iccid ?? null : task.iccid;
-    if (iccid) await assertSimFree(tx, iccid);
+    // The task is claimed, so its own reservation is over: what it takes must be free of lines and of other tasks.
+    const iccid = claim.iccid ?? null;
+    await assertClaimFree(tx, claim);
     const created = await this.repo.createLine(tx, {
-      msisdn: task.msisdn || (await this.pricing.freshMsisdn(tx)),
+      msisdn: claim.msisdn as string,
       iccid,
       esim: task.esim,
       esimQr: task.esim ? handedQr : null,
@@ -264,20 +273,22 @@ export class TaskCompletion {
   }
 
   private async rename({ tx, line, handed }: Completion): Promise<Applied> {
-    if (line && handed.msisdn) await this.repo.renameLine(tx, line.id, handed.msisdn).catch(numberTaken);
+    if (!line || !handed.msisdn) return {};
+    await assertClaimFree(tx, { msisdn: handed.msisdn }, { exceptLineId: line.id });
+    await this.repo.renameLine(tx, line.id, handed.msisdn).catch(numberTaken);
     return {};
   }
 
   private async swapSim({ tx, task, line, handedQr }: Completion): Promise<Applied> {
     if (!line || !task.iccid) return {};
-    await assertSimFree(tx, task.iccid, line.id);
+    await assertClaimFree(tx, { iccid: task.iccid }, { exceptLineId: line.id });
     await this.repo.setLineSim(tx, line.id, { iccid: task.iccid, esim: task.esim, esimQr: task.esim ? handedQr : null });
     return {};
   }
 
   private async issueEsim({ tx, line, handed, handedQr }: Completion): Promise<Applied> {
     if (!line || !handed.iccid) return {};
-    await assertSimFree(tx, handed.iccid, line.id);
+    await assertClaimFree(tx, { iccid: handed.iccid }, { exceptLineId: line.id });
     await this.repo.setLineSim(tx, line.id, { iccid: handed.iccid, esim: true, esimQr: handedQr });
     return {};
   }

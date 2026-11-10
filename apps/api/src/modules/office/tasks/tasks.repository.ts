@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { UnitOfWork, type Db } from '../kernel/unit-of-work';
@@ -108,8 +109,15 @@ export class TasksRepository {
     return db.officeTask.findFirst({ where: { lineId, action, status: 'working' }, select: { id: true } });
   }
 
-  createTask(db: Db, data: Prisma.OfficeTaskUncheckedCreateInput) {
-    return db.officeTask.create({ data });
+  /**
+   * Inserts a task unless a unique index refuses it (`ON CONFLICT DO NOTHING`, so the caller's transaction is not
+   * aborted): for an activation, the open-reservation indexes on its serial and its number. Answers the new row,
+   * or null when the database refused it.
+   */
+  async insertTask(db: Db, data: Omit<Prisma.OfficeTaskCreateManyInput, 'id'>) {
+    const id = randomUUID();
+    const made = await db.officeTask.createMany({ data: [{ id, ...data }], skipDuplicates: true });
+    return made.count === 1 ? db.officeTask.findUnique({ where: { id } }) : null;
   }
 
   packageName(db: Db, id: string) {

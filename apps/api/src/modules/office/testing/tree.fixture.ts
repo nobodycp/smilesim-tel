@@ -167,9 +167,21 @@ export async function tree() {
       return row;
     },
   };
+  const insertedAs = new Map<string, Row>();
   const taskModel = {
     create: async ({ data }: { data: Data }) => { const row = { id: `t${tasks.length + 1}`, createdAt: new Date(), updatedAt: new Date(), log: '', assigneeId: null, ...data }; tasks.push(row); return row; },
-    findUnique: async ({ where }: { where: { id: string } }) => tasks.find((row) => row.id === where.id) ?? null,
+    // The insert that leaves a refused row out (ON CONFLICT DO NOTHING). Here every row goes in, under the ids the
+    // specs know (t1, t2, …), and is still found by the id it was inserted with; what the database refuses is
+    // shown on PostgreSQL.
+    createMany: async ({ data }: { data: Data[] }) => {
+      for (const item of data) {
+        const row = { createdAt: new Date(), updatedAt: new Date(), log: '', assigneeId: null, ...item, id: `t${tasks.length + 1}` };
+        tasks.push(row);
+        insertedAs.set(String(item.id), row);
+      }
+      return { count: data.length };
+    },
+    findUnique: async ({ where }: { where: { id: string } }) => tasks.find((row) => row.id === where.id) ?? insertedAs.get(where.id) ?? null,
     findFirst: async (args?: { where?: Record<string, unknown> }) => tasks.find((row) => whereMatch(row, args?.where)) ?? null,
     findMany: async () => [],
     count: async () => 0,

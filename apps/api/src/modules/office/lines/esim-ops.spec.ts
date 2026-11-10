@@ -81,13 +81,23 @@ async function office() {
       return row;
     },
   };
+  const insertedAs = new Map<string, Row>();
   const taskModel = {
     create: async ({ data }: { data: Row }) => {
       const row = { id: `t${tasks.length + 1}`, createdAt: new Date(), updatedAt: new Date(), log: '', assigneeId: null, ...data };
       tasks.push(row);
       return row;
     },
-    findUnique: async ({ where }: { where: { id: string } }) => tasks.find((row) => row.id === where.id) ?? null,
+    // The insert that leaves a refused row out: here every row goes in under the next id, and is found by either.
+    createMany: async ({ data }: { data: Row[] }) => {
+      for (const item of data) {
+        const row = { createdAt: new Date(), updatedAt: new Date(), log: '', assigneeId: null, ...item, id: `t${tasks.length + 1}` };
+        tasks.push(row);
+        insertedAs.set(String(item.id), row);
+      }
+      return { count: data.length };
+    },
+    findUnique: async ({ where }: { where: { id: string } }) => tasks.find((row) => row.id === where.id) ?? insertedAs.get(where.id) ?? null,
     findFirst: async ({ where }: { where: Row }) => tasks.find((row) => Object.entries(where).every(([key, value]) => row[key] === value)) ?? null,
     findMany: async () => [],
     update: async ({ where, data }: { where: { id: string }; data: Row }) => Object.assign(tasks.find((row) => row.id === where.id) as Row, data),
@@ -376,10 +386,13 @@ describe('automatic hold', () => {
   });
 
   it('refuses a task whose price the wallet cannot cover, counting what is already held', async () => {
-    const { service, gate, wallet, tasks } = await office();
+    const { service, gate, wallet, entries } = await office();
     Object.assign(wallet, { balance: 600, held: 300 });
     await expect(service.requestEsim(gate, 'ln1')).rejects.toMatchObject({ status: 400, code: 'BALANCE_CEILING' });
-    expect(tasks).toHaveLength(0);
+    // The task is written before the hold and both are one transaction: the refusal rolls the task back. These
+    // in-memory tables have no rollback, so that the task is gone is shown on PostgreSQL
+    // (lines/activation-reservation.db.spec.ts); here, that no money was held and no entry written.
     expect(wallet).toMatchObject({ balance: 600, held: 300 });
+    expect(entries).toHaveLength(0);
   });
 });

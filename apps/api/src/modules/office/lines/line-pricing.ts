@@ -91,8 +91,9 @@ export class LinePricing {
   async freshMsisdn(db: Db = this.uow.prisma): Promise<string> {
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const msisdn = `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
-      const existing = await this.repo.lineByMsisdn(msisdn, db);
-      if (!existing) return msisdn;
+      // Not a line's, and not one an open activation task has reserved.
+      const [existing, reserved] = await Promise.all([this.repo.lineByMsisdn(msisdn, db), this.repo.numberReservedByTask(msisdn, db)]);
+      if (!existing && !reserved) return msisdn;
     }
     fail(400, 'INVALID');
   }

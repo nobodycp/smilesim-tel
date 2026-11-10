@@ -2,6 +2,7 @@ import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
 import { isUniqueViolation } from '../../shared/prisma-errors';
 import type { Action } from '../kernel/types';
+import { claimKeys, refusalOf, type Claim } from './reservation.rules';
 
 // The state of a line inside a transaction (backend-engineering.mdc, 2). What was read before the transaction is
 // not trusted: the row is locked, read again and checked, so two operations on one number run one after the other
@@ -93,16 +94,39 @@ export async function moveLineStatus(
 }
 
 /**
- * A SIM serial belongs to one live number. Serialised on the serial itself, so two activations of the same card
- * cannot both pass the check. A disconnected number gives its card back.
+ * Locks what a claim names, in the fixed order (reservation.rules.ts). Until the transaction ends, nobody else
+ * can decide who holds that serial or that number. Taking a key twice in one transaction is harmless.
  */
-export async function assertSimFree(tx: Prisma.TransactionClient, iccid: string, exceptLineId?: string): Promise<void> {
-  await lockKey(tx, `iccid:${iccid}`);
-  const holder = await tx.line.findFirst({
-    where: { iccid, status: { not: 'disconnected' }, ...(exceptLineId ? { id: { not: exceptLineId } } : {}) },
-    select: { id: true },
-  });
-  if (holder) fail(409, 'SIM_TAKEN');
+export async function lockClaim(tx: Prisma.TransactionClient, claim: Claim): Promise<void> {
+  for (const key of claimKeys(claim)) await lockKey(tx, key);
+}
+
+/** Options for a check made on behalf of a line that already holds the serial or the number. */
+type Except = { exceptLineId?: string };
+
+/**
+ * Refuses a claim that is held (409 `SIM_TAKEN` / `NUMBER_TAKEN`): a serial on a live line or reserved by an
+ * open activation task, a number on any line or reserved by one. It locks the claim first, so the answer holds
+ * until the transaction ends. A disconnected line gives its card back; its number stays its own.
+ */
+export async function assertClaimFree(tx: Prisma.TransactionClient, claim: Claim, { exceptLineId }: Except = {}): Promise<void> {
+  await lockClaim(tx, claim);
+  const notThisLine = exceptLineId ? { id: { not: exceptLineId } } : {};
+  const openActivation = { action: 'activate', status: 'working' };
+  const [serialLine, serialTask, numberLine, numberTask] = await Promise.all([
+    claim.iccid ? tx.line.findFirst({ where: { iccid: claim.iccid, status: { not: 'disconnected' }, ...notThisLine }, select: { id: true } }) : null,
+    claim.iccid ? tx.officeTask.findFirst({ where: { ...openActivation, iccid: claim.iccid }, select: { id: true } }) : null,
+    claim.msisdn ? tx.line.findUnique({ where: { msisdn: claim.msisdn }, select: { id: true } }) : null,
+    claim.msisdn ? tx.officeTask.findFirst({ where: { ...openActivation, msisdn: claim.msisdn }, select: { id: true } }) : null,
+  ]);
+  const numberOnLine = Boolean(numberLine) && numberLine?.id !== exceptLineId;
+  const refusal = refusalOf({ serialOnLine: Boolean(serialLine), serialOnTask: Boolean(serialTask), numberOnLine, numberOnTask: Boolean(numberTask) });
+  if (refusal) fail(409, refusal);
+}
+
+/** A SIM serial belongs to one live number, and is not one an open activation task has reserved. */
+export function assertSimFree(tx: Prisma.TransactionClient, iccid: string, exceptLineId?: string): Promise<void> {
+  return assertClaimFree(tx, { iccid }, { exceptLineId });
 }
 
 /**

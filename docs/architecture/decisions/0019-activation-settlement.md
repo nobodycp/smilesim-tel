@@ -1,8 +1,8 @@
 # 0019 — A provider activation holds the price on a task and is settled by the provider's stored verdict
 
 Date: 2026-11-10. Status: **accepted** (the owner approved the design and ordered slice S.1 the same day, task
-05). The design is fixed; it is built slice by slice, and the plan says which slices exist: **S.1 (the schema) is
-built, nothing reads it yet, and no behaviour has changed.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
+05). The design is fixed; it is built slice by slice, and the plan says which slices exist: **S.1 (the schema, read
+by nothing yet) and S.2 (the reservation of a serial and a number, which changes the manual path) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
 `docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
 
 ## Context
@@ -115,6 +115,17 @@ come; the money must be safe in every state of the operation.
 - The database, not only the code, refuses: an eSIM code or a credential that is not sealed (`v1:`…); an unknown
   `applyError`, event type, decision or evidence kind; a proposal or an applied decision without evidence and a
   note of 20 characters; a confirmed success without a reference; an approval to dispatch without its account.
+
+## As built in S.2 (migration `20261110200000_open_activation_reservations`)
+
+- The two partial unique indexes exist as designed; Prisma neither sees them as drift nor would drop them.
+- The lock order needed one change to existing code: completing a task released the hold (a wallet lock) before
+  its handler locked a serial. The keys a completion will take are now locked first, so every transaction goes
+  task → line → keys → wallet.
+- A task is written before its hold for every action, not only for activations: one order, one transaction.
+- Opening an activation also checks live lines, so a card already on a line is refused at the request.
+- The migration raises on existing conflicts and changes nothing; a read-only report
+  (`npm run reservation-conflicts --workspace api`) lists them before a deploy.
 
 ## Consequences
 

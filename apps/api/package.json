@@ -8,7 +8,8 @@
     "start": "node dist/main.js",
     "start:worker": "node dist/worker.js",
     "lint": "eslint . --max-warnings 0",
-    "seal-secrets": "node dist/seal-secrets.js"
+    "seal-secrets": "node dist/seal-secrets.js",
+    "reservation-conflicts": "node dist/reservation-conflicts.js"
   },
   "dependencies": {
     "@nestjs/common": "^12.3.2",

@@ -92,6 +92,8 @@ async function office() {
         return row;
       },
     },
+    // No open activation task has reserved the serial a SIM swap asks for.
+    officeTask: { findFirst: async () => null },
     line: {
       findUnique: async () => line,
       findFirst: async () => null,

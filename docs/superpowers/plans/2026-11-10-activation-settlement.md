@@ -1,7 +1,7 @@
 # Activation through a provider — plan
 
 Spec: `docs/superpowers/specs/2026-11-10-activation-settlement.md` (decisions D1–D19, transactions T1–T11, specs
-1–29). ADR 0019 (accepted). **S.1 is built; each later slice starts on the owner's word.** Paths under `apps/api/`
+1–29). ADR 0019 (accepted). **S.1 and S.2 are built; each later slice starts on the owner's word.** Paths under `apps/api/`
 unless said. Each slice is one commit, leaves every existing spec green on CI (including the PostgreSQL and Redis
 job), and changes nothing a user can see unless it says **Visible**.
 
@@ -25,13 +25,32 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   **Still to do for item 22 in S.9:** that the worker's activity purge leaves the table alone (it does not touch it
   today; the spec belongs with the code that writes events).
 
-- [ ] **S.2 Reservation in the database (O1). Visible.**
-  A migration that lists open activation tasks sharing a serial or a number and stops if any exist, then the two
-  partial unique indexes. `TasksService.openTask` for activations: advisory keys, live-line check, the task
-  inserted `ON CONFLICT DO NOTHING` **before** the hold; line creation (`lines.service.ts`, `task-completion.ts`)
-  checks open activation tasks under the same keys.
-  *Transactions:* T1 (without the operation), T8. *Locks:* keys → task insert → wallet.
-  *Visible:* a second manual task for the same card is refused when opened. *Specs:* 1–3.
+- [x] **S.2 Reservation in the database (O1). Visible.** Migration `20261110200000_open_activation_reservations`.
+  - **Rules** (`lines/reservation.rules.ts`, pure): what a claim locks and in which order (`claimKeys`), who
+    reserves (`reserves`), the refusal (`refusalOf`), what a completion takes (`completionClaim`).
+  - **Under the locks** (`lines/line-state.ts`): `lockClaim`, `assertClaimFree` (a serial on a live line or
+    reserved by an open activation task; a number on any line or reserved by one); `assertSimFree` is now that
+    check for a serial.
+  - **Opening** (`tasks/tasks.service.ts` `openTask`, `tasks.repository.ts` `insertTask`): for an activation, keys
+    → check → the task inserted `ON CONFLICT DO NOTHING` → the hold. For every task the row is now written before
+    the hold, in the same transaction.
+  - **Other writers**: direct activation and number change (`lines/lines.service.ts`), completion
+    (`lines/task-completion.ts`: the keys a handler needs are locked before the hold is released, so the order is
+    task → line → keys → wallet; an activation with no number is given one there), `LinePricing.freshMsisdn`
+    (skips a reserved number).
+  - **Before a deploy**: `npm run reservation-conflicts --workspace api` (read-only, exit 1 on a conflict). If
+    the migration is run on conflicting tasks it raises, names them and changes nothing; `prisma migrate deploy`
+    then records it as failed, and after the branch has closed the extra tasks it is cleared with
+    `npx prisma migrate resolve --rolled-back 20261110200000_open_activation_reservations` and deployed again
+    (the Prisma steps are from its documentation, not exercised here).
+  - *Transactions:* T1 (without the operation), T8. *Specs:* `lines/activation-reservation.db.spec.ts` (spec items
+    1–3 and the rest of the owner's list for this slice), `lines/reservation.rules.spec.ts`.
+  - **Visible, on the manual path:** a second activation for a card or a number that an open activation task
+    holds is refused when it is opened (`409 SIM_TAKEN` / `NUMBER_TAKEN`) instead of failing when the branch
+    completes it; an activation for a card that a live line holds is refused when it is opened, not at completion;
+    a SIM swap, an eSIM issue or a number change onto a reserved card or number is refused.
+  - **Not reserved (unchanged):** a SIM-swap, eSIM or rename task names what it will take and takes it at
+    completion; a serial among live lines stays the advisory-lock rule.
 
 - [ ] **S.3 Rules (pure).**
   `src/modules/office/lines/activation-settlement.rules.ts`: `operationKey(taskId)`, `taskActions(operation)` (the

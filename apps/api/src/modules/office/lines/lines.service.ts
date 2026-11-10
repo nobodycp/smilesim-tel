@@ -25,7 +25,7 @@ import { periodOf, readQr } from './line-input';
 import { assertRunnable, canActivateFor, runsNow, type RunnablePackage } from './line-ops';
 import { LinePricing } from './line-pricing';
 import { ActivateBody, AddonBody, ExtendBody, OutcomeBody, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
-import { assertSimFree, lockUnchanged, moveLineStatus, numberTaken } from './line-state';
+import { assertClaimFree, assertSimFree, lockUnchanged, moveLineStatus, numberTaken } from './line-state';
 import { TaskCompletion } from './task-completion';
 
 type VisibleLine = Awaited<ReturnType<LineAccess['visibleLine']>>;
@@ -112,7 +112,8 @@ export class LinesService {
     // The line carries the renewal price its point of sale pays today, not the layer column.
     const terms = await this.pricing.stampFor(captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target))), pos.id, posPath);
     const created = await this.uow.runTx(async (tx) => {
-      if (issuedIccid) await assertSimFree(tx, issuedIccid);
+      // The serial and the number, under their locks: not on a line, and not reserved by an open activation task.
+      await assertClaimFree(tx, { iccid: issuedIccid, msisdn });
       const line = await this.repo
         .createLine(tx, { msisdn, iccid: issuedIccid, esim, esimQr: issuedQr, status: 'active', packageId: pkg.id, posId: pos.id, terms: terms as unknown as Prisma.InputJsonValue, endsAt: periodEnd(new Date(), pkg.months) })
         .catch(numberTaken);
@@ -327,6 +328,8 @@ export class LinesService {
     if (!msisdn) fail(400, 'INVALID');
     await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
+      // The new number may be one an open activation task has reserved.
+      await assertClaimFree(tx, { msisdn }, { exceptLineId: line.id });
       await this.repo.renameLine(tx, line.id, msisdn).catch(numberTaken);
       await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'rename', saleOf({ ...line, msisdn }));
     });

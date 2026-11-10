@@ -106,6 +106,11 @@ export class LinesRepository {
     return db.line.findUnique({ where: { msisdn } });
   }
 
+  /** The open activation task that has reserved this number, if there is one. */
+  numberReservedByTask(msisdn: string, db: Db = this.uow.prisma) {
+    return db.officeTask.findFirst({ where: { action: 'activate', status: 'working', msisdn }, select: { id: true } });
+  }
+
   /** A package by its code with company and provider, and each renewal target with its own. */
   packageWithRenewals(code: string) {
     return this.uow.prisma.package.findUnique({
