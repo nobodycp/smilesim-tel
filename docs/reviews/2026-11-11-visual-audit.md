@@ -33,10 +33,10 @@ but `.bp-tag` on branding are the shekel sign), 9 native controls.
 |---|---|---|---|---|
 | 1 | everywhere | «شريحة عادية» / «شريحة إلكترونية» instead of SIM / eSIM | 1 | fixed b0d3e9a |
 | 2 | `/numbers` | no SIM / eSIM filter | 1 | fixed b0d3e9a |
-| 3 | `/companies` | «eSIM» tag on every card; ⋯ menu repeats «تعديل» (= opening the card) and holds the picture upload | 2 | open |
-| 4 | `/companies` (phone) | one tall card per row, name link 23px high, the rest of the card not a link | 2, 5 | open |
-| 5 | `/companies/:c` settings | native checkbox for eSIM; fields scattered on two columns; no picture | 2 | open |
-| 6 | `/companies/:c` packages | status is a read-only badge; on/off lives inside the package page; ⋯ menu with one item | 2 | open |
+| 3 | `/companies` | «eSIM» tag on every card; ⋯ menu repeats «تعديل» (= opening the card) and holds the picture upload | 2 | fixed (phase 2) |
+| 4 | `/companies` (phone) | one tall card per row, name link 23px high, the rest of the card not a link | 2, 5 | fixed (phase 2): two cards a row, the whole card is the link |
+| 5 | `/companies/:c` settings | native checkbox for eSIM; fields scattered on two columns; no picture | 2 | fixed (phase 2) |
+| 6 | `/companies/:c` packages | status is a read-only badge; on/off lives inside the package page; ⋯ menu with one item | 2 | fixed (phase 2) |
 | 7 | `/users` ⋯ and `/users/:l` ⋯ | «إعدادات المستخدم» is a dialog reached from menus, not part of the user page | 3 | open |
 | 8 | `/users/:l` «صلاحيات الحساب» | native select per grant, header row printed twice, native checkboxes for extra roles | 3 | open |
 | 9 | `/users/:l` (phone) | the tab strip cuts the last tab with no hint that it scrolls | 5 | open |

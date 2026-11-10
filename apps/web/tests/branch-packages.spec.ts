@@ -47,11 +47,12 @@ test('the branch reaches packages through their company: one table, provider, pr
   await expect(row).toContainText('28.00');
   await expect(row).toContainText('+3.00');
   await expect(page.locator('tr', { hasText: '300 جيجا' })).toContainText('متوقف');
-  await expect(page.getByRole('switch')).toHaveCount(0);
+  // On/off is switched from the list (spec 2026-11-11-ui-consistency-pass, D2); the row has no ⋯ menu.
+  await expect(page.locator('tr', { hasText: '300 جيجا' }).getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByRole('button', { name: 'إجراءات 500 جيجا' })).toHaveCount(0);
   await expect(page.locator('tr', { hasText: '200 جيجا' })).toContainText('سكاي');
 
-  await page.getByRole('button', { name: 'إجراءات 500 جيجا' }).click();
-  await page.getByRole('menuitem', { name: 'فتح الرزمة' }).click();
+  await page.getByRole('link', { name: '500 جيجا', exact: true }).click();
   await expect(page).toHaveURL(`${admin}/companies/wecom/packages/lian-wecom-500`);
 });
 
@@ -123,4 +124,15 @@ test('the point of sale sees the details on the package card and the subscribe s
   await expect(card).not.toContainText('تجوال');
   await card.click();
   await expect(page.locator('.package-facts-details')).toHaveText('تجوال في الأردن');
+});
+
+test('the company list turns a package on and off, and the package page only shows its state', async ({ page }) => {
+  await serveOffice(page, 'branch', {
+    'GET /companies': () => ({ body: twoProviders }),
+    'PATCH /packages/lian-wecom-300/mode': () => ({ body: { ok: true } }),
+  });
+  await page.goto(`${admin}/companies/wecom`);
+  const sent = page.waitForRequest((request) => request.url().endsWith('/packages/lian-wecom-300/mode') && request.method() === 'PATCH');
+  await page.locator('tr', { hasText: '300 جيجا' }).getByRole('switch').click();
+  expect((await sent).postDataJSON()).toEqual({ enabled: true });
 });

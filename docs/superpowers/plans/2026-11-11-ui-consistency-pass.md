@@ -18,10 +18,10 @@ local commit. e2e specs that read changed UI are updated in the same phase (they
 
 ## Phase 2 — Companies (D2)
 
-- [ ] `features/catalog/screens/companies-screen.tsx` — card without tag and menu.
-- [ ] `features/catalog/screens/company-screen.tsx` — settings: picture, SIM rules, eSIM switch.
-- [ ] `features/catalog/company-packages.tsx` — status switch, no row menu.
-- [ ] `features/catalog/screens/package-sheet-screen.tsx` — no switch in the head.
+- [x] `features/catalog/screens/companies-screen.tsx` — card without tag and menu.
+- [x] `features/catalog/screens/company-screen.tsx` — settings: picture, SIM rules, eSIM switch.
+- [x] `features/catalog/company-packages.tsx` — status switch, no row menu.
+- [x] `features/catalog/screens/package-sheet-screen.tsx` — no switch in the head.
 
 ## Phase 3 — User page (D3)
 

@@ -5,7 +5,7 @@ import type { NewPackage, PackageAddon, PackageRow, PackageSheet, ProviderCatalo
 export const catalogApi = {
   officePackages: () => request<{ packages: PackageRow[]; companies: { name: string; image: string }[]; capped?: boolean }>('GET', '/office/packages'),
   officeCompanies: () => request<Shelf>('GET', '/office/companies'),
-  setCompanyImage: (code: string, image: string) => request<{ ok: true }>('PUT', `/office/companies/${segment(code)}/image`, { image }),
+  setCompanyImage: (code: string, image: string | null) => request<{ ok: true }>('PUT', `/office/companies/${segment(code)}/image`, { image }),
   setCompanySim: (code: string, sim: SimRules & { esimPrice: number }) =>
     request<{ ok: true; sim: SimRules; esimPrice: number }>('PUT', `/office/companies/${segment(code)}/sim`, sim),
   setSellPrice: (code: string, price: number, renewalPrice?: number | null) =>

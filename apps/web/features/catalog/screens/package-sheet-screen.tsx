@@ -6,7 +6,6 @@ import { AccountName, accountLabel } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk, Money, layerName, lineStatus } from '../../../components/desk';
 import { LinePricesDialog } from '../../../components/line-prices-dialog';
-import { LiveSwitch } from '../../../components/live-switch';
 import { markColor, markOf } from '../../../lib/company-mark';
 import { usePageTitle } from '../../../lib/page-title';
 import { TableSkeleton } from '../../../components/loading';
@@ -188,11 +187,6 @@ export function PackageSheetScreen() {
   async function saveMode(action: string, mode: string) {
     if (!sheet) return;
     await run(() => api.setPackageMode(sheet.code, { action, mode }));
-  }
-
-  async function saveEnabled(enabled: boolean) {
-    if (!sheet) return;
-    await run(() => api.setPackageMode(sheet.code, { enabled }));
   }
 
   async function saveChain() {
@@ -422,8 +416,9 @@ export function PackageSheetScreen() {
       ) : ''}
       action={sheet ? (
         <div className="page-actions sheet-head-actions">
+          {/* On/off is switched from the company's packages list (spec 2026-11-11-ui-consistency-pass, D2). */}
+          <Badge variant={onOffTone(sheet.enabled)} dot>{sheet.enabled ? t.lineActive : t.stopped}</Badge>
           <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
-          <LiveSwitch label={t.packageLive} checked={sheet.enabled} onChange={(next) => void saveEnabled(next)} />
         </div>
       ) : undefined}
       lede={sheet ? [`${t.provider} ${sheet.providerName}`, `${sheet.activeLines} ${t.activeLines}`].join(' · ') : ''}

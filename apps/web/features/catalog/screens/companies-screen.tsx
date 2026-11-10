@@ -1,20 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useRef, useState, type ChangeEvent } from 'react';
 import { TableSkeleton } from '../../../components/loading';
 import { LoadFailed } from '../../../components/load-failed';
 import { EmptyState } from '../../../components/empty-state';
 import { hasSimRules } from '../../../lib/sim-rules';
 import { Desk } from '../../../components/desk';
-import { RowMenu } from '../../../components/row-menu';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type Shelf } from '../../../lib/api';
-import { markColor, markOf, compactImage } from '../../../lib/company-mark';
+import { markColor, markOf } from '../../../lib/company-mark';
 import { usePrefs } from '../../../lib/prefs';
-import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { DataImage } from '../../../components/data-image';
 import { Plus } from 'lucide-react';
@@ -40,34 +36,14 @@ function totals(company: Company) {
 }
 
 export function CompaniesScreen() {
-  const { t, apiText } = usePrefs();
-  const router = useRouter();
-  const file = useRef<HTMLInputElement>(null);
-  const pending = useRef('');
-  const [error, setError] = useState('');
-  const [note, setNote] = useState('');
+  const { t } = usePrefs();
   const allowed = useRequireLayer(BRANCH);
   const { me } = useOffice();
   const canAdd = Boolean(me && (me.isBranchOwner || me.grants.includes('edit')) && !me.impersonating);
   const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
-  const { run } = useAction({ setError, setNote, onDone: shelf.reload });
 
-  async function onImage(event: ChangeEvent<HTMLInputElement>) {
-    const picked = event.target.files?.[0];
-    event.target.value = '';
-    const code = pending.current;
-    pending.current = '';
-    if (!picked || !code) return;
-    const image = await compactImage(picked);
-    if (!image) {
-      setError(apiText('بيانات غير صالحة'));
-      return;
-    }
-    await run(() => api.setCompanyImage(code, image), { note: t.save });
-  }
-
-  // Each company a cut-corner card, as in the approved design: its mark (and «eSIM» when it offers one), its name,
-  // its SIM rules, then its packages and providers. The whole card opens the company; ⋯ edits it or its picture.
+  // Each company a cut-corner card: its mark, its name, its SIM rules, then its packages and providers. The whole card
+  // opens the company, where its settings and picture live (spec 2026-11-11-ui-consistency-pass, D2).
   const card = (company: Company) => {
     const sums = totals(company);
     return (
@@ -78,7 +54,6 @@ export function CompaniesScreen() {
           ) : (
             <span className="co-mark big" style={{ background: markColor(company.name) }} aria-hidden="true">{markOf(company.name)}</span>
           )}
-          {company.sim?.esim ? <span className="co-esim">eSIM</span> : null}
         </div>
         <Link className="co-link" href={`/companies/${company.code}`}>{company.name}</Link>
         <span className="co-sim">
@@ -94,22 +69,6 @@ export function CompaniesScreen() {
           <span>{counted(t.coProviders, company.providers.length)}</span>
           <span>{counted(t.coActive, sums.active)}</span>
         </div>
-        <div className="co-menu">
-          <RowMenu
-            label={`${t.quickActions} ${company.name}`}
-            items={[
-              { label: t.edit, icon: 'edit', onClick: () => router.push(`/companies/${company.code}`) },
-              {
-                label: t.companyImage,
-                icon: 'image',
-                onClick: () => {
-                  pending.current = company.code;
-                  file.current?.click();
-                },
-              },
-            ]}
-          />
-        </div>
       </article>
     );
   };
@@ -121,17 +80,9 @@ export function CompaniesScreen() {
       lede={t.companiesLede}
       // A company the provider sells (spec 2026-11-09-admin-review, 3): owner or the edit grant.
       action={canAdd ? <Link className={buttonClass({})} href="/companies/new"><Plus size={16} aria-hidden="true" />{t.addCompany}</Link> : undefined}
-      error={error}
-      note={note}
+      error=""
+      note=""
     >
-      <input
-        ref={file}
-        className="sr-only"
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        aria-label={t.companyImage}
-        onChange={(event) => void onImage(event)}
-      />
       {!shelf.loaded ? (
         <section className="pane"><TableSkeleton rows={4} columns={3} /></section>
       ) : shelf.error ? (

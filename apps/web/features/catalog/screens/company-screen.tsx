@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Desk } from '../../../components/desk';
 import { DataImage } from '../../../components/data-image';
-import { markColor, markOf } from '../../../lib/company-mark';
+import { compactImage, markColor, markOf } from '../../../lib/company-mark';
 import { usePageTitle } from '../../../lib/page-title';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -18,7 +18,8 @@ import { OPEN_SIM, hasSimRules, simShape } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Button, buttonClass } from '../../../components/ui/button';
-import { Plus } from 'lucide-react';
+import { ImageUp, Plus, Trash2 } from 'lucide-react';
+import { LiveSwitch } from '../../../components/live-switch';
 import { Tabs } from '../../../components/tabs';
 import { useUrlFilters } from '../../../lib/url-state';
 import { CompanyPackages } from '../company-packages';
@@ -59,6 +60,21 @@ export function CompanyScreen() {
   const canEdit = Boolean(me?.isBranchOwner || me?.grants?.includes('edit'));
   const draft = edited?.code === params.code ? edited : draftOf(params.code, company?.sim ?? OPEN_SIM, company?.esimPrice ?? 500);
   const shown = rulesOf(draft);
+
+  const file = useRef<HTMLInputElement>(null);
+  // The picture is saved the moment it is picked or removed; the SIM and eSIM settings wait for «حفظ».
+  async function onImage(event: ChangeEvent<HTMLInputElement>) {
+    const picked = event.target.files?.[0];
+    event.target.value = '';
+    if (!picked) return;
+    const image = await compactImage(picked);
+    if (!image) {
+      setError(apiText('بيانات غير صالحة'));
+      setNote('');
+      return;
+    }
+    await run(() => api.setCompanyImage(params.code, image), { note: t.saved });
+  }
 
   function change(patch: Partial<Draft>) {
     setEdited({ ...draft, ...patch });
@@ -141,54 +157,57 @@ export function CompanyScreen() {
       <section className={tab === 'settings' ? 'pane fit' : 'pane'}>
         <Tabs items={tabs} value={tab} onChange={setTab} />
         {tab === 'settings' && (
-          <form className="pane-body company-sim" onSubmit={save}>
-            <fieldset className="sim-fields" disabled={!shelf.loaded || !canEdit}>
-              <label>
-                {t.simLength}
-                <input
-                  value={draft.length}
-                  inputMode="numeric"
-                  dir="ltr"
-                  onChange={(event) => change({ length: event.target.value })}
-                />
-                <span className="hint">{t.simLengthHint}</span>
-              </label>
-              <label>
-                {t.simPrefix}
-                <input
-                  value={draft.prefix}
-                  inputMode="numeric"
-                  dir="ltr"
-                  onChange={(event) => change({ prefix: event.target.value })}
-                />
-                <span className="hint">{t.simPrefixHint}</span>
-              </label>
-              <div className="sim-toggle">
-                <label className="check">
-                  <input type="checkbox" checked={draft.esim} onChange={(event) => change({ esim: event.target.checked })} />
-                  {t.simEsim}
-                </label>
-                <span className="hint">{t.simEsimHint}</span>
+          // Three blocks (spec 2026-11-11-ui-consistency-pass, D2): the picture, the SIM rules, eSIM.
+          <div className="pane-body company-settings">
+            <section className="settings-block">
+              <h3>{t.companyImage}</h3>
+              <div className="company-image-row">
+                {company?.image ? <DataImage className="co-mark big" src={company.image} alt="" /> : <span className="co-mark big" style={{ background: markColor(company?.name ?? '?') }} aria-hidden="true">{markOf(company?.name ?? '?')}</span>}
+                {canEdit && !me?.impersonating ? (
+                  <div className="company-image-actions">
+                    <Button type="button" variant="secondary" disabled={busy || !company} onClick={() => file.current?.click()}><ImageUp size={16} aria-hidden="true" />{t.uploadImage}</Button>
+                    {company?.image ? <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => api.setCompanyImage(params.code, null), { note: t.saved })}><Trash2 size={16} aria-hidden="true" />{t.removeImage}</Button> : null}
+                    <span className="hint">{t.companyImageHint}</span>
+                    <input ref={file} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" aria-label={t.companyImage} tabIndex={-1} onChange={(event) => void onImage(event)} />
+                  </div>
+                ) : null}
               </div>
-              <label>
-                {t.esimPriceCompany}
-                <input
-                  value={draft.esimPrice}
-                  inputMode="decimal"
-                  dir="ltr"
-                  onChange={(event) => change({ esimPrice: event.target.value })}
-                />
-                <span className="hint">{t.esimPriceCompanyHint}</span>
-              </label>
-            </fieldset>
-            <p className="sim-sample">
-              <span>{t.simShape}</span>
-              {hasSimRules(shown)
-                ? <bdi dir="ltr">{simShape(shown)}</bdi>
-                : <span className="hint">{t.simAny}</span>}
-            </p>
-            {canEdit && <Button type="submit" disabled={busy || !shelf.loaded}>{t.save}</Button>}
-          </form>
+            </section>
+            <form className="settings-block company-sim" onSubmit={save}>
+              <h3>{t.simRulesTitle}</h3>
+              <fieldset className="sim-fields" disabled={!shelf.loaded || !canEdit}>
+                <label>
+                  {t.simLength}
+                  <input value={draft.length} inputMode="numeric" dir="ltr" onChange={(event) => change({ length: event.target.value })} />
+                  <span className="hint">{t.simLengthHint}</span>
+                </label>
+                <label>
+                  {t.simPrefix}
+                  <input value={draft.prefix} inputMode="numeric" dir="ltr" onChange={(event) => change({ prefix: event.target.value })} />
+                  <span className="hint">{t.simPrefixHint}</span>
+                </label>
+              </fieldset>
+              <p className="sim-sample">
+                <span>{t.simShape}</span>
+                {hasSimRules(shown) ? <bdi dir="ltr">{simShape(shown)}</bdi> : <span className="hint">{t.simAny}</span>}
+              </p>
+              <h3>eSIM</h3>
+              <fieldset className="sim-fields" disabled={!shelf.loaded || !canEdit}>
+                <div className="sim-toggle">
+                  <LiveSwitch label={t.simEsim} checked={draft.esim} disabled={!shelf.loaded || !canEdit} onChange={(next) => change({ esim: next })}>
+                    <b>{t.simEsim}</b>
+                  </LiveSwitch>
+                  <span className="hint">{t.simEsimHint}</span>
+                </div>
+                <label>
+                  {t.esimPriceCompany}
+                  <input value={draft.esimPrice} inputMode="decimal" dir="ltr" disabled={!draft.esim} onChange={(event) => change({ esimPrice: event.target.value })} />
+                  <span className="hint">{t.esimPriceCompanyHint}</span>
+                </label>
+              </fieldset>
+              {canEdit && <div className="form-save"><Button type="submit" disabled={busy || !shelf.loaded}>{t.save}</Button></div>}
+            </form>
+          </div>
         )}
         {tab === 'packages' && (
           <CompanyPackages
@@ -196,6 +215,8 @@ export function CompanyScreen() {
             provider={filters.provider}
             onProvider={(code) => setFilters({ provider: code })}
             loading={!shelf.loaded}
+            busy={busy}
+            onEnabled={canEdit && !me?.impersonating ? (code, enabled) => void run(() => api.setPackageMode(code, { enabled }), { note: t.saved }) : undefined}
           />
         )}
         {tab === 'providers' && (

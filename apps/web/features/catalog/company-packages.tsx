@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { DataTable, type Column } from '../../components/data-table';
 import { Money } from '../../components/desk';
 import { NameField } from '../../components/name-field';
 import { useFactLine } from '../../components/package-facts';
-import { RowMenu } from '../../components/row-menu';
+import { LiveSwitch } from '../../components/live-switch';
 import { Badge } from '../../components/ui/badge';
 import type { Shelf } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
@@ -21,16 +20,18 @@ export const packageHref = (companyCode: string, packageCode: string) =>
 /**
  * The company's «الرزم» tab (spec 2026-11-09-admin-review, 4): every package of the company in one table — its
  * facts, its provider, the main agent's price and renewal, the margin over the branch cost, on or off — with a
- * provider filter. Read-only here: each package is changed on its own page (its head holds on/off).
+ * provider filter. On/off is switched here, from the list (spec 2026-11-11-ui-consistency-pass, D2); everything else
+ * is changed on the package's own page. Without `onEnabled` (no edit grant) the state is a badge.
  */
-export function CompanyPackages({ company, provider, onProvider, loading }: {
+export function CompanyPackages({ company, provider, onProvider, loading, onEnabled, busy = false }: {
   company: Company | null;
   provider: string;
   onProvider: (code: string) => void;
   loading: boolean;
+  onEnabled?: (code: string, enabled: boolean) => void;
+  busy?: boolean;
 }) {
   const { t } = usePrefs();
-  const router = useRouter();
   const factLine = useFactLine();
   const all: Row[] = (company?.providers ?? []).flatMap((item) => item.packages.map((pkg) => ({ ...pkg, providerCode: item.code, providerName: item.name })));
   const rows = provider ? all.filter((row) => row.providerCode === provider) : all;
@@ -66,13 +67,14 @@ export function CompanyPackages({ company, provider, onProvider, loading }: {
     {
       key: 'status',
       header: t.status,
-      render: (row) => <Badge variant={row.enabled ? 'success' : 'muted'} dot>{row.enabled ? t.lineActive : t.stopped}</Badge>,
-    },
-    {
-      key: 'actions',
-      header: <span className="sr-only">{t.rowActions}</span>,
-      actions: true,
-      render: (row) => <RowMenu label={`${t.rowActions} ${row.name}`} items={[{ label: t.openPackage, icon: 'enter', onClick: () => router.push(open(row)) }]} />,
+      sortValue: (row) => (row.enabled ? 1 : 0),
+      render: (row) => (onEnabled ? (
+        <LiveSwitch label={`${row.name} · ${row.providerName}`} checked={row.enabled} disabled={busy} onChange={(next) => onEnabled(row.code, next)}>
+          <b>{row.enabled ? t.lineActive : t.stopped}</b>
+        </LiveSwitch>
+      ) : (
+        <Badge variant={row.enabled ? 'success' : 'muted'} dot>{row.enabled ? t.lineActive : t.stopped}</Badge>
+      )),
     },
   ];
 

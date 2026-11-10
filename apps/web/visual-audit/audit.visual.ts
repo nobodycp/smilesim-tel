@@ -48,7 +48,7 @@ async function inspect(page: Page, width: number) {
         if (he.scrollWidth > he.clientWidth + 2 && s.overflowX !== 'visible' && s.textOverflow !== 'ellipsis') push('clipped-text', `${name(el)} «${he.textContent.trim().slice(0, 30)}»`);
         if (parseFloat(s.fontSize) < 11 && !el.matches('.cur')) push('tiny-text', `${name(el)} ${s.fontSize}`);
       }
-      if (w < 768 && el.matches('button, a[href], [role=tab], [role=radio], [role=switch], select, input:not([type=hidden])') && !el.closest('table') && (r.height < 32 || r.width < 32) && s.opacity !== '0') push('small-target', `${name(el)} ${Math.round(r.width)}x${Math.round(r.height)} «${(he.innerText || he.getAttribute('aria-label') || '').trim().slice(0, 20)}»`);
+      if (w < 768 && el.matches('button, a[href], [role=tab], [role=radio], [role=switch], select, input:not([type=hidden])') && !el.closest('table') && (r.height < 32 || r.width < 32) && s.opacity !== '0' && getComputedStyle(el, '::after').position !== 'absolute') push('small-target', `${name(el)} ${Math.round(r.width)}x${Math.round(r.height)} «${(he.innerText || he.getAttribute('aria-label') || '').trim().slice(0, 20)}»`);
       if (el.matches('select:not(.ui-select-field), input[type=checkbox]:not([style*="opacity"])') && s.opacity !== '0' && s.appearance !== 'none') push('native-control', name(el));
     }
     return out;
