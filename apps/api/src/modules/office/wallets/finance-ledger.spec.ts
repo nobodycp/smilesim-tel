@@ -1,3 +1,4 @@
+import { WalletsRepository } from './wallets.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../kernel/types';
@@ -34,7 +35,7 @@ function service(seen: { where?: Record<string, unknown> }) {
       count: async () => entries.length,
     },
   } as unknown as OfficeGraph['prismaClient'];
-  return new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder);
+  return new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder, new WalletsRepository(kernel.uow));
 }
 
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: id === 'branch', grants: [], operatorId: id, impersonating: false });

@@ -1,3 +1,4 @@
+import { ProvidersRepository } from './providers.repository';
 import type { Actor } from '../kernel/types';
 import type { WalletsService } from '../wallets/wallets.service';
 import { ProviderAccountsService } from './provider-accounts.service';
@@ -35,7 +36,7 @@ function service() {
       { id: 'o3', at: new Date('2026-11-03T00:00:00Z'), kind: 'activate', msisdn: '056', packageName: '150', providerCode: 'lian', cost: 2000 },
     ],
   } as unknown as WalletsService;
-  return { accounts: new ProviderAccountsService(kernel, wallets), created, updated };
+  return { accounts: new ProviderAccountsService(kernel, wallets, new ProvidersRepository(kernel)), created, updated };
 }
 
 describe('ProviderAccountsService', () => {

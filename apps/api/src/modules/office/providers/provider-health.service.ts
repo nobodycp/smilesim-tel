@@ -1,3 +1,4 @@
+import { ProvidersRepository } from './providers.repository';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { logger, reason } from '../../shared/log';
 import { env, isTest } from '../../../config';
@@ -27,7 +28,7 @@ export type ProviderHealthRow = Health & { code: string; name: string; failures:
 export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly uow: UnitOfWork, private readonly accounts: ProviderAccountsService) {}
+  constructor(private readonly uow: UnitOfWork, private readonly accounts: ProviderAccountsService, readonly repo: ProvidersRepository) {}
 
   onModuleInit() {
     if (isTest() || !env('DATABASE_URL')) return;

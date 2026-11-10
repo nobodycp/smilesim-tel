@@ -1,3 +1,4 @@
+import { AccountsRepository } from './accounts.repository';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import { LayerRoles } from '../roles/layer-roles';
 import { AccountTree } from '../kernel/account-tree';
@@ -29,7 +30,7 @@ type ListedAccount = {
 /** Accounts below the signed-in one: the list and the name directory, opening an account, resetting its password, its access (grants and roles), freezing, deleting, and entering it. */
 @Injectable()
 export class AccountsService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly layerRoles: LayerRoles, @Inject(AUTH_STORE) private readonly auth: AuthStore) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly layerRoles: LayerRoles, @Inject(AUTH_STORE) private readonly auth: AuthStore, readonly repo: AccountsRepository) {}
 
   /** Every account the actor may see, unpaged: the shell search, the dialogs and the line card read it. */
   async list(actor: Actor) {

@@ -1,3 +1,4 @@
+import { LinesRepository } from './lines.repository';
 import { PriceLadder } from '../terms/price-ladder';
 import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
@@ -21,7 +22,7 @@ export const PREPAID_KINDS = ['activate', 'charge', 'extend', 'reactivate', 'swi
  */
 @Injectable()
 export class LinePricing {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder, readonly repo: LinesRepository) {}
 
   async visibleFor(userId: string, pkg: { id: string; enabled: boolean; forSale: boolean }, path?: PathNode[]): Promise<boolean> {
     const [known, { terms }] = await Promise.all([path ? Promise.resolve(path) : this.tree.pathOf(userId, await this.tree.accounts()), this.ladder.termsFor(pkg.id)]);

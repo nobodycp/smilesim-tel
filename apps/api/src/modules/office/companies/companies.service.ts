@@ -1,3 +1,4 @@
+import { CompaniesRepository } from './companies.repository';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
@@ -67,7 +68,7 @@ function shelfByCompany(rows: ShelfRow[]): Map<string, Map<string, ShelfProvider
 /** Companies: the shelf of companies, providers and packages an account sees, the company SIM rules and eSIM price, and the company image. */
 @Injectable()
 export class CompaniesService {
-  constructor(private readonly uow: UnitOfWork) {}
+  constructor(private readonly uow: UnitOfWork, readonly repo: CompaniesRepository) {}
 
   async shelf(actor: Actor) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');

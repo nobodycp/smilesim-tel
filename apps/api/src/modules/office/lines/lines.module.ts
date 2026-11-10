@@ -1,3 +1,4 @@
+import { LinesRepository } from './lines.repository';
 import { KernelModule } from '../kernel/kernel.module';
 import { ProvidersModule } from '../providers/providers.module';
 import { TasksModule } from '../tasks/tasks.module';
@@ -13,7 +14,7 @@ import { Module } from '@nestjs/common';
 
 /** Numbers: reads, activation and every operation on a number, and closing the task that applies a deferred one. */
 export const LINES_CONTROLLERS = [LinesController];
-export const LINES_PROVIDERS = [LinePricing, LineReads, LineAccess, TaskCompletion, LinesService];
+export const LINES_PROVIDERS = [LinesRepository, LinePricing, LineReads, LineAccess, TaskCompletion, LinesService];
 
 @Module({
   imports: [KernelModule, TasksModule, WalletsModule, TermsModule, ProvidersModule],

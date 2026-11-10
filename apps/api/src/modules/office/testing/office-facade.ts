@@ -1,3 +1,13 @@
+import { DeskRepository } from '../desk/desk.repository';
+import { ProvidersRepository } from '../providers/providers.repository';
+import { LinesRepository } from '../lines/lines.repository';
+import { TasksRepository } from '../tasks/tasks.repository';
+import { WalletsRepository } from '../wallets/wallets.repository';
+import { TransfersRepository } from '../transfers/transfers.repository';
+import { TermsRepository } from '../terms/terms.repository';
+import { PackagesRepository } from '../packages/packages.repository';
+import { CompaniesRepository } from '../companies/companies.repository';
+import { AccountsRepository } from '../accounts/accounts.repository';
 import { OfficeGraph } from './office-graph';
 import { PrismaService } from '../../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../../generated/prisma/client';
@@ -61,7 +71,7 @@ export class OfficeFacade {
   private tasksService: TasksService | null = null;
 
   private get tasksDomain(): TasksService {
-    this.tasksService ??= new TasksService(this.graph.uow, this.graph.tree, this.graph.actors, this.graph.ledger);
+    this.tasksService ??= new TasksService(this.graph.uow, this.graph.tree, this.graph.actors, this.graph.ledger, new TasksRepository(this.graph.uow));
     return this.tasksService;
   }
 
@@ -77,35 +87,35 @@ export class OfficeFacade {
   private walletDeskInstance: WalletsService | null = null;
 
   private get walletDesk(): WalletsService {
-    this.walletDeskInstance ??= new WalletsService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.ladder);
+    this.walletDeskInstance ??= new WalletsService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.ladder, new WalletsRepository(this.graph.uow));
     return this.walletDeskInstance;
   }
 
   private providerDeskInstance: ProvidersService | null = null;
 
   private get providerDesk(): ProvidersService {
-    this.providerDeskInstance ??= new ProvidersService(this.graph.uow);
+    this.providerDeskInstance ??= new ProvidersService(this.graph.uow, new ProvidersRepository(this.graph.uow));
     return this.providerDeskInstance;
   }
 
   private companyDeskInstance: CompaniesService | null = null;
 
   private get companyDesk(): CompaniesService {
-    this.companyDeskInstance ??= new CompaniesService(this.graph.uow);
+    this.companyDeskInstance ??= new CompaniesService(this.graph.uow, new CompaniesRepository(this.graph.uow));
     return this.companyDeskInstance;
   }
 
   private packageDeskInstance: PackagesService | null = null;
 
   private get packageDesk(): PackagesService {
-    this.packageDeskInstance ??= new PackagesService(this.graph.uow, this.graph.tree, this.graph.ladder);
+    this.packageDeskInstance ??= new PackagesService(this.graph.uow, this.graph.tree, this.graph.ladder, new PackagesRepository(this.graph.uow));
     return this.packageDeskInstance;
   }
 
   private termDeskInstance: TermsService | null = null;
 
   private get termDesk(): TermsService {
-    this.termDeskInstance ??= new TermsService(this.graph.uow, this.graph.tree, this.graph.ladder);
+    this.termDeskInstance ??= new TermsService(this.graph.uow, this.graph.tree, this.graph.ladder, new TermsRepository(this.graph.uow));
     return this.termDeskInstance;
   }
 
@@ -119,40 +129,40 @@ export class OfficeFacade {
   private deskDeskInstance: DeskService | null = null;
 
   private get deskDesk(): DeskService {
-    this.deskDeskInstance ??= new DeskService(this.graph.uow, this.graph.tree);
+    this.deskDeskInstance ??= new DeskService(this.graph.uow, this.graph.tree, new DeskRepository(this.graph.uow));
     return this.deskDeskInstance;
   }
 
   private accountDeskInstance: AccountsService | null = null;
 
   private get accountDesk(): AccountsService {
-    this.accountDeskInstance ??= new AccountsService(this.graph.uow, this.graph.tree, this.graph.layerRoles, this.graph.auth);
+    this.accountDeskInstance ??= new AccountsService(this.graph.uow, this.graph.tree, this.graph.layerRoles, this.graph.auth, new AccountsRepository(this.graph.uow));
     return this.accountDeskInstance;
   }
 
   private transferDeskInstance: TransfersService | null = null;
 
   private get transferDesk(): TransfersService {
-    this.transferDeskInstance ??= new TransfersService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.lineAccess, this.termDesk);
+    this.transferDeskInstance ??= new TransfersService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.lineAccess, this.termDesk, new TransfersRepository(this.graph.uow));
     return this.transferDeskInstance;
   }
 
   private lineDeskInstance: LinesService | null = null;
 
   private get lineDesk(): LinesService {
-    this.lineDeskInstance ??= new LinesService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.ladder, this.graph.lineAccess, this.tasksDomain, this.linePricing, new TaskCompletion(this.graph.uow, this.graph.ledger, this.tasksDomain, this.linePricing), new SimulatedProviderGateway());
+    this.lineDeskInstance ??= new LinesService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.ladder, this.graph.lineAccess, this.tasksDomain, this.linePricing, new TaskCompletion(this.graph.uow, this.graph.ledger, this.tasksDomain, this.linePricing, new LinesRepository(this.graph.uow)), new SimulatedProviderGateway(), new LinesRepository(this.graph.uow));
     return this.lineDeskInstance;
   }
 
   private linePricingInstance: LinePricing | null = null;
 
   private get linePricing(): LinePricing {
-    this.linePricingInstance ??= new LinePricing(this.graph.uow, this.graph.tree, this.graph.ladder);
+    this.linePricingInstance ??= new LinePricing(this.graph.uow, this.graph.tree, this.graph.ladder, new LinesRepository(this.graph.uow));
     return this.linePricingInstance;
   }
 
   private get lineReads(): LineReads {
-    return new LineReads(this.graph.uow, this.graph.tree);
+    return new LineReads(this.graph.uow, this.graph.tree, new LinesRepository(this.graph.uow));
   }
 
   // user-terms-service.spec stamps terms through the service; the stamping lives in LinesService.

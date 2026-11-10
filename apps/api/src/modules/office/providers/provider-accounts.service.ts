@@ -1,3 +1,4 @@
+import { ProvidersRepository } from './providers.repository';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { dayRange } from '../../shared/dates';
 import { requireAnyGrant } from '../policy';
@@ -25,6 +26,7 @@ export class ProviderAccountsService {
   constructor(
     private readonly uow: UnitOfWork,
     private readonly wallets: WalletsService,
+    readonly repo: ProvidersRepository,
   ) {}
 
   /** Reading needs the branch owner or the accounting or reports grant; writing the owner or accounting. */

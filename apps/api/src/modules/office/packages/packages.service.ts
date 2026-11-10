@@ -1,3 +1,4 @@
+import { PackagesRepository } from './packages.repository';
 import { PriceLadder } from '../terms/price-ladder';
 import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
@@ -28,7 +29,7 @@ export { PACKAGE_DETAILS_LIMIT } from './packages.schemas';
 
 @Injectable()
 export class PackagesService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder, readonly repo: PackagesRepository) {}
 
   async list(actor: Actor) {
     const field = editableField(actor.layer);

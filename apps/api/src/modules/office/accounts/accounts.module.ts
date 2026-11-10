@@ -1,3 +1,4 @@
+import { AccountsRepository } from './accounts.repository';
 import { KernelModule } from '../kernel/kernel.module';
 import { RolesModule } from '../roles/roles.module';
 import { AccountSessionController } from './account-session.controller';
@@ -8,7 +9,7 @@ import { Module } from '@nestjs/common';
 
 /** Accounts: the list, creating, freezing, removing, entering and leaving. */
 export const ACCOUNTS_CONTROLLERS = [AccountsController, AccountSessionController];
-export const ACCOUNTS_PROVIDERS = [AccountsService, AccountSessionService];
+export const ACCOUNTS_PROVIDERS = [AccountsRepository, AccountsService, AccountSessionService];
 
 @Module({
   imports: [KernelModule, RolesModule],

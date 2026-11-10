@@ -1,3 +1,4 @@
+import { ReportsRepository } from './reports.repository';
 import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { dayRange } from '../../shared/dates';
@@ -35,6 +36,7 @@ export class InsightsService {
     private readonly uow: UnitOfWork,
     private readonly tree: AccountTree,
     private readonly wallets: WalletsService,
+    readonly repo: ReportsRepository,
   ) {}
 
   /** The accounts under the viewer, with their wallets and their last movement. */

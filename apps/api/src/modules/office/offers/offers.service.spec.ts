@@ -1,3 +1,4 @@
+import { OffersRepository } from './offers.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../kernel/types';
@@ -23,7 +24,7 @@ function setup() {
     delete: async ({ where }: { where: { id: string } }) => rows.splice(rows.findIndex((row) => row.id === where.id), 1)[0],
   };
   kernel.prismaClient = { offer, $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({ offer }) } as unknown as OfficeGraph['prismaClient'];
-  return { service: new OffersService(kernel.uow), rows };
+  return { service: new OffersService(kernel.uow, new OffersRepository(kernel.uow)), rows };
 }
 
 const actor = (layer: string, owner = false, grants: string[] = []): Actor => ({ id: layer, loginName: layer, nickname: layer, layer, isBranchOwner: owner, grants, operatorId: layer, impersonating: false });

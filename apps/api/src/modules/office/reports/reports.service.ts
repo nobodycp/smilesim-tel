@@ -1,3 +1,4 @@
+import { ReportsRepository } from './reports.repository';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
@@ -16,6 +17,7 @@ export class ReportsService {
     private readonly uow: UnitOfWork,
     private readonly tasks: TasksService,
     private readonly lines: LineReads,
+    readonly repo: ReportsRepository,
   ) {}
 
   async report(actor: Actor, kind: string, cursor?: string) {

@@ -1,3 +1,4 @@
+import { TasksRepository } from './tasks.repository';
 import { KernelModule } from '../kernel/kernel.module';
 import { WalletsModule } from '../wallets/wallets.module';
 import { TasksController } from './tasks.controller';
@@ -6,7 +7,7 @@ import { Module } from '@nestjs/common';
 
 /** Branch tasks: opening, notes, taking, rejecting, cancelling. */
 export const TASKS_CONTROLLERS = [TasksController];
-export const TASKS_PROVIDERS = [TasksService];
+export const TASKS_PROVIDERS = [TasksRepository, TasksService];
 
 @Module({
   imports: [KernelModule, WalletsModule],

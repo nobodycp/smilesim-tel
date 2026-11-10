@@ -1,3 +1,4 @@
+import { TransfersRepository } from './transfers.repository';
 import { KernelModule } from '../kernel/kernel.module';
 import { LinesModule } from '../lines/lines.module';
 import { TermsModule } from '../terms/terms.module';
@@ -8,7 +9,7 @@ import { Module } from '@nestjs/common';
 
 /** Moving an account or a number to another parent. */
 export const TRANSFERS_CONTROLLERS = [TransfersController];
-export const TRANSFERS_PROVIDERS = [TransfersService];
+export const TRANSFERS_PROVIDERS = [TransfersRepository, TransfersService];
 
 @Module({
   imports: [KernelModule, TermsModule, LinesModule, WalletsModule],

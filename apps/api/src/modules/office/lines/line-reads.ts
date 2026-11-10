@@ -1,3 +1,4 @@
+import { LinesRepository } from './lines.repository';
 import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { Injectable } from '@nestjs/common';
@@ -15,7 +16,7 @@ const RECHARGE_KINDS = ['activate', 'charge', 'extend', 'reactivate'];
 /** Numbers as they are read: the paged list and one number's card with its history and the operations it offers. */
 @Injectable()
 export class LineReads {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, readonly repo: LinesRepository) {}
 
   /** The suspension periods the packages use, so the suspended filter has one cut-off per period. */
   async suspendPeriods(): Promise<number[]> {

@@ -1,3 +1,4 @@
+import { TransfersRepository } from './transfers.repository';
 import { LineAccess } from '../lines/line-access';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { AccountTree } from '../kernel/account-tree';
@@ -44,7 +45,7 @@ function transferChoices(kind: 'pos' | 'agent', stated: z.output<typeof AccountM
 /** Moving an account (a point of sale under another agent, an agent under another main agent) or a number to another point of sale, with the preview that asks the same questions first. */
 @Injectable()
 export class TransfersService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ledger: WalletLedger, private readonly lineAccess: LineAccess, private readonly terms: TermsService) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ledger: WalletLedger, private readonly lineAccess: LineAccess, private readonly terms: TermsService, readonly repo: TransfersRepository) {}
 
   /**
    * Moves a point of sale under another agent, or an agent under another main agent. The caller states

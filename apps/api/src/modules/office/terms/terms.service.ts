@@ -1,3 +1,4 @@
+import { TermsRepository } from './terms.repository';
 import { PriceLadder } from './price-ladder';
 import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
@@ -75,7 +76,7 @@ function summarize(rows: UserPackageRow[]) {
 /** Terms an account sets for the accounts below it: which packages they see and at what price, which operations they may run, the branch's custom prices, and repricing the renewable lines of a package. */
 @Injectable()
 export class TermsService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder, readonly repo: TermsRepository) {}
 
   /** Every sellable package, grouped by company, with what `loginName` sees and pays. */
   async userPackages(actor: Actor, loginName: string) {

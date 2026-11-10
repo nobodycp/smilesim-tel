@@ -1,3 +1,4 @@
+import { ProvidersRepository } from './providers.repository';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { refuseEntered, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
@@ -31,7 +32,7 @@ function canEdit(actor: Actor) {
  */
 @Injectable()
 export class ProviderCatalogService {
-  constructor(private readonly uow: UnitOfWork) {}
+  constructor(private readonly uow: UnitOfWork, readonly repo: ProvidersRepository) {}
 
   private async provider(code: string) {
     const row = await this.uow.prisma.provider.findUnique({ where: { code } });

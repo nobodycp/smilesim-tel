@@ -1,3 +1,4 @@
+import { WalletsRepository } from './wallets.repository';
 import { PriceLadder } from '../terms/price-ladder';
 import { WalletLedger } from './wallet-ledger';
 import { AccountTree } from '../kernel/account-tree';
@@ -25,7 +26,7 @@ const PROFIT_REPORT_LIMIT = 50_000;
 /** Wallets and money reads: the wallets an account sees, funding and ceilings, the ledger, the finance report and provider operations. Branch reports are in ReportsService. */
 @Injectable()
 export class WalletsService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly ladder: PriceLadder) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly ladder: PriceLadder, readonly repo: WalletsRepository) {}
 
   async list(actor: Actor) {
     const accounts = await this.tree.accounts();

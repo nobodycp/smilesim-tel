@@ -1,3 +1,5 @@
+import { ProvidersRepository } from '../providers/providers.repository';
+import { PackagesRepository } from './packages.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../kernel/types';
@@ -36,7 +38,7 @@ function world() {
     },
     $transaction: async (work: Promise<unknown>[]) => Promise.all(work),
   } as unknown as OfficeGraph['prismaClient'];
-  return { provider, packages, providers: new ProvidersService(kernel.uow), catalog: new PackagesService(kernel.uow, kernel.tree, kernel.ladder) };
+  return { provider, packages, providers: new ProvidersService(kernel.uow, new ProvidersRepository(kernel.uow)), catalog: new PackagesService(kernel.uow, kernel.tree, kernel.ladder, new PackagesRepository(kernel.uow)) };
 }
 
 describe('run modes that follow the provider', () => {

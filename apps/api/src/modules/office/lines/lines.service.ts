@@ -1,3 +1,4 @@
+import { LinesRepository } from './lines.repository';
 import { LineAccess } from './line-access';
 import { PriceLadder } from '../terms/price-ladder';
 import { WalletLedger } from '../wallets/wallet-ledger';
@@ -52,6 +53,7 @@ export class LinesService {
     private readonly pricing: LinePricing,
     private readonly completion: TaskCompletion,
     @Inject(PROVIDER_GATEWAY) private readonly gateway: ProviderGateway,
+    readonly repo: LinesRepository,
   ) {}
 
   /**

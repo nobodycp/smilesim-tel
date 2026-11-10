@@ -1,3 +1,4 @@
+import { TasksRepository } from './tasks.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../kernel/types';
@@ -39,7 +40,7 @@ function setup() {
     write: async (_tx: unknown, ids: string[]) => { noticed.push(ids); return []; },
     publish: async () => undefined,
   };
-  return { service: new TasksService(kernel.uow, kernel.tree, kernel.actors, kernel.ledger), task, notes, noticed };
+  return { service: new TasksService(kernel.uow, kernel.tree, kernel.actors, kernel.ledger, new TasksRepository(kernel.uow)), task, notes, noticed };
 }
 
 const actor = (id: string, layer: string, owner = false): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: owner, grants: [], operatorId: id, impersonating: false });

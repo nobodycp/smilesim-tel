@@ -1,3 +1,4 @@
+import { ProvidersRepository } from './providers.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { PROVIDER_FAILED_NOTE } from '../stored-text';
@@ -50,7 +51,7 @@ describe('provider health', () => {
       publish: async () => undefined,
     };
     const accounts = { summaries: async () => [{ code: 'sky', name: 'سكاي', available: available.sky }, { code: 'lian', name: 'ليان', available: available.lian }] };
-    return { service: new ProviderHealthService(kernel.uow, accounts as never), notices };
+    return { service: new ProviderHealthService(kernel.uow, accounts as never, new ProvidersRepository(kernel.uow)), notices };
   }
 
   it('writes one notice to the owner and the editors when a provider turns to a problem, and none while it stays', async () => {
@@ -93,7 +94,7 @@ describe('overdue matching notice', () => {
       write: async (_tx: unknown, _ids: string[], _actor: unknown, draft: { kind: string; payload: unknown }) => { notices.push(draft); return []; },
       publish: async () => undefined,
     };
-    return { service: new ProviderHealthService(kernel.uow, {} as never), notices, rows };
+    return { service: new ProviderHealthService(kernel.uow, {} as never, new ProvidersRepository(kernel.uow)), notices, rows };
   }
 
   it('sends «مطابقة متأخرة» once per lapse for a statement provider, never for an API one, and again after a new lapse', async () => {

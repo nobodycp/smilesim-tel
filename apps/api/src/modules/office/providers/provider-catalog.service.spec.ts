@@ -1,3 +1,4 @@
+import { ProvidersRepository } from './providers.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../kernel/types';
@@ -39,7 +40,7 @@ function world() {
       },
     },
   } as unknown as OfficeGraph['prismaClient'];
-  return { service: new ProviderCatalogService(kernel.uow), created, companies };
+  return { service: new ProviderCatalogService(kernel.uow, new ProvidersRepository(kernel.uow)), created, companies };
 }
 
 describe('ProviderCatalogService', () => {

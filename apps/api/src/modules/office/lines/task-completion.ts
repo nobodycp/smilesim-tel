@@ -1,3 +1,4 @@
+import { LinesRepository } from './lines.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { assertBranch } from '../policy';
@@ -46,6 +47,7 @@ export class TaskCompletion {
     private readonly ledger: WalletLedger,
     private readonly tasks: TasksService,
     private readonly pricing: LinePricing,
+    readonly repo: LinesRepository,
   ) {}
 
   private readonly handlers: Record<Action, (job: Completion) => Promise<Applied>> = {

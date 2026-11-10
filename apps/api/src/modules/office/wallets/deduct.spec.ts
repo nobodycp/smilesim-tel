@@ -1,3 +1,4 @@
+import { WalletsRepository } from './wallets.repository';
 import type { Actor } from '../kernel/types';
 import { WalletsService } from './wallets.service';
 
@@ -22,7 +23,7 @@ function service() {
     notice: { write: async () => [] },
     queueNotices: () => undefined,
   } as never;
-  return { wallets: new WalletsService(stub, stub, stub, stub), moves };
+  return { wallets: new WalletsService(stub, stub, stub, stub, new WalletsRepository(stub)), moves };
 }
 
 describe('WalletsService.deduct', () => {

@@ -1,3 +1,4 @@
+import { DeskRepository } from './desk.repository';
 import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { holdsAny } from '../policy';
@@ -53,6 +54,7 @@ export class OverviewService {
     private readonly insights: InsightsService,
     private readonly providerAccounts: ProviderAccountsService,
     private readonly health: ProviderHealthService,
+    readonly repo: DeskRepository,
   ) {}
 
   async overview(actor: Actor, query: { period?: string } = {}) {

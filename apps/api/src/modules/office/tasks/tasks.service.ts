@@ -1,3 +1,4 @@
+import { TasksRepository } from './tasks.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { ActorResolver } from '../kernel/actor-resolver';
 import { AccountTree } from '../kernel/account-tree';
@@ -26,7 +27,7 @@ import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
  */
 @Injectable()
 export class TasksService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly actors: ActorResolver, private readonly ledger: WalletLedger) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly actors: ActorResolver, private readonly ledger: WalletLedger, readonly repo: TasksRepository) {}
 
   async list(actor: Actor, query: {
       cursor?: string;

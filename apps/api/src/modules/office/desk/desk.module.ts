@@ -1,3 +1,4 @@
+import { DeskRepository } from './desk.repository';
 import { KernelModule } from '../kernel/kernel.module';
 import { ProvidersModule } from '../providers/providers.module';
 import { ReportsModule } from '../reports/reports.module';
@@ -9,7 +10,7 @@ import { Module } from '@nestjs/common';
 
 /** The home page: who is signed in, the counters, the overview. */
 export const DESK_CONTROLLERS = [DeskController];
-export const DESK_PROVIDERS = [DeskService, OverviewService];
+export const DESK_PROVIDERS = [DeskRepository, DeskService, OverviewService];
 
 @Module({
   imports: [KernelModule, WalletsModule, ReportsModule, ProvidersModule],

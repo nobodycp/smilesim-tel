@@ -1,3 +1,4 @@
+import { OffersRepository } from './offers.repository';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { refuseEntered, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
@@ -44,7 +45,7 @@ export function offerShows(offer: Pick<OfferView, 'active' | 'layers' | 'startsA
 
 @Injectable()
 export class OffersService {
-  constructor(private readonly uow: UnitOfWork) {}
+  constructor(private readonly uow: UnitOfWork, readonly repo: OffersRepository) {}
 
   private gate(actor: Actor) {
     refuseEntered(actor);
