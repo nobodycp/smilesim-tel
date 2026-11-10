@@ -515,20 +515,28 @@ describe('task reading follows the number', () => {
   describe('directory', () => {
     it('gives a pos its own name, the chain above it, and the branch, but not a sibling pos', async () => {
       const { service, gate } = await as('pos1', 'pos', 'read');
-      const { names } = await service.directory(gate);
-      expect(names).toEqual({ admin: 'الإدارة', clerk: 'موظف', main1: 'رئيسي', agent1: 'وكيل', pos1: 'نقطة' });
+      const { items, nextCursor, total } = await service.directory(gate);
+      expect(Object.fromEntries(items.map((row) => [row.loginName, row.nickname]))).toEqual({ admin: 'الإدارة', clerk: 'موظف', main1: 'رئيسي', agent1: 'وكيل', pos1: 'نقطة' });
+      expect({ nextCursor, total }).toEqual({ nextCursor: null, total: 5 });
+      // Only its own account is in its tree; the rest are names to show, without their parent or state.
+      expect(items.filter((row) => row.mine).map((row) => row.loginName)).toEqual(['pos1']);
+      expect(items.find((row) => row.loginName === 'agent1')).toEqual({ loginName: 'agent1', nickname: 'وكيل', layer: 'agent', parentLogin: null, frozen: false, mine: false });
+      expect(items.find((row) => row.loginName === 'pos1')).toMatchObject({ parentLogin: 'agent1', mine: true });
     });
 
     it('gives an agent everything under it plus the chain and the branch', async () => {
       const { service, gate } = await as('agent1', 'agent', 'read');
-      const { names } = await service.directory(gate);
-      expect(Object.keys(names).sort()).toEqual(['admin', 'agent1', 'clerk', 'main1', 'pos1', 'pos2']);
+      const { items } = await service.directory(gate);
+      expect(items.map((row) => row.loginName).sort()).toEqual(['admin', 'agent1', 'clerk', 'main1', 'pos1', 'pos2']);
+      expect(items.filter((row) => row.mine).map((row) => row.loginName).sort()).toEqual(['agent1', 'pos1', 'pos2']);
     });
 
     it('gives the branch every account', async () => {
       const { service, gate } = await as('clerk', 'branch', 'read');
-      const { names } = await service.directory(gate);
-      expect(Object.keys(names)).toHaveLength(chain.length);
+      const { items, total } = await service.directory(gate);
+      expect(items).toHaveLength(chain.length);
+      expect(total).toBe(chain.length);
+      expect(items.every((row) => row.mine)).toBe(true);
     });
   });
 });

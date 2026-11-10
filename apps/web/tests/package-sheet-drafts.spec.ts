@@ -83,13 +83,13 @@ test('a mode change re-reads the sheet, its numbers and its custom prices, not t
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();
   const count = (key: string) => calls.filter((call) => call.startsWith(key)).length;
-  const keys = ['GET /packages/lian-wecom-500/sheet', 'GET /lines', 'GET /packages/lian-wecom-500/custom-prices', 'GET /users', 'GET /companies'];
+  const keys = ['GET /packages/lian-wecom-500/sheet', 'GET /lines', 'GET /packages/lian-wecom-500/custom-prices', 'GET /directory?mine=1', 'GET /companies'];
   const before = Object.fromEntries(keys.map((key) => [key, count(key)]));
   await page.getByRole('radiogroup', { name: 'التشغيل شحن' }).getByRole('radio', { name: 'مهمة فرع' }).click();
   await expect.poll(() => count('GET /packages/lian-wecom-500/sheet')).toBe(before['GET /packages/lian-wecom-500/sheet'] + 1);
   await expect.poll(() => count('GET /lines')).toBe(before['GET /lines'] + 1);
   await expect.poll(() => count('GET /packages/lian-wecom-500/custom-prices')).toBe(before['GET /packages/lian-wecom-500/custom-prices'] + 1);
   await page.waitForTimeout(300);
-  expect(count('GET /users')).toBe(before['GET /users']);
+  expect(count('GET /directory?mine=1')).toBe(before['GET /directory?mine=1']);
   expect(count('GET /companies')).toBe(before['GET /companies']);
 });

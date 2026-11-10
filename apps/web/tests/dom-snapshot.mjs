@@ -103,7 +103,8 @@ function answer(path, layer, empty) {
   if (path.endsWith('/sheet')) return sheet;
   if (path === '/office/providers') return { providers: [provider] };
   if (path === '/office/tasks') return { items: list([task('t1', 'pending'), task('t2', 'working'), task('t3', 'done')]), nextCursor: empty ? null : 'c2' };
-  if (path === '/office/users') return { users: list(users) };
+  if (path === '/office/users') return { items: list(users), nextCursor: null, total: list(users).length };
+  if (path === '/office/directory') return { items: users.map((row) => ({ loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLogin: null, frozen: false, mine: true })), nextCursor: null, total: users.length };
   if (path === '/office/roles') return { roles: list(roles) };
   if (path === '/office/audit') return { items: list([audit('a1'), audit('a2')]), nextCursor: empty ? null : 'c2' };
   if (path === '/office/finance') return { items: list([finance('c1'), finance('c2')]), nextCursor: empty ? null : 'c2' };

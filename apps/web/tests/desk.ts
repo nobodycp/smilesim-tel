@@ -56,20 +56,36 @@ type ListedUser = { loginName: string; nickname: string; layer: string };
 const USER_LAYERS = ['branch', 'main_agent', 'agent', 'pos'];
 
 /**
- * A test's `GET /users` answers the whole list. The users table asks for one page with `paged=1`, so that answer
- * is filtered, ordered and counted here the way the API's `users-page.ts` does, unless the test answered a page itself.
+ * A test's `GET /users` names the accounts that exist, as `{ users }`. The API pages them, so the users table gets
+ * one page of the envelope, filtered, ordered and counted here the way the API's `users-page.ts` does; a test that
+ * pages by itself answers `{ users, nextCursor, total }` and only the key is renamed.
  */
 function asUsersPage(url: URL, reply: Reply): Reply {
   const body = reply.body as { users?: ListedUser[]; total?: number } | null;
-  if (!url.searchParams.get('paged') || !body || !Array.isArray(body.users) || body.total !== undefined) return reply;
+  if (!body || !Array.isArray(body.users)) return reply;
+  const { users: listed, ...rest } = body;
+  if (body.total !== undefined) return { ...reply, body: { ...rest, items: listed } };
   const needle = (url.searchParams.get('q') ?? '').trim();
   const layer = url.searchParams.get('layer') ?? '';
   const rank = (row: ListedUser) => USER_LAYERS.indexOf(row.layer);
-  const users = body.users
+  const items = listed
     .filter((row) => !layer || row.layer === layer)
     .filter((row) => !needle || row.nickname.includes(needle) || row.loginName.includes(needle))
     .sort((a, b) => rank(a) - rank(b) || a.loginName.localeCompare(b.loginName));
-  return { ...reply, body: { ...body, users, nextCursor: null, total: users.length } };
+  return { ...reply, body: { ...rest, items, nextCursor: null, total: items.length } };
+}
+
+/**
+ * The account pickers and the shell search read the viewer's own tree from `GET /directory?mine=1`. A test that
+ * names its accounts under `GET /users` gets them there too (the route is asked with `?whole=1`).
+ */
+function asDirectory(reply: Reply): Reply {
+  const body = reply.body as { users?: (ListedUser & { parentLogin?: string | null; frozen?: boolean })[] } | null;
+  if (!body || !Array.isArray(body.users)) return reply;
+  const items = body.users.map((row) => ({
+    loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLogin: row.parentLogin ?? null, frozen: row.frozen ?? false, mine: true,
+  }));
+  return { ...reply, body: { items, nextCursor: null, total: items.length } };
 }
 
 export async function serveOffice(page: Page, layer: keyof typeof accounts, routes: Routes = {}) {
@@ -83,7 +99,11 @@ export async function serveOffice(page: Page, layer: keyof typeof accounts, rout
     let reply: Reply = { body: { message: 'none' }, status: 404 };
     if (routes[key]) reply = key === 'GET /users' ? asUsersPage(url, routes[key](url)) : routes[key](url);
     else if (key === 'GET /me') reply = { body: { ...accounts[layer], stops: [], impersonating: false, balance: 1000, ceiling: 0 } };
-    else if (key === 'GET /directory') reply = { body: { names: Object.fromEntries(Object.values(accounts).map((row) => [row.loginName, row.nickname])) } };
+    else if (key === 'GET /directory' && url.searchParams.get('mine') && routes['GET /users']) reply = asDirectory(routes['GET /users'](new URL('http://desk/office/users?whole=1')));
+    else if (key === 'GET /directory') {
+      const items = Object.values(accounts).map((row) => ({ loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLogin: null, frozen: false, mine: false }));
+      reply = { body: { items, nextCursor: null, total: items.length } };
+    }
     else if (key === 'GET /notices') reply = { body: { unread: 0, items: [], nextCursor: null } };
     else if (key === 'GET /notices/stream') reply = { body: {}, status: 204 };
     if (reply.delay) await new Promise((resolve) => setTimeout(resolve, reply.delay));

@@ -125,7 +125,7 @@ test('branch moves an agent: destination, preview, five choices, request body', 
   });
   // A move closes the dialog and the list is read again.
   await expect(dialog).toBeHidden();
-  await expect.poll(() => calls.filter((call) => call === 'GET /users').length).toBe(2);
+  await expect.poll(() => calls.filter((call) => call === 'GET /directory?mine=1').length).toBe(2);
 });
 
 test('a point of sale asks three choices, shows no terms for what is below it, and sends no child choice', async ({ page }) => {

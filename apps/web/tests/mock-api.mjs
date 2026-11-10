@@ -102,7 +102,14 @@ createServer((req, res) => {
         return;
       }
       if (url.pathname === '/office/directory') {
-        res.writeHead(200, json).end(JSON.stringify({ names: { admin: 'الإدارة', pos: 'الكاشير' } }));
+        res.writeHead(200, json).end(JSON.stringify({
+          items: [
+            { loginName: 'admin', nickname: 'الإدارة', layer: 'branch', parentLogin: null, frozen: false, mine: true },
+            { loginName: 'pos', nickname: 'الكاشير', layer: 'pos', parentLogin: 'admin', frozen: false, mine: true },
+          ],
+          nextCursor: null,
+          total: 2,
+        }));
         return;
       }
       if (url.pathname === '/office/packages') {

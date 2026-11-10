@@ -191,13 +191,13 @@ test.describe('useAction and lineActions', () => {
     await page.goto(`${admin}/numbers/ln1`);
     await expect(page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
     const count = (prefix: string) => calls.filter((call) => call === prefix).length;
-    const before = { line: count('GET /lines/ln1'), packages: count('GET /packages'), users: count('GET /users') };
+    const before = { line: count('GET /lines/ln1'), packages: count('GET /packages'), users: count('GET /directory?mine=1') };
     await page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true }).click();
     await expect(page.getByRole('status')).toHaveText('تم التنفيذ وخصم الرصيد.');
     await expect.poll(() => count('GET /lines/ln1')).toBe(before.line + 1);
     await page.waitForTimeout(300);
     expect(count('GET /packages')).toBe(before.packages);
-    expect(count('GET /users')).toBe(before.users);
+    expect(count('GET /directory?mine=1')).toBe(before.users);
   });
 
   test('a refused action shows the error, leaves the card as it was, and can be tried again', async ({ page }) => {
@@ -328,7 +328,7 @@ test.describe('shell', () => {
     await expect(page.locator('.shell-search-item')).toHaveCount(1);
     await field.pressSequentially('ir', { delay: 250 });
     await expect(page.locator('.shell-search-item')).toHaveText(/samir1/);
-    expect(calls.filter((call) => call === 'GET /users')).toHaveLength(1);
+    expect(calls.filter((call) => call === 'GET /directory?mine=1')).toHaveLength(1);
   });
 
   test('a notice names its action with the same words as the desk', async ({ page }) => {

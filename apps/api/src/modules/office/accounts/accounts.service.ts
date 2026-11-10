@@ -18,7 +18,7 @@ import { stampTaskLog } from '../tasks/task-log';
 import { HANDLER_FROZEN_NOTE } from '../stored-text';
 import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { HANDOFF_SECONDS, handoffKey } from './handoff';
-import { usersPage, type UsersFilter } from './users-page';
+import { DIRECTORY_PAGE, usersPage, type UsersFilter } from './users-page';
 
 const doorOfLayer = (layer: string) => DOOR_HOSTS.find((door) => door.layer === layer)?.host ?? 'admin';
 
@@ -32,17 +32,11 @@ type ListedAccount = {
 export class AccountsService {
   constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly layerRoles: LayerRoles, @Inject(AUTH_STORE) private readonly auth: AuthStore, private readonly repo: AccountsRepository) {}
 
-  /** Every account the actor may see, unpaged: the shell search, the dialogs and the line card read it. */
-  async list(actor: Actor) {
-    const { accounts, visible } = await this.visibleAccounts(actor);
-    return { users: await this.present(actor, accounts, visible) };
-  }
-
-  /** One page of the users table, filtered and ordered by the server (`users-page.ts`). */
+  /** One page of the accounts the actor may see, filtered and ordered by the server (`users-page.ts`). */
   async page(actor: Actor, filter: UsersFilter) {
     const { accounts, visible } = await this.visibleAccounts(actor);
-    const { page, nextCursor, total } = usersPage(visible, filter);
-    return { users: await this.present(actor, accounts, page), nextCursor, total };
+    const { items: page, nextCursor, total } = usersPage(visible, filter);
+    return { items: await this.present(actor, accounts, page), nextCursor, total };
   }
 
   private async visibleAccounts(actor: Actor) {
@@ -75,19 +69,33 @@ export class AccountsService {
   }
 
   /**
-   * Login name → full name for every account the actor may meet on a screen: the accounts it can
-   * see (its subtree), the chain above it, and the branch layer (staff act on every ledger).
+   * The accounts the actor may meet on a screen, one page at a time: the accounts it can see (its subtree, `mine`),
+   * the chain above it, and the branch layer (staff act on every ledger). The web reads it for the full names
+   * beside a login and for its account pickers. An account outside the actor's tree shows its name and layer only.
    */
-  async directory(actor: Actor) {
+  async directory(actor: Actor, filter: UsersFilter & { mine?: boolean } = {}) {
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const chain = new Set(this.tree.chainIds(actor.id, accounts));
-    const names: Record<string, string> = {};
-    for (const account of accounts) {
-      if (!visible.has(account.id) && !chain.has(account.id) && account.layer !== 'branch') continue;
-      names[account.loginName] = account.nickname;
-    }
-    return { names };
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    // `mine` keeps the actor's own tree: what an account picker offers.
+    const met = accounts.filter((account) => visible.has(account.id) || (!filter.mine && (chain.has(account.id) || account.layer === 'branch')));
+    const { items: page, nextCursor, total } = usersPage(met, filter, DIRECTORY_PAGE);
+    return {
+      items: page.map((account) => {
+        const mine = visible.has(account.id);
+        return {
+          loginName: account.loginName,
+          nickname: account.nickname,
+          layer: account.layer,
+          parentLogin: mine && account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
+          frozen: mine && account.disabledAt !== null,
+          mine,
+        };
+      }),
+      nextCursor,
+      total,
+    };
   }
 
   /** `body` is a `CreateUserBody`, judged after the permission checks; only its layer is read before that. */

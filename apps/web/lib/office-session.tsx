@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from 'react';
 import { api, type Directory, type OfficeMe } from './api';
+import { directoryNames } from './directory';
 import { useConnection } from './connection';
 import { rememberBalance, rememberIdentity } from './identity';
 import { ApiFailure, queryKeys, unwrap } from './query';
@@ -110,7 +111,7 @@ export function OfficeSession({
   // The directory is a convenience: a screen that renders before it lands shows login names alone.
   const directory = useQuery({
     queryKey: queryKeys.directory,
-    queryFn: () => unwrap(api.officeDirectory()),
+    queryFn: () => unwrap(directoryNames()),
     enabled: !skip && session.data !== undefined,
     staleTime: Infinity,
   });

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
 import { accountLabel } from './account-name';
 import { api } from '../lib/api';
+import { everyAccount } from '../lib/directory';
 import { usePrefs } from '../lib/prefs';
 import { sharedKeys } from '../lib/query';
 import { useApiQuery } from '../lib/use-api-query';
@@ -32,7 +33,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
   const field = useRef<HTMLInputElement>(null);
   // The accounts are read once, when the box first opens, from the same cache entry as the users page; each
   // keystroke filters them here. Numbers are searched on the server, which matches number and serial.
-  const accounts = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: open });
+  const accounts = useApiQuery(sharedKeys.users, everyAccount, { enabled: open });
   const users = accounts.data?.users;
 
   useEffect(() => {

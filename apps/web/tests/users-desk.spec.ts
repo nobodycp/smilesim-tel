@@ -4,7 +4,7 @@ import { asBranch, expectFullTable, serveOffice } from './desk';
 test('users is a full table on the branch door', async ({ page }) => {
   await asBranch(page);
   await page.route('**/office/users**', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ users: [] }) }),
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], nextCursor: null, total: 0 }) }),
   );
   await page.goto('http://admin.localhost:3910/users');
   await expectFullTable(page, 'المستخدمون', { fit: true });
@@ -36,34 +36,33 @@ test('the users table is paged by the server: filters go in the request, the nex
   const many = Array.from({ length: 60 }, (_, index) => user(`p${String(index).padStart(2, '0')}`, 'pos'));
   const calls = await serveOffice(page, 'branch', {
     'GET /users': (url) => {
-      if (!url.searchParams.get('paged')) return { body: { users: [...many, user('agent9', 'agent')] } };
+      if (url.searchParams.get('whole')) return { body: { users: [...many, user('agent9', 'agent')] } };
       if (url.searchParams.get('layer') === 'agent') return { body: { users: [user('agent9', 'agent')], nextCursor: null, total: 1 } };
-      return url.searchParams.get('cursor') === '3:p49'
+      return url.searchParams.get('cursor') === 'c50'
         ? { body: { users: many.slice(50), nextCursor: null, total: 60 } }
-        : { body: { users: many.slice(0, 50), nextCursor: '3:p49', total: 60 } };
+        : { body: { users: many.slice(0, 50), nextCursor: 'c50', total: 60 } };
     },
   });
   await page.context().addCookies([{ name: 'smilesim-page-size', value: '20', url: 'http://admin.localhost:3910' }]);
   await page.goto('http://admin.localhost:3910/users');
   await expect(page.locator('.pane-head .count')).toHaveText('60');
   await expect(page.locator('.data tbody tr')).toHaveCount(20);
-  expect(calls.filter((call) => call.startsWith('GET /users')).every((call) => call.includes('paged=1'))).toBe(true);
-  expect(calls).not.toContain('GET /users?paged=1&cursor=3%3Ap49');
+  expect(calls).not.toContain('GET /users?cursor=c50');
 
   // Page 3 (rows 41–60) runs past the first answer of fifty: the next cursor is read.
   await page.locator('.table-pager').getByRole('button', { name: '3', exact: true }).click();
   await expect(page.locator('.data tbody tr')).toHaveCount(20);
   await expect(page.locator('.data tbody tr').last()).toContainText('p59');
-  expect(calls).toContain('GET /users?paged=1&cursor=3%3Ap49');
+  expect(calls).toContain('GET /users?cursor=c50');
 
   await page.getByRole('combobox', { name: 'الطبقة' }).selectOption('agent');
   await expect(page.locator('.data tbody tr')).toHaveCount(1);
-  expect(calls).toContain('GET /users?paged=1&layer=agent');
+  expect(calls).toContain('GET /users?layer=agent');
 
   // Opening an account asks for the whole tree, for the parent choice.
-  expect(calls).not.toContain('GET /users');
+  expect(calls).not.toContain('GET /directory?mine=1');
   await page.getByRole('button', { name: 'حساب جديد' }).click();
-  await expect.poll(() => calls.includes('GET /users')).toBe(true);
+  await expect.poll(() => calls.includes('GET /directory?mine=1')).toBe(true);
 });
 
 test('a server-paged table has plain headers, since sorting one page would mislead; a full table still sorts', async ({ page }) => {

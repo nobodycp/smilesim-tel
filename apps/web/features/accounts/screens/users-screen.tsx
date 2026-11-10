@@ -16,11 +16,12 @@ import { NameField } from '../../../components/name-field';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type UserRow } from '../../../lib/api';
+import { everyAccount } from '../../../lib/directory';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { pick } from '../../../lib/fetched';
-import { usePaged } from '../../../lib/use-paged';
+import { pageRows, usePaged } from '../../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { accountTone } from '../../../lib/status-tone';
@@ -49,12 +50,12 @@ export function UsersScreen() {
   const needle = filters.q.trim();
   const list = usePaged<UserRow>(
     `${needle}|${layerFilter}`,
-    async (cursor) => pick(await api.officeUsersPage({ q: needle, layer: layerFilter, cursor }), (data) => ({ rows: data.users, next: data.nextCursor, total: data.total })),
+    async (cursor) => pick(await api.officeUsersPage({ q: needle, layer: layerFilter, cursor }), pageRows),
     { enabled: allowed },
   );
   // The whole visible tree, read only while "new account" needs it for the parent choice. The shell search, the line
   // card and a move's destinations share this entry.
-  const accounts = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: allowed && creating });
+  const accounts = useApiQuery(sharedKeys.users, everyAccount, { enabled: allowed && creating });
   const everyone = accounts.data?.users ?? [];
   const roles = useApiQuery(sharedKeys.roles, () => api.officeRoles(), { enabled: draft.layer === 'staff' }).data?.roles ?? [];
   const reloadAll = useCallback(async () => {

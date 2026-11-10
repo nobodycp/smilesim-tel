@@ -375,7 +375,7 @@ export class OfficeFacade {
 
   // Spec entry points; the routes live in accounts/accounts.controller.ts.
   async users(gate: Gate) {
-    return this.accountDesk.list(await this.actor(gate));
+    return this.accountDesk.page(await this.actor(gate), {});
   }
 
   async directory(gate: Gate) {

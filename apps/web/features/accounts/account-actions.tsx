@@ -9,6 +9,7 @@ import { TransferDialog } from '../../components/transfer-dialog';
 import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
 import { api, type UserRow } from '../../lib/api';
+import { everyAccount } from '../../lib/directory';
 import { parseShekel, shekelField } from '../../lib/money';
 import { useOffice } from '../../lib/office-session';
 import { usePrefs } from '../../lib/prefs';
@@ -63,7 +64,7 @@ export function useAccountActions({
   const canMoveAgent = canMove && Boolean(me?.grants.includes('transferAgents'));
 
   // The whole visible tree, read only while a move is open: its destinations.
-  const everyone = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: moving !== null }).data?.users ?? [];
+  const everyone = useApiQuery(sharedKeys.users, everyAccount, { enabled: moving !== null }).data?.users ?? [];
   // A point of sale moves under another agent, an agent under another main agent: never to the parent it already
   // has, and never to a frozen account.
   const destinations = moving

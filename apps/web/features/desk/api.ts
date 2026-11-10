@@ -1,10 +1,11 @@
-import { request } from '../../lib/http';
-import type { Directory, HomePayload, Offer, OfferInput, OverviewPayload, OfficeMe } from '../../lib/api-types';
+import { queryString, request } from '../../lib/http';
+import type { DirectoryRow, HomePayload, Offer, OfferInput, OverviewPayload, OfficeMe, Page } from '../../lib/api-types';
 
 /** The desk calls of the office API. Composed into `api` by lib/api.ts. */
 export const deskApi = {
   officeMe: () => request<OfficeMe>('GET', '/office/me'),
-  officeDirectory: () => request<{ names: Directory }>('GET', '/office/directory'),
+  /** One page of the accounts the viewer may meet; `mine` keeps its own tree. Read whole through lib/directory.ts. */
+  officeDirectory: (query?: { mine?: '1'; cursor?: string | null }) => request<Page<DirectoryRow>>('GET', `/office/directory${queryString(query)}`),
   officeHome: () => request<HomePayload>('GET', '/office/home'),
   /** Offers (spec 2026-11-09, 1): the live ones for the home hero, and the «الإعلانات» page's management. */
   liveOffers: () => request<{ offers: Offer[] }>('GET', '/office/offers/live'),

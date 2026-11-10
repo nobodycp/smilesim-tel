@@ -21,27 +21,29 @@ export class AccountsController {
   constructor(private readonly accountDesk: AccountsService) {}
 
   @Get('users')
-  @ApiOperation({ summary: 'Users list for the door; with `paged=1`, one page of the users table ({ users, nextCursor, total })' })
-  @ApiQuery({ name: 'paged', required: false })
+  @ApiOperation({ summary: 'One page of the accounts the actor may see ({ items, nextCursor, total })' })
   @ApiQuery({ name: 'cursor', required: false })
   @ApiQuery({ name: 'q', required: false })
   @ApiQuery({ name: 'layer', required: false })
   @ApiErrorResponse(401, 403)
   users(
     @Actor() actor: ActorShape,
-    @Query('paged') paged?: string,
     @Query('cursor') cursor?: string,
     @Query('q') q?: string,
     @Query('layer') layer?: string,
   ) {
-    return text(paged) ? this.accountDesk.page(actor, { cursor: text(cursor), q: text(q), layer: text(layer) }) : this.accountDesk.list(actor);
+    return this.accountDesk.page(actor, { cursor: text(cursor), q: text(q), layer: text(layer) });
   }
 
   @Get('directory')
-  @ApiOperation({ summary: 'Login name → full name for the accounts the actor may meet on a screen' })
-  @ApiErrorResponse(401, 403)
-  directory(@Actor() actor: ActorShape) {
-    return this.accountDesk.directory(actor);
+  @ApiOperation({ summary: 'One page of the accounts the actor may meet on a screen: login, full name, layer ({ items, nextCursor, total })' })
+  @ApiQuery({ name: 'cursor', required: false })
+  @ApiQuery({ name: 'q', required: false })
+  @ApiQuery({ name: 'layer', required: false })
+  @ApiQuery({ name: 'mine', required: false, description: '`1` keeps the accounts in the actor\'s own tree' })
+  @ApiErrorResponse(400, 401, 403)
+  directory(@Actor() actor: ActorShape, @Query('cursor') cursor?: string, @Query('q') q?: string, @Query('layer') layer?: string, @Query('mine') mine?: string) {
+    return this.accountDesk.directory(actor, { cursor: text(cursor), q: text(q), layer: text(layer), mine: text(mine) === '1' });
   }
 
   @Get('users/:loginName')

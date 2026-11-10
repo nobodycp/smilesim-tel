@@ -1,12 +1,11 @@
 import { queryString, request, segment } from '../../lib/http';
-import type { AccountAccess, UserRow } from '../../lib/api-types';
+import type { AccountAccess, Page, UserRow } from '../../lib/api-types';
 
 /** The accounts calls of the office API. Composed into `api` by lib/api.ts. */
 export const accountsApi = {
-  officeUsers: () => request<{ users: UserRow[] }>('GET', '/office/users'),
   /** One page of the users table; the server filters, orders (layer, then login) and counts. */
   officeUsersPage: (query: { q?: string; layer?: string; cursor?: string | null }) =>
-    request<{ users: UserRow[]; nextCursor: string | null; total: number }>('GET', `/office/users${queryString({ paged: '1', ...query })}`),
+    request<Page<UserRow>>('GET', `/office/users${queryString(query)}`),
   officeAccount: (loginName: string) => request<AccountAccess>('GET', `/office/users/${segment(loginName)}`),
   saveAccountAccess: (loginName: string, body: { extraGrants: string[]; deniedGrants: string[]; extraRoleIds: string[]; roleId?: string }) =>
     request<{ ok: true }>('PATCH', `/office/users/${segment(loginName)}/access`, body),

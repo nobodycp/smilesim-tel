@@ -25,7 +25,7 @@ type Props = {
   /** The point of sale or agent that moves. */
   row: UserRow | null;
   /** The accounts it may move under, already limited to the right layer and without its current parent. */
-  destinations: UserRow[];
+  destinations: Pick<UserRow, 'loginName' | 'nickname'>[];
   onClose: () => void;
   /** Runs once the move went through; the page closes the dialog and reads its list again. */
   onDone: () => void;

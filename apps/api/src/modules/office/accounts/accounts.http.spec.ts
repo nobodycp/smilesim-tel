@@ -118,30 +118,37 @@ describe('accounts and roles over HTTP', () => {
   it('lists what the agent sees, with what it may do to each row', async () => {
     const response = await as('ag1', 'get', '/office/users');
     expect(response.status).toBe(200);
-    expect(response.body.users.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'pos1']);
-    expect(response.body.users[1]).toEqual({
+    expect(response.body.items.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'pos1']);
+    expect(response.body.items[1]).toEqual({
       loginName: 'pos1', nickname: 'نقطة', layer: 'pos', roleName: '', parentLogin: 'ag1', balance: 700, ceiling: 100, held: 0, frozen: false,
       self: false, directChild: true, canEnter: false, canFreeze: false, canDelete: false,
     });
     const owner = await as('owner', 'get', '/office/users');
-    const pos = owner.body.users.find((row: { loginName: string }) => row.loginName === 'pos1');
+    const pos = owner.body.items.find((row: { loginName: string }) => row.loginName === 'pos1');
     expect(pos).toMatchObject({ canEnter: true, canFreeze: true, canDelete: true });
   });
 
-  it('answers one page of the table with paged=1, filtered and counted by the server, and the full list without it', async () => {
-    const page = await as('owner', 'get', '/office/users?paged=1&layer=agent');
+  it('always answers one page, filtered and counted by the server, and refuses a cursor it did not issue', async () => {
+    const page = await as('owner', 'get', '/office/users?layer=agent');
     expect(page.status).toBe(200);
     expect(page.body).toMatchObject({ nextCursor: null, total: 2 });
-    expect(page.body.users.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'ag2']);
-    expect(page.body.users[0]).toMatchObject({ loginName: 'ag1', parentLogin: 'ma1', canEnter: true });
-    const named = await as('owner', 'get', '/office/users?paged=1&q=%D9%86%D9%82%D8%B7%D8%A9');
-    expect(named.body.users.map((row: { loginName: string }) => row.loginName)).toEqual(['pos1']);
-    expect(named.body.users[0]).toMatchObject({ balance: 700, ceiling: 100 });
-    const seen = await as('ag1', 'get', '/office/users?paged=1');
-    expect(seen.body.users.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'pos1']);
+    expect(page.body.items.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'ag2']);
+    expect(page.body.items[0]).toMatchObject({ loginName: 'ag1', parentLogin: 'ma1', canEnter: true });
+    const named = await as('owner', 'get', '/office/users?q=%D9%86%D9%82%D8%B7%D8%A9');
+    expect(named.body.items.map((row: { loginName: string }) => row.loginName)).toEqual(['pos1']);
+    expect(named.body.items[0]).toMatchObject({ balance: 700, ceiling: 100 });
     const full = await as('owner', 'get', '/office/users');
-    expect(Object.keys(full.body)).toEqual(['users']);
-    expect(full.body.users).toHaveLength(6);
+    expect(Object.keys(full.body).sort()).toEqual(['items', 'nextCursor', 'total']);
+    expect(full.body.items).toHaveLength(6);
+    expect(await code(as('owner', 'get', '/office/users?cursor=junk'))).toBe('400 INVALID');
+    expect((await as('ag1', 'get', '/office/directory')).body.total).toBeGreaterThan(2);
+    expect((await as('ag1', 'get', '/office/directory?mine=1')).body.items.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'pos1']);
+    const names = await as('ag1', 'get', '/office/directory?layer=pos');
+    expect(names.body).toEqual({
+      items: [{ loginName: 'pos1', nickname: 'نقطة', layer: 'pos', parentLogin: 'ag1', frozen: false, mine: true }],
+      nextCursor: null,
+      total: 1,
+    });
   });
 
   it('creates accounts only down the ladder, under a visible parent, with a fresh name', async () => {

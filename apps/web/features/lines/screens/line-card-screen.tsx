@@ -16,6 +16,7 @@ import type { RowAction } from '../../../components/row-menu';
 import { LineChoice } from '../../../components/transfer-dialog';
 import { Button } from '../../../components/ui/button';
 import { api, type LineHistory, type LineRow, type Outcome, type PackageRow, type Shelf, type TransferLinePrices } from '../../../lib/api';
+import { everyAccount } from '../../../lib/directory';
 import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
@@ -104,7 +105,7 @@ export function LineCardScreen() {
   // accounts (shared with the users page). An action on the number asks for the number again, not the other two.
   const numberRead = useApiQuery(sharedKeys.line(params.id), () => api.officeLine(params.id));
   const catalogRead = useApiQuery(sharedKeys.packages, () => api.officePackages());
-  const usersRead = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: canTransfer });
+  const usersRead = useApiQuery(sharedKeys.users, everyAccount, { enabled: canTransfer });
   const card = {
     loaded: numberRead.loaded && catalogRead.loaded && (!canTransfer || usersRead.loaded),
     // The catalog and the accounts are helpers: without them the card still shows, with fewer choices.

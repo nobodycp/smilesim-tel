@@ -36,14 +36,17 @@ the screen's `usePaged` call, the mock in `apps/web/tests/` / `audit/`, `respons
 - [x] **L.8** (345d36b; envelope only. The match filter stays in memory: a row's match state is computed by
   `matchOf`, not stored, so the database cannot filter by it until real provider statements are stored) `GET /office/provider-operations` (`wallets/wallets.service.ts`; keeps `stats`; the date and match
   filters move into the query instead of filtering loaded rows; web provider-operations screen).
-- [ ] **L.9** `GET /office/users` always paged (decision 4): `accounts/users-page.ts` on the one cursor; the
-  callers that used the whole list (`grep "api.users("` in `apps/web`) move to `/office/directory`; `?paged=1`
-  removed from web and API.
+- [x] **L.9** (COMMIT) `GET /office/users` always paged (decision 4): the envelope, the opaque key cursor
+  (`encodeKeyCursor`), a foreign cursor is 400; `?paged=1` and `AccountsService.list` are gone.
 
 ## Phase 2 — bounded lists (decision 3)
 
-- [ ] **L.10** `GET /office/directory` paged with `q` (pickers: `components/name-field.tsx` users search as the
-  owner types; first page preloaded).
+- [x] **L.10** (COMMIT) `GET /office/directory` is a paged list of `{ loginName, nickname, layer, parentLogin,
+  frozen, mine }` with `q`, `layer`, `mine=1` (the actor's own tree), 200 a page. **Done differently from the
+  first text:** the pickers do not search as the owner types. `apps/web/lib/directory.ts` reads the pages one after
+  another (`directoryNames()` for the session's name map, `everyAccount()` for the five pickers and the shell
+  search), so every answer of the API is bounded and no screen changed. Search-as-you-type pickers stay a later
+  web change, when an office has more accounts than a picker can list.
 - [ ] **L.11** `GET /office/wallets` paged (web wallets screen on `usePaged`).
 - [ ] **L.12** `GET /office/reports/balances` paged; its CSV export unchanged (already capped at 5,000).
 - [ ] **L.13** `GET /office/provider-accounts`: balances summed with `groupBy` in the database, no row loading.

@@ -13,6 +13,11 @@ export type Profile = { nickname?: string; email?: string; phone?: string; city?
 export type AccountProfile = Profile & { loginName: string };
 /** Login name → full name for the accounts the viewer may meet on a screen. */
 export type Directory = Record<string, string>;
+/**
+ * One account of `GET /office/directory`: an account the viewer may meet on a screen. `mine` marks the viewer's own
+ * tree; outside it only the name and the layer are told (`parentLogin` null, `frozen` false).
+ */
+export type DirectoryRow = { loginName: string; nickname: string; layer: string; parentLogin: string | null; frozen: boolean; mine: boolean };
 
 export type TwoFactorMethod = 'app' | 'sms' | 'email';
 export type PasskeyInfo = { id: string; name: string; createdAt: string; lastUsedAt: string | null };

@@ -14,6 +14,7 @@ import { PriceField } from '../../../components/price-field';
 import { RowMenu } from '../../../components/row-menu';
 import { Button } from '../../../components/ui/button';
 import { api, type CustomPriceRow, type LineRow, type Shelf } from '../../../lib/api';
+import { everyAccount } from '../../../lib/directory';
 import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
@@ -104,7 +105,7 @@ export function PackageSheetScreen() {
   const linesRead = useApiQuery(packageKeys.lines(code), () => packageLines(code), { enabled: allowed });
   const pricesRead = useApiQuery(packageKeys.customPrices(code), () => api.customPrices(code), { enabled: allowed });
   const shelfRead = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
-  const usersRead = useApiQuery(sharedKeys.users, () => api.officeUsers(), { enabled: allowed });
+  const usersRead = useApiQuery(sharedKeys.users, everyAccount, { enabled: allowed });
   const cardData = useMemo(
     () =>
       sheetRead.data && shelfRead.data && linesRead.data
