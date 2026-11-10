@@ -20,7 +20,7 @@ run (a ratchet: a rule's violation count may only go down). Read it before the f
 3. Office controllers: `ActivityInterceptor` then `ActorInterceptor`; the handler gets `@Actor()`.
 4. The service: permission through `office/policy.ts` → `parseInput(<Schema>, body)` from `<domain>.schemas.ts` →
    rules (`office/rules/`, pure) → `<domain>.repository.ts` (one named method per query; a method that may run in
-   a transaction takes the client). Money and status changes run in `kernel.runTx` on locked rows.
+   a transaction takes the client). Money and status changes run in `UnitOfWork.runTx` on locked rows.
 5. A line operation asks `ProviderGateway` whether the provider ran it; a refusal or a manual mode opens a task.
 
 ## Stack
