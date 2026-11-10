@@ -15,7 +15,7 @@ import { packageTermsOf } from '../rules/office-terms';
 import { canHandleTasks } from '../tasks/task-access';
 import { TasksService } from '../tasks/tasks.service';
 import { LinePricing } from './line-pricing';
-import { assertSimFree, lockedTaskLine, moveLineStatus } from './line-state';
+import { assertSimFree, lockedTaskLine, moveLineStatus, numberTaken } from './line-state';
 import { MSISDN, periodOf, readQr } from './line-input';
 import { CompleteTaskBody } from './lines.schemas';
 
@@ -262,7 +262,7 @@ export class TaskCompletion {
   }
 
   private async rename({ tx, line, handed }: Completion): Promise<Applied> {
-    if (line && handed.msisdn) await this.repo.renameLine(tx, line.id, handed.msisdn);
+    if (line && handed.msisdn) await this.repo.renameLine(tx, line.id, handed.msisdn).catch(numberTaken);
     return {};
   }
 

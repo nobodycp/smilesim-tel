@@ -41,6 +41,7 @@ function fixtures() {
 }
 
 async function office() {
+  const raced = new Set<string>();
   const { company, provider, pkg, line } = fixtures();
   const auth = new MemoryAuthStore();
   auth.addUser({
@@ -62,7 +63,11 @@ async function office() {
     // The live number that holds a SIM serial, as the uniqueness check asks for it.
     findFirst: async ({ where }: { where: { iccid: string; id?: { not: string } } }) =>
       [line, ...otherLines].find((row) => row.iccid === where.iccid && row.status !== 'disconnected' && row.id !== where.id?.not) ?? null,
-    update: async ({ where, data }: { where: { id: string }; data: Row }) => Object.assign(lineById(where.id) as Row, data),
+    update: async ({ where, data }: { where: { id: string }; data: Row }) => {
+      // A number another request took between the check and the write: the database refuses the duplicate.
+      if (typeof data.msisdn === 'string' && raced.has(data.msisdn)) throw Object.assign(new Error('unique'), { code: 'P2002' });
+      return Object.assign(lineById(where.id) as Row, data);
+    },
     // A guarded status change: only from one of the statuses named.
     updateMany: async ({ where, data }: { where: { id: string; status: { in: string[] } }; data: Row }) => {
       const row = lineById(where.id);
@@ -152,7 +157,7 @@ async function office() {
     Object.assign(task, { status: 'working', assigneeId: 'admin' });
     return task;
   };
-  return { service, gate, wallet, entries, tasks, otherLines, company, provider, pkg, line, work };
+  return { service, gate, wallet, entries, tasks, otherLines, company, provider, pkg, line, work, raced };
 }
 
 describe('eSIM request', () => {
@@ -250,6 +255,19 @@ describe('number change through a task', () => {
     await service.completeTask(gate, String(task.id), { msisdn: '0521000005' });
     expect(line.msisdn).toBe('0521000005');
     expect(task).toMatchObject({ status: 'done', msisdn: '0521000005' });
+  });
+
+  it('answers 409, not a server error, when the number is taken between the check and the write', async () => {
+    const { service, gate, line, work, raced, entries } = await office();
+    await service.renameLine(gate, 'ln1', { outcome: 'fail' });
+    const task = await work();
+    const before = { msisdn: line.msisdn, entries: entries.length };
+    raced.add('0521000007');
+    await expect(service.completeTask(gate, String(task.id), { msisdn: '0521000007' })).rejects.toMatchObject({ status: 409, code: 'NUMBER_TAKEN' });
+    // The number and the ledger are untouched. The refusal is thrown inside the transaction, so PostgreSQL also
+    // takes back the task's `done` (this file's stand-in tables do not roll back; `line-concurrency.db.spec.ts`
+    // runs on the real database).
+    expect({ msisdn: line.msisdn, entries: entries.length }).toEqual(before);
   });
 
   it('still needs the number when the provider applies it at once', async () => {

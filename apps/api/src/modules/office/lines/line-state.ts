@@ -1,5 +1,6 @@
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
+import { isUniqueViolation } from '../../shared/prisma-errors';
 import type { Action } from '../kernel/types';
 
 // The state of a line inside a transaction (backend-engineering.mdc, 2). What was read before the transaction is
@@ -103,3 +104,10 @@ export async function assertSimFree(tx: Prisma.TransactionClient, iccid: string,
   });
   if (holder) fail(409, 'SIM_TAKEN');
 }
+
+/**
+ * A write that hit the unique number: two requests for one number at the same moment, and the database let one
+ * through. For `.catch()` on the write, whether it runs now or when a task is completed: 409, and the transaction
+ * it ran in is rolled back.
+ */
+export const numberTaken = (error: unknown) => (isUniqueViolation(error) ? fail(409, 'NUMBER_TAKEN') : Promise.reject(error));

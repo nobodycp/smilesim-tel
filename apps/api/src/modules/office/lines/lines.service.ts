@@ -8,7 +8,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
-import { isUniqueViolation } from '../../shared/prisma-errors';
 import { lineTermsOf } from '../kernel/line-terms';
 import { saleOf } from '../kernel/sale';
 import type { Action, Actor } from '../kernel/types';
@@ -23,7 +22,7 @@ import { periodOf, readQr } from './line-input';
 import { assertRunnable, canActivateFor, runsNow, type RunnablePackage } from './line-ops';
 import { LinePricing } from './line-pricing';
 import { ActivateBody, AddonBody, ExtendBody, OutcomeBody, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
-import { assertSimFree, lockUnchanged, moveLineStatus } from './line-state';
+import { assertSimFree, lockUnchanged, moveLineStatus, numberTaken } from './line-state';
 import { TaskCompletion } from './task-completion';
 
 type VisibleLine = Awaited<ReturnType<LineAccess['visibleLine']>>;
@@ -32,8 +31,6 @@ type OpenTask = Parameters<TasksService['openTask']>[0];
 type Route = { now: true } | { now: false; note: string };
 type RoutedPackage = RunnablePackage & { code: string; provider: { code: string } | null };
 
-/** A write that hit the unique number: two requests for one number at the same moment, and the database let one through. */
-const numberTaken = (error: unknown) => (isUniqueViolation(error) ? fail(409, 'NUMBER_TAKEN') : Promise.reject(error));
 
 /**
  * Operations on numbers: activation and everything done to a live number (charge, freeze, disconnect, switch,
