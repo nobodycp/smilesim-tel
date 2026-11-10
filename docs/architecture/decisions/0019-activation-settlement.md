@@ -126,6 +126,14 @@ come; the money must be safe in every state of the operation.
 - Opening an activation also checks live lines, so a card already on a line is refused at the request.
 - The migration raises on existing conflicts and changes nothing; a read-only report
   (`npm run reservation-conflicts --workspace api`) lists them before a deploy.
+- The migration is a single `DO` block. Prisma Migrate 7.10.1 was measured to keep the first of two plain
+  statements when the second fails; one statement is atomic whatever the runner does. It locks the table against
+  writes while it checks and builds, with a 30 s lock timeout.
+- A serial or a number never appears whole in the migration's message or the report: both end in deploy logs. The
+  task ids do.
+- The migration file was rewritten after it had been applied on development, test and CI databases only. Deploy
+  and status do not compare checksums; `migrate dev` does and asks for a reset. Both versions build the same
+  indexes. The plan records the measurements.
 
 ## Consequences
 

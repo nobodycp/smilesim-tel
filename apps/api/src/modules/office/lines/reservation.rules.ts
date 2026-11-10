@@ -45,3 +45,20 @@ export function completionClaim(task: { action: string; esim: boolean; iccid: st
   if (action === 'rename') return { msisdn: handed.msisdn ?? null };
   return {};
 }
+
+/**
+ * A serial or a number as it may appear in a log: its last four characters. Deploy and server logs are read by
+ * people and tools that have no business with a subscriber's number; four characters are enough to tell two
+ * groups apart beside the task ids, which are what the conflict is resolved by.
+ */
+export function maskedTail(value: string): string {
+  return `ending ${value.slice(-4)}`;
+}
+
+/** Open activation tasks that name the same serial or the same number, oldest first. */
+export type ReservationConflict = { kind: 'serial' | 'number'; value: string; taskIds: string[] };
+
+/** One line per conflict for a log: what is shared (masked) and the tasks that share it, by id. */
+export function conflictLines(conflicts: ReservationConflict[]): string[] {
+  return conflicts.map((conflict) => `${conflict.kind} ${maskedTail(conflict.value)} is named by ${conflict.taskIds.length} open activation tasks: ${conflict.taskIds.join(', ')}`);
+}

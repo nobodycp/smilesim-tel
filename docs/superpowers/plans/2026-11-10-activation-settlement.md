@@ -38,11 +38,32 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     (`lines/task-completion.ts`: the keys a handler needs are locked before the hold is released, so the order is
     task → line → keys → wallet; an activation with no number is given one there), `LinePricing.freshMsisdn`
     (skips a reserved number).
-  - **Before a deploy**: `npm run reservation-conflicts --workspace api` (read-only, exit 1 on a conflict). If
-    the migration is run on conflicting tasks it raises, names them and changes nothing; `prisma migrate deploy`
-    then records it as failed, and after the branch has closed the extra tasks it is cleared with
-    `npx prisma migrate resolve --rolled-back 20261110200000_open_activation_reservations` and deployed again
-    (the Prisma steps are from its documentation, not exercised here).
+  - **Before a deploy**: `npm run reservation-conflicts --workspace api` (read-only; exit 0 none, 1 conflicts,
+    2 the report could not be made). It names the tasks by id and shows a serial or a number by its last four
+    characters; a failure is a code, never the driver's message.
+  - **The migration is one statement** (a single `DO` block: lock, check, both indexes), so it is atomic by
+    PostgreSQL's rule and not by the runner's. Measured on Prisma Migrate 7.10.1, through `prisma migrate deploy`
+    on throwaway databases: two plain `CREATE INDEX` statements kept the first index when the second failed; the
+    first version of this file (a `DO` check followed by two plain statements) was rolled back as a whole, which
+    Prisma does not promise; the single block leaves nothing in either case. It takes
+    `LOCK TABLE "OfficeTask" IN SHARE ROW EXCLUSIVE MODE` for its duration (no task can open between the check
+    and the indexes; reads go on) with a 30 s `lock_timeout`: a timeout fails the migration with nothing changed.
+    Its message, which lands in deploy logs, shows the last four characters of a serial or a number.
+  - **The file was changed after it had been applied** on the local development and test databases and on CI's
+    throwaway ones (never on staging or production). Measured on a throwaway database: `prisma migrate deploy`
+    and `prisma migrate status` do not compare an applied migration's checksum (both answer "up to date", and a
+    later migration applies); only `prisma migrate dev` does, and it stops asking for a reset without doing one.
+    The two versions create the same two indexes (`pg_get_indexdef` identical), so a database that ran the first
+    version is in the same state as one that runs the second. No `_prisma_migrations` row was touched and no
+    `migrate resolve` was run on any existing database. The project applies migrations with `migrate deploy`
+    (`scripts/dev-local.sh`, the image's start command, CI); someone who runs `migrate dev` on a database that has
+    the first version will be told to reset it.
+  - **If a deploy does stop on conflicts** (exercised on a throwaway database): the tasks and wallets are
+    untouched and no index exists; `prisma migrate deploy` reports `P3018` and from then on `P3009` until the
+    failed attempt is cleared. After the branch has closed the extra tasks:
+    `npx prisma migrate resolve --rolled-back 20261110200000_open_activation_reservations`, then deploy again.
+    `resolve` only marks the failed attempt in `_prisma_migrations`; it is safe here because the failed attempt
+    changed nothing.
   - *Transactions:* T1 (without the operation), T8. *Specs:* `lines/activation-reservation.db.spec.ts` (spec items
     1–3 and the rest of the owner's list for this slice), `lines/reservation.rules.spec.ts`.
   - **Visible, on the manual path:** a second activation for a card or a number that an open activation task

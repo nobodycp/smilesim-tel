@@ -128,7 +128,7 @@ Every route is in a domain controller (table above). `testing/routes.http.spec.t
   nothing. `saveSession` answers the token; `liveSession(token)` reads by its hash.
 - **Secrets at rest:** `shared/secret-box.ts` (`seal`, `open`; AES-256-GCM, `v1:` prefix). `PrismaAuthStore` seals
   `twoFactorSecret` / `pendingTwoFactorSecret` on write and opens them on read; a value stored before sealing reads
-  as it is. `src/seal-secrets.ts` seals what is already stored. `src/reservation-conflicts.ts` (`npm run reservation-conflicts --workspace api`) is the read-only report to run before deploying the reservation indexes.
+  as it is. `src/seal-secrets.ts` seals what is already stored. `src/reservation-conflicts.ts` (`npm run reservation-conflicts --workspace api`) is the read-only report to run before deploying the reservation indexes; it names tasks by id, shows a serial or a number by its last four characters (`reservation.rules.ts` `maskedTail`) and a failure by `errorCode`.
 - **Config and logs:** `config.ts` only; Nest `Logger` only (`shared/log.ts`).
 
 ## Data model (`prisma/schema.prisma`, 57 migrations)
@@ -147,7 +147,7 @@ against the migrations is empty.
 
 ## Tests
 
-105 spec files beside what they test. Service specs run on `office/testing/tree.fixture.ts` through
+106 spec files beside what they test. Service specs run on `office/testing/tree.fixture.ts` through
 `office/testing/office-facade.ts`; HTTP specs through `office/testing/office-test-app.ts` (or `Test.createTestingModule`
 with `API_PROVIDERS`). Eight `*.db.spec.ts` files need PostgreSQL (`TEST_DATABASE_URL`), and the queue part of `outbox-relay.db.spec.ts` Redis (`TEST_REDIS_URL`); the CI `db` job gives them
 one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec file at a time with
