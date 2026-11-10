@@ -145,8 +145,6 @@ export function LineCardScreen() {
     [t.disconnect]: t.opTextDisconnect,
   };
   const opText = (label: string) => opTexts[label] ?? '';
-  // The design's head: the number's two quick renewals (charge, extend) beside the title; extend is the crimson one.
-  const quick = [t.actCharge, t.extend].map((label) => items.find((item) => item.label === label)).filter((item): item is RowAction => Boolean(item));
   usePageTitle(line ? line.msisdn : t.lineCard);
   const allows = (key: string, fallback: boolean) => (line?.operations ? line.operations.includes(key) : fallback);
   const targets = new Set(line?.switchTargets ?? []);
@@ -159,7 +157,6 @@ export function LineCardScreen() {
     { key: 'package', header: t.packageName, render: (row) => row.packageName || '—' },
     { key: 'actor', header: t.actedBy, render: (row) => (row.actorName ? <bdi>{row.actorName}</bdi> : '—') },
   ];
-  const internetCap = line?.dataGb == null ? '—' : String(line.dataGb);
   const simRules = line?.sim ?? OPEN_SIM;
   const simLabel = (row: LineRow) => (row.iccid ? <bdi dir="ltr">{row.iccid}</bdi> : row.esim ? t.esim : '—');
 
@@ -172,13 +169,7 @@ export function LineCardScreen() {
           {line.status === 'active' ? <LeftDays endsAt={line.endsAt} /> : null}
         </span>
       ) : t.lineCard}
-      action={quick.length ? (
-        <div className="page-actions">
-          {quick.map((item, index) => (
-            <Button key={item.label} type="button" variant={index === quick.length - 1 ? 'primary' : 'secondary'} className={index === quick.length - 1 ? 'ui-btn-accent' : undefined} onClick={item.onClick} disabled={busy}>{index === quick.length - 1 ? <Zap size={16} aria-hidden="true" /> : null}{item.label}</Button>
-          ))}
-        </div>
-      ) : undefined}
+      // Every operation is in the «العمليات» grid below, once (spec 2026-11-11-ui-consistency-pass, D4).
       lede="" error={error || card.error} note={note}>
       <div className="stack">
         {!card.loaded ? (
@@ -235,41 +226,19 @@ export function LineCardScreen() {
               </div>
             )}
             {tab === 'details' && (
+              // The office's fact cards, as the head above them (D4): what the head does not already show.
               <div className="pane-body line-details">
-                <Facts>
+                <Facts variant="cards">
                   <Fact label={t.company}>{line.companyName || '—'}</Fact>
-                  <Fact label={t.packageName}>{line.packageName}</Fact>
                   <Fact label={t.simType}>{line.esim ? t.esim : t.physicalSim}</Fact>
-                  <Fact label={t.simSerial}>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</Fact>
+                  <Fact label={t.simSerial}>{line.iccid ? <bdi dir="ltr" className="num">{line.iccid}</bdi> : '—'}</Fact>
                   {line.esim && line.esimQr && (
-                    <Fact label={t.esimQr}><Button type="button" variant="secondary" size="iconSm" aria-label={t.showQr} title={t.showQr} onClick={() => setDialog('qr')}><QrCode size={16} strokeWidth={1.75} aria-hidden="true" /></Button></Fact>
+                    <Fact label={t.esimQr}><Button type="button" variant="secondary" size="sm" onClick={() => setDialog('qr')}><QrCode size={16} strokeWidth={1.75} aria-hidden="true" />{t.showQr}</Button></Fact>
                   )}
-                  <Fact label={t.endsOn}><bdi dir="ltr">{latinWhen(line.endsAt).slice(0, 10)}</bdi></Fact>
-                  <Fact label={t.remainingDays}>{daysLeft(line.endsAt)} {t.dayUnit}</Fact>
-                  <Fact label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</Fact>
-                  <Fact label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Fact>
+                  <Fact label={t.remainingDays}><span className="num">{daysLeft(line.endsAt)}</span> {t.dayUnit}</Fact>
+                  <Fact label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr" className="num">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</Fact>
                   {!isPos && line.posLoginName && <Fact label={t.pointOfSale}><AccountName login={line.posLoginName} /></Fact>}
                 </Facts>
-                <section className="usage">
-                  <h2>{t.usage}</h2>
-                  <div className="usage-meters">
-                    <div className="usage-meter">
-                      <span className="usage-dial"><b>—</b></span>
-                      <span>{t.messages}</span>
-                      <span className="hint">—</span>
-                    </div>
-                    <div className="usage-meter">
-                      <span className="usage-dial"><b>—</b></span>
-                      <span>{t.minutes}</span>
-                      <span className="hint">—</span>
-                    </div>
-                    <div className="usage-meter">
-                      <span className="usage-dial"><b>—</b></span>
-                      <span>{t.internet}</span>
-                      <span className="hint"><bdi dir="ltr">— / {internetCap}</bdi></span>
-                    </div>
-                  </div>
-                </section>
               </div>
             )}
             {tab === 'log' && <DataTable columns={logColumns} rows={history} rowKey={(row) => row.id} empty={t.noHistory} />}

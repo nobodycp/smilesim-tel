@@ -49,7 +49,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(600px, 100%);
+  width: min(560px, 100%);
   max-height: min(720px, calc(100vh - 48px));
   overflow: hidden;
   padding: 0;
@@ -58,7 +58,7 @@
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-pop);
 }
-.dialog[data-size='confirm'] { width: min(420px, 100%); }
+.dialog[data-size='confirm'] { width: min(460px, 100%); }
 .dialog[data-size='confirm'] .dialog-foot .danger { margin-inline-end: 0; }
 /* The account a dialog acts on. `AccountName` keeps the login and the full name in parentheses on one line; a block
    `bdi` here split them across four lines. */
@@ -92,25 +92,8 @@
 .dialog-result .dialog-mark svg { width: 28px; height: 28px; }
 .dialog-mark svg { width: 18px; height: 18px; }
 .dialog-lede { margin: var(--rd-space-1) 0 0; color: var(--rd-muted); font-size: var(--rd-text-md); font-weight: 500; line-height: 1.45; }
-.dialog[data-size='confirm'] > header {
-  flex-direction: column;
-  align-items: center;
-  padding: 28px 44px 0;
-  border-bottom: 0;
-  text-align: center;
-}
-.dialog[data-size='confirm'] > header .icon-btn {
-  position: absolute;
-  inset-block-start: 10px;
-  inset-inline-end: 10px;
-}
-.dialog[data-size='confirm'] .dialog-heading,
-.dialog[data-size='confirm'] h2,
-.dialog[data-size='confirm'] .dialog-lede,
-.dialog[data-size='confirm'] .dialog-body { text-align: center; }
-.dialog[data-size='confirm'] .dialog-body { padding-top: var(--rd-space-2); }
-.dialog[data-size='confirm'] .dialog-foot { border-top: 0; padding: var(--rd-space-1) var(--rd-space-4) var(--rd-space-4); background: transparent; }
-.dialog[data-size='confirm'] .dialog-foot > * { flex: 1 1 0; }
+/* A confirmation has the same head and foot as every other dialog (spec 2026-11-11-ui-consistency-pass, D5): the mark
+   beside the title, the buttons at the end of the foot. It is only narrower. */
 .dialog > header .icon-btn {
   width: 36px;
   height: 36px;

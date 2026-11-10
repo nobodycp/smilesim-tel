@@ -894,7 +894,6 @@ export const he: Copy = {
   usage: 'צריכה',
   messages: 'הודעות',
   minutes: 'דקות',
-  internet: 'אינטרנט',
   currentSim: 'סים נוכחי',
   newSim: 'סים חדש',
   simType: 'סוג הסים',

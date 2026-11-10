@@ -42,26 +42,28 @@ beside an operation that is also in the list below it), keep one.
 ### D4 — The number page
 
 - The head's quick-action buttons go: every operation is in the «العمليات» grid below, once.
-- «التفاصيل» is drawn with the system's fact cards and the usage meters as the rest of the office draws figures.
+- «التفاصيل» is drawn with the system's fact cards and shows what the head does not. The usage dials go: the API
+  has no usage data, so they only ever showed «—».
 - Its dialogs use the shared `Dialog` with the same head (mark, title, lede), body (`.dialog-form` fields) and footer
   (cancel secondary, action primary) as every other dialog.
 
 ### D5 — Dialogs
 
-Every dialog: `components/dialog.tsx`, a mark in the head, labelled fields in `.dialog-form`, footer «إلغاء» then the
-action; one width scale (`form`, `wide`). A dialog drawn by hand is replaced.
+Every dialog: `components/dialog.tsx`, the mark beside the title in the head — a confirmation too, which no longer
+centres it —, labelled fields, the buttons at the end of the foot; one width scale (`confirm` 460, `form` 560, `wide`
+760). Checkboxes and radios are drawn by the system everywhere (`controls.css`), not by the browser.
 
 ### D6 — The package page
 
 - The price chain («السلسلة») is compact: one row per layer (label, subscription price, renewal), not a card per step.
-- eSIM on the package (available, price, source) is one block beside the SIM facts, not spread across tabs.
+- The eSIM price and the re-pricing of live numbers are two cards under the chain, side by side, with «حفظ» above them.
 
 ### D7 — Mobile
 
 - No sideways page scroll at 360–430px; tables scroll inside their card.
 - Tap targets at least 40px on phones; tab strips scroll with a visible edge fade and the active tab in view.
 - Cards (companies, ops, modes) two per row where they fit at 390px instead of one tall card each.
-- Dialogs become bottom sheets under 640px (already) with the footer always in view.
+- Dialogs keep the footer in view on a phone (the body scrolls).
 
 ### D8 — The audit record
 

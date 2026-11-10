@@ -894,7 +894,6 @@ export const en: Copy = {
   usage: 'Usage',
   messages: 'Messages',
   minutes: 'Minutes',
-  internet: 'Internet',
   currentSim: 'Current SIM',
   newSim: 'New SIM',
   simType: 'SIM type',

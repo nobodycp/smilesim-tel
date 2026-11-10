@@ -40,14 +40,14 @@ but `.bp-tag` on branding are the shekel sign), 9 native controls.
 | 7 | `/users` ⋯ and `/users/:l` ⋯ | «إعدادات المستخدم» is a dialog reached from menus, not part of the user page | 3 | fixed (phase 3) |
 | 8 | `/users/:l` «صلاحيات الحساب» | native select per grant, header row printed twice, native checkboxes for extra roles | 3 | fixed (phase 3) |
 | 9 | `/users/:l` (phone) | the tab strip cuts the last tab with no hint that it scrolls | 5 | open |
-| 10 | `/numbers/:id` | «شحن» and «تمديد» buttons in the head repeat two tiles of the «العمليات» grid | 4 | open |
-| 11 | `/numbers/:id` «التفاصيل» | a plain fact list and empty usage dials, not the office's cards | 4 | open |
-| 12 | dialogs | same component, but fields, widths and marks differ from one to the next | 4 | open |
-| 13 | package page «الأسعار» | the price chain is two tall boxes of stacked inputs; eSIM price sits between them | 4 | open |
+| 10 | `/numbers/:id` | «شحن» and «تمديد» buttons in the head repeat two tiles of the «العمليات» grid | 4 | fixed (phase 4) |
+| 11 | `/numbers/:id` «التفاصيل» | a plain fact list and empty usage dials, not the office's cards | 4 | fixed (phase 4) |
+| 12 | dialogs | same component, but fields, widths and marks differ from one to the next | 4 | fixed (phase 4) |
+| 13 | package page «الأسعار» | the price chain is two tall boxes of stacked inputs; eSIM price sits between them | 4 | fixed (phase 4) |
 | 14 | every pager (phone) | page buttons 30px wide, page-size select 28px high | 5 | open |
 | 15 | home (phone) | the numbers-by-status legend links are 27px high | 5 | open |
 | 16 | `/providers/:p` (phone) | one tall run-mode card per row | 5 | open |
 | 17 | lists (phone) | users and numbers tables scroll sideways inside their card; the status and actions are off screen | 5 | open |
 | 18 | `/tasks`, `/users/:l` (phone) | tab strips cut the last tab | 5 | open |
-| 19 | package page «التفاصيل» | «الرزمة متاحة كـ eSIM» is a native checkbox | 4 | open |
+| 19 | package page «التفاصيل» | «الرزمة متاحة كـ eSIM» is a native checkbox | 4 | fixed (phase 4) |
 | 20 | `/companies/:c` packages (phone) | the on/off switch sits in a column off screen | 5 | open |

@@ -894,7 +894,6 @@ export const ar = {
   usage: 'الاستهلاك',
   messages: 'رسائل',
   minutes: 'دقائق',
-  internet: 'إنترنت',
   currentSim: 'الشريحة الحالية',
   newSim: 'الشريحة الجديدة',
   simType: 'نوع الشريحة',

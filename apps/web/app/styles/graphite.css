@@ -799,29 +799,30 @@ input[readonly] { background-color: transparent; }
 .wallet-chart-figures { display: flex; flex-wrap: wrap; gap: 14px; margin: 4px 0 0; color: var(--rd-muted); font-size: var(--rd-text-sm); }
 .wallet-chart-figures .money { color: var(--rd-ink); font-weight: 700; }
 
-/* ── Package page price chain (Graphite «سلسلة الأسعار»): each group a row of steps — one cut-corner card per layer,
-   from the branch's cost to the subscriber — joined by a chevron. ── */
-.package-sheet .price-board { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) {
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+/* ── Package page price chain, compact (spec 2026-11-11-ui-consistency-pass, D6): one row per layer — the branch's
+   cost first, tinted —, the subscription and the renewal side by side, each price with its margin over the layer above.
+   The cards under it (eSIM price, re-pricing) share a row. ── */
+.package-sheet .price-board, .price-board { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+.price-board > .chain-wrap { grid-column: 1 / -1; overflow-x: auto; }
+.chain-grid { width: 100%; max-width: 720px; border-collapse: collapse; }
+.chain-grid th, .chain-grid td { padding: 6px 10px; border-block-end: 1px solid var(--rd-line); text-align: start; }
+.chain-grid thead th { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 700; }
+.chain-grid tbody th { color: var(--rd-ink); font-size: var(--rd-text-md); font-weight: 700; white-space: nowrap; }
+.chain-grid tr.chain-cost > * { background: var(--rd-accent-soft); }
+.chain-cell { display: inline-flex; align-items: center; gap: 10px; }
+.chain-cell input { inline-size: 7rem; height: 34px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.chain-cell .step-note { min-inline-size: 4.5rem; color: var(--rd-muted); font-size: var(--rd-text-sm); }
+.price-board > .ui-btn { grid-column: 1 / -1; justify-self: start; }
+.package-sheet .price-board > .account-fund:last-child { grid-column: auto; }
+@media (max-width: 720px) {
+  .package-sheet .price-board, .price-board { grid-template-columns: minmax(0, 1fr); }
 }
-.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) h3 { grid-column: 1 / -1; }
-.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step {
-  position: relative;
-  display: grid;
-  gap: 6px;
-  padding: 14px;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-  box-shadow: inset 0 0 0 1px var(--rd-line);
-  color: var(--rd-muted);
-  font-size: var(--rd-text-sm);
-  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+@media (max-width: 640px) {
+  .chain-grid th, .chain-grid td { padding: 6px 4px; }
+  .chain-cell { display: grid; gap: 2px; }
+  .chain-cell input { inline-size: 5.5rem; }
+  .chain-cell .step-note { min-inline-size: 0; font-size: 11.5px; }
 }
-[dir='rtl'] .package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
-.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step:first-of-type { background: var(--rd-accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-accent) 35%, transparent); }
-.pane.package-sheet .price-board > .account-fund:has(> .chain-step + .chain-step) > .chain-step input { height: 38px; font-size: 18px; font-weight: 700; text-align: center; background: var(--rd-sunken); }
 /* The wallet's head keeps its own height in the page's column; the statement below takes the rest. */
 .desk .wallet-band, .desk .wallet-chart, .desk > .stat-row, .desk .stat-row { flex: none; }
 

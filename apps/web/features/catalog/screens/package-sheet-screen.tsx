@@ -471,6 +471,8 @@ export function PackageSheetScreen() {
               )}
               {tab === 'prices' && (
                 <ChainBoard prices={prices} onChange={(key, value) => setPrices((current) => ({ ...current, [key]: value }))}>
+                  {/* «حفظ» saves the chain and the eSIM price beside it; re-pricing the live numbers has its own button. */}
+                  <Button type="button" variant="secondary" size="sm" onClick={() => void saveChain()}>{t.save}</Button>
                   <div className="account-fund">
                     <h3>{t.esimPrice}</h3>
                     <label>
@@ -487,7 +489,6 @@ export function PackageSheetScreen() {
                       </span>
                     </label>
                   </div>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => void saveChain()}>{t.save}</Button>
                   <div className="account-fund">
                     <h3>{t.repriceTitle}</h3>
                     <label>

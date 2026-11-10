@@ -132,8 +132,9 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
   await page.getByRole('tab', { name: 'نظرة عامة' }).click();
   await expect(page.getByText('عدد الأرقام', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'الأسعار' }).click();
-  await expect(page.locator('.account-fund').nth(0).locator('input')).toHaveCount(5);
-  await expect(page.locator('.account-fund').nth(1).locator('input')).toHaveCount(5);
+  // One compact table: a row per layer, the subscription and the renewal side by side (spec 2026-11-11, D6).
+  await expect(page.locator('.chain-grid tbody tr')).toHaveCount(5);
+  await expect(page.locator('.chain-grid tbody input')).toHaveCount(10);
   const reprice = page.locator('.account-fund').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
   await reprice.getByRole('button', { name: 'عرض الأرقام' }).click();
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });

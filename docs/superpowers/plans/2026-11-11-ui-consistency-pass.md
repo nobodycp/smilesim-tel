@@ -31,9 +31,9 @@ local commit. e2e specs that read changed UI are updated in the same phase (they
 
 ## Phase 4 — Number page, dialogs, package page (D4–D6)
 
-- [ ] `features/lines/screens/line-card-screen.tsx` — no head quick actions; details as fact cards.
-- [ ] Dialogs found by the audit that are not the shared `Dialog` shape.
-- [ ] `package-sheet-screen.tsx` — compact chain; eSIM block.
+- [x] `features/lines/screens/line-card-screen.tsx` — no head quick actions; details as fact cards.
+- [x] Dialogs found by the audit that are not the shared `Dialog` shape.
+- [x] `package-sheet-screen.tsx` — compact chain; eSIM block.
 
 ## Phase 5 — Mobile pass and re-audit (D7, D8)
 
