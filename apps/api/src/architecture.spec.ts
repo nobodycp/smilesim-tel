@@ -137,6 +137,25 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('cross-domain-controller-import', hits(production.filter(({ file }) => !file.endsWith('.module.ts')), /from '[^']+\.controller'/));
   });
 
+  it('5.1 kernel-use: a domain names what it depends on, not the kernel', () => {
+    // Plan 2026-11-10-office-kernel-split: every file that imports OfficeKernel, outside the kernel itself.
+    const users = production.filter(({ file, text }) => !file.startsWith('modules/office/kernel/') && /\bOfficeKernel\b/.test(text));
+    check('kernel-use', users.map(({ file }) => ({ file, line: 1, text: 'imports OfficeKernel' })));
+  });
+
+  it('5.1 prisma-in-service: queries live in a repository, not in a service', () => {
+    const services = production.filter(({ file }) => file.endsWith('.service.ts'));
+    check('prisma-in-service', hits(services, /\.prisma\.\w+\.\w+\(|\btx\.\w+\.(find\w*|create\w*|update\w*|delete\w*|upsert|count|groupBy|aggregate)\(/));
+  });
+
+  it('5.1 flat-office-module: each domain registers its own providers', () => {
+    const module = production.find(({ file }) => file === 'modules/office/office.module.ts');
+    const list = /export const OFFICE_PROVIDERS = \[([^\]]*)\]/.exec(module?.text ?? '')?.[1] ?? '';
+    // Classes named one by one in the flat list; a spread of a domain's own list is not counted.
+    const named = list.split(',').map((entry) => entry.trim()).filter((entry) => /^[A-Z]\w+$/.test(entry));
+    check('flat-office-module', named.map((name) => ({ file: 'modules/office/office.module.ts', line: 1, text: name })));
+  });
+
   it('5.6 test-code-imported: production code never imports test helpers', () => {
     check('test-code-imported', hits(production, /from '[^']*(\/testing\/[^']*|\.fixture|\.spec)'/));
   });

@@ -70,6 +70,10 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
 1. One folder per domain under `modules/office/<domain>/`:
    `*.controller.ts` (HTTP only) → `*.schemas.ts` (zod) → `*.service.ts` (use cases) → `*.rules.ts` (pure, tested)
    → Prisma access. A controller holds no rule; a rule file imports no Nest, no Prisma.
+1a. A service names the collaborators it uses (`UnitOfWork`, `AccountTree`, `WalletLedger`, `PriceLadder`,
+   `LineAccess`, …), never a catch-all kernel; its queries live in `<domain>.repository.ts`; its providers are
+   registered by its own `<domain>.module.ts`. *(architecture.spec: `kernel-use`, `prisma-in-service`,
+   `flat-office-module` — ratchets from the 2026-11-10 counts, plan `2026-11-10-office-kernel-split`)*
 2. A domain imports `shared/`, `kernel/`, and another domain's **service or rules**, never its controller.
    *(architecture.spec: `cross-domain-controller-import`)*
 3. A function is at most 80 lines; a file at most 600. *(ESLint `max-lines-per-function`, `max-lines`; there is

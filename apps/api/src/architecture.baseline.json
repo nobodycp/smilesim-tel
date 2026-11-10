@@ -12,5 +12,8 @@
   "test-code-in-src": 0,
   "env-outside-config": 0,
   "console-calls": 0,
-  "stored-text": 0
+  "stored-text": 0,
+  "kernel-use": 26,
+  "prisma-in-service": 228,
+  "flat-office-module": 27
 }
