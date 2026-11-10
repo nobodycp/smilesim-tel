@@ -1,7 +1,7 @@
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { refuseEntered, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { parseInput } from '../../shared/input';
 import { ACTION_KEYS, chainHolds, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../rules/office-rules';
@@ -31,10 +31,10 @@ function canEdit(actor: Actor) {
  */
 @Injectable()
 export class ProviderCatalogService {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork) {}
 
   private async provider(code: string) {
-    const row = await this.kernel.prisma.provider.findUnique({ where: { code } });
+    const row = await this.uow.prisma.provider.findUnique({ where: { code } });
     if (!row) fail(404, 'NOT_FOUND');
     return row;
   }
@@ -45,7 +45,7 @@ export class ProviderCatalogService {
     await this.provider(code);
     const adapter = adapterFor(code);
     const offered = await adapter.companies();
-    const stored = await this.kernel.prisma.company.findMany({ where: { code: { in: offered.map((row) => row.code) } }, select: { code: true } });
+    const stored = await this.uow.prisma.company.findMany({ where: { code: { in: offered.map((row) => row.code) } }, select: { code: true } });
     const have = new Set(stored.map((row) => row.code));
     return { simulated: adapter.simulated, companies: offered.map((row) => ({ ...row, added: have.has(row.code) })) };
   }
@@ -57,7 +57,7 @@ export class ProviderCatalogService {
     if (!companyCode) fail(400, 'INVALID');
     const adapter = adapterFor(code);
     const offered = await adapter.products(companyCode);
-    const stored = await this.kernel.prisma.package.findMany({
+    const stored = await this.uow.prisma.package.findMany({
       where: { OR: [{ code: { in: offered.map((row) => row.code) } }, { providerId: provider.id, providerProductCode: { in: offered.map((row) => row.code) } }] },
       select: { code: true, providerProductCode: true },
     });
@@ -73,8 +73,8 @@ export class ProviderCatalogService {
     await this.provider(providerCode);
     const offered = (await adapterFor(providerCode).companies()).find((row) => row.code === companyCode);
     if (!offered) fail(404, 'PRODUCT_NOT_FOUND');
-    if (await this.kernel.prisma.company.findUnique({ where: { code: companyCode } })) fail(409, 'COMPANY_EXISTS');
-    const company = await this.kernel.prisma.company.create({
+    if (await this.uow.prisma.company.findUnique({ where: { code: companyCode } })) fail(409, 'COMPANY_EXISTS');
+    const company = await this.uow.prisma.company.create({
       data: {
         code: companyCode,
         name: input.name || offered.name,
@@ -96,11 +96,11 @@ export class ProviderCatalogService {
     const input = parseInput(PackageCreateBody, body);
     const { providerCode, companyCode, productCode, subscription, renewal } = input;
     const provider = await this.provider(providerCode);
-    const company = await this.kernel.prisma.company.findUnique({ where: { code: companyCode } });
+    const company = await this.uow.prisma.company.findUnique({ where: { code: companyCode } });
     if (!company) fail(404, 'NOT_FOUND');
     const product = (await adapterFor(providerCode).products(companyCode)).find((row) => row.code === productCode);
     if (!product) fail(404, 'PRODUCT_NOT_FOUND');
-    const taken = await this.kernel.prisma.package.findFirst({
+    const taken = await this.uow.prisma.package.findFirst({
       where: { OR: [{ code: productCode }, { providerId: provider.id, providerProductCode: productCode }] },
       select: { id: true },
     });
@@ -131,7 +131,7 @@ export class ProviderCatalogService {
 
     const addonRows = (input.addons ?? []).map((row, position) => ({ ...row, position }));
 
-    const created = await this.kernel.prisma.package.create({
+    const created = await this.uow.prisma.package.create({
       data: {
         code: productCode,
         providerProductCode: productCode,

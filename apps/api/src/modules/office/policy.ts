@@ -62,3 +62,8 @@ export function requireOwner(actor: Actor): void {
 export function refuseEntered(actor: Actor): void {
   if (actor.impersonating) fail(403, 'FORBIDDEN');
 }
+
+/** A branch-only action: anyone else is 403 FORBIDDEN. */
+export function assertBranch(actor: Who): void {
+  if (!isBranch(actor)) fail(403, 'FORBIDDEN');
+}

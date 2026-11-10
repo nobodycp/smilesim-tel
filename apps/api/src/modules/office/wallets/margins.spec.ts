@@ -28,7 +28,7 @@ function service() {
     sellPrice: { findMany: async () => [{ packageId: 'pk', ownerId: 'pos', price: 5000, renewalPrice: null }] },
     walletEntry: { findMany: async () => [{ id: 'e1', userId: 'pos', kind: 'activate', lineId: 'l1', packagePrice: 3800, ladder: null, createdAt: new Date('2026-11-01T00:00:00.000Z') }] },
   } as unknown as OfficeKernel['prismaClient'];
-  return new WalletsService(kernel);
+  return new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder);
 }
 
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: id === 'branch', grants: [], operatorId: id, impersonating: false });
@@ -68,7 +68,7 @@ describe('WalletsService.marginsFor', () => {
       { id: 'e2', userId: 'pos', kind: 'activate', lineId: 'l1', packagePrice: 3800, amount: -3800, ladder: null, createdAt: new Date('2026-11-02T00:00:00.000Z'), packageName: '150 جيجا', companyName: 'وي' },
       { id: 'r1', userId: 'pos', kind: 'disconnect', lineId: 'l1', packagePrice: 3800, amount: 1900, ladder: null, createdAt: new Date('2026-11-05T00:00:00.000Z'), packageName: '150 جيجا', companyName: 'وي' },
     ];
-    (wallets as unknown as { kernel: { prismaClient: { walletEntry: { findMany: () => Promise<unknown[]> } } } }).kernel.prismaClient.walletEntry.findMany = async () => rows;
+    (wallets as unknown as { uow: { prismaClient: { walletEntry: { findMany: () => Promise<unknown[]> } } } }).uow.prismaClient.walletEntry.findMany = async () => rows;
     const report = await wallets.profitReport(actor('agent', 'agent'));
     expect(report.packages).toEqual([{ packageName: '150 جيجا', companyName: 'وي', sales: 2, refunds: 1, profit: 450 }]);
     expect(report.totals).toEqual({ sales: 2, refunds: 1, profit: 450 });

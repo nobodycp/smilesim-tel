@@ -39,7 +39,7 @@ function setup() {
     write: async (_tx: unknown, ids: string[]) => { noticed.push(ids); return []; },
     publish: async () => undefined,
   };
-  return { service: new TasksService(kernel), task, notes, noticed };
+  return { service: new TasksService(kernel.uow, kernel.tree, kernel.actors, kernel.ledger), task, notes, noticed };
 }
 
 const actor = (id: string, layer: string, owner = false): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: owner, grants: [], operatorId: id, impersonating: false });
@@ -73,7 +73,7 @@ describe('task notes and statuses', () => {
     (task as { held: number }).held = 0;
     const owner = actor('owner', 'branch', true);
     const releases: unknown[] = [];
-    (service as unknown as { kernel: { release: unknown } }).kernel.release = async (...args: unknown[]) => { releases.push(args); };
+    (service as unknown as { ledger: { release: unknown } }).ledger.release = async (...args: unknown[]) => { releases.push(args); };
     await service.reject(owner, 't1', { reason: 'رقم خاطئ' });
     expect(task).toMatchObject({ status: 'cancelled', assigneeId: 'owner', resultNote: 'رقم خاطئ' });
     await expect(service.reject(owner, 't1', { reason: 'مرة ثانية' })).rejects.toBeInstanceOf(OfficeFailure);

@@ -1,6 +1,7 @@
+import { LayerRoles } from '../roles/layer-roles';
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { env, isTest } from '../../../config';
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { OfficeKernel } from '../kernel/office-kernel';
 import { catalog, companies, packageCode, packageName } from './office-catalog';
 import { AGOROT, normalizeActionModes, packageFlagsFromModes } from '../rules/office-rules';
 
@@ -10,35 +11,35 @@ import { AGOROT, normalizeActionModes, packageFlagsFromModes } from '../rules/of
  */
 @Injectable()
 export class CatalogSeed implements OnModuleInit {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork, private readonly layerRoles: LayerRoles) {}
 
   async onModuleInit(): Promise<void> {
     if (isTest() || !env('DATABASE_URL')) return;
     await this.ensureCatalog();
-    await this.kernel.ensureLayerRoles();
+    await this.layerRoles.ensureLayerRoles();
   }
 
   async ensureCatalog(): Promise<void> {
-    const users = await this.kernel.prisma.user.findMany({ select: { id: true } });
+    const users = await this.uow.prisma.user.findMany({ select: { id: true } });
     for (const user of users) {
-      await this.kernel.prisma.wallet.upsert({
+      await this.uow.prisma.wallet.upsert({
         where: { userId: user.id },
         update: {},
         create: { userId: user.id, balance: 0, ceiling: 0 },
       });
     }
     // Migrations insert companies on their own, so only providers say the catalog was seeded.
-    const seeded = await this.kernel.prisma.provider.count();
+    const seeded = await this.uow.prisma.provider.count();
     if (seeded > 0) return;
     for (const company of companies) {
-      await this.kernel.prisma.company.upsert({
+      await this.uow.prisma.company.upsert({
         where: { code: company.code },
         update: { name: company.name },
         create: { code: company.code, name: company.name },
       });
     }
     for (const provider of catalog) {
-      const savedProvider = await this.kernel.prisma.provider.upsert({
+      const savedProvider = await this.uow.prisma.provider.upsert({
         where: { code: provider.code },
         update: { name: provider.name },
         create: { code: provider.code, name: provider.name },
@@ -46,10 +47,10 @@ export class CatalogSeed implements OnModuleInit {
       // New packages copy provider defaults once; package rows stay independent after create.
       const flags = packageFlagsFromModes(normalizeActionModes(savedProvider.actionModes));
       for (const company of provider.companies) {
-        const savedCompany = await this.kernel.prisma.company.findUnique({ where: { code: company.code } });
+        const savedCompany = await this.uow.prisma.company.findUnique({ where: { code: company.code } });
         if (!savedCompany) continue;
         for (const item of company.packages) {
-          await this.kernel.prisma.package.upsert({
+          await this.uow.prisma.package.upsert({
             where: { code: packageCode(provider.code, company.code, item) },
             update: {},
             create: {

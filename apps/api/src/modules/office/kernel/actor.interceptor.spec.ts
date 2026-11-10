@@ -1,3 +1,4 @@
+import { KERNEL_PROVIDERS } from './kernel.providers';
 import 'reflect-metadata';
 import { Body, Controller, INestApplication, Post, UseFilters, UseInterceptors } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -42,7 +43,7 @@ describe('ActorInterceptor with ActivityInterceptor and a body pipe', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [ProbeController],
       providers: [
-        OfficeKernel,
+        ...KERNEL_PROVIDERS,
         { provide: AUTH_STORE, useValue: store },
         { provide: ActivityRecorder, useValue: { recordOffice: async (...args: unknown[]) => void recorded.push(args) } },
       ],

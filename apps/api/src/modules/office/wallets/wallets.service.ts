@@ -1,9 +1,12 @@
+import { PriceLadder } from '../terms/price-ladder';
+import { WalletLedger } from './wallet-ledger';
+import { AccountTree } from '../kernel/account-tree';
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { dayRange } from '../../shared/dates';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
-import { OfficeKernel } from '../kernel/office-kernel';
 import { parseInput } from '../../shared/input';
 import { feedPosition } from '../kernel/feed';
 import type { Actor } from '../kernel/types';
@@ -22,12 +25,12 @@ const PROFIT_REPORT_LIMIT = 50_000;
 /** Wallets and money reads: the wallets an account sees, funding and ceilings, the ledger, the finance report and provider operations. Branch reports are in ReportsService. */
 @Injectable()
 export class WalletsService {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly ladder: PriceLadder) {}
 
   async list(actor: Actor) {
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const rows = await this.kernel.prisma.wallet.findMany({ where: { userId: { in: [...visible] } } });
+    const rows = await this.uow.prisma.wallet.findMany({ where: { userId: { in: [...visible] } } });
     const byUser = new Map(rows.map((row) => [row.userId, row]));
     const byId = new Map(accounts.map((account) => [account.id, account]));
     return {
@@ -48,7 +51,7 @@ export class WalletsService {
 
   async fund(actor: Actor, loginName: string, body: unknown) {
     const { amount, note, reason } = parseInput(FundBody, body);
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target) fail(404, 'NOT_FOUND');
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
@@ -60,12 +63,12 @@ export class WalletsService {
     } else if (actor.layer !== 'branch' && target.parentId !== actor.id) {
       fail(403, 'FORBIDDEN');
     }
-    await this.kernel.runTx(async (tx) => {
-      await this.kernel.lockWallets(tx, [actor.id, target.id]);
-      if (!self) await this.kernel.move(tx, actor.id, -amount, actor.operatorId, 'fund', note, undefined, reason);
-      await this.kernel.move(tx, target.id, amount, actor.operatorId, self ? 'self_fund' : 'fund', note, undefined, reason);
+    await this.uow.runTx(async (tx) => {
+      await this.money.lockWallets(tx, [actor.id, target.id]);
+      if (!self) await this.money.move(tx, actor.id, -amount, actor.operatorId, 'fund', note, undefined, reason);
+      await this.money.move(tx, target.id, amount, actor.operatorId, self ? 'self_fund' : 'fund', note, undefined, reason);
       if (!self) {
-        this.kernel.queueNotices(tx, await this.kernel.notice.write(tx, [target.id], actor, {
+        this.uow.queueNotices(tx, await this.uow.notice.write(tx, [target.id], actor, {
           kind: 'fund.received',
           payload: { amount, senderName: actor.nickname, note },
         }));
@@ -82,17 +85,17 @@ export class WalletsService {
   async deduct(actor: Actor, loginName: string, body: unknown) {
     const { amount, note, reason } = parseInput(DeductBody, body);
     if (!note) fail(400, 'NOTE_REQUIRED');
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target) fail(404, 'NOT_FOUND');
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     if (!visible.has(target.id) || target.id === actor.id) fail(403, 'FORBIDDEN');
     if (actor.layer !== 'branch' && target.parentId !== actor.id) fail(403, 'FORBIDDEN');
-    await this.kernel.runTx(async (tx) => {
-      await this.kernel.lockWallets(tx, [actor.id, target.id]);
-      await this.kernel.move(tx, target.id, -amount, actor.operatorId, 'deduct', note, undefined, reason);
-      await this.kernel.move(tx, actor.id, amount, actor.operatorId, 'deduct_in', note, undefined, reason);
-      this.kernel.queueNotices(tx, await this.kernel.notice.write(tx, [target.id], actor, {
+    await this.uow.runTx(async (tx) => {
+      await this.money.lockWallets(tx, [actor.id, target.id]);
+      await this.money.move(tx, target.id, -amount, actor.operatorId, 'deduct', note, undefined, reason);
+      await this.money.move(tx, actor.id, amount, actor.operatorId, 'deduct_in', note, undefined, reason);
+      this.uow.queueNotices(tx, await this.uow.notice.write(tx, [target.id], actor, {
         kind: 'fund.deducted',
         payload: { amount, senderName: actor.nickname, note, reason },
       }));
@@ -102,10 +105,10 @@ export class WalletsService {
 
   async setCeiling(actor: Actor, loginName: string, body: unknown) {
     const { ceiling } = parseInput(CeilingBody, body);
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target || target.parentId !== actor.id) fail(403, 'FORBIDDEN');
-    await this.kernel.prisma.wallet.update({ where: { userId: target.id }, data: { ceiling } });
+    await this.uow.prisma.wallet.update({ where: { userId: target.id }, data: { ceiling } });
     return { ok: true };
   }
 
@@ -128,13 +131,13 @@ export class WalletsService {
       ...(Object.keys(createdAt).length ? { createdAt } : {}),
     };
     const [read, total] = await Promise.all([
-      this.kernel.prisma.walletEntry.findMany({
+      this.uow.prisma.walletEntry.findMany({
         where: { ...where, AND: afterFeed(feedPosition(query.cursor)) },
         include: { actor: true, user: true },
         orderBy: [...NEWEST_FIRST],
         take: FEED_PAGE + 1,
       }),
-      this.kernel.prisma.walletEntry.count({ where }),
+      this.uow.prisma.walletEntry.count({ where }),
     ]);
     const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
     return {
@@ -164,7 +167,7 @@ export class WalletsService {
    * entry), newest first. Shared by the provider-operations report and the provider accounts (roadmap N7).
    */
   async pricedOperations(filter: { kind?: string; msisdn?: string } = {}) {
-    const rows = await this.kernel.prisma.walletEntry.findMany({
+    const rows = await this.uow.prisma.walletEntry.findMany({
       where: {
         kind: { in: filter.kind ? [filter.kind] : PROVIDER_OPERATION_KINDS },
         ...(filter.msisdn ? { msisdn: { contains: filter.msisdn } } : {}),
@@ -174,12 +177,12 @@ export class WalletsService {
     const lineIds = [...new Set(rows.flatMap((row) => (row.lineId ? [row.lineId] : [])))];
     const [lines, packages] = await Promise.all([
       lineIds.length
-        ? this.kernel.prisma.line.findMany({
+        ? this.uow.prisma.line.findMany({
             where: { id: { in: lineIds } },
             include: { package: { include: { provider: true, company: true } } },
           })
         : [],
-      this.kernel.prisma.package.findMany({ include: { provider: true, company: true } }),
+      this.uow.prisma.package.findMany({ include: { provider: true, company: true } }),
     ]);
     const lineById = new Map(lines.map((line) => [line.id, line]));
     return rows.map((row) => {
@@ -206,7 +209,7 @@ export class WalletsService {
     const { from, to } = dayRange(query.from, query.to);
     const [resolved, providers] = await Promise.all([
       this.pricedOperations({ kind: kind || undefined, msisdn: needle || undefined }),
-      this.kernel.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
+      this.uow.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
     ]);
     const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
     // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
@@ -269,7 +272,7 @@ export class WalletsService {
   /** The ledger's filter: the entries of the visible accounts (every entry for the branch), narrowed by the query. */
   /** Public for the reports, which read the same entries. */
   async financeWhere(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string }): Promise<Prisma.WalletEntryWhereInput> {
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
     const { from, to } = dayRange(query.from, query.to);
     const createdAt = {
@@ -309,15 +312,15 @@ export class WalletsService {
     const missing = rows.filter((row) => !row.ladder);
     for (const row of rows) if (row.ladder) ladders.set(row.id, row.ladder as Ladder);
     if (!missing.length) return ladders;
-    const accounts = await this.kernel.accounts();
-    const lines = await this.kernel.prisma.line.findMany({ where: { id: { in: [...new Set(missing.map((row) => row.lineId as string))] } }, select: { id: true, terms: true } });
+    const accounts = await this.tree.accounts();
+    const lines = await this.uow.prisma.line.findMany({ where: { id: { in: [...new Set(missing.map((row) => row.lineId as string))] } }, select: { id: true, terms: true } });
     const codeOf = new Map(lines.map((line) => [line.id, (line.terms as { packageCode?: string } | null)?.packageCode ?? '']));
-    const paths = new Map(missing.map((row) => [row.userId, this.kernel.pathOf(row.userId, accounts)]));
+    const paths = new Map(missing.map((row) => [row.userId, this.tree.pathOf(row.userId, accounts)]));
     const codes = [...new Set([...codeOf.values()].filter(Boolean))];
     const ids = [...new Set([...paths.values()].flat().map((node) => node.id))];
     const [ladderRows, subscribers] = await Promise.all([
-      this.kernel.ladderRows(codes, ids, this.kernel.prisma),
-      this.kernel.prisma.package.findMany({ where: { code: { in: codes } }, select: { code: true, subscriberPrice: true, renewalSubscriberPrice: true } }),
+      this.ladder.ladderRows(codes, ids, this.uow.prisma),
+      this.uow.prisma.package.findMany({ where: { code: { in: codes } }, select: { code: true, subscriberPrice: true, renewalSubscriberPrice: true } }),
     ]);
     for (const row of missing) {
       const pkg = ladderRows.packages.find((item) => item.code === codeOf.get(row.lineId as string));
@@ -352,7 +355,7 @@ export class WalletsService {
     const oldRefunds = refunds.filter((row) => !row.ladder);
     for (const row of refunds) if (row.ladder) ladders.set(row.id, row.ladder as Ladder);
     if (oldRefunds.length) {
-      const earlier = await this.kernel.prisma.walletEntry.findMany({
+      const earlier = await this.uow.prisma.walletEntry.findMany({
         where: { lineId: { in: [...new Set(oldRefunds.map((row) => row.lineId as string))] }, kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } },
         select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, ladder: true, createdAt: true },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -386,7 +389,7 @@ export class WalletsService {
    * package sold in its chain, newest package first, with the totals. Same filters as the ledger (`from`, `to`, `q`).
    */
   async profitReport(actor: Actor, query: { from?: string; to?: string; q?: string } = {}) {
-    const rows = await this.kernel.prisma.walletEntry.findMany({
+    const rows = await this.uow.prisma.walletEntry.findMany({
       where: {
         AND: [
           await this.financeWhere(actor, query),
@@ -423,8 +426,8 @@ export class WalletsService {
   /** The signed-in account's own wallet over the last `days` (7, 30 or 90): the finance page's cards and chart. */
   async financeSummary(actor: Actor, now = new Date(), days = SUMMARY_DAYS) {
     const [wallet, entries] = await Promise.all([
-      this.kernel.prisma.wallet.findUnique({ where: { userId: actor.id } }),
-      this.kernel.prisma.walletEntry.findMany({
+      this.uow.prisma.wallet.findUnique({ where: { userId: actor.id } }),
+      this.uow.prisma.walletEntry.findMany({
         where: { userId: actor.id, amount: { not: 0 }, createdAt: { gte: windowStart(now, days) } },
         select: { createdAt: true, amount: true, balanceAfter: true, kind: true },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -432,7 +435,7 @@ export class WalletsService {
     ]);
     const balance = wallet?.balance ?? 0;
     // What this account earned on the sales under it (or its own) over the same window.
-    const sold = await this.kernel.prisma.walletEntry.findMany({
+    const sold = await this.uow.prisma.walletEntry.findMany({
       where: {
         ...(await this.financeWhere(actor, {})),
         OR: [{ kind: { in: Object.keys(SALE_KINDS) }, amount: { lt: 0 } }, { kind: { in: [...REFUND_KINDS] }, amount: { gt: 0 } }],
@@ -448,7 +451,7 @@ export class WalletsService {
 
   /** The ledger with the page's filters as a CSV, newest first, at most 10,000 rows. */
   async financeCsv(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
-    const rows = await this.kernel.prisma.walletEntry.findMany({
+    const rows = await this.uow.prisma.walletEntry.findMany({
       where: await this.financeWhere(actor, query),
       include: { user: true, actor: true },
       orderBy: [...NEWEST_FIRST],
@@ -474,20 +477,20 @@ export class WalletsService {
     const position = feedPosition(query.cursor);
     const where = await this.financeWhere(actor, query);
     const [rows, total] = await Promise.all([
-      this.kernel.prisma.walletEntry.findMany({
+      this.uow.prisma.walletEntry.findMany({
         // The page cursor joins the ledger filter instead of replacing its own conditions.
         where: position ? { AND: [where, { OR: [{ createdAt: { lt: position.at } }, { createdAt: position.at, id: { lt: position.id } }] }] } : where,
         include: { user: true, actor: true },
         orderBy: [...NEWEST_FIRST],
         take: FEED_PAGE + 1,
       }),
-      this.kernel.prisma.walletEntry.count({ where }),
+      this.uow.prisma.walletEntry.count({ where }),
     ]);
     const page = rows.slice(0, FEED_PAGE);
     const last = page[page.length - 1];
     const ladders = await this.laddersFor(page);
     const margins = await this.marginsFor(actor, page);
-    const accounts = actor.layer === 'branch' ? await this.kernel.accounts() : [];
+    const accounts = actor.layer === 'branch' ? await this.tree.accounts() : [];
     const byId = new Map(accounts.map((account) => [account.id, account]));
     return {
       total,

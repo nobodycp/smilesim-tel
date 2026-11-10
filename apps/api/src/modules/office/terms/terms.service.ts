@@ -1,8 +1,10 @@
-import { holds, requireGrant } from '../policy';
+import { PriceLadder } from './price-ladder';
+import { AccountTree } from '../kernel/account-tree';
+import { UnitOfWork } from '../kernel/unit-of-work';
+import { holds, requireGrant, assertBranch } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
-import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import type { Prisma } from '../../../generated/prisma/client';
 import type { Account } from '../kernel/types';
@@ -73,16 +75,16 @@ function summarize(rows: UserPackageRow[]) {
 /** Terms an account sets for the accounts below it: which packages they see and at what price, which operations they may run, the branch's custom prices, and repricing the renewable lines of a package. */
 @Injectable()
 export class TermsService {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder) {}
 
   /** Every sellable package, grouped by company, with what `loginName` sees and pays. */
   async userPackages(actor: Actor, loginName: string) {
     const { path, target, accounts } = await this.termTarget(actor, loginName);
     const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
     const [packages, terms, sells] = await Promise.all([
-      this.kernel.prisma.package.findMany({ where: { enabled: true, forSale: true }, include: { company: true }, orderBy: [{ company: { name: 'asc' } }, { name: 'asc' }] }),
-      this.kernel.prisma.userPackage.findMany({ where: { userId: { in: path.map((node) => node.id) } } }),
-      this.kernel.prisma.sellPrice.findMany({ where: { ownerId: { in: path.map((node) => node.id) } } }),
+      this.uow.prisma.package.findMany({ where: { enabled: true, forSale: true }, include: { company: true }, orderBy: [{ company: { name: 'asc' } }, { name: 'asc' }] }),
+      this.uow.prisma.userPackage.findMany({ where: { userId: { in: path.map((node) => node.id) } } }),
+      this.uow.prisma.sellPrice.findMany({ where: { ownerId: { in: path.map((node) => node.id) } } }),
     ]);
     const rows = packages.map((pkg) => ({
       pkg,
@@ -101,11 +103,11 @@ export class TermsService {
   async setUserPackage(actor: Actor, loginName: string, code: string, body: unknown) {
     const patch = termPatch(parseInput(UserPackageBody, body));
     const { path, target, accounts } = await this.termTarget(actor, loginName);
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    const { terms, sells } = await this.kernel.termsFor(pkg.id);
+    const { terms, sells } = await this.ladder.termsFor(pkg.id);
     const lineCountsByPackage = await this.renewableLinesByPackage(target.id, target.layer, accounts);
-    return this.writeUserPackage(actor, path, pkg, patch, terms, sells, this.kernel.prisma, lineCountsByPackage);
+    return this.writeUserPackage(actor, path, pkg, patch, terms, sells, this.uow.prisma, lineCountsByPackage);
   }
 
   /** Hide or show several packages at once. Packages hidden higher up are left alone. */
@@ -119,14 +121,14 @@ export class TermsService {
     // The path's rows for every package on sale, loaded once: the picked ones are written, all of
     // them feed the summary. Every write sits in one transaction so a refusal midway applies nothing.
     const [packages, terms, sells] = await Promise.all([
-      this.kernel.prisma.package.findMany({ where: { enabled: true, forSale: true } }),
-      this.kernel.prisma.userPackage.findMany({ where: { userId: { in: pathIds } }, select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true } }),
-      this.kernel.prisma.sellPrice.findMany({ where: { ownerId: { in: pathIds } }, select: { packageId: true, ownerId: true, price: true, renewalPrice: true } }),
+      this.uow.prisma.package.findMany({ where: { enabled: true, forSale: true } }),
+      this.uow.prisma.userPackage.findMany({ where: { userId: { in: pathIds } }, select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true } }),
+      this.uow.prisma.sellPrice.findMany({ where: { ownerId: { in: pathIds } }, select: { packageId: true, ownerId: true, price: true, renewalPrice: true } }),
     ]);
     const termsOf = (packageId: string) => terms.filter((row) => row.packageId === packageId);
     const sellsOf = (packageId: string) => sells.filter((row) => row.packageId === packageId);
     const written = new Map<string, TermRow[]>();
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       for (const pkg of packages) {
         if (!codes.has(pkg.code)) continue;
         const own = termsOf(pkg.id);
@@ -148,16 +150,16 @@ export class TermsService {
     const { denied } = parseInput(UserOpsBody, body);
     const { target, path } = await this.termTarget(actor, loginName);
     const deniedOps = serializeOps(denied);
-    await this.kernel.prisma.user.update({ where: { id: target.id }, data: { deniedOps } });
+    await this.uow.prisma.user.update({ where: { id: target.id }, data: { deniedOps } });
     return { denied: parseOps(deniedOps), deniedAbove: deniedAbove(path) };
   }
 
   /** Users whose price for `code` differs from what they would pay by default. Branch only. */
   async customPrices(actor: Actor, code: string): Promise<CustomPriceRow[]> {
     assertBranch(actor);
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    const [accounts, { terms, sells }] = await Promise.all([this.kernel.accounts(), this.kernel.termsFor(pkg.id)]);
+    const [accounts, { terms, sells }] = await Promise.all([this.tree.accounts(), this.ladder.termsFor(pkg.id)]);
     return terms
       .filter((term) => term.price !== null || term.renewalPrice !== null)
       .map((term) => this.customPriceRow(term.userId, pkg, accounts, terms, sells))
@@ -169,9 +171,9 @@ export class TermsService {
     const patch = termPatch(parseInput(CustomPriceBody, body));
     const { target, accounts, path } = await this.termTarget(actor, loginName);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    const { terms, sells } = await this.kernel.termsFor(pkg.id);
+    const { terms, sells } = await this.ladder.termsFor(pkg.id);
     await this.writeUserPackage(actor, path, pkg, patch, terms, sells);
     const row = this.customPriceRow(target.id, pkg, accounts, terms, sells);
     if (!row) fail(404, 'NOT_FOUND');
@@ -181,9 +183,9 @@ export class TermsService {
   async clearCustomPrice(actor: Actor, code: string, loginName: string) {
     const { path } = await this.termTarget(actor, loginName);
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    const { terms, sells } = await this.kernel.termsFor(pkg.id);
+    const { terms, sells } = await this.ladder.termsFor(pkg.id);
     await this.writeUserPackage(actor, path, pkg, { price: null, renewalPrice: null }, terms, sells);
     return { ok: true as const };
   }
@@ -193,15 +195,15 @@ export class TermsService {
    * what a new activation would pay on the scope account (`null` for the whole system: it differs per number).
    */
   async linePrices(actor: Actor, code: string, query: { scope?: unknown }): Promise<{ current: number | null; groups: PriceGroup[] }> {
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const scope = await this.lineScope(actor, accounts, query.scope);
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    const lines = await this.kernel.prisma.line.findMany({ where: this.scopeLineWhere(scope, accounts, pkg.id), select: { terms: true } });
+    const lines = await this.uow.prisma.line.findMany({ where: this.scopeLineWhere(scope, accounts, pkg.id), select: { terms: true } });
     const groups = groupLinePrices(lines.map((line) => ({ terms: lineTermsOf(line.terms, pkg) })));
     if (scope.kind === 'all') return { current: null, groups };
-    const { terms, sells } = await this.kernel.termsFor(pkg.id);
-    return { current: buyPriceFor(this.kernel.pathOf(scope.id, accounts), terms, sells, pkg, 'renewal'), groups };
+    const { terms, sells } = await this.ladder.termsFor(pkg.id);
+    return { current: buyPriceFor(this.tree.pathOf(scope.id, accounts), terms, sells, pkg, 'renewal'), groups };
   }
 
   /**
@@ -213,11 +215,11 @@ export class TermsService {
     const input = parseInput(LinePricesBody, body);
     // A group that keeps its price changes nothing.
     const changes = input.groups.filter((group) => group.to !== group.from);
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const scope = await this.lineScope(actor, accounts, input.scope);
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code }, select: { id: true } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code }, select: { id: true } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    const lines = await this.kernel.runTx(async (tx) => {
+    const lines = await this.uow.runTx(async (tx) => {
       const found = await tx.line.findMany({
         where: this.scopeLineWhere(scope, accounts, pkg.id),
         include: { package: { include: { company: true, provider: true } } },
@@ -238,12 +240,12 @@ export class TermsService {
 
   /** Resolves the account whose terms are edited and checks the actor may edit them. */
   private async termTarget(actor: Actor, loginName: string) {
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target) fail(404, 'NOT_FOUND');
     if (target.layer === 'branch') fail(400, 'INVALID');
     if (!this.canEditTerms(actor, target)) fail(403, 'FORBIDDEN');
-    return { actor, target, accounts, path: this.kernel.pathOf(target.id, accounts) };
+    return { actor, target, accounts, path: this.tree.pathOf(target.id, accounts) };
   }
 
   /**
@@ -258,7 +260,7 @@ export class TermsService {
     patch: TermPatch,
     terms: TermRow[],
     sells: SellRow[],
-    db: Prisma.TransactionClient | PrismaClient = this.kernel.prisma,
+    db: Prisma.TransactionClient | PrismaClient = this.uow.prisma,
     lineCountsByPackage: Map<string, number> = new Map(),
   ): Promise<UserPackageRow> {
     const userId = path[0].id;
@@ -294,7 +296,7 @@ export class TermsService {
   private async renewableLinesByPackage(targetId: string, targetLayer: string, accounts: Account[]): Promise<Map<string, number>> {
     const posIds = [...visibleAccountIds(targetId, targetLayer, accounts)];
     if (posIds.length === 0) return new Map();
-    const groups = await this.kernel.prisma.line.groupBy({
+    const groups = await this.uow.prisma.line.groupBy({
       by: ['packageId'],
       where: { status: { in: [...RENEWABLE_STATUSES] }, posId: { in: posIds } },
       _count: { _all: true },
@@ -330,7 +332,7 @@ export class TermsService {
   }
 
   private customPriceRow(userId: string, pkg: LayerPrices, accounts: Account[], terms: TermRow[], sells: SellRow[]): CustomPriceRow | null {
-    const path = this.kernel.pathOf(userId, accounts);
+    const path = this.tree.pathOf(userId, accounts);
     if (path.length === 0) return null;
     const account = accounts.find((item) => item.id === userId) as Account;
     const own = terms.find((term) => term.userId === userId);
@@ -397,7 +399,7 @@ export class TermsService {
     if (plans.length === 0) return 0;
     const paths = new Map<string, PathNode[]>();
     const pathOf = (posId: string) => {
-      const known = paths.get(posId) ?? this.kernel.pathOf(posId, accounts);
+      const known = paths.get(posId) ?? this.tree.pathOf(posId, accounts);
       paths.set(posId, known);
       return known;
     };
@@ -421,7 +423,7 @@ export class TermsService {
     const codes = new Set(plans.map(({ line }) => line.package.code));
     for (const targets of targetsOf.values()) for (const target of targets) codes.add(target.code);
     const pathIds = [...new Set(plans.flatMap(({ line }) => pathOf(line.posId).map((node) => node.id)))];
-    const rows = await this.kernel.ladderRows([...codes], pathIds, tx);
+    const rows = await this.ladder.ladderRows([...codes], pathIds, tx);
 
     const fresh = new Map<string, LineTerms>();
     const floors = new Map<string, number>();
@@ -433,7 +435,7 @@ export class TermsService {
       const key = `${line.package.id}:${line.posId}`;
       if (to === 'current') {
         if (!line.package.company || !line.package.provider) fail(400, 'INVALID');
-        const ladder = fresh.get(key) ?? this.kernel.stampWith(captureTerms(packageTermsOf(line.package), targetsOf.get(line.package.id) ?? []), path, rows);
+        const ladder = fresh.get(key) ?? this.ladder.stampWith(captureTerms(packageTermsOf(line.package), targetsOf.get(line.package.id) ?? []), path, rows);
         fresh.set(key, ladder);
         changes.push({ id: line.id, terms: repriceLine(terms, { to, fresh: ladder }) });
         continue;

@@ -1,3 +1,4 @@
+import { AUTH_STORE } from '../../auth/auth.store';
 import 'reflect-metadata';
 import { API_PROVIDERS } from '../../shared/api-providers';
 import type { INestApplication } from '@nestjs/common';
@@ -897,6 +898,7 @@ describe('the transfer routes under /office', () => {
         ...OFFICE_PROVIDERS.filter((provider) => provider !== OfficeKernel),
         ...API_PROVIDERS,
         { provide: OfficeKernel, useValue: kernel },
+        { provide: AUTH_STORE, useValue: kernel.auth },
         {
           provide: ActivityRecorder,
           useValue: {

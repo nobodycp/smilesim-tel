@@ -1,10 +1,14 @@
+import { WalletLedger } from '../wallets/wallet-ledger';
+import { ActorResolver } from '../kernel/actor-resolver';
+import { AccountTree } from '../kernel/account-tree';
+import { UnitOfWork } from '../kernel/unit-of-work';
+import { assertBranch } from '../policy';
 import { taskEvents } from './task-events';
 import { lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
-import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
 import { feedPosition } from '../kernel/feed';
 import type { Action, Actor } from '../kernel/types';
 import type { WrittenNotice } from '../notices/notice.service';
@@ -22,7 +26,7 @@ import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
  */
 @Injectable()
 export class TasksService {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly actors: ActorResolver, private readonly ledger: WalletLedger) {}
 
   async list(actor: Actor, query: {
       cursor?: string;
@@ -34,7 +38,7 @@ export class TasksService {
       provider?: string;
     } = {},) {
     const handler = canHandleTasks(actor);
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const status = taskStatusOf(query.status);
     const action = typeof query.action === 'string' ? query.action.trim() : '';
     const packageCode = typeof query.packageCode === 'string' ? query.packageCode.trim() : '';
@@ -53,7 +57,7 @@ export class TasksService {
       ...(matchedPackages ? { packageId: { in: matchedPackages.map((row) => row.id) } } : {}),
     };
     const [read, total] = await Promise.all([
-      this.kernel.prisma.officeTask.findMany({
+      this.uow.prisma.officeTask.findMany({
         where: { ...where, AND: afterFeed(feedPosition(query.cursor)) },
         include: {
           submitter: true,
@@ -64,11 +68,11 @@ export class TasksService {
         orderBy: [...NEWEST_FIRST],
         take: TASKS_PAGE + 1,
       }),
-      this.kernel.prisma.officeTask.count({ where }),
+      this.uow.prisma.officeTask.count({ where }),
     ]);
     const { page: rows, nextCursor } = mergeFeed([read], TASKS_PAGE);
     const byId = new Map(accounts.map((account) => [account.id, account]));
-    const packages = await this.kernel.prisma.package.findMany({ include: { company: true, provider: true } });
+    const packages = await this.uow.prisma.package.findMany({ include: { company: true, provider: true } });
     const byPackage = new Map(packages.map((row) => [row.id, row]));
     return {
       tasks: rows.map((row) => {
@@ -104,7 +108,7 @@ export class TasksService {
   /** The packages a list filter names, or null when it names none. */
   private async packagesMatching(filter: { packageCode: string; company: string; provider: string }) {
     if (!filter.packageCode && !filter.company && !filter.provider) return null;
-    return this.kernel.prisma.package.findMany({
+    return this.uow.prisma.package.findMany({
       where: {
         ...(filter.packageCode ? { code: filter.packageCode } : {}),
         ...(filter.company ? { company: { name: filter.company } } : {}),
@@ -116,7 +120,7 @@ export class TasksService {
 
   async detail(actor: Actor, id: string) {
     const handler = canHandleTasks(actor);
-    const row = await this.kernel.prisma.officeTask.findUnique({
+    const row = await this.uow.prisma.officeTask.findUnique({
       where: { id },
       include: {
         submitter: true,
@@ -126,12 +130,12 @@ export class TasksService {
       },
     });
     if (!row) fail(404, 'NOT_FOUND');
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     if (!taskReaders(row, accounts).has(actor.id)) fail(403, 'FORBIDDEN');
     const byId = new Map(accounts.map((account) => [account.id, account]));
     const pkg =
       row.line?.package ??
-      (await this.kernel.prisma.package.findUnique({
+      (await this.uow.prisma.package.findUnique({
         where: { id: row.packageId },
         include: { company: true, provider: true },
       }));
@@ -175,25 +179,25 @@ export class TasksService {
     // An internal note is written and read by the branch only (spec 2026-11-09, 2).
     const { text, internal } = parseInput(TaskNoteBody, body);
     if (internal && actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const current = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
+    const current = await this.uow.prisma.officeTask.findUnique({ where: { id } });
     if (!current) fail(404, 'NOT_FOUND');
-    if (!taskReaders(current, await this.kernel.accounts()).has(actor.id)) fail(403, 'FORBIDDEN');
+    if (!taskReaders(current, await this.tree.accounts()).has(actor.id)) fail(403, 'FORBIDDEN');
     if (current.status !== 'pending' && current.status !== 'working') fail(400, 'INVALID');
-    const written = await this.kernel.runTx(async (tx) => {
+    const written = await this.uow.runTx(async (tx) => {
       await tx.officeTaskNote.create({ data: { taskId: id, authorId: actor.id, body: text, internal } });
       return this.taskNotice(tx, 'note', current, actor, { authorName: actor.nickname, excerpt: excerpt(text) }, internal);
     });
-    await this.kernel.publishQuietly(written);
+    await this.uow.publishQuietly(written);
     return { ok: true };
   }
 
   async take(actor: Actor, id: string) {
     assertBranch(actor);
     if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
-    const current = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
+    const current = await this.uow.prisma.officeTask.findUnique({ where: { id } });
     // Taking is optional now (spec 2026-11-09, 2): it names who handles the open task.
     if (!current || current.status !== 'working' || current.assigneeId) fail(400, 'INVALID');
-    const written = await this.kernel.runTx(async (tx) => {
+    const written = await this.uow.runTx(async (tx) => {
       const updated = await tx.officeTask.updateMany({
         where: { id, status: 'working', assigneeId: null },
         data: { assigneeId: actor.id, log: this.noteLog(current.log, `أخذها ${actor.nickname}`) },
@@ -201,16 +205,16 @@ export class TasksService {
       if (updated.count !== 1) fail(400, 'INVALID');
       return this.taskNotice(tx, 'taken', { ...current, assigneeId: actor.id }, actor, { handlerName: actor.nickname });
     });
-    await this.kernel.publishQuietly(written);
+    await this.uow.publishQuietly(written);
     return { ok: true };
   }
 
   async release(actor: Actor, id: string) {
     assertBranch(actor);
     if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
-    const current = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
+    const current = await this.uow.prisma.officeTask.findUnique({ where: { id } });
     if (!current || current.status !== 'working' || current.assigneeId !== actor.id) fail(400, 'INVALID');
-    const written = await this.kernel.runTx(async (tx) => {
+    const written = await this.uow.runTx(async (tx) => {
       const updated = await tx.officeTask.updateMany({
         where: { id, status: 'working', assigneeId: actor.id },
         data: { assigneeId: null, log: this.noteLog(current.log, `أرجعها ${actor.nickname}`) },
@@ -218,7 +222,7 @@ export class TasksService {
       if (updated.count !== 1) fail(400, 'INVALID');
       return this.taskNotice(tx, 'released', { ...current, assigneeId: null }, actor);
     });
-    await this.kernel.publishQuietly(written);
+    await this.uow.publishQuietly(written);
     return { ok: true };
   }
 
@@ -226,34 +230,34 @@ export class TasksService {
     assertBranch(actor);
     if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
     const { reason } = parseInput(TaskRejectBody, body);
-    const task = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
+    const task = await this.uow.prisma.officeTask.findUnique({ where: { id } });
     if (!task || task.status !== 'working') fail(400, 'INVALID');
-    const written = await this.kernel.runTx(async (tx) => {
+    const written = await this.uow.runTx(async (tx) => {
       const updated = await tx.officeTask.updateMany({
         where: { id, status: 'working' },
         data: { status: 'cancelled', resultNote: reason, assigneeId: actor.id },
       });
       if (updated.count !== 1) fail(400, 'INVALID');
-      await this.kernel.release(tx, task.posId, task.held ?? 0, actor.operatorId, reason);
+      await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, reason);
       return this.taskNotice(tx, 'rejected', task, actor, { reason, handlerName: actor.nickname });
     });
-    await this.kernel.publishQuietly(written);
+    await this.uow.publishQuietly(written);
     return { ok: true };
   }
 
   async cancel(actor: Actor, id: string) {
-    const task = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
+    const task = await this.uow.prisma.officeTask.findUnique({ where: { id } });
     if (!task || task.submitterId !== actor.id || (task.status !== 'pending' && task.status !== 'working')) fail(400, 'INVALID');
-    const written = await this.kernel.runTx(async (tx) => {
+    const written = await this.uow.runTx(async (tx) => {
       const updated = await tx.officeTask.updateMany({
         where: { id, submitterId: actor.id, status: { in: ['pending', 'working'] } },
         data: { status: 'cancelled', resultNote: null, assigneeId: null },
       });
       if (updated.count !== 1) fail(400, 'INVALID');
-      await this.kernel.release(tx, task.posId, task.held ?? 0, actor.operatorId, '');
+      await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, '');
       return this.taskNotice(tx, 'cancelled', task, actor);
     });
-    await this.kernel.publishQuietly(written);
+    await this.uow.publishQuietly(written);
     return { ok: true };
   }
 
@@ -273,7 +277,7 @@ export class TasksService {
     /** The price of what the task sells, fixed now so completion charges and records the same number (rule 1.5). */
     unitPrice?: number;
   }) {
-    const { task, written } = await this.kernel.runTx(async (tx) => {
+    const { task, written } = await this.uow.runTx(async (tx) => {
       // One open task per number and operation (rule 2.3). The line's row serialises two requests for it.
       if (input.lineId && input.action !== 'addon') {
         await lockLine(tx, input.lineId);
@@ -283,7 +287,7 @@ export class TasksService {
       // A task that will charge holds its price first (roadmap N6): refused before anything is written when the
       // wallet cannot cover it, released when the task closes.
       const held = input.posDelta < 0
-        ? await this.kernel.hold(tx, input.posId, -input.posDelta, input.actor.operatorId, input.note, input.msisdn ? { msisdn: input.msisdn, lineId: input.lineId ?? '', companyName: '', packageName: '', packagePrice: -input.posDelta } : undefined)
+        ? await this.ledger.hold(tx, input.posId, -input.posDelta, input.actor.operatorId, input.note, input.msisdn ? { msisdn: input.msisdn, lineId: input.lineId ?? '', companyName: '', packageName: '', packagePrice: -input.posDelta } : undefined)
         : 0;
       const created = await tx.officeTask.create({
         data: {
@@ -312,7 +316,7 @@ export class TasksService {
       });
       return { task: created, written: notices };
     });
-    await this.kernel.publishQuietly(written);
+    await this.uow.publishQuietly(written);
     return task;
   }
 
@@ -324,7 +328,7 @@ export class TasksService {
     });
     const ids: string[] = [];
     for (const user of users) {
-      if (user.isBranchOwner || (await this.kernel.grantsFor(user, db)).includes('tasks')) ids.push(user.id);
+      if (user.isBranchOwner || (await this.actors.grantsFor(user, db)).includes('tasks')) ids.push(user.id);
     }
     return ids;
   }
@@ -340,11 +344,11 @@ export class TasksService {
     const handlers = await this.handlerIds(tx);
     let audience = taskAudience(event, task, handlers, { id: actor.id, handler: canHandleTasks(actor) });
     if (branchOnly) {
-      const branch = new Set((await this.kernel.accounts(tx)).filter((account) => account.layer === 'branch').map((account) => account.id));
+      const branch = new Set((await this.tree.accounts(tx)).filter((account) => account.layer === 'branch').map((account) => account.id));
       audience = audience.filter((id) => branch.has(id));
     }
     const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, ...extra };
-    return this.kernel.notice.write(tx, audience, actor, { kind: `task.${event}`, payload });
+    return this.uow.notice.write(tx, audience, actor, { kind: `task.${event}`, payload });
   }
 
   noteLog(current: string, line: string) {

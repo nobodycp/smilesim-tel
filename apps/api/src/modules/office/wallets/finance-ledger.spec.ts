@@ -34,7 +34,7 @@ function service(seen: { where?: Record<string, unknown> }) {
       count: async () => entries.length,
     },
   } as unknown as OfficeKernel['prismaClient'];
-  return new WalletsService(kernel);
+  return new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder);
 }
 
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: id === 'branch', grants: [], operatorId: id, impersonating: false });

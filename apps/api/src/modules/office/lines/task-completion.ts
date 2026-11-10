@@ -1,10 +1,12 @@
+import { WalletLedger } from '../wallets/wallet-ledger';
+import { UnitOfWork } from '../kernel/unit-of-work';
+import { assertBranch } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { z } from 'zod';
 import type { OfficeTask, Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import { lineTermsOf } from '../kernel/line-terms';
-import { assertBranch, OfficeKernel } from '../kernel/office-kernel';
 import { saleOf } from '../kernel/sale';
 import type { Action, Actor, Sale } from '../kernel/types';
 import { activationProviderCost, captureTerms, esimPriceOf, periodEnd, providerBranchCost, renewOnto, renewStay, simRefusal, simRulesOf, switchOnto, windowMonthsOf } from '../rules/office-rules';
@@ -40,7 +42,8 @@ type Applied = { sale?: Sale; posted?: boolean; amount?: number };
 @Injectable()
 export class TaskCompletion {
   constructor(
-    private readonly kernel: OfficeKernel,
+    private readonly uow: UnitOfWork,
+    private readonly ledger: WalletLedger,
     private readonly tasks: TasksService,
     private readonly pricing: LinePricing,
   ) {}
@@ -67,24 +70,24 @@ export class TaskCompletion {
     if (!canHandleTasks(actor)) fail(403, 'FORBIDDEN');
     const input = parseInput(CompleteTaskBody, body);
     const { note } = input;
-    const task = await this.kernel.prisma.officeTask.findUnique({ where: { id } });
+    const task = await this.uow.prisma.officeTask.findUnique({ where: { id } });
     // Any branch account that handles tasks may finish an open one (spec 2026-11-09, 2); the claim below makes sure
     // only one of two at the same moment does.
     if (!task || task.status !== 'working') fail(400, 'INVALID');
     const { handed, handedQr } = await this.handedBack(task, input);
-    const written = await this.kernel.runTx(async (tx) => {
+    const written = await this.uow.runTx(async (tx) => {
       // Claim the task first: a second handler finishing it at the same moment waits on this row, then finds it done.
       const claimed = await tx.officeTask.updateMany({ where: { id, status: 'working' }, data: { status: 'done', assigneeId: actor.id } });
       if (claimed.count !== 1) fail(400, 'INVALID');
       // The line before any wallet (rule 1.4), and only if it is still where the task expects it.
       const line = task.lineId ? await lockedTaskLine(tx, task.action as Action, task.lineId) : null;
       // The hold made when the task opened gives way to the charge itself (roadmap N6), before any money moves.
-      await this.kernel.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
+      await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
       const job: Completion = { tx, task, actor, note, line, handed, handedQr };
       const applied = await this.handlers[task.action as Action](job);
       const sale = applied.sale ?? (await this.plainSale(job));
       const posted = (await this.charge(job, sale)) || applied.posted === true;
-      if (!posted && sale) await this.kernel.recordOp(tx, task.posId, actor.operatorId, task.action, sale);
+      if (!posted && sale) await this.ledger.recordOp(tx, task.posId, actor.operatorId, task.action, sale);
       await tx.officeTask.update({
         where: { id },
         data: {
@@ -100,7 +103,7 @@ export class TaskCompletion {
         handlerName: actor.nickname,
       });
     });
-    await this.kernel.publishQuietly(written);
+    await this.uow.publishQuietly(written);
     return { ok: true };
   }
 
@@ -112,12 +115,12 @@ export class TaskCompletion {
     if (task.action === 'esim' && (!givenIccid || !givenQr)) fail(400, 'INVALID');
     if (task.action === 'rename') {
       if (!MSISDN.test(givenMsisdn)) fail(400, 'INVALID');
-      const taken = await this.kernel.prisma.line.findUnique({ where: { msisdn: givenMsisdn } });
+      const taken = await this.uow.prisma.line.findUnique({ where: { msisdn: givenMsisdn } });
       if (taken && taken.id !== task.lineId) fail(409, 'NUMBER_TAKEN');
       handed.msisdn = givenMsisdn;
     }
     if (givenIccid && (task.action === 'esim' || (task.esim && (task.action === 'activate' || task.action === 'sim')))) {
-      const taskPkg = await this.kernel.prisma.package.findUnique({ where: { id: task.packageId }, include: { company: true } });
+      const taskPkg = await this.uow.prisma.package.findUnique({ where: { id: task.packageId }, include: { company: true } });
       const refusal = simRefusal(simRulesOf(taskPkg?.company ?? null), givenIccid);
       if (refusal) fail(400, refusal);
       handed.iccid = givenIccid;
@@ -130,7 +133,7 @@ export class TaskCompletion {
   private async charge({ tx, task, actor, note }: Completion, sale: Sale | undefined): Promise<boolean> {
     if (task.action === 'disconnect' || task.action === 'switch' || task.posDelta === 0) return false;
     // An add-on's wallet entry carries its name when the handler wrote no note.
-    await this.kernel.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, task.action === 'addon' ? note || task.note || '' : note, sale);
+    await this.ledger.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, task.action === 'addon' ? note || task.note || '' : note, sale);
     return true;
   }
 
@@ -191,7 +194,7 @@ export class TaskCompletion {
     const settled = await this.pricing.disconnectSettlementFor(tx, line, new Date());
     await moveLineStatus(tx, line.id, ['active'], 'disconnected');
     if (!settled) return {};
-    await this.kernel.move(tx, task.posId, settled.amount, actor.operatorId, 'disconnect', note, {
+    await this.ledger.move(tx, task.posId, settled.amount, actor.operatorId, 'disconnect', note, {
       msisdn: line.msisdn,
       lineId: line.id,
       companyName: line.package.company?.name ?? '',
@@ -256,8 +259,8 @@ export class TaskCompletion {
       providerCost: quote.providerCost,
       period: periodOf(target.months, null),
     };
-    if (amount !== 0) await this.kernel.move(tx, task.posId, amount, actor.operatorId, 'switch', note, sale);
-    else await this.kernel.recordOp(tx, task.posId, actor.operatorId, 'switch', sale);
+    if (amount !== 0) await this.ledger.move(tx, task.posId, amount, actor.operatorId, 'switch', note, sale);
+    else await this.ledger.recordOp(tx, task.posId, actor.operatorId, 'switch', sale);
     // Same as an immediate switch: the line carries the renewal price its point of sale pays today.
     const stamped = await this.pricing.stampFor(switched.terms, line.posId, undefined, tx);
     await tx.line.update({ where: { id: line.id }, data: { terms: stamped as unknown as Prisma.InputJsonValue, packageId: target.id, opsLocked: false } });

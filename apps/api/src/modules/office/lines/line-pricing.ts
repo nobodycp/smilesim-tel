@@ -1,8 +1,10 @@
+import { PriceLadder } from '../terms/price-ladder';
+import { AccountTree } from '../kernel/account-tree';
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { Injectable } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
 import { lineTermsOf } from '../kernel/line-terms';
-import { OfficeKernel } from '../kernel/office-kernel';
 import { lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf, type LineTerms } from '../rules/office-rules';
 import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
 import { buyPriceFor, visibleTo, type LayerPrices, type PathNode, type PriceKind } from '../rules/user-terms';
@@ -19,10 +21,10 @@ export const PREPAID_KINDS = ['activate', 'charge', 'extend', 'reactivate', 'swi
  */
 @Injectable()
 export class LinePricing {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder) {}
 
   async visibleFor(userId: string, pkg: { id: string; enabled: boolean; forSale: boolean }, path?: PathNode[]): Promise<boolean> {
-    const [known, { terms }] = await Promise.all([path ? Promise.resolve(path) : this.kernel.pathOf(userId, await this.kernel.accounts()), this.kernel.termsFor(pkg.id)]);
+    const [known, { terms }] = await Promise.all([path ? Promise.resolve(path) : this.tree.pathOf(userId, await this.tree.accounts()), this.ladder.termsFor(pkg.id)]);
     return visibleTo(known, terms, pkg);
   }
 
@@ -31,10 +33,10 @@ export class LinePricing {
    * the layer column. It is only ever asked what a new capture would carry or charge (an activation,
    * a restart, the target of a switch). A renewal never asks: it debits the price on the line.
    */
-  async resolveBuyPrice(userId: string, pkg: { id: string } & LayerPrices, kind: PriceKind, known?: PathNode[], db: Db = this.kernel.prisma): Promise<number> {
+  async resolveBuyPrice(userId: string, pkg: { id: string } & LayerPrices, kind: PriceKind, known?: PathNode[], db: Db = this.uow.prisma): Promise<number> {
     const [path, { terms, sells }] = await Promise.all([
-      known ? Promise.resolve(known) : this.kernel.pathOf(userId, await this.kernel.accounts(db)),
-      this.kernel.termsFor(pkg.id, db),
+      known ? Promise.resolve(known) : this.tree.pathOf(userId, await this.tree.accounts(db)),
+      this.ladder.termsFor(pkg.id, db),
     ]);
     if (path.length === 0) return buyPriceFor([{ id: userId, loginName: '', layer: 'pos', deniedOps: '' }], [], [], pkg, kind);
     return buyPriceFor(path, terms, sells, pkg, kind);
@@ -46,11 +48,11 @@ export class LinePricing {
    * layer column. One read per table serves every package named in the terms. A point of sale that is
    * not in the tree leaves the terms as captured.
    */
-  async stampFor(terms: LineTerms, posId: string, known?: PathNode[], db: Db = this.kernel.prisma): Promise<LineTerms> {
-    const path = known ?? this.kernel.pathOf(posId, await this.kernel.accounts(db));
+  async stampFor(terms: LineTerms, posId: string, known?: PathNode[], db: Db = this.uow.prisma): Promise<LineTerms> {
+    const path = known ?? this.tree.pathOf(posId, await this.tree.accounts(db));
     if (path.length === 0) return terms;
     const codes = [...new Set([terms.packageCode, ...terms.renewalTargets.map((target) => target.code)])];
-    return this.kernel.stampWith(terms, path, await this.kernel.ladderRows(codes, path.map((node) => node.id), db));
+    return this.ladder.stampWith(terms, path, await this.ladder.ladderRows(codes, path.map((node) => node.id), db));
   }
 
   /** What a disconnect credits now, or null when no paid period is open. */
@@ -88,7 +90,7 @@ export class LinePricing {
   }
 
   /** A number nobody holds, for an activation that names none. */
-  async freshMsisdn(db: Db = this.kernel.prisma): Promise<string> {
+  async freshMsisdn(db: Db = this.uow.prisma): Promise<string> {
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const msisdn = `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
       const existing = await db.line.findUnique({ where: { msisdn } });

@@ -20,7 +20,7 @@ function insights(tables: Record<string, unknown>) {
     financeWhere: async () => ({}),
     marginsFor: async (_actor: Actor, rows: { id: string }[]) => new Map(rows.map((row) => [row.id, 300])),
   } as unknown as WalletsService;
-  return new InsightsService(kernel, wallets);
+  return new InsightsService(kernel.uow, kernel.tree, wallets);
 }
 
 describe('InsightsService', () => {

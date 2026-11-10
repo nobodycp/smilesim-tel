@@ -1,4 +1,3 @@
-import type { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { WalletsService } from './wallets.service';
 
@@ -14,15 +13,16 @@ const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickna
 
 function service() {
   const moves: unknown[][] = [];
-  const kernel = {
+  // One stand-in plays every collaborator the service names: the account tree, the unit of work, the ledger.
+  const stub = {
     accounts: async () => accounts,
     runTx: async (work: (tx: unknown) => Promise<unknown>) => work({}),
     lockWallets: async () => undefined,
     move: async (...args: unknown[]) => void moves.push(args.slice(1)),
     notice: { write: async () => [] },
     queueNotices: () => undefined,
-  } as unknown as OfficeKernel;
-  return { wallets: new WalletsService(kernel), moves };
+  } as never;
+  return { wallets: new WalletsService(stub, stub, stub, stub), moves };
 }
 
 describe('WalletsService.deduct', () => {

@@ -23,7 +23,7 @@ function setup() {
     delete: async ({ where }: { where: { id: string } }) => rows.splice(rows.findIndex((row) => row.id === where.id), 1)[0],
   };
   kernel.prismaClient = { offer, $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({ offer }) } as unknown as OfficeKernel['prismaClient'];
-  return { service: new OffersService(kernel), rows };
+  return { service: new OffersService(kernel.uow), rows };
 }
 
 const actor = (layer: string, owner = false, grants: string[] = []): Actor => ({ id: layer, loginName: layer, nickname: layer, layer, isBranchOwner: owner, grants, operatorId: layer, impersonating: false });

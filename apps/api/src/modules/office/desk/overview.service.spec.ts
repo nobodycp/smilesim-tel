@@ -50,8 +50,8 @@ function service(snapshots: { userId: string; day: string; active: number; expir
       findFirst: async () => ({ createdAt: new Date(Date.now() - 90 * 60_000) }),
     },
   } as unknown as OfficeKernel['prismaClient'];
-  const wallets = new WalletsService(kernel);
-  return new OverviewService(kernel, wallets, {} as never, {} as never, {} as never);
+  const wallets = new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder);
+  return new OverviewService(kernel.uow, kernel.tree, wallets, {} as never, {} as never, {} as never);
 }
 
 const actor = (id: string, layer: string): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: false, grants: [], operatorId: id, impersonating: false });

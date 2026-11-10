@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
+import { UnitOfWork } from '../kernel/unit-of-work';
+import { Inject, Injectable } from '@nestjs/common';
 import { feedPosition } from '../kernel/feed';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { NOTICE_GROUPS, noticeGroupOf } from './notice-kinds';
 import { NEWEST_FIRST, NOTICES_PAGE, afterFeed, mergeFeed } from '../rules/office-paging';
@@ -8,7 +9,7 @@ import { NEWEST_FIRST, NOTICES_PAGE, afterFeed, mergeFeed } from '../rules/offic
 /** The signed-in account's own notices: the paged inbox, marking read, and the live channel. */
 @Injectable()
 export class NoticeInboxService {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork, @Inject(AUTH_STORE) private readonly auth: AuthStore) {}
 
   async list(actor: Actor, query: { cursor?: string; group?: string; unread?: string } = {}) {
     const group = noticeGroupOf(query.group);
@@ -19,7 +20,7 @@ export class NoticeInboxService {
       ...(group ? { kind: { in: [...NOTICE_GROUPS[group]] } } : {}),
       ...(onlyUnread ? { readAt: null } : {}),
     };
-    const prisma = this.kernel.prisma;
+    const prisma = this.uow.prisma;
     const [rows, unread, total] = await Promise.all([
       prisma.notice.findMany({
         where: { ...where, AND: afterFeed(position) },
@@ -48,7 +49,7 @@ export class NoticeInboxService {
 
   /** One notice by id, or every unread one when no id is given. */
   async read(actor: Actor, id?: string) {
-    await this.kernel.prisma.notice.updateMany({
+    await this.uow.prisma.notice.updateMany({
       where: { userId: actor.id, readAt: null, ...(id ? { id } : {}) },
       data: { readAt: new Date() },
     });
@@ -58,12 +59,12 @@ export class NoticeInboxService {
   /** Whether the session a stream was opened with is still live: not signed out, frozen, revoked or idle out. */
   async sessionLive(sessionId: string | undefined): Promise<boolean> {
     if (!sessionId) return false;
-    const live = await this.kernel.auth.liveSession(sessionId).catch(() => null);
+    const live = await this.auth.liveSession(sessionId).catch(() => null);
     return Boolean(live && !live.user.disabledAt);
   }
 
   /** One live channel per signed-in user. Resolves an unsubscribe function. */
   subscribe(actor: Actor, handler: (message: string) => void) {
-    return this.kernel.notice.subscribe(actor.id, handler);
+    return this.uow.notice.subscribe(actor.id, handler);
   }
 }

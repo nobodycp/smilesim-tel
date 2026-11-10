@@ -1,10 +1,14 @@
+import { LineAccess } from './line-access';
+import { PriceLadder } from '../terms/price-ladder';
+import { WalletLedger } from '../wallets/wallet-ledger';
+import { AccountTree } from '../kernel/account-tree';
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
 import { isUniqueViolation } from '../../shared/prisma-errors';
 import { lineTermsOf } from '../kernel/line-terms';
-import { OfficeKernel } from '../kernel/office-kernel';
 import { saleOf } from '../kernel/sale';
 import type { Action, Actor } from '../kernel/types';
 import { renderEsimQr } from './office-esim';
@@ -21,7 +25,7 @@ import { ActivateBody, AddonBody, ExtendBody, OutcomeBody, RenameLineBody, SwapS
 import { assertSimFree, lockUnchanged, moveLineStatus } from './line-state';
 import { TaskCompletion } from './task-completion';
 
-type VisibleLine = Awaited<ReturnType<OfficeKernel['visibleLine']>>;
+type VisibleLine = Awaited<ReturnType<LineAccess['visibleLine']>>;
 type OpenTask = Parameters<TasksService['openTask']>[0];
 /** How an operation goes: applied at the provider now, or left to the branch as a task with this note. */
 type Route = { now: true } | { now: false; note: string };
@@ -39,7 +43,11 @@ const numberTaken = (error: unknown) => (isUniqueViolation(error) ? fail(409, 'N
 @Injectable()
 export class LinesService {
   constructor(
-    private readonly kernel: OfficeKernel,
+    private readonly uow: UnitOfWork,
+    private readonly tree: AccountTree,
+    private readonly ledger: WalletLedger,
+    private readonly ladder: PriceLadder,
+    private readonly lineAccess: LineAccess,
     private readonly tasks: TasksService,
     private readonly pricing: LinePricing,
     private readonly completion: TaskCompletion,
@@ -65,13 +73,13 @@ export class LinesService {
     const input = parseInput(ActivateBody, body);
     this.gateway.accept(input.outcome);
     const { esim, iccid, packageCode, posLogin, msisdn: requested, currentDetails } = input;
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const pos = accounts.find((account) => account.loginName === posLogin && account.layer === 'pos');
     if (!pos || !canActivateFor(actor, pos, accounts)) fail(403, 'FORBIDDEN');
-    const posPath = this.kernel.pathOf(pos.id, accounts);
+    const posPath = this.tree.pathOf(pos.id, accounts);
     const pkg = await this.sellablePackage(packageCode);
     // Visibility first, then the user's stop, then the package mode.
-    if (!visibleTo(posPath, (await this.kernel.termsFor(pkg.id)).terms, pkg)) fail(400, 'PACKAGE_HIDDEN');
+    if (!visibleTo(posPath, (await this.ladder.termsFor(pkg.id)).terms, pkg)) fail(400, 'PACKAGE_HIDDEN');
     assertRunnable(pkg, 'activate', deniedOpsFor(posPath));
     const inputs = activateInputs(pkg.provider.code);
     const sim = this.checkedSim(pkg, inputs, { esim, iccid, requested, currentDetails });
@@ -79,7 +87,7 @@ export class LinesService {
     const esimFee = esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price;
     const posDelta = -(unit + (esim ? esimFee : 0));
     const msisdn = inputs === 'number-and-sim' ? requested : requested || (await this.pricing.freshMsisdn());
-    if (requested && (await this.kernel.prisma.line.findUnique({ where: { msisdn } }))) fail(409, 'NUMBER_TAKEN');
+    if (requested && (await this.uow.prisma.line.findUnique({ where: { msisdn } }))) fail(409, 'NUMBER_TAKEN');
     // A generated eSIM has no serial yet: the provider (or the branch, through a task) issues it.
     // Providers that take the serial from the seller keep it; the line is still an eSIM and still pays the fee.
     const generatesEsim = inputs === 'generated' && esim;
@@ -98,14 +106,14 @@ export class LinesService {
     const pkgTerms = packageTermsOf(pkg);
     // The line carries the renewal price its point of sale pays today, not the layer column.
     const terms = await this.pricing.stampFor(captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target))), pos.id, posPath);
-    const created = await this.kernel.runTx(async (tx) => {
+    const created = await this.uow.runTx(async (tx) => {
       if (issuedIccid) await assertSimFree(tx, issuedIccid);
       const line = await tx.line
         .create({
           data: { msisdn, iccid: issuedIccid, esim, esimQr: issuedQr, status: 'active', packageId: pkg.id, posId: pos.id, terms: terms as unknown as Prisma.InputJsonValue, endsAt: periodEnd(new Date(), pkg.months) },
         })
         .catch(numberTaken);
-      await this.kernel.move(tx, pos.id, posDelta, actor.operatorId, 'activate', '', {
+      await this.ledger.move(tx, pos.id, posDelta, actor.operatorId, 'activate', '', {
         msisdn,
         lineId: line.id,
         companyName: pkg.company.name,
@@ -126,7 +134,7 @@ export class LinesService {
 
   /** A package that can be sold: it exists, and it and every renewal target have a company and a provider. */
   private async sellablePackage(code: string) {
-    const pkg = await this.kernel.prisma.package.findUnique({
+    const pkg = await this.uow.prisma.package.findUnique({
       where: { code },
       include: { company: true, provider: true, renewals: { include: { target: { include: { company: true, provider: true } } } } },
     });
@@ -161,7 +169,7 @@ export class LinesService {
   async operate(actor: Actor, lineId: string, action: 'charge' | 'disconnect' | 'freeze' | 'unfreeze', body: unknown) {
     const input = parseInput(OutcomeBody, body);
     this.gateway.accept(input.outcome);
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (action === 'charge') return this.restartDisconnected(actor, line, input.outcome);
     assertRunnable(line.package, action, line.denied);
@@ -171,17 +179,17 @@ export class LinesService {
     const route = await this.route(action, line.package, runsNow(line.package, action), input.outcome, line);
     if (!route.now) return this.defer(actor, line, { action, posDelta: 0, msisdn: line.msisdn, note: route.note });
     if (action === 'disconnect') return this.disconnectNow(actor, line);
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
       if (action === 'freeze') await moveLineStatus(tx, line.id, ['active'], 'frozen');
       else await moveLineStatus(tx, line.id, ['frozen'], 'active');
-      await this.kernel.recordOp(tx, line.posId, actor.operatorId, action, saleOf(line));
+      await this.ledger.recordOp(tx, line.posId, actor.operatorId, action, saleOf(line));
     });
     return { applied: true, debited: false };
   }
 
   private async disconnectNow(actor: Actor, line: VisibleLine) {
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
       const settled = await this.pricing.disconnectSettlementFor(tx, line, new Date());
       const sale = {
@@ -193,19 +201,19 @@ export class LinesService {
         providerCost: settled?.providerCost,
       };
       await moveLineStatus(tx, line.id, ['active'], 'disconnected');
-      if (settled) await this.kernel.move(tx, line.posId, settled.amount, actor.operatorId, 'disconnect', '', sale);
-      else await this.kernel.recordOp(tx, line.posId, actor.operatorId, 'disconnect', sale);
+      if (settled) await this.ledger.move(tx, line.posId, settled.amount, actor.operatorId, 'disconnect', '', sale);
+      else await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'disconnect', sale);
     });
     return { applied: true, debited: false };
   }
 
   /** The amount a disconnect would credit now, by the same rule as the disconnect itself. Moves nothing. */
   async disconnectQuote(actor: Actor, lineId: string) {
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     assertRunnable(line.package, 'disconnect', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
-    const settled = await this.pricing.disconnectSettlementFor(this.kernel.prisma, line, new Date());
+    const settled = await this.pricing.disconnectSettlementFor(this.uow.prisma, line, new Date());
     return { amount: settled?.amount ?? 0, runsNow: runsNow(line.package, 'disconnect') };
   }
 
@@ -213,12 +221,12 @@ export class LinesService {
     const input = parseInput(SwitchPackageBody, body);
     this.gateway.accept(input.outcome);
     const { packageCode } = input;
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     if (!line.opsLocked && line.status !== 'active') fail(400, 'INVALID');
     assertRunnable(line.package, 'switch', line.denied);
     const [next, allowed] = await Promise.all([
-      this.kernel.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true, provider: true } }),
-      this.kernel.prisma.packageSwitch.findMany({ where: { packageId: line.packageId }, include: { target: { select: { code: true } } } }),
+      this.uow.prisma.package.findUnique({ where: { code: packageCode }, include: { company: true, provider: true } }),
+      this.uow.prisma.packageSwitch.findMany({ where: { packageId: line.packageId }, include: { target: { select: { code: true } } } }),
     ]);
     if (!next || !next.company || !next.provider) fail(400, 'INVALID');
     const switched = switchOnto(lineTermsOf(line.terms, line.package), packageTermsOf(line.package), packageTermsOf(next), allowed.map((item) => item.target.code));
@@ -227,20 +235,20 @@ export class LinesService {
     assertRunnable(next, 'switch', line.denied);
     const route = await this.route('switch', line.package, runsNow(line.package, 'switch'), input.outcome, line);
     if (!route.now) {
-      const quote = await this.pricing.switchQuote(this.kernel.prisma, line, next, new Date());
+      const quote = await this.pricing.switchQuote(this.uow.prisma, line, next, new Date());
       return this.defer(actor, line, { action: 'switch', nextPackageId: next.id, posDelta: -quote.difference, msisdn: line.msisdn, note: route.note });
     }
     let debited = false;
     // The line carries the renewal price its point of sale would pay for the new package today.
     const stamped = await this.pricing.stampFor(switched.terms, line.posId, line.posPath);
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
       const quote = await this.pricing.switchQuote(tx, line, next, new Date());
       const posDelta = -quote.difference;
       debited = posDelta < 0;
       const sale = { ...saleOf(line, next, quote.newPrice), providerCost: quote.providerCost, period: periodOf(next.months, null) };
-      if (posDelta !== 0) await this.kernel.move(tx, line.posId, posDelta, actor.operatorId, 'switch', '', sale);
-      else await this.kernel.recordOp(tx, line.posId, actor.operatorId, 'switch', sale);
+      if (posDelta !== 0) await this.ledger.move(tx, line.posId, posDelta, actor.operatorId, 'switch', '', sale);
+      else await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'switch', sale);
       await tx.line.update({ where: { id: line.id }, data: { terms: stamped as unknown as Prisma.InputJsonValue, packageId: next.id, opsLocked: false } });
     });
     return { applied: true, debited };
@@ -250,14 +258,14 @@ export class LinesService {
     const input = parseInput(ExtendBody, body);
     this.gateway.accept(input.outcome);
     const { targetCode } = input;
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active' || line.endsAt.getTime() <= Date.now()) fail(400, 'INVALID');
     assertRunnable(line.package, 'extend', line.denied);
     const terms = lineTermsOf(line.terms, line.package);
     const base = line.endsAt > new Date() ? line.endsAt : new Date();
     const target = targetCode
-      ? await this.kernel.prisma.package.findUnique({ where: { code: targetCode }, include: { company: true, provider: true } })
+      ? await this.uow.prisma.package.findUnique({ where: { code: targetCode }, include: { company: true, provider: true } })
       : null;
     if (targetCode && (!target || !target.company || !target.provider)) fail(400, 'INVALID');
     const renewal = target ? renewOnto(terms, packageTermsOf(target), base) : renewStay(terms, base);
@@ -266,9 +274,9 @@ export class LinesService {
     const posDelta = -renewal.debit;
     const route = await this.route('extend', line.package, runsNow(line.package, 'extend'), input.outcome, line);
     if (!route.now) return this.defer(actor, line, { action: 'extend', nextPackageId: target?.id, posDelta, msisdn: line.msisdn, note: route.note });
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
-      await this.kernel.move(tx, line.posId, posDelta, actor.operatorId, 'extend', '', {
+      await this.ledger.move(tx, line.posId, posDelta, actor.operatorId, 'extend', '', {
         ...saleOf(line, target ?? undefined, -posDelta),
         // What the provider charges for this period, kept on the entry (rule 1.6).
         providerCost: providerBranchCost('extend', renewal.terms, target ?? line.package),
@@ -285,7 +293,7 @@ export class LinesService {
   async reactivate(actor: Actor, lineId: string, body: unknown) {
     const input = parseInput(OutcomeBody, body);
     this.gateway.accept(input.outcome);
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     return this.restartDisconnected(actor, line, input.outcome);
   }
@@ -293,15 +301,15 @@ export class LinesService {
   async refresh(actor: Actor, lineId: string, body: unknown) {
     const input = parseInput(OutcomeBody, body);
     this.gateway.accept(input.outcome);
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active') fail(400, 'INVALID');
     const mode = refreshMode(line.package.actionModes);
     if (mode === 'off') fail(400, 'OPERATION_DISABLED');
     const route = await this.route('refresh', line.package, mode === 'auto', input.outcome, line);
     if (!route.now) return this.defer(actor, line, { action: 'refresh', posDelta: 0, msisdn: line.msisdn, note: route.note });
-    await this.kernel.runTx(async (tx) => {
-      await this.kernel.recordOp(tx, line.posId, actor.operatorId, 'refresh', saleOf(line));
+    await this.uow.runTx(async (tx) => {
+      await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'refresh', saleOf(line));
     });
     return { applied: true, debited: false };
   }
@@ -311,19 +319,19 @@ export class LinesService {
     const input = parseInput(RenameLineBody, body);
     this.gateway.accept(input.outcome);
     const { msisdn } = input;
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     assertRunnable(line.package, 'rename', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
     if (msisdn === line.msisdn) fail(400, 'INVALID');
-    if (msisdn && (await this.kernel.prisma.line.findUnique({ where: { msisdn } }))) fail(409, 'NUMBER_TAKEN');
+    if (msisdn && (await this.uow.prisma.line.findUnique({ where: { msisdn } }))) fail(409, 'NUMBER_TAKEN');
     const route = await this.route('rename', line.package, runsNow(line.package, 'rename'), input.outcome, { msisdn: msisdn || null });
     if (!route.now) return this.defer(actor, line, { action: 'rename', posDelta: 0, msisdn: msisdn || null, note: route.note });
     if (!msisdn) fail(400, 'INVALID');
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
       await tx.line.update({ where: { id: line.id }, data: { msisdn } }).catch(numberTaken);
-      await this.kernel.recordOp(tx, line.posId, actor.operatorId, 'rename', saleOf({ ...line, msisdn }));
+      await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'rename', saleOf({ ...line, msisdn }));
     });
     return { applied: true, debited: false };
   }
@@ -335,7 +343,7 @@ export class LinesService {
     const { iccid, esim } = input;
     const qr = esim ? readQr(input.qr) ?? null : null;
     if (iccid.length < 8) fail(400, 'INVALID');
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     assertRunnable(line.package, 'sim', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
@@ -345,11 +353,11 @@ export class LinesService {
     if (refusal) fail(400, refusal);
     const route = await this.route('sim', line.package, runsNow(line.package, 'sim'), input.outcome, { msisdn: line.msisdn, iccid });
     if (!route.now) return this.defer(actor, line, { action: 'sim', posDelta: 0, msisdn: line.msisdn, iccid, esim, esimQr: qr, note: route.note });
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
       await assertSimFree(tx, iccid, line.id);
       await tx.line.update({ where: { id: line.id }, data: { iccid, esim, esimQr: qr } });
-      await this.kernel.recordOp(tx, line.posId, actor.operatorId, 'sim', saleOf(line));
+      await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'sim', saleOf(line));
     });
     return { applied: true, debited: false };
   }
@@ -359,9 +367,9 @@ export class LinesService {
    * add-on's price, charged when the task is done and released if it is closed.
    */
   async requestAddon(actor: Actor, lineId: string, body: unknown) {
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     const { addonId } = parseInput(AddonBody, body);
-    const addon = await this.kernel.prisma.packageAddon.findUnique({ where: { id: addonId } });
+    const addon = await this.uow.prisma.packageAddon.findUnique({ where: { id: addonId } });
     if (!addon || addon.packageId !== line.packageId || !addon.active) fail(400, 'INVALID');
     if (line.status === 'disconnected') fail(400, 'INVALID');
     return this.defer(actor, line, { action: 'addon', posDelta: -addon.price, msisdn: line.msisdn, iccid: null, note: addon.name });
@@ -369,7 +377,7 @@ export class LinesService {
 
   /** The customer wants an eSIM issued (lost SIM, or plastic to eSIM). Always a branch task; the employee attaches the serial and the QR. */
   async requestEsim(actor: Actor, lineId: string) {
-    const line = await this.kernel.visibleLine(actor, lineId);
+    const line = await this.lineAccess.visibleLine(actor, lineId);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     if (line.status !== 'active') fail(400, 'INVALID');
     if (line.denied.has('esim')) fail(403, 'OPERATION_DENIED');
@@ -392,10 +400,10 @@ export class LinesService {
     const posDelta = -charged;
     const route = await this.route('charge', line.package, runsNow(line.package, 'charge'), hint, line);
     if (!route.now) return this.defer(actor, line, { action: 'charge', posDelta, msisdn: line.msisdn, note: route.note });
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
       const endsAt = periodEnd(new Date(), line.package.months);
-      await this.kernel.move(tx, line.posId, posDelta, actor.operatorId, 'charge', '', {
+      await this.ledger.move(tx, line.posId, posDelta, actor.operatorId, 'charge', '', {
         ...saleOf(line, undefined, charged),
         providerCost: providerBranchCost('charge', lineTermsOf(line.terms, line.package), line.package),
         period: periodOf(line.package.months, endsAt),

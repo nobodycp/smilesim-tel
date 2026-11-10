@@ -1,9 +1,9 @@
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { refuseEntered, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Offer } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { OFFER_IMAGE_LIMIT, OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
 
@@ -44,7 +44,7 @@ export function offerShows(offer: Pick<OfferView, 'active' | 'layers' | 'startsA
 
 @Injectable()
 export class OffersService {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork) {}
 
   private gate(actor: Actor) {
     refuseEntered(actor);
@@ -53,7 +53,7 @@ export class OffersService {
 
   /** The offers the signed-in account sees on its home now, in order. */
   async live(actor: Actor) {
-    const rows = await this.kernel.prisma.offer.findMany({ where: { active: true }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+    const rows = await this.uow.prisma.offer.findMany({ where: { active: true }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
     const now = new Date();
     return { offers: rows.map(viewOf).filter((offer) => offerShows(offer, actor.layer, now)) };
   }
@@ -61,7 +61,7 @@ export class OffersService {
   /** Every offer, for the «الإعلانات» page. */
   async list(actor: Actor) {
     this.gate(actor);
-    const rows = await this.kernel.prisma.offer.findMany({ orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+    const rows = await this.uow.prisma.offer.findMany({ orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
     return { offers: rows.map(viewOf) };
   }
 
@@ -69,21 +69,21 @@ export class OffersService {
     this.gate(actor);
     const data = this.parse(body, !id);
     if (id) {
-      const found = await this.kernel.prisma.offer.findUnique({ where: { id } });
+      const found = await this.uow.prisma.offer.findUnique({ where: { id } });
       if (!found) fail(404, 'NOT_FOUND');
-      await this.kernel.prisma.offer.update({ where: { id }, data });
+      await this.uow.prisma.offer.update({ where: { id }, data });
     } else {
-      const count = await this.kernel.prisma.offer.count();
-      await this.kernel.prisma.offer.create({ data: { title: data.title as string, ...data, position: data.position ?? count } });
+      const count = await this.uow.prisma.offer.count();
+      await this.uow.prisma.offer.create({ data: { title: data.title as string, ...data, position: data.position ?? count } });
     }
     return this.list(actor);
   }
 
   async remove(actor: Actor, id: string) {
     this.gate(actor);
-    const found = await this.kernel.prisma.offer.findUnique({ where: { id } });
+    const found = await this.uow.prisma.offer.findUnique({ where: { id } });
     if (!found) fail(404, 'NOT_FOUND');
-    await this.kernel.prisma.offer.delete({ where: { id } });
+    await this.uow.prisma.offer.delete({ where: { id } });
     return this.list(actor);
   }
 
@@ -91,14 +91,14 @@ export class OffersService {
   async move(actor: Actor, id: string, body: unknown) {
     this.gate(actor);
     const { direction } = parseInput(OfferMoveBody, body);
-    const rows = await this.kernel.prisma.offer.findMany({ orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+    const rows = await this.uow.prisma.offer.findMany({ orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
     const at = rows.findIndex((row) => row.id === id);
     if (at < 0) fail(404, 'NOT_FOUND');
     const other = direction === 'up' ? at - 1 : at + 1;
     if (other >= 0 && other < rows.length) {
       const order = rows.map((row) => row.id);
       [order[at], order[other]] = [order[other], order[at]];
-      await this.kernel.runTx(async (tx) => {
+      await this.uow.runTx(async (tx) => {
         for (const [index, rowId] of order.entries()) await tx.offer.update({ where: { id: rowId }, data: { position: index } });
       });
     }

@@ -1,7 +1,7 @@
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { LineReads } from '../lines/line-reads';
 import { TasksService } from '../tasks/tasks.service';
@@ -13,7 +13,7 @@ import { PROVIDER_OPERATION_KINDS } from '../wallets/provider-cost';
 @Injectable()
 export class ReportsService {
   constructor(
-    private readonly kernel: OfficeKernel,
+    private readonly uow: UnitOfWork,
     private readonly tasks: TasksService,
     private readonly lines: LineReads,
   ) {}
@@ -35,7 +35,7 @@ export class ReportsService {
   }
 
   private async providerReport() {
-    const rows = await this.kernel.prisma.package.findMany({
+    const rows = await this.uow.prisma.package.findMany({
       where: { companyId: { not: null } },
       include: { provider: true, company: true, _count: { select: { lines: true } } },
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' } ],
@@ -55,13 +55,13 @@ export class ReportsService {
   private async entryReport(cursor: string | undefined, kinds?: string[]) {
     const where = kinds ? { kind: { in: kinds } } : {};
     const [read, total] = await Promise.all([
-      this.kernel.prisma.walletEntry.findMany({
+      this.uow.prisma.walletEntry.findMany({
         where: { ...where, AND: afterFeed(feedPosition(cursor)) },
         include: { user: true, actor: true },
         orderBy: [...NEWEST_FIRST],
         take: FEED_PAGE + 1,
       }),
-      this.kernel.prisma.walletEntry.count({ where }),
+      this.uow.prisma.walletEntry.count({ where }),
     ]);
     const { page: rows, nextCursor } = mergeFeed([read], FEED_PAGE);
     return {

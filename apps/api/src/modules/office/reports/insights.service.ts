@@ -1,9 +1,10 @@
+import { AccountTree } from '../kernel/account-tree';
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { dayRange } from '../../shared/dates';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { visibleAccountIds } from '../rules/office-rules';
 import { NEWEST_FIRST } from '../rules/office-paging';
@@ -31,13 +32,14 @@ function dateRange(query: Period): Prisma.DateTimeFilter | undefined {
 @Injectable()
 export class InsightsService {
   constructor(
-    private readonly kernel: OfficeKernel,
+    private readonly uow: UnitOfWork,
+    private readonly tree: AccountTree,
     private readonly wallets: WalletsService,
   ) {}
 
   /** The accounts under the viewer, with their wallets and their last movement. */
   async balances(actor: Actor, query: { q?: string; layer?: string; negative?: string } = {}) {
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const needle = (query.q ?? '').trim();
     const byId = new Map(accounts.map((account) => [account.id, account]));
@@ -46,8 +48,8 @@ export class InsightsService {
       .filter((account) => !needle || account.loginName.includes(needle) || account.nickname.includes(needle));
     const ids = listed.map((account) => account.id);
     const [wallets, last] = await Promise.all([
-      this.kernel.prisma.wallet.findMany({ where: { userId: { in: ids } } }),
-      this.kernel.prisma.walletEntry.groupBy({ by: ['userId'], where: { userId: { in: ids } }, _max: { createdAt: true } }),
+      this.uow.prisma.wallet.findMany({ where: { userId: { in: ids } } }),
+      this.uow.prisma.walletEntry.groupBy({ by: ['userId'], where: { userId: { in: ids } }, _max: { createdAt: true } }),
     ]);
     const walletOf = new Map(wallets.map((row) => [row.userId, row]));
     const lastOf = new Map(last.map((row) => [row.userId, row._max.createdAt]));
@@ -85,13 +87,13 @@ export class InsightsService {
     if (actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
     const createdAt = dateRange(query);
-    const rows = await this.kernel.prisma.walletEntry.findMany({
+    const rows = await this.uow.prisma.walletEntry.findMany({
       where: { kind: { in: PROVIDER_OPERATION_KINDS }, ...(createdAt ? { createdAt } : {}) },
       select: { id: true, userId: true, kind: true, lineId: true, packagePrice: true, amount: true, ladder: true, createdAt: true, providerCost: true },
       orderBy: [...NEWEST_FIRST],
       take: REPORT_LIMIT,
     });
-    const lines = await this.kernel.prisma.line.findMany({
+    const lines = await this.uow.prisma.line.findMany({
       where: { id: { in: [...new Set(rows.map((row) => row.lineId).filter((id): id is string => Boolean(id)))] } },
       select: { id: true, package: { select: { provider: { select: { code: true, name: true } } } } },
     });

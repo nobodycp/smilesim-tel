@@ -1,4 +1,3 @@
-import type { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import type { WalletsService } from '../wallets/wallets.service';
 import { ProviderAccountsService } from './provider-accounts.service';
@@ -28,7 +27,7 @@ function service() {
       officeTask: { findMany: async () => [{ action: 'activate', packageId: 'k1' }, { action: 'sim', packageId: 'k1' }] },
       package: { findMany: async () => [{ id: 'k1', branchCost: 3500, renewalBranchCost: 3000, provider: { code: 'sky' } }] },
     },
-  } as unknown as OfficeKernel;
+  } as never;
   const wallets = {
     pricedOperations: async () => [
       { id: 'o2', at: new Date('2026-11-04T00:00:00Z'), kind: 'charge', msisdn: '055', packageName: '400', providerCode: 'sky', cost: 3000 },

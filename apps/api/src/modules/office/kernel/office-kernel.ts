@@ -2,7 +2,6 @@ import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import type { Gate } from '../../shared/cookies';
-import { fail } from '../../shared/office-failure';
 import { PrismaService } from '../../shared/prisma.service';
 import { LineAccess } from '../lines/line-access';
 import { NoticeService, type WrittenNotice } from '../notices/notice.service';
@@ -19,10 +18,7 @@ import { UnitOfWork, type Db } from './unit-of-work';
 export { nodeOf } from './account-tree';
 export { PRICE_COLUMNS, type LadderRows } from '../terms/price-ladder';
 
-/** A branch-only action: anyone else is 403 FORBIDDEN. */
-export function assertBranch(actor: Actor): void {
-  if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-}
+export { assertBranch } from '../policy';
 
 /**
  * **Being taken apart** (plan `2026-11-10-office-kernel-split`). Everything it used to do now lives in the

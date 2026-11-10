@@ -1,7 +1,7 @@
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { logger, reason } from '../../shared/log';
 import { env, isTest } from '../../../config';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { PROVIDER_FAILED_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
 import { FAILURE_WINDOW_MINUTES, HEALTH_CHECK_SECONDS, healthOf, type Health } from './provider-health';
@@ -27,7 +27,7 @@ export type ProviderHealthRow = Health & { code: string; name: string; failures:
 export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
 
-  constructor(private readonly kernel: OfficeKernel, private readonly accounts: ProviderAccountsService) {}
+  constructor(private readonly uow: UnitOfWork, private readonly accounts: ProviderAccountsService) {}
 
   onModuleInit() {
     if (isTest() || !env('DATABASE_URL')) return;
@@ -40,7 +40,7 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
 
   /** Each provider's health now: the overview reads it, and `check` compares it with the stored one. */
   async current(now: Date = new Date()): Promise<ProviderHealthRow[]> {
-    const prisma = this.kernel.prisma;
+    const prisma = this.uow.prisma;
     const [summaries, providers, failed] = await Promise.all([
       this.accounts.summaries(),
       prisma.provider.findMany({ select: { code: true, alertFloor: true, packages: { select: { id: true } } } }),
@@ -64,18 +64,18 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
    * is set by compare-and-set, and cleared when the provider is matched again or stops being overdue.
    */
   async checkMatching(now: Date = new Date()): Promise<string[]> {
-    const providers = await this.kernel.prisma.provider.findMany({
+    const providers = await this.uow.prisma.provider.findMany({
       select: { code: true, name: true, matchSource: true, matchEveryDays: true, lastMatchedAt: true, matchOverdueNoticeAt: true },
     });
     const sent: string[] = [];
     for (const provider of providers) {
       const overdue = matchOverdue(provider, now);
       if (!overdue) {
-        if (provider.matchOverdueNoticeAt) await this.kernel.prisma.provider.updateMany({ where: { code: provider.code }, data: { matchOverdueNoticeAt: null } });
+        if (provider.matchOverdueNoticeAt) await this.uow.prisma.provider.updateMany({ where: { code: provider.code }, data: { matchOverdueNoticeAt: null } });
         continue;
       }
       if (provider.matchOverdueNoticeAt) continue;
-      const won = await this.kernel.prisma.provider.updateMany({ where: { code: provider.code, matchOverdueNoticeAt: null }, data: { matchOverdueNoticeAt: now } });
+      const won = await this.uow.prisma.provider.updateMany({ where: { code: provider.code, matchOverdueNoticeAt: null }, data: { matchOverdueNoticeAt: now } });
       if (won.count === 0) continue;
       sent.push(provider.code);
       await this.send({
@@ -92,7 +92,7 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
     const changed: ProviderHealthRow[] = [];
     for (const row of rows) {
       const stored = row.status === 'problem' ? 'working' : 'problem';
-      const won = await this.kernel.prisma.provider.updateMany({
+      const won = await this.uow.prisma.provider.updateMany({
         where: { code: row.code, health: stored },
         data: { health: row.status, healthReason: row.reason, healthAt: now },
       });
@@ -112,13 +112,13 @@ export class ProviderHealthService implements OnModuleInit, OnModuleDestroy {
 
   /** The branch owner and the staff with the edit grant hear the provider notices. */
   private async send(draft: NoticeDraft) {
-    const accounts = await this.kernel.prisma.user.findMany({
+    const accounts = await this.uow.prisma.user.findMany({
       where: { layer: 'branch', disabledAt: null },
       select: { id: true, isBranchOwner: true, liveGrants: true },
     });
     const recipients = accounts.filter((account) => account.isBranchOwner || account.liveGrants.split(',').includes('edit')).map((account) => account.id);
-    await this.kernel.runTx(async (tx) => {
-      this.kernel.queueNotices(tx, await this.kernel.notice.write(tx, recipients, SYSTEM, draft));
+    await this.uow.runTx(async (tx) => {
+      this.uow.queueNotices(tx, await this.uow.notice.write(tx, recipients, SYSTEM, draft));
     });
   }
 }

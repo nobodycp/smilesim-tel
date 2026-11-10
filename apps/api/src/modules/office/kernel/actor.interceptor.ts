@@ -1,8 +1,8 @@
+import { ActorResolver } from './actor-resolver';
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor, createParamDecorator } from '@nestjs/common';
 import type { Request } from 'express';
 import { Observable, from, mergeMap } from 'rxjs';
 import { gateOf } from '../../shared/cookies';
-import { OfficeKernel } from './office-kernel';
 import type { Actor as ActorShape } from './types';
 
 type WithActor = Request & { officeActor?: ActorShape };
@@ -14,11 +14,11 @@ type WithActor = Request & { officeActor?: ActorShape };
  */
 @Injectable()
 export class ActorInterceptor implements NestInterceptor {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly actors: ActorResolver) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<WithActor>();
-    return from(this.kernel.actor(gateOf(req))).pipe(
+    return from(this.actors.actor(gateOf(req))).pipe(
       mergeMap((actor) => {
         req.officeActor = actor;
         return next.handle();

@@ -1,7 +1,9 @@
+import { PriceLadder } from '../terms/price-ladder';
+import { AccountTree } from '../kernel/account-tree';
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { requireGrant, seesLayer } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
@@ -26,27 +28,27 @@ export { PACKAGE_DETAILS_LIMIT } from './packages.schemas';
 
 @Injectable()
 export class PackagesService {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ladder: PriceLadder) {}
 
   async list(actor: Actor) {
     const field = editableField(actor.layer);
     const [all, accounts] = await Promise.all([
-      this.kernel.prisma.package.findMany({
+      this.uow.prisma.package.findMany({
         where: { companyId: { not: null }, enabled: true, forSale: true },
         include: { provider: true, company: true },
         orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
       }),
-      this.kernel.accounts(),
+      this.tree.accounts(),
     ]);
-    const path = this.kernel.pathOf(actor.id, accounts);
+    const path = this.tree.pathOf(actor.id, accounts);
     // Only the rows on the actor's path matter: its own terms and sell prices plus its ancestors'.
     const pathIds = path.map((node) => node.id);
     const [termRows, sellRows] = await Promise.all([
-      this.kernel.prisma.userPackage.findMany({
+      this.uow.prisma.userPackage.findMany({
         where: { userId: { in: pathIds } },
         select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
       }),
-      this.kernel.prisma.sellPrice.findMany({
+      this.uow.prisma.sellPrice.findMany({
         where: { ownerId: { in: pathIds } },
         select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
       }),
@@ -108,14 +110,14 @@ export class PackagesService {
   async setSellPrice(actor: Actor, code: string, body: unknown) {
     if (actor.layer !== 'main_agent' && actor.layer !== 'agent') fail(403, 'FORBIDDEN');
     const { price, renewalPrice } = parseInput(SellPriceBody, body);
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    const [accounts, { terms, sells }] = await Promise.all([this.kernel.accounts(), this.kernel.termsFor(pkg.id)]);
-    const path = this.kernel.pathOf(actor.id, accounts);
+    const [accounts, { terms, sells }] = await Promise.all([this.tree.accounts(), this.ladder.termsFor(pkg.id)]);
+    const path = this.tree.pathOf(actor.id, accounts);
     if (path.length === 0) fail(404, 'NOT_FOUND');
     if (price < buyPriceFor(path, terms, sells, pkg, 'subscription')) fail(400, 'PRICE_BELOW_FLOOR');
     if (renewalPrice !== null && renewalPrice < buyPriceFor(path, terms, sells, pkg, 'renewal')) fail(400, 'PRICE_BELOW_FLOOR');
-    await this.kernel.prisma.sellPrice.upsert({
+    await this.uow.prisma.sellPrice.upsert({
       where: { packageId_ownerId: { packageId: pkg.id, ownerId: actor.id } },
       update: { price, renewalPrice },
       create: { packageId: pkg.id, ownerId: actor.id, price, renewalPrice },
@@ -126,16 +128,16 @@ export class PackagesService {
   /** Drops the caller's own sell price so the layer column applies again; a missing row is already clear. */
   async clearSellPrice(actor: Actor, code: string) {
     if (actor.layer !== 'main_agent' && actor.layer !== 'agent') fail(403, 'FORBIDDEN');
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    await this.kernel.prisma.sellPrice.deleteMany({ where: { packageId: pkg.id, ownerId: actor.id } });
+    await this.uow.prisma.sellPrice.deleteMany({ where: { packageId: pkg.id, ownerId: actor.id } });
     return { ok: true };
   }
 
   async setMode(actor: Actor, code: string, body: unknown) {
     // Package modes apply to every account, so only the branch sets them, like the chain and the targets.
     requireGrant(actor, 'edit');
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const { action, mode, ...flags } = parseInput(PackageModeBody, body);
     const data: Record<string, boolean | Prisma.InputJsonValue> = {};
@@ -146,7 +148,7 @@ export class PackagesService {
       const inherited = new Set(pkg.inheritedModes);
       let next: ActionMode;
       if (mode === 'inherit') {
-        const provider = await this.kernel.prisma.provider.findUnique({ where: { id: pkg.providerId } });
+        const provider = await this.uow.prisma.provider.findUnique({ where: { id: pkg.providerId } });
         next = normalizeActionModes(provider?.actionModes)[action];
         inherited.add(action);
       } else {
@@ -157,13 +159,13 @@ export class PackagesService {
       data.inheritedModes = [...inherited];
     }
     if (Object.keys(data).length === 0) fail(400, 'INVALID');
-    await this.kernel.prisma.package.update({ where: { code }, data });
+    await this.uow.prisma.package.update({ where: { code }, data });
     return { ok: true as const };
   }
 
   async sheet(actor: Actor, code: string) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.kernel.prisma.package.findUnique({
+    const pkg = await this.uow.prisma.package.findUnique({
       where: { code },
       include: {
         provider: true,
@@ -218,9 +220,9 @@ export class PackagesService {
   async setDetails(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
     const input = parseInput(PackageDetailsBody, body);
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
-    await this.kernel.prisma.package.update({
+    await this.uow.prisma.package.update({
       where: { id: pkg.id },
       data: {
         dataGb: input.dataGb,
@@ -237,7 +239,7 @@ export class PackagesService {
   /** A package's extra operations (spec 2026-11-09, 3), in their order. */
   async addons(actor: Actor, code: string) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code }, include: { addons: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code }, include: { addons: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } } });
     if (!pkg) fail(404, 'NOT_FOUND');
     return { addons: pkg.addons.map((row) => ({ id: row.id, name: row.name, price: row.price, active: row.active, position: row.position })) };
   }
@@ -245,36 +247,36 @@ export class PackagesService {
   /** Adds an extra operation, or changes one when `id` is given: name, price (agorot) and on/off. */
   async saveAddon(actor: Actor, code: string, body: unknown, id?: string) {
     requireGrant(actor, 'edit');
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     if (id) {
       const input = parseInput(PackageAddonUpdateBody, body);
       // Only what was sent changes.
       const data = Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
-      const row = await this.kernel.prisma.packageAddon.findUnique({ where: { id } });
+      const row = await this.uow.prisma.packageAddon.findUnique({ where: { id } });
       if (!row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
-      await this.kernel.prisma.packageAddon.update({ where: { id }, data });
+      await this.uow.prisma.packageAddon.update({ where: { id }, data });
     } else {
       // A new operation goes last; a position sent with it is checked and not used, as before.
       const { name, price, active } = parseInput(PackageAddonBody, body);
-      const count = await this.kernel.prisma.packageAddon.count({ where: { packageId: pkg.id } });
-      await this.kernel.prisma.packageAddon.create({ data: { packageId: pkg.id, name, price: price ?? 0, active: active !== false, position: count } });
+      const count = await this.uow.prisma.packageAddon.count({ where: { packageId: pkg.id } });
+      await this.uow.prisma.packageAddon.create({ data: { packageId: pkg.id, name, price: price ?? 0, active: active !== false, position: count } });
     }
     return this.addons(actor, code);
   }
 
   async removeAddon(actor: Actor, code: string, id: string) {
     requireGrant(actor, 'edit');
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
-    const row = await this.kernel.prisma.packageAddon.findUnique({ where: { id } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
+    const row = await this.uow.prisma.packageAddon.findUnique({ where: { id } });
     if (!pkg || !row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
-    await this.kernel.prisma.packageAddon.delete({ where: { id } });
+    await this.uow.prisma.packageAddon.delete({ where: { id } });
     return this.addons(actor, code);
   }
 
   async setChain(actor: Actor, code: string, body: unknown) {
     requireGrant(actor, 'edit');
-    const pkg = await this.kernel.prisma.package.findUnique({ where: { code } });
+    const pkg = await this.uow.prisma.package.findUnique({ where: { code } });
     if (!pkg) fail(404, 'NOT_FOUND');
     const input = parseInput(PackageChainBody, body);
     const next = { ...pricesOf(pkg) };
@@ -301,7 +303,7 @@ export class PackagesService {
     }
     if (!chainHolds(next) || !chainHolds(renewal)) fail(400, 'PRICE_BELOW_FLOOR');
     const esimPrice = input.esimPrice;
-    await this.kernel.prisma.package.update({
+    await this.uow.prisma.package.update({
       where: { id: pkg.id },
       data: {
         ...next,
@@ -321,9 +323,9 @@ export class PackagesService {
     const { targets: targetCodes } = parseInput(PackageTargetsBody, body);
     if (new Set(targetCodes).size !== targetCodes.length || targetCodes.includes(code)) fail(400, 'INVALID');
     const [pkg, targets] = await Promise.all([
-      this.kernel.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } }),
+      this.uow.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } }),
       targetCodes.length
-        ? this.kernel.prisma.package.findMany({
+        ? this.uow.prisma.package.findMany({
             where: { code: { in: targetCodes } },
             include: { company: true, provider: true },
           })
@@ -342,7 +344,7 @@ export class PackagesService {
           target.provider.code !== pkg.provider.code,
       )
     ) fail(400, 'INVALID');
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       if (kind === 'renewals') {
         await tx.packageRenewal.deleteMany({ where: { packageId: pkg.id } });
         if (targets.length) {

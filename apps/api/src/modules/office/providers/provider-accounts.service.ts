@@ -1,9 +1,9 @@
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { dayRange } from '../../shared/dates';
 import { requireAnyGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import { parseInput } from '../../shared/input';
-import { OfficeKernel } from '../kernel/office-kernel';
 import { matchOf, matchOverdue } from './match-simulator';
 import type { Actor } from '../kernel/types';
 import { providerBranchCost } from '../rules/office-rules';
@@ -23,7 +23,7 @@ type LedgerRow = { id: string; at: Date; kind: string; amount: number; note: str
 @Injectable()
 export class ProviderAccountsService {
   constructor(
-    private readonly kernel: OfficeKernel,
+    private readonly uow: UnitOfWork,
     private readonly wallets: WalletsService,
   ) {}
 
@@ -36,11 +36,11 @@ export class ProviderAccountsService {
   /** Purchases, entries and open-task cost of every provider, from one read of each. */
   private async books() {
     const [providers, operations, entries, tasks, packages] = await Promise.all([
-      this.kernel.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
+      this.uow.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
       this.wallets.pricedOperations(),
-      this.kernel.prisma.providerEntry.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] }),
-      this.kernel.prisma.officeTask.findMany({ where: { status: { in: OPEN_TASKS } }, select: { action: true, packageId: true } }),
-      this.kernel.prisma.package.findMany({ include: { provider: true } }),
+      this.uow.prisma.providerEntry.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] }),
+      this.uow.prisma.officeTask.findMany({ where: { status: { in: OPEN_TASKS } }, select: { action: true, packageId: true } }),
+      this.uow.prisma.package.findMany({ include: { provider: true } }),
     ]);
     const packageById = new Map(packages.map((row) => [row.id, row]));
     const held = new Map<string, number>();
@@ -149,18 +149,18 @@ export class ProviderAccountsService {
     const { kind, amount, note: text } = parseInput(ProviderEntryBody, body);
     if (!text) fail(400, 'NOTE_REQUIRED');
     if (amount === 0 || (kind === 'payment' && amount < 0)) fail(400, 'INVALID');
-    const provider = await this.kernel.prisma.provider.findUnique({ where: { code } });
+    const provider = await this.uow.prisma.provider.findUnique({ where: { code } });
     if (!provider) fail(404, 'NOT_FOUND');
-    await this.kernel.prisma.providerEntry.create({ data: { providerId: provider.id, kind, amount, note: text, actorLogin: actor.loginName } });
+    await this.uow.prisma.providerEntry.create({ data: { providerId: provider.id, kind, amount, note: text, actorLogin: actor.loginName } });
     return { ok: true };
   }
 
   async setCredit(actor: Actor, code: string, body: unknown) {
     this.gate(actor, true);
     const { creditLimit, alertFloor } = parseInput(ProviderCreditBody, body);
-    const provider = await this.kernel.prisma.provider.findUnique({ where: { code } });
+    const provider = await this.uow.prisma.provider.findUnique({ where: { code } });
     if (!provider) fail(404, 'NOT_FOUND');
-    await this.kernel.prisma.provider.update({ where: { code }, data: { creditLimit, ...(alertFloor !== undefined ? { alertFloor } : {}) } });
+    await this.uow.prisma.provider.update({ where: { code }, data: { creditLimit, ...(alertFloor !== undefined ? { alertFloor } : {}) } });
     return { ok: true };
   }
 
@@ -169,7 +169,7 @@ export class ProviderAccountsService {
     this.gate(actor, true);
     const { matchSource, matchEveryDays } = parseInput(ProviderMatchingBody, body);
     await this.providerByCode(code);
-    await this.kernel.prisma.provider.update({ where: { code }, data: { matchSource, matchEveryDays } });
+    await this.uow.prisma.provider.update({ where: { code }, data: { matchSource, matchEveryDays } });
     return { ok: true };
   }
 
@@ -182,12 +182,12 @@ export class ProviderAccountsService {
     const provider = await this.providerByCode(code);
     if (provider.matchSource !== 'statement') fail(400, 'INVALID');
     const lastMatchedAt = new Date();
-    await this.kernel.prisma.provider.update({ where: { code }, data: { lastMatchedAt, matchOverdueNoticeAt: null } });
+    await this.uow.prisma.provider.update({ where: { code }, data: { lastMatchedAt, matchOverdueNoticeAt: null } });
     return { ok: true, lastMatchedAt: lastMatchedAt.toISOString() };
   }
 
   private async providerByCode(code: string) {
-    const provider = await this.kernel.prisma.provider.findUnique({ where: { code } });
+    const provider = await this.uow.prisma.provider.findUnique({ where: { code } });
     if (!provider) fail(404, 'NOT_FOUND');
     return provider;
   }
@@ -229,7 +229,7 @@ export class ProviderAccountsService {
       .filter((op) => op.providerCode === code && op.cost !== 0 && op.at >= from && op.at <= to)
       .map((op) => ({ id: op.id, msisdn: op.msisdn, at: op.at, amount: op.cost }));
     const result = reconcile(lines, ours);
-    const run = await this.kernel.prisma.$transaction(async (tx) => {
+    const run = await this.uow.prisma.$transaction(async (tx) => {
       await tx.provider.update({ where: { id: provider.id }, data: { statementMap: map } });
       return tx.providerReconciliation.create({
         data: {
@@ -251,7 +251,7 @@ export class ProviderAccountsService {
   async reconciliations(actor: Actor, code: string) {
     this.gate(actor, false);
     const provider = await this.providerByCode(code);
-    const runs = await this.kernel.prisma.providerReconciliation.findMany({
+    const runs = await this.uow.prisma.providerReconciliation.findMany({
       where: { providerId: provider.id },
       orderBy: { createdAt: 'desc' },
       take: 50,
@@ -275,7 +275,7 @@ export class ProviderAccountsService {
 
   async reconciliation(actor: Actor, id: string) {
     this.gate(actor, false);
-    const run = await this.kernel.prisma.providerReconciliation.findUnique({ where: { id }, include: { items: true, provider: true } });
+    const run = await this.uow.prisma.providerReconciliation.findUnique({ where: { id }, include: { items: true, provider: true } });
     if (!run) fail(404, 'NOT_FOUND');
     const order = ['different', 'missing_ours', 'missing_theirs', 'duplicate'];
     return {
@@ -301,9 +301,9 @@ export class ProviderAccountsService {
     this.gate(actor, true);
     const { status, note: text } = parseInput(ReconciliationItemBody, body);
     if (status === 'resolved' && !text) fail(400, 'NOTE_REQUIRED');
-    const item = await this.kernel.prisma.providerReconItem.findUnique({ where: { id } });
+    const item = await this.uow.prisma.providerReconItem.findUnique({ where: { id } });
     if (!item) fail(404, 'NOT_FOUND');
-    await this.kernel.prisma.providerReconItem.update({
+    await this.uow.prisma.providerReconItem.update({
       where: { id },
       data: status === 'resolved'
         ? { status, note: text, resolvedBy: actor.loginName, resolvedAt: new Date() }

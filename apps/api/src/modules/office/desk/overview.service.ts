@@ -1,6 +1,7 @@
+import { AccountTree } from '../kernel/account-tree';
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { holdsAny } from '../policy';
 import { Injectable } from '@nestjs/common';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { visibleAccountIds } from '../rules/office-rules';
 import { NEWEST_FIRST, expiringWhere, suspendedWhere } from '../rules/office-paging';
@@ -46,7 +47,8 @@ function bump(map: Map<string, Ranked>, key: string, label: string, amount: numb
 @Injectable()
 export class OverviewService {
   constructor(
-    private readonly kernel: OfficeKernel,
+    private readonly uow: UnitOfWork,
+    private readonly tree: AccountTree,
     private readonly wallets: WalletsService,
     private readonly insights: InsightsService,
     private readonly providerAccounts: ProviderAccountsService,
@@ -57,7 +59,7 @@ export class OverviewService {
     const period: OverviewPeriod = PERIODS.find((value) => value === query.period) ?? 'month';
     const now = new Date();
     const from = periodStart(period, now);
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id)).map((account) => account.id);
     const isBranch = actor.layer === 'branch';
@@ -80,7 +82,7 @@ export class OverviewService {
    * snapshot is written here, so history builds as the home is read. Null when there is no snapshot to compare with.
    */
   private async lineChange(actor: Actor, period: OverviewPeriod, lines: LineCounts, now: Date): Promise<LineCounts | null> {
-    const store = this.kernel.prisma.lineCountSnapshot;
+    const store = this.uow.prisma.lineCountSnapshot;
     const today = now.toISOString().slice(0, 10);
     await store.upsert({ where: { userId_day: { userId: actor.id, day: today } }, update: lines, create: { userId: actor.id, day: today, ...lines } });
     if (period === 'all') return lines;
@@ -98,7 +100,7 @@ export class OverviewService {
 
   /** Lines now, under the viewer: each a slice of the donut (suspended and expiring are read from the end date). */
   private async lines(posIds: string[], now: Date): Promise<LineCounts> {
-    const prisma = this.kernel.prisma;
+    const prisma = this.uow.prisma;
     const scope = { posId: { in: posIds } };
     const periods = (await prisma.package.findMany({ distinct: ['suspendAfterDays'], select: { suspendAfterDays: true } })).map((row) => row.suspendAfterDays);
     const suspendedScope = { AND: [scope, suspendedWhere(periods, now)] };
@@ -116,7 +118,7 @@ export class OverviewService {
   /** The sales and refunds of the period that the viewer may see, newest first, up to the overview's limit. */
   private async periodEntries(actor: Actor, from: Date | null) {
     const where = await this.wallets.financeWhere(actor, from ? { from: from.toISOString() } : {});
-    return this.kernel.prisma.walletEntry.findMany({
+    return this.uow.prisma.walletEntry.findMany({
       where: {
         AND: [
           where,
@@ -130,7 +132,7 @@ export class OverviewService {
   }
 
   /** Sales, refunds, a daily trend, the rankings and the most active accounts, from the period's ledger. */
-  private async money(actor: Actor, from: Date | null, accounts: Awaited<ReturnType<OfficeKernel['accounts']>>, period: OverviewPeriod, now: Date) {
+  private async money(actor: Actor, from: Date | null, accounts: Awaited<ReturnType<AccountTree['accounts']>>, period: OverviewPeriod, now: Date) {
     const rows = await this.periodEntries(actor, from);
     const ladders = await this.wallets.laddersFor(rows);
     const viewerOf = (chain: string[]) => (actor.layer === 'branch' ? chain[chain.length - 1] : actor.id);
@@ -209,7 +211,7 @@ export class OverviewService {
   /** Sales, their volume, activations and the viewer's profit between two instants: the period before, to compare. */
   private async totalsBetween(actor: Actor, from: Date, to: Date): Promise<PulseTotals> {
     const where = await this.wallets.financeWhere(actor, { from: from.toISOString(), to: to.toISOString() });
-    const rows = await this.kernel.prisma.walletEntry.findMany({
+    const rows = await this.uow.prisma.walletEntry.findMany({
       where: {
         AND: [
           where,
@@ -232,15 +234,15 @@ export class OverviewService {
   private async providerOfLines(lineIds: (string | null)[]) {
     const ids = [...new Set(lineIds.filter((id): id is string => Boolean(id)))];
     if (!ids.length) return new Map<string, { code: string; name: string }>();
-    const lines = await this.kernel.prisma.line.findMany({ where: { id: { in: ids } }, select: { id: true, package: { select: { provider: { select: { code: true, name: true } } } } } });
+    const lines = await this.uow.prisma.line.findMany({ where: { id: { in: ids } }, select: { id: true, package: { select: { provider: { select: { code: true, name: true } } } } } });
     return new Map(lines.map((line) => [line.id, line.package.provider]));
   }
 
   /** The accounts below the viewer: how many per layer, what they owe, and their ceilings. */
-  private async users(actor: Actor, accounts: Awaited<ReturnType<OfficeKernel['accounts']>>, visible: Set<string>) {
+  private async users(actor: Actor, accounts: Awaited<ReturnType<AccountTree['accounts']>>, visible: Set<string>) {
     const below = accounts.filter((account) => visible.has(account.id) && account.id !== actor.id && account.layer !== 'branch');
     const wallets = below.length
-      ? await this.kernel.prisma.wallet.findMany({ where: { userId: { in: below.map((account) => account.id) } }, select: { userId: true, balance: true, ceiling: true } })
+      ? await this.uow.prisma.wallet.findMany({ where: { userId: { in: below.map((account) => account.id) } }, select: { userId: true, balance: true, ceiling: true } })
       : [];
     const debtors = wallets.filter((wallet) => wallet.balance < 0);
     return {
@@ -258,9 +260,9 @@ export class OverviewService {
   }
 
   /** Tasks the viewer may see, by status, and how long the oldest open one has waited. */
-  private async tasks(actor: Actor, accounts: Awaited<ReturnType<OfficeKernel['accounts']>>, now: Date) {
+  private async tasks(actor: Actor, accounts: Awaited<ReturnType<AccountTree['accounts']>>, now: Date) {
     const where = taskWhereFor(actor, accounts);
-    const prisma = this.kernel.prisma;
+    const prisma = this.uow.prisma;
     const counts = await Promise.all(TASK_STATUSES.map((status) => prisma.officeTask.count({ where: { AND: [where, { status }] } })));
     const oldest = await prisma.officeTask.findFirst({ where: { AND: [where, { status: { in: ['pending', 'working'] } }] }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } });
     return {

@@ -1,8 +1,11 @@
+import { LineAccess } from '../lines/line-access';
+import { WalletLedger } from '../wallets/wallet-ledger';
+import { AccountTree } from '../kernel/account-tree';
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { granted } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { parseInput } from '../../shared/input';
 import { fail } from '../../shared/office-failure';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { TermsService } from '../terms/terms.service';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -40,7 +43,7 @@ function transferChoices(kind: 'pos' | 'agent', stated: z.output<typeof AccountM
 /** Moving an account (a point of sale under another agent, an agent under another main agent) or a number to another point of sale, with the preview that asks the same questions first. */
 @Injectable()
 export class TransfersService {
-  constructor(private readonly kernel: OfficeKernel, private readonly terms: TermsService) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly ledger: WalletLedger, private readonly lineAccess: LineAccess, private readonly terms: TermsService) {}
 
   /**
    * Moves a point of sale under another agent, or an agent under another main agent. The caller states
@@ -54,12 +57,12 @@ export class TransfersService {
   async transferAccount(actor: Actor, loginName: string, body: unknown) {
     // The words of the choices need no account, so a body that cannot be a move is refused before any is read.
     const stated = parseInput(AccountMove, body);
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const { moved, next, from, kind } = this.resolveTransfer(actor, accounts, loginName, stated.parentLogin);
     const choices = transferChoices(kind, stated);
     if (!choices) fail(400, 'INVALID');
     const posIds = accounts.filter((account) => account.parentId === moved.id).map((account) => account.id);
-    const lines = await this.kernel.runTx(async (tx) => {
+    const lines = await this.uow.runTx(async (tx) => {
       // A point of sale's numbers remember the agent they were first sold under.
       if (kind === 'pos') {
         await tx.line.updateMany({ where: { posId: moved.id, originAgentId: null }, data: { originAgentId: moved.parentId } });
@@ -95,9 +98,9 @@ export class TransfersService {
    * many accounts sit below.
    */
   async transferPreview(actor: Actor, loginName: string, query: { parentLogin?: unknown }) {
-    const accounts = await this.kernel.accounts();
+    const accounts = await this.tree.accounts();
     const { moved, next, kind } = this.resolveTransfer(actor, accounts, loginName, query.parentLogin);
-    const nextPath = [nodeOf(moved), ...this.kernel.pathOf(next.id, accounts)];
+    const nextPath = [nodeOf(moved), ...this.tree.pathOf(next.id, accounts)];
     // What is under the moved account: an agent's points of sale, nothing for a point of sale. They go with
     // it, so their paths after the move run through its own.
     const below = accounts.filter((account) => account.parentId === moved.id);
@@ -106,24 +109,24 @@ export class TransfersService {
     // The moved account heads the new chain, so one list serves its own rows and the rows that set its floor.
     const chainIds = nextPath.map((node) => node.id);
     const [terms, sells, packages, wallets, lines] = await Promise.all([
-      this.kernel.prisma.userPackage.findMany({
+      this.uow.prisma.userPackage.findMany({
         where: { userId: { in: [...chainIds, ...belowIds] } },
         select: { packageId: true, userId: true, hidden: true, price: true, renewalPrice: true },
       }),
-      this.kernel.prisma.sellPrice.findMany({
+      this.uow.prisma.sellPrice.findMany({
         where: { ownerId: { in: chainIds } },
         select: { packageId: true, ownerId: true, price: true, renewalPrice: true },
       }),
-      this.kernel.prisma.package.findMany({ select: { id: true, ...PRICE_COLUMNS } }),
-      this.kernel.prisma.wallet.findMany({ where: { userId: { in: subtree } }, select: { userId: true, balance: true } }),
-      this.kernel.prisma.line.count({ where: { posId: { in: subtree }, status: { in: [...RENEWABLE_STATUSES] } } }),
+      this.uow.prisma.package.findMany({ select: { id: true, ...PRICE_COLUMNS } }),
+      this.uow.prisma.wallet.findMany({ where: { userId: { in: subtree } }, select: { userId: true, balance: true } }),
+      this.uow.prisma.line.count({ where: { posId: { in: subtree }, status: { in: [...RENEWABLE_STATUSES] } } }),
     ]);
     const balances = new Map(wallets.map((wallet) => [wallet.userId, wallet.balance]));
     return {
       balance: balances.get(moved.id) ?? 0,
       subtreeBalance: belowIds.reduce((sum, id) => sum + (balances.get(id) ?? 0), 0),
       ...previewOf({
-        moved: this.kernel.pathOf(moved.id, accounts),
+        moved: this.tree.pathOf(moved.id, accounts),
         nextPath,
         // Only a point of sale has no child section. An agent with none still has its sell prices to count.
         children: kind === 'pos' ? null : below.map((account) => [nodeOf(account), ...nextPath]),
@@ -146,20 +149,20 @@ export class TransfersService {
    */
   async transferLine(actor: Actor, lineId: string, body: unknown) {
     const { posLogin, linePrices } = parseInput(TransferLineBody, body);
-    const line = await this.kernel.visibleLine(actor, lineId);
-    const accounts = await this.kernel.accounts();
+    const line = await this.lineAccess.visibleLine(actor, lineId);
+    const accounts = await this.tree.accounts();
     const next = posLogin === undefined ? undefined : accounts.find((account) => account.loginName === posLogin);
     const from = accounts.find((account) => account.id === line.posId);
     const refusal = this.transferRefusal(actor, accounts, { kind: 'line', currentParentId: line.posId, next });
     if (refusal === 'FORBIDDEN') fail(403, 'FORBIDDEN');
     if (refusal || !next || !from) fail(400, 'INVALID');
     const locked = !line.package.companyId;
-    await this.kernel.runTx(async (tx) => {
+    await this.uow.runTx(async (tx) => {
       await tx.line.update({
         where: { id: line.id },
         data: { posId: next.id, opsLocked: locked },
       });
-      await this.kernel.recordOp(tx, line.posId, actor.operatorId, 'transfer', saleOf(line));
+      await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'transfer', saleOf(line));
       // After the move, so the number is priced through the point of sale it is on now and the chain above it.
       // Only a number that can still renew is priced again, as in the move of an account; any other moves with its terms.
       if (linePrices === 'recapture' && (RENEWABLE_STATUSES as readonly string[]).includes(line.status)) {
@@ -202,7 +205,7 @@ export class TransfersService {
     return canTransfer({
       kind: move.kind,
       actor: { grants: actor.grants, impersonating: actor.impersonating },
-      actorStops: deniedOpsFor(this.kernel.pathOf(actor.id, accounts)),
+      actorStops: deniedOpsFor(this.tree.pathOf(actor.id, accounts)),
       currentParentId: move.currentParentId,
       destination: move.next ? { id: move.next.id, layer: move.next.layer, frozen: Boolean(move.next.disabledAt) } : null,
       visible: visibleAccountIds(actor.id, actor.layer, accounts),
@@ -215,8 +218,8 @@ export class TransfersService {
    */
   private async writeTransferNotices(tx: Prisma.TransactionClient, actor: Actor, move: { kind: TransferKind; subject: string; from: Account; to: Account }) {
     const payload = { kind: move.kind, subject: move.subject, actorName: actor.nickname };
-    const lost = await this.kernel.notice.write(tx, [move.from.id], actor, { kind: 'transfer.out', payload: { ...payload, toLogin: move.to.loginName } });
-    const gained = await this.kernel.notice.write(tx, [move.to.id], actor, { kind: 'transfer.in', payload: { ...payload, fromLogin: move.from.loginName } });
-    this.kernel.queueNotices(tx, [...lost, ...gained]);
+    const lost = await this.uow.notice.write(tx, [move.from.id], actor, { kind: 'transfer.out', payload: { ...payload, toLogin: move.to.loginName } });
+    const gained = await this.uow.notice.write(tx, [move.to.id], actor, { kind: 'transfer.in', payload: { ...payload, fromLogin: move.from.loginName } });
+    this.uow.queueNotices(tx, [...lost, ...gained]);
   }
 }

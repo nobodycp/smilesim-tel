@@ -36,7 +36,7 @@ function world() {
     },
     $transaction: async (work: Promise<unknown>[]) => Promise.all(work),
   } as unknown as OfficeKernel['prismaClient'];
-  return { provider, packages, providers: new ProvidersService(kernel), catalog: new PackagesService(kernel) };
+  return { provider, packages, providers: new ProvidersService(kernel.uow), catalog: new PackagesService(kernel.uow, kernel.tree, kernel.ladder) };
 }
 
 describe('run modes that follow the provider', () => {

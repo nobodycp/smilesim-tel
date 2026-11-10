@@ -54,14 +54,14 @@ export class OfficeFacade {
   private auditService: AuditService | null = null;
 
   private get auditLog(): AuditService {
-    this.auditService ??= new AuditService(this.kernel);
+    this.auditService ??= new AuditService(this.kernel.uow, this.kernel.tree);
     return this.auditService;
   }
 
   private tasksService: TasksService | null = null;
 
   private get tasksDomain(): TasksService {
-    this.tasksService ??= new TasksService(this.kernel);
+    this.tasksService ??= new TasksService(this.kernel.uow, this.kernel.tree, this.kernel.actors, this.kernel.ledger);
     return this.tasksService;
   }
 
@@ -77,82 +77,82 @@ export class OfficeFacade {
   private walletDeskInstance: WalletsService | null = null;
 
   private get walletDesk(): WalletsService {
-    this.walletDeskInstance ??= new WalletsService(this.kernel);
+    this.walletDeskInstance ??= new WalletsService(this.kernel.uow, this.kernel.tree, this.kernel.ledger, this.kernel.ladder);
     return this.walletDeskInstance;
   }
 
   private providerDeskInstance: ProvidersService | null = null;
 
   private get providerDesk(): ProvidersService {
-    this.providerDeskInstance ??= new ProvidersService(this.kernel);
+    this.providerDeskInstance ??= new ProvidersService(this.kernel.uow);
     return this.providerDeskInstance;
   }
 
   private companyDeskInstance: CompaniesService | null = null;
 
   private get companyDesk(): CompaniesService {
-    this.companyDeskInstance ??= new CompaniesService(this.kernel);
+    this.companyDeskInstance ??= new CompaniesService(this.kernel.uow);
     return this.companyDeskInstance;
   }
 
   private packageDeskInstance: PackagesService | null = null;
 
   private get packageDesk(): PackagesService {
-    this.packageDeskInstance ??= new PackagesService(this.kernel);
+    this.packageDeskInstance ??= new PackagesService(this.kernel.uow, this.kernel.tree, this.kernel.ladder);
     return this.packageDeskInstance;
   }
 
   private termDeskInstance: TermsService | null = null;
 
   private get termDesk(): TermsService {
-    this.termDeskInstance ??= new TermsService(this.kernel);
+    this.termDeskInstance ??= new TermsService(this.kernel.uow, this.kernel.tree, this.kernel.ladder);
     return this.termDeskInstance;
   }
 
   private roleDeskInstance: RolesService | null = null;
 
   private get roleDesk(): RolesService {
-    this.roleDeskInstance ??= new RolesService(this.kernel);
+    this.roleDeskInstance ??= new RolesService(this.kernel.uow, this.kernel.layerRoles);
     return this.roleDeskInstance;
   }
 
   private deskDeskInstance: DeskService | null = null;
 
   private get deskDesk(): DeskService {
-    this.deskDeskInstance ??= new DeskService(this.kernel);
+    this.deskDeskInstance ??= new DeskService(this.kernel.uow, this.kernel.tree);
     return this.deskDeskInstance;
   }
 
   private accountDeskInstance: AccountsService | null = null;
 
   private get accountDesk(): AccountsService {
-    this.accountDeskInstance ??= new AccountsService(this.kernel);
+    this.accountDeskInstance ??= new AccountsService(this.kernel.uow, this.kernel.tree, this.kernel.layerRoles, this.kernel.auth);
     return this.accountDeskInstance;
   }
 
   private transferDeskInstance: TransfersService | null = null;
 
   private get transferDesk(): TransfersService {
-    this.transferDeskInstance ??= new TransfersService(this.kernel, this.termDesk);
+    this.transferDeskInstance ??= new TransfersService(this.kernel.uow, this.kernel.tree, this.kernel.ledger, this.kernel.lineAccess, this.termDesk);
     return this.transferDeskInstance;
   }
 
   private lineDeskInstance: LinesService | null = null;
 
   private get lineDesk(): LinesService {
-    this.lineDeskInstance ??= new LinesService(this.kernel, this.tasksDomain, this.linePricing, new TaskCompletion(this.kernel, this.tasksDomain, this.linePricing), new SimulatedProviderGateway());
+    this.lineDeskInstance ??= new LinesService(this.kernel.uow, this.kernel.tree, this.kernel.ledger, this.kernel.ladder, this.kernel.lineAccess, this.tasksDomain, this.linePricing, new TaskCompletion(this.kernel.uow, this.kernel.ledger, this.tasksDomain, this.linePricing), new SimulatedProviderGateway());
     return this.lineDeskInstance;
   }
 
   private linePricingInstance: LinePricing | null = null;
 
   private get linePricing(): LinePricing {
-    this.linePricingInstance ??= new LinePricing(this.kernel);
+    this.linePricingInstance ??= new LinePricing(this.kernel.uow, this.kernel.tree, this.kernel.ladder);
     return this.linePricingInstance;
   }
 
   private get lineReads(): LineReads {
-    return new LineReads(this.kernel);
+    return new LineReads(this.kernel.uow, this.kernel.tree);
   }
 
   // user-terms-service.spec stamps terms through the service; the stamping lives in LinesService.

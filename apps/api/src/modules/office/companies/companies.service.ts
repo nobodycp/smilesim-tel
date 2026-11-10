@@ -1,7 +1,7 @@
+import { UnitOfWork } from '../kernel/unit-of-work';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
-import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { parseInput } from '../../shared/input';
 import { companies } from '../catalog/office-catalog';
@@ -67,11 +67,11 @@ function shelfByCompany(rows: ShelfRow[]): Map<string, Map<string, ShelfProvider
 /** Companies: the shelf of companies, providers and packages an account sees, the company SIM rules and eSIM price, and the company image. */
 @Injectable()
 export class CompaniesService {
-  constructor(private readonly kernel: OfficeKernel) {}
+  constructor(private readonly uow: UnitOfWork) {}
 
   async shelf(actor: Actor) {
     if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    const rows = await this.kernel.prisma.package.findMany({
+    const rows = await this.uow.prisma.package.findMany({
       where: { companyId: { not: null } },
       include: {
         provider: true,
@@ -81,7 +81,7 @@ export class CompaniesService {
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
     });
     const byCompany = shelfByCompany(rows);
-    const stored = await this.kernel.prisma.company.findMany({
+    const stored = await this.uow.prisma.company.findMany({
       select: { code: true, name: true, image: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
     });
     const byCode = new Map(stored.map((row) => [row.code, row]));
@@ -109,9 +109,9 @@ export class CompaniesService {
     // The prefix must be shorter than the length: a rule across two fields, kept where the other readers use it.
     const rules = readSimRules(sim);
     if (!rules) fail(400, 'INVALID');
-    const row = await this.kernel.prisma.company.findUnique({ where: { code } });
+    const row = await this.uow.prisma.company.findUnique({ where: { code } });
     if (!row) fail(404, 'NOT_FOUND');
-    const saved = await this.kernel.prisma.company.update({
+    const saved = await this.uow.prisma.company.update({
       where: { id: row.id },
       data: { iccidLength: rules.length, iccidPrefix: rules.prefix || null, esim: rules.esim, ...(esimPrice === undefined ? {} : { esimPrice }) },
     });
@@ -122,7 +122,7 @@ export class CompaniesService {
     if (actor.impersonating) fail(403, 'FORBIDDEN');
     requireGrant(actor, 'edit');
     const { name, image: sent } = parseInput(CompanyImageBody, body);
-    const found = await this.kernel.prisma.company.count({ where: { name } });
+    const found = await this.uow.prisma.company.count({ where: { name } });
     if (!found) fail(404, 'NOT_FOUND');
     let image: string | null = null;
     if (sent) {
@@ -132,7 +132,7 @@ export class CompaniesService {
       if (bytes.length < 32 || bytes.length > COMPANY_IMAGE_BYTES) fail(400, 'INVALID');
       image = `data:image/${match[1]};base64,${match[2]}`;
     }
-    await this.kernel.prisma.company.updateMany({ where: { name }, data: { image } });
+    await this.uow.prisma.company.updateMany({ where: { name }, data: { image } });
     return { ok: true };
   }
 }
