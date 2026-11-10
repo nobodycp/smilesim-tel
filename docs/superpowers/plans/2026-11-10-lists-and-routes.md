@@ -76,7 +76,7 @@ mocks, both maps.
   `reports/:kind/export` are gone, with `ReportsService`'s dependency on the tasks and lines services. The web's
   `/reports/tasks` and `/reports/numbers` pages stay and read `/office/tasks` and `/office/lines`. No export was
   added for `providers` and `operations`: they had none, and a new export is a feature, not a rename.
-- [x] **L.18** (COMMIT) One name for an account, both sides (owner, 2026-11-10: «الأفضل برمجياً والأوضح»).
+- [x] **L.18** (ce6f94d) One name for an account, both sides (owner, 2026-11-10: «الأفضل برمجياً والأوضح»).
   `GET /office/lines?loginName=`; every field that holds a login ends in `LoginName` in requests and answers:
   `parentLoginName`, `posLoginName`, `actorLoginName`, `submitterLoginName`, `assigneeLoginName`, and
   `toLoginName` / `fromLoginName` in transfer notices. 89 files in the API, the web and their tests. The Prisma
