@@ -1,5 +1,6 @@
 import { OfficeKernel } from '../kernel/office-kernel';
-import { FAILURE_THRESHOLD, PROVIDER_FAILED_NOTE, healthOf } from './provider-health';
+import { PROVIDER_FAILED_NOTE } from '../stored-text';
+import { FAILURE_THRESHOLD, healthOf } from './provider-health';
 import { ProviderHealthService } from './provider-health.service';
 
 // Provider health and alerts (spec 2026-11-08-overview-and-reports-nav, G).

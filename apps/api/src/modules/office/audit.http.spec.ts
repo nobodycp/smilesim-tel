@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../auth/auth.store';
-import { officeTestApp } from './kernel/office-test-app';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
+import { officeTestApp } from './testing/office-test-app';
 
 // The activity log route over HTTP, written before it left office.controller.ts.
 describe('GET /office/audit', () => {

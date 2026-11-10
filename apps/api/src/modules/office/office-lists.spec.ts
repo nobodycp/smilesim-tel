@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../auth/auth.store';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import type { Layer } from '../auth/decide-login';
-import { hashOnce } from './test-hash';
+import { hashOnce } from './testing/test-hash';
 import { OfficeFailure } from '../shared/office-failure';
 import { OfficeFacade } from './testing/office-facade';
 import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, afterFeed, decodeFeedCursor, encodeFeedCursor, expiringWhere, isSuspended, linesWhere, mergeFeed, suspendedWhere } from './office-paging';

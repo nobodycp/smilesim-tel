@@ -1,5 +1,5 @@
 import { OfficeFailure } from '../shared/office-failure';
-import { tree } from './tree-fixture';
+import { tree } from './testing/tree.fixture';
 
 // Line add-ons (spec 2026-11-09-offers-tasks-addons-wallet-esim, 3): an extra operation named on the package opens
 // a manual task that holds its price; done, the point of sale pays it under the add-on's name.

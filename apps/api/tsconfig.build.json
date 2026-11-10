@@ -5,9 +5,7 @@
   },
   "exclude": [
     "src/**/*.spec.ts",
-    "src/modules/office/testing/**",
-    "src/modules/office/kernel/office-test-app.ts",
-    "src/modules/office/test-hash.ts",
-    "src/modules/office/tree-fixture.ts"
+    "src/**/testing/**",
+    "src/**/*.fixture.ts"
   ]
 }

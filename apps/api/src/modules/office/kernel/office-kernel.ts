@@ -129,12 +129,6 @@ export class OfficeKernel {
     });
   }
 
-  async branchActor(gate: Gate): Promise<Actor> {
-    const actor = await this.actor(gate);
-    if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
-    return actor;
-  }
-
   /** Every account, as the tree is walked. Inside a transaction pass its client (rule 1.3). */
   async accounts(db: Prisma.TransactionClient | PrismaClient = this.prisma): Promise<Account[]> {
     return db.user.findMany({

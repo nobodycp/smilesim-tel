@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../auth/auth.store';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { PrismaBrandingStore } from '../branding/prisma-branding.store';
 import { ActivityRecorder } from '../office/activity-recorder';
 import type { NoticeService } from '../office/notice.service';

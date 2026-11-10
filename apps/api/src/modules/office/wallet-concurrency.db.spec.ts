@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
-import { MemoryAuthStore } from '../auth/auth.store';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { createPrismaClient } from '../../db';
 import type { NoticeService } from './notice.service';
 import { OfficeFacade } from './testing/office-facade';

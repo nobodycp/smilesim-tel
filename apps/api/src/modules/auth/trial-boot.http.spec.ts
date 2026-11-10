@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { AuthModule } from './auth.module';
-import { AUTH_STORE, MemoryAuthStore } from './auth.store';
+import { AUTH_STORE } from './auth.store';
+import { MemoryAuthStore } from './testing/memory-auth.store';
 import { PrismaAuthStore } from './prisma-auth.store';
 
 type Provider = { provide?: unknown; useClass?: unknown; useFactory?: unknown; useValue?: unknown };

@@ -1,6 +1,6 @@
 import { ERROR_CODES, ERROR_MESSAGES, errorBody } from './errors';
 import { DoorMiddleware } from './door.middleware';
-import { MemoryAuthStore } from './modules/auth/auth.store';
+import { MemoryAuthStore } from './modules/auth/testing/memory-auth.store';
 import { fullNameProblem, newPasswordProblem, validateFullName, validateNewPassword } from './modules/auth/validators';
 
 // The Arabic sentences the web app showed before the codes existed. A code may be added, but

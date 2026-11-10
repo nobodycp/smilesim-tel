@@ -1,4 +1,4 @@
-import { hashPassword } from '../auth/password';
+import { hashPassword } from '../../auth/password';
 
 // argon2 is slow on purpose. Specs that build a fresh office per test hash the same password once per file,
 // so a full parallel run does not push single tests past the Jest timeout.

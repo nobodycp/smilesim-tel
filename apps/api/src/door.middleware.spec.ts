@@ -1,5 +1,6 @@
 import { DoorMiddleware } from './door.middleware';
-import { MemoryAuthStore, type StoredUser } from './modules/auth/auth.store';
+import { type StoredUser } from './modules/auth/auth.store';
+import { MemoryAuthStore } from './modules/auth/testing/memory-auth.store';
 
 // An entered (impersonation) session belongs on the entered account's own door: the point of sale's door lets it
 // through, the admin door refuses it (spec 2026-11-08-overview-and-reports-nav, A).

@@ -1,12 +1,13 @@
+import { ApiZodBody } from '../../../openapi/body';
+import { CeilingBody, DeductBody, FundBody } from './wallets.schemas';
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseInterceptors } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, param } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
-import { CeilingBodyDto, DeductBodyDto, FundBodyDto } from '../office.dto';
 import { summaryDays } from './finance-summary';
 import { WalletsService } from './wallets.service';
 import type { Response } from 'express';
@@ -29,13 +30,13 @@ export class WalletsController {
   @Post('wallets/:loginName/deduct')
   @ApiOperation({ summary: 'Take money back from a child: return, correction or settlement (note required)' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: DeductBodyDto })
+  @ApiZodBody(DeductBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('deduct', 'account', param('loginName'))
   deduct(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
-    @Body() body: DeductBodyDto,
+    @Body() body: DeductBody,
   ) {
     return this.walletDesk.deduct(actor, loginName, body);
   }
@@ -43,13 +44,13 @@ export class WalletsController {
   @Post('wallets/:loginName/fund')
   @ApiOperation({ summary: 'Fund a wallet (note required)' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: FundBodyDto })
+  @ApiZodBody(FundBody)
   @ApiErrorResponse(401, 403, 400, 404)
   @Activity('fund', 'account', param('loginName'))
   fund(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
-    @Body() body: FundBodyDto,
+    @Body() body: FundBody,
   ) {
     return this.walletDesk.fund(actor, loginName, body);
   }
@@ -58,12 +59,12 @@ export class WalletsController {
   @Activity('ceiling', 'account', param('loginName'))
   @ApiOperation({ summary: 'Set wallet overdraft ceiling' })
   @ApiParam({ name: 'loginName' })
-  @ApiBody({ type: CeilingBodyDto })
+  @ApiZodBody(CeilingBody)
   @ApiErrorResponse(401, 403, 400, 404)
   ceiling(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
-    @Body() body: CeilingBodyDto,
+    @Body() body: CeilingBody,
   ) {
     return this.walletDesk.setCeiling(actor, loginName, body);
   }

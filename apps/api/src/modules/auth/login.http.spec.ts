@@ -3,7 +3,8 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from './auth.module';
-import { AUTH_STORE, MemoryAuthStore } from './auth.store';
+import { AUTH_STORE } from './auth.store';
+import { MemoryAuthStore } from './testing/memory-auth.store';
 import { hashPassword } from './password';
 import { DEFAULT_SESSION_MINUTES, SESSION_COOKIE_SECONDS } from './sessions';
 

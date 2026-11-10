@@ -1,13 +1,11 @@
 import { z } from 'zod';
-
-/** The largest amount or ceiling a wallet route accepts, in agorot. */
-export const MAX_AGOROT = 100_000_000;
+import { MAX_AGOROT, agorot, positiveAgorot } from '../../shared/schemas';
 
 /** A positive whole amount in agorot. */
-export const amount = z.number().int().min(1).max(MAX_AGOROT);
+export const amount = positiveAgorot;
 
 /** A ceiling: zero or more agorot. */
-export const ceilingValue = z.number().int().min(0).max(MAX_AGOROT);
+export const ceilingValue = agorot;
 
 /** A free note: trimmed text, and anything that is not text counts as no note. */
 const note = z.unknown().transform((value) => (typeof value === 'string' ? value.trim() : ''));
@@ -20,3 +18,8 @@ export const DEDUCT_REASONS = ['return', 'correction', 'settlement'] as const;
 export const FundBody = z.object({ amount, note, reason: z.enum(FUND_REASONS).optional().default('deposit') });
 export const DeductBody = z.object({ amount, note, reason: z.enum(DEDUCT_REASONS) });
 export const CeilingBody = z.object({ ceiling: ceilingValue });
+export type FundBody = z.input<typeof FundBody>;
+export type DeductBody = z.input<typeof DeductBody>;
+export type CeilingBody = z.input<typeof CeilingBody>;
+
+export { MAX_AGOROT };

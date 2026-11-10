@@ -4,11 +4,5 @@ export function nonNegative(value: unknown): number | null {
   return value;
 }
 
-/** `undefined` means invalid; `null` means "clear". */
-export function optionalPrice(value: unknown): number | null | undefined {
-  if (value === undefined || value === null) return null;
-  return nonNegative(value) ?? undefined;
-}
-
 /** The ladder, top to bottom. */
 export const LAYER_ORDER = ['branch', 'main_agent', 'agent', 'pos'];

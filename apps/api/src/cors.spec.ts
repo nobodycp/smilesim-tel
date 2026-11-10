@@ -3,7 +3,8 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from './app.module';
-import { AUTH_STORE, MemoryAuthStore } from './modules/auth/auth.store';
+import { AUTH_STORE } from './modules/auth/auth.store';
+import { MemoryAuthStore } from './modules/auth/testing/memory-auth.store';
 import { enableWebCors } from './cors';
 
 describe('web CORS', () => {

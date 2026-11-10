@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MemoryAuthStore } from '../auth/auth.store';
-import { hashOnce } from './test-hash';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
+import { hashOnce } from './testing/test-hash';
 import { companies } from './office-catalog';
 import { OfficeFacade } from './testing/office-facade';
 

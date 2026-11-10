@@ -3,7 +3,8 @@ import { env, isTest } from '../../../config';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
-import { FAILURE_WINDOW_MINUTES, HEALTH_CHECK_SECONDS, PROVIDER_FAILED_NOTE, healthOf, type Health } from './provider-health';
+import { PROVIDER_FAILED_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
+import { FAILURE_WINDOW_MINUTES, HEALTH_CHECK_SECONDS, healthOf, type Health } from './provider-health';
 import { ProviderAccountsService } from './provider-accounts.service';
 import { matchOverdue } from './match-simulator';
 import type { NoticeDraft } from '../notice-kinds';
@@ -11,7 +12,7 @@ import type { NoticeDraft } from '../notice-kinds';
 const log = logger('ProviderHealth');
 
 /** The sender of the system's own notices: no account, so every recipient hears it. */
-const SYSTEM: Actor = { id: 'system', loginName: 'system', nickname: 'النظام', layer: 'branch', isBranchOwner: false, grants: [], operatorId: 'system', impersonating: false };
+const SYSTEM: Actor = { id: 'system', loginName: 'system', nickname: SYSTEM_SENDER_NAME, layer: 'branch', isBranchOwner: false, grants: [], operatorId: 'system', impersonating: false };
 
 export type ProviderHealthRow = Health & { code: string; name: string; failures: number; available: number; alertFloor: number };
 

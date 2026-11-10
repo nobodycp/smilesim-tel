@@ -8,7 +8,7 @@ import { feedPosition } from '../kernel/feed';
 import type { Actor } from '../kernel/types';
 import { FEED_PAGE, NEWEST_FIRST, afterFeed, encodeFeedCursor, mergeFeed } from '../office-paging';
 import { visibleAccountIds } from '../office-rules';
-import { CeilingBody, DeductBody, FundBody } from '../wallet.schemas';
+import { CeilingBody, DeductBody, FundBody } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 import { matchOf } from '../providers/match-simulator';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';

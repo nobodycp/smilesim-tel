@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../auth/auth.store';
-import { officeTestApp } from './kernel/office-test-app';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
+import { officeTestApp } from './testing/office-test-app';
 import { GRANT_CODES } from './office-grants';
 import { ROUTES } from './testing/office-routes';
 

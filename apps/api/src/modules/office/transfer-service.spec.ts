@@ -10,7 +10,7 @@ import { OfficeKernel } from './kernel/office-kernel';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from './office.module';
 import { OfficeFacade } from './testing/office-facade';
 import type { LineTerms } from './office-rules';
-import { account, tree, type Row } from './tree-fixture';
+import { account, tree, type Row } from './testing/tree.fixture';
 
 // Moving an account or a number, and what the office is told before it does.
 // The tree is the one in tree-fixture.ts: branch → ma1 → ag1 → pos1 and ma1 → ag2 → pos2, plus ma2 with nothing under it.

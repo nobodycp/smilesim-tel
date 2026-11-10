@@ -1,4 +1,4 @@
-import { tree } from './tree-fixture';
+import { tree } from './testing/tree.fixture';
 
 // eSIM per package (spec 2026-11-09-offers-tasks-addons-wallet-esim, 5): the company refusing eSIM answers
 // ESIM_UNSUPPORTED; a package switched off answers ESIM_PACKAGE_OFF; both on lets it through.

@@ -8,9 +8,9 @@
   "conflict-status": 0,
   "write-without-activity": 0,
   "cross-domain-controller-import": 0,
-  "test-code-imported": 1,
-  "test-code-in-src": 3,
+  "test-code-imported": 0,
+  "test-code-in-src": 0,
   "env-outside-config": 0,
   "console-calls": 0,
-  "stored-text": 8
+  "stored-text": 0
 }

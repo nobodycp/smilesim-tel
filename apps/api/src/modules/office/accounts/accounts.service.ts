@@ -11,7 +11,7 @@ import { GRANT_CODES, effectiveGrantCodes, roleGrantCodes, splitGrants } from '.
 import { visibleAccountIds } from '../office-rules';
 import { holds, isBranch, isOwner, layerRank, requireGrant, requireOwner } from '../policy';
 import { stampTaskLog } from '../task-log';
-import { HANDLER_FROZEN_NOTE } from '../tasks/task-notes';
+import { HANDLER_FROZEN_NOTE } from '../stored-text';
 import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { HANDOFF_SECONDS, handoffKey } from './handoff';
 import { usersPage, type UsersFilter } from './users-page';

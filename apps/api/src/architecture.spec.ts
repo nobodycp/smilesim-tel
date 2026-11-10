@@ -141,9 +141,9 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('test-code-imported', hits(production, /from '[^']*(\/testing\/[^']*|\.fixture|\.spec)'/));
   });
 
-  it('5.6 test-code-in-src: known test helpers still outside testing/', () => {
-    const stray = ['modules/office/tree-fixture.ts', 'modules/office/test-hash.ts', 'modules/office/kernel/office-test-app.ts'];
-    check('test-code-in-src', production.filter(({ file }) => stray.includes(file)).map(({ file }) => ({ file, line: 1, text: 'test helper outside testing/' })));
+  it('5.6 test-code-in-src: test helpers live in testing/ or are *.fixture.ts', () => {
+    // A production file that builds an in-memory stand-in, a fake clock or a test app is a test helper in disguise.
+    check('test-code-in-src', hits(production, /@nestjs\/testing|from 'supertest'|\bjest\./));
   });
 
   it('5.7 env-outside-config: process.env is read in config.ts only', () => {
@@ -155,7 +155,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   });
 
   it('5.9 stored-text: the API stores codes, not sentences', () => {
-    const seeds = /catalog\/|trial-seed|cities\.ts|simulated-adapter|office-catalog\.ts|errors\.ts/;
+    const seeds = /catalog\/|trial-seed|cities\.ts|simulated-adapter|office-catalog\.ts|errors\.ts|stored-text\.ts/;
     check('stored-text', hits(production.filter(({ file }) => !seeds.test(file)), /^(?!\s*(\/\/|\*|\/\*)).*'[^'\n]*[֐-ۿ][^'\n]*'/m, (match) => !/@Api\w+\(/.test(match[0])));
   });
 });

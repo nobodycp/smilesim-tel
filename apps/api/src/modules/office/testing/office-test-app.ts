@@ -5,7 +5,7 @@ import { ActivityRecorder } from '../activity-recorder';
 import { API_PROVIDERS } from '../../shared/api-providers';
 import { NoticeService } from '../notice.service';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
-import { OfficeKernel } from './office-kernel';
+import { OfficeKernel } from '../kernel/office-kernel';
 
 /**
  * For HTTP specs: every office route, as the app serves it, over the given auth store and in-memory tables.

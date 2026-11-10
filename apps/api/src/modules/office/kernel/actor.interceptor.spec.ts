@@ -2,13 +2,14 @@ import 'reflect-metadata';
 import { Body, Controller, INestApplication, Post, UseFilters, UseInterceptors } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { AUTH_STORE, MemoryAuthStore } from '../../auth/auth.store';
+import { AUTH_STORE } from '../../auth/auth.store';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ApiExceptionFilter } from '../../shared/api-exception.filter';
-import { ZodPipe } from '../../shared/zod.pipe';
+import { parseInput } from '../../shared/input';
 import { Activity } from '../activity.decorator';
 import { ActivityInterceptor } from '../activity.interceptor';
 import { ActivityRecorder } from '../activity-recorder';
-import { FundBody } from '../wallet.schemas';
+import { FundBody } from '../wallets/wallets.schemas';
 import { Actor, ActorInterceptor } from './actor.interceptor';
 import { OfficeKernel } from './office-kernel';
 import type { Actor as ActorShape } from './types';
@@ -19,13 +20,13 @@ import type { Actor as ActorShape } from './types';
 class ProbeController {
   @Post('fund')
   @Activity('fund', 'account')
-  fund(@Actor() actor: ActorShape, @Body(new ZodPipe(FundBody)) body: { amount: number; note: string }) {
+  fund(@Actor() actor: ActorShape, @Body({ transform: (value: unknown) => parseInput(FundBody, value) }) body: { amount: number; note: string }) {
     return { by: actor.loginName, ...body };
   }
 }
 
 // The order the facade always had: no session is 401 before a bad body is 400, and both refusals are logged.
-describe('ActorInterceptor with ActivityInterceptor and ZodPipe', () => {
+describe('ActorInterceptor with ActivityInterceptor and a body pipe', () => {
   let app: INestApplication;
   let session: string;
   const recorded: unknown[][] = [];

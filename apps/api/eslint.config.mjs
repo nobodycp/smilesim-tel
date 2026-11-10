@@ -7,7 +7,6 @@ const SIZE_EXCEPTIONS = [
   'src/modules/office/desk/overview.service.ts',
   'src/modules/office/providers/provider-catalog.service.ts',
   'src/modules/office/tasks/tasks.service.ts',
-  'src/modules/office/tree-fixture.ts',
 ];
 
 export default tseslint.config(

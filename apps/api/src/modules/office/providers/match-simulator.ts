@@ -5,7 +5,6 @@
 
 export type MatchSource = 'api' | 'statement';
 export type MatchState = 'matched' | 'difference' | 'pending';
-export const MATCH_SOURCES: readonly MatchSource[] = ['api', 'statement'];
 
 /** A small stable hash of the operation id, so the same operation always simulates the same way. */
 function hashOf(id: string): number {

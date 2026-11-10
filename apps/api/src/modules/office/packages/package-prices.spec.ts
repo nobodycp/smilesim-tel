@@ -1,4 +1,4 @@
-import { tree } from '../tree-fixture';
+import { tree } from '../testing/tree.fixture';
 
 // Review 2026-11-10, S2: the package list gives a layer its own price column and the ones below it, never what
 // the layers above it pay, and how the provider runs an operation is the branch's alone.

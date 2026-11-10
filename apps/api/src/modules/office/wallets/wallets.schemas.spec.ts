@@ -1,10 +1,10 @@
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../auth/auth.store';
-import { parseInput } from '../shared/input';
-import { OfficeFailure } from '../shared/office-failure';
-import type { NoticeService } from './notice.service';
-import { OfficeFacade } from './testing/office-facade';
-import { CeilingBody, FundBody } from './wallet.schemas';
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { parseInput } from '../../shared/input';
+import { OfficeFailure } from '../../shared/office-failure';
+import type { NoticeService } from '../notice.service';
+import { OfficeFacade } from '../testing/office-facade';
+import { CeilingBody, FundBody } from './wallets.schemas';
 
 const invalid = (run: () => unknown) => {
   try {

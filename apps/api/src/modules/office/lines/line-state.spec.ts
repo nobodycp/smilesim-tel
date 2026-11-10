@@ -1,5 +1,5 @@
 import { OfficeFailure } from '../../shared/office-failure';
-import { tree } from '../tree-fixture';
+import { tree } from '../testing/tree.fixture';
 
 // Backend review 2026-11-10, M1–M8: a number's state is locked and checked again inside the transaction, so a
 // refund is paid once, a stale task is refused, and a SIM serial belongs to one live number.

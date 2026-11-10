@@ -4,8 +4,6 @@
 // FAILURE_WINDOW_MINUTES) or its available balance fell under the owner's floor. Otherwise it is working.
 // No provider is called through a real API yet, so «the last API call failed» joins this rule with the adapters.
 
-/** The note a task carries when the provider refused the operation (lines.service). */
-export const PROVIDER_FAILED_NOTE = 'فشل المزود';
 export const FAILURE_THRESHOLD = 3;
 export const FAILURE_WINDOW_MINUTES = 60;
 /** How often the API looks again (ProviderHealthService). */

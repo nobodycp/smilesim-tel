@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../auth/auth.store';
-import { hashOnce } from './test-hash';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
+import { hashOnce } from './testing/test-hash';
 import type { NoticeService } from './notice.service';
 import { OfficeFacade } from './testing/office-facade';
 

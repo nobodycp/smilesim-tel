@@ -17,13 +17,6 @@ export function effectiveRules(account: Partial<SessionRuleValues> | null | unde
   return { maxSessions, idleSeconds: minutes * 60 };
 }
 
-/** Null when the values are in range (null allowed); otherwise the refusal. */
-export function ruleValuesProblem(body: { maxSessions?: unknown; sessionMinutes?: unknown }): boolean {
-  const ok = (value: unknown, range: { min: number; max: number }) =>
-    value === null || (typeof value === 'number' && Number.isInteger(value) && value >= range.min && value <= range.max);
-  return !ok(body.maxSessions, SESSION_LIMIT_RANGE) || !ok(body.sessionMinutes, SESSION_MINUTES_RANGE);
-}
-
 type Row = {
   id: string;
   createdAt: Date;

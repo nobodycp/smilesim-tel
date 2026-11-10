@@ -1,16 +1,8 @@
 import { PrismaService } from '../../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { AuthStore } from '../../auth/auth.store';
-import {
-  type LineFilter,
-} from '../office-paging';
-import {
-  type LineTerms,
-} from '../office-rules';
-import { type PathNode } from '../user-terms';
-import { type TaskEvent } from '../task-access';
-import { NoticeService, type WrittenNotice } from '../notice.service';
-import { type LadderRows } from '../kernel/office-kernel';
+import type { LineFilter } from '../office-paging';
+import { NoticeService } from '../notice.service';
 import { OfficeKernel } from '../kernel/office-kernel';
 import { LinePricing } from '../lines/line-pricing';
 import { LineReads } from '../lines/line-reads';
@@ -21,20 +13,15 @@ import { TransfersService } from '../transfers/transfers.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { DeskService } from '../desk/desk.service';
 import { RolesService } from '../roles/roles.service';
-import { TermsService, type LineTarget, type RepriceLine } from '../terms/terms.service';
+import { TermsService } from '../terms/terms.service';
 import { PackagesService } from '../packages/packages.service';
 import { CompaniesService } from '../companies/companies.service';
 import { ProvidersService } from '../providers/providers.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { AuditService } from '../audit/audit.service';
 import { TasksService } from '../tasks/tasks.service';
-import type { Account, Action, Actor, Gate, Sale } from '../kernel/types';
-import { type TaskNoticePayload } from '../notice-kinds';
+import type { Gate, Sale } from '../kernel/types';
 import type { TransferAccountBody } from '../transfers/transfers.service';
-
-/** The price columns of a package that `LayerPrices` holds, as a `select`. */
-/** What decides the prices points of sale pay for some packages: their price columns, the custom rows on them, and the sell prices of the accounts above. */
-
 
 /**
  * Test-only adapter (Phase 3.11): the office methods as the specs have always called them, `(gate, ...)`, each
@@ -45,25 +32,23 @@ export class OfficeFacade {
   /** Shared by every office domain: the client, the actor, accounts, transactions, wallet moves (kernel/office-kernel.ts). */
   private readonly kernel: OfficeKernel;
 
+  // The members below without `private` are the hooks specs reach in by: the client, the notice writer, a
+  // transaction, a wallet move, the price stamp.
   // Specs replace the client through this property; it lives on the kernel so the domain services see the same one.
-  private get prismaClient(): PrismaClient | null {
+  get prismaClient(): PrismaClient | null {
     return this.kernel.prismaClient;
   }
 
-  private set prismaClient(client: PrismaClient | null) {
+  set prismaClient(client: PrismaClient | null) {
     this.kernel.prismaClient = client;
   }
 
-  private get prisma(): PrismaClient {
+  get prisma(): PrismaClient {
     return this.kernel.prisma;
   }
 
-  private get notice(): NoticeService {
+  get notice(): NoticeService {
     return this.kernel.notice;
-  }
-
-  private get auth(): AuthStore {
-    return this.kernel.auth;
   }
 
   private auditService: AuditService | null = null;
@@ -78,37 +63,6 @@ export class OfficeFacade {
   private get tasksDomain(): TasksService {
     this.tasksService ??= new TasksService(this.kernel);
     return this.tasksService;
-  }
-
-  private openTask(input: {
-    action: Action;
-    actor: Actor;
-    posId: string;
-    packageId: string;
-    lineId?: string;
-    nextPackageId?: string;
-    posDelta: number;
-    msisdn?: string | null;
-    iccid?: string | null;
-    esim?: boolean;
-    esimQr?: string | null;
-    note: string;
-  }) {
-    return this.tasksDomain.openTask(input);
-  }
-
-  private taskNotice(
-    tx: Prisma.TransactionClient,
-    event: TaskEvent,
-    task: { id: string; action: string; msisdn: string | null; submitterId: string; posId: string; assigneeId: string | null },
-    actor: Actor,
-    extra: Partial<TaskNoticePayload> = {},
-  ) {
-    return this.tasksDomain.taskNotice(tx, event, task, actor, extra);
-  }
-
-  private noteLog(current: string, line: string) {
-    return this.tasksDomain.noteLog(current, line);
   }
 
   constructor(
@@ -155,14 +109,6 @@ export class OfficeFacade {
     return this.termDeskInstance;
   }
 
-  private repriceLines(
-    tx: Prisma.TransactionClient,
-    lines: RepriceLine[],
-    planFor: (line: RepriceLine) => LineTarget | null,
-    accounts: Account[],
-  ) {
-    return this.termDesk.repriceLines(tx, lines, planFor, accounts);
-  }
   private roleDeskInstance: RolesService | null = null;
 
   private get roleDesk(): RolesService {
@@ -210,90 +156,20 @@ export class OfficeFacade {
   }
 
   // user-terms-service.spec stamps terms through the service; the stamping lives in LinesService.
-  private stampFor(...args: Parameters<LinePricing['stampFor']>) {
+  stampFor(...args: Parameters<LinePricing['stampFor']>) {
     return this.linePricing.stampFor(...args);
-  }
-
-  // One-line delegators: the methods still in this file call the kernel through the names they always used.
-  private pathOf(userId: string, accounts: Account[]) {
-    return this.kernel.pathOf(userId, accounts);
-  }
-
-  private termsFor(packageId: string) {
-    return this.kernel.termsFor(packageId);
-  }
-
-  private ensureLayerRoles() {
-    return this.kernel.ensureLayerRoles();
-  }
-
-  private visibleLine(actor: Actor, lineId: string) {
-    return this.kernel.visibleLine(actor, lineId);
-  }
-
-  private ladderRows(codes: string[], pathIds: string[], db: Prisma.TransactionClient | PrismaClient) {
-    return this.kernel.ladderRows(codes, pathIds, db);
-  }
-
-  private stampWith(terms: LineTerms, path: PathNode[], rows: LadderRows) {
-    return this.kernel.stampWith(terms, path, rows);
   }
 
   private actor(gate: Gate) {
     return this.kernel.actor(gate);
   }
 
-  private grantsFor(stored: {
-    isBranchOwner?: boolean;
-    liveGrants?: string | null;
-    layer?: string;
-    roleId?: string | null;
-    extraGrants?: string | null;
-    deniedGrants?: string | null;
-    role?: { grants: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean } | null;
-    extraRoles?: { role: { grants: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean } }[];
-  } | null) {
-    return this.kernel.grantsFor(stored);
-  }
-
-  private branchActor(gate: Gate) {
-    return this.kernel.branchActor(gate);
-  }
-
-  private accounts() {
-    return this.kernel.accounts();
-  }
-
-  private visibleAccount(actor: Actor, loginName: string) {
-    return this.kernel.visibleAccount(actor, loginName);
-  }
-
-  private chainIds(actorId: string, accounts: Account[]) {
-    return this.kernel.chainIds(actorId, accounts);
-  }
-
-  private queueNotices(tx: Prisma.TransactionClient, rows: WrittenNotice[]) {
-    return this.kernel.queueNotices(tx, rows);
-  }
-
-  private runTx<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) {
+  runTx<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) {
     return this.kernel.runTx(fn);
   }
 
-  private publishQuietly(rows: WrittenNotice[]) {
-    return this.kernel.publishQuietly(rows);
-  }
-
-  private actorName(id: string) {
-    return this.kernel.actorName(id);
-  }
-
-  private move(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, kind: string, note: string, sale?: Sale) {
+  move(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, kind: string, note: string, sale?: Sale) {
     return this.kernel.move(tx, userId, amount, actorId, kind, note, sale);
-  }
-
-  private recordOp(tx: Prisma.TransactionClient, userId: string, actorId: string, kind: string, sale: Sale) {
-    return this.kernel.recordOp(tx, userId, actorId, kind, sale);
   }
 
   // Facades (Phase 3): specs still call these; the routes live in desk/desk.controller.ts.
