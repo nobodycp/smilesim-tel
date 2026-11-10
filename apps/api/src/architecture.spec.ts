@@ -156,6 +156,19 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('flat-office-module', named.map((name) => ({ file: 'modules/office/office.module.ts', line: 1, text: name })));
   });
 
+  it('5.2 cross-domain-repository-import: a domain reaches another through its service, never its queries', () => {
+    const found: Hit[] = [];
+    for (const { file, text } of office) {
+      const domain = file.split('/')[2];
+      const importer = /from '([^']+\.repository)'/g;
+      for (let match = importer.exec(text); match; match = importer.exec(text)) {
+        // `./x.repository` is the domain's own; `../other/x.repository` is another domain's.
+        if (match[1].startsWith('../') && !match[1].startsWith(`../${domain}/`)) found.push({ file, line: lineOf(text, match.index), text: match[0] });
+      }
+    }
+    check('cross-domain-repository-import', found);
+  });
+
   it('5.6 test-code-imported: production code never imports test helpers', () => {
     check('test-code-imported', hits(production, /from '[^']*(\/testing\/[^']*|\.fixture|\.spec)'/));
   });

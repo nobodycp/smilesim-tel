@@ -116,23 +116,33 @@ Each slice: add `<domain>/<domain>.module.ts` exporting `CONTROLLERS`, `PROVIDER
 those entries from `office.module.ts`, which imports the module and keeps `OFFICE_CONTROLLERS` / `OFFICE_PROVIDERS`
 as the concatenation. Lower `flat-office-module`. Boot check on port 3099.
 
-- [ ] **M.1 `KernelModule`** (`kernel/kernel.module.ts`): `UnitOfWork`, `ActorResolver`, `AccountTree`,
+- [x] **M.1 (this commit) `KernelModule`** (`kernel/kernel.module.ts`): `UnitOfWork`, `ActorResolver`, `AccountTree`,
   `NoticeService`, `ActorInterceptor`; imports `AuthModule`; exports all. `@Global()` is **not** used: every
   domain module imports it by name.
-- [ ] **M.2 Modules that import only the kernel:** `RolesModule` (exports `LayerRoles`), `CompaniesModule`,
+- [x] **M.2 (this commit) Modules that import only the kernel:** `RolesModule` (exports `LayerRoles`), `CompaniesModule`,
   `OffersModule`, `AuditModule`, `NoticesModule`, `CatalogModule` (imports `RolesModule`), `AccountsModule`
   (imports `RolesModule`).
-- [ ] **M.3 `TermsModule`** (exports `TermsService`, `PriceLadder`), `PackagesModule` (imports `TermsModule`),
+- [x] **M.3 (this commit) `TermsModule`** (exports `TermsService`, `PriceLadder`), `PackagesModule` (imports `TermsModule`),
   `WalletsModule` (exports `WalletsService`, `WalletLedger`; imports `TermsModule`).
-- [ ] **M.4 `TasksModule`** (imports `WalletsModule`; exports `TasksService`), `ProvidersModule` (services, health,
+- [x] **M.4 (this commit) `TasksModule`** (imports `WalletsModule`; exports `TasksService`), `ProvidersModule` (services, health,
   catalog, accounts, `PROVIDER_GATEWAY`; imports `WalletsModule`; exports `ProviderAccountsService`,
   `ProviderHealthService`, `PROVIDER_GATEWAY`), `LinesModule` (imports `TasksModule`, `WalletsModule`,
   `TermsModule`, `ProvidersModule`; exports `LineReads`, `LineAccess`), `TransfersModule` (imports `TermsModule`,
   `LinesModule`, `WalletsModule`).
-- [ ] **M.5 `ReportsModule`** (imports `TasksModule`, `LinesModule`, `WalletsModule`; exports `InsightsService`),
+- [x] **M.5 (this commit) `ReportsModule`** (imports `TasksModule`, `LinesModule`, `WalletsModule`; exports `InsightsService`),
   `DeskModule` (imports `WalletsModule`, `ReportsModule`, `ProvidersModule`). `office.module.ts` is now imports
   plus `APP_INTERCEPTOR`. Add the import-boundary rule (spec decision 7) to `architecture.spec.ts` with baseline 0.
   Specs: the whole `src/modules/office` folder; map updated.
+
+### How phase M was done (2026-11-10)
+
+One commit: sixteen `<domain>/<domain>.module.ts` files and `kernel/kernel.module.ts`. `KernelModule` provides
+`NoticeService`, `UnitOfWork`, `AccountTree`, `ActorResolver` and re-exports `AuthModule` (the auth store and the
+activity recorder that the interceptors on every office controller need). `LayerRoles` is in `RolesModule`,
+`PriceLadder` in `TermsModule`, `WalletLedger` in `WalletsModule`, `LineAccess` in `LinesModule`. `office.module.ts`
+imports the modules and registers the duplicate-write guard; `OFFICE_CONTROLLERS` / `OFFICE_PROVIDERS` are the
+modules' own lists spread, for the HTTP specs. The import-boundary rule is `cross-domain-repository-import`
+(with the older `cross-domain-controller-import`). Checked by booting the compiled API: 153 routes mapped.
 
 ## Phase R — repositories (largest services first)
 

@@ -7,8 +7,7 @@ import { ActorResolver } from './actor-resolver';
 import { UnitOfWork } from './unit-of-work';
 
 /**
- * What the office services are built from: the database and its transactions, the account tree, the signed-in
- * actor, the layer roles, the price ladder, the wallet ledger and line access. Listed here until each lives in its
- * own domain module (plan `2026-11-10-office-kernel-split`, phase M).
+ * The collaborators the office services are built from, wherever their module is. A spec app that serves the
+ * routes over one service's own in-memory tables replaces exactly these (`testing/office-graph.ts` `providers()`).
  */
 export const KERNEL_PROVIDERS = [UnitOfWork, AccountTree, ActorResolver, LayerRoles, PriceLadder, WalletLedger, LineAccess];

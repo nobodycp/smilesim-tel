@@ -15,5 +15,6 @@
   "stored-text": 0,
   "kernel-use": 0,
   "prisma-in-service": 228,
-  "flat-office-module": 26
+  "flat-office-module": 0,
+  "cross-domain-repository-import": 0
 }
