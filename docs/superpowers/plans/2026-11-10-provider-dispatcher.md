@@ -26,7 +26,7 @@ not pushed, not deployed; migrations applied to a throwaway test database only.
   Redis listener). Specs: `shared/log.spec.ts`; captured process output in `operation-dispatcher.db.spec.ts` and
   `outbox-relay.db.spec.ts` (log lines, and the failed job kept in Redis); helper
   `shared/testing/captured-output.ts`.
-- [x] **D.11 Lease binds the worker.** `provider-operation.rules.ts` (`leaseRuns`), repository `markSent`
+- [x] **D.11 Lease binds the worker.** (D.10 and D.11: commit ab39044) `provider-operation.rules.ts` (`leaseRuns`), repository `markSent`
   (`leaseUntil > now` in the guarded write). Specs: a worker that wakes up after its lease and before recovery
   (the provider is not called), `beginSend` against `recover` on one clock and on disagreeing clocks.
 
