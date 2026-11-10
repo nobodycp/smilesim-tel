@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "smilesim",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "npm",
+        "run",
+        "dev:local"
+      ],
+      "port": 3000,
+      "url": "http://admin.localhost:3000"
+    }
+  ]
+}

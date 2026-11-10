@@ -36,7 +36,9 @@
     ".next-build/types/**/*.ts",
     ".next-build/dev/types/**/*.ts",
     ".next-review/types/**/*.ts",
-    ".next-review/dev/types/**/*.ts"
+    ".next-review/dev/types/**/*.ts",
+    ".next-view/types/**/*.ts",
+    ".next-view/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

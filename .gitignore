@@ -17,3 +17,5 @@ dump.rdb
 .DS_Store
 .deploy/
 graphify-out/
+screenshots/
+.claude/settings.local.json
