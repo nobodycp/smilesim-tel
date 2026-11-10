@@ -37,5 +37,5 @@ local commit. e2e specs that read changed UI are updated in the same phase (they
 
 ## Phase 5 — Mobile pass and re-audit (D7, D8)
 
-- [ ] Fix the audit's phone findings (targets, tabs, cards per row).
-- [ ] Re-run the audit; update the record; DESIGN.md and `docs/architecture/frontend.md`.
+- [x] Fix the audit's phone findings (targets, tabs, cards per row). (9a1c066)
+- [x] Re-run the audit; update the record; DESIGN.md and `docs/architecture/frontend.md`.

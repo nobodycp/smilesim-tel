@@ -81,6 +81,7 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - The package price chain (`ChainBoard`, `.chain-grid`): one table row per layer — the branch's cost first, tinted —, the subscription and the renewal side by side, each price with its margin over the layer above; the eSIM price and the re-pricing sit as two cards under it (D6).
 - The user page's «الإعدادات والصلاحيات»: «إعدادات الحساب» open on top, «صلاحيات الحساب» folded (`.inherit-fold`) under it; each grant a three-way `.seg` (حسب الدور / مسموح / ممنوع), extra roles as `.role-chip` toggles (D3).
 - The company «الإعدادات» tab: `.settings-block`s — picture, SIM rules, eSIM (a `LiveSwitch`) (D2).
+- Phones (under 640px, D7): a `DataTable` row is a card — the first cell its title, every other value under its column's name (`td[data-label]`) two to a row, ⋯ in the corner; the task and notice lists and the roles matrix keep their own layout. Tab strips wrap so every tab is in view; the pager's page buttons and page-size select are 40px; short cards (company, fact, operation) sit two a row; a run-mode card puts its mark beside its name.
 - Company page and package groups: the company's cut-corner mark beside its name.
 - White on crimson: the sidebar count, the notice dot and the page's own action.
 - Task ticket actions sit in the page head (take / complete in ink, reject / cancel outlined in danger); complete and
