@@ -270,7 +270,6 @@ export const he: Copy = {
   automatic: 'מיידי',
   manual: 'משימת סניף',
   stopped: 'מושבת',
-  packageLive: 'מצב לכולם',
   chainTab: 'השרשרת',
   offersTab: 'התאמת מחיר',
   noOffers: 'אין מחירים מיוחדים בחבילה זו.',

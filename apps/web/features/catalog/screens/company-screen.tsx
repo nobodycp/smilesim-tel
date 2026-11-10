@@ -57,7 +57,8 @@ export function CompanyScreen() {
   const { run, busy } = useAction({ setError, setNote, onDone: shelf.reload });
   const company = shelf.data?.companies.find((item) => item.code === params.code) ?? null;
   usePageTitle(company?.name ?? '');
-  const canEdit = Boolean(me?.isBranchOwner || me?.grants?.includes('edit'));
+  // Impersonating reads only: the server refuses every write, so no control offers one.
+  const canEdit = Boolean((me?.isBranchOwner || me?.grants?.includes('edit')) && !me?.impersonating);
   const draft = edited?.code === params.code ? edited : draftOf(params.code, company?.sim ?? OPEN_SIM, company?.esimPrice ?? 500);
   const shown = rulesOf(draft);
 
@@ -148,7 +149,7 @@ export function CompanyScreen() {
       ) : ''}
       lede={company ? [t.coPackages.replace('{n}', String(packageCount)), t.coProviders.replace('{n}', String(company.providers.length)), company.sim?.esim ? t.esimSupported : ''].filter(Boolean).join(' · ') : ''}
       // A package from one of the providers' products (spec 2026-11-09-admin-review, 3): owner or the edit grant.
-      action={canEdit && !me?.impersonating ? (
+      action={canEdit ? (
         <Link className={buttonClass({})} href={`/companies/${encodeURIComponent(params.code)}/packages/new`}><Plus size={16} aria-hidden="true" />{t.addPackage}</Link>
       ) : undefined}
       error={error}
@@ -163,7 +164,7 @@ export function CompanyScreen() {
               <h3>{t.companyImage}</h3>
               <div className="company-image-row">
                 {company?.image ? <DataImage className="co-mark big" src={company.image} alt="" /> : <span className="co-mark big" style={{ background: markColor(company?.name ?? '?') }} aria-hidden="true">{markOf(company?.name ?? '?')}</span>}
-                {canEdit && !me?.impersonating ? (
+                {canEdit ? (
                   <div className="company-image-actions">
                     <Button type="button" variant="secondary" disabled={busy || !company} onClick={() => file.current?.click()}><ImageUp size={16} aria-hidden="true" />{t.uploadImage}</Button>
                     {company?.image ? <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => api.setCompanyImage(params.code, null), { note: t.saved })}><Trash2 size={16} aria-hidden="true" />{t.removeImage}</Button> : null}
@@ -216,7 +217,7 @@ export function CompanyScreen() {
             onProvider={(code) => setFilters({ provider: code })}
             loading={!shelf.loaded}
             busy={busy}
-            onEnabled={canEdit && !me?.impersonating ? (code, enabled) => void run(() => api.setPackageMode(code, { enabled }), { note: t.saved }) : undefined}
+            onEnabled={canEdit ? (code, enabled) => void run(() => api.setPackageMode(code, { enabled }), { note: t.saved }) : undefined}
           />
         )}
         {tab === 'providers' && (

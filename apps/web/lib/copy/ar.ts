@@ -270,7 +270,6 @@ export const ar = {
   automatic: 'مباشر',
   manual: 'مهمة فرع',
   stopped: 'متوقف',
-  packageLive: 'الحالة عند الكل',
   chainTab: 'السلسلة',
   offersTab: 'تخصيص سعر',
   noOffers: 'لا أسعار مخصصة على هذه الرزمة.',

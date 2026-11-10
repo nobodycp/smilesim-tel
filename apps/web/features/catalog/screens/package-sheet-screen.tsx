@@ -447,10 +447,6 @@ export function PackageSheetScreen() {
                       <span>{t.provider}</span>
                       <strong>{sheet.providerName}</strong>
                     </div>
-                    <div>
-                      <span>{t.packageLive}</span>
-                      <strong>{sheet.enabled ? t.lineActive : t.stopped}</strong>
-                    </div>
                   </div>
                   <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
                   <PackageFacts facts={sheet} />

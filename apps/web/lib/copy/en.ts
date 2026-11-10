@@ -270,7 +270,6 @@ export const en: Copy = {
   automatic: 'Immediate',
   manual: 'Branch task',
   stopped: 'Stopped',
-  packageLive: 'Status for everyone',
   chainTab: 'Chain',
   offersTab: 'Custom prices',
   noOffers: 'No custom prices on this package.',

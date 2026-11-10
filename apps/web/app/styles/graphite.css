@@ -1009,7 +1009,6 @@ input[readonly] { background-color: transparent; }
 .company-image-actions .hint { flex-basis: 100%; }
 .settings-block .sim-toggle { align-content: center; }
 .settings-block .sim-toggle .live-switch { justify-content: flex-start; }
-.settings-block .form-save { justify-content: flex-start; }
 
 .chain-step > label { display: grid; gap: 6px; color: var(--rd-muted); font-size: var(--rd-text-sm); }
 

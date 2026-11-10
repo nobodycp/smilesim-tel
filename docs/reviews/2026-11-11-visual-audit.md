@@ -49,3 +49,5 @@ but `.bp-tag` on branding are the shekel sign), 9 native controls.
 | 16 | `/providers/:p` (phone) | one tall run-mode card per row | 5 | open |
 | 17 | lists (phone) | users and numbers tables scroll sideways inside their card; the status and actions are off screen | 5 | open |
 | 18 | `/tasks`, `/users/:l` (phone) | tab strips cut the last tab | 5 | open |
+| 19 | package page «التفاصيل» | «الرزمة متاحة كـ eSIM» is a native checkbox | 4 | open |
+| 20 | `/companies/:c` packages (phone) | the on/off switch sits in a column off screen | 5 | open |

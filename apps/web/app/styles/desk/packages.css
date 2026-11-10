@@ -11,7 +11,6 @@
   border: 0;
 }
 .sim-toggle { display: grid; gap: var(--rd-space-1); align-content: start; }
-.sim-toggle .check { min-height: 34px; margin-block-start: var(--rd-space-5); }
 .sim-sample {
   display: flex;
   flex-wrap: wrap;
