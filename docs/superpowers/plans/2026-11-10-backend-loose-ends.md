@@ -27,7 +27,7 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
   - `lines/task-completion.ts:265`: `.catch(numberTaken)`.
   - Spec: `lines/line-state.spec.ts` — completing a rename task onto a taken number is `409 NUMBER_TAKEN`, the task
     stays `working`, its hold is unchanged, no wallet entry.
-- [x] **A.3 The home does not write (after D1).** (COMMIT; D1 = the API's timer, the owner said «اكمل» to the
+- [x] **A.3 The home does not write (after D1).** (1d40497; D1 = the API's timer, the owner said «اكمل» to the
   proposal. The timer runs at start and every hour and writes over the day's row, so a later day compares with the
   day's last count; five grouped queries for the whole office. The guard is a spec, not a source scan:
   `testing/get-writes-nothing.http.spec.ts` calls every GET route over tables that record writes. It found a
