@@ -8,6 +8,62 @@ import { companies } from '../office-catalog';
 import { ESIM_PRICE_DEFAULT, readSimRules, simRulesOf } from '../office-rules';
 import { COMPANY_IMAGE_BYTES, CompanyImageBody, CompanySimBody } from './companies.schemas';
 
+/** A package as the branch's shelf lists it under its provider. */
+type ShelfPackage = {
+  code: string;
+  name: string;
+  months: number;
+  dataGb: number | null;
+  smsCount: number | null;
+  minutes: number | null;
+  branchCost: number;
+  mainPrice: number;
+  renewalBranchCost: number;
+  renewalMainPrice: number;
+  forSale: boolean;
+  enabled: boolean;
+  lines: number;
+  activeLines: number;
+  stoppedLines: number;
+};
+type ShelfProvider = { code: string; name: string; packages: ShelfPackage[] };
+type ShelfRow = Omit<ShelfPackage, 'lines' | 'activeLines' | 'stoppedLines'> & {
+  company: { code: string } | null;
+  provider: { code: string; name: string };
+  lines: { status: string }[];
+};
+
+/** The packages grouped by company, then by provider, each with how many numbers it has and how many are live. */
+function shelfByCompany(rows: ShelfRow[]): Map<string, Map<string, ShelfProvider>> {
+  const byCompany = new Map<string, Map<string, ShelfProvider>>();
+  for (const row of rows) {
+    if (!row.company) continue;
+    const providers = byCompany.get(row.company.code) ?? new Map<string, ShelfProvider>();
+    const provider = providers.get(row.provider.code) ?? { code: row.provider.code, name: row.provider.name, packages: [] };
+    const activeLines = row.lines.filter((line) => line.status === 'active').length;
+    provider.packages.push({
+      code: row.code,
+      name: row.name,
+      months: row.months,
+      dataGb: row.dataGb,
+      smsCount: row.smsCount,
+      minutes: row.minutes,
+      branchCost: row.branchCost,
+      mainPrice: row.mainPrice,
+      renewalBranchCost: row.renewalBranchCost,
+      renewalMainPrice: row.renewalMainPrice,
+      forSale: row.forSale,
+      enabled: row.enabled,
+      lines: row.lines.length,
+      activeLines,
+      stoppedLines: row.lines.length - activeLines,
+    });
+    providers.set(row.provider.code, provider);
+    byCompany.set(row.company.code, providers);
+  }
+  return byCompany;
+}
+
 /** Companies: the shelf of companies, providers and packages an account sees, the company SIM rules and eSIM price, and the company image. */
 @Injectable()
 export class CompaniesService {
@@ -24,56 +80,7 @@ export class CompaniesService {
       },
       orderBy: [{ provider: { name: 'asc' } }, { code: 'asc' }],
     });
-    const byCompany = new Map<string, Map<string, {
-      code: string;
-      name: string;
-      packages: Array<{
-        code: string;
-        name: string;
-        months: number;
-        dataGb: number | null;
-        smsCount: number | null;
-        minutes: number | null;
-        branchCost: number;
-        mainPrice: number;
-        renewalBranchCost: number;
-        renewalMainPrice: number;
-        forSale: boolean;
-        enabled: boolean;
-        lines: number;
-        activeLines: number;
-        stoppedLines: number;
-      }>;
-    }>>();
-    for (const row of rows) {
-      if (!row.company) continue;
-      const providers = byCompany.get(row.company.code) ?? new Map();
-      const provider = providers.get(row.provider.code) ?? {
-        code: row.provider.code,
-        name: row.provider.name,
-        packages: [],
-      };
-      const activeLines = row.lines.filter((line) => line.status === 'active').length;
-      provider.packages.push({
-        code: row.code,
-        name: row.name,
-        months: row.months,
-        dataGb: row.dataGb,
-        smsCount: row.smsCount,
-        minutes: row.minutes,
-        branchCost: row.branchCost,
-        mainPrice: row.mainPrice,
-        renewalBranchCost: row.renewalBranchCost,
-        renewalMainPrice: row.renewalMainPrice,
-        forSale: row.forSale,
-        enabled: row.enabled,
-        lines: row.lines.length,
-        activeLines,
-        stoppedLines: row.lines.length - activeLines,
-      });
-      providers.set(row.provider.code, provider);
-      byCompany.set(row.company.code, providers);
-    }
+    const byCompany = shelfByCompany(rows);
     const stored = await this.kernel.prisma.company.findMany({
       select: { code: true, name: true, image: true, iccidLength: true, iccidPrefix: true, esim: true, esimPrice: true },
     });

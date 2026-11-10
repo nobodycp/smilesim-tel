@@ -1,3 +1,4 @@
+import { dayRange } from '../../shared/dates';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -114,8 +115,7 @@ export class WalletsService {
     if (scope !== 'audit') fail(404, 'NOT_FOUND');
     const allowed = [...PROVIDER_OPERATION_KINDS, 'fund', 'self_fund', 'deduct', 'deduct_in'];
     const kind = query.kind && allowed.includes(query.kind) ? query.kind : '';
-    const from = query.from ? new Date(query.from) : null;
-    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59` : query.to) : null;
+    const { from, to } = dayRange(query.from, query.to);
     const createdAt = {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
       ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),
@@ -203,8 +203,7 @@ export class WalletsService {
     requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
     const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
     const needle = (query.q ?? '').replace(/\s/g, '');
-    const from = query.from ? new Date(query.from) : null;
-    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999` : query.to) : null;
+    const { from, to } = dayRange(query.from, query.to);
     const [resolved, providers] = await Promise.all([
       this.pricedOperations({ kind: kind || undefined, msisdn: needle || undefined }),
       this.kernel.prisma.provider.findMany({ orderBy: { name: 'asc' } }),
@@ -272,8 +271,7 @@ export class WalletsService {
   async financeWhere(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string }): Promise<Prisma.WalletEntryWhereInput> {
     const accounts = await this.kernel.accounts();
     const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
-    const from = query.from ? new Date(query.from) : null;
-    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999` : query.to) : null;
+    const { from, to } = dayRange(query.from, query.to);
     const createdAt = {
       ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
       ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),

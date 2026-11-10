@@ -205,6 +205,21 @@ export class AuthController {
     return { ok: true };
   }
 
+  @Post('logout')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Sign out: ends the current session at any step and clears the cookie' })
+  @ApiOkResponse({ type: OkDto })
+  @ApiErrorResponse(401, 403)
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const gate = { sessionId: sessionIdOf(req) };
+    const result = await this.auth.logout(gate.sessionId);
+    await this.activity.recordOffice(gate, metaOf(req).ip, { action: 'logout' }, result.kind === 'error' ? 'fail' : 'ok', result.kind === 'error' ? result.code : '');
+    if (result.kind === 'error') return failWith(res, result);
+    res.clearCookie('sid', cookieBase());
+    return { ok: true };
+  }
+
   @Post('two-factor/setup')
   @HttpCode(200)
   @ApiCookieAuth('sid')

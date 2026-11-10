@@ -72,14 +72,15 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
    → Prisma access. A controller holds no rule; a rule file imports no Nest, no Prisma.
 2. A domain imports `shared/`, `kernel/`, and another domain's **service or rules**, never its controller.
    *(architecture.spec: `cross-domain-controller-import`)*
-3. A function is at most 80 lines; a file at most 600. *(ESLint `max-lines-per-function`, `max-lines`; the files
-   listed as exceptions in `eslint.config.mjs` may only leave that list.)*
+3. A function is at most 80 lines; a file at most 600. *(ESLint `max-lines-per-function`, `max-lines`; there is
+   no exception list. Split the function.)*
 4. No copy of a helper. Before writing one, search (`graphify query`, `grep`). Cookies, CSV, date ranges, paging
    cursors, money formatting each have one home in `shared/` or `kernel/`.
 5. No dead code: an export nobody imports, a parameter nobody reads, a route nobody calls is deleted in the same
    change that orphans it. `export` only what another file imports.
-6. Test helpers live in `apps/api/src/**/testing/` or beside specs as `*.fixture.ts`; production code never imports
-   them. *(architecture.spec: `test-code-imported`)*
+6. Test helpers live in `apps/api/src/**/testing/` or are named `*.fixture.ts`; production code never imports
+   them and the build leaves them out. *(architecture.spec: `test-code-imported`, `test-code-in-src`; compiler:
+   `noUnusedLocals`, `noUnusedParameters`)*
 7. `process.env` is read only in `src/config.ts`. *(architecture.spec: `env-outside-config`)*
 8. No `console.*`; use Nest `Logger`. *(architecture.spec: `console-calls`)*
 9. The API stores codes, not sentences: no Arabic/Hebrew/English user-facing text written to the database from

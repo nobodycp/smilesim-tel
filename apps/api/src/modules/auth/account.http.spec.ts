@@ -246,6 +246,15 @@ describe('account endpoints', () => {
     expect(lockout.status).toBe(403);
   });
 
+  it('signs out at any step and clears the cookie (review 2026-11-10, A11)', async () => {
+    const pending = cookieOf(await login('newpos', '12345678'));
+    const out = await request(app.getHttpServer()).post('/auth/logout').set('Cookie', pending);
+    expect(out.status).toBe(200);
+    expect(String(out.headers['set-cookie'])).toMatch(/^sid=;/);
+    expect(await store.liveSession(pending.split('=')[1])).toBeNull();
+    expect((await request(app.getHttpServer()).post('/auth/logout')).status).toBe(401);
+  });
+
   it('lists only full account sessions and marks the current one', async () => {
     await login('newpos', '12345678');
     const second = cookieOf(await login('pos', '123456'));

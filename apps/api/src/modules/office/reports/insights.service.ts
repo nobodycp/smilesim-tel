@@ -1,3 +1,4 @@
+import { dayRange } from '../../shared/dates';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -19,8 +20,7 @@ export const REPORT_LIMIT = 5_000;
 type Period = { from?: string; to?: string; q?: string };
 
 function dateRange(query: Period): Prisma.DateTimeFilter | undefined {
-  const from = query.from ? new Date(query.from) : null;
-  const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999` : query.to) : null;
+  const { from, to } = dayRange(query.from, query.to);
   const range = {
     ...(from && !Number.isNaN(from.getTime()) ? { gte: from } : {}),
     ...(to && !Number.isNaN(to.getTime()) ? { lte: to } : {}),

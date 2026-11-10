@@ -319,6 +319,18 @@ export class AuthService {
     return { kind: 'ok', current: targetId === authed.session.id };
   }
 
+  /**
+   * Ends the session the cookie holds, whatever step it is at: a full session, one waiting for the second step,
+   * or one waiting for a new password. An entered session is ended by `leave`, not here.
+   */
+  async logout(sessionId: string | undefined): Promise<Outcome<unknown>> {
+    const authed = await this.authenticate(sessionId);
+    if (!authed) return fail(401, 'LOGIN_REQUIRED');
+    if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
+    await this.store.revokeSessions([authed.session.id]);
+    return { kind: 'ok' };
+  }
+
   /** Replaces a two-factor session with a full one, applying the session limit before the new one is kept. */
   async promoteToFull(session: SessionRow, user: StoredUser, meta: Meta): Promise<string> {
     await this.store.revokeSessions([session.id]);

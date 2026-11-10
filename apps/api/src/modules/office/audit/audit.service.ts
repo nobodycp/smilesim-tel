@@ -1,3 +1,4 @@
+import { dayRange } from '../../shared/dates';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { activityActorFilter, clampActivityRange } from '../activity-log';
@@ -21,8 +22,7 @@ export class AuditService {
   private async whereFor(actor: Actor, query: AuditQuery): Promise<Prisma.ActivityEventWhereInput> {
     const accounts = await this.kernel.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    const from = query.from ? new Date(query.from) : null;
-    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999Z` : query.to) : null;
+    const { from, to } = dayRange(query.from, query.to);
     const range = clampActivityRange(from, to);
     const needle = (query.q ?? '').trim();
     const where: Prisma.ActivityEventWhereInput = {

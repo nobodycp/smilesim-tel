@@ -113,10 +113,10 @@ export class OverviewService {
     return { active: Math.max(0, active - expiring - suspended), expiring, frozen, disconnected, suspended };
   }
 
-  /** Sales, refunds, a daily trend, the rankings and the most active accounts, from the period's ledger. */
-  private async money(actor: Actor, from: Date | null, accounts: Awaited<ReturnType<OfficeKernel['accounts']>>, period: OverviewPeriod, now: Date) {
+  /** The sales and refunds of the period that the viewer may see, newest first, up to the overview's limit. */
+  private async periodEntries(actor: Actor, from: Date | null) {
     const where = await this.wallets.financeWhere(actor, from ? { from: from.toISOString() } : {});
-    const rows = await this.kernel.prisma.walletEntry.findMany({
+    return this.kernel.prisma.walletEntry.findMany({
       where: {
         AND: [
           where,
@@ -127,6 +127,11 @@ export class OverviewService {
       orderBy: [...NEWEST_FIRST],
       take: OVERVIEW_LIMIT,
     });
+  }
+
+  /** Sales, refunds, a daily trend, the rankings and the most active accounts, from the period's ledger. */
+  private async money(actor: Actor, from: Date | null, accounts: Awaited<ReturnType<OfficeKernel['accounts']>>, period: OverviewPeriod, now: Date) {
+    const rows = await this.periodEntries(actor, from);
     const ladders = await this.wallets.laddersFor(rows);
     const viewerOf = (chain: string[]) => (actor.layer === 'branch' ? chain[chain.length - 1] : actor.id);
     const byId = new Map(accounts.map((account) => [account.id, account]));

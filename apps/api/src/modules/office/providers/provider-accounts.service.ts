@@ -1,3 +1,4 @@
+import { dayRange } from '../../shared/dates';
 import { requireAnyGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
@@ -123,8 +124,7 @@ export class ProviderAccountsService {
       running += row.amount;
       return { ...row, balanceAfter: running };
     });
-    const from = query.from ? new Date(query.from) : null;
-    const to = query.to ? new Date(query.to.length === 10 ? `${query.to}T23:59:59.999` : query.to) : null;
+    const { from, to } = dayRange(query.from, query.to);
     const ranged = withBalance
       .filter((row) => (!from || Number.isNaN(from.getTime()) || row.at >= from) && (!to || Number.isNaN(to.getTime()) || row.at <= to))
       .reverse();

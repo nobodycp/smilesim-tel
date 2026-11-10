@@ -1,3 +1,4 @@
+import { taskEvents } from './task-events';
 import { lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -11,7 +12,7 @@ import { excerpt, type TaskNoticePayload } from '../notice-kinds';
 import { NEWEST_FIRST, TASKS_PAGE, afterFeed, mergeFeed, taskStatusOf } from '../office-paging';
 import { simRulesOf } from '../office-rules';
 import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from '../task-access';
-import { parseTaskLogLine, stampTaskLog } from '../task-log';
+import { stampTaskLog } from '../task-log';
 import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 
 /**
@@ -40,17 +41,7 @@ export class TasksService {
     const company = typeof query.company === 'string' ? query.company.trim() : '';
     const provider = typeof query.provider === 'string' ? query.provider.trim() : '';
     const digits = (typeof query.q === 'string' ? query.q : '').replace(/\s/g, '');
-    const packageFilterOn = Boolean(packageCode || company || provider);
-    const matchedPackages = packageFilterOn
-      ? await this.kernel.prisma.package.findMany({
-          where: {
-            ...(packageCode ? { code: packageCode } : {}),
-            ...(company ? { company: { name: company } } : {}),
-            ...(provider ? { provider: { name: provider } } : {}),
-          },
-          select: { id: true },
-        })
-      : null;
+    const matchedPackages = await this.packagesMatching({ packageCode, company, provider });
     if (matchedPackages && matchedPackages.length === 0) {
       return { tasks: [], nextCursor: null, total: 0 };
     }
@@ -110,6 +101,19 @@ export class TasksService {
     };
   }
 
+  /** The packages a list filter names, or null when it names none. */
+  private async packagesMatching(filter: { packageCode: string; company: string; provider: string }) {
+    if (!filter.packageCode && !filter.company && !filter.provider) return null;
+    return this.kernel.prisma.package.findMany({
+      where: {
+        ...(filter.packageCode ? { code: filter.packageCode } : {}),
+        ...(filter.company ? { company: { name: filter.company } } : {}),
+        ...(filter.provider ? { provider: { name: filter.provider } } : {}),
+      },
+      select: { id: true },
+    });
+  }
+
   async detail(actor: Actor, id: string) {
     const handler = canHandleTasks(actor);
     const row = await this.kernel.prisma.officeTask.findUnique({
@@ -131,52 +135,8 @@ export class TasksService {
         where: { id: row.packageId },
         include: { company: true, provider: true },
       }));
-    const events: {
-      id: string;
-      kind: 'system' | 'note' | 'result';
-      /** An internal note: the branch only. */
-      internal?: boolean;
-      body: string;
-      authorName: string | null;
-      at: string;
-    }[] = [];
-    if (handler && row.log.trim()) {
-      row.log
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .forEach((line, index) => {
-          const parsed = parseTaskLogLine(line, row.createdAt.toISOString());
-          events.push({
-            id: `log-${String(index).padStart(4, '0')}`,
-            kind: 'system',
-            body: parsed.body,
-            authorName: null,
-            at: parsed.at,
-          });
-        });
-    }
-    for (const note of row.notes) {
-      events.push({
-        id: note.id,
-        kind: 'note',
-        ...(note.internal ? { internal: true } : {}),
-        body: note.body,
-        authorName: note.author.nickname || note.author.loginName,
-        at: note.createdAt.toISOString(),
-      });
-    }
     const resultNote = row.status === 'pending' && !handler ? null : row.resultNote;
-    if (resultNote) {
-      events.push({
-        id: 'result',
-        kind: 'result',
-        body: resultNote,
-        authorName: row.assignee?.nickname || row.assignee?.loginName || null,
-        at: row.updatedAt.toISOString(),
-      });
-    }
-    events.sort((left, right) => right.at.localeCompare(left.at) || right.id.localeCompare(left.id));
+    const events = taskEvents(row, handler ? row.log : '', resultNote);
     const open = row.status === 'pending' || row.status === 'working';
     return {
       task: {
