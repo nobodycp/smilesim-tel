@@ -159,5 +159,4 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
 - A cut catalog list answers `capped: true` (`LIST_CAP`, 1,000) but no screen says so yet.
 - Provider accounts still add purchases in memory (an operation without a stored cost falls back to the package's
   price); `provider-operations` filters its match state in memory (it is computed, not stored).
-- Query-string filters are not schema-validated; an unknown filter value is still ignored.
 - Real provider adapters and the SMS/email gateways do not exist: `SimulatedProviderGateway` and `LogSender`.

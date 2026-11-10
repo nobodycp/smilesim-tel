@@ -1,3 +1,4 @@
+import { CatalogProductsQuery } from './providers.schemas';
 import { ProvidersRepository } from './providers.repository';
 import { refuseEntered, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
@@ -52,9 +53,10 @@ export class ProviderCatalogService {
   }
 
   /** The provider's products for one company, each marked when a package was already added from it. */
-  async products(actor: Actor, code: string, companyCode: string) {
+  async products(actor: Actor, code: string, input: CatalogProductsQuery = {}) {
     canEdit(actor);
     const provider = await this.provider(code);
+    const companyCode = parseInput(CatalogProductsQuery, input).company;
     if (!companyCode) fail(400, 'INVALID');
     const adapter = adapterFor(code);
     const offered = await adapter.products(companyCode);

@@ -1,10 +1,12 @@
+import { parseInput } from '../../shared/input';
+import { LinesQuery } from './lines.schemas';
 import { LinesRepository } from './lines.repository';
 import { AccountTree } from '../kernel/account-tree';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
 import { after, cursorPosition, page } from '../../shared/paging';
-import { LINES_PAGE, isSuspended, linesWhere, type LineFilter } from '../rules/office-paging';
+import { LINES_PAGE, isSuspended, linesWhere } from '../rules/office-paging';
 import { visibleAccountIds } from '../rules/account-visibility';
 import { esimPriceOf } from '../rules/prices';
 import { offeredOperations, refreshMode, resolvePackageMode } from '../rules/run-modes';
@@ -27,7 +29,8 @@ export class LineReads {
     return rows.map((row) => row.suspendAfterDays);
   }
 
-  async list(actor: Actor, query: LineFilter & { cursor?: string; loginName?: string } = {}) {
+  async list(actor: Actor, input: LinesQuery = {}) {
+    const query = parseInput(LinesQuery, input);
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     // `loginName` narrows to one account's numbers: its own if it is a point of sale, else every point of sale below

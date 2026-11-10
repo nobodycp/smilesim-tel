@@ -29,7 +29,8 @@ describe('InsightsService', () => {
     const service = insights({}) as unknown as Record<string, unknown>;
     expect(service.sales).toBeUndefined();
     expect(service.orders).toBeUndefined();
-    await expect(insights({}).csv(actor, 'sales', {})).rejects.toMatchObject({ status: 404 });
+    // One CSV method a report: there is no export by a kind's name to ask for another.
+    expect(service.csv).toBeUndefined();
   });
 
   it('lists the wallets under me with used and available, and keeps only the negative ones on demand', async () => {

@@ -1,7 +1,9 @@
+import { NoticesQuery } from './notices.schemas';
+import { ApiZodQuery } from '../../../openapi/query';
 import { readCookie } from '../../shared/cookies';
 import { NoActivity } from '../activity/activity.decorator';
 import { Body, Controller, Get, Post, Query, Req, Res, UseInterceptors } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
@@ -9,7 +11,6 @@ import { parseInput } from '../../shared/input';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
-import { text } from '../kernel/query';
 import { NoticeInboxService } from './notice-inbox.service';
 import { NoticeReadBody } from './notices.schemas';
 
@@ -26,17 +27,10 @@ export class NoticesController {
 
   @Get('notices')
   @ApiOperation({ summary: 'Notices inbox (paged)' })
-  @ApiQuery({ name: 'cursor', required: false })
-  @ApiQuery({ name: 'group', required: false, enum: ['tasks', 'wallet', 'providers'] })
-  @ApiQuery({ name: 'unread', required: false })
-  @ApiErrorResponse(401, 403)
-  notices(
-    @Actor() actor: ActorShape,
-    @Query('cursor') cursor?: string,
-    @Query('group') group?: string,
-    @Query('unread') unread?: string,
-  ) {
-    return this.inbox.list(actor, { cursor: text(cursor), group: text(group), unread: text(unread) });
+  @ApiZodQuery(NoticesQuery)
+  @ApiErrorResponse(400, 401, 403)
+  notices(@Actor() actor: ActorShape, @Query() query: NoticesQuery) {
+    return this.inbox.list(actor, query);
   }
 
   // The session is checked by ActorInterceptor before this runs; a refusal answers JSON through the filter.

@@ -1,3 +1,5 @@
+import { DirectoryQuery, UsersQuery } from './accounts.schemas';
+import { isOn } from '../../shared/schemas';
 import { AccountsRepository } from './accounts.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
@@ -18,7 +20,7 @@ import { stampTaskLog } from '../tasks/task-log';
 import { HANDLER_FROZEN_NOTE } from '../stored-text';
 import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { HANDOFF_SECONDS, handoffKey } from './handoff';
-import { DIRECTORY_PAGE, usersPage, type UsersFilter } from './users-page';
+import { DIRECTORY_PAGE, usersPage } from './users-page';
 
 const doorOfLayer = (layer: string) => DOOR_HOSTS.find((door) => door.layer === layer)?.host ?? 'admin';
 
@@ -33,7 +35,8 @@ export class AccountsService {
   constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, @Inject(AUTH_STORE) private readonly auth: AuthStore, private readonly repo: AccountsRepository, private readonly ledger: WalletLedger) {}
 
   /** One page of the accounts the actor may see, filtered and ordered by the server (`users-page.ts`). */
-  async page(actor: Actor, filter: UsersFilter) {
+  async page(actor: Actor, input: UsersQuery = {}) {
+    const filter = parseInput(UsersQuery, input);
     const { accounts, visible } = await this.visibleAccounts(actor);
     const { items: page, nextCursor, total } = usersPage(visible, filter);
     return { items: await this.present(actor, accounts, page), nextCursor, total };
@@ -73,13 +76,14 @@ export class AccountsService {
    * the chain above it, and the branch layer (staff act on every ledger). The web reads it for the full names
    * beside a login and for its account pickers. An account outside the actor's tree shows its name and layer only.
    */
-  async directory(actor: Actor, filter: UsersFilter & { mine?: boolean } = {}) {
+  async directory(actor: Actor, input: DirectoryQuery = {}) {
+    const { mine, ...filter } = parseInput(DirectoryQuery, input);
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const chain = new Set(this.tree.chainIds(actor.id, accounts));
     const byId = new Map(accounts.map((account) => [account.id, account]));
     // `mine` keeps the actor's own tree: what an account picker offers.
-    const met = accounts.filter((account) => visible.has(account.id) || (!filter.mine && (chain.has(account.id) || account.layer === 'branch')));
+    const met = accounts.filter((account) => visible.has(account.id) || (!isOn(mine) && (chain.has(account.id) || account.layer === 'branch')));
     const { items: page, nextCursor, total } = usersPage(met, filter, DIRECTORY_PAGE);
     return {
       items: page.map((account) => {

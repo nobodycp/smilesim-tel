@@ -57,8 +57,10 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
 ## 4. API contract
 
 1. Every `@Body()` and every filtering `@Query()` is parsed by a zod schema in `<domain>.schemas.ts` through
-   `parseInput`. No `typeof body.x === 'string'` in services or controllers.
-   *(architecture.spec: `hand-parsed-input`, `untyped-body`)*
+   `parseInput`. No `typeof body.x === 'string'` in services or controllers. A query is taken whole
+   (`@Query() query: XQuery`, never `@Query('name')`): a parameter the schema does not name is dropped, a named one
+   with a value outside its set is `400 INVALID`.
+   *(architecture.spec: `hand-parsed-input`, `untyped-body`, `untyped-query`; `testing/query-filters.http.spec.ts`)*
 2. Every string has a maximum; every number is an integer with bounds; an unknown enum value is 400, not ignored.
 3. Errors are always `{ message, code }` with a code from `src/errors.ts`. Status table:
    400 invalid input or a rule refused · 401 no session · 403 not allowed · 404 missing or not visible ·

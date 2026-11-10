@@ -1,3 +1,5 @@
+import { CursorQuery } from '../wallets/wallets.schemas';
+import { parseInput } from '../../shared/input';
 import { ReportsRepository } from './reports.repository';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
@@ -32,9 +34,9 @@ export class ReportsService {
   }
 
   /** One page of the wallet entries of provider operations, newest first. */
-  async operations(actor: Actor, cursor?: string) {
+  async operations(actor: Actor, input: CursorQuery = {}) {
     this.gate(actor);
-    return this.entryReport(cursor, PROVIDER_OPERATION_KINDS);
+    return this.entryReport(parseInput(CursorQuery, input).cursor, PROVIDER_OPERATION_KINDS);
   }
 
   private gate(actor: Actor) {

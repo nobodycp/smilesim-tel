@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { id, optionalText, providerHint } from '../../shared/schemas';
+import { id, optionalText, providerHint, queryCursor, queryOneOf, queryText } from '../../shared/schemas';
+import { LINE_STATUSES } from '../rules/office-paging';
 
 // The bodies of the line routes (backend-engineering.mdc 4.1). A field whose malformed value has its own
 // refusal stays wide here and is judged by the service: a SIM serial (`SIM_*`), a QR picture (`QR_INVALID`).
@@ -68,3 +69,16 @@ export const CompleteTaskBody = z.object({
   msisdn: optionalText(32),
 });
 export type CompleteTaskBody = z.input<typeof CompleteTaskBody>;
+
+/** GET lines — the filters of the numbers list. `expiring` is not a stored status: it reads the end date. */
+export const LinesQuery = z.object({
+  cursor: queryCursor,
+  q: queryText(),
+  status: queryOneOf([...LINE_STATUSES, 'expiring']),
+  packageCode: queryText(),
+  provider: queryText(),
+  company: queryText(),
+  /** One account's numbers: its own, or every point of sale below it. */
+  loginName: queryText(),
+});
+export type LinesQuery = z.input<typeof LinesQuery>;

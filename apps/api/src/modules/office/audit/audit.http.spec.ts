@@ -59,9 +59,14 @@ describe('GET /office/audit', () => {
     });
   });
 
-  it('ignores a result filter that is neither ok nor fail', async () => {
-    await request(app.getHttpServer()).get('/office/audit?result=maybe').set('Cookie', `sid=${session}`);
-    expect(asked[0].where).not.toHaveProperty('result');
+  it('refuses a filter value it does not know, and drops a parameter it does not name', async () => {
+    const refused = await request(app.getHttpServer()).get('/office/audit?result=maybe').set('Cookie', `sid=${session}`);
+    expect(refused.status).toBe(400);
+    expect(refused.body).toMatchObject({ code: 'INVALID' });
+    expect(asked).toHaveLength(0);
+    const extra = await request(app.getHttpServer()).get('/office/audit?result=ok&utm_source=x').set('Cookie', `sid=${session}`);
+    expect(extra.status).toBe(200);
+    expect(asked[0].where).toMatchObject({ result: 'ok' });
   });
 
   it('answers 401 without a session and 400 for a cursor it did not issue', async () => {

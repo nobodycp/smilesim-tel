@@ -1,5 +1,7 @@
+import { LinePricesQuery } from './terms.schemas';
+import { ApiZodQuery } from '../../../openapi/query';
 import { Body, Controller, Delete, Get, Param, Put, Query, UseInterceptors } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, param } from '../activity/activity.decorator';
@@ -58,14 +60,10 @@ export class TermsController {
   @Get('packages/:code/line-prices')
   @ApiOperation({ summary: 'The renewable numbers of this package grouped by the renewal price they carry' })
   @ApiParam({ name: 'code' })
-  @ApiQuery({ name: 'scope', required: true, description: 'An account login (that account and everything under it) or "all" (branch only)' })
+  @ApiZodQuery(LinePricesQuery)
   @ApiErrorResponse(401, 403, 400, 404)
-  linePrices(
-    @Actor() actor: ActorShape,
-    @Param('code') code: string,
-    @Query('scope') scope?: string,
-  ) {
-    return this.termDesk.linePrices(actor, code, { scope });
+  linePrices(@Actor() actor: ActorShape, @Param('code') code: string, @Query() query: LinePricesQuery) {
+    return this.termDesk.linePrices(actor, code, query);
   }
 
   @Put('packages/:code/line-prices')

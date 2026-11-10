@@ -1,5 +1,7 @@
+import { TransferPreviewQuery } from './transfers.schemas';
+import { ApiZodQuery } from '../../../openapi/query';
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, param } from '../activity/activity.decorator';
@@ -48,13 +50,9 @@ export class TransfersController {
   @Get('users/:loginName/transfer-preview')
   @ApiOperation({ summary: 'What moving an account under another parent would carry; refuses as the move does' })
   @ApiParam({ name: 'loginName' })
-  @ApiQuery({ name: 'parentLoginName', required: true, description: 'The login of the new parent' })
+  @ApiZodQuery(TransferPreviewQuery)
   @ApiErrorResponse(401, 403, 400)
-  transferPreview(
-    @Actor() actor: ActorShape,
-    @Param('loginName') loginName: string,
-    @Query('parentLoginName') parentLoginName?: unknown,
-  ) {
-    return this.transferDesk.transferPreview(actor, loginName, { parentLoginName });
+  transferPreview(@Actor() actor: ActorShape, @Param('loginName') loginName: string, @Query() query: TransferPreviewQuery) {
+    return this.transferDesk.transferPreview(actor, loginName, query);
   }
 }

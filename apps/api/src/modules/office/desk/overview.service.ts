@@ -1,3 +1,5 @@
+import { OverviewQuery } from './desk.schemas';
+import { parseInput } from '../../shared/input';
 import { DeskRepository } from './desk.repository';
 import { AccountTree } from '../kernel/account-tree';
 import { holdsAny } from '../policy';
@@ -16,7 +18,6 @@ import { addEntry, axis, bucketOf, emptyTotals, stepOf, previousWindow, type Pul
 // The home page's full picture (spec 2026-11-08-overview-and-reports-nav, F): every card of one viewer in one read,
 // scoped to its chain and its grants, over a period (today, this month, all time). Line counts are "now".
 export type OverviewPeriod = 'day' | 'month' | 'all';
-const PERIODS: readonly OverviewPeriod[] = ['day', 'month', 'all'];
 /** The most sale entries one overview reads; `capped` says when there were more. */
 const OVERVIEW_LIMIT = 20_000;
 const TOP = 5;
@@ -55,8 +56,8 @@ export class OverviewService {
     private readonly repo: DeskRepository,
   ) {}
 
-  async overview(actor: Actor, query: { period?: string } = {}) {
-    const period: OverviewPeriod = PERIODS.find((value) => value === query.period) ?? 'month';
+  async overview(actor: Actor, input: OverviewQuery = {}) {
+    const period: OverviewPeriod = parseInput(OverviewQuery, input).period ?? 'month';
     const now = new Date();
     const from = periodStart(period, now);
     const accounts = await this.tree.accounts();

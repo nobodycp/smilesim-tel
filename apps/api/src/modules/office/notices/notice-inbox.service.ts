@@ -1,3 +1,5 @@
+import { NoticesQuery } from './notices.schemas';
+import { parseInput } from '../../shared/input';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import { NoticesRepository } from './notices.repository';
 import { NoticeService } from './notice.service';
@@ -12,7 +14,8 @@ import { NOTICES_PAGE } from '../rules/office-paging';
 export class NoticeInboxService {
   constructor(private readonly repo: NoticesRepository, private readonly notice: NoticeService, @Inject(AUTH_STORE) private readonly auth: AuthStore) {}
 
-  async list(actor: Actor, query: { cursor?: string; group?: string; unread?: string } = {}) {
+  async list(actor: Actor, input: NoticesQuery = {}) {
+    const query = parseInput(NoticesQuery, input);
     const group = noticeGroupOf(query.group);
     const onlyUnread = query.unread === '1' || query.unread === 'true';
     const position = cursorPosition(query.cursor);

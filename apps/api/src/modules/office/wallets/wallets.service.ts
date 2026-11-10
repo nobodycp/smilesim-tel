@@ -13,7 +13,7 @@ import type { Actor } from '../kernel/types';
 import { after, cursorPosition, keyPage, page } from '../../shared/paging';
 import { BALANCES_PAGE, FEED_PAGE } from '../rules/office-paging';
 import { visibleAccountIds } from '../rules/account-visibility';
-import { CeilingBody, DeductBody, FundBody } from './wallets.schemas';
+import { CeilingBody, CursorQuery, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, ProviderOperationsQuery, type FinanceFilter } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 import { matchOf } from '../providers/match-simulator';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
@@ -29,7 +29,8 @@ export class WalletsService {
   constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly money: WalletLedger, private readonly ladder: PriceLadder, private readonly repo: WalletsRepository) {}
 
   /** One page of the wallets the actor may see, in the tree's order. */
-  async list(actor: Actor, cursor?: string) {
+  async list(actor: Actor, input: CursorQuery = {}) {
+    const { cursor } = parseInput(CursorQuery, input);
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const rows = await this.repo.walletsOf([...visible]);
@@ -120,7 +121,8 @@ export class WalletsService {
   }
 
   /** The signed-in account's own wallet («المحفظة»). The tree's entries are «المالية» (`finance`). */
-  async ledger(actor: Actor, query: { kind?: string; direction?: string; from?: string; to?: string; cursor?: string }) {
+  async ledger(actor: Actor, input: LedgerQuery = {}) {
+    const query = parseInput(LedgerQuery, input);
     const allowed = [...PROVIDER_OPERATION_KINDS, 'fund', 'self_fund', 'deduct', 'deduct_in'];
     const kind = query.kind && allowed.includes(query.kind) ? query.kind : '';
     const { from, to } = dayRange(query.from, query.to);
@@ -193,9 +195,10 @@ export class WalletsService {
     });
   }
 
-  async providerOperations(actor: Actor, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string; match?: string } = {}) {
+  async providerOperations(actor: Actor, input: ProviderOperationsQuery = {}) {
     if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
+    const query = parseInput(ProviderOperationsQuery, input);
     const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
     const needle = (query.q ?? '').replace(/\s/g, '');
     const { from, to } = dayRange(query.from, query.to);
@@ -262,7 +265,7 @@ export class WalletsService {
 
   /** The ledger's filter: the entries of the visible accounts (every entry for the branch), narrowed by the query. */
   /** Public for the reports, which read the same entries. */
-  async financeWhere(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string }): Promise<Prisma.WalletEntryWhereInput> {
+  async financeWhere(actor: Actor, query: FinanceFilter): Promise<Prisma.WalletEntryWhereInput> {
     const accounts = await this.tree.accounts();
     const visible = [...visibleAccountIds(actor.id, actor.layer, accounts)];
     const { from, to } = dayRange(query.from, query.to);
@@ -375,7 +378,8 @@ export class WalletsService {
    * The signed-in account's profit by package over a period (roadmap N4): sales, refunds and net profit for each
    * package sold in its chain, newest package first, with the totals. Same filters as the ledger (`from`, `to`, `q`).
    */
-  async profitReport(actor: Actor, query: { from?: string; to?: string; q?: string } = {}) {
+  async profitReport(actor: Actor, input: ProfitsQuery = {}) {
+    const query = parseInput(ProfitsQuery, input);
     const rows = await this.repo.profitEntries({
       AND: [
         await this.financeWhere(actor, query),
@@ -400,13 +404,15 @@ export class WalletsService {
   }
 
   /** The profit report as a CSV (BOM, shekels). */
-  async profitCsv(actor: Actor, query: { from?: string; to?: string; q?: string } = {}) {
+  async profitCsv(actor: Actor, input: ProfitsQuery = {}) {
+    const query = parseInput(ProfitsQuery, input);
     const { packages, totals } = await this.profitReport(actor, query);
     return profitCsv([...packages, { packageName: 'TOTAL', companyName: '', ...totals }]);
   }
 
   /** The signed-in account's own wallet over the last `days` (7, 30 or 90): the finance page's cards and chart. */
-  async financeSummary(actor: Actor, now = new Date(), days = SUMMARY_DAYS) {
+  async financeSummary(actor: Actor, input: FinanceSummaryQuery = {}, now = new Date()) {
+    const days = Number(parseInput(FinanceSummaryQuery, input).days ?? SUMMARY_DAYS);
     const [wallet, entries] = await Promise.all([
       this.repo.walletOf(actor.id),
       this.repo.movementsSince(actor.id, windowStart(now, days)),
@@ -425,7 +431,8 @@ export class WalletsService {
   }
 
   /** The ledger with the page's filters as a CSV, newest first, at most 10,000 rows. */
-  async financeCsv(actor: Actor, query: { kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
+  async financeCsv(actor: Actor, input: FinanceQuery = {}) {
+    const query = parseInput(FinanceQuery, input);
     const rows = await this.repo.entriesWithAccounts(await this.financeWhere(actor, query), FINANCE_CSV_LIMIT);
     return ledgerCsv(rows.map((row) => ({
       at: row.createdAt.toISOString(),
@@ -443,7 +450,8 @@ export class WalletsService {
     })));
   }
 
-  async finance(actor: Actor, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {
+  async finance(actor: Actor, input: FinanceQuery = {}) {
+    const query = parseInput(FinanceQuery, input);
     const position = cursorPosition(query.cursor);
     const where = await this.financeWhere(actor, query);
     const [rows, total] = await Promise.all([

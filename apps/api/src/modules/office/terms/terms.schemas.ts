@@ -1,3 +1,4 @@
+import { queryText } from '../../shared/schemas';
 import { z } from 'zod';
 import { agorot } from '../../shared/schemas';
 import { OP_KEYS } from '../rules/user-terms';
@@ -29,3 +30,7 @@ const priceGroup = z.object({ from: agorot, to: z.union([z.literal('current'), a
  */
 export const LinePricesBody = z.object({ scope: z.string().max(64).optional(), groups: z.array(priceGroup).max(1000) });
 export type LinePricesBody = z.input<typeof LinePricesBody>;
+
+/** GET packages/:code/line-prices — an account's login (it and everything under it) or `all` (branch only). */
+export const LinePricesQuery = z.object({ scope: queryText(64) });
+export type LinePricesQuery = z.input<typeof LinePricesQuery>;

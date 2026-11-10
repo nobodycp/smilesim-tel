@@ -1,3 +1,4 @@
+import { PeriodQuery } from '../../shared/schemas';
 import { ProvidersRepository } from './providers.repository';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { dayRange } from '../../shared/dates';
@@ -110,8 +111,9 @@ export class ProviderAccountsService {
   }
 
   /** One provider: its summary and its ledger (purchases and entries, newest first, each with the balance after it). */
-  async detail(actor: Actor, code: string, query: { from?: string; to?: string } = {}) {
+  async detail(actor: Actor, code: string, input: PeriodQuery = {}) {
     this.gate(actor, false);
+    const query = parseInput(PeriodQuery, input);
     const books = await this.books();
     const provider = books.providers.find((row) => row.code === code);
     if (!provider) fail(404, 'NOT_FOUND');
@@ -140,7 +142,7 @@ export class ProviderAccountsService {
     };
   }
 
-  async ledgerCsv(actor: Actor, code: string, query: { from?: string; to?: string } = {}) {
+  async ledgerCsv(actor: Actor, code: string, query: PeriodQuery = {}) {
     const { ledger } = await this.detail(actor, code, query);
     return csvOf(
       ['at', 'kind', 'number', 'package', 'amount', 'balance_after', 'note', 'by'],

@@ -1,12 +1,13 @@
+import { PeriodQuery } from '../../shared/schemas';
+import { ApiZodQuery } from '../../../openapi/query';
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseInterceptors } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, NoActivity, param } from '../activity/activity.decorator';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
 import { ProviderAccountsService } from './provider-accounts.service';
 import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from './providers.schemas';
@@ -30,25 +31,19 @@ export class ProviderAccountsController {
   @Get('provider-accounts/:code')
   @ApiOperation({ summary: 'One provider: summary and ledger with the running balance' })
   @ApiParam({ name: 'code' })
-  @ApiQuery({ name: 'from', required: false })
-  @ApiQuery({ name: 'to', required: false })
-  @ApiErrorResponse(401, 403, 404)
-  detail(@Actor() actor: ActorShape, @Param('code') code: string, @Query('from') from?: string, @Query('to') to?: string) {
-    return this.accounts.detail(actor, code, { from: text(from), to: text(to) });
+  @ApiZodQuery(PeriodQuery)
+  @ApiErrorResponse(400, 401, 403, 404)
+  detail(@Actor() actor: ActorShape, @Param('code') code: string, @Query() query: PeriodQuery) {
+    return this.accounts.detail(actor, code, query);
   }
 
   @Get('provider-accounts/:code/export')
+  @ApiZodQuery(PeriodQuery)
   @ApiOperation({ summary: 'One provider ledger as CSV' })
   @ApiParam({ name: 'code' })
   @ApiErrorResponse(401, 403, 404)
-  async export(
-    @Res({ passthrough: true }) res: Response,
-    @Actor() actor: ActorShape,
-    @Param('code') code: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-  ) {
-    const csv = await this.accounts.ledgerCsv(actor, code, { from: text(from), to: text(to) });
+  async export(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Param('code') code: string, @Query() query: PeriodQuery) {
+    const csv = await this.accounts.ledgerCsv(actor, code, query);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="provider-${code}.csv"`);
     return csv;

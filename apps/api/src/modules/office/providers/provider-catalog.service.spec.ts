@@ -52,7 +52,7 @@ describe('ProviderCatalogService', () => {
   });
 
   it('queries a company\'s products and marks the ones already added as packages', async () => {
-    const { products } = await world().service.products(owner, 'sky', 'cellcom');
+    const { products } = await world().service.products(owner, 'sky', { company: 'cellcom' });
     expect(products.find((row) => row.code === 'sky-cellcom-300')?.added).toBe(true);
     const fresh = products.find((row) => !row.added);
     expect(fresh).toMatchObject({ added: false, months: expect.any(Number), cost: expect.any(Number) });
@@ -76,7 +76,7 @@ describe('ProviderCatalogService', () => {
 
   it('adds a package from a product: inherited modes take the provider\'s, own modes stay, add-ons come along', async () => {
     const { service, created } = world();
-    const { products } = await service.products(owner, 'sky', 'cellcom');
+    const { products } = await service.products(owner, 'sky', { company: 'cellcom' });
     const product = products.find((row) => !row.added)!;
     const result = await service.createPackage(owner, {
       providerCode: 'sky', companyCode: 'cellcom', productCode: product.code,
@@ -101,7 +101,7 @@ describe('ProviderCatalogService', () => {
     const { service } = world();
     const base = { providerCode: 'sky', companyCode: 'cellcom', subscription: ladder(4000), renewal: ladder(3800) };
     await expect(service.createPackage(owner, { ...base, productCode: 'sky-cellcom-300' })).rejects.toMatchObject({ status: 409, code: 'PACKAGE_EXISTS' });
-    const { products } = await service.products(owner, 'sky', 'cellcom');
+    const { products } = await service.products(owner, 'sky', { company: 'cellcom' });
     const productCode = products.find((row) => !row.added)!.code;
     await expect(service.createPackage(owner, { ...base, productCode, subscription: { ...ladder(4000), posPrice: 100 } })).rejects.toMatchObject({ status: 400, code: 'PRICE_BELOW_FLOOR' });
     await expect(service.createPackage(owner, { ...base, productCode, modes: { charge: 'sometimes' } })).rejects.toMatchObject({ status: 400 });

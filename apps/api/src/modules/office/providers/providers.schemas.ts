@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_AGOROT, agorot, code, optionalText } from '../../shared/schemas';
+import { MAX_AGOROT, agorot, code, optionalText, queryText } from '../../shared/schemas';
 import { simLength, simPrefix } from '../companies/companies.schemas';
 import { ACTION_KEYS, type ActionKey } from '../rules/run-modes';
 import { ceilingValue } from '../wallets/wallets.schemas';
@@ -108,3 +108,7 @@ export type ReconciliationBody = z.input<typeof ReconciliationBody>;
 /** PATCH reconciliation-items/:id — mark a difference handled (with a note) or open it again. */
 export const ReconciliationItemBody = z.object({ status: z.enum(['open', 'resolved']), note });
 export type ReconciliationItemBody = z.input<typeof ReconciliationItemBody>;
+
+/** GET providers/:code/catalog/products — the company whose products are listed. */
+export const CatalogProductsQuery = z.object({ company: queryText(64) });
+export type CatalogProductsQuery = z.input<typeof CatalogProductsQuery>;

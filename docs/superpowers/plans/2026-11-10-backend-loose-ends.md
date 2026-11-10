@@ -41,7 +41,14 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
     repository's `upsert` is never called), `line-snapshots.service.spec.ts` (two runs in a day leave one row).
   - Guard: `architecture.spec.ts` `write-in-get` — a controller `@Get` whose service method reaches `runTx`, or a
     repository write, fails. Baseline from today's count.
-- [ ] **A.4 Query filters by schema (after D2).** One commit per controller, largest first:
+- [x] **A.4 Query filters by schema (after D2).** (COMMIT; D2 = `400 INVALID`, the owner said «اكمل» to the
+  proposal. One commit, not one a controller: every `@Get` with a query takes `@Query() query: XQuery` and its
+  service parses it after its permission check. `queryText` / `queryOneOf` / `queryFlag` / `queryDay` /
+  `queryCursor` in `shared/schemas.ts`, `ApiZodQuery` in `openapi/query.ts`, guard `untyped-query` 73 → 0.
+  `testing/query-filters.http.spec.ts`: 21 refused values, 13 accepted queries, and the option lists of nine web
+  filter selects parsed by the schema of the route they go to (in place of a `check-copy` rule). Two queries stay
+  free text because their services judge the value by their own rules: `line-prices?scope=` and
+  `transfer-preview?parentLoginName=`. The report CSVs became `balancesCsv` / `supplyCsv`.) One commit per controller, largest first:
   `wallets` (31 parameters), `audit` (9), `lines` (7), `tasks` (7), `reports` (5), `accounts` (4), `notices` (3),
   `provider-accounts` (3), then the four with one each.
   - `shared/schemas.ts`: `cursor`, `day` (a date the day range accepts), `oneOf(list)`, `searchText(max)`.

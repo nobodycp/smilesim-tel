@@ -1,3 +1,5 @@
+import { queryCursor, queryFlag, queryOneOf, queryText } from '../../shared/schemas';
+import { USER_LAYERS } from './users-page';
 import { z } from 'zod';
 import { loginName, optionalText } from '../../shared/schemas';
 
@@ -41,3 +43,11 @@ export type AccessBody = z.input<typeof AccessBody>;
 /** `POST /office/handoff` */
 export const HandoffBody = z.object({ code: z.string().min(1).max(100) });
 export type HandoffBody = z.input<typeof HandoffBody>;
+
+/** GET users — the filters of the users table. */
+export const UsersQuery = z.object({ cursor: queryCursor, q: queryText(), layer: queryOneOf(USER_LAYERS) });
+export type UsersQuery = z.input<typeof UsersQuery>;
+
+/** GET directory — the same filters, and `mine=1` to keep the accounts in the caller's own tree. */
+export const DirectoryQuery = UsersQuery.extend({ mine: queryFlag });
+export type DirectoryQuery = z.input<typeof DirectoryQuery>;

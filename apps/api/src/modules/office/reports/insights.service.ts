@@ -1,3 +1,6 @@
+import { PeriodQuery, isOn } from '../../shared/schemas';
+import { BalancesQuery, type BalancesFilter } from './reports.schemas';
+import { parseInput } from '../../shared/input';
 import { ReportsRepository } from './reports.repository';
 import { AccountTree } from '../kernel/account-tree';
 import { dayRange } from '../../shared/dates';
@@ -40,7 +43,8 @@ export class InsightsService {
 
   /** The accounts under the viewer, with their wallets and their last movement. */
   /** One page of the balances report, with the totals of every matching account beside it. */
-  async balances(actor: Actor, query: { q?: string; layer?: string; negative?: string; cursor?: string } = {}) {
+  async balances(actor: Actor, input: BalancesQuery = {}) {
+    const query = parseInput(BalancesQuery, input);
     const rows = await this.balanceRows(actor, query);
     return {
       ...keyPage(rows, BALANCES_PAGE, query.cursor, (row) => row.loginName),
@@ -53,7 +57,7 @@ export class InsightsService {
   }
 
   /** Every account of the report under its filters: the page above and the CSV export read it. */
-  private async balanceRows(actor: Actor, query: { q?: string; layer?: string; negative?: string } = {}) {
+  private async balanceRows(actor: Actor, query: BalancesFilter) {
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const needle = (query.q ?? '').trim();
@@ -85,13 +89,14 @@ export class InsightsService {
         frozen: account.disabledAt !== null,
         lastAt: lastOf.get(account.id)?.toISOString() ?? null,
       };
-    }).filter((row) => query.negative !== '1' || row.balance < 0);
+    }).filter((row) => !isOn(query.negative) || row.balance < 0);
   }
 
   /** Per provider over the dates (branch, with the reports grant): operations, what they cost, and the branch's profit. */
-  async supply(actor: Actor, query: Period = {}) {
+  async supply(actor: Actor, input: PeriodQuery = {}) {
     if (actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
     requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
+    const query = parseInput(PeriodQuery, input);
     const createdAt = dateRange(query);
     const rows = await this.repo.providerOperations(PROVIDER_OPERATION_KINDS, createdAt, REPORT_LIMIT);
     const lines = await this.repo.providersOfLines([...new Set(rows.map((row) => row.lineId).filter((id): id is string => Boolean(id)))]);
@@ -115,16 +120,15 @@ export class InsightsService {
     };
   }
 
-  /** A report as CSV: the same rows, money in shekels. */
-  async csv(actor: Actor, kind: string, query: Record<string, string | undefined>) {
-    if (kind === 'balances') {
-      const rows = await this.balanceRows(actor, query);
-      return csvOf(['account', 'name', 'layer', 'parent', 'balance', 'ceiling', 'used', 'held', 'available', 'frozen', 'last_movement'], rows.map((row) => [row.loginName, row.nickname, row.layer, row.parentLoginName ?? '', { money: row.balance }, { money: row.ceiling }, { money: row.used }, { money: row.held }, { money: row.available }, row.frozen ? 'yes' : 'no', row.lastAt ?? '']));
-    }
-    if (kind === 'supply') {
-      const { rows } = await this.supply(actor, query);
-      return csvOf(['provider', 'operations', 'cost', 'branch_profit'], rows.map((row) => [row.providerName, row.operations, { money: row.cost }, { money: row.profit }]));
-    }
-    fail(404, 'NOT_FOUND');
+  /** The balances report as CSV: every matching account, money in shekels. */
+  async balancesCsv(actor: Actor, input: BalancesQuery = {}) {
+    const rows = await this.balanceRows(actor, parseInput(BalancesQuery, input));
+    return csvOf(['account', 'name', 'layer', 'parent', 'balance', 'ceiling', 'used', 'held', 'available', 'frozen', 'last_movement'], rows.map((row) => [row.loginName, row.nickname, row.layer, row.parentLoginName ?? '', { money: row.balance }, { money: row.ceiling }, { money: row.used }, { money: row.held }, { money: row.available }, row.frozen ? 'yes' : 'no', row.lastAt ?? '']));
+  }
+
+  /** The providers report over the dates as CSV. */
+  async supplyCsv(actor: Actor, input: PeriodQuery = {}) {
+    const { rows } = await this.supply(actor, input);
+    return csvOf(['provider', 'operations', 'cost', 'branch_profit'], rows.map((row) => [row.providerName, row.operations, { money: row.cost }, { money: row.profit }]));
   }
 }

@@ -1,14 +1,14 @@
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
+import { ApiZodQuery } from '../../../openapi/query';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, bodyField, param } from '../activity/activity.decorator';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
 import { LineReads } from './line-reads';
-import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
+import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, LinesQuery, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
 import { LinesService } from './lines.service';
 
 @ApiTags('office')
@@ -21,33 +21,10 @@ export class LinesController {
 
   @Get('lines')
   @ApiOperation({ summary: 'Paged lines / SIMs' })
-  @ApiQuery({ name: 'cursor', required: false })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiQuery({ name: 'status', required: false })
-  @ApiQuery({ name: 'packageCode', required: false })
-  @ApiQuery({ name: 'provider', required: false })
-  @ApiQuery({ name: 'company', required: false })
-  @ApiQuery({ name: 'loginName', required: false, description: "One account's numbers: its own, or every point of sale below it" })
-  @ApiErrorResponse(401, 403)
-  lines(
-    @Actor() actor: ActorShape,
-    @Query('cursor') cursor?: string,
-    @Query('q') q?: string,
-    @Query('status') status?: string,
-    @Query('packageCode') packageCode?: string,
-    @Query('provider') provider?: string,
-    @Query('company') company?: string,
-    @Query('loginName') loginName?: string,
-  ) {
-    return this.reads.list(actor, {
-      loginName: text(loginName),
-      cursor: text(cursor),
-      q: text(q),
-      status: text(status),
-      packageCode: text(packageCode),
-      provider: text(provider),
-      company: text(company),
-    });
+  @ApiZodQuery(LinesQuery)
+  @ApiErrorResponse(400, 401, 403)
+  lines(@Actor() actor: ActorShape, @Query() query: LinesQuery) {
+    return this.reads.list(actor, query);
   }
 
   @Get('lines/:id')

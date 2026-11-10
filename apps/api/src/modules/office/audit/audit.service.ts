@@ -1,3 +1,6 @@
+import { isOn } from '../../shared/schemas';
+import { AuditQuery, type AuditFilter } from './audit.schemas';
+import { parseInput } from '../../shared/input';
 import { AccountTree } from '../kernel/account-tree';
 import { AuditRepository } from './audit.repository';
 import { dayRange } from '../../shared/dates';
@@ -10,7 +13,6 @@ import { FEED_PAGE } from '../rules/office-paging';
 import { visibleAccountIds } from '../rules/account-visibility';
 import { csvOf } from '../reports/report-csv';
 
-type AuditQuery = { cursor?: string; action?: string; result?: string; layer?: string; q?: string; from?: string; to?: string; addresses?: string };
 /** The most events one CSV holds. */
 export const AUDIT_EXPORT_LIMIT = 5_000;
 
@@ -20,7 +22,7 @@ export class AuditService {
   constructor(private readonly tree: AccountTree, private readonly repo: AuditRepository) {}
 
   /** The filter every read of the log shares: the viewer's subtree, then the person's own filters. */
-  private async whereFor(actor: Actor, query: AuditQuery): Promise<Prisma.ActivityEventWhereInput> {
+  private async whereFor(actor: Actor, query: AuditFilter): Promise<Prisma.ActivityEventWhereInput> {
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
     const { from, to } = dayRange(query.from, query.to);
@@ -39,14 +41,15 @@ export class AuditService {
     return where;
   }
 
-  async list(actor: Actor, query: AuditQuery = {}) {
+  async list(actor: Actor, input: AuditQuery = {}) {
+    const query = parseInput(AuditQuery, input);
     const where = await this.whereFor(actor, query);
     const position = cursorPosition(query.cursor);
     const [rows, total, addresses] = await Promise.all([
       this.repo.events({ ...where, AND: after(position, 'at') }, FEED_PAGE + 1),
       this.repo.eventCount(where),
       // On request (the failed sign-ins figure): from how many network addresses the matching events came.
-      query.addresses === '1' ? this.repo.addressCount(where) : Promise.resolve(undefined),
+      isOn(query.addresses) ? this.repo.addressCount(where) : Promise.resolve(undefined),
     ]);
     const { items, nextCursor } = page(rows, FEED_PAGE, (row) => row.at);
     return {
@@ -69,7 +72,8 @@ export class AuditService {
   }
 
   /** The log under the same filters as a CSV, newest first, at most `AUDIT_EXPORT_LIMIT` events. */
-  async csv(actor: Actor, query: AuditQuery = {}) {
+  async csv(actor: Actor, input: AuditQuery = {}) {
+    const query = parseInput(AuditQuery, input);
     const rows = await this.repo.events(await this.whereFor(actor, query), AUDIT_EXPORT_LIMIT);
     return csvOf(
       ['at', 'account', 'layer', 'action', 'subject', 'result', 'reason', 'ip'],

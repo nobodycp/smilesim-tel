@@ -1,17 +1,16 @@
+import { PeriodQuery } from '../../shared/schemas';
+import { CursorQuery } from '../wallets/wallets.schemas';
+import { BalancesQuery } from './reports.schemas';
+import { ApiZodQuery } from '../../../openapi/query';
 import { Controller, Get, Query, Res, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
-import { ApiCookieAuth, ApiOperation, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
 import { InsightsService } from './insights.service';
 import { ReportsService } from './reports.service';
-
-/** The filters a report's CSV export reads from the query, the same names as its page. */
-const filtersOf = (query: Record<string, unknown>) =>
-  Object.fromEntries(['from', 'to', 'q', 'layer', 'negative'].map((key) => [key, text(query[key])]));
 
 @ApiTags('office')
 @ApiCookieAuth('sid')
@@ -27,30 +26,34 @@ export class ReportsController {
   // The «التقارير» pages (spec 2026-11-08-reports): one fixed route a report, its CSV export beside it.
   @Get('reports/balances')
   @ApiOperation({ summary: 'Wallets of the accounts under the signed-in account' })
-  @ApiErrorResponse(401, 403)
-  balances(@Actor() actor: ActorShape, @Query('q') q?: string, @Query('layer') layer?: string, @Query('negative') negative?: string, @Query('cursor') cursor?: string) {
-    return this.insights.balances(actor, { q: text(q), layer: text(layer), negative: text(negative), cursor: text(cursor) });
+  @ApiZodQuery(BalancesQuery)
+  @ApiErrorResponse(400, 401, 403)
+  balances(@Actor() actor: ActorShape, @Query() query: BalancesQuery) {
+    return this.insights.balances(actor, query);
   }
 
   @Get('reports/supply')
   @ApiOperation({ summary: 'Per provider over the dates: operations, cost and branch profit (branch, reports grant)' })
-  @ApiErrorResponse(401, 403)
-  supply(@Actor() actor: ActorShape, @Query('from') from?: string, @Query('to') to?: string) {
-    return this.insights.supply(actor, { from: text(from), to: text(to) });
+  @ApiZodQuery(PeriodQuery)
+  @ApiErrorResponse(400, 401, 403)
+  supply(@Actor() actor: ActorShape, @Query() query: PeriodQuery) {
+    return this.insights.supply(actor, query);
   }
 
   @Get('reports/balances/export')
   @ApiOperation({ summary: 'The balances report as CSV, with the same filters' })
-  @ApiErrorResponse(401, 403)
-  async balancesExport(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Query() query: Record<string, unknown>) {
-    return this.csv(res, 'balances', await this.insights.csv(actor, 'balances', filtersOf(query)));
+  @ApiZodQuery(BalancesQuery)
+  @ApiErrorResponse(400, 401, 403)
+  async balancesExport(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Query() query: BalancesQuery) {
+    return this.csv(res, 'balances', await this.insights.balancesCsv(actor, query));
   }
 
   @Get('reports/supply/export')
   @ApiOperation({ summary: 'The providers report over the dates as CSV' })
-  @ApiErrorResponse(401, 403)
-  async supplyExport(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Query() query: Record<string, unknown>) {
-    return this.csv(res, 'supply', await this.insights.csv(actor, 'supply', filtersOf(query)));
+  @ApiZodQuery(PeriodQuery)
+  @ApiErrorResponse(400, 401, 403)
+  async supplyExport(@Res({ passthrough: true }) res: Response, @Actor() actor: ActorShape, @Query() query: PeriodQuery) {
+    return this.csv(res, 'supply', await this.insights.supplyCsv(actor, query));
   }
 
   @Get('reports/providers')
@@ -62,10 +65,10 @@ export class ReportsController {
 
   @Get('reports/operations')
   @ApiOperation({ summary: 'One page of the provider operations ledger ({ items, nextCursor, total }; branch, reports grant)' })
-  @ApiQuery({ name: 'cursor', required: false })
+  @ApiZodQuery(CursorQuery)
   @ApiErrorResponse(400, 401, 403)
-  operations(@Actor() actor: ActorShape, @Query('cursor') cursor?: string) {
-    return this.reports.operations(actor, text(cursor));
+  operations(@Actor() actor: ActorShape, @Query() query: CursorQuery) {
+    return this.reports.operations(actor, query);
   }
 
   private csv(res: Response, name: string, csv: string) {

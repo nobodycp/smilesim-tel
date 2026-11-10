@@ -1,5 +1,7 @@
+import { DirectoryQuery, UsersQuery } from './accounts.schemas';
+import { ApiZodQuery } from '../../../openapi/query';
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseInterceptors } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
@@ -8,7 +10,6 @@ import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { readCookie } from '../../shared/cookies';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
-import { text } from '../kernel/query';
 import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { AccountsService } from './accounts.service';
 
@@ -22,28 +23,18 @@ export class AccountsController {
 
   @Get('users')
   @ApiOperation({ summary: 'One page of the accounts the actor may see ({ items, nextCursor, total })' })
-  @ApiQuery({ name: 'cursor', required: false })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiQuery({ name: 'layer', required: false })
-  @ApiErrorResponse(401, 403)
-  users(
-    @Actor() actor: ActorShape,
-    @Query('cursor') cursor?: string,
-    @Query('q') q?: string,
-    @Query('layer') layer?: string,
-  ) {
-    return this.accountDesk.page(actor, { cursor: text(cursor), q: text(q), layer: text(layer) });
+  @ApiZodQuery(UsersQuery)
+  @ApiErrorResponse(400, 401, 403)
+  users(@Actor() actor: ActorShape, @Query() query: UsersQuery) {
+    return this.accountDesk.page(actor, query);
   }
 
   @Get('directory')
   @ApiOperation({ summary: 'One page of the accounts the actor may meet on a screen: login, full name, layer ({ items, nextCursor, total })' })
-  @ApiQuery({ name: 'cursor', required: false })
-  @ApiQuery({ name: 'q', required: false })
-  @ApiQuery({ name: 'layer', required: false })
-  @ApiQuery({ name: 'mine', required: false, description: '`1` keeps the accounts in the actor\'s own tree' })
+  @ApiZodQuery(DirectoryQuery)
   @ApiErrorResponse(400, 401, 403)
-  directory(@Actor() actor: ActorShape, @Query('cursor') cursor?: string, @Query('q') q?: string, @Query('layer') layer?: string, @Query('mine') mine?: string) {
-    return this.accountDesk.directory(actor, { cursor: text(cursor), q: text(q), layer: text(layer), mine: text(mine) === '1' });
+  directory(@Actor() actor: ActorShape, @Query() query: DirectoryQuery) {
+    return this.accountDesk.directory(actor, query);
   }
 
   @Get('users/:loginName')

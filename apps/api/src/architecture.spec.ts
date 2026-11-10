@@ -151,6 +151,12 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('login-field-name', hits(production, /\b(parent|pos|actor|submitter|assignee|target|from|to)Login\b/));
   });
 
+  it('4.1 untyped-query: a query is parsed by a schema, like a body', () => {
+    // `@Query('name') name?: string` reads a filter as free text; `@Query() query: XQuery` hands the whole query
+    // to the service, which parses it (`<domain>.schemas.ts`, `parseInput`). 73 named parameters on 2026-11-10.
+    check('untyped-query', hits(officeControllers, /@Query\('[^']+'\)/));
+  });
+
   it('4.3 conflict-status: a conflict answers 409', () => {
     check('conflict-status', hits(production, /fail\(4(?!09)\d\d, '(\w+_(TAKEN|EXISTS)|DUPLICATE_REQUEST)'/));
   });

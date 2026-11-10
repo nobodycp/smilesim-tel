@@ -1,3 +1,4 @@
+import { TasksQuery } from './tasks.schemas';
 import { TasksRepository } from './tasks.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { ActorResolver } from '../kernel/actor-resolver';
@@ -29,15 +30,8 @@ import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 export class TasksService {
   constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly actors: ActorResolver, private readonly ledger: WalletLedger, private readonly repo: TasksRepository) {}
 
-  async list(actor: Actor, query: {
-      cursor?: string;
-      q?: string;
-      status?: string;
-      action?: string;
-      packageCode?: string;
-      company?: string;
-      provider?: string;
-    } = {},) {
+  async list(actor: Actor, input: TasksQuery = {}) {
+    const query = parseInput(TasksQuery, input);
     const handler = canHandleTasks(actor);
     const accounts = await this.tree.accounts();
     const status = taskStatusOf(query.status);

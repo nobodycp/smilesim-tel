@@ -1,11 +1,12 @@
+import { CatalogProductsQuery } from './providers.schemas';
+import { ApiZodQuery } from '../../../openapi/query';
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, bodyField } from '../activity/activity.decorator';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import { text } from '../kernel/query';
 import type { Actor as ActorShape } from '../kernel/types';
 import { ProviderCatalogService } from './provider-catalog.service';
 import { CompanyCreateBody, PackageCreateBody } from './providers.schemas';
@@ -30,10 +31,10 @@ export class ProviderCatalogController {
   @Get('providers/:code/catalog/products')
   @ApiOperation({ summary: 'The provider products for one company, each marked when already added (simulated for now)' })
   @ApiParam({ name: 'code' })
-  @ApiQuery({ name: 'company', required: true })
+  @ApiZodQuery(CatalogProductsQuery)
   @ApiErrorResponse(401, 403, 400, 404)
-  products(@Actor() actor: ActorShape, @Param('code') code: string, @Query('company') company?: string) {
-    return this.catalog.products(actor, code, text(company) ?? '');
+  products(@Actor() actor: ActorShape, @Param('code') code: string, @Query() query: CatalogProductsQuery) {
+    return this.catalog.products(actor, code, query);
   }
 
   @Post('companies')

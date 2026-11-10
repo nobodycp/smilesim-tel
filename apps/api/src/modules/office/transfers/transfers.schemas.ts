@@ -1,3 +1,4 @@
+import { queryText } from '../../shared/schemas';
 import { z } from 'zod';
 
 // The bodies of a move (backend-engineering.mdc 4.1). No choice has a default: a move that leaves one out, or
@@ -25,3 +26,7 @@ export type TransferAccountBody = z.input<typeof TransferAccountBody>;
 
 export const TransferLineBody = z.object({ posLoginName: login, linePrices: lineChoice });
 export type TransferLineBody = z.input<typeof TransferLineBody>;
+
+/** GET users/:loginName/transfer-preview — the login of the new parent. The move's own rules judge it. */
+export const TransferPreviewQuery = z.object({ parentLoginName: queryText(64) });
+export type TransferPreviewQuery = z.input<typeof TransferPreviewQuery>;

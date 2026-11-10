@@ -48,3 +48,30 @@ export const dataUrl = (max: number) => z.string().max(max);
  * gateway itself refuses a request it cannot run (providers/gateway).
  */
 export const providerHint = z.unknown().optional();
+
+// Query-string pieces (backend-engineering.mdc 4.1). A query is parsed by a schema like a body: a parameter the
+// schema does not name is dropped (browsers and proxies add their own), a named one with a value outside its set is
+// 400 INVALID. Every value arrives as text; an empty one counts as not sent.
+const sent = (value: unknown) => (value === '' || value === null ? undefined : value);
+
+/** Free text of a filter: a search box, a code, a login. */
+export const queryText = (max = 100) => z.preprocess(sent, z.string().trim().max(max).optional());
+
+/** One of a closed set of values. */
+export const queryOneOf = <T extends string>(values: readonly T[]) => z.preprocess(sent, z.enum(values as [T, ...T[]]).optional());
+
+/** A yes/no switch as the web writes it: `1` or `true`, `0` or `false`. */
+export const queryFlag = z.preprocess(sent, z.enum(['1', 'true', '0', 'false']).optional());
+
+/** A day (`2026-11-10`) or a moment, as the day range reads it. */
+export const queryDay = z.preprocess(sent, z.string().max(40).refine((value) => !Number.isNaN(new Date(value).getTime())).optional());
+
+/** A list cursor: opaque here, judged by `cursorPosition` / `keyCursor`. */
+export const queryCursor = queryText(400);
+
+/** Whether a `queryFlag` was sent on. */
+export const isOn = (flag: '1' | 'true' | '0' | 'false' | undefined) => flag === '1' || flag === 'true';
+
+/** A list or report over a range of days. */
+export const PeriodQuery = z.object({ from: queryDay, to: queryDay });
+export type PeriodQuery = z.input<typeof PeriodQuery>;
