@@ -1,5 +1,5 @@
 import { parseInput } from '../../shared/input';
-import { shownEsimCode } from './esim-code';
+import { esimCodeOrFail, listedEsimCode } from './esim-code';
 import { LinesQuery } from './lines.schemas';
 import { LinesRepository } from './lines.repository';
 import { AccountTree } from '../kernel/account-tree';
@@ -53,7 +53,7 @@ export class LineReads {
         msisdn: row.msisdn,
         iccid: row.iccid,
         esim: row.esim,
-        esimQr: shownEsimCode(row.esimQr, `line ${row.id}`),
+        esimQr: listedEsimCode(row.esimQr, `line ${row.id}`),
         status: row.status,
         /** The subscription ended at least the package's period ago (spec 2026-11-08-overview-and-reports-nav, I). */
         suspended: isSuspended(row, row.package.suspendAfterDays),
@@ -100,7 +100,7 @@ export class LineReads {
         msisdn: line.msisdn,
         iccid: line.iccid,
         esim: line.esim,
-        esimQr: shownEsimCode(line.esimQr, `line ${line.id}`),
+        esimQr: esimCodeOrFail(line.esimQr, `line ${line.id}`),
         lastRechargeAt: recharge ? recharge.createdAt.toISOString() : null,
         esimPrice: esimPriceOf({ pkg: line.package, provider: line.package.provider, company: line.package.company }).price,
         status: line.status,

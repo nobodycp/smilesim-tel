@@ -1,23 +1,53 @@
+import { fail } from '../../shared/office-failure';
 import { logger } from '../../shared/log';
-import { tryOpen } from '../../shared/secret-box';
+import { tryOpen, type Unreadable } from '../../shared/secret-box';
 
 const log = logger('EsimCode');
 
 /**
- * An eSIM's activation code as it is shown (ADR 0019, D17; plan slice S.5a). The stored value is either the code
- * as it was written before sealing, which is answered as it is, or a sealed one (`v1:`…), which is opened. Both
- * forms can sit side by side while the stored codes are being sealed.
- *
- * A sealed code that cannot be opened is not shown: the answer is `null`, as for a line that has no code, and
- * one line in the log says which record and why, by a code. Neither the stored text nor the cipher's error is
- * returned or logged. Reading never writes: the stored value stays exactly as it is.
+ * What reading a stored eSIM code gives (ADR 0019, D17; plan slice S.5a). `{ code: null }` is a record that truly
+ * has no code. `{ unreadable }` is a record that has one, stored sealed, which does not open. The two are never
+ * the same answer here; each caller below decides what an unreadable code becomes.
+ */
+export type EsimCodeRead = { code: string | null } | { unreadable: Unreadable };
+
+/**
+ * Reads a stored code: one written before sealing is answered as it is, a sealed one (`v1:`…) is opened. Both
+ * forms can sit side by side while the stored codes are being sealed. Reading never writes, never throws, and
+ * keeps neither the stored text nor the cipher's error.
+ */
+export function readEsimCode(stored: string | null | undefined): EsimCodeRead {
+  if (!stored) return { code: null };
+  const read = tryOpen(stored);
+  return 'value' in read ? { code: read.value } : read;
+}
+
+/** One line in the log: which record and why, by a code. Never the stored text, the key or the cipher's error. */
+function report(where: string, reason: Unreadable, then: string): void {
+  log.error(`${where}: its eSIM code is stored sealed and could not be opened (${reason}); ${then}`);
+}
+
+/**
+ * The code in a row of a list. One unreadable code must not take the whole page down: that row answers `null`
+ * and the log says so. A list therefore cannot tell «no code» from «unreadable»; the record's detail can.
  *
  * `where` names the record for the log: `line <id>` or `task <id>`.
  */
-export function shownEsimCode(stored: string | null | undefined, where: string): string | null {
-  if (!stored) return null;
-  const read = tryOpen(stored);
-  if ('value' in read) return read.value;
-  log.error(`${where}: its eSIM code is stored sealed and could not be opened (${read.unreadable}); it is not shown`);
+export function listedEsimCode(stored: string | null | undefined, where: string): string | null {
+  const read = readEsimCode(stored);
+  if ('code' in read) return read.code;
+  report(where, read.unreadable, 'it is not shown');
   return null;
+}
+
+/**
+ * The code in the detail of one record. `null` only when the record has no code. A code that cannot be opened
+ * is a fault, not «no code»: the request is refused with `ESIM_CODE_UNREADABLE`, whose body carries the catalog
+ * message and nothing of the stored text or the key.
+ */
+export function esimCodeOrFail(stored: string | null | undefined, where: string): string | null {
+  const read = readEsimCode(stored);
+  if ('code' in read) return read.code;
+  report(where, read.unreadable, 'the request is refused');
+  fail(500, 'ESIM_CODE_UNREADABLE');
 }

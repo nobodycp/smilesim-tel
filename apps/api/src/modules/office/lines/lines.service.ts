@@ -1,5 +1,4 @@
 import { LinesRepository } from './lines.repository';
-import { shownEsimCode } from './esim-code';
 import { LineAccess } from './line-access';
 import { PriceLadder } from '../terms/price-ladder';
 import { WalletLedger } from '../wallets/wallet-ledger';
@@ -130,10 +129,13 @@ export class LinesService {
       });
       return line;
     });
+    // The money is taken and the line exists: nothing after this point may fail, or the caller would see an error
+    // for a sale that happened and might send it again. So the code answered is the one issued above, in memory,
+    // never the stored value read back (which may be sealed and may not open). ADR 0019, D17.
     return {
       applied: true,
       debited: posDelta < 0,
-      line: { id: created.id, msisdn: created.msisdn, iccid: created.iccid, esim: created.esim, esimQr: shownEsimCode(created.esimQr, `line ${created.id}`) },
+      line: { id: created.id, msisdn: created.msisdn, iccid: created.iccid, esim: created.esim, esimQr: issuedQr },
     };
   }
 

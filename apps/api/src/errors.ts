@@ -49,6 +49,7 @@ export const ERROR_MESSAGES = {
   QR_INVALID: 'صورة رمز QR غير صالحة',
   IMAGE_TOO_LARGE: 'الصورة أكبر من المسموح (700 كيلوبايت)',
   ESIM_PACKAGE_OFF: 'الرزمة غير متاحة كـ eSIM',
+  ESIM_CODE_UNREADABLE: 'تعذّرت قراءة رمز eSIM المحفوظ. تواصل مع الدعم',
   // Adding from the provider (spec 2026-11-09-admin-review, 3).
   COMPANY_EXISTS: 'الشركة مضافة من قبل',
   PACKAGE_EXISTS: 'الرزمة مضافة من قبل',

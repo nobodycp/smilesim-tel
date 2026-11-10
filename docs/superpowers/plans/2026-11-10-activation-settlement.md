@@ -173,18 +173,25 @@ wallets (sorted). A slice's review checks that order in the code it adds.
 
   - [x] **S.5a Read both, write as before (no visible change).**
     `shared/secret-box.ts` `tryOpen` (never throws: the value, or `no-key` / `unreadable`; `open` now also refuses
-    a sealed value that is not exactly the three parts `seal` writes); `lines/esim-code.ts` `shownEsimCode`, used at
-    the four places above. A code stored as written is answered as it is; a sealed one is opened; a sealed one
-    that cannot be opened is answered as `null` (as for a line with no code) with one log line that names the
-    record and a reason code, and never the stored text or the cipher's error. Reading writes nothing. Writes are
-    unchanged and still clear; `TaskCompletion` still copies the stored value as it is, so a sealed value stays
-    sealed when it moves from a task to its line. `ProviderOperation.resultEsimCode` gets its reader with the code
-    that stores it (S.8).
+    a sealed value that is not exactly the three parts `seal` writes); `lines/esim-code.ts` `readEsimCode`
+    (`{ code }`, `null` only when the record has none, or `{ unreadable }`). A code stored as written is
+    answered as it is; a sealed one is opened. A sealed one that cannot be opened is logged once with the record
+    and a reason code, never the stored text, the key or the cipher's error, and then (owner's correction):
+    the **line list** answers `null` for that row only (`listedEsimCode`); the **line detail and the task
+    detail** refuse with `500 ESIM_CODE_UNREADABLE` (`esimCodeOrFail`), never "no code"; the **answer of an
+    activation made at once** carries the code issued in memory and never reads the stored value back, so
+    nothing fails after the money is taken. Reading writes nothing. Writes are unchanged and still clear;
+    `TaskCompletion` still copies the stored value as it is, so a sealed value stays sealed when it moves from a
+    task to its line. `ProviderOperation.resultEsimCode` gets its reader with the code that stores it (S.8).
     *Specs:* `lines/esim-code-read.db.spec.ts` (clear, sealed, damaged, no key, another key, through the list, the
-    two details and a task on a line; stored values unchanged; nothing of a code in the output),
-    `shared/secret-box.spec.ts`. Answer shapes are unchanged (`response-shape.spec.ts`, `routes.http.spec.ts`).
-    **A choice to confirm:** an unreadable code is answered as "no code" rather than failing the request, so one
-    damaged row does not take a whole list page down; the log is where it shows.
+    two details and a task on a line; null against refusal; an activation at once whose stored code does not
+    open: answered with its code, charged once; stored values unchanged; nothing of a code in the output or in
+    the refusal), `shared/secret-box.spec.ts` (everything sealed opens, authenticator secrets included). Answer
+    shapes are unchanged for readable codes (`response-shape.spec.ts`, `routes.http.spec.ts`).
+    **Known cost:** a task whose line holds an unreadable code cannot be opened in the task screen until the
+    stored value is repaired; the owner chose a visible fault over a silent "no code".
+    **For S.5b:** seal before the transaction and check that the sealed value opens to the code, so a sealing
+    fault refuses the sale before any money moves.
   - **S.5b Seal on write, then backfill.** The same repositories seal on write. `src/seal-secrets.ts` gains the
     two columns:
     - **safe:** it seals only values that are not sealed already (`isSealed`), never opens or rewrites one that

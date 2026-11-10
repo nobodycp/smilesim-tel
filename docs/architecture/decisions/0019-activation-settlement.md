@@ -174,13 +174,23 @@ come; the money must be safe in every state of the operation.
 ## As built in S.5a (reading eSIM codes stored clear or sealed)
 
 - The code is answered in four places (line list, line detail, task detail, the answer of an activation made at
-  once); each goes through one function, `lines/esim-code.ts` `shownEsimCode`.
+  once). Reading goes through `lines/esim-code.ts`: `readEsimCode` answers `{ code }` (`null` only for a record
+  that has no code) or `{ unreadable }`, and the two are never merged there.
 - A value that does not start with the sealed prefix is the code as written and is answered as it is; a sealed one
   is opened. Both can be stored side by side, which is what lets S.5b seal rows in batches.
-- A sealed code that cannot be opened (no key, another key, damaged) is answered as `null`, like a line that has
-  none, and logged by record id and reason code. The request does not fail, the stored value is not touched, and
-  neither it nor the cipher's error is returned or logged.
-- Nothing is sealed on write and no stored value changed. The answers keep their shape.
+- A sealed code that cannot be opened (no key, another key, damaged) is logged by record id and reason code,
+  never with the stored text, the key or the cipher's error, and the stored value is not touched. Then
+  (owner's correction, 2026-11-10):
+  - **a row of the line list** answers `null` for that row only (`listedEsimCode`), so one row does not take a
+    page down. A list therefore does not tell "no code" from "unreadable";
+  - **the detail of a line or of a task** refuses the request with `500 ESIM_CODE_UNREADABLE`
+    (`esimCodeOrFail`): it is a fault, not "no code". The body is the catalog message only;
+  - **the answer of an activation made at once** does not read the stored value: it answers the code issued in
+    memory. After the commit nothing can fail, so a sale is never answered as an error (which could be sent
+    again and charged twice), and never answered as a success without its code. **S.5b must keep this:** it
+    seals before the transaction and checks there that the sealed value opens to the code, so a sealing fault
+    refuses the sale before any money moves.
+- Nothing is sealed on write and no stored value changed. The answers keep their shape when the code is readable.
 
 ## Consequences
 

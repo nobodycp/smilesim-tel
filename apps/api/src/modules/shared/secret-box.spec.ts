@@ -85,4 +85,18 @@ describe('secret box', () => {
     process.env.SECRETS_KEY = Buffer.alloc(16, 1).toString('base64');
     expect(tryOpen(sealed)).toEqual({ unreadable: 'no-key' });
   });
+
+  // The authenticator secrets are opened by the same `open` (auth/prisma-auth.store.ts). It accepts exactly the
+  // three parts `seal` writes; this holds for anything sealed, whatever the value contains.
+  it('opens everything it seals: authenticator secrets, values with colons, empty-looking and long ones', () => {
+    process.env.SECRETS_KEY = key;
+    const base32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const values = ['JBSWY3DPEHPK3PXP', 'a:b:c:d', ':', 'otpauth://totp/Smile:user?secret=JBSWY3DPEHPK3PXP&issuer=Smile', ' ', 'x'.repeat(5000)];
+    for (let round = 0; round < 200; round += 1) values.push(Array.from({ length: 32 }, () => base32[Math.floor(Math.random() * 32)]).join(''));
+    for (const value of values) {
+      const sealed = seal(value);
+      expect(sealed.slice(3).split(':')).toHaveLength(3);
+      expect(open(sealed)).toBe(value);
+    }
+  });
 });

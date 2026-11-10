@@ -2,14 +2,20 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { OfficeFailure } from '../../shared/office-failure';
 import { seal } from '../../shared/secret-box';
 import { capturedOutput } from '../../shared/testing/captured-output';
 import type { NoticeService } from '../notices/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
+import { LinesRepository } from './lines.repository';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D17; plan slice S.5a: an eSIM code is read whether it is stored
 // as it was written or sealed, through the services that answer it. Nothing is sealed on write yet; the sealed
 // rows here are written straight to the tables, as the later backfill will leave them.
+//
+// A sealed code that does not open: a row of the line list answers `null` (the page still answers); the detail
+// of a line or a task refuses the request with ESIM_CODE_UNREADABLE, never «no code»; the answer of an
+// activation made at once does not read the stored value at all.
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
@@ -37,8 +43,18 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     tasks: await prisma.officeTask.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true, updatedAt: true }, orderBy: { id: 'asc' } }),
   });
   const listed = async () => Object.fromEntries((await service.lines(pos)).items.map((row) => [row.id, row.esimQr]));
-  const detailOf = async (id: string) => (await service.line(pos, id)).line.esimQr;
-  const taskOf = async (id: string) => (await service.task(owner, id)).task.esimQr;
+  const REFUSED = '500 ESIM_CODE_UNREADABLE';
+  /** The code a detail answers, or `<status> <code>` when the request is refused. Anything else thrown is a crash. */
+  const answered = async (read: () => Promise<string | null>) => {
+    try {
+      return await read();
+    } catch (error) {
+      if (error instanceof OfficeFailure) return `${error.status} ${error.code}`;
+      throw error;
+    }
+  };
+  const detailOf = (id: string) => answered(async () => (await service.line(pos, id)).line.esimQr);
+  const taskOf = (id: string) => answered(async () => (await service.task(owner, id)).task.esimQr);
   /** Everything the services answer for these records. */
   const everyRead = async () => ({
     list: await listed(),
@@ -102,6 +118,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
 
   afterAll(async () => {
     await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await prisma.package.deleteMany({ where: { id: ids.pkg } });
     await prisma.company.deleteMany({ where: { id: ids.company } });
@@ -139,17 +156,28 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     expect(first.tasks.find((row) => row.id === task.sealed)?.esimQr).toBe(sealedTaskQr);
   });
 
-  it('does not show a sealed code that is damaged, says so by a code, and keeps answering everything else', async () => {
+  it('a sealed code that is damaged: null in its row of the list, a refusal in its detail, everything else answered', async () => {
     let read: Awaited<ReturnType<typeof everyRead>> | null = null;
     const output = await capturedOutput(async () => {
       read = await everyRead();
     });
     const answers = read as unknown as Awaited<ReturnType<typeof everyRead>>;
     expect(answers.list[line.damaged]).toBeNull();
-    expect(answers.details.damaged).toBeNull();
+    // The detail does not call it «no code»: a line that truly has none answers null, this one is refused.
+    expect(answers.details).toEqual({ clear: QR.clear, sealed: QR.secret, damaged: REFUSED, none: null });
     // The other records on the same page are answered as usual.
-    expect(answers.list).toMatchObject({ [line.clear]: QR.clear, [line.sealed]: QR.secret });
+    expect(answers.list).toMatchObject({ [line.clear]: QR.clear, [line.sealed]: QR.secret, [line.none]: null });
+    expect(answers.tasks).toEqual({ clear: QR.clear, sealed: QR.taskSecret, onLine: QR.secret });
     expect(output).toContain(`line ${line.damaged}: its eSIM code is stored sealed and could not be opened (unreadable); it is not shown`);
+    expect(output).toContain(`line ${line.damaged}: its eSIM code is stored sealed and could not be opened (unreadable); the request is refused`);
+    // The refusal itself carries the catalog message and nothing else.
+    let refusal: unknown = null;
+    await capturedOutput(async () => {
+      refusal = await service.line(pos, line.damaged).catch((error: unknown) => error);
+    });
+    expect(refusal).toBeInstanceOf(OfficeFailure);
+    expect([(refusal as OfficeFailure).status, (refusal as OfficeFailure).code, (refusal as OfficeFailure).message]).toEqual([500, 'ESIM_CODE_UNREADABLE', 'تعذّرت قراءة رمز eSIM المحفوظ. تواصل مع الدعم']);
+    expectNoCode(`${(refusal as Error).message} ${(refusal as Error).stack ?? ''} ${JSON.stringify(refusal)}`);
     expectNoCode(output);
     expect((await stored()).lines.find((row) => row.id === line.damaged)?.esimQr).toBe(damagedQr);
   });
@@ -157,7 +185,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
   it.each([
     ['there is no key', undefined, 'no-key'],
     ['the key is not the one it was sealed with', Buffer.alloc(32, 22).toString('base64'), 'unreadable'],
-  ] as const)('does not show a sealed code when %s, and still shows the ones stored clear', async (_name, key, reason) => {
+  ] as const)('when %s: sealed codes are null in the list and refused in the details, and the ones stored clear are still shown', async (_name, key, reason) => {
     if (key === undefined) delete process.env.SECRETS_KEY;
     else process.env.SECRETS_KEY = key;
     const first = await stored();
@@ -167,15 +195,59 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     });
     const answers = read as unknown as Awaited<ReturnType<typeof everyRead>>;
     expect(answers.list).toMatchObject({ [line.clear]: QR.clear, [line.sealed]: null, [line.damaged]: null, [line.none]: null });
-    expect(answers.details).toEqual({ clear: QR.clear, sealed: null, damaged: null, none: null });
-    expect(answers.tasks).toEqual({ clear: QR.clear, sealed: null, onLine: null });
+    expect(answers.details).toEqual({ clear: QR.clear, sealed: REFUSED, damaged: REFUSED, none: null });
+    // A task with its own sealed code, and a task on a line whose code is sealed: both refused.
+    expect(answers.tasks).toEqual({ clear: QR.clear, sealed: REFUSED, onLine: REFUSED });
     expect(output).toContain(`line ${line.sealed}: its eSIM code is stored sealed and could not be opened (${reason}); it is not shown`);
-    expect(output).toContain(`task ${task.sealed}: its eSIM code is stored sealed and could not be opened (${reason}); it is not shown`);
+    expect(output).toContain(`line ${line.sealed}: its eSIM code is stored sealed and could not be opened (${reason}); the request is refused`);
+    expect(output).toContain(`task ${task.sealed}: its eSIM code is stored sealed and could not be opened (${reason}); the request is refused`);
     expectNoCode(output);
     expect(await stored()).toEqual(first);
 
     // With the right key back, the same rows read again: nothing was lost by the failed reads.
     process.env.SECRETS_KEY = KEY;
     expect(await capturedOutput(async () => undefined).then(() => detailOf(line.sealed))).toBe(QR.secret);
+  });
+
+  it('an activation made at once answers the code it issued, takes the money once, and does not depend on reading the stored value', async () => {
+    const wallet = async () => (await prisma.wallet.findUniqueOrThrow({ where: { userId: ids.pos } })).balance;
+    const sell = () => service.activate(pos, { packageCode: `esim-${tag}`, posLoginName: `esim-${tag}-pos`, esim: true, outcome: 'success' }) as Promise<{ applied: boolean; debited: boolean; line: { id: string; esimQr: string | null } }>;
+    const entriesOf = (lineId: string) => prisma.walletEntry.findMany({ where: { lineId, kind: 'activate' } });
+
+    // As things are written today: the code is stored as issued, and the answer is that code.
+    const start = await wallet();
+    const plain = await sell();
+    expect(plain).toMatchObject({ applied: true, debited: true });
+    expect(plain.line.esimQr).toMatch(/^data:image\//);
+    expect((await prisma.line.findUniqueOrThrow({ where: { id: plain.line.id } })).esimQr).toBe(plain.line.esimQr);
+    const price = start - (await wallet());
+    expect(price).toBeGreaterThan(0);
+    expect(await entriesOf(plain.line.id)).toHaveLength(1);
+
+    // The worst case once codes are sealed on write: what was stored does not open. The sale still answers as a
+    // sale, with the code, so nobody sends it again; the money is taken once; the fault shows on the line's detail.
+    const create = jest.spyOn(LinesRepository.prototype, 'createLine').mockImplementationOnce(function (this: LinesRepository, db, data) {
+      create.mockRestore();
+      return this.createLine(db, { ...data, esimQr: damagedQr });
+    });
+    const before = await wallet();
+    let sold: Awaited<ReturnType<typeof sell>> | null = null;
+    const output = await capturedOutput(async () => {
+      sold = await sell();
+    });
+    const answer = sold as unknown as Awaited<ReturnType<typeof sell>>;
+    expect(answer).toMatchObject({ applied: true, debited: true });
+    expect(answer.line.esimQr).toMatch(/^data:image\//);
+    expect(answer.line.esimQr).not.toBe(plain.line.esimQr);
+    expect(before - (await wallet())).toBe(price);
+    expect(await entriesOf(answer.line.id)).toHaveLength(1);
+    expect((await prisma.line.findUniqueOrThrow({ where: { id: answer.line.id } })).esimQr).toBe(damagedQr);
+    expect(output).not.toContain('could not be opened');
+    expectNoCode(output);
+    // Reading it afterwards is where the fault is seen, and it is not called «no code».
+    await capturedOutput(async () => {
+      expect(await detailOf(answer.line.id)).toBe(REFUSED);
+      expect((await listed())[answer.line.id]).toBeNull();
+    });
   });
 });

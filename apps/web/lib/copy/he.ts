@@ -976,6 +976,7 @@ export const he: Copy = {
     QR_INVALID: 'תמונת קוד ה-QR אינה תקינה',
     IMAGE_TOO_LARGE: 'התמונה גדולה מדי (עד 700 KB)',
     ESIM_PACKAGE_OFF: 'החבילה לא זמינה כ-eSIM',
+    ESIM_CODE_UNREADABLE: 'לא ניתן לקרוא את קוד ה-eSIM השמור. פנו לתמיכה',
     COMPANY_EXISTS: 'החברה כבר נוספה',
     PACKAGE_EXISTS: 'החבילה כבר נוספה',
     PRODUCT_NOT_FOUND: 'הספק לא מציע את המוצר הזה',
