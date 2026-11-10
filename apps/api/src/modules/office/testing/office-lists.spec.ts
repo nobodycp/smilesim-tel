@@ -226,6 +226,7 @@ describe('numbers list paging', () => {
     expect(linesWhere(['p'], { sim: 'esim' })).toEqual({ posId: { in: ['p'] }, esim: true });
     expect(linesWhere(['p'], { sim: 'sim' })).toEqual({ posId: { in: ['p'] }, esim: false });
     expect(linesWhere(['p'], { sim: 'card' })).toEqual({ posId: { in: ['p'] } });
+    expect(linesWhere(['p'], { sim: 'esim', status: 'frozen', packageCode: 'pk-a' })).toEqual({ posId: { in: ['p'] }, status: 'frozen', package: { code: 'pk-a' }, esim: true });
   });
 
   it('reads «ending soon» as active lines that end within three days', () => {

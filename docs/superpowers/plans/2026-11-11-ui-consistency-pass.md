@@ -6,15 +6,15 @@ local commit. e2e specs that read changed UI are updated in the same phase (they
 
 ## Phase 0 — Audit record
 
-- [ ] `apps/web/visual-audit/{audit.config.ts,audit.visual.ts}` — the re-runnable audit.
-- [ ] Baseline run; `docs/reviews/2026-11-11-visual-audit.md` — method, findings per page, status.
+- [x] `apps/web/visual-audit/{audit.config.ts,audit.visual.ts}` — the re-runnable audit. (4272073)
+- [x] Baseline run; `docs/reviews/2026-11-11-visual-audit.md` — method, findings per page, status. (4272073)
 
 ## Phase 1 — SIM / eSIM (D1)
 
-- [ ] Copy: `lib/copy/{ar,en,he}.ts` — the SIM kind names.
-- [ ] API: `apps/api/src/modules/office/lines/lines.schemas.ts` (`sim`), `rules/office-paging.ts` (`linesWhere`),
+- [x] Copy: `lib/copy/{ar,en,he}.ts` — the SIM kind names.
+- [x] API: `apps/api/src/modules/office/lines/lines.schemas.ts` (`sim`), `rules/office-paging.ts` (`linesWhere`),
       spec beside it.
-- [ ] Web: `features/lines/api.ts`, `features/lines/screens/numbers-screen.tsx` — the SIM / eSIM filter.
+- [x] Web: `features/lines/api.ts`, `features/lines/screens/numbers-screen.tsx` — the SIM / eSIM filter. (b0d3e9a)
 
 ## Phase 2 — Companies (D2)
 

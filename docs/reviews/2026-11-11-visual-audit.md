@@ -31,8 +31,8 @@ but `.bp-tag` on branding are the shekel sign), 9 native controls.
 
 | # | Where | Finding | Phase | Status |
 |---|---|---|---|---|
-| 1 | everywhere | «شريحة عادية» / «شريحة إلكترونية» instead of SIM / eSIM | 1 | open |
-| 2 | `/numbers` | no SIM / eSIM filter | 1 | open |
+| 1 | everywhere | «شريحة عادية» / «شريحة إلكترونية» instead of SIM / eSIM | 1 | fixed b0d3e9a |
+| 2 | `/numbers` | no SIM / eSIM filter | 1 | fixed b0d3e9a |
 | 3 | `/companies` | «eSIM» tag on every card; ⋯ menu repeats «تعديل» (= opening the card) and holds the picture upload | 2 | open |
 | 4 | `/companies` (phone) | one tall card per row, name link 23px high, the rest of the card not a link | 2, 5 | open |
 | 5 | `/companies/:c` settings | native checkbox for eSIM; fields scattered on two columns; no picture | 2 | open |
