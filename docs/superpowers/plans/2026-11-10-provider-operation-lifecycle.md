@@ -11,7 +11,7 @@ Local only: not pushed, the migration applied to a throwaway test database only.
   `operations/provider-operations.service.ts` (`record`, `recordIn`, `status`, `claim`, `settle`,
   `resolveUnknown`), registered in `providers/providers.module.ts`.
 - [x] **O.4 PostgreSQL spec.** `operations/provider-operations.db.spec.ts` (CI `db` job).
-- [x] **O.5 Maps.** `docs/architecture/backend.md`, ADR 0017.
+- [x] **O.5 Maps.** (slice commit 83a9f81) `docs/architecture/backend.md`, ADR 0017.
 
 ## Next phase (not started; waits for review)
 
