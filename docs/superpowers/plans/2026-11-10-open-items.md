@@ -1,10 +1,8 @@
-# Open items carried from the removed plans
+# Open items
 
-On 2026-11-10 thirteen old plans were removed because the code had passed them (login, inner desk, companies and
-packages, the three Pearl rebuild phases, the hotspot-store reflector, task ticket, eSIM serial and QR, site
-branding, transfers and line prices, agent gates, remaining sections). Every task in them was checked against the
-code: done, or replaced by a later design (Graphite identity, ADR 0003, ADR 0008, the kernel split). They stay in
-git history. What follows is the only work or decision they still described.
+What the removed plans still described (2026-11-10), after the owner's answers of the same day. The plans
+themselves were removed because the code had passed them: every task was checked against the code and found done
+or replaced by a later design. They stay in git history.
 
 ## Waiting for an owner decision (`docs/project-plan.md` «مفتوح»)
 
@@ -13,20 +11,24 @@ git history. What follows is the only work or decision they still described.
   path; nothing chooses between the three options.
 - [ ] **Disconnect grace days.** Mentioned in the explanation, never agreed, not in the code.
   (`Package.suspendAfterDays` is a different rule.)
-- [ ] **Switch to a hidden package.** The companies-and-packages plan said a package that is not for sale stays a
-  valid switch target when it is on the switch list; the code refuses it with `PACKAGE_HIDDEN`
+- [ ] **Switch to a hidden package.** The old companies-and-packages plan said a package that is not for sale
+  stays a valid switch target when it is on the switch list; the code refuses it with `PACKAGE_HIDDEN`
   (`rules/user-terms.ts` `visibleTo`, used in `lines/lines.service.ts`). Keep the code's rule or the plan's.
-- [ ] **A provider named «سكاي» in the seed** (`catalog/office-catalog.ts`, code `sky`), although the plan's rule
-  says «سكاي» is a company, not a provider.
 
-## Not built (later modules, each needs its own spec)
+## In work
 
-- [ ] Notice before a subscription ends. The "expiring" status and filter exist (3 days or fewer); no notice is
-  sent.
-- [ ] Refresh link for a number (the refresh operation itself exists).
-- [ ] Message management; WhatsApp / email notices (project-plan: future, not now).
+- [ ] **Notice before a subscription ends**, built so an SMS can follow later:
+  `docs/superpowers/{specs,plans}/2026-11-10-expiry-notice.md` (waits for the owner's word on its three
+  decisions).
 
-## Small gap
+## Future features (owner, 2026-11-10: after the current work; each needs its own spec)
 
-- [ ] `branding.http.spec.ts` has no case for `PUT /branding` from an entered (impersonation) session; the service
-  refuses it (`branding.service.ts` `assertOwner`).
+- [ ] **Refresh link for a number.** The refresh operation exists; the link carries many rules of its own and is
+  postponed.
+- [ ] **Message management; WhatsApp and email notices.**
+
+## Settled on 2026-11-10
+
+- «سكاي» is both a provider and a network (a company) of the same name: the seed is right as it is.
+- `PUT /branding` from an entered session: covered by `branding.http.spec.ts`.
+- `session-and-secret-storage` T.3, T.5 and S.7: done (see that plan).
