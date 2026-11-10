@@ -222,6 +222,12 @@ describe('numbers list paging', () => {
     });
   });
 
+  it('keeps the SIM or the eSIM lines, and ignores any other kind', () => {
+    expect(linesWhere(['p'], { sim: 'esim' })).toEqual({ posId: { in: ['p'] }, esim: true });
+    expect(linesWhere(['p'], { sim: 'sim' })).toEqual({ posId: { in: ['p'] }, esim: false });
+    expect(linesWhere(['p'], { sim: 'card' })).toEqual({ posId: { in: ['p'] } });
+  });
+
   it('reads «ending soon» as active lines that end within three days', () => {
     const now = new Date('2026-11-08T12:00:00.000Z');
     expect(EXPIRING_DAYS).toBe(3);

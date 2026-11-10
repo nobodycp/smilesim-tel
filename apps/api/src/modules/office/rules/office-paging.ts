@@ -46,12 +46,13 @@ export function suspendedWhere(periods: number[], now: Date = new Date()): Prism
   };
 }
 
-export type LineFilter = { q?: string; status?: string; packageCode?: string; provider?: string; company?: string };
+export type LineFilter = { q?: string; status?: string; packageCode?: string; provider?: string; company?: string; sim?: string };
 
 /**
  * The where clause of the numbers list. `q` searches the number and the serial (spaces removed,
  * so "055 024" finds 055024 and "899 720" finds that serial), plus the package name and the
- * company name. Provider, company, and package narrow the same row together.
+ * company name. Provider, company, and package narrow the same row together. `sim` keeps the SIM (`sim`) or the
+ * eSIM (`esim`) lines (spec 2026-11-11-ui-consistency-pass, D1).
  */
 export function linesWhere(posIds: string[], filter: LineFilter, suspendPeriods: number[] = []): Prisma.LineWhereInput {
   const status = oneOf(LINE_STATUSES, filter.status);
@@ -80,6 +81,7 @@ export function linesWhere(posIds: string[], filter: LineFilter, suspendPeriods:
     // `expiring` and `suspended` are not stored statuses: they narrow the lines by their end date.
     ...(filter.status === 'expiring' ? expiringWhere() : filter.status === 'suspended' ? suspendedWhere(suspendPeriods) : status ? { status } : {}),
     ...(Object.keys(pack).length ? { package: pack } : {}),
+    ...(filter.sim === 'esim' ? { esim: true } : filter.sim === 'sim' ? { esim: false } : {}),
     ...search,
   };
 }

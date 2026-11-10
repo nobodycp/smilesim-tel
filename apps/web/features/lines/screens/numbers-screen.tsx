@@ -37,7 +37,7 @@ import { EXPIRING_DAYS, daysLeft } from '../../../lib/days-left';
 const NO_POSES: PosChoice[] = [];
 const NO_PACKAGES: PackageRow[] = [];
 
-const FILTER_KEYS = ['q', 'status', 'pack', 'provider', 'company'] as const;
+const FILTER_KEYS = ['q', 'status', 'pack', 'provider', 'company', 'sim'] as const;
 // `expiring` is a filter, not a stored status: active lines ending within three days.
 const LINE_STATUSES = ['active', 'expiring', 'frozen', 'disconnected', 'suspended'];
 
@@ -56,6 +56,7 @@ export function NumbersScreen() {
   // The filters live in the address (`?status=frozen&q=…`), so back/forward and links keep them.
   const [filters, setFilters] = useUrlFilters(FILTER_KEYS);
   const { q: needle, pack, provider, company } = filters;
+  const sim = filters.sim === 'sim' || filters.sim === 'esim' ? filters.sim : '';
   const status = LINE_STATUSES.includes(filters.status) ? filters.status : '';
   const commitQuery = useCallback((value: string) => setFilters({ q: value }), [setFilters]);
   const [query, setQuery] = useDebouncedField(needle, commitQuery);
@@ -69,9 +70,9 @@ export function NumbersScreen() {
 
   // The server filters and pages. Each filter set has a key; a page only shows while its key is current.
   const list = usePaged<LineRow, PosChoice[]>(
-    `${needle}|${status}|${pack}|${provider}|${company}`,
+    `${needle}|${status}|${pack}|${provider}|${company}|${sim}`,
     async (cursor) =>
-      pick(await api.officeLines({ q: needle, status, packageCode: pack, provider, company, cursor }), (data) => ({ ...pageRows(data), extra: data.poses })),
+      pick(await api.officeLines({ q: needle, status, packageCode: pack, provider, company, sim, cursor }), (data) => ({ ...pageRows(data), extra: data.poses })),
   );
   const catalog = useApiQuery(sharedKeys.packages, () => api.officePackages());
   const packages = catalog.data?.packages ?? NO_PACKAGES;
@@ -215,7 +216,7 @@ export function NumbersScreen() {
       note={note}
     >
       <FilterBar
-        onClear={() => setFilters({ q: '', status: '', pack: '', provider: '', company: '' })}
+        onClear={() => setFilters({ q: '', status: '', pack: '', provider: '', company: '', sim: '' })}
         clearLabel={t.clearFilters}
       >
         {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
@@ -251,6 +252,15 @@ export function NumbersScreen() {
             <option value="frozen">{t.lineFrozen}</option>
             <option value="disconnected">{t.lineDisconnected}</option>
             <option value="suspended">{t.lineSuspended}</option>
+          </Select>
+        </label>
+        {/* SIM or eSIM (spec 2026-11-11-ui-consistency-pass, D1). */}
+        <label>
+          {t.simType}
+          <Select value={sim} onChange={(event) => setFilters({ sim: event.target.value })}>
+            <option value="">{t.allRows}</option>
+            <option value="sim">{t.physicalSim}</option>
+            <option value="esim">{t.esim}</option>
           </Select>
         </label>
       </FilterBar>

@@ -78,6 +78,8 @@ export const LinesQuery = z.object({
   packageCode: queryText(),
   provider: queryText(),
   company: queryText(),
+  /** SIM or eSIM lines only. */
+  sim: queryOneOf(['sim', 'esim']),
   /** One account's numbers: its own, or every point of sale below it. */
   loginName: queryText(),
 });
