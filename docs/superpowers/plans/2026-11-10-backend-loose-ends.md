@@ -7,7 +7,7 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
 
 ## Phase A — defects (money and data first)
 
-- [x] **A.1 Account delete in one transaction.** (COMMIT; the race spec is its own file,
+- [x] **A.1 Account delete in one transaction.** (931b66d; the race spec is its own file,
   `accounts/account-delete.db.spec.ts`, delete against a fund; the guard counts writes on one side of an `else` and
   skips a write handed a client, and found nothing else)
   - `accounts/accounts.repository.ts`: `childCount`, `lineCount`, `taskCount`, `walletEntryCount`,
