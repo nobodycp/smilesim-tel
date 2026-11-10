@@ -62,7 +62,7 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
 - [x] **B.2 Unused injections.** (399e446; checked by the running API's boot instead of a compiled one) Remove `uow` from the eight constructors named in the spec and from
   `testing/office-graph.ts` / `office-facade.ts`. Guard `unused-injection` at 0. Boot the compiled API once
   (`PORT=3099 node dist/main.js`, `/health`): dependency injection errors show only at boot.
-- [x] **B.3 `office-rules.ts` by topic.** (COMMIT; five rule files, 40 importers rewritten by a script, the old
+- [x] **B.3 `office-rules.ts` by topic.** (727a5f5; five rule files, 40 importers rewritten by a script, the old
   file deleted. The spec became three files, not five: `prices-and-periods.spec.ts` (its cases price a period, so
   the two topics are tested together), `run-modes.spec.ts`, `sim-rules.spec.ts`; the visibility case stays in the
   first.) Create `rules/periods.ts`, `rules/prices.ts`, `rules/run-modes.ts`,
