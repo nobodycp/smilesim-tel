@@ -1,6 +1,6 @@
 # 0011 — Line operations go through a provider gateway; the simulation stays on until real providers exist
 
-Date: 2026-11-10 · Status: accepted · Spec: `docs/superpowers/specs/2026-11-10-backend-hardening.md`, decision 12
+Date: 2026-11-10 · Status: accepted; the production default and the boot warnings are changed by ADR 0016 · Spec: `docs/superpowers/specs/2026-11-10-backend-hardening.md`, decision 12
 
 ## Context
 

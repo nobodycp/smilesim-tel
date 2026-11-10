@@ -52,6 +52,20 @@ describe('RateLimitMiddleware', () => {
     expect((await call(middleware, 'POST', '/office/handoff')).status).toBe(429);
   });
 
+  it('keeps the sign-in cap in production: the limit is never switched off by a missing TRUST_PROXY', async () => {
+    const before = { env: process.env.NODE_ENV, proxy: process.env.TRUST_PROXY };
+    process.env.NODE_ENV = 'production';
+    delete process.env.TRUST_PROXY;
+    try {
+      for (let index = 0; index < RATE_LIMIT_SIGN_IN; index += 1) await call(middleware, 'POST', '/auth/login');
+      expect((await call(middleware, 'POST', '/auth/login')).status).toBe(429);
+    } finally {
+      process.env.NODE_ENV = before.env;
+      if (before.proxy === undefined) delete process.env.TRUST_PROXY;
+      else process.env.TRUST_PROXY = before.proxy;
+    }
+  });
+
   it('lets the request through when the counter fails', async () => {
     middleware.counter = { hit: async () => { throw new Error('redis down'); } };
     expect((await call(middleware, 'POST', '/office/users', 's1')).passed).toBe(true);

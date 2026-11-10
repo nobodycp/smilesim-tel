@@ -20,7 +20,12 @@ export type ProviderRequest = {
 /** The provider's answer: done, or refused with its own reason. */
 export type ProviderResult = { ok: true } | { ok: false; reason: string };
 
+/** The refusal of a gateway that reaches no provider: the operation is a plain branch task, not a provider failure. */
+export const NOT_CONNECTED = 'not-connected';
+
 export interface ProviderGateway {
+  /** True only while answers are made up from the request's hint. A real gateway, and any gateway in production, is false. */
+  readonly simulated: boolean;
   /** Refuses (400) a request this gateway cannot run as it is written, before anything is read or written. */
   accept(hint: unknown): void;
   /** Runs the operation at the provider. Never throws for a provider refusal: it answers `ok: false`. */

@@ -1,10 +1,11 @@
-import { env, isProduction } from './config';
+import { env } from './config';
 import { createHash } from 'node:crypto';
 import { Injectable, type NestMiddleware, type OnModuleDestroy } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import IORedis from 'ioredis';
 import { readCookie } from './modules/shared/cookies';
 import { errorBody } from './errors';
+import { logger } from './modules/shared/log';
 
 // Requests per signed-in session in a one-minute window, shared by every API process through Redis.
 // A page load asks for about ten reads; a busy desk stays far under these. Writes have their own, lower ceiling.
@@ -61,13 +62,20 @@ export class RateLimitMiddleware implements NestMiddleware, OnModuleDestroy {
     await this.redis?.quit().catch(() => undefined);
   }
 
+  private saidForwarded = false;
+
   /**
-   * Counts a sign-in attempt against the caller's address and answers 429 when it is over. Only where the address
-   * is the caller's own: not in production behind a proxy the API was not told to trust (every caller would share
-   * the proxy's address and lock each other out).
+   * Counts a sign-in attempt against the caller's address and answers 429 when it is over. The limit is never
+   * switched off: production does not start until TRUST_PROXY states the proxies in front of the API
+   * (production-config.ts), so `req.ip` is the caller's own address.
    */
   private async signInOver(req: Request, res: Response): Promise<boolean> {
-    if (isProduction() && !env('TRUST_PROXY')) return false;
+    // TRUST_PROXY=0 says nothing forwards requests here. A forwarded header then means the statement may be wrong
+    // (every caller would share the proxy's address) or a caller wrote the header: said once, never acted on.
+    if (!this.saidForwarded && env('TRUST_PROXY') === '0' && req.headers['x-forwarded-for']) {
+      this.saidForwarded = true;
+      logger('RateLimit').warn('TRUST_PROXY is 0 but a sign-in request carries X-Forwarded-For. If a reverse proxy is in front of the API, set TRUST_PROXY to its number of hops; until then the sign-in limit counts the proxy as one caller.');
+    }
     try {
       const hit = await this.counter.hit(`rate:signin:${createHash('sha256').update(req.ip ?? '').digest('hex').slice(0, 32)}`);
       if (hit.count <= RATE_LIMIT_SIGN_IN) return false;

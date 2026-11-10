@@ -146,7 +146,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     if (!decision.allowed) {
       if (decision.reason === 'production-blocked') {
         this.logger.warn(
-          'TRIAL_SEED=true is ignored because NODE_ENV=production. Set TRIAL_SEED_ALLOW_PRODUCTION=true only if you really want accounts with a published password.',
+          'TRIAL_SEED=true is ignored because NODE_ENV=production: the trial accounts have a published password and are not created in production.',
         );
       }
       if ((await this.prisma.user.count()) === 0) {

@@ -2,8 +2,9 @@
 # Production on Coolify deploys docker-compose.yml alone and never reads this file: keep it that way.
 #
 # It turns the trial accounts on (branch, main, agent, pos; password 123456) so a fresh local
-# database has a way in. The api image runs with NODE_ENV=production, so the second flag is
-# needed here too. Both can be overridden from .env (see .env.example).
+# database has a way in, and runs the api image as a development copy: a production api refuses
+# trial accounts, plain-HTTP cookies and simulated providers (apps/api/src/production-config.ts).
+# The trial flags can be overridden from .env (see .env.example).
 services:
   web:
     ports:
@@ -12,6 +13,7 @@ services:
     ports:
       - "3001:3001"
     environment:
+      NODE_ENV: development
       TRIAL_SEED: ${TRIAL_SEED:-true}
       TRIAL_SEED_ALLOW_PRODUCTION: ${TRIAL_SEED_ALLOW_PRODUCTION:-true}
   # The local copy runs the API from source (scripts/dev-local.sh): it reaches the data containers on these ports,

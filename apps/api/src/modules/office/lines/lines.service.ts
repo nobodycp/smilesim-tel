@@ -17,7 +17,7 @@ import { activationProviderCost, captureTerms, esimPriceOf, providerBranchCost }
 import { activateInputs, refreshMode } from '../rules/run-modes';
 import { issueSerial, simRefusal, simRulesOf } from '../rules/sim-rules';
 import { packageTermsOf } from '../rules/office-terms';
-import { PROVIDER_GATEWAY, type ProviderGateway } from '../providers/gateway/provider-gateway';
+import { NOT_CONNECTED, PROVIDER_GATEWAY, type ProviderGateway } from '../providers/gateway/provider-gateway';
 import { BRANCH_TASK_NOTE, PROVIDER_FAILED_NOTE } from '../stored-text';
 import { TasksService } from '../tasks/tasks.service';
 import { deniedOpsFor, visibleTo } from '../rules/user-terms';
@@ -58,12 +58,15 @@ export class LinesService {
 
   /**
    * Decides how an operation goes. A package that runs it by hand never reaches the provider; one that runs it
-   * automatically asks the gateway, and a refusal becomes a branch task marked as a provider failure.
+   * automatically asks the gateway, and a refusal becomes a branch task marked as a provider failure. A gateway
+   * that reaches no provider is not a failure: the task is a plain branch task. The request's hint counts only
+   * while the gateway simulates, never in production.
    */
   private async route(action: Action, pkg: RoutedPackage, automatic: boolean, hint: unknown, target: { msisdn: string | null; iccid?: string | null }): Promise<Route> {
-    if (!automatic) return { now: false, note: hint === 'fail' ? PROVIDER_FAILED_NOTE : BRANCH_TASK_NOTE };
+    if (!automatic) return { now: false, note: this.gateway.simulated && hint === 'fail' ? PROVIDER_FAILED_NOTE : BRANCH_TASK_NOTE };
     const answer = await this.gateway.run({ action, providerCode: pkg.provider?.code ?? '', packageCode: pkg.providerProductCode ?? pkg.code, hint, msisdn: target.msisdn, iccid: target.iccid });
-    return answer.ok ? { now: true } : { now: false, note: PROVIDER_FAILED_NOTE };
+    if (answer.ok) return { now: true };
+    return { now: false, note: answer.reason === NOT_CONNECTED ? BRANCH_TASK_NOTE : PROVIDER_FAILED_NOTE };
   }
 
   private async defer(actor: Actor, line: VisibleLine, task: Omit<OpenTask, 'actor' | 'posId' | 'packageId' | 'lineId'>) {

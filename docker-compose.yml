@@ -1,11 +1,15 @@
-# One file for Coolify and for local runs. Coolify overrides the environment:
+# One file for Coolify and for local runs. The api image runs with NODE_ENV=production, and a production api does
+# not start until its settings are safe (apps/api/src/production-config.ts, ADR 0016). Coolify sets:
 #   the cookie domain = the parent domain shared by web and api (never set locally)
 #   COOKIE_SECURE = true
-#   WEB_ORIGIN = the public web URL (the one browser origin the api allows, with cookies)
+#   WEB_ORIGIN = the public web URL(s), https, comma-separated (the browser origins the api allows, with cookies)
+#   TRUST_PROXY = the number of reverse proxies between the browser and the api (0 when there is none). Count them
+#     on the real deployment; the api does not guess.
 #   NEXT_PUBLIC_API_URL = the public api URL (a build argument of web)
-#   SECRETS_KEY = 32 random bytes, base64 (`openssl rand -base64 32`); seals authenticator secrets. Without it a
-#     production api refuses new authenticator enrolments. After setting it once: `npm run seal-secrets --workspace api`.
+#   SECRETS_KEY = 32 random bytes, base64 (`openssl rand -base64 32`); seals authenticator secrets.
+#     After setting it once: `npm run seal-secrets --workspace api`.
 #     Losing it locks authenticator users out (the owner can clear 2FA per account).
+# Provider operations are never simulated in production: every operation becomes a branch task.
 #
 # Trial accounts (branch/main/agent/pos with the published password 123456) are OFF here.
 # TRIAL_SEED and TRIAL_SEED_ALLOW_PRODUCTION default to false, so a deployment that reads
@@ -39,6 +43,8 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       SECRETS_KEY: ${SECRETS_KEY:-}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      PROVIDER_SIMULATION: ${PROVIDER_SIMULATION:-}
       TRIAL_SEED: ${TRIAL_SEED:-false}
       TRIAL_SEED_ALLOW_PRODUCTION: ${TRIAL_SEED_ALLOW_PRODUCTION:-false}
     depends_on:
