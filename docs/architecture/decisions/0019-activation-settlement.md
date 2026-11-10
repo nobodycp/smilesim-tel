@@ -2,8 +2,8 @@
 
 Date: 2026-11-10. Status: **accepted** (the owner approved the design and ordered slice S.1 the same day, task
 05). The design is fixed; it is built slice by slice, and the plan says which slices exist: **S.1 (the schema, read
-by nothing yet), S.2 (the reservation of a serial and a number, which changes the manual path) and S.3 (the pure
-rules, called by nothing yet) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
+by nothing yet), S.2 (the reservation of a serial and a number, which changes the manual path) S.3 (the pure
+rules, called by nothing yet) and S.4 (`capture`, used by manual completion) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
 `docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
 
 ## Context
@@ -149,6 +149,17 @@ come; the money must be safe in every state of the operation.
   no money, and can only be refused.
 - What a confirmed activation hands back travels with the evidence and is normalised by a rule; storing it is
   S.5 and S.8.
+
+## As built in S.4 (`WalletLedger.capture`)
+
+- `capture` takes a debit that its hold covers whole and nothing else; a hold smaller than the wallet's own
+  record of it is a `409` that changes nothing. It checks no ceiling.
+- It writes the same two rows as before (`release`, then the sale), through the posting code `move` uses, so the
+  finance screens, the profit ladder and the below-zero notice are unchanged.
+- Which tasks are captured is a pure rule (`taskCharge`): those that carry a debit fixed at opening and hold
+  exactly that. A disconnect and a switch still post their own amount; a task with no hold is debited under the
+  ceiling as before.
+- Not solved by this slice: a switch task's hold and its charge are different amounts (the plan lists it).
 
 ## Consequences
 

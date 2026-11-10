@@ -19,6 +19,7 @@ import { TasksService } from '../tasks/tasks.service';
 import { LinePricing } from './line-pricing';
 import { assertClaimFree, lockClaim, lockedTaskLine, moveLineStatus, numberTaken } from './line-state';
 import { completionClaim, type Claim } from './reservation.rules';
+import { taskCharge } from './task-charge.rules';
 import { MSISDN, periodOf, readQr } from './line-input';
 import { CompleteTaskBody } from './lines.schemas';
 
@@ -93,8 +94,9 @@ export class TaskCompletion {
       const wanted = completionClaim(task, handed);
       const claim = task.action === 'activate' && !wanted.msisdn ? { ...wanted, msisdn: await this.pricing.freshMsisdn(tx) } : wanted;
       await lockClaim(tx, claim);
-      // The hold made when the task opened gives way to the charge itself (roadmap N6), before any money moves.
-      await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
+      // A hold that is exactly the task's debit is captured when the charge is posted, after the handler (ADR 0019,
+      // D10). Any other hold gives way now, before the handler moves money of its own (roadmap N6).
+      if (taskCharge(task) !== 'capture') await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
       const job: Completion = { tx, task, actor, note, line, handed, handedQr, claim };
       const applied = await this.handlers[task.action as Action](job);
       const sale = applied.sale ?? (await this.plainSale(job));
@@ -138,11 +140,17 @@ export class TaskCompletion {
     return { handed, handedQr };
   }
 
-  /** The debit the task carried since it opened. A disconnect and a switch post their own amount. */
+  /**
+   * The amount the task carried since it opened. A disconnect and a switch post their own. A debit the task's hold
+   * covers exactly is captured: the hold becomes the charge without a second ceiling check.
+   */
   private async charge({ tx, task, actor, note }: Completion, sale: Sale | undefined): Promise<boolean> {
-    if (task.action === 'disconnect' || task.action === 'switch' || task.posDelta === 0) return false;
+    const how = taskCharge(task);
+    if (how === 'own' || how === 'none') return false;
     // An add-on's wallet entry carries its name when the handler wrote no note.
-    await this.ledger.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, task.action === 'addon' ? note || task.note || '' : note, sale);
+    const entryNote = task.action === 'addon' ? note || task.note || '' : note;
+    if (how === 'capture') await this.ledger.capture(tx, task.posId, task.held, task.posDelta, actor.operatorId, task.action, entryNote, sale);
+    else await this.ledger.move(tx, task.posId, task.posDelta, actor.operatorId, task.action, entryNote, sale);
     return true;
   }
 

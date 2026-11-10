@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
+import { logger } from '../../shared/log';
 import { fail } from '../../shared/office-failure';
 import { AccountTree } from '../kernel/account-tree';
 import type { Sale } from '../kernel/types';
@@ -7,6 +8,11 @@ import { UnitOfWork, type Db } from '../kernel/unit-of-work';
 import { withinCeiling } from '../rules/prices';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder } from '../rules/profit-ladder';
 import { PriceLadder } from '../terms/price-ladder';
+
+const log = logger('WalletLedger');
+
+/** A wallet as `post` needs it: the row, and of its owner what a notice names. */
+type PostedWallet = { userId: string; balance: number; ceiling: number; layer: string; parentId: string | null; loginName: string };
 
 /**
  * The only writer of wallets (backend-engineering.mdc 1.2). Every method runs inside the caller's transaction and
@@ -65,6 +71,33 @@ export class WalletLedger {
     await tx.walletEntry.create({ data: { userId, actorId, amount: 0, balanceAfter: wallet.balance, kind: 'release', held: -freed, note: note || null } });
   }
 
+  /**
+   * Turns a task's hold into its charge (ADR 0019, D10): under the wallet's lock, the hold is given back and the
+   * debit is posted, in the caller's transaction. The ceiling is **not** checked again: it was checked when the
+   * hold was taken, and held money could not be spent by anything else since. The rows it writes are the ones a
+   * release followed by a debit writes (a `release` entry, then the sale entry with its price ladder), so reports
+   * read the same ledger.
+   *
+   * Only for a debit the hold covers whole (`amount` negative, `-amount <= held`). It refuses, and changes nothing,
+   * when the wallet holds less than `held`: that hold was already given back, and charging again would be a
+   * second charge. The caller runs it only inside the transaction that claimed the task, so it runs once.
+   */
+  async capture(tx: Prisma.TransactionClient, userId: string, held: number, amount: number, actorId: string, kind: string, note: string, sale?: Sale) {
+    const debit = -amount;
+    if (!Number.isInteger(held) || !Number.isInteger(amount) || held <= 0 || debit <= 0 || debit > held) fail(400, 'INVALID');
+    await tx.$queryRaw`SELECT "userId" FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE`;
+    const wallet = await tx.wallet.findUnique({ where: { userId } });
+    const user = await tx.user.findUnique({ where: { id: userId } });
+    if (!wallet || !user) fail(404, 'NOT_FOUND');
+    if ((wallet.held ?? 0) < held) {
+      log.error(`capture refused for wallet ${userId}: it holds less than the ${kind} task's hold; nothing was changed`);
+      fail(409, 'DUPLICATE_REQUEST');
+    }
+    await tx.wallet.update({ where: { userId }, data: { held: { decrement: held } } });
+    await tx.walletEntry.create({ data: { userId, actorId, amount: 0, balanceAfter: wallet.balance, kind: 'release', held: -held, note: note || null } });
+    await this.post(tx, { ...wallet, layer: user.layer, parentId: user.parentId, loginName: user.loginName }, amount, actorId, kind, note, sale);
+  }
+
   async move(tx: Prisma.TransactionClient, userId: string, amount: number, actorId: string, kind: string, note: string, sale?: Sale, reason?: string) {
     // Hold the wallet row until this transaction ends, so a concurrent move waits here and then reads the balance
     // this one wrote. Without it two moves read the same balance and one write is lost (ADR 0004).
@@ -85,13 +118,23 @@ export class WalletLedger {
       await this.uow.publishQuietly(rows);
       fail(400, 'BALANCE_CEILING');
     }
+    await this.post(tx, { ...wallet, layer: user.layer, parentId: user.parentId, loginName: user.loginName }, amount, actorId, kind, note, sale, reason);
+  }
+
+  /**
+   * Writes a movement on a wallet the caller has locked and judged: the new balance, the notice when it goes
+   * below zero, and the entry with the sale and its price ladder. `move` and `capture` both end here, so a charge
+   * is recorded the same way whichever of them made it.
+   */
+  private async post(tx: Prisma.TransactionClient, wallet: PostedWallet, amount: number, actorId: string, kind: string, note: string, sale?: Sale, reason?: string) {
+    const { userId } = wallet;
     const balanceAfter = wallet.balance + amount;
     if (wallet.balance >= 0 && balanceAfter < 0) {
       const actor = { id: actorId, nickname: await this.actorName(actorId, tx) };
-      const audience = [userId, ...(user.parentId ? [user.parentId] : [])];
+      const audience = [userId, ...(wallet.parentId ? [wallet.parentId] : [])];
       this.uow.queueNotices(tx, await this.uow.notice.write(tx, audience, actor, {
         kind: 'wallet.negative',
-        payload: { balance: balanceAfter, ceiling: wallet.ceiling, loginName: user.loginName },
+        payload: { balance: balanceAfter, ceiling: wallet.ceiling, loginName: wallet.loginName },
       }));
     }
     await tx.wallet.update({ where: { userId }, data: { balance: balanceAfter } });

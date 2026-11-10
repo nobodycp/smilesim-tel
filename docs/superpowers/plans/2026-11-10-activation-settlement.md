@@ -1,7 +1,7 @@
 # Activation through a provider — plan
 
 Spec: `docs/superpowers/specs/2026-11-10-activation-settlement.md` (decisions D1–D19, transactions T1–T11, specs
-1–29). ADR 0019 (accepted). **S.1, S.2 and S.3 are built; each later slice starts on the owner's word.** Paths under `apps/api/`
+1–29). ADR 0019 (accepted). **S.1–S.4 are built; each later slice starts on the owner's word.** Paths under `apps/api/`
 unless said. Each slice is one commit, leaves every existing spec green on CI (including the PostgreSQL and Redis
 job), and changes nothing a user can see unless it says **Visible**.
 
@@ -102,11 +102,31 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   - Also in this commit: the report's PostgreSQL test moved to `src/reservation-conflicts.db.spec.ts`, so the CI
     job that has a database runs it.
 
-- [ ] **S.4 Ledger `capture` (O2). Visible.**
-  `wallets/wallet-ledger.ts` `capture`; manual completion uses it in place of release-then-debit.
-  *Transactions:* T8. *Locks:* unchanged (task → line → keys → wallet).
-  *Visible:* a ceiling lowered after a task opened no longer blocks its completion. *Specs:* 17, 18, and the
-  existing wallet and line concurrency specs.
+- [x] **S.4 Ledger `capture` (O2). Visible.**
+  - `wallets/wallet-ledger.ts` `capture(tx, userId, held, amount, actorId, kind, note, sale)`: locks the wallet,
+    refuses (`409`, nothing changed) when it holds less than `held`, gives the hold back and posts the debit, with
+    **no** ceiling check. Only for a debit the hold covers whole. `move` and `capture` end in one private `post`,
+    so the balance, the below-zero notice, the entry and its price ladder are written by the same code; `capture`
+    writes the `release` entry and then the sale entry, the rows a release and a debit wrote before.
+  - `lines/task-charge.rules.ts` (pure) `taskCharge(task)`: `capture` for a debit fixed at opening that the task
+    holds exactly (activation, extension, charge, reactivation, eSIM request, add-on); `own` for a disconnect and a
+    switch, which post an amount worked out at completion; `none`; `debit` for a debit with no hold of that size
+    (a task opened before holds existed), released and debited with the ceiling check as before.
+  - `lines/task-completion.ts`: the hold is no longer released before the handler when it will be captured; the
+    capture runs after the handler, so the order is task → line → keys → wallet.
+  - *Transactions:* T8. *Specs:* `wallets/wallet-capture.db.spec.ts` (spec items 17 and 18, a failed line
+    creation, the same ledger rows as before, mixed operations, no deadlock), `lines/task-charge.rules.spec.ts`.
+  - **Visible:** a ceiling lowered after a task opened no longer blocks its completion.
+  - **Found while reading the completion paths, not changed here** (each needs the owner's word):
+    1. **A switch task is charged a different amount from the one it held.** It holds the difference quoted when
+       it opened, and completion quotes again (the proration moves every day), releases the hold and posts the new
+       amount under the ceiling check. So the audit's A2 is still open for a switch, and the price charged is not
+       the price fixed at opening (rule 1.5).
+    2. **A plain (non-eSIM) activation stores no `providerCost` on its wallet entry** (`rules/prices.ts`
+       `activationProviderCost` answers a cost only for an eSIM), on the direct route and on the task route. The
+       provider reports then price it from today's package, against rule 1.6.
+    3. A renewal task (extend, charge, reactivate) stores no `unitPrice`; its charge is its `posDelta`, which is
+       fixed at opening, so the amount is right; only the column is empty.
 
 - [ ] **S.5 eSIM data (D17). Visible. Three steps, each its own commit and deploy, in this order; a step is not
   deployed before the one above it is live everywhere.**
