@@ -35,7 +35,8 @@ import { usePageTitle } from '../../../lib/page-title';
 import { Tabs } from '../../../components/tabs';
 import { EXPIRING_DAYS, daysLeft } from '../../../lib/days-left';
 
-const tabs = ['ops', 'log', 'details'] as const;
+// No «التفاصيل» tab: every fact of the number is in the head's cards (owner, 2026-11-11).
+const tabs = ['ops', 'log'] as const;
 type Tab = (typeof tabs)[number];
 type DialogName = 'sim' | 'esim' | 'rename' | 'switch' | 'transfer' | 'qr' | 'addon' | null;
 
@@ -134,7 +135,7 @@ export function LineCardScreen() {
     setLinePrices('');
   }, []);
 
-  const names: Record<Tab, string> = { ops: t.lineOps, details: t.lineDetails, log: t.lineLog };
+  const names: Record<Tab, string> = { ops: t.lineOps, log: t.lineLog };
   const items = line ? lineActions(line, verdict, run, t, { freeze: true, onDisconnect: setEnding }) : [];
   const opTexts: Record<string, string> = {
     [t.extend]: t.opTextExtend,
@@ -188,12 +189,25 @@ export function LineCardScreen() {
                 ) : null}
               </p>
             </header>
-            <Facts variant="cards">
-              <Fact label={t.packageName}>{line.packageName}</Fact>
-              <Fact label={t.endsOn}><bdi dir="ltr" className="num">{latinWhen(line.endsAt).slice(0, 10)}</bdi></Fact>
-              <Fact label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Fact>
-              <Fact label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr" className="num">{latinWhen(line.lastRechargeAt).slice(0, 10)}</bdi> : '—'}</Fact>
-            </Facts>
+            {/* Every fact of the number, once: the company and the point of sale are in the lede above. */}
+            <div className="line-facts">
+              <Facts variant="cards">
+                <Fact label={t.packageName}>{line.packageName}</Fact>
+                <Fact label={t.simType}>
+                  <span className="sim-fact">
+                    <span>{line.esim ? t.esim : t.physicalSim}</span>
+                    {line.iccid ? <bdi dir="ltr" className="num sim-serial">{line.iccid}</bdi> : null}
+                    {line.esim && line.esimQr ? (
+                      <Button type="button" variant="secondary" size="sm" onClick={() => setDialog('qr')}><QrCode size={15} strokeWidth={1.75} aria-hidden="true" />{t.showQr}</Button>
+                    ) : null}
+                  </span>
+                </Fact>
+                <Fact label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Fact>
+                <Fact label={t.activatedOn}><bdi dir="ltr" className="num">{latinWhen(line.createdAt).slice(0, 10)}</bdi></Fact>
+                <Fact label={t.endsOn}><bdi dir="ltr" className="num">{latinWhen(line.endsAt).slice(0, 10)}</bdi></Fact>
+                <Fact label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr" className="num">{latinWhen(line.lastRechargeAt).slice(0, 10)}</bdi> : '—'}</Fact>
+              </Facts>
+            </div>
           <section className="pane line-pane">
             <Tabs items={tabs.map((item) => ({ key: item, label: names[item], count: item === 'log' && history.length ? history.length : undefined }))} value={tab} onChange={setTab} />
             {tab === 'ops' && (
@@ -223,22 +237,6 @@ export function LineCardScreen() {
                     <LineOp icon={<ArrowRightLeft {...glyph} />} title={t.transfer} text={t.opTextTransfer} onClick={() => setDialog('transfer')} />
                   )}
                 </div>
-              </div>
-            )}
-            {tab === 'details' && (
-              // The office's fact cards, as the head above them (D4): what the head does not already show.
-              <div className="pane-body line-details">
-                <Facts variant="cards">
-                  <Fact label={t.company}>{line.companyName || '—'}</Fact>
-                  <Fact label={t.simType}>{line.esim ? t.esim : t.physicalSim}</Fact>
-                  <Fact label={t.simSerial}>{line.iccid ? <bdi dir="ltr" className="num">{line.iccid}</bdi> : '—'}</Fact>
-                  {line.esim && line.esimQr && (
-                    <Fact label={t.esimQr}><Button type="button" variant="secondary" size="sm" onClick={() => setDialog('qr')}><QrCode size={16} strokeWidth={1.75} aria-hidden="true" />{t.showQr}</Button></Fact>
-                  )}
-                  <Fact label={t.remainingDays}><span className="num">{daysLeft(line.endsAt)}</span> {t.dayUnit}</Fact>
-                  <Fact label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr" className="num">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</Fact>
-                  {!isPos && line.posLoginName && <Fact label={t.pointOfSale}><AccountName login={line.posLoginName} /></Fact>}
-                </Facts>
               </div>
             )}
             {tab === 'log' && <DataTable columns={logColumns} rows={history} rowKey={(row) => row.id} empty={t.noHistory} />}

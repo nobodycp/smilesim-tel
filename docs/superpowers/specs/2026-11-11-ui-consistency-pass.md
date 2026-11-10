@@ -42,8 +42,9 @@ beside an operation that is also in the list below it), keep one.
 ### D4 — The number page
 
 - The head's quick-action buttons go: every operation is in the «العمليات» grid below, once.
-- «التفاصيل» is drawn with the system's fact cards and shows what the head does not. The usage dials go: the API
-  has no usage data, so they only ever showed «—».
+- No «التفاصيل» tab (owner, after seeing fact cards nested in a card): the head holds six fact cards — package, SIM
+  (kind, serial, eSIM code), price, activated on, ends on, last recharge; the company and the point of sale are in the
+  lede. The usage dials go: the API has no usage data, so they only ever showed «—».
 - Its dialogs use the shared `Dialog` with the same head (mark, title, lede), body (`.dialog-form` fields) and footer
   (cancel secondary, action primary) as every other dialog.
 

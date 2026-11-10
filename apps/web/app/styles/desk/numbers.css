@@ -74,8 +74,14 @@
 .detail-rows dd { min-width: 0; overflow-wrap: anywhere; }
 /* A control inside a value cell keeps the row at text height: 28px tall, pulled into the cell padding. */
 .detail-rows dd > button { height: 28px; min-height: 0; margin-block: -4px; }
-/* The details tab: fact cards, as the head above them (spec 2026-11-11-ui-consistency-pass, D4). */
-.line-details { display: grid; gap: var(--rd-space-4); align-items: start; }
+/* The number's facts (owner 2026-11-11): six cards, three a row — two on a phone —, no details tab. The SIM card holds
+   the kind, the serial in a smaller Latin line that wraps, and the eSIM code's button. */
+.desk .line-facts .fact-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sim-fact { display: grid; justify-items: start; gap: 4px; }
+.sim-fact .sim-serial { color: var(--rd-ink-2); font-size: var(--rd-text-sm); font-weight: 500; letter-spacing: 0.02em; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .desk .line-facts .fact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 /* The eSIM badge as a button: the badge is the visible part, the padding gives the 44px target. */
 .esim-open {
   display: inline-flex;
