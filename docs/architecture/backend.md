@@ -167,7 +167,10 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
   spec's section 3 lists what the audit found in today's activation (no reservation of a serial or number while a
   task is open; a lowered ceiling can block a completion; no durable request idempotency). The owner decided on
   2026-11-10 that the reservation and `capture` also apply to the manual path, and that a request key and the
-  branch's screens come before any real provider (spec section 9, the plan's go-live gate).
+  branch's screens come before any real provider (spec section 9, the plan's go-live gate). The final review added: one
+  operation per task, cancel only while `requested`, sealed eSIM codes, a second account for decisions that let
+  money go back, and four explicit conditions for dispatch with no environment-name bypass; the spec's section 10
+  lists where this still conflicts with ADR 0016, ADR 0018 and the dispatch switch in `config.ts`.
 - Real provider adapters and the SMS/email gateways do not exist: `SimulatedProviderGateway` and `LogSender`.
   In production every line operation is therefore a branch task. The catalog adapter and the provider charges
   (`match-simulator.ts`) are still simulated everywhere.

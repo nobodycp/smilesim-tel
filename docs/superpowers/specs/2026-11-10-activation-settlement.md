@@ -1,9 +1,10 @@
 # Activation through a provider: hold at the request, settle on the provider's answer — design spec
 
-Owner task 04, 2026-11-10, on `16e345d`; revised the same day with the owner's answers to O1–O6 and three
-requirements (section 9). The direction is agreed (the task carries the money, the operation carries the provider's
-verdict, one settlement); the document waits for the owner's full review before any slice starts.
-**Design and audit only.** No code, schema, route or screen changes with
+Owner task 04, 2026-11-10, on `16e345d`. Revised twice the same day: with the owner's answers to O1–O6, then
+with the final review (one operation per task, cancellation, how a provider is switched on, eSIM data, the second
+approval, lock order). Section 10 lists what the review changed and what still conflicts with text elsewhere.
+The direction is agreed: the task carries the money, the operation carries the provider's verdict, one settlement.
+**Design and audit only**; S.1 starts after the owner's review. No code, schema, route or screen changes with
 this document. It says how `ProviderOperation` and the dispatcher (ADR 0017, 0018) join the activation's money,
 and what must be true before any of it is switched on.
 
@@ -63,12 +64,18 @@ are published after commit.
   check. If the parent lowered the ceiling after the task opened, the debit is refused although the money was
   held. By hand the branch sees the error; after a provider has activated the line, the charge must not fail.
 - **A3. No durable request idempotency.** The duplicate guard is Redis, 10 s / 24 h, and fails open; the web sends
-  no `Idempotency-Key`. Two identical requests more than 10 s apart are two sales. Today the unique number stops
-  the second only when the number was requested.
+  no `Idempotency-Key`. Two identical requests more than 10 s apart are two sales.
 - **A4. The provider's answer has nowhere to carry what an activation returns** (the number the provider assigned,
   an eSIM's serial and activation code): `SendEvidence.confirmed` holds a reference only.
-- **A5. A task stores its submitter, not the operator** of an entered session; an entry written at settlement can
-  name only the submitter.
+- **A5. A task stores its submitter, not the operator** of an entered session.
+- **A6. eSIM activation codes are stored in clear and widely read.** `Line.esimQr` and `OfficeTask.esimQr` hold the
+  QR picture as written; `LineReads.list` returns it on **every row of the line list**, `LineReads.detail` and
+  `TasksService` detail return it to any account that can see the line or the task.
+- **A7. The activity log is not permanent.** The worker deletes `ActivityEvent` rows older than the retention
+  window every day, so a decision that must stay auditable cannot live there alone.
+- **A8. The worker does not run the production settings check** (`assertProductionConfig` is called by `main.ts`
+  only), and `providerDispatchOn()` is "not production", which would make a staging copy declare itself
+  non-production in order to dispatch.
 
 ## 4. Decisions
 
@@ -79,22 +86,25 @@ There is one hold, one charge path and one place that creates the line, for both
 route.
 
 **D2. The answer to the caller does not change:** `{ applied: false, taskId }`, as for any deferred activation.
-No new route and no web change are needed to start.
 
-**D3. A sale is protected against repetition at three levels**, each for a different repeat:
+**D3. One task, one operation.** `ProviderOperation.taskId` is a foreign key with a **unique** index: a task has
+at most one operation, for ever, and the database refuses a second. The idempotency key is `activate:<taskId>`.
+
+- **A retry is an attempt of that operation**, never a new operation: `pending → requested` when the request is
+  known not to have left, up to `MAX_ATTEMPTS`, each under the same key (ADR 0017, 0018).
+- **`failed` is final for the task's provider route.** The task is then the branch's (D5); it is never sent to the
+  provider again. A new try at the provider is a new sale: reject this task, submit again.
+- So there are no parallel operations for one task, and "which operation is the task's" is never a question.
+
+**D4. A sale is protected against repetition at three levels**, each for a different repeat:
 
 | Level | Stops | Key | Enforced by |
 |---|---|---|---|
-| The HTTP request (D14) | the same form sent twice (double click, retry, a tab reopened) from creating two tasks | the web's `Idempotency-Key`, stored as `OfficeTask.requestKey` | a unique index; lasts as long as the task row |
-| The thing sold (D4) | two different requests for one serial or one number | the serial, the number | partial unique indexes on open activation tasks |
-| The provider call | one task from reaching the provider twice | `activate:<taskId>:<n>` on `ProviderOperation` | the unique `idempotencyKey` (ADR 0017) |
+| The HTTP request (D14) | the same form sent twice from creating two tasks | the web's `Idempotency-Key`, stored as `OfficeTask.requestKey` | a unique index, for as long as the task row exists |
+| The thing sold (D5) | two different requests for one serial or one number | the serial, the number | partial unique indexes on open activation tasks |
+| The provider call (D3) | one task from reaching the provider twice | `activate:<taskId>` | unique `ProviderOperation.idempotencyKey` and unique `taskId` |
 
-The operation key is derived from the sale, not from the request: the task id is created in the transaction that
-holds the money, so the key exists exactly when the hold does (`n` = 1; a later deliberate retry at the provider
-is `n + 1`, a new operation). `ProviderOperation.taskId` links them. The request key alone would not do (a browser
-retry may carry a new one), and the operation key alone would not either (two requests make two tasks): hence both.
-
-**D4. Reservation, enforced by the database.** An open activation task **is** the reservation of its serial and
+**D5. Reservation, enforced by the database.** An open activation task **is** the reservation of its serial and
 its number, for manual and provider tasks alike (O1):
 
 ```sql
@@ -104,264 +114,401 @@ CREATE UNIQUE INDEX "OfficeTask_open_activation_msisdn" ON "OfficeTask"("msisdn"
   WHERE "action" = 'activate' AND "status" = 'working' AND "msisdn" IS NOT NULL;
 ```
 
-- **Two active reservations of one item cannot exist**: the second insert is refused by PostgreSQL whatever the
-  code does, and answers `409 SIM_TAKEN` / `NUMBER_TAKEN`. (The insert is `ON CONFLICT DO NOTHING` followed by a
-  read, as for operations, so the caller's transaction is not aborted.)
-- **Release is the task leaving `working`**, in the same guarded write that closes it: `done` (the line now owns
-  the number through `Line.msisdn` unique, and the serial through `assertSimFree`), `rejected`, `cancelled`. There
-  is no second row to delete and so nothing to forget; a task that is frozen (`unknown`, or succeeded but not
-  applied) stays `working`, so its reservation stays.
-- **Against an existing line** (a different table): the opening transaction takes the advisory locks
-  `iccid:<serial>` and `msisdn:<number>` and checks live lines, and line creation takes the same locks and checks
-  open activation tasks. `Line.msisdn` is unique in the database already; a serial among live lines is the existing
-  advisory-lock rule (`assertSimFree`), not a constraint. Making that a constraint too means a claims table written
-  by every line status change; it is listed in the ADR as the next step if wanted, not part of this design.
-- **The migration** first lists open activation tasks that already share a serial or a number and stops if there
-  are any: they are resolved by the branch (reject one) before the indexes are created.
-- Prisma cannot express a partial index; like the CHECK constraints it lives in the migration and is pinned by a
-  PostgreSQL spec.
+- Two active reservations of one item cannot exist: the second insert is refused by PostgreSQL whatever the code
+  does (`409 SIM_TAKEN` / `NUMBER_TAKEN`; the insert is `ON CONFLICT DO NOTHING` followed by a read, so the
+  caller's transaction is not aborted).
+- **Release is the task leaving `working`**, in the guarded write that closes it: `done` (the line now owns the
+  number through unique `Line.msisdn`, and the serial through `assertSimFree`), `rejected`, `cancelled`. A frozen
+  task (operation in flight, `unknown`, or an exception) stays `working`, so its reservation stays.
+- Against an existing **line** (another table): the opening transaction takes the advisory locks `iccid:<serial>`
+  and `msisdn:<number>` and checks live lines; line creation takes the same locks and checks open activation
+  tasks. `Line.msisdn` is unique in the database; a serial among live lines stays the advisory-lock rule.
+- The migration first lists open activation tasks that already share a serial or a number and stops if any
+  exist. Prisma cannot express a partial index; like the CHECK constraints it lives in the migration and is pinned
+  by a PostgreSQL spec.
 
-**D5. What each operation state means for the task and the money.**
+**D6. What each operation state means for the task and the money.**
 
-| Operation | Task | Hold | Who may act | What happens |
-|---|---|---|---|---|
-| `requested` | `working`, waiting for the provider | held | submitter may cancel **only** through a guarded `requested → failed (abandoned)` in the same transaction as the release; the branch may not complete or reject | nothing has left |
-| `pending` | `working`, waiting | held | nobody | the dispatcher is on it |
-| `succeeded` | → `done` by the system | captured as the charge | system | one transaction: claim the task, mark the operation applied, create the line, capture the hold as the `activate` entry at the fixed price |
-| `succeeded`, cannot be applied | `working`, **exception** (D16) | **held** | an authorised account only, through the exception use case | the verdict is kept, nothing is re-sent, nothing is refunded automatically |
-| `failed` | `working`, an ordinary branch task noted `PROVIDER_FAILED_NOTE` | held | branch completes by hand, or rejects (release); submitter may cancel | exactly today's "the provider refused" |
-| `unknown` | `working`, frozen | **held** | nobody completes, rejects or cancels; an authorised account gives a documented verdict (D15) | `resolveUnknown` → then the `succeeded` or `failed` row above |
+| Operation | Task | Hold | Complete by hand | Reject (branch) | Cancel (submitter) | What the system does |
+|---|---|---|---|---|---|---|
+| none (manual task) | `working` | held | yes | yes | yes | — |
+| `requested` | `working`, waiting | held | no | no | **yes, atomically (D7)** | relay and dispatcher will take it |
+| `pending` | `working`, waiting | held | no | no | **no** | the dispatcher is on it |
+| `unknown` | `working`, frozen | **held** | no | no | **no** | waits for the provider's late verdict or a decision (D15) |
+| `succeeded`, not applied yet | `working` | held | no | no | no | T5 applies it |
+| `succeeded`, applied | `done` | captured | — | — | — | — |
+| `succeeded`, exception (D16) | `working`, exception | **held** | no | no | no | waits for a decision (D15) |
+| `failed` | `working`, ordinary branch task noted `PROVIDER_FAILED_NOTE` | held | yes | yes (release) | yes (release) | nothing more; never re-sent |
 
-**D6. The verdict is stored before the money moves, in a separate transaction.** `settle` only records what the
-provider said. Applying it (D5) is its own transaction, started by an outbox message
-(`provider-operation.settled`) and re-tried by a sweeper for any `succeeded` operation not yet applied
-(`ProviderOperation.appliedAt`). If the application were inside `settle`, a `NUMBER_TAKEN` would roll the verdict
-back and a confirmed activation would later look `unknown`.
+"In flight" = `requested`, `pending`, `unknown`, or `succeeded` not applied. The table is one pure function
+(`taskActions(operation)`); the services ask it and nothing else decides.
 
-**D7. Exactly one charge, exactly one line.** Three independent guards, any one of which is enough:
-the task claim (`working → done`, guarded), `appliedAt` written by compare-and-set (`IS NULL`), and the unique
-number / serial lock. A repeated message, two workers, and a person clicking "complete" at the same moment all
-end at the first guard.
+**D7. Cancelling a requested operation is one transaction.** The submitter's cancel, when the task has an
+operation:
 
-**D8. The hold is captured, not released-then-debited.** New ledger primitive `capture(tx, userId, held, amount,
-…)`: under the wallet lock, `held −= held`, `balance += amount` and the sale entry, **without** the ceiling check
-(it was made when the hold was taken, and held money cannot be spent by anything else). Used by the provider
-settlement **and** by manual completion (O2), which closes A2 on both routes. It moves money once because it runs
-only inside the transaction that claimed the task (`working → done`, guarded): a second capture has no task to
-claim. It refuses, rather than clamps, when `Wallet.held` is smaller than the task's hold: that would mean a hold
-was released twice, and the transaction must fail loudly.
+```
+BEGIN
+  cancelTask: UPDATE OfficeTask SET status='cancelled' WHERE id AND status='working'          -- 0 rows → 400
+  SELECT … FROM ProviderOperation WHERE taskId = … FOR UPDATE
+  ├─ failed            → go on
+  ├─ requested         → UPDATE … SET status='failed', lastError='abandoned', appliedAt=now()
+  │                       WHERE id AND status='requested'                                      -- 0 rows → 409, rollback
+  └─ anything else     → 409 DUPLICATE_REQUEST, rollback (the task stays working, the hold stays)
+  WalletLedger.release(pos, task.held)
+COMMIT
+```
 
-**D9. Manual completion, reject and cancel read the operation under a lock.** After claiming the task and before
-any wallet: `SELECT … FOR UPDATE` on the task's operation; proceed only when there is none or it is `failed`.
-Lock order: task → line → operation → wallet.
+The dispatcher's `claim` is a compare-and-set on the same row: whichever of the two commits first wins, and the
+other finds the row changed. If the claim won, the operation is `pending` and the cancel is refused; if the cancel
+won, `claim` answers null and nothing is sent. `appliedAt` is stamped so the settlement sweeper has nothing to do
+for it. `requested` after an attempt that never left (attempts ≥ 1) is cancellable the same way: nothing is at the
+provider. The same guard, without the `requested` branch, protects **reject** and **complete by hand**: they go on
+only with no operation or a `failed` one.
 
-**D10. What the provider hands back** travels in the evidence and is stored on the operation in three typed
-columns (`resultMsisdn`, `resultIccid`, `resultEsimCode`), never as free JSON; the application copies them to the
-line exactly as the branch's hand-back does today.
+**D8. The verdict is stored before the money moves, in a separate transaction.** `settle` only records what the
+provider said. Applying it is its own transaction, started by an outbox message (`provider-operation.settled`) and
+re-tried by a sweeper for any `succeeded` operation with neither `appliedAt` nor `applyError`.
 
-**D11. Who is named.** Entries and notices written at settlement name the task's submitter as the actor and
-«النظام» as the handler. The request itself is still recorded by `@Activity('activate')`.
+**D9. Exactly one charge, exactly one line.** Three independent guards, any one of which is enough: the task
+claim (`working → done`, guarded), `appliedAt` written by compare-and-set (`IS NULL`), and the unique number with
+the serial lock.
 
-**D12. Which activations take this route.** `route()` gains a third answer, `dispatch`, when the package runs the
-operation automatically **and** the gateway says it dispatches for that provider (`gateway.dispatches(code)`,
-false everywhere until an adapter exists). Simulation (development, tests) keeps answering inside the request;
-"not connected" keeps opening a plain branch task. So nothing changes for any activation until a provider is
-switched on.
+**D10. The hold is captured, not released-then-debited** (O2, both routes). `WalletLedger.capture(tx, userId,
+held, amount, kind, sale)`: under the wallet lock, `held −= held`, `balance += amount`, and the sale entry,
+**without** the ceiling check (it was made when the hold was taken, and held money cannot be spent by anything
+else). It runs only inside the transaction that claimed the task, so it cannot run twice; it **refuses** when
+`Wallet.held` is smaller than the task's hold (a hold released twice must fail loudly, not be clamped).
 
-**D13. Layers.**
+**D11. What the provider hands back** travels in the evidence and is stored on the operation in typed columns:
+`resultMsisdn`, `resultIccid`, and `resultEsimCode` (**sealed**, D17). The application copies them to the line as
+the branch's hand-back does today.
+
+**D12. Who is named.** Entries and notices written at settlement name the task's submitter as the actor and
+«النظام» as the handler. The request itself is recorded by `@Activity('activate')`.
+
+**D13. Which activations take this route.** `route()` answers `dispatch` when the package runs the operation
+automatically **and** `gateway.dispatches(providerCode)` is true. That is true only when every condition of D18
+holds; it is false everywhere today. Simulation (development, tests) keeps answering inside the request; "not
+connected" keeps opening a plain branch task.
+
+**D14. A durable request key (O4), before any provider is switched on.** The web creates one key per activation
+form and sends it as `Idempotency-Key`. `OfficeTask.requestKey` stores `sha256(submitterId : key)`, unique, with
+`requestHash` (the fingerprint of the parsed body). The task is inserted `ON CONFLICT DO NOTHING`:
+no conflict → the sale goes on; conflict with the same `requestHash` → the first task is answered again and
+nothing is held or recorded; conflict with another `requestHash` → `400 INVALID`. The Redis guard stays in front.
+On the dispatch route the header is **required**; on the manual route it is honoured when present.
+
+**D15. Decisions by people on a provider operation (O5, final).**
+
+| Decision | When | Effect | Approval |
+|---|---|---|---|
+| **Confirm success** | `unknown` | `unknown → succeeded`, then T5 (line, capture) | one authorised account |
+| **Declare failure** | `unknown` | `unknown → failed`; the task becomes the branch's | **a second, independent authorised account** |
+| **Apply with corrected data** | exception (D16) | T5 with the number / serial the provider really activated | one authorised account |
+| **Release after provider success** | exception (D16) | hold released, task rejected | **a second, independent authorised account** |
+
+- **Authorised:** the branch owner, or a branch staff account holding the `accounting` grant. Stated in
+  `office/policy.ts`, pinned in `permissions.http.spec.ts`.
+- **A real account session only:** `session.kind === 'account'`; an entered (impersonation) session is refused for
+  proposing and for approving (`refuseEntered`), so the account named is the person who acted.
+- **Evidence, always:** the kind of evidence from a closed list (the provider's portal, the provider's statement,
+  the provider's written answer, a test on the line); a note of **at least 20 characters**; the provider's
+  reference (required to confirm success). The two decisions in favour of the customer's line (confirm, apply
+  corrected) also need what the activation hands back when the provider chose it.
+- **Second approval:** the two decisions that let money go back (declare failure, release) are first only a
+  **proposal**. Nothing changes until another authorised account approves it. The approver's account id must
+  differ from the proposer's (**no account approves its own decision**) and from the task's submitter. The
+  approver may refuse; the proposal is then closed and a new one may be made. **Without the approval the operation
+  stays as it is**: `unknown`, or the exception, with its hold and its reservation, for as long as it takes.
+  A branch with a single authorised account therefore cannot declare a failure: it needs a second accounting
+  account, by design.
+- **Atomic:** the approval, the guarded move it causes (`unknown → failed`, or the release and the task's
+  rejection) and its audit row are one transaction; the single-account decisions likewise.
+- **The record is permanent and cannot be changed.** Table `ProviderDecisionEvent`, append-only:
+  `(operationId, sequence)` unique; `type` (`proposed`, `approved`, `refused`, `applied`); the decision; evidence
+  kind, reference, note; account id; time. No column is ever updated and no row deleted: a database trigger
+  refuses `UPDATE` and `DELETE` on the table, and the worker's activity purge does not touch it (A7). The current
+  state of a decision is its last event; a new event is inserted under the operation's row lock, so two accounts
+  acting at once produce one next step. An `ActivityEvent` is written too, for the audit screen, but it is not the
+  record.
+- **The provider's own answer is not a human decision.** A late verdict from the same attempt (ADR 0018), and
+  later the provider's status check, close an `unknown` operation without anyone's approval.
+
+**D16. The provider succeeded and the line cannot be created: an exception, not a failure.** T5 rolls back on a
+business refusal (the number or the serial was taken meanwhile, the package or the point of sale no longer
+exists). Then, in its own transaction (T5′): the operation keeps `succeeded` and its result; `applyError` gets a
+code from a closed list (`number-taken`, `sim-taken`, `target-missing`) and `applyFailedAt` the time; the task
+stays `working` with its hold and its reservation; the authorised accounts are notified. The sweeper leaves an
+operation that has an `applyError` alone; a technical error leaves none and is retried. The operation is
+terminal, so it is never sent again, and no path releases the hold except the approved release of D15.
+
+**D17. eSIM activation data is protected at rest, in transit inside the system, and on read.**
+
+- **Sealed at rest** with `shared/secret-box.ts` (AES-256-GCM, `SECRETS_KEY`): `ProviderOperation.resultEsimCode`
+  from the first day, and, closing A6, `Line.esimQr` and `OfficeTask.esimQr` (the existing values by the
+  `seal-secrets` backfill). The repository seals on write and opens on read; no service sees the sealed form.
+- **Never logged, queued or announced.** The dispatcher logs kinds and codes only (ADR 0018, decision 11); outbox
+  and queue payloads carry the operation id only; notices, activity events and decision events never carry the
+  code. `ProviderDecisionEvent` stores that a code was supplied, not the code. A spec captures the process output
+  and the Redis job for an activation that returns a code and finds none of it.
+- **Read by those who must hand it over, and only when they open it.** Lists never carry it (`GET /office/lines`,
+  the task list). It is returned by the line's and the task's detail only to: the line's point of sale, an account
+  above it on its own path, and the branch; each read is an audited event (`line.esim_read`). A lower layer never
+  receives another point of sale's code (rule 3.4). `response-shape.spec.ts` pins who gets the field.
+- A provider's credential is a different secret with its own rule (D18).
+
+**D18. How a provider is switched on.** No environment name relaxes anything.
+
+- **Staging is production-grade.** A staging deployment runs `NODE_ENV=production` and passes
+  `assertProductionConfig` like production: secure cookies, sealed secrets, no trial accounts, no simulation. The
+  advice in ADR 0016 to give a trial server `NODE_ENV=staging` is withdrawn (section 10).
+- **The worker is checked too.** `worker.ts` runs the production settings check before it opens anything, with
+  the worker's own list (`REDIS_URL`, `DATABASE_URL`, `SECRETS_KEY`, and the dispatch settings below).
+- **The dispatcher stays off until four things are true, each explicit and each independent:**
+  1. the deployment says so: `PROVIDER_DISPATCH=1` on the worker;
+  2. the deployment names the adapters it may load: `PROVIDER_ADAPTERS=<code,…>`; an adapter not named is not
+     constructed, whatever the database says;
+  3. the deployment states its target: `PROVIDER_TARGET=sandbox` or `live`. It is a restriction, never a
+     relaxation: an adapter's endpoints are constants in its code, one set per target, and a `sandbox` deployment
+     cannot build a `live` client. A staging deployment is `sandbox`; only a deployment the owner calls production
+     is `live`;
+  4. the owner approved that provider on that deployment: `Provider.dispatchApprovedAt` / `dispatchApprovedBy`,
+     set through an audited branch-owner route (a real account session), and revocable (`dispatchPausedAt`).
+  `providerDispatchOn()` loses its "not production" test: the four conditions replace it. In production the check
+  refuses `PROVIDER_DISPATCH=1` without `PROVIDER_ADAPTERS` and `PROVIDER_TARGET`.
+- **Only the worker can reach a provider.** Adapters are bound to `PROVIDER_GATEWAY` in the worker
+  (`provider-dispatch.ts`), behind one routing gateway that picks the adapter by provider code. The API process
+  binds no adapter: for it `send` does not exist as a path, and `dispatches(code)` reads conditions 1–4 from the
+  shared settings and the database. A request therefore never calls a provider.
+- **Credentials** are entered by the branch owner through a write-only route, sealed with `SECRETS_KEY`
+  (`ProviderCredential`: provider, target, sealed value), opened only in the worker when an adapter is built,
+  never returned by any route and never logged. Sandbox and live credentials are separate rows.
+- **Pausing** a provider (`dispatchPausedAt`): new sales take the manual route at once; operations already
+  `requested` are not claimed while paused and their submitters may cancel them (D7); `pending` and `unknown`
+  finish as usual.
+- **Staging proves the flow; it does not enable production.** Approval, credentials and adapter list are per
+  deployment. Passing staging changes nothing on production: there the four conditions are set again, by name,
+  after the go-live gate.
+
+**D19. Layers.**
 
 | Rule | Owner (layer) |
 |---|---|
 | Operation states, moves, attempts, evidence, recovery | `providers/operations/provider-operation.rules.ts` (domain) |
-| What an operation's state allows on its task (D5), the key (D3) | new `lines/activation-settlement.rules.ts` (domain, pure) |
+| What an operation's state allows on its task (D6), the key (D3), who may decide and approve (D15) | new `lines/activation-settlement.rules.ts` (domain, pure) |
 | Price, visibility, SIM rules, ceiling | existing rule files (domain) |
-| Opening: permission → rules → hold + task + operation in one transaction | `LinesService.activate` + `TasksService.openTask` (application) |
-| Applying a verdict | new `lines/activation-settlement.ts` (application), reusing `TaskCompletion`'s handler |
+| Opening: permission → rules → task + hold + operation in one transaction | `LinesService.activate` + `TasksService.openTask` (application) |
+| Applying a verdict, the exception, decisions | new `lines/activation-settlement.ts` and `lines/provider-decisions.ts` (application), reusing `TaskCompletion`'s handler |
 | Hold, capture, release, move | `WalletLedger` (the only wallet writer) |
-| SQL, locks, compare-and-set | repositories and `UnitOfWork.runTx` (infrastructure) |
-| Queue consumption, timers | `provider-dispatch.ts`, `worker.ts` (infrastructure; no rule) |
+| SQL, locks, compare-and-set, sealing | repositories, `UnitOfWork.runTx`, `secret-box` (infrastructure) |
+| Adapters, queue consumption, timers | the worker (infrastructure; no rule) |
 | HTTP | controllers: parse and call, nothing else |
-
-**D14. A durable request key (O4), before any provider is switched on.** The web creates one key per activation
-form (a UUID made when the form opens, kept until it succeeds or is reset) and sends it as `Idempotency-Key`.
-`OfficeTask.requestKey` stores `sha256(submitterId : key)` with `requestHash` (the fingerprint of the parsed body);
-`requestKey` is unique. In T1 the task is inserted `ON CONFLICT DO NOTHING`:
-
-- no conflict → the sale goes on;
-- conflict, same `requestHash` → the first task is answered again (`{ applied: false, taskId }`), nothing is
-  held or recorded a second time;
-- conflict, another `requestHash` → `400 INVALID` (a key belongs to its first request, as in the HTTP guard).
-
-The Redis guard stays in front as today (it answers a fast double click without touching the database). On the
-dispatch route the header is **required** (`400` without it); on the manual and simulated routes it is honoured
-when present, so the web can start sending it before anything else changes. A sale that is applied inside the
-request (simulation) opens no task and keeps only the Redis guard.
-
-**D15. The verdict on an unknown operation (O5) is an authorised, documented, auditable decision.**
-
-- **Who:** the branch owner, or a branch staff account holding the `accounting` grant. Never the task's submitter,
-  never a layer below the branch, never an entered session (`session.kind` must be `account`, as for `/auth`
-  writes). Stated in `office/policy.ts` and pinned in `permissions.http.spec.ts`.
-- **What must be given:** the verdict (`succeeded` / `failed`); the kind of evidence, from a closed list (the
-  provider's portal, the provider's statement, the provider's written answer, a test on the line); the provider's
-  reference (required for `succeeded`); a note of at least 20 characters. For `succeeded`, also what an activation
-  hands back (the number, an eSIM's serial and code) when the provider chose them.
-- **What is kept:** an immutable row `ProviderVerdict` (operation, verdict, evidence kind, reference, note, account,
-  operator, time), written in the same transaction as `unknown → succeeded | failed`; an `ActivityEvent`
-  (`task.provider_verdict`); a line in the task's log. A verdict cannot be edited or given twice (the guarded move
-  from `unknown` happens once).
-- **Then** the ordinary path: `succeeded` → T5 (line, capture), `failed` → T6 (the task is the branch's).
-
-**D16. The provider succeeded and the line cannot be created: an exception, not a failure.** T5 rolls back on a
-business refusal (the number or the serial was taken meanwhile, the package or the point of sale no longer
-exists). Then, in its own transaction (T5′):
-
-- the operation keeps `succeeded` and its result fields; `ProviderOperation.applyError` gets a code from a closed
-  list (`number-taken`, `sim-taken`, `target-missing`) and `applyFailedAt` the time; `appliedAt` stays empty;
-- the task stays `working` with its hold and its reservation; the owner and the task handlers get a notice
-  (`task.provider_exception`); the list shows it as an exception (O6);
-- the sweeper stops retrying an operation that has an `applyError` (a business refusal does not heal by itself);
-  a technical error (database away) leaves no `applyError` and is retried;
-- the operation is terminal, so the dispatcher can never send it again, and no path releases the hold.
-
-It is closed only by an authorised account (as D15), with a note, in one of two ways: **apply with corrected
-data** (the number or serial the provider really activated; then T5 runs with them: line, capture), or **a
-documented release** (the provider reversed the activation: the evidence of D15 is required, the hold is released,
-the task is rejected with the reason). Both write `ProviderVerdict`-style rows and activity events. There is no
-automatic refund in any state.
-
-**D17. Nothing automatic runs before the people can see and decide (O5, O6).** The waiting label, the exception
-view and the verdict screen exist and are tested before `gateway.dispatches(code)` answers true for any provider
-on any environment where money is real. The plan's go-live gate lists them.
 
 ## 5. Flow
 
 ```
-POST /office/lines
+POST /office/lines   (Idempotency-Key)
   permission → package/SIM rules → price fixed ─┐
                                                 ▼
   T1  one transaction ───────────────────────────────────────────────────────────────────────────────
-      request key (D14): INSERT … ON CONFLICT DO NOTHING → a repeat answers the first task and stops here
-      lockKey(iccid) · lockKey(msisdn) · live-line check · the partial unique indexes reserve both (D4)
-      WalletLedger.hold(pos, price)            → Wallet.held += price, entry `hold`
-      OfficeTask(activate, working, unitPrice, posDelta, held)
-      ProviderOperation(requested, key activate:<task>:1, taskId) + OutboxMessage(requested)
+      lockKey(iccid) · lockKey(msisdn) · live-line check
+      INSERT OfficeTask … ON CONFLICT DO NOTHING     → same request key: answer the first task, stop
+                                                     → serial / number reserved by another task: 409, stop
+      WalletLedger.hold(pos, price)                  → Wallet.held += price, entry `hold`
+      ProviderOperation(requested, key activate:<task>, taskId unique) + OutboxMessage(requested)
   ◀── { applied: false, taskId }
 
-  relay → queue → dispatcher:  T2 claim → T3 send mark → [provider, no transaction] → T4 settle
-      T4 writes the verdict (+ result fields) and OutboxMessage(settled)
+  relay → queue → dispatcher (worker only):  T2 claim → T3 send mark → [provider, no transaction] → T4 settle
+      T4 writes the verdict, the result fields (eSIM code sealed) and OutboxMessage(settled)
 
   settled → activation settlement (worker):
-      succeeded  T5  claimTask(working→done) · appliedAt IS NULL → now · assertSimFree · createLine
-                     WalletLedger.capture(pos, held, posDelta, sale @ task.unitPrice) · task result · notice
-                     └─ cannot apply: roll back T5; T5′ records applyError, keeps the verdict, the hold and the
-                        reservation, notifies; no re-send, no refund (D16)
-      failed     T6  task note → PROVIDER_FAILED_NOTE · appliedAt → now · notice        (hold stays; branch decides)
-      unknown    T7  notice to the branch                                               (hold stays; nothing else)
+      succeeded  T5  claimTask(working→done) · lockKey(iccid) · lockKey(msisdn) · appliedAt IS NULL → now
+                     assertSimFree · createLine · WalletLedger.capture(pos, held, posDelta, sale @ unitPrice)
+                     task result · notice
+                     └─ business refusal: roll back; T5′ applyError, verdict + hold + reservation kept, notice
+      failed     T6  task note → PROVIDER_FAILED_NOTE · appliedAt → now · notice     (hold stays; the branch decides)
+      unknown    T7  notice to the authorised accounts                               (hold stays; nothing else)
 
-  branch:  complete / reject (T8, T9) only with no operation or a failed one
-  authorised account:  documented verdict on unknown (D15) → T5 or T6 · exception (D16) → apply corrected, or documented release
+  submitter:  cancel while requested → T9 (operation → failed/abandoned + release, one transaction)
+  branch:     complete / reject (T8) only with no operation or a failed one
+  authorised: confirm success · apply corrected            → T10, one account
+              declare failure · release after success      → T10 proposal, T11 approval by another account
 ```
 
-## 6. Transactions and their limits
+## 6. Transactions, their limits, and lock order
 
-| | Contains | Never contains |
-|---|---|---|
-| T1 open | reservation, hold, task, operation, outbox, notices (queued) | any provider or Redis call |
-| T2, T3, T4 | one guarded row write each (ADR 0017, 0018); T4 also the `settled` message | the money |
-| T5 apply | task claim, `appliedAt`, line, capture, task result, notices | the provider; another wallet than the point of sale's |
-| T6, T7 | task note / notice, `appliedAt` | the wallet |
-| T8, T9 manual | today's completion / reject / cancel + the operation lock and check | — |
-| T5′ exception | `applyError`, `applyFailedAt`, notice | the wallet, the line, the task's status |
-| T10 verdict / exception closing | `ProviderVerdict`, the guarded operation move or the apply/release, the activity event | the provider |
+**One lock order everywhere: task row → line row → advisory keys (serial, then number) → operation row → wallet
+rows (sorted by user id).** A transaction takes only the locks it needs, always in that order. T1 takes the
+advisory keys before it inserts the task because the task row does not exist yet and nothing can wait on it.
 
-Read Committed throughout; every decision re-reads under its lock (rule 2.2).
+| | Locks, in order | Writes | Never contains |
+|---|---|---|---|
+| T1 open | keys → (new task) → (new operation) → wallet | task, hold, operation, outbox, notices (queued) | a provider or Redis call |
+| T2 claim, T3 mark | operation (one guarded statement each) | the attempt, the lease, the send mark | money |
+| T4 settle | operation | the verdict, result fields, `settled` or retry message | money, the task |
+| recovery | operation | `requested` + message, or `unknown` | money, the task |
+| T5 apply | task → keys → operation → wallet | task `done`, `appliedAt`, line, capture, task result, notices | the provider |
+| T5′ exception | operation | `applyError`, `applyFailedAt`, notice | the wallet, the line, the task's status |
+| T6 failed, T7 unknown | task → operation | task note / notice, `appliedAt` | the wallet |
+| T8 complete by hand, reject | task → line → keys → operation (read, locked) → wallet | today's writes, with `capture` on completion | — |
+| T9 cancel | task → operation → wallet | task `cancelled`, operation `failed (abandoned)` when it was `requested`, release | the provider |
+| T10 decision by one account | task → keys → operation → wallet | `ProviderDecisionEvent`(s), the guarded move, then T5's writes | the provider |
+| T10 proposal | operation | `ProviderDecisionEvent(proposed)` | everything else |
+| T11 approval | task → operation → wallet | `ProviderDecisionEvent(approved)`, `unknown → failed` or the release and rejection | the provider |
+
+Read Committed throughout; every decision re-reads under its lock (rule 2.2). The dispatcher and recovery touch
+the operation row only, with single guarded statements, so they cannot be part of a cycle. A PostgreSQL spec runs
+all of T1–T11 against each other and requires that none is ever aborted as a deadlock (`40P01`).
 
 ## 7. Failures and recovery
 
 | Failure | State left | Recovery | Money |
 |---|---|---|---|
-| Request fails in T1 | nothing | the caller retries | none |
+| Request fails in T1 | nothing | the caller retries with the same key | none |
+| Same request again (same key) | — | the first task is answered | held once |
+| Same sale with a new key | `409` from the reservation index | — | held once |
 | API dies after T1 | task + hold + `requested` + message | relay publishes | held |
 | Relay / Redis down | message unpublished | lease runs out, taken again | held |
-| Worker dies after claim, before the mark | `pending`, unmarked | recovery → `requested` + new message | held |
+| Worker dies after claim, before the mark | `pending`, unmarked | recovery → `requested` + new message (same operation, next attempt) | held |
 | Worker dies after the mark | `pending`, marked | recovery → `unknown` | **held**, frozen |
-| Provider answers, T4 fails | `pending`, marked | recovery → `unknown`; the provider's status check or the branch | held |
-| Provider confirms, answer lost | `unknown` | verdict | held until the verdict |
-| T4 done, `settled` message lost or its job fails | `succeeded`, `appliedAt` null | sweeper applies | held, then captured once |
-| T5 runs twice (two workers, repeat message) | — | second finds the task `done` / `appliedAt` set | charged once |
-| T5 cannot create the line | `succeeded` + `applyError`, task `working` | an authorised account (D16) | **held** until that decision |
-| Branch completes by hand while the operation is in flight | refused (D9) | — | unchanged |
+| Provider answers, T4 fails | `pending`, marked | recovery → `unknown`; the provider's late verdict or a decision | held |
+| Provider confirms, answer lost | `unknown` | confirm success (one account) | held until then |
+| T4 done, `settled` message lost | `succeeded`, not applied | sweeper applies | held, then captured once |
+| T5 runs twice | — | second finds the task `done` / `appliedAt` set | charged once |
+| T5 cannot create the line | `succeeded` + `applyError`, task `working` | apply corrected (one account) or approved release (two) | **held** until then |
+| Branch completes or rejects while in flight | refused (D6) | — | unchanged |
+| Submitter cancels while `requested` | operation `failed (abandoned)`, task `cancelled` | — | released once |
 | Submitter cancels while `pending` / `unknown` | refused | — | held |
-| Ceiling lowered while waiting | — | `capture` does not re-check (D8) | charged as held |
-| Point of sale frozen, moved or its package changed while waiting | — | the task carries pos, package and price; the charge is the fixed one | charged as held |
-| Same request sent twice (same key) | the first task is answered again | — | held once |
-| Same sale sent with a new key | `409` from the reservation index when it names the serial or the number (always, on the dispatch route: an activation there has a number, requested or generated at T1) | — | held once |
-| Verdict given twice, or by two accounts at once | the second finds the operation no longer `unknown` | — | applied once |
-| Exception closed twice | the second finds the task no longer `working` | — | once |
+| Cancel and claim at the same instant | one of them | — | released, or held and sent: never both |
+| A failure is proposed and nobody approves | `unknown`, proposal open | stays until approved or refused | **held** |
+| Proposer tries to approve their own proposal | refused | another account | held |
+| Two accounts act on one operation at once | the next event is written once | — | applied once |
+| Provider paused with operations `requested` | not claimed | resume, or the submitters cancel | held / released |
+| Ceiling lowered while waiting | — | `capture` does not re-check | charged as held |
+| `SECRETS_KEY` missing on the worker | the worker does not start | set it | unchanged |
 
 ## 8. PostgreSQL specs to write (with the scripted gateway)
 
+Opening and repetition
 1. T1 is atomic: a failure after the hold leaves no hold, task, operation or message.
-2. T1 refuses a second activation of the same serial, and of the same requested number, while the first is in
-   flight; allows it after `failed` + reject.
-3. Two T1 at once on one serial: one task, one hold.
-4. Succeeded → exactly one line, one `activate` entry at `unitPrice`, `held` back to its value before, balance
-   down by `posDelta`, task `done`.
-5. T5 from several workers and from a repeated message at once: one line, one entry.
-6. T5 against a manual "complete" at the same instant: one of them, never both.
-7. Failed → the task is completable and rejectable by the branch; reject releases the hold once.
-8. Unknown → complete, reject and cancel are refused; the hold is untouched across recovery sweeps.
-9. Unknown → verdict succeeded → as 4; verdict failed → as 7.
-10. Cancel while `requested`: operation `failed (abandoned)`, hold released, and the dispatcher's later claim is
-    null; cancel while `pending`: refused.
-11. `capture` with the ceiling lowered after the hold: succeeds; a plain debit of the same amount would not.
-12. Succeeded but the number was taken meanwhile: no line, no entry, hold kept, task flagged, operation not
-    re-sent.
-13. The sweeper applies a `succeeded` operation whose message was never delivered.
-14. A late provider verdict on an `unknown` attempt applies once.
-15. Wallet invariants after a mixed run of all of the above: `held` equals the sum of open tasks' holds; the sum
-    of entries equals the balance change.
-16. Money untouched on the paths that must not move it: `requested`, `pending`, `unknown`, `failed`.
-17. The database itself refuses a second open activation task with the same serial, and with the same number
-    (a raw insert, bypassing the service); a rejected, cancelled or done task frees both.
-18. Ten requests at once for one serial: one task, one hold, nine `409`.
-19. The same `Idempotency-Key` and body, twice and ten at once: one task, one hold, one operation, the same
-    `taskId` answered; the same key with another body: `400`; no key on the dispatch route: `400`.
-20. A different key for the same serial: `409` from the reservation, nothing held.
-21. Exception: succeeded but the number was taken → operation still `succeeded` with its result, `applyError`
-    set, hold and reservation kept, the dispatcher's `claim` null, the sweeper leaves it; no entry of any kind.
-22. Exception closed by "apply corrected": one line, one capture; by "documented release": hold released once,
-    task rejected, verdict row and activity event written; either of them twice: refused.
-23. Verdict: refused for the submitter, a lower layer, an entered session and an account without the grant;
-    refused without a reference on `succeeded` or with a short note; accepted once, with its `ProviderVerdict` row
-    and activity event in the same transaction as the move.
-24. `capture`: refused when `held` is smaller than the amount; manual completion through `capture` charges once
+2. The database itself refuses a second open activation task with the same serial, and with the same number (a
+   raw insert); a rejected, cancelled or done task frees both.
+3. Ten requests at once for one serial: one task, one hold, nine `409`.
+4. The same `Idempotency-Key` and body, twice and ten at once: one task, one hold, one operation, the same
+   `taskId`; the same key with another body: `400`; no key on the dispatch route: `400`.
+5. **One operation per task:** a second `ProviderOperation` with the same `taskId` is refused by the database; an
+   attempt that never left is retried on the same row (attempts 2, same key), never a new row.
+
+Settlement
+6. Succeeded → one line, one `activate` entry at `unitPrice`, `held` back to its earlier value, balance down by
+   `posDelta`, task `done`.
+7. T5 from several workers and a repeated message at once: one line, one entry.
+8. T5 against a manual "complete" at the same instant: one of them.
+9. Failed → the task is completable and rejectable by the branch; reject releases the hold once; the dispatcher
+   never claims it again.
+10. Unknown → complete, reject and cancel are refused; the hold is untouched across recovery sweeps.
+11. The sweeper applies a `succeeded` operation whose message was never delivered, and leaves one with an
+    `applyError` alone.
+12. A late provider verdict on an `unknown` attempt applies once, with no human decision.
+13. Exception: succeeded but the number was taken → still `succeeded` with its result, `applyError` set, hold and
+    reservation kept, `claim` null, no entry of any kind.
+
+Cancel
+14. Cancel while `requested`: operation `failed (abandoned)` with `appliedAt`, task `cancelled`, hold released
+    once, a later `claim` null.
+15. Cancel while `pending`, `unknown`, succeeded-not-applied, exception: `409`, nothing changed.
+16. Cancel and `claim` raced 50 times: every round ends either cancelled-and-released with no send, or pending
+    with the hold; never a send after a release.
+
+Ledger
+17. `capture` with the ceiling lowered after the hold succeeds; a plain debit of the same amount would not.
+18. `capture` refuses when `held` is smaller than the amount; manual completion through `capture` charges once
     under two concurrent completions.
+
+Decisions
+19. Confirm success: refused for the submitter, a lower layer, an entered session, an account without the grant,
+    a note under 20 characters, no reference; accepted once by one account, with its events and the move in one
+    transaction.
+20. Declare failure: the proposal changes nothing (operation `unknown`, hold held); approval by the proposer is
+    refused; by the submitter refused; by an entered session refused; by a second authorised account → `failed`,
+    and the task becomes the branch's. Refusal closes the proposal and leaves `unknown`.
+21. Release after success: as 20, ending in the hold released once and the task rejected; apply corrected: one
+    account, one line, one capture. Either of them twice: refused.
+22. `ProviderDecisionEvent`: an `UPDATE` and a `DELETE` are refused by the database; two accounts proposing at
+    once produce one open proposal; the worker's activity purge leaves the table untouched.
+
+eSIM data
+23. `resultEsimCode`, `Line.esimQr` and `OfficeTask.esimQr` hold sealed text in the database; the detail read
+    returns the code to the line's point of sale, its ancestors and the branch, not to a sibling; the lists never
+    carry it; each read writes its event.
+24. An activation that returns an eSIM code: the captured process output, the outbox rows, the Redis job and the
+    notices contain no part of it.
+
+Switching on
+25. `dispatches(code)` is false unless all four conditions hold, each one removed in turn; a paused provider's
+    `requested` operation is not claimed.
+26. The worker refuses to start in production with `PROVIDER_DISPATCH=1` and no `PROVIDER_ADAPTERS` or
+    `PROVIDER_TARGET`, or without `SECRETS_KEY`; a `sandbox` deployment cannot construct a `live` adapter.
+
+Whole
+27. Wallet invariants after a mixed run: `held` equals the sum of open tasks' holds; the sum of entries equals
+    the balance change.
+28. T1–T11, the dispatcher and recovery run against each other: no transaction is aborted as a deadlock.
+29. Money untouched on every path that must not move it: `requested`, `pending`, `unknown`, `failed`, an open
+    proposal, an exception.
 
 ## 9. The owner's decisions (2026-11-10)
 
-| | Decision | Where it is designed |
+| | Decision | Where |
 |---|---|---|
-| O1 Reserve the serial and the number | **Yes**, for manual and provider tasks, atomically | D4 |
-| O2 `capture` | **Yes**, on both routes, with no double charge | D8 |
-| O3 A provider failure | **The task stays with the branch and the hold stays**, as today | D5 |
-| O4 HTTP idempotency | **Changed: before a real provider is switched on**, not after | D14, plan gate |
-| O5 Deciding an `unknown` | **Conditional: an authorised account only, on documented evidence, auditable** | D15 |
-| O6 The waiting state | **Yes, ready before automatic processing is enabled** | D17, plan gate |
+| O1 Reserve the serial and the number | Yes, both routes, atomically, by the database | D5 |
+| O2 `capture` | Yes, both routes | D10 |
+| O3 A provider failure | The task stays with the branch and the hold stays | D6 |
+| O4 HTTP idempotency | Before a real provider is switched on | D14, plan gate |
+| O5 Decisions on `unknown` and on exceptions | **Final**: owner or `accounting`; a real account session; evidence and a note of 20 characters; a second independent account for declaring failure and for releasing after success; one account to confirm success; a permanent record | D15 |
+| O6 The waiting state | Ready before automatic processing is enabled | plan gate |
+| Final review 1 | One operation per task; retries are attempts | D3 |
+| Final review 2 | Cancel while `requested`, atomically; not while `pending` or `unknown` | D6, D7 |
+| Final review 3 | No environment name bypasses a check; four explicit conditions; adapters in the worker only; staging separate from production | D18 |
+| Final review 4 | eSIM codes sealed, never logged, read by the entitled accounts only | D17 |
+| Final review 6 | One lock order, per-transaction limits, specs per slice | section 6, section 8, the plan |
 
-Three requirements written into the design:
+## 10. What the final review changed, and conflicts that remain
 
-1. **Repeated sale**: protection at the request and at the provider call, not one of them (D3, D14).
-2. **Provider succeeded, line not created**: the verdict and the hold are kept and an exception is opened; no
-   re-send, no automatic refund (D16).
-3. **Reservation**: the database refuses two active reservations of one item, and release is one defined event
-   (D4).
+Changed in this document:
 
-Still to confirm when the owner reviews this document: the grant that authorises a verdict (`accounting` on the
-branch, proposed in D15), the minimum note length, and whether a verdict should need a second account.
+- The key was `activate:<taskId>:<n>` with a new operation per retry; it is `activate:<taskId>` with a unique
+  `taskId`. A failed operation is never retried at the provider for the same task.
+- The plan's guard slice said "refuse unless there is no operation or a failed one" for cancel, against the state
+  table; cancel now has its own atomic rule (D7) and the table (D6) is the single statement of it.
+- T1 held the money before inserting the task; the task is inserted first, so a repeated request or a taken
+  serial stops before any hold.
+- `ProviderVerdict` (one row per verdict) became `ProviderDecisionEvent` (append-only, with proposals and
+  approvals).
+- The first adapter was to run on staging with `NODE_ENV=staging`; D18 replaces that.
+
+Conflicts with text and code outside this document, to be settled in the slice named:
+
+1. **ADR 0016 and `plans/2026-11-10-production-config-and-simulation.md`** say a trial server may set
+   `NODE_ENV=staging` to keep the simulation. D18 withdraws that for any deployment that will dispatch. Those two
+   documents are corrected in S.12a. A staging copy that only demonstrates screens with simulated answers is then
+   a development copy, not a staging of the provider flow.
+2. **`config.ts` `providerDispatchOn()`** is "not production and `PROVIDER_DISPATCH=1`", and `worker.ts` warns that
+   the dispatcher never runs in production (ADR 0018, decision 10). D18 changes the rule; code and ADR 0018 are
+   updated in S.12a. Until then the dispatcher cannot run on a production-grade deployment at all, which is safe.
+3. **`worker.ts` does not run `assertProductionConfig`** (A8); S.12a.
+4. **`Line.esimQr` is returned by the line list** (A6); S.5 removes it from lists and restricts the detail, which
+   is a response-shape change the web must follow (the web spec of S.10 covers the screens that read it).
+5. **`provider-operation.rules.ts` allows `requested → failed`** but no service method performs it; D7 is its
+   first user (S.7).
+6. **ADR 0017's "a new try after `failed` is a new operation with a new key"** stays true in general; for an
+   activation task D3 adds that there is no new operation for the same task.
+
+Open for the owner: none of O1–O6. Three consequences to accept knowingly: a branch with one authorised account
+cannot declare a failure or release after success (D15); a failed operation means a new sale, not a retry (D3);
+the line list stops carrying the eSIM code (D17).
 
 ## Non-goals
 
-Any operation but activation; a real adapter; the provider status check; reconciling `providerRef` with provider
-statements; changing prices, ladders or reports.
+Any operation but activation; a real adapter (its own spec, S.12b); the provider status check; reconciling
+`providerRef` with provider statements; changing prices, ladders or reports.

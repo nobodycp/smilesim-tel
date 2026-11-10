@@ -1,9 +1,9 @@
 # 0019 — A provider activation holds the price on a task and is settled by the provider's stored verdict
 
-Date: 2026-11-10. Status: **proposed; direction agreed by the owner the same day** (the task carries the money,
-the operation carries the provider's verdict, one settlement), with O1–O6 answered and three requirements added.
-The full text waits for the owner's review; nothing is implemented. Builds on ADR 0004,
-0017, 0018. Spec and plan: `docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
+Date: 2026-11-10. Status: **proposed; the direction and O1–O6 are decided by the owner, and the final review
+(one operation per task, cancellation, switching a provider on, eSIM data, the second approval, lock order) is
+written in.** It becomes accepted when the owner has reviewed the final text; nothing is implemented. Builds on
+ADR 0004, 0016, 0017, 0018. Spec and plan: `docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
 
 ## Context
 
@@ -15,26 +15,37 @@ come; the money must be safe in every state of the operation.
 
 1. **The activation task carries the money.** The provider route opens the same `OfficeTask` (hold, fixed price)
    and records the `ProviderOperation` in the same transaction.
-2. **A repeat is stopped at three levels**: the request (`OfficeTask.requestKey`, the web's `Idempotency-Key`,
-   unique), the thing sold (serial and number), the provider call (`activate:<taskId>:<n>`). The request key is in
-   place and required before any provider is switched on.
-3. **The database reserves the serial and the number**: partial unique indexes on open activation tasks, for the
-   manual and the provider route. The reservation ends when the task leaves `working`, in the write that closes it.
-4. **The verdict is stored first; the money moves in a second transaction** driven by an outbox message and a
-   sweeper (`appliedAt`).
-5. **Success completes the task through the existing completion handler**; one line, one charge, guarded by the
-   task claim, `appliedAt` and the unique number.
-6. **Failure leaves an ordinary branch task** with its hold; the manual path is untouched.
-7. **Unknown freezes the task**: no completion, rejection or cancellation, and the hold stays until a verdict.
-8. **The verdict on an unknown operation is given only by an authorised account, on stated evidence, and is kept**
-   (`ProviderVerdict`, an activity event); it happens once.
-9. **A succeeded operation that cannot be applied is an exception**: the verdict, the hold and the reservation are
-   kept, `applyError` is recorded, nothing is re-sent and nothing is refunded automatically; an authorised account
-   closes it by applying corrected data or by a documented release.
-10. **The hold is captured** (`WalletLedger.capture`), on both routes, never released and debited again.
-11. **The route is chosen per provider** (`gateway.dispatches(code)`); simulation and "not connected" are unchanged.
-12. **People first**: the waiting label, the exception view and the verdict screen exist before anything is
-    dispatched for a real provider.
+2. **One task, one operation.** `ProviderOperation.taskId` is unique and the key is `activate:<taskId>`. A retry is
+   an attempt of that operation; a failed operation is never sent again for that task.
+3. **A repeat is stopped at three levels**: the request (`OfficeTask.requestKey`, unique), the thing sold (serial
+   and number), the provider call (the operation's key and its unique task).
+4. **The database reserves the serial and the number**: partial unique indexes on open activation tasks, on both
+   routes; the reservation ends when the task leaves `working`, in the write that closes it.
+5. **The verdict is stored first; the money moves in a second transaction** driven by an outbox message and a
+   sweeper.
+6. **Success completes the task through the existing completion handler**: one line, one charge.
+7. **Failure leaves an ordinary branch task** with its hold.
+8. **In flight, the task is frozen**, with one exception: the submitter may cancel while the operation is
+   `requested`, in one transaction that moves the operation to `failed (abandoned)` and releases the hold. Not
+   while `pending` or `unknown`.
+9. **A succeeded operation that cannot be applied is an exception**: verdict, hold and reservation are kept,
+   nothing is re-sent, nothing is refunded automatically.
+10. **Decisions by people are authorised, evidenced and recorded.** The branch owner or an `accounting` account, in
+    a real account session; evidence and a note of at least 20 characters. Confirming success, and applying
+    corrected data, take one account. Declaring an unknown operation failed, and releasing a hold after the
+    provider succeeded, take a **second, independent** account; nobody approves their own decision; without the
+    approval the operation stays as it is. The record (`ProviderDecisionEvent`) is append-only, protected by a
+    database trigger, and outside the activity purge.
+11. **The hold is captured** (`WalletLedger.capture`), on both routes.
+12. **eSIM activation codes are sealed at rest, never logged or queued, absent from lists, and read only by the
+    line's point of sale, its ancestors and the branch**, each read recorded.
+13. **No environment name relaxes a check.** Staging is a production-grade deployment. The dispatcher runs only
+    when the deployment switches it on, names its adapters, states its target (`sandbox` cannot build a `live`
+    client), and the owner has approved the provider there. Adapters and credentials exist in the worker only;
+    credentials are sealed. Staging passing enables nothing on production.
+14. **One lock order**: task → line → advisory keys → operation → wallets.
+15. **People first**: the waiting label, the exception view, the decision form and the approval queue exist before
+    anything is dispatched to a live provider.
 
 ## Alternatives
 
@@ -61,31 +72,45 @@ come; the money must be safe in every state of the operation.
   would spin and the branch would not be told.
 - **Let any task handler decide an unknown operation with one click**: the decision moves money and names what the
   provider did; it needs an accountable account and a record.
+- **A new operation per retry (`activate:<taskId>:<n>`)**, the first draft: parallel or successive operations for
+  one task make "which one settles the task" a question with a wrong answer available. Attempts already express a
+  retry.
+- **`NODE_ENV=staging` so a trial server can dispatch** (and the earlier advice in ADR 0016): it switches off the
+  very checks a server that calls a provider needs most.
+- **A single flag for dispatch**: one mistaken variable would send sales to a provider. Four conditions of
+  different kinds (deployment, adapter list, target, the owner's approval) do not fail together.
+- **Adapters in the API process**: a request could then reach a provider, and every API replica would hold the
+  credentials.
+- **One account decides everything**: the two decisions that let money go back are the ones a single mistaken or
+  dishonest account could use; the two that keep the sale need only evidence.
+- **Keep the decision record in the activity log**: it is purged after its retention window.
+- **Leave the eSIM code readable in lists because it is today**: a list is read far more widely and far more often
+  than a code is needed.
 - **The HTTP `Idempotency-Key` as the provider key.** It names a request, not a sale; a browser retry would get a
   new key and a second activation.
 
 ## Risks
 
-- `unknown` operations hold money until someone gives a verdict: the branch needs the screen (S.7) before any
-  provider goes live, and the provider status check should follow.
-- A task flagged "provider succeeded, not applied" needs a person and a written procedure.
-- The submitter, not the operator of an entered session, is named on settlement entries (audit A5).
-- The request key depends on the web sending it; until S.6 a repeat with no serial or number in common is still
-  two tasks on the manual route. It is required on the dispatch route from the first day.
-- The reservation indexes change the manual path: a second task for the same card is refused at opening. Existing
-  duplicates must be resolved before the migration runs.
+- `unknown` operations and exceptions hold money until someone decides; a declared failure or a release waits for
+  a second account. A branch with one authorised account can confirm a success but cannot give money back.
+- After `failed` the task is manual; trying the provider again is a new sale, entered again by the seller.
+- A decision is only as good as its evidence: the record makes it auditable, not correct.
 - A serial among live lines stays an advisory-lock rule, not a constraint.
-- A verdict is only as good as its evidence: the record makes it auditable, not correct. A second approver is an
-  open question.
-- `providerCost` on the entry is the package's cost when the line is created, not what the provider billed;
-  matching by `providerRef` is a later reconciliation step.
-- Clock skew between workers affects recovery timing, not the money (ADR 0018).
+- The reservation indexes and `capture` change the manual path; existing duplicate open tasks must be resolved
+  before the migration.
+- Removing the eSIM code from the line list is a response change the web must follow.
+- Sealing depends on `SECRETS_KEY`; losing it loses the codes (they can be issued again by the provider, not
+  recovered).
+- The submitter, not the operator of an entered session, is named on settlement entries (audit A5).
+- `providerCost` on the entry is the package's cost when the line is created, not what the provider billed.
+- ADR 0016, ADR 0018 and the code still describe the old dispatch switch until slice S.12a (spec section 10).
 
 ## Consequences
 
-- One new rule file, one new application service, one ledger primitive, nine columns, two partial indexes and one
-  small table (`ProviderVerdict`); no new holder of money.
-- Two routes (verdict, exception) and their screens; the activation form sends a request key.
-- The answer of `POST /office/lines` keeps its shape; the web needs no change to start.
-- The manual path changes in two decided ways (reservation at opening, capture at completion). Routing a sale to
-  the dispatcher changes nothing until the plan's go-live gate is passed for a provider.
+- One rule file, two application services, one ledger primitive; about fifteen columns, two partial indexes, two
+  small tables (`ProviderDecisionEvent`, `ProviderCredential`) and one trigger; no new holder of money.
+- Four routes (decision, approval, provider approval / pause, credential) and their screens; the activation form
+  sends a request key.
+- The manual path changes in three decided ways: reservation at opening, capture at completion, the eSIM code off
+  the lists.
+- Nothing is dispatched anywhere until the plan's go-live gate is passed for a provider on a named deployment.
