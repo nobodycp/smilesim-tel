@@ -47,7 +47,7 @@ const PACKAGE_ROW_KEYS = [
   'price', 'renewalPrice', 'canActivate', 'sellPrice', 'sellRenewalPrice', 'sellDefault', 'sellRenewalDefault',
 ];
 const catalogPackage = {
-  id: 'pkg-1', code: 'lian-wecom-500', name: '500 جيجا', dataGb: 500, smsCount: null, minutes: null, details: null, months: 1,
+  id: 'pkg-1', code: 'wecom-500gb-3f9a2', providerProductCode: 'lian-wecom-500', name: '500 جيجا', dataGb: 500, smsCount: null, minutes: null, details: null, months: 1,
   enabled: true, forSale: true, actionModes: {}, esimPrice: null,
   provider: { code: 'lian', name: 'ليان', actionModes: {}, esimPrice: null },
   company: { code: 'wecom', name: 'ويكوم', image: '', iccidLength: 19, iccidPrefix: '8997202', esim: true, esimPrice: 400 },
@@ -367,9 +367,8 @@ describe('office response shapes', () => {
       // Which provider, and how it runs, is not a point of sale's to know (rule 3.4): only what it needs to sell.
       providerCode: null, providerName: '', activateMode: null, sellable: true, activateInput: 'generated',
     });
-    // No other field carries the provider either. The package's own `code` is left out of this check: catalog
-    // codes are written `<provider>-<company>-<size>` today, which is a naming matter (see backend.md, known gaps).
-    expect(JSON.stringify({ ...posRow, code: '' })).not.toMatch(/lian|ليان/);
+    // Nothing in the row names the provider, the package's own code included (rules/package-code.ts).
+    expect(JSON.stringify(posRow)).not.toMatch(/lian|ليان/);
   });
 });
 

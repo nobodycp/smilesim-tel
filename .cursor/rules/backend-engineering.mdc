@@ -50,7 +50,9 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
 3. An entered (impersonation) session may not change credentials, second step, sessions, roles, grants or
    passwords of anyone. `/auth` writes require `session.kind === 'account'`.
 4. A lower layer never receives a higher layer's price, cost, margin, provider code or run mode. A response that
-   carries prices is shaped by the viewer's layer in one place and pinned by a spec.
+   carries prices is shaped by the viewer's layer in one place and pinned by a spec. A package's public `code` never
+   names its provider (`rules/package-code.ts`); the provider's own product code is `providerProductCode`, read by
+   the branch and the gateway only. *(`response-shape.spec.ts`: the package row of a point of sale)*
 5. Who acted is stored on the server (session row), never read from a cookie.
 6. A password change or reset revokes the target's other sessions.
 

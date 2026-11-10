@@ -15,7 +15,8 @@ const ladder = (base: number) => ({ branchCost: base, mainPrice: base + 300, age
 function world() {
   const provider = { id: 'p-sky', code: 'sky', name: 'سكاي', actionModes: { activate: 'auto', charge: 'manual' } };
   const companies = [{ id: 'c-cell', code: 'cellcom', name: 'سلكوم' }] as { id: string; code: string; name: string }[];
-  const packages = [{ id: 'k1', code: 'sky-cellcom-300', providerId: 'p-sky', providerProductCode: null as string | null }];
+  // A package's public code never names its provider; the provider's product code is kept beside it.
+  const packages = [{ id: 'k1', code: 'cellcom-300gb-k1k1k', providerId: 'p-sky', providerProductCode: 'sky-cellcom-300' as string | null }];
   const created: Record<string, unknown>[] = [];
   const kernel = new OfficeGraph(new MemoryAuthStore());
   kernel.prismaClient = {
@@ -32,8 +33,8 @@ function world() {
     },
     package: {
       findMany: async () => packages,
-      findFirst: async ({ where }: { where: { OR: [{ code: string }, { providerProductCode: string }] } }) =>
-        packages.find((row) => row.code === where.OR[0].code || row.providerProductCode === where.OR[1].providerProductCode) ?? null,
+      findFirst: async ({ where }: { where: { providerId: string; providerProductCode: string } }) =>
+        packages.find((row) => row.providerId === where.providerId && row.providerProductCode === where.providerProductCode) ?? null,
       create: async ({ data }: { data: { code: string } }) => {
         created.push({ package: data });
         return { ...data };
@@ -84,10 +85,12 @@ describe('ProviderCatalogService', () => {
       modes: { charge: 'auto', disconnect: 'off' },
       addons: [{ name: '10 جيجا إضافية', price: 1500 }],
     });
-    expect(result).toEqual({ ok: true, code: product.code, companyCode: 'cellcom' });
+    // The new package's public code: company, size and a few characters of its own id; the provider is not in it.
+    expect(result).toEqual({ ok: true, code: expect.stringMatching(/^cellcom-\d+gb-[0-9a-f]{5}$/), companyCode: 'cellcom' });
+    expect(result.code).not.toContain('sky');
     const data = created[0].package as Record<string, unknown>;
     expect(data).toMatchObject({
-      code: product.code, providerProductCode: product.code, name: product.name, providerId: 'p-sky', companyId: 'c-cell',
+      code: result.code, providerProductCode: product.code, name: product.name, providerId: 'p-sky', companyId: 'c-cell',
       branchCost: 4000, subscriberPrice: 5000, renewalBranchCost: 3800,
       autoActivate: true, allowActivate: true, autoCharge: true, allowDisconnect: false,
       addons: { create: [{ name: '10 جيجا إضافية', price: 1500, position: 0 }] },

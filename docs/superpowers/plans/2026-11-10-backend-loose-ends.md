@@ -61,7 +61,14 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
     fails when one sends a value its schema does not list.
   - Guard: `untyped-query` — `@Query('name')` with a bare `string` in an office controller; baseline 73 → 0.
 
-- [ ] **A.5 Package codes without the provider** (added 2026-11-10).
+- [x] **A.5 Package codes without the provider** (added 2026-11-10; COMMIT). Done with one change to the rule:
+  the code is built from the company, the size and the length (`cellcom-400gb-63bac`, `wecom-500gb-3m-ed38f`), not
+  from the provider's product code with its prefix cut off, because a real provider's product code may be anything.
+  The migration is one `DO` block: the first version, several statements with a temporary table, failed on a copy
+  of the dev database (the runner did not keep them in one transaction) and left it half done. On the dev
+  database: 24 packages renamed, 16 numbers' terms and 5 with renewal targets follow, 33 activity refs renamed, one
+  left as it was (`lian-alloha-150`, a refused write on a package that never existed). The old codes answer 404.
+  The gateway is handed `providerProductCode`. Original text:
   - `rules/package-code.ts`: `publicPackageCode(providerCode, productCode, id)`; spec (the prefix goes, the
     suffix comes from the id, a product code that does not start with the provider's keeps its text).
   - `providers/provider-catalog.service.ts` `createPackage` and `auth/trial-seed.ts` / `catalog/` seeds build the

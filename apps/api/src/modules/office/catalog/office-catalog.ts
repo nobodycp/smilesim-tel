@@ -94,6 +94,7 @@ export const catalog: CatalogProvider[] = [
   },
 ];
 
+/** The provider's product code of a catalog package (`Package.providerProductCode`), not its public code. */
 export function packageCode(provider: string, company: string, item: CatalogPackage): string {
   const span = item.months === 1 ? '' : `-${item.months}m`;
   return `${provider}-${company}-${item.gb}${span}`;

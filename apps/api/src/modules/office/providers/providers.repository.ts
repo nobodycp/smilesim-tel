@@ -57,11 +57,11 @@ export class ProvidersRepository {
     return this.uow.prisma.company.findMany({ where: { code: { in: codes } }, select: { code: true } });
   }
 
-  /** The packages already made from these product codes: by their own code, or by this provider's product code. */
+  /** The packages already made from these product codes of this provider. */
   packagesOfProducts(providerId: string, codes: string[]) {
     return this.uow.prisma.package.findMany({
-      where: { OR: [{ code: { in: codes } }, { providerId, providerProductCode: { in: codes } }] },
-      select: { code: true, providerProductCode: true },
+      where: { providerId, providerProductCode: { in: codes } },
+      select: { providerProductCode: true },
     });
   }
 
@@ -75,10 +75,10 @@ export class ProvidersRepository {
     });
   }
 
-  /** A package that already holds this product code, as its own code or as this provider's product. */
+  /** A package already made from this product of this provider. */
   packageOfProduct(providerId: string, productCode: string) {
     return this.uow.prisma.package.findFirst({
-      where: { OR: [{ code: productCode }, { providerId, providerProductCode: productCode }] },
+      where: { providerId, providerProductCode: productCode },
       select: { id: true },
     });
   }

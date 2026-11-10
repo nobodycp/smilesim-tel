@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { publicPackageCode } from '../rules/package-code';
 import { CatalogProductsQuery } from './providers.schemas';
 import { ProvidersRepository } from './providers.repository';
 import { refuseEntered, requireGrant } from '../policy';
@@ -61,7 +63,7 @@ export class ProviderCatalogService {
     const adapter = adapterFor(code);
     const offered = await adapter.products(companyCode);
     const stored = await this.repo.packagesOfProducts(provider.id, offered.map((row) => row.code));
-    const have = new Set(stored.flatMap((row) => [row.code, row.providerProductCode ?? '']));
+    const have = new Set(stored.map((row) => row.providerProductCode));
     return { simulated: adapter.simulated, products: offered.map((row) => ({ ...row, added: have.has(row.code) })) };
   }
 
@@ -126,17 +128,22 @@ export class ProviderCatalogService {
 
     const addonRows = (input.addons ?? []).map((row, position) => ({ ...row, position }));
 
+    // The id is made here so the public code can end with it; the provider's product code is kept beside it.
+    const id = randomUUID();
+    const dataGb = input.dataGb ?? product.dataGb;
+    const months = input.months ?? product.months;
     const created = await this.repo.addPackage({
-      code: productCode,
+      id,
+      code: publicPackageCode({ companyCode: company.code, dataGb, months, id }),
       providerProductCode: productCode,
       name: input.name || product.name,
       providerId: provider.id,
       companyId: company.id,
-      dataGb: input.dataGb ?? product.dataGb,
+      dataGb,
       smsCount: input.smsCount ?? product.smsCount,
       minutes: input.minutes ?? product.minutes,
       details: details || null,
-      months: input.months ?? product.months,
+      months,
       suspendAfterDays: input.suspendAfterDays ?? 90,
       esimAvailable: input.esimAvailable ?? true,
       forSale: input.forSale ?? true,

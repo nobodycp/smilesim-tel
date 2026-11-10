@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { publicPackageCode } from '../rules/package-code';
 import { LayerRoles } from '../roles/layer-roles';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { env, isTest } from '../../../config';
@@ -51,11 +53,16 @@ export class CatalogSeed implements OnModuleInit {
         const savedCompany = await this.uow.prisma.company.findUnique({ where: { code: company.code } });
         if (!savedCompany) continue;
         for (const item of company.packages) {
+          // The catalog names a package by the provider's product code; its public code never names the provider.
+          const productCode = packageCode(provider.code, company.code, item);
+          const id = randomUUID();
           await this.uow.prisma.package.upsert({
-            where: { code: packageCode(provider.code, company.code, item) },
+            where: { providerId_providerProductCode: { providerId: savedProvider.id, providerProductCode: productCode } },
             update: {},
             create: {
-              code: packageCode(provider.code, company.code, item),
+              id,
+              code: publicPackageCode({ companyCode: company.code, dataGb: item.gb, months: item.months, id }),
+              providerProductCode: productCode,
               name: packageName(item),
               providerId: savedProvider.id,
               companyId: savedCompany.id,

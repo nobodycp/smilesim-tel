@@ -32,7 +32,7 @@ type VisibleLine = Awaited<ReturnType<LineAccess['visibleLine']>>;
 type OpenTask = Parameters<TasksService['openTask']>[0];
 /** How an operation goes: applied at the provider now, or left to the branch as a task with this note. */
 type Route = { now: true } | { now: false; note: string };
-type RoutedPackage = RunnablePackage & { code: string; provider: { code: string } | null };
+type RoutedPackage = RunnablePackage & { code: string; providerProductCode?: string | null; provider: { code: string } | null };
 
 
 /**
@@ -62,7 +62,7 @@ export class LinesService {
    */
   private async route(action: Action, pkg: RoutedPackage, automatic: boolean, hint: unknown, target: { msisdn: string | null; iccid?: string | null }): Promise<Route> {
     if (!automatic) return { now: false, note: hint === 'fail' ? PROVIDER_FAILED_NOTE : BRANCH_TASK_NOTE };
-    const answer = await this.gateway.run({ action, providerCode: pkg.provider?.code ?? '', packageCode: pkg.code, hint, msisdn: target.msisdn, iccid: target.iccid });
+    const answer = await this.gateway.run({ action, providerCode: pkg.provider?.code ?? '', packageCode: pkg.providerProductCode ?? pkg.code, hint, msisdn: target.msisdn, iccid: target.iccid });
     return answer.ok ? { now: true } : { now: false, note: PROVIDER_FAILED_NOTE };
   }
 
