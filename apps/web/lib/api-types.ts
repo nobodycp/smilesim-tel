@@ -375,6 +375,9 @@ export type LineRow = {
   operations: string[];
   opsLocked?: boolean;
   dataGb?: number | null;
+  /** The point of sale's agent and main agent on the number's card; '' when there is none or the viewer may not see it. */
+  agentLoginName?: string;
+  mainAgentLoginName?: string;
   /** The package's allowance on the number's card: -1 unlimited, null not set. */
   smsCount?: number | null;
   minutes?: number | null;

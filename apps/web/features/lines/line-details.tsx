@@ -1,6 +1,6 @@
 'use client';
 
-import { Banknote, Building2, CalendarCheck, CalendarClock, CalendarRange, Check, Copy, Gauge, Hash, MessageSquare, Package, Phone, QrCode, RefreshCw, Smartphone, Store, Wifi, type LucideIcon } from 'lucide-react';
+import { Banknote, Briefcase, Building2, Network, CalendarCheck, CalendarClock, CalendarRange, Check, Copy, Gauge, Hash, MessageSquare, Package, Phone, QrCode, RefreshCw, Smartphone, Store, Wifi, type LucideIcon } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Money, latinWhen } from '../../components/desk';
@@ -62,6 +62,8 @@ export function LineDetails({ line, isPos, onQr }: { line: LineRow; isPos: boole
           <Row icon={Banknote} label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Row>
           <Row icon={CalendarCheck} label={t.activatedOn}><bdi dir="ltr" className="num">{latinWhen(line.createdAt).slice(0, 10)}</bdi></Row>
           <Row icon={RefreshCw} label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr" className="num">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</Row>
+          {line.mainAgentLoginName ? <Row icon={Network} label={t.layerMain}><AccountName login={line.mainAgentLoginName} /></Row> : null}
+          {line.agentLoginName ? <Row icon={Briefcase} label={t.layerAgent}><AccountName login={line.agentLoginName} /></Row> : null}
           {!isPos && line.posLoginName ? <Row icon={Store} label={t.pointOfSale} wide><AccountName login={line.posLoginName} /></Row> : null}
         </Group>
         <Group icon={Smartphone} title={t.simSection}>

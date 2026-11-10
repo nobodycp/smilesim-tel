@@ -80,6 +80,12 @@ export class LineReads {
     if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(404, 'NOT_FOUND');
     const posPath = this.tree.pathOf(line.posId, accounts);
     const denied = deniedOpsFor(posPath);
+    // The point of sale's chain above it, each only when the viewer may see that account (owner, 2026-11-11).
+    const seen = visibleAccountIds(actor.id, actor.layer, accounts);
+    const above = (layer: string) => {
+      const node = posPath.find((step) => step.layer === layer);
+      return node && seen.has(node.id) ? node.loginName : '';
+    };
     const [tasks, entries] = await Promise.all([
       this.repo.tasksOfLine(line.id),
       this.repo.entriesOfLine(line.id),
@@ -108,6 +114,8 @@ export class LineReads {
         packageName: line.package.name,
         companyName: line.package.company?.name ?? '',
         posLoginName: actor.layer === 'pos' ? '' : line.pos.loginName,
+        agentLoginName: above('agent'),
+        mainAgentLoginName: above('main_agent'),
         posPrice: line.package.posPrice,
         dataGb: line.package.dataGb,
         // The package's allowance, for the number's «الاستهلاك» (-1 unlimited, null not set; owner 2026-11-11).
