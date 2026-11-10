@@ -6,6 +6,11 @@ or replaced by a later design. They stay in git history.
 
 ## Waiting for an owner decision (`docs/project-plan.md` «مفتوح»)
 
+- [ ] **Activation through a provider: O1–O6** in `docs/superpowers/specs/2026-11-10-activation-settlement.md`
+  (reserve serial and number for manual tasks too, capture for manual completion too, what a provider failure
+  leaves, a durable request key, who gives the verdict on an unknown operation, the waiting label). Nothing is
+  built until they are answered (plan `2026-11-10-activation-settlement.md`, ADR 0019 proposed).
+
 - [ ] **Branch direct-sale price floor** when two main agents' prices differ (the 40 / 25 / 30 example,
   project-plan 2026-10-24). Today `floorFor` (`rules/user-terms.ts`) takes the floor from the account's own parent
   path; nothing chooses between the three options.

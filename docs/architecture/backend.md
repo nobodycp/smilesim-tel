@@ -162,6 +162,10 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
 - Provider operations have a stored life, a relay, a dispatcher and recovery (ADR 0017, 0018) but no caller, no
   provider status check and no screen for `unknown` operations; published outbox rows are never pruned. Next steps:
   plan `2026-11-10-provider-dispatcher.md`.
+- How an activation will use them (hold on the task at the request, capture on the provider's verdict) is
+  designed and **not implemented**: ADR 0019 (proposed), spec and plan `2026-11-10-activation-settlement.md`. The
+  spec's section 3 lists what the audit found in today's activation (no reservation of a serial or number while a
+  task is open; a lowered ceiling can block a completion; no durable request idempotency).
 - Real provider adapters and the SMS/email gateways do not exist: `SimulatedProviderGateway` and `LogSender`.
   In production every line operation is therefore a branch task. The catalog adapter and the provider charges
   (`match-simulator.ts`) are still simulated everywhere.
