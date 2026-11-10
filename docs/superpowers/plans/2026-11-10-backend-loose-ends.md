@@ -61,7 +61,7 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
     fails when one sends a value its schema does not list.
   - Guard: `untyped-query` — `@Query('name')` with a bare `string` in an office controller; baseline 73 → 0.
 
-- [x] **A.5 Package codes without the provider** (added 2026-11-10; COMMIT). Done with one change to the rule:
+- [x] **A.5 Package codes without the provider** (added 2026-11-10; d11bfd8). Done with one change to the rule:
   the code is built from the company, the size and the length (`cellcom-400gb-63bac`, `wecom-500gb-3m-ed38f`), not
   from the provider's product code with its prefix cut off, because a real provider's product code may be anything.
   The migration is one `DO` block: the first version, several statements with a temporary table, failed on a copy
