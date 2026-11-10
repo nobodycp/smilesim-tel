@@ -474,7 +474,7 @@ export const en: Copy = {
   noProviderCompanies: 'The provider offers no companies.',
   changeMore: '{n} more than at the start of the period',
   changeFewer: '{n} fewer than at the start of the period',
-  layerSessionHint: 'They apply to every account of this layer without its own values in «User settings».',
+  layerSessionHint: 'They apply to every account of this layer without its own values in «Account settings».',
   sessionRulesTitle: 'Sessions by layer',
   sessionRulesHint: 'How many open sessions each account may have, and when a session ends with no activity. Any account can have its own values from its page.',
   maxSessionsLabel: 'Sessions allowed',

@@ -58,13 +58,21 @@ export function UserSettingsPane({ loginName, onSaved }: { loginName: string; on
     const contact: { email?: string; phone?: string } = {};
     if (email !== null && email !== view.email) contact.email = email;
     if (phone !== null && phone !== view.phone) contact.phone = phone;
-    if (Object.keys(contact).length && !(await step(() => api.setUserContact(loginName, contact)))) return;
-    if (password && !(await step(() => api.setUserPassword(loginName, password)))) return;
-    if (draft && !(await step(() => api.setAccountSessionRules(loginName, ruleValues)))) return;
-    setEmail(null);
-    setPhone(null);
-    setPassword('');
-    setDraft(null);
+    // Each part clears its draft once saved, so a later failure does not send it again.
+    if (Object.keys(contact).length) {
+      if (!(await step(() => api.setUserContact(loginName, contact)))) return;
+      setEmail(null);
+      setPhone(null);
+      await settings.reload();
+    }
+    if (password) {
+      if (!(await step(() => api.setUserPassword(loginName, password)))) return;
+      setPassword('');
+    }
+    if (draft) {
+      if (!(await step(() => api.setAccountSessionRules(loginName, ruleValues)))) return;
+      setDraft(null);
+    }
     await Promise.all([settings.reload(), rules.reload()]);
     onSaved(t.userSettingsSaved);
   }
