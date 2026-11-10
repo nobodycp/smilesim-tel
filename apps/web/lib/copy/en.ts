@@ -643,6 +643,8 @@ export const en: Copy = {
   monthOne: '1 month',
   monthTwo: '2 months',
   esimQrLede: 'Scan it with the phone camera to install the eSIM for this number.',
+  packageTurnedOn: 'Package {name} turned on',
+  packageTurnedOff: 'Package {name} turned off',
   usedCeiling: 'Used from ceiling',
   availableToSell: 'Available to sell',
   moreActions: 'More actions',

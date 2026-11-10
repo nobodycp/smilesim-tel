@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AccountName } from '../../components/account-name';
 import { Money, actionName, latinWhen } from '../../components/desk';
 import { EmptyState } from '../../components/empty-state';
+import { buttonClass } from '../../components/ui/button';
 import { LoadFailed } from '../../components/load-failed';
 import { Spinner, TableSkeleton } from '../../components/loading';
 import { TrendLine } from '../../components/trend-line';
@@ -118,7 +119,7 @@ export function LastOperations({ home, failed, onRetry, showAccount }: { home: H
   const head = (
     <header className="pane-head">
       <h2>{t.lastOps}</h2>
-      <Link className="ui-btn ui-btn-ghost ui-btn-sm" href="/finance?scope=operations">{t.allOperations}</Link>
+      <Link className={buttonClass({ variant: 'ghost', size: 'sm' })} href="/finance?scope=operations">{t.allOperations}</Link>
     </header>
   );
   if (!home) {

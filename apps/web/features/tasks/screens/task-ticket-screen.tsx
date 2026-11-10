@@ -86,43 +86,46 @@ export function TaskTicketScreen() {
   const toolbar = task ? (
       <div className="task-toolbar">
         {task.canTake ? (
-          <button type="button" className="task-op task-op-take" onClick={() => run(() => api.takeTask(task.id), { note: t.take })}>
+          <Button type="button" onClick={() => run(() => api.takeTask(task.id), { note: t.take })}>
             <Hand {...glyph} />
             {t.take}
-          </button>
+          </Button>
         ) : null}
         {task.canWork ? (
           <>
             {/* Taking only names the handler now (spec 2026-11-09, 2); whoever took it may release it. */}
             {task.assigneeLoginName && task.assigneeLoginName === me?.loginName ? (
-              <button type="button" className="task-op task-op-release" onClick={() => run(() => api.releaseTask(task.id), { note: t.release })}>
+              <Button type="button" variant="secondary" onClick={() => run(() => api.releaseTask(task.id), { note: t.release })}>
                 <Undo2 {...glyph} />
                 {t.release}
-              </button>
+              </Button>
             ) : null}
-            <button
+            {/* Complete and reject open their form in the details column; the open one is pressed. */}
+            <Button
               type="button"
-              className={`task-op task-op-complete${closeMode === 'complete' ? ' is-on' : ''}`}
+              variant={closeMode === 'complete' ? 'primary' : 'secondary'}
+              aria-pressed={closeMode === 'complete'}
               onClick={() => setCloseMode((mode) => (mode === 'complete' ? null : 'complete'))}
             >
               <Check {...glyph} />
               {t.complete}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={`task-op task-op-reject${closeMode === 'reject' ? ' is-on' : ''}`}
+              variant="danger"
+              aria-pressed={closeMode === 'reject'}
               onClick={() => setCloseMode((mode) => (mode === 'reject' ? null : 'reject'))}
             >
               <X {...glyph} />
               {t.reject}
-            </button>
+            </Button>
           </>
         ) : null}
         {task.canCancel ? (
-          <button type="button" className="task-op task-op-cancel" onClick={() => run(() => api.cancelTask(task.id), { note: t.cancelTask })}>
+          <Button type="button" variant="danger" onClick={() => run(() => api.cancelTask(task.id), { note: t.cancelTask })}>
             <Ban {...glyph} />
             {t.cancelTask}
-          </button>
+          </Button>
         ) : null}
       </div>
   ) : null;
@@ -221,15 +224,14 @@ export function TaskTicketScreen() {
                       placeholder={t.closeNote}
                       aria-label={t.closeNote}
                     />
-                    <button
+                    <Button
                       type="button"
-                      className="task-op task-op-complete is-on"
                       disabled={!canClose}
                       onClick={() => run(() => api.completeTask(task.id, closeBody()), { note: t.complete })}
                     >
                       <Check {...glyph} />
                       {t.complete}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}
@@ -241,15 +243,15 @@ export function TaskTicketScreen() {
                     placeholder={t.reason}
                     aria-label={t.reason}
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="task-op task-op-reject is-on"
+                    variant="danger"
                     disabled={!reason.trim()}
                     onClick={() => run(() => api.rejectTask(task.id, reason), { note: t.reject })}
                   >
                     <X {...glyph} />
                     {t.reject}
-                  </button>
+                  </Button>
                 </div>
               ) : null}
             </aside>

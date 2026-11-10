@@ -81,6 +81,7 @@ export function DataTable<Row>({
   skeleton,
   failed,
   onRetry,
+  onSortStart,
 }: {
   columns: Column<Row>[];
   rows: Row[];
@@ -95,6 +96,8 @@ export function DataTable<Row>({
   /** The translated failure of the load. With no rows it replaces the skeleton and the empty sentence. */
   failed?: string;
   onRetry?: () => void;
+  /** Told when a header is first clicked: a cursor list (`PagedTable`) then reads every page so the sort is whole. */
+  onSortStart?: () => void;
 }) {
   const { pageSize, setPageSize, locale } = usePrefs();
   const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(null);
@@ -152,6 +155,7 @@ export function DataTable<Row>({
                     type="button"
                     className="col-sort"
                     onClick={() => {
+                      onSortStart?.();
                       setSort((current) => (
                         current?.key === item.key
                           ? { key: item.key, dir: current.dir === 'asc' ? 'desc' : 'asc' }
@@ -221,6 +225,9 @@ export type PagedView<Row> = {
  * It writes no `.pane`: the page owns the pane, since a dialog or a head may live in it.
  * `waiting` keeps the skeleton up for something else the table needs (the package catalog of numbers).
  */
+/** The most rows a sorted cursor list reads before it sorts (the API pages by 50; 40 reads). */
+const SORT_CAP = 2000;
+
 export function PagedTable<Row>({
   list,
   waiting = false,
@@ -237,9 +244,13 @@ export function PagedTable<Row>({
   const { pageSize, setPageSize } = usePrefs();
   const [page, setPage] = useState(1);
   const [seen, setSeen] = useState(list.key);
+  // A sorted cursor list (owner 2026-11-11): the first header click reads every page — up to SORT_CAP rows — and the
+  // table then sorts and pages the whole set itself, so the order is right across pages, not within one.
+  const [sortAll, setSortAll] = useState(false);
   if (list.key !== seen) {
     setSeen(list.key);
     setPage(1);
+    setSortAll(false);
   }
   // Without a server total, a pending cursor still counts as one more page so it can be asked for.
   const held = list.all.length + (list.total === null && list.hasNext && pageSize !== 'all' ? pageSize : 0);
@@ -251,9 +262,10 @@ export function PagedTable<Row>({
   // The rows of the asked page are not all in the book yet: read the next chunk, and again after it lands.
   const short = list.ready && list.all.length < wanted && list.hasNext;
   const { more, loadMore } = list;
+  const fillingAll = sortAll && list.ready && list.hasNext && list.all.length < SORT_CAP;
   useEffect(() => {
-    if (short && !more) void loadMore();
-  }, [short, more, loadMore]);
+    if ((short || fillingAll) && !more) void loadMore();
+  }, [short, fillingAll, more, loadMore]);
 
   const filling = pageSize !== 'all' && short && list.all.length <= (current - 1) * size;
   const rows = list.all.slice((current - 1) * size, current * size);
@@ -268,8 +280,17 @@ export function PagedTable<Row>({
   ) : null;
   return (
     <>
-      <DataTable {...table} rows={rows} loading={waiting || !list.ready || filling} paginate={false} sortable={false} failed={list.error} onRetry={() => void list.reload()} />
-      {pager}
+      {/* One table element in both modes, so the sort the click set survives the switch to the whole set. */}
+      <DataTable
+        {...table}
+        rows={sortAll ? list.all : rows}
+        loading={waiting || !list.ready || (sortAll ? fillingAll : filling)}
+        paginate={sortAll}
+        onSortStart={sortAll ? undefined : () => setSortAll(true)}
+        failed={list.error}
+        onRetry={() => void list.reload()}
+      />
+      {sortAll ? null : pager}
     </>
   );
 }

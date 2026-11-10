@@ -9,7 +9,7 @@ import { Dialog } from '../../../components/dialog';
 import { EmptyState } from '../../../components/empty-state';
 import { LiveSwitch } from '../../../components/live-switch';
 import { OfferHero } from '../../../components/offer-hero';
-import { Button } from '../../../components/ui/button';
+import { Button, buttonClass } from '../../../components/ui/button';
 import { api, type Offer, type OfferInput } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
@@ -144,7 +144,7 @@ export function OffersScreen() {
             <div className="offer-image-field">
               {draft.image ? <DataImage className="offer-thumb large" src={draft.image} alt="" /> : <span className="offer-thumb large" aria-hidden="true" />}
               <div className="stack">
-                <label className="ui-btn ui-btn-outline ui-btn-sm offer-file">
+                <label className={`${buttonClass({ variant: 'outline', size: 'sm' })} offer-file`}>
                   {t.offerImage}
                   <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={pickImage} />
                 </label>

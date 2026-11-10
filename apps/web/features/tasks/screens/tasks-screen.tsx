@@ -127,11 +127,10 @@ export function TasksScreen() {
         ];
         return (
           <span className="task-act">
+            {/* The row opens the ticket; only «أخذ المهمة» earns a button of its own (as in the design). */}
             {row.canTake ? (
               <Button type="button" size="sm" onClick={() => run(() => api.takeTask(row.id), { note: t.take })}>{t.take}</Button>
-            ) : (
-              <Link className="ui-btn ui-btn-secondary ui-btn-sm" href={`/tasks/${row.id}`}>{t.openTask}</Link>
-            )}
+            ) : null}
             <RowMenu label={`${t.rowActions} ${row.msisdn ?? row.id}`} items={items} />
           </span>
         );

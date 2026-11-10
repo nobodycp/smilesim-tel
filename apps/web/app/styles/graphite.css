@@ -709,7 +709,6 @@ input[readonly] { background-color: transparent; }
 .task-rail, .task-thread { border-radius: var(--rd-radius-sm); background: var(--rd-surface); box-shadow: inset 0 0 0 1px var(--rd-line); }
 .task-tree-dot { width: 9px; height: 9px; border-radius: 2px; transform: rotate(45deg); }
 .task-tree-card { border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); }
-.task-op { border-radius: var(--rd-radius-sm); }
 .task-rail { border: 0; }
 
 /* ── «طريقة التنفيذ» cards (components/mode-cards.tsx): a crimson mark, the operation, a three-way segmented control;
@@ -744,26 +743,8 @@ input[readonly] { background-color: transparent; }
 [dir='rtl'] .co-mark.big { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
 .terms-group-head .co-mark { width: 32px; height: 32px; }
 .side-flyout { width: max-content; max-width: 280px; inset-inline-end: auto; }
-/* The ticket's actions in its head: take and complete in ink, reject and cancel outlined in danger, the rest raised. */
+/* The ticket's actions in its head: system buttons (take and complete primary, reject and cancel danger, release secondary). */
 .page-head .task-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; }
-.page-head .task-op {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-  color: var(--rd-ink);
-  font-weight: 600;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent);
-}
-.page-head .task-op svg { width: 16px; height: 16px; }
-.page-head .task-op-take, .page-head .task-op-complete { background: var(--rd-primary-bg); color: var(--rd-primary-fg); box-shadow: none; }
-.page-head .task-op-reject, .page-head .task-op-cancel { background: transparent; color: var(--rd-danger); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-danger) 45%, transparent); }
-.page-head .task-op-release { background: transparent; box-shadow: none; color: var(--rd-ink-2); }
-.page-head .task-op.is-on { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
 
 /* ── Settings (Graphite): the two-step methods as cards to choose (the chosen one outlined in crimson); sessions and
    passkeys as cards with a crimson device mark. ── */
@@ -1337,3 +1318,6 @@ input[readonly] { background-color: transparent; }
   .mode-card .seg button { height: 40px; }
   .donut-legend a, .donut-legend button { min-height: 40px; }
 }
+
+/* A switch beside its state word keeps one width, so «فعال» ↔ «متوقف» does not move the table's columns. */
+.data .live-switch > b { display: inline-block; min-inline-size: 4.5rem; }

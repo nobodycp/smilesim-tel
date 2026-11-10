@@ -81,6 +81,14 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - The package price chain (`ChainBoard`, `.chain-grid`): one table row per layer — the branch's cost first, tinted —, the subscription and the renewal side by side, each price with its margin over the layer above; the eSIM price and the re-pricing sit as two cards under it (D6).
 - The user page's «الإعدادات والصلاحيات»: «إعدادات الحساب» open on top, «صلاحيات الحساب» folded (`.inherit-fold`) under it; each grant a three-way `.seg` (حسب الدور / مسموح / ممنوع), extra roles as `.role-chip` toggles (D3).
 - The company «الإعدادات» tab: `.settings-block`s — picture, SIM rules, eSIM (a `LiveSwitch`) (D2).
+- Buttons (owner 2026-11-11): every action is `Button` or `buttonClass` — the task ticket's take, release, complete,
+  reject and cancel too (primary, secondary, danger); a list row opens from its own link and its ⋯ menu, with at most
+  one primary button of its own («أخذ المهمة»).
+- Saved messages are toasts (`components/toast.tsx` `useToasts`, fed by `PageAlert`'s note): stacked in the
+  reading-end bottom corner over the page, a green edge, ×, gone after 4.6s; nothing on the page moves. Errors stay in
+  the page. A switch beside its state word in a table keeps the word's width, so the columns do not move.
+- Sorting: every `DataTable` header sorts; a cursor list (`PagedTable`) reads every page (up to 2000 rows) on the first
+  header click and then sorts and pages the whole set.
 - Phones (under 640px, D7): a `DataTable` row is a card — the first cell its title, every other value under its column's name (`td[data-label]`) two to a row, ⋯ in the corner; the task and notice lists and the roles matrix keep their own layout. Tab strips wrap so every tab is in view; the pager's page buttons and page-size select are 40px; short cards (company, fact, operation) sit two a row; a run-mode card puts its mark beside its name.
 - Company page and package groups: the company's cut-corner mark beside its name.
 - White on crimson: the sidebar count, the notice dot and the page's own action.

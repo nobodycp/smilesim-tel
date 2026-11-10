@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { PageSkeleton } from '../../../components/loading';
 import { api } from '../../../lib/api';
 import { sharedKeys } from '../../../lib/query';
@@ -10,6 +10,7 @@ import { useOffice } from '../../../lib/office-session';
 import { usePageTitle } from '../../../lib/page-title';
 import { usePrefs } from '../../../lib/prefs';
 import { Alert } from '../../../components/alert';
+import { useToasts } from '../../../components/toast';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
@@ -28,6 +29,11 @@ export function SettingsScreen() {
   const [nextPassword, setNextPassword] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
+  // Saved: a toast in the corner, the page does not move (owner 2026-11-11).
+  const { push } = useToasts();
+  useEffect(() => {
+    if (note) push(note, 'success');
+  }, [note, push]);
 
   const profile = useApiQuery(sharedKeys.profile, () => api.getProfile());
   const sessionList = useApiQuery(sharedKeys.sessions, () => api.listSessions());
@@ -117,7 +123,6 @@ export function SettingsScreen() {
       <p className="lede">{t.settingsLede}</p>
     </header>
     <Alert banner>{error || profile.error || sessionList.error || methods.error}</Alert>
-    <Alert tone="success" banner>{note}</Alert>
 
     <div className="settings-grid">
       <div className="settings-col">

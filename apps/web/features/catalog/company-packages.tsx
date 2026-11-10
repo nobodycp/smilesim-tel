@@ -28,7 +28,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
   provider: string;
   onProvider: (code: string) => void;
   loading: boolean;
-  onEnabled?: (code: string, enabled: boolean) => void;
+  onEnabled?: (code: string, enabled: boolean, name: string) => void;
   busy?: boolean;
 }) {
   const { t } = usePrefs();
@@ -69,7 +69,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
       header: t.status,
       sortValue: (row) => (row.enabled ? 1 : 0),
       render: (row) => (onEnabled ? (
-        <LiveSwitch label={`${row.name} · ${row.providerName}`} checked={row.enabled} disabled={busy} onChange={(next) => onEnabled(row.code, next)}>
+        <LiveSwitch label={`${row.name} · ${row.providerName}`} checked={row.enabled} disabled={busy} onChange={(next) => onEnabled(row.code, next, row.name)}>
           <b>{row.enabled ? t.lineActive : t.stopped}</b>
         </LiveSwitch>
       ) : (

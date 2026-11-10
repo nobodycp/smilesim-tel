@@ -217,7 +217,7 @@ export function CompanyScreen() {
             onProvider={(code) => setFilters({ provider: code })}
             loading={!shelf.loaded}
             busy={busy}
-            onEnabled={canEdit ? (code, enabled) => void run(() => api.setPackageMode(code, { enabled }), { note: t.saved }) : undefined}
+            onEnabled={canEdit ? (code, enabled, name) => void run(() => api.setPackageMode(code, { enabled }), { note: (enabled ? t.packageTurnedOn : t.packageTurnedOff).replace('{name}', name) }) : undefined}
           />
         )}
         {tab === 'providers' && (

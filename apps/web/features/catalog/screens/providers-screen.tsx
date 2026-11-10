@@ -72,7 +72,7 @@ export function ProvidersScreen() {
   return (
     <Desk title={allowed ? t.providersTitle : ''} lede={t.providersLede} error={shelf.error} note="">
       <section className="pane">
-        <DataTable sortable={false} columns={columns} rows={providers.data?.providers ?? []} rowKey={(provider) => provider.code} loading={!providers.loaded} failed={providers.error} onRetry={() => void providers.reload()} skeleton={{ rows: 5, columns: 7 }} />
+        <DataTable columns={columns} rows={providers.data?.providers ?? []} rowKey={(provider) => provider.code} loading={!providers.loaded} failed={providers.error} onRetry={() => void providers.reload()} skeleton={{ rows: 5, columns: 7 }} />
       </section>
     </Desk>
   );

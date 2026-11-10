@@ -643,6 +643,8 @@ export const ar = {
   monthOne: 'شهر',
   monthTwo: 'شهران',
   esimQrLede: 'امسحه من كاميرا الهاتف لتثبيت eSIM على الرقم.',
+  packageTurnedOn: 'تم تشغيل الرزمة {name}',
+  packageTurnedOff: 'تم إيقاف الرزمة {name}',
   usedCeiling: 'المستخدم من السقف',
   availableToSell: 'المتاح للبيع',
   moreActions: 'إجراءات أخرى',

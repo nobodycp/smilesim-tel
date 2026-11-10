@@ -1,39 +1,54 @@
 /* Overlays: toast, Dialog, perm grid, op blocks, RowMenu. */
 .toast-host {
+  /* Toasts (owner 2026-11-11): stacked in the reading-end bottom corner, over the page — nothing under them moves. */
   position: fixed;
-  inset: 0;
   z-index: var(--rd-z-top);
+  inset-block-end: 20px;
+  inset-inline-end: 20px;
   display: grid;
-  place-items: center;
-  align-content: center;
-  gap: var(--rd-space-2-5);
-  padding: var(--rd-space-6);
+  justify-items: end;
+  gap: var(--rd-space-2);
   pointer-events: none;
 }
 .toast {
   display: flex;
-  align-items: flex-start;
-  gap: var(--rd-space-3);
-  width: min(420px, 100%);
-  padding-block: var(--rd-space-4);
-  padding-inline: var(--rd-space-4) var(--rd-space-3-5);
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-panel);
+  align-items: center;
+  gap: var(--rd-space-2-5);
+  max-inline-size: min(420px, calc(100vw - 32px));
+  padding-block: 11px;
+  padding-inline: 14px 8px;
+  border: 0;
+  border-inline-start: 3px solid var(--rd-success);
+  border-radius: var(--rd-radius-sm);
   background: var(--rd-surface);
-  box-shadow: var(--rd-shadow-pop);
+  box-shadow: inset 0 0 0 1px var(--rd-line), var(--rd-shadow-pop);
+  color: var(--rd-ink);
   pointer-events: auto;
 }
-.toast.error { border-color: var(--rd-danger); }
-.toast.success { border-color: var(--rd-success); }
-.toast p { margin: 0; font-weight: 700; }
+.toast.error { border-inline-start-color: var(--rd-danger); }
+.toast.success { border-inline-start-color: var(--rd-success); }
+.toast p { margin: 0; font-size: var(--rd-text-md); font-weight: 600; }
 .toast button {
-  margin-inline-start: auto;
+  display: grid;
+  flex: none;
+  place-items: center;
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-  font-weight: 800;
+  border-radius: var(--rd-radius-xs);
+  background: transparent;
+  color: var(--rd-faint);
+  font-size: 16px;
+  cursor: pointer;
+}
+.toast button:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .toast { animation: rd-toast-in 220ms var(--rd-ease-out); }
+}
+@keyframes rd-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 640px) {
+  .toast-host { inset-inline: 12px; inset-block-end: 12px; justify-items: stretch; }
+  .toast { max-inline-size: none; }
 }
 .dialog-scrim {
   position: fixed;

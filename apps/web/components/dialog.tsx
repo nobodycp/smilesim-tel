@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { useConnection } from '../lib/connection';
 import { usePrefs } from '../lib/prefs';
 import { Alert } from './alert';
+import { useToasts } from './toast';
 
 export type DialogMark = 'plus' | 'shield' | 'wallet' | 'transfer' | 'key' | 'freeze' | 'enter' | 'trash' | 'alert' | 'check';
 export type DialogTone = 'neutral' | 'danger' | 'success';
@@ -24,13 +25,18 @@ export function PageAlert({
 }) {
   const [held, setHeld] = useState(false);
   const { reachable } = useConnection();
+  // A saved action's message floats as a toast (components/toast.tsx), so the page under it does not move
+  // (owner 2026-11-11). Each new message shows once; an empty one between two saves lets the same words show again.
+  const { push } = useToasts();
+  useEffect(() => {
+    if (note) push(note, 'success');
+  }, [note, push]);
   const { t } = usePrefs();
   // While the API is unreachable the shell's outage bar says so once; the page does not repeat it.
   const repeated = !reachable && error === t.errors.NETWORK;
   return (
     <DialogAlert.Provider value={setHeld}>
       {!held && !repeated ? <Alert>{error}</Alert> : null}
-      <Alert tone="success">{note}</Alert>
       {children}
     </DialogAlert.Provider>
   );
