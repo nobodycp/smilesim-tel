@@ -3,7 +3,8 @@
 Date: 2026-11-10. Status: **accepted** (the owner approved the design and ordered slice S.1 the same day, task
 05). The design is fixed; it is built slice by slice, and the plan says which slices exist: **S.1 (the schema, read
 by nothing yet), S.2 (the reservation of a serial and a number, which changes the manual path) S.3 (the pure
-rules, called by nothing yet) and S.4 (`capture`, used by manual completion) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
+rules, called by nothing yet), S.4 (`capture`, used by manual completion) and S.5a (an eSIM code is read
+whether stored clear or sealed; nothing is sealed yet) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
 `docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
 
 ## Context
@@ -169,6 +170,17 @@ come; the money must be safe in every state of the operation.
 - The same rule holds for a disconnect's refund: it is the refund of the day it is carried out. The code already
   did that; it is now written down as the owner's rule (`docs/project-plan.md` 2026-11-10, rule 1.5) and pinned by
   specs. Every other operation keeps the price fixed when its task opened.
+
+## As built in S.5a (reading eSIM codes stored clear or sealed)
+
+- The code is answered in four places (line list, line detail, task detail, the answer of an activation made at
+  once); each goes through one function, `lines/esim-code.ts` `shownEsimCode`.
+- A value that does not start with the sealed prefix is the code as written and is answered as it is; a sealed one
+  is opened. Both can be stored side by side, which is what lets S.5b seal rows in batches.
+- A sealed code that cannot be opened (no key, another key, damaged) is answered as `null`, like a line that has
+  none, and logged by record id and reason code. The request does not fail, the stored value is not touched, and
+  neither it nor the cipher's error is returned or logged.
+- Nothing is sealed on write and no stored value changed. The answers keep their shape.
 
 ## Consequences
 

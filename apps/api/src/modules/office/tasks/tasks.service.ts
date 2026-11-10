@@ -6,6 +6,7 @@ import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { assertBranch } from '../policy';
 import { taskEvents } from './task-events';
+import { shownEsimCode } from '../lines/esim-code';
 import { assertClaimFree, lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -127,7 +128,8 @@ export class TasksService {
         msisdn: row.line?.msisdn ?? row.msisdn,
         iccid: row.line?.iccid ?? row.iccid,
         esim: row.line?.esim ?? row.esim,
-        esimQr: row.line?.esimQr ?? row.esimQr ?? null,
+        // The line's code once the task made one; until then the one the task carries.
+        esimQr: row.line?.esimQr ? shownEsimCode(row.line.esimQr, `line ${row.line.id}`) : shownEsimCode(row.esimQr, `task ${row.id}`),
         sim: simRulesOf(pkg?.company ?? null),
         lineStatus: row.line?.status ?? null,
         packageName: pkg?.name ?? '',

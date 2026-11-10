@@ -1,4 +1,5 @@
 import { LinesRepository } from './lines.repository';
+import { shownEsimCode } from './esim-code';
 import { LineAccess } from './line-access';
 import { PriceLadder } from '../terms/price-ladder';
 import { WalletLedger } from '../wallets/wallet-ledger';
@@ -132,7 +133,7 @@ export class LinesService {
     return {
       applied: true,
       debited: posDelta < 0,
-      line: { id: created.id, msisdn: created.msisdn, iccid: created.iccid, esim: created.esim, esimQr: created.esimQr },
+      line: { id: created.id, msisdn: created.msisdn, iccid: created.iccid, esim: created.esim, esimQr: shownEsimCode(created.esimQr, `line ${created.id}`) },
     };
   }
 

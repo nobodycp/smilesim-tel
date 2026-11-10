@@ -7,6 +7,8 @@ const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
 suite('reservation conflict report (PostgreSQL)', () => {
+  // Like every database spec: connections are opened while other suites use the same server.
+  jest.setTimeout(30_000);
   const previous = process.env.DATABASE_URL;
   beforeAll(() => {
     process.env.DATABASE_URL = url;

@@ -1,7 +1,7 @@
 # Activation through a provider — plan
 
 Spec: `docs/superpowers/specs/2026-11-10-activation-settlement.md` (decisions D1–D19, transactions T1–T11, specs
-1–29). ADR 0019 (accepted). **S.1–S.4 are built; each later slice starts on the owner's word.** Paths under `apps/api/`
+1–29). ADR 0019 (accepted). **S.1–S.4 and S.5a are built; each later slice starts on the owner's word.** Paths under `apps/api/`
 unless said. Each slice is one commit, leaves every existing spec green on CI (including the PostgreSQL and Redis
 job), and changes nothing a user can see unless it says **Visible**.
 
@@ -152,17 +152,39 @@ wallets (sorted). A slice's review checks that order in the code it adds.
 - [ ] **S.5 eSIM data (D17). Visible. Three steps, each its own commit and deploy, in this order; a step is not
   deployed before the one above it is live everywhere.**
 
-  **Before anything: read the web.** List every place the web reads `esimQr` (`grep -rn esimQr apps/web`), and
-  for each say which response it comes from (line list, line detail, task list, task detail, the answer of
-  `POST /office/lines` and of the SIM and eSIM operations). The result is written into the web spec of this slice.
-  No API step below is merged until that list exists.
+  **The inventory (made 2026-11-10, before S.5a).** Where an eSIM code is read, and from which answer:
 
-  - **S.5a Read both, write as before (no visible change).** The repositories that read `Line.esimQr`,
-    `OfficeTask.esimQr` and `ProviderOperation.resultEsimCode` open a sealed value and pass a clear one through
-    unchanged (`secret-box.ts` `isSealed`), exactly as `PrismaAuthStore` does for authenticator secrets. Writes are
-    still clear. After this step every running copy can read either form, so sealed and clear rows can coexist
-    for as long as the backfill takes, and a roll-back to this commit still reads everything.
-    *Specs:* a clear row and a sealed row both read back as the clear code, through the service.
+  | Consumer | Reads | From |
+  |---|---|---|
+  | `apps/web/features/lines/screens/numbers-screen.tsx` (the line list: `SimBadge`, `EsimDialog`) | `LineRow.esimQr` | **`GET /office/lines` rows** |
+  | `apps/web/features/lines/screens/line-card-screen.tsx` (`EsimDialog`, the QR button) | `line.esimQr` | `GET /office/lines/:id` |
+  | `apps/web/features/tasks/screens/task-ticket-screen.tsx` (`EsimMark`, `EsimDialog`) | `TaskDetail.esimQr` | `GET /office/tasks/:id` |
+  | `apps/web/components/activation-result.tsx` (`QrTile`) | `IssuedLine.esimQr` | the answer of `POST /office/lines` when the line is made at once |
+  | `apps/web/components/esim-qr.tsx` | whatever the screen hands it | — |
+  | `apps/web/lib/api-types.ts` | `LineRow`, `IssuedLine`, `TaskDetail` | the three types above |
+
+  The task **list** does not carry the code. On the API the code is answered in four places: `LineReads.list`,
+  `LineReads.detail`, `TasksService.detail` (the line's code once the task has a line, else the task's own) and
+  `LinesService.activate`'s answer. It is written by `createLine`, `setLineSim` and `openTask` (a SIM-swap task
+  carries the QR it was given). `TaskCompletion` copies a task's stored code onto the line without reading it.
+  `ProviderOperation.resultEsimCode` has no reader and no writer yet.
+  **For S.5c this means one screen, the line list, takes the code from a list row**; it is the one that must move
+  to the detail before the API stops sending the code in lists.
+
+  - [x] **S.5a Read both, write as before (no visible change).**
+    `shared/secret-box.ts` `tryOpen` (never throws: the value, or `no-key` / `unreadable`; `open` now also refuses
+    a sealed value that is not exactly the three parts `seal` writes); `lines/esim-code.ts` `shownEsimCode`, used at
+    the four places above. A code stored as written is answered as it is; a sealed one is opened; a sealed one
+    that cannot be opened is answered as `null` (as for a line with no code) with one log line that names the
+    record and a reason code, and never the stored text or the cipher's error. Reading writes nothing. Writes are
+    unchanged and still clear; `TaskCompletion` still copies the stored value as it is, so a sealed value stays
+    sealed when it moves from a task to its line. `ProviderOperation.resultEsimCode` gets its reader with the code
+    that stores it (S.8).
+    *Specs:* `lines/esim-code-read.db.spec.ts` (clear, sealed, damaged, no key, another key, through the list, the
+    two details and a task on a line; stored values unchanged; nothing of a code in the output),
+    `shared/secret-box.spec.ts`. Answer shapes are unchanged (`response-shape.spec.ts`, `routes.http.spec.ts`).
+    **A choice to confirm:** an unreadable code is answered as "no code" rather than failing the request, so one
+    damaged row does not take a whole list page down; the log is where it shows.
   - **S.5b Seal on write, then backfill.** The same repositories seal on write. `src/seal-secrets.ts` gains the
     two columns:
     - **safe:** it seals only values that are not sealed already (`isSealed`), never opens or rewrites one that

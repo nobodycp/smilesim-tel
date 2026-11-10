@@ -37,8 +37,30 @@ export function open(stored: string): string {
   if (!isSealed(stored)) return stored;
   const key = secretsKey();
   if (!key) throw new Error('A sealed secret cannot be opened: SECRETS_KEY is not set');
-  const [iv, tag, body] = stored.slice(PREFIX.length).split(':').map((part) => Buffer.from(part, 'base64url'));
+  const parts = stored.slice(PREFIX.length).split(':');
+  // Exactly the three parts `seal` writes: anything shorter or longer is not a value this box sealed.
+  if (parts.length !== 3) throw new Error('A sealed secret cannot be opened: it is not in the sealed form');
+  const [iv, tag, body] = parts.map((part) => Buffer.from(part, 'base64url'));
   const decipher = createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(tag);
   return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
+}
+
+/** Why a stored value could not be read: there is no key to open it with, or it does not open (another key, damaged, not what it claims to be). */
+export type Unreadable = 'no-key' | 'unreadable';
+
+/**
+ * The plain value, without ever throwing: `{ value }` for a value that was never sealed (as it is) and for a
+ * sealed one that opens; `{ unreadable }` for a sealed one that does not. For values that are shown, where one
+ * unreadable row must not take a whole answer down. The reason says nothing about the value, and neither the
+ * stored text nor the error of the cipher is kept.
+ */
+export function tryOpen(stored: string): { value: string } | { unreadable: Unreadable } {
+  if (!isSealed(stored)) return { value: stored };
+  if (!secretsKey()) return { unreadable: 'no-key' };
+  try {
+    return { value: open(stored) };
+  } catch {
+    return { unreadable: 'unreadable' };
+  }
 }
