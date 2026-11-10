@@ -6,11 +6,9 @@ or replaced by a later design. They stay in git history.
 
 ## Waiting for an owner decision (`docs/project-plan.md` «مفتوح»)
 
-- [ ] **Activation through a provider: the owner's review of the final design**
-  (`docs/superpowers/specs/2026-11-10-activation-settlement.md`, ADR 0019). O1–O6 and the final review are
-  written in (spec sections 9 and 10); S.1 starts after the review. Three consequences to accept: two authorised
-  accounts are needed to declare a failure or release after success; a failed operation means a new sale; the
-  line list stops carrying the eSIM code.
+- [ ] **Activation through a provider: the owner's word for each slice after S.1**
+  (plan `2026-11-10-activation-settlement.md`, ADR 0019 accepted). S.1, the schema, is built; S.2 is next and
+  changes the manual path (a second task for the same card is refused when opened).
 - [ ] **Branch direct-sale price floor** when two main agents' prices differ (the 40 / 25 / 30 example,
   project-plan 2026-10-24). Today `floorFor` (`rules/user-terms.ts`) takes the floor from the account's own parent
   path; nothing chooses between the three options.

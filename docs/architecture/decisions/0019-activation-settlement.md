@@ -1,9 +1,9 @@
 # 0019 — A provider activation holds the price on a task and is settled by the provider's stored verdict
 
-Date: 2026-11-10. Status: **proposed; the direction and O1–O6 are decided by the owner, and the final review
-(one operation per task, cancellation, switching a provider on, eSIM data, the second approval, lock order) is
-written in.** It becomes accepted when the owner has reviewed the final text; nothing is implemented. Builds on
-ADR 0004, 0016, 0017, 0018. Spec and plan: `docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
+Date: 2026-11-10. Status: **accepted** (the owner approved the design and ordered slice S.1 the same day, task
+05). The design is fixed; it is built slice by slice, and the plan says which slices exist: **S.1 (the schema) is
+built, nothing reads it yet, and no behaviour has changed.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
+`docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
 
 ## Context
 
@@ -104,6 +104,17 @@ come; the money must be safe in every state of the operation.
 - The submitter, not the operator of an entered session, is named on settlement entries (audit A5).
 - `providerCost` on the entry is the package's cost when the line is created, not what the provider billed.
 - ADR 0016, ADR 0018 and the code still describe the old dispatch switch until slice S.12a (spec section 10).
+
+## As built in S.1 (migration `20261110190000_activation_settlement_schema`)
+
+- The approval names its account as `Provider.dispatchApprovedByLoginName` (rule 4.9), not `dispatchApprovedBy`.
+- `ProviderDecisionEvent` keeps the account as `accountId` and `accountLoginName` with **no foreign key to `User`**:
+  a foreign key's `SET NULL` would be an update the trigger refuses, and `RESTRICT` would stop an account from ever
+  being removed. Its foreign key to the operation is `RESTRICT`, so an operation with a decision cannot be deleted.
+- The trigger also refuses `TRUNCATE`.
+- The database, not only the code, refuses: an eSIM code or a credential that is not sealed (`v1:`…); an unknown
+  `applyError`, event type, decision or evidence kind; a proposal or an applied decision without evidence and a
+  note of 20 characters; a confirmed success without a reference; an approval to dispatch without its account.
 
 ## Consequences
 

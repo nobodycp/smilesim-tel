@@ -1,7 +1,7 @@
 # Activation through a provider — plan
 
 Spec: `docs/superpowers/specs/2026-11-10-activation-settlement.md` (decisions D1–D19, transactions T1–T11, specs
-1–29). ADR 0019. **Not started: S.1 begins after the owner's review of the final design.** Paths under `apps/api/`
+1–29). ADR 0019 (accepted). **S.1 is built; each later slice starts on the owner's word.** Paths under `apps/api/`
 unless said. Each slice is one commit, leaves every existing spec green on CI (including the PostgreSQL and Redis
 job), and changes nothing a user can see unless it says **Visible**.
 
@@ -12,13 +12,18 @@ wallets (sorted). A slice's review checks that order in the code it adds.
 
 - [x] **S.0 Decisions.** O1–O6 and the final review; spec sections 9 and 10.
 
-- [ ] **S.1 Schema (additive, nothing reads it).**
-  `ProviderOperation`: `taskId` (FK, **unique**), `appliedAt`, `applyError`, `applyFailedAt`, `resultMsisdn`,
-  `resultIccid`, `resultEsimCode`. `OfficeTask`: `requestKey` (unique), `requestHash`. `Provider`:
-  `dispatchApprovedAt`, `dispatchApprovedBy`, `dispatchPausedAt`. New `ProviderDecisionEvent` (unique
-  `(operationId, sequence)`; trigger refusing `UPDATE` and `DELETE`) and `ProviderCredential` (provider, target,
-  sealed value; unique `(providerId, target)`).
-  *Transactions:* none. *Specs:* 5 (the unique `taskId`), 22 (the trigger). `prisma migrate diff` empty.
+- [x] **S.1 Schema (additive, nothing reads it).** Migration `20261110190000_activation_settlement_schema`.
+  `ProviderOperation`: `taskId` (FK `RESTRICT`, **unique**), `appliedAt`, `applyError`, `applyFailedAt`,
+  `resultMsisdn`, `resultIccid`, `resultEsimCode` (sealed or refused). `OfficeTask`: `requestKey` (unique),
+  `requestHash`. `Provider`: `dispatchApprovedAt`, `dispatchApprovedByLoginName`, `dispatchPausedAt`. New
+  `ProviderDecisionEvent` (unique `(operationId, sequence)`; CHECKs on type, decision, evidence, note, reference;
+  triggers refusing `UPDATE`, `DELETE` and `TRUNCATE`) and `ProviderCredential` (unique `(providerId, target)`;
+  sealed or refused).
+  *Transactions:* none. *Specs:* `providers/operations/settlement-schema.db.spec.ts` (spec items 5 and 22, and the
+  constraints). *Verified by hand on a fresh database:* the 55 earlier migrations, rows in nine tables, then this
+  migration: every existing column of every row identical, the new columns empty. `prisma migrate diff` empty.
+  **Still to do for item 22 in S.9:** that the worker's activity purge leaves the table alone (it does not touch it
+  today; the spec belongs with the code that writes events).
 
 - [ ] **S.2 Reservation in the database (O1). Visible.**
   A migration that lists open activation tasks sharing a serial or a number and stops if any exist, then the two
@@ -40,12 +45,50 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   *Visible:* a ceiling lowered after a task opened no longer blocks its completion. *Specs:* 17, 18, and the
   existing wallet and line concurrency specs.
 
-- [ ] **S.5 eSIM data (D17). Visible.**
-  Sealing in the repositories for `Line.esimQr`, `OfficeTask.esimQr` and `ProviderOperation.resultEsimCode`;
-  `seal-secrets` extended to the existing rows; the code leaves the line and task **lists**; the detail returns it
-  to the entitled accounts and records `line.esim_read`. `response-shape.spec.ts`, `routes.http.spec.ts`.
-  *Transactions:* none new. *Visible:* the line list no longer carries the eSIM code (a web follow-up in S.10 if a
-  screen reads it from the list). *Specs:* 23.
+- [ ] **S.5 eSIM data (D17). Visible. Three steps, each its own commit and deploy, in this order; a step is not
+  deployed before the one above it is live everywhere.**
+
+  **Before anything: read the web.** List every place the web reads `esimQr` (`grep -rn esimQr apps/web`), and
+  for each say which response it comes from (line list, line detail, task list, task detail, the answer of
+  `POST /office/lines` and of the SIM and eSIM operations). The result is written into the web spec of this slice.
+  No API step below is merged until that list exists.
+
+  - **S.5a Read both, write as before (no visible change).** The repositories that read `Line.esimQr`,
+    `OfficeTask.esimQr` and `ProviderOperation.resultEsimCode` open a sealed value and pass a clear one through
+    unchanged (`secret-box.ts` `isSealed`), exactly as `PrismaAuthStore` does for authenticator secrets. Writes are
+    still clear. After this step every running copy can read either form, so sealed and clear rows can coexist
+    for as long as the backfill takes, and a roll-back to this commit still reads everything.
+    *Specs:* a clear row and a sealed row both read back as the clear code, through the service.
+  - **S.5b Seal on write, then backfill.** The same repositories seal on write. `src/seal-secrets.ts` gains the
+    two columns:
+    - **safe:** it seals only values that are not sealed already (`isSealed`), never opens or rewrites one that
+      is, and refuses to start without a valid `SECRETS_KEY`;
+    - **restartable:** it works in batches by primary key, each batch its own transaction with a guarded write
+      (`WHERE id = … AND "esimQr" = <the clear value read>`), so a row changed meanwhile is skipped and picked up
+      on the next run; stopping it at any point leaves a mix that S.5a already reads; running it again does only
+      what is left and reports how many it sealed and how many it skipped;
+    - **checked:** it ends by counting clear values left (0 expected) and a `--dry-run` prints the counts and
+      changes nothing.
+    It is run by the owner on each deployment (as for authenticator secrets), never at boot. Only after it
+    reports 0 may a later slice add a CHECK that `esimQr` is sealed.
+    *Specs (PostgreSQL):* a run seals every clear value and leaves sealed ones byte-identical; a second run
+    changes nothing; a run interrupted half-way and run again ends the same; a row updated during the run is not
+    overwritten; without `SECRETS_KEY` it stops before writing.
+  - **S.5c The response (the only step users can see), web first.**
+    1. **Web, deployed first:** every screen found above reads the code from the **detail** response (or asks for
+       the detail when it needs the code) and shows nothing, not an error, when a list row has no code. This works
+       against the API as it is today, because the detail already carries the field.
+    2. **API, deployed after the web is live:** `esimQr` leaves `GET /office/lines` rows and the task list; the
+       line and task detail return it only to the line's point of sale, its ancestors and the branch, and record
+       `line.esim_read`. `response-shape.spec.ts` and `routes.http.spec.ts` change in the same commit; the web's
+       mocks and e2e are updated with the web step.
+    3. **Never the other way round:** an API without the field under a web that still reads it from the list
+       would show lines without their eSIM code. If the web step is reverted, the API step is reverted first.
+    *Specs:* 23 (who receives the field, lists never, each read recorded) and 24 (no part of a code in the
+    output, the outbox, the queue or the notices).
+
+  *Transactions:* none new. *Roll-back:* S.5c API → S.5c web → S.5b (values stay sealed and readable by S.5a) →
+  S.5a only once no sealed value exists.
 
 - [ ] **S.6 Request key (O4): API, then web.**
   API: `Idempotency-Key` honoured by `POST /office/lines` when it opens a task (`requestKey`, `requestHash`, the
@@ -101,8 +144,9 @@ wallets (sorted). A slice's review checks that order in the code it adds.
 3. The waiting label, the exception view, the decision form and the approval queue are live (S.9, S.10) — **O5,
    O6**; at least **two** authorised accounts exist on the branch.
 4. The reservation indexes exist on the target database and the migration's conflict report was empty (S.2).
-5. eSIM codes are sealed on the target database (`seal-secrets` run) and `SECRETS_KEY` is set on the API and the
-   worker (S.5).
+5. eSIM codes are sealed on the target database (`seal-secrets` reports 0 clear values left) and `SECRETS_KEY` is
+   set on the API and the worker (S.5b); the web reads the code from the detail and was deployed before the API
+   stopped sending it in lists (S.5c).
 6. The staging run on the sandbox target passed its checklist: success, refusal, timeout → unknown → decision,
    exception, cancel while requested, pause.
 7. A written procedure for the branch: an unknown operation, an exception, a provider failure, a pause.

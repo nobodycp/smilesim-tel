@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-10 (outbox relay, dispatcher and recovery, plan `docs/superpowers/plans/2026-11-10-provider-dispatcher.md`; before it provider operation lifecycle foundation, plan `docs/superpowers/plans/2026-11-10-provider-operation-lifecycle.md`; before it production settings checked at start, no simulation in production, plan `docs/superpowers/plans/2026-11-10-production-config-and-simulation.md`; before it backend loose ends, plan `docs/superpowers/plans/2026-11-10-backend-loose-ends.md`: reads do not write, queries parsed by schema, package codes without the provider; before it one list contract and route names, plan `docs/superpowers/plans/2026-11-10-lists-and-routes.md`; before it backend hardening, plan `docs/superpowers/plans/2026-11-10-backend-hardening.md`). tsc clean
+Last verified: 2026-11-10 (activation settlement schema, slice S.1 of plan `docs/superpowers/plans/2026-11-10-activation-settlement.md`; before it outbox relay, dispatcher and recovery, plan `docs/superpowers/plans/2026-11-10-provider-dispatcher.md`; before it provider operation lifecycle foundation, plan `docs/superpowers/plans/2026-11-10-provider-operation-lifecycle.md`; before it production settings checked at start, no simulation in production, plan `docs/superpowers/plans/2026-11-10-production-config-and-simulation.md`; before it backend loose ends, plan `docs/superpowers/plans/2026-11-10-backend-loose-ends.md`: reads do not write, queries parsed by schema, package codes without the provider; before it one list contract and route names, plan `docs/superpowers/plans/2026-11-10-lists-and-routes.md`; before it backend hardening, plan `docs/superpowers/plans/2026-11-10-backend-hardening.md`). tsc clean
 with `noUnusedLocals`, lint clean with no size exceptions, 1098 specs (the PostgreSQL ones included), every guard in
 `src/architecture.spec.ts` at 0. History of what changed lives in git and in the plans, not on this line.
 
@@ -129,12 +129,12 @@ Every route is in a domain controller (table above). `testing/routes.http.spec.t
   as it is. `src/seal-secrets.ts` seals what is already stored.
 - **Config and logs:** `config.ts` only; Nest `Logger` only (`shared/log.ts`).
 
-## Data model (`prisma/schema.prisma`, 53 migrations)
+## Data model (`prisma/schema.prisma`, 56 migrations)
 
 User, Session, Role, UserRole, LayerPolicy, Wallet, WalletEntry, Provider, ProviderEntry, Company, Package,
 PackageRenewal, PackageSwitch, UserPackage, SellPrice, Line, OfficeTask, OfficeTaskNote, ActivityEvent, AccessLog,
 Notice, LineCountSnapshot, SiteBranding, ProviderReconciliation, ProviderReconItem, Passkey, PackageAddon, Offer,
-ProviderOperation, OutboxMessage.
+ProviderOperation, OutboxMessage, ProviderDecisionEvent, ProviderCredential.
 
 Status/kind/layer fields are `String`; the database refuses unknown values with CHECK constraints added as
 `NOT VALID` (`Line.status`, `OfficeTask.status`, `Wallet.held >= 0`). Foreign keys (2026-11-10):
@@ -145,9 +145,9 @@ against the migrations is empty.
 
 ## Tests
 
-102 spec files beside what they test. Service specs run on `office/testing/tree.fixture.ts` through
+103 spec files beside what they test. Service specs run on `office/testing/tree.fixture.ts` through
 `office/testing/office-facade.ts`; HTTP specs through `office/testing/office-test-app.ts` (or `Test.createTestingModule`
-with `API_PROVIDERS`). Six `*.db.spec.ts` files need PostgreSQL (`TEST_DATABASE_URL`), and the queue part of `outbox-relay.db.spec.ts` Redis (`TEST_REDIS_URL`); the CI `db` job gives them
+with `API_PROVIDERS`). Seven `*.db.spec.ts` files need PostgreSQL (`TEST_DATABASE_URL`), and the queue part of `outbox-relay.db.spec.ts` Redis (`TEST_REDIS_URL`); the CI `db` job gives them
 one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec file at a time with
 `npm test --workspace api -- --forceExit <path>` (plain `npx jest` fails on ESM).
 
@@ -163,7 +163,11 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
   provider status check and no screen for `unknown` operations; published outbox rows are never pruned. Next steps:
   plan `2026-11-10-provider-dispatcher.md`.
 - How an activation will use them (hold on the task at the request, capture on the provider's verdict) is
-  designed and **not implemented**: ADR 0019 (proposed), spec and plan `2026-11-10-activation-settlement.md`. The
+  designed in ADR 0019 (accepted), spec and plan `2026-11-10-activation-settlement.md`. **Only its schema exists
+  (slice S.1, migration `20261110190000_activation_settlement_schema`)**: `ProviderOperation.taskId` (unique),
+  `appliedAt`, `applyError`, the result columns; `OfficeTask.requestKey`; the provider's dispatch approval;
+  `ProviderDecisionEvent` (append-only by trigger) and `ProviderCredential` (sealed). **No code reads or writes any
+  of it**; `providers/operations/settlement-schema.db.spec.ts` pins what the database refuses. The
   spec's section 3 lists what the audit found in today's activation (no reservation of a serial or number while a
   task is open; a lowered ceiling can block a completion; no durable request idempotency). The owner decided on
   2026-11-10 that the reservation and `capture` also apply to the manual path, and that a request key and the

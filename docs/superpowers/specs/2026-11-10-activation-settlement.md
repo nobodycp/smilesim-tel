@@ -4,7 +4,8 @@ Owner task 04, 2026-11-10, on `16e345d`. Revised twice the same day: with the ow
 with the final review (one operation per task, cancellation, how a provider is switched on, eSIM data, the second
 approval, lock order). Section 10 lists what the review changed and what still conflicts with text elsewhere.
 The direction is agreed: the task carries the money, the operation carries the provider's verdict, one settlement.
-**Design and audit only**; S.1 starts after the owner's review. No code, schema, route or screen changes with
+The design is accepted (ADR 0019). **Slice S.1, the schema, is built** (task 05); everything else here is
+still design, and the plan says which slices exist. No code, schema, route or screen changes with
 this document. It says how `ProviderOperation` and the dispatcher (ADR 0017, 0018) join the activation's money,
 and what must be true before any of it is switched on.
 

@@ -179,10 +179,16 @@ model Provider {
   lastMatchedAt  DateTime?
   /** When «مطابقة متأخرة» was sent for this lapse; cleared once the provider is matched again. */
   matchOverdueNoticeAt DateTime?
+  /** When the owner approved dispatching this provider's operations on this deployment, and who (ADR 0019, D18). Empty: never approved, nothing is dispatched for it. */
+  dispatchApprovedAt          DateTime?
+  dispatchApprovedByLoginName String?
+  /** Set while the owner has paused the provider: new sales take the manual route. */
+  dispatchPausedAt            DateTime?
   packages    Package[]
   entries     ProviderEntry[]
   reconciliations ProviderReconciliation[]
   operations  ProviderOperation[]
+  credentials ProviderCredential[]
 }
 
 /// One operation asked of a provider, from the request to its settled answer (ADR 0017). It holds what was asked
@@ -213,12 +219,70 @@ model ProviderOperation {
   leaseUntil     DateTime?
   /// Written just before the provider is called for the current attempt; empty means the request never left.
   sentAt         DateTime?
+  /// The activation task this operation settles (ADR 0019, D3): at most one operation per task, for ever.
+  taskId         String?   @unique
+  task           OfficeTask? @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  /// When the verdict was applied to the task and the money (the line and the capture, or the task left to the
+  /// branch). Empty on a settled operation means the settlement still has to run.
+  appliedAt      DateTime?
+  /// Why a succeeded operation could not be applied: `number-taken`, `sim-taken` or `target-missing` (D16).
+  applyError     String?
+  applyFailedAt  DateTime?
+  /// What the provider handed back with a confirmed activation.
+  resultMsisdn   String?
+  resultIccid    String?
+  /// An eSIM's activation code, sealed (`v1:`…): the database refuses it in clear (D17).
+  resultEsimCode String?
+  decisions      ProviderDecisionEvent[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   @@index([status, updatedAt])
   @@index([providerId, createdAt])
   @@index([lineId])
+}
+
+/// One step of a decision a person takes on a provider operation (ADR 0019, D15): proposed, approved, refused or
+/// applied. Append-only: a database trigger refuses UPDATE, DELETE and TRUNCATE, and nothing purges it. The account
+/// is kept by id and login as written, with no foreign key, so the record outlives the account.
+model ProviderDecisionEvent {
+  id               String            @id @default(uuid())
+  operationId      String
+  operation        ProviderOperation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  /// 1, 2, 3… per operation: the order of the steps, and what makes two writers of the same step collide.
+  sequence         Int
+  /// `proposed`, `approved`, `refused` or `applied`.
+  type             String
+  /// `confirm-success`, `declare-failure`, `apply-corrected` or `release-after-success`.
+  decision         String
+  /// `provider-portal`, `provider-statement`, `provider-answer` or `line-test`; required on a proposal and on an
+  /// applied decision.
+  evidenceKind     String?
+  providerRef      String?
+  note             String            @default("")
+  /// Whether an eSIM code came with the decision. The code itself is never stored here.
+  suppliedEsimCode Boolean           @default(false)
+  accountId        String
+  accountLoginName String
+  createdAt        DateTime          @default(now())
+
+  @@unique([operationId, sequence])
+}
+
+/// A provider's credential for one target, sealed (`v1:`…) and opened only in the worker (ADR 0019, D18). Never
+/// returned by a route.
+model ProviderCredential {
+  id                 String   @id @default(uuid())
+  providerId         String
+  provider           Provider @relation(fields: [providerId], references: [id], onDelete: Restrict)
+  /// `sandbox` or `live`.
+  target             String
+  sealedValue        String
+  updatedByLoginName String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([providerId, target])
 }
 
 /// A message written in the same transaction as the change it announces; a relay publishes it afterwards and
@@ -441,9 +505,14 @@ model OfficeTask {
   note          String?
   resultNote    String?
   log           String           @default("")
+  /** SHA-256 of the submitter and the request's `Idempotency-Key`: one task per request (ADR 0019, D14). */
+  requestKey    String?          @unique
+  /** The fingerprint of the request's body, so a key that comes back with another request is refused. */
+  requestHash   String?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   notes         OfficeTaskNote[]
+  providerOperation ProviderOperation?
 
   @@index([status, createdAt])
   @@index([submitterId, createdAt])
