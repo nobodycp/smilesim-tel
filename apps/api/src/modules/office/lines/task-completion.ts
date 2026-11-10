@@ -1,3 +1,4 @@
+import { esimCodeOrFail } from './esim-code';
 import { LinesRepository } from './lines.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { UnitOfWork } from '../kernel/unit-of-work';
@@ -137,7 +138,11 @@ export class TaskCompletion {
       if (refusal) fail(400, refusal);
       handed.iccid = givenIccid;
     }
-    const handedQr = task.action === 'esim' || task.esim ? givenQr ?? task.esimQr : null;
+    const handsCode = task.action === 'esim' || task.esim;
+    // The code the task has carried since it opened is about to be put on the line as it is stored. One that does
+    // not open is refused here, before anything is written or charged; a code given now takes its place.
+    if (handsCode && !givenQr) esimCodeOrFail(task.esimQr, `task ${task.id}`);
+    const handedQr = handsCode ? givenQr ?? task.esimQr : null;
     return { handed, handedQr };
   }
 

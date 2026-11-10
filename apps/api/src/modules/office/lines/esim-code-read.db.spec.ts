@@ -26,13 +26,14 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
   jest.setTimeout(60_000);
   const before = { url: process.env.DATABASE_URL, key: process.env.SECRETS_KEY };
   const tag = randomUUID().slice(0, 8);
-  const ids = { owner: randomUUID(), pos: randomUUID(), provider: randomUUID(), company: randomUUID(), pkg: randomUUID() };
+  const ids = { owner: randomUUID(), pos: randomUUID(), stranger: randomUUID(), provider: randomUUID(), company: randomUUID(), pkg: randomUUID() };
   const line = { clear: randomUUID(), sealed: randomUUID(), damaged: randomUUID(), none: randomUUID() };
   const task = { clear: randomUUID(), sealed: randomUUID(), onLine: randomUUID() };
   let prisma: ReturnType<typeof createPrismaClient>;
   let service: OfficeFacade;
   let pos: { sessionId: string };
   let owner: { sessionId: string };
+  let stranger: { sessionId: string };
   let sealedQr = '';
   let sealedTaskQr = '';
   let damagedQr = '';
@@ -86,11 +87,14 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     });
     await prisma.user.create({ data: { ...user(ids.owner, 'branch', null, true), wallet: { create: { balance: 0, ceiling: 0 } } } });
     await prisma.user.create({ data: { ...user(ids.pos, 'pos', ids.owner, false), wallet: { create: { balance: 100_000, ceiling: 0 } } } });
-    for (const row of [user(ids.owner, 'branch', null, true), user(ids.pos, 'pos', ids.owner, false)]) {
+    // Another point of sale under the same branch: it has no part in the first one's lines or tasks.
+    await prisma.user.create({ data: { ...user(ids.stranger, 'pos', ids.owner, false), loginName: `esim-${tag}-other`, wallet: { create: { balance: 0, ceiling: 0 } } } });
+    for (const row of [user(ids.owner, 'branch', null, true), user(ids.pos, 'pos', ids.owner, false), { ...user(ids.stranger, 'pos', ids.owner, false), loginName: `esim-${tag}-other` }]) {
       auth.addUser({ ...row, disabledAt: null, mustChangePassword: false, twoFactorExempt: true, twoFactorEnabled: false } as Parameters<MemoryAuthStore['addUser']>[0]);
     }
     pos = { sessionId: await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' }) };
     owner = { sessionId: await auth.saveSession({ userId: ids.owner, scope: 'full', userAgent: '', ip: '' }) };
+    stranger = { sessionId: await auth.saveSession({ userId: ids.stranger, scope: 'full', userAgent: '', ip: '' }) };
     await prisma.provider.create({ data: { id: ids.provider, code: `esim-${tag}`, name: 'esim' } });
     await prisma.company.create({ data: { id: ids.company, code: `esim-${tag}`, name: 'esim' } });
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
@@ -105,8 +109,8 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
         // Two tasks that carry a code of their own (no line yet), one clear and one sealed.
         taskRow(task.clear, { action: 'activate', esimQr: QR.clear, msisdn: number() }),
         taskRow(task.sealed, { action: 'activate', esimQr: sealedTaskQr, msisdn: number() }),
-        // A task on a line: the line's code is the one shown.
-        taskRow(task.onLine, { lineId: line.sealed, esimQr: null }),
+        // A task on a line that does not replace its code: the line's code is the one shown.
+        taskRow(task.onLine, { action: 'freeze', lineId: line.sealed, esimQr: null }),
       ],
     });
     service = new OfficeFacade(auth, { write: async () => [], publish: async () => undefined } as unknown as NoticeService);
@@ -123,8 +127,8 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     await prisma.package.deleteMany({ where: { id: ids.pkg } });
     await prisma.company.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
-    await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
-    await prisma.user.deleteMany({ where: { id: ids.pos } });
+    await prisma.wallet.deleteMany({ where: { userId: { in: [ids.owner, ids.pos, ids.stranger] } } });
+    await prisma.user.deleteMany({ where: { id: { in: [ids.pos, ids.stranger] } } });
     await prisma.user.deleteMany({ where: { id: ids.owner } });
     await prisma.$disconnect();
     await (service as unknown as { prisma: { $disconnect: () => Promise<void> } }).prisma.$disconnect();
@@ -248,6 +252,132 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     await capturedOutput(async () => {
       expect(await detailOf(answer.line.id)).toBe(REFUSED);
       expect((await listed())[answer.line.id]).toBeNull();
+    });
+  });
+
+  // Owner's correction, 2026-11-11: an open task that replaces a line's code still opens when the old code does
+  // not, because completing it is the repair.
+  describe('an open task that replaces a code that no longer opens', () => {
+    const NEW_QR = 'data:image/png;base64,TkVXLVFSLUNPREUtRklWRQ==';
+    const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
+    const number = () => `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
+    /** An active eSIM line whose stored code is sealed and does not open. */
+    const damagedLine = async () => {
+      const id = randomUUID();
+      await prisma.line.create({ data: { id, msisdn: number(), iccid: serial(), esim: true, esimQr: damagedQr, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+      return id;
+    };
+    const money = async (lineId: string) => {
+      const wallet = await prisma.wallet.findUniqueOrThrow({ where: { userId: ids.pos } });
+      const entries = await prisma.walletEntry.findMany({ where: { lineId } });
+      return { balance: wallet.balance, held: wallet.held, moved: entries.filter((entry) => entry.amount !== 0).map((entry) => entry.amount), entries: entries.length };
+    };
+    const refusalOf = async (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof OfficeFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
+    const taskAs = (gate: { sessionId: string }, id: string) => answered(async () => (await service.task(gate, id)).task.esimQr);
+    const lineCode = async (id: string) => (await prisma.line.findUniqueOrThrow({ where: { id } })).esimQr;
+
+    it('a SIM change: its detail opens for the same readers only, shows the new code and never the old one, and completing it repairs the line with no money moved', async () => {
+      const lineId = await damagedLine();
+      const before = await money(lineId);
+      let taskId = '';
+      const output = await capturedOutput(async () => {
+        const opened = (await service.swapSim(pos, lineId, { iccid: serial(), esim: true, qr: NEW_QR, outcome: 'fail' })) as { applied: boolean; taskId: string };
+        expect(opened.applied).toBe(false);
+        taskId = opened.taskId;
+        // The handler and the submitter read it; the code shown is the one the task hands over.
+        expect(await taskAs(owner, taskId)).toBe(NEW_QR);
+        expect(await taskAs(pos, taskId)).toBe(NEW_QR);
+        // The permission checks are what they were: an account outside the task does not see it.
+        expect(await taskAs(stranger, taskId)).toBe('404 NOT_FOUND');
+        // The line's own detail is still a fault.
+        expect(await detailOf(lineId)).toBe(REFUSED);
+        const whole = JSON.stringify(await service.task(owner, taskId));
+        expect(whole).not.toContain('v1:');
+        expectNoCode(whole.split(NEW_QR).join(''));
+      });
+      expect(output).toContain(`line ${lineId}: its eSIM code is stored sealed and could not be opened (unreadable); the open task replaces it, so it is not shown`);
+      expectNoCode(output);
+      expect(await lineCode(lineId)).toBe(damagedQr);
+
+      expect(await service.completeTask(owner, taskId, {})).toEqual({ ok: true });
+      expect(await lineCode(lineId)).toBe(NEW_QR);
+      expect(await detailOf(lineId)).toBe(NEW_QR);
+      expect(await taskAs(owner, taskId)).toBe(NEW_QR);
+      const after = await money(lineId);
+      expect({ balance: after.balance, held: after.held, moved: after.moved }).toEqual({ balance: before.balance, held: before.held, moved: [] });
+      // A second completion is refused and writes nothing.
+      expect(await refusalOf(service.completeTask(owner, taskId, {}))).toBe('400 INVALID');
+      expect(await money(lineId)).toEqual(after);
+    });
+
+    it('a new eSIM: its detail opens with no code yet, and completing it charges the held price exactly once', async () => {
+      const lineId = await damagedLine();
+      const before = await money(lineId);
+      let taskId = '';
+      const output = await capturedOutput(async () => {
+        taskId = ((await service.requestEsim(pos, lineId)) as { taskId: string }).taskId;
+        expect(await taskAs(owner, taskId)).toBeNull();
+        expect(await taskAs(pos, taskId)).toBeNull();
+        expect(await taskAs(stranger, taskId)).toBe('404 NOT_FOUND');
+      });
+      expectNoCode(output);
+      const held = await money(lineId);
+      const price = held.held - before.held;
+      expect(price).toBeGreaterThan(0);
+      expect(held.balance).toBe(before.balance);
+
+      expect(await service.completeTask(owner, taskId, { iccid: serial(), qr: NEW_QR })).toEqual({ ok: true });
+      const after = await money(lineId);
+      expect({ balance: after.balance, held: after.held, moved: after.moved }).toEqual({ balance: before.balance - price, held: before.held, moved: [-price] });
+      expect(await lineCode(lineId)).toBe(NEW_QR);
+      expect(await detailOf(lineId)).toBe(NEW_QR);
+      expect(await refusalOf(service.completeTask(owner, taskId, { iccid: serial(), qr: NEW_QR }))).toBe('400 INVALID');
+      expect(await money(lineId)).toEqual(after);
+    });
+
+    it('a new code that does not open either is never passed over: the detail and the completion are refused, nothing is written, and a code given at completion repairs it', async () => {
+      const lineId = await damagedLine();
+      const healthyLine = randomUUID();
+      await prisma.line.create({ data: { id: healthyLine, msisdn: number(), iccid: serial(), esim: true, esimQr: QR.clear, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+      const open = async (line: string) => ((await service.swapSim(pos, line, { iccid: serial(), esim: true, qr: NEW_QR, outcome: 'fail' })) as { taskId: string }).taskId;
+      const onDamaged = await open(lineId);
+      const onHealthy = await open(healthyLine);
+      // As a sealed code that does not open would sit on the task once codes are sealed on write.
+      await prisma.officeTask.updateMany({ where: { id: { in: [onDamaged, onHealthy] } }, data: { esimQr: damagedQr } });
+      const before = { damaged: await money(lineId), healthy: await money(healthyLine) };
+
+      const output = await capturedOutput(async () => {
+        for (const taskId of [onDamaged, onHealthy]) {
+          expect(await taskAs(owner, taskId)).toBe(REFUSED);
+          expect(await refusalOf(service.completeTask(owner, taskId, {}))).toBe(REFUSED);
+          expect((await prisma.officeTask.findUniqueOrThrow({ where: { id: taskId } })).status).toBe('working');
+        }
+      });
+      expect(output).toContain(`task ${onDamaged}: its eSIM code is stored sealed and could not be opened (unreadable); the request is refused`);
+      expect(output).toContain(`task ${onHealthy}: its eSIM code is stored sealed and could not be opened (unreadable); the request is refused`);
+      expectNoCode(output);
+      expect(await lineCode(lineId)).toBe(damagedQr);
+      expect(await lineCode(healthyLine)).toBe(QR.clear);
+      expect({ damaged: await money(lineId), healthy: await money(healthyLine) }).toEqual(before);
+
+      // The handler attaches a code that reads: the task closes and the line is repaired.
+      await capturedOutput(async () => {
+        expect(await service.completeTask(owner, onDamaged, { qr: NEW_QR })).toEqual({ ok: true });
+      });
+      expect(await lineCode(lineId)).toBe(NEW_QR);
+      expect((await money(lineId)).moved).toEqual([]);
+    });
+
+    it('every other task on such a line, and a replacing task once it is closed, still refuse', async () => {
+      const lineId = await damagedLine();
+      const row = (action: string, status: string) => ({ id: randomUUID(), action, status, posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: 0, esim: true, lineId, esimQr: null });
+      const rows = { freeze: row('freeze', 'working'), rename: row('rename', 'working'), simDone: row('sim', 'done'), simRejected: row('sim', 'rejected'), esimClosed: row('esim', 'cancelled') };
+      await prisma.officeTask.createMany({ data: Object.values(rows) });
+      const output = await capturedOutput(async () => {
+        for (const task of Object.values(rows)) expect([task.action, task.status, await taskAs(owner, task.id)]).toEqual([task.action, task.status, REFUSED]);
+        expect(await detailOf(lineId)).toBe(REFUSED);
+      });
+      expectNoCode(output);
     });
   });
 });

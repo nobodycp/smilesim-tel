@@ -188,8 +188,12 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     open: answered with its code, charged once; stored values unchanged; nothing of a code in the output or in
     the refusal), `shared/secret-box.spec.ts` (everything sealed opens, authenticator secrets included). Answer
     shapes are unchanged for readable codes (`response-shape.spec.ts`, `routes.http.spec.ts`).
-    **Known cost:** a task whose line holds an unreadable code cannot be opened in the task screen until the
-    stored value is repaired; the owner chose a visible fault over a silent "no code".
+    **Open replacing tasks (owner's correction, 2026-11-11):** an open `sim` or `esim` task on a line still
+    opens when the line's old code is unreadable (`replacedEsimCode`): the old code is logged and not shown, the
+    task's own code is answered in its place, and the permission checks are untouched. The task's own code is
+    read first with `esimCodeOrFail`, in the detail and again in `TaskCompletion.handedBack` before anything is
+    written or charged, so a new code that does not open is refused; a code given at completion takes its place.
+    Every other task on such a line, a closed replacing task and the line's detail keep `ESIM_CODE_UNREADABLE`.
     **For S.5b:** seal before the transaction and check that the sealed value opens to the code, so a sealing
     fault refuses the sale before any money moves.
   - **S.5b Seal on write, then backfill.** The same repositories seal on write. `src/seal-secrets.ts` gains the
