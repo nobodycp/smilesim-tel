@@ -1,3 +1,4 @@
+import { LayerRoles } from '../roles/layer-roles';
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -272,9 +273,12 @@ describe('accounts and roles over HTTP', () => {
 
   it('shows and edits roles for the owner only', async () => {
     expect(await code(as('clerk', 'get', '/office/roles'))).toBe('403 FORBIDDEN');
+    // The API makes the four layer roles when it starts (catalog seed), never on a read.
+    expect((await as('owner', 'get', '/office/roles')).body.roles.map((role: { kind: string }) => role.kind)).toEqual(['job']);
+    await app.get(LayerRoles).ensureLayerRoles();
     const listed = await as('owner', 'get', '/office/roles');
     expect(listed.status).toBe(200);
-    // The four layer roles are made on first read, then the job roles follow.
+    // The layer roles first, in layer order, then the job roles.
     expect(listed.body.roles.map((role: { kind: string; layer: string }) => `${role.kind}:${role.layer}`)).toEqual(['layer:branch', 'layer:main_agent', 'layer:agent', 'layer:pos', 'job:']);
     expect(await code(as('clerk', 'post', '/office/roles', { name: 'دور' }))).toBe('403 FORBIDDEN');
     expect(await code(as('owner', 'post', '/office/roles', { name: 'x' }))).toBe('400 INVALID');

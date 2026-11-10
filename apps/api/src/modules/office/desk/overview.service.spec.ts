@@ -72,8 +72,7 @@ describe('OverviewService', () => {
     expect(result.lines).toEqual({ active: 7, expiring: 2, frozen: 2, disconnected: 3, suspended: 1 });
   });
 
-  it('counts each slice\'s change against the last snapshot before the period, and writes today\'s', async () => {
-    const today = new Date().toISOString().slice(0, 10);
+  it('counts each slice\'s change against the last snapshot before the period, and writes nothing itself', async () => {
     const snapshots = [
       { userId: 'agent', day: '2000-01-01', active: 1, expiring: 0, frozen: 0, disconnected: 0, suspended: 0 },
       { userId: 'agent', day: '2000-01-02', active: 4, expiring: 2, frozen: 3, disconnected: 3, suspended: 1 },
@@ -81,7 +80,8 @@ describe('OverviewService', () => {
     const day = await service(snapshots).overview(actor('agent', 'agent'), { period: 'day' });
     // Now: active 7, expiring 2, frozen 2, disconnected 3, suspended 1 — against the latest day before today.
     expect(day.lineChange).toEqual({ active: 3, expiring: 0, frozen: -1, disconnected: 0, suspended: 0 });
-    expect(snapshots.find((row) => row.day === today)).toMatchObject({ userId: 'agent', active: 7, frozen: 2 });
+    // Reading the home is a read: the day's snapshot is the timer's to write (plan backend-loose-ends A.3).
+    expect(snapshots).toHaveLength(2);
     // All time compares with nothing: the change is the count itself.
     expect((await service(snapshots).overview(actor('agent', 'agent'), { period: 'all' })).lineChange).toEqual({ active: 7, expiring: 2, frozen: 2, disconnected: 3, suspended: 1 });
   });

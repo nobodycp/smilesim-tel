@@ -1,5 +1,4 @@
 import { LIST_CAP, capList } from '../../shared/paging';
-import { LayerRoles } from './layer-roles';
 import { RolesRepository } from './roles.repository';
 import { isOwner, requireOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
@@ -13,11 +12,10 @@ import { RoleBody } from './roles.schemas';
 /** Roles, for the branch owner: the four layer roles and the job roles, with their grants. */
 @Injectable()
 export class RolesService {
-  constructor(private readonly layerRoles: LayerRoles, private readonly repo: RolesRepository) {}
+  constructor(private readonly repo: RolesRepository) {}
 
   async list(actor: Actor) {
     if (!isOwner(actor)) fail(403, 'FORBIDDEN');
-    await this.layerRoles.ensureLayerRoles();
     const { rows: roles, capped } = capList(await this.repo.roles(LIST_CAP + 1));
     const rank = (role: { kind: string; layer: string | null; name: string }) =>
       role.kind === 'layer' ? LAYER_ORDER.indexOf(role.layer ?? '') : LAYER_ORDER.length;

@@ -124,7 +124,7 @@ export class OfficeFacade {
   private roleDeskInstance: RolesService | null = null;
 
   private get roleDesk(): RolesService {
-    this.roleDeskInstance ??= new RolesService(this.graph.layerRoles, new RolesRepository(this.graph.uow));
+    this.roleDeskInstance ??= new RolesService(new RolesRepository(this.graph.uow));
     return this.roleDeskInstance;
   }
 
@@ -138,7 +138,7 @@ export class OfficeFacade {
   private accountDeskInstance: AccountsService | null = null;
 
   private get accountDesk(): AccountsService {
-    this.accountDeskInstance ??= new AccountsService(this.graph.uow, this.graph.tree, this.graph.layerRoles, this.graph.auth, new AccountsRepository(this.graph.uow), this.graph.ledger);
+    this.accountDeskInstance ??= new AccountsService(this.graph.uow, this.graph.tree, this.graph.auth, new AccountsRepository(this.graph.uow), this.graph.ledger);
     return this.accountDeskInstance;
   }
 

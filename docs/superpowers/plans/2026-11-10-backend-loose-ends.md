@@ -27,7 +27,12 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
   - `lines/task-completion.ts:265`: `.catch(numberTaken)`.
   - Spec: `lines/line-state.spec.ts` — completing a rename task onto a taken number is `409 NUMBER_TAKEN`, the task
     stays `working`, its hold is unchanged, no wallet entry.
-- [ ] **A.3 The home does not write (after D1).**
+- [x] **A.3 The home does not write (after D1).** (COMMIT; D1 = the API's timer, the owner said «اكمل» to the
+  proposal. The timer runs at start and every hour and writes over the day's row, so a later day compares with the
+  day's last count; five grouped queries for the whole office. The guard is a spec, not a source scan:
+  `testing/get-writes-nothing.http.spec.ts` calls every GET route over tables that record writes. It found a
+  second writer: `GET /office/users/:loginName` and `GET /office/roles` made the layer roles on a read; they no
+  longer do (the boot seed makes them), and `AccountsService` / `RolesService` dropped `LayerRoles`. Rule 4.10.)
   - `desk/line-snapshots.service.ts` (new): `writeToday()` — one `groupBy` over lines per point of sale, summed up
     each account's path, `upsert` per account; started by a timer like `ProviderHealthService` (`isTest()` guard,
     no timer without a database).

@@ -29,6 +29,11 @@ export class DeskRepository {
     return this.uow.prisma.line.count({ where });
   }
 
+  /** How many lines each point of sale has under the filter: the daily snapshot sums them per account. */
+  lineCountsByPos(where: Prisma.LineWhereInput) {
+    return this.uow.prisma.line.groupBy({ by: ['posId'], where, _count: { _all: true } });
+  }
+
   /** The last eight line operations of these points of sale, with the account that paid. */
   latestOperations(posIds: string[]) {
     return this.uow.prisma.walletEntry.findMany({
@@ -39,7 +44,7 @@ export class DeskRepository {
     });
   }
 
-  /** Writes the viewer's line counts for the day, over the ones already stored for it. */
+  /** Writes an account's line counts for the day, over the ones already stored for it. */
   saveLineSnapshot(userId: string, day: string, lines: { active: number; expiring: number; frozen: number; disconnected: number; suspended: number }) {
     return this.uow.prisma.lineCountSnapshot.upsert({ where: { userId_day: { userId, day } }, update: lines, create: { userId, day, ...lines } });
   }

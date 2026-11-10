@@ -1,7 +1,6 @@
 import { AccountsRepository } from './accounts.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
-import { LayerRoles } from '../roles/layer-roles';
 import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { randomBytes } from 'node:crypto';
@@ -31,7 +30,7 @@ type ListedAccount = {
 /** Accounts below the signed-in one: the list and the name directory, opening an account, resetting its password, its access (grants and roles), freezing, deleting, and entering it. */
 @Injectable()
 export class AccountsService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly layerRoles: LayerRoles, @Inject(AUTH_STORE) private readonly auth: AuthStore, private readonly repo: AccountsRepository, private readonly ledger: WalletLedger) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, @Inject(AUTH_STORE) private readonly auth: AuthStore, private readonly repo: AccountsRepository, private readonly ledger: WalletLedger) {}
 
   /** One page of the accounts the actor may see, filtered and ordered by the server (`users-page.ts`). */
   async page(actor: Actor, filter: UsersFilter) {
@@ -167,7 +166,6 @@ export class AccountsService {
   }
 
   async detail(actor: Actor, loginName: string) {
-    await this.layerRoles.ensureLayerRoles();
     const target = await this.tree.visibleAccount(actor, loginName);
     const [layerRole, jobs, extra] = await Promise.all([
       this.repo.layerRole(target.layer),

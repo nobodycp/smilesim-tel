@@ -1,6 +1,5 @@
 import { AccountsRepository } from './accounts.repository';
 import { KernelModule } from '../kernel/kernel.module';
-import { RolesModule } from '../roles/roles.module';
 import { WalletsModule } from '../wallets/wallets.module';
 import { AccountSessionController } from './account-session.controller';
 import { AccountSessionService } from './account-session.service';
@@ -13,7 +12,7 @@ export const ACCOUNTS_CONTROLLERS = [AccountsController, AccountSessionControlle
 export const ACCOUNTS_PROVIDERS = [AccountsRepository, AccountsService, AccountSessionService];
 
 @Module({
-  imports: [KernelModule, RolesModule, WalletsModule],
+  imports: [KernelModule, WalletsModule],
   controllers: ACCOUNTS_CONTROLLERS,
   providers: ACCOUNTS_PROVIDERS,
   exports: [],

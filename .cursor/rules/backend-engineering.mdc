@@ -81,6 +81,9 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
 9. A field that holds an account's login ends in `LoginName`, in requests, answers and Prisma models
    (`parentLoginName`, `posLoginName`, `actorLoginName`); never `…Login` or `account`.
    *(architecture.spec: `login-field-name`)*
+10. A `GET` writes nothing: no row is created, changed or seeded on a read. What must exist is made when the API
+    starts (`catalog/catalog-seed.ts`); what is recorded over time is written by a timer
+    (`desk/line-snapshots.service.ts`). *(`testing/get-writes-nothing.http.spec.ts` calls every GET route)*
 
 ## 5. Structure
 

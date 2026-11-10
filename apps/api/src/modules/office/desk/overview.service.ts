@@ -78,12 +78,11 @@ export class OverviewService {
 
   /**
    * How each slice moved over the period (spec 2026-11-09-admin-review, 6.4): now minus the viewer's last snapshot
-   * before it — yesterday's for today, the previous month's last for this month, nothing (zero) for all time. Today's
-   * snapshot is written here, so history builds as the home is read. Null when there is no snapshot to compare with.
+   * before it — yesterday's for today, the previous month's last for this month, nothing (zero) for all time. The
+   * snapshots are written by `LineSnapshotsService` on a timer; this read writes nothing. Null when there is no
+   * snapshot to compare with.
    */
   private async lineChange(actor: Actor, period: OverviewPeriod, lines: LineCounts, now: Date): Promise<LineCounts | null> {
-    const today = now.toISOString().slice(0, 10);
-    await this.repo.saveLineSnapshot(actor.id, today, lines);
     if (period === 'all') return lines;
     const before = (periodStart(period, now) as Date).toISOString().slice(0, 10);
     const base = await this.repo.lineSnapshotBefore(actor.id, before);
