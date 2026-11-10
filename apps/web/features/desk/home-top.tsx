@@ -174,7 +174,7 @@ export function WaitingTasks({ tasks, open, loading }: { tasks: TaskRow[]; open:
                   <span className="task-mark" aria-hidden="true"><Zap size={16} /></span>
                   <span className="waiting-main">
                     <strong>{actionName(t, task.action)}</strong>
-                    <span className="sub"><bdi dir="ltr">{task.msisdn ?? '—'}</bdi> · <AccountName login={task.posLogin} /></span>
+                    <span className="sub"><bdi dir="ltr">{task.msisdn ?? '—'}</bdi> · <AccountName login={task.posLoginName} /></span>
                     {task.packageName ? <span className="sub">{task.packageName}</span> : null}
                   </span>
                   {task.createdAt ? <span className="sub waiting-age">{noticeAge(t, task.createdAt)}</span> : null}

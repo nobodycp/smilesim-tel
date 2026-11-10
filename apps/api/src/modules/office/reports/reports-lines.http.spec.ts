@@ -64,7 +64,7 @@ describe('reports and line refusals over HTTP', () => {
     });
     expect((await as('owner', 'get', '/office/reports/operations')).body).toEqual({
       total: 1,
-      items: [{ id: 'e1', at: '2026-11-08T09:00:00.000Z', loginName: 'pos1', actorLogin: 'owner', amount: -2000, balanceAfter: 500, kind: 'activate', note: null }],
+      items: [{ id: 'e1', at: '2026-11-08T09:00:00.000Z', loginName: 'pos1', actorLoginName: 'owner', amount: -2000, balanceAfter: 500, kind: 'activate', note: null }],
       nextCursor: null,
     });
   });

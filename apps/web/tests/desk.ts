@@ -80,10 +80,10 @@ function asUsersPage(url: URL, reply: Reply): Reply {
  * names its accounts under `GET /users` gets them there too (the route is asked with `?whole=1`).
  */
 function asDirectory(reply: Reply): Reply {
-  const body = reply.body as { users?: (ListedUser & { parentLogin?: string | null; frozen?: boolean })[] } | null;
+  const body = reply.body as { users?: (ListedUser & { parentLoginName?: string | null; frozen?: boolean })[] } | null;
   if (!body || !Array.isArray(body.users)) return reply;
   const items = body.users.map((row) => ({
-    loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLogin: row.parentLogin ?? null, frozen: row.frozen ?? false, mine: true,
+    loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLoginName: row.parentLoginName ?? null, frozen: row.frozen ?? false, mine: true,
   }));
   return { ...reply, body: { items, nextCursor: null, total: items.length } };
 }
@@ -101,7 +101,7 @@ export async function serveOffice(page: Page, layer: keyof typeof accounts, rout
     else if (key === 'GET /me') reply = { body: { ...accounts[layer], stops: [], impersonating: false, balance: 1000, ceiling: 0 } };
     else if (key === 'GET /directory' && url.searchParams.get('mine') && routes['GET /users']) reply = asDirectory(routes['GET /users'](new URL('http://desk/office/users?whole=1')));
     else if (key === 'GET /directory') {
-      const items = Object.values(accounts).map((row) => ({ loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLogin: null, frozen: false, mine: false }));
+      const items = Object.values(accounts).map((row) => ({ loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLoginName: null, frozen: false, mine: false }));
       reply = { body: { items, nextCursor: null, total: items.length } };
     }
     else if (key === 'GET /notices') reply = { body: { unread: 0, items: [], nextCursor: null } };

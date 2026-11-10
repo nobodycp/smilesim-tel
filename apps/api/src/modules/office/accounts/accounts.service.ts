@@ -55,7 +55,7 @@ export class AccountsService {
       nickname: account.nickname,
       layer: account.layer,
       roleName: account.role?.name ?? '',
-      parentLogin: account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
+      parentLoginName: account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
       balance: byWallet.get(account.id)?.balance ?? 0,
       ceiling: byWallet.get(account.id)?.ceiling ?? 0,
       held: byWallet.get(account.id)?.held ?? 0,
@@ -88,7 +88,7 @@ export class AccountsService {
           loginName: account.loginName,
           nickname: account.nickname,
           layer: account.layer,
-          parentLogin: mine && account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
+          parentLoginName: mine && account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
           frozen: mine && account.disabledAt !== null,
           mine,
         };
@@ -103,7 +103,7 @@ export class AccountsService {
     if (actor.impersonating || actor.layer === 'pos') fail(403, 'FORBIDDEN');
     // In the branch, opening an account is an edit and opening an employee is staff work (review S11).
     if (isBranch(actor)) requireGrant(actor, body.layer === 'staff' ? 'staff' : 'edit');
-    const { loginName, nickname, password, layer, parentLogin, roleId } = parseInput(CreateUserBody, body);
+    const { loginName, nickname, password, layer, parentLoginName, roleId } = parseInput(CreateUserBody, body);
     const nickError = fullNameProblem(nickname);
     if (nickError) fail(400, nickError);
     const passError = newPasswordProblem(password);
@@ -131,7 +131,7 @@ export class AccountsService {
     const self = isBranch(actor) && !isOwner(actor) ? await this.repo.branchOwnerId() : { id: actor.id };
     let parent = accounts.find((account) => account.id === self?.id) ?? null;
     if (layer !== direct[actor.layer]) {
-      const chosen = accounts.find((account) => account.loginName === parentLogin);
+      const chosen = accounts.find((account) => account.loginName === parentLoginName);
       const visible = visibleAccountIds(actor.id, actor.layer, accounts);
       const parentLayer = layer === 'agent' ? 'main_agent' : 'agent';
       parent = chosen && chosen.id !== actor.id && visible.has(chosen.id) && chosen.layer === parentLayer ? chosen : null;
@@ -205,7 +205,7 @@ export class AccountsService {
       loginName: target.loginName,
       nickname: target.nickname,
       layer: target.layer,
-      parentLogin: parent?.loginName ?? null,
+      parentLoginName: parent?.loginName ?? null,
       frozen: target.disabledAt !== null,
       isBranchOwner: target.isBranchOwner,
       staff,
@@ -310,7 +310,7 @@ export class AccountsService {
     if (target.disabledAt || target.id === actor.id) fail(400, 'INVALID');
     // Only an account below the branch is entered: never the owner, never another employee (review S1).
     if (target.layer === 'branch') fail(403, 'FORBIDDEN');
-    await this.repo.logEntry({ actorId: actor.operatorId, targetLogin: target.loginName, ip: meta.ip });
+    await this.repo.logEntry({ actorId: actor.operatorId, targetLoginName: target.loginName, ip: meta.ip });
     const sessionId = await this.auth.saveImpersonation({ userId: target.id, operatorId: actor.id, userAgent: meta.userAgent, ip: meta.ip });
     // The entered account opens on its own layer's door. Cookies there are set by `handoff`, so the browser carries
     // a one-time code to that host instead of the session itself (the admin host's cookies are left as they are).

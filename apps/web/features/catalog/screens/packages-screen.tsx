@@ -85,7 +85,7 @@ function PosCatalog({
     await run(
       () => api.activateLine({
         packageCode: picked.code,
-        posLogin: loginName,
+        posLoginName: loginName,
         esim: withEsim,
         iccid: withEsim ? '' : iccid.trim(),
         msisdn: activation === 'number' ? givenNumber.trim() : '',

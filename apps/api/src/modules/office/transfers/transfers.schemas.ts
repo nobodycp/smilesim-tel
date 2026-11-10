@@ -13,7 +13,7 @@ const lineChoice = z.enum(['keep', 'recapture']);
 const login = z.string().max(64).optional();
 
 export const TransferAccountBody = z.object({
-  parentLogin: login,
+  parentLoginName: login,
   ownPrices: choice,
   ownStops: choice,
   // Only an agent has anything below it, so these may be left out; one that is stated has to be a word.
@@ -23,5 +23,5 @@ export const TransferAccountBody = z.object({
 });
 export type TransferAccountBody = z.input<typeof TransferAccountBody>;
 
-export const TransferLineBody = z.object({ posLogin: login, linePrices: lineChoice });
+export const TransferLineBody = z.object({ posLoginName: login, linePrices: lineChoice });
 export type TransferLineBody = z.input<typeof TransferLineBody>;

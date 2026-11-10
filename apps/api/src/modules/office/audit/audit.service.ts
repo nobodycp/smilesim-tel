@@ -33,7 +33,7 @@ export class AuditService {
       ...(query.layer ? { actorLayer: query.layer } : {}),
       at: { gte: range.gte, lte: range.lte },
       ...(needle
-        ? { OR: [{ actorLogin: { contains: needle, mode: 'insensitive' } }, { subjectRef: { contains: needle, mode: 'insensitive' } }] }
+        ? { OR: [{ actorLoginName: { contains: needle, mode: 'insensitive' } }, { subjectRef: { contains: needle, mode: 'insensitive' } }] }
         : {}),
     };
     return where;
@@ -65,7 +65,7 @@ export class AuditService {
         result: row.result,
         reason: row.reason,
         ip: row.ip,
-        actorLogin: row.actorLogin,
+        actorLoginName: row.actorLoginName,
         actorLayer: row.actorLayer,
         subjectKind: row.subjectKind,
         subjectRef: row.subjectRef,
@@ -83,7 +83,7 @@ export class AuditService {
     });
     return csvOf(
       ['at', 'account', 'layer', 'action', 'subject', 'result', 'reason', 'ip'],
-      rows.map((row) => [row.at.toISOString(), row.actorLogin, row.actorLayer ?? '', row.action, row.subjectRef ?? '', row.result, row.reason ?? '', (row.ip ?? '').replace(/^::ffff:/, '')]),
+      rows.map((row) => [row.at.toISOString(), row.actorLoginName, row.actorLayer ?? '', row.action, row.subjectRef ?? '', row.result, row.reason ?? '', (row.ip ?? '').replace(/^::ffff:/, '')]),
     );
   }
 }

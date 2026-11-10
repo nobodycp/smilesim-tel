@@ -378,7 +378,7 @@ export class OfficeFacade {
     return this.accountDesk.directory(await this.actor(gate));
   }
 
-  async createAccount(gate: Gate, body: { loginName?: unknown; nickname?: unknown; password?: unknown; layer?: unknown; parentLogin?: unknown; roleId?: unknown }) {
+  async createAccount(gate: Gate, body: { loginName?: unknown; nickname?: unknown; password?: unknown; layer?: unknown; parentLoginName?: unknown; roleId?: unknown }) {
     return this.accountDesk.create(await this.actor(gate), body);
   }
 
@@ -416,11 +416,11 @@ export class OfficeFacade {
     return this.transferDesk.transferAccount(await this.actor(gate), loginName, body);
   }
 
-  async transferPreview(gate: Gate, loginName: string, query: { parentLogin?: unknown }) {
+  async transferPreview(gate: Gate, loginName: string, query: { parentLoginName?: unknown }) {
     return this.transferDesk.transferPreview(await this.actor(gate), loginName, query);
   }
 
-  async transferLine(gate: Gate, lineId: string, body: { posLogin?: unknown; linePrices?: unknown }) {
+  async transferLine(gate: Gate, lineId: string, body: { posLoginName?: unknown; linePrices?: unknown }) {
     return this.transferDesk.transferLine(await this.actor(gate), lineId, body);
   }
 

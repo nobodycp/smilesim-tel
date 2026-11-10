@@ -15,7 +15,7 @@ const mockLine = (n, status) => ({
   packageCode: 'cell-400',
   packageName: '400 جيجا',
   companyName: 'سلكوم',
-  posLogin: 'pos',
+  posLoginName: 'pos',
   posPrice: 26,
   createdAt: '2026-10-01T00:00:00.000Z',
   endsAt: '2026-11-12T00:00:00.000Z',
@@ -104,8 +104,8 @@ createServer((req, res) => {
       if (url.pathname === '/office/directory') {
         res.writeHead(200, json).end(JSON.stringify({
           items: [
-            { loginName: 'admin', nickname: 'الإدارة', layer: 'branch', parentLogin: null, frozen: false, mine: true },
-            { loginName: 'pos', nickname: 'الكاشير', layer: 'pos', parentLogin: 'admin', frozen: false, mine: true },
+            { loginName: 'admin', nickname: 'الإدارة', layer: 'branch', parentLoginName: null, frozen: false, mine: true },
+            { loginName: 'pos', nickname: 'الكاشير', layer: 'pos', parentLoginName: 'admin', frozen: false, mine: true },
           ],
           nextCursor: null,
           total: 2,

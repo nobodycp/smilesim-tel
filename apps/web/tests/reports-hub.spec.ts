@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { serveOffice } from './desk';
 
 const balances = {
-  items: [{ loginName: 'pos', nickname: 'الكاشير', layer: 'pos', parentLogin: 'agent1', balance: -2000, ceiling: 5000, used: 2000, available: 3000, frozen: false, lastAt: '2026-11-06T10:00:00.000Z' }],
+  items: [{ loginName: 'pos', nickname: 'الكاشير', layer: 'pos', parentLoginName: 'agent1', balance: -2000, ceiling: 5000, used: 2000, available: 3000, frozen: false, lastAt: '2026-11-06T10:00:00.000Z' }],
   totals: { count: 1, balance: -2000, used: 2000 },
   nextCursor: null,
   total: 1,

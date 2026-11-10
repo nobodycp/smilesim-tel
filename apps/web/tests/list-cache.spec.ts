@@ -3,7 +3,7 @@ import { serveOffice } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const event = (id: string, result: string) => ({
-  id, at: '2026-11-08T10:00:00.000Z', action: 'fund', result, reason: '', ip: '', actorLogin: 'admin', actorLayer: 'branch', subjectKind: 'account', subjectRef: 'pos1',
+  id, at: '2026-11-08T10:00:00.000Z', action: 'fund', result, reason: '', ip: '', actorLoginName: 'admin', actorLayer: 'branch', subjectKind: 'account', subjectRef: 'pos1',
 });
 
 // A filter change asks the server for the new list and keeps the rows on screen until it lands: no blank table.
@@ -28,7 +28,7 @@ test('a filter change keeps the previous rows until the new list arrives', async
 // After a write the list is asked again in the background, every chunk already read, and the reader stays on the page.
 test('taking a task on page 3 keeps the reader on page 3, with rows on screen while the list is asked again', async ({ page }) => {
   const task = (n: number) => ({
-    id: `t${n}`, action: 'activate', status: 'pending', posLogin: 'pos', submitterLogin: 'pos', assigneeLogin: null, posDelta: -26,
+    id: `t${n}`, action: 'activate', status: 'pending', posLoginName: 'pos', submitterLoginName: 'pos', assigneeLoginName: null, posDelta: -26,
     msisdn: `05500000${String(n).padStart(2, '0')}`, packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: true, canWork: false, canCancel: false,
   });
   const all = Array.from({ length: 25 }, (_, i) => task(i));

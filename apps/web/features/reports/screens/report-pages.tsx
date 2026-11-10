@@ -40,7 +40,7 @@ export function BalancesReportScreen() {
   const columns: Column<BalanceReportRow>[] = [
     { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.loginName} name={row.nickname} /> },
     { key: 'layer', header: t.layer, fit: true, render: (row) => <span className={`layer-tag l-${row.layer}`}>{layerName(t, row.layer)}</span> },
-    { key: 'parent', header: t.parent, render: (row) => <AccountName login={row.parentLogin} /> },
+    { key: 'parent', header: t.parent, render: (row) => <AccountName login={row.parentLoginName} /> },
     { key: 'balance', header: t.balance, num: true, sortValue: (row) => row.balance, render: (row) => <Money value={row.balance} /> },
     { key: 'ceiling', header: t.ceiling, num: true, sortValue: (row) => row.ceiling, render: (row) => <Money value={row.ceiling} /> },
     { key: 'held', header: t.held, num: true, sortValue: (row) => row.held, render: (row) => <Money value={row.held ?? 0} /> },

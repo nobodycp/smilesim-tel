@@ -120,7 +120,7 @@ describe('accounts and roles over HTTP', () => {
     expect(response.status).toBe(200);
     expect(response.body.items.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'pos1']);
     expect(response.body.items[1]).toEqual({
-      loginName: 'pos1', nickname: 'نقطة', layer: 'pos', roleName: '', parentLogin: 'ag1', balance: 700, ceiling: 100, held: 0, frozen: false,
+      loginName: 'pos1', nickname: 'نقطة', layer: 'pos', roleName: '', parentLoginName: 'ag1', balance: 700, ceiling: 100, held: 0, frozen: false,
       self: false, directChild: true, canEnter: false, canFreeze: false, canDelete: false,
     });
     const owner = await as('owner', 'get', '/office/users');
@@ -133,7 +133,7 @@ describe('accounts and roles over HTTP', () => {
     expect(page.status).toBe(200);
     expect(page.body).toMatchObject({ nextCursor: null, total: 2 });
     expect(page.body.items.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'ag2']);
-    expect(page.body.items[0]).toMatchObject({ loginName: 'ag1', parentLogin: 'ma1', canEnter: true });
+    expect(page.body.items[0]).toMatchObject({ loginName: 'ag1', parentLoginName: 'ma1', canEnter: true });
     const named = await as('owner', 'get', '/office/users?q=%D9%86%D9%82%D8%B7%D8%A9');
     expect(named.body.items.map((row: { loginName: string }) => row.loginName)).toEqual(['pos1']);
     expect(named.body.items[0]).toMatchObject({ balance: 700, ceiling: 100 });
@@ -145,7 +145,7 @@ describe('accounts and roles over HTTP', () => {
     expect((await as('ag1', 'get', '/office/directory?mine=1')).body.items.map((row: { loginName: string }) => row.loginName)).toEqual(['ag1', 'pos1']);
     const names = await as('ag1', 'get', '/office/directory?layer=pos');
     expect(names.body).toEqual({
-      items: [{ loginName: 'pos1', nickname: 'نقطة', layer: 'pos', parentLogin: 'ag1', frozen: false, mine: true }],
+      items: [{ loginName: 'pos1', nickname: 'نقطة', layer: 'pos', parentLoginName: 'ag1', frozen: false, mine: true }],
       nextCursor: null,
       total: 1,
     });
@@ -163,8 +163,8 @@ describe('accounts and roles over HTTP', () => {
     expect(await code(as('ag1', 'post', '/office/users', body({ loginName: 'x126', password: 'short' })))).toBe('400 PASSWORD_TOO_SHORT');
     expect(await code(as('ag1', 'post', '/office/users', body({ loginName: 'pos1' })))).toBe('409 LOGIN_TAKEN');
     // The branch places a point of sale under one of the agents it sees, never under nobody.
-    expect(await code(as('owner', 'post', '/office/users', body({ loginName: 'x127', parentLogin: 'ag2' })))).toBe('201');
-    expect(await code(as('owner', 'post', '/office/users', body({ loginName: 'x128', parentLogin: 'ma1' })))).toBe('400 INVALID');
+    expect(await code(as('owner', 'post', '/office/users', body({ loginName: 'x127', parentLoginName: 'ag2' })))).toBe('201');
+    expect(await code(as('owner', 'post', '/office/users', body({ loginName: 'x128', parentLoginName: 'ma1' })))).toBe('400 INVALID');
     expect(await code(as('owner', 'post', '/office/users', body({ loginName: 'x129' })))).toBe('400 INVALID');
   });
 
@@ -223,7 +223,7 @@ describe('accounts and roles over HTTP', () => {
     expect(entered.body).toEqual({ door: 'pos', code: expect.any(String) });
     // The admin host keeps the owner's own cookies.
     expect(entered.headers['set-cookie']).toBeUndefined();
-    expect(w.written.find((entry) => entry.op === 'accessLog.create')!.args).toMatchObject({ data: { actorId: 'owner', targetLogin: 'pos1' } });
+    expect(w.written.find((entry) => entry.op === 'accessLog.create')!.args).toMatchObject({ data: { actorId: 'owner', targetLoginName: 'pos1' } });
 
     // The point-of-sale door trades the code once for the entered session and the owner's session.
     expect(await code(request(app.getHttpServer()).post('/office/handoff').send({ code: 'nope' }))).toBe('400 INVALID');
@@ -279,7 +279,7 @@ describe('accounts and roles over HTTP', () => {
   it('shows an account\'s access and lets the owner change it', async () => {
     const shown = await as('ma1', 'get', '/office/users/ag1');
     expect(shown.status).toBe(200);
-    expect(shown.body).toMatchObject({ loginName: 'ag1', layer: 'agent', parentLogin: 'ma1', staff: false, canEdit: false });
+    expect(shown.body).toMatchObject({ loginName: 'ag1', layer: 'agent', parentLoginName: 'ma1', staff: false, canEdit: false });
     // The page's head and cards read the account as the list shows it to this viewer.
     expect(shown.body.listed).toMatchObject({ loginName: 'ag1', balance: 0, ceiling: 0, directChild: true, frozen: false });
     const pos = await as('ag1', 'get', '/office/users/pos1');

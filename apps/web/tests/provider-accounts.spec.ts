@@ -9,8 +9,8 @@ test('the branch reads its provider accounts, opens one, and records a payment a
   const calls = await serveOffice(page, 'branch', {
     'GET /provider-accounts': () => ({ body: { rows: [sky, lian], totals: { balance: 11000, held: 3500, owed: 2000 } } }),
     'GET /provider-accounts/sky': () => ({ body: { summary: sky, capped: false, ledger: [
-      { id: 'x1', at: '2026-11-05T00:00:00.000Z', kind: 'payment', amount: 20000, balanceAfter: 13000, note: 'دفعة', msisdn: '', packageName: '', actorLogin: 'admin' },
-      { id: 'o1', at: '2026-11-01T00:00:00.000Z', kind: 'activate', amount: -3500, balanceAfter: -3500, note: '', msisdn: '0550000001', packageName: '400 جيجا', actorLogin: '' },
+      { id: 'x1', at: '2026-11-05T00:00:00.000Z', kind: 'payment', amount: 20000, balanceAfter: 13000, note: 'دفعة', msisdn: '', packageName: '', actorLoginName: 'admin' },
+      { id: 'o1', at: '2026-11-01T00:00:00.000Z', kind: 'activate', amount: -3500, balanceAfter: -3500, note: '', msisdn: '0550000001', packageName: '400 جيجا', actorLoginName: '' },
     ] } }),
     'POST /provider-accounts/sky/entries': () => ({ body: { ok: true } }),
   });

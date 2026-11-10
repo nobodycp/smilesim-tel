@@ -40,7 +40,7 @@ describe('walletSummary', () => {
 describe('ledgerCsv', () => {
   it('writes a BOM, shekel amounts, quotes where needed, and defuses formulas', () => {
     const csv = ledgerCsv([{
-      at: '2026-11-06T09:00:00.000Z', loginName: 'pos1', layer: 'pos', actorLogin: 'admin', kind: 'activate',
+      at: '2026-11-06T09:00:00.000Z', loginName: 'pos1', layer: 'pos', actorLoginName: 'admin', kind: 'activate',
       amount: -1898, balanceBefore: 30000, balanceAfter: 28102, msisdn: '0550000001', companyName: 'سلكوم, بارتنر',
       packageName: '150 جيجا', note: '=HYPERLINK("x")',
     }]);

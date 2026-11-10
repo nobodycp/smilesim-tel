@@ -94,7 +94,7 @@ export function LineCardScreen() {
   const [nextEsim, setNextEsim] = useState(false);
   const [nextQr, setNextQr] = useState('');
   const [nextNumber, setNextNumber] = useState('');
-  const [posLogin, setPosLogin] = useState('');
+  const [posLoginName, setPosLoginName] = useState('');
   // What happens to the number's renewal price when it moves. Empty until chosen: there is no default.
   const [linePrices, setLinePrices] = useState<'' | TransferLinePrices>('');
   const [error, setError] = useState('');
@@ -130,7 +130,7 @@ export function LineCardScreen() {
     setNextEsim(false);
     setNextQr('');
     setNextNumber('');
-    setPosLogin('');
+    setPosLoginName('');
     setLinePrices('');
   }, []);
 
@@ -192,8 +192,8 @@ export function LineCardScreen() {
             <header className="line-hero">
               <p className="lede">
                 {[line.companyName, line.packageName].filter(Boolean).join(' · ')}
-                {!isPos && line.posLogin ? (
-                  <> · {t.pointOfSale} <Link className="line-pos" href={`/users/${encodeURIComponent(line.posLogin)}`}><AccountName login={line.posLogin} /></Link></>
+                {!isPos && line.posLoginName ? (
+                  <> · {t.pointOfSale} <Link className="line-pos" href={`/users/${encodeURIComponent(line.posLoginName)}`}><AccountName login={line.posLoginName} /></Link></>
                 ) : null}
               </p>
             </header>
@@ -248,7 +248,7 @@ export function LineCardScreen() {
                   <Fact label={t.remainingDays}>{daysLeft(line.endsAt)} {t.dayUnit}</Fact>
                   <Fact label={t.lastRecharge}>{line.lastRechargeAt ? <bdi dir="ltr">{latinWhen(line.lastRechargeAt)}</bdi> : '—'}</Fact>
                   <Fact label={t.subscriptionPrice}><Money value={line.subscriberPrice ?? line.posPrice} /></Fact>
-                  {!isPos && line.posLogin && <Fact label={t.pointOfSale}><AccountName login={line.posLogin} /></Fact>}
+                  {!isPos && line.posLoginName && <Fact label={t.pointOfSale}><AccountName login={line.posLoginName} /></Fact>}
                 </Facts>
                 <section className="usage">
                   <h2>{t.usage}</h2>
@@ -475,9 +475,9 @@ export function LineCardScreen() {
                 <Button type="button" variant="secondary" onClick={closeDialog}>{t.cancel}</Button>
                 <Button
                   type="button"
-                  disabled={busy || !posLogin || !linePrices}
+                  disabled={busy || !posLoginName || !linePrices}
                   onClick={() => {
-                    if (linePrices) void act(() => api.transferLine(line.id, posLogin, linePrices), { note: t.transfer, then: closeDialog });
+                    if (linePrices) void act(() => api.transferLine(line.id, posLoginName, linePrices), { note: t.transfer, then: closeDialog });
                   }}
                 >
                   {t.transfer}
@@ -488,13 +488,13 @@ export function LineCardScreen() {
             <div className="stack">
               <Facts>
                 <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
-                <Fact label={t.pointOfSale}><AccountName login={line.posLogin} /></Fact>
+                <Fact label={t.pointOfSale}><AccountName login={line.posLoginName} /></Fact>
               </Facts>
               <label>
                 {t.transfer}
                 <NameField
-                  value={posLogin}
-                  onChange={setPosLogin}
+                  value={posLoginName}
+                  onChange={setPosLoginName}
                   options={posChoices.map((row) => ({ value: row.loginName, label: accountLabel(row.loginName, row.nickname), keys: [row.loginName] }))}
                 />
               </label>

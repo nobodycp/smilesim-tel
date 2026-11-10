@@ -90,7 +90,7 @@ export function AccountScreen() {
   });
   // The server is the judge; this only hides controls from accounts that can never pass it.
   const canEditTerms = Boolean(
-    row && !row.staff && row.layer !== 'branch' && me && !me.impersonating && (me.layer === 'branch' ? me.isBranchOwner || me.grants.includes('edit') : me.loginName === row.parentLogin),
+    row && !row.staff && row.layer !== 'branch' && me && !me.impersonating && (me.layer === 'branch' ? me.isBranchOwner || me.grants.includes('edit') : me.loginName === row.parentLoginName),
   );
   // Tab counts: packages with a custom price, operations stopped. The tabs read the same cached answers.
   const termsFor = row?.loginName ?? params.login;
@@ -137,7 +137,7 @@ export function AccountScreen() {
     </span>
   ) : t.accountName;
   const lede = row
-    ? [layerName(t, row.layer), row.parentLogin ? `${t.parent}: ${row.parentLogin}` : '', row.staff ? row.roleName : ''].filter(Boolean).join(' · ')
+    ? [layerName(t, row.layer), row.parentLoginName ? `${t.parent}: ${row.parentLoginName}` : '', row.staff ? row.roleName : ''].filter(Boolean).join(' · ')
     : '';
   // The head groups the wallet's actions under «المحفظة» (fund, deduct, ceiling, statement); every other action of
   // the users list waits behind ⋯.
@@ -313,7 +313,7 @@ function AccountLines({ login }: { login: string }) {
   const columns: Column<LineRow>[] = [
     { key: 'number', header: t.number, render: (line) => <a href={`/numbers/${encodeURIComponent(line.id)}`}><bdi dir="ltr">{line.msisdn}</bdi></a> },
     { key: 'package', header: t.packageName, render: (line) => line.packageName || '—' },
-    { key: 'pos', header: t.pointOfSale, render: (line) => (line.posLogin ? <AccountName login={line.posLogin} /> : '—') },
+    { key: 'pos', header: t.pointOfSale, render: (line) => (line.posLoginName ? <AccountName login={line.posLoginName} /> : '—') },
     { key: 'status', header: t.status, render: (line) => <Badge variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge> },
     { key: 'ends', header: t.endsOn, render: (line) => (line.endsAt ? <bdi dir="ltr">{latinWhen(line.endsAt)}</bdi> : '—') },
   ];

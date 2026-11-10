@@ -5,7 +5,7 @@ const admin = 'http://admin.localhost:3910';
 
 // The user page, opened by the agent that owns the point of sale: the packages tab is its to edit.
 const account = {
-  loginName: 'pos', nickname: 'نقطة بيع', layer: 'pos', parentLogin: 'agent1', frozen: false, isBranchOwner: false, staff: false,
+  loginName: 'pos', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'agent1', frozen: false, isBranchOwner: false, staff: false,
   roleId: '', roleName: '', roleGrants: [], extraGrants: [], deniedGrants: [], extraRoleIds: [], grants: [], roles: [], canEdit: true,
 };
 
@@ -176,7 +176,7 @@ function sheetRoutes(): Routes {
   return {
     'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
     'GET /packages/lian-wecom-500/custom-prices': () => ({
-      body: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLogin: 'ag1', defaultPrice: 3500, defaultRenewalPrice: 3200, price: 2900, renewalPrice: null }],
+      body: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'ag1', defaultPrice: 3500, defaultRenewalPrice: 3200, price: 2900, renewalPrice: null }],
     }),
     'GET /users': () => ({ body: { users: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos' }] } }),
     'GET /companies': () => ({ body: { companies: [] } }),

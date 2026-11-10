@@ -18,9 +18,9 @@ export type FundNoticePayload = { amount: number; senderName: string; note: stri
 export type WalletNoticePayload = { balance: number; ceiling: number; attempted?: number; loginName: string };
 /**
  * A number, a point of sale, or an agent changed hands. `subject` is the msisdn or the login. The account that
- * lost it hears `transfer.out` with `toLogin`, the account that received it `transfer.in` with `fromLogin`.
+ * lost it hears `transfer.out` with `toLoginName`, the account that received it `transfer.in` with `fromLoginName`.
  */
-export type TransferNoticePayload = { kind: TransferKind; subject: string; fromLogin?: string; toLogin?: string; actorName: string };
+export type TransferNoticePayload = { kind: TransferKind; subject: string; fromLoginName?: string; toLoginName?: string; actorName: string };
 
 /** A provider turned to a problem, or recovered (spec 2026-11-08-overview-and-reports-nav, G). */
 export type ProviderNoticePayload = { code: string; name: string; reason: 'failures' | 'balance' | null; failures: number; available: number; alertFloor: number };

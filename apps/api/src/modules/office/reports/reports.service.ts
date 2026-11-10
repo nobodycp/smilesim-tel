@@ -57,7 +57,7 @@ export class ReportsService {
         id: row.id,
         at: row.createdAt.toISOString(),
         loginName: row.user.loginName,
-        actorLogin: row.actor.loginName,
+        actorLoginName: row.actor.loginName,
         amount: row.amount,
         balanceAfter: row.balanceAfter,
         kind: row.kind,

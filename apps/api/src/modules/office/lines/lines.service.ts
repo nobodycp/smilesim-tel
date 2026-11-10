@@ -74,9 +74,9 @@ export class LinesService {
   async activate(actor: Actor, body: unknown) {
     const input = parseInput(ActivateBody, body);
     this.gateway.accept(input.outcome);
-    const { esim, iccid, packageCode, posLogin, msisdn: requested, currentDetails } = input;
+    const { esim, iccid, packageCode, posLoginName, msisdn: requested, currentDetails } = input;
     const accounts = await this.tree.accounts();
-    const pos = accounts.find((account) => account.loginName === posLogin && account.layer === 'pos');
+    const pos = accounts.find((account) => account.loginName === posLoginName && account.layer === 'pos');
     if (!pos || !canActivateFor(actor, pos, accounts)) fail(403, 'FORBIDDEN');
     const posPath = this.tree.pathOf(pos.id, accounts);
     const pkg = await this.sellablePackage(packageCode);

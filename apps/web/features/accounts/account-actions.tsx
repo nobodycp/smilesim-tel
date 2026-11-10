@@ -68,7 +68,7 @@ export function useAccountActions({
   // A point of sale moves under another agent, an agent under another main agent: never to the parent it already
   // has, and never to a frozen account.
   const destinations = moving
-    ? everyone.filter((row) => row.layer === (moving.layer === 'pos' ? 'agent' : 'main_agent') && row.loginName !== moving.parentLogin && !row.frozen)
+    ? everyone.filter((row) => row.layer === (moving.layer === 'pos' ? 'agent' : 'main_agent') && row.loginName !== moving.parentLoginName && !row.frozen)
     : [];
 
   function canFund(row: UserRow) {

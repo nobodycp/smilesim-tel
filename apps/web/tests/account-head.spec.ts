@@ -2,11 +2,11 @@ import { expect, test } from '@playwright/test';
 import { serveOffice } from './desk';
 
 const listed = {
-  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', roleName: '', parentLogin: 'admin', balance: -5000, ceiling: 20000, frozen: false,
+  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', roleName: '', parentLoginName: 'admin', balance: -5000, ceiling: 20000, frozen: false,
   self: false, directChild: true, canEnter: true, canFreeze: true, canDelete: true, held: 2000,
 };
 const account = {
-  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLogin: 'admin', frozen: false, isBranchOwner: false, staff: false,
+  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'admin', frozen: false, isBranchOwner: false, staff: false,
   roleId: '', roleName: '', roleGrants: [], extraGrants: [], deniedGrants: [], extraRoleIds: [], grants: [], roles: [], canEdit: true, listed,
 };
 
@@ -20,7 +20,7 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
     'GET /users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [] } }),
     'POST /wallets/pos1/fund': () => ({ body: { ok: true } }),
     'POST /wallets/pos1/deduct': () => ({ body: { ok: true } }),
-    'GET /lines': () => ({ body: { items: [{ id: 'ln1', msisdn: '0550000001', status: 'active', packageName: '400 جيجا', posLogin: 'pos1', endsAt: '2026-12-01T00:00:00.000Z' }], poses: [], nextCursor: null, total: 1 } }),
+    'GET /lines': () => ({ body: { items: [{ id: 'ln1', msisdn: '0550000001', status: 'active', packageName: '400 جيجا', posLoginName: 'pos1', endsAt: '2026-12-01T00:00:00.000Z' }], poses: [], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1');
   const head = page.locator('.page-head');

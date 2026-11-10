@@ -48,13 +48,13 @@ export class TransfersController {
   @Get('users/:loginName/transfer-preview')
   @ApiOperation({ summary: 'What moving an account under another parent would carry; refuses as the move does' })
   @ApiParam({ name: 'loginName' })
-  @ApiQuery({ name: 'parentLogin', required: true, description: 'The login of the new parent' })
+  @ApiQuery({ name: 'parentLoginName', required: true, description: 'The login of the new parent' })
   @ApiErrorResponse(401, 403, 400)
   transferPreview(
     @Actor() actor: ActorShape,
     @Param('loginName') loginName: string,
-    @Query('parentLogin') parentLogin?: unknown,
+    @Query('parentLoginName') parentLoginName?: unknown,
   ) {
-    return this.transferDesk.transferPreview(actor, loginName, { parentLogin });
+    return this.transferDesk.transferPreview(actor, loginName, { parentLoginName });
   }
 }

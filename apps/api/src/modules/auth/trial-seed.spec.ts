@@ -4,7 +4,7 @@ describe('buildTrialSeed', () => {
   it('links the four ready accounts and keeps their login exceptions', () => {
     const accounts = buildTrialSeed();
     expect(accounts.map((account) => account.loginName)).toEqual(['branch', 'main', 'agent', 'pos']);
-    expect(accounts.map((account) => account.parentLogin)).toEqual([null, 'branch', 'main', 'agent']);
+    expect(accounts.map((account) => account.parentLoginName)).toEqual([null, 'branch', 'main', 'agent']);
     for (const account of accounts) {
       expect(account.mustChangePassword).toBe(false);
       expect(account.twoFactorExempt).toBe(true);

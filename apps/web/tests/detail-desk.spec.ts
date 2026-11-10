@@ -10,7 +10,7 @@ test('line card keeps its tabs and stretches the pane', async ({ page }) => {
         line: {
           id: 'ln1', msisdn: '0550246962', iccid: null, esim: false, status: 'active',
           packageCode: 'cell-400', packageName: '400 جيجا', companyName: 'سلكوم',
-          posLogin: 'pos', posPrice: 30, createdAt: '2026-10-01T00:00:00.000Z', endsAt: '2026-11-12T00:00:00.000Z',
+          posLoginName: 'pos', posPrice: 30, createdAt: '2026-10-01T00:00:00.000Z', endsAt: '2026-11-12T00:00:00.000Z',
         },
         history: [],
       }),

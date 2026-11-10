@@ -56,7 +56,7 @@ export function AuditScreen() {
       header: t.auditWho,
       render: (row) => (
         <span className="who-cell">
-          <AccountName login={row.actorLogin} />
+          <AccountName login={row.actorLoginName} />
           {row.actorLayer ? <span className={`layer-tag l-${row.actorLayer}`}>{layerName(t, row.actorLayer)}</span> : null}
         </span>
       ),

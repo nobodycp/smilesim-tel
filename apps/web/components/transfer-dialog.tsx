@@ -50,13 +50,13 @@ type Answer = { parent: string; preview: TransferPreview | null; message: string
 const noNote = () => {};
 
 /** The request, or null while the destination or a choice the move needs is still missing. A point of sale has no child terms. */
-function requestOf(kind: Kind, parentLogin: string, choice: Choices): TransferAccountBody | null {
+function requestOf(kind: Kind, parentLoginName: string, choice: Choices): TransferAccountBody | null {
   const { ownPrices, ownStops, linePrices } = choice;
-  if (!parentLogin || !ownPrices || !ownStops || !linePrices) return null;
-  if (kind === 'pos') return { parentLogin, ownPrices, ownStops, linePrices };
+  if (!parentLoginName || !ownPrices || !ownStops || !linePrices) return null;
+  if (kind === 'pos') return { parentLoginName, ownPrices, ownStops, linePrices };
   const { childPrices, childStops } = choice;
   if (!childPrices || !childStops) return null;
-  return { parentLogin, ownPrices, ownStops, childPrices, childStops, linePrices };
+  return { parentLoginName, ownPrices, ownStops, childPrices, childStops, linePrices };
 }
 
 type Option<T extends string> = { value: T; label: string };

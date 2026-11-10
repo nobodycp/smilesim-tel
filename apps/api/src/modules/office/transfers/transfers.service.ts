@@ -22,7 +22,7 @@ import { TransferAccountBody as AccountMove, TransferLineBody } from './transfer
 
 /** What a move is asked to do. Every field is checked before it is used, so each arrives as `unknown`. */
 export type TransferAccountBody = {
-  parentLogin?: unknown;
+  parentLoginName?: unknown;
   ownPrices?: unknown;
   ownStops?: unknown;
   childPrices?: unknown;
@@ -59,7 +59,7 @@ export class TransfersService {
     // The words of the choices need no account, so a body that cannot be a move is refused before any is read.
     const stated = parseInput(AccountMove, body);
     const accounts = await this.tree.accounts();
-    const { moved, next, from, kind } = this.resolveTransfer(actor, accounts, loginName, stated.parentLogin);
+    const { moved, next, from, kind } = this.resolveTransfer(actor, accounts, loginName, stated.parentLoginName);
     const choices = transferChoices(kind, stated);
     if (!choices) fail(400, 'INVALID');
     const posIds = accounts.filter((account) => account.parentId === moved.id).map((account) => account.id);
@@ -91,13 +91,13 @@ export class TransfersService {
   }
 
   /**
-   * What moving `loginName` under `query.parentLogin` would carry, without writing anything. It asks the
+   * What moving `loginName` under `query.parentLoginName` would carry, without writing anything. It asks the
    * same rules as the move, so a refusal reaches the dialog from here, and it reads each table once however
    * many accounts sit below.
    */
-  async transferPreview(actor: Actor, loginName: string, query: { parentLogin?: unknown }) {
+  async transferPreview(actor: Actor, loginName: string, query: { parentLoginName?: unknown }) {
     const accounts = await this.tree.accounts();
-    const { moved, next, kind } = this.resolveTransfer(actor, accounts, loginName, query.parentLogin);
+    const { moved, next, kind } = this.resolveTransfer(actor, accounts, loginName, query.parentLoginName);
     const nextPath = [nodeOf(moved), ...this.tree.pathOf(next.id, accounts)];
     // What is under the moved account: an agent's points of sale, nothing for a point of sale. They go with
     // it, so their paths after the move run through its own.
@@ -140,10 +140,10 @@ export class TransfersService {
    * notices are one transaction.
    */
   async transferLine(actor: Actor, lineId: string, body: unknown) {
-    const { posLogin, linePrices } = parseInput(TransferLineBody, body);
+    const { posLoginName, linePrices } = parseInput(TransferLineBody, body);
     const line = await this.lineAccess.visibleLine(actor, lineId);
     const accounts = await this.tree.accounts();
-    const next = posLogin === undefined ? undefined : accounts.find((account) => account.loginName === posLogin);
+    const next = posLoginName === undefined ? undefined : accounts.find((account) => account.loginName === posLoginName);
     const from = accounts.find((account) => account.id === line.posId);
     const refusal = this.transferRefusal(actor, accounts, { kind: 'line', currentParentId: line.posId, next });
     if (refusal === 'FORBIDDEN') fail(403, 'FORBIDDEN');
@@ -169,7 +169,7 @@ export class TransfersService {
    * not to a caller with no say over any move: that one is refused first, as `canTransfer` refuses before it
    * reads anything, so a refusal never tells what exists.
    */
-  private resolveTransfer(actor: Actor, accounts: Account[], loginName: string, parentLogin: unknown) {
+  private resolveTransfer(actor: Actor, accounts: Account[], loginName: string, parentLoginName: unknown) {
     const moved = accounts.find((account) => account.loginName === loginName);
     const kind = moved ? transferKind(moved.layer) : null;
     if (!moved || !kind) {
@@ -177,7 +177,7 @@ export class TransfersService {
       if (!mayMove) fail(403, 'FORBIDDEN');
       fail(400, 'INVALID');
     }
-    const next = typeof parentLogin === 'string' ? accounts.find((account) => account.loginName === parentLogin) : undefined;
+    const next = typeof parentLoginName === 'string' ? accounts.find((account) => account.loginName === parentLoginName) : undefined;
     const from = accounts.find((account) => account.id === moved.parentId);
     const refusal = this.transferRefusal(actor, accounts, { kind, currentParentId: moved.parentId ?? '', next });
     if (refusal === 'FORBIDDEN') fail(403, 'FORBIDDEN');
@@ -207,8 +207,8 @@ export class TransfersService {
    */
   private async writeTransferNotices(tx: Prisma.TransactionClient, actor: Actor, move: { kind: TransferKind; subject: string; from: Account; to: Account }) {
     const payload = { kind: move.kind, subject: move.subject, actorName: actor.nickname };
-    const lost = await this.uow.notice.write(tx, [move.from.id], actor, { kind: 'transfer.out', payload: { ...payload, toLogin: move.to.loginName } });
-    const gained = await this.uow.notice.write(tx, [move.to.id], actor, { kind: 'transfer.in', payload: { ...payload, fromLogin: move.from.loginName } });
+    const lost = await this.uow.notice.write(tx, [move.from.id], actor, { kind: 'transfer.out', payload: { ...payload, toLoginName: move.to.loginName } });
+    const gained = await this.uow.notice.write(tx, [move.to.id], actor, { kind: 'transfer.in', payload: { ...payload, fromLoginName: move.from.loginName } });
     this.uow.queueNotices(tx, [...lost, ...gained]);
   }
 }

@@ -47,7 +47,7 @@ describe('line state under tasks and repeats', () => {
 
   it('refuses a SIM serial that a live number already holds, and takes it once that number is disconnected', async () => {
     const { service, gates, line } = await tree();
-    const body = { packageCode: 'alloha-150', posLogin: 'pos1', iccid: line.iccid, outcome: 'success' };
+    const body = { packageCode: 'alloha-150', posLoginName: 'pos1', iccid: line.iccid, outcome: 'success' };
     expect(await refusal(service.activate(gates.pos1, body))).toEqual({ status: 409, code: 'SIM_TAKEN' });
     Object.assign(line, { status: 'disconnected' });
     await expect(service.activate(gates.pos1, body)).resolves.toMatchObject({ applied: true });
@@ -55,7 +55,7 @@ describe('line state under tasks and repeats', () => {
 
   it('records on an activation task the price it was opened at, whatever the price is at completion', async () => {
     const { service, gates, tasks, entries, pkgA } = await tree();
-    await service.activate(gates.pos1, { packageCode: 'alloha-150', posLogin: 'pos1', iccid: '8997202000000000777', outcome: 'fail' });
+    await service.activate(gates.pos1, { packageCode: 'alloha-150', posLoginName: 'pos1', iccid: '8997202000000000777', outcome: 'fail' });
     expect(tasks[0]).toMatchObject({ posDelta: -3500, unitPrice: 3500, held: 3500 });
     Object.assign(pkgA, { posPrice: 6000 });
     await service.completeTask(gates.branch, tasks[0].id, {});

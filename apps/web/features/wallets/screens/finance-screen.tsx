@@ -110,7 +110,7 @@ export function FinanceScreen() {
           <span className="sub">
             <AccountName login={row.loginName} />
             {row.layer ? <> · {layerName(t, row.layer)}</> : null}
-            {row.actorLogin && row.actorLogin !== row.loginName ? <> · {t.actedBy}: <AccountName login={row.actorLogin} /></> : null}
+            {row.actorLoginName && row.actorLoginName !== row.loginName ? <> · {t.actedBy}: <AccountName login={row.actorLoginName} /></> : null}
           </span>
         </span>
       ),

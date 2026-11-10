@@ -56,8 +56,9 @@ The web reaches the API through 135 distinct calls in `apps/web/features/*/api.t
    - `GET /office/ledger` instead of `/ledger/:scope`.
    - `GET /office/reports/{providers,operations,balances,supply}` as fixed routes with `…/export` beside each;
      `reports/tasks` and `reports/numbers` removed (they are `/office/tasks` and `/office/lines`).
-   - Account path key stays `:loginName` everywhere; body and query fields that name an account become
-     `loginName` / `parentLoginName` / `posLoginName` (today `posLogin`, `parentLogin`, `account`).
+   - Account path key stays `:loginName` everywhere; every field that names an account, in requests **and in
+     answers** (owner, 2026-11-10), ends in `LoginName`: `parentLoginName`, `posLoginName`, `actorLoginName`,
+     `submitterLoginName`, `assigneeLoginName` (before: `posLogin`, `parentLogin`, `actorLogin`, `account`).
    Not proposed: renaming `/office/users` to `/office/accounts` (a large rename for no behaviour gain).
 6. **Not found.** Proposed: a target that does not exist or is outside the caller's tree answers `404 NOT_FOUND`
    everywhere (today some routes say 403 or 400), so a caller cannot tell "exists but not yours" from "does not

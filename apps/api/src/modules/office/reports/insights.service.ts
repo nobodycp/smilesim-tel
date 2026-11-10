@@ -78,7 +78,7 @@ export class InsightsService {
         loginName: account.loginName,
         nickname: account.nickname,
         layer: account.layer,
-        parentLogin: account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
+        parentLoginName: account.parentId ? byId.get(account.parentId)?.loginName ?? null : null,
         balance,
         ceiling,
         used: Math.max(0, -balance),
@@ -121,7 +121,7 @@ export class InsightsService {
   async csv(actor: Actor, kind: string, query: Record<string, string | undefined>) {
     if (kind === 'balances') {
       const rows = await this.balanceRows(actor, query);
-      return csvOf(['account', 'name', 'layer', 'parent', 'balance', 'ceiling', 'used', 'held', 'available', 'frozen', 'last_movement'], rows.map((row) => [row.loginName, row.nickname, row.layer, row.parentLogin ?? '', { money: row.balance }, { money: row.ceiling }, { money: row.used }, { money: row.held }, { money: row.available }, row.frozen ? 'yes' : 'no', row.lastAt ?? '']));
+      return csvOf(['account', 'name', 'layer', 'parent', 'balance', 'ceiling', 'used', 'held', 'available', 'frozen', 'last_movement'], rows.map((row) => [row.loginName, row.nickname, row.layer, row.parentLoginName ?? '', { money: row.balance }, { money: row.ceiling }, { money: row.used }, { money: row.held }, { money: row.available }, row.frozen ? 'yes' : 'no', row.lastAt ?? '']));
     }
     if (kind === 'supply') {
       const { rows } = await this.supply(actor, query);

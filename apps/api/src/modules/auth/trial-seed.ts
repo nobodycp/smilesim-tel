@@ -23,7 +23,7 @@ export function trialSeedDecision(env: Record<string, string | undefined>): Tria
 export type TrialAccount = {
   loginName: string;
   layer: Layer;
-  parentLogin: string | null;
+  parentLoginName: string | null;
   isBranchOwner: boolean;
   mustChangePassword: false;
   twoFactorExempt: true;
@@ -33,9 +33,9 @@ export type TrialAccount = {
 
 export function buildTrialSeed(): TrialAccount[] {
   return [
-    { loginName: 'branch', layer: 'branch', parentLogin: null, isBranchOwner: true, mustChangePassword: false, twoFactorExempt: true, email: null, phone: null },
-    { loginName: 'main', layer: 'main_agent', parentLogin: 'branch', isBranchOwner: false, mustChangePassword: false, twoFactorExempt: true, email: null, phone: null },
-    { loginName: 'agent', layer: 'agent', parentLogin: 'main', isBranchOwner: false, mustChangePassword: false, twoFactorExempt: true, email: null, phone: null },
-    { loginName: 'pos', layer: 'pos', parentLogin: 'agent', isBranchOwner: false, mustChangePassword: false, twoFactorExempt: true, email: null, phone: null },
+    { loginName: 'branch', layer: 'branch', parentLoginName: null, isBranchOwner: true, mustChangePassword: false, twoFactorExempt: true, email: null, phone: null },
+    { loginName: 'main', layer: 'main_agent', parentLoginName: 'branch', isBranchOwner: false, mustChangePassword: false, twoFactorExempt: true, email: null, phone: null },
+    { loginName: 'agent', layer: 'agent', parentLoginName: 'main', isBranchOwner: false, mustChangePassword: false, twoFactorExempt: true, email: null, phone: null },
+    { loginName: 'pos', layer: 'pos', parentLoginName: 'agent', isBranchOwner: false, mustChangePassword: false, twoFactorExempt: true, email: null, phone: null },
   ];
 }

@@ -9,7 +9,7 @@ export const accountsApi = {
   officeAccount: (loginName: string) => request<AccountAccess>('GET', `/office/users/${segment(loginName)}`),
   saveAccountAccess: (loginName: string, body: { extraGrants: string[]; deniedGrants: string[]; extraRoleIds: string[]; roleId?: string }) =>
     request<{ ok: true }>('PATCH', `/office/users/${segment(loginName)}/access`, body),
-  createUser: (body: { loginName: string; nickname: string; password: string; layer: string; parentLogin?: string; roleId?: string }) =>
+  createUser: (body: { loginName: string; nickname: string; password: string; layer: string; parentLoginName?: string; roleId?: string }) =>
     request<{ ok: true }>('POST', '/office/users', body),
   setUserPassword: (loginName: string, password: string) =>
     request<{ ok: true }>('POST', `/office/users/${segment(loginName)}/password`, { password }),

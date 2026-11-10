@@ -76,16 +76,16 @@ const BUSY_PREVIEW = {
 describe('transfer preview: what a move would carry', () => {
   it('shows the branch what ag1 takes to ma2: both balances, both sets of terms, the floor, and the numbers that can renew', async () => {
     const { service, gates } = await busyAgent();
-    await expect(service.transferPreview(gates.branch, 'ag1', { parentLogin: 'ma2' })).resolves.toEqual(BUSY_PREVIEW);
+    await expect(service.transferPreview(gates.branch, 'ag1', { parentLoginName: 'ma2' })).resolves.toEqual(BUSY_PREVIEW);
   });
 
   it('counts the numbers that can still renew, active and frozen, and no others', async () => {
     const { service, gates, lines } = await busyAgent();
     for (const row of lines) if (row.status === 'frozen') row.status = 'disconnected';
-    await expect(service.transferPreview(gates.branch, 'ag1', { parentLogin: 'ma2' })).resolves.toMatchObject({ lines: 1 });
+    await expect(service.transferPreview(gates.branch, 'ag1', { parentLoginName: 'ma2' })).resolves.toMatchObject({ lines: 1 });
     for (const row of lines) row.status = 'frozen';
     // pos2 belongs to ag2 and stays out: four numbers in all, three under ag1.
-    await expect(service.transferPreview(gates.branch, 'ag1', { parentLogin: 'ma2' })).resolves.toMatchObject({ lines: 3 });
+    await expect(service.transferPreview(gates.branch, 'ag1', { parentLoginName: 'ma2' })).resolves.toMatchObject({ lines: 3 });
   });
 
   it('shows a point of sale its own wallet and terms, nothing below it, and what the new agent would pay', async () => {
@@ -100,7 +100,7 @@ describe('transfer preview: what a move would carry', () => {
       terms('ag1', 'pb', { price: 5000 }),
     );
     lines.push(number(line, 'ln2', { status: 'frozen' }), number(line, 'ln3', { status: 'disconnected' }));
-    await expect(service.transferPreview(gates.branch, 'pos1', { parentLogin: 'ag2' })).resolves.toEqual({
+    await expect(service.transferPreview(gates.branch, 'pos1', { parentLoginName: 'ag2' })).resolves.toEqual({
       balance: 100000,
       subtreeBalance: 0,
       own: { customPrices: 2, hidden: 0, stops: 1, belowNewFloor: 1 },
@@ -112,7 +112,7 @@ describe('transfer preview: what a move would carry', () => {
   it('reads the floor from the rows of the new chain: the new agent price, else the sell price of the main agent above it', async () => {
     const { service, gates, userPackages, sellPrices } = await tree();
     userPackages.push(terms('pos1', 'pa', { price: 3100 }), terms('pos1', 'pb', { price: 3100 }));
-    const below = async () => (await service.transferPreview(gates.branch, 'pos1', { parentLogin: 'ag2' })).own.belowNewFloor;
+    const below = async () => (await service.transferPreview(gates.branch, 'pos1', { parentLoginName: 'ag2' })).own.belowNewFloor;
     // Both packages cost an agent 3000, the layer column, so 3100 is above it.
     await expect(below()).resolves.toBe(0);
     sellPrices.push(sell('ma1', 'pa', 3300));
@@ -126,7 +126,7 @@ describe('transfer preview: what a move would carry', () => {
 
   it('holds an agent to the main agent column of ma2, and to a price ma2 has of its own', async () => {
     const { service, gates, userPackages } = await busyAgent();
-    const below = async () => (await service.transferPreview(gates.branch, 'ag1', { parentLogin: 'ma2' })).own.belowNewFloor;
+    const below = async () => (await service.transferPreview(gates.branch, 'ag1', { parentLoginName: 'ma2' })).own.belowNewFloor;
     await expect(below()).resolves.toBe(1);
     // ma2 pays less than the column for alloha-150, so 2400 is no longer under it.
     userPackages.push(terms('ma2', 'pa', { price: 2300 }));
@@ -137,7 +137,7 @@ describe('transfer preview: what a move would carry', () => {
     const { service, gates, accounts, wallets, sellPrices } = await tree();
     accounts.push(account('ag3', 'agent', 'ma1'));
     wallets.push({ id: 'w-ag3', userId: 'ag3', balance: 900, ceiling: 0 });
-    await expect(service.transferPreview(gates.branch, 'ag3', { parentLogin: 'ma2' })).resolves.toEqual({
+    await expect(service.transferPreview(gates.branch, 'ag3', { parentLoginName: 'ma2' })).resolves.toEqual({
       balance: 900,
       subtreeBalance: 0,
       own: { customPrices: 0, hidden: 0, stops: 0, belowNewFloor: 0 },
@@ -146,7 +146,7 @@ describe('transfer preview: what a move would carry', () => {
     });
     // A reset of what is below it deletes these, so the preview has to show them though no point of sale is there.
     sellPrices.push(sell('ag3', 'pa', 3700), sell('ag3', 'pb', 3800), sell('ag2', 'pa', 3600));
-    await expect(service.transferPreview(gates.branch, 'ag3', { parentLogin: 'ma2' })).resolves.toMatchObject({
+    await expect(service.transferPreview(gates.branch, 'ag3', { parentLoginName: 'ma2' })).resolves.toMatchObject({
       child: { customPrices: 0, hidden: 0, stops: 0, sellPrices: 2 },
     });
   });
@@ -168,7 +168,7 @@ describe('transfer preview: what a move would carry', () => {
     }
     const stored = () => JSON.stringify({ accounts, userPackages, sellPrices, wallets, lines });
     const before = stored();
-    await service.transferPreview(gates.branch, 'ag1', { parentLogin: 'ma2' });
+    await service.transferPreview(gates.branch, 'ag1', { parentLoginName: 'ma2' });
     expect(reads).toEqual({ userPackage: 1, sellPrice: 1, package: 1, wallet: 1, line: 1 });
     expect(stored()).toBe(before);
   });
@@ -179,37 +179,37 @@ describe('transfer preview: the refusals are the move\'s', () => {
     const { service, gates, accounts } = await tree();
     edit(accounts, 'ma1', { liveGrants: 'transferAgents,transferPos' });
     // ma2 is another chain.
-    await expect(service.transferPreview(gates.ma1, 'ag1', { parentLogin: 'ma2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    await expect(service.transferPreview(gates.ma1, 'ag1', { parentLoginName: 'ma2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
     // Inside its own chain the same actor gets the answer.
-    await expect(service.transferPreview(gates.ma1, 'pos1', { parentLogin: 'ag2' })).resolves.toMatchObject({ child: null });
+    await expect(service.transferPreview(gates.ma1, 'pos1', { parentLoginName: 'ag2' })).resolves.toMatchObject({ child: null });
   });
 
   it('an agent without transferPos is refused, and with it still cannot move a point of sale to another agent', async () => {
     const { service, gates, accounts } = await tree();
-    await expect(service.transferPreview(gates.ag1, 'pos1', { parentLogin: 'ag2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    await expect(service.transferPreview(gates.ag1, 'pos1', { parentLoginName: 'ag2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
     edit(accounts, 'ag1', { liveGrants: 'transferPos' });
-    await expect(service.transferPreview(gates.ag1, 'pos1', { parentLogin: 'ag2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    await expect(service.transferPreview(gates.ag1, 'pos1', { parentLoginName: 'ag2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
   });
 
   it('answers a grant for another kind with a refusal', async () => {
     const { service, gates, accounts } = await tree();
     edit(accounts, 'ma1', { liveGrants: 'transferLines,transferPos' });
-    await expect(service.transferPreview(gates.ma1, 'ag1', { parentLogin: 'ma2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
+    await expect(service.transferPreview(gates.ma1, 'ag1', { parentLoginName: 'ma2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
   });
 
   it('refuses a point of sale named with the agent it already sits under', async () => {
     const { service, gates } = await tree();
-    await expect(service.transferPreview(gates.branch, 'pos1', { parentLogin: 'ag1' })).rejects.toEqual(refused(400, 'INVALID'));
+    await expect(service.transferPreview(gates.branch, 'pos1', { parentLoginName: 'ag1' })).rejects.toEqual(refused(400, 'INVALID'));
   });
 
   it('refuses a destination of the wrong layer, a frozen one, and one that is not named', async () => {
     const { service, gates, accounts } = await tree();
-    const preview = (login: string, parentLogin: unknown) => service.transferPreview(gates.branch, login, { parentLogin });
+    const preview = (login: string, parentLoginName: unknown) => service.transferPreview(gates.branch, login, { parentLoginName });
     await expect(preview('pos1', 'ma1')).rejects.toEqual(refused(400, 'INVALID'));
     await expect(preview('ag1', 'ag2')).rejects.toEqual(refused(400, 'INVALID'));
     await expect(preview('pos1', 'pos2')).rejects.toEqual(refused(400, 'INVALID'));
-    for (const parentLogin of [undefined, '', 'ghost', ['ag2'], 7, null]) {
-      await expect(preview('pos1', parentLogin)).rejects.toEqual(refused(400, 'INVALID'));
+    for (const parentLoginName of [undefined, '', 'ghost', ['ag2'], 7, null]) {
+      await expect(preview('pos1', parentLoginName)).rejects.toEqual(refused(400, 'INVALID'));
     }
     await expect(preview('pos1', 'ag2')).resolves.toMatchObject({ child: null });
     edit(accounts, 'ag2', { disabledAt: new Date('2026-11-01T00:00:00.000Z') });
@@ -219,14 +219,14 @@ describe('transfer preview: the refusals are the move\'s', () => {
   it('refuses an account that cannot be moved: a main agent, the branch, and a login nobody has', async () => {
     const { service, gates } = await tree();
     for (const login of ['ma1', 'branch', 'ghost']) {
-      await expect(service.transferPreview(gates.branch, login, { parentLogin: 'ma2' })).rejects.toEqual(refused(400, 'INVALID'));
+      await expect(service.transferPreview(gates.branch, login, { parentLoginName: 'ma2' })).rejects.toEqual(refused(400, 'INVALID'));
     }
   });
 
   it('refuses where a transfer stop sits on the actor path, and nowhere else', async () => {
     const { service, gates, accounts } = await tree();
     edit(accounts, 'ma1', { liveGrants: 'transferPos' });
-    const preview = (gate: { sessionId: string }) => service.transferPreview(gate, 'pos1', { parentLogin: 'ag2' });
+    const preview = (gate: { sessionId: string }) => service.transferPreview(gate, 'pos1', { parentLoginName: 'ag2' });
     // The moved point of sale and its old agent sit below ma1: their stops are not on its path.
     edit(accounts, 'pos1', { deniedOps: 'transfer' });
     edit(accounts, 'ag1', { deniedOps: 'transfer' });
@@ -239,7 +239,7 @@ describe('transfer preview: the refusals are the move\'s', () => {
 
   it('tells someone with no say over moves nothing about what exists: every name is a refusal', async () => {
     const { service, gates, accounts } = await tree();
-    const preview = (login: string, parentLogin: string) => service.transferPreview(gates.ag1, login, { parentLogin });
+    const preview = (login: string, parentLoginName: string) => service.transferPreview(gates.ag1, login, { parentLoginName });
     for (const login of ['ghost', 'ma1', 'branch', 'ag1', 'pos1', 'pos2']) {
       await expect(preview(login, 'ag2')).rejects.toEqual(refused(403, 'FORBIDDEN'));
     }
@@ -256,24 +256,24 @@ describe('transfer preview: the refusals are the move\'s', () => {
     const { service, auth } = await tree();
     const sessionId = await auth.saveImpersonation({ userId: 'branch', operatorId: 'branch', userAgent: '', ip: '' });
     for (const login of ['ag1', 'pos1', 'ma1', 'ghost']) {
-      await expect(service.transferPreview({ sessionId }, login, { parentLogin: 'ma2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
+      await expect(service.transferPreview({ sessionId }, login, { parentLoginName: 'ma2' })).rejects.toEqual(refused(403, 'FORBIDDEN'));
     }
   });
 
   it('asks for a session', async () => {
     const { service } = await tree();
-    await expect(service.transferPreview({}, 'ag1', { parentLogin: 'ma2' })).rejects.toEqual(refused(401, 'LOGIN_REQUIRED'));
+    await expect(service.transferPreview({}, 'ag1', { parentLoginName: 'ma2' })).rejects.toEqual(refused(401, 'LOGIN_REQUIRED'));
   });
 });
 
 // What a move is asked to do. Both bodies are complete and reset nothing; a case overrides what it is about.
-const posMove = (patch: Record<string, unknown> = {}) => ({ parentLogin: 'ag2', ownPrices: 'keep', ownStops: 'keep', linePrices: 'keep', ...patch });
+const posMove = (patch: Record<string, unknown> = {}) => ({ parentLoginName: 'ag2', ownPrices: 'keep', ownStops: 'keep', linePrices: 'keep', ...patch });
 const agentMove = (patch: Record<string, unknown> = {}) => ({
-  parentLogin: 'ma2', ownPrices: 'keep', ownStops: 'keep', childPrices: 'keep', childStops: 'keep', linePrices: 'keep', ...patch,
+  parentLoginName: 'ma2', ownPrices: 'keep', ownStops: 'keep', childPrices: 'keep', childStops: 'keep', linePrices: 'keep', ...patch,
 });
 const everyReset = { ownPrices: 'reset', ownStops: 'reset', childPrices: 'reset', childStops: 'reset' };
 // A number moves by its own route. Its body names the point of sale and what the number's renewal price does; there is no default.
-const lineMove = (patch: Record<string, unknown> = {}) => ({ posLogin: 'pos2', linePrices: 'keep', ...patch });
+const lineMove = (patch: Record<string, unknown> = {}) => ({ posLoginName: 'pos2', linePrices: 'keep', ...patch });
 /** The renewal price a number carries. */
 const renewalOf = (item: Row) => (item.terms as LineTerms).renewal.posPrice;
 /** Makes a number carry this renewal price. */
@@ -349,7 +349,7 @@ describe('transfer: a point of sale', () => {
     const { service, gates, accounts, lines } = await tree();
     accounts.push(account('ag3', 'agent', 'ma1'));
     await service.transferAccount(gates.branch, 'pos1', posMove());
-    await service.transferAccount(gates.branch, 'pos1', posMove({ parentLogin: 'ag3' }));
+    await service.transferAccount(gates.branch, 'pos1', posMove({ parentLoginName: 'ag3' }));
     expect(rowOf(accounts, 'pos1').parentId).toBe('ag3');
     expect(rowOf(lines, 'ln1').originAgentId).toBe('ag1');
   });
@@ -411,7 +411,7 @@ describe('transfer: an agent', () => {
       const fixture = await busyAgent();
       for (const item of fixture.lines) carries(item, 4500);
       edit(fixture.sellPrices, 'ag1:pa', { renewalPrice: 3600 });
-      const told = await fixture.service.transferPreview(fixture.gates.branch, 'ag1', { parentLogin: 'ma2' });
+      const told = await fixture.service.transferPreview(fixture.gates.branch, 'ag1', { parentLoginName: 'ma2' });
       const result = await fixture.service.transferAccount(fixture.gates.branch, 'ag1', agentMove({ linePrices: 'recapture', ...patch }));
       // The preview counted exactly what the move repriced.
       expect(result.lines).toBe(told.lines);
@@ -474,8 +474,8 @@ describe('transfer: notices and the one transaction', () => {
     const heardPos = listen(pos.notice);
     await pos.service.transferAccount(pos.gates.branch, 'pos1', posMove());
     expect(heardPos.written).toEqual([
-      { userIds: ['ag1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'pos', subject: 'pos1', toLogin: 'ag2', actorName: 'branch' } } },
-      { userIds: ['ag2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'pos', subject: 'pos1', fromLogin: 'ag1', actorName: 'branch' } } },
+      { userIds: ['ag1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'pos', subject: 'pos1', toLoginName: 'ag2', actorName: 'branch' } } },
+      { userIds: ['ag2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'pos', subject: 'pos1', fromLoginName: 'ag1', actorName: 'branch' } } },
     ]);
     // Both are published together, after the move has committed.
     expect(heardPos.published.map((rows) => rows.map((row) => [row.userId, row.kind]))).toEqual([[['ag1', 'transfer.out'], ['ag2', 'transfer.in']]]);
@@ -486,16 +486,16 @@ describe('transfer: notices and the one transaction', () => {
     const heardAgent = listen(agent.notice);
     await agent.service.transferAccount(agent.gates.branch, 'ag1', agentMove());
     expect(heardAgent.written).toEqual([
-      { userIds: ['ma1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'agent', subject: 'ag1', toLogin: 'ma2', actorName: 'branch' } } },
-      { userIds: ['ma2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'agent', subject: 'ag1', fromLogin: 'ma1', actorName: 'branch' } } },
+      { userIds: ['ma1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'agent', subject: 'ag1', toLoginName: 'ma2', actorName: 'branch' } } },
+      { userIds: ['ma2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'agent', subject: 'ag1', fromLoginName: 'ma1', actorName: 'branch' } } },
     ]);
     expect(agent.notices.map((row) => [row.userId, row.kind])).toEqual([['ma1', 'transfer.out'], ['ma2', 'transfer.in']]);
   });
 
   it('files the notices with the wallet group, and they open the users page', () => {
     const payload = { kind: 'pos' as const, subject: 'pos1', actorName: 'branch' };
-    expect(hrefFor({ kind: 'transfer.out', payload: { ...payload, toLogin: 'ag2' } })).toBe('/users');
-    expect(hrefFor({ kind: 'transfer.in', payload: { ...payload, fromLogin: 'ag1' } })).toBe('/users');
+    expect(hrefFor({ kind: 'transfer.out', payload: { ...payload, toLoginName: 'ag2' } })).toBe('/users');
+    expect(hrefFor({ kind: 'transfer.in', payload: { ...payload, fromLoginName: 'ag1' } })).toBe('/users');
     expect(NOTICE_GROUPS.wallet).toEqual(expect.arrayContaining(['transfer.out', 'transfer.in']));
   });
 
@@ -532,7 +532,7 @@ describe('transfer: refusals', () => {
   /** Everything a refused move must leave alone. */
   const stored = ({ accounts, userPackages, sellPrices, wallets, lines }: Awaited<ReturnType<typeof busyAgent>>) =>
     JSON.stringify({ accounts, userPackages, sellPrices, wallets, lines });
-  const bodyFor = (login: string, parentLogin: string) => (login.startsWith('pos') ? posMove({ parentLogin }) : agentMove({ parentLogin }));
+  const bodyFor = (login: string, parentLoginName: string) => (login.startsWith('pos') ? posMove({ parentLoginName }) : agentMove({ parentLoginName }));
 
   it('refuses what the rules refuse, as the preview does, and writes nothing', async () => {
     const fixture = await busyAgent();
@@ -541,7 +541,7 @@ describe('transfer: refusals', () => {
     // ma1 holds the grants for points of sale and agents but sees only its own chain; ag1 holds neither.
     edit(accounts, 'ma1', { liveGrants: 'transferPos,transferAgents' });
     const before = stored(fixture);
-    const cases: [who: string, login: string, parentLogin: string, status: number, code: string][] = [
+    const cases: [who: string, login: string, parentLoginName: string, status: number, code: string][] = [
       ['ag1', 'pos1', 'ag2', 403, 'FORBIDDEN'],
       ['ma1', 'ag1', 'ma2', 403, 'FORBIDDEN'],
       // Someone with no say over moves is told nothing about what exists: every name is a refusal.
@@ -553,13 +553,13 @@ describe('transfer: refusals', () => {
       ['branch', 'ghost', 'ma2', 400, 'INVALID'],
       ['branch', 'ag1', 'ghost', 400, 'INVALID'],
     ];
-    for (const [who, login, parentLogin, status, code] of cases) {
-      await expect(service.transferPreview(gates[who], login, { parentLogin })).rejects.toEqual(refused(status, code));
-      await expect(service.transferAccount(gates[who], login, bodyFor(login, parentLogin))).rejects.toEqual(refused(status, code));
+    for (const [who, login, parentLoginName, status, code] of cases) {
+      await expect(service.transferPreview(gates[who], login, { parentLoginName })).rejects.toEqual(refused(status, code));
+      await expect(service.transferAccount(gates[who], login, bodyFor(login, parentLoginName))).rejects.toEqual(refused(status, code));
     }
     // The choices are read before the rules, so an incomplete body is INVALID even to ag1, who may move nothing.
-    await expect(service.transferAccount(gates.ag1, 'pos1', { parentLogin: 'ag2' })).rejects.toEqual(refused(400, 'INVALID'));
-    await expect(service.transferAccount(gates.branch, 'pos1', { ...posMove(), parentLogin: undefined })).rejects.toEqual(refused(400, 'INVALID'));
+    await expect(service.transferAccount(gates.ag1, 'pos1', { parentLoginName: 'ag2' })).rejects.toEqual(refused(400, 'INVALID'));
+    await expect(service.transferAccount(gates.branch, 'pos1', { ...posMove(), parentLoginName: undefined })).rejects.toEqual(refused(400, 'INVALID'));
     expect(stored(fixture)).toBe(before);
     expect(heard.written).toEqual([]);
     // A frozen destination is refused too.
@@ -650,7 +650,7 @@ describe('transfer: a number', () => {
     const { service, gates, accounts, line } = await tree();
     accounts.push(account('pos3', 'pos', 'ag1'));
     edit(accounts, 'ag1', { liveGrants: 'transferLines' });
-    await expect(service.transferLine(gates.ag1, 'ln1', lineMove({ posLogin: 'pos3' }))).resolves.toEqual({ ok: true });
+    await expect(service.transferLine(gates.ag1, 'ln1', lineMove({ posLoginName: 'pos3' }))).resolves.toEqual({ ok: true });
     expect(line).toMatchObject({ posId: 'pos3', opsLocked: false });
   });
 
@@ -745,7 +745,7 @@ describe('transfer: a number', () => {
     edit(accounts, 'pos2', { disabledAt: new Date('2026-11-01T00:00:00.000Z') });
     await expect(service.transferLine(gates.branch, 'ln1', lineMove())).rejects.toEqual(refused(400, 'INVALID'));
     expect(line.posId).toBe('pos1');
-    await expect(service.transferLine(gates.branch, 'ln1', lineMove({ posLogin: 'pos1' }))).rejects.toEqual(refused(400, 'INVALID'));
+    await expect(service.transferLine(gates.branch, 'ln1', lineMove({ posLoginName: 'pos1' }))).rejects.toEqual(refused(400, 'INVALID'));
     // A frozen point of sale may still send a number away.
     edit(accounts, 'pos2', { disabledAt: null });
     edit(accounts, 'pos1', { disabledAt: new Date('2026-11-01T00:00:00.000Z') });
@@ -764,7 +764,7 @@ describe('transfer: a number', () => {
     edit(accounts, 'ag1', { liveGrants: 'transferPos,transferAgents' });
     const heard = listen(notice);
     const before = stored(fixture);
-    const cases: [who: string, lineId: string, posLogin: unknown, status: number, code: string][] = [
+    const cases: [who: string, lineId: string, posLoginName: unknown, status: number, code: string][] = [
       ['ag1', 'ln1', 'pos2', 403, 'FORBIDDEN'],
       ['ma1', 'ln1', 'pos4', 403, 'FORBIDDEN'],
       // A number outside the caller's tree answers like one that is not there (backend-engineering.mdc 4.8).
@@ -774,10 +774,10 @@ describe('transfer: a number', () => {
       ['branch', 'ln1', 'ag2', 400, 'INVALID'],
       ['branch', 'ln1', 'ma1', 400, 'INVALID'],
       ['branch', 'ln1', 'ghost', 400, 'INVALID'],
-      ...[undefined, '', ['pos2'], 7, null].map((posLogin): [string, string, unknown, number, string] => ['branch', 'ln1', posLogin, 400, 'INVALID']),
+      ...[undefined, '', ['pos2'], 7, null].map((posLoginName): [string, string, unknown, number, string] => ['branch', 'ln1', posLoginName, 400, 'INVALID']),
     ];
-    for (const [who, lineId, posLogin, status, code] of cases) {
-      await expect(service.transferLine(gates[who], lineId, lineMove({ posLogin }))).rejects.toEqual(refused(status, code));
+    for (const [who, lineId, posLoginName, status, code] of cases) {
+      await expect(service.transferLine(gates[who], lineId, lineMove({ posLoginName }))).rejects.toEqual(refused(status, code));
     }
     expect(stored(fixture)).toBe(before);
     expect(heard.written).toEqual([]);
@@ -803,7 +803,7 @@ describe('transfer: a number', () => {
       for (const linePrices of [undefined, '', 'KEEP', 'reset', 'drop', 'Recapture', null, 0, 1, true, ['keep'], {}]) {
         await expect(service.transferLine(gates[who], 'ln1', lineMove({ linePrices }))).rejects.toEqual(refused(400, 'INVALID'));
       }
-      await expect(service.transferLine(gates[who], 'ghost', { posLogin: 'pos2' })).rejects.toEqual(refused(400, 'INVALID'));
+      await expect(service.transferLine(gates[who], 'ghost', { posLoginName: 'pos2' })).rejects.toEqual(refused(400, 'INVALID'));
     }
     expect(reads).toBe(0);
     // A body of words reads the number and the accounts, and the rules answer: the spy does count.
@@ -824,8 +824,8 @@ describe('transfer: a number', () => {
     const heard = listen(notice);
     await service.transferLine(gates.branch, 'ln1', lineMove());
     expect(heard.written).toEqual([
-      { userIds: ['pos1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'line', subject: '0521000001', toLogin: 'pos2', actorName: 'branch' } } },
-      { userIds: ['pos2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'line', subject: '0521000001', fromLogin: 'pos1', actorName: 'branch' } } },
+      { userIds: ['pos1'], actorId: 'branch', draft: { kind: 'transfer.out', payload: { kind: 'line', subject: '0521000001', toLoginName: 'pos2', actorName: 'branch' } } },
+      { userIds: ['pos2'], actorId: 'branch', draft: { kind: 'transfer.in', payload: { kind: 'line', subject: '0521000001', fromLoginName: 'pos1', actorName: 'branch' } } },
     ]);
     // Both are published together, once the move has committed, and both are stored.
     expect(heard.published.map((rows) => rows.map((row) => [row.userId, row.kind]))).toEqual([[['pos1', 'transfer.out'], ['pos2', 'transfer.in']]]);
@@ -925,21 +925,21 @@ describe('the transfer routes under /office', () => {
       return gate ? call.set('Cookie', `sid=${gate.sessionId}`) : call;
     };
 
-    const ok = await get(gates.branch, '?parentLogin=ma2');
+    const ok = await get(gates.branch, '?parentLoginName=ma2');
     expect(ok.status).toBe(200);
     expect(ok.body).toEqual(BUSY_PREVIEW);
 
-    const forbidden = await get(gates.ag1, '?parentLogin=ma2');
+    const forbidden = await get(gates.ag1, '?parentLoginName=ma2');
     expect(forbidden.status).toBe(403);
     expect(forbidden.body).toMatchObject({ code: 'FORBIDDEN' });
 
-    for (const search of ['', '?parentLogin=', '?parentLogin=ma2&parentLogin=ag2']) {
+    for (const search of ['', '?parentLoginName=', '?parentLoginName=ma2&parentLoginName=ag2']) {
       const invalid = await get(gates.branch, search);
       expect(invalid.status).toBe(400);
       expect(invalid.body).toMatchObject({ code: 'INVALID' });
     }
 
-    const anonymous = await get(null, '?parentLogin=ma2');
+    const anonymous = await get(null, '?parentLoginName=ma2');
     expect(anonymous.status).toBe(401);
     expect(anonymous.body).toMatchObject({ code: 'LOGIN_REQUIRED' });
 
@@ -960,7 +960,7 @@ describe('the transfer routes under /office', () => {
     expect(forbidden.status).toBe(403);
     expect(forbidden.body).toMatchObject({ code: 'FORBIDDEN' });
 
-    const invalid = await post(gates.branch, 'pos1', { parentLogin: 'ag2' });
+    const invalid = await post(gates.branch, 'pos1', { parentLoginName: 'ag2' });
     expect(invalid.status).toBe(400);
     expect(invalid.body).toMatchObject({ code: 'INVALID' });
 
@@ -985,7 +985,7 @@ describe('the transfer routes under /office', () => {
     expect(forbidden.body).toMatchObject({ code: 'FORBIDDEN' });
 
     // A body that names the point of sale and leaves the price out is not a move.
-    const invalid = await post(gates.branch, { posLogin: 'pos2' });
+    const invalid = await post(gates.branch, { posLoginName: 'pos2' });
     expect(invalid.status).toBe(400);
     expect(invalid.body).toMatchObject({ code: 'INVALID' });
     expect(line.posId).toBe('pos1');

@@ -24,7 +24,7 @@ const qr = z.unknown().optional().describe('QR picture as a data URL (png, jpeg,
 
 export const ActivateBody = z.object({
   packageCode: stored,
-  posLogin: stored,
+  posLoginName: stored,
   esim: z.boolean().optional().default(false),
   iccid: simSerial,
   msisdn: optionalMsisdn,

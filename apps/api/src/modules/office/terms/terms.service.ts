@@ -43,7 +43,7 @@ export type CustomPriceRow = {
   loginName: string;
   nickname: string;
   layer: string;
-  parentLogin: string;
+  parentLoginName: string;
   defaultPrice: number;
   defaultRenewalPrice: number;
   price: number | null;
@@ -334,7 +334,7 @@ export class TermsService {
       loginName: account.loginName,
       nickname: account.nickname,
       layer: account.layer,
-      parentLogin: path[1]?.loginName ?? '',
+      parentLoginName: path[1]?.loginName ?? '',
       defaultPrice: buyPriceFor(path, without, sells, pkg, 'subscription'),
       defaultRenewalPrice: buyPriceFor(path, without, sells, pkg, 'renewal'),
       price: own?.price ?? null,

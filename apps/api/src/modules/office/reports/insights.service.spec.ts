@@ -39,7 +39,7 @@ describe('InsightsService', () => {
     });
     const all = await service.balances(actor);
     expect(all.items.map((row) => row.loginName)).toEqual(['pos1', 'pos2']);
-    expect(all.items[0]).toMatchObject({ used: 2000, available: 3000, parentLogin: 'agent', lastAt: '2026-11-06T10:00:00.000Z' });
+    expect(all.items[0]).toMatchObject({ used: 2000, available: 3000, parentLoginName: 'agent', lastAt: '2026-11-06T10:00:00.000Z' });
     expect(all.items[1]).toMatchObject({ frozen: true, lastAt: null });
     expect({ nextCursor: all.nextCursor, total: all.total }).toEqual({ nextCursor: null, total: 2 });
     expect(all.totals).toEqual({ count: 2, balance: -1000, used: 2000 });

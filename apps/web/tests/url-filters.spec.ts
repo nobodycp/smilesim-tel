@@ -31,7 +31,7 @@ test('numbers read their filters from the address, write them back, and follow b
 // The shell search sends `/users?q=` even from /users; the page follows the address it is on.
 test('users follow a new ?q= while already on the page, and the typed search goes to the address', async ({ page }) => {
   const user = (loginName: string) => ({
-    loginName, nickname: loginName, layer: 'pos', roleName: '', parentLogin: 'agent1', balance: 0, ceiling: 0, frozen: false, self: false, directChild: false,
+    loginName, nickname: loginName, layer: 'pos', roleName: '', parentLoginName: 'agent1', balance: 0, ceiling: 0, frozen: false, self: false, directChild: false,
     canEnter: false, canFreeze: false, canDelete: false,
   });
   await serveOffice(page, 'branch', { 'GET /users': () => ({ body: { users: [user('alpha'), user('beta'), user('gamma')] } }) });

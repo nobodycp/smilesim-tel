@@ -56,13 +56,13 @@ export const shekels = (agorot: number) => (agorot / 100).toFixed(2);
 
 /** The ledger rows as a UTF-8 CSV with a BOM (Excel reads Arabic then). Amounts in shekels. */
 export function ledgerCsv(rows: {
-  at: string; loginName: string; layer: string; actorLogin: string; kind: string; amount: number; balanceBefore: number;
+  at: string; loginName: string; layer: string; actorLoginName: string; kind: string; amount: number; balanceBefore: number;
   balanceAfter: number; msisdn: string; companyName: string; packageName: string; note: string;
 }[]): string {
   const lines = [CSV_HEAD.join(',')];
   for (const row of rows) {
     lines.push([
-      row.at, row.loginName, row.layer, row.actorLogin, row.kind, shekels(row.amount), shekels(row.balanceBefore),
+      row.at, row.loginName, row.layer, row.actorLoginName, row.kind, shekels(row.amount), shekels(row.balanceBefore),
       shekels(row.balanceAfter), row.msisdn, row.companyName, row.packageName, row.note,
     ].map(cell).join(','));
   }

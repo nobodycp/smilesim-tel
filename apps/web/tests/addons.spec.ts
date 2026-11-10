@@ -6,7 +6,7 @@ import { serveOffice } from './desk';
 const admin = 'http://admin.localhost:3910';
 const line = {
   id: 'ln1', msisdn: '0550000001', iccid: null, esim: false, status: 'active', packageCode: 'cell-400', packageName: '400 جيجا',
-  companyName: 'سلكوم', posLogin: 'pos', posPrice: 26, createdAt: '2026-10-01T00:00:00.000Z', endsAt: '2026-12-12T00:00:00.000Z',
+  companyName: 'سلكوم', posLoginName: 'pos', posPrice: 26, createdAt: '2026-10-01T00:00:00.000Z', endsAt: '2026-12-12T00:00:00.000Z',
   addons: [{ id: 'ad1', name: '10 جيجا إضافية', price: 1500 }, { id: 'ad2', name: 'تجوال أسبوع', price: 2500 }],
 };
 

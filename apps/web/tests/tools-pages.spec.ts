@@ -7,7 +7,7 @@ const admin = 'http://admin.localhost:3910';
 
 const line = (id: string, status = 'active', extra = {}) => ({
   id, msisdn: `055${id.replace(/\D/g, '').padStart(7, '0')}`, iccid: null, esim: false, status,
-  packageCode: 'cell-400', packageName: '400 جيجا', companyName: 'سلكوم', posLogin: 'pos', posPrice: 26,
+  packageCode: 'cell-400', packageName: '400 جيجا', companyName: 'سلكوم', posLoginName: 'pos', posPrice: 26,
   createdAt: '2026-10-01T00:00:00.000Z', endsAt: '2026-11-12T00:00:00.000Z', ...extra,
 });
 
@@ -44,7 +44,7 @@ test.describe('layer guard', () => {
 
 test.describe('DataTable and EmptyState', () => {
   const task = (id: string, extra = {}) => ({
-    id, action: 'activate', status: 'pending', posLogin: 'pos', submitterLogin: 'pos', assigneeLogin: null, posDelta: -26,
+    id, action: 'activate', status: 'pending', posLoginName: 'pos', submitterLoginName: 'pos', assigneeLoginName: null, posDelta: -26,
     msisdn: `055000000${id}`, packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: false, canWork: false, canCancel: false, ...extra,
   });
 
@@ -96,7 +96,7 @@ test.describe('usePaged', () => {
     test(`${path} counts its pages from the total and reads the next cursor for page 2`, async ({ page }) => {
       const row = (n: number) => ({
         ...account(`r${n}`, `05500000${String(n).padStart(2, '0')}`), action: 'extend', status: 'done', kind: 'extend', amount: -26,
-        providerName: 'مزود', actorName: 'الكاشير', note: null, actorLogin: 'pos',
+        providerName: 'مزود', actorName: 'الكاشير', note: null, actorLoginName: 'pos',
       });
       const first = Array.from({ length: 10 }, (_, index) => row(index + 1));
       const calls = await serveOffice(page, 'branch', {
@@ -263,7 +263,7 @@ test.describe('useAction and lineActions', () => {
 test.describe('reports', () => {
   const kinds = {
     providers: { items: [{ providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', price: 20, lines: 4 }], nextCursor: null, total: 1 },
-    tasks: { items: [{ id: 't1', action: 'activate', status: 'done', posLogin: 'pos', submitterLogin: 'pos', assigneeLogin: null, posDelta: -26, msisdn: '0550000001', packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: false, canWork: false, canCancel: false }] },
+    tasks: { items: [{ id: 't1', action: 'activate', status: 'done', posLoginName: 'pos', submitterLoginName: 'pos', assigneeLoginName: null, posDelta: -26, msisdn: '0550000001', packageName: '400 جيجا', log: '', note: '', resultNote: '', canTake: false, canWork: false, canCancel: false }] },
     numbers: { items: [line('ln1')], poses: [] },
     operations: { items: [] },
   } as const;
@@ -287,7 +287,7 @@ test.describe('reports', () => {
   });
 
   test('a report pages by cursor and keeps the table while it loads more', async ({ page }) => {
-    const entry = (id: string) => ({ id, at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLogin: 'admin', kind: 'extend', amount: -26, balanceAfter: 74, note: null });
+    const entry = (id: string) => ({ id, at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLoginName: 'admin', kind: 'extend', amount: -26, balanceAfter: 74, note: null });
     const first = Array.from({ length: 10 }, (_, index) => entry(`e${index + 1}`));
     await serveOffice(page, 'branch', {
       'GET /reports/operations': (url) => (url.searchParams.get('cursor') === 'c2'
@@ -317,7 +317,7 @@ test.describe('shell', () => {
 
   // The accounts are read once when the box opens and filtered as the reader types; numbers go to the server.
   test('the shell search reads the accounts once, however much is typed', async ({ page }) => {
-    const user = (loginName: string, nickname: string) => ({ loginName, nickname, layer: 'pos', roleName: '', parentLogin: null, balance: 0, ceiling: 0, frozen: false, self: false, directChild: true, canEnter: false, canFreeze: false, canDelete: false });
+    const user = (loginName: string, nickname: string) => ({ loginName, nickname, layer: 'pos', roleName: '', parentLoginName: null, balance: 0, ceiling: 0, frozen: false, self: false, directChild: true, canEnter: false, canFreeze: false, canDelete: false });
     const calls = await serveOffice(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /users': () => ({ body: { users: [user('samir1', 'سمير'), user('sara2', 'سارة')] } }),

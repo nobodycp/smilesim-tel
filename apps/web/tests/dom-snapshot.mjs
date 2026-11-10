@@ -35,7 +35,7 @@ const me = (layer) => ({
 
 const line = (n, status, extra = {}) => ({
   id: `ln${n}`, msisdn: `055${String(n).padStart(7, '0')}`, iccid: n % 2 ? '8997201' : null, esim: n % 2 === 0, status,
-  packageCode: 'cell-400', packageName: '400 جيجا', companyName: 'سلكوم', posLogin: 'pos', posPrice: 26,
+  packageCode: 'cell-400', packageName: '400 جيجا', companyName: 'سلكوم', posLoginName: 'pos', posPrice: 26,
   createdAt: '2026-10-01T00:00:00.000Z', endsAt: '2026-11-12T00:00:00.000Z', ...extra,
 });
 const lines = [line(1, 'active'), line(2, 'frozen'), line(3, 'disconnected')];
@@ -53,15 +53,15 @@ const provider = {
   ] }],
 };
 const task = (id, status) => ({
-  id, status, action: 'activate', packageName: '400 جيجا', msisdn: '0550000001', posLogin: 'pos', posDelta: -26,
+  id, status, action: 'activate', packageName: '400 جيجا', msisdn: '0550000001', posLoginName: 'pos', posDelta: -26,
   log: 'سجل', note: 'ملاحظة', resultNote: '', canTake: status === 'pending', canWork: status === 'working', canCancel: status === 'pending',
 });
 const ledger = (id) => ({
   id, at: '2026-10-02T10:30:00.000Z', kind: 'extend', amount: -26, balanceBefore: 100, balanceAfter: 74, note: null,
-  packageName: '400 جيجا', msisdn: '0550000001', actorLogin: 'pos',
+  packageName: '400 جيجا', msisdn: '0550000001', actorLoginName: 'pos',
 });
 const finance = (id) => ({
-  id, at: '2026-10-02T10:30:00.000Z', loginName: 'pos', layer: 'pos', actorLogin: 'admin', kind: 'charge',
+  id, at: '2026-10-02T10:30:00.000Z', loginName: 'pos', layer: 'pos', actorLoginName: 'admin', kind: 'charge',
   amount: -26, balanceBefore: 100, balanceAfter: 74, msisdn: '0550000001', companyName: 'سلكوم',
   packageName: '400 جيجا', packagePrice: 26, note: '',
 });
@@ -70,9 +70,9 @@ const audit = (id) => ({
   packageName: '400 جيجا', providerName: 'مزود', actorName: 'الكاشير',
 });
 const users = [
-  { loginName: 'admin', nickname: 'الإدارة', layer: 'branch', roleName: '', parentLogin: null, balance: 1000, ceiling: 0, frozen: false, self: true, directChild: false, canEnter: false, canFreeze: false, canDelete: false },
-  { loginName: 'main1', nickname: 'رئيسي', layer: 'main_agent', roleName: '', parentLogin: 'admin', balance: 50, ceiling: 500, frozen: false, self: false, directChild: true, canEnter: true, canFreeze: true, canDelete: true },
-  { loginName: 'pos', nickname: 'الكاشير', layer: 'pos', roleName: '', parentLogin: 'main1', balance: 10, ceiling: 100, frozen: true, self: false, directChild: false, canEnter: true, canFreeze: true, canDelete: false },
+  { loginName: 'admin', nickname: 'الإدارة', layer: 'branch', roleName: '', parentLoginName: null, balance: 1000, ceiling: 0, frozen: false, self: true, directChild: false, canEnter: false, canFreeze: false, canDelete: false },
+  { loginName: 'main1', nickname: 'رئيسي', layer: 'main_agent', roleName: '', parentLoginName: 'admin', balance: 50, ceiling: 500, frozen: false, self: false, directChild: true, canEnter: true, canFreeze: true, canDelete: true },
+  { loginName: 'pos', nickname: 'الكاشير', layer: 'pos', roleName: '', parentLoginName: 'main1', balance: 10, ceiling: 100, frozen: true, self: false, directChild: false, canEnter: true, canFreeze: true, canDelete: false },
 ];
 const roles = [{ id: 'r1', name: 'محاسب', read: true, edit: false, accounting: true, tasks: false, reports: true, staff: false, enter: false }];
 const sheet = {
@@ -86,7 +86,7 @@ const home = {
 };
 const reports = {
   providers: { items: [{ providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', price: 20, lines: 4 }], nextCursor: null, total: 1 },
-  operations: { items: [{ id: 'e2', at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLogin: 'admin', kind: 'activate', amount: -26, balanceAfter: 74, note: 'ن' }] },
+  operations: { items: [{ id: 'e2', at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLoginName: 'admin', kind: 'activate', amount: -26, balanceAfter: 74, note: 'ن' }] },
 };
 
 // What each office endpoint answers. `empty` swaps the lists for empty ones.
@@ -102,7 +102,7 @@ function answer(path, layer, empty) {
   if (path === '/office/providers') return { providers: [provider] };
   if (path === '/office/tasks') return { items: list([task('t1', 'pending'), task('t2', 'working'), task('t3', 'done')]), nextCursor: empty ? null : 'c2' };
   if (path === '/office/users') return { items: list(users), nextCursor: null, total: list(users).length };
-  if (path === '/office/directory') return { items: users.map((row) => ({ loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLogin: null, frozen: false, mine: true })), nextCursor: null, total: users.length };
+  if (path === '/office/directory') return { items: users.map((row) => ({ loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLoginName: null, frozen: false, mine: true })), nextCursor: null, total: users.length };
   if (path === '/office/roles') return { roles: list(roles) };
   if (path === '/office/audit') return { items: list([audit('a1'), audit('a2')]), nextCursor: empty ? null : 'c2' };
   if (path === '/office/finance') return { items: list([finance('c1'), finance('c2')]), nextCursor: empty ? null : 'c2' };

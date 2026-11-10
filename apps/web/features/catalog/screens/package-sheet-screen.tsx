@@ -272,7 +272,7 @@ export function PackageSheetScreen() {
   const offerColumns: Column<CustomPriceRow>[] = [
     { key: 'account', header: t.accountName, render: (offer) => <AccountName login={offer.loginName} name={offer.nickname} /> },
     { key: 'layer', header: t.layer, fit: true, render: (offer) => layerName(t, offer.layer) },
-    { key: 'parent', header: t.parent, fit: true, render: (offer) => <bdi dir="ltr">{offer.parentLogin ?? '—'}</bdi> },
+    { key: 'parent', header: t.parent, fit: true, render: (offer) => <bdi dir="ltr">{offer.parentLoginName ?? '—'}</bdi> },
     {
       key: 'price',
       header: t.subscriptionPrice,

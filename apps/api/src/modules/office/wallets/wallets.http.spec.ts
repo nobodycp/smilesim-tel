@@ -45,8 +45,8 @@ describe('GET /office/wallets', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       items: [
-        { loginName: 'ag1', nickname: 'n-ag1', layer: 'agent', balance: 5000, ceiling: 1000, parentLogin: 'ma1', self: true, directChild: false },
-        { loginName: 'pos1', nickname: 'n-pos1', layer: 'pos', balance: -200, ceiling: 300, parentLogin: 'ag1', self: false, directChild: true },
+        { loginName: 'ag1', nickname: 'n-ag1', layer: 'agent', balance: 5000, ceiling: 1000, parentLoginName: 'ma1', self: true, directChild: false },
+        { loginName: 'pos1', nickname: 'n-pos1', layer: 'pos', balance: -200, ceiling: 300, parentLoginName: 'ag1', self: false, directChild: true },
       ],
       nextCursor: null,
       total: 2,

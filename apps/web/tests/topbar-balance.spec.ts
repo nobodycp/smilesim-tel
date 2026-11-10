@@ -8,7 +8,7 @@ test('the topbar balance follows a fund without a reload', async ({ page }) => {
   let balance = 100000;
   const me = { loginName: 'main1', nickname: 'رئيسي', layer: 'main_agent', isBranchOwner: false, grants: [], stops: [], impersonating: false, ceiling: 0 };
   const child = {
-    loginName: 'ag1', nickname: 'وكيل', layer: 'agent', roleName: '', parentLogin: 'main1', ceiling: 0, frozen: false, self: false,
+    loginName: 'ag1', nickname: 'وكيل', layer: 'agent', roleName: '', parentLoginName: 'main1', ceiling: 0, frozen: false, self: false,
     directChild: true, canEnter: true, canFreeze: true, canDelete: true, balance: 0,
   };
   await serveOffice(page, 'main_agent', {

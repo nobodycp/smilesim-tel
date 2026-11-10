@@ -4,7 +4,7 @@ import { serveOffice } from './desk';
 // Task notes and statuses (spec 2026-11-09-offers-tasks-addons-wallet-esim, 2): the branch writes internal notes,
 // which carry a badge; an open task reads «قيد المعالجة» and has no «بانتظار الاستلام».
 const task = {
-  id: 't1', action: 'switch', status: 'working', posLogin: 'pos', submitterLogin: 'pos', assigneeLogin: null, posDelta: -500,
+  id: 't1', action: 'switch', status: 'working', posLoginName: 'pos', submitterLoginName: 'pos', assigneeLoginName: null, posDelta: -500,
   msisdn: '0550000001', packageName: '400 جيجا', note: 'مهمة فرع', resultNote: null, lastNote: null, log: '',
   canTake: true, canWork: true, canCancel: false, createdAt: '2026-11-09T08:00:00.000Z', updatedAt: '2026-11-09T08:00:00.000Z',
   iccid: null, esim: false, esimQr: null, sim: { length: null, prefix: '', esim: true }, lineStatus: 'active', companyName: 'سلكوم',

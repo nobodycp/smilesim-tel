@@ -58,8 +58,8 @@ export function noticeDetail(t: Copy, row: NoticeRow): string {
   if (row.kind === 'transfer.out' || row.kind === 'transfer.in') {
     // What moved, then the account it went to (out) or came from (in), then who moved it.
     if (p.subject) parts.push(p.subject);
-    if (row.kind === 'transfer.out' && p.toLogin) parts.push(`${t.noticeTo} ${p.toLogin}`);
-    if (row.kind === 'transfer.in' && p.fromLogin) parts.push(`${t.noticeFrom} ${p.fromLogin}`);
+    if (row.kind === 'transfer.out' && p.toLoginName) parts.push(`${t.noticeTo} ${p.toLoginName}`);
+    if (row.kind === 'transfer.in' && p.fromLoginName) parts.push(`${t.noticeFrom} ${p.fromLoginName}`);
     const who = p.actorName || row.actorName;
     if (who) parts.push(`${t.noticeBy} ${who}`);
     return parts.join(' · ');

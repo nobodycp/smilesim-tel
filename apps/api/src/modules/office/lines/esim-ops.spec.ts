@@ -275,7 +275,7 @@ describe('line card', () => {
 describe('immediate eSIM activation', () => {
   it('issues the serial and the QR from the provider and stores them on the new line', async () => {
     const { service, gate, otherLines, entries, wallet } = await office();
-    const answer = await service.activate(gate, { packageCode: 'alloha-150', posLogin: 'pos1', esim: true, iccid: '', outcome: 'success' });
+    const answer = await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '', outcome: 'success' });
     expect(answer.applied).toBe(true);
     expect(answer.debited).toBe(true);
     const issued = answer.line;
@@ -295,7 +295,7 @@ describe('immediate eSIM activation', () => {
 
   it('keeps the typed serial for a physical SIM and issues no QR', async () => {
     const { service, gate, otherLines, entries } = await office();
-    const answer = await service.activate(gate, { packageCode: 'alloha-150', posLogin: 'pos1', esim: false, iccid: '8997202000000000777', outcome: 'success' });
+    const answer = await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: false, iccid: '8997202000000000777', outcome: 'success' });
     expect(answer.line).toMatchObject({ esim: false, iccid: '8997202000000000777', esimQr: null });
     expect(otherLines[0]).toMatchObject({ esim: false, esimQr: null });
     // No eSIM: the provider cost stays unset and provider operations fall back to the package cost.
@@ -304,7 +304,7 @@ describe('immediate eSIM activation', () => {
 
   it('carries the eSIM fee into the provider cost when the branch closes the activation task', async () => {
     const { service, gate, entries, work } = await office();
-    await service.activate(gate, { packageCode: 'alloha-150', posLogin: 'pos1', esim: true, iccid: '', outcome: 'fail' });
+    await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '', outcome: 'fail' });
     const task = await work();
     await service.completeTask(gate, String(task.id), { iccid: '8997202000000000003', qr: QR });
     // Hold and release move no money; the charge is the first entry that does.
@@ -313,7 +313,7 @@ describe('immediate eSIM activation', () => {
 
   it('shows package plus eSIM fee, and the eSIM request fee, in provider operations', async () => {
     const { service, gate, work } = await office();
-    await service.activate(gate, { packageCode: 'alloha-150', posLogin: 'pos1', esim: true, iccid: '', outcome: 'success' });
+    await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '', outcome: 'success' });
     await service.requestEsim(gate, 'ln1');
     const task = await work();
     await service.completeTask(gate, String(task.id), { iccid: '8997202000000000002', qr: QR });
@@ -329,7 +329,7 @@ describe('immediate eSIM activation', () => {
     const { service, gate, otherLines, entries, provider } = await office();
     provider.code = 'tokman';
     const answer = await service.activate(gate, {
-      packageCode: 'alloha-150', posLogin: 'pos1', esim: true, iccid: '8997202000000000555', msisdn: '0521000777', outcome: 'success',
+      packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '8997202000000000555', msisdn: '0521000777', outcome: 'success',
     });
     expect(answer.line).toMatchObject({ msisdn: '0521000777', esim: true, iccid: '8997202000000000555', esimQr: null });
     expect(otherLines[0]).toMatchObject({ esim: true, iccid: '8997202000000000555' });
@@ -338,7 +338,7 @@ describe('immediate eSIM activation', () => {
 
   it('opens a task without a serial or QR when the provider fails', async () => {
     const { service, gate, tasks } = await office();
-    const answer = await service.activate(gate, { packageCode: 'alloha-150', posLogin: 'pos1', esim: true, iccid: '', outcome: 'fail' });
+    const answer = await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '', outcome: 'fail' });
     expect(answer).toEqual({ applied: false, taskId: 't1' });
     expect(tasks[0]).toMatchObject({ action: 'activate', esim: true, iccid: null });
   });

@@ -73,6 +73,9 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
    (`AccountTree.visibleAccount`, `LineAccess.visibleLine`), so a refusal never tells which logins or numbers exist.
    `403` is for a caller who may see the target but may not do this to it, and a grant that does not depend on the
    target is judged before the target is read. *(`permissions.http.spec.ts`; each domain's `*.http.spec.ts`)*
+9. A field that holds an account's login ends in `LoginName`, in requests, answers and Prisma models
+   (`parentLoginName`, `posLoginName`, `actorLoginName`); never `…Login` or `account`.
+   *(architecture.spec: `login-field-name`)*
 
 ## 5. Structure
 

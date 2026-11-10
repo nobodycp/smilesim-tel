@@ -19,7 +19,7 @@ export const LEDGER_LIMIT = 1_000;
 
 const OPEN_TASKS = ['pending', 'working'];
 
-type LedgerRow = { id: string; at: Date; kind: string; amount: number; note: string; msisdn: string; packageName: string; actorLogin: string };
+type LedgerRow = { id: string; at: Date; kind: string; amount: number; note: string; msisdn: string; packageName: string; actorLoginName: string };
 
 @Injectable()
 export class ProviderAccountsService {
@@ -118,10 +118,10 @@ export class ProviderAccountsService {
     const entries = await this.repo.entriesOf(provider.id);
     const rows: LedgerRow[] = [
       ...books.operations.filter((row) => row.providerCode === code && row.cost !== 0).map((row) => ({
-        id: row.id, at: row.at, kind: row.kind, amount: -row.cost, note: '', msisdn: row.msisdn, packageName: row.packageName, actorLogin: '',
+        id: row.id, at: row.at, kind: row.kind, amount: -row.cost, note: '', msisdn: row.msisdn, packageName: row.packageName, actorLoginName: '',
       })),
       ...entries.map((row) => ({
-        id: row.id, at: row.createdAt, kind: row.kind, amount: row.amount, note: row.note, msisdn: '', packageName: '', actorLogin: row.actorLogin,
+        id: row.id, at: row.createdAt, kind: row.kind, amount: row.amount, note: row.note, msisdn: '', packageName: '', actorLoginName: row.actorLoginName,
       })),
     ].sort((a, b) => a.at.getTime() - b.at.getTime() || a.id.localeCompare(b.id));
     let running = 0;
@@ -144,7 +144,7 @@ export class ProviderAccountsService {
     const { ledger } = await this.detail(actor, code, query);
     return csvOf(
       ['at', 'kind', 'number', 'package', 'amount', 'balance_after', 'note', 'by'],
-      ledger.map((row) => [row.at, row.kind, row.msisdn, row.packageName, { money: row.amount }, { money: row.balanceAfter }, row.note, row.actorLogin]),
+      ledger.map((row) => [row.at, row.kind, row.msisdn, row.packageName, { money: row.amount }, { money: row.balanceAfter }, row.note, row.actorLoginName]),
     );
   }
 
@@ -156,7 +156,7 @@ export class ProviderAccountsService {
     if (amount === 0 || (kind === 'payment' && amount < 0)) fail(400, 'INVALID');
     const provider = await this.repo.providerByCode(code);
     if (!provider) fail(404, 'NOT_FOUND');
-    await this.repo.addEntry({ providerId: provider.id, kind, amount, note: text, actorLogin: actor.loginName });
+    await this.repo.addEntry({ providerId: provider.id, kind, amount, note: text, actorLoginName: actor.loginName });
     return { ok: true };
   }
 
@@ -244,7 +244,7 @@ export class ProviderAccountsService {
         statementTotal: result.statementTotal,
         ourTotal: result.ourTotal,
         counts: { ...result.counts, skipped },
-        actorLogin: actor.loginName,
+        actorLoginName: actor.loginName,
         items: { create: result.rows.map((row) => ({ ...row, status: 'open' })) },
       });
     });
@@ -266,7 +266,7 @@ export class ProviderAccountsService {
         ourTotal: run.ourTotal,
         counts: run.counts,
         open: run.items.filter((item) => item.status === 'open').length,
-        actorLogin: run.actorLogin,
+        actorLoginName: run.actorLoginName,
       })),
     };
   }
@@ -287,7 +287,7 @@ export class ProviderAccountsService {
       statementTotal: run.statementTotal,
       ourTotal: run.ourTotal,
       counts: run.counts,
-      actorLogin: run.actorLogin,
+      actorLoginName: run.actorLoginName,
       items: run.items
         .sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || (a.at?.getTime() ?? 0) - (b.at?.getTime() ?? 0))
         .map((item) => ({ ...item, at: item.at?.toISOString() ?? null, resolvedAt: item.resolvedAt?.toISOString() ?? null })),

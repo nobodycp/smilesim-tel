@@ -15,9 +15,9 @@ export type AccountProfile = Profile & { loginName: string };
 export type Directory = Record<string, string>;
 /**
  * One account of `GET /office/directory`: an account the viewer may meet on a screen. `mine` marks the viewer's own
- * tree; outside it only the name and the layer are told (`parentLogin` null, `frozen` false).
+ * tree; outside it only the name and the layer are told (`parentLoginName` null, `frozen` false).
  */
-export type DirectoryRow = { loginName: string; nickname: string; layer: string; parentLogin: string | null; frozen: boolean; mine: boolean };
+export type DirectoryRow = { loginName: string; nickname: string; layer: string; parentLoginName: string | null; frozen: boolean; mine: boolean };
 
 export type TwoFactorMethod = 'app' | 'sms' | 'email';
 export type PasskeyInfo = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
@@ -167,7 +167,7 @@ export type CustomPriceRow = {
   loginName: string;
   nickname: string;
   layer: string;
-  parentLogin: string;
+  parentLoginName: string;
   defaultPrice: number;
   defaultRenewalPrice: number;
   price: number | null;
@@ -284,7 +284,7 @@ export type AccountAccess = {
   loginName: string;
   nickname: string;
   layer: string;
-  parentLogin: string | null;
+  parentLoginName: string | null;
   frozen: boolean;
   isBranchOwner: boolean;
   staff: boolean;
@@ -305,7 +305,7 @@ export type UserRow = {
   nickname: string;
   layer: string;
   roleName: string;
-  parentLogin: string | null;
+  parentLoginName: string | null;
   balance: number;
   ceiling: number;
   /** Money held for open tasks (roadmap N6). */
@@ -323,7 +323,7 @@ export type TransferReset = 'keep' | 'reset';
 export type TransferLinePrices = 'keep' | 'recapture';
 /** The choices of an account move. Every one is stated, none has a default; the `child` ones are for an agent only. */
 export type TransferAccountBody = {
-  parentLogin: string;
+  parentLoginName: string;
   ownPrices: TransferReset;
   ownStops: TransferReset;
   childPrices?: TransferReset;
@@ -357,7 +357,7 @@ export type LineRow = {
   packageCode: string;
   packageName: string;
   companyName: string;
-  posLogin: string;
+  posLoginName: string;
   posPrice: number;
   createdAt: string;
   endsAt: string;
@@ -383,7 +383,7 @@ export type LineHistory = {
   actorName: string;
 };
 export type PosChoice = { loginName: string; nickname: string };
-export type ActivateBody = { packageCode: string; posLogin: string; esim: boolean; iccid: string; msisdn: string; currentDetails?: string; outcome: Outcome };
+export type ActivateBody = { packageCode: string; posLoginName: string; esim: boolean; iccid: string; msisdn: string; currentDetails?: string; outcome: Outcome };
 export type LedgerRow = {
   id: string;
   at: string;
@@ -394,7 +394,7 @@ export type LedgerRow = {
   note: string | null;
   packageName: string | null;
   msisdn: string | null;
-  actorLogin: string;
+  actorLoginName: string;
   /** The account whose wallet moved (the operations scope covers the viewer's tree). */
   loginName: string;
   layer: string;
@@ -408,7 +408,7 @@ export type ActivityRow = {
   result: string;
   reason: string;
   ip: string;
-  actorLogin: string;
+  actorLoginName: string;
   actorLayer: string;
   subjectKind: string;
   subjectRef: string;
@@ -448,7 +448,7 @@ export type FinanceRow = {
   at: string;
   loginName: string;
   layer: string;
-  actorLogin: string;
+  actorLoginName: string;
   kind: string;
   amount: number;
   balanceBefore: number;
@@ -493,8 +493,8 @@ export type NoticePayload = {
   /** `transfer.out` and `transfer.in`: what moved, its msisdn or login, and the other account. */
   kind?: 'line' | 'pos' | 'agent';
   subject?: string;
-  fromLogin?: string;
-  toLogin?: string;
+  fromLoginName?: string;
+  toLoginName?: string;
   actorName?: string;
   /** `provider.problem` and `provider.recovered` (spec 2026-11-08-overview-and-reports-nav, G). `reason` is shared. */
   code?: string;
@@ -519,9 +519,9 @@ export type TaskRow = {
   id: string;
   action: string;
   status: string;
-  posLogin: string;
-  submitterLogin: string;
-  assigneeLogin: string | null;
+  posLoginName: string;
+  submitterLoginName: string;
+  assigneeLoginName: string | null;
   posDelta: number;
   msisdn: string | null;
   packageName: string;
@@ -565,7 +565,7 @@ export type ReportRow = {
   id: string;
   at: string;
   loginName: string;
-  actorLogin: string;
+  actorLoginName: string;
   amount: number;
   balanceAfter: number;
   kind: string;
@@ -617,7 +617,7 @@ export type ProfitReport = { packages: ProfitRow[]; totals: { sales: number; ref
 
 /** Rows of the «التقارير» page (`GET /office/reports/{sales,orders,balances,supply}`). */
 export type BalanceReportRow = {
-  loginName: string; nickname: string; layer: string; parentLogin: string | null; balance: number; ceiling: number; used: number; held: number; available: number; frozen: boolean; lastAt: string | null;
+  loginName: string; nickname: string; layer: string; parentLoginName: string | null; balance: number; ceiling: number; used: number; held: number; available: number; frozen: boolean; lastAt: string | null;
 };
 export type SupplyReportRow = { providerCode: string; providerName: string; operations: number; cost: number; profit: number };
 
@@ -628,7 +628,7 @@ export type ProviderAccount = {
   matchSource?: 'api' | 'statement'; matchEveryDays?: number; lastMatchedAt?: string | null; matchOverdue?: boolean; openDifferences?: number;
 };
 export type ProviderLedgerRow = {
-  id: string; at: string; kind: string; amount: number; balanceAfter: number; note: string; msisdn: string; packageName: string; actorLogin: string;
+  id: string; at: string; kind: string; amount: number; balanceAfter: number; note: string; msisdn: string; packageName: string; actorLoginName: string;
 };
 export type ProviderAccountDetail = { summary: ProviderAccount; ledger: ProviderLedgerRow[]; capped: boolean };
 
@@ -642,7 +642,7 @@ export type ReconItem = {
 };
 export type ReconRunSummary = {
   id: string; at: string; fileName: string; periodFrom: string | null; periodTo: string | null; statementTotal: number; ourTotal: number;
-  counts: ReconCounts; open: number; actorLogin: string;
+  counts: ReconCounts; open: number; actorLoginName: string;
 };
 export type ReconRun = Omit<ReconRunSummary, 'open'> & { providerCode: string; providerName: string; items: ReconItem[] };
 

@@ -4,7 +4,7 @@ import { serveOffice } from './desk';
 const sky = { code: 'sky', name: 'سكاي', purchases: 6500, payments: 0, settlements: 0, balance: -6500, creditLimit: 0, held: 0, available: -6500 };
 const run = {
   id: 'r1', providerCode: 'sky', providerName: 'سكاي', at: '2026-11-08T10:00:00.000Z', fileName: 'sky.csv', periodFrom: '2026-11-06T00:00:00.000Z', periodTo: '2026-11-07T00:00:00.000Z',
-  statementTotal: 14500, ourTotal: 10000, actorLogin: 'admin', counts: { matched: 1, different: 1, missing_ours: 1, missing_theirs: 1, duplicate: 0 },
+  statementTotal: 14500, ourTotal: 10000, actorLoginName: 'admin', counts: { matched: 1, different: 1, missing_ours: 1, missing_theirs: 1, duplicate: 0 },
   items: [
     { id: 'i1', kind: 'different', msisdn: '0521000002', at: '2026-11-06T00:00:00.000Z', theirAmount: 4000, ourAmount: 4500, reference: null, status: 'open', note: null, resolvedBy: null },
     { id: 'i2', kind: 'missing_ours', msisdn: '0521000003', at: '2026-11-07T00:00:00.000Z', theirAmount: 3000, ourAmount: null, reference: 'R-9', status: 'open', note: null, resolvedBy: null },

@@ -26,14 +26,17 @@ the caller's tree answered 403 where a missing one answered 404.
 5. **Routes.** `PUT /office/companies/:code/image`; `POST /office/roles` and `PUT /office/roles/:id`;
    `GET /office/ledger`; `GET /office/reports/{providers,operations,balances,supply}` with
    `…/{balances,supply}/export`; `GET /office/lines?loginName=`. No `/v2`: API and web ship together.
-6. **Not found.** A target that is missing or outside the caller's tree answers `404 NOT_FOUND`; `403` is for a
+6. **One name for an account.** A field that holds an account's login ends in `LoginName`, in requests and in
+   answers: `loginName`, `parentLoginName`, `posLoginName`, `actorLoginName`, `submitterLoginName`,
+   `assigneeLoginName`, and `toLoginName` / `fromLoginName` in a transfer notice (owner, 2026-11-10: the clearest
+   contract, whatever the size of the rename). The Prisma fields follow (`actorLoginName`, `targetLoginName`) with
+   `@map` to the columns as they are, so no table changed; a migration renames the keys inside stored notices.
+7. **Not found.** A target that is missing or outside the caller's tree answers `404 NOT_FOUND`; `403` is for a
    visible target the caller may not act on; a grant that does not depend on the target is judged before the read.
 
 ## Not done, on purpose
 
 - `PATCH /office/packages/:code/chain` stays PATCH: its body is partial.
-- The body fields `posLogin` and `parentLogin` keep their names: responses use the same names, so only a rename of
-  both sides would be consistent. Owner's call.
 - An account move keeps its own refusal order (`transfers.service.ts`), already written so it tells nothing.
 - No export was added for the providers and operations reports.
 

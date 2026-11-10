@@ -26,7 +26,7 @@ async function sentBy<T>(reply: unknown, call: () => Promise<T>): Promise<{ sent
 
 test('transferAccount posts every choice to the transfer route of the account', async () => {
   const choices = {
-    parentLogin: 'ma2',
+    parentLoginName: 'ma2',
     ownPrices: 'keep',
     ownStops: 'reset',
     childPrices: 'reset',
@@ -39,7 +39,7 @@ test('transferAccount posts every choice to the transfer route of the account', 
 });
 
 test('transferAccount sends no child choice for a point of sale', async () => {
-  const choices = { parentLogin: 'ag2', ownPrices: 'keep', ownStops: 'keep', linePrices: 'keep' } as const;
+  const choices = { parentLoginName: 'ag2', ownPrices: 'keep', ownStops: 'keep', linePrices: 'keep' } as const;
   const { sent } = await sentBy({ ok: true, lines: 0 }, () => api.transferAccount('pos1', choices));
   expect(sent).toEqual([{ path: '/office/users/pos1/transfer', method: 'POST', body: choices }]);
 });
@@ -53,14 +53,14 @@ test('transferPreview asks about the new parent in the query', async () => {
     lines: 5,
   };
   const { sent, result } = await sentBy(preview, () => api.transferPreview('ag1', 'ma2'));
-  expect(sent).toEqual([{ path: '/office/users/ag1/transfer-preview?parentLogin=ma2', method: 'GET' }]);
+  expect(sent).toEqual([{ path: '/office/users/ag1/transfer-preview?parentLoginName=ma2', method: 'GET' }]);
   expect(result).toEqual({ ok: true, status: 200, data: preview });
 });
 
 test('transferLine posts the point of sale and the price choice', async () => {
   const { sent, result } = await sentBy({ ok: true }, () => api.transferLine('ln1', 'pos2', 'recapture'));
   expect(sent).toEqual([
-    { path: '/office/lines/ln1/transfer', method: 'POST', body: { posLogin: 'pos2', linePrices: 'recapture' } },
+    { path: '/office/lines/ln1/transfer', method: 'POST', body: { posLoginName: 'pos2', linePrices: 'recapture' } },
   ]);
   expect(result).toEqual({ ok: true, status: 200, data: { ok: true } });
 });

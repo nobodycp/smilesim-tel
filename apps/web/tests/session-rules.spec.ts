@@ -8,11 +8,11 @@ import { serveOffice } from './desk';
 const json = (body: unknown) => ({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
 const none = { maxSessions: null, sessionMinutes: null };
 const listed = {
-  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', roleName: '', parentLogin: 'admin', balance: 0, ceiling: 0, frozen: false,
+  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', roleName: '', parentLoginName: 'admin', balance: 0, ceiling: 0, frozen: false,
   self: false, directChild: true, canEnter: true, canFreeze: true, canDelete: true, held: 0,
 };
 const account = {
-  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLogin: 'admin', frozen: false, isBranchOwner: false, staff: false,
+  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'admin', frozen: false, isBranchOwner: false, staff: false,
   roleId: '', roleName: '', roleGrants: [], extraGrants: [], deniedGrants: [], extraRoleIds: [], grants: [], roles: [], canEdit: true, listed,
 };
 

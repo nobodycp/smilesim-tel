@@ -10,8 +10,8 @@ const FOLLOW = 'تتبع السلسلة الجديدة';
 const RECAPTURE = 'تُحسب من جديد';
 
 // A `GET /users` row as the API answers it.
-const user = (loginName: string, nickname: string, layer: string, parentLogin: string | null, patch: Record<string, unknown> = {}) => ({
-  loginName, nickname, layer, roleName: '', parentLogin, balance: 0, ceiling: 0, frozen: false, self: false, directChild: false,
+const user = (loginName: string, nickname: string, layer: string, parentLoginName: string | null, patch: Record<string, unknown> = {}) => ({
+  loginName, nickname, layer, roleName: '', parentLoginName, balance: 0, ceiling: 0, frozen: false, self: false, directChild: false,
   canEnter: false, canFreeze: false, canDelete: false, ...patch,
 });
 
@@ -99,7 +99,7 @@ test('branch moves an agent: destination, preview, five choices, request body', 
 
   await pickName(destination, 'ma2');
   await expect(dialog.getByText('37 رقماً')).toBeVisible();
-  expect(calls).toContain('GET /users/ag1/transfer-preview?parentLogin=ma2');
+  expect(calls).toContain('GET /users/ag1/transfer-preview?parentLoginName=ma2');
   await expect(dialog.locator('.ui-badge-warning')).toHaveText('1 سعراً خاصاً أقل من تكلفة الأب الجديد');
   await expect(dialog.locator('.detail-rows > div', { hasText: 'الرصيد المنقول' })).toContainText('12.00 ₪');
   await expect(dialog.locator('.detail-rows > div', { hasText: 'رصيد ما تحته' })).toContainText('50.00 ₪');
@@ -121,7 +121,7 @@ test('branch moves an agent: destination, preview, five choices, request body', 
   const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/office/users/ag1/transfer'));
   await submit.click();
   expect((await sent).postDataJSON()).toEqual({
-    parentLogin: 'ma2', ownPrices: 'keep', ownStops: 'reset', childPrices: 'reset', childStops: 'keep', linePrices: 'recapture',
+    parentLoginName: 'ma2', ownPrices: 'keep', ownStops: 'reset', childPrices: 'reset', childStops: 'keep', linePrices: 'recapture',
   });
   // A move closes the dialog and the list is read again.
   await expect(dialog).toBeHidden();
@@ -157,7 +157,7 @@ test('a point of sale asks three choices, shows no terms for what is below it, a
   await radio(lines, KEEP).check();
   const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/office/users/pos1/transfer'));
   await submit.click();
-  expect((await sent).postDataJSON()).toEqual({ parentLogin: 'ag2', ownPrices: 'reset', ownStops: 'keep', linePrices: 'keep' });
+  expect((await sent).postDataJSON()).toEqual({ parentLoginName: 'ag2', ownPrices: 'reset', ownStops: 'keep', linePrices: 'keep' });
 });
 
 test('a refused preview shows its message in the dialog and opens no choices', async ({ page }) => {
@@ -179,7 +179,7 @@ test('changing the destination reads its own preview and keeps the choices alrea
     'GET /me': () => ({ body: branchMe() }),
     'GET /users': () => ({ body: { users: tree } }),
     'GET /users/ag1/transfer-preview': (url) => ({
-      body: url.searchParams.get('parentLogin') === 'ma2' ? agentPreview : { ...agentPreview, lines: 5, own: { ...agentPreview.own, belowNewFloor: 0 } },
+      body: url.searchParams.get('parentLoginName') === 'ma2' ? agentPreview : { ...agentPreview, lines: 5, own: { ...agentPreview.own, belowNewFloor: 0 } },
     }),
   });
   await page.goto(`${admin}/users`);
@@ -193,7 +193,7 @@ test('changing the destination reads its own preview and keeps the choices alrea
   await pickName(destination, 'ma4');
   await expect(dialog.getByText('5 رقماً')).toBeVisible();
   await expect(dialog.locator('.ui-badge-warning')).toHaveCount(0);
-  expect(calls).toContain('GET /users/ag1/transfer-preview?parentLogin=ma4');
+  expect(calls).toContain('GET /users/ag1/transfer-preview?parentLoginName=ma4');
   await expect(radio(accountGroups(dialog).own, KEEP, 'الأسعار والإخفاء')).toBeChecked();
   await expect(dialog.getByRole('radio', { checked: true })).toHaveCount(1);
 });
@@ -203,7 +203,7 @@ test('a late preview of an earlier destination never replaces the one now chosen
     'GET /me': () => ({ body: branchMe() }),
     'GET /users': () => ({ body: { users: tree } }),
     'GET /users/ag1/transfer-preview': (url) => (
-      url.searchParams.get('parentLogin') === 'ma2'
+      url.searchParams.get('parentLoginName') === 'ma2'
         ? { body: agentPreview, delay: 500 }
         : { body: { ...agentPreview, lines: 5 } }
     ),
@@ -211,7 +211,7 @@ test('a late preview of an earlier destination never replaces the one now chosen
   await page.goto(`${admin}/users`);
   const dialog = await openMove(page, 'ag1');
   const destination = dialog.getByLabel('الوكيل الرئيسي الجديد');
-  const late = page.waitForResponse((response) => response.url().includes('parentLogin=ma2'));
+  const late = page.waitForResponse((response) => response.url().includes('parentLoginName=ma2'));
   await pickName(destination, 'ma2');
   await pickName(destination, 'ma4');
   await expect(dialog.getByText('5 رقماً')).toBeVisible();
@@ -392,7 +392,7 @@ for (const locale of ['ar', 'en', 'he'] as const) {
 const line = {
   id: 'ln1', msisdn: '0550246962', iccid: null, esim: false, status: 'active',
   packageCode: 'cell-400', packageName: '400 جيجا', companyName: 'سلكوم',
-  posLogin: 'pos1', posPrice: 30, createdAt: '2026-10-01T00:00:00.000Z', endsAt: '2026-11-12T00:00:00.000Z',
+  posLoginName: 'pos1', posPrice: 30, createdAt: '2026-10-01T00:00:00.000Z', endsAt: '2026-11-12T00:00:00.000Z',
 };
 
 function serveNumber(page: Page, patch: Record<string, unknown> = {}, extra: Routes = {}) {
@@ -425,7 +425,7 @@ for (const [label, wire] of [[KEEP, 'keep'], [RECAPTURE, 'recapture']] as const)
 
     const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/office/lines/ln1/transfer'));
     await submit.click();
-    expect((await sent).postDataJSON()).toEqual({ posLogin: 'pos2', linePrices: wire });
+    expect((await sent).postDataJSON()).toEqual({ posLoginName: 'pos2', linePrices: wire });
   });
 }
 

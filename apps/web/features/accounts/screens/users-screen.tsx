@@ -36,7 +36,7 @@ const FILTER_KEYS = ['q', 'layer'] as const;
 export function UsersScreen() {
   const { t } = usePrefs();
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState({ loginName: '', nickname: '', password: '', layer: '', parentLogin: '', roleId: '' });
+  const [draft, setDraft] = useState({ loginName: '', nickname: '', password: '', layer: '', parentLoginName: '', roleId: '' });
   // The filters live in the address (`?q=…&layer=pos`): the shell search can open this page filtered, even from it.
   // The server filters and pages (4.4c): what is typed reaches the address, and the list, after a pause.
   const [filters, setFilters] = useUrlFilters(FILTER_KEYS);
@@ -80,14 +80,14 @@ export function UsersScreen() {
         nickname: draft.nickname.trim(),
         password: draft.password,
         layer: draft.layer || creatable[0],
-        parentLogin: draft.parentLogin || undefined,
+        parentLoginName: draft.parentLoginName || undefined,
         roleId: draft.roleId || undefined,
       }),
       {
         note: t.openAccount,
         then: () => {
           setCreating(false);
-          setDraft({ loginName: '', nickname: '', password: '', layer: '', parentLogin: '', roleId: '' });
+          setDraft({ loginName: '', nickname: '', password: '', layer: '', parentLoginName: '', roleId: '' });
         },
       },
     );
@@ -110,7 +110,7 @@ export function UsersScreen() {
       ),
     },
     { key: 'layer', header: t.layer, fit: true, render: (row) => <span className={`layer-tag l-${row.layer}`}>{layerName(t, row.layer)}</span> },
-    { key: 'parent', header: t.parent, fit: true, render: (row) => <AccountName login={row.parentLogin} /> },
+    { key: 'parent', header: t.parent, fit: true, render: (row) => <AccountName login={row.parentLoginName} /> },
     { key: 'balance', header: t.balance, num: true, render: (row) => <Money value={row.balance} /> },
     { key: 'ceiling', header: t.ceiling, num: true, render: (row) => (row.layer === 'branch' ? '—' : <Money value={row.ceiling} />) },
     {
@@ -205,7 +205,7 @@ export function UsersScreen() {
             </label>
             <label>
               {t.layer}
-              <Select value={draft.layer || creatable[0]} onChange={(event) => setDraft((current) => ({ ...current, layer: event.target.value, parentLogin: '' }))}>
+              <Select value={draft.layer || creatable[0]} onChange={(event) => setDraft((current) => ({ ...current, layer: event.target.value, parentLoginName: '' }))}>
                 {creatable.map((value) => (
                   <option key={value} value={value}>{layerName(t, value)}</option>
                 ))}
@@ -224,8 +224,8 @@ export function UsersScreen() {
               <label>
                 {t.parent}
                 <NameField
-                  value={draft.parentLogin}
-                  onChange={(next) => setDraft((current) => ({ ...current, parentLogin: next }))}
+                  value={draft.parentLoginName}
+                  onChange={(next) => setDraft((current) => ({ ...current, parentLoginName: next }))}
                   options={everyone.filter((row) => row.layer === ((draft.layer || creatable[0]) === 'agent' ? 'main_agent' : 'agent')).map((row) => ({
                     value: row.loginName, label: accountLabel(row.loginName, row.nickname), keys: [row.loginName],
                   }))}

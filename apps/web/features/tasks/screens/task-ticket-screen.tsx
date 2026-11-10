@@ -94,7 +94,7 @@ export function TaskTicketScreen() {
         {task.canWork ? (
           <>
             {/* Taking only names the handler now (spec 2026-11-09, 2); whoever took it may release it. */}
-            {task.assigneeLogin && task.assigneeLogin === me?.loginName ? (
+            {task.assigneeLoginName && task.assigneeLoginName === me?.loginName ? (
               <button type="button" className="task-op task-op-release" onClick={() => run(() => api.releaseTask(task.id), { note: t.release })}>
                 <Undo2 {...glyph} />
                 {t.release}
@@ -169,9 +169,9 @@ export function TaskTicketScreen() {
                 <Fact label={t.packageName}>{task.packageName || '—'}</Fact>
                 <Fact label={t.company}>{task.companyName || '—'}</Fact>
                 <Fact label={t.provider}>{task.providerName || '—'}</Fact>
-                {task.posLogin ? (
+                {task.posLoginName ? (
                   <Fact label={t.pointOfSale}>
-                    <AccountName login={task.posLogin} />
+                    <AccountName login={task.posLoginName} />
                   </Fact>
                 ) : null}
                 <Fact label={t.amount}>
@@ -179,9 +179,9 @@ export function TaskTicketScreen() {
                 </Fact>
                 <Fact label={t.movement}>{actionName(t, task.action)}</Fact>
                 <Fact label={t.taskSubmitter}>
-                  <AccountName login={task.submitterLogin} />
+                  <AccountName login={task.submitterLoginName} />
                 </Fact>
-                <Fact label={t.taskAssignee}><AccountName login={task.assigneeLogin} /></Fact>
+                <Fact label={t.taskAssignee}><AccountName login={task.assigneeLoginName} /></Fact>
                 <Fact label={t.started}>
                   <bdi dir="ltr">{latinWhen(task.createdAt)}</bdi>
                 </Fact>

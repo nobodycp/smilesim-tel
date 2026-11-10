@@ -18,7 +18,7 @@ describe('GET /office/audit', () => {
       twoFactorExempt: true, twoFactorEnabled: false, isBranchOwner: true, passwordHash: 'x',
     });
     session = await store.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
-    const event = { id: 'ev1', at: new Date('2026-11-08T10:00:00.000Z'), action: 'fund', result: 'fail', reason: 'FORBIDDEN', ip: '1.2.3.4', actorLogin: 'pos1', actorLayer: 'pos', subjectKind: 'account', subjectRef: 'ag1' };
+    const event = { id: 'ev1', at: new Date('2026-11-08T10:00:00.000Z'), action: 'fund', result: 'fail', reason: 'FORBIDDEN', ip: '1.2.3.4', actorLoginName: 'pos1', actorLayer: 'pos', subjectKind: 'account', subjectRef: 'ag1' };
     const tables = {
       user: {
         findUnique: async () => ({ liveGrants: '', isBranchOwner: true }),
@@ -46,14 +46,14 @@ describe('GET /office/audit', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       total: 1,
-      items: [{ id: 'ev1', at: '2026-11-08T10:00:00.000Z', action: 'fund', result: 'fail', reason: 'FORBIDDEN', ip: '1.2.3.4', actorLogin: 'pos1', actorLayer: 'pos', subjectKind: 'account', subjectRef: 'ag1' }],
+      items: [{ id: 'ev1', at: '2026-11-08T10:00:00.000Z', action: 'fund', result: 'fail', reason: 'FORBIDDEN', ip: '1.2.3.4', actorLoginName: 'pos1', actorLayer: 'pos', subjectKind: 'account', subjectRef: 'ag1' }],
       nextCursor: null,
     });
     expect(asked[0].where).toMatchObject({
       action: 'fund',
       result: 'fail',
       actorLayer: 'pos',
-      OR: [{ actorLogin: { contains: 'ag1', mode: 'insensitive' } }, { subjectRef: { contains: 'ag1', mode: 'insensitive' } }],
+      OR: [{ actorLoginName: { contains: 'ag1', mode: 'insensitive' } }, { subjectRef: { contains: 'ag1', mode: 'insensitive' } }],
       // The end of the range is capped at now (clampActivityRange).
       at: { gte: new Date('2026-11-01T00:00:00.000Z'), lte: expect.any(Date) },
     });

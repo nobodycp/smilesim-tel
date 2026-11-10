@@ -55,15 +55,15 @@ export function ReportScreen() {
   const lineColumns: Column<LineRow>[] = [
     { key: 'number', header: t.number, cell: 'msisdn', render: (line) => <bdi dir="ltr">{line.msisdn}</bdi> },
     { key: 'package', header: t.packageName, render: (line) => line.packageName },
-    { key: 'pos', header: t.pointOfSale, render: (line) => <AccountName login={line.posLogin} /> },
+    { key: 'pos', header: t.pointOfSale, render: (line) => <AccountName login={line.posLoginName} /> },
     { key: 'status', header: t.status, render: (line) => lineStatus(t, line.status) },
   ];
   const taskColumns: Column<TaskRow>[] = [
     { key: 'status', header: t.status, render: (row) => taskStatus(t, row.status) },
     { key: 'movement', header: t.movement, render: (row) => `${actionName(t, row.action)} · ${row.packageName}` },
     { key: 'number', header: t.number, render: (row) => <bdi dir="ltr">{row.msisdn ?? '—'}</bdi> },
-    { key: 'pos', header: t.pointOfSale, render: (row) => <AccountName login={row.posLogin} /> },
-    { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.assigneeLogin ?? row.submitterLogin} /> },
+    { key: 'pos', header: t.pointOfSale, render: (row) => <AccountName login={row.posLoginName} /> },
+    { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.assigneeLoginName ?? row.submitterLoginName} /> },
   ];
   const entryColumns: Column<MoneyLine>[] = [
     { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
@@ -73,7 +73,7 @@ export function ReportScreen() {
       render: (row) => (
         <>
           <AccountName login={row.loginName} />
-          <div className="hint"><AccountName login={row.actorLogin} /></div>
+          <div className="hint"><AccountName login={row.actorLoginName} /></div>
         </>
       ),
     },

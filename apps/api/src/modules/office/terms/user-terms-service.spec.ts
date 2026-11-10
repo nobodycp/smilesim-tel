@@ -59,7 +59,7 @@ describe('run path through user terms', () => {
   it('refuses to activate a package hidden above the point of sale', async () => {
     const { service, gates, userPackages } = await tree();
     userPackages.push({ id: 'r1', packageId: 'pa', userId: 'ag1', hidden: true, price: null, renewalPrice: null });
-    await expect(service.activate(gates.branch, { packageCode: 'alloha-150', posLogin: 'pos1', iccid: '8997202000000000002', outcome: 'success' }))
+    await expect(service.activate(gates.branch, { packageCode: 'alloha-150', posLoginName: 'pos1', iccid: '8997202000000000002', outcome: 'success' }))
       .rejects.toMatchObject({ code: 'PACKAGE_HIDDEN' });
   });
 
@@ -94,7 +94,7 @@ describe('run path through user terms', () => {
   });
 
   it('activation debits the special price, else the parent sell price, else the layer price', async () => {
-    const activate = (iccid: string) => ({ packageCode: 'alloha-150', posLogin: 'pos1', iccid, outcome: 'success' as const });
+    const activate = (iccid: string) => ({ packageCode: 'alloha-150', posLoginName: 'pos1', iccid, outcome: 'success' as const });
     const custom = await tree();
     custom.userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: 2900, renewalPrice: null });
     await custom.service.activate(custom.gates.pos1, activate('8997202000000000002'));
@@ -114,7 +114,7 @@ describe('run path through user terms', () => {
     const { service, gates, userPackages, accounts } = await tree();
     userPackages.push({ id: 'r1', packageId: 'pa', userId: 'pos1', hidden: false, price: 2900, renewalPrice: null });
     userPackages.push({ id: 'r2', packageId: 'pa', userId: 'ag1', hidden: true, price: null, renewalPrice: null });
-    await service.transferAccount(gates.branch, 'pos1', { parentLogin: 'ag2', ownPrices: 'reset', ownStops: 'keep', linePrices: 'keep' });
+    await service.transferAccount(gates.branch, 'pos1', { parentLoginName: 'ag2', ownPrices: 'reset', ownStops: 'keep', linePrices: 'keep' });
     expect(userPackages.map((row) => row.userId)).toEqual(['ag1']);
     expect((accounts.find((row) => row.id === 'pos1') as Row).parentId).toBe('ag2');
   });
@@ -253,7 +253,7 @@ describe('writing user terms', () => {
     userPackages.push(row('ag2', { hidden: true }));
     const listed = await service.customPrices(gates.branch, 'alloha-150');
     expect(listed.map((item) => item.loginName)).toEqual(['pos1']);
-    expect(listed[0]).toMatchObject({ layer: 'pos', parentLogin: 'ag1', defaultPrice: 3500, defaultRenewalPrice: 3200, price: 2900, renewalPrice: null });
+    expect(listed[0]).toMatchObject({ layer: 'pos', parentLoginName: 'ag1', defaultPrice: 3500, defaultRenewalPrice: 3200, price: 2900, renewalPrice: null });
     await expect(service.customPrices(gates.ma1, 'alloha-150')).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await service.setCustomPrice(gates.branch, 'alloha-150', 'ag2', { price: 2950 });
     expect(userPackages.find((item) => item.userId === 'ag2')).toMatchObject({ hidden: true, price: 2950 });
@@ -314,7 +314,7 @@ describe('writing user terms', () => {
 });
 
 describe('capturing the renewal price', () => {
-  const activate = (iccid: string) => ({ packageCode: 'alloha-150', posLogin: 'pos1', iccid, outcome: 'success' as const });
+  const activate = (iccid: string) => ({ packageCode: 'alloha-150', posLoginName: 'pos1', iccid, outcome: 'success' as const });
   const termsOf = (row: Row) => row.terms as LineTerms;
   // A branch task the owner has taken, ready to be closed.
   const taken = (patch: Record<string, unknown>) => ({

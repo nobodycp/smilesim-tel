@@ -8,7 +8,7 @@ const series = Array.from({ length: 30 }, (_, index) => ({
 
 const summary = { balance: 24806, ceiling: 0, held: 0, unlimited: false, moneyIn: 30000, moneyOut: 5194, count: 4, manual: 1, days: 30, profit: 1250, sales: 2, series };
 const entry = {
-  id: 'e1', at: '2026-11-06T16:27:00.000Z', loginName: 'pos1', layer: 'pos', actorLogin: 'pos1', kind: 'activate', amount: -3800,
+  id: 'e1', at: '2026-11-06T16:27:00.000Z', loginName: 'pos1', layer: 'pos', actorLoginName: 'pos1', kind: 'activate', amount: -3800,
   balanceBefore: 30000, balanceAfter: 26200, msisdn: '0550000001', companyName: 'سلكوم', packageName: '150 جيجا', packagePrice: 3800,
   esimPrice: null, note: '', margin: 300,
 };

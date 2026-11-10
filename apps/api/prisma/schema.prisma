@@ -193,7 +193,7 @@ model ProviderEntry {
   kind       String
   amount     Int
   note       String
-  actorLogin String
+  actorLoginName String @map("actorLogin")
   createdAt  DateTime @default(now())
 
   @@index([providerId, createdAt])
@@ -413,7 +413,7 @@ model ActivityEvent {
   at          DateTime @default(now())
   actorId     String?
   actor       User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
-  actorLogin  String   @default("")
+  actorLoginName  String   @default("") @map("actorLogin")
   actorLayer  String   @default("")
   action      String
   result      String
@@ -431,7 +431,7 @@ model AccessLog {
   id          String   @id @default(uuid())
   actorId     String
   actor       User     @relation(fields: [actorId], references: [id])
-  targetLogin String
+  targetLoginName String @map("targetLogin")
   ip          String   @default("")
   createdAt   DateTime @default(now())
 
@@ -493,7 +493,7 @@ model ProviderReconciliation {
   ourTotal       Int
   /** How many rows fell in each class: matched, different, missing_ours, missing_theirs, duplicate. */
   counts         Json
-  actorLogin     String
+  actorLoginName     String @map("actorLogin")
   createdAt      DateTime             @default(now())
   items          ProviderReconItem[]
 

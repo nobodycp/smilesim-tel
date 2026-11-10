@@ -213,11 +213,11 @@ async function posActivate(pack: Pack, sim: { esim: true } | { iccid: string }) 
 }
 
 /** The branch activates from the numbers list dialog for a point of sale. */
-async function branchActivate(pack: Pack, posLogin: string, iccid: string, outcome: 'نجاح' | 'فشل') {
+async function branchActivate(pack: Pack, posLoginName: string, iccid: string, outcome: 'نجاح' | 'فشل') {
   await admin.goto(`${DOORS.admin}/numbers`);
   await admin.getByRole('button', { name: 'تفعيل رقم' }).click();
   const dialog = admin.getByRole('dialog');
-  await dialog.getByLabel('نقطة البيع').selectOption(posLogin);
+  await dialog.getByLabel('نقطة البيع').selectOption(posLoginName);
   await dialog.getByLabel('الرزمة').selectOption(pack.code);
   await dialog.getByLabel('رقم الشريحة').fill(iccid);
   await pickOutcome(dialog, outcome);
@@ -256,7 +256,7 @@ test.beforeAll(async ({ browser }) => {
   await apiCall(admin, 'admin', 'PUT', `/office/packages/${P.code}/switches`, { targets: [Q.code] });
   const made = await sql(`SELECT 1 FROM "User" WHERE "loginName" = 'pos2'`);
   if (made.length === 0) {
-    await apiCall(admin, 'admin', 'POST', '/office/users', { loginName: 'pos2', nickname: 'pos2', password: 'audit-pos2-pass', layer: 'pos', parentLogin: 'agent' });
+    await apiCall(admin, 'admin', 'POST', '/office/users', { loginName: 'pos2', nickname: 'pos2', password: 'audit-pos2-pass', layer: 'pos', parentLoginName: 'agent' });
   }
 });
 
@@ -484,7 +484,7 @@ test('a company SIM rule set on the company page holds on activation and SIM swa
     expect.soft(stored[0], 'the rule is stored on the company').toEqual({ iccidLength: LENGTH, iccidPrefix: PREFIX, esim: false });
 
     const startBalance = await balance('pos');
-    const body = { packageCode: P.code, posLogin: 'pos', msisdn: '', currentDetails: '', outcome: 'success' };
+    const body = { packageCode: P.code, posLoginName: 'pos', msisdn: '', currentDetails: '', outcome: 'success' };
     await expect(apiCall(pos, 'pos', 'POST', '/office/lines', { ...body, esim: false, iccid: `${PREFIX}0001` }), 'short SIM').rejects.toThrow(/400 .*SIM_LENGTH/);
     await expect(apiCall(pos, 'pos', 'POST', '/office/lines', { ...body, esim: false, iccid: good(1).replace(PREFIX, '8997201') }), 'other prefix').rejects.toThrow(/400 .*SIM_PREFIX/);
     await expect(apiCall(pos, 'pos', 'POST', '/office/lines', { ...body, esim: true, iccid: '' }), 'eSIM where the company has none').rejects.toThrow(/400 .*ESIM_UNSUPPORTED/);

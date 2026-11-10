@@ -11,9 +11,9 @@ const notice = (id: string, kind: string, payload: Record<string, unknown>) => (
 // What `office.service` writes for every move: `transfer.out` tells the account that lost the thing which
 // account has it now, `transfer.in` tells the account that received it where it came from.
 const notices = [
-  notice('n1', 'transfer.out', { kind: 'pos', subject: 'pos1', toLogin: 'ag2', actorName: 'الإدارة' }),
-  notice('n2', 'transfer.in', { kind: 'line', subject: '0521000001', fromLogin: 'pos1', actorName: 'الإدارة' }),
-  notice('n3', 'transfer.out', { kind: 'agent', subject: 'ag1', toLogin: 'ma2', actorName: 'الإدارة' }),
+  notice('n1', 'transfer.out', { kind: 'pos', subject: 'pos1', toLoginName: 'ag2', actorName: 'الإدارة' }),
+  notice('n2', 'transfer.in', { kind: 'line', subject: '0521000001', fromLoginName: 'pos1', actorName: 'الإدارة' }),
+  notice('n3', 'transfer.out', { kind: 'agent', subject: 'ag1', toLoginName: 'ma2', actorName: 'الإدارة' }),
 ];
 
 const words = {
@@ -52,7 +52,7 @@ test('the activity log names an account transfer and offers it as a filter', asy
     'GET /audit': () => ({
       body: {
         items: [{
-          id: 'a1', at, action: 'user_transfer', result: 'ok', reason: '', ip: '', actorLogin: 'admin', actorLayer: 'branch',
+          id: 'a1', at, action: 'user_transfer', result: 'ok', reason: '', ip: '', actorLoginName: 'admin', actorLayer: 'branch',
           subjectKind: 'user', subjectRef: 'pos1',
         }],
         nextCursor: null,

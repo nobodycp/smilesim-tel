@@ -37,7 +37,7 @@ export class ActivityRecorder {
       await db.activityEvent.create({
         data: {
           actorId: actor?.id ?? null,
-          actorLogin: actor?.loginName ?? '',
+          actorLoginName: actor?.loginName ?? '',
           actorLayer: actor?.layer ?? '',
           action: event.action,
           result,
@@ -60,7 +60,7 @@ export class ActivityRecorder {
       await db.activityEvent.create({
         data: {
           actorId: user?.id ?? null,
-          actorLogin: input.loginName,
+          actorLoginName: input.loginName,
           actorLayer: user?.layer ?? '',
           action: 'login',
           result: input.result,

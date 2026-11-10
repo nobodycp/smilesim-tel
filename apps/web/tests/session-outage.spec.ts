@@ -24,7 +24,7 @@ test('the shell shows the outage while /me does not answer, and the page once it
 test('a failed background refresh of /me keeps the page on screen', async ({ page }) => {
   let meDown = false;
   const self = {
-    loginName: 'admin', nickname: 'الإدارة', layer: 'branch', roleName: '', parentLogin: null, balance: 1000, ceiling: 0, frozen: false, self: true,
+    loginName: 'admin', nickname: 'الإدارة', layer: 'branch', roleName: '', parentLoginName: null, balance: 1000, ceiling: 0, frozen: false, self: true,
     directChild: false, canEnter: false, canFreeze: false, canDelete: false,
   };
   await serveOffice(page, 'branch', {

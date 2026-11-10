@@ -186,7 +186,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
               passwordHash,
               mustChangePassword: account.mustChangePassword,
               layer: account.layer,
-              parentId: account.parentLogin ? (ids.get(account.parentLogin) ?? null) : null,
+              parentId: account.parentLoginName ? (ids.get(account.parentLoginName) ?? null) : null,
               isBranchOwner: account.isBranchOwner,
               twoFactorExempt: account.twoFactorExempt,
             },

@@ -20,7 +20,7 @@ export const CreateUserBody = z.object({
   nickname: optionalText(200),
   password,
   layer: z.enum(CREATE_LAYERS),
-  parentLogin: optionalText(64),
+  parentLoginName: optionalText(64),
   roleId: optionalText(64),
 });
 export type CreateUserBody = z.input<typeof CreateUserBody>;

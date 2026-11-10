@@ -84,7 +84,7 @@ suite('operations on one number at the same moment (PostgreSQL)', () => {
 
   it('gives one SIM serial to one number when two activations name it at once', async () => {
     const iccid = `89${Date.now()}`.padEnd(19, '0');
-    const activate = () => service.activate(gate, { packageCode: `race-${tag}`, posLogin: `race-${tag}-pos`, iccid, outcome: 'success' });
+    const activate = () => service.activate(gate, { packageCode: `race-${tag}`, posLoginName: `race-${tag}-pos`, iccid, outcome: 'success' });
     const result = await outcomes([activate(), activate()]);
     expect(result).toEqual({ applied: 1, refused: ['SIM_TAKEN'], crashed: 0 });
     const made = await prisma.line.findMany({ where: { iccid } });

@@ -43,7 +43,7 @@ const LINE_STATUSES = ['active', 'expiring', 'frozen', 'disconnected', 'suspende
 
 export function NumbersScreen() {
   const { t, locale } = usePrefs();
-  const [posLogin, setPosLogin] = useState('');
+  const [posLoginName, setPosLoginName] = useState('');
   const [packageCode, setPackageCode] = useState('');
   const [esim, setEsim] = useState(false);
   const [iccid, setIccid] = useState('');
@@ -106,7 +106,7 @@ export function NumbersScreen() {
     await run(
       () => api.activateLine({
         packageCode: chosen?.code || '',
-        posLogin: posLogin || poses[0]?.loginName || '',
+        posLoginName: posLoginName || poses[0]?.loginName || '',
         esim: withEsim,
         iccid: withEsim ? '' : iccid.trim(),
         msisdn: activation === 'number' ? givenNumber : '',
@@ -166,7 +166,7 @@ export function NumbersScreen() {
         </span>
       ),
     },
-    ...(isPos ? [] : [{ key: 'pos', header: t.pointOfSale, render: (line: LineRow) => <AccountName login={line.posLogin} /> }]),
+    ...(isPos ? [] : [{ key: 'pos', header: t.pointOfSale, render: (line: LineRow) => <AccountName login={line.posLoginName} /> }]),
     {
       key: 'status',
       header: t.status,
@@ -276,8 +276,8 @@ export function NumbersScreen() {
                 <label>
                   {t.pointOfSale}
                   <NameField
-                    value={posLogin || poses[0]?.loginName || ''}
-                    onChange={setPosLogin}
+                    value={posLoginName || poses[0]?.loginName || ''}
+                    onChange={setPosLoginName}
                     options={poses.map((pos) => ({ value: pos.loginName, label: accountLabel(pos.loginName, pos.nickname), keys: [pos.loginName] }))}
                   />
                 </label>

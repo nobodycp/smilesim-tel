@@ -50,7 +50,7 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const line = (id: string) => ({
     id, msisdn: `05500000${id}`, iccid: '', esim: false, status: 'active', packageCode: 'lian-wecom-500', packageName: '500 جيجا',
-    companyCode: 'wecom', companyName: 'ويكوم', providerCode: 'lian', posLogin: 'pos1', posNickname: 'نقطة', endsAt: '2026-12-01T00:00:00.000Z',
+    companyCode: 'wecom', companyName: 'ويكوم', providerCode: 'lian', posLoginName: 'pos1', posNickname: 'نقطة', endsAt: '2026-12-01T00:00:00.000Z',
     createdAt: '2026-11-01T00:00:00.000Z', operations: null,
   });
   await serveOffice(page, 'branch', {

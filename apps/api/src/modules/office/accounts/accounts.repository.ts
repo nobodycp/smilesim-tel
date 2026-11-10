@@ -176,7 +176,7 @@ export class AccountsRepository {
   }
 
   /** Records that an operator entered an account. */
-  logEntry(input: { actorId: string; targetLogin: string; ip: string }) {
-    return this.uow.prisma.accessLog.create({ data: { actorId: input.actorId, targetLogin: input.targetLogin, ip: input.ip } });
+  logEntry(input: { actorId: string; targetLoginName: string; ip: string }) {
+    return this.uow.prisma.accessLog.create({ data: { actorId: input.actorId, targetLoginName: input.targetLoginName, ip: input.ip } });
   }
 }

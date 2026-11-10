@@ -107,7 +107,7 @@ export function TasksScreen() {
             <span className="task-meta">
               {row.msisdn ? <bdi dir="ltr" className="task-msisdn">{row.msisdn}</bdi> : null}
               {[row.companyName, row.packageName].filter(Boolean).map((part) => <span key={part}>· {part}</span>)}
-              <span>· <AccountName login={row.posLogin} /></span>
+              <span>· <AccountName login={row.posLoginName} /></span>
               {row.lastNote ? <span className="task-note">· {row.lastNote}</span> : null}
             </span>
           </span>

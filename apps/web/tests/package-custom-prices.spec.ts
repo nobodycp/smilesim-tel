@@ -12,7 +12,7 @@ const sheet = {
 };
 
 const customRow = {
-  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLogin: 'ag1',
+  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'ag1',
   defaultPrice: 3500, defaultRenewalPrice: 3200, price: 2900, renewalPrice: null,
 };
 

@@ -126,6 +126,12 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('list-envelope', answers);
   });
 
+  it('4.9 login-field-name: a field that holds a login ends in LoginName', () => {
+    // `parentLogin:`, `posLogin?:`, `actorLogin,` … as a property or a shorthand. Function names (`findByLogin`,
+    // `decideLogin`) are not fields and are not matched.
+    check('login-field-name', hits(production, /\b(parent|pos|actor|submitter|assignee|target|from|to)Login\b/));
+  });
+
   it('4.3 conflict-status: a conflict answers 409', () => {
     check('conflict-status', hits(production, /fail\(4(?!09)\d\d, '(\w+_(TAKEN|EXISTS)|DUPLICATE_REQUEST)'/));
   });

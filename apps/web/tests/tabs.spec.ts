@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { serveOffice } from './desk';
 
 const account = {
-  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLogin: 'ag1', frozen: false, isBranchOwner: false, staff: false,
+  loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'ag1', frozen: false, isBranchOwner: false, staff: false,
   roleId: '', roleName: '', roleGrants: [], extraGrants: [], deniedGrants: [], extraRoleIds: [], grants: [], roles: [], canEdit: true,
 };
 

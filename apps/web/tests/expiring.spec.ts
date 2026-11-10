@@ -4,7 +4,7 @@ import { serveOffice } from './desk';
 const day = 86_400_000;
 const line = (id: string, msisdn: string, inDays: number, status = 'active') => ({
   id, msisdn, iccid: null, esim: false, status, packageCode: 'cell-400', packageName: '400 جيجا', companyName: 'سلكوم',
-  posLogin: 'pos', posPrice: 3000, createdAt: '2026-10-01T00:00:00.000Z', endsAt: new Date(Date.now() + inDays * day - 60_000).toISOString(),
+  posLoginName: 'pos', posPrice: 3000, createdAt: '2026-10-01T00:00:00.000Z', endsAt: new Date(Date.now() + inDays * day - 60_000).toISOString(),
 });
 
 const overview = {

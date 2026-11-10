@@ -114,7 +114,7 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
           packageCode: 'lian-wecom-500',
           packageName: '500 جيجا',
           companyName: 'ويكوم',
-          posLogin: 'pos',
+          posLoginName: 'pos',
           posPrice: 25,
           createdAt: '2026-10-01T00:00:00.000Z',
           endsAt: '2026-11-01T00:00:00.000Z',

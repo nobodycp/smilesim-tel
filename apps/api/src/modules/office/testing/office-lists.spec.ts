@@ -372,7 +372,7 @@ describe('time-ordered lists', () => {
       id: `ev-${pad(i)}`,
       at: new Date(now - i * 1000),
       actorId: 'admin',
-      actorLogin: i % 2 ? 'pos1' : 'admin',
+      actorLoginName: i % 2 ? 'pos1' : 'admin',
       actorLayer: 'branch',
       action: i % 2 ? 'enter' : 'extend',
       result: 'ok',
@@ -520,8 +520,8 @@ describe('task reading follows the number', () => {
       expect({ nextCursor, total }).toEqual({ nextCursor: null, total: 5 });
       // Only its own account is in its tree; the rest are names to show, without their parent or state.
       expect(items.filter((row) => row.mine).map((row) => row.loginName)).toEqual(['pos1']);
-      expect(items.find((row) => row.loginName === 'agent1')).toEqual({ loginName: 'agent1', nickname: 'وكيل', layer: 'agent', parentLogin: null, frozen: false, mine: false });
-      expect(items.find((row) => row.loginName === 'pos1')).toMatchObject({ parentLogin: 'agent1', mine: true });
+      expect(items.find((row) => row.loginName === 'agent1')).toEqual({ loginName: 'agent1', nickname: 'وكيل', layer: 'agent', parentLoginName: null, frozen: false, mine: false });
+      expect(items.find((row) => row.loginName === 'pos1')).toMatchObject({ parentLoginName: 'agent1', mine: true });
     });
 
     it('gives an agent everything under it plus the chain and the branch', async () => {

@@ -11,8 +11,8 @@ test('users is a full table on the branch door', async ({ page }) => {
 });
 
 test('an account is named by its login with the full name in parentheses, in the list and in the parent column', async ({ page }) => {
-  const user = (loginName: string, nickname: string, layer: string, parentLogin: string | null) => ({
-    loginName, nickname, layer, roleName: '', parentLogin, balance: 0, ceiling: 0, frozen: false, self: false, directChild: false,
+  const user = (loginName: string, nickname: string, layer: string, parentLoginName: string | null) => ({
+    loginName, nickname, layer, roleName: '', parentLoginName, balance: 0, ceiling: 0, frozen: false, self: false, directChild: false,
     canEnter: false, canFreeze: false, canDelete: false,
   });
   await serveOffice(page, 'branch', {
@@ -30,7 +30,7 @@ test('an account is named by its login with the full name in parentheses, in the
 
 test('the users table is paged by the server: filters go in the request, the next cursor is read past the first answer, and the whole list waits for a dialog', async ({ page }) => {
   const user = (loginName: string, layer: string) => ({
-    loginName, nickname: loginName, layer, roleName: '', parentLogin: null, balance: 0, ceiling: 0, frozen: false, self: false, directChild: true,
+    loginName, nickname: loginName, layer, roleName: '', parentLoginName: null, balance: 0, ceiling: 0, frozen: false, self: false, directChild: true,
     canEnter: false, canFreeze: false, canDelete: false,
   });
   const many = Array.from({ length: 60 }, (_, index) => user(`p${String(index).padStart(2, '0')}`, 'pos'));
@@ -67,7 +67,7 @@ test('the users table is paged by the server: filters go in the request, the nex
 
 test('a server-paged table has plain headers, since sorting one page would mislead; a full table still sorts', async ({ page }) => {
   const user = (loginName: string, balance: number) => ({
-    loginName, nickname: loginName, layer: 'pos', roleName: '', parentLogin: null, balance, ceiling: 0, frozen: false, self: false,
+    loginName, nickname: loginName, layer: 'pos', roleName: '', parentLoginName: null, balance, ceiling: 0, frozen: false, self: false,
     directChild: true, canEnter: false, canFreeze: false, canDelete: false,
   });
   await serveOffice(page, 'branch', {

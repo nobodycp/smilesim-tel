@@ -20,8 +20,8 @@ function service() {
       },
       providerEntry: {
         findMany: async ({ where }: { where: { providerId: string } }) => [
-          { id: 'x2', providerId: 'p1', kind: 'settlement', amount: -500, note: 'فرق', actorLogin: 'branch', createdAt: new Date('2026-11-05T00:00:00Z') },
-          { id: 'x1', providerId: 'p1', kind: 'payment', amount: 20000, note: 'دفعة', actorLogin: 'branch', createdAt: new Date('2026-11-02T00:00:00Z') },
+          { id: 'x2', providerId: 'p1', kind: 'settlement', amount: -500, note: 'فرق', actorLoginName: 'branch', createdAt: new Date('2026-11-05T00:00:00Z') },
+          { id: 'x1', providerId: 'p1', kind: 'payment', amount: 20000, note: 'دفعة', actorLoginName: 'branch', createdAt: new Date('2026-11-02T00:00:00Z') },
         ].filter((row) => row.providerId === where.providerId),
         // The list reads sums, never the rows.
         groupBy: async () => [
@@ -69,8 +69,8 @@ describe('ProviderAccountsService', () => {
     await accounts.setCredit(owner, 'sky', { creditLimit: 80000 });
     await accounts.setCredit(owner, 'sky', { creditLimit: 80000, alertFloor: 10000 });
     expect(created).toEqual([
-      { data: { providerId: 'p1', kind: 'payment', amount: 10000, note: 'دفعة ٢', actorLogin: 'clerk' } },
-      { data: { providerId: 'p1', kind: 'settlement', amount: -300, note: 'تسوية', actorLogin: 'branch' } },
+      { data: { providerId: 'p1', kind: 'payment', amount: 10000, note: 'دفعة ٢', actorLoginName: 'clerk' } },
+      { data: { providerId: 'p1', kind: 'settlement', amount: -300, note: 'تسوية', actorLoginName: 'branch' } },
     ]);
     expect(updated).toEqual([
       { where: { code: 'sky' }, data: { creditLimit: 80000 } },
