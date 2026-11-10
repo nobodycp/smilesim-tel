@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-10 (one list contract and route names, plan `docs/superpowers/plans/2026-11-10-lists-and-routes.md`; before it backend hardening, plan `docs/superpowers/plans/2026-11-10-backend-hardening.md`). tsc clean
+Last verified: 2026-11-10 (backend loose ends, plan `docs/superpowers/plans/2026-11-10-backend-loose-ends.md`: reads do not write, queries parsed by schema, package codes without the provider; before it one list contract and route names, plan `docs/superpowers/plans/2026-11-10-lists-and-routes.md`; before it backend hardening, plan `docs/superpowers/plans/2026-11-10-backend-hardening.md`). tsc clean
 with `noUnusedLocals`, lint clean with no size exceptions, 890 specs + 5 PostgreSQL specs, every guard in
 `src/architecture.spec.ts` at 0. History of what changed lives in git and in the plans, not on this line.
 

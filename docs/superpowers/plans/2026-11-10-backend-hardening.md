@@ -46,7 +46,7 @@ commit. Local checks per slice: `npm run lint`, `npm run typecheck`, the touched
 - [x] **5.2** (42a1c1b) `config.ts`, Nest `Logger`.
 - [x] **5.3** (bb4ddc7; baseline 83 → 0) Policy file; `inline-grant-checks` down.
 - [x] **5.4** (a3f63b6, 2f46a2f; the exception list is gone) `completeTask` handlers per action; `runOrQueue`; size exceptions removed.
-- [ ] **5.5** Partly (d2a6c84, 66b44bf): rule files moved into `rules/` and their domains, test helpers into `testing/`. **Not done:** the kernel split and one Nest module per domain. Kernel split; rule files into domains; test helpers into `testing/`.
+- [x] **5.5** Done by `2026-11-10-office-kernel-split.md` (all three phases; ADR 0012). First part (d2a6c84, 66b44bf): rule files moved into `rules/` and their domains, test helpers into `testing/`. **Not done:** the kernel split and one Nest module per domain. Kernel split; rule files into domains; test helpers into `testing/`.
 - [x] **5.6** `docs/architecture/backend.md` rewritten from the code.
 
 ## Phase 6 — Hardening (S4, S6, S8–S10, S12, M7)

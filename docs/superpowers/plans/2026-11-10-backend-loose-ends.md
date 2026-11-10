@@ -112,7 +112,7 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
 
 ## Phase C — close
 
-- [ ] **C.1** `docs/architecture/backend.md` "Known gaps" loses the eight items; the review file's notes; ADRs
+- [x] **C.1** (COMMIT; ADRs 0012, 0013 and 0015) `docs/architecture/backend.md` "Known gaps" loses the eight items; the review file's notes; ADRs
   `0012-kernel-split-and-domain-modules.md` and `0013-session-token-and-sealed-secrets.md` (named in their plans,
   never written); tick 5.5 in `2026-11-10-backend-hardening.md` (done by the kernel split). Whole API suite in
   one worker, then push when the owner asks.

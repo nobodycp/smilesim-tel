@@ -56,5 +56,5 @@ not in the session list; enter, handoff and leave work.
 - [x] **T.4 (this commit; `src/seal-secrets.ts`, `npm run seal-secrets --workspace api` after a build — not run on any environment: none has a key yet) Backfill.** `apps/api/scripts/seal-secrets.ts` + `"seal-secrets"` script: reads users with a plain
   secret, seals, writes; prints counts; safe to run twice. Run locally against the dev database; document the
   command in `docs/architecture/backend.md` ("before real sales").
-- [ ] **T.5 Partly: the backend map says it; no ADR yet, and `docker-compose.yml` / the Coolify env list do not name `SECRETS_KEY` (the owner sets it). Docs.** ADR `0013-session-tokens-and-sealed-secrets.md`; backend map; the review file's S6 / S12 marked
+- [ ] **T.5 Partly: the backend map says it and ADR 0013 is written (2026-11-10); and `docker-compose.yml` / the Coolify env list do not name `SECRETS_KEY` (the owner sets it). Docs.** ADR `0013-session-tokens-and-sealed-secrets.md`; backend map; the review file's S6 / S12 marked
   done; `docker-compose.yml` and the Coolify env list name `SECRETS_KEY`.
