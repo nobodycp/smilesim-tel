@@ -6,7 +6,7 @@
 
 **Architecture:** `Provider.actionModes` JSON; helpers in `office-rules` for normalize + flags-from-modes; GET/PATCH office provider settings; Next provider page tabs reusing package mode select pattern.
 
-**Tech Stack:** NestJS office module, Prisma/PostgreSQL, Next.js App Router, existing Desk / `.steps` / DataTable / Pearl tokens.
+**Tech Stack:** NestJS office module, Prisma/PostgreSQL, Next.js App Router, existing Desk / `.steps` / DataTable / `--rd-*` tokens.
 
 **Spec:** `docs/superpowers/specs/2026-11-04-provider-action-defaults-design.md`
 

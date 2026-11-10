@@ -50,7 +50,7 @@ A notice is written inside the same database transaction as the change it descri
 
 - `GET /office/notices/stream` is a server-sent events stream for the signed-in user. It authenticates with the existing session cookie. Each event carries the new notice and the unread count. A heartbeat comment goes out every 25 seconds.
 - Publication goes through Redis pub/sub on channel `notice:<userId>`, so more than one API instance delivers to whichever one holds the browser's stream.
-- The browser opens one `EventSource` in the office shell. On an event it raises the badge, prepends to the panel, and shows a toast for 4 seconds in the Pearl style. On close it reconnects with backoff (1s, 2s, 4s, up to 30s) and falls back to a 60-second poll while disconnected. The tab title is prefixed with the unread count.
+- The browser opens one `EventSource` in the office shell. On an event it raises the badge, prepends to the panel, and shows a toast for 4 seconds in the app's own style. On close it reconnects with backoff (1s, 2s, 4s, up to 30s) and falls back to a 60-second poll while disconnected. The tab title is prefixed with the unread count.
 
 ### Screens
 

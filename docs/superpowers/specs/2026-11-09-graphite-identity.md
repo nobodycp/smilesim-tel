@@ -6,7 +6,7 @@ from scratch too".
 
 ## Goal
 
-Replace Pearl (warm paper, ink, logo red, 18px radii, Tajawal) with Graphite everywhere, and give the home page a new
+Replace the previous look (warm paper, ink, logo red, 18px radii, Tajawal) with Graphite everywhere, and give the home page a new
 arrangement. Behaviour, endpoints, response shapes, copy and permissions stay as they are.
 
 ## Identity

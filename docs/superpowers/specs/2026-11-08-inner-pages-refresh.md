@@ -2,7 +2,7 @@
 
 Date: 2026-11-08 · Status: approved by owner (chat, 2026-11-08, from two reference screenshots) · Plan: `docs/superpowers/plans/2026-11-08-inner-pages-refresh.md`
 
-The owner liked parts of another dashboard and asked for the ideas, in our Pearl look (our tokens, our type, no copied
+The owner liked parts of another dashboard and asked for the ideas, in our own look (our tokens, our type, no copied
 brand or colours). Approved: 1 (trail), 2 (user page + tabs everywhere), 3 (cards), 5 (tab counts), 6 (finance).
 Declined: the greeting stays in the topbar; the topbar wallet stays as it is; no price-source banner.
 

@@ -1,6 +1,6 @@
 # Page tools and list unification — 2026-10-30
 
-Slice of `2026-10-30-frontend-audit.md`: T7 (shared tools), T8 (list and line unification), and the dead-route part of T5. Spec: section 2 and 3 of `docs/superpowers/specs/2026-10-30-frontend-audit.md`. Goal: the same DOM and the same behaviour per layer, with the fetch, action, guard, table, and empty patterns written once.
+Slice of the 2026-10-30 frontend audit (its files were removed on 2026-11-10): T7 (shared tools), T8 (list and line unification), and the dead-route part of T5.. Goal: the same DOM and the same behaviour per layer, with the fetch, action, guard, table, and empty patterns written once.
 
 ## Decisions (owner away)
 

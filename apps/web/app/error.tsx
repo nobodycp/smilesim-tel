@@ -8,7 +8,7 @@ import { Button } from '../components/ui/button';
 
 /**
  * A page that threw while rendering. The shell stays (this boundary sits inside the root layout); the canvas shows
- * the Pearl empty state with a retry, which re-renders the page, and the way home.
+ * the shared empty state with a retry, which re-renders the page, and the way home.
  */
 export default function PageError({ error, retry }: { error: unknown; retry: () => void }) {
   const { t } = usePrefs();

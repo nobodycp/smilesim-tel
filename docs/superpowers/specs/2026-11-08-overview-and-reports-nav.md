@@ -83,7 +83,7 @@ Owner (2026-11-09): «معلقه وليست عالقه — خط انتهي اش�
   6. **Most active users, with tabs:** main agents / agents / points of sale. Each layer sees only the tabs below it.
   7. **Tasks:** counts by status (open, in progress, done, rejected, cancelled) and the oldest open task's age.
   8. The existing last operations and board, below.
-- Visual: the cards follow `DESIGN.md` and `pearl-ui.mdc`, with tokens only. The "geometric shapes" are a token-coloured decorative layer, behind the hero and the card corners, decided in the visual slice and recorded in `DESIGN.md`.
+- Visual: the cards follow `DESIGN.md` and `smilesim-ui.mdc`, with tokens only. The "geometric shapes" are a token-coloured decorative layer, behind the hero and the card corners, decided in the visual slice and recorded in `DESIGN.md`.
 - One new endpoint, `GET /office/overview?period=day|month|all`, returns all cards in one read, computed in the database with the viewer's visibility. `GET /office/home` stays as it is.
 
 ### G. Provider health and alerts

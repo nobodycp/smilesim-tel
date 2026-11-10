@@ -5,7 +5,7 @@ import { Icon } from '../components/icon';
 import { usePrefs } from '../lib/prefs';
 import { buttonClass } from '../components/ui/button';
 
-/** Any address the app does not serve, and any `notFound()`: the Pearl empty state and the way home. */
+/** Any address the app does not serve, and any `notFound()`: the shared empty state and the way home. */
 export default function NotFound() {
   const { t } = usePrefs();
   return (

@@ -54,7 +54,7 @@ apps/web/        الواجهة
   lib/                  العميل api.ts والنصوص والأبواب
   tests/                Playwright
 docs/            الخطة والمواصفات: project-plan.md وsuperpowers/specs وplans وgates
-DESIGN.md        نظام التصميم Pearl، مصدر الحقيقة البصري
+DESIGN.md        نظام التصميم، مصدر الحقيقة البصري
 .cursor/rules/   قواعد العمل والواجهة
 ```
 

@@ -9,7 +9,7 @@ Put the existing code on a clear, layered structure so new features land in obvi
 ## Non-goals
 
 - New features or business-rule changes (they come after, as separate specs).
-- Visual redesign. The Pearl look in `DESIGN.md` stays; only its implementation is unified.
+- Visual redesign. The look in `DESIGN.md` stays; only its implementation is unified.
 - Changing endpoint paths or response shapes.
 
 ## Decisions needing approval
@@ -90,7 +90,7 @@ Strangler: one domain per slice under `modules/office/<domain>/`; `OfficeService
 
 - [x] 5.0 Web lint reports unused vars/imports (reuses the plugin Next registers); six fixed. `4eaa4d1`
 - [x] 5.0b Unused `components/ui/table.tsx`, `ui/card.tsx` and their CSS removed (`.card`, `.data-table*`, `.card button`). `aff3fdf`
-- [x] 5.1 `app/error.tsx` (Next 16 `retry`) and `app/not-found.tsx` (404), Pearl empty state + the way home, three languages. Route groups deliberately not added (see spec). `2fbe124`, centering fix `d03451c`; checked in the browser ar/en, light/dark, 390px.
+- [x] 5.1 `app/error.tsx` (Next 16 `retry`) and `app/not-found.tsx` (404), shared empty state + the way home, three languages. Route groups deliberately not added (see spec). `2fbe124`, centering fix `d03451c`; checked in the browser ar/en, light/dark, 390px.
 - [x] 5.5a Closed drawer `inert`; Escape closes the topbar menus and returns focus; `RowMenu` keys by position. `2317498`
 - [x] 5.3a Alias tokens removed; every use reads `--rd-*` (0 changed pixels, 4 screens × 2 themes). `28b4b4e`
 - [x] 5.3b Radius and type scales (`--rd-radius-*`, `--rd-text-*`); 91 radius + 139 font-size literals (0 changed pixels, 6 screens × 2 themes). `03ab2b4`

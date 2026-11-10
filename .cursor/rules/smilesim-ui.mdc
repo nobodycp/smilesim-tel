@@ -1,16 +1,16 @@
 ---
-description: Pearl visual identity for every screen in the office
+description: Smile Sim visual identity for every screen in the office
 alwaysApply: true
 ---
 
-# Pearl UI
+# Smile Sim UI
 
-Source of truth: `DESIGN.md`. Identity comes from account manager's Pearl system, adapted to this Next.js app. Do not invent a second look.
+Source of truth: `DESIGN.md`. One identity for the whole office. Do not invent a second look.
 
 - Colours are `--rd-*` tokens in `apps/web/app/styles/tokens.css` (imported through `apps/web/app/globals.css`), both light and dark. No raw hex or `rgba()` in components or in any other CSS file. A new colour is a new token in both themes, listed in `DESIGN.md`.
 - Primary action is ink (`--rd-primary-bg`). Logo red (`--rd-accent`) is one accent per screen, never an error. Errors use `--rd-danger`.
 - Status is a badge with a label: paid / pending / danger / neutral. Do not signal status by colour alone.
-- Type: Noto Kufi Arabic for Arabic and Latin text, IBM Plex Sans Hebrew for Hebrew, both loaded in `layout.tsx` with `next/font`. Numbers, money, and dates are Latin digits in the same font with `font-variant-numeric: tabular-nums`. No Inter Tight, no Noto Kufi, no new font, no Google Font link.
+- Type: Noto Kufi Arabic for Arabic and Latin text, IBM Plex Sans Hebrew for Hebrew, both loaded in `layout.tsx` with `next/font`. Numbers, money, and dates are Latin digits in the same font with `font-variant-numeric: tabular-nums`. No new font, no Google Font link.
 - Reuse the shell, page header, card, table, and button classes in `DESIGN.md`. Do not add a new card, button, or table style for one page.
 - RTL first: logical properties (`margin-inline`, `text-align: start`). Touch targets at least 44px. Motion 150–450ms, transform and opacity only.
 - The old `--bg` / `--accent` / `--ink-*` names are removed (Phase 5.3a). Use `--rd-*` only and do not add another blue. Radius and font size use the scale tokens (`--rd-radius-*`, `--rd-text-*`), not literals.

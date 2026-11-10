@@ -1,9 +1,9 @@
 # Smile Sim — Graphite
 
 This is the visual source of truth (spec `docs/superpowers/specs/2026-11-09-graphite-identity.md`, from direction 08
-"Night Desk · Graphite" in `design/`). It replaced Pearl on 2026-11-09; nothing of Pearl is kept on purpose. The
+"Night Desk · Graphite" in `design/`). The
 operations desk after hours: neutral graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin
-digits. `.cursor/rules/pearl-ui.mdc` points here.
+digits. `.cursor/rules/smilesim-ui.mdc` points here.
 
 All CSS reads `--rd-*` tokens. Do not add another accent colour.
 
@@ -192,13 +192,13 @@ Spacing, layers and motion are tokens too (5.3d), named from the values the shee
 
 Where the ink fills a button, use `--rd-primary-bg`. Where ink is a text, border, or link colour, use `--rd-ink`. They hold the same value today but mean different things.
 
-## Hotspot-store identity
+## Controls and primitives
 
-List chrome that has moved (`/users`, plus the shared dialog, row menu, filter bar, empty state, and skeleton) follows hotspot-store's layout. Colours are the Graphite tokens above; `--rd-accent` (crimson) stays one thread per screen.
+Lists, the shared dialog, row menu, filter bar, empty state and skeleton share one layout. Colours are the Graphite tokens above; `--rd-accent` (crimson) stays one thread per screen.
 
 There is no Tailwind (removed in Phase 5.4a, ADR 0003); `base.css` is the reset. Icons are `lucide-react`. New controls are `apps/web/components/ui/` (`Button`, `Select`, `Badge`, `Pagination`), styled by `ui.css` with one `ui-` class per part and a modifier class per variant or size (`ui-btn ui-btn-outline ui-btn-sm`). A component joins its classes with `[...].filter(Boolean).join(' ')`; a `className` from the caller comes last and wins only by the cascade, so give it a class from a sheet, not a one-off utility. `Button` sizes: `sm` 32px, `default` 34px (the pane control height), `lg` 40px (sign-in-sized screens: password, two-factor), `icon` 36px square, `iconSm` 28px square; corners are 8px everywhere. Every action button is `Button` (5.4b-4d): no `.btn`, `.btn-sm`, `button.primary` / `.secondary` / `.danger`, and no context rule (`form > button`, `.pane form > button`, `.field-row > button`, `.dialog button.*`) restyles a button by where it sits. A button that is a `form`'s or `.pane-body`'s own child sits at the reading start. A link that must look like a button takes `buttonClass({ variant, size })`. Controls with their own look stay plain `<button>`s with their own class: tabs (`.steps`), the segmented pick (`.seg`), period chips, tiles and cards (`.op-tile`, `.op-card`, `.pack-card`, `.company-card`, `.pack-pick`, `.task-op`), the switch, menu items, shell icons, the sort header, the toast close, and the outage and return bars. `Select` takes `compact` for the 28px pager field. A `Button` never draws the browser's default border (5.4b-4a); `variant="danger"` is the danger outline (border and text, `--rd-danger-soft` on hover), like every destructive button. Every dropdown is `Select` (5.4b-4c: no bare `<select>` in a page); its `className` lands on the wrapper, which carries the layout (width, grid place), and in a `.data` cell the wrapper is inline-block so it follows the cell's centring. A `Select` keeps 2.25rem at its inline end for the chevron in every context, including the 28px filter bar where `.desk .filter-panel select` resets the padding.
 
-The ported classes and the primitives read `--rd-*` tokens directly (Phase 5.3a; the hotspot alias names `--bg`, `--surface*`, `--line*`, `--ink*`, `--accent*`, `--good*`, `--warn*`, `--bad*`, `--focus-ring`, `--shadow-*` are gone). The ink primary's 10% tint is `--rd-primary-soft`. A badge's inset ring is its text colour at 15% (`color-mix`), the muted badge's is `--rd-line`; until 5.4a every badge drew Tailwind's default blue ring because the `/15` colours were never generated.
+The classes and the primitives read `--rd-*` tokens directly (Phase 5.3a; the alias names `--bg`, `--surface*`, `--line*`, `--ink*`, `--accent*`, `--good*`, `--warn*`, `--bad*`, `--focus-ring`, `--shadow-*` are gone). The ink primary's 10% tint is `--rd-primary-soft`. A badge's inset ring is its text colour at 15% (`color-mix`), the muted badge's is `--rd-line`; until 5.4a every badge drew Tailwind's default blue ring because the `/15` colours were never generated.
 
 Status → tone lives in one file, `apps/web/lib/status-tone.ts` (Phase 5.4b-2): line active → `success`, frozen → `warning`, disconnected → `danger`, else `muted`; task done → `success`, cancelled → `danger`, else `warning`; account frozen → `warning`, open → `success`; notice unread → `warning`, read → `muted`; on/off (for sale, enabled, grant) → `success` / `danger`; package terms stopped → `danger`, custom price → `success`, inherited → `muted`. `<Badge variant={tone} dot>` draws it; there is no plain `.badge` class any more (5.4b-4b), and a page never picks a tone inline. `info` and `violet` are typed and unused until their tokens exist. Shell chrome uses `lucide-react` (nav, wallet, bell, theme).
 

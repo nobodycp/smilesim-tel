@@ -27,7 +27,7 @@ A short `docs/architecture/README.md` points at both files and how to open them 
 - No Madge auto-layout as the delivered diagram (optional later as a checklist only).
 - No in-app architecture page, no Canvas artifact, no change to runtime code or styles.
 - No test configs, Playwright specs, `.next*` / build-output, or `node_modules` on the boards.
-- Not a substitute for `DESIGN.md` or Pearl UI rules — these maps explain structure and flow, not
+- Not a substitute for `DESIGN.md` or the UI rules — these maps explain structure and flow, not
   visual craft.
 
 ## Decisions
