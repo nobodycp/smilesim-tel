@@ -1,4 +1,4 @@
-import { MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, isSettled, maySend, requestHash, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
+import { ATTEMPT_LEASE_MS, CALL_TIMEOUT_MS, MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, closesUnknown, outcomeOf, recoveryOutcome, isSettled, maySend, requestHash, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
 
 const request: OperationRequest = { action: 'activate', providerCode: 'sky', packageCode: 'p-1', msisdn: '0500000001', iccid: '8997202000000000777', lineId: null };
 
@@ -44,6 +44,39 @@ describe('provider operation rules', () => {
     expect((['confirmed', 'refused', 'not-sent', 'no-answer'] as const).map((kind) => [kind, maySend(next(kind))])).toEqual([['confirmed', false], ['refused', false], ['not-sent', true], ['no-answer', false]]);
     // The last allowed attempt that never left is failed, not scheduled again.
     expect(maySend(afterAttempt({ kind: 'not-sent', error: 'unreachable' }, MAX_ATTEMPTS).status)).toBe(false);
+  });
+
+  it('calls an attempt not-sent only on the adapter\'s own statement that nothing left', () => {
+    expect(outcomeOf({ left: false, error: 'unreachable' })).toEqual({ kind: 'not-sent', error: 'unreachable' });
+    expect(outcomeOf({ left: true, answer: 'confirmed', providerRef: 'R' })).toEqual({ kind: 'confirmed', providerRef: 'R' });
+    expect(outcomeOf({ left: true, answer: 'refused', error: 'refused' })).toEqual({ kind: 'refused', error: 'refused' });
+    expect(outcomeOf({ left: true, answer: 'none', error: 'timeout' })).toEqual({ kind: 'no-answer', error: 'timeout' });
+    // No evidence at all is never "not sent".
+    expect(outcomeOf(null)).toEqual({ kind: 'no-answer', error: 'no-evidence' });
+    expect(afterAttempt(outcomeOf(null), 1).status).toBe('unknown');
+  });
+
+  it('recovers a pending attempt by its lease and its send mark, not by its age', () => {
+    const now = new Date('2026-11-10T12:00:00Z');
+    const before = new Date(now.getTime() - 1);
+    const later = new Date(now.getTime() + 1);
+    // The lease runs: a worker may be on it, whatever else is true.
+    expect(recoveryOutcome({ leaseUntil: later, sentAt: null }, now)).toBeNull();
+    expect(recoveryOutcome({ leaseUntil: later, sentAt: before }, now)).toBeNull();
+    expect(recoveryOutcome({ leaseUntil: now, sentAt: null }, now)).toEqual({ kind: 'not-sent', error: 'abandoned' });
+    // Over, and never marked: it provably did not leave.
+    expect(recoveryOutcome({ leaseUntil: before, sentAt: null }, now)).toEqual({ kind: 'not-sent', error: 'abandoned' });
+    // Over, and marked: it may be at the provider. Unknown, never failed.
+    expect(recoveryOutcome({ leaseUntil: before, sentAt: before }, now)).toEqual({ kind: 'no-answer', error: 'abandoned' });
+    expect(afterAttempt({ kind: 'no-answer', error: 'abandoned' }, 1).status).toBe('unknown');
+    // No lease recorded: nothing proves it unsent.
+    expect(recoveryOutcome({ leaseUntil: null, sentAt: null }, now)).toEqual({ kind: 'no-answer', error: 'abandoned' });
+    expect(ATTEMPT_LEASE_MS).toBeGreaterThan(CALL_TIMEOUT_MS);
+  });
+
+  it('lets only the provider\'s own verdict close an unknown operation late', () => {
+    expect([closesUnknown({ kind: 'confirmed', providerRef: null }), closesUnknown({ kind: 'refused', error: 'refused' })]).toEqual([true, true]);
+    expect([closesUnknown({ kind: 'no-answer', error: 'timeout' }), closesUnknown({ kind: 'not-sent', error: 'unreachable' })]).toEqual([false, false]);
   });
 
   it('accepts a key of 8 to 120 safe characters', () => {

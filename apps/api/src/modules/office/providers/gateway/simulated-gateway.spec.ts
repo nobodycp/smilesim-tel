@@ -48,6 +48,15 @@ describe('SimulatedProviderGateway', () => {
   });
 });
 
+describe('SimulatedProviderGateway.send', () => {
+  it('never sends a recorded operation, in any environment', async () => {
+    expect(await new SimulatedProviderGateway().send()).toEqual({ left: false, error: NOT_CONNECTED });
+    await withEnv({ NODE_ENV: 'production' }, async () => {
+      expect(await new SimulatedProviderGateway().send()).toEqual({ left: false, error: NOT_CONNECTED });
+    });
+  });
+});
+
 describe('line operations and the gateway', () => {
   it('in the test environment the hint decides: success applies now, fail opens a provider-failure task', async () => {
     const { service, gates, tasks, line } = await tree();

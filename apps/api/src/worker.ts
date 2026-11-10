@@ -1,16 +1,18 @@
 import { logger, reason } from './modules/shared/log';
-import { env } from './config';
+import { env, isProduction, providerDispatchOn } from './config';
 import 'reflect-metadata';
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
 import { createPrismaClient } from './db';
 import { purgeBefore } from './modules/office/activity/activity-log';
+import { SimulatedProviderGateway } from './modules/office/providers/gateway/simulated-gateway';
+import { OPERATIONS_QUEUE, buildProviderDispatch, startProviderDispatchTimers } from './provider-dispatch';
 
 const log = logger('Worker');
 
 export type WorkerProcessor = { queue: string; handle: (data: unknown) => Promise<void> };
 
-// The login release has no background jobs. A later feature appends processors here.
+// Processors that always run. The provider dispatcher is added in `run` when it is switched on.
 export const backgroundProcessors: WorkerProcessor[] = [];
 
 export async function run(): Promise<void> {
@@ -21,7 +23,26 @@ export async function run(): Promise<void> {
   const connection = new IORedis(url, { maxRetriesPerRequest: null });
   connection.on('error', (error) => log.error(`redis: ${error.message}`));
 
-  const workers = backgroundProcessors.map(
+  // Provider operations: off unless PROVIDER_DISPATCH=1, and off in production whatever it says. The gateway is
+  // the simulated one, which sends nothing: a recorded operation goes back to `requested` and then fails.
+  const processors = [...backgroundProcessors];
+  let stopDispatch: (() => Promise<void>) | null = null;
+  let dispatchPrisma: ReturnType<typeof createPrismaClient> | null = null;
+  let relayRedis: IORedis | null = null;
+  if (providerDispatchOn()) {
+    dispatchPrisma = createPrismaClient();
+    // The relay publishes on its own connection: it must fail fast when Redis is away, the workers must not.
+    relayRedis = new IORedis(url, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
+    relayRedis.on('error', (error) => log.error(`redis (relay): ${error.message}`));
+    const dispatch = buildProviderDispatch(dispatchPrisma, relayRedis, new SimulatedProviderGateway());
+    processors.push({ queue: OPERATIONS_QUEUE, handle: dispatch.handle });
+    stopDispatch = startProviderDispatchTimers(dispatch);
+    log.log('provider dispatch: on');
+  } else if (isProduction() && env('PROVIDER_DISPATCH')) {
+    log.warn('provider dispatch: PROVIDER_DISPATCH is set but the dispatcher never runs in production');
+  }
+
+  const workers = processors.map(
     (processor) => new Worker(processor.queue, (job) => processor.handle(job.data), { connection }),
   );
 
@@ -44,7 +65,10 @@ export async function run(): Promise<void> {
   log.log(`ready: ${workers.length} processors`);
 
   const stop = async () => {
+    await stopDispatch?.();
     await Promise.all(workers.map((worker) => worker.close()));
+    await dispatchPrisma?.$disconnect();
+    relayRedis?.disconnect();
     connection.disconnect();
   };
   process.once('SIGTERM', () => void stop());

@@ -27,7 +27,6 @@ suite('provider operations (PostgreSQL)', () => {
   const refusal = (run: Promise<unknown>) => run.then(() => null, (error: unknown) => (error instanceof OfficeFailure ? { status: error.status, code: error.code } : Promise.reject(error)));
   const operations = () => prisma.providerOperation.findMany({ where: { providerId } });
   const outbox = async () => prisma.outboxMessage.findMany({ where: { aggregateId: { in: (await operations()).map((row) => row.id) } } });
-  const allOutbox = () => prisma.outboxMessage.count();
 
   beforeAll(() => {
     process.env.DATABASE_URL = url;
@@ -96,14 +95,16 @@ suite('provider operations (PostgreSQL)', () => {
   });
 
   it('leaves neither the operation nor the message when the caller\'s transaction fails', async () => {
-    const before = await allOutbox();
     const key = newKey();
+    let recordedId = '';
     await expect(uow.runTx(async (tx) => {
-      await service.recordIn(tx, key, request);
+      recordedId = (await service.recordIn(tx, key, request)).id;
       throw new Error('the caller failed after recording');
     })).rejects.toThrow('the caller failed after recording');
+    expect(recordedId).not.toBe('');
     expect(await operations()).toHaveLength(0);
-    expect(await allOutbox()).toBe(before);
+    // Other specs write messages in this database too: this operation's own message is what must be gone.
+    expect(await prisma.outboxMessage.count({ where: { aggregateId: recordedId } })).toBe(0);
     expect(await refusal(service.status({ idempotencyKey: key }))).toEqual({ status: 404, code: 'NOT_FOUND' });
   });
 
@@ -269,8 +270,10 @@ suite('provider operations (PostgreSQL)', () => {
     expect(await service.status({ id })).toMatchObject({ status: 'unknown', lastError: 'timeout', attempts: 1 });
     expect(await sends()).toEqual([0]);
     expect(await service.claim(id)).toBeNull();
-    expect(await refusal(service.settle(id, attempt, { kind: 'confirmed', providerRef: 'x' }))).toEqual({ status: 409, code: 'DUPLICATE_REQUEST' });
+    // A late result that says nothing certain does not move it; another attempt's number never does.
+    expect(await refusal(service.settle(id, attempt, { kind: 'no-answer', error: 'timeout' }))).toEqual({ status: 409, code: 'DUPLICATE_REQUEST' });
     expect(await refusal(service.settle(id, attempt, { kind: 'not-sent', error: 'unreachable' }))).toEqual({ status: 409, code: 'DUPLICATE_REQUEST' });
+    expect(await refusal(service.settle(id, attempt + 1, { kind: 'confirmed', providerRef: 'x' }))).toEqual({ status: 409, code: 'DUPLICATE_REQUEST' });
     // The same key still answers the same operation: a caller that retries gets "unknown", not a second send.
     const key = (await operations())[0].idempotencyKey;
     expect(await service.record(key, request)).toEqual({ id, status: 'unknown', created: false });

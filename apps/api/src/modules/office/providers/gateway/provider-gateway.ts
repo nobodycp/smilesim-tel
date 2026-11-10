@@ -1,4 +1,5 @@
 import type { Action } from '../../kernel/types';
+import type { OutgoingOperation, SendEvidence } from '../operations/provider-operation.rules';
 
 // The port every line operation goes through to reach the provider (backend-engineering.mdc 4.5). The office
 // never takes the provider's answer from the client: it asks the gateway, and the gateway answers.
@@ -30,6 +31,11 @@ export interface ProviderGateway {
   accept(hint: unknown): void;
   /** Runs the operation at the provider. Never throws for a provider refusal: it answers `ok: false`. */
   run(request: ProviderRequest): Promise<ProviderResult>;
+  /**
+   * Sends a recorded operation for the dispatcher (ADR 0018) and reports what is known about it. `left: false`
+   * only when no connection was opened; the idempotency key goes to the provider with every attempt.
+   */
+  send(operation: OutgoingOperation): Promise<SendEvidence>;
 }
 
 export const PROVIDER_GATEWAY = Symbol('PROVIDER_GATEWAY');

@@ -209,6 +209,10 @@ model ProviderOperation {
   /// A code from `OPERATION_ERRORS`, never free text.
   lastError      String?
   lastAttemptAt  DateTime?
+  /// Until when the worker that claimed the current attempt may still be working on it.
+  leaseUntil     DateTime?
+  /// Written just before the provider is called for the current attempt; empty means the request never left.
+  sentAt         DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -228,6 +232,8 @@ model OutboxMessage {
   sequence    Int       @default(0)
   createdAt   DateTime  @default(now())
   publishedAt DateTime?
+  /// Until when the relay that took the message may still be publishing it; afterwards another may take it.
+  claimedUntil DateTime?
 
   @@unique([topic, aggregateId, sequence])
   @@index([publishedAt, createdAt])

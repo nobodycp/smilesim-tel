@@ -7,7 +7,10 @@ import type { OperationError, OperationRequest, OperationStatus } from './provid
 export const OPERATION_REQUESTED = 'provider-operation.requested';
 
 export type NewOperation = Omit<OperationRequest, 'providerCode'> & { idempotencyKey: string; requestHash: string; providerId: string };
-export type StatusChange = { status: OperationStatus; providerRef?: string | null; error: OperationError | null; attempt?: boolean };
+/** `claim` starts a new attempt: counted, leased until the given time, with no send mark. */
+export type StatusChange = { status: OperationStatus; providerRef?: string | null; error: OperationError | null; claim?: { at: Date; leaseUntil: Date } };
+/** The state a guarded write expects: the status, and where given the attempt's number and that nothing was sent. */
+export type Expected = { status: OperationStatus; attempts?: number; unsent?: true };
 
 /**
  * Provider operations and the outbox as the database holds them. Every method takes the client, so an operation,
@@ -45,18 +48,44 @@ export class ProviderOperationsRepository {
     return db.providerOperation.findUnique({ where: { idempotencyKey } });
   }
 
+  /** The operation with its provider's code: what the dispatcher sends. */
+  operationToSend(db: Db, id: string) {
+    return db.providerOperation.findUnique({ where: { id }, include: { provider: { select: { code: true } } } });
+  }
+
+  /** Pending operations whose lease is over (or that never had one), oldest first. */
+  async expiredPendingIds(db: Db, now: Date, limit: number): Promise<string[]> {
+    const rows = await db.providerOperation.findMany({
+      where: { status: 'pending', OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }] },
+      orderBy: { updatedAt: 'asc' },
+      take: limit,
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
   /**
-   * Guarded: changes the row only while it is still in `from` and has made exactly `attempts` attempts, so a write
-   * that belongs to an earlier attempt finds nothing to change. Answers whether it did.
+   * Writes the send mark of attempt `attempts`, once, while the operation is still pending on it. The provider is
+   * called only after this answered true, so an attempt without the mark never reached the provider.
    */
-  async moveStatus(db: Db, id: string, from: { status: OperationStatus; attempts?: number }, change: StatusChange): Promise<boolean> {
+  async markSent(db: Db, id: string, attempts: number, at: Date): Promise<boolean> {
+    const marked = await db.providerOperation.updateMany({ where: { id, status: 'pending', attempts, sentAt: null }, data: { sentAt: at } });
+    return marked.count === 1;
+  }
+
+  /**
+   * Guarded: changes the row only while it is as `from` says (its status, and where given its attempt count and
+   * an empty send mark), so a write that belongs to an earlier attempt finds nothing to change. Answers whether
+   * it did.
+   */
+  async moveStatus(db: Db, id: string, from: Expected, change: StatusChange): Promise<boolean> {
     const moved = await db.providerOperation.updateMany({
-      where: { id, status: from.status, ...(from.attempts !== undefined ? { attempts: from.attempts } : {}) },
+      where: { id, status: from.status, ...(from.attempts !== undefined ? { attempts: from.attempts } : {}), ...(from.unsent ? { sentAt: null } : {}) },
       data: {
         status: change.status,
         lastError: change.error,
         ...(change.providerRef !== undefined ? { providerRef: change.providerRef } : {}),
-        ...(change.attempt ? { attempts: { increment: 1 }, lastAttemptAt: new Date() } : {}),
+        ...(change.claim ? { attempts: { increment: 1 }, lastAttemptAt: change.claim.at, leaseUntil: change.claim.leaseUntil, sentAt: null } : {}),
       },
     });
     return moved.count === 1;

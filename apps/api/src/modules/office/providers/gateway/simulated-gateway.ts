@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { env, isProduction } from '../../../../config';
 import { fail } from '../../../shared/office-failure';
+import type { SendEvidence } from '../operations/provider-operation.rules';
 import { NOT_CONNECTED, type ProviderGateway, type ProviderRequest, type ProviderResult } from './provider-gateway';
 
 /**
@@ -22,5 +23,10 @@ export class SimulatedProviderGateway implements ProviderGateway {
   async run(request: ProviderRequest): Promise<ProviderResult> {
     if (!this.simulated) return { ok: false, reason: NOT_CONNECTED };
     return request.hint === 'success' ? { ok: true } : { ok: false, reason: 'simulated-failure' };
+  }
+
+  /** No provider is connected: a recorded operation never leaves, in any environment. */
+  async send(): Promise<SendEvidence> {
+    return { left: false, error: NOT_CONNECTED };
   }
 }

@@ -11,6 +11,7 @@ export const ENV_NAMES = [
   'COOKIE_SECURE',
   'WEBAUTHN_RP_ID',
   'PROVIDER_SIMULATION',
+  'PROVIDER_DISPATCH',
   'TRUST_PROXY',
   'TRIAL_SEED',
   'TRIAL_SEED_ALLOW_PRODUCTION',
@@ -35,4 +36,12 @@ export function isTest(): boolean {
 /** The whole environment, for the few functions that take it as an argument so a spec can hand them its own. */
 export function wholeEnv(): Record<string, string | undefined> {
   return process.env;
+}
+
+/**
+ * Whether the worker runs the provider dispatcher (outbox relay, queue consumer, recovery): only when
+ * `PROVIDER_DISPATCH=1`, and never in production until a real provider is connected and approved (ADR 0018).
+ */
+export function providerDispatchOn(): boolean {
+  return !isProduction() && env('PROVIDER_DISPATCH') === '1';
 }

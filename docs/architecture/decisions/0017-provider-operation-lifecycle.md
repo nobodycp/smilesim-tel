@@ -28,6 +28,10 @@ simulation; with a real provider a lost answer cannot be told from a failure, an
    `(topic, aggregateId, sequence)` is unique, so one send has one message whoever writes it. `unknown`,
    `succeeded` and `failed` write none.
 
+7. **Later (ADR 0018):** `claim` also leases the attempt, a send mark is written before the provider is called,
+   and `settle` takes one late answer: the provider's own verdict (`confirmed`, `refused`) for an attempt that
+   recovery had marked `unknown`.
+
 ## Alternatives
 
 - **Reuse `OfficeTask`** with new statuses: a task is a person's work and holds money; mixing a machine's
