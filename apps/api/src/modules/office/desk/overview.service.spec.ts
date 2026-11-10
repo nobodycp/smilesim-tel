@@ -1,3 +1,4 @@
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { WalletsService } from '../wallets/wallets.service';
@@ -21,7 +22,7 @@ const entries = [
 ];
 
 function service(snapshots: { userId: string; day: string; active: number; expiring: number; frozen: number; disconnected: number; suspended: number }[] = []) {
-  const kernel = Object.create(OfficeKernel.prototype) as OfficeKernel;
+  const kernel = new OfficeKernel(new MemoryAuthStore());
   const lineCounts: Record<string, number> = { active: 10, frozen: 2, disconnected: 3 };
   kernel.prismaClient = {
     user: { findMany: async () => accounts },

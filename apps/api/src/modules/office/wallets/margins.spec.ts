@@ -1,3 +1,4 @@
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { WalletsService } from './wallets.service';
@@ -18,7 +19,7 @@ const pkg = {
 };
 
 function service() {
-  const kernel = Object.create(OfficeKernel.prototype) as OfficeKernel;
+  const kernel = new OfficeKernel(new MemoryAuthStore());
   kernel.prismaClient = {
     user: { findMany: async () => accounts },
     line: { findMany: async () => [{ id: 'l1', terms: { packageCode: 'we-150' } }] },

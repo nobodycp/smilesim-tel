@@ -1,3 +1,4 @@
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { ProviderCatalogService } from './provider-catalog.service';
@@ -15,7 +16,7 @@ function world() {
   const companies = [{ id: 'c-cell', code: 'cellcom', name: 'سلكوم' }] as { id: string; code: string; name: string }[];
   const packages = [{ id: 'k1', code: 'sky-cellcom-300', providerId: 'p-sky', providerProductCode: null as string | null }];
   const created: Record<string, unknown>[] = [];
-  const kernel = Object.create(OfficeKernel.prototype) as OfficeKernel;
+  const kernel = new OfficeKernel(new MemoryAuthStore());
   kernel.prismaClient = {
     provider: { findUnique: async ({ where }: { where: { code: string } }) => (where.code === 'sky' ? provider : null) },
     company: {

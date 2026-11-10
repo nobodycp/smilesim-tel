@@ -73,7 +73,7 @@ const officeControllers = office.filter(({ file }) => file.endsWith('.controller
 
 describe('engineering rules (backend-engineering.mdc)', () => {
   it('1.2 wallet-writes: only the wallet ledger writes a wallet row', () => {
-    const allowed = ['modules/office/kernel/', 'modules/office/catalog/catalog-seed.ts'];
+    const allowed = ['modules/office/wallets/wallet-ledger.ts', 'modules/office/catalog/catalog-seed.ts'];
     check('wallet-writes', hits(production, /\bwallet\.(update|updateMany|upsert|create|delete)\(/, (match, text, file) => {
       if (allowed.some((prefix) => file.startsWith(prefix))) return false;
       // The credit ceiling is a setting, not money: `wallets.service.ts` may write it.

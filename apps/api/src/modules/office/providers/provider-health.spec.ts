@@ -1,3 +1,4 @@
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { OfficeKernel } from '../kernel/office-kernel';
 import { PROVIDER_FAILED_NOTE } from '../stored-text';
 import { FAILURE_THRESHOLD, healthOf } from './provider-health';
@@ -14,7 +15,7 @@ describe('provider health', () => {
   });
 
   function setup(stored: Record<string, string>, failures: number, available: Record<string, number>) {
-    const kernel = Object.create(OfficeKernel.prototype) as OfficeKernel;
+    const kernel = new OfficeKernel(new MemoryAuthStore());
     const notices: { userIds: string[]; kind: string; payload: unknown }[] = [];
     const providers = [
       { code: 'sky', alertFloor: 0, packages: [{ id: 'p1' }] },
@@ -41,8 +42,7 @@ describe('provider health', () => {
       },
       $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({}),
     } as unknown as OfficeKernel['prismaClient'];
-    (kernel as unknown as { queued: unknown }).queued = new Map();
-    (kernel as unknown as { notice: unknown }).notice = {
+    (kernel.uow as unknown as { notice: unknown }).notice = {
       write: async (_tx: unknown, userIds: string[], _actor: unknown, draft: { kind: string; payload: unknown }) => {
         notices.push({ userIds, ...draft });
         return [];
@@ -74,7 +74,7 @@ describe('provider health', () => {
 
 describe('overdue matching notice', () => {
   function setup(rows: { code: string; name: string; matchSource: string; matchEveryDays: number; lastMatchedAt: Date | null; matchOverdueNoticeAt: Date | null }[]) {
-    const kernel = Object.create(OfficeKernel.prototype) as OfficeKernel;
+    const kernel = new OfficeKernel(new MemoryAuthStore());
     const notices: { kind: string; payload: unknown }[] = [];
     kernel.prismaClient = {
       provider: {
@@ -89,8 +89,7 @@ describe('overdue matching notice', () => {
       user: { findMany: async () => [{ id: 'owner', isBranchOwner: true, liveGrants: '' }] },
       $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({}),
     } as unknown as OfficeKernel['prismaClient'];
-    (kernel as unknown as { queued: unknown }).queued = new Map();
-    (kernel as unknown as { notice: unknown }).notice = {
+    (kernel.uow as unknown as { notice: unknown }).notice = {
       write: async (_tx: unknown, _ids: string[], _actor: unknown, draft: { kind: string; payload: unknown }) => { notices.push(draft); return []; },
       publish: async () => undefined,
     };

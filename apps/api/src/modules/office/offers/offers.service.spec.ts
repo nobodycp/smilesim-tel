@@ -1,3 +1,4 @@
+import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { OfficeKernel } from '../kernel/office-kernel';
 import type { Actor } from '../kernel/types';
 import { OfficeFailure } from '../../shared/office-failure';
@@ -7,7 +8,7 @@ import { OffersService, offerShows } from './offers.service';
 type Row = Record<string, unknown> & { id: string; position: number };
 
 function setup() {
-  const kernel = Object.create(OfficeKernel.prototype) as OfficeKernel;
+  const kernel = new OfficeKernel(new MemoryAuthStore());
   const rows: Row[] = [];
   const offer = {
     findMany: async () => [...rows].sort((a, b) => a.position - b.position),
@@ -22,7 +23,6 @@ function setup() {
     delete: async ({ where }: { where: { id: string } }) => rows.splice(rows.findIndex((row) => row.id === where.id), 1)[0],
   };
   kernel.prismaClient = { offer, $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({ offer }) } as unknown as OfficeKernel['prismaClient'];
-  (kernel as unknown as { queued: unknown }).queued = new Map();
   return { service: new OffersService(kernel), rows };
 }
 
