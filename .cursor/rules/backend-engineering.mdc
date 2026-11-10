@@ -22,7 +22,12 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
 4. Two wallets in one transaction are locked in **sorted id order** (`lockWallets`). A line and a wallet: the
    **line first**, then the wallet.
 5. The price charged and the price recorded are the same number, fixed when the debit is decided (a task stores it
-   when it opens).
+   when it opens). **Two operations are the exception, by the owner's rule (2026-11-10): a package switch's
+   difference and a disconnect's refund are the money of the day the operation is actually carried out**, because
+   both are the value of the days still left and a task may wait for days. They are worked out when the task is
+   completed, inside the completion's transaction, never fixed when it opens. A switch task's hold is what was
+   quoted at opening and the amount of the day is settled against it (`WalletLedger.capture`,
+   `lines/task-charge.rules.ts`). *(`lines/execution-date-settlement.db.spec.ts`)*
 6. A sale stores its `providerCost` on the wallet entry. Reports never price history from today's package.
 
 7. Writes that belong together are one transaction: a service method never awaits two repository writes one

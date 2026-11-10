@@ -1,4 +1,8 @@
 // How a task's money is settled when the branch completes it (ADR 0019, D10). Pure: no Nest, no Prisma.
+//
+// The owner's rule (2026-11-10): a package switch and a disconnect are valued on the day they are actually carried
+// out. Both are the worth of the days still left, and a task may wait for days, so neither amount is fixed when
+// the task opens. Every other operation charges the price fixed at opening.
 
 /** What the rule reads of a task. */
 export type ChargedTask = { action: string; posDelta: number; held: number | null };
@@ -7,7 +11,8 @@ export type ChargedTask = { action: string; posDelta: number; held: number | nul
  * - `requote`: the amount is worked out again when the task is completed, on purpose: a package switch, whose
  *   difference shrinks with every day that passes while the task waits. The task's hold is what was quoted when
  *   it opened; the handler settles the new amount against it (`requotedSettlement`).
- * - `own`: the handler posts a credit worked out at completion and the task holds nothing: a disconnect's refund.
+ * - `own`: the handler posts a credit worked out at completion, on purpose, and the task holds nothing: a
+ *   disconnect's refund, which is the value of the days left on the day it is carried out.
  * - `none`: the task moves no money.
  * - `capture`: the task carries a debit fixed when it opened and holds exactly that: the hold becomes the charge,
  *   with no second ceiling check.

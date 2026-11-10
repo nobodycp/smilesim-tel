@@ -130,11 +130,17 @@ wallets (sorted). A slice's review checks that order in the code it adds.
       stays open with its hold.
     - **Nothing owed, or money back:** the hold is given back whole; a credit is posted as before; no capture.
     - `capture` therefore takes a hold and a debit of any two sizes (a hold of 0 is a plain checked debit).
-    - A disconnect is the same idea and needed no change: its refund is worked out at completion, it is a credit,
-      and its task holds nothing.
+    - **The rule covers a disconnect too** (owner, adopted 2026-11-10; `docs/project-plan.md` of that date,
+      rule 1.5 of `backend-engineering.mdc`): its refund is the refund of the day it is carried out. The code
+      already worked that way (the refund is worked out in the completion's transaction, it is a credit, the task
+      holds nothing), so nothing changed there; the specs now pin it: tasks completed 0, 3, 12 and 25 days late
+      refund 2,850, 2,550, 1,650 and 350, the same as a disconnect applied at once on that day, once, and rolled
+      back whole on a failure. A switch delayed the same way charges 2,900, 2,600, 1,700 and 400.
+    - Operations with a fixed price are untouched: a renewal task completed twenty days late, after its price
+      changed, still charges the price it opened at.
     - Provider cost, the price ladder and the amount itself are computed exactly as before; a spec compares a
       switch completed from a task with one applied at once on the same day, field by field.
-    - *Specs:* `lines/switch-settlement.db.spec.ts`, `wallets/wallet-capture.db.spec.ts`,
+    - *Specs:* `lines/execution-date-settlement.db.spec.ts`, `wallets/wallet-capture.db.spec.ts`,
       `lines/task-charge.rules.spec.ts`.
   - **Found while reading the completion paths, not changed here** (the owner reviews them separately):
     1. **A plain (non-eSIM) activation stores no `providerCost` on its wallet entry** (`rules/prices.ts`

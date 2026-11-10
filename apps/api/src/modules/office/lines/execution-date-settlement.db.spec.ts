@@ -6,10 +6,13 @@ import { OfficeFailure } from '../../shared/office-failure';
 import type { NoticeService } from '../notices/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 
-// PostgreSQL only (TEST_DATABASE_URL). A package switch left to the branch (ADR 0019, D10; plan slice S.4). The
-// difference a switch costs is worked out again when the task is completed, on purpose: it is the value of the
-// days still left, and a task may wait for days. The task holds what was quoted when it opened, and the amount
-// of the day is settled against that hold.
+// PostgreSQL only (TEST_DATABASE_URL). The two operations whose money is the money of the day they are carried
+// out (owner's rule, 2026-11-10; rule 1.5 of backend-engineering.mdc): a package switch's difference and a
+// disconnect's refund. Both are the value of the days still left, and a task may wait for days, so neither is
+// fixed when the task opens. Every other operation charges the price fixed at opening.
+//
+// A switch task holds what was quoted when it opened and the amount of the day is settled against that hold
+// (ADR 0019, D10); a disconnect task holds nothing and its refund is a credit.
 //
 // Packages run their operations automatically, so here `outcome: 'fail'` opens a task and `outcome: 'success'`
 // applies at once. Time is moved by pulling the line's paid period back by whole days.
@@ -26,8 +29,11 @@ const LEFT = 29;
  */
 const owed = (target: number, daysPassed = 0, paid = BASE_PRICE) => Math.round((target * (LEFT - daysPassed)) / 30) - Math.round((paid * (LEFT - daysPassed)) / 30);
 const QUOTED = owed(6000);
+const DISCONNECT_FEE = 50;
+/** What a disconnect gives back after `daysPassed`: the days left at the price paid, less the half-shekel fee. */
+const refund = (daysPassed = 0) => Math.round((BASE_PRICE * (LEFT - daysPassed)) / 30) - DISCONNECT_FEE;
 
-suite('settling a package switch against its hold (PostgreSQL)', () => {
+suite('money of the day of execution: switch and disconnect (PostgreSQL)', () => {
   jest.setTimeout(90_000);
   const previousUrl = process.env.DATABASE_URL;
   const tag = randomUUID().slice(0, 8);
@@ -61,6 +67,9 @@ suite('settling a package switch against its hold (PostgreSQL)', () => {
   const openSwitch = (lineId: string, to: string) => service.switchPackage(pos, lineId, { packageCode: to, outcome: 'fail' }) as Promise<{ applied: false; taskId: string }>;
   const switchNow = (lineId: string, to: string) => service.switchPackage(pos, lineId, { packageCode: to, outcome: 'success' });
   const complete = (taskId: string) => service.completeTask(owner, taskId, {});
+  const openDisconnect = (lineId: string) => service.operate(pos, lineId, 'disconnect', { outcome: 'fail' }) as Promise<{ applied: false; taskId: string }>;
+  const disconnectNow = (lineId: string) => service.operate(pos, lineId, 'disconnect', { outcome: 'success' });
+  const entryOf = async (lineId: string, kind: string) => (await entries()).filter((row) => row.lineId === lineId && row.kind === kind);
   const priceOf = (id: string, renewalPosPrice: number) => prisma.package.update({ where: { id }, data: { renewalPosPrice } });
   const switchEntry = async () => (await entries()).filter((row) => row.kind === 'switch');
 
@@ -358,5 +367,145 @@ suite('settling a package switch against its hold (PostgreSQL)', () => {
       await prisma.line.deleteMany({ where: { posId: ids.pos } });
       await setWallet({ balance: START, held: 0 });
     }
+  });
+  it('charges a switch less for every day its task waited: the amount follows the day it is completed', async () => {
+    const delays = [0, 3, 12, 25];
+    const charged: number[] = [];
+    for (const days of delays) {
+      const lineId = await newLine();
+      const { taskId } = await openSwitch(lineId, code.dearer);
+      // Whatever the delay, the same amount was quoted and held on the day the task opened.
+      expect(await taskOf(taskId)).toMatchObject({ posDelta: -QUOTED, held: QUOTED });
+      await passDays(lineId, days);
+      await complete(taskId);
+      const [entry] = await entryOf(lineId, 'switch');
+      expect([days, entry.amount]).toEqual([days, -owed(6000, days)]);
+      expect(await taskOf(taskId)).toMatchObject({ status: 'done', posDelta: -owed(6000, days) });
+      charged.push(-entry.amount);
+      await prisma.walletEntry.deleteMany({ where: { userId: ids.pos, kind: { in: ['hold', 'release', 'switch'] } } });
+      await setWallet({ balance: START, held: 0 });
+    }
+    expect(charged).toEqual([2900, 2600, 1700, 400]);
+    // Strictly less with each longer wait, and never the amount of the opening day once a day has passed.
+    expect([...charged].sort((a, b) => b - a)).toEqual(charged);
+    expect(new Set(charged).size).toBe(delays.length);
+  });
+
+  it('opens a disconnect task that fixes no refund and holds nothing', async () => {
+    const lineId = await newLine();
+    const quoted = await service.disconnectQuote(pos, lineId);
+    expect(quoted.amount).toBe(refund());
+    const { taskId } = await openDisconnect(lineId);
+    expect(await taskOf(taskId)).toMatchObject({ action: 'disconnect', status: 'working', posDelta: 0, held: 0 });
+    expect(await wallet()).toMatchObject({ balance: START, held: 0 });
+    expect(await lineOf(lineId)).toMatchObject({ status: 'active' });
+    expect(await entryOf(lineId, 'disconnect')).toHaveLength(0);
+  });
+
+  it('refunds a disconnect by the day its task is completed: less for every day it waited', async () => {
+    const delays = [0, 3, 12, 25];
+    const refunded: number[] = [];
+    for (const days of delays) {
+      const lineId = await newLine();
+      const quotedAtOpening = (await service.disconnectQuote(pos, lineId)).amount;
+      const { taskId } = await openDisconnect(lineId);
+      await passDays(lineId, days);
+      await complete(taskId);
+      const [entry] = await entryOf(lineId, 'disconnect');
+      expect([days, entry.amount]).toEqual([days, refund(days)]);
+      // What was shown when the task opened is not what is paid once days have passed.
+      expect(quotedAtOpening).toBe(refund(0));
+      if (days > 0) expect(entry.amount).toBeLessThan(quotedAtOpening);
+      // The provider's side moves with the same day: the days used so far, plus the fee.
+      expect(entry.providerCost).toBe(Math.round((1800 * (30 - (LEFT - days))) / 30) + DISCONNECT_FEE);
+      expect(await taskOf(taskId)).toMatchObject({ status: 'done', posDelta: refund(days) });
+      expect(await lineOf(lineId)).toMatchObject({ status: 'disconnected' });
+      // The wallet (reset for each line by `newLine`) moved by that refund and nothing else.
+      expect(await wallet()).toMatchObject({ balance: START + refund(days), held: 0 });
+      refunded.push(entry.amount);
+    }
+    expect(refunded).toEqual([2850, 2550, 1650, 350]);
+    expect([...refunded].sort((a, b) => b - a)).toEqual(refunded);
+  });
+
+  it('refunds from a task exactly what a disconnect applied at once refunds that same day', async () => {
+    const lineId = await newLine();
+    const twin = await newLine();
+    const { taskId } = await openDisconnect(lineId);
+    await passDays(lineId, 8);
+    await passDays(twin, 8);
+    await complete(taskId);
+    await disconnectNow(twin);
+    const [[byTask], [atOnce]] = await Promise.all([entryOf(lineId, 'disconnect'), entryOf(twin, 'disconnect')]);
+    const money = (row: typeof byTask) => ({ amount: row.amount, packagePrice: row.packagePrice, providerCost: row.providerCost, packageName: row.packageName, hasLadder: row.ladder !== null });
+    expect(money(byTask)).toEqual(money(atOnce));
+    expect(byTask.amount).toBe(refund(8));
+  });
+
+  it('refunds nothing, and still disconnects, when the paid period ran out while the task waited', async () => {
+    const lineId = await newLine();
+    const { taskId } = await openDisconnect(lineId);
+    await passDays(lineId, 31);
+    await complete(taskId);
+    expect(await lineOf(lineId)).toMatchObject({ status: 'disconnected' });
+    expect(await wallet()).toMatchObject({ balance: START, held: 0 });
+    expect((await entryOf(lineId, 'disconnect')).map((row) => row.amount)).toEqual([0]);
+  });
+
+  it('refunds once when a disconnect task is completed twice, by several at once, or against a disconnect applied at once', async () => {
+    const lineId = await newLine();
+    const { taskId } = await openDisconnect(lineId);
+    await passDays(lineId, 5);
+    const result = await outcomes(Array.from({ length: 6 }, () => complete(taskId)));
+    expect(result).toEqual({ done: 1, refused: Array.from({ length: 5 }, () => '400 INVALID'), crashed: [] });
+    expect(await outcomes([complete(taskId)])).toMatchObject({ done: 0, refused: ['400 INVALID'] });
+    expect((await entryOf(lineId, 'disconnect')).map((row) => row.amount)).toEqual([refund(5)]);
+    expect(await wallet()).toMatchObject({ balance: START + refund(5), held: 0 });
+
+    // The task is completed while the same line is disconnected at once: one refund, whoever got there first.
+    for (let round = 0; round < 6; round += 1) {
+      await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
+      await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+      const other = await newLine();
+      const raced = await openDisconnect(other);
+      const pair = await outcomes([complete(raced.taskId), disconnectNow(other)]);
+      expect(pair.crashed).toEqual([]);
+      expect(pair.done).toBe(1);
+      expect(await lineOf(other)).toMatchObject({ status: 'disconnected' });
+      expect((await entryOf(other, 'disconnect')).map((row) => row.amount)).toEqual([refund()]);
+      expect(await wallet()).toMatchObject({ balance: START + refund(), held: 0 });
+    }
+  });
+
+  it('rolls a disconnect\'s refund back with everything else when the completion fails after the money moved', async () => {
+    const lineId = await newLine();
+    const { taskId } = await openDisconnect(lineId);
+    await passDays(lineId, 4);
+    const before = { line: await lineOf(lineId), entries: await entries() };
+    breakNotices = true;
+    const result = await outcomes([complete(taskId)]);
+    expect(result.done).toBe(0);
+    expect(result.crashed.join()).toContain('notices are down');
+    expect(await taskOf(taskId)).toMatchObject({ status: 'working', posDelta: 0 });
+    expect(await lineOf(lineId)).toEqual(before.line);
+    expect(await wallet()).toMatchObject({ balance: START, held: 0 });
+    expect(await entries()).toEqual(before.entries);
+    // The next completion pays the refund of its own day, once.
+    await complete(taskId);
+    expect((await entryOf(lineId, 'disconnect')).map((row) => row.amount)).toEqual([refund(4)]);
+  });
+
+  it('still charges the price fixed at opening for an operation that is not a switch or a disconnect, however long it waited', async () => {
+    const lineId = await newLine();
+    const renewal = (await service.extend(pos, lineId, { outcome: 'fail' })) as { taskId: string };
+    const held = (await taskOf(renewal.taskId)).held;
+    expect(held).toBe(BASE_PRICE);
+    // The renewal price changes and twenty days pass before the branch gets to it.
+    await prisma.package.update({ where: { id: ids.base }, data: { renewalPosPrice: 4500 } });
+    await passDays(lineId, 20);
+    await complete(renewal.taskId);
+    expect((await entryOf(lineId, 'extend')).map((row) => row.amount)).toEqual([-BASE_PRICE]);
+    expect(await wallet()).toMatchObject({ balance: START - BASE_PRICE, held: 0 });
+    await prisma.package.update({ where: { id: ids.base }, data: { renewalPosPrice: 3000 } });
   });
 });

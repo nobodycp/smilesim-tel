@@ -114,9 +114,11 @@ Every route is in a domain controller (table above). `testing/routes.http.spec.t
   sorted order (`lockWallets`); a line is locked before any wallet. A task holds its price while open and charges
   the price it was opened at: completion **captures** the hold (`WalletLedger.capture`, ADR 0019 D10: the hold
   becomes the charge with no second ceiling check, refused when the wallet holds less than the task's hold);
-  `move` and `capture` post through the same code. A package switch is the exception to the fixed price, on
-  purpose: its difference is worked out again when the task is completed, covered by the hold up to the hold's
-  size, and only an increase beyond it is checked against the ceiling. Proof: `wallets/wallet-concurrency.db.spec.ts`, `lines/line-concurrency.db.spec.ts`
+  `move` and `capture` post through the same code. Two operations are the exception to the fixed price, by
+  the owner's rule (rule 1.5): a package switch's difference and a disconnect's refund are the money of the day
+  the operation is carried out, worked out in the completion's transaction. A switch's amount is covered by its
+  hold up to the hold's size and only an increase beyond it is checked against the ceiling; a disconnect's refund
+  is a credit and its task holds nothing (`lines/execution-date-settlement.db.spec.ts`). Proof: `wallets/wallet-concurrency.db.spec.ts`, `lines/line-concurrency.db.spec.ts`
   (PostgreSQL, CI `db` job). `lines/activation-reservation.db.spec.ts` shows the reservations under concurrency.
 - **Lock order (ADR 0019):** task row → line row → the keys of a serial and a number (`lockClaim`: serial, then
   number) → provider operation → wallets in sorted order. A transaction takes only what it needs, in that order.

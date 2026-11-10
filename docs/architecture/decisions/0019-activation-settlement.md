@@ -166,6 +166,9 @@ come; the money must be safe in every state of the operation.
   here; the alternative, fixing the difference at opening, would charge for days already used.
 - If the wallet cannot cover the increase, the completion is refused and rolled back: the line and the task do not
   change.
+- The same rule holds for a disconnect's refund: it is the refund of the day it is carried out. The code already
+  did that; it is now written down as the owner's rule (`docs/project-plan.md` 2026-11-10, rule 1.5) and pinned by
+  specs. Every other operation keeps the price fixed when its task opened.
 
 ## Consequences
 
