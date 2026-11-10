@@ -1,3 +1,4 @@
+import { insertNotices } from './notice-insert.repository';
 import { env } from '../../../config';
 import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import IORedis, { Redis } from 'ioredis';
@@ -111,7 +112,7 @@ export class NoticeService implements OnModuleDestroy {
       href,
       createdAt,
     }));
-    await tx.notice.createMany({ data: rows });
+    await insertNotices(tx, rows);
     return rows.map((row) => ({
       id: row.id,
       userId: row.userId,

@@ -1,6 +1,6 @@
 import { LIST_CAP, capList } from '../../shared/paging';
 import { LayerRoles } from './layer-roles';
-import { UnitOfWork } from '../kernel/unit-of-work';
+import { RolesRepository } from './roles.repository';
 import { isOwner, requireOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { parseInput } from '../../shared/input';
@@ -13,12 +13,12 @@ import { RoleBody } from './roles.schemas';
 /** Roles, for the branch owner: the four layer roles and the job roles, with their grants. */
 @Injectable()
 export class RolesService {
-  constructor(private readonly uow: UnitOfWork, private readonly layerRoles: LayerRoles) {}
+  constructor(private readonly layerRoles: LayerRoles, private readonly repo: RolesRepository) {}
 
   async list(actor: Actor) {
     if (!isOwner(actor)) fail(403, 'FORBIDDEN');
     await this.layerRoles.ensureLayerRoles();
-    const { rows: roles, capped } = capList(await this.uow.prisma.role.findMany({ take: LIST_CAP + 1 }));
+    const { rows: roles, capped } = capList(await this.repo.roles(LIST_CAP + 1));
     const rank = (role: { kind: string; layer: string | null; name: string }) =>
       role.kind === 'layer' ? LAYER_ORDER.indexOf(role.layer ?? '') : LAYER_ORDER.length;
     roles.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
@@ -46,7 +46,7 @@ export class RolesService {
     requireOwner(actor);
     const { name, listed, flags } = this.read(body);
     if (name.length < 2) fail(400, 'INVALID');
-    await this.uow.prisma.role.create({ data: { name, kind: 'job', ...flags, grants: listed.join(',') } });
+    await this.repo.createRole({ name, kind: 'job', ...flags, grants: listed.join(',') });
     return { ok: true as const };
   }
 
@@ -54,11 +54,11 @@ export class RolesService {
   async update(actor: Actor, id: string, body: unknown) {
     requireOwner(actor);
     const { name: sent, listed, flags } = this.read(body);
-    const existing = await this.uow.prisma.role.findUnique({ where: { id } });
+    const existing = await this.repo.roleById(id);
     if (!existing) fail(404, 'NOT_FOUND');
     const name = existing.kind === 'layer' ? existing.name : sent;
     if (name.length < 2) fail(400, 'INVALID');
-    await this.uow.prisma.role.update({ where: { id }, data: { name, ...flags, grants: listed.join(',') } });
+    await this.repo.updateRole(id, { name, ...flags, grants: listed.join(',') });
     return { ok: true as const };
   }
 

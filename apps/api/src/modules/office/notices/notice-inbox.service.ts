@@ -1,15 +1,16 @@
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
-import { UnitOfWork } from '../kernel/unit-of-work';
+import { NoticesRepository } from './notices.repository';
+import { NoticeService } from './notice.service';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Actor } from '../kernel/types';
 import { NOTICE_GROUPS, noticeGroupOf } from './notice-kinds';
-import { NEWEST_FIRST, after, cursorPosition, page } from '../../shared/paging';
+import { after, cursorPosition, page } from '../../shared/paging';
 import { NOTICES_PAGE } from '../rules/office-paging';
 
 /** The signed-in account's own notices: the paged inbox, marking read, and the live channel. */
 @Injectable()
 export class NoticeInboxService {
-  constructor(private readonly uow: UnitOfWork, @Inject(AUTH_STORE) private readonly auth: AuthStore) {}
+  constructor(private readonly repo: NoticesRepository, private readonly notice: NoticeService, @Inject(AUTH_STORE) private readonly auth: AuthStore) {}
 
   async list(actor: Actor, query: { cursor?: string; group?: string; unread?: string } = {}) {
     const group = noticeGroupOf(query.group);
@@ -20,15 +21,10 @@ export class NoticeInboxService {
       ...(group ? { kind: { in: [...NOTICE_GROUPS[group]] } } : {}),
       ...(onlyUnread ? { readAt: null } : {}),
     };
-    const prisma = this.uow.prisma;
     const [rows, unread, total] = await Promise.all([
-      prisma.notice.findMany({
-        where: { ...where, AND: after(position) },
-        orderBy: [...NEWEST_FIRST],
-        take: NOTICES_PAGE + 1,
-      }),
-      prisma.notice.count({ where: { userId: actor.id, readAt: null } }),
-      prisma.notice.count({ where }),
+      this.repo.notices({ ...where, AND: after(position) }, NOTICES_PAGE + 1),
+      this.repo.noticeCount({ userId: actor.id, readAt: null }),
+      this.repo.noticeCount(where),
     ]);
     const { items, nextCursor } = page(rows, NOTICES_PAGE);
     return {
@@ -49,10 +45,7 @@ export class NoticeInboxService {
 
   /** One notice by id, or every unread one when no id is given. */
   async read(actor: Actor, id?: string) {
-    await this.uow.prisma.notice.updateMany({
-      where: { userId: actor.id, readAt: null, ...(id ? { id } : {}) },
-      data: { readAt: new Date() },
-    });
+    await this.repo.markRead(actor.id, id);
     return { ok: true as const };
   }
 
@@ -65,6 +58,6 @@ export class NoticeInboxService {
 
   /** One live channel per signed-in user. Resolves an unsubscribe function. */
   subscribe(actor: Actor, handler: (message: string) => void) {
-    return this.uow.notice.subscribe(actor.id, handler);
+    return this.notice.subscribe(actor.id, handler);
   }
 }

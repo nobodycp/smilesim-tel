@@ -1,3 +1,4 @@
+import { RolesRepository } from './roles.repository';
 import { KernelModule } from '../kernel/kernel.module';
 import { LayerRoles } from './layer-roles';
 import { RolesController } from './roles.controller';
@@ -6,7 +7,7 @@ import { Module } from '@nestjs/common';
 
 /** Roles and their grants; the default role of each layer. */
 export const ROLES_CONTROLLERS = [RolesController];
-export const ROLES_PROVIDERS = [RolesService, LayerRoles];
+export const ROLES_PROVIDERS = [RolesRepository, RolesService, LayerRoles];
 
 @Module({
   imports: [KernelModule],

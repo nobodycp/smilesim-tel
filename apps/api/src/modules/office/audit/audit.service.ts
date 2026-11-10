@@ -1,5 +1,5 @@
 import { AccountTree } from '../kernel/account-tree';
-import { UnitOfWork } from '../kernel/unit-of-work';
+import { AuditRepository } from './audit.repository';
 import { dayRange } from '../../shared/dates';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -17,7 +17,7 @@ export const AUDIT_EXPORT_LIMIT = 5_000;
 /** The activity log as the signed-in account may read it: its own subtree, filtered and paged. */
 @Injectable()
 export class AuditService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree) {}
+  constructor(private readonly tree: AccountTree, private readonly repo: AuditRepository) {}
 
   /** The filter every read of the log shares: the viewer's subtree, then the person's own filters. */
   private async whereFor(actor: Actor, query: AuditQuery): Promise<Prisma.ActivityEventWhereInput> {
@@ -43,16 +43,10 @@ export class AuditService {
     const where = await this.whereFor(actor, query);
     const position = cursorPosition(query.cursor);
     const [rows, total, addresses] = await Promise.all([
-      this.uow.prisma.activityEvent.findMany({
-        where: { ...where, AND: after(position, 'at') },
-        orderBy: [{ at: 'desc' }, { id: 'desc' }],
-        take: FEED_PAGE + 1,
-      }),
-      this.uow.prisma.activityEvent.count({ where }),
+      this.repo.events({ ...where, AND: after(position, 'at') }, FEED_PAGE + 1),
+      this.repo.eventCount(where),
       // On request (the failed sign-ins figure): from how many network addresses the matching events came.
-      query.addresses === '1'
-        ? this.uow.prisma.activityEvent.groupBy({ by: ['ip'], where: { AND: [where, { ip: { not: '' } }] } }).then((groups) => groups.length)
-        : Promise.resolve(undefined),
+      query.addresses === '1' ? this.repo.addressCount(where) : Promise.resolve(undefined),
     ]);
     const { items, nextCursor } = page(rows, FEED_PAGE, (row) => row.at);
     return {
@@ -76,11 +70,7 @@ export class AuditService {
 
   /** The log under the same filters as a CSV, newest first, at most `AUDIT_EXPORT_LIMIT` events. */
   async csv(actor: Actor, query: AuditQuery = {}) {
-    const rows = await this.uow.prisma.activityEvent.findMany({
-      where: await this.whereFor(actor, query),
-      orderBy: [{ at: 'desc' }, { id: 'desc' }],
-      take: AUDIT_EXPORT_LIMIT,
-    });
+    const rows = await this.repo.events(await this.whereFor(actor, query), AUDIT_EXPORT_LIMIT);
     return csvOf(
       ['at', 'account', 'layer', 'action', 'subject', 'result', 'reason', 'ip'],
       rows.map((row) => [row.at.toISOString(), row.actorLoginName, row.actorLayer ?? '', row.action, row.subjectRef ?? '', row.result, row.reason ?? '', (row.ip ?? '').replace(/^::ffff:/, '')]),

@@ -51,7 +51,10 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
 
 ## Phase B — clean-ups
 
-- [ ] **B.1 The last queries leave the services.** `audit/audit.repository.ts` (`eventsPage`, `eventCount`,
+- [x] **B.1 The last queries leave the services.** (COMMIT; `NoticeService`'s one insert is
+  `notices/notice-insert.repository.ts`, a function with no import of the unit of work, because the unit of work
+  builds the notice writer; `NoticeInboxService` now injects `NoticeService` itself instead of reaching it through
+  the unit of work.) `audit/audit.repository.ts` (`eventsPage`, `eventCount`,
   `addressCount`, `eventsForExport`), `roles/roles.repository.ts` (`allRoles`, `roleById`, `createRole`,
   `updateRole`), `notices/notices.repository.ts` (`inboxPage`, `unreadCount`, `inboxCount`, `markRead`). Each
   registered in its module. `prisma-in-service` 10 → 0; the "fewer than five" sentence leaves

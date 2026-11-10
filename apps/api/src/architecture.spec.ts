@@ -89,7 +89,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     const isWrite = (call: RegExpMatchArray) => !/Count\(/.test(call[0]) && !/\b(db|tx)\b/.test(call[2]);
     const found: Hit[] = [];
     for (const { file, text } of office.filter(({ file }) => file.endsWith('.service.ts'))) {
-      const method = /\n  (?:private |protected )?async (\w+)\(/g;
+      const method = /\n {2}(?:private |protected )?async (\w+)\(/g;
       for (let match = method.exec(text); match; match = method.exec(text)) {
         const body = blockAt(text, text.indexOf(')', match.index));
         if (/runTx\(/.test(body)) continue;
@@ -179,8 +179,8 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   });
 
   it('5.1 prisma-in-service: queries live in a repository, not in a service', () => {
-    // What is left on purpose (2026-11-10): audit 4, roles 4, notices 2 — services with fewer than five queries keep
-    // them until they grow. A new query in any other service fails here.
+    // No exception: every service asks a repository (the last ten call sites left on 2026-11-10, plan
+    // backend-loose-ends B.1).
     const services = production.filter(({ file }) => file.endsWith('.service.ts'));
     check('prisma-in-service', hits(services, /\.prisma\.\w+\.\w+\(|\btx\.\w+\.(find\w*|create\w*|update\w*|delete\w*|upsert|count|groupBy|aggregate)\(/));
   });

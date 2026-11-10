@@ -1,3 +1,5 @@
+import { AuditRepository } from '../audit/audit.repository';
+import { RolesRepository } from '../roles/roles.repository';
 import { DeskRepository } from '../desk/desk.repository';
 import { ProvidersRepository } from '../providers/providers.repository';
 import { LinesRepository } from '../lines/lines.repository';
@@ -64,7 +66,7 @@ export class OfficeFacade {
   private auditService: AuditService | null = null;
 
   private get auditLog(): AuditService {
-    this.auditService ??= new AuditService(this.graph.uow, this.graph.tree);
+    this.auditService ??= new AuditService(this.graph.tree, new AuditRepository(this.graph.uow));
     return this.auditService;
   }
 
@@ -122,7 +124,7 @@ export class OfficeFacade {
   private roleDeskInstance: RolesService | null = null;
 
   private get roleDesk(): RolesService {
-    this.roleDeskInstance ??= new RolesService(this.graph.uow, this.graph.layerRoles);
+    this.roleDeskInstance ??= new RolesService(this.graph.layerRoles, new RolesRepository(this.graph.uow));
     return this.roleDeskInstance;
   }
 

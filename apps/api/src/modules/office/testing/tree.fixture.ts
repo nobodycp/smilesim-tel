@@ -212,12 +212,16 @@ export async function tree() {
   const tx = {
     // `move()` locks the wallet row with raw SQL; the in-memory store has nothing to lock.
     $queryRaw: async () => [],
-    wallet: walletModel,
+    wallet: { ...walletModel, deleteMany: async () => ({ count: 0 }) },
     walletEntry: {
       create: async ({ data }: { data: Data }) => { const row = { id: `e${entries.length + 1}`, createdAt: new Date(), ...data }; entries.push(row); return row; },
       // A switch quote reads the line's paid periods; none are stored here, so it prices the open window.
       findMany: async () => [],
+      // Deleting an account counts its history inside the transaction.
+      count: async () => 0,
     },
+    // An account delete runs whole inside the transaction: its sessions and its wallet go with it.
+    session: { deleteMany: async () => ({ count: 0 }) },
     line: lineModel,
     officeTask: taskModel,
     package: packageModel,
