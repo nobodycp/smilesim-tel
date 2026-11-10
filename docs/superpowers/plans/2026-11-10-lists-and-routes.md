@@ -47,12 +47,12 @@ the screen's `usePaged` call, the mock in `apps/web/tests/` / `audit/`, `respons
   another (`directoryNames()` for the session's name map, `everyAccount()` for the five pickers and the shell
   search), so every answer of the API is bounded and no screen changed. Search-as-you-type pickers stay a later
   web change, when an office has more accounts than a picker can list.
-- [x] **L.11** (COMMIT) `GET /office/wallets` paged in the tree's order (`keyPage`, 200 a page). No web screen calls
+- [x] **L.11** (62a1710) `GET /office/wallets` paged in the tree's order (`keyPage`, 200 a page). No web screen calls
   this route, so only the API and its spec changed.
-- [x] **L.12** (COMMIT) `GET /office/reports/balances` paged with `totals` over every matching account; `capped` is
+- [x] **L.12** (62a1710) `GET /office/reports/balances` paged with `totals` over every matching account; `capped` is
   gone from it. The screen sorts and sums its rows, so `api.reportBalances` reads the pages one after another
   (`lib/all-pages.ts`) and the screen did not change. The CSV export is unchanged.
-- [x] **L.13** (COMMIT) `GET /office/provider-accounts`: payments and settlements are summed by the database
+- [x] **L.13** (62a1710) `GET /office/provider-accounts`: payments and settlements are summed by the database
   (`entrySums`); a provider's page reads only its own entries. **Purchases are still added in memory:** an
   operation's cost falls back to the package's price when its row stored none, which a query cannot do.
   `packages`, `companies`, `offers`, `roles`: read with `take: LIST_CAP + 1` (1,000) and answer `capped`.
