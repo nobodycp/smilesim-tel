@@ -53,7 +53,7 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   expect(calls.some((call) => call.startsWith('GET /lines'))).toBe(false);
   await page.getByRole('tab', { name: 'أرقام الحساب' }).click();
   await expect(page.locator('table.data tbody tr')).toHaveCount(1);
-  expect(calls.some((call) => call.startsWith('GET /lines?') && call.includes('account=pos1'))).toBe(true);
+  expect(calls.some((call) => call.startsWith('GET /lines?') && call.includes('loginName=pos1'))).toBe(true);
 
   await wallet.click();
   await page.getByRole('menuitem', { name: 'تمويل' }).click();

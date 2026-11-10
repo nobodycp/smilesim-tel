@@ -60,7 +60,7 @@ export class WalletsService {
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target) fail(404, 'NOT_FOUND');
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    if (!visible.has(target.id)) fail(403, 'FORBIDDEN');
+    if (!visible.has(target.id)) fail(404, 'NOT_FOUND');
     const self = target.id === actor.id;
     if (self) {
       if (actor.layer !== 'branch') fail(403, 'FORBIDDEN');
@@ -94,7 +94,8 @@ export class WalletsService {
     const target = accounts.find((account) => account.loginName === loginName);
     if (!target) fail(404, 'NOT_FOUND');
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    if (!visible.has(target.id) || target.id === actor.id) fail(403, 'FORBIDDEN');
+    if (!visible.has(target.id)) fail(404, 'NOT_FOUND');
+    if (target.id === actor.id) fail(403, 'FORBIDDEN');
     if (actor.layer !== 'branch' && target.parentId !== actor.id) fail(403, 'FORBIDDEN');
     await this.uow.runTx(async (tx) => {
       await this.money.lockWallets(tx, [actor.id, target.id]);
@@ -112,7 +113,8 @@ export class WalletsService {
     const { ceiling } = parseInput(CeilingBody, body);
     const accounts = await this.tree.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
-    if (!target || target.parentId !== actor.id) fail(403, 'FORBIDDEN');
+    if (!target || !visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(404, 'NOT_FOUND');
+    if (target.parentId !== actor.id) fail(403, 'FORBIDDEN');
     await this.repo.setCeiling(target.id, ceiling);
     return { ok: true };
   }

@@ -76,12 +76,17 @@ mocks, both maps.
   `reports/:kind/export` are gone, with `ReportsService`'s dependency on the tasks and lines services. The web's
   `/reports/tasks` and `/reports/numbers` pages stay and read `/office/tasks` and `/office/lines`. No export was
   added for `providers` and `operations`: they had none, and a new export is a feature, not a rename.
-- [ ] **L.18** Field names: `loginName`, `parentLoginName`, `posLoginName`, `?loginName=` in the schemas
-  (`accounts.schemas.ts`, `lines.schemas.ts`, `transfers.schemas.ts`), the services that read them, and every web
-  caller. One commit per schema file.
-- [ ] **L.19** Not found: `setPassword`, `setFrozen`, `remove`, `setCeiling`, `enter`, the task actions answer
-  `404 NOT_FOUND` for a missing or invisible target; `accounts.http.spec.ts`, `permissions.http.spec.ts` rows
-  that pinned 403/400 for that case; the web shows the same message (it reads `code`).
+- [ ] **L.18** Partly (COMMIT): `GET /office/lines?loginName=` replaces `?account=`. **Not done, owner's call:** the
+  body fields `posLogin` and `parentLogin`. The responses use the same two names (`LineRow.posLogin`,
+  `UserRow.parentLogin`, about 150 uses in the API and the web), so renaming the request side alone would make a
+  request and its answer disagree, which is the trap this slice was meant to remove. Either both sides are renamed
+  (`posLoginName`, `parentLoginName`: a wide rename with `response-shape.spec.ts`) or neither.
+- [x] **L.19** (COMMIT) Not found: an account, a number or a task that is not there or is outside the caller's tree
+  answers `404 NOT_FOUND` (`visibleAccount`, `visibleLine`, password reset, fund, deduct, ceiling, terms and
+  line-price scopes, task card and notes); `enter`, `freeze`, `restore` and `delete` answer 404 for a login that is
+  not there. Grants that do not depend on the target are judged first (`freeze`, `delete`), so the permission
+  matrix now shows who may call them. Rule 4.8. **Left as it was:** an account move
+  (`transfers.service.ts` `resolveTransfer`) keeps its own order, written and tested so a refusal tells nothing.
 
 ## Phase 4 — close
 

@@ -13,7 +13,7 @@ import { fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
 import { GRANT_CODES, effectiveGrantCodes, roleGrantCodes, splitGrants } from '../rules/office-grants';
 import { visibleAccountIds } from '../rules/office-rules';
-import { holds, isBranch, isOwner, layerRank, requireGrant, requireOwner, assertBranch } from '../policy';
+import { holds, isBranch, isOwner, layerRank, requireAnyGrant, requireGrant, requireOwner, assertBranch } from '../policy';
 import { stampTaskLog } from '../tasks/task-log';
 import { HANDLER_FROZEN_NOTE } from '../stored-text';
 import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
@@ -151,9 +151,10 @@ export class AccountsService {
     const passError = newPasswordProblem(password);
     if (passError) fail(400, passError);
     const target = await this.repo.accountByLogin(loginName);
-    if (!target || target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
     const accounts = await this.tree.accounts();
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(403, 'FORBIDDEN');
+    // Not there and outside the actor's tree answer alike, before anything is said about the account itself.
+    if (!target || !visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(404, 'NOT_FOUND');
+    if (target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
     if (isBranch(actor)) {
       // An employee's password is the owner's alone to reset.
       if (target.layer === 'branch' && !isOwner(actor)) fail(403, 'FORBIDDEN');
@@ -256,9 +257,11 @@ export class AccountsService {
   async setFrozen(actor: Actor, loginName: string, frozen: boolean) {
     assertBranch(actor);
     if (actor.impersonating) fail(403, 'FORBIDDEN');
-    const target = await this.repo.accountWithRoleByLogin(loginName);
-    if (!target || target.isBranchOwner) fail(403, 'FORBIDDEN');
+    // The grant is judged before the account is read, so a caller without it learns nothing about the login.
     requireGrant(actor, 'staff');
+    const target = await this.repo.accountWithRoleByLogin(loginName);
+    if (!target) fail(404, 'NOT_FOUND');
+    if (target.isBranchOwner) fail(403, 'FORBIDDEN');
     if (target.role?.staff && !isOwner(actor)) fail(403, 'FORBIDDEN');
     await this.repo.setFrozenAt(target.id, frozen ? new Date() : null);
     if (frozen) {
@@ -276,8 +279,11 @@ export class AccountsService {
   async remove(actor: Actor, loginName: string) {
     assertBranch(actor);
     if (actor.impersonating) fail(403, 'FORBIDDEN');
+    // Which grant is needed depends on the account; holding neither is refused before the account is read.
+    requireAnyGrant(actor, ['staff', 'edit']);
     const target = await this.repo.accountByLogin(loginName);
-    if (!target || target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
+    if (!target) fail(404, 'NOT_FOUND');
+    if (target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
     // Removing an employee is staff work; removing any other account is an edit (review S11).
     requireGrant(actor, target.layer === 'branch' ? 'staff' : 'edit');
     const [children, lines, tasks, entries] = await Promise.all([
@@ -300,7 +306,8 @@ export class AccountsService {
     if (actor.impersonating || actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     requireGrant(actor, 'enter');
     const target = await this.repo.accountByLogin(loginName);
-    if (!target || target.disabledAt || target.id === actor.id) fail(400, 'INVALID');
+    if (!target) fail(404, 'NOT_FOUND');
+    if (target.disabledAt || target.id === actor.id) fail(400, 'INVALID');
     // Only an account below the branch is entered: never the owner, never another employee (review S1).
     if (target.layer === 'branch') fail(403, 'FORBIDDEN');
     await this.repo.logEntry({ actorId: actor.operatorId, targetLogin: target.loginName, ip: meta.ip });

@@ -25,13 +25,13 @@ export class LineReads {
     return rows.map((row) => row.suspendAfterDays);
   }
 
-  async list(actor: Actor, query: LineFilter & { cursor?: string; account?: string } = {}) {
+  async list(actor: Actor, query: LineFilter & { cursor?: string; loginName?: string } = {}) {
     const accounts = await this.tree.accounts();
     const visible = visibleAccountIds(actor.id, actor.layer, accounts);
-    // `account` narrows to one account's numbers: its own if it is a point of sale, else every point of sale below
+    // `loginName` narrows to one account's numbers: its own if it is a point of sale, else every point of sale below
     // it (the user page's «الأرقام»). An account outside the viewer's tree gives nothing.
-    const target = query.account ? accounts.find((account) => account.loginName === query.account) : undefined;
-    const within = query.account ? (target && visible.has(target.id) ? visibleAccountIds(target.id, target.layer === 'branch' ? 'none' : target.layer, accounts) : new Set<string>()) : visible;
+    const target = query.loginName ? accounts.find((account) => account.loginName === query.loginName) : undefined;
+    const within = query.loginName ? (target && visible.has(target.id) ? visibleAccountIds(target.id, target.layer === 'branch' ? 'none' : target.layer, accounts) : new Set<string>()) : visible;
     const posIds = accounts.filter((account) => account.layer === 'pos' && visible.has(account.id) && within.has(account.id)).map((account) => account.id);
     const periods = query.status === 'suspended' ? await this.suspendPeriods() : [];
     const where = linesWhere(posIds, query, periods);
@@ -71,7 +71,7 @@ export class LineReads {
     const line = await this.repo.lineCard(id);
     if (!line) fail(404, 'NOT_FOUND');
     const accounts = await this.tree.accounts();
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
+    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(404, 'NOT_FOUND');
     const posPath = this.tree.pathOf(line.posId, accounts);
     const denied = deniedOpsFor(posPath);
     const [tasks, entries] = await Promise.all([

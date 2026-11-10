@@ -240,7 +240,7 @@ export class TermsService {
   private async termTarget(actor: Actor, loginName: string) {
     const accounts = await this.tree.accounts();
     const target = accounts.find((account) => account.loginName === loginName);
-    if (!target) fail(404, 'NOT_FOUND');
+    if (!target || !visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(404, 'NOT_FOUND');
     if (target.layer === 'branch') fail(400, 'INVALID');
     if (!this.canEditTerms(actor, target)) fail(403, 'FORBIDDEN');
     return { actor, target, accounts, path: this.tree.pathOf(target.id, accounts) };
@@ -356,10 +356,9 @@ export class TermsService {
     }
     if (typeof scope !== 'string' || !scope) fail(400, 'INVALID');
     const target = accounts.find((account) => account.loginName === scope);
-    if (!target) fail(404, 'NOT_FOUND');
+    if (!target || !visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(404, 'NOT_FOUND');
     if (target.layer === 'branch') fail(400, 'INVALID');
-    const reachable = visibleAccountIds(actor.id, actor.layer, accounts).has(target.id);
-    if (!reachable || (target.id !== actor.id && !this.canEditTerms(actor, target))) fail(403, 'FORBIDDEN');
+    if (target.id !== actor.id && !this.canEditTerms(actor, target)) fail(403, 'FORBIDDEN');
     return { kind: 'account', id: target.id, loginName: target.loginName, layer: target.layer };
   }
 

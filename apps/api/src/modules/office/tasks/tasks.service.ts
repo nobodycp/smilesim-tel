@@ -112,7 +112,7 @@ export class TasksService {
     const row = await this.repo.taskDetail(id, actor.layer === 'branch' ? {} : { internal: false });
     if (!row) fail(404, 'NOT_FOUND');
     const accounts = await this.tree.accounts();
-    if (!taskReaders(row, accounts).has(actor.id)) fail(403, 'FORBIDDEN');
+    if (!taskReaders(row, accounts).has(actor.id)) fail(404, 'NOT_FOUND');
     const byId = new Map(accounts.map((account) => [account.id, account]));
     const pkg =
       row.line?.package ??
@@ -159,7 +159,7 @@ export class TasksService {
     if (internal && actor.layer !== 'branch') fail(403, 'FORBIDDEN');
     const current = await this.repo.task(id);
     if (!current) fail(404, 'NOT_FOUND');
-    if (!taskReaders(current, await this.tree.accounts()).has(actor.id)) fail(403, 'FORBIDDEN');
+    if (!taskReaders(current, await this.tree.accounts()).has(actor.id)) fail(404, 'NOT_FOUND');
     if (current.status !== 'pending' && current.status !== 'working') fail(400, 'INVALID');
     const written = await this.uow.runTx(async (tx) => {
       await this.repo.addNote(tx, { taskId: id, authorId: actor.id, body: text, internal });

@@ -23,12 +23,15 @@ export class AccountTree {
     });
   }
 
-  /** The account by its login, when the actor may see it: 404 when it does not exist, 403 when it is not theirs. */
+  /**
+   * The account by its login, when the actor may see it. One that does not exist and one outside the actor's tree
+   * answer the same 404, so a refusal never tells which logins exist (backend-engineering.mdc 4.8).
+   */
   async visibleAccount(actor: Actor, loginName: string) {
     const target = await this.uow.prisma.user.findUnique({ where: { loginName }, include: { role: true } });
     if (!target) fail(404, 'NOT_FOUND');
     const accounts = await this.accounts();
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(403, 'FORBIDDEN');
+    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(target.id)) fail(404, 'NOT_FOUND');
     return target;
   }
 

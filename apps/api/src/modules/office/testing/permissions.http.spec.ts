@@ -122,18 +122,18 @@ const EXPECTED: [route: string, access: string][] = [
   ['POST /office/tasks/ID1/take', 'ynynnn'],
   ['GET /office/users', 'yyyyyy'], // read/accounting not checked (see spec)
   ['POST /office/users', 'ynyyyn'], // review 2026-11-10, S11: in the branch, owner or edit (staff: owner or staff grant)
-  ['DELETE /office/users/LOGIN1', 'nnnnnn'],
+  ['DELETE /office/users/LOGIN1', 'ynynnn'], // staff or edit, then 404 for a login that is not there
   ['GET /office/users/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PATCH /office/users/LOGIN1/access', 'ynnnnn'],
   ['POST /office/users/LOGIN1/enter', 'ynynnn'],
-  ['POST /office/users/LOGIN1/freeze', 'nnnnnn'],
+  ['POST /office/users/LOGIN1/freeze', 'ynynnn'],
   ['GET /office/users/LOGIN1/ops', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PUT /office/users/LOGIN1/ops', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/users/LOGIN1/packages', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PUT /office/users/LOGIN1/packages', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PUT /office/users/LOGIN1/packages/CODE1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /office/users/LOGIN1/password', 'ynyyyn'], // review 2026-11-10, S3: in the branch, owner or staff grant
-  ['POST /office/users/LOGIN1/restore', 'nnnnnn'],
+  ['POST /office/users/LOGIN1/restore', 'ynynnn'],
   ['POST /office/users/LOGIN1/transfer', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['GET /office/users/LOGIN1/transfer-preview', 'ynyyyn'],
   ['GET /office/wallets', 'yyyyyy'], // read/accounting not checked (see spec)

@@ -45,7 +45,8 @@ describe('WalletsService.deduct', () => {
   it('refuses a grandchild, a sibling, itself, a missing note and an unknown reason', async () => {
     const { wallets } = service();
     await expect(wallets.deduct(actor('main', 'main_agent'), 'pos', { amount: 100, reason: 'return', note: 'x' })).rejects.toMatchObject({ status: 403 });
-    await expect(wallets.deduct(actor('agent', 'agent'), 'agent2', { amount: 100, reason: 'return', note: 'x' })).rejects.toMatchObject({ status: 403 });
+    // A sibling is outside the actor's tree: it answers like a login that is not there.
+    await expect(wallets.deduct(actor('agent', 'agent'), 'agent2', { amount: 100, reason: 'return', note: 'x' })).rejects.toMatchObject({ status: 404, code: 'NOT_FOUND' });
     await expect(wallets.deduct(actor('agent', 'agent'), 'agent', { amount: 100, reason: 'return', note: 'x' })).rejects.toMatchObject({ status: 403 });
     await expect(wallets.deduct(actor('agent', 'agent'), 'pos', { amount: 100, reason: 'return', note: '  ' })).rejects.toMatchObject({ status: 400, code: 'NOTE_REQUIRED' });
     await expect(wallets.deduct(actor('agent', 'agent'), 'pos', { amount: 100, reason: 'gift', note: 'x' })).rejects.toMatchObject({ status: 400, code: 'INVALID' });

@@ -289,7 +289,7 @@ describe('writing user terms', () => {
     await expect(service.userOps(gates.ag1, 'pos1')).resolves.toEqual({ denied: [], deniedAbove: [{ op: 'charge', login: 'ma1' }] });
     await expect(service.setUserOps(gates.ag1, 'pos1', { denied: ['sim'] })).resolves.toMatchObject({ denied: ['sim'] });
     expect((accounts.find((item) => item.id === 'pos1') as Row).deniedOps).toBe('sim');
-    await expect(service.setUserOps(gates.ag1, 'ma1', { denied: [] })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.setUserOps(gates.ag1, 'ma1', { denied: [] })).rejects.toMatchObject({ code: 'NOT_FOUND' });
     await expect(service.setUserOps(gates.branch, 'ma1', { denied: [] })).resolves.toMatchObject({ denied: [] });
   });
 
@@ -395,7 +395,7 @@ describe('prices on existing numbers', () => {
     });
     await expect(service.linePrices(gates.branch, 'alloha-150', { scope: 'all' })).resolves.toMatchObject({ current: null });
     await expect(service.linePrices(gates.ma1, 'alloha-150', { scope: 'all' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(service.linePrices(gates.ag2, 'alloha-150', { scope: 'pos1' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(service.linePrices(gates.ag2, 'alloha-150', { scope: 'pos1' })).rejects.toMatchObject({ code: 'NOT_FOUND' });
     await expect(service.linePrices(gates.pos1, 'alloha-150', { scope: 'pos1' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 
@@ -508,7 +508,7 @@ describe('prices on existing numbers', () => {
     const save = (gate: { sessionId: string }, scope: string, from: number, code = 'alloha-150') =>
       service.setLinePrices(gate, code, { scope, groups: [{ from, to: 3900 }] });
     await expect(save(gates.ma1, 'all', 4500)).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(save(gates.ag2, 'pos1', 4500)).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    await expect(save(gates.ag2, 'pos1', 4500)).rejects.toMatchObject({ code: 'NOT_FOUND' });
     // The main agent is not the parent of pos1; it reaches those numbers through ag1.
     await expect(save(gates.ma1, 'pos1', 4500)).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(save(gates.pos1, 'pos1', 4500)).rejects.toMatchObject({ code: 'FORBIDDEN' });

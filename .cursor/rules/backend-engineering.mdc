@@ -69,6 +69,10 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
    `{ items, nextCursor, total }` plus its own extra keys and takes `?cursor=` only: the cursor, `after()` and
    `page()` come from `shared/paging.ts`, never a second cursor format or Prisma's row cursor.
    *(architecture.spec: `list-envelope`; `shared/paging.spec.ts`)*
+8. A target that does not exist and a target outside the caller's tree answer the same `404 NOT_FOUND`
+   (`AccountTree.visibleAccount`, `LineAccess.visibleLine`), so a refusal never tells which logins or numbers exist.
+   `403` is for a caller who may see the target but may not do this to it, and a grant that does not depend on the
+   target is judged before the target is read. *(`permissions.http.spec.ts`; each domain's `*.http.spec.ts`)*
 
 ## 5. Structure
 

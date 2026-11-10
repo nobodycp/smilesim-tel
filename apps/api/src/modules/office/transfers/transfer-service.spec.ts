@@ -767,7 +767,8 @@ describe('transfer: a number', () => {
     const cases: [who: string, lineId: string, posLogin: unknown, status: number, code: string][] = [
       ['ag1', 'ln1', 'pos2', 403, 'FORBIDDEN'],
       ['ma1', 'ln1', 'pos4', 403, 'FORBIDDEN'],
-      ['ma1', 'ln2', 'pos2', 403, 'FORBIDDEN'],
+      // A number outside the caller's tree answers like one that is not there (backend-engineering.mdc 4.8).
+      ['ma1', 'ln2', 'pos2', 404, 'NOT_FOUND'],
       ['branch', 'ghost', 'pos2', 404, 'NOT_FOUND'],
       ['branch', 'ln1', 'pos1', 400, 'INVALID'],
       ['branch', 'ln1', 'ag2', 400, 'INVALID'],

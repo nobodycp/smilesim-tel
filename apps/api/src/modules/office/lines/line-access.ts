@@ -23,7 +23,7 @@ export class LineAccess {
     if (!line) fail(404, 'NOT_FOUND');
     if (!line.package.company || !line.package.provider) fail(400, 'INVALID');
     const accounts = await this.tree.accounts();
-    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(403, 'FORBIDDEN');
+    if (!visibleAccountIds(actor.id, actor.layer, accounts).has(line.posId)) fail(404, 'NOT_FOUND');
     // The stop belongs to the selling account that owns the line, not to whoever clicks. The path
     // travels with the line so later price and visibility checks do not load the accounts again.
     const posPath = this.tree.pathOf(line.posId, accounts);

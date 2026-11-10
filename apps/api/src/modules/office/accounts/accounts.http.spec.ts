@@ -178,14 +178,16 @@ describe('accounts and roles over HTTP', () => {
   });
 
   it('resets a password only below the actor, never its own or the owner\'s', async () => {
-    expect(await code(as('ag1', 'post', '/office/users/ma1/password', { password: 'longenough' }))).toBe('403 FORBIDDEN');
-    expect(await code(as('ag1', 'post', '/office/users/ag2/password', { password: 'longenough' }))).toBe('403 FORBIDDEN');
+    // Above the actor or beside it is outside its tree: the same answer as a login that is not there.
+    expect(await code(as('ag1', 'post', '/office/users/ma1/password', { password: 'longenough' }))).toBe('404 NOT_FOUND');
+    expect(await code(as('ag1', 'post', '/office/users/ag2/password', { password: 'longenough' }))).toBe('404 NOT_FOUND');
     expect(await code(as('ma1', 'post', '/office/users/ag1/password', { password: 'longenough' }))).toBe('201');
     expect(w.written.at(-1)).toMatchObject({ op: 'user.update', args: { where: { id: 'ag1' }, data: { mustChangePassword: true } } });
     // Whoever held the old password is signed out (review 2026-11-10, S3).
     expect(await store.liveSession(sessions.ag1)).toBeNull();
     expect(await code(as('ma1', 'post', '/office/users/ma1/password', { password: 'longenough' }))).toBe('403 FORBIDDEN');
-    expect(await code(as('ma1', 'post', '/office/users/owner/password', { password: 'longenough' }))).toBe('403 FORBIDDEN');
+    // The owner is above a main agent, so outside its tree; the owner's own staff are refused by name.
+    expect(await code(as('ma1', 'post', '/office/users/owner/password', { password: 'longenough' }))).toBe('404 NOT_FOUND');
     expect(await code(as('ma1', 'post', '/office/users/ag1/password', { password: 'short' }))).toBe('400 PASSWORD_TOO_SHORT');
     expect(await code(as('pos1', 'post', '/office/users/pos1/password', { password: 'longenough' }))).toBe('403 FORBIDDEN');
   });
@@ -282,7 +284,7 @@ describe('accounts and roles over HTTP', () => {
     expect(shown.body.listed).toMatchObject({ loginName: 'ag1', balance: 0, ceiling: 0, directChild: true, frozen: false });
     const pos = await as('ag1', 'get', '/office/users/pos1');
     expect(pos.body.listed).toMatchObject({ loginName: 'pos1', balance: 700, ceiling: 100, directChild: true });
-    expect(await code(as('ag1', 'get', '/office/users/ma1'))).toBe('403 FORBIDDEN');
+    expect(await code(as('ag1', 'get', '/office/users/ma1'))).toBe('404 NOT_FOUND');
     expect(await code(as('ma1', 'patch', '/office/users/ag1/access', { extraGrants: ['edit'] }))).toBe('403 FORBIDDEN');
     expect(await code(as('owner', 'patch', '/office/users/ag1/access', { extraGrants: ['reports'], deniedGrants: ['reports', 'tasks'], extraRoleIds: ['r-desk'] }))).toBe('200');
     expect(w.written.find((entry) => entry.op === 'user.update')!.args).toEqual({ where: { id: 'ag1' }, data: { extraGrants: 'reports', deniedGrants: 'tasks', roleId: null } });

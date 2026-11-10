@@ -308,7 +308,7 @@ function MoneyCards({ row }: { row: UserRow }) {
 function AccountLines({ login }: { login: string }) {
   const { t } = usePrefs();
   const list = usePaged<LineRow>(`account:${login}`, async (cursor) =>
-    pick(await api.officeLines({ account: login, cursor }), pageRows),
+    pick(await api.officeLines({ loginName: login, cursor }), pageRows),
   );
   const columns: Column<LineRow>[] = [
     { key: 'number', header: t.number, render: (line) => <a href={`/numbers/${encodeURIComponent(line.id)}`}><bdi dir="ltr">{line.msisdn}</bdi></a> },

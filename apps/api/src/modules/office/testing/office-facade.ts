@@ -276,7 +276,7 @@ export class OfficeFacade {
   }
 
   // Spec entry points; the routes live in lines/lines.controller.ts.
-  async lines(gate: Gate, query: LineFilter & { cursor?: string; account?: string } = {}) {
+  async lines(gate: Gate, query: LineFilter & { cursor?: string; loginName?: string } = {}) {
     return this.lineReads.list(await this.actor(gate), query);
   }
 

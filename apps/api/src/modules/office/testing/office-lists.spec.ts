@@ -190,11 +190,11 @@ describe('numbers list paging', () => {
   });
 
   it('narrows to one account\'s numbers, and to none for an account outside the tree', async () => {
-    const own = await walk({ account: 'pos1' });
+    const own = await walk({ loginName: 'pos1' });
     expect(own.pages.flat()).toHaveLength(70);
-    const branch = await walk({ account: 'admin' });
+    const branch = await walk({ loginName: 'admin' });
     expect(branch.pages.flat()).toHaveLength(70);
-    const nobody = await walk({ account: 'nobody' });
+    const nobody = await walk({ loginName: 'nobody' });
     expect(nobody.pages.flat()).toHaveLength(0);
   });
 
