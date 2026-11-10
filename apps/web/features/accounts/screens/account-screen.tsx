@@ -26,6 +26,7 @@ import { UserPackagesTab } from './packages-terms';
 import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import { UserSettingsPane } from '../user-settings';
 import { RowMenu } from '../../../components/row-menu';
 import { Stat, StatRow } from '../../../components/stat';
 import { accountTone } from '../../../lib/status-tone';
@@ -161,11 +162,17 @@ export function AccountScreen() {
   // The API refuses to read the terms of an account the actor may not edit, so the two tabs
   // exist only for the direct parent and the branch; a hash to a hidden tab falls back to access.
   const withTerms = Boolean(canEditTerms && row && !row.staff);
+  // «إعدادات الحساب» is the branch owner's, for any account (spec 2026-11-11-ui-consistency-pass, D3).
+  const ownerSettings = Boolean(me?.layer === 'branch' && me.isBranchOwner && !me.impersonating);
+  const allowedCount = row ? GRANT_CODES.filter((code) => {
+    const mode = (picked[code] ?? 'role') as Choice;
+    return row.isBranchOwner || (mode === 'deny' ? false : mode === 'allow' ? true : roleHas.has(code));
+  }).length : 0;
   const tabs: { key: Tab; label: string; count?: number }[] = [
     ...(withTerms ? [{ key: 'packages' as const, label: t.packagesPricesTab, count: counts.packages || undefined }] : []),
     ...(withTerms ? [{ key: 'ops' as const, label: t.lineOpsTab, count: counts.ops || undefined }] : []),
     ...(row && !row.staff && row.layer !== 'branch' ? [{ key: 'numbers' as const, label: t.accountNumbers }] : []),
-    { key: 'access', label: t.accountAccess },
+    { key: 'access', label: ownerSettings ? t.settingsAccessTab : t.accountAccess },
   ];
   const openTab: Tab = tabs.some((item) => item.key === tab) ? tab : tabs[0].key;
 
@@ -186,80 +193,84 @@ export function AccountScreen() {
           {listed ? <MoneyCards row={listed} /> : null}
           <Tabs items={tabs} value={openTab} onChange={setTab} />
           {openTab === 'access' && (
+          // Settings open on top, permissions folded under them (spec 2026-11-11-ui-consistency-pass, D3).
           <section className="pane">
-            <div className="pane-body access-sheet">
-              <div className="grant-head">
-                <div className="grant-line head">
-                  <span>{t.permissions}</span>
-                  <span>{t.status}</span>
-                  <span>{row.canEdit ? t.grantChoice : ''}</span>
-                </div>
-                <div className="grant-line head">
-                  <span>{t.permissions}</span>
-                  <span>{t.status}</span>
-                  <span>{row.canEdit ? t.grantChoice : ''}</span>
-                </div>
-              </div>
-              <div className="grant-board">
-              {GRANT_CODES.map((code) => {
-                const fromRole = row.isBranchOwner || roleHas.has(code);
-                const mode = (picked[code] ?? 'role') as Choice;
-                const on = row.isBranchOwner || (mode === 'deny' ? false : mode === 'allow' ? true : fromRole);
-                return (
-                  <div key={code} className="grant-line">
-                    <span>{grantLabel(t, code, row.layer)}</span>
-                    <Badge variant={onOffTone(on)} dot>{on ? t.grantAllow : t.grantDeny}</Badge>
-                    {row.canEdit ? (
-                      <Select
-                        aria-label={grantLabel(t, code, row.layer)}
-                        value={mode}
-                        onChange={(event) => setChoices({ ...picked, [code]: event.target.value as Choice })}
-                      >
-                        <option value="role">{t.followRole}</option>
-                        <option value="allow">{t.grantAllow}</option>
-                        <option value="deny">{t.grantDeny}</option>
-                      </Select>
-                    ) : <span />}
-                  </div>
-                );
-              })}
-              </div>
-              {showExtras && (
-                <div className="access-block">
-                  <h3>{t.extraRoles}</h3>
-                  {row.staff && (
-                    <label className="role-primary">
-                      {t.role}
-                      <Select value={primary} onChange={(event) => setRoleId(event.target.value)}>
-                        {row.roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
-                      </Select>
-                    </label>
+            <div className="pane-body access-tab">
+              {ownerSettings ? <UserSettingsPane loginName={row.loginName} onSaved={(text) => { setError(''); setNote(text); }} /> : null}
+              <details className="inherit-fold access-fold">
+                <summary>
+                  <b>{t.accountAccess}</b>
+                  <span>{t.grantsSummary.replace('{n}', String(allowedCount)).replace('{total}', String(GRANT_CODES.length))}</span>
+                </summary>
+                <div className="inherit-body">
+                  <ul className="grant-list">
+                    {GRANT_CODES.map((code) => {
+                      const fromRole = row.isBranchOwner || roleHas.has(code);
+                      const mode = (picked[code] ?? 'role') as Choice;
+                      const on = row.isBranchOwner || (mode === 'deny' ? false : mode === 'allow' ? true : fromRole);
+                      const name = grantLabel(t, code, row.layer);
+                      return (
+                        <li key={code} className="grant-row">
+                          <span className="grant-name">{name}</span>
+                          <Badge variant={onOffTone(on)} dot>{on ? t.grantAllow : t.grantDeny}</Badge>
+                          {row.canEdit ? (
+                            // The same three-way switch as the run modes (`.seg`): the role decides, or allow, or deny.
+                            <div className="seg" role="radiogroup" aria-label={name}>
+                              {(['role', 'allow', 'deny'] as const).map((choice) => (
+                                <button
+                                  key={choice}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={mode === choice}
+                                  disabled={busy}
+                                  onClick={() => setChoices({ ...picked, [code]: choice })}
+                                >
+                                  {choice === 'role' ? t.followRole : choice === 'allow' ? t.grantAllow : t.grantDeny}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {showExtras && (
+                    <div className="access-block">
+                      <h3>{t.extraRoles}</h3>
+                      {row.staff && (
+                        <label className="role-primary">
+                          {t.role}
+                          <Select value={primary} onChange={(event) => setRoleId(event.target.value)}>
+                            {row.roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                          </Select>
+                        </label>
+                      )}
+                      <div className="role-chips">
+                        {jobRoles.map((role) => {
+                          const held = extras.includes(role.id);
+                          return (
+                            <button
+                              key={role.id}
+                              type="button"
+                              className="role-chip"
+                              aria-pressed={held}
+                              disabled={busy}
+                              onClick={() => setExtraRoleIds(held ? extras.filter((id) => id !== role.id) : [...extras, role.id])}
+                            >
+                              {role.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
-                  <div className="grant-board">
-                    {jobRoles.map((role) => (
-                      <label key={role.id} className="grant-line">
-                        <span>{role.name}</span>
-                        <input
-                          type="checkbox"
-                          checked={extras.includes(role.id)}
-                          onChange={(event) => {
-                            const next = event.target.checked
-                              ? [...extras, role.id]
-                              : extras.filter((id) => id !== role.id);
-                            setExtraRoleIds(next);
-                          }}
-                        />
-                        <span />
-                      </label>
-                    ))}
-                  </div>
+                  {row.canEdit && (
+                    <div className="form-save">
+                      <Button type="button" disabled={busy} onClick={save}>{t.save}</Button>
+                    </div>
+                  )}
                 </div>
-              )}
-              {row.canEdit && (
-                <div className="form-save">
-                  <Button type="button" disabled={busy} onClick={save}>{t.save}</Button>
-                </div>
-              )}
+              </details>
             </div>
           </section>
           )}

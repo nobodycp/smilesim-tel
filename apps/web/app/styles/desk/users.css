@@ -1,57 +1,60 @@
 /* The user page (app/users/[login]): fact cards, grants and roles, package terms. */
-.grant-board {
+/* «الإعدادات والصلاحيات» (spec 2026-11-11-ui-consistency-pass, D3): «إعدادات الحساب» open on top, then «صلاحيات
+   الحساب» folded — one row per grant: its name, its effective state, and the three-way `.seg` (حسب الدور / مسموح /
+   ممنوع); the extra roles are toggle chips. */
+.pane-body.access-tab { display: grid; gap: var(--rd-space-3); }
+.access-tab > .settings-block { padding: 0 0 var(--rd-space-3); border-block-end: 1px solid var(--rd-line); }
+.access-tab .session-rules-block { display: grid; gap: var(--rd-space-2); }
+.access-tab .field-title, .access-tab .field-like > span { color: var(--rd-ink-2); font-size: var(--rd-text-sm); font-weight: 700; }
+.access-tab .field-like { display: grid; gap: var(--rd-space-1); align-content: start; }
+.access-tab .field-like .kind-cell { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2); min-height: 36px; margin: 0; }
+.grant-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; margin: 0; padding: 0; list-style: none; }
+.grant-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 32px;
-}
-.grant-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(5.5rem, max-content) minmax(9rem, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--rd-space-2-5);
-  min-height: 48px;
+  min-height: 52px;
   border-block-end: 1px solid var(--rd-line);
-  color: var(--rd-ink);
-  font-size: var(--rd-text-base);
 }
-.pane label.grant-line {
-  gap: var(--rd-space-2-5);
-  color: var(--rd-ink);
-  font-size: var(--rd-text-base);
-  font-weight: 700;
-}
-.pane-body.access-sheet { gap: 0; }
-.grant-head {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 32px;
-}
-.grant-line > span:first-child { font-weight: 700; }
-.grant-line > b { font-weight: 700; white-space: nowrap; }
-.grant-line > .ui-badge,
-.grant-line > input[type='checkbox'] { justify-self: start; }
-.grant-line > input[type='checkbox'] { width: 18px; height: 18px; margin: 0; }
-.grant-line select { width: 100%; }
-.grant-line.head { min-height: 36px; }
-.grant-line.head span { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 700; }
+.grant-name { color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }
+.grant-row .seg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(4.6rem, 1fr); }
+.grant-row .seg button { padding-inline: 8px; white-space: nowrap; }
 .access-block {
-  margin-block-start: var(--rd-space-2);
+  display: grid;
+  gap: var(--rd-space-2);
   padding-block-start: var(--rd-space-2);
-  border-block-start: 1px solid var(--rd-line);
 }
-.access-block > h3 { margin: 0; padding-block: var(--rd-space-2) var(--rd-space-1); font-size: var(--rd-text-lg); font-weight: 700; }
+.access-block > h3 { margin: 0; font-size: var(--rd-text-md); font-weight: 700; }
+.role-chips { display: flex; flex-wrap: wrap; gap: var(--rd-space-2); }
+.role-chip {
+  height: 34px;
+  padding-inline: 14px;
+  border: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+  color: var(--rd-muted);
+  font-size: var(--rd-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.role-chip[aria-pressed='true'] { border-color: color-mix(in srgb, var(--rd-accent) 55%, transparent); background: var(--rd-accent-soft); color: var(--rd-accent); }
+.role-chip:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
 .role-primary {
   display: grid;
   justify-items: start;
   gap: var(--rd-space-1);
   max-width: 24rem;
-  margin-block: var(--rd-space-2) var(--rd-space-1);
 }
 .role-primary select { width: 100%; }
-@media (max-width: 960px) {
-  .grant-board,
-  .grant-head { grid-template-columns: 1fr; }
-  .grant-head .grant-line.head + .grant-line.head { display: none; }
+@media (max-width: 1100px) {
+  .grant-list { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  /* On a phone the switch takes its own line under the name and state. */
+  .grant-row { grid-template-columns: minmax(0, 1fr) auto; padding-block: var(--rd-space-2); }
+  .grant-row .seg { grid-column: 1 / -1; width: 100%; }
+  .role-chip { height: 40px; }
 }
 .fact-grid {
   display: grid;

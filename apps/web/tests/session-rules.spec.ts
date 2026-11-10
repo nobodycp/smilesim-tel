@@ -51,7 +51,7 @@ test('the owner\'s own settings hold only the account: no layer rules there any 
   await expect(page.getByRole('heading', { name: 'الجلسات حسب الطبقة' })).toHaveCount(0);
 });
 
-test('the owner edits one account from «إعدادات المستخدم»: contact, two-step and its own session values', async ({ page }) => {
+test('the owner edits one account from its page\'s «إعدادات الحساب»: contact, two-step and its own session values', async ({ page }) => {
   await serveOffice(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
@@ -81,23 +81,24 @@ test('the owner edits one account from «إعدادات المستخدم»: cont
     return route.fulfill(json({ own: none, layer: { maxSessions: 3, sessionMinutes: 360 }, effective: { maxSessions: 3, sessionMinutes: 360 } }));
   });
   await page.goto('http://admin.localhost:3910/users/pos1');
-  await page.locator('.page-head').getByRole('button', { name: 'إجراءات أخرى' }).click();
-  await page.getByRole('menuitem', { name: 'إعدادات المستخدم' }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog.getByLabel('البريد')).toHaveValue('shop@example.com');
-  await expect(dialog.getByText('غير مفعّل')).toBeVisible();
+  // No dialog behind a menu (spec 2026-11-11-ui-consistency-pass, D3): the settings are the open top of the last tab.
+  await page.getByRole('tab', { name: 'الإعدادات والصلاحيات' }).click();
+  const pane = page.getByRole('region', { name: 'إعدادات الحساب' });
+  await expect(pane.getByLabel('البريد')).toHaveValue('shop@example.com');
+  await expect(pane.getByText('غير مفعّل')).toBeVisible();
 
-  await dialog.getByRole('button', { name: 'تشغيل التحقق بخطوتين' }).click();
-  await expect(dialog.getByText('مطلوب عند الدخول القادم')).toBeVisible();
+  await pane.getByRole('button', { name: 'تشغيل التحقق بخطوتين' }).click();
+  await expect(pane.getByText('مطلوب عند الدخول القادم')).toBeVisible();
   expect(exempt).toEqual([{ exempt: false }]);
 
-  await expect(dialog.getByLabel('الجلسات المسموحة').locator('option').first()).toHaveText('حسب الطبقة (3)');
-  await expect(dialog.getByText('المطبّق الآن: الجلسات المسموحة 3 · 6 ساعات')).toBeVisible();
-  await dialog.getByLabel('الهاتف').fill('0501234567');
-  await dialog.getByLabel('الجلسات المسموحة').selectOption('2');
-  await dialog.getByRole('button', { name: 'حفظ' }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(page.getByText('حُفظت إعدادات المستخدم')).toBeVisible();
+  await expect(pane.getByLabel('الجلسات المسموحة').locator('option').first()).toHaveText('حسب الطبقة (3)');
+  await expect(pane.getByText('المطبّق الآن: الجلسات المسموحة 3 · 6 ساعات')).toBeVisible();
+  await pane.getByLabel('الهاتف').fill('0501234567');
+  await pane.getByLabel('الجلسات المسموحة').selectOption('2');
+  await pane.getByRole('button', { name: 'حفظ' }).click();
+  await expect(page.getByText('حُفظت إعدادات الحساب')).toBeVisible();
+  // The permissions sit folded under the settings.
+  await expect(page.locator('details.access-fold')).not.toHaveAttribute('open', '');
   expect(contact).toEqual([{ phone: '0501234567' }]);
   expect(saved).toEqual([{ maxSessions: 2, sessionMinutes: null }]);
 });

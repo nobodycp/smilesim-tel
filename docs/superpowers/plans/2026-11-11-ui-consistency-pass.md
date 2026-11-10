@@ -25,9 +25,9 @@ local commit. e2e specs that read changed UI are updated in the same phase (they
 
 ## Phase 3 — User page (D3)
 
-- [ ] `features/accounts/user-settings.tsx` → an inline `UserSettingsPane`.
-- [ ] `features/accounts/screens/account-screen.tsx` — the merged tab; grants as `.seg`; roles as chips.
-- [ ] `features/accounts/account-actions.tsx`, `users-screen.tsx` — the menu item goes.
+- [x] `features/accounts/user-settings.tsx` → an inline `UserSettingsPane`.
+- [x] `features/accounts/screens/account-screen.tsx` — the merged tab; grants as `.seg`; roles as chips.
+- [x] `features/accounts/account-actions.tsx`, `users-screen.tsx` — the menu item goes.
 
 ## Phase 4 — Number page, dialogs, package page (D4–D6)
 

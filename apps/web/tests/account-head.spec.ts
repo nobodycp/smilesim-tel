@@ -46,7 +46,7 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   await expect(cards.nth(4)).toContainText('130.00 ₪');
   await expect(cards.nth(4)).toHaveClass(/highlight/);
   // Graphite: every part of the account is a tab, packages and prices first (as in the approved design).
-  await expect(page.getByRole('tab')).toHaveText([/الرزم والأسعار/, /عمليات الأرقام/, 'أرقام الحساب', 'صلاحيات الحساب']);
+  await expect(page.getByRole('tab')).toHaveText([/الرزم والأسعار/, /عمليات الأرقام/, 'أرقام الحساب', 'الإعدادات والصلاحيات']);
   await expect(page.getByRole('tab', { name: /الرزم والأسعار/ }).locator('.step-count')).toHaveText('2');
   await expect(page.getByRole('tab', { name: /عمليات الأرقام/ }).locator('.step-count')).toHaveText('1');
   // The numbers are read only once their tab opens, narrowed to this account.

@@ -1,21 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { AccountName } from '../../components/account-name';
-import { Dialog } from '../../components/dialog';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { Alert } from '../../components/alert';
 import { api, type SessionRuleValues } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { useApiQuery } from '../../lib/use-api-query';
 import { RuleSelects, durationLabel } from '../auth/session-rules';
 
 /**
- * «إعدادات المستخدم» (spec 2026-11-08-overview-and-reports-nav, H), branch owner only: this account's email and
- * mobile, its two-step verification, a new password and its session rules, in one dialog that replaced «الجلسات».
+ * «إعدادات الحساب» (spec 2026-11-08-overview-and-reports-nav, H), branch owner only: this account's email and
+ * mobile, its two-step verification, a new password and its session rules. Since spec 2026-11-11-ui-consistency-pass
+ * (D3) it is the open top of the user page's «الإعدادات والصلاحيات» tab, not a dialog behind a menu.
  * Two-step: «تشغيل» asks for it at the next sign-in (the account enrols its own app or number); «إيقاف» clears it.
  */
-export function UserSettingsDialog({ loginName, name, onClose, onSaved }: { loginName: string; name?: string; onClose: () => void; onSaved: (note: string) => void }) {
+export function UserSettingsPane({ loginName, onSaved }: { loginName: string; onSaved: (note: string) => void }) {
   const { t, apiText, locale } = usePrefs();
   const settings = useApiQuery(['auth', 'user-settings', loginName], () => api.userSettings(loginName), { fresh: true });
   const rules = useApiQuery(['auth', 'session-rules', loginName], () => api.accountSessionRules(loginName), { fresh: true });
@@ -61,32 +61,22 @@ export function UserSettingsDialog({ loginName, name, onClose, onSaved }: { logi
     if (Object.keys(contact).length && !(await step(() => api.setUserContact(loginName, contact)))) return;
     if (password && !(await step(() => api.setUserPassword(loginName, password)))) return;
     if (draft && !(await step(() => api.setAccountSessionRules(loginName, ruleValues)))) return;
+    setEmail(null);
+    setPhone(null);
+    setPassword('');
+    setDraft(null);
+    await Promise.all([settings.reload(), rules.reload()]);
     onSaved(t.userSettingsSaved);
   }
 
   return (
-    <Dialog
-      open
-      size="form"
-      title={t.userSettings}
-      lede={t.userSettingsHint}
-      mark="shield"
-      tone="neutral"
-      closeLabel={t.closeMenu}
-      error={error || settings.error || rules.error}
-      onClose={() => { if (!busy) onClose(); }}
-      footer={(
+    <section className="settings-block user-settings" aria-label={t.userSettings}>
+      <h3>{t.userSettings}</h3>
+      <p className="hint">{t.userSettingsHint}</p>
+      <Alert banner>{error || settings.error || rules.error}</Alert>
+      {view ? (
         <>
-          <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>{t.cancel}</Button>
-          <Button type="button" disabled={busy || !view} onClick={save}>{t.save}</Button>
-        </>
-      )}
-    >
-      <div className="dialog-form">
-        <p className="dialog-who"><AccountName login={loginName} name={name} /></p>
-        {view ? (
-          <>
-            <h3>{t.contactDetails}</h3>
+          <div className="pair">
             <label>
               {t.email}
               <input type="email" dir="ltr" value={email ?? view.email} onChange={(event) => setEmail(event.target.value)} autoComplete="off" />
@@ -95,32 +85,35 @@ export function UserSettingsDialog({ loginName, name, onClose, onSaved }: { logi
               {t.phone}
               <input type="tel" dir="ltr" value={phone ?? view.phone} onChange={(event) => setPhone(event.target.value)} autoComplete="off" />
             </label>
-
-            <h3>{t.twoFactor}</h3>
-            <p className="kind-cell">
-              <Badge variant={twoFactorState === 'on' ? 'success' : twoFactorState === 'required' ? 'warning' : 'muted'} dot>
-                {twoFactorState === 'on' ? t.twoFactorOn : twoFactorState === 'required' ? t.twoFactorRequired : t.twoFactorOff}
-              </Badge>
-              <Button type="button" variant="outline" size="sm" disabled={busy} onClick={toggleTwoFactor}>
-                {twoFactorState === 'off' ? t.twoFactorTurnOn : t.twoFactorTurnOff}
-              </Button>
-            </p>
-
-            <h3>{t.newPassword}</h3>
+          </div>
+          <div className="pair">
             <label>
               {t.newPassword}
               <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
+              <span className="hint">{t.passwordKeep}</span>
             </label>
-            <p className="hint">{t.passwordKeep}</p>
-
-            <h3>{t.sessions}</h3>
-            {ruleView ? <RuleSelects values={ruleValues} fallback={ruleView.layer} fallbackLabel={t.followLayer} onChange={setDraft} /> : null}
-            {ruleView ? (
+            <div className="field-like">
+              <span>{t.twoFactor}</span>
+              <p className="kind-cell">
+                <Badge variant={twoFactorState === 'on' ? 'success' : twoFactorState === 'required' ? 'warning' : 'muted'} dot>
+                  {twoFactorState === 'on' ? t.twoFactorOn : twoFactorState === 'required' ? t.twoFactorRequired : t.twoFactorOff}
+                </Badge>
+                <Button type="button" variant="outline" size="sm" disabled={busy} onClick={toggleTwoFactor}>
+                  {twoFactorState === 'off' ? t.twoFactorTurnOn : t.twoFactorTurnOff}
+                </Button>
+              </p>
+            </div>
+          </div>
+          {ruleView ? (
+            <div className="session-rules-block">
+              <span className="field-title">{t.sessions}</span>
+              <div className="pair"><RuleSelects values={ruleValues} fallback={ruleView.layer} fallbackLabel={t.followLayer} onChange={setDraft} /></div>
               <p className="hint">{`${t.effectiveNow}: ${t.maxSessionsLabel} ${ruleView.effective.maxSessions} · ${durationLabel(locale, ruleView.effective.sessionMinutes)}`}</p>
-            ) : null}
-          </>
-        ) : null}
-      </div>
-    </Dialog>
+            </div>
+          ) : null}
+          <div className="form-save"><Button type="button" disabled={busy} onClick={save}>{t.save}</Button></div>
+        </>
+      ) : null}
+    </section>
   );
 }
