@@ -106,9 +106,10 @@ export type HomePayload = {
 export type PackageRow = {
   code: string;
   name: string;
-  providerCode?: string;
+  providerCode: string;
+  /** The provider's name: told to the branch only, empty for every other layer. */
   providerName: string;
-  activateMode?: 'auto' | 'manual' | 'off';
+  activateMode: 'auto' | 'manual' | 'off';
   companyName: string;
   sim: SimRules;
   esimPrice: number;
@@ -118,17 +119,22 @@ export type PackageRow = {
   minutes: number | null;
   details: string;
   months: number;
-  branchCost: number;
-  mainPrice: number;
-  agentPrice: number;
+  /**
+   * The price columns: a layer is told its own column and the ones below it. The columns of the layers above it
+   * are null (never 0): what those layers pay is not this viewer's to see.
+   */
+  branchCost: number | null;
+  mainPrice: number | null;
+  agentPrice: number | null;
   posPrice: number;
   subscriberPrice: number;
   editableField: 'main' | 'agent' | 'pos' | null;
-  autoActivate: boolean;
-  autoCharge: boolean;
-  autoDisconnect: boolean;
-  autoFreeze: boolean;
-  autoSwitch: boolean;
+  /** How the provider runs each operation: the branch's business, null for every other layer. */
+  autoActivate: boolean | null;
+  autoCharge: boolean | null;
+  autoDisconnect: boolean | null;
+  autoFreeze: boolean | null;
+  autoSwitch: boolean | null;
   /** What the caller pays for this package after its own custom price and its parent's sell price. */
   price: number;
   renewalPrice: number;

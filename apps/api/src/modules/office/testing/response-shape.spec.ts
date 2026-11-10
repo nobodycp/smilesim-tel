@@ -38,6 +38,25 @@ const PACKAGE_SHEET_KEYS = [
   'inheritedModes', 'providerModes',
 ];
 
+// GET /office/packages: one row a package on sale. The price columns above the viewer and the run modes come as
+// null outside the branch (plan backend-loose-ends B.4).
+const PACKAGE_ROW_KEYS = [
+  'code', 'name', 'providerCode', 'providerName', 'activateMode', 'companyName', 'sim', 'esimPrice', 'dataGb', 'smsCount', 'minutes',
+  'details', 'months', 'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice', 'editableField',
+  'autoActivate', 'autoCharge', 'autoDisconnect', 'autoFreeze', 'autoSwitch',
+  'price', 'renewalPrice', 'canActivate', 'sellPrice', 'sellRenewalPrice', 'sellDefault', 'sellRenewalDefault',
+];
+const catalogPackage = {
+  id: 'pkg-1', code: 'lian-wecom-500', name: '500 جيجا', dataGb: 500, smsCount: null, minutes: null, details: null, months: 1,
+  enabled: true, forSale: true, actionModes: {}, esimPrice: null,
+  provider: { code: 'lian', name: 'ليان', actionModes: {}, esimPrice: null },
+  company: { code: 'wecom', name: 'ويكوم', image: '', iccidLength: 19, iccidPrefix: '8997202', esim: true, esimPrice: 400 },
+  branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800,
+  renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500,
+  autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true, autoRename: true, autoSim: true,
+  allowActivate: true, allowCharge: true, allowDisconnect: true, allowFreeze: true, allowSwitch: true, allowExtend: true, allowRename: true, allowSim: true,
+};
+
 const sorted = (list: string[]) => [...list].sort();
 const keysOf = (value: object) => sorted(Object.keys(value));
 
@@ -328,6 +347,22 @@ describe('office response shapes', () => {
     await service.packages(gate);
     expect(where).toEqual({ companyId: { not: null }, enabled: true, forSale: true });
   });
+
+  it('answers /office/packages with the keys of PackageRow, and hides the columns above the viewer as null', async () => {
+    const tables = { package: { findMany: async () => [catalogPackage] } };
+    const asBranch = await serviceWith(tables);
+    const branchRow = (await asBranch.service.packages(asBranch.gate)).packages[0];
+    expect(keysOf(branchRow)).toEqual(sorted(PACKAGE_ROW_KEYS));
+    expect(branchRow).toMatchObject({ branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, autoActivate: true, providerName: 'ليان' });
+    const asPos = await posServiceWith(tables);
+    const posRow = (await asPos.service.packages(asPos.gate)).packages[0];
+    expect(keysOf(posRow)).toEqual(sorted(PACKAGE_ROW_KEYS));
+    // Null, never 0: a hidden price must not read as a free one.
+    expect(posRow).toMatchObject({
+      branchCost: null, mainPrice: null, agentPrice: null, posPrice: 3500, subscriberPrice: 3800,
+      autoActivate: null, autoCharge: null, autoDisconnect: null, autoFreeze: null, autoSwitch: null, providerName: '',
+    });
+  });
 });
 
 // The same lists against the web declarations. Skipped where the web app is not checked out beside the API.
@@ -382,6 +417,14 @@ describeWeb('web types match the pinned shapes', () => {
     const own = /officeLines:[\s\S]*?request<Page<LineRow> & \{([^}]*)\}>/.exec(source);
     const keys = [page?.[1] ?? '', own?.[1] ?? ''].flatMap((body) => [...body.matchAll(/(\w+):/g)].map((match) => match[1]));
     expect(sorted(keys)).toEqual(sorted(LINES_KEYS));
+  });
+
+  it('PackageRow', () => {
+    expect(declared(typeBody(source, 'PackageRow'))).toEqual({ required: sorted(PACKAGE_ROW_KEYS), optional: [] });
+    // The three columns a lower layer is not told, and the run modes, are declared nullable.
+    const body = typeBody(source, 'PackageRow');
+    for (const key of ['branchCost', 'mainPrice', 'agentPrice']) expect(body).toMatch(new RegExp(`\\b${key}: number \\| null;`));
+    for (const key of ['autoActivate', 'autoCharge', 'autoDisconnect', 'autoFreeze', 'autoSwitch']) expect(body).toMatch(new RegExp(`\\b${key}: boolean \\| null;`));
   });
 
   it('DisconnectQuote', () => {

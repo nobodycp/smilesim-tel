@@ -306,7 +306,7 @@ export function PackagesScreen() {
   }
 
   const ladder: Column<PackageRow>[] = [
-    { key: 'agent', header: t.agentPrice, num: true, render: (row: PackageRow) => <Money value={row.agentPrice} muted /> },
+    { key: 'agent', header: t.agentPrice, num: true, render: (row: PackageRow) => (row.agentPrice === null ? '—' : <Money value={row.agentPrice} muted />) },
     { key: 'pos', header: t.posPrice, num: true, render: (row: PackageRow) => <Money value={row.posPrice} muted /> },
     { key: 'subscriber', header: t.subscriberPrice, num: true, render: (row: PackageRow) => <Money value={row.subscriberPrice} muted /> },
   ].filter((column) => layer === 'main_agent' || column.key !== 'agent');

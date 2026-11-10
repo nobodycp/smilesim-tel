@@ -70,7 +70,10 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
   (`office-rules.spec.ts` → five spec files); rewrite the imports (`grep -rl "rules/office-rules"`); delete
   `office-rules.ts`. No line of logic changes: the diff of each moved function is empty. `backend.md` row for
   `office/rules/`.
-- [ ] **B.4 `PackageRow` tells the truth.** `apps/web/lib/api-types.ts`: `branchCost`, `mainPrice`, `agentPrice`
+- [x] **B.4 `PackageRow` tells the truth.** (COMMIT; also the five `auto*` run modes, which are null outside the
+  branch, and `providerCode` / `activateMode`, always sent, are no longer optional. One use changed:
+  `packages-screen.tsx` draws «—» for a hidden agent price. Checked on the running copy as the branch only; the
+  other three doors are covered by the spec, not by eye.) `apps/web/lib/api-types.ts`: `branchCost`, `mainPrice`, `agentPrice`
   are `number | null`. Fix what `tsc` flags (a hidden price is not drawn). `testing/response-shape.spec.ts`:
   `PACKAGE_ROW_KEYS` pinned against the service and the web type. Check `/packages` as the branch, a main agent,
   an agent and a point of sale on the running copy, ar and en.
