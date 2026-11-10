@@ -25,6 +25,11 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
    when it opens).
 6. A sale stores its `providerCost` on the wallet entry. Reports never price history from today's package.
 
+7. Writes that belong together are one transaction: a service method never awaits two repository writes one
+   after the other outside `runTx`, and what it checks before writing (counts, a status) is read inside the same
+   transaction. Side effects outside the database (Redis sessions, notices) run after the commit.
+   *(architecture.spec: `multi-write-outside-tx`; `accounts/account-delete.db.spec.ts`)*
+
 ## 2. State changes (lines, tasks, accounts)
 
 1. A status is changed only by a **guarded write**: lock the row (`lockLine`) or

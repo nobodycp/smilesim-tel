@@ -41,7 +41,9 @@ function world() {
     },
   };
   const tables = {
-    $transaction: async (run: (client: unknown) => Promise<unknown>) => run(tx),
+    // Inside a transaction the same tables answer, with the writes this spec records; the wallet lock reads no row.
+    $transaction: async (run: (client: unknown) => Promise<unknown>): Promise<unknown> =>
+      run({ ...tables, ...tx, user: { ...tables.user, ...tx.user }, $queryRaw: async () => [] }),
     user: {
       findMany: async () => users.map(withRole),
       findUnique: async ({ where }: { where: { id?: string; loginName?: string } }) => {
@@ -212,6 +214,14 @@ describe('accounts and roles over HTTP', () => {
     w.counts.lines = 0;
     expect(await code(as('owner', 'delete', '/office/users/pos1'))).toBe('200');
     expect(w.written.at(-1)).toEqual({ op: 'user.delete', args: { where: { id: 'pos1' } } });
+  });
+
+  it('keeps the account signed in and whole when its delete is refused or fails', async () => {
+    w.counts.entries = 1;
+    expect(await code(as('owner', 'delete', '/office/users/pos1'))).toBe('400 HAS_HISTORY');
+    // Refused inside the transaction: nothing was removed and the account's session still answers.
+    expect(w.written.some((entry) => entry.op === 'user.delete')).toBe(false);
+    expect(await store.liveSession(sessions.pos1)).not.toBeNull();
   });
 
   it('enters an account for the branch with the enter grant, logs it, and hands its door a one-time code; leave needs an entered session', async () => {

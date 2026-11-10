@@ -7,7 +7,9 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
 
 ## Phase A — defects (money and data first)
 
-- [ ] **A.1 Account delete in one transaction.**
+- [x] **A.1 Account delete in one transaction.** (COMMIT; the race spec is its own file,
+  `accounts/account-delete.db.spec.ts`, delete against a fund; the guard counts writes on one side of an `else` and
+  skips a write handed a client, and found nothing else)
   - `accounts/accounts.repository.ts`: `childCount`, `lineCount`, `taskCount`, `walletEntryCount`,
     `removeSessions`, `removeWallet`, `removePackages`, `removeSellPrices`, `removeAccount` take the client (`db`).
   - `accounts/accounts.service.ts` `remove`: permission checks as now; then `uow.runTx`: `ledger.lockWallets(tx,
@@ -20,7 +22,7 @@ A3 and A4 wait for decisions D1 and D2; the other slices do not.
   - Guard: `architecture.spec.ts` `multi-write-outside-tx` — a service method with two or more awaited repository
     writes (`remove*`, `set*`, `save*`, `create*`, `delete*`) outside `runTx`; baseline from today's count,
     lowered to what is left with a reason each.
-- [ ] **A.2 Rename by task answers 409.**
+- [x] **A.2 Rename by task answers 409.** (52e9cdc)
   - `numberTaken` from `lines/lines.service.ts:36` to `lines/line-state.ts`, exported.
   - `lines/task-completion.ts:265`: `.catch(numberTaken)`.
   - Spec: `lines/line-state.spec.ts` — completing a rename task onto a taken number is `409 NUMBER_TAKEN`, the task

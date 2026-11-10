@@ -137,42 +137,42 @@ export class AccountsRepository {
     });
   }
 
-  childCount(id: string) {
-    return this.uow.prisma.user.count({ where: { parentId: id } });
+  childCount(db: Db, id: string) {
+    return db.user.count({ where: { parentId: id } });
   }
 
-  lineCount(id: string) {
-    return this.uow.prisma.line.count({ where: { posId: id } });
+  lineCount(db: Db, id: string) {
+    return db.line.count({ where: { posId: id } });
   }
 
   /** Tasks the account sent, was the point of sale of, or handled. */
-  taskCount(id: string) {
-    return this.uow.prisma.officeTask.count({ where: { OR: [{ submitterId: id }, { posId: id }, { assigneeId: id }] } });
+  taskCount(db: Db, id: string) {
+    return db.officeTask.count({ where: { OR: [{ submitterId: id }, { posId: id }, { assigneeId: id }] } });
   }
 
   /** Wallet entries on the account's wallet or made by it. */
-  walletEntryCount(id: string) {
-    return this.uow.prisma.walletEntry.count({ where: { OR: [{ userId: id }, { actorId: id }] } });
+  walletEntryCount(db: Db, id: string) {
+    return db.walletEntry.count({ where: { OR: [{ userId: id }, { actorId: id }] } });
   }
 
-  removeSessions(userId: string) {
-    return this.uow.prisma.session.deleteMany({ where: { userId } });
+  removeSessions(db: Db, userId: string) {
+    return db.session.deleteMany({ where: { userId } });
   }
 
-  removeWallet(userId: string) {
-    return this.uow.prisma.wallet.deleteMany({ where: { userId } });
+  removeWallet(db: Db, userId: string) {
+    return db.wallet.deleteMany({ where: { userId } });
   }
 
-  removePackages(userId: string) {
-    return this.uow.prisma.userPackage.deleteMany({ where: { userId } });
+  removePackages(db: Db, userId: string) {
+    return db.userPackage.deleteMany({ where: { userId } });
   }
 
-  removeSellPrices(ownerId: string) {
-    return this.uow.prisma.sellPrice.deleteMany({ where: { ownerId } });
+  removeSellPrices(db: Db, ownerId: string) {
+    return db.sellPrice.deleteMany({ where: { ownerId } });
   }
 
-  removeAccount(id: string) {
-    return this.uow.prisma.user.delete({ where: { id } });
+  removeAccount(db: Db, id: string) {
+    return db.user.delete({ where: { id } });
   }
 
   /** Records that an operator entered an account. */

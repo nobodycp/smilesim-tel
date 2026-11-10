@@ -1,4 +1,5 @@
 import { AccountsRepository } from './accounts.repository';
+import { WalletLedger } from '../wallets/wallet-ledger';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import { LayerRoles } from '../roles/layer-roles';
 import { AccountTree } from '../kernel/account-tree';
@@ -30,7 +31,7 @@ type ListedAccount = {
 /** Accounts below the signed-in one: the list and the name directory, opening an account, resetting its password, its access (grants and roles), freezing, deleting, and entering it. */
 @Injectable()
 export class AccountsService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly layerRoles: LayerRoles, @Inject(AUTH_STORE) private readonly auth: AuthStore, private readonly repo: AccountsRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly layerRoles: LayerRoles, @Inject(AUTH_STORE) private readonly auth: AuthStore, private readonly repo: AccountsRepository, private readonly ledger: WalletLedger) {}
 
   /** One page of the accounts the actor may see, filtered and ordered by the server (`users-page.ts`). */
   async page(actor: Actor, filter: UsersFilter) {
@@ -286,19 +287,25 @@ export class AccountsService {
     if (target.isBranchOwner || target.id === actor.id) fail(403, 'FORBIDDEN');
     // Removing an employee is staff work; removing any other account is an edit (review S11).
     requireGrant(actor, target.layer === 'branch' ? 'staff' : 'edit');
-    const [children, lines, tasks, entries] = await Promise.all([
-      this.repo.childCount(target.id),
-      this.repo.lineCount(target.id),
-      this.repo.taskCount(target.id),
-      this.repo.walletEntryCount(target.id),
-    ]);
-    if (children + lines + tasks + entries > 0) fail(400, 'HAS_HISTORY');
+    // One transaction (backend-engineering.mdc 1.1): the account is checked for history and removed together, so a
+    // failure leaves it whole, and its wallet is locked first so no sale or transfer lands on it meanwhile.
+    await this.uow.runTx(async (tx) => {
+      await this.ledger.lockWallets(tx, [target.id]);
+      const [children, lines, tasks, entries] = await Promise.all([
+        this.repo.childCount(tx, target.id),
+        this.repo.lineCount(tx, target.id),
+        this.repo.taskCount(tx, target.id),
+        this.repo.walletEntryCount(tx, target.id),
+      ]);
+      if (children + lines + tasks + entries > 0) fail(400, 'HAS_HISTORY');
+      await this.repo.removeSessions(tx, target.id);
+      await this.repo.removeWallet(tx, target.id);
+      await this.repo.removePackages(tx, target.id);
+      await this.repo.removeSellPrices(tx, target.id);
+      await this.repo.removeAccount(tx, target.id);
+    });
+    // Only once the account is gone: a refused or failed delete must not sign it out.
     await this.auth.dropLiveSessions(target.id);
-    await this.repo.removeSessions(target.id);
-    await this.repo.removeWallet(target.id);
-    await this.repo.removePackages(target.id);
-    await this.repo.removeSellPrices(target.id);
-    await this.repo.removeAccount(target.id);
     return { ok: true };
   }
 

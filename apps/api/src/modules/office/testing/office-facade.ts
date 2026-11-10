@@ -136,7 +136,7 @@ export class OfficeFacade {
   private accountDeskInstance: AccountsService | null = null;
 
   private get accountDesk(): AccountsService {
-    this.accountDeskInstance ??= new AccountsService(this.graph.uow, this.graph.tree, this.graph.layerRoles, this.graph.auth, new AccountsRepository(this.graph.uow));
+    this.accountDeskInstance ??= new AccountsService(this.graph.uow, this.graph.tree, this.graph.layerRoles, this.graph.auth, new AccountsRepository(this.graph.uow), this.graph.ledger);
     return this.accountDeskInstance;
   }
 

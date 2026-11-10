@@ -81,6 +81,25 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     }));
   });
 
+  it('1.1 multi-write-outside-tx: writes that belong together run in one transaction', () => {
+    // A service method that awaits two or more repository writes one after the other and never opens `runTx`: a
+    // failure between them leaves half a change (the account delete, plan backend-loose-ends A.1). Writes on the
+    // two sides of an `else` are one or the other, and a write handed a client (`db`, `tx`) is its caller's.
+    const WRITE = /await this\.repo\.(remove|delete|set|save|create|update|add|mark|write|store|clear|replace|move|put)[A-Z]\w*\(([^;]*);/g;
+    const isWrite = (call: RegExpMatchArray) => !/Count\(/.test(call[0]) && !/\b(db|tx)\b/.test(call[2]);
+    const found: Hit[] = [];
+    for (const { file, text } of office.filter(({ file }) => file.endsWith('.service.ts'))) {
+      const method = /\n  (?:private |protected )?async (\w+)\(/g;
+      for (let match = method.exec(text); match; match = method.exec(text)) {
+        const body = blockAt(text, text.indexOf(')', match.index));
+        if (/runTx\(/.test(body)) continue;
+        const writes = Math.max(...body.split(/\} else (?:if \([^{]*\) )?\{/).map((side) => [...side.matchAll(WRITE)].filter(isWrite).length));
+        if (writes >= 2) found.push({ file, line: lineOf(text, match.index) + 1, text: `${match[1]}: ${writes} writes` });
+      }
+    }
+    check('multi-write-outside-tx', found);
+  });
+
   it('1.3 root-client-in-tx: a transaction reads through its own client', () => {
     const found: Hit[] = [];
     for (const { file, text } of production) {
