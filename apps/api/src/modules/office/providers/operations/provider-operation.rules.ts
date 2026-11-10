@@ -109,6 +109,15 @@ export function closesUnknown(outcome: AttemptOutcome): boolean {
   return outcome.kind === 'confirmed' || outcome.kind === 'refused';
 }
 
+/**
+ * Whether an attempt still belongs to the worker that claimed it. While it does, that worker may start the send
+ * and recovery keeps away; once it does not, the worker may no longer start and recovery may act. The store
+ * applies the same test inside the write that marks the send (`leaseUntil > now`).
+ */
+export function leaseRuns(leaseUntil: Date | null, now: Date): boolean {
+  return leaseUntil !== null && leaseUntil.getTime() > now.getTime();
+}
+
 /** What a pending attempt looks like to recovery. */
 export type PendingAttempt = { leaseUntil: Date | null; sentAt: Date | null };
 
@@ -120,7 +129,7 @@ export type PendingAttempt = { leaseUntil: Date | null; sentAt: Date | null };
  *   never sent again. An attempt with no lease at all cannot be proved unsent either.
  */
 export function recoveryOutcome(attempt: PendingAttempt, now: Date): AttemptOutcome | null {
-  if (attempt.leaseUntil && attempt.leaseUntil.getTime() > now.getTime()) return null;
+  if (leaseRuns(attempt.leaseUntil, now)) return null;
   if (attempt.leaseUntil && !attempt.sentAt) return { kind: 'not-sent', error: 'abandoned' };
   return { kind: 'no-answer', error: 'abandoned' };
 }

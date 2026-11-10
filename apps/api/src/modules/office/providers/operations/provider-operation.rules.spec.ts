@@ -1,4 +1,4 @@
-import { ATTEMPT_LEASE_MS, CALL_TIMEOUT_MS, MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, closesUnknown, outcomeOf, recoveryOutcome, isSettled, maySend, requestHash, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
+import { ATTEMPT_LEASE_MS, CALL_TIMEOUT_MS, MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, closesUnknown, leaseRuns, outcomeOf, recoveryOutcome, isSettled, maySend, requestHash, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
 
 const request: OperationRequest = { action: 'activate', providerCode: 'sky', packageCode: 'p-1', msisdn: '0500000001', iccid: '8997202000000000777', lineId: null };
 
@@ -72,6 +72,16 @@ describe('provider operation rules', () => {
     // No lease recorded: nothing proves it unsent.
     expect(recoveryOutcome({ leaseUntil: null, sentAt: null }, now)).toEqual({ kind: 'no-answer', error: 'abandoned' });
     expect(ATTEMPT_LEASE_MS).toBeGreaterThan(CALL_TIMEOUT_MS);
+  });
+
+  it('gives an attempt to its worker while the lease runs and to recovery from the instant it ends', () => {
+    const end = new Date('2026-11-10T12:00:00Z');
+    const at = (ms: number) => new Date(end.getTime() + ms);
+    expect([leaseRuns(end, at(-1)), leaseRuns(end, at(0)), leaseRuns(end, at(1)), leaseRuns(null, at(-1))]).toEqual([true, false, false, false]);
+    // Never both, never neither: recovery acts exactly when the worker may no longer start.
+    for (const ms of [-60_000, -1, 0, 1, 60_000]) {
+      expect(recoveryOutcome({ leaseUntil: end, sentAt: null }, at(ms)) !== null).toBe(!leaseRuns(end, at(ms)));
+    }
   });
 
   it('lets only the provider\'s own verdict close an unknown operation late', () => {

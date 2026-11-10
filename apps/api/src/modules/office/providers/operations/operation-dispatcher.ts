@@ -1,4 +1,4 @@
-import { logger, reason } from '../../../shared/log';
+import { errorCode, logger } from '../../../shared/log';
 import { OfficeFailure } from '../../../shared/office-failure';
 import type { ProviderGateway } from '../gateway/provider-gateway';
 import { CALL_TIMEOUT_MS, outcomeOf, type OperationStatus, type OutgoingOperation, type SendEvidence } from './provider-operation.rules';
@@ -55,7 +55,8 @@ export class OperationDispatcher {
 
   /**
    * The gateway's evidence, or null when there is none: it threw, or it did not answer in time. Null is read as
-   * "the request may have left". The error's text is logged, never stored.
+   * "the request may have left". A gateway's error may quote the request it sent, its headers or the
+   * provider's reply: only a code is logged, and nothing of it is stored.
    */
   private async send(outgoing: OutgoingOperation): Promise<SendEvidence | null> {
     let timer: NodeJS.Timeout | undefined;
@@ -65,7 +66,7 @@ export class OperationDispatcher {
     try {
       return await Promise.race([this.gateway.send(outgoing), waited]);
     } catch (error) {
-      log.warn(`operation attempt ${outgoing.attempt} for ${outgoing.providerCode}: the gateway failed without evidence (${reason(error)})`);
+      log.warn(`operation attempt ${outgoing.attempt} for ${outgoing.providerCode}: the gateway failed without evidence (${errorCode(error)})`);
       return null;
     } finally {
       clearTimeout(timer);

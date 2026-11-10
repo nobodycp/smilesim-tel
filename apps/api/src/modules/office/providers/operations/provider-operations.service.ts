@@ -70,8 +70,9 @@ export class ProviderOperationsService {
 
   /**
    * Marks attempt `attempt` as about to be sent and answers what to send; null when the attempt is no longer the
-   * caller's (recovery took it back, or it was marked before). The caller calls the provider only on an answer:
-   * that makes "no mark" proof that nothing left.
+   * caller's: its lease is over (the worker was slow, and recovery may take the attempt back at any moment),
+   * recovery already took it, or it was marked before. The caller calls the provider only on an answer: that
+   * makes "no mark" proof that nothing left.
    */
   async beginSend(id: string, attempt: number, now: Date = new Date()): Promise<OutgoingOperation | null> {
     const row = await this.repo.operationToSend(this.uow.prisma, id);

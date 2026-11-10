@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createPrismaClient } from '../../../../db';
+import { capturedOutput } from '../../../shared/testing/captured-output';
 import { UnitOfWork } from '../../kernel/unit-of-work';
 import type { NoticeService } from '../../notices/notice.service';
 import { ScriptedGateway } from '../testing/scripted-gateway';
@@ -20,6 +21,7 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
   const previousUrl = process.env.DATABASE_URL;
   let prisma: ReturnType<typeof createPrismaClient>;
   let service: ProviderOperationsService;
+  let uowOf: () => UnitOfWork;
   let gateway: ScriptedGateway;
   let dispatcher: OperationDispatcher;
   let providerId: string;
@@ -51,9 +53,12 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
         },
       },
     });
-    const uow = new UnitOfWork({ write: async () => [], publish: async () => undefined } as unknown as NoticeService);
-    uow.prismaClient = watched as unknown as typeof prisma;
-    service = new ProviderOperationsService(uow, new ProviderOperationsRepository());
+    uowOf = () => {
+      const uow = new UnitOfWork({ write: async () => [], publish: async () => undefined } as unknown as NoticeService);
+      uow.prismaClient = watched as unknown as typeof prisma;
+      return uow;
+    };
+    service = new ProviderOperationsService(uowOf(), new ProviderOperationsRepository());
   });
 
   beforeEach(async () => {
@@ -167,8 +172,8 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
   it('recovers a worker that died after the provider may have been called: unknown, never failed, never sent again', async () => {
     const id = await record();
     const attempt = (await service.claim(id, longAgo())) as number;
-    expect(await service.beginSend(id, attempt)).not.toBeNull();
-    // Died here: the request may be at the provider.
+    // It marked the send while its lease ran, then died: the request may be at the provider.
+    expect(await service.beginSend(id, attempt, whileLeased())).not.toBeNull();
     expect(await service.recover(id, whileLeased())).toBeNull();
     expect(await recoverExpired(service)).toBeGreaterThanOrEqual(1);
     expect(await status(id)).toMatchObject({ status: 'unknown', attempts: 1, lastError: 'abandoned' });
@@ -202,22 +207,101 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     expect(gateway.calls.map((call) => call.attempt)).toEqual([2]);
   });
 
-  it('keeps recovery away from a worker that marked the send first, and the worker away once recovery won', async () => {
-    // Both at the same moment on an expired, unmarked attempt: exactly one of them gets it.
-    for (let round = 0; round < 5; round += 1) {
-      const id = await record();
-      const attempt = (await service.claim(id, longAgo())) as number;
-      const [marked, recovered] = await Promise.all([service.beginSend(id, attempt), service.recover(id, new Date())]);
-      const row = await status(id);
-      if (marked) {
-        // The worker won: the call may happen, so the operation is pending (or already unknown), not requested.
-        expect(['pending', 'unknown']).toContain(row.status);
-        expect(recovered === 'requested').toBe(false);
-      } else {
-        expect(recovered).toBe('requested');
-        expect(row.status).toBe('requested');
+  it('does not let a worker that wakes up after its lease, and before recovery ran, call the provider', async () => {
+    const id = await record();
+    // A worker whose claim was committed long ago and which only now gets to the send: it stalled past its lease.
+    class Stalled extends ProviderOperationsService {
+      override claim(operationId: string) {
+        return super.claim(operationId, longAgo());
       }
     }
+    const stalled = new Stalled(uowOf(), new ProviderOperationsRepository());
+    expect(await new OperationDispatcher(stalled, gateway).handle(id)).toBe('skipped');
+    expect(gateway.calls).toHaveLength(0);
+    // Nothing was marked and nothing changed: the attempt is still pending, for recovery to take back.
+    const row = await prisma.providerOperation.findUniqueOrThrow({ where: { id } });
+    expect(row).toMatchObject({ status: 'pending', attempts: 1, sentAt: null });
+    // The same holds for a direct call, at the lease's last instant and after it; one instant earlier it is allowed.
+    const leaseUntil = row.leaseUntil as Date;
+    expect(await service.beginSend(id, 1, new Date(leaseUntil.getTime() + 1))).toBeNull();
+    expect(await service.beginSend(id, 1, leaseUntil)).toBeNull();
+    expect(await service.beginSend(id, 1)).toBeNull();
+    expect((await prisma.providerOperation.findUniqueOrThrow({ where: { id } })).sentAt).toBeNull();
+
+    // Recovery then proves it unsent and schedules it again; the next attempt is sent, once.
+    expect(await service.recover(id)).toBe('requested');
+    expect(await sends(id)).toEqual([0, 1]);
+    expect(await dispatcher.handle(id)).toBe('succeeded');
+    expect(gateway.calls.map((call) => call.attempt)).toEqual([2]);
+  });
+
+  it('gives an expired attempt to recovery and a leased one to its worker, whoever asks first', async () => {
+    for (let round = 0; round < 5; round += 1) {
+      // One clock, lease over: the worker can never start, recovery always takes it back.
+      const expired = await record();
+      const old = (await service.claim(expired, longAgo())) as number;
+      expect(await Promise.all([service.beginSend(expired, old), service.recover(expired)])).toEqual([null, 'requested']);
+      // One clock, lease running: the worker starts, recovery keeps away.
+      const leased = await record();
+      const fresh = (await service.claim(leased)) as number;
+      const [marked, recovered] = await Promise.all([service.beginSend(leased, fresh), service.recover(leased)]);
+      expect([marked === null, recovered]).toEqual([false, null]);
+      expect(await status(leased)).toMatchObject({ status: 'pending', attempts: 1 });
+    }
+    expect(gateway.calls).toHaveLength(0);
+  });
+
+  it('lets exactly one of a worker and recovery have an attempt when their clocks disagree about its lease', async () => {
+    const results: string[] = [];
+    for (let round = 0; round < 12; round += 1) {
+      const id = await record();
+      const attempt = (await service.claim(id)) as number;
+      const leaseUntil = (await prisma.providerOperation.findUniqueOrThrow({ where: { id } })).leaseUntil as Date;
+      // The worker's clock says the lease still runs; recovery's says it is over. Both act at once.
+      const [marked, recovered] = await Promise.all([
+        service.beginSend(id, attempt, new Date(leaseUntil.getTime() - 1)),
+        service.recover(id, new Date(leaseUntil.getTime() + 1)),
+      ]);
+      const row = await prisma.providerOperation.findUniqueOrThrow({ where: { id } });
+      if (marked) {
+        // The worker won: a call may follow, so the operation was not handed back for a new send.
+        expect(recovered === 'requested').toBe(false);
+        expect(['pending', 'unknown']).toContain(row.status);
+        expect(row.sentAt).toBeInstanceOf(Date);
+        expect(await sends(id)).toEqual([0]);
+      } else {
+        // Recovery won: the worker has nothing to send and the operation waits for a new attempt.
+        expect(recovered).toBe('requested');
+        expect(row).toMatchObject({ status: 'requested', sentAt: null });
+        expect(await sends(id)).toEqual([0, 1]);
+      }
+      results.push(marked ? 'worker' : 'recovery');
+    }
+    expect(results).toHaveLength(12);
+  });
+
+  it('writes a code, never the gateway\'s own words, to the log', async () => {
+    const secrets = ['sk_live_9f8e7d6c5b4a', 'hunter2-password', 'Bearer eyJhbGciOi.token.value', 'https://api-user:api-pass@provider.example/activate'];
+    const leaky = () => Object.assign(new Error(`POST ${secrets[3]} failed: Authorization: ${secrets[2]}; password=${secrets[1]}`), {
+      stack: `Error: key ${secrets[0]}\n    at send (adapter.ts:1:1)`,
+      config: { headers: { Authorization: secrets[2] }, auth: { password: secrets[1] } },
+      response: { data: { apiKey: secrets[0] } },
+    });
+    const thrown = await record();
+    const reset = await record();
+    gateway.next(async () => { throw leaky(); }, async () => { throw Object.assign(leaky(), { code: 'ECONNRESET' }); });
+    const output = await capturedOutput(async () => {
+      expect(await dispatcher.handle(thrown)).toBe('unknown');
+      expect(await dispatcher.handle(reset)).toBe('unknown');
+    });
+    // The lines are there, and say what happened in codes.
+    expect(output).toContain('the gateway failed without evidence (unclassified)');
+    expect(output).toContain('the gateway failed without evidence (ECONNRESET)');
+    expect(output).toContain(`operation ${thrown} attempt 1: no-answer -> unknown`);
+    for (const secret of [...secrets, 'api-pass', 'Authorization', 'password', 'adapter.ts']) expect(output).not.toContain(secret);
+    // Nor in the database.
+    const stored = JSON.stringify(await prisma.providerOperation.findMany({ where: { id: { in: [thrown, reset] } } }));
+    for (const secret of secrets) expect(stored).not.toContain(secret);
   });
 
   it('takes the provider\'s late answer for an attempt that recovery marked unknown, and no other late result', async () => {

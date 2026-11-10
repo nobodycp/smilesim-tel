@@ -51,6 +51,12 @@ dispatcher is off unless `PROVIDER_DISPATCH=1` and never runs in production.
 10. **Switch.** `config.ts` `providerDispatchOn()`: `PROVIDER_DISPATCH=1` and not production. The worker binds the
     simulated gateway, whose `send` always answers "never left": even switched on, nothing reaches a provider.
 
+11. **Codes in logs** (added after the review of `afb7d1f`). No error text from a gateway, the queue driver or the
+    database is logged by the dispatcher, the relay or their timers: `errorCode(error)` only. A failed job keeps
+    a code and no stack in Redis (`JobFailure`).
+12. **`beginSend` refuses after the lease.** The mark is written only while `leaseUntil > now`, in the same
+    guarded statement as the status, the attempt number and the empty mark.
+
 ## Guarantees and their limits
 
 - An operation is sent **at most once per attempt**, and a new attempt is made only after proof that the earlier
@@ -60,8 +66,9 @@ dispatcher is off unless `PROVIDER_DISPATCH=1` and never runs in production.
     nothing left (safe, but needs a verdict);
   - a provider that does not honour the idempotency key and a person who re-submits an unknown operation by hand.
 - A message can be published twice and a job delivered twice; both end at `claim`.
-- The clock: leases compare the workers' clocks. A skew larger than the 60 s margin could let recovery act while
-  a worker still believes in its lease; the mark and the attempt guard still prevent a double send.
+- The clock: leases compare the workers' clocks. With a skew, a worker may still believe in a lease that
+  recovery's clock calls over; the two then race on one row and exactly one wins (the mark is written only while
+  empty, recovery hands the attempt back only while the mark is empty), so there is still no double send.
 
 ## Non-goals
 

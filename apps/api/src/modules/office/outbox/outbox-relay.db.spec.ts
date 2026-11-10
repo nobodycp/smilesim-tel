@@ -4,6 +4,7 @@ import IORedis from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { OPERATIONS_QUEUE, buildProviderDispatch } from '../../../provider-dispatch';
+import { capturedOutput } from '../../shared/testing/captured-output';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import type { NoticeService } from '../notices/notice.service';
 import { OPERATION_REQUESTED } from '../providers/operations/provider-operations.repository';
@@ -108,6 +109,24 @@ suite('outbox relay (PostgreSQL)', () => {
     expect(sent).toHaveLength(2);
     expect(new Set(sent.map((message) => message.id)).size).toBe(1);
     expect((await rows())[0].publishedAt).toBeInstanceOf(Date);
+  });
+
+  it('writes a code, never the queue driver\'s own words, to the log', async () => {
+    await add(2);
+    const secret = 'redis://default:redis-pass-123@cache.internal:6379';
+    let call = 0;
+    const leaky: OutboxPublisher = {
+      publish: async () => {
+        call += 1;
+        throw Object.assign(new Error(`connect ECONNREFUSED ${secret}`), call === 1 ? { code: 'ECONNREFUSED' } : {});
+      },
+    };
+    const output = await capturedOutput(async () => {
+      expect(await relayWith(new OutboxRepository(), leaky).runOnce()).toEqual({ claimed: 2, published: 0, failed: 2 });
+    });
+    expect(output).toContain('not published: ECONNREFUSED');
+    expect(output).toContain('not published: unclassified');
+    for (const part of [secret, 'redis-pass-123', 'cache.internal']) expect(output).not.toContain(part);
   });
 
   it('leaves a message unpublished when the queue refuses it, and publishes it on a later round', async () => {
@@ -239,6 +258,28 @@ withRedis('outbox relay and dispatcher on a real queue (PostgreSQL + Redis)', ()
     expect(await relay.runOnce()).toMatchObject({ published: 1 });
     await until(async () => (await dispatch.operations.status({ id })).status === 'succeeded');
     expect(gateway.calls.map((call) => call.attempt)).toEqual([1, 2]);
+  });
+
+  it('leaves a code, not the error, in the log and in the failed job the queue keeps', async () => {
+    const id = await record();
+    const secret = 'postgresql://smilesim:db-pass-456@db.internal:5432/smilesim';
+    // The dispatcher fails outright (a database error while settling, say), with text that must not travel.
+    dispatch.dispatcher.handle = async () => {
+      throw Object.assign(new Error(`Can't reach database server at ${secret}`), { code: 'P1001' });
+    };
+    let failed: { failedReason?: string; stacktrace?: string[] | null; toJSON?: () => unknown } | undefined;
+    const output = await capturedOutput(async () => {
+      startWorker();
+      await relay.runOnce();
+      await until(async () => (await queue.getJobCountByTypes('failed')) === 1);
+      [failed] = await queue.getJobs(['failed']);
+    });
+    expect(output).toContain(`operation ${id}: the job failed (P1001)`);
+    expect(failed?.failedReason).toBe('provider-operation job failed: P1001');
+    // What Redis holds for the job: its reason and its stack trace.
+    for (const text of [output, JSON.stringify(failed?.toJSON?.() ?? null), JSON.stringify(failed?.stacktrace ?? null)]) {
+      for (const part of [secret, 'db-pass-456', 'db.internal']) expect(text).not.toContain(part);
+    }
   });
 
   it('keeps the message while Redis is away and publishes it when Redis is back', async () => {

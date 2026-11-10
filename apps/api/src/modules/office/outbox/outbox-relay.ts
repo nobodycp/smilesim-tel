@@ -1,4 +1,4 @@
-import { logger, reason } from '../../shared/log';
+import { errorCode, logger } from '../../shared/log';
 import type { UnitOfWork } from '../kernel/unit-of-work';
 import { OutboxRepository, type ClaimedMessage } from './outbox.repository';
 
@@ -34,7 +34,8 @@ export class OutboxRelay {
       } catch (error) {
         // The message stays unpublished and is taken again after its lease: that wait is the retry.
         round.failed += 1;
-        log.warn(`message ${message.id} (${message.topic}) not published: ${reason(error)}`);
+        // A code only: a queue driver's message can quote the connection it failed on.
+        log.warn(`message ${message.id} (${message.topic}) not published: ${errorCode(error)}`);
       }
     }
     return round;

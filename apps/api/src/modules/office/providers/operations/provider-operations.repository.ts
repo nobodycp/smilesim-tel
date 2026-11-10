@@ -65,11 +65,13 @@ export class ProviderOperationsRepository {
   }
 
   /**
-   * Writes the send mark of attempt `attempts`, once, while the operation is still pending on it. The provider is
-   * called only after this answered true, so an attempt without the mark never reached the provider.
+   * Writes the send mark of attempt `attempts`, once, while the operation is still pending on it **and its lease
+   * still runs at `at`**: one statement, so a worker that wakes up after its lease cannot start a send that
+   * recovery is entitled to take back. The provider is called only after this answered true, so an attempt
+   * without the mark never reached the provider.
    */
   async markSent(db: Db, id: string, attempts: number, at: Date): Promise<boolean> {
-    const marked = await db.providerOperation.updateMany({ where: { id, status: 'pending', attempts, sentAt: null }, data: { sentAt: at } });
+    const marked = await db.providerOperation.updateMany({ where: { id, status: 'pending', attempts, sentAt: null, leaseUntil: { gt: at } }, data: { sentAt: at } });
     return marked.count === 1;
   }
 

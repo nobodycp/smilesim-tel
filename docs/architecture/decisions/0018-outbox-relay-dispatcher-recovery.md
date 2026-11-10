@@ -10,7 +10,7 @@ sale tx (later)        relay (worker)                 queue            dispatche
 recordIn ─┬─ ProviderOperation: requested
           └─ OutboxMessage ──lease──▶ publish(jobId = message id) ──▶ job ──▶ claim(id)  ── null ─▶ stop
                               ◀─ accepted ─ stamp publishedAt                  │ attempt n, leaseUntil
-                                                                              beginSend ── null ─▶ stop
+                                                                              beginSend ── null ─▶ stop   (also when the lease is over)
                                                                                │ sentAt (committed)
                                                                                └────────── send(key, n) ───────▶
                                                                               settle(id, n, outcome) ◀─ evidence
@@ -39,6 +39,16 @@ recovery (timer): pending and lease over ─┬─ no sentAt → requested + new
 9. **One port.** `ProviderGateway` gains `send`; the simulated gateway answers "never left" everywhere.
 10. **Off by default.** `PROVIDER_DISPATCH=1` outside production only.
 
+11. **Logs carry codes, not error text** (review of `afb7d1f`). A gateway's or a driver's error may quote the
+    request it sent, a header, a reply or a connection string. The dispatcher, the relay, the dispatch timers and
+    the relay's Redis listener log `errorCode(error)` (`shared/log.ts`): the error's own `code` when it is a plain
+    system, Node, undici or Prisma code, `timeout`, or `unclassified`. A job that fails is rethrown as
+    `JobFailure` with that code and no stack, because BullMQ keeps a failed job's reason and stack in Redis.
+12. **The lease also binds the worker** (same review). `beginSend` writes the mark only
+    `WHERE id AND status = 'pending' AND attempts = n AND sentAt IS NULL AND leaseUntil > now`, in one statement.
+    A worker that wakes up after its lease cannot start a send, whether or not recovery has run yet. `leaseRuns`
+    (pure) is the one test both sides use: the worker may start exactly while recovery may not act.
+
 ## Alternatives
 
 - **Hold a transaction (row lock) across the publish or the provider call**: a slow Redis or provider would hold
@@ -50,11 +60,17 @@ recovery (timer): pending and lease over ─┬─ no sentAt → requested + new
 - **Recovery by `updatedAt` age alone**: cannot tell a slow worker from a dead one, nor sent from unsent.
 - **Recovery writes `failed`**: the provider may have run the operation; the customer would be refunded for a
   line that works.
+- **Log the error message with secrets masked by pattern**: a mask misses what it was not written for; a code
+  cannot leak.
+- **Check the lease in the worker before calling `beginSend`**: a check and a write in two steps leave a gap; the
+  condition belongs in the write.
 - **A second gateway port for dispatch**: two ports to implement and keep in step for every provider.
 
 ## Consequences
 
 - Three columns, one new folder (`office/outbox/`), one worker module (`provider-dispatch.ts`).
+- A failure is diagnosed from a code and the operation's id, not from the provider's words; an adapter that needs
+  more must map its own errors to `OPERATION_ERRORS`.
 - `unknown` operations accumulate until a status check or a screen exists (next phase).
 - Published outbox rows are never deleted yet.
 - The CI `db` job runs a Redis for the queue specs.

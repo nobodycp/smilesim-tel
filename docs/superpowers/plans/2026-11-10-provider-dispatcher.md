@@ -19,6 +19,17 @@ not pushed, not deployed; migrations applied to a throwaway test database only.
   Redis for the queue part), `worker.spec.ts`; `.github/workflows/ci.yml` gives the `db` job a Redis.
 - [x] **D.9 Maps.** (slice commit 6fd4ea3) `docs/architecture/backend.md`, ADR 0018 (0017 notes the late verdict).
 
+## Corrections after the review of `afb7d1f`
+
+- [x] **D.10 Codes in logs.** `modules/shared/log.ts` (`errorCode`); `operation-dispatcher.ts`,
+  `office/outbox/outbox-relay.ts`, `src/provider-dispatch.ts` (timers, `JobFailure`), `src/worker.ts` (the relay's
+  Redis listener). Specs: `shared/log.spec.ts`; captured process output in `operation-dispatcher.db.spec.ts` and
+  `outbox-relay.db.spec.ts` (log lines, and the failed job kept in Redis); helper
+  `shared/testing/captured-output.ts`.
+- [x] **D.11 Lease binds the worker.** `provider-operation.rules.ts` (`leaseRuns`), repository `markSent`
+  (`leaseUntil > now` in the guarded write). Specs: a worker that wakes up after its lease and before recovery
+  (the provider is not called), `beginSend` against `recover` on one clock and on disagreeing clocks.
+
 ## Not started (waits for review)
 
 1. A provider status check on the gateway and its use for `unknown`.

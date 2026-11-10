@@ -1,4 +1,4 @@
-import { logger, reason } from './modules/shared/log';
+import { errorCode, logger, reason } from './modules/shared/log';
 import { env, isProduction, providerDispatchOn } from './config';
 import 'reflect-metadata';
 import IORedis from 'ioredis';
@@ -33,7 +33,7 @@ export async function run(): Promise<void> {
     dispatchPrisma = createPrismaClient();
     // The relay publishes on its own connection: it must fail fast when Redis is away, the workers must not.
     relayRedis = new IORedis(url, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
-    relayRedis.on('error', (error) => log.error(`redis (relay): ${error.message}`));
+    relayRedis.on('error', (error) => log.error(`redis (relay): ${errorCode(error)}`));
     const dispatch = buildProviderDispatch(dispatchPrisma, relayRedis, new SimulatedProviderGateway());
     processors.push({ queue: OPERATIONS_QUEUE, handle: dispatch.handle });
     stopDispatch = startProviderDispatchTimers(dispatch);
