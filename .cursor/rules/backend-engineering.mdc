@@ -59,7 +59,9 @@ fix one, lower the baseline in the same commit. Never raise a baseline number.
    400 invalid input or a rule refused · 401 no session · 403 not allowed · 404 missing or not visible ·
    409 conflict (`*_TAKEN`, `*_EXISTS`, `DUPLICATE_REQUEST`) · 429 rate limit.
    *(architecture.spec: `conflict-status`)*
-4. Every write route under `/office` carries `@Activity(...)`. *(architecture.spec: `write-without-activity`)*
+4. Every write route under `/office` carries `@Activity(...)` or `@NoActivity(why)`; the action name is one of
+   `ACTIVITY_ACTIONS`, and every name there has a label in the web (`components/names.ts` `actionName`) and a place
+   in the audit filter. *(architecture.spec: `write-without-activity`; the decorator's type; `npm run check:copy`)*
 5. The provider's answer never comes from the client. Line operations go through `ProviderGateway`.
 6. A route lives in the controller of its own domain. Paths and response shapes change only with a spec, and
    `routes.http.spec.ts` / `response-shape.spec.ts` are updated in the same commit.

@@ -17,13 +17,17 @@ import { Select } from '../../../components/ui/select';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
 
+// Every action the API logs (apps/api `ACTIVITY_ACTIONS`), in the order the menu shows them: sign-in, accounts,
+// money, numbers, tasks, catalog, providers. `check:copy` fails when the two lists differ.
 const ACTIONS = [
-  'login', 'logout', 'password', 'two_factor',
-  'user_create', 'user_freeze', 'user_restore', 'user_delete', 'access', 'enter', 'leave',
-  'fund',
-  'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim',
+  'login', 'logout', 'password', 'two_factor', 'passkey_add', 'passkey_remove', 'session_rules',
+  'user_create', 'user_freeze', 'user_restore', 'user_delete', 'user_transfer', 'user_contact', 'access', 'role_save', 'enter', 'leave',
+  'fund', 'deduct', 'ceiling',
+  'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'addon', 'transfer', 'company_switch',
   'task_take', 'task_release', 'task_note', 'task_complete', 'task_reject', 'task_cancel',
-  'provider_mode', 'company_add', 'company_sim', 'package_add', 'package_mode', 'package_price', 'package_chain', 'package_reprice', 'user_package', 'user_ops', 'user_transfer', 'sell_price',
+  'company_add', 'company_sim', 'company_image', 'package_add', 'package_mode', 'package_price', 'package_chain', 'package_details', 'package_reprice',
+  'package_renewals', 'package_switches', 'package_addon', 'user_package', 'user_ops', 'sell_price', 'offer',
+  'provider_mode', 'provider_esim_price', 'provider_payment', 'provider_credit', 'provider_matching', 'provider_statement', 'provider_reconcile', 'provider_reconcile_item',
 ] as const;
 
 const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;

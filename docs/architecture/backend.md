@@ -151,7 +151,5 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
   sessions and secrets.
 - Lists without paging (`wallets`, `directory`, `packages`, `companies`, `offers`) and the three cursor formats
   (review A7); route naming and the two `reports/:kind` generations (A8, A12) need the web app to move with them.
-- `session-rules` and `users/:login/contact` in `/auth` are not in the activity log: they need new action names and
-  their labels in the web audit screen.
 - Query-string filters are not schema-validated; an unknown filter value is still ignored.
 - Real provider adapters and the SMS/email gateways do not exist: `SimulatedProviderGateway` and `LogSender`.

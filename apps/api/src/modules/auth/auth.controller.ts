@@ -514,6 +514,7 @@ export class AuthController {
   @ApiErrorResponse(401, 403, 400)
   async setLayerSessionRules(@Param('layer') layer: string, @Body() body: SessionRulesBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.setLayerSessionRules(sessionIdOf(req), layer, body);
+    await this.recordOwner(req, { action: 'session_rules', subjectKind: 'layer', subjectRef: layer }, result);
     if (result.kind === 'error') return failWith(res, result);
     return { layers: result.layers };
   }
@@ -538,6 +539,7 @@ export class AuthController {
   @ApiErrorResponse(401, 403, 404, 400)
   async setUserContact(@Param('loginName') loginName: string, @Body() body: UserContactBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.setUserContact(sessionIdOf(req), loginName, body);
+    await this.recordOwner(req, { action: 'user_contact', subjectKind: 'account', subjectRef: loginName }, result);
     if (result.kind === 'error') return failWith(res, result);
     return result.settings;
   }
@@ -567,6 +569,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.setUserSessionRules(sessionIdOf(req), loginName, body);
+    await this.recordOwner(req, { action: 'session_rules', subjectKind: 'account', subjectRef: loginName }, result);
     if (result.kind === 'error') return failWith(res, result);
     return result.view;
   }

@@ -67,6 +67,23 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'user_package') return t.actUserPackage;
   if (action === 'user_ops') return t.actUserOps;
   if (action === 'sell_price') return t.actSellPrice;
+  if (action === 'deduct') return t.actDeduct;
+  if (action === 'ceiling') return t.actCeiling;
+  if (action === 'company_image') return t.actCompanyImage;
+  if (action === 'company_switch') return t.actCompanySwitchLog;
+  if (action === 'offer') return t.actOffer;
+  if (action === 'package_addon') return t.actPackageAddon;
+  if (action === 'package_renewals') return t.actPackageRenewals;
+  if (action === 'package_switches') return t.actPackageSwitches;
+  if (action === 'provider_credit') return t.actProviderCredit;
+  if (action === 'provider_matching') return t.actProviderMatching;
+  if (action === 'provider_payment') return t.actProviderPayment;
+  if (action === 'provider_reconcile') return t.actProviderReconcile;
+  if (action === 'provider_reconcile_item') return t.actProviderReconcileItem;
+  if (action === 'provider_statement') return t.actProviderStatement;
+  if (action === 'role_save') return t.actRoleSave;
+  if (action === 'session_rules') return t.actSessionRules;
+  if (action === 'user_contact') return t.actUserContact;
   return action;
 }
 

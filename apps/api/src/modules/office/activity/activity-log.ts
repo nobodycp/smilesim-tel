@@ -65,6 +65,8 @@ export const ACTIVITY_ACTIONS = [
   'refresh',
   'role_save',
   'transfer',
+  'session_rules',
+  'user_contact',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];

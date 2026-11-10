@@ -66,6 +66,14 @@ function sourceFiles(dir, found = []) {
   return found;
 }
 
+// ACTIVITY_ACTIONS in apps/api: every name a route logs under.
+function apiActions() {
+  const text = readFileSync(join(web, '..', 'api', 'src', 'modules', 'office', 'activity', 'activity-log.ts'), 'utf8');
+  const block = /export const ACTIVITY_ACTIONS = \[([\s\S]*?)\] as const;/.exec(text);
+  if (!block) throw new Error('ACTIVITY_ACTIONS not found in apps/api activity-log.ts');
+  return [...block[1].matchAll(/'([a-z_]+)'/g)].map((match) => match[1]);
+}
+
 const placeholders = (text) => [...String(text).matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort().join(',');
 
 const copies = Object.fromEntries(LANGUAGES.map((lang) => [lang, load(join(web, 'lib', 'copy', `${lang}.ts`), lang)]));
@@ -115,9 +123,25 @@ for (const code of CLIENT_CODES) {
   if (!api.includes(`'${code}'`)) fail(`client code ${code} is not raised in lib/http.ts`);
 }
 
+// Every action the API logs has a name in the web (`actionName`) and a place in the audit filter, and the filter
+// lists nothing the API does not log (backend-engineering.mdc 4.4).
+const actions = apiActions();
+const namesSource = readFileSync(join(web, 'components', 'names.ts'), 'utf8');
+const named = new Set([...namesSource.matchAll(/action === '([a-z_]+)'/g)].map((match) => match[1]));
+const auditSource = readFileSync(join(web, 'features', 'audit', 'screens', 'audit-screen.tsx'), 'utf8');
+const filterBlock = /const ACTIONS = \[([\s\S]*?)\] as const;/.exec(auditSource);
+const filtered = new Set(filterBlock ? [...filterBlock[1].matchAll(/'([a-z_]+)'/g)].map((match) => match[1]) : []);
+for (const action of actions) {
+  if (!named.has(action)) fail(`activity action ${action} has no name in components/names.ts actionName()`);
+  if (!filtered.has(action)) fail(`activity action ${action} is missing from the audit filter (audit-screen.tsx ACTIONS)`);
+}
+for (const action of filtered) {
+  if (!actions.includes(action)) fail(`the audit filter lists ${action}, which the API does not log`);
+}
+
 if (problems.length > 0) {
   console.error(`check-copy: ${problems.length} problem${problems.length === 1 ? '' : 's'}`);
   for (const problem of problems) console.error(`  - ${problem}`);
   process.exit(1);
 }
-console.log(`check-copy: ok (${flat.ar.size} keys in ${LANGUAGES.length} languages, ${codes.size} API codes, ${CLIENT_CODES.length} client codes)`);
+console.log(`check-copy: ok (${flat.ar.size} keys in ${LANGUAGES.length} languages, ${codes.size} API codes, ${actions.length} logged actions, ${CLIENT_CODES.length} client codes)`);
