@@ -76,12 +76,12 @@ mocks, both maps.
   `reports/:kind/export` are gone, with `ReportsService`'s dependency on the tasks and lines services. The web's
   `/reports/tasks` and `/reports/numbers` pages stay and read `/office/tasks` and `/office/lines`. No export was
   added for `providers` and `operations`: they had none, and a new export is a feature, not a rename.
-- [ ] **L.18** Partly (COMMIT): `GET /office/lines?loginName=` replaces `?account=`. **Not done, owner's call:** the
+- [ ] **L.18** Partly (892c1ca): `GET /office/lines?loginName=` replaces `?account=`. **Not done, owner's call:** the
   body fields `posLogin` and `parentLogin`. The responses use the same two names (`LineRow.posLogin`,
   `UserRow.parentLogin`, about 150 uses in the API and the web), so renaming the request side alone would make a
   request and its answer disagree, which is the trap this slice was meant to remove. Either both sides are renamed
   (`posLoginName`, `parentLoginName`: a wide rename with `response-shape.spec.ts`) or neither.
-- [x] **L.19** (COMMIT) Not found: an account, a number or a task that is not there or is outside the caller's tree
+- [x] **L.19** (892c1ca) Not found: an account, a number or a task that is not there or is outside the caller's tree
   answers `404 NOT_FOUND` (`visibleAccount`, `visibleLine`, password reset, fund, deduct, ceiling, terms and
   line-price scopes, task card and notes); `enter`, `freeze`, `restore` and `delete` answer 404 for a login that is
   not there. Grants that do not depend on the target are judged first (`freeze`, `delete`), so the permission
