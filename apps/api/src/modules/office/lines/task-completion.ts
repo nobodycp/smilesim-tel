@@ -1,4 +1,4 @@
-import { esimCodeOrFail } from './esim-code';
+import { esimCodeOrFail, storableEsimCode } from './esim-code';
 import { LinesRepository } from './lines.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { UnitOfWork } from '../kernel/unit-of-work';
@@ -142,7 +142,10 @@ export class TaskCompletion {
     // The code the task has carried since it opened is about to be put on the line as it is stored. One that does
     // not open is refused here, before anything is written or charged; a code given now takes its place.
     if (handsCode && !givenQr) esimCodeOrFail(task.esimQr, `task ${task.id}`);
-    const handedQr = handsCode ? givenQr ?? task.esimQr : null;
+    // What goes on the line is sealed here, before the transaction (S.5b): a code given now is sealed; the task's
+    // stored one is handed on as it is when it is sealed already (never sealed twice), and sealed now when it was
+    // stored before sealing.
+    const handedQr = handsCode ? storableEsimCode(givenQr ?? task.esimQr, `task ${task.id}`) : null;
     return { handed, handedQr };
   }
 

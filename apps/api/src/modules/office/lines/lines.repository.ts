@@ -1,3 +1,4 @@
+import { assertStoredSealed } from './esim-code';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { UnitOfWork, type Db } from '../kernel/unit-of-work';
@@ -190,6 +191,7 @@ export class LinesRepository {
   // Writes on a number. Its status is never written here (line-state.ts).
 
   createLine(db: Db, data: Prisma.LineUncheckedCreateInput) {
+    assertStoredSealed(data.esimQr);
     return db.line.create({ data });
   }
 
@@ -209,6 +211,7 @@ export class LinesRepository {
 
   /** Puts another SIM on a number. */
   setLineSim(db: Db, id: string, sim: { iccid: string; esim: boolean; esimQr: string | null }) {
+    assertStoredSealed(sim.esimQr);
     return db.line.update({ where: { id }, data: { iccid: sim.iccid, esim: sim.esim, esimQr: sim.esimQr } });
   }
 }

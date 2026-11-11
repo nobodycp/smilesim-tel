@@ -1,3 +1,5 @@
+import { open } from '../../shared/secret-box';
+import { useSealingKey } from '../../shared/testing/sealing-key';
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from '../testing/test-hash';
@@ -170,6 +172,10 @@ async function office() {
   return { service, gate, wallet, entries, tasks, otherLines, company, provider, pkg, line, work, raced };
 }
 
+// A code is stored sealed (S.5b): the specs below read what is stored through the box.
+useSealingKey();
+const opened = (stored: unknown) => (typeof stored === 'string' ? open(stored) : stored);
+
 describe('eSIM request', () => {
   it('opens a task priced from the company when neither provider nor package say otherwise', async () => {
     const { service, gate, tasks, wallet } = await office();
@@ -216,7 +222,8 @@ describe('eSIM request', () => {
     expect(wallet.balance).toBe(10000);
 
     await service.completeTask(gate, String(task.id), { iccid: '8997202000000000002', qr: QR, note: 'صدرت' });
-    expect(line).toMatchObject({ iccid: '8997202000000000002', esim: true, esimQr: QR });
+    expect(line).toMatchObject({ iccid: '8997202000000000002', esim: true });
+    expect([String(line.esimQr).startsWith('v1:'), opened(line.esimQr)]).toEqual([true, QR]);
     expect(task).toMatchObject({ status: 'done', iccid: '8997202000000000002' });
     expect(wallet.balance).toBe(10000 - 400);
     // The fee is the provider's cost of the eSIM, so provider operations can show it.
@@ -240,7 +247,8 @@ describe('SIM swap', () => {
   it('marks an eSIM the branch already holds, with its QR, for free', async () => {
     const { service, gate, wallet, line } = await office();
     await service.swapSim(gate, 'ln1', { iccid: '8997202000000000004', esim: true, qr: QR, outcome: 'success' });
-    expect(line).toMatchObject({ iccid: '8997202000000000004', esim: true, esimQr: QR });
+    expect(line).toMatchObject({ iccid: '8997202000000000004', esim: true });
+    expect([String(line.esimQr).startsWith('v1:'), opened(line.esimQr)]).toEqual([true, QR]);
     expect(wallet.balance).toBe(10000);
   });
 
@@ -313,7 +321,8 @@ describe('immediate eSIM activation', () => {
     expect(issued?.msisdn).toMatch(/^05\d{8}$/);
     expect(issued?.iccid).toMatch(/^8997202\d{12}$/);
     expect(issued?.esimQr).toMatch(/^data:image\/png;base64,/);
-    expect(otherLines[0]).toMatchObject({ esim: true, esimQr: issued?.esimQr, iccid: issued?.iccid, status: 'active' });
+    expect(otherLines[0]).toMatchObject({ esim: true, iccid: issued?.iccid, status: 'active' });
+    expect([String(otherLines[0].esimQr).startsWith('v1:'), opened(otherLines[0].esimQr)]).toEqual([true, issued?.esimQr]);
     // Package price plus the company eSIM price, in one debit.
     expect(wallet.balance).toBe(10000 - 3000 - 400);
     // The entry carries the provider's cost: the package branch cost plus the eSIM fee.

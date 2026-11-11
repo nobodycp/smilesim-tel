@@ -5,7 +5,7 @@ with the final review (one operation per task, cancellation, how a provider is s
 approval, lock order). Section 10 lists what the review changed and what still conflicts with text elsewhere.
 The direction is agreed: the task carries the money, the operation carries the provider's verdict, one settlement.
 The design is accepted (ADR 0019). **Slices S.1 (the schema), S.2 (the reservation, D5), S.3 (the pure rules of D3, D6, D15), S.4 (`capture`,
-D10, on manual completion) and S.5a (D17: codes read clear or sealed) are built**;
+D10, on manual completion) S.5a (D17: codes read clear or sealed) and S.5b (D17: codes sealed on write, a backfill for stored ones) are built**;
 everything else here is still design, and the plan says which slices exist. A1 of the audit is closed by S.2; A2 by S.4 for every task that carries a
 fixed debit, and still open for a switch (the plan's S.4 lists it). No code, schema, route or screen changes with
 this document. It says how `ProviderOperation` and the dispatcher (ADR 0017, 0018) join the activation's money,

@@ -1018,6 +1018,7 @@ export const en: Copy = {
     QR_INVALID: 'The QR picture is not valid',
     IMAGE_TOO_LARGE: 'The picture is too large (700 KB at most)',
     ESIM_PACKAGE_OFF: 'This package is not offered as an eSIM',
+    ESIM_CODE_UNSEALABLE: 'The eSIM code could not be stored safely, and nothing was done. Contact support',
     ESIM_CODE_UNREADABLE: 'The stored eSIM code could not be read. Contact support',
     COMPANY_EXISTS: 'This company was already added',
     PACKAGE_EXISTS: 'This package was already added',

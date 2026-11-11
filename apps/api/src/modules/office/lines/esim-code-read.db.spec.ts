@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { OfficeFailure } from '../../shared/office-failure';
-import { seal } from '../../shared/secret-box';
+import { open, seal } from '../../shared/secret-box';
 import { capturedOutput } from '../../shared/testing/captured-output';
 import type { NoticeService } from '../notices/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
@@ -218,12 +218,14 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     const sell = () => service.activate(pos, { packageCode: `esim-${tag}`, posLoginName: `esim-${tag}-pos`, esim: true, outcome: 'success' }) as Promise<{ applied: boolean; debited: boolean; line: { id: string; esimQr: string | null } }>;
     const entriesOf = (lineId: string) => prisma.walletEntry.findMany({ where: { lineId, kind: 'activate' } });
 
-    // As things are written today: the code is stored as issued, and the answer is that code.
+    // The code is stored sealed, and the answer is the code itself.
     const start = await wallet();
     const plain = await sell();
     expect(plain).toMatchObject({ applied: true, debited: true });
     expect(plain.line.esimQr).toMatch(/^data:image\//);
-    expect((await prisma.line.findUniqueOrThrow({ where: { id: plain.line.id } })).esimQr).toBe(plain.line.esimQr);
+    // Stored sealed (S.5b), and what is stored opens to the code that was answered.
+    const kept = (await prisma.line.findUniqueOrThrow({ where: { id: plain.line.id } })).esimQr ?? '';
+    expect([kept.startsWith('v1:'), open(kept)]).toEqual([true, plain.line.esimQr]);
     const price = start - (await wallet());
     expect(price).toBeGreaterThan(0);
     expect(await entriesOf(plain.line.id)).toHaveLength(1);
@@ -302,6 +304,12 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     const refusalOf = async (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof OfficeFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
     const taskAs = (gate: { sessionId: string }, id: string) => answered(async () => (await service.task(gate, id)).task.esimQr);
     const lineCode = async (id: string) => (await prisma.line.findUniqueOrThrow({ where: { id } })).esimQr;
+    /** The line's stored code, which must be sealed (S.5b), opened. */
+    const storedOpens = async (id: string) => {
+      const kept = (await lineCode(id)) ?? '';
+      expect(kept.startsWith('v1:')).toBe(true);
+      return open(kept);
+    };
 
     it('a SIM change: its detail opens for the same readers only, shows the new code and never the old one, and completing it repairs the line with no money moved', async () => {
       const lineId = await damagedLine();
@@ -328,7 +336,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       expect(await lineCode(lineId)).toBe(damagedQr);
 
       expect(await service.completeTask(owner, taskId, {})).toEqual({ ok: true });
-      expect(await lineCode(lineId)).toBe(NEW_QR);
+      expect(await storedOpens(lineId)).toBe(NEW_QR);
       expect(await detailOf(lineId)).toBe(NEW_QR);
       expect(await taskAs(owner, taskId)).toBe(NEW_QR);
       const after = await money(lineId);
@@ -357,7 +365,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       expect(await service.completeTask(owner, taskId, { iccid: serial(), qr: NEW_QR })).toEqual({ ok: true });
       const after = await money(lineId);
       expect({ balance: after.balance, held: after.held, moved: after.moved }).toEqual({ balance: before.balance - price, held: before.held, moved: [-price] });
-      expect(await lineCode(lineId)).toBe(NEW_QR);
+      expect(await storedOpens(lineId)).toBe(NEW_QR);
       expect(await detailOf(lineId)).toBe(NEW_QR);
       expect(await refusalOf(service.completeTask(owner, taskId, { iccid: serial(), qr: NEW_QR }))).toBe('400 INVALID');
       expect(await money(lineId)).toEqual(after);
@@ -392,7 +400,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       await capturedOutput(async () => {
         expect(await service.completeTask(owner, onDamaged, { qr: NEW_QR })).toEqual({ ok: true });
       });
-      expect(await lineCode(lineId)).toBe(NEW_QR);
+      expect(await storedOpens(lineId)).toBe(NEW_QR);
       expect((await money(lineId)).moved).toEqual([]);
     });
 

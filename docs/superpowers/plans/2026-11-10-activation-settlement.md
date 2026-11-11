@@ -1,7 +1,7 @@
 # Activation through a provider — plan
 
 Spec: `docs/superpowers/specs/2026-11-10-activation-settlement.md` (decisions D1–D19, transactions T1–T11, specs
-1–29). ADR 0019 (accepted). **S.1–S.4 and S.5a are built; each later slice starts on the owner's word.** Paths under `apps/api/`
+1–29). ADR 0019 (accepted). **S.1–S.4, S.5a and S.5b are built; each later slice starts on the owner's word.** Paths under `apps/api/`
 unless said. Each slice is one commit, leaves every existing spec green on CI (including the PostgreSQL and Redis
 job), and changes nothing a user can see unless it says **Visible**.
 
@@ -198,7 +198,35 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     rejected task carried is not shown beside the line's); a task with no line answers its own.
     **For S.5b:** seal before the transaction and check that the sealed value opens to the code, so a sealing
     fault refuses the sale before any money moves.
-  - **S.5b Seal on write, then backfill.** The same repositories seal on write. `src/seal-secrets.ts` gains the
+  - [x] **S.5b Seal on write, then backfill (built; the backfill has been run on no real data).**
+    **Where a code is written (inventory, before the change).** Three repository writes, six callers:
+    | Stored by | Reached from | The code comes from |
+    |---|---|---|
+    | `LinesRepository.createLine` | `LinesService.activate` (made at once) | issued here (`renderEsimQr`) after the provider's answer |
+    | `LinesRepository.createLine` | `TaskCompletion.activate` | the handler's attachment at completion, else the task's stored code |
+    | `LinesRepository.setLineSim` | `LinesService.swapSim` (made at once) | the request (`readQr`) |
+    | `LinesRepository.setLineSim` | `TaskCompletion.swapSim` | the handler's attachment, else the task's stored code |
+    | `LinesRepository.setLineSim` | `TaskCompletion.issueEsim` | the handler's attachment (required) |
+    | `TasksRepository.insertTask` | `TasksService.openTask` from `LinesService.swapSim` (waits for the branch) | the request |
+    Nothing else writes `Line.esimQr` or `OfficeTask.esimQr`; `ProviderOperation.resultEsimCode` still has no
+    writer (S.8) and its CHECK already refuses a value that is not sealed.
+    **As built.** `lines/esim-code.ts` `storableEsimCode`: seals a code and opens the sealed value again, and
+    answers it only when it reads back as the code; a value that is already sealed (a task's code handed to its
+    line) is kept as it is when it opens and refused (`ESIM_CODE_UNREADABLE`) when it does not; with no valid
+    `SECRETS_KEY`, or a sealing that does not read back, the request is refused with `500 ESIM_CODE_UNSEALABLE`.
+    It is called by the services **before the transaction**: `swapSim` before the provider is asked,
+    `TaskCompletion.handedBack` before the task is claimed, `activate` after the code is issued and before the
+    line and the charge; `activate` also checks the key **before the provider is asked**
+    (`assertCanSealEsimCode`), since its code exists only after the answer. The three repository writes call
+    `assertStoredSealed` and throw on a code that is not sealed, so a path that forgets to seal rolls its
+    transaction back instead of storing the code as written. The answer of an activation made at once is still
+    the code issued in memory. Answers and screens are unchanged; `scripts/dev-local.sh` gives the local copy a
+    key of its own, because without one an eSIM is now refused.
+    *Specs (PostgreSQL):* `lines/esim-code-write.db.spec.ts` (each of the paths above; a sealed task code
+    handed on byte for byte; a clear one sealed at completion; no key, a short key, a key that is not one, and a
+    sealing that fails in three ways: nothing stored, no line, no charge, no hold; an unsealed code at the
+    repository rolls back; old and new codes read side by side; nothing of a code in the output).
+    **The backfill.** `src/seal-secrets.ts` (the command, with `--dry-run`) and `src/seal-esim-codes.ts`: `src/seal-secrets.ts` gains the
     two columns:
     - **safe:** it seals only values that are not sealed already (`isSealed`), never opens or rewrites one that
       is, and refuses to start without a valid `SECRETS_KEY`;
@@ -209,10 +237,16 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     - **checked:** it ends by counting clear values left (0 expected) and a `--dry-run` prints the counts and
       changes nothing.
     It is run by the owner on each deployment (as for authenticator secrets), never at boot. Only after it
-    reports 0 may a later slice add a CHECK that `esimQr` is sealed.
-    *Specs (PostgreSQL):* a run seals every clear value and leaves sealed ones byte-identical; a second run
-    changes nothing; a run interrupted half-way and run again ends the same; a row updated during the run is not
-    overwritten; without `SECRETS_KEY` it stops before writing.
+    reports 0 may a later slice add a CHECK that `esimQr` is sealed. The writes are raw, so nothing but the code
+    changes (a task's `updatedAt` stays). Exit code 0 done, 1 codes still clear (run it again), 2 could not run.
+    `--dry-run` counts the eSIM codes and changes nothing (it does not count authenticator secrets).
+    **Order on a deployment:** set `SECRETS_KEY` (already required in production) → deploy this code →
+    `npm run seal-secrets --workspace api -- --dry-run` → `npm run seal-secrets --workspace api` → again until it
+    reports 0.
+    *Specs (PostgreSQL):* `src/seal-esim-codes.db.spec.ts`: a run seals every clear value and leaves sealed ones
+    (one of them unreadable) byte-identical; a second run changes nothing; a run interrupted half-way and run
+    again ends the same; a row updated during the run is not overwritten and is sealed by the next run; a dry
+    run writes nothing; without a valid `SECRETS_KEY` it stops before reading; its lines carry counts only.
   - **S.5c The response (the only step users can see), web first.**
     1. **Web, deployed first:** every screen found above reads the code from the **detail** response (or asks for
        the detail when it needs the code) and shows nothing, not an error, when a list row has no code. This works

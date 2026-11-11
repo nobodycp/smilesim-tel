@@ -1,3 +1,4 @@
+import { useSealingKey } from '../../shared/testing/sealing-key';
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
@@ -21,6 +22,7 @@ const RENEWAL = 3200;
 const START = 1_000_000;
 
 suite('capturing a task\'s hold (PostgreSQL)', () => {
+  useSealingKey();
   jest.setTimeout(90_000);
   const previousUrl = process.env.DATABASE_URL;
   const tag = randomUUID().slice(0, 8);

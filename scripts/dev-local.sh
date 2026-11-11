@@ -10,6 +10,9 @@ export DATABASE_URL="${DATABASE_URL:-postgresql://smilesim:smilesim@127.0.0.1:55
 export REDIS_URL="${REDIS_URL:-redis://127.0.0.1:56379}"
 export WEB_ORIGIN="${WEB_ORIGIN:-http://localhost:3000}"
 export COOKIE_SECURE=false
+# eSIM codes and authenticator secrets are stored sealed, and an eSIM is refused when there is no key to seal its
+# code with. This key is for this machine's own database only; a deployment sets its own SECRETS_KEY.
+export SECRETS_KEY="${SECRETS_KEY:-c21pbGVzaW0tbG9jYWwtZGV2LWtleS0wMDAwMDAwMDA=}"
 export TRIAL_SEED="${TRIAL_SEED:-true}"
 export TRIAL_SEED_ALLOW_PRODUCTION="${TRIAL_SEED_ALLOW_PRODUCTION:-true}"
 

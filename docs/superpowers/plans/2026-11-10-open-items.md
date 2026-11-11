@@ -7,7 +7,7 @@ or replaced by a later design. They stay in git history.
 ## Waiting for an owner decision (`docs/project-plan.md` «مفتوح»)
 
 - [ ] **Activation through a provider: the owner's word for each slice after S.1**
-  (plan `2026-11-10-activation-settlement.md`, ADR 0019 accepted). S.1–S.4 and S.5a are built; S.5b (seal on write, backfill) is next. S.4 left two
+  (plan `2026-11-10-activation-settlement.md`, ADR 0019 accepted). S.1–S.4, S.5a and S.5b are built (the backfill `npm run seal-secrets --workspace api` has been run on no deployment yet); S.5c (the code leaves list answers, web first) is next. S.4 left two
   points for the owner's separate review: a plain activation stores no provider cost on its entry, and a renewal
   task no `unitPrice`. (A switch is re-quoted at completion on purpose and is now settled against its hold.) Before deploying S.2 anywhere: `npm run reservation-conflicts --workspace api`.
 - [ ] **Branch direct-sale price floor** when two main agents' prices differ (the 40 / 25 / 30 example,

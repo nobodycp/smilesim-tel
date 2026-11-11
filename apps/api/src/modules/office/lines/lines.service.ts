@@ -1,3 +1,4 @@
+import { assertCanSealEsimCode, storableEsimCode } from './esim-code';
 import { LinesRepository } from './lines.repository';
 import { LineAccess } from './line-access';
 import { PriceLadder } from '../terms/price-ladder';
@@ -97,6 +98,9 @@ export class LinesService {
     // Providers that take the serial from the seller keep it; the line is still an eSIM and still pays the fee.
     const generatesEsim = inputs === 'generated' && esim;
     const storedIccid = generatesEsim ? null : iccid || null;
+    // The eSIM's code exists only after the provider has answered, so the ability to seal it is checked first:
+    // a sale is never sent to the provider when its code could not be stored (ADR 0019, D17; S.5b).
+    if (generatesEsim) assertCanSealEsimCode();
     const route = await this.route('activate', pkg, runsNow(pkg, 'activate'), input.outcome, { msisdn, iccid: storedIccid });
     if (!route.now) {
       const task = await this.tasks.openTask({
@@ -108,6 +112,8 @@ export class LinesService {
     // Immediate activation: the provider hands the eSIM profile back now, so the line carries it from the start.
     const issuedIccid = generatesEsim ? issueSerial(sim) : storedIccid;
     const issuedQr = generatesEsim && issuedIccid ? await renderEsimQr(msisdn, issuedIccid) : null;
+    // Sealed, and read back, before the transaction: a fault here refuses the sale before any money moves.
+    const storedQr = storableEsimCode(issuedQr, 'a new line');
     const pkgTerms = packageTermsOf(pkg);
     // The line carries the renewal price its point of sale pays today, not the layer column.
     const terms = await this.pricing.stampFor(captureTerms(pkgTerms, pkg.renewals.map((renewal) => packageTermsOf(renewal.target))), pos.id, posPath);
@@ -115,7 +121,7 @@ export class LinesService {
       // The serial and the number, under their locks: not on a line, and not reserved by an open activation task.
       await assertClaimFree(tx, { iccid: issuedIccid, msisdn });
       const line = await this.repo
-        .createLine(tx, { msisdn, iccid: issuedIccid, esim, esimQr: issuedQr, status: 'active', packageId: pkg.id, posId: pos.id, terms: terms as unknown as Prisma.InputJsonValue, endsAt: periodEnd(new Date(), pkg.months) })
+        .createLine(tx, { msisdn, iccid: issuedIccid, esim, esimQr: storedQr, status: 'active', packageId: pkg.id, posId: pos.id, terms: terms as unknown as Prisma.InputJsonValue, endsAt: periodEnd(new Date(), pkg.months) })
         .catch(numberTaken);
       await this.ledger.move(tx, pos.id, posDelta, actor.operatorId, 'activate', '', {
         msisdn,
@@ -347,6 +353,8 @@ export class LinesService {
     const qr = esim ? readQr(input.qr) ?? null : null;
     if (iccid.length < 8) fail(400, 'INVALID');
     const line = await this.lineAccess.visibleLine(actor, lineId);
+    // Sealed before the provider is asked and before the task or the line is written (ADR 0019, D17; S.5b).
+    const storedQr = storableEsimCode(qr, `line ${line.id}`);
     if (line.opsLocked) fail(400, 'SWITCH_PACKAGE_FIRST');
     assertRunnable(line.package, 'sim', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
@@ -355,11 +363,11 @@ export class LinesService {
     const refusal = simRefusal(rules, iccid);
     if (refusal) fail(400, refusal);
     const route = await this.route('sim', line.package, runsNow(line.package, 'sim'), input.outcome, { msisdn: line.msisdn, iccid });
-    if (!route.now) return this.defer(actor, line, { action: 'sim', posDelta: 0, msisdn: line.msisdn, iccid, esim, esimQr: qr, note: route.note });
+    if (!route.now) return this.defer(actor, line, { action: 'sim', posDelta: 0, msisdn: line.msisdn, iccid, esim, esimQr: storedQr, note: route.note });
     await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
       await assertSimFree(tx, iccid, line.id);
-      await this.repo.setLineSim(tx, line.id, { iccid, esim, esimQr: qr });
+      await this.repo.setLineSim(tx, line.id, { iccid, esim, esimQr: storedQr });
       await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'sim', saleOf(line));
     });
     return { applied: true, debited: false };

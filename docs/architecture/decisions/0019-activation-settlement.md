@@ -3,8 +3,9 @@
 Date: 2026-11-10. Status: **accepted** (the owner approved the design and ordered slice S.1 the same day, task
 05). The design is fixed; it is built slice by slice, and the plan says which slices exist: **S.1 (the schema, read
 by nothing yet), S.2 (the reservation of a serial and a number, which changes the manual path) S.3 (the pure
-rules, called by nothing yet), S.4 (`capture`, used by manual completion) and S.5a (an eSIM code is read
-whether stored clear or sealed; nothing is sealed yet) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
+rules, called by nothing yet), S.4 (`capture`, used by manual completion) S.5a (an eSIM code is read
+whether stored clear or sealed) and S.5b (every code is sealed when it is written; a backfill for the stored
+ones, run on no real data yet) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
 `docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
 
 ## Context
@@ -199,6 +200,25 @@ come; the money must be safe in every state of the operation.
     seals before the transaction and checks there that the sealed value opens to the code, so a sealing fault
     refuses the sale before any money moves.
 - Nothing is sealed on write and no stored value changed. The answers keep their shape when the code is readable.
+
+## As built in S.5b (sealing on write, and the backfill)
+
+- A code is sealed by the service before the transaction that stores it, and the sealed value is opened again and
+  compared before it is used (`lines/esim-code.ts` `storableEsimCode`). No valid key, or a sealing that does not
+  read back: `500 ESIM_CODE_UNSEALABLE`, with nothing written and no money moved. The code is never stored as
+  written.
+- An activation made at once has its code only after the provider answered, so it checks the key before asking
+  the provider; a SIM change seals before asking; a completion seals before the task is claimed.
+- A task's sealed code is handed to its line as the same stored value: it is opened to check it, never sealed a
+  second time. One that does not open is refused, not handed on and not replaced.
+- The repositories that write `Line.esimQr` and `OfficeTask.esimQr` refuse a code that is not sealed
+  (`assertStoredSealed`): a guard for paths not yet written.
+- Stored codes are sealed by `src/seal-secrets.ts` (`src/seal-esim-codes.ts`): by hand, in batches by primary
+  key, one transaction a batch, each write guarded by the value that was read, restartable, with `--dry-run`. It
+  never opens or rewrites a sealed value. Until it has reported 0 on a deployment, clear and sealed codes sit
+  side by side and both are read (S.5a).
+- A deployment must have `SECRETS_KEY` before this code: without it eSIM sales, eSIM SIM changes and eSIM
+  completions are refused. Production already refuses to start without it (ADR 0016).
 
 ## Consequences
 

@@ -1,3 +1,4 @@
+import { assertStoredSealed } from '../lines/esim-code';
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -115,6 +116,7 @@ export class TasksRepository {
    * or null when the database refused it.
    */
   async insertTask(db: Db, data: Omit<Prisma.OfficeTaskCreateManyInput, 'id'>) {
+    assertStoredSealed(data.esimQr);
     const id = randomUUID();
     const made = await db.officeTask.createMany({ data: [{ id, ...data }], skipDuplicates: true });
     return made.count === 1 ? db.officeTask.findUnique({ where: { id } }) : null;

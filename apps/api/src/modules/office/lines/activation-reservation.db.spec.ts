@@ -1,3 +1,4 @@
+import { useSealingKey } from '../../shared/testing/sealing-key';
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
@@ -16,6 +17,7 @@ const suite = url ? describe : describe.skip;
 const PRICE = 3500;
 
 suite('activation reservations (PostgreSQL)', () => {
+  useSealingKey();
   jest.setTimeout(60_000);
   const previousUrl = process.env.DATABASE_URL;
   const tag = randomUUID().slice(0, 8);
