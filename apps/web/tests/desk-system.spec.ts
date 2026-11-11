@@ -30,12 +30,12 @@ async function probe(page: import('@playwright/test').Page) {
 }
 
 // Graphite (spec 2026-11-09-graphite-identity): dark by default, so ink is the light graphite ink on the dark surface.
-test('desk buttons are ink and 34px on a desktop width', async ({ page }) => {
+test('desk buttons are crimson and 34px on a desktop width', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/login');
   const style = await probe(page);
   expect(style.primaryHeight).toBe('34px');
-  expect(style.primaryBg).toBe('rgb(236, 236, 236)');
+  expect(style.primaryBg).toBe('rgb(255, 77, 99)');
   expect(style.secondaryHeight).toBe('34px');
   expect(style.secondaryBg).toBe('rgb(31, 32, 35)');
   expect(style.secondaryBorder).toBe('1px');

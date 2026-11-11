@@ -35,7 +35,7 @@ test('the owner sets a layer’s sessions and idle time on that layer\'s role', 
   await page.getByRole('button', { name: /إجراءات نقطة بيع/ }).click();
   await page.getByRole('menuitem').first().click();
   const dialog = page.getByRole('dialog');
-  const group = dialog.getByRole('group', { name: 'الجلسات حسب الطبقة' });
+  const group = dialog.getByRole('region', { name: 'الجلسات حسب الطبقة' });
   // Number fields, not lists (owner 2026-11-11): a count and hours; empty follows the default, shown as placeholder.
   await expect(group.getByLabel('تنتهي بعد عدم نشاط (ساعات)')).toHaveAttribute('placeholder', 'الافتراضي (6 ساعات)');
   await group.getByLabel('الجلسات المسموحة').fill('1');
@@ -93,11 +93,9 @@ test('the owner edits one account from its page\'s «إعدادات الحساب
   await expect(pane.getByLabel('البريد')).toHaveValue('shop@example.com');
   await expect(pane.getByText('غير مفعّل')).toBeVisible();
 
-  // Two-step: a three-way choice; the method list shows only while «إلزامي» is chosen.
+  // Two-step: a three-way choice (the method list is hidden while only the app is offered).
   await expect(pane.getByText('المطبّق الآن: اختياري')).toBeVisible();
-  await expect(pane.getByLabel('الطريقة')).toHaveCount(0);
   await pane.getByRole('radio', { name: 'إلزامي' }).click();
-  await expect(pane.getByLabel('الطريقة')).toBeVisible();
 
   await expect(pane.getByLabel('الجلسات المسموحة')).toHaveAttribute('placeholder', 'حسب الطبقة (3)');
   await expect(pane.getByText('المطبّق الآن: الجلسات المسموحة 3 · 6 ساعات')).toBeVisible();

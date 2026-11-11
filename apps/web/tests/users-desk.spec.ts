@@ -65,7 +65,7 @@ test('the users table is paged by the server: filters go in the request, the nex
   await expect.poll(() => calls.includes('GET /directory?mine=1')).toBe(true);
 });
 
-test('a server-paged table has plain headers, since sorting one page would mislead; a full table still sorts', async ({ page }) => {
+test('the users table and the roles table both sort from their headers', async ({ page }) => {
   const user = (loginName: string, balance: number) => ({
     loginName, nickname: loginName, layer: 'pos', roleName: '', parentLoginName: null, balance, ceiling: 0, frozen: false, self: false,
     directChild: true, canEnter: false, canFreeze: false, canDelete: false,
@@ -76,10 +76,9 @@ test('a server-paged table has plain headers, since sorting one page would misle
   });
   await page.goto('http://admin.localhost:3910/users');
   await expect(page.locator('.data tbody tr')).toHaveCount(2);
-  await expect(page.locator('.data thead .col-sort')).toHaveCount(0);
-  await expect(page.locator('.data thead th[aria-sort]')).toHaveCount(0);
+  // The users list sorts on the server (cursor lists), so its headers sort too.
+  await expect(page.locator('.data thead .col-sort').first()).toBeVisible();
 
-  // The roles list is read whole, so its headers keep sorting.
   await page.goto('http://admin.localhost:3910/roles');
   await expect(page.locator('.data tbody tr')).toHaveCount(2);
   await expect(page.locator('.data thead .col-sort').first()).toBeVisible();

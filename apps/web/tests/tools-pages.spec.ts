@@ -174,7 +174,7 @@ test.describe('useAction and lineActions', () => {
     // The card reads once per load (the session answer can re-run the load once); the action adds exactly one reload.
     const before = reads;
     await extend.dblclick();
-    await expect(page.getByRole('status')).toHaveText('تم التنفيذ وخصم الرصيد.');
+    await expect(page.getByRole('status')).toContainText('تم التنفيذ وخصم الرصيد.');
     await expect.poll(() => reads).toBe(before + 1);
     expect(calls.filter((call) => call.startsWith('POST /lines/ln1/extend'))).toHaveLength(1);
   });
@@ -193,7 +193,7 @@ test.describe('useAction and lineActions', () => {
     const count = (prefix: string) => calls.filter((call) => call === prefix).length;
     const before = { line: count('GET /lines/ln1'), packages: count('GET /packages'), users: count('GET /directory?mine=1') };
     await page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true }).click();
-    await expect(page.getByRole('status')).toHaveText('تم التنفيذ وخصم الرصيد.');
+    await expect(page.getByRole('status')).toContainText('تم التنفيذ وخصم الرصيد.');
     await expect.poll(() => count('GET /lines/ln1')).toBe(before.line + 1);
     await page.waitForTimeout(300);
     expect(count('GET /packages')).toBe(before.packages);

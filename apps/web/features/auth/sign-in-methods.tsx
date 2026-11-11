@@ -34,7 +34,7 @@ export function TwoFactorPane({ methods, reload, setError, setNote }: Notify & {
   const { t, apiText } = usePrefs();
   const [picked, setMethod] = useState<TwoFactorMethod>('app');
   // A layer or account held to one method offers only that one (spec 2026-11-11-two-factor-policy).
-  const fixedOne = methods?.allowedMethods.length === 1;
+  const fixedOne = methods?.allowedMethods?.length === 1;
   const allowed = shownAmong(methods?.allowedMethods ?? TWO_FACTOR_METHODS);
   const method = allowed.includes(picked) ? picked : allowed[0];
   // The enrolment under way: the app's link, or where the SMS/email code went.

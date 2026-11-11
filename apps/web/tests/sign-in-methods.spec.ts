@@ -17,7 +17,8 @@ async function virtualAuthenticator(page: Page) {
   });
 }
 
-test('settings turns on SMS with the code it sends', async ({ page }) => {
+// SMS and email are hidden in the interface (SHOWN_METHODS, owner 2026-11-11); these two return with them.
+test.skip('settings turns on SMS with the code it sends', async ({ page }) => {
   const sent: unknown[] = [];
   await page.route('**/auth/sign-in-methods', (route) => route.fulfill(json(methods())));
   await page.route('**/auth/two-factor/method', (route) => route.fulfill(json({ sentTo: '•••••4567', sent: true, retryIn: 30 })));
@@ -35,7 +36,7 @@ test('settings turns on SMS with the code it sends', async ({ page }) => {
   expect(sent).toEqual([{ method: 'sms', code: '654321' }]);
 });
 
-test('a method without a phone or email cannot be chosen', async ({ page }) => {
+test.skip('a method without a phone or email cannot be chosen', async ({ page }) => {
   await page.route('**/auth/sign-in-methods', (route) => route.fulfill(json(methods({ phone: null }))));
   await page.goto('/settings');
   await page.getByRole('radio', { name: /SMS/ }).click();
