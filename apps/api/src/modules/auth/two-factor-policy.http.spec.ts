@@ -340,6 +340,59 @@ describe('two-step policy per layer and per account', () => {
       });
     });
 
+    // Owner's decision, 2026-11-12: an account held by an old setting to SMS or email enrols with the app. The
+    // requirement itself is whole: no full session before a right code, at enrolment and at every later sign-in.
+    it('an account held to email by an old setting: no full session until its app code is right, the app is what is stored, later sign-ins ask for the code, and no rule is rewritten', async () => {
+      Object.assign(store.users.get('ann')!, { twoFactorRequired: true, requiredMethod: 'email', email: 'ann@example.com' });
+      await store.setLayerMethod('agent', 'sms');
+      const rules = async () => ({ policy: await store.policy(), methods: await store.layerMethods(), ann: { required: store.users.get('ann')!.twoFactorRequired, method: store.users.get('ann')!.requiredMethod, exempt: store.users.get('ann')!.twoFactorExempt } });
+      const before = await rules();
+      const scopes = () => liveAny('ann').map((s) => s.scope);
+
+      // Signing in gives the enrolment step only.
+      const signIn = await login('ann');
+      expect(signIn.body.next).toBe('two_factor_enroll');
+      const cookie = cookieOf(signIn);
+      expect(scopes()).toEqual(['two_factor']);
+      expect((await http().get('/auth/sign-in-methods').set('Cookie', cookie)).status).toBe(403);
+      expect((await http().get('/auth/policy').set('Cookie', cookie)).status).toBe(403);
+
+      // A wrong code enrols nothing and opens nothing.
+      const setup = await http().post('/auth/two-factor/setup').set('Cookie', cookie);
+      const secret = new URL(setup.body.otpauth).searchParams.get('secret') ?? '';
+      const wrong = currentTotp(secret) === '000000' ? '111111' : '000000';
+      expect((await http().post('/auth/two-factor/confirm').set('Cookie', cookie).send({ code: wrong })).status).toBe(401);
+      expect(store.users.get('ann')!.twoFactorEnabled).toBe(false);
+      expect(scopes()).toEqual(['two_factor']);
+
+      // The right code turns it on with the app, and only then is there a full session.
+      const confirmed = await http().post('/auth/two-factor/confirm').set('Cookie', cookie).send({ code: currentTotp(secret) });
+      expect(confirmed.status).toBe(200);
+      expect(store.users.get('ann')).toMatchObject({ twoFactorEnabled: true, twoFactorMethod: 'app', twoFactorSecret: secret });
+      expect(scopes()).toEqual(['full']);
+      const full = confirmed.headers['set-cookie'] ? cookieOf(confirmed) : cookie;
+      // It may not turn the second step off, and is offered nothing but the app.
+      const own = await http().get('/auth/sign-in-methods').set('Cookie', full);
+      expect(own.body).toMatchObject({ twoFactorEnabled: true, twoFactorMethod: 'app', required: true, canDisable: false, allowedMethods: ['app'] });
+      expect((await http().delete('/auth/two-factor').set('Cookie', full)).status).toBe(403);
+
+      // The next sign-in: the password alone gives the code step, a wrong code nothing, the app's code a session.
+      await store.revokeSessions(liveAny('ann').map((s) => s.id));
+      const again = await login('ann');
+      expect(again.body.next).toBe('two_factor_code');
+      const step = cookieOf(again);
+      expect(scopes()).toEqual(['two_factor']);
+      expect((await http().post('/auth/two-factor/send').set('Cookie', step)).body).toEqual({ method: 'app' });
+      expect((await http().post('/auth/two-factor/verify').set('Cookie', step).send({ code: wrong })).status).toBe(401);
+      expect(scopes()).toEqual(['two_factor']);
+      expect((await http().post('/auth/two-factor/verify').set('Cookie', step).send({ code: currentTotp(secret) })).status).toBe(200);
+      expect(scopes()).toEqual(['full']);
+
+      // Nothing of the stored rules moved: the account is still held to email, its layer still names SMS.
+      expect(await rules()).toEqual(before);
+      expect((await http().get('/auth/users/ann/settings').set('Cookie', ownerCookie)).body).toMatchObject({ twoFactorMode: 'required', requiredMethod: 'email', twoFactorEnabled: true, twoFactorMethod: 'app' });
+    });
+
     it('signing in with the app goes on as before', async () => {
       const secret = createTotpSecret();
       Object.assign(store.users.get('enrolled')!, { twoFactorSecret: secret });
