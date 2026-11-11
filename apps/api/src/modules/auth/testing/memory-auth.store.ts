@@ -1,7 +1,7 @@
 import { hashSessionToken, newSessionToken } from '../session-token';
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import type { AuthStore, FullSessionRow, NewPasskey, PasskeyRow, SessionKind, SessionRow, SessionScope, StoredUser, UserPatch } from '../auth.store';
+import type { AuthStore, FullSessionRow, NewPasskey, PasskeyRow, SessionKind, SessionRow, SessionScope, StoredUser, TwoFactorMethod, UserPatch } from '../auth.store';
 import { Layer, LoginUser } from '../decide-login';
 import { SessionRuleValues, SessionRules, effectiveRules } from '../sessions';
 import { failureWindowExpired } from '../validators';
@@ -40,6 +40,8 @@ export class MemoryAuthStore implements AuthStore {
     agent: false,
     pos: false,
   };
+
+  private readonly layerMethod: Record<Layer, TwoFactorMethod> = { branch: 'app', main_agent: 'app', agent: 'app', pos: 'app' };
 
   addUser(user: StoredUser): void {
     this.users.set(user.loginName, user);
@@ -84,6 +86,18 @@ export class MemoryAuthStore implements AuthStore {
 
   async setPolicy(layer: Layer, required: boolean): Promise<void> {
     this.layerPolicy[layer] = required;
+  }
+
+  async layerMethods(): Promise<Record<Layer, TwoFactorMethod>> {
+    return { ...this.layerMethod };
+  }
+
+  async setLayerMethod(layer: Layer, method: TwoFactorMethod): Promise<void> {
+    this.layerMethod[layer] = method;
+  }
+
+  async unenrolledUsers(layer?: Layer): Promise<StoredUser[]> {
+    return [...this.users.values()].filter((user) => !user.twoFactorEnabled && !user.disabledAt && (!layer || user.layer === layer));
   }
 
   async listFullSessions(userId: string): Promise<FullSessionRow[]> {

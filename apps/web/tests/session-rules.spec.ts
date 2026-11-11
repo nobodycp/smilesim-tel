@@ -60,19 +60,24 @@ test('the owner edits one account from its page\'s «إعدادات الحساب
   });
   const saved: unknown[] = [];
   const contact: unknown[] = [];
-  const exempt: unknown[] = [];
-  let settings = { loginName: 'pos1', email: 'shop@example.com', phone: '', twoFactorEnabled: false, twoFactorExempt: true, twoFactorMethod: 'app' };
+  const modes: unknown[] = [];
+  let settings = {
+    loginName: 'pos1', email: 'shop@example.com', phone: '', twoFactorEnabled: false, twoFactorExempt: true, twoFactorMethod: 'app',
+    twoFactorMode: 'optional', requiredMethod: null, effective: { required: false, method: null as string | null },
+  };
+  const rule = { required: false, method: 'app' };
+  await page.route('**/auth/policy', (route) => route.fulfill(json({ policy: { branch: rule, main_agent: rule, agent: rule, pos: rule } })));
   await page.route('**/auth/users/pos1/settings', (route) => route.fulfill(json(settings)));
   await page.route('**/auth/users/pos1/contact', (route) => {
     contact.push(route.request().postDataJSON());
     settings = { ...settings, ...(route.request().postDataJSON() as object) };
     return route.fulfill(json(settings));
   });
-  await page.route('**/auth/exemptions/pos1', (route) => {
-    const body = route.request().postDataJSON() as { exempt: boolean };
-    exempt.push(body);
-    settings = { ...settings, twoFactorExempt: body.exempt };
-    return route.fulfill(json({ twoFactorExempt: body.exempt }));
+  await page.route('**/auth/users/pos1/two-factor', (route) => {
+    const body = route.request().postDataJSON() as { mode: string };
+    modes.push(body);
+    settings = { ...settings, twoFactorMode: body.mode, twoFactorExempt: body.mode === 'optional', effective: { required: body.mode === 'required', method: body.mode === 'required' ? 'app' : null } };
+    return route.fulfill(json({ settings, endedAccounts: 0 }));
   });
   await page.route('**/auth/users/pos1/session-rules', (route) => {
     if (route.request().method() === 'PATCH') {
@@ -88,9 +93,11 @@ test('the owner edits one account from its page\'s «إعدادات الحساب
   await expect(pane.getByLabel('البريد')).toHaveValue('shop@example.com');
   await expect(pane.getByText('غير مفعّل')).toBeVisible();
 
-  await pane.getByRole('button', { name: 'تشغيل التحقق بخطوتين' }).click();
-  await expect(pane.getByText('مطلوب عند الدخول القادم')).toBeVisible();
-  expect(exempt).toEqual([{ exempt: false }]);
+  // Two-step: a three-way choice; the method list shows only while «إلزامي» is chosen.
+  await expect(pane.getByText('المطبّق الآن: اختياري')).toBeVisible();
+  await expect(pane.getByLabel('الطريقة')).toHaveCount(0);
+  await pane.getByRole('radio', { name: 'إلزامي' }).click();
+  await expect(pane.getByLabel('الطريقة')).toBeVisible();
 
   await expect(pane.getByLabel('الجلسات المسموحة')).toHaveAttribute('placeholder', 'حسب الطبقة (3)');
   await expect(pane.getByText('المطبّق الآن: الجلسات المسموحة 3 · 6 ساعات')).toBeVisible();
@@ -101,5 +108,6 @@ test('the owner edits one account from its page\'s «إعدادات الحساب
   // The permissions sit folded under the settings.
   await expect(page.locator('details.access-fold')).not.toHaveAttribute('open', '');
   expect(contact).toEqual([{ phone: '0501234567' }]);
+  expect(modes).toEqual([{ mode: 'required', method: null }]);
   expect(saved).toEqual([{ maxSessions: 2, sessionMinutes: null }]);
 });

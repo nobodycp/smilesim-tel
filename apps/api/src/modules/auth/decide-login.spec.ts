@@ -33,6 +33,18 @@ describe('decideLogin', () => {
       .toEqual({ kind: 'session', next: 'two_factor_enroll', scope: 'two_factor' });
   });
 
+  it('requires enrollment of an account in mode required even when its layer is optional', () => {
+    const user = { ...trialUser('agent'), twoFactorExempt: false, twoFactorRequired: true };
+    expect(decideLogin({ user, passwordMatches: true, policy: openPolicy }))
+      .toEqual({ kind: 'session', next: 'two_factor_enroll', scope: 'two_factor' });
+  });
+
+  it('lets an optional account skip a required layer', () => {
+    const user = { ...trialUser('agent'), twoFactorExempt: true };
+    expect(decideLogin({ user, passwordMatches: true, policy: { ...openPolicy, agent: true } }))
+      .toEqual({ kind: 'session', next: 'app', scope: 'full' });
+  });
+
   it('asks for a code when two-factor is already enabled', () => {
     const user = { ...trialUser('pos'), twoFactorEnabled: true };
     expect(decideLogin({ user, passwordMatches: true, policy: openPolicy }))

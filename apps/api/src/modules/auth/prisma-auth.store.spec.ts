@@ -386,6 +386,10 @@ describe('PrismaAuthStore', () => {
       await store.setPolicy('agent', true);
       await store.setPolicy('agent', true);
       expect(await store.policy()).toEqual({ branch: false, main_agent: false, agent: true, pos: false });
+      expect(await store.layerMethods()).toEqual({ branch: 'app', main_agent: 'app', agent: 'app', pos: 'app' });
+      await store.setLayerMethod('agent', 'sms');
+      expect((await store.layerMethods()).agent).toBe('sms');
+      expect((await store.policy()).agent).toBe(true);
     });
   });
 });

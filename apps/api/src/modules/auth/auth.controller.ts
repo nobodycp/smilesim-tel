@@ -26,6 +26,7 @@ import {
   PasskeyLoginBody,
   PolicyBody,
   SessionRulesBody,
+  TwoFactorModeBody,
   SetPasswordBody,
   TwoFactorCodeBody,
   TwoFactorMethodBody,
@@ -34,6 +35,7 @@ import {
   parseBody,
 } from './auth.schemas';
 import { PasskeyService } from './passkeys';
+import { TwoFactorPolicyService } from './two-factor-policy.service';
 
 function setSessionCookie(res: Response, sessionId: string): void {
   res.cookie('sid', sessionId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
@@ -67,6 +69,7 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly activity: ActivityRecorder,
     private readonly passkeys: PasskeyService,
+    private readonly policies: TwoFactorPolicyService,
   ) {}
 
   /** One activity event for an owner-only action on another account or on a layer, done or refused. */
@@ -220,6 +223,16 @@ export class AuthController {
     return { ok: true };
   }
 
+  @Get('two-factor/methods')
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'The methods this account may enrol with: all three, or the one its layer or account fixes' })
+  @ApiErrorResponse(401, 403)
+  async enrolmentMethods(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.auth.enrolmentMethods(sessionIdOf(req));
+    if (result.kind === 'error') return failWith(res, result);
+    return { allowedMethods: result.allowedMethods };
+  }
+
   @Post('two-factor/setup')
   @HttpCode(200)
   @ApiCookieAuth('sid')
@@ -335,8 +348,18 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.setPolicy(sessionIdOf(req), body);
+    const result = await this.policies.setPolicy(sessionIdOf(req), body);
     await this.recordOwner(req, { action: 'two_factor', subjectKind: 'layer', subjectRef: result.kind === 'ok' ? String(body?.layer ?? '') : '' }, result);
+    if (result.kind === 'error') return failWith(res, result);
+    return { policy: result.policy, endedAccounts: result.endedAccounts };
+  }
+
+  @Get('policy')
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Branch owner: each layer two-step rule (required or optional) and its default method' })
+  @ApiErrorResponse(401, 403)
+  async readPolicy(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.policies.overview(sessionIdOf(req));
     if (result.kind === 'error') return failWith(res, result);
     return { policy: result.policy };
   }
@@ -355,7 +378,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.auth.setExemption(sessionIdOf(req), loginName, body);
+    const result = await this.policies.setExemption(sessionIdOf(req), loginName, body);
     await this.recordOwner(req, { action: 'two_factor', subjectKind: 'account', subjectRef: loginName }, result);
     if (result.kind === 'error') return failWith(res, result);
     return { twoFactorExempt: result.twoFactorExempt };
@@ -528,6 +551,20 @@ export class AuthController {
     const result = await this.auth.userSettings(sessionIdOf(req), loginName);
     if (result.kind === 'error') return failWith(res, result);
     return result.settings;
+  }
+
+  @Patch('users/:loginName/two-factor')
+  @HttpCode(200)
+  @ApiCookieAuth('sid')
+  @ApiOperation({ summary: 'Branch owner: an account two-step mode (follow its layer, required, optional) and method' })
+  @ApiParam({ name: 'loginName' })
+  @ApiZodBody(TwoFactorModeBody)
+  @ApiErrorResponse(401, 403, 404, 400)
+  async setAccountTwoFactor(@Param('loginName') loginName: string, @Body() body: TwoFactorModeBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.policies.setAccountMode(sessionIdOf(req), loginName, body);
+    await this.recordOwner(req, { action: 'two_factor', subjectKind: 'account', subjectRef: loginName }, result);
+    if (result.kind === 'error') return failWith(res, result);
+    return { settings: result.settings, endedAccounts: result.endedAccounts };
   }
 
   @Patch('users/:loginName/contact')

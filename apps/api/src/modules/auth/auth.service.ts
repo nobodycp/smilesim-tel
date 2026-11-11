@@ -1,16 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Layer, decideLogin } from './decide-login';
+import { Layer, decideLogin, mustEnrol } from './decide-login';
+import { endUnenrolledSessions, fixedMethod, settingsView, type UserSettingsView } from './two-factor-policy';
 import {
   ChangePasswordBody,
   ConfirmMethodBody,
-  ExemptionBody,
-  PolicyBody,
   SessionRulesBody,
   SetPasswordBody,
   TwoFactorCodeBody,
   TwoFactorMethodBody,
   UpdateProfileBody,
   UserContactBody,
+  TWO_FACTOR_CHOICES,
   parseBody,
 } from './auth.schemas';
 import { AUTH_STORE, AuthStore, SessionRow, StoredUser, TwoFactorMethod } from './auth.store';
@@ -31,6 +31,7 @@ export type LoginResult =
 export type Failure = { kind: 'error'; status: 400 | 401 | 403 | 404 | 429; message: string; code: ErrorCode };
 export type Outcome<T> = Failure | ({ kind: 'ok' } & T);
 type Meta = { userAgent: string; ip: string };
+export type { UserSettingsView };
 export type Authed = { session: SessionRow; user: StoredUser };
 type RuleView = { maxSessions: number; sessionMinutes: number };
 const ruleView = (rules: { maxSessions: number; idleSeconds: number }): RuleView => ({ maxSessions: rules.maxSessions, sessionMinutes: rules.idleSeconds / 60 });
@@ -41,7 +42,7 @@ const sentKey = (userId: string) => `two-factor-sent:${userId}`;
 const TOTP_ISSUER = 'SmileSim';
 const LAYERS: readonly Layer[] = ['branch', 'main_agent', 'agent', 'pos'];
 
-const fail = (status: Failure['status'], code: ErrorCode): Failure => ({ kind: 'error', status, message: ERROR_MESSAGES[code], code });
+export const fail = (status: Failure['status'], code: ErrorCode): Failure => ({ kind: 'error', status, message: ERROR_MESSAGES[code], code });
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^\+?[0-9 ()-]{6,20}$/;
 
@@ -353,10 +354,25 @@ export class AuthService {
     return { kind: 'ok', ...authed };
   }
 
+  private async methodRefused(user: StoredUser, method: TwoFactorMethod): Promise<Failure | null> {
+    const fixed = await fixedMethod(this.store, user);
+    return fixed && fixed !== method ? fail(400, 'METHOD_NOT_ALLOWED') : null;
+  }
+
+  /** For the enrolment screen: the methods this account may enrol with (all three, or the one it is held to). */
+  async enrolmentMethods(sessionId: string | undefined): Promise<Outcome<{ allowedMethods: TwoFactorMethod[] }>> {
+    const enrolling = await this.enrollmentSession(sessionId);
+    if (enrolling.kind === 'error') return enrolling;
+    const fixed = await fixedMethod(this.store, enrolling.user);
+    return { kind: 'ok', allowedMethods: fixed ? [fixed] : [...TWO_FACTOR_CHOICES] };
+  }
+
   async setupTwoFactor(sessionId: string | undefined): Promise<Outcome<{ otpauth: string }>> {
     const enrolling = await this.enrollmentSession(sessionId);
     if (enrolling.kind === 'error') return enrolling;
     // A production process without a key would store the secret unsealed: it refuses the enrolment instead.
+    const refused = await this.methodRefused(enrolling.user, 'app');
+    if (refused) return refused;
     if (isProduction() && !secretsKey()) return fail(403, 'APP_CODE_UNAVAILABLE');
     const secret = createTotpSecret();
     await this.store.updateUser(enrolling.user.id, { pendingTwoFactorSecret: secret });
@@ -373,6 +389,8 @@ export class AuthService {
     const { session, user } = enrolling;
     const input = parseBody(TwoFactorCodeBody, body);
     if (!input || !user.pendingTwoFactorSecret) return fail(400, 'INVALID');
+    const refused = await this.methodRefused(user, 'app');
+    if (refused) return refused;
     if (!totpMatches(user.pendingTwoFactorSecret, input.code)) return fail(401, 'WRONG_CODE');
     await this.store.updateUser(user.id, {
       twoFactorEnabled: true,
@@ -494,6 +512,8 @@ export class AuthService {
     if (enrolling.kind === 'error') return enrolling;
     const input = parseBody(TwoFactorMethodBody, body);
     if (!input) return fail(400, 'INVALID');
+    const refused = await this.methodRefused(enrolling.user, input.method);
+    if (refused) return refused;
     return this.sendCode(enrolling.user, 'enroll', input.method);
   }
 
@@ -508,6 +528,8 @@ export class AuthService {
     const { session, user } = enrolling;
     const input = parseBody(ConfirmMethodBody, body);
     if (!input) return fail(400, 'INVALID');
+    const refused = await this.methodRefused(user, input.method);
+    if (refused) return refused;
     const checked = await this.checkCode(user, 'enroll', input.method, input.code);
     if (checked) return checked;
     await this.store.updateUser(user.id, {
@@ -527,6 +549,8 @@ export class AuthService {
         twoFactorEnabled: boolean;
         twoFactorMethod: TwoFactorMethod;
         canDisable: boolean;
+        required: boolean;
+        allowedMethods: TwoFactorMethod[];
         phone: string | null;
         email: string | null;
         passkeys: { id: string; name: string; createdAt: Date; lastUsedAt: Date | null }[];
@@ -537,7 +561,8 @@ export class AuthService {
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'full') return fail(403, 'FORBIDDEN');
     const { user } = authed;
-    const required = (await this.store.policy())[user.layer] && !user.twoFactorExempt;
+    const fixed = await fixedMethod(this.store, user);
+    const required = fixed !== null;
     const phone = this.contactOf(user, 'sms');
     const email = this.contactOf(user, 'email');
     return {
@@ -546,6 +571,8 @@ export class AuthService {
         twoFactorEnabled: user.twoFactorEnabled,
         twoFactorMethod: user.twoFactorMethod ?? 'app',
         canDisable: user.twoFactorEnabled && !required,
+        required,
+        allowedMethods: fixed ? [fixed] : [...TWO_FACTOR_CHOICES],
         phone: phone ? maskContact(phone, 'sms') : null,
         email: email ? maskContact(email, 'email') : null,
         passkeys: (await this.store.listPasskeys(user.id)).map((row) => ({ id: row.id, name: row.name, createdAt: row.createdAt, lastUsedAt: row.lastUsedAt })),
@@ -564,13 +591,13 @@ export class AuthService {
     // An entered session acts in the office as that account; it never touches its credentials (rule 3.3).
     if (authed.session.kind !== 'account') return fail(403, 'FORBIDDEN');
     const { user } = authed;
-    const required = (await this.store.policy())[user.layer];
-    if (required && !user.twoFactorExempt) return fail(403, 'FORBIDDEN');
+    if (mustEnrol(user, (await this.store.policy())[user.layer])) return fail(403, 'FORBIDDEN');
     await this.clearTwoFactor(user.id);
     return { kind: 'ok' };
   }
 
-  private async ownerSession(sessionId: string | undefined): Promise<Outcome<Authed>> {
+  /** The branch owner's own full session; the policy service starts from it. */
+  async ownerSession(sessionId: string | undefined): Promise<Outcome<Authed>> {
     const authed = await this.authenticate(sessionId);
     if (!authed) return fail(401, 'LOGIN_REQUIRED');
     if (authed.session.scope !== 'full' || !authed.user.isBranchOwner) return fail(403, 'FORBIDDEN');
@@ -585,7 +612,7 @@ export class AuthService {
     if (owner.kind === 'error') return owner;
     const target = await this.store.findByLogin(loginName);
     if (!target) return fail(404, 'NOT_FOUND');
-    return { kind: 'ok', settings: userSettingsView(target) };
+    return { kind: 'ok', settings: await settingsView(this.store, target) };
   }
 
   /** The branch owner sets another account's email and mobile; an empty string clears one. */
@@ -610,7 +637,7 @@ export class AuthService {
     }
     await this.store.updateUser(target.id, patch);
     const stored = (await this.store.findByLogin(loginName)) ?? target;
-    return { kind: 'ok', settings: userSettingsView(stored) };
+    return { kind: 'ok', settings: await settingsView(this.store, stored) };
   }
 
   async clearUserTwoFactor(sessionId: string | undefined, loginName: string): Promise<Outcome<unknown>> {
@@ -619,34 +646,9 @@ export class AuthService {
     const target = await this.store.findByLogin(loginName);
     if (!target) return fail(404, 'NOT_FOUND');
     await this.clearTwoFactor(target.id);
+    // An account held to two-step verification that was just reset signs in again and enrols (spec 2026-11-11-two-factor-policy).
+    await endUnenrolledSessions(this.store, [{ ...target, twoFactorEnabled: false }], owner.user.id);
     return { kind: 'ok' };
-  }
-
-  async setPolicy(
-    sessionId: string | undefined,
-    body: PolicyBody,
-  ): Promise<Outcome<{ policy: Record<Layer, boolean> }>> {
-    const owner = await this.ownerSession(sessionId);
-    if (owner.kind === 'error') return owner;
-    const input = parseBody(PolicyBody, body);
-    if (!input) return fail(400, 'INVALID');
-    await this.store.setPolicy(input.layer, input.required);
-    return { kind: 'ok', policy: await this.store.policy() };
-  }
-
-  async setExemption(
-    sessionId: string | undefined,
-    loginName: string,
-    body: ExemptionBody,
-  ): Promise<Outcome<{ twoFactorExempt: boolean }>> {
-    const owner = await this.ownerSession(sessionId);
-    if (owner.kind === 'error') return owner;
-    const input = parseBody(ExemptionBody, body);
-    if (!input) return fail(400, 'INVALID');
-    const target = await this.store.findByLogin(loginName);
-    if (!target) return fail(404, 'NOT_FOUND');
-    await this.store.updateUser(target.id, { twoFactorExempt: input.exempt });
-    return { kind: 'ok', twoFactorExempt: input.exempt };
   }
 
   async disableUser(sessionId: string | undefined, loginName: string): Promise<Outcome<unknown>> {
@@ -660,24 +662,4 @@ export class AuthService {
     await this.store.dropLiveSessions(target.id);
     return { kind: 'ok' };
   }
-}
-
-export type UserSettingsView = {
-  loginName: string;
-  email: string;
-  phone: string;
-  twoFactorEnabled: boolean;
-  twoFactorExempt: boolean;
-  twoFactorMethod: string;
-};
-
-function userSettingsView(user: StoredUser): UserSettingsView {
-  return {
-    loginName: user.loginName,
-    email: user.email ?? '',
-    phone: user.phone ?? '',
-    twoFactorEnabled: Boolean(user.twoFactorEnabled),
-    twoFactorExempt: Boolean(user.twoFactorExempt),
-    twoFactorMethod: user.twoFactorMethod ?? 'app',
-  };
 }

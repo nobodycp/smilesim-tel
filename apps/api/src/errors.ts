@@ -18,6 +18,7 @@ export const ERROR_MESSAGES = {
   CODE_EXPIRED: 'انتهت صلاحية الرمز. اطلب رمزاً جديداً',
   CONTACT_MISSING: 'أضف رقم الهاتف أو البريد في الإعدادات أولاً',
   PASSKEY_FAILED: 'تعذّر التحقق من مفتاح المرور',
+  METHOD_NOT_ALLOWED: 'هذه الطريقة غير مسموحة لهذا الحساب. استخدم الطريقة المحددة له',
   APP_CODE_UNAVAILABLE: 'التحقق بتطبيق المصادقة غير متاح الآن. اختر طريقة أخرى',
   WRONG_CURRENT_PASSWORD: 'كلمة السر الحالية غير صحيحة',
   FULL_NAME_INVALID: 'الاسم الكامل من حرفين إلى أربعين حرفاً',

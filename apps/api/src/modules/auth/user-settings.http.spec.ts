@@ -39,7 +39,7 @@ describe('user settings', () => {
   it('shows the branch owner an account\'s contact details and second step', async () => {
     const read = await http().get('/auth/users/seller/settings').set('Cookie', owner);
     expect(read.status).toBe(200);
-    expect(read.body).toEqual({ loginName: 'seller', email: 'shop@example.com', phone: '', twoFactorEnabled: true, twoFactorExempt: false, twoFactorMethod: 'sms' });
+    expect(read.body).toEqual({ loginName: 'seller', email: 'shop@example.com', phone: '', twoFactorEnabled: true, twoFactorExempt: false, twoFactorMethod: 'sms', twoFactorMode: 'follow', requiredMethod: null, effective: { required: true, method: null } });
     expect((await http().get('/auth/users/nobody/settings').set('Cookie', owner)).status).toBe(404);
   });
 

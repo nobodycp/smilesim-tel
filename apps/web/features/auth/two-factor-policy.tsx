@@ -1,0 +1,79 @@
+'use client';
+
+import { Select } from '../../components/ui/select';
+import type { TwoFactorMethod } from '../../lib/api-types';
+import { usePrefs } from '../../lib/prefs';
+import { methodName } from './sign-in-methods';
+
+// The two-step rule of a layer or of an account (spec 2026-11-11-two-factor-policy): a `.seg` to choose how it applies
+// and, only while it is required, the list of methods. Both screens use these two pieces so they cannot drift.
+
+export const TWO_FACTOR_METHODS: readonly TwoFactorMethod[] = ['app', 'sms', 'email'];
+
+/** The system's segmented choice (`.seg`), one button per option, full width inside a dialog or pane. */
+export function ModeSeg<T extends string>({ value, options, label, onChange, disabled }: {
+  value: T;
+  options: readonly { value: T; label: string }[];
+  label: string;
+  onChange: (next: T) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="seg role-seg" role="radiogroup" aria-label={label}>
+      {options.map((option) => (
+        <button key={option.value} type="button" role="radio" aria-checked={value === option.value} disabled={disabled} onClick={() => onChange(option.value)}>
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The method list as a labelled field. `followLabel` adds a first choice with no method of its own (an account that
+ * follows its layer's default); the value is then ''.
+ */
+export function MethodField({ value, label, onChange, followLabel, disabled }: {
+  label: string;
+  value: TwoFactorMethod | '';
+  onChange: (next: TwoFactorMethod | '') => void;
+  followLabel?: string;
+  disabled?: boolean;
+}) {
+  const { t } = usePrefs();
+  return (
+    <label className="role-field">
+      <span className="role-field-name">{label}</span>
+      <Select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value as TwoFactorMethod | '')}>
+        {followLabel ? <option value="">{followLabel}</option> : null}
+        {TWO_FACTOR_METHODS.map((method) => <option key={method} value={method}>{methodName(t, method)}</option>)}
+      </Select>
+    </label>
+  );
+}
+
+/** The layer's rule, inside the layer role dialog: optional | required, and the default method while required. */
+export function LayerTwoFactor({ value, onChange }: {
+  value: { required: boolean; method: TwoFactorMethod };
+  onChange: (next: { required: boolean; method: TwoFactorMethod }) => void;
+}) {
+  const { t } = usePrefs();
+  return (
+    <section className="role-block role-twofactor" aria-label={t.twoFactor}>
+      <h3>{t.twoFactor}</h3>
+      <p className="role-hint">{t.layerTwoFactorHint}</p>
+      <ModeSeg
+        value={value.required ? 'required' : 'optional'}
+        label={t.twoFactor}
+        options={[{ value: 'optional', label: t.twoFactorOptional }, { value: 'required', label: t.twoFactorModeRequired }]}
+        onChange={(next) => onChange({ ...value, required: next === 'required' })}
+      />
+      {value.required ? (
+        <>
+          <MethodField label={t.defaultMethod} value={value.method} onChange={(method) => method && onChange({ ...value, method })} />
+          <p className="role-hint role-note">{t.layerTwoFactorEnds}</p>
+        </>
+      ) : null}
+    </section>
+  );
+}

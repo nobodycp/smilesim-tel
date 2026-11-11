@@ -8,8 +8,9 @@ import { Dialog } from '../../../components/dialog';
 import { RowMenu } from '../../../components/row-menu';
 import { Button } from '../../../components/ui/button';
 import { api, type RoleRow } from '../../../lib/api';
-import type { LayerKey, SessionRuleValues } from '../../../lib/api-types';
+import type { LayerKey, SessionRuleValues, TwoFactorMethod } from '../../../lib/api-types';
 import { RuleSelects, sessionRulesValid } from '../../auth/session-rules';
+import { LayerTwoFactor } from '../../auth/two-factor-policy';
 import { LiveSwitch } from '../../../components/live-switch';
 import { GRANT_CODES, grantGroupsFor, grantLabel, grantUsable, type GrantGroupKey } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
@@ -46,6 +47,7 @@ export function RolesScreen() {
 
   function edit(row?: RoleRow) {
     setRuleDraft(null);
+    setPolicyDraft(null);
     setDraft(row
       ? { id: row.id, name: row.name, kind: row.kind === 'layer' ? 'layer' : 'job', layer: row.layer ?? '', grants: codesOf(row) }
       : emptyDraft());
@@ -56,10 +58,14 @@ export function RolesScreen() {
   // time for every account of the layer that has no value of its own.
   const rules = useApiQuery(['auth', 'session-rules'], () => api.sessionRules(), { enabled: open && draft.kind === 'layer' });
   const [ruleDraft, setRuleDraft] = useState<SessionRuleValues | null>(null);
+  // …and its two-step rule: required or optional, with the default method (spec 2026-11-11-two-factor-policy).
+  const policy = useApiQuery(['auth', 'two-factor-policy'], () => api.twoFactorPolicy(), { enabled: open && draft.kind === 'layer' });
+  const [policyDraft, setPolicyDraft] = useState<{ required: boolean; method: TwoFactorMethod } | null>(null);
   const layerKey = (draft.kind === 'layer' ? draft.layer : '') as LayerKey | '';
   const ruleValues = ruleDraft ?? (layerKey && rules.data ? rules.data.layers[layerKey] : null);
   const groups = grantGroupsFor(layerOf(draft));
   // «حفظ» waits while a session value is outside its range.
+  const policyValue = policyDraft ?? (layerKey && policy.data ? policy.data.policy[layerKey] : null);
   const rulesBad = Boolean(layerKey && ruleValues && !sessionRulesValid(ruleValues));
 
   async function save() {
@@ -74,10 +80,22 @@ export function RolesScreen() {
     };
     await run(async () => {
       const saved = await api.saveRole({ id: draft.id || undefined, name: draft.name, grants: draft.grants, ...flags });
-      if (!saved.ok || !layerKey || !ruleDraft) return saved.ok ? { ok: true as const, data: null } : saved;
-      const ruled = await api.setLayerSessionRules(layerKey, ruleDraft);
-      return ruled.ok ? { ok: true as const, data: null } : ruled;
-    }, { then: () => { setOpen(false); setRuleDraft(null); void rules.reload(); } });
+      if (!saved.ok || !layerKey) return saved.ok ? { ok: true as const, data: null } : saved;
+      if (ruleDraft) {
+        const ruled = await api.setLayerSessionRules(layerKey, ruleDraft);
+        if (!ruled.ok) return ruled;
+      }
+      if (policyDraft && policy.data) {
+        const before = policy.data.policy[layerKey];
+        const ruled = await api.setTwoFactorPolicy(layerKey, {
+          ...(policyDraft.required !== before.required ? { required: policyDraft.required } : {}),
+          ...(policyDraft.method !== before.method ? { method: policyDraft.method } : {}),
+        });
+        if (!ruled.ok) return ruled;
+        if (ruled.data.endedAccounts > 0) setNote(t.twoFactorEnded.replace('{count}', String(ruled.data.endedAccounts)));
+      }
+      return { ok: true as const, data: null };
+    }, { then: () => { setOpen(false); setRuleDraft(null); setPolicyDraft(null); void rules.reload(); void policy.reload(); } });
   }
 
   function roleTitle(row: { kind?: string; layer?: string; name: string }) {
@@ -188,6 +206,7 @@ export function RolesScreen() {
                 <RuleSelects values={ruleValues} fallback={rules.data.defaults} fallbackLabel={t.followDefault} onChange={setRuleDraft} />
               </section>
             ) : null}
+            {layerKey && policyValue ? <LayerTwoFactor value={policyValue} onChange={setPolicyDraft} /> : null}
           </div>
         </Dialog>
         <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} loading={!roles.loaded} failed={roles.error} onRetry={() => void roles.reload()} empty={t.noMatches} skeleton={{ rows: 4, columns: 4 }} />

@@ -151,6 +151,8 @@ describe('sign-in methods', () => {
 
   it('enrols by email when the layer requires two-factor, then the session is full', async () => {
     await store.setPolicy('pos', true);
+    // A required layer enrols with its own method only (spec 2026-11-11-two-factor-policy).
+    await store.setLayerMethod('pos', 'email');
     const enrol = await login('seller');
     expect(enrol.body.next).toBe('two_factor_enroll');
     const cookie = cookieOf(enrol);

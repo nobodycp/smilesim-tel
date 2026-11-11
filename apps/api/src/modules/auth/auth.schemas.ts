@@ -26,6 +26,7 @@ const webAuthnResponse = z.record(z.string(), z.unknown());
 
 export const AUTH_LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;
 export const CODE_METHODS = ['sms', 'email'] as const;
+export const TWO_FACTOR_CHOICES = ['app', 'sms', 'email'] as const;
 
 /** `POST /auth/login` */
 export const LoginBody = z.object({ loginName: z.string().max(200), password });
@@ -64,8 +65,17 @@ export const ConfirmMethodBody = z.object({ method: z.enum(CODE_METHODS), code: 
 export type ConfirmMethodBody = z.input<typeof ConfirmMethodBody>;
 
 /** `PATCH /auth/policy` */
-export const PolicyBody = z.object({ layer: z.enum(AUTH_LAYERS), required: z.boolean() });
+export const PolicyBody = z
+  .object({ layer: z.enum(AUTH_LAYERS), required: z.boolean().optional(), method: z.enum(TWO_FACTOR_CHOICES).optional() })
+  .refine((body) => body.required !== undefined || body.method !== undefined);
 export type PolicyBody = z.input<typeof PolicyBody>;
+
+/** `PATCH /auth/users/:loginName/two-factor`: `method` counts only for mode *required*; null follows the layer. */
+export const TwoFactorModeBody = z.object({
+  mode: z.enum(['follow', 'required', 'optional']),
+  method: z.enum(TWO_FACTOR_CHOICES).nullable().optional(),
+});
+export type TwoFactorModeBody = z.input<typeof TwoFactorModeBody>;
 
 /** `PATCH /auth/exemptions/:loginName` */
 export const ExemptionBody = z.object({ exempt: z.boolean() });

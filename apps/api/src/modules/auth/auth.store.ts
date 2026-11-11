@@ -18,6 +18,10 @@ export type StoredUser = LoginUser & {
   pendingTwoFactorSecret?: string | null;
   /** How the second step is proven: the authenticator app (default), or a code sent by SMS or email. */
   twoFactorMethod?: TwoFactorMethod;
+  /** Account mode *required* (spec 2026-11-11-two-factor-policy); `twoFactorExempt` is mode *optional*. */
+  twoFactorRequired?: boolean;
+  /** The method this account must enrol with while required; null follows the layer's. */
+  requiredMethod?: TwoFactorMethod | null;
   /** This account's own session rules; null follows its layer. */
   maxSessions?: number | null;
   sessionMinutes?: number | null;
@@ -49,6 +53,8 @@ export type UserPatch = Partial<
     | 'mustChangePassword'
     | 'twoFactorEnabled'
     | 'twoFactorExempt'
+    | 'twoFactorRequired'
+    | 'requiredMethod'
     | 'twoFactorSecret'
     | 'pendingTwoFactorSecret'
     | 'twoFactorMethod'
@@ -88,6 +94,11 @@ export interface AuthStore {
   findByLogin(loginName: string): Promise<StoredUser | null>;
   policy(): Promise<Record<Layer, boolean>>;
   setPolicy(layer: Layer, required: boolean): Promise<void>;
+  /** The method each layer's accounts enrol with while it is required. */
+  layerMethods(): Promise<Record<Layer, TwoFactorMethod>>;
+  setLayerMethod(layer: Layer, method: TwoFactorMethod): Promise<void>;
+  /** Enabled accounts without two-step verification, of one layer or all of them. */
+  unenrolledUsers(layer?: Layer): Promise<StoredUser[]>;
   listFullSessions(userId: string): Promise<FullSessionRow[]>;
   /** Opens a session and answers its **token**, the cookie value. The session's `id` is a different thing. */
   saveSession(input: { userId: string; scope: SessionScope; userAgent: string; ip: string }): Promise<string>;

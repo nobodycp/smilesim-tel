@@ -17,6 +17,7 @@ import {
   SessionRow,
   SessionScope,
   StoredUser,
+  TwoFactorMethod,
   UserPatch,
 } from './auth.store';
 import { Layer, LoginUser } from './decide-login';
@@ -74,6 +75,8 @@ function toStoredUser(row: UserRecord): StoredUser {
     twoFactorSecret: row.twoFactorSecret ? open(row.twoFactorSecret) : row.twoFactorSecret,
     pendingTwoFactorSecret: row.pendingTwoFactorSecret ? open(row.pendingTwoFactorSecret) : row.pendingTwoFactorSecret,
     twoFactorMethod: TWO_FACTOR_METHODS.find((method) => method === row.twoFactorMethod) ?? 'app',
+    twoFactorRequired: row.twoFactorRequired,
+    requiredMethod: TWO_FACTOR_METHODS.find((method) => method === row.requiredMethod) ?? null,
     maxSessions: row.maxSessions ?? null,
     sessionMinutes: row.sessionMinutes ?? null,
   };
@@ -237,6 +240,29 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
       update: { required },
       create: { layer, required },
     });
+  }
+
+  async layerMethods(): Promise<Record<Layer, TwoFactorMethod>> {
+    const result: Record<Layer, TwoFactorMethod> = { branch: 'app', main_agent: 'app', agent: 'app', pos: 'app' };
+    for (const row of await this.prisma.layerPolicy.findMany()) {
+      const layer = LAYERS.find((candidate) => candidate === row.layer);
+      const method = TWO_FACTOR_METHODS.find((candidate) => candidate === row.method);
+      if (layer && method) result[layer] = method;
+    }
+    return result;
+  }
+
+  async setLayerMethod(layer: Layer, method: TwoFactorMethod): Promise<void> {
+    await this.prisma.layerPolicy.upsert({
+      where: { layer },
+      update: { method },
+      create: { layer, method },
+    });
+  }
+
+  async unenrolledUsers(layer?: Layer): Promise<StoredUser[]> {
+    const rows = await this.prisma.user.findMany({ where: { twoFactorEnabled: false, disabledAt: null, ...(layer ? { layer } : {}) } });
+    return rows.map(toStoredUser);
   }
 
   async sessionRules(): Promise<Record<Layer, SessionRuleValues>> {

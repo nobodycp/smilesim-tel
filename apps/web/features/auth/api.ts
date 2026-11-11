@@ -1,6 +1,6 @@
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { request, segment } from '../../lib/http';
-import type { AccountProfile, AccountSessionRules, UserSettings, LayerKey, SessionRuleValues, SessionRulesView, CodeSent, Next, PasskeyInfo, Profile, SessionInfo, SignInMethods, TwoFactorMethod } from '../../lib/api-types';
+import type { AccountProfile, AccountSessionRules, UserSettings, LayerKey, SessionRuleValues, SessionRulesView, CodeSent, Next, PasskeyInfo, Profile, SessionInfo, SignInMethods, TwoFactorMethod, TwoFactorMode, TwoFactorPolicy } from '../../lib/api-types';
 
 type Result<T> = Awaited<ReturnType<typeof request<T>>>;
 /** The browser's own prompt refused or was dismissed: a failure the page shows, never a thrown error. */
@@ -35,8 +35,14 @@ export const authApi = {
   setUserContact: (loginName: string, body: { email?: string; phone?: string }) =>
     request<UserSettings>('PATCH', `/auth/users/${segment(loginName)}/contact`, body),
   clearUserTwoFactor: (loginName: string) => request<{ ok: true }>('DELETE', `/auth/two-factor/${segment(loginName)}`),
-  setTwoFactorExempt: (loginName: string, exempt: boolean) =>
-    request<{ twoFactorExempt: boolean }>('PATCH', `/auth/exemptions/${segment(loginName)}`, { exempt }),
+  /** Each layer's two-step rule (branch owner). `endedAccounts` counts the accounts signed out by a change. */
+  twoFactorPolicy: () => request<{ policy: TwoFactorPolicy }>('GET', '/auth/policy'),
+  setTwoFactorPolicy: (layer: LayerKey, body: { required?: boolean; method?: TwoFactorMethod }) =>
+    request<{ policy: TwoFactorPolicy; endedAccounts: number }>('PATCH', '/auth/policy', { layer, ...body }),
+  setAccountTwoFactor: (loginName: string, body: { mode: TwoFactorMode; method?: TwoFactorMethod | null }) =>
+    request<{ settings: UserSettings; endedAccounts: number }>('PATCH', `/auth/users/${segment(loginName)}/two-factor`, body),
+  /** At enrolment: the methods this account may use. */
+  enrolmentMethods: () => request<{ allowedMethods: TwoFactorMethod[] }>('GET', '/auth/two-factor/methods'),
   accountSessionRules: (loginName: string) => request<AccountSessionRules>('GET', `/auth/users/${segment(loginName)}/session-rules`),
   setAccountSessionRules: (loginName: string, values: SessionRuleValues) =>
     request<AccountSessionRules>('PATCH', `/auth/users/${segment(loginName)}/session-rules`, values),

@@ -9,6 +9,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { Alert } from '../../../components/alert';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
+import { methodName } from '../sign-in-methods';
 
 // The sign-in step left in sessionStorage says whether this visit enrolls a new code or checks one. Read through
 // useSyncExternalStore: the server render (no storage) says "check", the browser answers on hydration.
@@ -24,7 +25,10 @@ export function TwoFactorScreen() {
   const router = useRouter();
   const { t, apiText } = usePrefs();
   const enrolling = useSyncExternalStore(noSubscribe, readEnrolling, serverEnrolling);
-  const [method, setMethod] = useState<TwoFactorMethod>('app');
+  const [picked, setMethod] = useState<TwoFactorMethod>('app');
+  // Enrolling: the methods this account may use, from the API (one when its layer or account fixes the method).
+  const [allowed, setAllowed] = useState<TwoFactorMethod[] | null>(null);
+  const method = enrolling && allowed && !allowed.includes(picked) ? allowed[0] : picked;
   const [otpauth, setOtpauth] = useState('');
   const [sentTo, setSentTo] = useState('');
   const [retryIn, setRetryIn] = useState(0);
@@ -32,14 +36,19 @@ export function TwoFactorScreen() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    if (!enrolling) return;
+    api.enrolmentMethods().then((result) => setAllowed(result.ok ? result.data.allowedMethods : ['app', 'sms', 'email']));
+  }, [enrolling]);
+
   // Enrolling with the app: one new secret per visit.
   useEffect(() => {
-    if (!enrolling || method !== 'app' || otpauth) return;
+    if (!enrolling || !allowed || method !== 'app' || otpauth) return;
     api.setupTwoFactor().then((result) => {
       if (result.ok) setOtpauth(result.data.otpauth);
       else setMessage(apiText(result));
     });
-  }, [enrolling, method, otpauth, apiText]);
+  }, [enrolling, allowed, method, otpauth, apiText]);
 
   // Checking: ask which method this account uses; an SMS or email one gets its code now.
   useEffect(() => {
@@ -88,21 +97,20 @@ export function TwoFactorScreen() {
 
   const byCode = method !== 'app';
   const lede = enrolling
-    ? byCode ? t.twoFactorIdle : t.enrollLede
+    ? byCode ? t.enrollLedeCode : t.enrollLede
     : method === 'sms' ? t.codeLedeSms : method === 'email' ? t.codeLedeEmail : t.codeLede;
 
   return (
     <AuthFrame kicker={t.verifyKicker} title={enrolling ? t.enrollTitle : t.codeTitle} lede={lede}>
-      {enrolling && (
+      {enrolling && allowed && allowed.length > 1 && (
         <label>
           {t.twoFactorMethod}
           <Select value={method} onChange={(event) => { setMethod(event.target.value as TwoFactorMethod); setSentTo(''); setMessage(''); }}>
-            <option value="app">{t.methodApp}</option>
-            <option value="sms">{t.methodSms}</option>
-            <option value="email">{t.methodEmail}</option>
+            {allowed.map((key) => <option key={key} value={key}>{methodName(t, key)}</option>)}
           </Select>
         </label>
       )}
+      {enrolling && allowed && allowed.length === 1 && <p className="hint"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>}
       {enrolling && !byCode && otpauth && <p className="code" dir="ltr">{otpauth}</p>}
       {byCode && sentTo && <p className="hint">{t.codeSentTo} <bdi dir="ltr">{sentTo}</bdi></p>}
       <form onSubmit={submit}>

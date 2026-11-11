@@ -30,7 +30,11 @@ model User {
   deniedOps              String           @default("")
   extraRoles             UserRole[]
   disabledAt             DateTime?
+  /// Two-step mode of this account: exempt = optional, required = must enrol, neither = follow the layer.
   twoFactorExempt        Boolean          @default(false)
+  twoFactorRequired      Boolean          @default(false)
+  /// The method this account must enrol with when required; null follows its layer's default method.
+  requiredMethod         String?
   twoFactorEnabled       Boolean          @default(false)
   twoFactorSecret        String?
   pendingTwoFactorSecret String?
@@ -108,6 +112,8 @@ model LayerPolicy {
   id       String  @id @default(uuid())
   layer    String  @unique
   required Boolean @default(false)
+  /// The method accounts of the layer enrol with while it is required (app, sms or email).
+  method   String  @default("app")
   /// Sessions allowed and idle minutes for the layer; null follows the default (session rules spec).
   maxSessions    Int?
   sessionMinutes Int?

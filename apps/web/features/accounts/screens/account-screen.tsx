@@ -26,6 +26,7 @@ import { UserPackagesTab } from './packages-terms';
 import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
+import type { LayerKey } from '../../../lib/api-types';
 import { UserSettingsPane } from '../user-settings';
 import { RowMenu } from '../../../components/row-menu';
 import { Stat, StatRow } from '../../../components/stat';
@@ -196,7 +197,7 @@ export function AccountScreen() {
           // Settings open on top, permissions folded under them (spec 2026-11-11-ui-consistency-pass, D3).
           <section className="pane">
             <div className="pane-body access-tab">
-              {ownerSettings ? <UserSettingsPane loginName={row.loginName} onSaved={(text) => { setError(''); setNote(text); }} /> : null}
+              {ownerSettings ? <UserSettingsPane loginName={row.loginName} layer={row.layer as LayerKey} onSaved={(text) => { setError(''); setNote(text); }} /> : null}
               <details className="inherit-fold access-fold">
                 <summary>
                   <b>{t.accountAccess}</b>

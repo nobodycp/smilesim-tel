@@ -31,7 +31,10 @@ export function useSignInMethods() {
 
 export function TwoFactorPane({ methods, reload, setError, setNote }: Notify & { methods: SignInMethods | null | undefined; reload: () => Promise<unknown> }) {
   const { t, apiText } = usePrefs();
-  const [method, setMethod] = useState<TwoFactorMethod>('app');
+  const [picked, setMethod] = useState<TwoFactorMethod>('app');
+  // A layer or account held to one method offers only that one (spec 2026-11-11-two-factor-policy).
+  const allowed = methods?.allowedMethods ?? (['app', 'sms', 'email'] as const);
+  const method = allowed.includes(picked) ? picked : allowed[0];
   // The enrolment under way: the app's link, or where the SMS/email code went.
   const [otpauth, setOtpauth] = useState('');
   const [sentTo, setSentTo] = useState('');
@@ -101,8 +104,11 @@ export function TwoFactorPane({ methods, reload, setError, setNote }: Notify & {
           <>
             <p className="hint">{t.twoFactorIdle}</p>
             {/* The methods as cards to choose from (Graphite): the name, then where the code goes. */}
+            {allowed.length === 1 ? (
+              <p className="hint"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>
+            ) : (
             <div className="method-cards" role="radiogroup" aria-label={t.twoFactorMethod}>
-              {(['app', 'sms', 'email'] as const).map((key) => (
+              {allowed.map((key) => (
                 <button
                   key={key}
                   type="button"
@@ -116,6 +122,7 @@ export function TwoFactorPane({ methods, reload, setError, setNote }: Notify & {
                 </button>
               ))}
             </div>
+            )}
             {method !== 'app' && !reachable ? <p className="hint">{t.contactNeeded}</p> : null}
             {method !== 'app' && reachable ? <p className="hint">{t.codeSentTo} <bdi dir="ltr">{contact(method)}</bdi></p> : null}
             <div className="signin-actions">

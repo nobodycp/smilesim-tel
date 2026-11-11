@@ -26,6 +26,10 @@ export type SignInMethods = {
   twoFactorEnabled: boolean;
   twoFactorMethod: TwoFactorMethod;
   canDisable: boolean;
+  /** Two-step verification is required of this account (its layer's rule or its own). */
+  required: boolean;
+  /** The methods it may enrol with: all three, or the one it is held to. */
+  allowedMethods: TwoFactorMethod[];
   phone: string | null;
   email: string | null;
   passkeys: PasskeyInfo[];
@@ -38,7 +42,23 @@ export type SessionRuleValues = { maxSessions: number | null; sessionMinutes: nu
 export type SessionRuleResult = { maxSessions: number; sessionMinutes: number };
 export type LayerKey = 'branch' | 'main_agent' | 'agent' | 'pos';
 export type SessionRulesView = { defaults: SessionRuleResult; layers: Record<LayerKey, SessionRuleValues> };
-export type UserSettings = { loginName: string; email: string; phone: string; twoFactorEnabled: boolean; twoFactorExempt: boolean; twoFactorMethod: string };
+export type TwoFactorMode = 'follow' | 'required' | 'optional';
+export type UserSettings = {
+  loginName: string;
+  email: string;
+  phone: string;
+  twoFactorEnabled: boolean;
+  twoFactorExempt: boolean;
+  twoFactorMethod: string;
+  twoFactorMode: TwoFactorMode;
+  /** The method this account must use; null follows its layer's. */
+  requiredMethod: TwoFactorMethod | null;
+  /** What applies now: whether two-step is required, and the one method it must use (null: any). */
+  effective: { required: boolean; method: TwoFactorMethod | null };
+};
+/** A layer's two-step rule: required or optional, and the default method while required. */
+export type LayerTwoFactor = { required: boolean; method: TwoFactorMethod };
+export type TwoFactorPolicy = Record<'branch' | 'main_agent' | 'agent' | 'pos', LayerTwoFactor>;
 export type AccountSessionRules = { own: SessionRuleValues; layer: SessionRuleResult; effective: SessionRuleResult };
 
 export type SessionInfo = {

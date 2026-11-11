@@ -8,6 +8,8 @@ export type LoginUser = {
   mustChangePassword: boolean;
   layer: Layer;
   twoFactorExempt: boolean;
+  /** Account mode *required*: must enrol whatever its layer says. */
+  twoFactorRequired?: boolean;
   twoFactorEnabled: boolean;
   isBranchOwner: boolean;
 };
@@ -35,6 +37,11 @@ export function trialUser(layer: Layer): LoginUser {
   };
 }
 
+/** Whether the account has to have two-step verification on, whether or not it has yet (spec 2026-11-11-two-factor-policy). */
+export function mustEnrol(user: Pick<LoginUser, 'twoFactorExempt' | 'twoFactorRequired'>, layerRequired: boolean): boolean {
+  return Boolean(user.twoFactorRequired) || (!user.twoFactorExempt && layerRequired);
+}
+
 export function decideLogin(input: {
   user: LoginUser | null;
   passwordMatches: boolean;
@@ -44,7 +51,7 @@ export function decideLogin(input: {
   if (!user || !passwordMatches) return BAD;
   if (user.disabledAt) return { kind: 'error' as const, status: 403 as const, message: ERROR_MESSAGES.ACCOUNT_DISABLED, code: 'ACCOUNT_DISABLED' as const };
   if (user.mustChangePassword) return { kind: 'session' as const, next: 'password' as const, scope: 'password_change' as const };
-  const required = user.twoFactorEnabled || (!user.twoFactorExempt && policy[user.layer]);
+  const required = user.twoFactorEnabled || mustEnrol(user, policy[user.layer]);
   if (required && !user.twoFactorEnabled) {
     return { kind: 'session' as const, next: 'two_factor_enroll' as const, scope: 'two_factor' as const };
   }

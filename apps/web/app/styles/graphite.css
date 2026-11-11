@@ -1394,7 +1394,7 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
    state never rests on colour alone. The session fields are two labelled sunken fields side by side. ── */
 .role-block { display: grid; gap: 0; }
 .role-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
-.role-sec-head h3, .role-sessions > h3 { margin: 0; color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }
+.role-sec-head h3, .role-sessions > h3, .role-twofactor > h3 { margin: 0; color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }
 .role-sum { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 500; font-variant-numeric: tabular-nums; }
 .role-group { display: grid; grid-template-columns: 148px minmax(0, 1fr); column-gap: 16px; padding-block: 4px; border-block-start: 1px solid var(--rd-line); }
 .role-rail { padding-block-start: 9px; }
@@ -1432,3 +1432,19 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
   .role-fields { grid-template-columns: minmax(0, 1fr); }
   .role-input { height: 44px; }
 }
+
+/* Two-step rule (spec 2026-11-11-two-factor-policy): the layer block in the role dialog and the account's block. */
+.seg.role-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); inline-size: 100%; }
+.seg.role-seg button { padding-inline: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.role-twofactor { gap: 0; }
+.role-twofactor .role-field { margin-block-start: 12px; }
+.role-twofactor .role-field .ui-select { inline-size: 100%; }
+.role-hint.role-note { margin: 10px 0 0; }
+.dialog-form > .role-twofactor { margin-block-start: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--rd-line); }
+.two-factor-block { gap: 12px; }
+.two-factor-block > .tf-lede { margin: -8px 0 0; color: var(--rd-muted); font-size: 12.5px; font-weight: 500; line-height: 1.55; }
+.two-factor-block .role-field .ui-select { inline-size: 100%; }
+.tf-status { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0; }
+/* The method list sits beside the session fields: the same border as them (`.pane select` would make it brighter). */
+.pane .role-field select.ui-select-field, .dialog .role-field select.ui-select-field { border-color: color-mix(in srgb, var(--rd-field) 70%, transparent); background-color: var(--rd-surface); }
+.pane .role-field select.ui-select-field:focus, .dialog .role-field select.ui-select-field:focus { border-color: var(--rd-accent); }
