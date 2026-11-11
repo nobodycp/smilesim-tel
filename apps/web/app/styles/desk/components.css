@@ -15,11 +15,13 @@
   padding: 0 var(--rd-space-3);
   border: 0;
   border-radius: var(--rd-radius-sm);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
+  background: var(--rd-accent);
+  color: var(--rd-on-mark);
   font-size: var(--rd-text-sm);
   font-weight: 700;
+  cursor: pointer;
 }
+.return-bar button:hover { background: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
 /* The API stopped answering after the session loaded: one line above the page, same shape as .return-bar. */
 .outage-bar {
   display: flex;

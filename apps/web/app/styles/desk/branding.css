@@ -123,8 +123,8 @@
   max-width: 220px;
   height: 32px;
   border-radius: var(--rd-radius-sm);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
+  background: var(--rd-accent);
+  color: var(--rd-on-mark);
   font-size: var(--rd-text-sm);
   font-weight: 700;
 }

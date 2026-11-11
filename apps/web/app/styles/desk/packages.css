@@ -65,7 +65,7 @@
   font-weight: 800;
 }
 .pack-card { justify-items: stretch; text-align: start; }
-.pack-card > button { height: 34px; border: 0; border-radius: var(--rd-radius-sm); background: var(--rd-primary-bg); color: var(--rd-primary-fg); font-weight: 700; }
+.pack-card > button { height: 34px; border: 0; border-radius: var(--rd-radius-sm); background: var(--rd-accent); color: var(--rd-on-mark); font-weight: 700; }
 .pack-price { margin: 0; font-size: 22px; font-weight: 800; }
 .mode-pick { width: 220px; max-width: 100%; }
 .sim-cell { display: inline-flex; align-items: center; gap: var(--rd-space-2); }
@@ -107,8 +107,8 @@
   padding: 0 var(--rd-space-3-5);
   border: 0;
   border-radius: var(--rd-radius-sm);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
+  background: var(--rd-accent);
+  color: var(--rd-on-mark);
   font-size: var(--rd-text-sm);
   font-weight: 700;
 }

@@ -203,15 +203,15 @@
   border: 0;
   justify-self: stretch;
   border-radius: var(--rd-radius-tile);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
+  background: var(--rd-accent);
+  color: var(--rd-on-mark);
   font-size: var(--rd-text-2xl);
   font-weight: 800;
   white-space: nowrap;
 }
 .login-room form > button.login-go:disabled,
 .login-room form > button.login-go:disabled:hover {
-  background: var(--rd-primary-bg);
+  background: var(--rd-accent);
   opacity: 0.72;
 }
 .login-room form > button.login-go:hover { background: var(--rd-primary-hover); }

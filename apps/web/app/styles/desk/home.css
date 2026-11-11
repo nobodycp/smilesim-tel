@@ -126,8 +126,8 @@
   padding-inline: var(--rd-space-3-5);
   font-size: var(--rd-text-md);
   border-radius: var(--rd-radius-pill);
-  background: var(--rd-primary-bg);
-  color: var(--rd-primary-fg);
+  background: var(--rd-accent);
+  color: var(--rd-on-mark);
   font-weight: 700;
 }
 .offer-action:hover { background: var(--rd-primary-hover); }
