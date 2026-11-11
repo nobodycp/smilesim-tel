@@ -3,7 +3,8 @@ import { Layer } from './decide-login';
 import { ExemptionBody, PolicyBody, TwoFactorModeBody, parseBody } from './auth.schemas';
 import { AUTH_STORE, AuthStore, TwoFactorMethod } from './auth.store';
 import { AuthService, fail, type Outcome } from './auth.service';
-import { endUnenrolledSessions, policyView, settingsView, type LayerRule, type UserSettingsView } from './two-factor-policy';
+import { MESSAGE_SENDER, type MessageSender } from './message-sender';
+import { availableMethods, endUnenrolledSessions, policyView, settingsView, type LayerRule, type UserSettingsView } from './two-factor-policy';
 
 /**
  * The branch owner's two-step rules (spec 2026-11-11-two-factor-policy): a layer is required or optional with a
@@ -15,6 +16,7 @@ export class TwoFactorPolicyService {
   constructor(
     @Inject(AUTH_STORE) private readonly store: AuthStore,
     private readonly auth: AuthService,
+    @Inject(MESSAGE_SENDER) private readonly sender: MessageSender,
   ) {}
 
   async overview(sessionId: string | undefined): Promise<Outcome<{ policy: Record<Layer, LayerRule> }>> {
@@ -29,6 +31,11 @@ export class TwoFactorPolicyService {
     if (owner.kind === 'error') return owner;
     const input = parseBody(PolicyBody, body);
     if (!input) return fail(400, 'INVALID');
+    // Refused before anything is written or anyone is signed out: a method that cannot be carried out now, named
+    // here or already stored on a layer that is being made required (spec 2026-11-12-two-factor-available-methods).
+    const method = (input.method as TwoFactorMethod | undefined) ?? (await this.store.layerMethods())[input.layer];
+    const usable = availableMethods(this.sender).includes(method);
+    if (!usable && (input.method !== undefined || input.required === true)) return fail(400, 'METHOD_UNAVAILABLE');
     if (input.method !== undefined) await this.store.setLayerMethod(input.layer, input.method as TwoFactorMethod);
     if (input.required !== undefined) await this.store.setPolicy(input.layer, input.required);
     const endedAccounts = input.required === true ? await endUnenrolledSessions(this.store, await this.store.unenrolledUsers(input.layer), owner.user.id) : 0;
@@ -55,6 +62,12 @@ export class TwoFactorPolicyService {
     if (!input) return fail(400, 'INVALID');
     const target = await this.store.findByLogin(loginName);
     if (!target) return fail(404, 'NOT_FOUND');
+    // Required of this account with a method that cannot be carried out now, its own or the layer's it would
+    // follow: refused before anything is written or anyone is signed out.
+    if (input.mode === 'required') {
+      const method = input.method ?? (await this.store.layerMethods())[target.layer];
+      if (!availableMethods(this.sender).includes(method)) return fail(400, 'METHOD_UNAVAILABLE');
+    }
     await this.store.updateUser(target.id, {
       twoFactorExempt: input.mode === 'optional',
       twoFactorRequired: input.mode === 'required',

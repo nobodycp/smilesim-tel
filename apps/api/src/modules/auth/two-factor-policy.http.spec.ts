@@ -4,7 +4,9 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from './auth.module';
 import { AUTH_STORE, StoredUser } from './auth.store';
+import { MESSAGE_SENDER } from './message-sender';
 import { MemoryAuthStore } from './testing/memory-auth.store';
+import { createTotpSecret, currentTotp } from './totp';
 import { hashPassword } from './password';
 
 // Spec 2026-11-11-two-factor-policy: per-layer and per-account rule, the fixed method, and signing out the unenrolled.
@@ -18,6 +20,9 @@ function cookieOf(response: request.Response): string {
 describe('two-step policy per layer and per account', () => {
   let app: INestApplication;
   let store: MemoryAuthStore;
+  /** Whether the SMS and email gateways deliver. True for the rules of the policy itself; false is today's deployment. */
+  let gateways = true;
+  let sentMessages = 0;
 
   async function user(overrides: Partial<StoredUser> & { loginName: string }, password = 'password12'): Promise<StoredUser> {
     return {
@@ -44,6 +49,8 @@ describe('two-step policy per layer and per account', () => {
   }
 
   beforeEach(async () => {
+    gateways = true;
+    sentMessages = 0;
     store = new MemoryAuthStore();
     store.addUser(await user({ loginName: 'owner', layer: 'branch', twoFactorExempt: true, isBranchOwner: true }, 'ownerpass1'));
     store.addUser(await user({ loginName: 'ann' }));
@@ -53,6 +60,8 @@ describe('two-step policy per layer and per account', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
       .overrideProvider(AUTH_STORE)
       .useValue(store)
+      .overrideProvider(MESSAGE_SENDER)
+      .useValue({ send: async () => { sentMessages += 1; }, delivers: () => gateways })
       .compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -205,6 +214,142 @@ describe('two-step policy per layer and per account', () => {
     it('answers 404 for an unknown account and 400 for an unknown mode', async () => {
       expect((await setMode('nobody', { mode: 'optional' })).status).toBe(404);
       expect((await setMode('ann', { mode: 'sometimes' })).status).toBe(400);
+    });
+  });
+
+  // Spec 2026-11-12-two-factor-available-methods: SMS and email are not offered, required or enrolled while no
+  // gateway delivers them. Nothing stored is changed by that, and nobody is locked out by it.
+  describe('while no SMS or email gateway delivers', () => {
+    const liveAny = (userId: string) => store.sessions.filter((s) => s.userId === userId && !s.revokedAt);
+    const methodsOf = async (cookie: string) => (await http().get('/auth/two-factor/methods').set('Cookie', cookie)).body.allowedMethods;
+    beforeEach(() => {
+      gateways = false;
+    });
+
+    it.each(['sms', 'email'])('refuses a layer set to %s, optional or required, writes nothing and signs nobody out', async (method) => {
+      await login('ann');
+      for (const body of [{ layer: 'agent', method }, { layer: 'agent', required: true, method }]) {
+        const response = await setPolicy(body);
+        expect([response.status, response.body.code]).toEqual([400, 'METHOD_UNAVAILABLE']);
+      }
+      expect(await store.policy()).toMatchObject({ agent: false });
+      expect((await store.layerMethods()).agent).toBe('app');
+      expect(liveFull('ann')).toHaveLength(1);
+      expect((await login('ann')).body.next).toBe('app');
+    });
+
+    it('accepts the app for a layer, required or not', async () => {
+      expect((await setPolicy({ layer: 'agent', method: 'app' })).status).toBe(200);
+      const required = await setPolicy({ layer: 'agent', required: true, method: 'app' });
+      expect(required.status).toBe(200);
+      expect(required.body.policy.agent).toEqual({ required: true, method: 'app' });
+    });
+
+    it.each(['sms', 'email'] as const)('refuses an account required with %s, writes nothing and signs it out of nothing', async (method) => {
+      await login('ann');
+      const response = await setMode('ann', { mode: 'required', method });
+      expect([response.status, response.body.code]).toEqual([400, 'METHOD_UNAVAILABLE']);
+      expect(store.users.get('ann')).toMatchObject({ twoFactorExempt: false });
+      expect(store.users.get('ann')!.twoFactorRequired ?? false).toBe(false);
+      expect(store.users.get('ann')!.requiredMethod ?? null).toBeNull();
+      expect(liveFull('ann')).toHaveLength(1);
+    });
+
+    it('accepts an account required with the app, or with its layer\'s app', async () => {
+      const own = await setMode('ann', { mode: 'required', method: 'app' });
+      expect(own.body.settings).toMatchObject({ twoFactorMode: 'required', requiredMethod: 'app', effective: { required: true, method: 'app' } });
+      const layers = await setMode('bob', { mode: 'required' });
+      expect(layers.body.settings.effective).toEqual({ required: true, method: 'app' });
+    });
+
+    it('offers and accepts only the app at enrolment, and sends no code', async () => {
+      const cookie = cookieOf(await login('ann'));
+      store.users.get('ann')!.phone = '+972 52-123-4567';
+      store.users.get('ann')!.email = 'ann@example.com';
+      expect(await methodsOf(cookie)).toEqual(['app']);
+      expect((await http().get('/auth/sign-in-methods').set('Cookie', cookie)).body.allowedMethods).toEqual(['app']);
+      for (const method of ['sms', 'email']) {
+        expect((await http().post('/auth/two-factor/method').set('Cookie', cookie).send({ method })).body.code).toBe('METHOD_UNAVAILABLE');
+        expect((await http().post('/auth/two-factor/method/confirm').set('Cookie', cookie).send({ method, code: '123456' })).body.code).toBe('METHOD_UNAVAILABLE');
+      }
+      expect(sentMessages).toBe(0);
+      expect(store.users.get('ann')!.twoFactorEnabled).toBe(false);
+    });
+
+    describe('settings stored before the methods were switched off', () => {
+      it('a layer left on SMS: what is stored is kept, making it required again is refused, and its accounts enrol with the app', async () => {
+        await store.setLayerMethod('agent', 'sms');
+        await store.setPolicy('agent', true);
+        // Reading shows what is stored.
+        expect((await http().get('/auth/policy').set('Cookie', ownerCookie)).body.policy.agent).toEqual({ required: true, method: 'sms' });
+        // Saving it as required with that method again is refused, and nobody is signed out by the attempt.
+        await fullCookie('bob');
+        expect((await setPolicy({ layer: 'agent', required: true })).body.code).toBe('METHOD_UNAVAILABLE');
+        expect(liveFull('bob')).toHaveLength(1);
+        expect((await store.layerMethods()).agent).toBe('sms');
+        // An account of the layer still has to enrol, and is offered a method it can carry out.
+        const signIn = await login('ann');
+        expect(signIn.body.next).toBe('two_factor_enroll');
+        const cookie = cookieOf(signIn);
+        expect(await methodsOf(cookie)).toEqual(['app']);
+        const setup = await http().post('/auth/two-factor/setup').set('Cookie', cookie);
+        expect(setup.status).toBe(200);
+        const secret = new URL(setup.body.otpauth).searchParams.get('secret') ?? '';
+        const enabled = await http().post('/auth/two-factor/confirm').set('Cookie', cookie).send({ code: currentTotp(secret) });
+        expect(enabled.status).toBe(200);
+        expect(store.users.get('ann')).toMatchObject({ twoFactorEnabled: true, twoFactorMethod: 'app' });
+        // The owner repairs the layer by naming the app; optional is always allowed.
+        expect((await setPolicy({ layer: 'agent', required: true, method: 'app' })).status).toBe(200);
+        expect((await setPolicy({ layer: 'agent', required: false })).status).toBe(200);
+      });
+
+      it('an account held to email: the setting is kept, it enrols with the app, and following an SMS layer by «required» is refused', async () => {
+        Object.assign(store.users.get('ann')!, { twoFactorRequired: true, requiredMethod: 'email' });
+        const settings = await http().get('/auth/users/ann/settings').set('Cookie', ownerCookie);
+        expect(settings.body).toMatchObject({ twoFactorMode: 'required', requiredMethod: 'email', effective: { required: true, method: 'email' } });
+        const signIn = await login('ann');
+        expect(signIn.body.next).toBe('two_factor_enroll');
+        expect(await methodsOf(cookieOf(signIn))).toEqual(['app']);
+        expect(store.users.get('ann')).toMatchObject({ twoFactorRequired: true, requiredMethod: 'email' });
+        await store.setLayerMethod('agent', 'sms');
+        expect((await setMode('bob', { mode: 'required' })).body.code).toBe('METHOD_UNAVAILABLE');
+        expect((await setMode('bob', { mode: 'required', method: 'app' })).status).toBe(200);
+      });
+
+      it('an account enrolled with SMS: it is not let in without its code, is told the method is unavailable, and the owner\'s reset brings it back through the app', async () => {
+        Object.assign(store.users.get('ann')!, { twoFactorEnabled: true, twoFactorMethod: 'sms', phone: '+972 52-123-4567' });
+        const signIn = await login('ann');
+        expect(signIn.body.next).toBe('two_factor_code');
+        const cookie = cookieOf(signIn);
+        const sent = await http().post('/auth/two-factor/send').set('Cookie', cookie);
+        expect([sent.status, sent.body.code]).toEqual([400, 'METHOD_UNAVAILABLE']);
+        expect(sentMessages).toBe(0);
+        // The second step is not skipped and not weakened: no code, no session.
+        expect((await http().post('/auth/two-factor/verify').set('Cookie', cookie).send({ code: '123456' })).status).toBe(401);
+        expect(liveFull('ann')).toHaveLength(0);
+        expect(store.users.get('ann')).toMatchObject({ twoFactorEnabled: true, twoFactorMethod: 'sms' });
+        // Only the branch owner resets it, as before; the account then enrols with the app when it has to.
+        const bob = cookieOf(await login('bob'));
+        expect((await http().delete('/auth/two-factor/ann').set('Cookie', bob)).status).toBe(403);
+        await setPolicy({ layer: 'agent', required: true, method: 'app' });
+        expect((await http().delete('/auth/two-factor/ann').set('Cookie', ownerCookie)).status).toBe(200);
+        expect(liveAny('ann').filter((s) => s.scope === 'full')).toHaveLength(0);
+        const again = await login('ann');
+        expect(again.body.next).toBe('two_factor_enroll');
+        expect(await methodsOf(cookieOf(again))).toEqual(['app']);
+      });
+    });
+
+    it('signing in with the app goes on as before', async () => {
+      const secret = createTotpSecret();
+      Object.assign(store.users.get('enrolled')!, { twoFactorSecret: secret });
+      const signIn = await login('enrolled');
+      expect(signIn.body.next).toBe('two_factor_code');
+      const cookie = cookieOf(signIn);
+      expect((await http().post('/auth/two-factor/send').set('Cookie', cookie)).body).toEqual({ method: 'app' });
+      const verified = await http().post('/auth/two-factor/verify').set('Cookie', cookie).send({ code: currentTotp(secret) });
+      expect(verified.status).toBe(200);
+      expect(liveFull('enrolled')).toHaveLength(1);
     });
   });
 });

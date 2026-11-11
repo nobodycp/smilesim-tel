@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Layer, decideLogin, mustEnrol } from './decide-login';
-import { endUnenrolledSessions, fixedMethod, settingsView, type UserSettingsView } from './two-factor-policy';
+import { availableMethods, endUnenrolledSessions, enrolmentChoices, fixedMethod, settingsView, type UserSettingsView } from './two-factor-policy';
 import {
   ChangePasswordBody,
   ConfirmMethodBody,
@@ -10,7 +10,6 @@ import {
   TwoFactorMethodBody,
   UpdateProfileBody,
   UserContactBody,
-  TWO_FACTOR_CHOICES,
   parseBody,
 } from './auth.schemas';
 import { AUTH_STORE, AuthStore, SessionRow, StoredUser, TwoFactorMethod } from './auth.store';
@@ -354,17 +353,17 @@ export class AuthService {
     return { kind: 'ok', ...authed };
   }
 
+  /** A method that cannot be carried out now is refused as unavailable; one the account is not held to, as not allowed. */
   private async methodRefused(user: StoredUser, method: TwoFactorMethod): Promise<Failure | null> {
-    const fixed = await fixedMethod(this.store, user);
-    return fixed && fixed !== method ? fail(400, 'METHOD_NOT_ALLOWED') : null;
+    if (!availableMethods(this.sender).includes(method)) return fail(400, 'METHOD_UNAVAILABLE');
+    return (await enrolmentChoices(this.store, this.sender, user)).includes(method) ? null : fail(400, 'METHOD_NOT_ALLOWED');
   }
 
   /** For the enrolment screen: the methods this account may enrol with (all three, or the one it is held to). */
   async enrolmentMethods(sessionId: string | undefined): Promise<Outcome<{ allowedMethods: TwoFactorMethod[] }>> {
     const enrolling = await this.enrollmentSession(sessionId);
     if (enrolling.kind === 'error') return enrolling;
-    const fixed = await fixedMethod(this.store, enrolling.user);
-    return { kind: 'ok', allowedMethods: fixed ? [fixed] : [...TWO_FACTOR_CHOICES] };
+    return { kind: 'ok', allowedMethods: await enrolmentChoices(this.store, this.sender, enrolling.user) };
   }
 
   async setupTwoFactor(sessionId: string | undefined): Promise<Outcome<{ otpauth: string }>> {
@@ -457,6 +456,8 @@ export class AuthService {
    * tries and is kept hashed; a new one replaces the last.
    */
   private async sendCode(user: StoredUser, purpose: PendingCode['purpose'], method: CodeMethod): Promise<Outcome<{ sentTo: string; sent: boolean; retryIn: number }>> {
+    // A code that would reach nobody is not sent: the caller is told the method is unavailable, not left waiting.
+    if (!this.sender.delivers(method)) return fail(400, 'METHOD_UNAVAILABLE');
     const to = this.contactOf(user, method);
     if (!to) return fail(400, 'CONTACT_MISSING');
     const sentAt = Number(await this.store.getSecret(sentKey(user.id)));
@@ -572,7 +573,7 @@ export class AuthService {
         twoFactorMethod: user.twoFactorMethod ?? 'app',
         canDisable: user.twoFactorEnabled && !required,
         required,
-        allowedMethods: fixed ? [fixed] : [...TWO_FACTOR_CHOICES],
+        allowedMethods: await enrolmentChoices(this.store, this.sender, user),
         phone: phone ? maskContact(phone, 'sms') : null,
         email: email ? maskContact(email, 'email') : null,
         passkeys: (await this.store.listPasskeys(user.id)).map((row) => ({ id: row.id, name: row.name, createdAt: row.createdAt, lastUsedAt: row.lastUsedAt })),

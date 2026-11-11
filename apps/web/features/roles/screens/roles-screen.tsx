@@ -10,7 +10,7 @@ import { Button } from '../../../components/ui/button';
 import { api, type RoleRow } from '../../../lib/api';
 import type { LayerKey, SessionRuleValues, TwoFactorMethod } from '../../../lib/api-types';
 import { RuleSelects, sessionRulesValid } from '../../auth/session-rules';
-import { LayerTwoFactor } from '../../auth/two-factor-policy';
+import { LayerTwoFactor, savableMethod } from '../../auth/two-factor-policy';
 import { LiveSwitch } from '../../../components/live-switch';
 import { GRANT_CODES, grantGroupsFor, grantLabel, grantUsable, type GrantGroupKey } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
@@ -87,9 +87,11 @@ export function RolesScreen() {
       }
       if (policyDraft && policy.data) {
         const before = policy.data.policy[layerKey];
+        // Saved as required, the layer carries a method the screens offer (the API refuses one that is switched off).
+        const method = policyDraft.required ? savableMethod(policyDraft.method) : policyDraft.method;
         const ruled = await api.setTwoFactorPolicy(layerKey, {
           ...(policyDraft.required !== before.required ? { required: policyDraft.required } : {}),
-          ...(policyDraft.method !== before.method ? { method: policyDraft.method } : {}),
+          ...(method !== before.method ? { method } : {}),
         });
         if (!ruled.ok) return ruled;
         if (ruled.data.endedAccounts > 0) setNote(t.twoFactorEnded.replace('{count}', String(ruled.data.endedAccounts)));

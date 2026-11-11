@@ -92,3 +92,35 @@ test('adds a passkey in settings, then signs in with it', async ({ page }) => {
   expect(signedIn[0]?.loginId).toBe('once-1');
   expect(signedIn[0]?.response?.id).toBe(added[0]?.response?.id);
 });
+
+// Spec 2026-11-12-two-factor-available-methods: the enrolment screen offers what the API allows and nothing else.
+for (const [allowed, name] of [[['app'], 'تطبيق المصادقة'], [['sms'], 'رسالة نصية (SMS)']] as const) {
+  test(`the enrolment page proposes only what the API allows (${allowed.join(',')})`, async ({ page }) => {
+    const asked: string[] = [];
+    await page.route('**/auth/two-factor/methods', (route) => route.fulfill(json({ allowedMethods: allowed })));
+    await page.route('**/auth/two-factor/setup', (route) => {
+      asked.push('setup');
+      return route.fulfill(json({ otpauth: 'otpauth://totp/x?secret=ABC' }));
+    });
+    await page.route('**/auth/two-factor/method', (route) => {
+      asked.push('method');
+      return route.fulfill(json({ sentTo: '•••••4567', sent: true, retryIn: 30 }));
+    });
+    await page.addInitScript(() => sessionStorage.setItem('twoFactorStep', 'enroll'));
+    await page.goto('/two-factor');
+    await expect(page.locator('form')).toBeVisible();
+    await expect(page.locator('p.hint', { hasText: name })).toBeVisible();
+    await page.waitForTimeout(500);
+    // The app's secret is asked for only when the app is what the API allows: no call the API would refuse.
+    expect(asked.filter((call) => call === 'setup')).toHaveLength(allowed[0] === 'app' ? 1 : 0);
+  });
+}
+
+test('the code page says so when the account\'s method cannot be carried out, instead of waiting for a code', async ({ page }) => {
+  await page.route('**/auth/two-factor/send', (route) =>
+    route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ code: 'METHOD_UNAVAILABLE', message: 'طريقة التحقق هذه غير متاحة حالياً. المتاح تطبيق المصادقة، أو راجع إدارة الفرع' }) }),
+  );
+  await page.addInitScript(() => sessionStorage.setItem('twoFactorStep', 'code'));
+  await page.goto('/two-factor');
+  await expect(page.getByText('طريقة التحقق هذه غير متاحة حالياً. المتاح تطبيق المصادقة، أو راجع إدارة الفرع')).toBeVisible();
+});

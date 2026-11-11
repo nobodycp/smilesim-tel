@@ -1013,6 +1013,7 @@ export const en: Copy = {
     SIM_PREFIX: "The SIM number does not start with this company's prefix",
     ESIM_UNSUPPORTED: 'This company does not take eSIM',
     METHOD_NOT_ALLOWED: 'This method is not allowed for this account. Use the method set for it',
+    METHOD_UNAVAILABLE: 'This verification method is not available right now. The authenticator app is; or ask the branch office',
     APP_CODE_UNAVAILABLE: 'Authenticator app sign-in is not available right now. Choose another method',
     QR_INVALID: 'The QR picture is not valid',
     IMAGE_TOO_LARGE: 'The picture is too large (700 KB at most)',

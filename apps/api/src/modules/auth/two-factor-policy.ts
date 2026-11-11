@@ -1,5 +1,6 @@
 import { Layer, mustEnrol } from './decide-login';
-import type { AuthStore, StoredUser, TwoFactorMethod } from './auth.store';
+import { TWO_FACTOR_METHODS, type AuthStore, type StoredUser, type TwoFactorMethod } from './auth.store';
+import type { MessageSender } from './message-sender';
 
 // Two-step verification policy per layer and per account (spec 2026-11-11-two-factor-policy): the rule that applies to
 // an account, the method it must use, and the sign-out of accounts that have to have two-step and have none.
@@ -23,8 +24,28 @@ export type UserSettingsView = {
 };
 
 /**
- * The method the account has to use while two-step verification is required of it: its own, else its layer's;
- * null when it is free to choose.
+ * The methods that can be carried out now (spec 2026-11-12-two-factor-available-methods): the authenticator app
+ * always; SMS and email only while the message sender delivers on that channel. A method outside this list is
+ * not offered, cannot be set as a layer's or an account's method, and cannot be enrolled with.
+ */
+export function availableMethods(sender: MessageSender): TwoFactorMethod[] {
+  return TWO_FACTOR_METHODS.filter((method) => method === 'app' || sender.delivers(method));
+}
+
+/**
+ * The methods an account may enrol with. One when it is held to a method that is available. An account held to
+ * a method that is not available (a setting stored before the method was switched off) still has to enrol, with
+ * any available method: the stored setting is left as it is and the account is not locked out.
+ */
+export async function enrolmentChoices(store: AuthStore, sender: MessageSender, user: StoredUser): Promise<TwoFactorMethod[]> {
+  const available = availableMethods(sender);
+  const fixed = await fixedMethod(store, user);
+  return fixed && available.includes(fixed) ? [fixed] : available;
+}
+
+/**
+ * The method the account has to use while two-step verification is required of it, as it is stored: its own,
+ * else its layer's; null when it is free to choose. It may name a method that is not available now.
  */
 export async function fixedMethod(store: AuthStore, user: StoredUser): Promise<TwoFactorMethod | null> {
   if (!mustEnrol(user, (await store.policy())[user.layer])) return null;

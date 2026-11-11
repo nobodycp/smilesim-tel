@@ -10,6 +10,12 @@ export type OutgoingMessage = { channel: MessageChannel; to: string; subject: st
 
 export interface MessageSender {
   send(message: OutgoingMessage): Promise<void>;
+  /**
+   * Whether a message on this channel reaches its reader. Two-step verification by SMS or email is offered,
+   * required and enrolled only on a channel that delivers (two-factor-policy.ts `availableMethods`). A real
+   * gateway answers true for the channels it carries; that alone switches the method back on in the API.
+   */
+  delivers(channel: MessageChannel): boolean;
 }
 
 @Injectable()
@@ -21,5 +27,10 @@ export class LogSender implements MessageSender {
     // only says that nothing was delivered (review 2026-11-10, S10).
     if (isProduction()) this.logger.warn(`[${message.channel}] not delivered: no gateway is configured`);
     else this.logger.log(`[${message.channel}] to ${message.to}: ${message.text}`);
+  }
+
+  /** The log is not a way to a person's phone or inbox, in any environment. */
+  delivers(): boolean {
+    return false;
   }
 }

@@ -68,7 +68,7 @@ describe('sign-in methods', () => {
       .overrideProvider(AUTH_STORE)
       .useValue(store)
       .overrideProvider(MESSAGE_SENDER)
-      .useValue({ send: async (message: OutgoingMessage) => { sent.push(message); } })
+      .useValue({ send: async (message: OutgoingMessage) => { sent.push(message); }, delivers: () => true })
       .compile();
     app = moduleRef.createNestApplication();
     await app.init();

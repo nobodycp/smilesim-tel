@@ -109,3 +109,37 @@ test('the owner edits one account from its page\'s «إعدادات الحساب
   expect(modes).toEqual([{ mode: 'required', method: null }]);
   expect(saved).toEqual([{ maxSessions: 2, sessionMinutes: null }]);
 });
+
+// Spec 2026-11-12-two-factor-available-methods: the screens save a rule with a method they offer, never one the
+// API refuses, when the layer's stored method is one that is switched off.
+test('making an account required under a layer left on SMS saves it with the app', async ({ page }) => {
+  await serveOffice(page, 'branch', {
+    'GET /users/pos1': () => ({ body: account }),
+    'GET /users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
+    'GET /users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),
+  });
+  const modes: unknown[] = [];
+  let settings = {
+    loginName: 'pos1', email: '', phone: '', twoFactorEnabled: false, twoFactorExempt: false, twoFactorMethod: 'app',
+    twoFactorMode: 'follow', requiredMethod: null, effective: { required: false, method: null as string | null },
+  };
+  const app = { required: false, method: 'app' };
+  await page.route('**/auth/policy', (route) => route.fulfill(json({ policy: { branch: app, main_agent: app, agent: app, pos: { required: false, method: 'sms' } } })));
+  await page.route('**/auth/users/pos1/settings', (route) => route.fulfill(json(settings)));
+  await page.route('**/auth/users/pos1/two-factor', (route) => {
+    const body = route.request().postDataJSON() as { mode: string; method: string | null };
+    modes.push(body);
+    settings = { ...settings, twoFactorMode: body.mode, effective: { required: true, method: body.method } };
+    return route.fulfill(json({ settings, endedAccounts: 0 }));
+  });
+  await page.route('**/auth/users/pos1/session-rules', (route) =>
+    route.fulfill(json({ own: none, layer: { maxSessions: 3, sessionMinutes: 360 }, effective: { maxSessions: 3, sessionMinutes: 360 } })),
+  );
+  await page.goto('http://admin.localhost:3910/users/pos1');
+  await page.getByRole('tab', { name: 'الإعدادات والصلاحيات' }).click();
+  const pane = page.getByRole('region', { name: 'إعدادات الحساب' });
+  await pane.getByRole('radio', { name: 'إلزامي' }).click();
+  await pane.getByRole('button', { name: 'حفظ' }).click();
+  await expect(page.getByText('حُفظت إعدادات الحساب')).toBeVisible();
+  expect(modes).toEqual([{ mode: 'required', method: 'app' }]);
+});

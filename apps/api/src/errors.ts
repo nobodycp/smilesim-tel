@@ -57,6 +57,7 @@ export const ERROR_MESSAGES = {
   PRODUCT_NOT_FOUND: 'المزود لا يعرض هذا المنتج',
   // Answers that come from no rule of ours: a body over the limit, and a fault in the server itself.
   TOO_LARGE: 'الطلب أكبر من المسموح',
+  METHOD_UNAVAILABLE: 'طريقة التحقق هذه غير متاحة حالياً. المتاح تطبيق المصادقة، أو راجع إدارة الفرع',
   SERVER_ERROR: 'حدث خطأ في الخادم. أعد المحاولة',
 } as const;
 

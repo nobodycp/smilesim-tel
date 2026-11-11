@@ -26,3 +26,15 @@ auth jest specs run locally, e2e on GitHub Actions.
 
 - [x] Click every state at 390 / 768 / 1280, ar-dark and en-light (he for copy: not looked at), per `verify-before-reply.mdc`. e2e `session-rules.spec.ts` updated, not run locally.
 - [x] `docs/architecture/{backend,frontend}.md`, "Last verified", e2e specs that read the old pane text.
+
+## Slice 4 — only methods that can be carried out (spec 2026-11-12-two-factor-available-methods)
+
+- [x] `message-sender.ts` `delivers`; `two-factor-policy.ts` `availableMethods`, `enrolmentChoices`.
+- [x] `two-factor-policy.service.ts`: `METHOD_UNAVAILABLE` before any write or sign-out; `auth.service.ts`:
+      enrolment and the code request.
+- [x] `src/two-factor-methods.ts`: the read-only report (`npm run two-factor-methods --workspace api`).
+- [x] Web: `shownAmong` shows the API's list when none of it is on the screens' list, `savableMethod`, the code
+      page shows the refusal.
+- [x] Specs: `two-factor-policy.http.spec.ts`, `two-factor-methods.spec.ts`, `two-factor-methods.db.spec.ts`,
+      e2e `sign-in-methods.spec.ts`, `session-rules.spec.ts`.
+

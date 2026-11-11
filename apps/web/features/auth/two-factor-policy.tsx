@@ -17,10 +17,22 @@ export const TWO_FACTOR_METHODS: readonly TwoFactorMethod[] = ['app', 'sms', 'em
  */
 export const SHOWN_METHODS: readonly TwoFactorMethod[] = ['app'];
 
-/** The offered methods among those the API allows; never empty. */
+/**
+ * The offered methods among those the API allows. The API allows only what can be carried out and what the account
+ * is held to (spec 2026-11-12-two-factor-available-methods), so when none of them is on the screens' own list the
+ * API's list is shown as it is: a screen never proposes a method the API would refuse.
+ */
 export function shownAmong(allowed: readonly TwoFactorMethod[]): TwoFactorMethod[] {
   const shown = allowed.filter((method) => SHOWN_METHODS.includes(method));
-  return shown.length ? shown : [...SHOWN_METHODS];
+  return shown.length ? shown : [...allowed];
+}
+
+/**
+ * The method to save with a rule that is being set to required: the chosen one when the screens offer it, else the
+ * first they offer. A rule stored with a method that is switched off is saved again with one the owner can see.
+ */
+export function savableMethod(method: TwoFactorMethod): TwoFactorMethod {
+  return SHOWN_METHODS.includes(method) ? method : SHOWN_METHODS[0];
 }
 
 /** The system's segmented choice (`.seg`), one button per option, full width inside a dialog or pane. */

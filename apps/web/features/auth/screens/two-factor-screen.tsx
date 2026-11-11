@@ -60,12 +60,13 @@ export function TwoFactorScreen() {
   useEffect(() => {
     if (enrolling) return;
     api.sendTwoFactorCode().then((result) => {
-      if (!result.ok) return;
+      // A method that cannot be carried out now (no SMS or email gateway) says so instead of waiting for a code.
+      if (!result.ok) return void setMessage(apiText(result));
       setMethod(result.data.method);
       if (result.data.sentTo) setSentTo(result.data.sentTo);
       setRetryIn(result.data.retryIn ?? 0);
     });
-  }, [enrolling]);
+  }, [enrolling, apiText]);
 
   // The resend countdown.
   useEffect(() => {

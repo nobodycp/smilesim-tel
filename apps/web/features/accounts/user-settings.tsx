@@ -10,7 +10,7 @@ import { usePrefs } from '../../lib/prefs';
 import { useApiQuery } from '../../lib/use-api-query';
 import { RuleSelects, durationLabel, sessionRulesValid } from '../auth/session-rules';
 import { methodName } from '../auth/sign-in-methods';
-import { MethodField, ModeSeg } from '../auth/two-factor-policy';
+import { MethodField, ModeSeg, savableMethod } from '../auth/two-factor-policy';
 
 /**
  * «إعدادات الحساب» (spec 2026-11-08-overview-and-reports-nav, H), branch owner only: this account's email and
@@ -67,7 +67,10 @@ export function UserSettingsPane({ loginName, layer, onSaved }: { loginName: str
       await settings.reload();
     }
     if (rule) {
-      const saved = await api.setAccountTwoFactor(loginName, { mode: rule.mode, method: rule.mode === 'required' ? rule.method || null : null });
+      // Required with no method of its own follows the layer's; when the layer's is switched off, the account is
+      // given one the screens offer (the API refuses a method that cannot be carried out).
+      const own = rule.method ? savableMethod(rule.method) : layerMethod && savableMethod(layerMethod.method) !== layerMethod.method ? savableMethod(layerMethod.method) : null;
+      const saved = await api.setAccountTwoFactor(loginName, { mode: rule.mode, method: rule.mode === 'required' ? own : null });
       if (!saved.ok) return void setError(apiText(saved));
       setRule(null);
       if (saved.data.endedAccounts > 0) ended = saved.data.endedAccounts;
