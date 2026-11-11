@@ -54,7 +54,7 @@ export function MatchingPane({ summary, canWrite, run, busy }: {
                 <input className="num" inputMode="numeric" dir="ltr" value={days} onChange={(event) => setDays(event.target.value)} />
               </label>
             ) : null}
-            <Button type="button" variant="secondary" disabled={busy || !dirty || !valid} onClick={() => void run(() => api.setProviderMatching(summary.code, { matchSource: source, matchEveryDays: valid ? daysValue : 7 }), { note: t.saved })}>
+            <Button type="button" disabled={busy || !dirty || !valid} onClick={() => void run(() => api.setProviderMatching(summary.code, { matchSource: source, matchEveryDays: valid ? daysValue : 7 }), { note: t.saved })}>
               {t.save}
             </Button>
             {summary.matchSource === 'statement' ? (

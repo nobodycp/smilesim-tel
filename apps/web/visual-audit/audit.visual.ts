@@ -51,6 +51,11 @@ async function inspect(page: Page, width: number) {
       if (w < 768 && el.matches('button, a[href], [role=tab], [role=radio], [role=switch], select, input:not([type=hidden])') && !el.closest('table') && (r.height < 32 || r.width < 32) && s.opacity !== '0' && getComputedStyle(el, '::after').position !== 'absolute') push('small-target', `${name(el)} ${Math.round(r.width)}x${Math.round(r.height)} «${(he.innerText || he.getAttribute('aria-label') || '').trim().slice(0, 20)}»`);
       if (el.matches('select:not(.ui-select-field), input[type=checkbox]:not([style*="opacity"])') && s.opacity !== '0' && s.appearance !== 'none') push('native-control', name(el));
     }
+    // A table cell whose content is wider than the cell (a phone card cutting its text).
+    for (const td of root.querySelectorAll('table.data tbody td')) {
+      const w = td.getBoundingClientRect().width;
+      if (w && [...td.querySelectorAll('*')].some((e) => e.getBoundingClientRect().width > w + 2)) push('cell-overflow', name(td));
+    }
     return out;
   }, width);
 }

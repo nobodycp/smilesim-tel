@@ -1,5 +1,6 @@
 'use client';
 
+import { DateField } from '../../../components/date-field';
 import { Receipt, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
@@ -182,11 +183,11 @@ export function FinanceScreen() {
         </label>
         <label>
           {t.from}
-          <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+          <DateField value={from} onChange={(next) => setFrom(next)} />
         </label>
         <label>
           {t.to}
-          <input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+          <DateField value={to} onChange={(next) => setTo(next)} />
         </label>
       </FilterBar>
       <section className="pane">

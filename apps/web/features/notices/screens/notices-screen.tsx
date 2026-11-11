@@ -98,7 +98,7 @@ export function NoticesScreen() {
       lede={t.noticesLede}
       error={error}
       note=""
-      action={unread > 0 ? <Button type="button" variant="ghost" onClick={() => void markAll()}>{t.markAllRead}</Button> : undefined}
+      action={unread > 0 ? <Button type="button" variant="secondary" onClick={() => void markAll()}>{t.markAllRead}</Button> : undefined}
     >
       <div className="report-filters">
         <Tabs

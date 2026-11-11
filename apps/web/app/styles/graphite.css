@@ -267,6 +267,14 @@ input[readonly] { background-color: transparent; }
 
 /* A card's body and stacks keep their rows at their own height when the card is stretched by a neighbour. */
 .pane-body, .stack, .settings-col, form { align-content: start; }
+/* Five figure cards (the user page) sit in one row on a wide canvas, three and two on a middle one — never four and one
+   left alone (owner 2026-11-11). */
+@media (min-width: 1100px) {
+  .stat-row:has(> :nth-child(5):last-child) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (min-width: 768px) and (max-width: 1099px) {
+  .stat-row:has(> :nth-child(5):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 /* Four figure cards sit in one row when they fit, else two by two: never three and one left alone. */
 @media (min-width: 768px) and (max-width: 1100px) {
   .stat-row:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -510,6 +518,10 @@ input[readonly] { background-color: transparent; }
 /* ── The design's special action, crimson («btn-accent»): «تفعيل رقم», «تمديد». Every other page action stays ink. ── */
 .ui-btn.ui-btn-accent { background-color: var(--rd-accent); color: var(--rd-on-mark); box-shadow: none; }
 .ui-btn.ui-btn-accent:hover { background-color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
+/* The page's main action is the crimson button, on every page (owner 2026-11-11): «تفعيل رقم», «إضافة شركة»,
+   «إضافة رزمة», «حساب جديد», «دور جديد», «تمويل حساب», «تسجيل دفعة»… — any primary button in a page head. */
+.page-head .ui-btn.ui-btn-primary { background-color: var(--rd-accent); color: var(--rd-on-mark); box-shadow: none; }
+.page-head .ui-btn.ui-btn-primary:hover:not(:disabled) { background-color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
 /* A choice made of segments (the provider outcome) sits in the chip row with its name beside it. */
 .filter-panel > .stack { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
 .filter-panel > .stack > .hint { color: var(--rd-muted); font-size: 12px; font-weight: 600; }
@@ -1295,6 +1307,8 @@ input[readonly] { background-color: transparent; }
   table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.fit:first-child + td { grid-column: 1 / -1; padding-inline-end: 44px; font-size: var(--rd-text-md); }
   table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.fit:first-child + td::before { display: none; }
   .sheet:has(> table.data td[data-label]) { overflow-x: visible; }
+  /* Inside a card a cell's content fits the card: no desktop minimum width. */
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td > * { min-inline-size: 0; max-inline-size: 100%; }
 }
 
 /* Phones, continued: every tab in view (the strip wraps instead of hiding the last tabs off its edge), 40px pager and
@@ -1321,3 +1335,49 @@ input[readonly] { background-color: transparent; }
 
 /* A switch beside its state word keeps one width, so «فعال» ↔ «متوقف» does not move the table's columns. */
 .data .live-switch > b { display: inline-block; min-inline-size: 4.5rem; }
+/* The boxed ⋯ beside a head's buttons (the user page) is drawn as the secondary button beside it (owner 2026-11-11). */
+.row-menu.boxed .row-menu-btn { border: 0; background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); color: var(--rd-ink); }
+.row-menu.boxed .row-menu-btn:hover { background: var(--rd-surface-3); }
+.file-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2-5); }
+.file-pick > label { cursor: pointer; }
+.file-pick > label:focus-within { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
+
+/* ── DateField (components/date-field.tsx; owner 2026-11-11): the system's date, never the browser's — a field that
+   takes YYYY-MM-DD and a calendar button; in a filter chip it is the chip's value part, in a form a field with the
+   button beside it. The month opens on the raised surface: weekday names, Latin digits, today ringed, the chosen day
+   crimson. ── */
+.date-field { display: inline-flex; align-items: stretch; gap: 6px; min-width: 0; }
+.date-field > input { inline-size: 8rem; min-width: 0; font-variant-numeric: tabular-nums; }
+.date-field-open { display: grid; flex: none; place-items: center; inline-size: 34px; border: 1px solid var(--rd-line); border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); color: var(--rd-ink-2); cursor: pointer; }
+.date-field-open:hover, .date-field-open[aria-expanded='true'] { color: var(--rd-accent); }
+.filter-panel > label .date-field { gap: 0; }
+.desk .filter-panel > label .date-field > input, .filter-panel > label .date-field > input { inline-size: 7.5rem; }
+.filter-panel > label .date-field-open { inline-size: 30px; height: 30px; border: 0; border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent); border-radius: 0; background: var(--rd-surface); }
+.dialog .date-field > input { flex: 1; }
+.dialog .date-field-open { height: 34px; }
+.date-pop {
+  position: fixed;
+  z-index: calc(var(--rd-z-dialog) + 3);
+  inline-size: 280px;
+  padding: 10px;
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface);
+  box-shadow: inset 0 0 0 1px var(--rd-line), var(--rd-shadow-pop);
+}
+.date-pop-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-block-end: 8px; }
+.date-pop-head b { color: var(--rd-ink); font-size: var(--rd-text-md); }
+.date-pop-step { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-ink-2); cursor: pointer; }
+.date-pop-step:hover { background: var(--rd-surface-2); }
+.date-pop-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.date-pop-weekday { display: grid; place-items: center; height: 26px; color: var(--rd-muted); font-size: 11px; font-weight: 600; }
+.date-pop-day { height: 34px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-ink); font-size: var(--rd-text-sm); font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; }
+.date-pop-day:hover { background: var(--rd-surface-2); }
+.date-pop-day.today { box-shadow: inset 0 0 0 1px var(--rd-accent); }
+.date-pop-day.on { background: var(--rd-accent); color: var(--rd-on-mark); }
+.date-pop-foot { display: flex; justify-content: space-between; margin-block-start: 8px; padding-block-start: 8px; border-block-start: 1px solid var(--rd-line); }
+.date-pop-link { height: 30px; padding-inline: 10px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-accent); font-weight: 600; cursor: pointer; }
+.date-pop-link:hover { background: var(--rd-accent-soft); }
+@media (max-width: 640px) {
+  .date-pop-day { height: 40px; }
+  .date-field-open { inline-size: 40px; }
+}

@@ -164,8 +164,8 @@ export function ProviderPackagesScreen() {
       error={error}
       note={note}
     >
+      <Tabs items={tabs} value={tab} onChange={setTab} />
       <section className={tab === 'settings' ? 'pane line-pane' : 'pane'}>
-        <Tabs items={tabs} value={tab} onChange={setTab} />
         {tab === 'settings' && (
           <div className="pane-body stack">
             {settings.error ? (

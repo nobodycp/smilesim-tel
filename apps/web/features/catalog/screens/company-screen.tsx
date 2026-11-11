@@ -155,10 +155,11 @@ export function CompanyScreen() {
       error={error}
       note={note}
     >
-      <section className={tab === 'settings' ? 'pane fit' : 'pane'}>
-        <Tabs items={tabs} value={tab} onChange={setTab} />
-        {tab === 'settings' && (
-          // Three blocks (spec 2026-11-11-ui-consistency-pass, D2): the picture, the SIM rules, eSIM.
+      {/* Tabs sit above their content on every page (owner 2026-11-11). */}
+      <Tabs items={tabs} value={tab} onChange={setTab} />
+      {/* Settings: three blocks (spec 2026-11-11-ui-consistency-pass, D2): the picture, the SIM rules, eSIM. */}
+      {tab === 'settings' && (
+        <section className="pane fit">
           <div className="pane-body company-settings">
             <section className="settings-block">
               <h3>{t.companyImage}</h3>
@@ -209,6 +210,7 @@ export function CompanyScreen() {
               {canEdit && <div className="form-save"><Button type="submit" disabled={busy || !shelf.loaded}>{t.save}</Button></div>}
             </form>
           </div>
+      </section>
         )}
         {tab === 'packages' && (
           <CompanyPackages
@@ -221,6 +223,7 @@ export function CompanyScreen() {
           />
         )}
         {tab === 'providers' && (
+          <section className="pane">
           <DataTable
             columns={columns}
             rows={company?.providers ?? []}
@@ -231,8 +234,8 @@ export function CompanyScreen() {
             skeleton={{ rows: 5, columns: 4 }}
             empty={t.noProviders}
           />
+          </section>
         )}
-      </section>
     </Desk>
   );
 }

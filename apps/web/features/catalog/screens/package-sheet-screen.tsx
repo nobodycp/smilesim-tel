@@ -399,7 +399,7 @@ export function PackageSheetScreen() {
             <Badge variant={onOffTone(pkg.forSale)} dot>{pkg.forSale ? t.forSale : t.notForSale}</Badge>
           </label>
         ))}
-        <Button type="button" variant="secondary" size="sm" onClick={() => void saveTargets(kind)}>{t.save}</Button>
+        <Button type="button" onClick={() => void saveTargets(kind)}>{t.save}</Button>
       </div>
     );
   }
@@ -426,10 +426,10 @@ export function PackageSheetScreen() {
       note={note}
     >
       <div className="stack">
+        {card.loaded && sheet ? <Tabs items={tabs} value={tab} onChange={setTab} /> : null}
         <section className="pane package-sheet">
           {!card.loaded || !sheet ? <TableSkeleton rows={6} columns={2} /> : (
             <>
-              <Tabs items={tabs} value={tab} onChange={setTab} />
               {tab === 'overview' && (
                 <div className="pane-body">
                   <div className="sheet-stats">
@@ -472,7 +472,7 @@ export function PackageSheetScreen() {
               {tab === 'prices' && (
                 <ChainBoard prices={prices} onChange={(key, value) => setPrices((current) => ({ ...current, [key]: value }))}>
                   {/* «حفظ» saves the chain and the eSIM price beside it; re-pricing the live numbers has its own button. */}
-                  <Button type="button" variant="secondary" size="sm" onClick={() => void saveChain()}>{t.save}</Button>
+                  <Button type="button" onClick={() => void saveChain()}>{t.save}</Button>
                   <div className="account-fund">
                     <h3>{t.esimPrice}</h3>
                     <label>

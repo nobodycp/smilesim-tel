@@ -92,7 +92,7 @@ export function LayerSessionRulesPane({ setError, setNote }: { setError: (text: 
                   fallbackLabel={t.followDefault}
                   onChange={(values) => setDrafts((current) => ({ ...current, [layer]: values }))}
                 />
-                <Button type="button" variant="secondary" disabled={busy !== null || !drafts[layer]} onClick={() => save(layer)}>{t.save}</Button>
+                <Button type="button" disabled={busy !== null || !drafts[layer]} onClick={() => save(layer)}>{t.save}</Button>
               </li>
             ))}
           </ul>

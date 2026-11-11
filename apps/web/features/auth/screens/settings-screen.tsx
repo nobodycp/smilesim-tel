@@ -184,7 +184,7 @@ export function SettingsScreen() {
                 <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" dir="ltr" />
               </label>
             </div>
-            <div><Button type="submit" variant="secondary">{t.changePassword}</Button></div>
+            <div><Button type="submit">{t.changePassword}</Button></div>
           </form>
         </section>
       </div>

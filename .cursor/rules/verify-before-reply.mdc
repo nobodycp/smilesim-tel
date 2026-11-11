@@ -1,0 +1,25 @@
+---
+description: Check every UI change in full detail, across every page, before telling the owner it is done
+alwaysApply: true
+---
+
+# Verify before you reply (owner 2026-11-11)
+
+The owner should never find a difference you did not. "Looks fine" is not a check. Before you say a UI change is
+done, do all of this, and say in the reply what you checked and what you did not:
+
+1. **Compare like with like across the whole office, not only the page you touched.** For each kind of element you
+   changed or saw — the page's main button, other head buttons, ⋯ menus, tabs, filters, tables (header, row height,
+   sort), badges, empty states, dialogs (head, body, foot), fact rows, cards, toasts — list every page that has one and
+   compare them: same component, same variant, same size, same colour, same place. The reference is the element the
+   owner named or the one in `DESIGN.md`, never "they match each other".
+2. **Measure, then look.** Read the computed styles (height, colours, border, radius, font) of the same element on
+   every page with a script against the running copy (port 3000), then look at full-size screenshots, not thumbnails.
+3. **Every width and theme:** 390, 768, 1280 at least; ar-dark and en-light at least; he when copy changed. Re-run
+   `apps/web/visual-audit/` (see `docs/reviews/2026-11-11-visual-audit.md`) and read its findings.
+4. **Interact, don't only render.** Click what you changed: switches, sort headers, tabs, dialogs, saves. Watch that
+   nothing on the page jumps (measure the table's top before and after), that messages do not push content, and that
+   the state after the action is right.
+5. **Every state:** empty, loading, error, one row, many rows, long names, unlimited/none values.
+6. **Report honestly:** what was checked, at which widths and themes, what was found and fixed, and anything not
+   checked. Never write "all consistent" unless step 1 was done for that element on every page.

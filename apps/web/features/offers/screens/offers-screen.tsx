@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react';
+import { DateField } from '../../../components/date-field';
+import { Plus } from 'lucide-react';
 import { useState, type ChangeEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { DataImage } from '../../../components/data-image';
@@ -10,6 +11,7 @@ import { EmptyState } from '../../../components/empty-state';
 import { LiveSwitch } from '../../../components/live-switch';
 import { OfferHero } from '../../../components/offer-hero';
 import { Button, buttonClass } from '../../../components/ui/button';
+import { RowMenu } from '../../../components/row-menu';
 import { api, type Offer, type OfferInput } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
@@ -86,14 +88,22 @@ export function OffersScreen() {
       key: 'actions',
       header: t.rowActions,
       actions: true,
-      render: (row) => (
-        <span className="row-menus">
-          <Button type="button" variant="outline" size="sm" disabled={busy || row.position === 0 && offers[0]?.id === row.id} aria-label={`${t.moveUp} ${row.title}`} onClick={() => run(() => api.moveOffer(row.id, 'up'), { note: t.saved })}><ArrowUp size={15} aria-hidden="true" /></Button>
-          <Button type="button" variant="outline" size="sm" disabled={busy || offers[offers.length - 1]?.id === row.id} aria-label={`${t.moveDown} ${row.title}`} onClick={() => run(() => api.moveOffer(row.id, 'down'), { note: t.saved })}><ArrowDown size={15} aria-hidden="true" /></Button>
-          <Button type="button" variant="outline" size="sm" aria-label={`${t.edit} ${row.title}`} onClick={() => edit(row)}><Pencil size={15} aria-hidden="true" /></Button>
-          <Button type="button" variant="outline" size="sm" disabled={busy} aria-label={`${t.deleteAccount} ${row.title}`} onClick={() => run(() => api.removeOffer(row.id), { note: t.saved })}><Trash2 size={15} aria-hidden="true" /></Button>
-        </span>
-      ),
+      // The row's actions in its ⋯ menu, as on every list (owner 2026-11-11).
+      render: (row) => {
+        const first = offers[0]?.id === row.id;
+        const last = offers[offers.length - 1]?.id === row.id;
+        return (
+          <RowMenu
+            label={`${t.rowActions} ${row.title}`}
+            items={[
+              { label: t.edit, icon: 'edit' as const, onClick: () => edit(row) },
+              ...(first ? [] : [{ label: t.moveUp, icon: 'move' as const, onClick: () => void run(() => api.moveOffer(row.id, 'up'), { note: t.saved }) }]),
+              ...(last ? [] : [{ label: t.moveDown, icon: 'move' as const, onClick: () => void run(() => api.moveOffer(row.id, 'down'), { note: t.saved }) }]),
+              { label: t.deleteAccount, icon: 'trash' as const, danger: true, onClick: () => void run(() => api.removeOffer(row.id), { note: t.saved }) },
+            ]}
+          />
+        );
+      },
     },
   ];
   const live = offers.filter((offer) => offer.active);
@@ -188,11 +198,11 @@ export function OffersScreen() {
             <div className="pair">
               <label>
                 {t.offerStarts}
-                <input type="date" value={draft.startsAt} onChange={(event) => setDraft({ ...draft, startsAt: event.target.value })} />
+                <DateField value={draft.startsAt} onChange={(next) => setDraft({ ...draft, startsAt: next })} />
               </label>
               <label>
                 {t.offerEnds}
-                <input type="date" value={draft.endsAt} onChange={(event) => setDraft({ ...draft, endsAt: event.target.value })} />
+                <DateField value={draft.endsAt} onChange={(next) => setDraft({ ...draft, endsAt: next })} />
               </label>
             </div>
           </div>

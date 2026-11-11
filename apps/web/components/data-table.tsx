@@ -148,9 +148,11 @@ export function DataTable<Row>({
                 key={item.key}
                 role="columnheader"
                 className={classes(item.fit && 'fit', item.num && 'num', item.actions && 'row-actions')}
-                aria-sort={item.actions || !sortable ? undefined : dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none'}
+                aria-sort={item.actions || !sortable || !nodeText(item.header).trim() ? undefined : dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none'}
               >
-                {item.actions || !sortable ? item.header : (
+                {/* The actions column names itself to readers only, on every table; a column with no words in its
+                    head (a picture, a tick box) does not sort (owner 2026-11-11). */}
+                {item.actions ? <span className="sr-only">{nodeText(item.header) || item.header}</span> : !sortable || !nodeText(item.header).trim() ? item.header : (
                   <button
                     type="button"
                     className="col-sort"

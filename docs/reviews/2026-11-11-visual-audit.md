@@ -71,3 +71,29 @@ an even grid on phones (three a row, two a row for two or four tabs); the offers
 title; a cell whose header is hidden text (status) had no label. Known and accepted: on phones the column headers are
 hidden, so a list cannot be re-sorted there (it keeps the server's order); the table keeps its roles for screen
 readers through explicit `role` attributes.
+
+## Deep pass (owner, 2026-11-11 evening)
+
+The owner found «إضافة شركة» / «إضافة رزمة» unlike «تفعيل رقم» after I had called the buttons consistent. A new rule
+(`.cursor/rules/verify-before-reply.mdc`) now requires comparing each kind of element on every page against the
+reference, measured and clicked. This pass measured the page heads, tabs, filters, tables and forms of 22 routes and
+looked at every route and tab full size. Found and fixed:
+
+| Where | Finding | Fix |
+|---|---|---|
+| every page head | main actions ink, only «تفعيل رقم» crimson | one rule: a page head's primary button is crimson |
+| user page | the boxed ⋯ drawn unlike the «المحفظة» button beside it | drawn as the secondary button |
+| notices | «قراءة الكل» a ghost button | secondary, as other head actions |
+| company, provider, number, package pages | tabs inside the card; six other pages put them above | tabs above their content everywhere |
+| company packages | provider filter outside the filter bar | `FilterBar` |
+| home providers card | a hand-written table without sorting | `DataTable` |
+| finance, provider ledger, offers dialog | the browser's date input (`mm/dd/yyyy`) | `DateField` with the system's month |
+| reconciliation | the browser's file input, in English | a system button and the chosen file's name |
+| package page, settings, matching, session rules | «حفظ» small/secondary in some forms, primary in others | every form submit primary, default size |
+| offers | four icon buttons per row | the row's ⋯ menu; the delete was read as «حذف الحساب» |
+| tables | «إجراءات» shown in some heads; sort arrows on blank heads (picture, tick box) | hidden for readers only; no sort without words |
+| user page | five figure cards as four and one | five in a row, three and two on a middle width |
+| finance (phone) | the details cut at the card's edge (a 220px desktop minimum) | cell content fits the card; the audit now flags `cell-overflow` |
+
+Final run (`RUN=final`, 390 / 1280, ar-dark and en-light): no sideways scroll, nothing past the edge, no native
+control; left on purpose: the offers carousel dots, the branding preview's 10px tags, a tick box inside its label.

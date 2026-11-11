@@ -342,7 +342,7 @@ export function PackagesScreen() {
               onChange={(event) => setDraft(row.code, { renewal: event.target.value })}
             />
           </label>
-          <Button type="button" variant="secondary" size="sm" onClick={() => save(row)}>{t.save}</Button>
+          <Button type="button" size="sm" onClick={() => save(row)}>{t.save}</Button>
           {row.sellPrice !== null && (
             <RowMenu
               label={`${t.rowActions} ${row.name}`}

@@ -2,6 +2,7 @@
 
 import { Network, Store, UsersRound } from 'lucide-react';
 import Link from 'next/link';
+import { DataTable } from '../../components/data-table';
 import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Money } from '../../components/desk';
@@ -87,36 +88,30 @@ export function ProvidersCard({ data }: { data: OverviewPayload }) {
   return (
     <Card title={t.overviewProviders} hint={t.overviewProvidersHint} wide>
       {data.providers.length === 0 ? <EmptyState>{t.overviewEmpty}</EmptyState> : (
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>{t.provider}</th>
-                <th>{t.status}</th>
-                <th className="num">{t.lineOps}</th>
-                <th className="num">{t.providerConsumption}</th>
-                <th className="num">{t.balance}</th>
-                <th className="num">{t.providerAvailable}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.providers.map((row) => (
-                <tr key={row.code}>
-                  <td><Link href={`/provider-accounts/${encodeURIComponent(row.code)}`}>{row.name}</Link></td>
-                  <td>
-                    <Badge variant={row.status === 'working' ? 'success' : 'danger'} dot title={row.problem === 'balance' ? t.providerProblemBalance : row.problem === 'failures' ? t.providerProblemFailures.replace('{n}', String(row.failures)) : undefined}>
-                      {row.status === 'working' ? t.providerWorking : t.providerProblem}
-                    </Badge>
-                  </td>
-                  <td className="num">{row.operations}</td>
-                  <td className="num"><Money value={row.cost} /></td>
-                  <td className="num"><Money value={row.balance} /></td>
-                  <td className="num"><Money value={row.available} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        // The office's table (owner 2026-11-11): every header sorts, as on every list.
+        <DataTable
+          bare
+          paginate={false}
+          rows={data.providers}
+          rowKey={(row) => row.code}
+          columns={[
+            { key: 'name', header: t.provider, render: (row) => <Link href={`/provider-accounts/${encodeURIComponent(row.code)}`}>{row.name}</Link> },
+            {
+              key: 'status',
+              header: t.status,
+              sortValue: (row) => (row.status === 'working' ? 1 : 0),
+              render: (row) => (
+                <Badge variant={row.status === 'working' ? 'success' : 'danger'} dot title={row.problem === 'balance' ? t.providerProblemBalance : row.problem === 'failures' ? t.providerProblemFailures.replace('{n}', String(row.failures)) : undefined}>
+                  {row.status === 'working' ? t.providerWorking : t.providerProblem}
+                </Badge>
+              ),
+            },
+            { key: 'ops', header: t.lineOps, num: true, sortValue: (row) => row.operations, render: (row) => row.operations },
+            { key: 'cost', header: t.providerConsumption, num: true, sortValue: (row) => row.cost, render: (row) => <Money value={row.cost} /> },
+            { key: 'balance', header: t.balance, num: true, sortValue: (row) => row.balance, render: (row) => <Money value={row.balance} /> },
+            { key: 'available', header: t.providerAvailable, num: true, sortValue: (row) => row.available, render: (row) => <Money value={row.available} /> },
+          ]}
+        />
       )}
     </Card>
   );

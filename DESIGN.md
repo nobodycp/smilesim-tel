@@ -81,6 +81,14 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - The package price chain (`ChainBoard`, `.chain-grid`): one table row per layer — the branch's cost first, tinted —, the subscription and the renewal side by side, each price with its margin over the layer above; the eSIM price and the re-pricing sit as two cards under it (D6).
 - The user page's «الإعدادات والصلاحيات»: «إعدادات الحساب» open on top, «صلاحيات الحساب» folded (`.inherit-fold`) under it; each grant a three-way `.seg` (حسب الدور / مسموح / ممنوع), extra roles as `.role-chip` toggles (D3).
 - The company «الإعدادات» tab: `.settings-block`s — picture, SIM rules, eSIM (a `LiveSwitch`) (D2).
+- The page's main action is crimson on every page (`.page-head .ui-btn-primary`): «تفعيل رقم», «إضافة شركة», «إضافة
+  رزمة», «حساب جديد», «دور جديد», «إعلان جديد», «تمويل حساب», «تسجيل دفعة»; the other head actions are secondary,
+  the boxed ⋯ drawn the same. A form's submit («حفظ», «تغيير كلمة السر», «إضافة …») is the primary button at its default
+  size, never a small or secondary one.
+- Tabs sit above their content, never inside its card, on every page.
+- Dates are `DateField` (`components/date-field.tsx`): a `YYYY-MM-DD` field and the system's month — never
+  `type="date"`. A file is chosen through a system button over a hidden input, with the chosen name beside it.
+- Tables: the actions column's head is for readers only; a column with no words in its head does not sort.
 - Buttons (owner 2026-11-11): every action is `Button` or `buttonClass` — the task ticket's take, release, complete,
   reject and cancel too (primary, secondary, danger); a list row opens from its own link and its ⋯ menu, with at most
   one primary button of its own («أخذ المهمة»).

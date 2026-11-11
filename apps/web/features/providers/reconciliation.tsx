@@ -1,12 +1,13 @@
 'use client';
 
+import { FileUp } from 'lucide-react';
 import { useState, type ChangeEvent } from 'react';
 import { DataTable, type Column } from '../../components/data-table';
 import { Money, latinWhen } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
 import { Stat, StatRow } from '../../components/stat';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
+import { Button, buttonClass } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
 import { api, type ReconItem, type StatementMap, type StatementPreview } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
@@ -114,9 +115,15 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
           <header className="pane-head"><h2>{t.reconUpload}</h2></header>
           <div className="pane-body stack">
             <p className="hint">{t.reconUploadHint}</p>
-            <label className="file-pick">
-              <input type="file" accept=".xlsx,.csv" onChange={(event) => void pick(event)} />
-            </label>
+            {/* The system's button over a hidden file input — never the browser's «Choose File» (owner 2026-11-11). */}
+            <div className="file-pick">
+              <label className={buttonClass({ variant: 'secondary' })}>
+                <FileUp size={16} aria-hidden="true" />
+                {t.chooseFile}
+                <input type="file" className="sr-only" accept=".xlsx,.csv" onChange={(event) => void pick(event)} />
+              </label>
+              <span className="hint">{loaded ? loaded.fileName : t.noFileChosen}</span>
+            </div>
             {loaded ? (
               <>
                 <p className="hint">{t.reconRows.replace('{file}', loaded.fileName).replace('{n}', String(loaded.preview.rows))}</p>

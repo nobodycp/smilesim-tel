@@ -190,8 +190,8 @@ export function LineCardScreen() {
                 ) : null}
               </p>
             </header>
+          <Tabs items={tabs.map((item) => ({ key: item, label: names[item], count: item === 'log' && history.length ? history.length : undefined }))} value={tab} onChange={setTab} />
           <section className="pane line-pane">
-            <Tabs items={tabs.map((item) => ({ key: item, label: names[item], count: item === 'log' && history.length ? history.length : undefined }))} value={tab} onChange={setTab} />
             {tab === 'ops' && (
               <div className="pane-body line-ops">
                 {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}

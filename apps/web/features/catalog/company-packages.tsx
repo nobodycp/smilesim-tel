@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { DataTable, type Column } from '../../components/data-table';
+import { FilterBar } from '../../components/filter-bar';
 import { Money } from '../../components/desk';
 import { NameField } from '../../components/name-field';
 import { useFactLine } from '../../components/package-facts';
@@ -80,9 +81,10 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
 
   return (
     <>
+      {/* The provider filter is the office's filter bar, as on every list (owner 2026-11-11). */}
       {(company?.providers.length ?? 0) > 1 ? (
-        <div className="pane-tools">
-          <label className="inline-field">
+        <FilterBar onClear={() => onProvider('')} clearLabel={t.clearFilters}>
+          <label>
             {t.provider}
             <NameField
               value={provider}
@@ -91,8 +93,9 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
               options={(company?.providers ?? []).map((item) => ({ value: item.code, label: item.name, keys: [item.code] }))}
             />
           </label>
-        </div>
+        </FilterBar>
       ) : null}
+      <section className="pane">
       <DataTable
         columns={columns}
         rows={rows}
@@ -101,6 +104,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
         skeleton={{ rows: 5, columns: 7 }}
         empty={provider ? t.noMatches : t.noPackages}
       />
+      </section>
     </>
   );
 }
