@@ -1381,3 +1381,9 @@ input[readonly] { background-color: transparent; }
   .date-pop-day { height: 40px; }
   .date-field-open { inline-size: 40px; }
 }
+/* A field's range hint turns red while its value is out of it. */
+.hint.field-error { color: var(--rd-danger); }
+input[aria-invalid='true'], .dialog input[aria-invalid='true'], .pane input[aria-invalid='true'] { border-color: var(--rd-danger); box-shadow: inset 0 0 0 1px var(--rd-danger); }
+/* Number fields without the browser's spin arrows: the value is typed (owner 2026-11-11). */
+input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
+input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }

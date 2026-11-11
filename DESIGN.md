@@ -89,6 +89,9 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - Dates are `DateField` (`components/date-field.tsx`): a `YYYY-MM-DD` field and the system's month — never
   `type="date"`. A file is chosen through a system button over a hidden input, with the chosen name beside it.
 - Tables: the actions column's head is for readers only; a column with no words in its head does not sort.
+- A count or a duration is typed, not picked from a list: a number field without the browser's spin arrows, its
+  range under it (red with the field's edge while out of range), the inherited value as its placeholder — the session
+  rules (sessions allowed, idle hours) on a role and on an account (owner 2026-11-11).
 - Buttons (owner 2026-11-11): every action is `Button` or `buttonClass` — the task ticket's take, release, complete,
   reject and cancel too (primary, secondary, danger); a list row opens from its own link and its ⋯ menu, with at most
   one primary button of its own («أخذ المهمة»).

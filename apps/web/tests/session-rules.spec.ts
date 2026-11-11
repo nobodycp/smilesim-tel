@@ -36,9 +36,10 @@ test('the owner sets a layer’s sessions and idle time on that layer\'s role', 
   await page.getByRole('menuitem').first().click();
   const dialog = page.getByRole('dialog');
   const group = dialog.getByRole('group', { name: 'الجلسات حسب الطبقة' });
-  await expect(group.getByLabel('تنتهي بعد عدم نشاط').locator('option').first()).toHaveText('الافتراضي (6 ساعات)');
-  await group.getByLabel('الجلسات المسموحة').selectOption('1');
-  await group.getByLabel('تنتهي بعد عدم نشاط').selectOption('30');
+  // Number fields, not lists (owner 2026-11-11): a count and hours; empty follows the default, shown as placeholder.
+  await expect(group.getByLabel('تنتهي بعد عدم نشاط (ساعات)')).toHaveAttribute('placeholder', 'الافتراضي (6 ساعات)');
+  await group.getByLabel('الجلسات المسموحة').fill('1');
+  await group.getByLabel('تنتهي بعد عدم نشاط (ساعات)').fill('0.5');
   await dialog.getByRole('button', { name: 'حفظ' }).click();
   await expect.poll(() => saved).toEqual([{ maxSessions: 1, sessionMinutes: 30 }]);
 });
@@ -91,10 +92,10 @@ test('the owner edits one account from its page\'s «إعدادات الحساب
   await expect(pane.getByText('مطلوب عند الدخول القادم')).toBeVisible();
   expect(exempt).toEqual([{ exempt: false }]);
 
-  await expect(pane.getByLabel('الجلسات المسموحة').locator('option').first()).toHaveText('حسب الطبقة (3)');
+  await expect(pane.getByLabel('الجلسات المسموحة')).toHaveAttribute('placeholder', 'حسب الطبقة (3)');
   await expect(pane.getByText('المطبّق الآن: الجلسات المسموحة 3 · 6 ساعات')).toBeVisible();
   await pane.getByLabel('الهاتف').fill('0501234567');
-  await pane.getByLabel('الجلسات المسموحة').selectOption('2');
+  await pane.getByLabel('الجلسات المسموحة').fill('2');
   await pane.getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('حُفظت إعدادات الحساب')).toBeVisible();
   // The permissions sit folded under the settings.

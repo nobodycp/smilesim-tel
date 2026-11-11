@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { layerName } from '../../components/names';
 import { Button } from '../../components/ui/button';
-import { Select } from '../../components/ui/select';
 import { api } from '../../lib/api';
 import type { LayerKey, SessionRuleResult, SessionRuleValues } from '../../lib/api-types';
 import { usePrefs } from '../../lib/prefs';
@@ -13,8 +12,9 @@ import { useApiQuery } from '../../lib/use-api-query';
 // (the user page's «الجلسات»). An empty choice follows the next level: account → layer → default.
 
 const LAYERS: readonly LayerKey[] = ['branch', 'main_agent', 'agent', 'pos'];
-const COUNTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-const MINUTES = [15, 30, 60, 120, 240, 360, 480, 720, 1440, 4320, 10080, 43200];
+// The server's ranges (apps/api/src/modules/auth/sessions.ts).
+const SESSION_COUNT = { min: 1, max: 10 } as const;
+const SESSION_MINUTES = { min: 15, max: 43200 } as const;
 
 /** «6 ساعات», «30 minutes», «7 ימים»: the language's own plural, Latin digits. */
 export function durationLabel(locale: string, minutes: number) {
@@ -22,6 +22,18 @@ export function durationLabel(locale: string, minutes: number) {
   return new Intl.NumberFormat(`${locale}-u-nu-latn`, { style: 'unit', unit, unitDisplay: 'long' }).format(value);
 }
 
+/** Hours as a field shows them: whole when whole, else up to two decimals (0.25, 1.5). */
+function hoursText(minutes: number | null) {
+  if (minutes === null) return '';
+  const hours = minutes / 60;
+  return Number.isInteger(hours) ? String(hours) : String(Math.round(hours * 100) / 100);
+}
+
+/**
+ * Sessions allowed and idle time as two number fields (owner 2026-11-11), not lists: a count from 1 to 10, and hours —
+ * fractions allowed, a quarter hour to 30 days. Empty follows the next level, whose value the field shows as its
+ * placeholder. A value out of range is still handed on (the server refuses it) and the field says the range.
+ */
 export function RuleSelects({
   values,
   fallback,
@@ -34,22 +46,53 @@ export function RuleSelects({
   onChange: (values: SessionRuleValues) => void;
 }) {
   const { t, locale } = usePrefs();
-  const number = (value: string) => (value === '' ? null : Number(value));
+  const [hours, setHours] = useState(hoursText(values.sessionMinutes));
+  const [seenMinutes, setSeenMinutes] = useState(values.sessionMinutes);
+  if (values.sessionMinutes !== seenMinutes) {
+    setSeenMinutes(values.sessionMinutes);
+    if (Math.round(Number(hours) * 60) !== values.sessionMinutes) setHours(hoursText(values.sessionMinutes));
+  }
+  const count = values.maxSessions;
+  const countBad = count !== null && (!Number.isInteger(count) || count < SESSION_COUNT.min || count > SESSION_COUNT.max);
+  const minutes = values.sessionMinutes;
+  const hoursBad = minutes !== null && (!Number.isFinite(minutes) || minutes < SESSION_MINUTES.min || minutes > SESSION_MINUTES.max);
   return (
     <>
       <label>
         {t.maxSessionsLabel}
-        <Select value={values.maxSessions ?? ''} onChange={(event) => onChange({ ...values, maxSessions: number(event.target.value) })}>
-          <option value="">{`${fallbackLabel} (${fallback.maxSessions})`}</option>
-          {COUNTS.map((count) => <option key={count} value={count}>{count}</option>)}
-        </Select>
+        <input
+          type="number"
+          inputMode="numeric"
+          dir="ltr"
+          min={SESSION_COUNT.min}
+          max={SESSION_COUNT.max}
+          step={1}
+          value={count ?? ''}
+          placeholder={`${fallbackLabel} (${fallback.maxSessions})`}
+          aria-invalid={countBad || undefined}
+          onChange={(event) => onChange({ ...values, maxSessions: event.target.value === '' ? null : Number(event.target.value) })}
+        />
+        <span className={countBad ? 'hint field-error' : 'hint'}>{t.sessionsRange}</span>
       </label>
       <label>
-        {t.idleLabel}
-        <Select value={values.sessionMinutes ?? ''} onChange={(event) => onChange({ ...values, sessionMinutes: number(event.target.value) })}>
-          <option value="">{`${fallbackLabel} (${durationLabel(locale, fallback.sessionMinutes)})`}</option>
-          {MINUTES.map((minutes) => <option key={minutes} value={minutes}>{durationLabel(locale, minutes)}</option>)}
-        </Select>
+        {t.idleHoursLabel}
+        <input
+          type="number"
+          inputMode="decimal"
+          dir="ltr"
+          min={0.25}
+          max={SESSION_MINUTES.max / 60}
+          step={0.25}
+          value={hours}
+          placeholder={`${fallbackLabel} (${durationLabel(locale, fallback.sessionMinutes)})`}
+          aria-invalid={hoursBad || undefined}
+          onChange={(event) => {
+            const text = event.target.value;
+            setHours(text);
+            onChange({ ...values, sessionMinutes: text === '' ? null : Math.round(Number(text) * 60) });
+          }}
+        />
+        <span className={hoursBad ? 'hint field-error' : 'hint'}>{t.hoursRange}</span>
       </label>
     </>
   );
