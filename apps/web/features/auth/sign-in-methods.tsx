@@ -9,6 +9,7 @@ import { api } from '../../lib/api';
 import type { SignInMethods, TwoFactorMethod } from '../../lib/api-types';
 import { usePrefs } from '../../lib/prefs';
 import { useApiQuery } from '../../lib/use-api-query';
+import { TWO_FACTOR_METHODS, shownAmong } from './two-factor-policy';
 
 // Settings: the second step (app, SMS or email) and the passkeys (spec 2026-11-08-signin-methods).
 
@@ -33,7 +34,8 @@ export function TwoFactorPane({ methods, reload, setError, setNote }: Notify & {
   const { t, apiText } = usePrefs();
   const [picked, setMethod] = useState<TwoFactorMethod>('app');
   // A layer or account held to one method offers only that one (spec 2026-11-11-two-factor-policy).
-  const allowed = methods?.allowedMethods ?? (['app', 'sms', 'email'] as const);
+  const fixedOne = methods?.allowedMethods.length === 1;
+  const allowed = shownAmong(methods?.allowedMethods ?? TWO_FACTOR_METHODS);
   const method = allowed.includes(picked) ? picked : allowed[0];
   // The enrolment under way: the app's link, or where the SMS/email code went.
   const [otpauth, setOtpauth] = useState('');
@@ -105,7 +107,7 @@ export function TwoFactorPane({ methods, reload, setError, setNote }: Notify & {
             <p className="hint">{t.twoFactorIdle}</p>
             {/* The methods as cards to choose from (Graphite): the name, then where the code goes. */}
             {allowed.length === 1 ? (
-              <p className="hint"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>
+              fixedOne ? <p className="hint"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p> : null
             ) : (
             <div className="method-cards" role="radiogroup" aria-label={t.twoFactorMethod}>
               {allowed.map((key) => (

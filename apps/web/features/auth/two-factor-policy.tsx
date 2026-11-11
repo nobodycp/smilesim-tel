@@ -11,6 +11,18 @@ import { methodName } from './sign-in-methods';
 
 export const TWO_FACTOR_METHODS: readonly TwoFactorMethod[] = ['app', 'sms', 'email'];
 
+/**
+ * The methods the screens offer (owner 2026-11-11): SMS and email stay in the API as a spare path, switched off in the
+ * interface until their gateways work. Add them here to show them again, everywhere at once.
+ */
+export const SHOWN_METHODS: readonly TwoFactorMethod[] = ['app'];
+
+/** The offered methods among those the API allows; never empty. */
+export function shownAmong(allowed: readonly TwoFactorMethod[]): TwoFactorMethod[] {
+  const shown = allowed.filter((method) => SHOWN_METHODS.includes(method));
+  return shown.length ? shown : [...SHOWN_METHODS];
+}
+
 /** The system's segmented choice (`.seg`), one button per option, full width inside a dialog or pane. */
 export function ModeSeg<T extends string>({ value, options, label, onChange, disabled }: {
   value: T;
@@ -42,6 +54,8 @@ export function MethodField({ value, label, onChange, followLabel, disabled }: {
   disabled?: boolean;
 }) {
   const { t } = usePrefs();
+  // With one method on offer there is nothing to choose.
+  if (SHOWN_METHODS.length < 2) return null;
   // The list is the system's filter chip and its own opened list (`FilterBar`, bare: no drawer, no «×»).
   return (
     <FilterBar loose bare>
@@ -49,7 +63,7 @@ export function MethodField({ value, label, onChange, followLabel, disabled }: {
         {label}
         <Select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value as TwoFactorMethod | '')}>
           {followLabel ? <option value="">{followLabel}</option> : null}
-          {TWO_FACTOR_METHODS.map((method) => <option key={method} value={method}>{methodName(t, method)}</option>)}
+          {SHOWN_METHODS.map((method) => <option key={method} value={method}>{methodName(t, method)}</option>)}
         </Select>
       </label>
     </FilterBar>

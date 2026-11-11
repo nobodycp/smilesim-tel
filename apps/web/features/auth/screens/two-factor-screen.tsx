@@ -10,6 +10,7 @@ import { Alert } from '../../../components/alert';
 import { Button } from '../../../components/ui/button';
 import { Select } from '../../../components/ui/select';
 import { methodName } from '../sign-in-methods';
+import { TWO_FACTOR_METHODS, shownAmong } from '../two-factor-policy';
 
 // The sign-in step left in sessionStorage says whether this visit enrolls a new code or checks one. Read through
 // useSyncExternalStore: the server render (no storage) says "check", the browser answers on hydration.
@@ -28,6 +29,7 @@ export function TwoFactorScreen() {
   const [picked, setMethod] = useState<TwoFactorMethod>('app');
   // Enrolling: the methods this account may use, from the API (one when its layer or account fixes the method).
   const [allowed, setAllowed] = useState<TwoFactorMethod[] | null>(null);
+  const [fixedOne, setFixedOne] = useState(false);
   const method = enrolling && allowed && !allowed.includes(picked) ? allowed[0] : picked;
   const [otpauth, setOtpauth] = useState('');
   const [sentTo, setSentTo] = useState('');
@@ -38,7 +40,11 @@ export function TwoFactorScreen() {
 
   useEffect(() => {
     if (!enrolling) return;
-    api.enrolmentMethods().then((result) => setAllowed(result.ok ? result.data.allowedMethods : ['app', 'sms', 'email']));
+    api.enrolmentMethods().then((result) => {
+      const list = result.ok ? result.data.allowedMethods : TWO_FACTOR_METHODS;
+      setFixedOne(list.length === 1);
+      setAllowed(shownAmong(list));
+    });
   }, [enrolling]);
 
   // Enrolling with the app: one new secret per visit.
@@ -110,7 +116,7 @@ export function TwoFactorScreen() {
           </Select>
         </label>
       )}
-      {enrolling && allowed && allowed.length === 1 && <p className="hint"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>}
+      {enrolling && allowed && allowed.length === 1 && fixedOne && <p className="hint"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>}
       {enrolling && !byCode && otpauth && <p className="code" dir="ltr">{otpauth}</p>}
       {byCode && sentTo && <p className="hint">{t.codeSentTo} <bdi dir="ltr">{sentTo}</bdi></p>}
       <form onSubmit={submit}>
