@@ -393,8 +393,8 @@ input[readonly] { background-color: transparent; }
   font-weight: 700;
   transition: background-color var(--rd-dur-fast) var(--rd-ease-standard), transform 110ms ease;
 }
-.gauth-go { background: var(--rd-primary-bg); color: var(--rd-primary-fg); }
-.gauth-go:hover { background: var(--rd-primary-hover); }
+.gauth-go { background: var(--rd-accent); color: var(--rd-on-mark); }
+.gauth-go:hover { background: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
 .gauth-passkey { background: var(--rd-surface-2); color: var(--rd-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); }
 .gauth-passkey:hover { background: var(--rd-surface-3); }
 .gauth-go:active:not(:disabled), .gauth-passkey:active:not(:disabled) { transform: scale(0.98); }
@@ -518,10 +518,10 @@ input[readonly] { background-color: transparent; }
 /* ── The design's special action, crimson («btn-accent»): «تفعيل رقم», «تمديد». Every other page action stays ink. ── */
 .ui-btn.ui-btn-accent { background-color: var(--rd-accent); color: var(--rd-on-mark); box-shadow: none; }
 .ui-btn.ui-btn-accent:hover { background-color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
-/* The page's main action is the crimson button, on every page (owner 2026-11-11): «تفعيل رقم», «إضافة شركة»,
-   «إضافة رزمة», «حساب جديد», «دور جديد», «تمويل حساب», «تسجيل دفعة»… — any primary button in a page head. */
-.page-head .ui-btn.ui-btn-primary { background-color: var(--rd-accent); color: var(--rd-on-mark); box-shadow: none; }
-.page-head .ui-btn.ui-btn-primary:hover:not(:disabled) { background-color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
+/* Every primary button is crimson (owner 2026-11-11): a page's main action, a dialog's «حفظ» / «تفعيل», a form's submit.
+   Ink is for secondary controls only. Disabled keeps the shape and drops to half strength. */
+.ui-btn.ui-btn-primary { background-color: var(--rd-accent); color: var(--rd-on-mark); box-shadow: none; }
+.ui-btn.ui-btn-primary:hover:not(:disabled) { background-color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
 /* A choice made of segments (the provider outcome) sits in the chip row with its name beside it. */
 .filter-panel > .stack { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
 .filter-panel > .stack > .hint { color: var(--rd-muted); font-size: 12px; font-weight: 600; }
@@ -1388,72 +1388,45 @@ input[aria-invalid='true'], .dialog input[aria-invalid='true'], .pane input[aria
 input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
 input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
-/* ── Framed key-and-value rows for forms (owner 2026-11-11): the same frame as a dialog's summary (`.detail-rows`) —
-   the name on the soft track, a hairline, the value on the surface. `.toggle` rows give the name the width and the
-   switch the end; a typed value fills its part, its range as a quiet suffix; `.invalid` turns the frame red. ── */
-.kv-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.kv-list.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
-.kv-row {
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
-  min-height: 40px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent);
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-}
-.kv-key { display: flex; flex: none; align-items: center; min-inline-size: 8.5rem; padding-inline: 12px; color: var(--rd-muted); font-size: 12px; font-weight: 600; }
-.kv-value { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; padding-inline: 12px 8px; border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent); background: var(--rd-surface); }
-.dialog .kv-value input, .kv-value input, .pane .kv-value input {
-  flex: 1;
-  min-width: 0;
-  height: 38px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: var(--rd-ink);
-  font-size: 13.5px;
-  font-weight: 700;
-}
-.kv-value input:focus { outline: none; }
-.kv-row:focus-within { border-color: var(--rd-accent); }
-.kv-suffix { flex: none; color: var(--rd-faint); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
-.kv-row.invalid { border-color: var(--rd-danger); }
-.kv-row.invalid .kv-suffix { color: var(--rd-danger); }
-.kv-row.toggle .kv-key { flex: 1; color: var(--rd-ink); font-size: 13px; }
-.kv-row.toggle .kv-value { flex: none; padding-inline: 8px; }
-.kv-row.toggle:has([aria-checked='true']) .kv-key { color: var(--rd-ink); }
-.kv-row.toggle:has([aria-checked='false']) .kv-key { color: var(--rd-ink-2); }
-/* The role dialog's two blocks: a small title, then its rows. */
-.role-block { display: grid; gap: 10px; }
-.role-block > h3 { margin: 0; color: var(--rd-ink); font-size: 13px; font-weight: 700; }
-.role-block > .hint { margin: -4px 0 0; }
-.dialog-form > .role-block + .role-block { padding-block-start: 14px; border-block-start: 1px solid var(--rd-line); }
-@media (max-width: 640px) {
-  .kv-key { min-inline-size: 7rem; padding-inline: 10px; }
-  .kv-row { min-height: 44px; }
-}
-/* Beat the dialog's stacked-label and boxed-input rules: a key-and-value row is one line, the input bare inside it. */
-.dialog-form label.kv-row:not(.check), .pane label.kv-row, label.kv-row { display: flex; flex-direction: row; gap: 0; color: inherit; font-size: inherit; font-weight: inherit; }
-.dialog .kv-value input:not([type='checkbox']):not([type='radio']):not([type='file']),
-.pane .kv-value input:not([type='checkbox']):not([type='radio']):not([type='file']) { height: 38px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.dialog .kv-row:focus-within, .pane .kv-row:focus-within { border-color: var(--rd-accent); }
-.kv-suffix bdi { unicode-bidi: isolate; }
-
-/* ── The spacing rhythm of a form dialog (owner 2026-11-11): blocks 20px apart with the divider centred between them;
-   inside a block the title, then a small muted hint 4px under it, then the rows 12px under that; rows 8px apart.
-   A key-and-value row keeps one key column — the same width on every row of a list — so the values line up. ── */
-.dialog-form > .role-block { gap: 12px; }
-.dialog-form > .role-block + .role-block { margin-block-start: 8px; padding-block-start: 20px; }
-.role-block > h3 { line-height: 1.3; }
-.role-block > .hint { margin: -8px 0 0; color: var(--rd-muted); font-size: 12.5px; font-weight: 500; line-height: 1.55; }
-.dialog-form label.kv-row:not(.check), .pane label.kv-row, label.kv-row { display: grid; grid-template-columns: minmax(7rem, 38%) minmax(0, 1fr); }
-.kv-row > .kv-key { min-inline-size: 0; }
-label.kv-row > .kv-key { line-height: 1.35; }
-/* The same rhythm on the account settings, and a key column that never grows past 14rem in a wide pane. */
-.dialog-form label.kv-row:not(.check), .pane label.kv-row, label.kv-row { grid-template-columns: minmax(7rem, min(38%, 14rem)) minmax(0, 1fr); }
+/* ── The role dialog and the session fields (owner 2026-11-11; the grouped design chosen from three): the grants in
+   three groups, each with a leading rail — its name and how many are on — beside hairline rows; a row is a name and the
+   system's sliding switch at its end, the whole row the target; an «on» name is ink and bold, an «off» one muted, so the
+   state never rests on colour alone. The session fields are two labelled sunken fields side by side. ── */
+.role-block { display: grid; gap: 0; }
+.role-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
+.role-sec-head h3, .role-sessions > h3 { margin: 0; color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }
+.role-sum { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 500; font-variant-numeric: tabular-nums; }
+.role-group { display: grid; grid-template-columns: 148px minmax(0, 1fr); column-gap: 16px; padding-block: 4px; border-block-start: 1px solid var(--rd-line); }
+.role-rail { padding-block-start: 9px; }
+.role-rail h4 { margin: 0; color: var(--rd-ink); font-size: 12.5px; font-weight: 700; line-height: 1.3; }
+.role-count { display: block; margin-block-start: 2px; color: var(--rd-muted); font-size: var(--rd-text-sm); font-variant-numeric: tabular-nums; }
+.role-rows { display: grid; min-width: 0; }
+.role-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; cursor: pointer; }
+.role-row + .role-row { border-block-start: 1px solid var(--rd-line-soft); }
+.role-name { color: var(--rd-muted); font-size: var(--rd-text-md); font-weight: 500; }
+.role-row[data-on='true'] .role-name { color: var(--rd-ink); font-weight: 700; }
+.dialog-form > .role-sessions { margin-block-start: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--rd-line); }
+.role-hint { margin: 4px 0 12px; color: var(--rd-muted); font-size: var(--rd-text-sm); line-height: 1.5; }
+.role-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.role-field { display: grid; gap: 4px; align-content: start; }
+.role-field .role-field-name { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 700; }
+.role-input { display: flex; align-items: center; gap: 8px; height: 34px; padding-inline: 12px; border-radius: var(--rd-radius-sm); background: var(--rd-sunken); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-field) 60%, transparent); }
+.role-input:focus-within { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
+.dialog .role-input input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.pane .role-input input:not([type='checkbox']):not([type='radio']):not([type='file']) { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: 0; color: var(--rd-ink); font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.role-range { flex: none; color: var(--rd-faint); font-size: var(--rd-text-sm); font-weight: 600; }
+.role-input[data-invalid] { box-shadow: inset 0 0 0 1px var(--rd-danger); }
+.role-input[data-invalid] .role-range { color: var(--rd-danger); font-weight: 700; }
+.role-error { color: var(--rd-danger); font-size: var(--rd-text-sm); font-weight: 700; }
+/* The account settings' session block: the same fields, its title and hint tight. */
 .user-settings > .hint { margin: -8px 0 0; color: var(--rd-muted); font-size: 12.5px; font-weight: 500; line-height: 1.55; }
 .user-settings .session-rules-block { gap: 12px; }
+@media (max-width: 640px) {
+  .role-group { grid-template-columns: minmax(0, 1fr); padding-block: 12px 4px; }
+  .role-rail { display: flex; align-items: baseline; justify-content: space-between; padding-block-start: 0; }
+  .role-count { display: inline; margin: 0; }
+  .role-rows { padding-block-start: 4px; }
+  .role-row { min-height: 44px; }
+  .role-fields { grid-template-columns: minmax(0, 1fr); }
+  .role-input { height: 44px; }
+}

@@ -9,9 +9,9 @@ import { RowMenu } from '../../../components/row-menu';
 import { Button } from '../../../components/ui/button';
 import { api, type RoleRow } from '../../../lib/api';
 import type { LayerKey, SessionRuleValues } from '../../../lib/api-types';
-import { RuleSelects } from '../../auth/session-rules';
+import { RuleSelects, sessionRulesValid } from '../../auth/session-rules';
 import { LiveSwitch } from '../../../components/live-switch';
-import { GRANT_CODES, grantLabel, grantUsable } from '../../../lib/grants';
+import { GRANT_CODES, grantGroupsFor, grantLabel, grantUsable, type GrantGroupKey } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useApiQuery } from '../../../lib/use-api-query';
@@ -30,6 +30,8 @@ const emptyDraft = (): RoleDraft => ({ id: '', name: '', kind: 'job', layer: '',
 
 // A job role has no layer of its own: it belongs to the branch, so it is worded and offered as the branch's.
 const layerOf = (role: { layer?: string }) => role.layer || 'branch';
+
+const GROUP_TITLE = { view: 'grantGroupView', work: 'grantGroupWork', accounts: 'grantGroupAccounts' } as const satisfies Record<GrantGroupKey, string>;
 
 export function RolesScreen() {
   const { t } = usePrefs();
@@ -56,6 +58,9 @@ export function RolesScreen() {
   const [ruleDraft, setRuleDraft] = useState<SessionRuleValues | null>(null);
   const layerKey = (draft.kind === 'layer' ? draft.layer : '') as LayerKey | '';
   const ruleValues = ruleDraft ?? (layerKey && rules.data ? rules.data.layers[layerKey] : null);
+  const groups = grantGroupsFor(layerOf(draft));
+  // «حفظ» waits while a session value is outside its range.
+  const rulesBad = Boolean(layerKey && ruleValues && !sessionRulesValid(ruleValues));
 
   async function save() {
     const flags = {
@@ -130,7 +135,7 @@ export function RolesScreen() {
           footer={(
             <>
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t.cancel}</Button>
-              <Button type="button" disabled={busy || (draft.kind === 'job' && !draft.name.trim())} onClick={save}>{t.save}</Button>
+              <Button type="button" disabled={busy || rulesBad || (draft.kind === 'job' && !draft.name.trim())} onClick={save}>{t.save}</Button>
             </>
           )}
         >
@@ -141,35 +146,45 @@ export function RolesScreen() {
                 <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} />
               </label>
             )}
-            {/* Grants as sliding switches in framed rows; the layer's session rules as typed rows (owner 2026-11-11). */}
+            {/* The grants in three groups, each a sliding switch per row (owner 2026-11-11); the layer's session rules under them. */}
             <section className="role-block" aria-label={t.permissions}>
-              <h3>{t.permissions}</h3>
-              <div className="kv-list two">
-                {GRANT_CODES.filter((code) => grantUsable(code, layerOf(draft))).map((code) => {
-                  const on = draft.grants.includes(code);
-                  const name = grantLabel(t, code, layerOf(draft));
-                  return (
-                    <div key={code} className="kv-row toggle">
-                      <span className="kv-key">{name}</span>
-                      <span className="kv-value">
-                        <LiveSwitch
-                          label={name}
-                          checked={on}
-                          onChange={(next) => setDraft((current) => ({
-                            ...current,
-                            grants: next ? [...current.grants, code] : current.grants.filter((item) => item !== code),
-                          }))}
-                        />
-                      </span>
-                    </div>
-                  );
-                })}
+              <div className="role-sec-head">
+                <h3>{t.permissions}</h3>
+                <span className="role-sum">{t.grantsOn.replace('{n}', String(groups.reduce((sum, group) => sum + group.codes.filter((code) => draft.grants.includes(code)).length, 0))).replace('{total}', String(groups.reduce((sum, group) => sum + group.codes.length, 0)))}</span>
               </div>
+              {groups.map((group) => {
+                const title = t[GROUP_TITLE[group.key]];
+                return (
+                  <div key={group.key} className="role-group" role="group" aria-label={title}>
+                    <div className="role-rail">
+                      <h4>{title}</h4>
+                      <span className="role-count"><bdi dir="ltr">{group.codes.filter((code) => draft.grants.includes(code)).length}/{group.codes.length}</bdi></span>
+                    </div>
+                    <div className="role-rows">
+                      {group.codes.map((code) => {
+                        const on = draft.grants.includes(code);
+                        const name = grantLabel(t, code, layerOf(draft));
+                        const set = (next: boolean) => setDraft((current) => ({
+                          ...current,
+                          grants: next ? [...current.grants.filter((item) => item !== code), code] : current.grants.filter((item) => item !== code),
+                        }));
+                        return (
+                          // The whole row is the target: a click anywhere on it flips the switch at its end.
+                          <div key={code} className="role-row" data-on={on} onClick={(event) => { if (!(event.target as HTMLElement).closest('button')) set(!on); }}>
+                            <span className="role-name">{name}</span>
+                            <LiveSwitch label={name} checked={on} onChange={set} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </section>
             {layerKey && rules.data && ruleValues ? (
-              <section className="role-block" aria-label={t.sessionRulesTitle}>
+              <section className="role-block role-sessions" aria-label={t.sessionRulesTitle}>
                 <h3>{t.sessionRulesTitle}</h3>
-                <p className="hint">{t.layerSessionHint}</p>
+                <p className="role-hint">{t.layerSessionHint}</p>
                 <RuleSelects values={ruleValues} fallback={rules.data.defaults} fallbackLabel={t.followDefault} onChange={setRuleDraft} />
               </section>
             ) : null}

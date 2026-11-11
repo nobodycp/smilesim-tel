@@ -56,13 +56,14 @@ export function RuleSelects({
   const countBad = count !== null && (!Number.isInteger(count) || count < SESSION_COUNT.min || count > SESSION_COUNT.max);
   const minutes = values.sessionMinutes;
   const hoursBad = minutes !== null && (!Number.isFinite(minutes) || minutes < SESSION_MINUTES.min || minutes > SESSION_MINUTES.max);
-  // Framed key-and-value rows, as every summary and form of rules in the office (owner 2026-11-11): the name on the
-  // soft track, the typed value on the surface, its range as a quiet suffix — red with the frame while out of range.
+  // Two labelled fields side by side (owner 2026-11-11): the name above, a sunken field with the inherited value as its
+  // placeholder and the range inside it at the end; out of range the frame, the range and a sentence turn red.
+  const rangeError = (min: string, max: string) => t.rangeError.replace('{min}', min).replace('{max}', max);
   return (
-    <div className="kv-list">
-      <label className={countBad ? 'kv-row invalid' : 'kv-row'}>
-        <span className="kv-key">{t.maxSessionsLabel}</span>
-        <span className="kv-value">
+    <div className="role-fields">
+      <label className="role-field">
+        <span className="role-field-name">{t.maxSessionsLabel}</span>
+        <span className="role-input" data-invalid={countBad || undefined}>
           <input
             type="number"
             inputMode="numeric"
@@ -75,12 +76,13 @@ export function RuleSelects({
             aria-invalid={countBad || undefined}
             onChange={(event) => onChange({ ...values, maxSessions: event.target.value === '' ? null : Number(event.target.value) })}
           />
-          <small className="kv-suffix"><bdi dir="ltr">{t.sessionsRange}</bdi></small>
+          <small className="role-range"><bdi dir="ltr">{t.sessionsRange}</bdi></small>
         </span>
+        {countBad ? <span className="role-error" role="alert">{rangeError('1', '10')}</span> : null}
       </label>
-      <label className={hoursBad ? 'kv-row invalid' : 'kv-row'}>
-        <span className="kv-key">{t.idleHoursLabel}</span>
-        <span className="kv-value">
+      <label className="role-field">
+        <span className="role-field-name">{t.idleHoursLabel}</span>
+        <span className="role-input" data-invalid={hoursBad || undefined}>
           <input
             type="number"
             inputMode="decimal"
@@ -97,11 +99,20 @@ export function RuleSelects({
               onChange({ ...values, sessionMinutes: text === '' ? null : Math.round(Number(text) * 60) });
             }}
           />
-          <small className="kv-suffix"><bdi dir="ltr">{t.hoursRange}</bdi></small>
+          <small className="role-range"><bdi dir="ltr">{t.hoursRange}</bdi></small>
         </span>
+        {hoursBad ? <span className="role-error" role="alert">{rangeError('0.25', '720')}</span> : null}
       </label>
     </div>
   );
+}
+
+/** Whether both values are empty (follow the next level) or inside the server's ranges: «حفظ» waits for it. */
+export function sessionRulesValid(values: SessionRuleValues) {
+  const { maxSessions: count, sessionMinutes: minutes } = values;
+  const countOk = count === null || (Number.isInteger(count) && count >= SESSION_COUNT.min && count <= SESSION_COUNT.max);
+  const minutesOk = minutes === null || (Number.isFinite(minutes) && minutes >= SESSION_MINUTES.min && minutes <= SESSION_MINUTES.max);
+  return countOk && minutesOk;
 }
 
 /** Settings, branch owner only: one row per layer. */
@@ -141,7 +152,7 @@ export function LayerSessionRulesPane({ setError, setNote }: { setError: (text: 
                   fallbackLabel={t.followDefault}
                   onChange={(values) => setDrafts((current) => ({ ...current, [layer]: values }))}
                 />
-                <Button type="button" disabled={busy !== null || !drafts[layer]} onClick={() => save(layer)}>{t.save}</Button>
+                <Button type="button" disabled={busy !== null || !drafts[layer] || !sessionRulesValid(drafts[layer]!)} onClick={() => save(layer)}>{t.save}</Button>
               </li>
             ))}
           </ul>

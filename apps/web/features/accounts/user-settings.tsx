@@ -7,7 +7,7 @@ import { Alert } from '../../components/alert';
 import { api, type SessionRuleValues } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { useApiQuery } from '../../lib/use-api-query';
-import { RuleSelects, durationLabel } from '../auth/session-rules';
+import { RuleSelects, durationLabel, sessionRulesValid } from '../auth/session-rules';
 
 /**
  * «إعدادات الحساب» (spec 2026-11-08-overview-and-reports-nav, H), branch owner only: this account's email and
@@ -119,7 +119,7 @@ export function UserSettingsPane({ loginName, onSaved }: { loginName: string; on
               <p className="hint">{`${t.effectiveNow}: ${t.maxSessionsLabel} ${ruleView.effective.maxSessions} · ${durationLabel(locale, ruleView.effective.sessionMinutes)}`}</p>
             </div>
           ) : null}
-          <div className="form-save"><Button type="button" disabled={busy} onClick={save}>{t.save}</Button></div>
+          <div className="form-save"><Button type="button" disabled={busy || !sessionRulesValid(ruleValues)} onClick={save}>{t.save}</Button></div>
         </>
       ) : null}
     </section>

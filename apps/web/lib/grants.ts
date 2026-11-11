@@ -47,3 +47,25 @@ const UNUSABLE: Record<string, readonly string[]> = {
 export function grantUsable(code: string, layer: string): boolean {
   return !UNUSABLE[layer]?.includes(code);
 }
+
+/**
+ * The grants in the three groups the role dialog shows (owner 2026-11-11): what a role may see, what it does day to day,
+ * and which accounts it may enter and move. A grant added to GRANT_CODES and not listed here lands in the last group.
+ */
+export const GRANT_GROUPS = [
+  { key: 'view', codes: ['read', 'reports', 'accounting'] },
+  { key: 'work', codes: ['edit', 'tasks', 'staff'] },
+  { key: 'accounts', codes: ['enter', 'transferLines', 'transferPos', 'transferAgents'] },
+] as const satisfies readonly { key: string; codes: readonly GrantCode[] }[];
+
+export type GrantGroupKey = (typeof GRANT_GROUPS)[number]['key'];
+
+/** The groups with the codes `layer` can use, each in its order; an empty group is left out. */
+export function grantGroupsFor(layer: string): { key: GrantGroupKey; codes: GrantCode[] }[] {
+  const listed = new Set<string>(GRANT_GROUPS.flatMap((group) => group.codes));
+  const groups = GRANT_GROUPS.map((group) => ({ key: group.key, codes: [...group.codes] as GrantCode[] }));
+  groups[groups.length - 1].codes.push(...GRANT_CODES.filter((code) => !listed.has(code)));
+  return groups
+    .map((group) => ({ ...group, codes: group.codes.filter((code) => grantUsable(code, layer)) }))
+    .filter((group) => group.codes.length > 0);
+}
