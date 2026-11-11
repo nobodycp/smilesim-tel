@@ -92,6 +92,10 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - Key-and-value rows in forms (`.kv-list` / `.kv-row`): the name on the soft track, a hairline, then the value on the
   surface — a typed value fills its part with its range as a quiet suffix, a switch (`LiveSwitch`) sits at the end of a
   `toggle` row. A role's grants are sliding switches in these rows, two a row; never a column of tick boxes.
+- Spacing in a form block (owner 2026-11-11): blocks 20px apart with their divider centred (20 above, 20 below); a block's
+  title, then its small muted hint 4px under it (12.5px, `--rd-muted`, never body-size ink), then its rows 12px under
+  that, rows 8px apart. Every row of a `.kv-list` has the same key column (38% of the list, between 7rem and 14rem), so
+  the values line up.
 - A count or a duration is typed, not picked from a list: a number field without the browser's spin arrows, its
   range under it (red with the field's edge while out of range), the inherited value as its placeholder — the session
   rules (sessions allowed, idle hours) on a role and on an account (owner 2026-11-11).
