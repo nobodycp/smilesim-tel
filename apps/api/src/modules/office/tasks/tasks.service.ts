@@ -6,7 +6,7 @@ import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { assertBranch } from '../policy';
 import { taskEvents } from './task-events';
-import { esimCodeOrFail, replacedEsimCode } from '../lines/esim-code';
+import { esimCodeOrFail } from '../lines/esim-code';
 import { assertClaimFree, lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -104,18 +104,24 @@ export class TasksService {
   }
 
   /**
-   * The code a task's detail shows: the line's once the task made one; until then the one the task carries. A code
-   * that cannot be opened refuses the request, it is never answered as «no code» (lines/esim-code.ts). One
-   * exception: an open task that replaces the line's code (`sim`, `esim`) still opens when the old code is
-   * unreadable, because completing it is the repair. The code the task itself carries is always read first, so
-   * a new code that does not open is never passed over.
+   * The SIM a task's detail shows: its serial, whether it is an eSIM, and its code.
+   *
+   * An open task that replaces the line's SIM shows the new one, never the one it replaces. A SIM change (`sim`)
+   * carries the new serial, kind and code; a new eSIM (`esim`) has no code until it is completed, so none is
+   * shown. The line's old code is not read at all, so one that no longer opens does not close the screen of the
+   * task that repairs it.
+   *
+   * Every other task, and a replacing task once it is closed, shows the line's SIM once there is a line (a code
+   * the task carried and did not put on the line is not shown); until then the one the task carries. A code that cannot be opened refuses the request, it is never answered as
+   * «no code» (lines/esim-code.ts); that holds for the new code of an open task too.
    */
-  private shownCode(row: { id: string; action: string; esimQr: string | null; line: { id: string; esimQr: string | null } | null }, open: boolean): string | null {
-    if (open && row.line && (row.action === 'sim' || row.action === 'esim')) {
-      const own = esimCodeOrFail(row.esimQr, `task ${row.id}`);
-      return replacedEsimCode(row.line.esimQr, `line ${row.line.id}`, own);
-    }
-    return row.line?.esimQr ? esimCodeOrFail(row.line.esimQr, `line ${row.line.id}`) : esimCodeOrFail(row.esimQr, `task ${row.id}`);
+  private shownSim(row: { id: string; action: string; iccid: string | null; esim: boolean; esimQr: string | null; line: { id: string; iccid: string | null; esim: boolean; esimQr: string | null } | null }, open: boolean) {
+    const own = () => esimCodeOrFail(row.esimQr, `task ${row.id}`);
+    if (open && row.line && row.action === 'sim') return { iccid: row.iccid, esim: row.esim, esimQr: own() };
+    if (open && row.line && row.action === 'esim') return { iccid: row.line.iccid, esim: row.line.esim, esimQr: own() };
+    // With a line, all three come from the line: a closed task's unused code is not shown beside the line's SIM.
+    if (row.line) return { iccid: row.line.iccid, esim: row.line.esim, esimQr: esimCodeOrFail(row.line.esimQr, `line ${row.line.id}`) };
+    return { iccid: row.iccid, esim: row.esim, esimQr: own() };
   }
 
   async detail(actor: Actor, id: string) {
@@ -141,9 +147,7 @@ export class TasksService {
         assigneeLoginName: row.assignee?.loginName ?? null,
         posDelta: row.posDelta,
         msisdn: row.line?.msisdn ?? row.msisdn,
-        iccid: row.line?.iccid ?? row.iccid,
-        esim: row.line?.esim ?? row.esim,
-        esimQr: this.shownCode(row, open),
+        ...this.shownSim(row, open),
         sim: simRulesOf(pkg?.company ?? null),
         lineStatus: row.line?.status ?? null,
         packageName: pkg?.name ?? '',

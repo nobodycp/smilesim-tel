@@ -255,6 +255,33 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     });
   });
 
+  it('the SIM / eSIM filter narrows in the database, inside what the caller sees, and never answers a sealed text', async () => {
+    const card = randomUUID();
+    await prisma.line.create({ data: { id: card, msisdn: `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`, iccid: `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`, esim: false, esimQr: null, status: 'frozen', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+    await capturedOutput(async () => {
+      const all = await service.lines(pos);
+      const esims = await service.lines(pos, { sim: 'esim' });
+      const cards = await service.lines(pos, { sim: 'sim' });
+      // The totals are counted with the filter, so the pages are cut after it.
+      expect(esims.total + cards.total).toBe(all.total);
+      expect(esims.items.length).toBe(esims.total);
+      expect(esims.items.every((row) => row.esim)).toBe(true);
+      expect(cards.items.map((row) => row.id)).toEqual([card]);
+      // With another filter, and with one that leaves nothing.
+      expect((await service.lines(pos, { sim: 'sim', status: 'frozen' })).items.map((row) => row.id)).toEqual([card]);
+      expect(await service.lines(pos, { sim: 'sim', status: 'active' })).toMatchObject({ total: 0, items: [] });
+      // The same filter for an account that sees none of these lines, and through a login name it may not see.
+      expect(await service.lines(stranger, { sim: 'esim' })).toMatchObject({ total: 0, items: [] });
+      expect(await service.lines(stranger, { sim: 'esim', loginName: `esim-${tag}-pos` })).toMatchObject({ total: 0, items: [] });
+      // A code that does not open is null in a filtered page too.
+      expect(esims.items.find((row) => row.id === line.damaged)?.esimQr).toBeNull();
+      expect(JSON.stringify(esims)).not.toContain('v1:');
+      // A kind that is not one of the two is refused, not read as «all».
+      await expect(service.lines(pos, { sim: 'card' })).rejects.toMatchObject({ status: 400 });
+    });
+    await prisma.line.delete({ where: { id: card } });
+  });
+
   // Owner's correction, 2026-11-11: an open task that replaces a line's code still opens when the old code does
   // not, because completing it is the repair.
   describe('an open task that replaces a code that no longer opens', () => {
@@ -295,7 +322,8 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
         expect(whole).not.toContain('v1:');
         expectNoCode(whole.split(NEW_QR).join(''));
       });
-      expect(output).toContain(`line ${lineId}: its eSIM code is stored sealed and could not be opened (unreadable); the open task replaces it, so it is not shown`);
+      // The old code is not read for the task at all: the only fault logged is the line's own detail, asked above.
+      expect(output.split('could not be opened').length - 1).toBe(1);
       expectNoCode(output);
       expect(await lineCode(lineId)).toBe(damagedQr);
 
@@ -366,6 +394,76 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       });
       expect(await lineCode(lineId)).toBe(NEW_QR);
       expect((await money(lineId)).moved).toEqual([]);
+    });
+
+    // Owner's rule, 2026-11-12: an open task that replaces a SIM shows the new SIM, never the one it replaces.
+    it('a SIM change on a line whose code reads: the open task shows the new serial, kind and code, never the old ones; closed, it shows the line again', async () => {
+      const simOf = async (gate: { sessionId: string }, id: string) => {
+        const { task: read } = await service.task(gate, id);
+        return { iccid: read.iccid, esim: read.esim, esimQr: read.esimQr };
+      };
+      const healthy = async (over: { esim: boolean; esimQr: string | null }) => {
+        const id = randomUUID();
+        const iccid = serial();
+        await prisma.line.create({ data: { id, msisdn: number(), iccid, ...over, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+        return { id, iccid };
+      };
+      const open = async (lineId: string, body: Record<string, unknown>) => ((await service.swapSim(pos, lineId, { outcome: 'fail', ...body })) as { taskId: string }).taskId;
+
+      // eSIM to eSIM: the new code, not the old one.
+      const esimLine = await healthy({ esim: true, esimQr: QR.clear });
+      const newSerial = serial();
+      const toEsim = await open(esimLine.id, { iccid: newSerial, esim: true, qr: NEW_QR });
+      for (const gate of [owner, pos]) expect(await simOf(gate, toEsim)).toEqual({ iccid: newSerial, esim: true, esimQr: NEW_QR });
+      expect(JSON.stringify(await service.task(owner, toEsim))).not.toContain(QR.clear);
+      expect(await taskAs(stranger, toEsim)).toBe('404 NOT_FOUND');
+      // The line itself still shows what it holds until the task is done.
+      expect(await detailOf(esimLine.id)).toBe(QR.clear);
+
+      // eSIM to a card: the task carries no code, and the old one is not shown as the replacement.
+      const cardLine = await healthy({ esim: true, esimQr: QR.clear });
+      const cardSerial = serial();
+      const toCard = await open(cardLine.id, { iccid: cardSerial });
+      expect(await simOf(owner, toCard)).toEqual({ iccid: cardSerial, esim: false, esimQr: null });
+
+      // A card to an eSIM: the task is shown as the eSIM it hands over.
+      const plastic = await healthy({ esim: false, esimQr: null });
+      const fromCardSerial = serial();
+      const fromCard = await open(plastic.id, { iccid: fromCardSerial, esim: true, qr: NEW_QR });
+      expect(await simOf(owner, fromCard)).toEqual({ iccid: fromCardSerial, esim: true, esimQr: NEW_QR });
+
+      // Completed: the line holds the new SIM and the closed task shows the line. No money moved; once only.
+      const before = await money(esimLine.id);
+      expect(await service.completeTask(owner, toEsim, {})).toEqual({ ok: true });
+      expect(await simOf(owner, toEsim)).toEqual({ iccid: newSerial, esim: true, esimQr: NEW_QR });
+      expect(await detailOf(esimLine.id)).toBe(NEW_QR);
+      const after = await money(esimLine.id);
+      expect({ balance: after.balance, held: after.held, moved: after.moved }).toEqual({ balance: before.balance, held: before.held, moved: [] });
+      expect(await refusalOf(service.completeTask(owner, toEsim, {}))).toBe('400 INVALID');
+      expect(await money(esimLine.id)).toEqual(after);
+
+      // Cancelled and rejected: the line was not changed, and the closed task shows the line's SIM as it is.
+      expect(await service.cancelTask(pos, toCard)).toBeTruthy();
+      expect(await simOf(owner, toCard)).toEqual({ iccid: cardLine.iccid, esim: true, esimQr: QR.clear });
+      expect(await service.rejectTask(owner, fromCard, { reason: 'not this card' })).toBeTruthy();
+      expect(await simOf(owner, fromCard)).toEqual({ iccid: plastic.iccid, esim: false, esimQr: null });
+      expect(await lineCode(cardLine.id)).toBe(QR.clear);
+    });
+
+    it('a new eSIM on a line whose code reads: the open task shows no code, and cancelling it gives the hold back once', async () => {
+      const id = randomUUID();
+      await prisma.line.create({ data: { id, msisdn: number(), iccid: serial(), esim: true, esimQr: QR.clear, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} } });
+      const before = await money(id);
+      const taskId = ((await service.requestEsim(pos, id)) as { taskId: string }).taskId;
+      expect(await taskAs(owner, taskId)).toBeNull();
+      expect((await money(id)).held).toBeGreaterThan(before.held);
+      await service.cancelTask(pos, taskId);
+      // Closed without a change: the line's own code is shown again, and the money is where it was.
+      expect(await taskAs(owner, taskId)).toBe(QR.clear);
+      const after = await money(id);
+      expect({ balance: after.balance, held: after.held, moved: after.moved }).toEqual({ balance: before.balance, held: before.held, moved: [] });
+      expect(await refusalOf(service.cancelTask(pos, taskId))).toBe('400 INVALID');
+      expect(await money(id)).toEqual(after);
     });
 
     it('every other task on such a line, and a replacing task once it is closed, still refuse', async () => {

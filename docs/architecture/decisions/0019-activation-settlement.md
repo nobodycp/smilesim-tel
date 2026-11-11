@@ -185,11 +185,14 @@ come; the money must be safe in every state of the operation.
     page down. A list therefore does not tell "no code" from "unreadable";
   - **the detail of a line or of a task** refuses the request with `500 ESIM_CODE_UNREADABLE`
     (`esimCodeOrFail`): it is a fault, not "no code". The body is the catalog message only;
-  - **an open `sim` or `esim` task on that line** is the exception (owner's correction, 2026-11-11): completing
-    it is the repair, so its detail opens, shows the task's own code and nothing of the old one
-    (`replacedEsimCode`). The code the task itself carries is never passed over: unreadable, it refuses the
-    detail and the completion (`TaskCompletion.handedBack`, before anything is written or charged) unless a
-    readable code is given at completion;
+  - **an open `sim` or `esim` task** shows the SIM it hands over, never the one it replaces (owner's rule,
+    2026-11-12; `TasksService.shownSim`): a SIM change shows the task's new serial, kind and code (no code when
+    it carries none), a new eSIM shows no code until it is completed. The line's old code is not read for such a
+    task, so one that no longer opens does not close the screen of the task that repairs it. The task's own
+    code is never passed over: unreadable, it refuses the detail and the completion
+    (`TaskCompletion.handedBack`, before anything is written or charged) unless a readable code is given at
+    completion. Every other task with a line, and a replacing task once closed, shows the line's SIM only: a
+    code a cancelled or rejected task carried and never put on the line is not shown beside it;
   - **the answer of an activation made at once** does not read the stored value: it answers the code issued in
     memory. After the commit nothing can fail, so a sale is never answered as an error (which could be sent
     again and charged twice), and never answered as a success without its code. **S.5b must keep this:** it

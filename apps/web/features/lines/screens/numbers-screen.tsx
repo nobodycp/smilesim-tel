@@ -134,7 +134,7 @@ export function NumbersScreen() {
       .slice()
       .sort((left, right) => left.name.localeCompare(right.name, 'ar'));
   }, [packages, provider, company]);
-  const activeFilters = Number(Boolean(query.trim())) + Number(Boolean(status)) + Number(Boolean(pack)) + Number(Boolean(provider)) + Number(Boolean(company));
+  const activeFilters = Number(Boolean(query.trim())) + Number(Boolean(status)) + Number(Boolean(pack)) + Number(Boolean(provider)) + Number(Boolean(company)) + Number(Boolean(sim));
 
   // The table as in the approved design (Graphite): the number with its SIM, the package with its company's mark,
   // the point of sale, the status, what is left (crimson when it ends soon), the price.

@@ -60,3 +60,30 @@ test('a row menu opens on its first item, walks with the arrows, and Escape give
   await expect(items).toHaveCount(0);
   await expect(trigger).toBeFocused();
 });
+
+test('the SIM / eSIM filter is sent with the others, and an empty answer under it says «no matches», not «no numbers yet»', async ({ page }) => {
+  const asked: string[] = [];
+  await page.route('**/office/lines**', (route) => {
+    asked.push(new URL(route.request().url()).search);
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], total: 0, poses: [] }) });
+  });
+  await page.route('**/office/packages', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
+  );
+  // No filter: the list is simply empty.
+  await page.goto('/numbers');
+  await expect(page.getByText('لا أرقام بعد.')).toBeVisible();
+  // Only the SIM filter: it is a filter like the others.
+  await page.goto('/numbers?sim=esim');
+  await expect(page.getByText('لا نتائج لهذا التصفية')).toBeVisible();
+  await expect(page.getByText('لا أرقام بعد.')).toHaveCount(0);
+  expect(asked.at(-1)).toContain('sim=esim');
+  // With a status beside it, both travel; a kind that is not one of the two is not sent at all.
+  await page.goto('/numbers?sim=sim&status=frozen');
+  await expect(page.getByText('لا نتائج لهذا التصفية')).toBeVisible();
+  expect(asked.at(-1)).toContain('sim=sim');
+  expect(asked.at(-1)).toContain('status=frozen');
+  await page.goto('/numbers?sim=card');
+  await expect(page.getByText('لا أرقام بعد.')).toBeVisible();
+  expect(asked.at(-1)).not.toContain('sim=');
+});

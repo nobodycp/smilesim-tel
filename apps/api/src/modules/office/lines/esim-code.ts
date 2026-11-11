@@ -51,16 +51,3 @@ export function esimCodeOrFail(stored: string | null | undefined, where: string)
   report(where, read.unreadable, 'the request is refused');
   fail(500, 'ESIM_CODE_UNREADABLE');
 }
-
-/**
- * The code of a line in the detail of an open task whose work is to replace it (a SIM change, a new eSIM). The
- * old code is not what the task hands over, and the task is how a code that no longer opens gets repaired, so
- * an unreadable one must not close the task's screen: it is logged and the task's own code, already read by the
- * caller with `esimCodeOrFail`, is answered in its place. Nothing of the old value is answered.
- */
-export function replacedEsimCode(stored: string | null | undefined, where: string, replacement: string | null): string | null {
-  const read = readEsimCode(stored);
-  if ('code' in read) return read.code ?? replacement;
-  report(where, read.unreadable, 'the open task replaces it, so it is not shown');
-  return replacement;
-}

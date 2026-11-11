@@ -83,5 +83,7 @@ describe('reservation conflict report', () => {
     } finally {
       process.env.DATABASE_URL = previous;
     }
-  });
+    // The only test here that loads the real database client: its first load in a worker took over five seconds
+    // in a full parallel run (1.4 s for the whole file alone), so it gets the time the database specs have.
+  }, 30_000);
 });

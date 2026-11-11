@@ -188,12 +188,14 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     open: answered with its code, charged once; stored values unchanged; nothing of a code in the output or in
     the refusal), `shared/secret-box.spec.ts` (everything sealed opens, authenticator secrets included). Answer
     shapes are unchanged for readable codes (`response-shape.spec.ts`, `routes.http.spec.ts`).
-    **Open replacing tasks (owner's correction, 2026-11-11):** an open `sim` or `esim` task on a line still
-    opens when the line's old code is unreadable (`replacedEsimCode`): the old code is logged and not shown, the
-    task's own code is answered in its place, and the permission checks are untouched. The task's own code is
-    read first with `esimCodeOrFail`, in the detail and again in `TaskCompletion.handedBack` before anything is
-    written or charged, so a new code that does not open is refused; a code given at completion takes its place.
-    Every other task on such a line, a closed replacing task and the line's detail keep `ESIM_CODE_UNREADABLE`.
+    **Open replacing tasks (owner's rule, 2026-11-12):** an open `sim` or `esim` task on a line shows the SIM it
+    hands over, never the one it replaces (`TasksService.shownSim`): a SIM change answers the task's own serial,
+    kind and code (`null` when it carries none), a new eSIM answers no code. The line's old code is not read, so
+    an unreadable one does not close the task; the permission checks are untouched. The task's own code is read
+    with `esimCodeOrFail`, in the detail and again in `TaskCompletion.handedBack` before anything is written or
+    charged, so a new code that does not open is refused; a code given at completion takes its place. Every
+    other task with a line, and a closed replacing task, answers the line's SIM only (a code a cancelled or
+    rejected task carried is not shown beside the line's); a task with no line answers its own.
     **For S.5b:** seal before the transaction and check that the sealed value opens to the code, so a sealing
     fault refuses the sale before any money moves.
   - **S.5b Seal on write, then backfill.** The same repositories seal on write. `src/seal-secrets.ts` gains the
