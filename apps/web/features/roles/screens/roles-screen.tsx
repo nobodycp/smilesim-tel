@@ -10,6 +10,7 @@ import { Button } from '../../../components/ui/button';
 import { api, type RoleRow } from '../../../lib/api';
 import type { LayerKey, SessionRuleValues } from '../../../lib/api-types';
 import { RuleSelects } from '../../auth/session-rules';
+import { LiveSwitch } from '../../../components/live-switch';
 import { GRANT_CODES, grantLabel, grantUsable } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
@@ -140,30 +141,37 @@ export function RolesScreen() {
                 <input value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} />
               </label>
             )}
-            <fieldset className="perm-grid">
-              <legend>{t.permissions}</legend>
-              {GRANT_CODES.filter((code) => grantUsable(code, layerOf(draft))).map((code) => (
-                <label key={code} className="check">
-                  <input
-                    type="checkbox"
-                    checked={draft.grants.includes(code)}
-                    onChange={(event) => setDraft((current) => ({
-                      ...current,
-                      grants: event.target.checked
-                        ? [...current.grants, code]
-                        : current.grants.filter((item) => item !== code),
-                    }))}
-                  />
-                  {grantLabel(t, code, layerOf(draft))}
-                </label>
-              ))}
-            </fieldset>
+            {/* Grants as sliding switches in framed rows; the layer's session rules as typed rows (owner 2026-11-11). */}
+            <section className="role-block" aria-label={t.permissions}>
+              <h3>{t.permissions}</h3>
+              <div className="kv-list two">
+                {GRANT_CODES.filter((code) => grantUsable(code, layerOf(draft))).map((code) => {
+                  const on = draft.grants.includes(code);
+                  const name = grantLabel(t, code, layerOf(draft));
+                  return (
+                    <div key={code} className="kv-row toggle">
+                      <span className="kv-key">{name}</span>
+                      <span className="kv-value">
+                        <LiveSwitch
+                          label={name}
+                          checked={on}
+                          onChange={(next) => setDraft((current) => ({
+                            ...current,
+                            grants: next ? [...current.grants, code] : current.grants.filter((item) => item !== code),
+                          }))}
+                        />
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
             {layerKey && rules.data && ruleValues ? (
-              <fieldset className="stack">
-                <legend>{t.sessionRulesTitle}</legend>
+              <section className="role-block" aria-label={t.sessionRulesTitle}>
+                <h3>{t.sessionRulesTitle}</h3>
                 <p className="hint">{t.layerSessionHint}</p>
                 <RuleSelects values={ruleValues} fallback={rules.data.defaults} fallbackLabel={t.followDefault} onChange={setRuleDraft} />
-              </fieldset>
+              </section>
             ) : null}
           </div>
         </Dialog>

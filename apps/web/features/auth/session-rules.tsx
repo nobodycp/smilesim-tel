@@ -56,45 +56,51 @@ export function RuleSelects({
   const countBad = count !== null && (!Number.isInteger(count) || count < SESSION_COUNT.min || count > SESSION_COUNT.max);
   const minutes = values.sessionMinutes;
   const hoursBad = minutes !== null && (!Number.isFinite(minutes) || minutes < SESSION_MINUTES.min || minutes > SESSION_MINUTES.max);
+  // Framed key-and-value rows, as every summary and form of rules in the office (owner 2026-11-11): the name on the
+  // soft track, the typed value on the surface, its range as a quiet suffix — red with the frame while out of range.
   return (
-    <>
-      <label>
-        {t.maxSessionsLabel}
-        <input
-          type="number"
-          inputMode="numeric"
-          dir="ltr"
-          min={SESSION_COUNT.min}
-          max={SESSION_COUNT.max}
-          step={1}
-          value={count ?? ''}
-          placeholder={`${fallbackLabel} (${fallback.maxSessions})`}
-          aria-invalid={countBad || undefined}
-          onChange={(event) => onChange({ ...values, maxSessions: event.target.value === '' ? null : Number(event.target.value) })}
-        />
-        <span className={countBad ? 'hint field-error' : 'hint'}>{t.sessionsRange}</span>
+    <div className="kv-list">
+      <label className={countBad ? 'kv-row invalid' : 'kv-row'}>
+        <span className="kv-key">{t.maxSessionsLabel}</span>
+        <span className="kv-value">
+          <input
+            type="number"
+            inputMode="numeric"
+            dir="ltr"
+            min={SESSION_COUNT.min}
+            max={SESSION_COUNT.max}
+            step={1}
+            value={count ?? ''}
+            placeholder={`${fallbackLabel} (${fallback.maxSessions})`}
+            aria-invalid={countBad || undefined}
+            onChange={(event) => onChange({ ...values, maxSessions: event.target.value === '' ? null : Number(event.target.value) })}
+          />
+          <small className="kv-suffix"><bdi dir="ltr">{t.sessionsRange}</bdi></small>
+        </span>
       </label>
-      <label>
-        {t.idleHoursLabel}
-        <input
-          type="number"
-          inputMode="decimal"
-          dir="ltr"
-          min={0.25}
-          max={SESSION_MINUTES.max / 60}
-          step={0.25}
-          value={hours}
-          placeholder={`${fallbackLabel} (${durationLabel(locale, fallback.sessionMinutes)})`}
-          aria-invalid={hoursBad || undefined}
-          onChange={(event) => {
-            const text = event.target.value;
-            setHours(text);
-            onChange({ ...values, sessionMinutes: text === '' ? null : Math.round(Number(text) * 60) });
-          }}
-        />
-        <span className={hoursBad ? 'hint field-error' : 'hint'}>{t.hoursRange}</span>
+      <label className={hoursBad ? 'kv-row invalid' : 'kv-row'}>
+        <span className="kv-key">{t.idleHoursLabel}</span>
+        <span className="kv-value">
+          <input
+            type="number"
+            inputMode="decimal"
+            dir="ltr"
+            min={0.25}
+            max={SESSION_MINUTES.max / 60}
+            step={0.25}
+            value={hours}
+            placeholder={`${fallbackLabel} (${durationLabel(locale, fallback.sessionMinutes)})`}
+            aria-invalid={hoursBad || undefined}
+            onChange={(event) => {
+              const text = event.target.value;
+              setHours(text);
+              onChange({ ...values, sessionMinutes: text === '' ? null : Math.round(Number(text) * 60) });
+            }}
+          />
+          <small className="kv-suffix"><bdi dir="ltr">{t.hoursRange}</bdi></small>
+        </span>
       </label>
-    </>
+    </div>
   );
 }
 

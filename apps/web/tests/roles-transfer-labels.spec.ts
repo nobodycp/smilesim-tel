@@ -11,7 +11,7 @@ const role = (id: string, name: string, kind: 'layer' | 'job', layer: string, gr
 
 // The grant says what an account may move and the layer of the role says how far, so each layer names the
 // grant in its own words and a layer that can never use a grant does not show it. `cell` is the whole
-// permissions cell in Arabic, English, and Hebrew; `boxes` are the transfer checkboxes of the role form.
+// permissions cell in Arabic, English, and Hebrew; `boxes` are the transfer switches of the role form (sliding switches since 2026-11-11).
 const cases = [
   {
     row: role('r-branch', 'branch', 'layer', 'branch', ['read', 'transferLines', 'transferPos', 'transferAgents']),
@@ -89,18 +89,18 @@ for (const item of cases) {
     await page.getByRole('button', { name: `إجراءات ${item.who}`, exact: true }).click();
     await page.getByRole('menuitem', { name: 'تعديل' }).click();
     const form = page.getByRole('dialog');
-    await expect(form.getByRole('checkbox', { name: 'قراءة', exact: true })).toBeVisible();
-    // No transfer checkbox besides the ones this layer can use, whatever the wording.
-    await expect(form.getByRole('checkbox', { name: /^نقل/ })).toHaveCount(item.boxes.length);
+    await expect(form.getByRole('switch', { name: 'قراءة', exact: true })).toBeVisible();
+    // No transfer switch besides the ones this layer can use, whatever the wording.
+    await expect(form.getByRole('switch', { name: /^نقل/ })).toHaveCount(item.boxes.length);
     for (const label of everyTransferLabel) {
-      const box = form.getByRole('checkbox', { name: label, exact: true });
-      if (item.boxes.includes(label)) await expect(box).toBeChecked();
+      const box = form.getByRole('switch', { name: label, exact: true });
+      if (item.boxes.includes(label)) await expect(box).toHaveAttribute('aria-checked', 'true');
       else await expect(box).toHaveCount(0);
     }
   });
 }
 
-test('an agent role form has no checkbox for points of sale or agents and still saves the grants it holds', async ({ page }) => {
+test('an agent role form has no switch for points of sale or agents and still saves the grants it holds', async ({ page }) => {
   const agent = cases[2];
   await serveOffice(page, 'branch', {
     'GET /roles': () => ({ body: { roles: [agent.row] } }),
@@ -110,8 +110,8 @@ test('an agent role form has no checkbox for points of sale or agents and still 
   await page.getByRole('button', { name: 'إجراءات وكيل', exact: true }).click();
   await page.getByRole('menuitem', { name: 'تعديل' }).click();
   const form = page.getByRole('dialog');
-  await expect(form.getByRole('checkbox', { name: /نقل نقاط البيع/ })).toHaveCount(0);
-  await expect(form.getByRole('checkbox', { name: /نقل الوكلاء/ })).toHaveCount(0);
+  await expect(form.getByRole('switch', { name: /نقل نقاط البيع/ })).toHaveCount(0);
+  await expect(form.getByRole('switch', { name: /نقل الوكلاء/ })).toHaveCount(0);
   const saved = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/office/roles/r-agent'));
   await form.getByRole('button', { name: 'حفظ' }).click();
   expect((await saved).postDataJSON()).toMatchObject({ grants: ['read', 'transferLines'] });

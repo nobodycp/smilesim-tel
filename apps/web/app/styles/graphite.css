@@ -1387,3 +1387,58 @@ input[aria-invalid='true'], .dialog input[aria-invalid='true'], .pane input[aria
 /* Number fields without the browser's spin arrows: the value is typed (owner 2026-11-11). */
 input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
 input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ── Framed key-and-value rows for forms (owner 2026-11-11): the same frame as a dialog's summary (`.detail-rows`) —
+   the name on the soft track, a hairline, the value on the surface. `.toggle` rows give the name the width and the
+   switch the end; a typed value fills its part, its range as a quiet suffix; `.invalid` turns the frame red. ── */
+.kv-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.kv-list.two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.kv-row {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  min-height: 40px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent);
+  border-radius: var(--rd-radius-sm);
+  background: var(--rd-surface-2);
+}
+.kv-key { display: flex; flex: none; align-items: center; min-inline-size: 8.5rem; padding-inline: 12px; color: var(--rd-muted); font-size: 12px; font-weight: 600; }
+.kv-value { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; padding-inline: 12px 8px; border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent); background: var(--rd-surface); }
+.dialog .kv-value input, .kv-value input, .pane .kv-value input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--rd-ink);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.kv-value input:focus { outline: none; }
+.kv-row:focus-within { border-color: var(--rd-accent); }
+.kv-suffix { flex: none; color: var(--rd-faint); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.kv-row.invalid { border-color: var(--rd-danger); }
+.kv-row.invalid .kv-suffix { color: var(--rd-danger); }
+.kv-row.toggle .kv-key { flex: 1; color: var(--rd-ink); font-size: 13px; }
+.kv-row.toggle .kv-value { flex: none; padding-inline: 8px; }
+.kv-row.toggle:has([aria-checked='true']) .kv-key { color: var(--rd-ink); }
+.kv-row.toggle:has([aria-checked='false']) .kv-key { color: var(--rd-ink-2); }
+/* The role dialog's two blocks: a small title, then its rows. */
+.role-block { display: grid; gap: 10px; }
+.role-block > h3 { margin: 0; color: var(--rd-ink); font-size: 13px; font-weight: 700; }
+.role-block > .hint { margin: -4px 0 0; }
+.dialog-form > .role-block + .role-block { padding-block-start: 14px; border-block-start: 1px solid var(--rd-line); }
+@media (max-width: 640px) {
+  .kv-key { min-inline-size: 7rem; padding-inline: 10px; }
+  .kv-row { min-height: 44px; }
+}
+/* Beat the dialog's stacked-label and boxed-input rules: a key-and-value row is one line, the input bare inside it. */
+.dialog-form label.kv-row:not(.check), .pane label.kv-row, label.kv-row { display: flex; flex-direction: row; gap: 0; color: inherit; font-size: inherit; font-weight: inherit; }
+.dialog .kv-value input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.pane .kv-value input:not([type='checkbox']):not([type='radio']):not([type='file']) { height: 38px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.dialog .kv-row:focus-within, .pane .kv-row:focus-within { border-color: var(--rd-accent); }
+.kv-suffix bdi { unicode-bidi: isolate; }

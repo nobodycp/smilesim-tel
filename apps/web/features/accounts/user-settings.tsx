@@ -115,7 +115,7 @@ export function UserSettingsPane({ loginName, onSaved }: { loginName: string; on
           {ruleView ? (
             <div className="session-rules-block">
               <span className="field-title">{t.sessions}</span>
-              <div className="pair"><RuleSelects values={ruleValues} fallback={ruleView.layer} fallbackLabel={t.followLayer} onChange={setDraft} /></div>
+              <RuleSelects values={ruleValues} fallback={ruleView.layer} fallbackLabel={t.followLayer} onChange={setDraft} />
               <p className="hint">{`${t.effectiveNow}: ${t.maxSessionsLabel} ${ruleView.effective.maxSessions} · ${durationLabel(locale, ruleView.effective.sessionMinutes)}`}</p>
             </div>
           ) : null}

@@ -89,6 +89,9 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - Dates are `DateField` (`components/date-field.tsx`): a `YYYY-MM-DD` field and the system's month — never
   `type="date"`. A file is chosen through a system button over a hidden input, with the chosen name beside it.
 - Tables: the actions column's head is for readers only; a column with no words in its head does not sort.
+- Key-and-value rows in forms (`.kv-list` / `.kv-row`): the name on the soft track, a hairline, then the value on the
+  surface — a typed value fills its part with its range as a quiet suffix, a switch (`LiveSwitch`) sits at the end of a
+  `toggle` row. A role's grants are sliding switches in these rows, two a row; never a column of tick boxes.
 - A count or a duration is typed, not picked from a list: a number field without the browser's spin arrows, its
   range under it (red with the field's edge while out of range), the inherited value as its placeholder — the session
   rules (sessions allowed, idle hours) on a role and on an account (owner 2026-11-11).
