@@ -1,5 +1,6 @@
 'use client';
 
+import { FilterBar } from '../../components/filter-bar';
 import { Select } from '../../components/ui/select';
 import type { TwoFactorMethod } from '../../lib/api-types';
 import { usePrefs } from '../../lib/prefs';
@@ -41,9 +42,9 @@ export function MethodField({ value, label, onChange, followLabel, disabled }: {
   disabled?: boolean;
 }) {
   const { t } = usePrefs();
-  // The list is the system's filter chip (`.filter-panel > label`): the name, then the value in a frame.
+  // The list is the system's filter chip and its own opened list (`FilterBar`, bare: no drawer, no «×»).
   return (
-    <div className="filter-panel tf-method">
+    <FilterBar loose bare>
       <label>
         {label}
         <Select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value as TwoFactorMethod | '')}>
@@ -51,7 +52,7 @@ export function MethodField({ value, label, onChange, followLabel, disabled }: {
           {TWO_FACTOR_METHODS.map((method) => <option key={method} value={method}>{methodName(t, method)}</option>)}
         </Select>
       </label>
-    </div>
+    </FilterBar>
   );
 }
 

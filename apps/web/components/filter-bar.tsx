@@ -27,12 +27,15 @@ export function FilterBar({
   onClear,
   clearLabel,
   loose = false,
+  bare = false,
 }: {
   children: ReactNode;
   onClear?: () => void;
   clearLabel?: string;
   /** Chips standing on the page above the list (packages), not on the top edge of its card. */
   loose?: boolean;
+  /** Only the chips and their lists: no «كل الفلاتر» drawer, no «×» on a chip — a single chosen value outside a filter bar. */
+  bare?: boolean;
 }) {
   const { t } = usePrefs();
   const [open, setOpen] = useState(false);
@@ -95,7 +98,7 @@ export function FilterBar({
 
   // A chip that holds a value gets a «×» that sets it back to all, as in the design.
   const chips = Children.map(children, (child) => {
-    if (!isValidElement(child) || child.type !== 'label') return child;
+    if (bare || !isValidElement(child) || child.type !== 'label') return child;
     const parts = Children.toArray((child.props as { children?: ReactNode }).children);
     const field = parts.find((part) => isValidElement(part) && part.type === Select) as ReactElement<{ value?: string }> | undefined;
     if (!field?.props.value) return child;
@@ -126,7 +129,7 @@ export function FilterBar({
   });
 
   return (
-    <div className={['filter-bar', open ? 'drawer-open' : '', loose ? 'loose' : ''].filter(Boolean).join(' ')}>
+    <div className={['filter-bar', open ? 'drawer-open' : '', loose ? 'loose' : '', bare ? 'bare' : ''].filter(Boolean).join(' ')}>
       <button type="button" className="filter-all" aria-expanded={open} onClick={() => setOpen(true)}>
         <ListFilter size={15} strokeWidth={1.9} aria-hidden="true" />
         {t.allFilters}

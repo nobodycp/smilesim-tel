@@ -1437,7 +1437,9 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
 .seg.role-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); inline-size: 100%; }
 .seg.role-seg button { padding-inline: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .role-twofactor { gap: 0; }
-.role-twofactor .tf-method { margin-block-start: 12px; }
+.role-twofactor .filter-bar.bare { margin-block-start: 12px; }
+.filter-bar.bare .filter-all, .filter-bar.bare .filter-drawer-head, .filter-bar.bare .filter-drawer-foot { display: none; }
+@media (max-width: 767px) { .filter-bar.bare.loose .filter-panel { display: flex; } }
 .role-hint.role-note { margin: 10px 0 0; }
 .dialog-form > .role-twofactor { margin-block-start: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--rd-line); }
 .two-factor-block { gap: 12px; }
