@@ -41,14 +41,17 @@ export function MethodField({ value, label, onChange, followLabel, disabled }: {
   disabled?: boolean;
 }) {
   const { t } = usePrefs();
+  // The list is the system's filter chip (`.filter-panel > label`): the name, then the value in a frame.
   return (
-    <label className="role-field">
-      <span className="role-field-name">{label}</span>
-      <Select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value as TwoFactorMethod | '')}>
-        {followLabel ? <option value="">{followLabel}</option> : null}
-        {TWO_FACTOR_METHODS.map((method) => <option key={method} value={method}>{methodName(t, method)}</option>)}
-      </Select>
-    </label>
+    <div className="filter-panel tf-method">
+      <label>
+        {label}
+        <Select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value as TwoFactorMethod | '')}>
+          {followLabel ? <option value="">{followLabel}</option> : null}
+          {TWO_FACTOR_METHODS.map((method) => <option key={method} value={method}>{methodName(t, method)}</option>)}
+        </Select>
+      </label>
+    </div>
   );
 }
 
