@@ -67,7 +67,6 @@ export function RuleSelects({
           <input
             type="number"
             inputMode="numeric"
-            dir="ltr"
             min={SESSION_COUNT.min}
             max={SESSION_COUNT.max}
             step={1}
@@ -86,7 +85,6 @@ export function RuleSelects({
           <input
             type="number"
             inputMode="decimal"
-            dir="ltr"
             min={0.25}
             max={SESSION_MINUTES.max / 60}
             step={0.25}
