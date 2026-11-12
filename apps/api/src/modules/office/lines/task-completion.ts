@@ -1,3 +1,4 @@
+import { assertOperationAllows } from '../tasks/task-operation';
 import { esimCodeOrFail, storableEsimCode } from './esim-code';
 import { LinesRepository } from './lines.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
@@ -95,6 +96,9 @@ export class TaskCompletion {
       const wanted = completionClaim(task, handed);
       const claim = task.action === 'activate' && !wanted.msisdn ? { ...wanted, msisdn: await this.pricing.freshMsisdn(tx) } : wanted;
       await lockClaim(tx, claim);
+      // The task's provider operation, locked after the keys and before any wallet: a completion by hand goes on
+      // only with none or a failed one (ADR 0019, D6; T8). Refused, the transaction rolls back and nothing moved.
+      await assertOperationAllows(tx, id, 'complete');
       // A hold that the charge will be settled against stays until then: a fixed debit is captured after the
       // handler, a switch settles its re-quoted amount inside its handler (ADR 0019, D10). Any other hold gives way
       // now, before the handler moves money of its own (roadmap N6).

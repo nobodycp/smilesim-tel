@@ -21,6 +21,7 @@ import { TASKS_PAGE, taskStatusOf } from '../rules/office-paging';
 import { simRulesOf } from '../rules/sim-rules';
 import { canHandleTasks, esimCodeReaders, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { stampTaskLog } from './task-log';
+import { assertOperationAllows, withdrawOperation } from './task-operation';
 import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 
 /**
@@ -226,6 +227,9 @@ export class TasksService {
     const written = await this.uow.runTx(async (tx) => {
       const updated = await this.repo.rejectTask(tx, id, reason, actor.id);
       if (updated.count !== 1) fail(400, 'INVALID');
+      // The task's provider operation, locked after the task and before the wallet: a reject goes on only with
+      // none or a failed one (ADR 0019, D6). Refused, the transaction rolls back: the task and its hold stay.
+      await assertOperationAllows(tx, id, 'reject');
       await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, reason);
       return this.taskNotice(tx, 'rejected', task, actor, { reason, handlerName: actor.nickname });
     });
@@ -239,6 +243,9 @@ export class TasksService {
     const written = await this.uow.runTx(async (tx) => {
       const updated = await this.repo.cancelTask(tx, id, actor.id);
       if (updated.count !== 1) fail(400, 'INVALID');
+      // T9 (ADR 0019, D7): an operation nothing has left for is closed as abandoned in this same transaction; one
+      // the dispatcher has, or whose answer is not known or not applied yet, refuses the cancel and nothing changes.
+      await withdrawOperation(tx, id);
       await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, '');
       return this.taskNotice(tx, 'cancelled', task, actor);
     });

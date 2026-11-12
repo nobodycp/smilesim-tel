@@ -315,12 +315,15 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   answer instead of `409` (`shared/duplicate-guard.answers.spec.ts`, and the guarded part of the db spec on real Redis). Also closed here: the guard no longer keeps the activation's answer in
   the clear (`@SecretAnswer()`), a gap of S.5c found while adding the key.
 
-- [ ] **S.7 Guards on the manual path, and cancel (D6, D7).**
+- [x] **S.7 Guards on the manual path, and cancel (D6, D7).** Built 2026-11-12 (commit: see `git log --grep 'slice S.7'`).
   Completion and reject lock and read the task's operation and go on only with none or `failed`. Cancel gains the
   atomic `requested → failed (abandoned)` + release, and refuses on `pending`, `unknown`, succeeded-not-applied
   and an exception. All three ask `taskActions`. No task has an operation yet, so nothing changes for users; the
   specs build operations by hand.
   *Transactions:* T8, T9. *Locks:* task → line → keys → operation → wallet. *Specs:* 8–10, 14–16.
+  As built: ADR 0019 "As built in S.7"; `tasks/task-operation.ts`, `tasks/task-operation.db.spec.ts` (every state
+  against complete, reject and cancel; cancel against claim 60 times; a mixed run with no deadlock). Item 8's T5
+  side waits for S.8.
 
 - [ ] **S.8 Settlement.**
   `lines/activation-settlement.ts` (`apply`, `applyPending`, the exception write), reusing the activation handler

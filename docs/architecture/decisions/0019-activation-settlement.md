@@ -286,3 +286,24 @@ come; the money must be safe in every state of the operation.
 - The web makes one key per activation (`lib/request-key.ts`): the same content sent again carries the same key;
   changed content, or the next activation after an answer, carries a new one. Both activation forms use it.
 
+## As built in S.7 (the guards of the manual path, and cancel)
+
+- One file holds it: `tasks/task-operation.ts`. It locks the task's operation row (`SELECT … FOR UPDATE`) and
+  asks `taskActions`; it decides nothing itself and calls no provider.
+- **Complete by hand (T8)** — `TaskCompletion.complete`: task claimed → line → claim keys → **operation** →
+  wallet. **Reject** — `TasksService.reject`: task → **operation** → wallet. Both go on only with no operation or
+  a `failed` one; otherwise `409 DUPLICATE_REQUEST` and the transaction is rolled back, so the task is still
+  `working` with its hold, nothing is in the ledger and no line was made.
+- **Cancel (T9, D7)** — `TasksService.cancel`: task → **operation** → wallet. None or `failed`: as before.
+  `requested` (also after an attempt that never left): `failed`, `lastError = abandoned`, `appliedAt = now`, by a
+  statement guarded on `status = 'requested'`, in the same transaction as the task's close and the release.
+  `pending`, `unknown`, succeeded-not-applied, an exception: `409`, nothing changed.
+- The dispatcher's `claim`, `settle` and recovery stay single guarded statements on the operation row and take
+  no other lock, so they cannot close a cycle with these transactions. A claim that committed first is what the
+  cancel reads under its lock (refused); a claim that comes after waits and finds `failed` (null, nothing sent).
+- The row lock and the guarded statement cover each other: the spec's race fails only when both are removed.
+- No sale records an operation yet (S.11), so no user sees a change. The spec opens real tasks through the
+  service and writes each operation state by hand.
+- Spec item 8 (T5 against a manual completion) needs T5, which is S.8. What S.7 proves of it is the manual side:
+  a completion is refused while the operation is succeeded and not applied.
+

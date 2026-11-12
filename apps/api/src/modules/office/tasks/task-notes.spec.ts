@@ -34,6 +34,8 @@ function setup() {
       },
     },
     officeTaskNote: { create: async ({ data }: { data: { body: string; internal: boolean } }) => { notes.push({ body: data.body, internal: data.internal }); return data; } },
+    // No task here has a provider operation: the lock on it finds no row (the manual route).
+    $queryRaw: async () => [],
     $transaction: async (run: (tx: unknown) => Promise<unknown>) => run(kernel.prismaClient),
   } as unknown as OfficeGraph['prismaClient'];
   (kernel.uow as unknown as { notice: unknown }).notice = {
