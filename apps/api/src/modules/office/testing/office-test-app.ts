@@ -1,5 +1,5 @@
 import { UnitOfWork } from '../kernel/unit-of-work';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, type NestInterceptor } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import { ActivityRecorder } from '../activity/activity-recorder';
@@ -9,9 +9,10 @@ import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
 
 /**
  * For HTTP specs: every office route, as the app serves it, over the given auth store and in-memory tables.
- * Activity events land in `recorded`; notices are written and published through `notice` when given.
+ * Activity events land in `recorded`; notices are written and published through `notice` when given. `global`
+ * interceptors run in front of every route, as `OfficeModule` registers the duplicate guard.
  */
-export async function officeTestApp(store: AuthStore, tables: Record<string, unknown>, notice?: Partial<NoticeService>) {
+export async function officeTestApp(store: AuthStore, tables: Record<string, unknown>, notice?: Partial<NoticeService>, global: NestInterceptor[] = []) {
   const recorded: unknown[][] = [];
   let builder = Test.createTestingModule({
     controllers: OFFICE_CONTROLLERS,
@@ -33,6 +34,7 @@ export async function officeTestApp(store: AuthStore, tables: Record<string, unk
   const moduleRef = await builder.compile();
   moduleRef.get(UnitOfWork).prismaClient = tables as unknown as UnitOfWork['prismaClient'];
   const app: INestApplication = moduleRef.createNestApplication();
+  if (global.length) app.useGlobalInterceptors(...global);
   await app.init();
   return { app, recorded };
 }

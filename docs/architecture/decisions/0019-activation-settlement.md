@@ -243,3 +243,34 @@ come; the money must be safe in every state of the operation.
 - The manual path changes in three decided ways: reservation at opening, capture at completion, the eSIM code off
   the lists.
 - Nothing is dispatched anywhere until the plan's go-live gate is passed for a provider on a named deployment.
+
+## As built in S.6 (the request key)
+
+- `POST /office/lines` reads `Idempotency-Key` (8 to 120 of `A-Z a-z 0-9 . _ : -`; anything else is `400
+  INVALID`; none or empty behaves as before). `OfficeTask.requestKey` is `sha256(submitterId : key)` and
+  `requestHash` the SHA-256 of the parsed body's fields. The key itself is never stored.
+- The submitter is the acting account (`actor.id`, the account that `OfficeTask.submitterId` names). A key is
+  that account's: the same text from another account is another key, so nobody is answered with another's task.
+- The key is asked twice. Before every other check (`TasksService.openedBy`), so a repeat is answered as the
+  first was even when the number has a line by now or the price moved. And inside T1: the claim keys are locked,
+  the key is looked up, the reservation is judged, the task is inserted `ON CONFLICT DO NOTHING`, and when the
+  insert was refused the key is looked up once more. The first lookup under the locks answers a repeat that named
+  the same serial or number and waited on its lock; the one after the insert answers a repeat that had nothing to
+  wait on but the unique index (an eSIM with no serial, each request given another number).
+- A repeat answers `{ applied: false, taskId }` of the first task with `Idempotent-Replay: true`, in whatever
+  state that task is now, for as long as its row exists. It holds nothing, writes no notice and no activity event
+  (`ActivityInterceptor` skips an answer marked as a repeat). The same key with another body is `400 INVALID`.
+- A request that fails in T1 leaves nothing, so the same key can be sent again.
+- **Only a request that opens a task stores a key.** An activation made at once (simulation only: development
+  and tests; never in production, D13) opens no task; its repeat is stopped by the Redis guard alone, as before.
+  The header is not required on any route yet: "required on the dispatch route" is S.11.
+- The Redis guard stays in front and is not relied on. The spec runs without it, with it, with two sessions of
+  one account (which it cannot tell apart from two people) and with its store down: always one task, one hold.
+- Found while building this: the guard kept every answer in Redis as JSON, so the answer of an activation made
+  at once sat there with its eSIM code in the clear (10 s without a key; it would have been 24 h once the web
+  sent one). The activation route is now marked `@SecretAnswer()`: its answer is kept sealed, or not at all where
+  it cannot be sealed, in which case the repeat is refused (`409 DUPLICATE_REQUEST`) and never run again. Spec
+  item 24 (S.5c) did not see this because its test app has no guard; `activation-request-key.db.spec.ts` covers it.
+- The web makes one key per activation (`lib/request-key.ts`): the same content sent again carries the same key;
+  changed content, or the next activation after an answer, carries a new one. Both activation forms use it.
+

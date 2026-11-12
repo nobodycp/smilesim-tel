@@ -18,10 +18,10 @@ function endsSession(status: number, code: string | undefined, message: string):
   return (status === 401 && message === 'يلزم تسجيل الدخول') || (status === 403 && message === 'هذا الحساب ليس لهذا المدخل');
 }
 
-export async function request<T>(method: string, path: string, body?: unknown): Promise<ApiResult<T>> {
+export async function request<T>(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<ApiResult<T>> {
   let response: Response;
   const door = typeof window === 'undefined' ? null : doorFromHost(window.location.host);
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...extraHeaders };
   if (door) headers['x-door'] = door.host;
   if (body !== undefined) headers['content-type'] = 'application/json';
   try {

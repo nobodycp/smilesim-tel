@@ -112,14 +112,20 @@ export class TasksRepository {
 
   /**
    * Inserts a task unless a unique index refuses it (`ON CONFLICT DO NOTHING`, so the caller's transaction is not
-   * aborted): for an activation, the open-reservation indexes on its serial and its number. Answers the new row,
-   * or null when the database refused it.
+   * aborted): for an activation, the open-reservation indexes on its serial and its number, and the unique
+   * request key (D14). An insert that meets a row another transaction has not committed yet waits for it, so the
+   * answer is final. Answers the new row, or null when the database refused it.
    */
   async insertTask(db: Db, data: Omit<Prisma.OfficeTaskCreateManyInput, 'id'>) {
     assertStoredSealed(data.esimQr);
     const id = randomUUID();
     const made = await db.officeTask.createMany({ data: [{ id, ...data }], skipDuplicates: true });
     return made.count === 1 ? db.officeTask.findUnique({ where: { id } }) : null;
+  }
+
+  /** The task a request key opened (ADR 0019, D14), if there is one: its id and the fingerprint it was sent with. */
+  taskByRequestKey(db: Db, requestKey: string) {
+    return db.officeTask.findUnique({ where: { requestKey }, select: { id: true, requestHash: true } });
   }
 
   packageName(db: Db, id: string) {

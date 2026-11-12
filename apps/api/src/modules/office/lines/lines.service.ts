@@ -1,3 +1,4 @@
+import { activationRequestHash, requestKeyOf, type ActivationInput, type TaskRequest } from './activation-settlement.rules';
 import { assertCanSealEsimCode, storableEsimCode } from './esim-code';
 import { LinesRepository } from './lines.repository';
 import { LineAccess } from './line-access';
@@ -75,9 +76,22 @@ export class LinesService {
     return { applied: false as const, taskId: opened.id };
   }
 
-  async activate(actor: Actor, body: unknown) {
+  /**
+   * `sent.key` is the request's `Idempotency-Key` (ADR 0019, D14): the request that opened a task is answered
+   * with that task again, whatever has changed since, and holds, records and sends nothing. `sent.replayed` is
+   * called when the answer is such a repeat.
+   */
+  async activate(actor: Actor, body: unknown, sent: { key?: string; replayed?: () => void } = {}) {
     const input = parseInput(ActivateBody, body);
     this.gateway.accept(input.outcome);
+    const request = this.requestOf(actor, sent.key, input);
+    // Before every other check: a repeat is answered as the first was, even when the number has a line by now, the
+    // price moved or the package was hidden. The transaction that opens the task asks again, under its locks.
+    const first = request ? await this.tasks.openedBy(request) : null;
+    if (first) {
+      sent.replayed?.();
+      return { applied: false, taskId: first.id };
+    }
     const { esim, iccid, packageCode, posLoginName, msisdn: requested, currentDetails } = input;
     const accounts = await this.tree.accounts();
     const pos = accounts.find((account) => account.loginName === posLoginName && account.layer === 'pos');
@@ -106,7 +120,9 @@ export class LinesService {
       const task = await this.tasks.openTask({
         action: 'activate', actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: storedIccid, esim, unitPrice: unit,
         note: route.note === BRANCH_TASK_NOTE ? currentDetails || BRANCH_TASK_NOTE : route.note,
+        ...(request ? { request } : {}),
       });
+      if (task.replayed) sent.replayed?.();
       return { applied: false, taskId: task.id };
     }
     // Immediate activation: the provider hands the eSIM profile back now, so the line carries it from the start.
@@ -143,6 +159,14 @@ export class LinesService {
       debited: posDelta < 0,
       line: { id: created.id, msisdn: created.msisdn, iccid: created.iccid, esim: created.esim, esimQr: issuedQr },
     };
+  }
+
+  /** The stored key and fingerprint of a request sent with an `Idempotency-Key`; null without one, 400 for a malformed one. */
+  private requestOf(actor: Actor, sent: string | undefined, input: ActivationInput): TaskRequest | null {
+    if (sent === undefined || sent === '') return null;
+    const key = requestKeyOf(actor.id, sent);
+    if (!key) fail(400, 'INVALID');
+    return { key, hash: activationRequestHash(input) };
   }
 
   /** A package that can be sold: it exists, and it and every renewal target have a company and a provider. */

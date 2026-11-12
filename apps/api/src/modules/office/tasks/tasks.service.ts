@@ -7,7 +7,8 @@ import { UnitOfWork } from '../kernel/unit-of-work';
 import { assertBranch } from '../policy';
 import { taskEvents } from './task-events';
 import { esimCodeOrFail } from '../lines/esim-code';
-import { assertClaimFree, lockLine } from '../lines/line-state';
+import { sameRequest, type TaskRequest } from '../lines/activation-settlement.rules';
+import { assertClaimFree, lockClaim, lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
@@ -245,6 +246,13 @@ export class TasksService {
     return { ok: true };
   }
 
+  /** The task a request key opened, for the request it was first sent with; 400 when the key came with another. */
+  async openedBy(request: TaskRequest): Promise<{ id: string } | null> {
+    const first = await this.repo.taskByRequestKey(this.uow.prisma, request.key);
+    if (first && !sameRequest(first, request)) fail(400, 'INVALID');
+    return first ? { id: first.id } : null;
+  }
+
   async openTask(input: {
     action: Action;
     actor: Actor;
@@ -260,8 +268,17 @@ export class TasksService {
     note: string;
     /** The price of what the task sells, fixed now so completion charges and records the same number (rule 1.5). */
     unitPrice?: number;
-  }) {
+    /** The request's stored key and fingerprint (ADR 0019, D14): one task per key, for as long as the row exists. */
+    request?: TaskRequest;
+  }): Promise<{ id: string; replayed: boolean }> {
+    const { request } = input;
     const { task, written } = await this.uow.runTx(async (tx) => {
+      /** The task this request's key already opened: answered again, or refused when the key came with another request. */
+      const firstAnswer = async () => {
+        const first = request ? await this.repo.taskByRequestKey(tx, request.key) : null;
+        if (first && request && !sameRequest(first, request)) fail(400, 'INVALID');
+        return first ? { task: { id: first.id, replayed: true }, written: [] as WrittenNotice[] } : null;
+      };
       // One open task per number and operation (rule 2.3). The line's row serialises two requests for it.
       if (input.lineId && input.action !== 'addon') {
         await lockLine(tx, input.lineId);
@@ -271,6 +288,11 @@ export class TasksService {
       // An activation reserves its serial and its number (ADR 0019, D5): refused here, under their locks, when a
       // line holds one of them or another open activation has reserved it. Before the task and before any money.
       const claim = input.action === 'activate' ? { iccid: input.iccid, msisdn: input.msisdn } : {};
+      // A repeated request is answered before the reservation is judged, or it would be refused by its own first
+      // task. The keys are locked first: a repeat sent at the same moment waits here for the first to commit.
+      await lockClaim(tx, claim);
+      const before = await firstAnswer();
+      if (before) return before;
       await assertClaimFree(tx, claim);
       // The task is written first, the hold second: a request the database refuses has held nothing.
       const price = input.posDelta < 0 ? -input.posDelta : 0;
@@ -291,8 +313,14 @@ export class TasksService {
         note: input.note,
         held: price,
         unitPrice: input.unitPrice ?? null,
+        requestKey: request?.key ?? null,
+        requestHash: request?.hash ?? null,
       });
       if (!created) {
+        // The request key refused it: the same request, sent at the same moment with no serial or number to wait
+        // on, committed first. Nothing was held and nothing is recorded for this one.
+        const raced = await firstAnswer();
+        if (raced) return raced;
         // The reservation indexes refused it although the check above passed: someone wrote past the locks. The
         // check says which of the two it was; if it finds neither, the request is still a duplicate.
         await assertClaimFree(tx, claim);
@@ -308,7 +336,7 @@ export class TasksService {
         packageName: named?.name ?? '',
         amount: input.posDelta,
       });
-      return { task: created, written: notices };
+      return { task: { id: created.id, replayed: false }, written: notices };
     });
     await this.uow.publishQuietly(written);
     return task;

@@ -305,10 +305,14 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   *Transactions:* none new. *Roll-back:* S.5c API → S.5c web → S.5b (values stay sealed and readable by S.5a) →
   S.5a only once no sealed value exists.
 
-- [ ] **S.6 Request key (O4): API, then web.**
+- [x] **S.6 Request key (O4): API, then web.** Built 2026-11-12 (commit: see `git log --grep 'slice S.6'`).
   API: `Idempotency-Key` honoured by `POST /office/lines` when it opens a task (`requestKey`, `requestHash`, the
   replayed answer). Web (its own web spec first): the activation form creates and sends the key.
   *Transactions:* T1. *Specs:* 4 (without "required").
+  As built: ADR 0019 "As built in S.6". Specs: `lines/activation-request-key.db.spec.ts` (item 4 over HTTP, with
+  and without the Redis guard), `lines/activation-settlement.rules.spec.ts` (the key and the fingerprint), web
+  `tests/activation-request-key.spec.ts`. Also closed here: the guard no longer keeps the activation's answer in
+  the clear (`@SecretAnswer()`), a gap of S.5c found while adding the key.
 
 - [ ] **S.7 Guards on the manual path, and cancel (D6, D7).**
   Completion and reject lock and read the task's operation and go on only with none or `failed`. Cancel gains the

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { OPERATION_STATUSES, validKey, type OperationStatus } from '../providers/operations/provider-operation.rules';
 import {
   APPLY_ERRORS, DECISIONS, DECISION_EVENT_TYPES, EVIDENCE_KINDS, MIN_DECISION_NOTE,
-  decisionStep, inFlight, needsSecondAccount, openProposal, operationKey, phaseOf, settlementOf, sweepable, taskActions,
+  activationRequestHash, decisionStep, inFlight, needsSecondAccount, openProposal, operationKey, phaseOf, requestKeyOf, sameRequest, settlementOf, sweepable, taskActions,
   type Decision, type DecisionActor, type DecisionEvent, type DecisionEvidence, type DecisionRequest, type OperationPhase, type TaskOperation,
 } from './activation-settlement.rules';
 
@@ -303,5 +303,42 @@ describe('decisions by people (D15)', () => {
     for (const act of ['approve', 'refuse'] as const) expect(refusal(decisionStep([], owner, answer(act, PHASES.unknown)))).toBe('no-proposal');
     const applied: DecisionEvent[] = [{ sequence: 1, type: 'applied', decision: 'confirm-success', accountId: 'owner' }];
     expect(refusal(decisionStep(applied, accountant, answer('approve', PHASES.unknown)))).toBe('no-proposal');
+  });
+});
+
+describe('the request key of an activation (ADR 0019, D14)', () => {
+  const input = { packageCode: 'pkg', posLoginName: 'pos', esim: false, iccid: '8997202000000000011', msisdn: '', currentDetails: '', outcome: undefined };
+
+  it('stores the SHA-256 of the submitter and the key, so one text is another key for another account', () => {
+    const stored = requestKeyOf('user-1', 'req-12345678');
+    expect(stored).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored).not.toContain('req-12345678');
+    expect(requestKeyOf('user-1', 'req-12345678')).toBe(stored);
+    expect(requestKeyOf('user-2', 'req-12345678')).not.toBe(stored);
+    expect(requestKeyOf('user-1', 'req-12345679')).not.toBe(stored);
+  });
+
+  it('refuses a key that is too short, too long or holds other characters, and a missing submitter', () => {
+    for (const bad of ['', 'short', 'x'.repeat(121), 'has space in it', 'semi;colon;key', 'line\nbreak-key']) expect(requestKeyOf('user-1', bad)).toBeNull();
+    expect(requestKeyOf('', 'req-12345678')).toBeNull();
+    expect(requestKeyOf('user-1', 'x'.repeat(120))).not.toBeNull();
+  });
+
+  it('fingerprints the parsed body: the same fields give the same hash, any other field another', () => {
+    const hash = activationRequestHash(input);
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(activationRequestHash({ ...input })).toBe(hash);
+    expect(activationRequestHash({ ...input, outcome: null })).toBe(hash);
+    const others = [{ packageCode: 'pkg2' }, { posLoginName: 'pos2' }, { esim: true }, { iccid: '8997202000000000012' }, { msisdn: '0500000001' }, { currentDetails: 'x' }, { outcome: 'fail' }];
+    expect(new Set([hash, ...others.map((over) => activationRequestHash({ ...input, ...over }))]).size).toBe(8);
+    // A value moved from one field to its neighbour is another request.
+    expect(activationRequestHash({ ...input, iccid: '', msisdn: input.iccid })).not.toBe(hash);
+  });
+
+  it('answers a found task only for the request it was first sent with', () => {
+    const request = { key: 'k', hash: activationRequestHash(input) };
+    expect(sameRequest({ requestHash: request.hash }, request)).toBe(true);
+    expect(sameRequest({ requestHash: 'another' }, request)).toBe(false);
+    expect(sameRequest({ requestHash: null }, request)).toBe(false);
   });
 });

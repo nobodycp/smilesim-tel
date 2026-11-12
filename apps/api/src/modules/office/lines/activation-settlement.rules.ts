@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { validKey, type OperationStatus } from '../providers/operations/provider-operation.rules';
 
 // How a provider operation and its activation task stand to each other (ADR 0019). Pure: no Nest, no Prisma, no
@@ -38,6 +39,35 @@ export function operationKey(taskId: string): string {
   const key = `activate:${taskId}`;
   if (!taskId || !validKey(key)) throw new RangeError('a task id that cannot name a provider operation');
   return key;
+}
+
+// ── The request that opens an activation task (D14) ─────────────────────────────────────────────────────────
+
+/** What is stored for a request sent with an `Idempotency-Key`: whose key it is, and what it was sent with. */
+export type TaskRequest = { key: string; hash: string };
+
+/** The parsed body of an activation, as `ActivateBody` leaves it. */
+export type ActivationInput = { packageCode: string; posLoginName: string; esim: boolean; iccid: string; msisdn: string; currentDetails: string; outcome?: unknown };
+
+/**
+ * The stored form of a request key: SHA-256 of the submitter and the key the client sent. A key is one account's:
+ * the same text sent by another account is another key, so no account is ever answered with another's task.
+ * Null for a key that is not 8 to 120 characters of `A-Z a-z 0-9 . _ : -`.
+ */
+export function requestKeyOf(submitterId: string, sent: string): string | null {
+  if (!submitterId || !validKey(sent)) return null;
+  return createHash('sha256').update(`${submitterId}:${sent}`).digest('hex');
+}
+
+/** The fingerprint of a parsed activation: a key that comes back with another one is refused, never answered. */
+export function activationRequestHash(input: ActivationInput): string {
+  const fields = [input.packageCode, input.posLoginName, input.esim, input.iccid, input.msisdn, input.currentDetails, input.outcome ?? null];
+  return createHash('sha256').update(JSON.stringify(fields)).digest('hex');
+}
+
+/** A task found under a request key: the first answer again when the request is the same one, else a refusal. */
+export function sameRequest(first: { requestHash: string | null }, request: TaskRequest): boolean {
+  return first.requestHash === request.hash;
 }
 
 // ── What an operation allows on its task (D6) ───────────────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
+import { useRequestKey } from '../../../lib/request-key';
 import { useAction } from '../../../lib/use-action';
 import { Badge } from '../../../components/ui/badge';
 import { NameField } from '../../../components/name-field';
@@ -49,6 +50,7 @@ function PosCatalog({
   const [note, setNote] = useState('');
   const [result, setResult] = useState<ApplyResult | null>(null);
   const { run } = useAction({ setError, setNote });
+  const requestKey = useRequestKey();
   const names = [...new Set(rows.map((row) => row.companyName).filter(Boolean))];
   const imageOf = new Map(marks.map((mark) => [mark.name, mark.image]));
   const packs = rows.filter((row) => row.companyName === company);
@@ -82,17 +84,19 @@ function PosCatalog({
       setNote('');
       return;
     }
+    const body = {
+      packageCode: picked.code,
+      posLoginName: loginName,
+      esim: withEsim,
+      iccid: withEsim ? '' : iccid.trim(),
+      msisdn: activation === 'number' ? givenNumber.trim() : '',
+      currentDetails: activation === 'details' ? currentDetails.trim() : '',
+      outcome: 'success' as const,
+    };
+    // The same activation sent again keeps its key; once answered, the next one is another (ADR 0019, D14).
     await run(
-      () => api.activateLine({
-        packageCode: picked.code,
-        posLoginName: loginName,
-        esim: withEsim,
-        iccid: withEsim ? '' : iccid.trim(),
-        msisdn: activation === 'number' ? givenNumber.trim() : '',
-        currentDetails: activation === 'details' ? currentDetails.trim() : '',
-        outcome: 'success',
-      }),
-      { then: (data) => { setResult(data); setIccid(rules.prefix); setGivenNumber(''); setCurrentDetails(''); } },
+      () => api.activateLine(body, requestKey.keyFor(body)),
+      { then: (data) => { requestKey.spent(); setResult(data); setIccid(rules.prefix); setGivenNumber(''); setCurrentDetails(''); } },
     );
   }
 

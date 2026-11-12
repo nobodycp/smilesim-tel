@@ -286,8 +286,8 @@ export class OfficeFacade {
     return this.lineReads.detail(await this.actor(gate), id);
   }
 
-  async activate(gate: Gate, body: Record<string, unknown>) {
-    return this.lineDesk.activate(await this.actor(gate), body);
+  async activate(gate: Gate, body: Record<string, unknown>, key?: string) {
+    return this.lineDesk.activate(await this.actor(gate), body, { key });
   }
 
   async requestAddon(gate: Gate, lineId: string, body: Record<string, unknown>) {

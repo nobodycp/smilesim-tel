@@ -27,6 +27,7 @@ import { useDoor } from '../../../lib/door-context';
 import { useOffice } from '../../../lib/office-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint, withPrefix } from '../../../lib/sim-rules';
+import { useRequestKey } from '../../../lib/request-key';
 import { useAction } from '../../../lib/use-action';
 import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
@@ -82,6 +83,7 @@ export function NumbersScreen() {
   const poses = list.extra ?? NO_POSES;
   const ready = catalog.loaded && list.started;
   const { run, busy } = useAction({ setError, setNote, onDone: list.reload });
+  const requestKey = useRequestKey();
   // A failed list is shown once, in the table; the banner is for actions and the catalogue.
   const failure = error || catalog.error;
 
@@ -138,17 +140,19 @@ export function NumbersScreen() {
 
   async function activate(event: FormEvent) {
     event.preventDefault();
+    const body = {
+      packageCode: chosen?.code || '',
+      posLoginName: posLoginName || poses[0]?.loginName || '',
+      esim: withEsim,
+      iccid: withEsim ? '' : iccid.trim(),
+      msisdn: activation === 'number' ? givenNumber : '',
+      currentDetails: activation === 'details' ? currentDetails : '',
+      outcome: verdict,
+    };
+    // The same activation sent again keeps its key; once answered, the next one is another (ADR 0019, D14).
     await run(
-      () => api.activateLine({
-        packageCode: chosen?.code || '',
-        posLoginName: posLoginName || poses[0]?.loginName || '',
-        esim: withEsim,
-        iccid: withEsim ? '' : iccid.trim(),
-        msisdn: activation === 'number' ? givenNumber : '',
-        currentDetails: activation === 'details' ? currentDetails : '',
-        outcome: verdict,
-      }),
-      { then: (data) => { setResult(data); setIccid(''); setCurrentDetails(''); setGivenNumber(''); setActivateOpen(false); } },
+      () => api.activateLine(body, requestKey.keyFor(body)),
+      { then: (data) => { requestKey.spent(); setResult(data); setIccid(''); setCurrentDetails(''); setGivenNumber(''); setActivateOpen(false); } },
     );
   }
 

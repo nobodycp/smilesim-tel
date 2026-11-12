@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseInterceptors } from '@nestjs/common';
-import type { Request } from 'express';
-import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Headers, Param, Post, Query, Req, Res, UseInterceptors } from '@nestjs/common';
+import type { Request, Response } from 'express';
+import { ApiCookieAuth, ApiHeader, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiZodQuery } from '../../../openapi/query';
 import { ApiErrorResponse } from '../../../openapi/responses';
@@ -8,6 +8,7 @@ import { Activity, bodyField, param } from '../activity/activity.decorator';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { ActivityRecorder } from '../activity/activity-recorder';
 import { gateOf } from '../../shared/cookies';
+import { REPLAY_HEADER, SecretAnswer } from '../../shared/duplicate-guard.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { LineReads } from './line-reads';
@@ -46,9 +47,12 @@ export class LinesController {
   @ApiOperation({ summary: 'Activate a new line' })
   @ApiZodBody(ActivateBody)
   @ApiErrorResponse(401, 403, 400)
+  @ApiHeader({ name: 'Idempotency-Key', required: false, description: 'One key per activation; a repeat of the request that opened a task is answered with that task (8 to 120 of A-Z a-z 0-9 . _ : -)' })
   @Activity('activate', 'line', bodyField('msisdn'))
-  activate(@Actor() actor: ActorShape, @Body() body: ActivateBody) {
-    return this.lineDesk.activate(actor, body);
+  @SecretAnswer()
+  activate(@Actor() actor: ActorShape, @Body() body: ActivateBody, @Headers('idempotency-key') key: string | undefined, @Res({ passthrough: true }) res: Response) {
+    // A repeat of a request that opened a task (ADR 0019, D14) says so, and is not recorded as a second activation.
+    return this.lineDesk.activate(actor, body, { key, replayed: () => res.setHeader(REPLAY_HEADER, 'true') });
   }
 
   @Post('lines/:id/charge')

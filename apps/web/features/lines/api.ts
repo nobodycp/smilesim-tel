@@ -6,7 +6,8 @@ export const linesApi = {
   officeLines: (query?: { q?: string; status?: string; packageCode?: string; provider?: string; company?: string; sim?: string; loginName?: string; cursor?: string | null }) =>
     request<Page<LineRow> & { poses: PosChoice[] }>('GET', `/office/lines${queryString(query)}`),
   officeLine: (id: string) => request<{ line: LineDetail; history: LineHistory[] }>('GET', `/office/lines/${segment(id)}`),
-  activateLine: (body: ActivateBody) => request<ApplyResult>('POST', '/office/lines', body),
+  /** `requestKey` names this activation (lib/request-key.ts): sent again with it, the API answers the first one. */
+  activateLine: (body: ActivateBody, requestKey: string) => request<ApplyResult>('POST', '/office/lines', body, { 'idempotency-key': requestKey }),
   extendLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/extend`, { outcome }),
   reactivateLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/reactivate`, { outcome }),
   chargeLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/charge`, { outcome }),
