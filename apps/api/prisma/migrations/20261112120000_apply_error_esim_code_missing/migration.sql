@@ -1,4 +1,4 @@
--- ADR 0019, D16 (amendment proposed in slice S.8, pending the owner's approval): a fourth reason a succeeded
+-- ADR 0019, D16 (amended in slice S.8, approved by the owner on 2026-11-12): a fourth reason a succeeded
 -- provider operation cannot be applied. The provider confirmed an eSIM activation and handed back no activation
 -- code, and the task carries none: no line is created without its code. The list stays closed; it gains one value.
 --

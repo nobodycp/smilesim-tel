@@ -334,15 +334,19 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   As built: ADR 0019 "As built in S.8". `lines/activation-settlement.db.spec.ts` (items 6, 7, 8, 11, 12, 13, 24,
   27, 29; the queue test on real Redis), the rule specs, and the operations specs for T4. Final review: the
   notices follow D12 (`tellActor`, for the settlement only); the sweeper also announces an unknown answer whose
-  message was lost; and **one amendment to D16 is proposed and waits for the owner's approval**:
-  `esim-code-missing`, with its own migration `20261112120000_apply_error_esim_code_missing` (ten migrations are
-  now pending on the server, `docs/operations/2026-11-12-coolify-upgrade-preparation.md` 5.2).
+  message was lost; and **D16 was amended, with the owner's approval of 2026-11-12**: `esim-code-missing`
+  (no eSIM line without its activation code), with its own migration
+  `20261112120000_apply_error_esim_code_missing` (ten migrations are now pending on the server,
+  `docs/operations/2026-11-12-coolify-upgrade-preparation.md` 5.2).
 
 - [ ] **S.9 Decisions (O5).**
   `lines/provider-decisions.ts`; policy rows; `POST /office/tasks/:id/provider-decision` (propose or decide) and
   `POST /office/tasks/:id/provider-decision/approval` (approve or refuse); zod, activity, `refuseEntered`;
   `permissions.http.spec.ts`, `routes.http.spec.ts`, `response-shape.spec.ts`; error copy in ar / en / he.
   *Transactions:* T10, T11. *Locks:* task → keys → operation → wallet. *Specs:* 19–22.
+  Carried over from S.8: *apply corrected* on an `esim-code-missing` exception must be given the activation
+  code (sealed before it is stored, never written to a decision event); without one the operation stays an
+  exception. The rules already treat every exception reason alike (`activation-settlement.rules.spec.ts`).
 
 - [ ] **S.10 The screens (O6). Visible.**
   A web spec first: the waiting label, the exception state, the decision form with its evidence fields, the

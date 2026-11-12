@@ -350,12 +350,12 @@ come; the money must be safe in every state of the operation.
   activation is told that it is done. Every other notice keeps the rule, and the option adds nobody to an audience.
 - **An unknown answer is announced even when its message is lost.** The sweeper also goes over the operations
   of tasks whose answer is unknown (newest first) and announces each once; the notice itself is the mark.
-- **`esim-code-missing` — an amendment to D16 proposed here, pending the owner's approval** (the spec carries
-  it as such). A confirmed eSIM activation with no code from the provider and none on the task makes no line: it
-  is recorded as an exception, like the other three reasons, and waits for D15's decisions. A new migration
-  (`20261112120000_apply_error_esim_code_missing`) replaces the CHECK on `applyError`; S.1's migration is not
-  edited. A code that is there and cannot be opened stays a technical fault. The evidence and the way back if the
-  amendment is refused are in the spec, under D16.
+- **`esim-code-missing` — an amendment to D16, approved by the owner on 2026-11-12** (the spec carries it under
+  D16). A confirmed eSIM activation with no code from the provider and none on the task makes no line: it is
+  recorded as an exception, like the other three reasons, and waits for D15's decisions (apply corrected by one
+  authorised account, which must supply the code; release after success by two). It applies to an eSIM only. A
+  new migration (`20261112120000_apply_error_esim_code_missing`) replaces the CHECK on `applyError`; S.1's
+  migration is not edited. A code that is there and cannot be opened stays a technical fault, retried.
 - **What PostgreSQL logs.** A statement the database refuses is logged with the row that failed. No code path
   sends an unsealed eSIM code to the database (`resultColumns` refuses before any statement; a line's and a
   task's code go through `storableEsimCode`), so that row holds sealed text at most. The CHECK
