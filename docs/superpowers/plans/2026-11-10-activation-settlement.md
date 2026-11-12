@@ -265,7 +265,8 @@ wallets (sorted). A slice's review checks that order in the code it adds.
        meanwhile, or the dialog closed: the late answer is dropped. The code is held in the screen's own state
        only, never in the shared query cache, the address or storage, and is dropped when the dialog closes.
        The line page and the task page ask with `fresh`, so their answers leave the shared cache when the page
-       closes. `LineRow.esimQr` is optional in the web's types; `LineDetail` carries it.
+       closes. `LineDetail` is the type a screen reads the code from; `LineRow.esimQr` stays declared as the API
+       answers it, and becomes optional with the API step (the guard `response-shape.spec.ts` ties the two).
        | Reads the code | From |
        |---|---|
        | numbers list (`numbers-screen.tsx`) | `GET /office/lines/:id`, on demand |
