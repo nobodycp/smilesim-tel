@@ -350,11 +350,16 @@ export class TasksService {
   }
 
   /** Branch users who may take a task: the owner and anyone holding the handling grant. */
-  private async handlerIds(db: Prisma.TransactionClient): Promise<string[]> {
+  private handlerIds(db: Prisma.TransactionClient): Promise<string[]> {
+    return this.branchAccountsWith(db, 'tasks');
+  }
+
+  /** The enabled branch accounts that hold a grant: the owner, and anyone whose roles and own grants give it. */
+  async branchAccountsWith(db: Prisma.TransactionClient, grant: string): Promise<string[]> {
     const users = await this.repo.branchUsers(db);
     const ids: string[] = [];
     for (const user of users) {
-      if (user.isBranchOwner || (await this.actors.grantsFor(user, db)).includes('tasks')) ids.push(user.id);
+      if (user.isBranchOwner || (await this.actors.grantsFor(user, db)).includes(grant)) ids.push(user.id);
     }
     return ids;
   }

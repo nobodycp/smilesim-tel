@@ -155,9 +155,34 @@ export class LinesRepository {
 
   // Inside a transaction: the task being closed and the packages its handler reads.
 
-  /** Marks an open task done by this handler; the caller checks `count`. */
-  claimTask(db: Db, id: string, assigneeId: string) {
+  /** Marks an open task done by this handler (null: by the system, at settlement); the caller checks `count`. */
+  claimTask(db: Db, id: string, assigneeId: string | null) {
     return db.officeTask.updateMany({ where: { id, status: 'working' }, data: { status: 'done', assigneeId } });
+  }
+
+  // What the settlement of a provider's verdict reads and writes besides the completion's own (ADR 0019, S.8).
+
+  /** An account as the ledger names it. */
+  userById(id: string) {
+    return this.uow.prisma.user.findUnique({ where: { id }, select: { id: true, loginName: true, nickname: true, layer: true, isBranchOwner: true } });
+  }
+
+  packageName(db: Db, id: string) {
+    return db.package.findUnique({ where: { id }, select: { name: true } });
+  }
+
+  /** Writes the note an open task is read by: a provider failure makes it an ordinary branch task. */
+  noteTask(db: Db, id: string, note: string) {
+    return db.officeTask.updateMany({ where: { id, status: 'working' }, data: { note } });
+  }
+
+  /** Whether a system note with these words was already sent about the task. */
+  async systemNoteSent(db: Db, taskId: string, words: string): Promise<boolean> {
+    const found = await db.notice.findFirst({
+      where: { kind: 'task.note', actorId: 'system', AND: [{ payload: { path: ['taskId'], equals: taskId } }, { payload: { path: ['excerpt'], equals: words } }] },
+      select: { id: true },
+    });
+    return found !== null;
   }
 
   /** Writes on a claimed task what its completion handed back. */

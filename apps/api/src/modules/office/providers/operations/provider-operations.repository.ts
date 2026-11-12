@@ -6,9 +6,15 @@ import type { OperationError, OperationRequest, OperationStatus } from './provid
 /** The outbox topic of an operation that waits to be sent. */
 export const OPERATION_REQUESTED = 'provider-operation.requested';
 
+/** The outbox topic of an operation whose attempt came to a verdict: succeeded, failed or unknown (ADR 0019, D8). */
+export const OPERATION_SETTLED = 'provider-operation.settled';
+
+/** What a confirmed activation handed back, as the columns hold it: the eSIM code sealed, or absent. */
+export type ResultColumns = { msisdn: string | null; iccid: string | null; sealedEsimCode: string | null };
+
 export type NewOperation = Omit<OperationRequest, 'providerCode'> & { idempotencyKey: string; requestHash: string; providerId: string };
 /** `claim` starts a new attempt: counted, leased until the given time, with no send mark. */
-export type StatusChange = { status: OperationStatus; providerRef?: string | null; error: OperationError | null; claim?: { at: Date; leaseUntil: Date } };
+export type StatusChange = { status: OperationStatus; providerRef?: string | null; error: OperationError | null; claim?: { at: Date; leaseUntil: Date }; result?: ResultColumns | null };
 /** The state a guarded write expects: the status, and where given the attempt's number and that nothing was sent. */
 export type Expected = { status: OperationStatus; attempts?: number; unsent?: true };
 
@@ -88,8 +94,51 @@ export class ProviderOperationsRepository {
         lastError: change.error,
         ...(change.providerRef !== undefined ? { providerRef: change.providerRef } : {}),
         ...(change.claim ? { attempts: { increment: 1 }, lastAttemptAt: change.claim.at, leaseUntil: change.claim.leaseUntil, sentAt: null } : {}),
+        ...(change.result ? { resultMsisdn: change.result.msisdn, resultIccid: change.result.iccid, resultEsimCode: change.result.sealedEsimCode } : {}),
       },
     });
     return moved.count === 1;
+  }
+
+  /**
+   * The operations of tasks whose verdict the settlement still has to act on, oldest first: succeeded with
+   * neither `appliedAt` nor `applyError`, and failed with no `appliedAt`. An exception (`applyError`) and an
+   * unknown one are not among them: only a person, or the provider's late answer, moves those.
+   */
+  async unsettledIds(db: Db, limit: number): Promise<string[]> {
+    const rows = await db.providerOperation.findMany({
+      where: { taskId: { not: null }, appliedAt: null, OR: [{ status: 'succeeded', applyError: null }, { status: 'failed' }] },
+      orderBy: { updatedAt: 'asc' },
+      take: limit,
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * Stamps a succeeded operation as applied, once: only while it is succeeded, not applied, without an exception
+   * and still carries the result it was read with. Answers whether it did.
+   */
+  async markApplied(db: Db, id: string, read: { resultMsisdn: string | null; resultIccid: string | null; resultEsimCode: string | null }, at: Date): Promise<boolean> {
+    const marked = await db.providerOperation.updateMany({
+      where: { id, status: 'succeeded', appliedAt: null, applyError: null, resultMsisdn: read.resultMsisdn, resultIccid: read.resultIccid, resultEsimCode: read.resultEsimCode },
+      data: { appliedAt: at },
+    });
+    return marked.count === 1;
+  }
+
+  /**
+   * Writes why a succeeded operation could not be applied, once; its status and its result are not touched. The
+   * code is one of the settlement's closed list (`APPLY_ERRORS`); the database refuses any other.
+   */
+  async markApplyError(db: Db, id: string, error: string, at: Date): Promise<boolean> {
+    const marked = await db.providerOperation.updateMany({ where: { id, status: 'succeeded', appliedAt: null, applyError: null }, data: { applyError: error, applyFailedAt: at } });
+    return marked.count === 1;
+  }
+
+  /** Stamps a failed operation as handed to the branch, once. */
+  async markHandedOver(db: Db, id: string, at: Date): Promise<boolean> {
+    const marked = await db.providerOperation.updateMany({ where: { id, status: 'failed', appliedAt: null }, data: { appliedAt: at } });
+    return marked.count === 1;
   }
 }

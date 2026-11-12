@@ -47,6 +47,14 @@ export function completionClaim(task: { action: string; esim: boolean; iccid: st
 }
 
 /**
+ * What a provider's confirmed activation puts on the line (ADR 0019, D11): the part the provider chose where it
+ * chose one, the task's own part otherwise. A part the seller gave comes back empty, so the task's stands.
+ */
+export function settlementClaim(task: { iccid: string | null; msisdn: string | null }, result: { iccid: string | null; msisdn: string | null }): Claim {
+  return { iccid: result.iccid ?? task.iccid, msisdn: result.msisdn ?? task.msisdn };
+}
+
+/**
  * A serial or a number as it may appear in a log: its last four characters. Deploy and server logs are read by
  * people and tools that have no business with a subscriber's number; four characters are enough to tell two
  * groups apart beside the task ids, which are what the conflict is resolved by.

@@ -325,12 +325,15 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   against complete, reject and cancel; cancel against claim 60 times; a mixed run with no deadlock). Item 8's T5
   side waits for S.8.
 
-- [ ] **S.8 Settlement.**
+- [x] **S.8 Settlement.** Built 2026-11-12 (commit: see `git log --grep 'slice S.8'`).
   `lines/activation-settlement.ts` (`apply`, `applyPending`, the exception write), reusing the activation handler
   of `TaskCompletion` through one shared function; `settle` writes the `provider-operation.settled` message and
   the result fields; `provider-dispatch.ts` gains the topic, its handler and the sweeper timer.
   *Transactions:* T4 (one more message), T5, T5′, T6, T7. *Locks:* T5 task → keys → operation → wallet.
   *Specs:* 6, 7, 11–13, 24, 27, 29.
+  As built: ADR 0019 "As built in S.8". `lines/activation-settlement.db.spec.ts` (items 6, 7, 8, 11, 12, 13, 24,
+  27, 29; the queue test on real Redis), the rule specs, and the operations specs for T4. One point is left to
+  the owner: who a settlement notice is sent by (D12), stated in the ADR.
 
 - [ ] **S.9 Decisions (O5).**
   `lines/provider-decisions.ts`; policy rows; `POST /office/tasks/:id/provider-decision` (propose or decide) and

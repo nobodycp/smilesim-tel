@@ -28,7 +28,7 @@ import { CompleteTaskBody } from './lines.schemas';
 type TaskLine = Awaited<ReturnType<typeof lockedTaskLine>>;
 
 /** What a handler is given: the claimed task, its locked line, and what the branch handed back with it. */
-type Completion = {
+export type Completion = {
   tx: Prisma.TransactionClient;
   task: OfficeTask;
   actor: Actor;
@@ -103,25 +103,38 @@ export class TaskCompletion {
       // handler, a switch settles its re-quoted amount inside its handler (ADR 0019, D10). Any other hold gives way
       // now, before the handler moves money of its own (roadmap N6).
       if (!keepsHoldForHandler(task)) await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, note);
-      const job: Completion = { tx, task, actor, note, line, handed, handedQr, claim };
-      const applied = await this.handlers[task.action as Action](job);
-      const sale = applied.sale ?? (await this.plainSale(job));
-      const posted = (await this.charge(job, sale)) || applied.posted === true;
-      if (!posted && sale) await this.ledger.recordOp(tx, task.posId, actor.operatorId, task.action, sale);
-      await this.repo.recordTaskResult(tx, id, {
-        resultNote: note || null,
-        ...(handed.iccid ? { iccid: handed.iccid } : {}),
-        ...(handed.msisdn ? { msisdn: handed.msisdn } : {}),
-        ...(applied.amount !== undefined ? { posDelta: applied.amount } : {}),
-      });
-      return this.tasks.taskNotice(tx, 'done', task, actor, {
-        packageName: sale?.packageName ?? '',
-        amount: applied.amount ?? task.posDelta,
-        handlerName: actor.nickname,
-      });
+      const { sale, amount } = await this.applyClaimed({ tx, task, actor, note, line, handed, handedQr, claim });
+      return this.tasks.taskNotice(tx, 'done', task, actor, { packageName: sale?.packageName ?? '', amount, handlerName: actor.nickname });
     });
     await this.uow.publishQuietly(written);
     return { ok: true };
+  }
+
+  /** A number for an activation that has none yet, as the branch's completion gives one. */
+  freshNumber(tx: Prisma.TransactionClient): Promise<string> {
+    return this.pricing.freshMsisdn(tx);
+  }
+
+  /**
+   * Applies a task that the caller's transaction has claimed, with its claim keys locked: the action's handler
+   * (for an activation, the line), the charge (a fixed debit is captured from the task's hold), the ledger's
+   * record and the task's result. The one place this is written: the branch's completion by hand uses it, and so
+   * does the settlement of a provider's confirmed activation (`activation-settlement.ts`, ADR 0019 T5), so both
+   * create the same line at the same price. Answers the sale and the amount the task moved.
+   */
+  async applyClaimed(job: Completion): Promise<{ sale: Sale | undefined; amount: number }> {
+    const { tx, task, actor, note, handed } = job;
+    const applied = await this.handlers[task.action as Action](job);
+    const sale = applied.sale ?? (await this.plainSale(job));
+    const posted = (await this.charge(job, sale)) || applied.posted === true;
+    if (!posted && sale) await this.ledger.recordOp(tx, task.posId, actor.operatorId, task.action, sale);
+    await this.repo.recordTaskResult(tx, task.id, {
+      resultNote: note || null,
+      ...(handed.iccid ? { iccid: handed.iccid } : {}),
+      ...(handed.msisdn ? { msisdn: handed.msisdn } : {}),
+      ...(applied.amount !== undefined ? { posDelta: applied.amount } : {}),
+    });
+    return { sale, amount: applied.amount ?? task.posDelta };
   }
 
   /** Checks what the branch attached to the completion: the new number of a rename, the serial and QR of an eSIM. */

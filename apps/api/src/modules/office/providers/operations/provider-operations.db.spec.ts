@@ -5,7 +5,7 @@ import { OfficeFailure } from '../../../shared/office-failure';
 import { UnitOfWork } from '../../kernel/unit-of-work';
 import type { NoticeService } from '../../notices/notice.service';
 import type { OperationRequest } from './provider-operation.rules';
-import { OPERATION_REQUESTED, ProviderOperationsRepository } from './provider-operations.repository';
+import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from './provider-operations.repository';
 import { ProviderOperationsService } from './provider-operations.service';
 
 // Runs against a real PostgreSQL only (see wallets/wallet-concurrency.db.spec.ts for a throwaway one): a unique
@@ -147,7 +147,10 @@ suite('provider operations (PostgreSQL)', () => {
     expect(await outbox()).toHaveLength(1);
   });
 
-  const sends = async () => (await outbox()).map((row) => row.sequence).sort();
+  /** The sends scheduled so far: the sequences of the operation's `requested` messages. */
+  const sends = async () => (await outbox()).filter((row) => row.topic === OPERATION_REQUESTED).map((row) => row.sequence).sort();
+  /** The verdicts announced so far: the sequences of its `settled` messages (ADR 0019, D8; slice S.8). */
+  const verdicts = async () => (await outbox()).filter((row) => row.topic === OPERATION_SETTLED).map((row) => row.sequence).sort((left, right) => left - right);
 
   it('hands an operation to one worker only, and names the attempt', async () => {
     const { id } = await service.record(newKey(), request);
@@ -279,9 +282,14 @@ suite('provider operations (PostgreSQL)', () => {
     expect(await service.record(key, request)).toEqual({ id, status: 'unknown', created: false });
     expect(await sends()).toEqual([0]);
 
+    // The unknown verdict was announced once, for the settlement to tell those who may decide.
+    expect(await verdicts()).toEqual([2]);
+
     await service.resolveUnknown(id, { status: 'succeeded', providerRef: 'REF-9' });
     expect(await service.status({ id })).toMatchObject({ status: 'succeeded', providerRef: 'REF-9', lastError: null, attempts: 1 });
     expect(await sends()).toEqual([0]);
+    // And the verdict that closed it, under its own sequence: one message per verdict, never two.
+    expect(await verdicts()).toEqual([2, 3]);
   });
 
   it('closes an unknown operation as failed when the provider says it never ran, without a new send', async () => {
@@ -316,7 +324,7 @@ suite('provider operations (PostgreSQL)', () => {
     const finished = (await Promise.all([1, 2, 3, 4].map(worker))).flat();
     // Every operation was confirmed, and by one worker only.
     expect(finished.sort()).toEqual([...ids].sort());
-    const messages = await outbox();
+    const messages = (await outbox()).filter((message) => message.topic === OPERATION_REQUESTED);
     for (const row of await operations()) {
       expect(row.status).toBe('succeeded');
       expect(row.attempts).toBeGreaterThanOrEqual(2);

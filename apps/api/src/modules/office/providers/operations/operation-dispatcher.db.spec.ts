@@ -9,7 +9,7 @@ import type { NoticeService } from '../../notices/notice.service';
 import { ScriptedGateway } from '../testing/scripted-gateway';
 import { OperationDispatcher, recoverExpired } from './operation-dispatcher';
 import { ATTEMPT_LEASE_MS, MAX_ATTEMPTS, type OperationRequest, type SendEvidence } from './provider-operation.rules';
-import { ProviderOperationsRepository } from './provider-operations.repository';
+import { OPERATION_REQUESTED, ProviderOperationsRepository } from './provider-operations.repository';
 import { ProviderOperationsService } from './provider-operations.service';
 
 // PostgreSQL only (TEST_DATABASE_URL). The provider is a scripted gateway that reaches nothing.
@@ -29,7 +29,8 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
 
   const record = async () => (await service.record(`test:${randomUUID()}`, request)).id;
   const status = (id: string) => service.status({ id });
-  const sends = async (id: string) => (await prisma.outboxMessage.findMany({ where: { aggregateId: id } })).map((row) => row.sequence).sort();
+  /** The sends scheduled for an operation: its `requested` messages (its verdicts have their own topic). */
+  const sends = async (id: string) => (await prisma.outboxMessage.findMany({ where: { aggregateId: id, topic: OPERATION_REQUESTED } })).map((row) => row.sequence).sort();
   const afterLease = () => new Date(Date.now() + ATTEMPT_LEASE_MS + 1_000);
   // Other specs hold pending operations in the same database, so the sweep always runs at the real time: an
   // attempt is made to look abandoned by claiming it in the past, never by moving the sweep's clock forward.

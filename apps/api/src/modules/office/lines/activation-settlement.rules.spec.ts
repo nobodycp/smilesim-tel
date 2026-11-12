@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { OPERATION_STATUSES, validKey, type OperationStatus } from '../providers/operations/provider-operation.rules';
 import {
   APPLY_ERRORS, DECISIONS, DECISION_EVENT_TYPES, EVIDENCE_KINDS, MIN_DECISION_NOTE,
-  activationRequestHash, decisionStep, inFlight, needsSecondAccount, openProposal, operationKey, phaseOf, requestKeyOf, sameRequest, settlementOf, sweepable, taskActions,
+  activationRequestHash, applyErrorOf, decisionStep, mayDecide, inFlight, needsSecondAccount, openProposal, operationKey, phaseOf, requestKeyOf, sameRequest, settlementOf, sweepable, taskActions,
   type Decision, type DecisionActor, type DecisionEvent, type DecisionEvidence, type DecisionRequest, type OperationPhase, type TaskOperation,
 } from './activation-settlement.rules';
 
@@ -342,3 +342,25 @@ describe('the request key of an activation (ADR 0019, D14)', () => {
     expect(sameRequest({ requestHash: null }, request)).toBe(false);
   });
 });
+
+describe('what the settlement makes of a refusal, and who is told (ADR 0019, D16)', () => {
+  it('reads only three refusals as a business exception; everything else is technical and is tried again', () => {
+    expect(applyErrorOf({ status: 409, code: 'NUMBER_TAKEN' })).toBe('number-taken');
+    expect(applyErrorOf({ status: 409, code: 'SIM_TAKEN' })).toBe('sim-taken');
+    expect(applyErrorOf({ status: 404, code: 'NOT_FOUND' })).toBe('target-missing');
+    for (const [status, code] of [[409, 'DUPLICATE_REQUEST'], [400, 'INVALID'], [400, 'BALANCE_CEILING'], [500, 'ESIM_CODE_UNREADABLE'], [500, 'ESIM_CODE_UNSEALABLE'], [403, 'FORBIDDEN'], [400, 'NUMBER_TAKEN'], [404, 'SIM_TAKEN']] as const) {
+      expect(applyErrorOf({ status, code })).toBeNull();
+    }
+    // Every code it answers is one the database accepts.
+    for (const refusal of [{ status: 409, code: 'NUMBER_TAKEN' }, { status: 409, code: 'SIM_TAKEN' }, { status: 404, code: 'NOT_FOUND' }]) expect(APPLY_ERRORS).toContain(applyErrorOf(refusal));
+  });
+
+  it('tells the branch owner and the branch accounts that hold the accounting grant, and nobody else', () => {
+    expect(mayDecide({ layer: 'branch', isBranchOwner: true, grants: [] })).toBe(true);
+    expect(mayDecide({ layer: 'branch', isBranchOwner: false, grants: ['read', 'accounting'] })).toBe(true);
+    expect(mayDecide({ layer: 'branch', isBranchOwner: false, grants: ['read', 'tasks', 'edit'] })).toBe(false);
+    expect(mayDecide({ layer: 'main_agent', isBranchOwner: false, grants: ['accounting'] })).toBe(false);
+    expect(mayDecide({ layer: 'pos', isBranchOwner: false, grants: ['accounting'] })).toBe(false);
+  });
+});
+

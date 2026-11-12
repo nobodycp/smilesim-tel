@@ -1,4 +1,4 @@
-import { claimKeys, completionClaim, refusalOf, reserves } from './reservation.rules';
+import { claimKeys, completionClaim, refusalOf, reserves, settlementClaim } from './reservation.rules';
 
 const free = { serialOnLine: false, serialOnTask: false, numberOnLine: false, numberOnTask: false };
 
@@ -41,3 +41,17 @@ describe('reservation rules', () => {
     for (const action of ['extend', 'freeze', 'unfreeze', 'disconnect', 'switch', 'charge', 'reactivate', 'refresh', 'addon']) expect(completionClaim(task(action), { iccid: 'X', msisdn: 'Y' })).toEqual({});
   });
 });
+
+describe('what a provider\'s confirmed activation puts on the line (ADR 0019, D11)', () => {
+  const task = { iccid: '8997202000000000011', msisdn: '0500000001' };
+
+  it('takes the part the provider chose, and the task\'s own part where the provider gave none', () => {
+    expect(settlementClaim(task, { iccid: null, msisdn: null })).toEqual(task);
+    expect(settlementClaim(task, { iccid: null, msisdn: '0500000009' })).toEqual({ iccid: task.iccid, msisdn: '0500000009' });
+    expect(settlementClaim(task, { iccid: '8997202000000000099', msisdn: null })).toEqual({ iccid: '8997202000000000099', msisdn: task.msisdn });
+    // An eSIM the provider generates: the task has no serial until the provider issues one.
+    expect(settlementClaim({ iccid: null, msisdn: '0500000001' }, { iccid: '8997202000000000099', msisdn: null })).toEqual({ iccid: '8997202000000000099', msisdn: '0500000001' });
+    expect(settlementClaim({ iccid: null, msisdn: null }, { iccid: null, msisdn: null })).toEqual({ iccid: null, msisdn: null });
+  });
+});
+

@@ -1,4 +1,4 @@
-import { ATTEMPT_LEASE_MS, CALL_TIMEOUT_MS, MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, RESULT_LIMITS, closesUnknown, leaseRuns, outcomeOf, recoveryOutcome, storedResult, isSettled, maySend, requestHash, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
+import { ATTEMPT_LEASE_MS, CALL_TIMEOUT_MS, MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, RESULT_LIMITS, closesUnknown, leaseRuns, outcomeOf, recoveryOutcome, storedResult, isSettled, maySend, requestHash, settledSequence, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
 
 const request: OperationRequest = { action: 'activate', providerCode: 'sky', packageCode: 'p-1', msisdn: '0500000001', iccid: '8997202000000000777', lineId: null };
 
@@ -138,3 +138,14 @@ describe('provider operation rules', () => {
     expect([storedRef(' R-1 '), storedRef(''), storedRef('   '), storedRef(null), storedRef('x'.repeat(300))?.length]).toEqual(['R-1', null, null, null, 120]);
   });
 });
+
+describe('the sequence of a verdict message (ADR 0019, D8)', () => {
+  it('gives every verdict of every attempt its own sequence: the one that ends the attempt, and the late one that closes its unknown', () => {
+    const all = [1, 2, 3, 4, 5].flatMap((attempt) => [settledSequence(attempt, false), settledSequence(attempt, true)]);
+    expect(new Set(all).size).toBe(10);
+    expect([settledSequence(1, false), settledSequence(1, true), settledSequence(2, false)]).toEqual([2, 3, 4]);
+    expect(() => settledSequence(-1, false)).toThrow(RangeError);
+    expect(() => settledSequence(1.5, true)).toThrow(RangeError);
+  });
+});
+

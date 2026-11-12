@@ -130,6 +130,18 @@ export function settlementOf(operation: TaskOperation): SettlementStep {
   return operation?.appliedAt ? 'settled' : 'hand-to-branch';
 }
 
+/**
+ * Why a succeeded operation cannot be applied, from the refusal its application met (D16); null for anything
+ * else. Only these three are business refusals: the serial or the number was taken meanwhile, or what the task
+ * names is gone. Every other failure is technical: nothing is written for it and the application is tried again.
+ */
+export function applyErrorOf(refusal: { status: number; code: string }): ApplyError | null {
+  if (refusal.status === 409 && refusal.code === 'SIM_TAKEN') return 'sim-taken';
+  if (refusal.status === 409 && refusal.code === 'NUMBER_TAKEN') return 'number-taken';
+  if (refusal.status === 404 && refusal.code === 'NOT_FOUND') return 'target-missing';
+  return null;
+}
+
 /** Whether the sweeper should run the settlement for it: only the two steps the system itself can take. */
 export function sweepable(operation: TaskOperation): boolean {
   const step = settlementOf(operation);
@@ -217,7 +229,15 @@ export function openProposal(events: readonly DecisionEvent[]): DecisionEvent | 
 }
 
 function authorised(actor: DecisionActor): boolean {
-  return actor.layer === 'branch' && (actor.isBranchOwner || actor.grants.includes('accounting'));
+  return mayDecide(actor);
+}
+
+/** The grant that lets a branch account decide on a provider operation; the owner needs none. */
+export const DECISION_GRANT = 'accounting';
+
+/** Who may decide on a provider operation, and so who is told when one waits for a decision (D15, D16). */
+export function mayDecide(account: { layer: string; isBranchOwner: boolean; grants: readonly string[] }): boolean {
+  return account.layer === 'branch' && (account.isBranchOwner || account.grants.includes(DECISION_GRANT));
 }
 
 function evidenceRefusal(decision: Decision, evidence: DecisionEvidence): DecisionRefusal | null {

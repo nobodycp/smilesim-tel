@@ -11,5 +11,17 @@ export const HANDLER_FROZEN_NOTE = 'رجعت لأن الحساب أُوقف';
 /** The note a task carries when the provider refused the operation; provider health counts these. */
 export const PROVIDER_FAILED_NOTE = 'فشل المزود';
 
+/**
+ * What the system tells the accounts that may decide on a provider operation (ADR 0019, D15, D16), as the
+ * excerpt of a note on the task: the provider's answer is not known, or it confirmed and the line could not be
+ * created. They never carry a number, a serial or a code.
+ */
+export const PROVIDER_UNKNOWN_NOTE = 'نتيجة المزود غير معروفة: المبلغ محجوز والمهمة بانتظار قرار';
+export const PROVIDER_EXCEPTION_NOTES = {
+  'number-taken': 'نجح التفعيل عند المزود وتعذر إنشاء الخط: الرقم مأخوذ. المبلغ محجوز والمهمة بانتظار قرار',
+  'sim-taken': 'نجح التفعيل عند المزود وتعذر إنشاء الخط: الشريحة مأخوذة. المبلغ محجوز والمهمة بانتظار قرار',
+  'target-missing': 'نجح التفعيل عند المزود وتعذر إنشاء الخط: الرزمة أو نقطة البيع غير موجودة. المبلغ محجوز والمهمة بانتظار قرار',
+} as const;
+
 /** Who a notice comes from when no person sent it. */
 export const SYSTEM_SENDER_NAME = 'النظام';

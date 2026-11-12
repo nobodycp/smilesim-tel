@@ -226,12 +226,12 @@ withRedis('outbox relay and dispatcher on a real queue (PostgreSQL + Redis)', ()
     expect(await relay.runOnce()).toMatchObject({ published: 1, failed: 0 });
     await until(async () => (await dispatch.operations.status({ id })).status === 'succeeded');
     expect(gateway.calls.map((call) => call.attempt)).toEqual([1]);
-    expect((await prisma.outboxMessage.findMany({ where: { aggregateId: id } })).map((row) => row.publishedAt !== null)).toEqual([true]);
+    expect((await prisma.outboxMessage.findMany({ where: { aggregateId: id, topic: OPERATION_REQUESTED } })).map((row) => row.publishedAt !== null)).toEqual([true]);
   });
 
   it('makes one job of a message published twice, and one send of two jobs for one operation', async () => {
     const id = await record();
-    const [message] = await prisma.outboxMessage.findMany({ where: { aggregateId: id } });
+    const [message] = await prisma.outboxMessage.findMany({ where: { aggregateId: id, topic: OPERATION_REQUESTED } });
     const claimed: ClaimedMessage = { id: message.id, topic: OPERATION_REQUESTED, aggregateId: id, sequence: 0, payload: { operationId: id } };
     // The relay died between the queue's answer and the stamp, and published again.
     await dispatch.publisher.publish(claimed);
@@ -253,7 +253,7 @@ withRedis('outbox relay and dispatcher on a real queue (PostgreSQL + Redis)', ()
     await relay.runOnce();
     await until(async () => (await dispatch.operations.status({ id })).attempts === 1 && (await dispatch.operations.status({ id })).status === 'requested');
     // The first message is consumed and stamped; the retry is a second row, waiting.
-    const waiting = await prisma.outboxMessage.findMany({ where: { aggregateId: id, publishedAt: null } });
+    const waiting = await prisma.outboxMessage.findMany({ where: { aggregateId: id, topic: OPERATION_REQUESTED, publishedAt: null } });
     expect(waiting.map((row) => row.sequence)).toEqual([1]);
     expect(await relay.runOnce()).toMatchObject({ published: 1 });
     await until(async () => (await dispatch.operations.status({ id })).status === 'succeeded');
@@ -306,7 +306,7 @@ withRedis('outbox relay and dispatcher on a real queue (PostgreSQL + Redis)', ()
     expect(await relayOf(broken).runOnce()).toMatchObject({ claimed: 1, published: 0, failed: 1 });
     await broken.publisher.close();
     away.disconnect();
-    expect((await prisma.outboxMessage.findFirstOrThrow({ where: { aggregateId: id } })).publishedAt).toBeNull();
+    expect((await prisma.outboxMessage.findFirstOrThrow({ where: { aggregateId: id, topic: OPERATION_REQUESTED } })).publishedAt).toBeNull();
     expect(await jobs()).toBe(0);
     expect(await dispatch.operations.status({ id })).toMatchObject({ status: 'requested', attempts: 0 });
 

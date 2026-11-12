@@ -6,7 +6,7 @@ import { Worker } from 'bullmq';
 import { createPrismaClient } from './db';
 import { purgeBefore } from './modules/office/activity/activity-log';
 import { SimulatedProviderGateway } from './modules/office/providers/gateway/simulated-gateway';
-import { OPERATIONS_QUEUE, buildProviderDispatch, startProviderDispatchTimers } from './provider-dispatch';
+import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, startProviderDispatchTimers } from './provider-dispatch';
 
 const log = logger('Worker');
 
@@ -36,6 +36,8 @@ export async function run(): Promise<void> {
     relayRedis.on('error', (error) => log.error(`redis (relay): ${errorCode(error)}`));
     const dispatch = buildProviderDispatch(dispatchPrisma, relayRedis, new SimulatedProviderGateway());
     processors.push({ queue: OPERATIONS_QUEUE, handle: dispatch.handle });
+    // Verdicts are acted on by their own queue (ADR 0019, D8): it writes the line and the money, and calls nobody.
+    processors.push({ queue: SETTLEMENTS_QUEUE, handle: dispatch.settle });
     stopDispatch = startProviderDispatchTimers(dispatch);
     log.log('provider dispatch: on');
   } else if (isProduction() && env('PROVIDER_DISPATCH')) {

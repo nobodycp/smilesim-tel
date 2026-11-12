@@ -10,5 +10,13 @@ export function activationCode(msisdn: string, iccid: string): string {
 }
 
 export async function renderEsimQr(msisdn: string, iccid: string): Promise<string> {
-  return toDataURL(activationCode(msisdn, iccid), { type: 'image/png', width: 480, margin: 2, errorCorrectionLevel: 'M' });
+  return renderActivationCode(activationCode(msisdn, iccid));
+}
+
+/**
+ * An activation code as the picture a line carries: what a provider hands back with a confirmed activation is the
+ * code itself (ADR 0019, D11), and a line's eSIM code is shown and scanned as a QR picture.
+ */
+export function renderActivationCode(code: string): Promise<string> {
+  return toDataURL(code, { type: 'image/png', width: 480, margin: 2, errorCorrectionLevel: 'M' });
 }

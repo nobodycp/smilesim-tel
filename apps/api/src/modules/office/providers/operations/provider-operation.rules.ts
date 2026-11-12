@@ -195,6 +195,16 @@ export function storedResult(result: ActivationResult | null | undefined): Store
   return stored.msisdn || stored.iccid || stored.esimCode ? stored : null;
 }
 
+/**
+ * The outbox sequence of an operation's `settled` message. The outbox holds one message per (topic, operation,
+ * sequence), so two writers of the same verdict cannot both commit. An attempt has at most two verdicts: the
+ * one that ends it (`pending` → a verdict, or recovery's `unknown`), and the late one that closes that `unknown`.
+ */
+export function settledSequence(attempt: number, closesUnknown: boolean): number {
+  if (!Number.isInteger(attempt) || attempt < 0) throw new RangeError('an attempt number that cannot order a message');
+  return attempt * 2 + (closesUnknown ? 1 : 0);
+}
+
 /** A provider's reference as it is stored: trimmed, at most 120 characters, or nothing. */
 export function storedRef(ref: string | null): string | null {
   const text = ref?.trim().slice(0, 120);

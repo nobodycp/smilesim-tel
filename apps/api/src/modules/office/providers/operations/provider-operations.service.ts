@@ -1,9 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../../shared/office-failure';
+import { isSealed, seal } from '../../../shared/secret-box';
 import { UnitOfWork, type Db } from '../../kernel/unit-of-work';
 import type { Action } from '../../kernel/types';
-import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, storedRef, validKey, type AttemptOutcome, type OperationRequest, type OperationStatus, type OutgoingOperation, type Verdict } from './provider-operation.rules';
-import { OPERATION_REQUESTED, ProviderOperationsRepository } from './provider-operations.repository';
+import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, settledSequence, storedRef, storedResult, validKey, type AttemptOutcome, type OperationRequest, type OperationStatus, type OutgoingOperation, type StoredResult, type Verdict } from './provider-operation.rules';
+import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository, type ResultColumns } from './provider-operations.repository';
+
+/**
+ * A confirmed activation's result as the columns hold it (ADR 0019, D11 and D17): the eSIM code sealed. A code
+ * that cannot be sealed is not stored in the clear and not dropped: the write is refused, so the verdict is not
+ * recorded and the attempt ends as unknown, for the provider's own answer or a person to close.
+ */
+function resultColumns(result: StoredResult | null): ResultColumns | null {
+  if (!result) return null;
+  if (!result.esimCode) return { msisdn: result.msisdn, iccid: result.iccid, sealedEsimCode: null };
+  // `seal` leaves alone a value that already has the sealed form, and one it has no key for.
+  const sealed = isSealed(result.esimCode) ? '' : seal(result.esimCode);
+  if (!isSealed(sealed)) throw new Error('a provider result carries an eSIM code that cannot be sealed');
+  return { msisdn: result.msisdn, iccid: result.iccid, sealedEsimCode: sealed };
+}
 
 export type RecordedOperation = { id: string; status: OperationStatus; created: boolean };
 
@@ -87,25 +102,37 @@ export class ProviderOperationsService {
    * same transaction. One late answer is still taken: the provider's own verdict on an attempt that recovery had
    * marked unknown.
    */
-  settle(id: string, attempt: number, outcome: AttemptOutcome): Promise<OperationStatus> {
+  async settle(id: string, attempt: number, outcome: AttemptOutcome): Promise<OperationStatus> {
+    const next = afterAttempt(outcome, attempt);
+    // What the provider handed back is made storable before the transaction: its eSIM code sealed, or refused.
+    const result = resultColumns(next.result);
     return this.uow.runTx(async (tx) => {
       if (!(await this.repo.operationById(tx, id))) fail(404, 'NOT_FOUND');
-      const next = afterAttempt(outcome, attempt);
       if (!canMove('pending', next.status)) fail(409, 'DUPLICATE_REQUEST');
-      const change = { status: next.status, providerRef: storedRef(next.providerRef), error: next.error };
+      const change = { status: next.status, providerRef: storedRef(next.providerRef), error: next.error, result };
       const moved = await this.repo.moveStatus(tx, id, { status: 'pending', attempts: attempt }, change);
       const late = !moved && closesUnknown(outcome) && (await this.repo.moveStatus(tx, id, { status: 'unknown', attempts: attempt }, change));
       if (!moved && !late) fail(409, 'DUPLICATE_REQUEST');
       if (maySend(next.status)) await this.repo.addOutbox(tx, OPERATION_REQUESTED, id, attempt);
+      // T4 (ADR 0019, D8): the verdict is on record, and in the same transaction the message that has it acted on.
+      // Nothing is applied here: no line, no money, no task.
+      else await this.repo.addOutbox(tx, OPERATION_SETTLED, id, settledSequence(attempt, late));
       return next.status;
     });
   }
 
-  /** Closes an unknown operation with an answer about the request already sent. It never sends again. */
+  /**
+   * Closes an unknown operation with an answer about the request already sent. It never sends again. The verdict,
+   * what it handed back and the message that has it acted on are one transaction, as in `settle`.
+   */
   async resolveUnknown(id: string, verdict: Verdict): Promise<void> {
-    const change = verdict.status === 'succeeded' ? { status: verdict.status, providerRef: storedRef(verdict.providerRef), error: null } : { status: verdict.status, error: verdict.error };
-    const moved = await this.repo.moveStatus(this.uow.prisma, id, { status: 'unknown' }, change);
-    if (!moved) fail(409, 'DUPLICATE_REQUEST');
+    const result = verdict.status === 'succeeded' ? resultColumns(storedResult(verdict.result)) : null;
+    const change = verdict.status === 'succeeded' ? { status: verdict.status, providerRef: storedRef(verdict.providerRef), error: null, result } : { status: verdict.status, error: verdict.error };
+    await this.uow.runTx(async (tx) => {
+      const row = await this.repo.operationById(tx, id);
+      if (!row || !(await this.repo.moveStatus(tx, id, { status: 'unknown', attempts: row.attempts }, change))) fail(409, 'DUPLICATE_REQUEST');
+      await this.repo.addOutbox(tx, OPERATION_SETTLED, id, settledSequence(row.attempts, true));
+    });
   }
 
   /** The pending operations recovery should look at now. */
@@ -130,7 +157,36 @@ export class ProviderOperationsService {
       const expected = { status: 'pending' as const, attempts: row.attempts, ...(outcome.kind === 'not-sent' ? { unsent: true as const } : {}) };
       if (!(await this.repo.moveStatus(tx, id, expected, { status: next.status, error: next.error }))) return null;
       if (maySend(next.status)) await this.repo.addOutbox(tx, OPERATION_REQUESTED, id, row.attempts);
+      else await this.repo.addOutbox(tx, OPERATION_SETTLED, id, settledSequence(row.attempts, false));
       return next.status;
     });
+  }
+
+  // What the settlement of a verdict asks of the operation (ADR 0019, D8, D9, D16). Each is one guarded
+  // statement inside the settlement's own transaction; what they mean is the settlement's to say.
+
+  /** The operations whose verdict the settlement still has to act on (the sweeper's list). */
+  unsettled(limit: number): Promise<string[]> {
+    return this.repo.unsettledIds(this.uow.prisma, limit);
+  }
+
+  /** The operation as it is stored, with its task and what the provider handed back; null when there is none. */
+  stored(id: string) {
+    return this.repo.operationById(this.uow.prisma, id);
+  }
+
+  /** Stamps a succeeded operation as applied, once, and only while it still carries the result it was read with. */
+  stampApplied(tx: Db, id: string, read: { resultMsisdn: string | null; resultIccid: string | null; resultEsimCode: string | null }, at: Date): Promise<boolean> {
+    return this.repo.markApplied(tx, id, read, at);
+  }
+
+  /** Writes why a succeeded operation could not be applied, once; its status and its result stay. */
+  stampApplyError(tx: Db, id: string, error: string, at: Date): Promise<boolean> {
+    return this.repo.markApplyError(tx, id, error, at);
+  }
+
+  /** Stamps a failed operation as handed to the branch, once. */
+  stampHandedOver(tx: Db, id: string, at: Date): Promise<boolean> {
+    return this.repo.markHandedOver(tx, id, at);
   }
 }

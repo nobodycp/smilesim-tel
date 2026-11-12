@@ -307,3 +307,47 @@ come; the money must be safe in every state of the operation.
 - Spec item 8 (T5 against a manual completion) needs T5, which is S.8. What S.7 proves of it is the manual side:
   a completion is refused while the operation is succeeded and not applied.
 
+## As built in S.8 (the settlement)
+
+- **T4** — `ProviderOperationsService.settle` (and `resolveUnknown`, and recovery's move to `unknown`): the
+  verdict, what the provider handed back and one `provider-operation.settled` message are one transaction; no
+  line, no money, no task. The eSIM code is sealed before the transaction; a code that cannot be sealed refuses
+  the write (the attempt then ends as `unknown` through recovery, the money held), never stored in the clear and
+  never dropped. A message's sequence is `attempt × 2`, `+ 1` for the late verdict that closes an `unknown`, so
+  every verdict has its own and none is written twice. A recorded verdict and its result never change.
+- **T5** — `lines/activation-settlement.ts` `apply`: task claimed (`working → done`) → the claim keys (the
+  provider's number and serial where it chose them, the task's otherwise: `settlementClaim`) → the operation
+  locked and `appliedAt` stamped by compare-and-set (`succeeded`, not applied, no exception, the very result that
+  was read) → `TaskCompletion.applyClaimed`, the one function the branch's completion by hand also runs: the
+  line, `WalletLedger.capture` at the task's fixed price, the ledger entry, the task's result → the notice.
+  The provider's eSIM code is opened, rendered as the QR picture a line carries, and sealed, before the
+  transaction.
+- **D9, as tested:** each of the three guards is met with the other two out of the way (the task closed with
+  the operation unapplied; `appliedAt` set with the task open and the number free; the number or serial on a
+  line with task and operation untouched). Taking any one out fails a spec.
+- **T5′** — a business refusal (`applyErrorOf`: `409 SIM_TAKEN`, `409 NUMBER_TAKEN`, `404 NOT_FOUND`, nothing
+  else) rolls T5 back; then `applyError` and `applyFailedAt` are written, once, on an operation that is still
+  succeeded, unapplied and without an exception. Every other failure is technical: nothing is written, the error
+  is thrown, the job fails with a code and the sweeper meets the operation again. A wallet that no longer holds
+  the task's hold is such a fault (`capture` refuses loudly), never an exception.
+- **T6** — a failed verdict: under the task's and the operation's locks, `appliedAt` is stamped once, an open
+  task's note becomes `PROVIDER_FAILED_NOTE` and the handlers are told; a task its submitter cancelled meanwhile
+  gets the stamp only. The hold stays; nothing is refunded.
+- **T7** — an unknown answer: the accounts that may decide are told, once per task (the notice itself is the
+  mark, read under the operation's lock: there is no column for it). Nothing else is written.
+- **The sweeper** (`applyPending`, every 60 s in the worker): operations of tasks that are succeeded with neither
+  `appliedAt` nor `applyError`, or failed with no `appliedAt`. An exception and an unknown are not on its list.
+- **Queues:** `provider-operations` sends, `provider-settlements` acts on verdicts. Both messages carry the
+  operation's id only. The dispatch stays off unless `PROVIDER_DISPATCH=1` and never runs in production; no
+  sale records an operation yet (S.11), so nothing changes for users.
+- **Notices, and one departure from D12 to be decided.** No notice kind was added (S.8 changes nothing
+  visible): success is `task.done` to the task's chain; a failure is `task.opened` to the handlers; an unknown
+  answer and an exception are `task.note` from «النظام» with fixed words (`stored-text.ts`) to the branch owner
+  and the holders of the `accounting` grant (`mayDecide`). The **ledger entry** names the submitter as D12
+  says. The **notice** is sent by «النظام», not by the submitter: `NoticeService.write` leaves the sender out of
+  the audience, so a notice "from the submitter" would never reach a point of sale that submitted its own
+  activation, which is the usual case. The handler named in it is «النظام», as D12 says.
+- **Not decided here:** an eSIM whose provider hands back no code gets a line without one (the task's own code
+  if it has one). The closed list of D16 has no reason for it.
+- Spec item 8 is closed: a completion, a reject and a cancel by hand raced with T5 change nothing, and T5 applies.
+
