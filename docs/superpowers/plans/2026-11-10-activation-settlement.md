@@ -1,8 +1,9 @@
 # Activation through a provider — plan
 
 Spec: `docs/superpowers/specs/2026-11-10-activation-settlement.md` (decisions D1–D19, transactions T1–T11, specs
-1–29). ADR 0019 (accepted). **S.1–S.4, S.5a and S.5b are built; each later slice starts on the owner's word.** Paths under `apps/api/`
-unless said. Each slice is one commit, leaves every existing spec green on CI (including the PostgreSQL and Redis
+1–29). ADR 0019 (accepted). **S.1–S.4, S.5a, S.5b and the web step of S.5c are built; each later slice starts on the owner's word.** Paths under `apps/api/`
+unless said. Operations beside this plan, not part of it and not a prerequisite for any slice from S.5c to S.12:
+backup and restore to Cloudflare R2 is ready in code and not enabled in operation (`docs/operations/backup-and-restore.md`). Each slice is one commit, leaves every existing spec green on CI (including the PostgreSQL and Redis
 job), and changes nothing a user can see unless it says **Visible**.
 
 Every slice that writes follows the spec's lock order: task → line → advisory keys (serial, number) → operation →

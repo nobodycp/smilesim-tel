@@ -4,6 +4,20 @@ Prepared 2026-11-12 for phase 1 of `2026-11-12-coolify-upgrade-preparation.md`. 
 on synthetic data only. No backup of the production database has been taken, no setting was changed, no key for
 production was made.** Section 7 is the plan for the real data and needs the owner's word before any of it.
 
+## Status (owner's decision, 2026-11-12)
+
+**Ready in code, not enabled in operation.** Backup and restore to Cloudflare R2 is part of SmileSim's
+operational design and is delivered as working, tested code to switch on later, per client. Nothing runs by
+itself: the scripts are in no image and no application code refers to them; a backup happens only after an
+operator installs them on a host, fills a settings file, and starts a run or enables the timers.
+
+- Tried on synthetic data, against a local stand-in for an S3 bucket (`testing/fake-s3.mjs`). **Not tried on
+  Cloudflare R2 itself**; no bucket, token, key or schedule exists.
+- Every client-specific value comes from the settings files (`backup.env.example`, `r2.env.example`): account,
+  bucket, prefix, keys, container, schedule, alert command. No value of ours is fixed in the scripts.
+- It is **not a prerequisite for the development slices S.5c–S.12** of the activation-settlement plan. Whether a
+  production upgrade waits for it is a separate, operational decision (`2026-11-12-coolify-upgrade-preparation.md`).
+
 ## 1. What is in the repository
 
 | File | What it does | Where it runs |
