@@ -74,6 +74,34 @@ describe('secret box', () => {
     }
   });
 
+  it('refuses a value whose tag or nonce is not the size it writes: a tag cut short still matches its own beginning', () => {
+    process.env.SECRETS_KEY = key;
+    const secret = 'LPA:1$smdp.example.com$ACTIVATION-CODE-123';
+    const sealed = seal(secret);
+    const [nonce, tag, body] = sealed.slice(3).split(':').map((text) => Buffer.from(text, 'base64url'));
+    const form = (parts: Buffer[]) => `v1:${parts.map((bytes) => bytes.toString('base64url')).join(':')}`;
+    expect(open(form([nonce, tag, body]))).toBe(secret);
+    // Every shorter tag, down to none: the cipher alone would accept 4 to 15 bytes of a true tag.
+    for (let length = 0; length < 16; length += 1) {
+      const cut = form([nonce, tag.subarray(0, length), body]);
+      expect(() => open(cut)).toThrow();
+      expect(tryOpen(cut)).toEqual({ unreadable: 'unreadable' });
+    }
+    // A longer tag, and a nonce of another size.
+    for (const other of [form([nonce, Buffer.concat([tag, Buffer.alloc(1)]), body]), form([nonce.subarray(0, 11), tag, body]), form([Buffer.concat([nonce, Buffer.alloc(4)]), tag, body]), form([Buffer.alloc(0), tag, body])]) {
+      expect(() => open(other)).toThrow();
+      expect(tryOpen(other)).toEqual({ unreadable: 'unreadable' });
+    }
+    // The refusal says nothing of the value.
+    let message = '';
+    try {
+      open(form([nonce, tag.subarray(0, 8), body]));
+    } catch (error) {
+      message = String((error as Error).message);
+    }
+    expect(message).toBe('A sealed secret cannot be opened: it is not in the sealed form');
+  });
+
   it('seals nothing without a key, or with a key of the wrong size', () => {
     delete process.env.SECRETS_KEY;
     expect(seal('JBSWY3DPEHPK3PXP')).toBe('JBSWY3DPEHPK3PXP');
