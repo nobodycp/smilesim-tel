@@ -34,6 +34,8 @@ export const RUNNING_SECONDS = 60;
 /** How long a repeat waits for the first answer on a route that awaits it, and how often it looks. */
 export const AWAIT_FIRST_MS = 20_000;
 const AWAIT_STEP_MS = 40;
+/** How many times a claim asks for a key that was taken at the first command and gone at the second. */
+const CLAIM_ATTEMPTS = 3;
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const PENDING = '__pending__';
 /** The write succeeded and its answer is not kept. */
@@ -104,11 +106,20 @@ export function memoryWrites(now: () => number = Date.now): WriteStore {
   };
 }
 
-function redisWrites(redis: IORedis): WriteStore {
+export function redisWrites(redis: IORedis): WriteStore {
   return {
     async claim(key, seconds, marker = PENDING) {
-      const set = await redis.set(key, marker, 'EX', seconds, 'NX');
-      return set === 'OK' ? null : await redis.get(key);
+      // Two commands: the key is taken when free, else what it holds is read. Its holder may fail and drop it
+      // between the two, and the read then finds nothing. That is not "claimed": this request holds nothing yet,
+      // and answering null for it let every repeat that was waiting on the same key run at once. So the key is
+      // asked for again; null is answered only for a key this request did set.
+      for (let attempt = 0; attempt < CLAIM_ATTEMPTS; attempt += 1) {
+        if ((await redis.set(key, marker, 'EX', seconds, 'NX')) === 'OK') return null;
+        const found = await redis.get(key);
+        if (found !== null) return found;
+      }
+      // Taken and gone, again and again: treated as still running, which waits or refuses and never runs twice.
+      return PENDING;
     },
     async save(key, value, seconds) {
       await redis.set(key, value, 'EX', seconds);
