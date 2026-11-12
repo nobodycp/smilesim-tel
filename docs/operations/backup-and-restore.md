@@ -63,6 +63,46 @@ If no object storage is wanted, the same is reached by pulling: a machine outsid
 `BACKUP_DIR` over SSH with a key that may only read that directory, and keeps its own history. Then the server
 holds no storage credential at all. One of the two; a copy that stays on the server is not a backup.
 
+## 3a. Cloudflare R2 (chosen 2026-11-12; **not set up yet**)
+
+No bucket, token or schedule exists. The scripts were run against a local stand-in for an S3 bucket
+(`testing/fake-s3.mjs`), which checks the SigV4 signature and the body's SHA-256 and MD5 and refuses to replace an
+object; **nothing was sent to Cloudflare**, so R2's own behaviour is taken from its documentation (read
+2026-11-12) and is first proved by step R2 of section 7.
+
+| Need | How R2 gives it |
+|---|---|
+| Private | A bucket is private unless a public development URL or a custom domain is switched on. Neither is. |
+| No delete, no overwrite | **Bucket lock** rules by prefix and age: `smilesim/daily/` 90 days, `smilesim/monthly/` 365 days. R2 has no object versioning and does not implement the S3 Object Lock API; bucket locks are its mechanism, and they also stop lifecycle deletion until they end. |
+| Retention | Lifecycle rules delete after the lock: `daily/` at 91 days, `monthly/` at 366. |
+| A name written once | `PutObject` with `If-None-Match: *` (documented as atomic), on top of the lock. |
+| Least privilege | Two **account** API tokens scoped to this one bucket: "Object Read & Write" on the server, "Object Read only" for restores. R2 has no write-only permission, so the server's token can read; what it reads is ciphertext. Neither token can change the bucket's rules. Whoever holds the Cloudflare account can, which is why that account needs two-step verification. |
+| Whole uploads | The request carries the body's SHA-256 (signed) and `Content-MD5`; afterwards the stored size is read back. |
+
+`scripts/backup/r2-upload.sh` is `backup.sh`'s upload command; `r2-fetch.sh list | latest <dir> | <id> <dir>`
+fetches on the restoring machine and checks the SHA-256 against the manifest. Both use `curl --aws-sigv4`
+(curl 7.75 or later; the host has 8.18) and give the keys to curl on standard input, never on a command line.
+
+**Cost.** Free tier per month: 10 GB of storage, 1 million Class A operations, 10 million Class B, no egress
+charge. One backup is 2 uploads (4 in the first of a month) and a few reads. At today's size (a 10 MB database,
+a dump of a few MB) 90 daily and 12 monthly copies stay well under 1 GB, and a month uses under 200 operations:
+**no charge**. The free storage is passed when a dump reaches roughly 100 MB (102 copies × 100 MB); beyond it
+storage costs $0.015 per GB-month.
+
+## 3b. The nightly job
+
+- `run-scheduled.sh <settings>`: one backup; one line in `backup.log` (`OK <id> <bytes>` or `FAILED <reason>`,
+  never a value); `last-success` updated; an alert through `BACKUP_ALERT_CMD` when it fails; an optional
+  heartbeat fetch on success for a monitor outside the host. One run at a time (a lock; a lock left by a dead
+  run is taken over). The settings file must be readable by its owner only.
+- `check-freshness.sh <settings>`: its own timer; alerts when no backup succeeded within `BACKUP_MAX_AGE_HOURS`
+  (26), whatever the reason, including a job that was never installed.
+- `systemd/`: `smilesim-backup.timer` (02:30, changed with `systemctl edit`) and `smilesim-backup-check.timer`
+  (every 6 hours). **Copying the units enables nothing; `systemctl enable --now` is the step that needs the
+  owner's word.**
+- `verify-latest.sh <settings>`: the restore drill, on a machine that is not the host: fetch the newest, restore,
+  compare, record `VERIFIED` or alert. Weekly.
+
 ## 4. Keys
 
 - The backup key pair is made **on the owner's machine**, with a passphrase. Only the public key goes to the
@@ -162,6 +202,15 @@ lines (14 with an eSIM code), 40 tasks (3 open), 80 sessions, 40 notices (20 wit
 - Rehearsal: 49 → 58 migrations, none unfinished; 28 tables kept their rows; the new API started in production
   mode; sign-in, lists, an old eSIM code from the line detail, a 404 outside the tree, packages under new
   codes; dry run counted 14 line codes and 5 task codes clear — `REHEARSED`.
+- The R2 path and the job (`testing/r2-cases.sh`, 28 cases, against the stand-in): stored as ciphertext and
+  byte for byte the local file; fetched, restored with the right key, refused with another; the same backup
+  sent twice succeeds and changes nothing; another file under an existing name, a clear dump, a file that is not
+  its manifest's, are not uploaded; two server errors and a connection cut mid-upload are retried; an
+  unreachable storage and a wrong credential fail, are logged and alerted, and the local copy stays; a second
+  run is refused; a dead run's lock is taken over; stale and never-run hosts raise the alarm; the heartbeat is
+  fetched; the drill records `VERIFIED` and alerts when it cannot restore.
+- Two faults of the scripts found by these cases and fixed: a failed backup ended the job before it was logged
+  or alerted; and re-sending a backup was refused because the manifest had been changed after the upload.
 - 19 failure cases, all refused as they must be: a changed file; a damaged file with a rewritten manifest; a cut
   file; another private key; a manifest with one more row, with a different ledger checksum, with no
   migrations; a private key given as the public one; no disk space; no container; no database; a failed upload

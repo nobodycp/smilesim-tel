@@ -12,6 +12,8 @@ Wholesale SIM-card office, RTL-first (ar / en / he). Four layers ("doors"), reso
 | Current refactor plan and its status | `docs/superpowers/plans/2026-11-08-architecture-refactor.md` |
 | Decisions and why | `docs/architecture/decisions/` |
 | Work rules (spec → plan → slice, language, push, UI) | `.cursor/rules/*.mdc` — they apply to Claude too |
+| Operations: backup, restore, the upgrade plan | `docs/operations/`, scripts in `scripts/backup/` |
+| Handover guides in Arabic (operator, client, checklist, secrets register) | `docs/handover/` — a standing requirement: keep them true to the code and the deployment in the same change |
 | How to check a UI change before replying (every page, measured, clicked) | `.cursor/rules/verify-before-reply.mdc` |
 
 Open source files only for the area you are changing. If a map is wrong, fix the map in the same change.

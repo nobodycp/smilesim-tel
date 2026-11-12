@@ -1,0 +1,12 @@
+# The nightly SmileSim database backup. Install as /etc/systemd/system/smilesim-backup.service together with
+# smilesim-backup.timer. NOT enabled by copying it: `systemctl enable --now smilesim-backup.timer` is the step
+# that needs the owner's word (docs/handover/technical-operations-ar.md).
+[Unit]
+Description=SmileSim database backup (encrypted, to Cloudflare R2)
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/smilesim-backup/run-scheduled.sh /etc/smilesim-backup/backup.env
+Nice=10

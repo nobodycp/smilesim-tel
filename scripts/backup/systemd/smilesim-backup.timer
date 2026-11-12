@@ -1,0 +1,12 @@
+# When the backup runs. Change the time with `systemctl edit smilesim-backup.timer` (an override), not here.
+[Unit]
+Description=Nightly SmileSim database backup
+
+[Timer]
+# 02:30 server time, every day; up to 10 minutes later at random, and caught up after a reboot.
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

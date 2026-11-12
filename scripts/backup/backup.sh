@@ -147,12 +147,19 @@ say "backup $id: $size bytes, sha256 $sum, $(grep -c '^table|' "$manifest") tabl
 
 # Off this host. A backup that exists only here does not count.
 if [ -n "${BACKUP_UPLOAD_CMD:-}" ]; then
-  $BACKUP_UPLOAD_CMD "$file" "$manifest" || die "the upload failed; the backup is kept locally as $id and is NOT off this host"
-  echo "uploaded|$(date -u +%Y%m%dT%H%M%SZ)" >> "$manifest"
+  # The uploader's own last line says why it failed (a cause, never a value); it is carried into this one.
+  up_err=$(mktemp)
+  if ! $BACKUP_UPLOAD_CMD "$file" "$manifest" 2> "$up_err"; then
+    why=$(sed -n 's/^[^:]*: FAILED: //p' "$up_err" | tail -1 | cut -c1-160); rm -f "$up_err"
+    die "the upload failed (${why:-no reason given}); the backup is kept locally as $id and is NOT off this host"
+  fi
+  cat "$up_err" >&2; rm -f "$up_err"
+  # Beside the manifest, not in it: the manifest is what was stored, and stays byte for byte what it was.
+  date -u +%Y%m%dT%H%M%SZ > "$BACKUP_DIR/$id.uploaded"
   say "uploaded $id"
   # Old local copies go only now, and never the one just made.
   ls -1 "$BACKUP_DIR"/smilesim-*.dump.gpg 2>/dev/null | LC_ALL=C sort -r | awk -v keep="$keep" 'NR > keep' | while read -r old; do
-    rm -f "$old" "${old%.dump.gpg}.manifest"
+    rm -f "$old" "${old%.dump.gpg}.manifest" "${old%.dump.gpg}.uploaded"
   done
 else
   [ $final -eq 0 ] || die "--final: no BACKUP_UPLOAD_CMD is set, so the backup would exist only on this host"

@@ -1,0 +1,7 @@
+# Raises the alarm when no backup succeeded within the limit. Install with smilesim-backup-check.timer.
+[Unit]
+Description=SmileSim backup freshness check
+
+[Service]
+Type=oneshot
+ExecStart=/opt/smilesim-backup/check-freshness.sh /etc/smilesim-backup/backup.env
