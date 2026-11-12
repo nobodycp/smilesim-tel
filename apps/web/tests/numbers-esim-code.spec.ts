@@ -205,3 +205,115 @@ test('a task page shows the code its detail carries, large when opened', async (
   await expect(picture(page)).toHaveAttribute('src', QR_B);
   await expect(dialog(page)).toContainText('8997202000000000009');
 });
+
+// ── Closing review: what stays in memory ──────────────────────────────────────────────────────────────────────
+// The moves below stay inside the same page load (a marker on `window` proves it), where a shared cache would
+// still hold an earlier answer. A full load (signing out, another account's door) starts from nothing anyway.
+
+const sessions = { sessions: [{ id: 's1', current: true, userAgent: '', ip: '', createdAt: '2026-11-08T00:00:00.000Z', lastSeenAt: '2026-11-08T00:00:00.000Z' }] };
+const taskOf = (esimQr: string) => ({
+  id: 't1', action: 'sim', status: 'working', posLoginName: 'pos', submitterLoginName: 'pos', assigneeLoginName: null, posDelta: 0,
+  msisdn: '0550000001', packageName: '400 جيجا', note: 'تغيير شريحة', resultNote: null, lastNote: null, log: '',
+  canTake: false, canWork: false, canCancel: false, createdAt: '2026-11-09T08:00:00.000Z', updatedAt: '2026-11-09T08:00:00.000Z',
+  iccid: '8997202000000000009', esim: true, esimQr, sim: { length: null, prefix: '', esim: true }, lineStatus: 'active',
+  companyName: 'سلكوم', providerName: '', canNote: false, canNoteInternal: false,
+});
+const mark = (page: Page) => page.evaluate(() => { (window as unknown as { sameLoad?: boolean }).sameLoad = true; });
+const sameLoad = (page: Page) => page.evaluate(() => (window as unknown as { sameLoad?: boolean }).sameLoad === true);
+
+for (const [name, path, first, second] of [
+  ['line', '/numbers/ln1', { line: { ...row('ln1', '0550000001', true), esimQr: QR_A }, history: [] }, { line: { ...row('ln1', '0550000001', true), esimQr: QR_B }, history: [] }],
+  ['task', '/tasks/t1', { task: taskOf(QR_A), events: [] }, { task: taskOf(QR_B), events: [] }],
+] as const) {
+  test(`the ${name} page keeps no code in the shared cache: left and opened again in the same load, it shows nothing until a new answer`, async ({ page }) => {
+    let asked = 0;
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    await page.route(name === 'line' ? '**/office/lines/ln1**' : '**/office/tasks/t1', async (route) => {
+      asked += 1;
+      if (asked === 1) return route.fulfill(json(first));
+      await held;
+      return route.fulfill(json(second));
+    });
+    await page.route(/\/office\/lines(\?[^/]*)?$/, (route) => route.fulfill(json({ items: rows, total: rows.length, nextCursor: null, poses: [] })));
+    await page.route('**/office/packages', (route) => route.fulfill(json({ packages: [], companies: [] })));
+    const open = async () => {
+      if (name === 'line') {
+        await page.getByRole('tab', { name: 'التفاصيل' }).click();
+        await page.getByRole('button', { name: /رمز QR/ }).first().click();
+      } else {
+        await page.locator('.esim-mark').click();
+      }
+    };
+    await page.goto(path);
+    await open();
+    await expect(picture(page)).toHaveAttribute('src', QR_A);
+    await page.keyboard.press('Escape');
+    await mark(page);
+
+    // Away inside the app, then back: no full load in between.
+    await page.locator('aside.sidebar').getByRole('link', { name: 'الأرقام' }).click();
+    await expect(page.locator('table.data tbody tr')).toHaveCount(3);
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    expect(await sameLoad(page)).toBe(true);
+    // The second answer is still on its way: nothing of the first one is on the page.
+    await expect.poll(() => asked).toBe(2);
+    await page.waitForTimeout(400);
+    expect(await page.content()).not.toContain(QR_A.slice(30));
+    await expect(page.locator('.esim-mark')).toHaveCount(0);
+    release();
+    await open();
+    await expect(picture(page)).toHaveAttribute('src', QR_B);
+    expect(await page.content()).not.toContain(QR_A.slice(30));
+  });
+}
+
+test('an answer that arrives after the dialog was closed does not open it again', async ({ page }) => {
+  let releaseFirst: () => void = () => undefined;
+  const first = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  const asked = await serve(page, async (id, route) => {
+    if (id === 'ln1') await first;
+    await route.fulfill(json(detail(id, id === 'ln1' ? QR_A : QR_B)));
+  });
+  await openButton(page, '0550000001').click();
+  await openButton(page, '0550000002').click();
+  await expect(picture(page)).toHaveAttribute('src', QR_B);
+  await dialog(page).getByRole('button', { name: 'إغلاق' }).last().click();
+  await expect(dialog(page)).toHaveCount(0);
+  // The first line's answer lands on a closed dialog: it stays closed and the code is not on the page.
+  releaseFirst();
+  await page.waitForTimeout(700);
+  await expect(dialog(page)).toHaveCount(0);
+  expect(await page.content()).not.toContain(QR_A.slice(30));
+  expect(await page.content()).not.toContain(QR_B.slice(30));
+  await expect(openButton(page, '0550000001')).toBeEnabled();
+  expect(asked).toEqual(['ln1', 'ln2']);
+});
+
+test('signing out with a code on screen leaves nothing of it for whoever signs in next in this tab', async ({ page }) => {
+  await page.route('**/auth/sessions**', (route) =>
+    route.fulfill(json(route.request().method() === 'DELETE' ? { ok: true } : sessions)),
+  );
+  const asked = await serve(page, (id, route) => route.fulfill(json(detail(id, QR_A))));
+  await openButton(page, '0550000001').click();
+  await expect(picture(page)).toHaveAttribute('src', QR_A);
+  await mark(page);
+  await page.keyboard.press('Escape');
+  await page.locator('aside.sidebar').getByRole('button', { name: 'تسجيل الخروج' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  // Signing out is a full load: the page's memory, with every answer it held, is gone.
+  expect(await sameLoad(page)).toBe(false);
+  const kept = await page.evaluate(() => ({
+    html: document.documentElement.outerHTML,
+    local: JSON.stringify(Object.entries(localStorage)),
+    session: JSON.stringify(Object.entries(sessionStorage)),
+  }));
+  for (const text of Object.values(kept)) expect(text).not.toContain(QR_A.slice(30));
+  // The next account opens the numbers page: no code is there until it asks for one itself.
+  await page.goto('/numbers');
+  await expect(page.locator('table.data tbody tr')).toHaveCount(3);
+  await page.waitForTimeout(400);
+  expect(await page.content()).not.toContain(QR_A.slice(30));
+  expect(asked).toEqual(['ln1']);
+});
