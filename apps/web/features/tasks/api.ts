@@ -22,7 +22,9 @@ export const tasksApi = {
   // Decisions by people on a task's provider operation (ADR 0019, D15). The body may carry an eSIM code: it goes
   // in the request and nowhere else.
   providerDecisionView: (id: string) => request<DecisionView>('GET', `/office/tasks/${segment(id)}/provider-decision`),
-  providerDecisions: () => request<{ items: WaitingDecision[]; capped: boolean }>('GET', '/office/provider-decisions'),
+  // The queue, a page at a time (`Page`), with how many wait in all for a second approval and for a first decision.
+  providerDecisions: (query?: { waiting?: string; cursor?: string | null }) =>
+    request<Page<WaitingDecision> & { totals: { approval: number; decision: number } }>('GET', `/office/provider-decisions${queryString(query)}`),
   decideProviderOperation: (id: string, body: ProviderDecisionBody) => request<ProviderDecisionAnswer>('POST', `/office/tasks/${segment(id)}/provider-decision`, body),
   answerProviderDecision: (id: string, approve: boolean) => request<ProviderDecisionApprovalAnswer>('POST', `/office/tasks/${segment(id)}/provider-decision/approval`, { approve }),
 };

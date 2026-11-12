@@ -4,7 +4,7 @@ import { isSealed, seal } from '../../../shared/secret-box';
 import { UnitOfWork, type Db } from '../../kernel/unit-of-work';
 import type { Action } from '../../kernel/types';
 import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, settledSequence, storedRef, storedResult, validKey, type ActivationResult, type AttemptOutcome, type OperationError, type OperationRequest, type OperationStatus, type OutgoingOperation, type StoredResult, type Verdict } from './provider-operation.rules';
-import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository, type NewDecisionEvent, type ResultColumns } from './provider-operations.repository';
+import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository, type NewDecisionEvent, type ResultColumns, type WaitingFor } from './provider-operations.repository';
 
 /**
  * A confirmed activation's result as the columns hold it (ADR 0019, D11 and D17): the eSIM code sealed. A code
@@ -213,9 +213,16 @@ export class ProviderOperationsService {
     return this.repo.decisionRecords(this.uow.prisma, operationIds);
   }
 
-  /** The operations of open tasks that wait for a person, oldest first, with their tasks. */
-  awaitingDecision(limit: number) {
-    return this.repo.awaitingDecision(this.uow.prisma, limit);
+  /**
+   * One page of the operations of open tasks that wait for a person, newest first, with their tasks, and how many
+   * wait in all for a second approval and for a first decision. `take` is the page size plus one.
+   */
+  async awaitingDecision(waiting: WaitingFor | undefined, position: { at: Date; id: string } | undefined, take: number) {
+    const [ids, counts] = await Promise.all([this.repo.awaitingDecisionIds(this.uow.prisma, waiting, position, take), this.repo.awaitingDecisionCounts(this.uow.prisma)]);
+    const rows = await this.repo.awaitingDecisionRows(this.uow.prisma, ids);
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    // In the order the page was read in: the second read is by id and promises none.
+    return { rows: ids.flatMap((id) => byId.get(id) ?? []), counts };
   }
 
   /** Appends one step of a decision; refused (409) when another writer wrote that step first. */

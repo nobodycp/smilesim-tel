@@ -78,8 +78,9 @@ Data layer: TanStack Query (ADR 0001) — session done; pages next.
   the ticket and the queue; `screens/provider-decisions-screen.tsx` the queue (`app/tasks/decisions/page.tsx`).
 - **Data:** the ticket's read (`sharedKeys.task`) carries the phase and the hold; the panel asks
   `api.providerDecisionView` (`sharedKeys.taskDecision`) only when the task says `operation.decisions`; the queue
-  and the tasks page's link count read `api.providerDecisions` (`sharedKeys.providerDecisions`). All three are
-  `fresh`. After a write: the ticket and its decision view are reloaded and the queue invalidated.
+  is a paged list (`usePaged` + `PagedTable`, two tabs kept in the address as `?waiting=`, the tabs' counts from
+  the API's `totals`); the tasks page's link reads the first page for its `total`
+  (`sharedKeys.providerDecisions`). The ticket's two reads and the link's are `fresh`. After a write: the ticket and its decision view are reloaded and the queue invalidated.
 - **What is offered is what the API answered** (`decisions`, `canApprove`, `canRefuse`, `blocked`, `needs`); the
   screens hold no rule of who may decide. The tasks page shows the link to an owner or a holder of `accounting`
   in a session of their own, which only spares the others a refusal: the API gates the read.

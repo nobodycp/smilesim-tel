@@ -93,6 +93,13 @@ export type ProviderDecisionBody = z.input<typeof ProviderDecisionBody>;
 export const ProviderDecisionApprovalBody = z.object({ approve: z.boolean() });
 export type ProviderDecisionApprovalBody = z.input<typeof ProviderDecisionApprovalBody>;
 
+/** The two parts of the decisions queue: a proposal to answer, or nothing decided yet. */
+export const WAITING_FOR = ['approval', 'decision'] as const;
+
+/** GET provider-decisions — the queue, a page at a time; `waiting` keeps one of its two parts. */
+export const ProviderDecisionsQuery = z.object({ cursor: queryCursor, waiting: queryOneOf(WAITING_FOR) });
+export type ProviderDecisionsQuery = z.input<typeof ProviderDecisionsQuery>;
+
 /** GET lines — the filters of the numbers list. `expiring` is not a stored status: it reads the end date. */
 export const LinesQuery = z.object({
   cursor: queryCursor,

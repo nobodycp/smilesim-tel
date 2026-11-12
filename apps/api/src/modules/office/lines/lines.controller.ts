@@ -12,7 +12,7 @@ import { AwaitsFirstAnswer, REPLAY_HEADER, SecretAnswer } from '../../shared/dup
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { LineReads } from './line-reads';
-import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, LinesQuery, ProviderDecisionApprovalBody, ProviderDecisionBody, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
+import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, LinesQuery, ProviderDecisionApprovalBody, ProviderDecisionBody, ProviderDecisionsQuery, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
 import { LinesService } from './lines.service';
 import { ProviderDecisions } from './provider-decisions';
 
@@ -243,9 +243,10 @@ export class LinesController {
 
   @Get('provider-decisions')
   @ApiOperation({ summary: 'The provider operations that wait for a person: proposals to answer, and those not decided on yet' })
-  @ApiErrorResponse(401, 403)
-  providerDecisions(@Actor() actor: ActorShape) {
-    return this.decisions.waiting(actor);
+  @ApiZodQuery(ProviderDecisionsQuery)
+  @ApiErrorResponse(400, 401, 403)
+  providerDecisions(@Actor() actor: ActorShape, @Query() query: ProviderDecisionsQuery) {
+    return this.decisions.waiting(actor, query);
   }
 
   @Get('tasks/:id/provider-decision')

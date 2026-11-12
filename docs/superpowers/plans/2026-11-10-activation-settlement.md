@@ -386,6 +386,12 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     `tests/provider-operation.spec.ts` (Playwright: every phase, a manual task, the four decisions, approve and
     refuse, each kind of account, a stale proposal, `esim-code-missing`, the code's privacy, a 409, a lost
     connection, phone / tablet / desktop in ar and en, light and dark).
+  - **Final review (2026-11-12):** the queue is paged by cursor with no ceiling (a first version served the
+    oldest 200 and stopped): `?waiting=approval|decision&cursor=`, fifty a page, newest first by the operation's
+    own creation time, `total` and `totals` counted in the database; the screen has two tabs and the project's
+    pager. HTTP specs: 230 waiting operations all reached once with a proposal on the newest and on the oldest,
+    the walk undisturbed by decisions taken meanwhile; what a point of sale, an account without the grant and an
+    entered session are told (the state and the hold, nothing of a decision).
   - Left for later: the queue is not in the side navigation and raises no notice of its own; a proposal still
     tells nobody (S.9), so the second account finds it through the link's count.
 

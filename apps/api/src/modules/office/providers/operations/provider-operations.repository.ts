@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '../../../../generated/prisma/client';
 import type { Db } from '../../kernel/unit-of-work';
 import type { OperationError, OperationRequest, OperationStatus } from './provider-operation.rules';
 
@@ -11,6 +12,22 @@ export const OPERATION_SETTLED = 'provider-operation.settled';
 
 /** What a confirmed activation handed back, as the columns hold it: the eSIM code sealed, or absent. */
 export type ResultColumns = { msisdn: string | null; iccid: string | null; sealedEsimCode: string | null };
+
+/** Which part of the queue: operations with a proposal to answer, or the ones nobody has decided on yet. */
+export type WaitingFor = 'approval' | 'decision';
+
+/** An operation of an open task that only a person can move (ADR 0019, D15): unknown, or an exception. */
+const AWAITS_PERSON = Prisma.sql`t."status" = 'working' AND (o."status" = 'unknown' OR (o."status" = 'succeeded' AND o."appliedAt" IS NULL AND o."applyError" IS NOT NULL))`;
+
+/** Its last decision step is a proposal: the rule `openProposal` reads the same thing from the events. */
+const OPEN_PROPOSAL = Prisma.sql`EXISTS (
+  SELECT 1 FROM "ProviderDecisionEvent" e WHERE e."operationId" = o."id" AND e."type" = 'proposed'
+    AND e."sequence" = (SELECT max(x."sequence") FROM "ProviderDecisionEvent" x WHERE x."operationId" = o."id"))`;
+
+function narrowed(waiting: WaitingFor | undefined) {
+  if (waiting === 'approval') return Prisma.sql`AND ${OPEN_PROPOSAL}`;
+  return waiting === 'decision' ? Prisma.sql`AND NOT ${OPEN_PROPOSAL}` : Prisma.empty;
+}
 
 /** One step of a person's decision as it is stored (ADR 0019, D15). It has no column for an eSIM code. */
 export type NewDecisionEvent = {
@@ -194,16 +211,34 @@ export class ProviderOperationsRepository {
   }
 
   /**
-   * The operations of open tasks that only a person can move, oldest first, each with its task's own columns:
-   * unknown, or succeeded with an exception and not applied. What the provider handed back is not selected.
+   * One page of the operations of open tasks that only a person can move (unknown, or succeeded with an exception
+   * and not applied), newest first by the time the operation was recorded, which never changes: a row keeps its
+   * place while the list is paged. `waiting` narrows it to the ones whose last decision step is a proposal
+   * (`approval`) or to the others (`decision`). Answers ids only; `take` is the page size plus one.
    */
-  awaitingDecision(db: Db, limit: number) {
+  async awaitingDecisionIds(db: Db, waiting: WaitingFor | undefined, position: { at: Date; id: string } | undefined, take: number): Promise<string[]> {
+    const rows = await db.$queryRaw<{ id: string }[]>`
+      SELECT o."id" FROM "ProviderOperation" o JOIN "OfficeTask" t ON t."id" = o."taskId"
+      WHERE ${AWAITS_PERSON} ${narrowed(waiting)}
+        ${position ? Prisma.sql`AND (o."createdAt" < ${position.at} OR (o."createdAt" = ${position.at} AND o."id" < ${position.id}))` : Prisma.empty}
+      ORDER BY o."createdAt" DESC, o."id" DESC LIMIT ${take}`;
+    return rows.map((row) => row.id);
+  }
+
+  /** How many operations wait for a second approval and how many for a first decision: counted, never estimated from a page. */
+  async awaitingDecisionCounts(db: Db): Promise<{ approval: number; decision: number }> {
+    const rows = await db.$queryRaw<{ approval: bigint; decision: bigint }[]>`
+      SELECT count(*) FILTER (WHERE ${OPEN_PROPOSAL}) AS "approval", count(*) FILTER (WHERE NOT ${OPEN_PROPOSAL}) AS "decision"
+      FROM "ProviderOperation" o JOIN "OfficeTask" t ON t."id" = o."taskId" WHERE ${AWAITS_PERSON}`;
+    return { approval: Number(rows[0]?.approval ?? 0), decision: Number(rows[0]?.decision ?? 0) };
+  }
+
+  /** These operations with their tasks' own columns, for the queue. What the provider handed back is not selected. */
+  awaitingDecisionRows(db: Db, ids: string[]) {
     return db.providerOperation.findMany({
-      where: { task: { status: 'working' }, OR: [{ status: 'unknown' }, { status: 'succeeded', appliedAt: null, applyError: { not: null } }] },
-      orderBy: { updatedAt: 'asc' },
-      take: limit,
+      where: { id: { in: ids } },
       select: {
-        id: true, status: true, appliedAt: true, applyError: true, updatedAt: true,
+        id: true, status: true, appliedAt: true, applyError: true, createdAt: true, updatedAt: true,
         task: { select: { id: true, action: true, msisdn: true, held: true, posDelta: true, submitterId: true, createdAt: true, submitter: { select: { loginName: true } }, pos: { select: { loginName: true } }, package: { select: { name: true } } } },
       },
     });

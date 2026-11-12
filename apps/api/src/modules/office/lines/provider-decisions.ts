@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { OfficeTask, Prisma, ProviderOperation } from '../../../generated/prisma/client';
 import type { ErrorCode } from '../../../errors';
 import { parseInput } from '../../shared/input';
-import { capList } from '../../shared/paging';
+import { cursorPosition, page, type Page } from '../../shared/paging';
 import { logger } from '../../shared/log';
 import { OfficeFailure, fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
@@ -20,7 +20,7 @@ import { DECISION_GRANT, applyErrorOf, decisionChoices, decisionStep, needsSecon
 import { esimCodeOrFail, storableEsimCode } from './esim-code';
 import { lockClaim } from './line-state';
 import { LinesRepository } from './lines.repository';
-import { ProviderDecisionApprovalBody, ProviderDecisionBody } from './lines.schemas';
+import { ProviderDecisionApprovalBody, ProviderDecisionBody, ProviderDecisionsQuery } from './lines.schemas';
 import { isActivationCode, renderActivationCode } from './office-esim';
 import type { Claim } from './reservation.rules';
 import { TaskCompletion } from './task-completion';
@@ -47,8 +47,8 @@ type Asked = DecisionRequest extends infer R ? (R extends unknown ? Omit<R, 'ope
 /** What the person says the provider handed back: read only by the two decisions that make the line. */
 type Given = { msisdn: string | null; iccid: string | null; esimCode: string | null };
 
-/** How many waiting operations one read of the queue answers. */
-const WAITING_CAP = 200;
+/** How many waiting operations one page of the queue answers. */
+export const WAITING_PAGE = 50;
 
 type StoredRecord = Awaited<ReturnType<ProviderOperationsService['decisionRecords']>>[number];
 
@@ -186,12 +186,17 @@ export class ProviderDecisions {
   }
 
   /**
-   * The operations that wait for a person, oldest first: the ones with a proposal to answer, and the ones nobody
-   * has decided on yet. The same gate as a decision; the list never carries what a provider handed back.
+   * The operations that wait for a person, a page at a time in the list contract (`{ items, nextCursor, total }`),
+   * newest first by the time the operation was recorded: an order that never changes under the reader, so a walk
+   * through the pages meets each waiting operation once. `waiting` keeps the ones with a proposal to answer, or
+   * the ones nobody has decided on yet; `total` counts the part asked for and `totals` both, from the database and
+   * not from the page. The same gate as a decision, on every page; the list never carries what a provider handed back.
    */
-  async waiting(actor: Actor): Promise<{ items: WaitingDecision[]; capped: boolean }> {
+  async waiting(actor: Actor, input: unknown = {}): Promise<Page<WaitingDecision> & { totals: { approval: number; decision: number } }> {
     this.assertMayDecide(actor);
-    const { rows, capped } = capList(await this.operations.awaitingDecision(WAITING_CAP + 1), WAITING_CAP);
+    const query = parseInput(ProviderDecisionsQuery, input);
+    const { rows: read, counts } = await this.operations.awaitingDecision(query.waiting, cursorPosition(query.cursor), WAITING_PAGE + 1);
+    const { items: rows, nextCursor } = page(read, WAITING_PAGE);
     const records = await this.operations.decisionRecords(rows.map((row) => row.id));
     const items = rows.flatMap((row) => {
       if (!row.task) return [];
@@ -208,7 +213,8 @@ export class ProviderDecisions {
         ...standing,
       }];
     });
-    return { items, capped };
+    const total = query.waiting ? counts[query.waiting] : counts.approval + counts.decision;
+    return { items, nextCursor, total, totals: counts };
   }
 
   /** What both reads say of one operation: its state, the money, the open proposal and what this account may do. */

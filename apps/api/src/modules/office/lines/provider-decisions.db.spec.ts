@@ -66,9 +66,23 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
   const detail = async (who: keyof typeof sid, taskId: string) => (await get(who, `/office/tasks/${taskId}`)).body.task as Record<string, unknown>;
   const view = (who: keyof typeof sid, taskId: string) => get(who, `/office/tasks/${taskId}/provider-decision`);
   /** This spec's own rows of the queue: other spec files keep waiting operations of their own in the same database. */
-  const queue = async (who: keyof typeof sid, taskIds: string[]) => {
-    const got = await get(who, '/office/provider-decisions');
-    return ((got.body.items ?? []) as Record<string, unknown>[]).filter((item) => taskIds.includes(item.taskId as string));
+  const queue = async (who: keyof typeof sid, taskIds: string[], waiting = '') => (await walk(who, waiting)).rows.filter((item) => taskIds.includes(item.taskId as string));
+  /** Every page of the queue, in the order it was served, with each page's own `total` and `totals`. */
+  const walk = async (who: keyof typeof sid, waiting = '', between?: (page: number) => Promise<unknown>) => {
+    const rows: Record<string, unknown>[] = [];
+    const pages: { size: number; total: number; totals: { approval: number; decision: number } }[] = [];
+    let cursor: string | null = null;
+    do {
+      const query: string = [waiting ? `waiting=${waiting}` : '', cursor ? `cursor=${encodeURIComponent(cursor)}` : ''].filter(Boolean).join('&');
+      const got = await get(who, `/office/provider-decisions${query ? `?${query}` : ''}`);
+      if (got.status !== 200) throw new Error(`the queue answered ${got.status}`);
+      const items = got.body.items as Record<string, unknown>[];
+      rows.push(...items);
+      pages.push({ size: items.length, total: got.body.total as number, totals: got.body.totals as { approval: number; decision: number } });
+      cursor = got.body.nextCursor as string | null;
+      if (cursor && between) await between(pages.length);
+    } while (cursor);
+    return { rows, pages };
   };
   const decide = (who: keyof typeof sid, taskId: string, decision: string, over: Record<string, unknown> = {}) => post(who, `/office/tasks/${taskId}/provider-decision`, { decision, ...EVIDENCE, ...over });
   const answer = (who: keyof typeof sid, taskId: string, approve: boolean) => post(who, `/office/tasks/${taskId}/provider-decision/approval`, { approve });
@@ -885,19 +899,174 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(said(await decide('acc1', proposed.taskId, 'declare-failure'))).toBe('ok proposed');
       const mine = [proposed.taskId, undecided.taskId, moving.taskId, manual];
       for (const who of ['pos', 'other', 'clerk', 'entered'] as const) expect(said(await get(who, '/office/provider-decisions'))).toBe('403 FORBIDDEN');
-      const rows = await queue('acc2', mine);
+      // Newest first, by the time the operation was recorded.
+      const rows = (await queue('acc2', mine)).reverse();
       expect(rows.map((row) => row.taskId)).toEqual([proposed.taskId, undecided.taskId]);
+      expect((await queue('acc2', mine, 'approval')).map((row) => row.taskId)).toEqual([proposed.taskId]);
+      expect((await queue('acc2', mine, 'decision')).map((row) => row.taskId)).toEqual([undecided.taskId]);
+      const first = (await get('acc2', '/office/provider-decisions')).body;
+      expect(Object.keys(first).sort()).toEqual(['items', 'nextCursor', 'total', 'totals']);
+      expect(said(await get('acc2', '/office/provider-decisions?waiting=everything'))).toBe('400 INVALID');
+      expect(said(await get('acc2', '/office/provider-decisions?cursor=not-a-cursor'))).toBe('400 INVALID');
       expect(Object.keys(rows[0]).sort()).toEqual(['action', 'blocked', 'canApprove', 'canRefuse', 'decisions', 'held', 'msisdn', 'packageName', 'phase', 'posLoginName', 'proposal', 'reason', 'submitterLoginName', 'taskId', 'waitingSince']);
       expect(rows[0]).toMatchObject({ phase: 'unknown', held: PRICE, posLoginName: name('pos'), submitterLoginName: name('pos'), canApprove: true, canRefuse: true, decisions: [], proposal: expect.objectContaining({ decision: 'declare-failure', accountLoginName: name('acc1'), note: NOTE }) });
       expect(rows[1]).toMatchObject({ phase: 'exception', reason: 'number-taken', proposal: null, decisions: ['apply-corrected', 'release-after-success'], submitterLoginName: name('acc1') });
       // The same rows as each account may act on them: the proposer and the submitter are told they may not.
-      const own = await queue('acc1', mine);
+      const own = (await queue('acc1', mine)).reverse();
       expect(own[0]).toMatchObject({ canApprove: false, canRefuse: false, blocked: 'own-proposal' });
       expect(own[1]).toMatchObject({ decisions: [], blocked: 'own-task' });
       // Once decided, it leaves the queue.
       expect(said(await answer('acc2', proposed.taskId, true))).toBe('ok approved');
       expect(said(await decide('owner', undecided.taskId, 'apply-corrected', { msisdn: number() }))).toBe('ok applied');
       expect(await queue('acc2', mine)).toEqual([]);
+    });
+
+    it('pages through more than two hundred waiting operations: every one is reached once, in one order, a proposal on the newest included, and the counts are the database\'s', async () => {
+      // 230 operations of open tasks, written straight to the tables: 150 unknown, then 80 exceptions, a
+      // millisecond apart so their order is known. Other spec files keep waiting operations of their own in this
+      // database: every assertion is about this spec's rows, and about counts as differences.
+      /**
+       * The queue's two counts, counted here straight from the tables, beside what the API answers. Other spec
+       * files change the queue while this one runs, so the two are compared at a moment when the tables did not move.
+       */
+      const counted = async () => {
+        const waitingRows = await prisma.providerOperation.findMany({
+          where: { task: { status: 'working' }, OR: [{ status: 'unknown' }, { status: 'succeeded', appliedAt: null, applyError: { not: null } }] },
+          select: { decisions: { orderBy: { sequence: 'desc' }, take: 1, select: { type: true } } },
+        });
+        const approval = waitingRows.filter((row) => row.decisions[0]?.type === 'proposed').length;
+        return { approval, decision: waitingRows.length - approval };
+      };
+      const expectCountsAreTheDatabases = async (path: string, part?: 'approval' | 'decision') => {
+        for (let attempt = 0; ; attempt += 1) {
+          const first = await counted();
+          const body = (await get('acc2', path)).body as { total: number; totals: { approval: number; decision: number } };
+          const second = await counted();
+          if (JSON.stringify(first) !== JSON.stringify(second) && attempt < 30) continue;
+          expect(body.totals).toEqual(first);
+          expect(body.total).toBe(part ? first[part] : first.approval + first.decision);
+          return first;
+        }
+      };
+      const started = Date.now() - 600_000;
+      const made = Array.from({ length: 230 }, (_, index) => ({ taskId: randomUUID(), operationId: randomUUID(), index }));
+      await prisma.officeTask.createMany({ data: made.map((row) => ({ id: row.taskId, action: 'activate', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: -PRICE, held: 0, msisdn: null, iccid: null })) });
+      await prisma.providerOperation.createMany({
+        data: made.map((row) => ({
+          id: row.operationId, idempotencyKey: operationKey(row.taskId), requestHash: 'h', action: 'activate', providerId: ids.provider, packageCode: name('pkg'), taskId: row.taskId, attempts: 1,
+          createdAt: new Date(started + row.index), ...(row.index < 150 ? { status: 'unknown', lastError: 'timeout' } : { status: 'succeeded', providerRef: 'REF', applyError: 'number-taken', applyFailedAt: new Date() }),
+        })) as never,
+      });
+      const mine = new Set<string>(made.map((row) => row.taskId));
+      const newest = made[229];
+      const oldest = made[0];
+      // A proposal on the newest operation of all, and one on the oldest: neither end is cut off.
+      expect(said(await decide('acc1', newest.taskId, 'release-after-success'))).toBe('ok proposed');
+      expect(said(await decide('acc1', oldest.taskId, 'declare-failure'))).toBe('ok proposed');
+
+      const all = await walk('acc2');
+      const ours = all.rows.filter((row) => mine.has(row.taskId as string));
+      // Every one, once, newest first.
+      expect(ours).toHaveLength(230);
+      expect(new Set(ours.map((row) => row.taskId)).size).toBe(230);
+      expect(ours.map((row) => row.taskId)).toEqual([...made].reverse().map((row) => row.taskId));
+      expect(all.pages.length).toBeGreaterThanOrEqual(5);
+      expect(all.pages.slice(0, -1).every((page) => page.size === 50)).toBe(true);
+      // The counts are of the whole queue, never of the page: what the tables hold, which is at least this spec's
+      // own 228 to decide and 2 to approve, on the first page and on a later one alike.
+      const whole = await expectCountsAreTheDatabases('/office/provider-decisions');
+      expect(whole.approval).toBeGreaterThanOrEqual(2);
+      expect(whole.decision).toBeGreaterThanOrEqual(228);
+      for (const page of all.pages) expect(page.total).toBe(page.totals.approval + page.totals.decision);
+      expect(all.pages.every((page) => page.total >= 230 && page.size <= 50)).toBe(true);
+
+      // The part that waits for a second approval: both proposals, the newest first, with its own total.
+      const approvals = await walk('acc2', 'approval');
+      expect(approvals.rows.filter((row) => mine.has(row.taskId as string)).map((row) => row.taskId)).toEqual([newest.taskId, oldest.taskId]);
+      await expectCountsAreTheDatabases('/office/provider-decisions?waiting=approval', 'approval');
+      expect(approvals.rows.every((row) => row.proposal !== null)).toBe(true);
+      const undecided = await walk('acc2', 'decision');
+      expect(undecided.rows.filter((row) => mine.has(row.taskId as string))).toHaveLength(228);
+      expect(undecided.rows.every((row) => row.proposal === null)).toBe(true);
+      await expectCountsAreTheDatabases('/office/provider-decisions?waiting=decision', 'decision');
+
+      // The gate holds on every page: a cursor handed to an account that may not decide opens nothing.
+      const second = (await get('acc2', '/office/provider-decisions')).body.nextCursor as string;
+      for (const who of ['pos', 'clerk', 'entered'] as const) expect(said(await get(who, `/office/provider-decisions?cursor=${encodeURIComponent(second)}`))).toBe('403 FORBIDDEN');
+      // And what each row offers is per account on every page: the proposer is offered no answer on either end.
+      const proposer = await walk('acc1', 'approval');
+      expect(proposer.rows.filter((row) => mine.has(row.taskId as string)).map((row) => [row.canApprove, row.blocked])).toEqual([[false, 'own-proposal'], [false, 'own-proposal']]);
+
+      // While the list is being walked, operations are decided and a proposal is made: no row is served twice, and
+      // none that is still waiting is missed.
+      const moved = await walk('acc2', '', async (pageNumber) => {
+        if (pageNumber === 1) expect(said(await answer('acc2', newest.taskId, false))).toBe('ok refused');
+        if (pageNumber === 2) expect(said(await decide('owner', made[10].taskId, 'declare-failure'))).toBe('ok proposed');
+        if (pageNumber === 3) expect(said(await decide('owner', made[5].taskId, 'confirm-success', { msisdn: number() }))).toBe('ok applied');
+      });
+      const walked = moved.rows.filter((row) => mine.has(row.taskId as string)).map((row) => row.taskId as string);
+      expect(new Set(walked).size).toBe(walked.length);
+      // Everything still waiting was met; the one that was applied meanwhile may or may not have been.
+      const stillWaiting = made.filter((row) => row.index !== 5).map((row) => row.taskId);
+      expect(stillWaiting.filter((taskId) => !walked.includes(taskId))).toEqual([]);
+      // After the refusal, the new proposal and the confirmation: this spec's own rows are 2 to approve (the
+      // oldest, and the one proposed meanwhile) and 227 to decide; the API's counts are still the tables'.
+      expect((await queue('acc2', [...mine], 'approval')).map((row) => row.taskId)).toEqual([made[10].taskId, oldest.taskId]);
+      expect(await queue('acc2', [...mine], 'decision')).toHaveLength(227);
+      await expectCountsAreTheDatabases('/office/provider-decisions');
+    });
+
+    it('a point of sale, an account without the grant and an entered session are told nothing of a decision: not in the task, not in the list, not by asking', async () => {
+      const { taskId, operationId } = await waiting('unknown', {}, { esim: true });
+      const SECRET_NOTE = 'Decision evidence that only deciders read: portal ticket 99817.';
+      expect(said(await decide('acc1', taskId, 'declare-failure', { note: SECRET_NOTE, providerRef: 'PRIVATE-REF-4471' }))).toBe('ok proposed');
+      expect(said(await answer('acc2', taskId, false))).toBe('ok refused');
+      expect(said(await decide('acc2', taskId, 'confirm-success', { note: SECRET_NOTE, providerRef: 'PRIVATE-REF-4471', esimCode: CODE, iccid: serial() }))).toBe('ok applied');
+      const sealed = (await operation(operationId)).resultEsimCode as string;
+      const private_ = [SECRET_NOTE, 'PRIVATE-REF-4471', 'provider-portal', name('acc1'), name('acc2'), 'declare-failure', 'confirm-success', 'accountLoginName', 'evidenceKind', 'suppliedEsimCode', sealed.slice(10, 40), CODE];
+      const taskKeys = ['id', 'action', 'status', 'operation', 'hold', 'posLoginName', 'submitterLoginName', 'assigneeLoginName', 'posDelta', 'msisdn', 'iccid', 'esim', 'esimQr', 'sim', 'lineStatus', 'packageName', 'companyName', 'providerName', 'note', 'resultNote', 'log', 'createdAt', 'updatedAt', 'canTake', 'canWork', 'canNote', 'canNoteInternal', 'canCancel'].sort();
+      for (const who of ['pos', 'clerk', 'entered', 'other'] as const) {
+        // The decision reads refuse, with nothing in the refusal but its code.
+        for (const path of [`/office/tasks/${taskId}/provider-decision`, '/office/provider-decisions', '/office/provider-decisions?waiting=approval']) {
+          const refused = await get(who, path);
+          expect([refused.status, refused.body]).toEqual([403, { message: 'غير مسموح', code: 'FORBIDDEN' }]);
+        }
+        if (who === 'other') {
+          // Another point of sale does not read the task at all.
+          expect(said(await get(who, `/office/tasks/${taskId}`))).toBe('404 NOT_FOUND');
+          continue;
+        }
+        const got = await get(who, `/office/tasks/${taskId}`);
+        expect(Object.keys(got.body).sort()).toEqual(['events', 'task']);
+        expect(Object.keys(got.body.task as object).sort()).toEqual(taskKeys);
+        // The operation is three fields, and a decision is offered to none of them.
+        expect((got.body.task as { operation: unknown }).operation).toEqual({ phase: 'applied', reason: null, decisions: false });
+        const list = (await get(who, '/office/tasks')).body;
+        const row = (list.items as Record<string, unknown>[]).find((item) => item.id === taskId) as Record<string, unknown>;
+        expect(row.operationPhase).toBe('applied');
+        expect(Object.keys(row)).not.toContain('operation');
+        // The line's own code goes to the point of sale and the branch as before (D17); it is left out of what
+        // is searched here, and nothing else of the decisions is in either answer.
+        const told = JSON.stringify([{ ...(got.body.task as object), esimQr: null }, got.body.events, list]);
+        for (const text of private_) expect(told).not.toContain(text);
+      }
+      // The accounts that may decide read it all, and still no code.
+      const view = (await get('owner', `/office/tasks/${taskId}/provider-decision`)).body;
+      expect(JSON.stringify(view)).toContain(SECRET_NOTE);
+      expect(JSON.stringify(view)).not.toContain(CODE);
+      expect(JSON.stringify(view)).not.toContain(sealed.slice(10, 40));
+    });
+
+    it('an entered session reads the state of a task and can state, approve or refuse nothing', async () => {
+      const { taskId, operationId } = await waiting('unknown');
+      expect(said(await decide('acc1', taskId, 'declare-failure'))).toBe('ok proposed');
+      const before = await snapshot(taskId, operationId);
+      expect((await detail('entered', taskId)).operation).toEqual({ phase: 'unknown', reason: null, decisions: false });
+      expect(said(await decide('entered', taskId, 'confirm-success'))).toBe('403 FORBIDDEN');
+      expect(said(await answer('entered', taskId, true))).toBe('403 FORBIDDEN');
+      expect(said(await answer('entered', taskId, false))).toBe('403 FORBIDDEN');
+      expect(await snapshot(taskId, operationId)).toEqual(before);
+      expect(await events(operationId)).toHaveLength(1);
     });
 
     it('reading writes nothing: no event, no notice, no activity', async () => {

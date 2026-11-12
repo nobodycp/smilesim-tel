@@ -318,7 +318,7 @@ test('esim-code-missing: the form asks for the code, sends it in the request onl
 
 test('the queue and the decision view are given no eSIM code, and moving from one task to another shows nothing of the first', async ({ page }) => {
   const calls = await serveOffice(page, 'branch', {
-    'GET /provider-decisions': () => ({ body: { capped: false, items: [
+    'GET /provider-decisions': (url) => ({ body: { nextCursor: null, total: 2, totals: { approval: 0, decision: 2 }, items: url.searchParams.get('waiting') === 'approval' ? [] : [
       { taskId: 'ta', action: 'activate', msisdn: '0550000001', packageName: 'باقة', posLoginName: 'pos', submitterLoginName: 'pos', waitingSince: '2026-11-12T09:00:00.000Z', ...viewOf({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'] }), needs: undefined, history: undefined },
       { taskId: 'tb', action: 'activate', msisdn: '0550000002', packageName: 'باقة', posLoginName: 'pos', submitterLoginName: 'pos', waitingSince: '2026-11-12T09:05:00.000Z', ...viewOf(), needs: undefined, history: undefined },
     ] } }),
@@ -328,7 +328,7 @@ test('the queue and the decision view are given no eSIM code, and moving from on
     'GET /tasks/tb': () => ({ body: { task: taskIn('unknown', { id: 'tb', msisdn: '0550000002' }), events: [] }, delay: 900 }),
     'GET /tasks/tb/provider-decision': () => ({ body: viewOf() }),
   });
-  await page.goto(`${admin}/tasks/decisions`);
+  await page.goto(`${admin}/tasks/decisions?waiting=decision`);
   await expect(page.locator('.po-row')).toHaveCount(2);
   expect(await page.content()).not.toContain('data:image');
   // Task A: its code is on its ticket, for the account the API gave it to.
@@ -490,72 +490,125 @@ const queueRow = (taskId: string, over: Record<string, unknown> = {}) => {
   void _needs; void _history;
   return { taskId, action: 'activate', msisdn: taskId === 'q1' ? '0550000011' : '0550000022', packageName: '400 جيجا', posLoginName: 'pos', submitterLoginName: 'agent1', waitingSince: '2026-11-12T09:00:00.000Z', ...standing };
 };
+/** The queue as the API answers it for `?waiting=`: the part asked for, with the totals of both parts. */
+const queueAnswer = (url: URL, rows: ReturnType<typeof queueRow>[]) => {
+  const waiting = url.searchParams.get('waiting');
+  const items = rows.filter((row) => (waiting === 'approval' ? row.proposal !== null : waiting === 'decision' ? row.proposal === null : true));
+  return { body: { items, nextCursor: null, total: items.length, totals: { approval: rows.filter((row) => row.proposal !== null).length, decision: rows.filter((row) => row.proposal === null).length } } };
+};
+const tab = (page: Page, name: string) => page.getByRole('tab', { name: new RegExp(name) });
 
-test('the queue groups what waits for a second approval and what waits for a decision; an approval there is asked once more and the list is read again', async ({ page }) => {
+test('the queue keeps what waits for a second approval and what waits for a decision in two tabs; an approval there is asked once more and the list is read again', async ({ page }) => {
   let approved = false;
   const calls = await serveOffice(page, 'branch', {
     'GET /me': () => ({ body: accountant }),
-    'GET /provider-decisions': () => ({ body: { capped: false, items: approved
+    'GET /provider-decisions': (url) => queueAnswer(url, approved
       ? [queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })]
-      : [queueRow('q1', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ providerRef: 'REF-5' }) }), queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })] } }),
+      : [queueRow('q1', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ providerRef: 'REF-5' }) }), queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })]),
     'POST /tasks/q1/provider-decision/approval': () => { approved = true; return { body: { ok: true, outcome: 'approved' } }; },
   });
   const sent = sentTo(page, '/office/tasks/q1/provider-decision/approval');
   await page.goto(`${admin}/tasks/decisions`);
   await expect(page.getByRole('heading', { level: 1, name: 'قرارات عمليات المزوّد' })).toBeVisible();
-  const proposals = page.getByRole('region', { name: 'بانتظار موافقة ثانية' });
-  const undecided = page.getByRole('region', { name: 'بانتظار قرار' });
-  await expect(proposals.locator('.po-row')).toHaveCount(1);
-  await expect(undecided.locator('.po-row')).toHaveCount(1);
-  const row = proposals.locator('.po-row');
+  // The first tab is the second approval; both tabs carry the API's counts.
+  await expect(tab(page, 'بانتظار موافقة ثانية')).toHaveAttribute('aria-selected', 'true');
+  await expect(tab(page, 'بانتظار موافقة ثانية')).toContainText('1');
+  await expect(tab(page, 'بانتظار قرار')).toContainText('1');
+  const row = page.locator('.po-row');
+  await expect(row).toHaveCount(1);
   for (const text of ['تفعيل', 'النتيجة غير مؤكدة', '0550000011', '400 جيجا', 'pos', 'agent1', '35.00', 'إعلان الفشل', 'acc1', 'بوابة المزوّد', 'REF-5', NOTE, 'المبلغ يبقى محجوزاً']) await expect(row).toContainText(text);
   await expect(row.getByRole('link', { name: 'فتح التذكرة' })).toHaveAttribute('href', '/tasks/q1');
+  // The other tab asks the API for its own part, and is kept in the address.
+  await tab(page, 'بانتظار قرار').click();
+  await expect(page).toHaveURL(/waiting=decision/);
+  await expect(row).toHaveCount(1);
   // What nobody decided on yet names the decisions it is open to; they are stated on the task.
-  await expect(undecided.locator('.po-row')).toContainText('الرقم مأخوذ');
-  await expect(undecided.locator('.po-row')).toContainText('تطبيق ببيانات مصحَّحة · تحرير بعد نجاح المزوّد');
-  await expect(undecided.getByRole('button')).toHaveCount(0);
+  await expect(row).toContainText('الرقم مأخوذ');
+  await expect(row).toContainText('تطبيق ببيانات مصحَّحة · تحرير بعد نجاح المزوّد');
+  await expect(row.getByRole('button')).toHaveCount(0);
+  expect(calls).toContain('GET /provider-decisions?waiting=decision');
+  await tab(page, 'بانتظار موافقة ثانية').click();
   await row.getByRole('button', { name: 'موافقة' }).click();
   await dialog(page).getByRole('button', { name: 'تأكيد الموافقة' }).click();
   expect(sent).toEqual([{ approve: true }]);
   await expect(page.getByText('تمت الموافقة على الاقتراح')).toBeVisible();
-  await expect(proposals).toHaveCount(0);
-  await expect(undecided.locator('.po-row')).toHaveCount(1);
-  expect(calls.filter((call) => call === 'GET /provider-decisions').length).toBeGreaterThanOrEqual(2);
+  // The list was read again: the proposal is gone, and the counts moved.
+  await expect(row).toHaveCount(0);
+  await expect(page.getByText('لا توجد عمليات بانتظار قرار')).toBeVisible();
+  await expect(tab(page, 'بانتظار موافقة ثانية')).not.toContainText('1');
+  await expect(tab(page, 'بانتظار قرار')).toContainText('1');
+  expect(calls.filter((call) => call === 'GET /provider-decisions?waiting=approval').length).toBeGreaterThanOrEqual(2);
+});
+
+test('the queue pages by the API\'s total and cursor: more than two hundred operations are all reachable, none twice', async ({ page }) => {
+  // 230 undecided operations and 3 proposals, served fifty at a time by cursor, as the API does.
+  const all = Array.from({ length: 230 }, (_, index) => ({ ...queueRow(`w${index}`, { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }), msisdn: `05${String(50000000 + index)}` }));
+  const calls = await serveOffice(page, 'branch', {
+    'GET /provider-decisions': (url) => {
+      if (url.searchParams.get('waiting') !== 'decision') return { body: { items: [], nextCursor: null, total: url.searchParams.get('waiting') ? 0 : 233, totals: { approval: 3, decision: 230 } } };
+      const from = Number((url.searchParams.get('cursor') ?? 'c0').slice(1));
+      return { body: { items: all.slice(from, from + 50), nextCursor: from + 50 < all.length ? `c${from + 50}` : null, total: 230, totals: { approval: 3, decision: 230 } } };
+    },
+  });
+  await page.goto(`${admin}/tasks/decisions?waiting=decision`);
+  const rows = page.locator('.po-row');
+  const pager = page.locator('.table-pager');
+  await expect(rows).toHaveCount(10);
+  // The counts are the queue's, not the page's.
+  await expect(tab(page, 'بانتظار قرار')).toContainText('230');
+  await expect(tab(page, 'بانتظار موافقة ثانية')).toContainText('3');
+  await expect(pager).toContainText('230');
+  await expect(rows.first()).toContainText('0550000000');
+  expect(calls.filter((call) => call.includes('cursor='))).toEqual([]);
+  // The last page is asked for: every chunk up to it is read, each cursor once, and the last rows are the last operations.
+  await page.getByRole('button', { name: '23', exact: true }).click();
+  await expect(rows).toHaveCount(10);
+  await expect(rows.last()).toContainText('0550000229');
+  await expect(rows.first()).toContainText('0550000220');
+  const cursors = calls.filter((call) => call.includes('cursor=')).map((call) => new URL(`http://x${call.slice(4)}`).searchParams.get('cursor'));
+  expect(cursors).toEqual(['c50', 'c100', 'c150', 'c200']);
+  expect(calls.filter((call) => call.includes('provider-decisions')).every((call) => call.includes('waiting=decision'))).toBe(true);
+  // Another page: the rows the order puts there, and no new request for what is already held.
+  await page.getByRole('button', { name: '22', exact: true }).click();
+  await expect(rows.first()).toContainText('0550000210');
+  await expect(rows.last()).toContainText('0550000219');
+  expect(calls.filter((call) => call.includes('cursor='))).toHaveLength(4);
 });
 
 test('the queue shows the proposer and the submitter why they may not answer, and offers them no button', async ({ page }) => {
   await serveOffice(page, 'branch', {
-    'GET /provider-decisions': () => ({ body: { capped: true, items: [
+    'GET /provider-decisions': (url) => queueAnswer(url, [
       queueRow('q1', { decisions: [], blocked: 'own-proposal', proposal: record({ accountLoginName: 'admin' }) }),
       queueRow('q2', { decisions: [], blocked: 'own-task' }),
-    ] } }),
+    ]),
   });
   await page.goto(`${admin}/tasks/decisions`);
-  await expect(page.locator('.po-row').first()).toContainText('هذا اقتراحك. يجيب عليه حساب مخوَّل آخر.');
-  await expect(page.locator('.po-row').nth(1)).toContainText('أنت مُرسِل هذه المهمة، فلا تتخذ قراراً عليها.');
+  await expect(page.locator('.po-row')).toContainText('هذا اقتراحك. يجيب عليه حساب مخوَّل آخر.');
   await expect(page.locator('.po-row').getByRole('button')).toHaveCount(0);
-  await expect(page.getByText('تُعرض أقدم العمليات فقط')).toBeVisible();
+  await tab(page, 'بانتظار قرار').click();
+  await expect(page.locator('.po-row')).toContainText('أنت مُرسِل هذه المهمة، فلا تتخذ قراراً عليها.');
+  await expect(page.locator('.po-row').getByRole('button')).toHaveCount(0);
 });
 
 test('the queue is empty, is refused, or fails: each is said, and none shows a row', async ({ page }) => {
   let mode: 'empty' | 'refused' | 'down' = 'empty';
   await serveOffice(page, 'branch', {
-    'GET /provider-decisions': () => (mode === 'empty' ? { body: { items: [], capped: false } } : mode === 'refused' ? { status: 403, body: { message: 'غير مسموح', code: 'FORBIDDEN' } } : { status: 500, body: { message: 'حدث خطأ في الخادم. أعد المحاولة', code: 'SERVER_ERROR' } }),
+    'GET /provider-decisions': (url) => (mode === 'empty' ? queueAnswer(url, []) : mode === 'refused' ? { status: 403, body: { message: 'غير مسموح', code: 'FORBIDDEN' } } : { status: 500, body: { message: 'حدث خطأ في الخادم. أعد المحاولة', code: 'SERVER_ERROR' } }),
   });
   await page.goto(`${admin}/tasks/decisions`);
   await expect(page.getByText('لا توجد عمليات بانتظار قرار')).toBeVisible();
   mode = 'refused';
   await page.reload();
-  await expect(page.getByRole('alert').filter({ hasText: 'غير مسموح' })).toBeVisible();
+  await expect(page.getByText('غير مسموح').first()).toBeVisible();
   await expect(page.locator('.po-row')).toHaveCount(0);
   await expect(page.getByText('لا توجد عمليات بانتظار قرار')).toHaveCount(0);
   mode = 'down';
   await page.reload();
-  await expect(page.getByRole('alert').filter({ hasText: 'حدث خطأ في الخادم' })).toBeVisible();
+  await expect(page.getByText('حدث خطأ في الخادم').first()).toBeVisible();
   await expect(page.locator('.po-row')).toHaveCount(0);
 });
 
-test('the tasks page links to the queue for an account that may decide, with the count, and marks an open task\'s operation', async ({ page }) => {
+test('the tasks page links to the queue for an account that may decide, with the queue\'s total, and marks an open task\'s operation', async ({ page }) => {
   const rows = [
     { ...baseTask, id: 'a', operationPhase: 'unknown' }, { ...baseTask, id: 'b', msisdn: '0550000002', operationPhase: 'exception' },
     { ...baseTask, id: 'c', msisdn: '0550000003', operationPhase: null, canWork: true }, { ...baseTask, id: 'd', msisdn: '0550000004', status: 'done', operationPhase: 'applied' },
@@ -563,12 +616,13 @@ test('the tasks page links to the queue for an account that may decide, with the
   await serveOffice(page, 'branch', {
     'GET /tasks': () => ({ body: { items: rows, nextCursor: null, total: rows.length } }),
     'GET /packages': () => ({ body: { packages: [] } }),
-    'GET /provider-decisions': () => ({ body: { capped: false, items: [queueRow('q1'), queueRow('q2')] } }),
+    // One page of two rows out of a queue of 237: the link shows the queue's total.
+    'GET /provider-decisions': () => ({ body: { items: [queueRow('q1'), queueRow('q2')], nextCursor: 'c50', total: 237, totals: { approval: 12, decision: 225 } } }),
   });
   await page.goto(`${admin}/tasks`);
   const link = page.getByRole('link', { name: /قرارات المزوّد/ });
   await expect(link).toHaveAttribute('href', '/tasks/decisions');
-  await expect(link.locator('.ui-badge')).toHaveText('2');
+  await expect(link.locator('.ui-badge')).toHaveText('237');
   await expect(page.locator('.task-card').nth(0)).toContainText('النتيجة غير مؤكدة');
   await expect(page.locator('.task-card').nth(1)).toContainText('نجح عند المزوّد وتعذّرت التسوية');
   // A manual task and a closed one carry no operation mark.
@@ -609,13 +663,15 @@ for (const [device, width, height] of widths) {
         'GET /me': () => ({ body: accountant }),
         'GET /tasks/t1': () => ({ body: { task: taskIn('exception', { esim: true, operation: { phase: 'exception', reason: 'esim-code-missing', decisions: true } }), events: [] } }),
         'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'], needs: { number: true, esimCode: true }, history: [record({ decision: 'release-after-success' }), record({ sequence: 2, type: 'refused', decision: 'release-after-success', accountLoginName: 'acc2', evidenceKind: null, note: '' })] }) }),
-        'GET /provider-decisions': () => ({ body: { capped: false, items: [queueRow('q1', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ providerRef: 'REF-5', note: `${NOTE} ${NOTE} ${NOTE}` }) }), queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })] } }),
+        'GET /provider-decisions': (url) => queueAnswer(url, [queueRow('q1', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ providerRef: 'REF-5', note: `${NOTE} ${NOTE} ${NOTE}` }) }), queueRow('q3', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ decision: 'release-after-success' }) }), queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })]),
       });
       const html = page.locator('html');
       const fits = async () => expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
       const inside = async (box: { x: number; width: number } | null) => expect(box && box.x >= 0 && box.x + box.width <= width + 1).toBe(true);
       const shot = async (name: string) => {
         const theme = (await html.getAttribute('class'))?.split(' ').includes('dark') ? 'dark' : 'light';
+        // The theme change is animated: a picture for review is taken once it has settled.
+        if (process.env.S10_SHOTS) await page.waitForTimeout(600);
         if (process.env.S10_SHOTS) await page.screenshot({ path: `${process.env.S10_SHOTS}/${device}-${locale}-${theme}-${name}.png`, fullPage: true });
       };
       /** Presses the shell's theme button and waits for the page to be in the other theme. */

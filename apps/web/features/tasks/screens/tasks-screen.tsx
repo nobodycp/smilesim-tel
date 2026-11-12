@@ -157,7 +157,8 @@ export function TasksScreen() {
         // The queue of provider decisions, for the accounts the API lets read it (it refuses everyone else).
         <Link className={buttonClass({ variant: 'secondary' })} href="/tasks/decisions">
           {t.decQueueLink}
-          {waiting.data && waiting.data.items.length > 0 ? <Badge variant="warning">{waiting.data.items.length}</Badge> : null}
+          {/* The count is the API's total of the whole queue, not the size of the page it answered. */}
+          {waiting.data && waiting.data.total > 0 ? <Badge variant="warning">{waiting.data.total}</Badge> : null}
         </Link>
       ) : undefined}
     >

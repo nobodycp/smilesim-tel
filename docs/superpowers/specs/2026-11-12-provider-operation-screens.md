@@ -17,7 +17,7 @@ protection: every route keeps its own gate.
 | `GET /office/tasks` rows | every reader of the task | `operationPhase` (null for a manual task); `canTake`, `canWork`, `canCancel` now also follow D6 |
 | `GET /office/tasks/:id` | every reader of the task | `operation: { phase, reason, decisions } \| null`, `hold`; the same three flags follow D6 |
 | `GET /office/tasks/:id/provider-decision` (new) | the branch owner or a branch account holding `accounting`, in a session of its own | where the operation stands, the amount held, what this account may do now, what the form must ask for, the open proposal, the record |
-| `GET /office/provider-decisions` (new) | the same | the operations of open tasks that wait for a person, oldest first |
+| `GET /office/provider-decisions?waiting=&cursor=` (new) | the same | the operations of open tasks that wait for a person, a page at a time in the list contract (`{ items, nextCursor, total }` plus `totals`), newest first |
 
 - `phase`: `requested`, `pending`, `unknown`, `unapplied`, `exception`, `applied`, `failed` (`phaseOf`).
 - `reason` (why an exception could not be applied) is answered to branch accounts only, as the provider's name is.
@@ -78,11 +78,23 @@ judges every request.
 
 ## 4. The queue
 
-`/tasks/decisions`, linked from the tasks page for the accounts that may decide. Two groups: proposals that wait
+`/tasks/decisions`, linked from the tasks page for the accounts that may decide. Two tabs: proposals that wait
 for a second account, and operations nobody has decided on yet. Each row: the operation and its phase, the
 number, the package, the point of sale, the submitter, the amount held, since when; for a proposal the decision,
 its proposer, its evidence, and the effect of approving. Approve and refuse are offered where the API allows
 them; every row opens its task. The list is whatever the API answers: nothing is filtered in the browser.
+
+**Paged, with no ceiling** (final review of S.10; a first version served the oldest 200 and stopped):
+
+- The list contract of every other list: `?cursor=`, fifty rows a page, `nextCursor`, `total`.
+- **Order:** newest first by the time the operation was recorded, then by id. That time never changes, so a row
+  keeps its place while the list is walked: a walk meets every operation that is still waiting once, and none
+  twice, even while others are decided or proposed meanwhile. A new operation appears at the top.
+- **`waiting=approval`** keeps the operations whose last decision step is a proposal, **`waiting=decision`** the
+  others. The tab is in the address.
+- **Counts:** `totals: { approval, decision }` are counted in the database on every page, and `total` is the
+  count of the part asked for. The tabs and the link's badge show these, never the size of a page.
+- The gate and what each row offers this account are applied on every page.
 
 ## 5. After a write
 

@@ -480,4 +480,15 @@ decisions changed; the screens show what the API decides.
   sent again by itself. A button is disabled while its request runs.
 - **Three people on screen (D12).** The ticket shows the submitter as before; the record names the account that
   decided; the entry and the notice of a decided activation are the submitter's, from «النظام» (S.9).
+- **The queue is a paged list** (final review of S.10). `GET /office/provider-decisions` answers the list contract
+  with `?cursor=` and `?waiting=approval|decision`, fifty rows a page, ordered by the operation's `createdAt` and
+  id, newest first: a key that never changes, so paging neither repeats nor skips a row that is still waiting.
+  "Has an open proposal" is said in SQL the way `openProposal` says it from the events (the step with the highest
+  sequence is `proposed`); the page of ids and the two counts are raw queries in the operations repository, the
+  rows a second read by id. `totals` are counted over the whole queue on every request. A first version read the
+  oldest 200 and stopped, which would have hidden a new proposal behind 200 older operations.
+- **What an account that may not decide is told** is pinned over HTTP: a point of sale, a branch account without
+  the grant and an entered session get the task's `operation { phase, reason, decisions: false }` and `hold`, and
+  from the two decision reads `403` with no body but the code. No evidence, note, reference, proposer or step of a
+  decision is in any answer they can get; another point of sale does not read the task at all.
 
