@@ -226,6 +226,7 @@ for (const [name, path, first, second] of [
   ['task', '/tasks/t1', { task: taskOf(QR_A), events: [] }, { task: taskOf(QR_B), events: [] }],
 ] as const) {
   test(`the ${name} page keeps no code in the shared cache: left and opened again in the same load, it shows nothing until a new answer`, async ({ page }) => {
+    test.setTimeout(90_000);
     let asked = 0;
     let release: () => void = () => undefined;
     const held = new Promise<void>((resolve) => { release = resolve; });
@@ -253,7 +254,9 @@ for (const [name, path, first, second] of [
 
     // Away inside the app, then back: no full load in between.
     await page.locator('aside.sidebar').getByRole('link', { name: 'الأرقام' }).click();
-    await expect(page.locator('table.data tbody tr')).toHaveCount(3);
+    // The dev server builds this page the first time a worker asks for it; under a full parallel run that alone
+    // has taken longer than the default five seconds. What is waited for is only "we are on another page".
+    await expect(page.locator('table.data tbody tr')).toHaveCount(3, { timeout: 30_000 });
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     expect(await sameLoad(page)).toBe(true);
