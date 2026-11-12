@@ -1,5 +1,20 @@
 import { isSealed, open, seal, tryOpen } from './secret-box';
 
+/**
+ * A sealed value with one bit of one byte changed, in its nonce (part 0), its authentication tag (part 1) or its
+ * ciphertext (part 2). The byte is changed after decoding and the part encoded again, so the stored bytes always
+ * differ. Replacing the last characters of the text does not do that: base64url leaves unused bits in the last
+ * character of a part, and the characters put in may be the ones already there.
+ */
+function withByteChanged(sealed: string, part: 0 | 1 | 2, index: number): string {
+  const parts = sealed.slice(3).split(':').map((text) => Buffer.from(text, 'base64url'));
+  if (index < 0 || index >= parts[part].length) throw new RangeError('no such byte');
+  parts[part][index] ^= 0x01;
+  const changed = `v1:${parts.map((bytes) => bytes.toString('base64url')).join(':')}`;
+  if (changed === sealed) throw new Error('the value was not changed');
+  return changed;
+}
+
 // Review 2026-11-10, S12.
 describe('secret box', () => {
   const previous = process.env.SECRETS_KEY;
@@ -28,11 +43,35 @@ describe('secret box', () => {
   it('refuses a tampered value, another key, and a sealed value with no key', () => {
     process.env.SECRETS_KEY = key;
     const sealed = seal('JBSWY3DPEHPK3PXP');
-    expect(() => open(`${sealed.slice(0, -2)}AA`)).toThrow();
+    // One byte of the authentication tag changed: the last, the first, one in the middle.
+    for (const index of [15, 0, 7]) expect(() => open(withByteChanged(sealed, 1, index))).toThrow();
     process.env.SECRETS_KEY = Buffer.alloc(32, 9).toString('base64');
     expect(() => open(sealed)).toThrow();
     delete process.env.SECRETS_KEY;
     expect(() => open(sealed)).toThrow();
+  });
+
+  it('refuses a value with any single byte changed: every byte of the tag, the nonce and the ciphertext, for many values', () => {
+    process.env.SECRETS_KEY = key;
+    const values = ['JBSWY3DPEHPK3PXP', 'a', 'LPA:1$smdp.example.com$ACTIVATION-CODE-123', 'x'.repeat(300)];
+    // Many nonces, so every ending of the encoded text is met: the old check failed for about one value in 255.
+    for (let round = 0; round < 300; round += 1) {
+      const value = values[round % values.length];
+      const sealed = seal(value);
+      const [nonce, tag, body] = sealed.slice(3).split(':').map((text) => Buffer.from(text, 'base64url'));
+      expect([nonce.length, tag.length, body.length]).toEqual([12, 16, Buffer.byteLength(value)]);
+      const changes: [0 | 1 | 2, number][] = [
+        ...Array.from({ length: 16 }, (_, index): [0 | 1 | 2, number] => [1, index]),
+        ...Array.from({ length: 12 }, (_, index): [0 | 1 | 2, number] => [0, index]),
+        [2, 0], [2, body.length - 1], [2, Math.floor(body.length / 2)],
+      ];
+      for (const [part, index] of changes) {
+        const changed = withByteChanged(sealed, part, index);
+        expect(() => open(changed)).toThrow();
+        expect(tryOpen(changed)).toEqual({ unreadable: 'unreadable' });
+      }
+      expect(open(sealed)).toBe(value);
+    }
   });
 
   it('seals nothing without a key, or with a key of the wrong size', () => {
@@ -63,8 +102,10 @@ describe('secret box', () => {
     const sealed = seal(secret);
     const [, iv, tag, body] = sealed.split(':');
     const damaged = [
-      `v1:${iv}:${tag}:${body.slice(0, -2)}AA`,
-      `v1:${iv}:${tag.slice(0, -2)}AA:${body}`,
+      // One byte changed in the ciphertext, in the tag, in the nonce.
+      withByteChanged(sealed, 2, Buffer.from(body, 'base64url').length - 1),
+      withByteChanged(sealed, 1, 15),
+      withByteChanged(sealed, 0, 0),
       `v1:${iv}:${tag}`,
       'v1:',
       'v1:not-a-sealed-value-at-all',
