@@ -306,6 +306,12 @@ export class TasksService {
      * transaction once the task's row exists, before the hold and the notices. Never run for a repeated request.
      */
     alongside?: (tx: Prisma.TransactionClient, task: { id: string }) => Promise<void>;
+    /**
+     * `false` for a task the branch has nothing to do with yet (an activation that went to a provider, ADR 0019):
+     * `task.opened` tells the branch's handlers there is a task to take, which would be untrue. They are told when
+     * it becomes theirs (the settlement's T6), and the accounts that decide when it needs a decision (T7, T5′).
+     */
+    announce?: boolean;
   }): Promise<{ id: string; replayed: boolean }> {
     const { request } = input;
     const { task, written } = await this.uow.runTx(async (tx) => {
@@ -370,6 +376,7 @@ export class TasksService {
       if (price > 0) {
         await this.ledger.hold(tx, input.posId, price, input.actor.operatorId, input.note, input.msisdn ? { msisdn: input.msisdn, lineId: input.lineId ?? '', companyName: '', packageName: '', packagePrice: price } : undefined);
       }
+      if (input.announce === false) return { task: { id: created.id, replayed: false }, written: [] as WrittenNotice[] };
       const named = await this.repo.packageName(tx, input.nextPackageId ?? input.packageId);
       const notices = await this.taskNotice(tx, 'opened', created, input.actor, {
         packageName: named?.name ?? '',

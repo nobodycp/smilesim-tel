@@ -176,11 +176,13 @@ export class LinesService {
    * own key and with the task's id, so neither exists without the other. The request key is required on this
    * route (D14): a repeat must be answerable from the database for good. Nothing is sent from here.
    */
-  private async openForDispatch(opening: Omit<OpenTask, 'request' | 'alongside'>, request: TaskRequest | null, product: { providerCode: string; packageCode: string }, replayed?: () => void) {
+  private async openForDispatch(opening: Omit<OpenTask, 'request' | 'alongside' | 'announce'>, request: TaskRequest | null, product: { providerCode: string; packageCode: string }, replayed?: () => void) {
     if (!request) fail(400, 'REQUEST_KEY_REQUIRED');
     const task = await this.tasks.openTask({
       ...opening,
       request,
+      // Nobody at the branch is told a task opened: there is nothing for them to take while the provider has it.
+      announce: false,
       alongside: async (tx, opened) => {
         await this.operations.recordIn(
           tx,

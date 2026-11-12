@@ -9,6 +9,19 @@ import { PROVIDERS_PROVIDERS } from './modules/office/providers/providers.module
 // gave `activate` a dispatch route that records an operation and an outbox message; this spec pins that nothing
 // the application builds can put a sale on that route, and that nothing it runs can send one. It reads the code
 // that is deployed, not the data of a database: an empty provider table proves nothing.
+//
+// WHEN S.12a LANDS, this file changes on purpose, and each change is a decision to review:
+//   - «is a constant in the code» goes: `dispatches` will answer from D18's four conditions. Its replacement must
+//     show the answer is false unless ALL FOUR hold (PROVIDER_DISPATCH=1, the provider named in PROVIDER_ADAPTERS,
+//     PROVIDER_TARGET stated, the owner's approval with a sealed credential), each one alone and every three of
+//     the four, and that the API process, which has no adapter and no credential, still answers false.
+//   - «never takes an activation … under no environment» becomes that table of conditions.
+//   - «PROVIDER_DISPATCH=1 alone starts no dispatcher on a production-grade deployment» inverts in part: the
+//     dispatcher may then run in production, and only with the other three. `providerDispatchOn()` is replaced.
+//   - «holds no provider credential … no adapter» narrows: the worker will read `ProviderCredential` and build the
+//     adapters named. The API must still read no credential and open no connection: keep that half, per process.
+//   - The checks that stay as they are: one gateway bound by class; nothing shipped imports `testing/`; one caller
+//     of `dispatches`; T1's step has one caller and writes through the recorder alone.
 
 const src = __dirname;
 const ENV_KEYS = ['NODE_ENV', 'PROVIDER_DISPATCH', 'PROVIDER_SIMULATION', 'PROVIDER_ADAPTERS', 'PROVIDER_TARGET', 'PROVIDER_DISPATCH_ON', 'DISPATCH'];
@@ -45,6 +58,36 @@ describe('provider dispatch is off, and nothing deployed today can turn it on', 
     const worker = files.find((file) => file.path === 'worker.ts')?.text ?? '';
     expect(worker).toContain('buildProviderDispatch(dispatchPrisma, relayRedis, new SimulatedProviderGateway())');
     expect(worker.match(/buildProviderDispatch\(/g)).toHaveLength(1);
+  });
+
+  it('the specs\' gateway cannot be reached by anything that runs: nothing shipped imports a `testing` folder, and no setting names a gateway', () => {
+    // The scripted gateway is the only thing that answers `dispatches` true, and it is constructed by spec files.
+    const importsTesting = files.filter((file) => /from '[^']*\/testing\/[^']*'/.test(file.text) || /import\([^)]*\/testing\//.test(file.text));
+    expect(importsTesting.map((file) => file.path)).toEqual([]);
+    // And it is not in what is deployed at all: the build leaves out every `testing` folder and every spec.
+    const build = JSON.parse(readFileSync(join(src, '../tsconfig.build.json'), 'utf8')) as { exclude: string[] };
+    expect(build.exclude).toEqual(expect.arrayContaining(['src/**/testing/**', 'src/**/*.spec.ts']));
+    // The gateway is bound by class in the module: there is no factory, no environment variable and no token a
+    // deployment could set to choose another one.
+    const module = files.find((file) => file.path === 'modules/office/providers/providers.module.ts')?.text ?? '';
+    expect(module).toContain('{ provide: PROVIDER_GATEWAY, useClass: SimulatedProviderGateway }');
+    expect(module).not.toMatch(/useFactory|useValue|env\(|process\.env/);
+    expect(files.filter((file) => /PROVIDER_GATEWAY/.test(file.text) && /useFactory|useValue/.test(file.text)).map((file) => file.path)).toEqual([]);
+  });
+
+  it('T1\'s step inside the opening has one caller, the dispatched activation, and it writes through the recorder alone', () => {
+    const users = files.filter((file) => /\balongside\b/.test(file.text)).map((file) => file.path).sort();
+    expect(users).toEqual(['modules/office/lines/lines.service.ts', 'modules/office/tasks/tasks.service.ts']);
+    const tasks = files.find((file) => file.path === 'modules/office/tasks/tasks.service.ts')?.text ?? '';
+    // Called once, inside the transaction, with the transaction's own client.
+    expect(tasks.match(/input\.alongside\?\.\(tx, created\)/g)).toHaveLength(1);
+    const service = files.find((file) => file.path === 'modules/office/lines/lines.service.ts')?.text ?? '';
+    expect(service.match(/alongside: async \(tx, opened\) => \{/g)).toHaveLength(1);
+    const step = /alongside: async \(tx, opened\) => \{([\s\S]*?)\n {6}\},/.exec(service)?.[1] ?? '';
+    expect(step).toContain('await this.operations.recordIn(');
+    expect(step).toContain('tx,');
+    // Nothing in it reaches outside the transaction: no client of its own, no second transaction, no gateway.
+    expect(step).not.toMatch(/this\.uow|runTx|prisma|this\.gateway|\.record\(/);
   });
 
   it('that gateway never takes an activation on the dispatch route: under no environment, for no provider', () => {

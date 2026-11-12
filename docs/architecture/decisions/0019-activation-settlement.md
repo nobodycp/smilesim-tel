@@ -521,4 +521,24 @@ decisions changed; the screens show what the API decides.
   dispatcher over the simulated gateway, which answers `left: false`: the operation is put back and fails after
   its attempts with the hold kept. None of that is reachable today, because nothing records an operation.
 - Spec items 1, 4 and 28 are closed.
+- **Nobody is told a dispatched task "opened"** (final audit of S.11). `task.opened` goes to the branch's
+  handlers and means "there is a task to take"; for a task the provider has, that is untrue, and D6 lets them do
+  nothing with it. `openTask` takes `announce: false` and writes no notice for it; the dispatched activation is
+  its only user. A manual task is announced as before. The branch's handlers hear of a dispatched task when it
+  becomes theirs (T6 writes `task.opened` from «النظام», once); the accounts that decide hear of it when it needs
+  them (T7, T5′, once each). A repeated request writes nothing, as before. So T1's writes are the task, the
+  operation, its outbox message and the hold, and no notice: the last write is the hold's ledger entry.
+- **The audit of `alongside`.** One definition (`TasksService.openTask`), one call (`input.alongside?.(tx, created)`,
+  inside the transaction, with the transaction's client), one user (`LinesService.openForDispatch`), whose step is
+  `recordIn(tx, …)` and nothing else: no client of its own, no second transaction, no gateway. It runs after the
+  task's insert, so an operation cannot exist without its task (and `taskId` is a foreign key); it runs in the
+  same transaction as the insert, so a task cannot be committed without it; it runs after the repeat's early
+  return, so a repeated request never reaches it (the specs count its calls: one for a request and any number of
+  repeats, at once or in turn). Locks: claim keys → the new task's row → the new operation's row → the wallet,
+  which is section 6's order. The only thing done after the commit is publishing the written notices to open
+  sessions, and there are none. The manual route, the simulation and "not connected" pass no step and are
+  unchanged.
+- **What S.12a must change in `provider-dispatch-off.spec.ts`** is written at the top of that file: the constant
+  becomes D18's four conditions, each alone and every three of them still answering false; the API process keeps
+  no adapter and no credential; the checks on the binding, on `testing/` and on the single caller stay.
 

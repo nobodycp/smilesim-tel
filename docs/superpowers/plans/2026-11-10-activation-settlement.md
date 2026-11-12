@@ -415,7 +415,13 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     cut before the commit; the opened sale through the dispatcher and the settlement over the scripted gateway;
     cancel against claim; everything against everything) and `provider-dispatch-off.spec.ts` (what ships cannot
     take a sale on the route or send one).
-  - `dispatches` is false everywhere (S.12a has not landed), so no sale takes the route.
+  - **Final audit (2026-11-13):** a dispatched task is not announced (`openTask({ announce: false })`): no
+    `task.opened` to the branch's handlers for a task they cannot take; T6, T7 and the exception tell who they
+    told before, once. `alongside` has one caller and writes through `recordIn(tx, …)` alone; a repeat never
+    reaches it (counted in the specs).
+  - `dispatches` is false everywhere (S.12a has not landed), so no sale takes the route. **For S.12a:**
+    `provider-dispatch-off.spec.ts` must be rewritten with it, and says how at its top: the constant becomes D18's
+    four conditions, false unless all four hold; the API still holds no adapter and no credential.
 
 - [ ] **S.12 Switching on, in two parts with a review between them.**
   - **S.12a The switch (D18), no adapter.** `worker.ts` runs the production settings check with the worker's list;

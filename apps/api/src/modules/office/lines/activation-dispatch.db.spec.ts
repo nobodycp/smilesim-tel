@@ -11,8 +11,9 @@ import { DuplicateGuardInterceptor } from '../../shared/duplicate-guard.intercep
 import { open } from '../../shared/secret-box';
 import { NoticeService } from '../notices/notice.service';
 import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../providers/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 import { ScriptedGateway } from '../providers/testing/scripted-gateway';
-import { PROVIDER_DISPATCH_NOTE, PROVIDER_FAILED_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
+import { PROVIDER_DISPATCH_NOTE, PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
 import { officeTestApp } from '../testing/office-test-app';
 import { operationKey } from './activation-settlement.rules';
 
@@ -30,7 +31,8 @@ const START = 1_000_000;
 const CODE = 'LPA:1$smdp.s11-opening.example$S11-SECRET-ACTIVATION-CODE-3T8V1N6Q';
 
 type Answer = { status: number; body: Record<string, unknown>; replay: string | undefined };
-type Fault = { model: string; operation: string } | null;
+/** One statement of the next request that fails: before it runs, or (`after`) once it has been written. */
+type Fault = { model: string; operation: string; after?: boolean } | null;
 
 suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
   useSealingKey();
@@ -52,9 +54,10 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
   let dispatch: ReturnType<typeof buildProviderDispatch>;
   const sid: Record<'owner' | 'pos' | 'other' | 'poor', string> = { owner: '', pos: '', other: '', poor: '' };
   let notices: { to: string[]; kind: string; payload: Record<string, unknown>; actorId: string }[] = [];
-  /** What the next request meets: a statement that fails, the notices down, or its connection cut before the commit. */
+  /** What the next request meets: one statement that fails. */
   let fault: Fault = null;
-  let noticeFault: null | 'down' | 'cut' = null;
+  /** How often the application recorded a provider operation: the step of T1 that a repeat must not take again. */
+  let recordIn: jest.SpyInstance;
 
   const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
   const number = () => `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
@@ -115,11 +118,13 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       query: {
         $allModels: {
           async $allOperations({ model, operation, args, query }) {
-            if (fault && fault.model === model && fault.operation === operation) {
-              fault = null;
-              throw new Error(`injected fault at ${model}.${operation}`);
-            }
-            return query(args);
+            if (!fault || fault.model !== model || fault.operation !== operation) return query(args);
+            const { after } = fault;
+            fault = null;
+            if (!after) throw new Error(`injected fault at ${model}.${operation}`);
+            // The statement is written, and the transaction then fails before it can commit.
+            await query(args);
+            throw new Error(`injected fault after ${model}.${operation}`);
           },
         },
       },
@@ -147,15 +152,6 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     const writer = new NoticeService();
     const notice = {
       write: async (tx: Parameters<NoticeService['write']>[0], audience: string[], actor: Parameters<NoticeService['write']>[2], draft: Parameters<NoticeService['write']>[3], options?: Parameters<NoticeService['write']>[4]) => {
-        if (noticeFault === 'down') {
-          noticeFault = null;
-          throw new Error('notices are down');
-        }
-        if (noticeFault === 'cut') {
-          // The transaction's own connection is cut after every write and before the commit.
-          noticeFault = null;
-          await tx.$executeRawUnsafe('SELECT pg_terminate_backend(pg_backend_pid())');
-        }
         const written = await writer.write(tx, audience.filter((id) => own.has(id)), actor, draft, options);
         notices.push({ to: written.map((row) => row.userId).sort(), kind: draft.kind, payload: draft.payload as unknown as Record<string, unknown>, actorId: actor.id });
         return written;
@@ -165,13 +161,14 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     gateway = new ScriptedGateway();
     gateway.dispatching.add(name('pkg'));
     ({ app, recorded } = await officeTestApp(auth, faulty as unknown as Record<string, unknown>, notice, [], gateway));
+    recordIn = jest.spyOn(app.get(ProviderOperationsService), 'recordIn');
     ({ app: real } = await officeTestApp(auth, plain as unknown as Record<string, unknown>, notice));
     dispatch = buildProviderDispatch(plain, {} as IORedis, gateway, `s11-${tag}`, notice);
   });
 
   afterEach(async () => {
     fault = null;
-    noticeFault = null;
+    recordIn.mockClear();
     notices = [];
     recorded.length = 0;
     gateway.calls.length = 0;
@@ -228,9 +225,11 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       // No line yet, and the provider was not called: by the request, or by anything it started.
       expect(await lines()).toHaveLength(0);
       expect(gateway.calls).toEqual([]);
-      // The branch is told a task opened, as for any task; the notice names no serial.
-      expect(notices.map((notice) => [notice.kind, notice.actorId])).toEqual([['task.opened', ids.pos]]);
-      expect(JSON.stringify(notices)).not.toContain(body.iccid as string);
+      // Nobody is told a task opened: there is nothing for the branch to take while the provider has it, and a
+      // notice saying so would be untrue. No notice row exists for it at all.
+      expect(notices).toEqual([]);
+      expect(await prisma.notice.count({ where: { userId: { in: people } } })).toBe(0);
+      expect(recordIn).toHaveBeenCalledTimes(1);
       // The request is on the activity record once, as an activation.
       expect(recorded.map(([, , draft, result]) => [(draft as { action: string }).action, result])).toEqual([['activate', 'ok']]);
       await expectInvariants();
@@ -254,7 +253,10 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       expect([said(byHand), said(elsewhere)]).toEqual(['ok task', 'ok task']);
       expect(await operations()).toEqual([]);
       expect(await outbox()).toEqual([]);
+      expect(recordIn).not.toHaveBeenCalled();
       expect((await tasks()).map((row) => row.note)).not.toContain(PROVIDER_DISPATCH_NOTE);
+      // A manual task is announced to the branch's handlers as it always was: one `task.opened` each.
+      expect(notices.map((notice) => [notice.kind, notice.actorId, notice.to])).toEqual([['task.opened', ids.pos, [ids.owner]], ['task.opened', ids.pos, [ids.owner]]]);
       expect(await wallet()).toMatchObject({ balance: START, held: 2 * PRICE });
       // They are the branch's at once, as before.
       const taskId = byHand.body.taskId as string;
@@ -300,7 +302,10 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       expect(after.tasks).toHaveLength(1);
       expect(after.operations).toHaveLength(1);
       expect(after.outbox).toBe(1);
-      expect(notices).toHaveLength(1);
+      // The step that records the operation ran for the first request and for none of the repeats, and no notice
+      // was written by any of them.
+      expect(recordIn).toHaveBeenCalledTimes(1);
+      expect(notices).toEqual([]);
       // The first is on the activity record; the repeats are not.
       expect(recorded.filter(([, , draft]) => (draft as { action: string }).action === 'activate')).toHaveLength(1);
       await expectInvariants();
@@ -347,7 +352,9 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       expect(await outbox()).toHaveLength(1);
       expect(await kinds()).toEqual(['hold']);
       expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
-      expect(notices).toHaveLength(1);
+      // Of all of them, one reached the step that records the operation; the others were answered before it.
+      expect(recordIn).toHaveBeenCalledTimes(1);
+      expect(notices).toEqual([]);
       expect(gateway.calls).toEqual([]);
       await expectInvariants();
     });
@@ -402,8 +409,8 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       ['the outbox message', () => { fault = { model: 'OutboxMessage', operation: 'create' }; }],
       ['the hold on the wallet', () => { fault = { model: 'Wallet', operation: 'update' }; }],
       ['the hold\'s ledger entry', () => { fault = { model: 'WalletEntry', operation: 'create' }; }],
-      ['the notices', () => { noticeFault = 'down'; }],
-      ['the connection, cut after every write and before the commit', () => { noticeFault = 'cut'; }],
+      ['the end: every write made, and a failure before the commit', () => { fault = { model: 'WalletEntry', operation: 'create', after: true }; }],
+      ['the message, once it is written', () => { fault = { model: 'OutboxMessage', operation: 'create', after: true }; }],
     ];
     it.each(faults)('a fault at %s: no task, no hold, no operation, no message, no notice; the same request then goes through', async (_where, arm) => {
       const start = await everything();
@@ -412,7 +419,8 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       arm();
       const failed = await activate('pos', body, idempotencyKey);
       expect(failed.status).toBe(500);
-      expect([fault, noticeFault]).toEqual([null, null]);
+      // The fault was met: the request did reach that statement.
+      expect(fault).toBeNull();
       expect(await everything()).toEqual(start);
       expect(gateway.calls).toEqual([]);
       await expectInvariants();
@@ -523,7 +531,12 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       const { taskId, operationId } = await opened();
       gateway.next({ left: true, answer: 'refused', error: 'refused' });
       expect(await dispatch.dispatcher.handle(operationId)).toBe('failed');
+      // Until now nobody at the branch was told of it.
+      expect(notices).toEqual([]);
       expect(await dispatch.settlement.apply(operationId)).toBe('handed-to-branch');
+      // Now it is the branch's (T6): its handlers are told once, from «النظام», and a repeat tells nobody again.
+      expect(await dispatch.settlement.apply(operationId)).toBe('skipped');
+      expect(notices.map((notice) => [notice.kind, notice.to, notice.payload.handlerName])).toEqual([['task.opened', [ids.owner], SYSTEM_SENDER_NAME]]);
       expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE, note: PROVIDER_FAILED_NOTE });
       expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
       expect((await send(app, 'owner', `/office/tasks/${taskId}/reject`, { reason: 'the provider refused it' })).status).toBeLessThan(300);
@@ -539,7 +552,11 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       const { taskId, operationId } = await opened();
       gateway.next({ left: true, answer: 'none', error: 'timeout' });
       expect(await dispatch.dispatcher.handle(operationId)).toBe('unknown');
-      await dispatch.settlement.apply(operationId);
+      expect(notices).toEqual([]);
+      // T7: the accounts that may decide are told once, in fixed words, and the handlers are not told to take it.
+      expect(await dispatch.settlement.apply(operationId)).toBe('awaiting-decision');
+      expect(await dispatch.settlement.apply(operationId)).toBe('skipped');
+      expect(notices.map((notice) => [notice.kind, notice.to, notice.payload.excerpt])).toEqual([['task.note', [ids.owner], PROVIDER_UNKNOWN_NOTE]]);
       expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE });
       expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
       expect((await send(app, 'owner', `/office/tasks/${taskId}/complete`, { note: 'x' })).status).toBe(409);
@@ -549,6 +566,21 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       expect(await dispatch.dispatcher.handle(operationId)).toBe('skipped');
       expect(gateway.calls).toHaveLength(1);
       await expectInvariants();
+    });
+
+    it('the provider confirms and the line cannot be made: the exception is told to the accounts that decide, once, and nobody is told to take the task', async () => {
+      const { taskId, operationId } = await opened({ msisdn: number() });
+      const row = await task(taskId);
+      expect(await dispatch.dispatcher.handle(operationId)).toBe('succeeded');
+      // The number went to a line meanwhile, past the reservation.
+      await prisma.line.create({ data: { msisdn: `${(row.msisdn as string).slice(0, 9)}${(Number((row.msisdn as string).slice(9)) + 1) % 10}`, iccid: row.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.other, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      expect(await dispatch.settlement.apply(operationId)).toBe('exception');
+      expect(await dispatch.settlement.apply(operationId)).toBe('skipped');
+      expect(notices.map((notice) => [notice.kind, notice.to, notice.payload.excerpt])).toEqual([['task.note', [ids.owner], PROVIDER_EXCEPTION_NOTES['sim-taken']]]);
+      expect(JSON.stringify(notices)).not.toContain(row.iccid as string);
+      expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE });
+      expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
+      await prisma.line.deleteMany({ where: { posId: ids.other } });
     });
 
     it('the submitter cancels while nothing has left: the operation is abandoned, the hold released, and a late message sends nothing', async () => {
