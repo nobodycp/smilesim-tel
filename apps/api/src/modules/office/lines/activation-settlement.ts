@@ -16,7 +16,7 @@ import { storableEsimCode } from './esim-code';
 import { lockClaim } from './line-state';
 import type { LinesRepository } from './lines.repository';
 import { renderActivationCode } from './office-esim';
-import { settlementClaim } from './reservation.rules';
+import { settlementClaim, type Claim } from './reservation.rules';
 import type { TaskCompletion } from './task-completion';
 
 const log = logger('ActivationSettlement');
@@ -120,8 +120,7 @@ export class ActivationSettlement {
         // 4. The line, the capture of the hold, the ledger's record and the task's result: the same code the
         //    branch's completion by hand runs.
         const handed = { ...(result.iccid ? { iccid: result.iccid } : {}), ...(result.msisdn ? { msisdn: result.msisdn } : {}) };
-        const { sale, amount } = await this.completion.applyClaimed({ tx, task, actor: submitter, note: '', line: null, handed, handedQr, claim });
-        return this.tasks.taskNotice(tx, 'done', task, submitter, { packageName: sale?.packageName ?? '', amount, handlerName: SYSTEM_SENDER_NAME }, false, true);
+        return applyAsSettlement(this.completion, this.tasks, tx, task, submitter, { handed, handedQr, claim });
       });
     } catch (error) {
       if (error instanceof NothingToApply) return 'skipped';
@@ -135,11 +134,8 @@ export class ActivationSettlement {
     return 'applied';
   }
 
-  /** The submitter as the actor of the entry (D12). A submitter that is gone is a target that is missing. */
-  private async submitterOf(task: TaskRow): Promise<Actor> {
-    const user = await this.lines.userById(task.submitterId);
-    if (!user) throw new OfficeFailure(404, 'NOT_FOUND');
-    return { id: user.id, loginName: user.loginName, nickname: user.nickname, layer: user.layer, isBranchOwner: user.isBranchOwner, grants: [], operatorId: user.id, impersonating: false };
+  private submitterOf(task: TaskRow): Promise<Actor> {
+    return submitterOf(this.lines, task);
   }
 
   /**
@@ -233,4 +229,26 @@ export async function tellDeciders(uow: UnitOfWork, tasks: TasksService, tx: Pri
   const audience = await tasks.branchAccountsWith(tx, DECISION_GRANT);
   const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, authorName: SYSTEM_SENDER_NAME, handlerName: SYSTEM_SENDER_NAME, excerpt: text };
   return uow.notice.write(tx, audience, actor, { kind: 'task.note', payload }, tellActor ? { tellActor: true } : {});
+}
+
+/**
+ * The task's submitter as the actor of everything a settlement writes (D12): the sale is the submitter's, whoever
+ * or whatever settled it. A submitter that is gone is a target that is missing.
+ */
+export async function submitterOf(lines: LinesRepository, task: OfficeTask): Promise<Actor> {
+  const user = await lines.userById(task.submitterId);
+  if (!user) throw new OfficeFailure(404, 'NOT_FOUND');
+  return { id: user.id, loginName: user.loginName, nickname: user.nickname, layer: user.layer, isBranchOwner: user.isBranchOwner, grants: [], operatorId: user.id, impersonating: false };
+}
+
+/**
+ * The money and the word of a settled activation (T5's last step, D12), inside a transaction that has claimed the
+ * task, locked the claim keys and stamped the operation: the line, the capture of the hold and the ledger's record
+ * in the **submitter's** name, and `task.done` from «النظام», told to the submitter too. The one place this is
+ * written: the settlement of a provider's verdict runs it, and so does a person's decision that confirms or
+ * corrects one (`provider-decisions.ts`), so a decision never moves the sale to the account that decided.
+ */
+export async function applyAsSettlement(completion: TaskCompletion, tasks: TasksService, tx: Prisma.TransactionClient, task: OfficeTask, submitter: Actor, put: { handed: { iccid?: string; msisdn?: string }; handedQr: string | null; claim: Claim }): Promise<WrittenNotice[]> {
+  const { sale, amount } = await completion.applyClaimed({ tx, task, actor: submitter, note: '', line: null, handed: put.handed, handedQr: put.handedQr, claim: put.claim });
+  return tasks.taskNotice(tx, 'done', task, submitter, { packageName: sale?.packageName ?? '', amount, handlerName: SYSTEM_SENDER_NAME }, false, true);
 }

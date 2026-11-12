@@ -354,9 +354,13 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     says only that a code was supplied.
   - A confirmation whose line cannot be made is recorded as `succeeded` with the exception of D16, not lost.
   - A correction that does not fit (the number or the serial is taken too) changes nothing and writes no
-    decision event: the closed list of event types has no "attempted", and the refusal is on the activity
-    record. **Open for the owner:** whether such an attempt should also be in the permanent record (a fifth
-    event type, a change to D15).
+    decision event; the refusal is on the activity record, which keeps the action, the task and the code only.
+    Owner's decision (2026-11-12): this stands, no fifth event type, D15 unchanged.
+  - **Whose sale it is (final review, owner's decision of 2026-11-12):** *confirm success* and *apply corrected*
+    write the wallet entries and `task.done` in the **submitter's** name with «النظام» as the handler (D12),
+    through the settlement's own function (`applyAsSettlement`); the account that decided is named in the
+    decision event and the activity record only. A first version named the decider on the entry; removed.
+  - A code given with a decision must have the form of an activation code (`isActivationCode`).
   - A proposal writes its event and nothing else (T10's table): no notice. The second account learns of it from
     the screens of S.10, which must list open proposals.
   - The handover of a declared failure to the branch (T6: the task's note and the handlers' notice) is the

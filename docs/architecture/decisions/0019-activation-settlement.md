@@ -389,14 +389,27 @@ come; the money must be safe in every state of the operation.
   the person says the provider handed back (the eSIM code sealed), or for a correction the stamp alone → `appliedAt`
   stamped by compare-and-set → `TaskCompletion.applyClaimed`, the code the settlement and the branch's
   completion run → `task.done`. One transaction: a fault anywhere leaves no event, no move, no line and the hold
-  as it was. The entry and the notice name the account that decided (it is the handler, as in a completion by
-  hand); D12's «النظام» is for the settlement, which nobody did.
+  as it was.
+- **Three people, three records (D12 as written; corrected in the final review of S.9, owner's decision of
+  2026-11-12).** A first version wrote the entry and the notice in the name of the account that decided; that
+  moved the sale to it and is removed.
+  - *Whose sale it is:* the task's **submitter**. The wallet entries (the release of the hold, the debit) and
+    `task.done` name the submitter as the actor, exactly as the settlement of a provider's verdict does, through
+    the same function (`applyAsSettlement` in `activation-settlement.ts`; `submitterOf`). The task's assignee
+    stays empty: nobody took it.
+  - *Who handled it:* **«النظام»**, the handler named on the notice. The submitter is told too (`tellActor`).
+  - *Who decided:* the account that confirmed or corrected, named in `ProviderDecisionEvent` (id and login, for
+    good) and on the activity record (`provider_decision`), and in no entry, notice or task column.
+  The exception a confirmation may end in is announced the same way (from «النظام», in the submitter's name, to
+  every account that may decide). An approved release is a rejection by a person and keeps naming the account
+  that approved it, as a reject by hand does; it posts no sale.
 - **What is put on the line:** what the person gave, else what the provider handed back, else what the task
   named. A person who says the provider activated a line names the number: when none is known the answer is
   `400 DECISION_NUMBER_REQUIRED`, and none is made up (the settlement's `freshNumber` is not used here). A serial
   given is held to the company's SIM rules. An eSIM needs its code from one of the three: else
   `400 ESIM_CODE_REQUIRED` and nothing is written, which is how *apply corrected* on `esim-code-missing` "must
-  be given the code". The code is rendered and sealed before the transaction (`storableEsimCode`); the decision
+  be given the code". A code that is given must have the form of one (`isActivationCode`:
+  `LPA:1$<address>$<matching id>`, printable, no spaces): anything else is the same refusal, before it is sealed. The code is rendered and sealed before the transaction (`storableEsimCode`); the decision
   event has no column for it and carries `suppliedEsimCode` only; no notice, activity row or log line carries it.
   On *apply corrected* the operation's own result columns are not rewritten: they stay what the provider
   reported, and `applyError` stays as the record of why it could not be applied; the corrected number and serial
@@ -411,8 +424,10 @@ come; the money must be safe in every state of the operation.
   taken (`409 NUMBER_TAKEN`, `409 SIM_TAKEN`), and everything rolls back: the exception, the hold and the record
   are as they were. No decision event is written for it, because nothing was decided that took effect and the
   closed list of event types (`proposed`, `approved`, `refused`, `applied`) has none for an attempt; the attempt
-  is on the activity record (`provider_decision`, `fail`, the code), which is purged after its retention. Whether
-  an attempt belongs in the permanent record is left to the owner: it would add an event type, a change to D15.
+  is on the activity record (`provider_decision`, `fail`, the code), which is purged after its retention. That
+  row holds the action, the task's id and the refusal's code, and nothing that was sent (no number, serial, note,
+  reference or code). **Owner's decision, 2026-11-12:** this stands; no fifth event type is added and D15 is not
+  changed.
 - **T10, a proposal** (*declare failure*, *release after success*): the event, under the operation's lock, and
   nothing else: no notice, no change to the operation, the task or the hold. The unique `(operationId, sequence)`
   is the second barrier: a writer that lost the row inserts nothing and is refused.

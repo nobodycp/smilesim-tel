@@ -12,7 +12,7 @@ import { purgeActivity, purgeBefore } from '../activity/activity-log';
 import { NoticeService } from '../notices/notice.service';
 import { ScriptedGateway } from '../providers/testing/scripted-gateway';
 import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../providers/operations/provider-operations.repository';
-import { PROVIDER_EXCEPTION_NOTES, PROVIDER_RELEASED_NOTE } from '../stored-text';
+import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_RELEASED_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
 import { officeTestApp } from '../testing/office-test-app';
 import { operationKey } from './activation-settlement.rules';
 
@@ -238,7 +238,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       const row = await operation(operationId);
       expect(row).toMatchObject({ status: 'succeeded', providerRef: 'PORTAL-REF-77', applyError: null, lastError: null });
       expect(row.appliedAt).toBeInstanceOf(Date);
-      expect(await task(taskId)).toMatchObject({ status: 'done', assigneeId: ids.acc1 });
+      expect(await task(taskId)).toMatchObject({ status: 'done', assigneeId: null });
       const made = await lines();
       expect(made).toHaveLength(1);
       expect(made[0]).toMatchObject({ msisdn: opened.msisdn, iccid: opened.iccid, status: 'active', packageId: ids.pkg });
@@ -253,8 +253,9 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(written[0].createdAt).toBeInstanceOf(Date);
       // No message: nothing is left for the settlement, and nothing is ever sent again.
       expect(await prisma.outboxMessage.count({ where: { aggregateId: operationId } })).toBe(0);
-      // The point of sale is told its activation is done, by the account that decided.
-      expect(notices.filter((notice) => notice.kind === 'task.done')).toEqual([expect.objectContaining({ actorId: ids.acc1, to: expect.arrayContaining([ids.pos]) })]);
+      // The point of sale, which submitted it, is told its activation is done: in its own name, from «النظام» (D12).
+      expect(notices.filter((notice) => notice.kind === 'task.done')).toEqual([expect.objectContaining({ actorId: ids.pos, to: expect.arrayContaining([ids.pos]), payload: expect.objectContaining({ handlerName: SYSTEM_SENDER_NAME }) })]);
+      expect((await prisma.walletEntry.findMany({ where: { userId: ids.pos } })).map((entry) => entry.actorId)).toEqual([ids.pos, ids.pos, ids.pos]);
       // A second time, by anyone: refused, and nothing more is made or charged.
       expect(said(await decide('acc1', taskId, 'confirm-success'))).toBe('409 DECISION_NOT_APPLICABLE');
       expect(said(await decide('owner', taskId, 'confirm-success'))).toBe('409 DECISION_NOT_APPLICABLE');
@@ -321,8 +322,8 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
       expect(await lines()).toHaveLength(0);
       expect(await steps(operationId)).toEqual(['1 applied confirm-success acc1']);
-      // The other accounts that may decide are told, in fixed words; the one who decided is not told what it did.
-      expect(notices.filter((notice) => notice.kind === 'task.note')).toEqual([expect.objectContaining({ to: [ids.acc2, ids.owner].sort(), payload: expect.objectContaining({ taskId, excerpt: PROVIDER_EXCEPTION_NOTES['number-taken'] }) })]);
+      // The accounts that may decide are told as the settlement tells them: from «النظام», in the submitter's name.
+      expect(notices.filter((notice) => notice.kind === 'task.note')).toEqual([expect.objectContaining({ actorId: ids.pos, to: [ids.acc1, ids.acc2, ids.owner].sort(), payload: expect.objectContaining({ taskId, excerpt: PROVIDER_EXCEPTION_NOTES['number-taken'] }) })]);
       // The sweeper leaves it alone, and it is closed by a correction: one line, one capture.
       expect(await dispatch.settlement.apply(operationId)).toBe('skipped');
       const msisdn = number();
@@ -339,6 +340,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       const before = await snapshot(taskId, operationId);
       expect(before.task).toMatchObject({ esim: true, esimQr: null });
       expect(said(await decide('owner', taskId, 'confirm-success'))).toBe('400 ESIM_CODE_REQUIRED');
+      expect(said(await decide('owner', taskId, 'confirm-success', { esimCode: 'not an activation code' }))).toBe('400 ESIM_CODE_REQUIRED');
       expect(await snapshot(taskId, operationId)).toEqual(before);
       expect(await events(operationId)).toEqual([]);
       const iccid = serial();
@@ -357,6 +359,54 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(everything).not.toContain(CODE);
       expect(everything).not.toContain('S9-SECRET');
       expect(everything).not.toContain((row.resultEsimCode as string).slice(10, 40));
+    });
+  });
+
+  // ── D12: whose sale it is ───────────────────────────────────────────────────────────────────────────────
+
+  describe('the submitter, the point of sale and the account that decides are three accounts (D12)', () => {
+    const cases: [string, State, Record<string, unknown>][] = [['confirm-success', 'unknown', {}], ['apply-corrected', 'exception', { msisdn: '' }]];
+
+    it.each(cases)('%s: the entry and the notice are the submitter\'s with «النظام» as the handler; the decider is in the decision record and the activity record only', async (decision, state, over) => {
+      // Submitted by the clerk for the point of sale; decided by the first accountant.
+      const { taskId, operationId } = await waiting(state, {}, {}, 'clerk');
+      expect(await task(taskId)).toMatchObject({ submitterId: ids.clerk, posId: ids.pos });
+      recorded.length = 0;
+      notices = [];
+      expect(said(await decide('acc1', taskId, decision, decision === 'apply-corrected' ? { ...over, msisdn: number() } : over))).toBe('ok applied');
+
+      // The money: the point of sale's wallet, every entry in the submitter's name. Nothing names the decider.
+      const entries = await prisma.walletEntry.findMany({ where: { userId: ids.pos } });
+      expect(entries.map((entry) => entry.kind).sort()).toEqual(['activate', 'hold', 'release']);
+      expect(entries.map((entry) => entry.actorId)).toEqual([ids.clerk, ids.clerk, ids.clerk]);
+      expect(await prisma.walletEntry.count({ where: { OR: [{ userId: ids.acc1 }, { actorId: ids.acc1 }] } })).toBe(0);
+      expect(await wallet()).toMatchObject({ balance: START - PRICE, held: 0 });
+      // The task: done, still its submitter's, taken by nobody.
+      expect(await task(taskId)).toMatchObject({ status: 'done', submitterId: ids.clerk, posId: ids.pos, assigneeId: null });
+      expect(await lines()).toHaveLength(1);
+      // The notice: in the submitter's name, from «النظام», to the submitter and the point of sale.
+      const done = notices.filter((notice) => notice.kind === 'task.done');
+      expect(done).toHaveLength(1);
+      expect(done[0]).toMatchObject({ actorId: ids.clerk, payload: expect.objectContaining({ taskId, handlerName: SYSTEM_SENDER_NAME }) });
+      expect(done[0].to).toEqual(expect.arrayContaining([ids.clerk, ids.pos]));
+      expect(JSON.stringify(notices)).not.toContain('acc1');
+      expect((await prisma.notice.findMany({ where: { userId: { in: people } } })).every((row) => row.actorId === ids.clerk)).toBe(true);
+      // The decision: the account that decided, in the permanent record and on the activity record.
+      const written = await events(operationId);
+      expect(written).toHaveLength(1);
+      expect(written[0]).toMatchObject({ type: 'applied', decision, accountId: ids.acc1, accountLoginName: name('acc1') });
+      expect(recorded.map(([gate, , draft, result]) => [(gate as { sessionId: string }).sessionId, (draft as { action: string }).action, result])).toEqual([[sid.acc1, 'provider_decision', 'ok']]);
+      await expectWalletAddsUp();
+    });
+
+    it('a confirmation whose line cannot be made tells the deciders in the submitter\'s name too, and moves no money', async () => {
+      const { taskId, operationId } = await waiting('unknown', {}, {}, 'clerk');
+      await takenLine((await task(taskId)).msisdn as string);
+      notices = [];
+      expect((await decide('acc1', taskId, 'confirm-success')).body).toEqual({ ok: true, outcome: 'exception', reason: 'number-taken' });
+      expect(notices).toEqual([expect.objectContaining({ kind: 'task.note', actorId: ids.clerk, to: [ids.acc1, ids.acc2, ids.owner].sort() })]);
+      expect((await events(operationId))[0]).toMatchObject({ accountId: ids.acc1 });
+      expect(await kinds()).toEqual(['hold']);
     });
   });
 
@@ -416,7 +466,18 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(said(await answer('owner', taskId, true))).toBe('409 DECISION_NO_PROPOSAL');
       expect(said(await decide('owner', taskId, 'confirm-success'))).toBe('409 DECISION_NOT_APPLICABLE');
       // The settlement hands it to the branch (T6), which rejects it: the hold goes back once.
+      // Neither the proposal nor the approval told anybody anything or moved the hold.
+      expect(notices.filter((notice) => notice.payload.taskId === taskId && notice.kind !== 'task.opened')).toEqual([]);
       expect(await dispatch.settlement.apply(operationId)).toBe('handed-to-branch');
+      // Handed over once: a repeated message and the sweeper find nothing to do and tell nobody again.
+      expect(await dispatch.settlement.apply(operationId)).toBe('skipped');
+      expect(await dispatch.settlement.apply(operationId)).toBe('skipped');
+      const handover = notices.filter((notice) => notice.payload.taskId === taskId && notice.payload.handlerName === SYSTEM_SENDER_NAME);
+      expect(handover).toHaveLength(1);
+      expect(handover[0]).toMatchObject({ kind: 'task.opened', actorId: ids.pos });
+      expect(await task(taskId)).toMatchObject({ status: 'working', held: PRICE, note: PROVIDER_FAILED_NOTE });
+      expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
+      expect(await kinds()).toEqual(['hold']);
       expect(said(await post('owner', `/office/tasks/${taskId}/reject`, { reason: 'the provider did not run it' }))).toBe('ok undefined');
       expect(await task(taskId)).toMatchObject({ status: 'cancelled' });
       expect(await wallet()).toMatchObject({ balance: START, held: 0 });
@@ -520,7 +581,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(row).toMatchObject({ status: 'succeeded', providerRef: 'REF-1', applyError: 'number-taken' });
       expect(row.appliedAt).toBeInstanceOf(Date);
       expect((await lines()).map((line) => line.msisdn)).toEqual([msisdn]);
-      expect(await task(taskId)).toMatchObject({ status: 'done', msisdn, assigneeId: ids.acc1 });
+      expect(await task(taskId)).toMatchObject({ status: 'done', msisdn, assigneeId: null });
       expect(await wallet()).toMatchObject({ balance: START - PRICE, held: 0 });
       expect(await kinds()).toEqual(['activate', 'hold', 'release']);
       expect(await steps(operationId)).toEqual(['1 applied apply-corrected acc1']);
@@ -555,6 +616,11 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(await events(operationId)).toEqual([]);
       // The attempt is on the activity record, as a refusal with its code.
       expect(recorded.map(([, , draft, result, reason]) => [(draft as { action: string }).action, result, reason]).filter(([action]) => action === 'provider_decision')).toEqual([['provider_decision', 'fail', 'NUMBER_TAKEN'], ['provider_decision', 'fail', 'SIM_TAKEN']]);
+      // What the activity record keeps of a refused attempt: the action, the task and the refusal's code. Not the
+      // number, the serial, the note, the reference or anything else that was sent.
+      const kept = JSON.stringify(recorded.map(([, , draft, result, reason]) => [draft, result, reason]));
+      for (const sent of [takenNumber, takenSerial, NOTE, EVIDENCE.providerRef]) expect(kept).not.toContain(sent);
+      expect(recorded.every(([, , draft]) => Object.keys(draft as object).sort().join() === 'action,subjectKind,subjectRef')).toBe(true);
       expect(said(await decide('owner', taskId, 'apply-corrected', { msisdn: number() }))).toBe('ok applied');
       await expectWalletAddsUp();
     });
@@ -575,6 +641,10 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(said(await decide('owner', taskId, 'apply-corrected'))).toBe('400 ESIM_CODE_REQUIRED');
       expect(said(await decide('owner', taskId, 'apply-corrected', { esimCode: '    ' }))).toBe('400 ESIM_CODE_REQUIRED');
       expect(said(await decide('owner', taskId, 'apply-corrected', { esimCode: 'x'.repeat(513) }))).toBe('400 INVALID');
+      // Not an activation code: a number, a sentence, a code with a space or with no address.
+      for (const esimCode of ['0521234567', 'the code is on the portal', 'LPA:1$smdp.example.com$AB CD', 'LPA:1$$ABCD', 'LPA:2$smdp.example.com$ABCD', `${CODE}\nmore`]) {
+        expect(said(await decide('owner', taskId, 'apply-corrected', { esimCode }))).toBe('400 ESIM_CODE_REQUIRED');
+      }
       expect(await snapshot(taskId, operationId)).toEqual(before);
       expect(await events(operationId)).toEqual([]);
 
@@ -888,6 +958,9 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
         decide('owner', u.taskId, 'confirm-success'), decide('acc2', u.taskId, 'declare-failure'), answer('acc2', u.taskId, true), answer('owner', u.taskId, false),
         post('owner', `/office/tasks/${u.taskId}/reject`, { reason: 'mixed' }), post('pos', `/office/tasks/${u.taskId}/cancel`), post('acc2', `/office/tasks/${u.taskId}/complete`, { note: 'mixed' }),
         dispatch.operations.settle(u.operationId, 1, late).then(() => dispatch.settlement.apply(u.operationId), () => 'refused'), dispatch.settlement.apply(u.operationId),
+        // The dispatcher and recovery come by too: neither may take an operation that is unknown or settled.
+        dispatch.operations.claim(u.operationId).then((attempt) => `claim:${String(attempt)}`), dispatch.operations.recover(u.operationId).then((status) => `recover:${String(status)}`),
+        dispatch.operations.claim(e.operationId).then((attempt) => `claim:${String(attempt)}`),
         decide('owner', e.taskId, 'apply-corrected', { msisdn: number() }), decide('acc2', e.taskId, 'release-after-success'), answer('acc2', e.taskId, true), answer('owner', e.taskId, true), answer('owner', e.taskId, false),
         post('owner', `/office/tasks/${e.taskId}/reject`, { reason: 'mixed' }), post('pos', `/office/tasks/${e.taskId}/cancel`), dispatch.settlement.apply(e.operationId),
       ])));
@@ -896,6 +969,11 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
     expect(settled.filter((run) => run.status === 'rejected')).toEqual([]);
     const statuses = settled.map((run) => (run.status === 'fulfilled' && typeof run.value === 'object' ? run.value.status : 200));
     expect(statuses.filter((status) => status >= 500)).toEqual([]);
+    // Nothing was taken for another send: every claim and every recovery found nothing to do.
+    const dispatcher = settled.flatMap((run) => (run.status === 'fulfilled' && typeof run.value === 'string' && /^(claim|recover):/.test(run.value) ? [run.value] : []));
+    expect(dispatcher).toHaveLength(24);
+    expect(new Set(dispatcher)).toEqual(new Set(['claim:null', 'recover:null']));
+    expect(await prisma.outboxMessage.count({ where: { topic: OPERATION_REQUESTED, aggregateId: { in: [...unknown, ...exceptions].map((row) => row.operationId) } } })).toBe(0);
     // Each task ended in exactly one way, and its money says the same.
     for (const { taskId, operationId } of [...unknown, ...exceptions]) {
       const [current, row, sale, releases] = await Promise.all([

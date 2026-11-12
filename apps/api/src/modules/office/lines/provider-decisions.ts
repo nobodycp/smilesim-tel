@@ -13,13 +13,13 @@ import { simRefusal, simRulesOf } from '../rules/sim-rules';
 import { PROVIDER_EXCEPTION_NOTES, PROVIDER_RELEASED_NOTE } from '../stored-text';
 import { lockedTask, lockedTaskOperation } from '../tasks/task-operation';
 import { TasksService } from '../tasks/tasks.service';
-import { tellDeciders } from './activation-settlement';
+import { applyAsSettlement, submitterOf, tellDeciders } from './activation-settlement';
 import { DECISION_GRANT, applyErrorOf, decisionStep, needsSecondAccount, type ApplyError, type Decision, type DecisionEvent, type DecisionEvidence, type DecisionRefusal, type DecisionRequest, type DecisionStep, type TaskOperation } from './activation-settlement.rules';
 import { esimCodeOrFail, storableEsimCode } from './esim-code';
 import { lockClaim } from './line-state';
 import { LinesRepository } from './lines.repository';
 import { ProviderDecisionApprovalBody, ProviderDecisionBody } from './lines.schemas';
-import { renderActivationCode } from './office-esim';
+import { isActivationCode, renderActivationCode } from './office-esim';
 import type { Claim } from './reservation.rules';
 import { TaskCompletion } from './task-completion';
 
@@ -58,8 +58,10 @@ export type ApprovalOutcome = { ok: true; outcome: 'approved' | 'refused' };
  * effect in the same transaction. It never calls a provider and never sends anything again.
  *
  * - *Confirm success* and *apply corrected* make the line through the code the settlement and the branch's
- *   completion run (`TaskCompletion.applyClaimed`), under the same three guards: the task claimed, the
- *   operation stamped once, the serial and the number locked. One account.
+ *   completion run, through the settlement's own last step (`applyAsSettlement`), under the same three guards: the
+ *   task claimed, the operation stamped once, the serial and the number locked. One account. The entry and the
+ *   notice name the task's submitter as the actor and «النظام» as the handler (D12); the account that decided is
+ *   named in the decision event and on the activity record only.
  * - *Declare failure* and *release after success* are a proposal that writes its event and nothing else; the
  *   effect belongs to the approval by another account (T11).
  *
@@ -185,6 +187,10 @@ export class ProviderDecisions {
 
   private async applyNow(actor: Actor, task: OfficeTask, operation: ProviderOperation, decision: Decision, asked: Asked, evidence: DecisionEvidence, given: Given): Promise<DecisionOutcome> {
     await this.assertSerial(task, given.iccid);
+    // A code that is given must be an activation code: anything else is refused before it is sealed or stored.
+    if (given.esimCode && !isActivationCode(given.esimCode)) fail(400, 'ESIM_CODE_REQUIRED');
+    // The sale is its submitter's, whoever decides (D12): the entry and the notices are written in that name.
+    const submitter = await submitterOf(this.lines, task);
     // What goes on the line: what the person gave, else what the provider handed back, else what the task named.
     const claim: Claim = { iccid: given.iccid ?? operation.resultIccid ?? task.iccid, msisdn: given.msisdn ?? operation.resultMsisdn ?? task.msisdn };
     // A person who says the provider activated a line says which number: none is made up here.
@@ -200,7 +206,7 @@ export class ProviderDecisions {
     try {
       written = await this.uow.runTx(async (tx) => {
         // 1. The task, claimed: `working → done`, guarded.
-        const claimed = await this.lines.claimTask(tx, task.id, actor.id);
+        const claimed = await this.lines.claimTask(tx, task.id, null);
         if (claimed.count !== 1) fail(409, 'DECISION_NOT_APPLICABLE');
         // 2. The serial and the number, locked before the operation and the wallet.
         await lockClaim(tx, claim);
@@ -214,8 +220,9 @@ export class ProviderDecisions {
           : await this.operations.stampAppliedCorrected(tx, locked.id, now);
         if (!stamped) fail(409, 'DECISION_NOT_APPLICABLE');
         // 4. The line, the capture of the hold, the ledger's record and the task's result: the settlement's code.
-        const { sale, amount } = await this.completion.applyClaimed({ tx, task, actor, note: '', line: null, handed, handedQr, claim });
-        return this.tasks.taskNotice(tx, 'done', task, actor, { packageName: sale?.packageName ?? '', amount, handlerName: actor.nickname });
+        //    Written in the submitter's name with «النظام» as the handler (D12): the sale stays the submitter's. The
+        //    account that decided is in the decision event above and on the activity record, and nowhere else.
+        return applyAsSettlement(this.completion, this.tasks, tx, task, submitter, { handed, handedQr, claim });
       });
     } catch (error) {
       // The line could not be made for a business reason: the transaction rolled back whole. A confirmation is
@@ -223,7 +230,7 @@ export class ProviderDecisions {
       // fit either changes nothing: the exception and the hold stay, and the refusal says what was taken.
       const reason = error instanceof OfficeFailure ? applyErrorOf(error) : null;
       if (!reason || decision !== 'confirm-success') throw error;
-      return this.confirmAsException(actor, task, asked, evidence, columns, suppliedEsimCode, reason);
+      return this.confirmAsException(actor, submitter, task, asked, evidence, columns, suppliedEsimCode, reason);
     }
     await this.uow.publishQuietly(written);
     log.log(`task ${task.id}: its provider operation was applied by a person's decision (${decision})`);
@@ -235,13 +242,14 @@ export class ProviderDecisions {
    * handed back, and the reason, in one transaction. The task stays `working` with its hold and its reservation;
    * *apply corrected* or the approved release closes it.
    */
-  private async confirmAsException(actor: Actor, task: OfficeTask, asked: Asked, evidence: DecisionEvidence, columns: ReturnType<ProviderOperationsService['storableResult']>, suppliedEsimCode: boolean, reason: ApplyError): Promise<DecisionOutcome> {
+  private async confirmAsException(actor: Actor, submitter: Actor, task: OfficeTask, asked: Asked, evidence: DecisionEvidence, columns: ReturnType<ProviderOperationsService['storableResult']>, suppliedEsimCode: boolean, reason: ApplyError): Promise<DecisionOutcome> {
     const written = await this.uow.runTx(async (tx) => {
       const { step, locked } = await this.lockedStep(tx, actor, asked, task);
       await this.operations.recordDecision(tx, this.eventOf(step, locked.id, actor, evidence, suppliedEsimCode));
       const recorded = (await this.operations.confirmUnknown(tx, locked.id, evidence.providerRef, columns)) && (await this.operations.stampApplyError(tx, locked.id, reason, new Date()));
       if (!recorded) fail(409, 'DECISION_NOT_APPLICABLE');
-      return tellDeciders(this.uow, this.tasks, tx, task, actor, PROVIDER_EXCEPTION_NOTES[reason], false);
+      // As T5′ of the settlement: from «النظام», in the submitter's name, to every account that may decide.
+      return tellDeciders(this.uow, this.tasks, tx, task, submitter, PROVIDER_EXCEPTION_NOTES[reason], true);
     });
     await this.uow.publishQuietly(written);
     log.warn(`task ${task.id}: a person confirmed the provider's success and the line could not be made (${reason}); the hold is kept`);
