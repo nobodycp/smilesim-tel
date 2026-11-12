@@ -245,6 +245,30 @@ stays `working` with its hold and its reservation; the authorised accounts are n
 operation that has an `applyError` alone; a technical error leaves none and is retried. The operation is
 terminal, so it is never sent again, and no path releases the hold except the approved release of D15.
 
+> **Proposed amendment to D16 (slice S.8, 2026-11-12) — pending the owner's approval; not final until then.**
+> A fourth reason joins the closed list: **`esim-code-missing`**. The provider confirmed an eSIM activation and
+> handed back no activation code, and the task carries none. **No line is created without its code**: T5 is not
+> attempted, and T5′ writes the exception exactly as for the other three (the operation stays `succeeded` with
+> its result, the task `working` with its hold and its reservation, the authorised accounts are told once, the
+> sweeper leaves it alone, nothing is sent again). It is closed like any exception, by D15's *apply corrected*
+> (one account, which supplies the code) or the approved *release after success* (two accounts).
+> *Why:* the business rule is that an eSIM's data arrives from the provider (`docs/project-plan.md`, «الشريحة
+> الإلكترونية … وبياناتها تصل تلقائياً من المزود»); the gateway's contract lets a provider leave any part out
+> (`ActivationResult`: "each part is there only when the provider chose it"), and `storedResult` drops a code
+> that is empty or over its limit; no provider's API document exists yet that names another channel for the
+> code. Without this reason the choice was a line the customer cannot use, or a technical error retried for ever.
+> *What it changes:* `APPLY_ERRORS`, and the CHECK on `ProviderOperation.applyError`, replaced by its own
+> migration (`20261112120000_apply_error_esim_code_missing`); the migration of S.1 is not edited.
+> *If it is not approved:* remove the value from `APPLY_ERRORS`, the pre-check in `activation-settlement.ts` and
+> its note; the widened CHECK may stay (a value nothing writes) or be narrowed by a further migration.
+> A code that is present and cannot be opened is a technical fault, not this exception.
+
+> **How D12 is carried out (slice S.8).** D12 stands as written: the entry and the notices of a settlement name
+> the submitter as the actor and «النظام» as the handler. `NoticeService.write` leaves the actor out of a notice's
+> audience, because nobody is told what they did themselves; a settlement is not done by the submitter, so those
+> notices alone are written with `tellActor`, and the submitter is told when it is in the audience (a point of
+> sale that submitted its own activation hears that it is done). No other notice uses it.
+
 **D17. eSIM activation data is protected at rest, in transit inside the system, and on read.**
 
 - **Sealed at rest** with `shared/secret-box.ts` (AES-256-GCM, `SECRETS_KEY`): `ProviderOperation.resultEsimCode`

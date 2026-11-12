@@ -132,7 +132,7 @@ suite('activation settlement schema (PostgreSQL)', () => {
       const { operation } = await seed(tx);
       const { id } = await operation();
       const set = (data: Prisma.ProviderOperationUncheckedUpdateInput) => tx.providerOperation.update({ where: { id }, data });
-      for (const applyError of ['number-taken', 'sim-taken', 'target-missing', null]) await set({ applyError });
+      for (const applyError of ['number-taken', 'sim-taken', 'target-missing', 'esim-code-missing', null]) await set({ applyError });
       await refused(tx, () => set({ applyError: 'something-else' }), /applyError_known/);
       const code = 'LPA:1$smdp.example.com$ACTIVATION-CODE-123';
       await refused(tx, () => set({ resultEsimCode: code }), /resultEsimCode_sealed/);

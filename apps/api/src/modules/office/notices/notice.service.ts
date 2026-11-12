@@ -97,8 +97,14 @@ export class NoticeService implements OnModuleDestroy {
     if (this.bus instanceof RedisBus) await this.bus.close();
   }
 
-  async write(tx: Prisma.TransactionClient, userIds: string[], actor: Actor, draft: NoticeDraft): Promise<WrittenNotice[]> {
-    const recipients = [...new Set(userIds)].filter((id) => id && id !== actor.id);
+  /**
+   * Writes one notice for each recipient. The account the notice is from is left out of its own audience: nobody
+   * is told what they have just done themselves. `tellActor` is the one exception, for a notice written in an
+   * account's name by something else: the settlement of a provider's verdict names the task's submitter as the
+   * actor (ADR 0019, D12) and the submitter did not do it, so the submitter is told like any other recipient.
+   */
+  async write(tx: Prisma.TransactionClient, userIds: string[], actor: Actor, draft: NoticeDraft, options: { tellActor?: boolean } = {}): Promise<WrittenNotice[]> {
+    const recipients = [...new Set(userIds)].filter((id) => id && (options.tellActor === true || id !== actor.id));
     if (recipients.length === 0) return [];
     const href = hrefFor(draft);
     const createdAt = new Date();

@@ -170,6 +170,11 @@ export class ProviderOperationsService {
     return this.repo.unsettledIds(this.uow.prisma, limit);
   }
 
+  /** The operations of tasks whose answer is not known: the settlement makes sure each was announced. */
+  awaitingAnswer(limit: number): Promise<string[]> {
+    return this.repo.unknownTaskOperationIds(this.uow.prisma, limit);
+  }
+
   /** The operation as it is stored, with its task and what the provider handed back; null when there is none. */
   stored(id: string) {
     return this.repo.operationById(this.uow.prisma, id);

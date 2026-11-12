@@ -7,10 +7,10 @@ import { createPrismaClient } from '../../../db';
 import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildActivationSettlement, buildProviderDispatch } from '../../../provider-dispatch';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { OfficeFailure } from '../../shared/office-failure';
-import { open } from '../../shared/secret-box';
+import { open, seal } from '../../shared/secret-box';
 import { capturedOutput } from '../../shared/testing/captured-output';
 import type { Db } from '../kernel/unit-of-work';
-import type { NoticeService } from '../notices/notice.service';
+import { NoticeService } from '../notices/notice.service';
 import { OutboxRelay } from '../outbox/outbox-relay';
 import { OutboxRepository, type ClaimedMessage } from '../outbox/outbox.repository';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';
@@ -51,8 +51,8 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
   let redis: IORedis | null = null;
   let pos: { sessionId: string };
   let owner: { sessionId: string };
-  /** Every notice written: who it went to, its kind and its payload. */
-  let notices: { to: string[]; kind: string; payload: Record<string, unknown>; sender: string }[] = [];
+  /** Every notice written: who it went to, its kind and payload, and the account it is from (its name and id). */
+  let notices: { to: string[]; kind: string; payload: Record<string, unknown>; sender: string; actorId: string }[] = [];
   /** How many of the next notice writes fail: a fault after the line and the money were written. */
   let breakNotices = 0;
 
@@ -60,6 +60,11 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     override async unsettledIds(db: Db, limit: number): Promise<string[]> {
       const mine = new Set((await db.providerOperation.findMany({ where: { providerId: ids.provider }, select: { id: true } })).map((row) => row.id));
       return (await super.unsettledIds(db, 10_000)).filter((id) => mine.has(id)).slice(0, limit);
+    }
+
+    override async unknownTaskOperationIds(db: Db, limit: number): Promise<string[]> {
+      const mine = new Set((await db.providerOperation.findMany({ where: { providerId: ids.provider }, select: { id: true } })).map((row) => row.id));
+      return (await super.unknownTaskOperationIds(db, 10_000)).filter((id) => mine.has(id)).slice(0, limit);
     }
   }
 
@@ -133,19 +138,20 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
     await prisma.package.create({ data: { id: ids.pkg, code: `s8-${tag}`, name: 's8 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
-    // A real notice goes to every branch user in the database, the accounts of other spec files included. Here a
-    // notice is written, inside the caller's transaction, for this spec's own accounts only, and kept in `notices`.
+    // The real notice writer, so who is left out and who is told is the production rule. A real notice goes to
+    // every branch user in the database, the accounts of other spec files included: the audience is narrowed to
+    // this spec's own accounts before it is written, and what was written is kept in `notices`.
     const own = new Set<string>([ids.owner, ids.accountant, ids.clerk, ids.pos]);
+    const real = new NoticeService();
     const notice = {
-      write: async (tx: Db, audience: string[], actor: { id: string; nickname: string }, draft: { kind: string; payload: Record<string, unknown> }) => {
+      write: async (tx: Parameters<NoticeService['write']>[0], audience: string[], actor: Parameters<NoticeService['write']>[2], draft: Parameters<NoticeService['write']>[3], options?: Parameters<NoticeService['write']>[4]) => {
         if (breakNotices > 0) {
           breakNotices -= 1;
           throw new Error('notices are down');
         }
-        const to = [...new Set(audience)].filter((id) => id !== actor.id && own.has(id)).sort();
-        await tx.notice.createMany({ data: to.map((userId) => ({ userId, kind: draft.kind, payload: draft.payload as never, actorId: actor.id, actorName: actor.nickname, href: '/tasks' })) });
-        notices.push({ to, kind: draft.kind, payload: draft.payload, sender: actor.nickname });
-        return [];
+        const rows = await real.write(tx, audience.filter((id) => own.has(id)), actor, draft, options);
+        notices.push({ to: rows.map((row) => row.userId).sort(), kind: draft.kind, payload: draft.payload as unknown as Record<string, unknown>, sender: actor.nickname, actorId: actor.id });
+        return rows;
       },
       publish: async () => undefined,
     } as unknown as NoticeService;
@@ -264,8 +270,10 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       expect(charge).toMatchObject({ amount: -PRICE, packagePrice: PRICE, lineId: line.id, msisdn: line.msisdn, actorId: ids.pos, balanceAfter: START - PRICE });
       expect((await operation(operationId)).appliedAt).toBeInstanceOf(Date);
       expect(await operation(operationId)).toMatchObject({ status: 'succeeded', applyError: null });
-      // The point of sale is told by the system, as it would be by a handler.
-      expect(told('task.done', taskId)).toEqual([{ to: [ids.pos], kind: 'task.done', sender: SYSTEM_SENDER_NAME, payload: expect.objectContaining({ handlerName: SYSTEM_SENDER_NAME, amount: -PRICE, packageName: 's8 package' }) }]);
+      // D12: the notice names the submitter as the actor and «النظام» as the handler, and the point of sale that
+      // owns the number is told, though it is the submitter itself.
+      expect(told('task.done', taskId)).toEqual([{ to: [ids.pos], kind: 'task.done', sender: 'pos', actorId: ids.pos, payload: expect.objectContaining({ handlerName: SYSTEM_SENDER_NAME, amount: -PRICE, packageName: 's8 package' }) }]);
+      expect(await prisma.notice.findMany({ where: { kind: 'task.done', userId: ids.pos }, select: { actorId: true, actorName: true } })).toEqual([{ actorId: ids.pos, actorName: 'pos' }]);
       await expectWalletAddsUp();
 
       // Again, by message or by the sweeper: nothing to do, nothing changed.
@@ -336,7 +344,8 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     describe('each guard against a second application, on its own', () => {
       /** T5 for an operation as it was read earlier, the way a worker holding a stale read would run it. */
       const applyAsRead = (stale: Awaited<ReturnType<typeof operation>>, taskRow: Awaited<ReturnType<typeof task>>) =>
-        (settlement as unknown as { applySucceeded: (operation: unknown, task: unknown) => Promise<string> }).applySucceeded(stale, taskRow);
+        (settlement as unknown as { applySucceeded: (operation: unknown, task: unknown, actor: unknown) => Promise<string> })
+          .applySucceeded(stale, taskRow, { id: ids.pos, loginName: `s8-${tag}-pos`, nickname: 'pos', layer: 'pos', isBranchOwner: false, grants: [], operatorId: ids.pos, impersonating: false });
 
       it('the task claim: a task that is no longer open is not applied, though its operation still says "not applied"', async () => {
         const { taskId, operationId } = await succeeded();
@@ -440,7 +449,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       // The serial is still the task's: another activation cannot take it.
       expect(await refusal(service.activate(pos, { packageCode: `s8-${tag}`, posLoginName: `s8-${tag}-pos`, outcome: 'fail', iccid: opened.iccid }))).toBe('409 SIM_TAKEN');
       // The owner and the account that holds the decision grant are told, in fixed words; nobody else.
-      expect(notices).toEqual([{ to: [ids.accountant, ids.owner].sort(), kind: 'task.note', sender: SYSTEM_SENDER_NAME, payload: { taskId, action: 'activate', msisdn: opened.msisdn, authorName: SYSTEM_SENDER_NAME, excerpt: PROVIDER_EXCEPTION_NOTES['number-taken'] } }]);
+      expect(notices).toEqual([{ to: [ids.accountant, ids.owner].sort(), kind: 'task.note', sender: 'pos', actorId: ids.pos, payload: { taskId, action: 'activate', msisdn: opened.msisdn, authorName: SYSTEM_SENDER_NAME, handlerName: SYSTEM_SENDER_NAME, excerpt: PROVIDER_EXCEPTION_NOTES['number-taken'] } }]);
 
       // Terminal: never claimed or sent again, never applied again, left alone by the sweeper, closed to every hand.
       const after = await snapshot(taskId, operationId);
@@ -474,8 +483,9 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
   });
 
   describe('T5′ is written once, and only for an operation that is still succeeded and neither applied nor already an exception', () => {
+    const submitter = { id: ids.pos, loginName: `s8-${tag}-pos`, nickname: 'pos', layer: 'pos', isBranchOwner: false, grants: [], operatorId: ids.pos, impersonating: false };
     const exceptionAsRead = (stale: Awaited<ReturnType<typeof operation>>, taskRow: Awaited<ReturnType<typeof task>>, reason: string) =>
-      (settlement as unknown as { recordException: (operation: unknown, task: unknown, reason: string) => Promise<string> }).recordException(stale, taskRow, reason);
+      (settlement as unknown as { recordException: (operation: unknown, task: unknown, actor: unknown, reason: string) => Promise<string> }).recordException(stale, taskRow, submitter, reason);
 
     it('does not write over an exception already recorded, and tells nobody twice', async () => {
       const { taskId, operationId } = await succeeded();
@@ -503,6 +513,145 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     });
   });
 
+  describe('who a settlement notice names and who it reaches (D12)', () => {
+    const stored = (kind: string, taskId: string) =>
+      prisma.notice.findMany({ where: { kind, payload: { path: ['taskId'], equals: taskId } }, select: { userId: true, actorId: true, actorName: true }, orderBy: { userId: 'asc' } });
+    const byUser = <Row extends { userId: string }>(rows: Row[]) => [...rows].sort((left, right) => left.userId.localeCompare(right.userId));
+
+    it('names the submitter as the actor and «النظام» as the handler, and tells the submitter and the owning point of sale', async () => {
+      // The branch owner submits an activation for the point of sale: two accounts on the task's side.
+      const taskId = ((await service.activate(owner, { packageCode: `s8-${tag}`, posLoginName: `s8-${tag}-pos`, outcome: 'fail', iccid: serial() })) as { taskId: string }).taskId;
+      const operationId = await sent(taskId);
+      await dispatch.operations.settle(operationId, 1, confirmed());
+      notices = [];
+      expect(await settlement.apply(operationId)).toBe('applied');
+      expect(notices).toEqual([{ to: [ids.owner, ids.pos].sort(), kind: 'task.done', sender: 'owner', actorId: ids.owner, payload: expect.objectContaining({ taskId, handlerName: SYSTEM_SENDER_NAME, amount: -PRICE }) }]);
+      // As stored: one row each, from the submitter by id and by name.
+      expect(await stored('task.done', taskId)).toEqual(byUser([{ userId: ids.owner, actorId: ids.owner, actorName: 'owner' }, { userId: ids.pos, actorId: ids.owner, actorName: 'owner' }]));
+      // The entry names the submitter too.
+      expect((await entries()).find((row) => row.kind === 'activate')).toMatchObject({ actorId: ids.owner, userId: ids.pos });
+      // The same message again, and the sweeper: nobody is told twice.
+      for (let again = 0; again < 3; again += 1) await dispatch.settle({ operationId });
+      expect(await settlement.applyPending()).toBe(0);
+      expect(await stored('task.done', taskId)).toHaveLength(2);
+    });
+
+    it('tells an exception and an unknown answer to the accounts that may decide and to nobody else, the submitter among them only when it may decide', async () => {
+      const taken = number();
+      await prisma.line.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
+      // Submitted by the point of sale: it may not decide, so it is not told.
+      const byPos = await succeeded({}, { msisdn: taken });
+      // Submitted by the owner, who may decide: told, though the note is in the owner's own name.
+      const ownerTask = ((await service.activate(owner, { packageCode: `s8-${tag}`, posLoginName: `s8-${tag}-pos`, outcome: 'fail', iccid: serial() })) as { taskId: string }).taskId;
+      const byOwner = await sent(ownerTask);
+      await dispatch.operations.settle(byOwner, 1, { kind: 'no-answer', error: 'timeout' });
+      notices = [];
+      expect(await settlement.apply(byPos.operationId)).toBe('exception');
+      expect(await settlement.apply(byOwner)).toBe('awaiting-decision');
+      const deciders = [ids.accountant, ids.owner].sort();
+      expect(notices.map((notice) => [notice.kind, notice.to, notice.actorId, notice.payload.handlerName])).toEqual([
+        ['task.note', deciders, ids.pos, SYSTEM_SENDER_NAME],
+        ['task.note', deciders, ids.owner, SYSTEM_SENDER_NAME],
+      ]);
+      // Never the clerk (a branch account without the grant) and never the point of sale.
+      expect(await prisma.notice.count({ where: { kind: 'task.note', userId: { in: [ids.clerk, ids.pos] } } })).toBe(0);
+      // Delivered again, in any number: each was said once.
+      for (let again = 0; again < 3; again += 1) {
+        await dispatch.settle({ operationId: byPos.operationId });
+        await dispatch.settle({ operationId: byOwner });
+      }
+      expect(await settlement.applyPending()).toBe(0);
+      expect(await stored('task.note', byPos.taskId)).toHaveLength(2);
+      expect(await stored('task.note', ownerTask)).toHaveLength(2);
+    });
+
+    it('leaves every other notice as it was: whoever does a thing by hand is not told of it', async () => {
+      // Opened by the point of sale: the handlers are told, the point of sale is not.
+      const taskId = await openTask();
+      expect(told('task.opened', taskId).map((notice) => [notice.to, notice.actorId])).toEqual([[[ids.owner], ids.pos]]);
+      // Completed by the owner by hand: the point of sale is told, the owner is not, and the owner is the handler named.
+      notices = [];
+      await service.completeTask(owner, taskId, { note: 'by hand' });
+      expect(told('task.done', taskId)).toEqual([{ to: [ids.pos], kind: 'task.done', sender: 'owner', actorId: ids.owner, payload: expect.objectContaining({ handlerName: 'owner' }) }]);
+      // Opened by the owner for the point of sale, then cancelled by the owner: the owner is told of neither.
+      notices = [];
+      const own = ((await service.activate(owner, { packageCode: `s8-${tag}`, posLoginName: `s8-${tag}-pos`, outcome: 'fail', iccid: serial() })) as { taskId: string }).taskId;
+      await service.cancelTask(owner, own);
+      expect(notices.flatMap((notice) => notice.to)).not.toContain(ids.owner);
+    });
+  });
+
+  describe('an eSIM the provider confirmed without an activation code (D16, proposed: esim-code-missing)', () => {
+    it('makes no line: an exception that keeps the verdict, its result, the task, the hold and the reservation, said once to those who may decide', async () => {
+      const [msisdn, iccid] = [number(), serial()];
+      const { taskId, operationId } = await succeeded({ esim: true }, { msisdn, iccid });
+      const opened = await task(taskId);
+      expect(opened).toMatchObject({ esim: true, esimQr: null });
+      notices = [];
+      const outcomes = await Promise.all(Array.from({ length: 6 }, () => settlement.apply(operationId)));
+      expect(outcomes.filter((outcome) => outcome === 'exception')).toHaveLength(1);
+      expect(outcomes.filter((outcome) => outcome !== 'exception' && outcome !== 'skipped')).toEqual([]);
+
+      const row = await operation(operationId);
+      expect(row).toMatchObject({ status: 'succeeded', providerRef: 'REF-1', resultMsisdn: msisdn, resultIccid: iccid, resultEsimCode: null, applyError: 'esim-code-missing', appliedAt: null });
+      expect(row.applyFailedAt).toBeInstanceOf(Date);
+      expect(await task(taskId)).toEqual(opened);
+      expect(await lines()).toEqual([]);
+      expect(await wallet()).toMatchObject({ balance: START, held: opened.held });
+      expect(await kinds()).toEqual(['hold']);
+      expect(notices).toEqual([{ to: [ids.accountant, ids.owner].sort(), kind: 'task.note', sender: 'pos', actorId: ids.pos, payload: expect.objectContaining({ taskId, excerpt: PROVIDER_EXCEPTION_NOTES['esim-code-missing'], handlerName: SYSTEM_SENDER_NAME }) }]);
+
+      // Never sent again, never applied by the sweeper, closed to every hand; the number stays the task's.
+      const after = await snapshot(taskId, operationId);
+      expect(await dispatch.operations.claim(operationId)).toBeNull();
+      for (let sweep = 0; sweep < 3; sweep += 1) expect(await settlement.applyPending()).toBe(0);
+      for (let again = 0; again < 3; again += 1) await dispatch.settle({ operationId });
+      expect(await refusal(service.completeTask(owner, taskId, { note: 'x' }))).toBe('409 DUPLICATE_REQUEST');
+      expect(await refusal(service.rejectTask(owner, taskId, { reason: 'x' }))).toBe('409 DUPLICATE_REQUEST');
+      expect(await refusal(service.cancelTask(pos, taskId))).toBe('409 DUPLICATE_REQUEST');
+      expect(await refusal(service.activate(pos, { packageCode: `s8-${tag}`, posLoginName: `s8-${tag}-pos`, outcome: 'fail', esim: true, msisdn: opened.msisdn }))).toMatch(/^4/);
+      expect(await snapshot(taskId, operationId)).toEqual(after);
+      expect(notices).toHaveLength(1);
+    });
+
+    it('is not an exception when a code is there: the provider\'s, or the one the task has carried', async () => {
+      // The provider's code.
+      const withCode = await succeeded({ esim: true }, { iccid: serial(), esimCode: CODE });
+      expect(await settlement.apply(withCode.operationId)).toBe('applied');
+      // No code from the provider, and the task carries one (sealed, as a task stores it).
+      const carried = await openTask({ esim: true });
+      const picture = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+      await prisma.officeTask.update({ where: { id: carried }, data: { esimQr: seal(picture) } });
+      const operationId = await sent(carried);
+      await dispatch.operations.settle(operationId, 1, confirmed({ iccid: serial() }));
+      expect(await settlement.apply(operationId)).toBe('applied');
+      const made = await lines();
+      expect(made).toHaveLength(2);
+      expect(made.map((line) => open(line.esimQr as string).startsWith('data:image/png;base64,'))).toEqual([true, true]);
+      expect(made.map((line) => open(line.esimQr as string))).toContain(picture);
+      expect((await operation(operationId)).applyError).toBeNull();
+    });
+
+    it('a plain SIM needs no code, and a code that is there and cannot be opened is a fault to retry, not this exception', async () => {
+      const plain = await succeeded({}, { msisdn: number() });
+      expect(await settlement.apply(plain.operationId)).toBe('applied');
+      const { taskId, operationId } = await succeeded({ esim: true }, { iccid: serial(), esimCode: CODE });
+      const before = await snapshot(taskId, operationId);
+      const key = process.env.SECRETS_KEY;
+      process.env.SECRETS_KEY = Buffer.alloc(32, 99).toString('base64');
+      try {
+        await expect(settlement.apply(operationId)).rejects.toThrow();
+        expect(await settlement.applyPending()).toBe(0);
+      } finally {
+        process.env.SECRETS_KEY = key;
+      }
+      expect(await snapshot(taskId, operationId)).toEqual(before);
+      expect(before.operation).toMatchObject({ applyError: null, appliedAt: null });
+      expect(await settlement.applyPending()).toBe(1);
+      expect(await task(taskId)).toMatchObject({ status: 'done' });
+    });
+  });
+
   describe('T6: the provider did not run it', () => {
     it('hands the task to the branch once: noted as a provider failure, the hold kept, nothing refunded, never sent again (spec 9)', async () => {
       const taskId = await openTask();
@@ -521,7 +670,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       expect(await kinds()).toEqual(['hold']);
       expect(await lines()).toEqual([]);
       // The accounts that handle tasks are told that it is theirs.
-      expect(told('task.opened', taskId)).toEqual([expect.objectContaining({ sender: SYSTEM_SENDER_NAME, to: expect.arrayContaining([ids.owner]) })]);
+      expect(told('task.opened', taskId)).toEqual([expect.objectContaining({ sender: 'pos', actorId: ids.pos, to: [ids.owner], payload: expect.objectContaining({ handlerName: SYSTEM_SENDER_NAME }) })]);
       expect(await settlement.applyPending()).toBe(0);
       expect(await dispatch.operations.claim(operationId)).toBeNull();
       // The branch then completes it by hand: one line, one capture.
@@ -562,7 +711,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       expect(notices).toHaveLength(1);
       expect(await settlement.apply(operationId)).toBe('skipped');
       expect(notices).toHaveLength(1);
-      expect(notices[0]).toEqual({ to: [ids.accountant, ids.owner].sort(), kind: 'task.note', sender: SYSTEM_SENDER_NAME, payload: { taskId, action: 'activate', msisdn: before.task.msisdn, authorName: SYSTEM_SENDER_NAME, excerpt: PROVIDER_UNKNOWN_NOTE } });
+      expect(notices[0]).toEqual({ to: [ids.accountant, ids.owner].sort(), kind: 'task.note', sender: 'pos', actorId: ids.pos, payload: { taskId, action: 'activate', msisdn: before.task.msisdn, authorName: SYSTEM_SENDER_NAME, handlerName: SYSTEM_SENDER_NAME, excerpt: PROVIDER_UNKNOWN_NOTE } });
       expect(await snapshot(taskId, operationId)).toEqual(before);
       expect(before).toMatchObject({ lines: 0, kinds: ['hold'], wallet: { balance: START, held: PRICE }, task: { status: 'working' } });
       // The sweeper leaves it; nothing sends it; every hand is refused.
@@ -611,15 +760,21 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       const waiting = await sent(await openTask());
       // No message of any of them was ever published or handled. The sweeper's list is the two it can act on.
       expect((await new OwnOperations().unsettledIds(prisma, 100)).sort()).toEqual([lost.operationId, failed].sort());
-      expect(await settlement.applyPending()).toBe(2);
+      notices = [];
+      // Three things happen: the lost verdict is applied, the failure is handed over, and the unknown answer,
+      // whose message was lost too, is announced.
+      expect(await settlement.applyPending()).toBe(3);
       expect(await new OwnOperations().unsettledIds(prisma, 100)).toEqual([]);
+      expect(notices.filter((notice) => notice.payload.excerpt === PROVIDER_UNKNOWN_NOTE).map((notice) => notice.to)).toEqual([[ids.accountant, ids.owner].sort()]);
       expect(await task(lost.taskId)).toMatchObject({ status: 'done' });
       expect((await operation(failed)).appliedAt).toBeInstanceOf(Date);
       expect(await operation(exception.operationId)).toMatchObject({ applyError: 'number-taken', appliedAt: null });
       expect(await operation(unknown)).toMatchObject({ status: 'unknown', appliedAt: null });
       expect(await operation(waiting)).toMatchObject({ status: 'pending', appliedAt: null });
-      // Further rounds find nothing.
+      // Further rounds find nothing, and say nothing twice.
+      const said = notices.length;
       for (let sweep = 0; sweep < 3; sweep += 1) expect(await settlement.applyPending()).toBe(0);
+      expect(notices).toHaveLength(said);
       expect(await lines()).toHaveLength(2);
       expect((await kinds()).filter((kind) => kind === 'activate')).toHaveLength(1);
       // Four tasks are still open and each still holds its price.
@@ -806,7 +961,14 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       const parts = (text: string, from: number) => Array.from({ length: 6 }, (_, at) => text.slice(from + at * 11, from + at * 11 + 16)).filter((part) => part.length === 16);
       const secrets = [...parts(CODE, 6), ...parts(stored.resultEsimCode as string, 8), ...parts(line.esimQr as string, 8), ...parts(picture, 120)];
       expect(secrets.length).toBeGreaterThan(18);
-      const places = { output, redis: redisDump, outbox: JSON.stringify(outbox), notices: JSON.stringify(notices), entries: JSON.stringify(await entries()), task: JSON.stringify({ ...(await task(taskId)), esimQr: null }) };
+      // What PostgreSQL holds of it: the operation and the line carry it sealed only; every other row not at all.
+      const sealedOnly = (text: string) => text.split(stored.resultEsimCode as string).join('').split(line.esimQr as string).join('');
+      const database = sealedOnly(JSON.stringify([
+        stored, line, await task(taskId), await entries(), outbox,
+        await prisma.notice.findMany({ where: { userId: { in: [ids.owner, ids.accountant, ids.clerk, ids.pos] } } }),
+        await prisma.activityEvent.findMany({ where: { at: { gte: new Date(Date.now() - 120_000) } } }),
+      ]));
+      const places = { output, redis: redisDump, outbox: JSON.stringify(outbox), notices: JSON.stringify(notices), entries: JSON.stringify(await entries()), task: JSON.stringify({ ...(await task(taskId)), esimQr: null }), database };
       for (const [place, text] of Object.entries(places)) for (const secret of secrets) expect([place, text.includes(secret)]).toEqual([place, false]);
 
       // The same jobs delivered again change nothing.

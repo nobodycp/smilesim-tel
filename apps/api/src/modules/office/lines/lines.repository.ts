@@ -176,10 +176,10 @@ export class LinesRepository {
     return db.officeTask.updateMany({ where: { id, status: 'working' }, data: { note } });
   }
 
-  /** Whether a system note with these words was already sent about the task. */
-  async systemNoteSent(db: Db, taskId: string, words: string): Promise<boolean> {
+  /** Whether a note with these fixed words was already sent about the task, to anybody. */
+  async taskNoteSent(db: Db, taskId: string, words: string): Promise<boolean> {
     const found = await db.notice.findFirst({
-      where: { kind: 'task.note', actorId: 'system', AND: [{ payload: { path: ['taskId'], equals: taskId } }, { payload: { path: ['excerpt'], equals: words } }] },
+      where: { kind: 'task.note', AND: [{ payload: { path: ['taskId'], equals: taskId } }, { payload: { path: ['excerpt'], equals: words } }] },
       select: { id: true },
     });
     return found !== null;

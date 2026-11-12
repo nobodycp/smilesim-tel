@@ -116,6 +116,15 @@ export class ProviderOperationsRepository {
   }
 
   /**
+   * The operations of tasks whose answer is not known, newest first: the ones the settlement may still have to
+   * announce. Newest first, so one that was just made unknown is always within the limit.
+   */
+  async unknownTaskOperationIds(db: Db, limit: number): Promise<string[]> {
+    const rows = await db.providerOperation.findMany({ where: { taskId: { not: null }, status: 'unknown' }, orderBy: { updatedAt: 'desc' }, take: limit, select: { id: true } });
+    return rows.map((row) => row.id);
+  }
+
+  /**
    * Stamps a succeeded operation as applied, once: only while it is succeeded, not applied, without an exception
    * and still carries the result it was read with. Answers whether it did.
    */

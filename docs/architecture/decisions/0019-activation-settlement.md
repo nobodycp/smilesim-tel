@@ -340,14 +340,26 @@ come; the money must be safe in every state of the operation.
 - **Queues:** `provider-operations` sends, `provider-settlements` acts on verdicts. Both messages carry the
   operation's id only. The dispatch stays off unless `PROVIDER_DISPATCH=1` and never runs in production; no
   sale records an operation yet (S.11), so nothing changes for users.
-- **Notices, and one departure from D12 to be decided.** No notice kind was added (S.8 changes nothing
+- **Notices follow D12** (corrected in the final review of S.8). No notice kind was added (S.8 changes nothing
   visible): success is `task.done` to the task's chain; a failure is `task.opened` to the handlers; an unknown
-  answer and an exception are `task.note` from «النظام» with fixed words (`stored-text.ts`) to the branch owner
-  and the holders of the `accounting` grant (`mayDecide`). The **ledger entry** names the submitter as D12
-  says. The **notice** is sent by «النظام», not by the submitter: `NoticeService.write` leaves the sender out of
-  the audience, so a notice "from the submitter" would never reach a point of sale that submitted its own
-  activation, which is the usual case. The handler named in it is «النظام», as D12 says.
-- **Not decided here:** an eSIM whose provider hands back no code gets a line without one (the task's own code
-  if it has one). The closed list of D16 has no reason for it.
+  answer and an exception are `task.note` with fixed words (`stored-text.ts`) to the branch owner and the holders
+  of the `accounting` grant (`mayDecide`), and to nobody else. Each names the **submitter as the actor**
+  (`actorId`, `actorName`) and **«النظام» as the handler** (`handlerName`), as the ledger entry does.
+  `NoticeService.write` leaves the actor out of a notice's audience; the settlement's notices alone pass
+  `tellActor`, because the submitter did not do what the notice says, so a point of sale that submitted its own
+  activation is told that it is done. Every other notice keeps the rule, and the option adds nobody to an audience.
+- **An unknown answer is announced even when its message is lost.** The sweeper also goes over the operations
+  of tasks whose answer is unknown (newest first) and announces each once; the notice itself is the mark.
+- **`esim-code-missing` — an amendment to D16 proposed here, pending the owner's approval** (the spec carries
+  it as such). A confirmed eSIM activation with no code from the provider and none on the task makes no line: it
+  is recorded as an exception, like the other three reasons, and waits for D15's decisions. A new migration
+  (`20261112120000_apply_error_esim_code_missing`) replaces the CHECK on `applyError`; S.1's migration is not
+  edited. A code that is there and cannot be opened stays a technical fault. The evidence and the way back if the
+  amendment is refused are in the spec, under D16.
+- **What PostgreSQL logs.** A statement the database refuses is logged with the row that failed. No code path
+  sends an unsealed eSIM code to the database (`resultColumns` refuses before any statement; a line's and a
+  task's code go through `storableEsimCode`), so that row holds sealed text at most. The CHECK
+  `resultEsimCode LIKE 'v1:%'` is the last line of defence, and it is one that writes the refused value to the
+  server's log: it must never be the line that is relied on.
 - Spec item 8 is closed: a completion, a reject and a cancel by hand raced with T5 change nothing, and T5 applies.
 

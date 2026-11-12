@@ -31,9 +31,6 @@ const log = logger('ActivationSettlement');
  */
 export type Settled = 'applied' | 'exception' | 'handed-to-branch' | 'awaiting-decision' | 'skipped';
 
-/** Who a notice written by the settlement comes from: nobody's account, so nobody is left out of its audience. */
-const SYSTEM: Actor = { id: 'system', loginName: 'system', nickname: SYSTEM_SENDER_NAME, layer: 'branch', isBranchOwner: false, grants: [], operatorId: 'system', impersonating: false };
-
 /** Raised inside T5 when the task or the operation is no longer what the settlement read: roll back, do nothing. */
 class NothingToApply extends Error {}
 
@@ -47,6 +44,10 @@ type OperationRow = ProviderOperation;
  *
  * A message may come twice, from several workers at once, or after a person or another worker acted: every
  * write here is guarded, and the second caller finds nothing to do.
+ *
+ * Who is named (D12): the entry and every notice written here name the task's submitter as the actor and
+ * «النظام» as the handler. The submitter did not do it, so a notice in the submitter's name reaches the submitter
+ * too when the submitter is in its audience (`tellActor`): a point of sale is told that its own activation is done.
  */
 export class ActivationSettlement {
   constructor(
@@ -64,10 +65,11 @@ export class ActivationSettlement {
     const task = await this.lines.task(operation.taskId);
     if (!task) return 'skipped';
     const step = settlementOf({ status: operation.status as OperationStatus, appliedAt: operation.appliedAt, applyError: operation.applyError });
-    if (step === 'apply') return this.applySucceeded(operation, task);
-    if (step === 'hand-to-branch') return this.handToBranch(operation, task);
-    if (step === 'await-decision' && operation.status === 'unknown') return this.tellUnknown(operation, task);
-    return 'skipped';
+    if (step !== 'apply' && step !== 'hand-to-branch' && !(step === 'await-decision' && operation.status === 'unknown')) return 'skipped';
+    const submitter = await this.submitterOf(task);
+    if (step === 'apply') return this.applySucceeded(operation, task, submitter);
+    if (step === 'hand-to-branch') return this.handToBranch(operation, task, submitter);
+    return this.tellUnknown(operation, task, submitter);
   }
 
   /**
@@ -77,7 +79,10 @@ export class ActivationSettlement {
    */
   async applyPending(limit = 100): Promise<number> {
     let changed = 0;
-    for (const id of await this.operations.unsettled(limit)) {
+    // What can be applied or handed over, then the unknown ones: each of those is announced once, so a lost or
+    // failed message does not leave an unknown answer unsaid.
+    const ids = [...(await this.operations.unsettled(limit)), ...(await this.operations.awaitingAnswer(limit))];
+    for (const id of ids) {
       try {
         if ((await this.apply(id)) !== 'skipped') changed += 1;
       } catch (error) {
@@ -89,11 +94,12 @@ export class ActivationSettlement {
 
   // ── T5: the provider confirmed ──────────────────────────────────────────────────────────────────────────
 
-  private async applySucceeded(operation: OperationRow, task: TaskRow): Promise<Settled> {
-    // Read and prepared before the transaction: the submitter who is named on the entry (D12), and the eSIM code
-    // as the line will carry it. A code that cannot be opened or sealed is a technical fault: it throws here,
-    // nothing is written, and the sweeper comes back to it.
-    const submitter = await this.submitterOf(task);
+  private async applySucceeded(operation: OperationRow, task: TaskRow, submitter: Actor): Promise<Settled> {
+    // An eSIM line is not made without its activation code (D16, `esim-code-missing`): the provider handed none
+    // back and the task carries none. Nothing was tried, so there is nothing to roll back: the exception is written.
+    if (task.esim && !operation.resultEsimCode && !task.esimQr) return this.recordException(operation, task, submitter, 'esim-code-missing');
+    // Prepared before the transaction: the eSIM code as the line will carry it. A code that cannot be opened or
+    // sealed is a technical fault: it throws here, nothing is written, and the sweeper comes back to it.
     const handedQr = await this.lineCode(operation, task);
     const result = { iccid: operation.resultIccid, msisdn: operation.resultMsisdn };
     let written: WrittenNotice[];
@@ -115,14 +121,14 @@ export class ActivationSettlement {
         //    branch's completion by hand runs.
         const handed = { ...(result.iccid ? { iccid: result.iccid } : {}), ...(result.msisdn ? { msisdn: result.msisdn } : {}) };
         const { sale, amount } = await this.completion.applyClaimed({ tx, task, actor: submitter, note: '', line: null, handed, handedQr, claim });
-        return this.tasks.taskNotice(tx, 'done', task, SYSTEM, { packageName: sale?.packageName ?? '', amount, handlerName: SYSTEM_SENDER_NAME });
+        return this.tasks.taskNotice(tx, 'done', task, submitter, { packageName: sale?.packageName ?? '', amount, handlerName: SYSTEM_SENDER_NAME }, false, true);
       });
     } catch (error) {
       if (error instanceof NothingToApply) return 'skipped';
       // A business refusal becomes the exception of D16; everything else is technical and is thrown on.
       const refused = error instanceof OfficeFailure ? applyErrorOf(error) : null;
       if (!refused) throw error;
-      return this.recordException(operation, task, refused);
+      return this.recordException(operation, task, submitter, refused);
     }
     await this.uow.publishQuietly(written);
     log.log(`operation ${operation.id}: applied to task ${task.id}`);
@@ -154,10 +160,10 @@ export class ActivationSettlement {
    * The status stays `succeeded` with its result; the task stays `working` with its hold and its reservation;
    * nothing is released and nothing is sent. The accounts that may decide are told.
    */
-  private async recordException(operation: OperationRow, task: TaskRow, reason: ApplyError): Promise<Settled> {
+  private async recordException(operation: OperationRow, task: TaskRow, submitter: Actor, reason: ApplyError): Promise<Settled> {
     const written = await this.uow.runTx(async (tx) => {
       if (!(await this.operations.stampApplyError(tx, operation.id, reason, new Date()))) return null;
-      return this.tellDeciders(tx, task, PROVIDER_EXCEPTION_NOTES[reason]);
+      return this.tellDeciders(tx, task, submitter, PROVIDER_EXCEPTION_NOTES[reason]);
     });
     if (!written) return 'skipped';
     await this.uow.publishQuietly(written);
@@ -171,7 +177,7 @@ export class ActivationSettlement {
    * The task becomes an ordinary branch task noted as a provider failure, once (`appliedAt` marks it). The hold
    * stays: the branch completes it by hand or rejects it. Nothing is refunded and nothing is sent again.
    */
-  private async handToBranch(operation: OperationRow, task: TaskRow): Promise<Settled> {
+  private async handToBranch(operation: OperationRow, task: TaskRow, submitter: Actor): Promise<Settled> {
     const written = await this.uow.runTx(async (tx) => {
       const current = await this.lockedTask(tx, task.id);
       const { operation: locked } = await lockedTaskOperation(tx, task.id);
@@ -181,7 +187,7 @@ export class ActivationSettlement {
       if (current.status !== 'working') return [];
       await this.lines.noteTask(tx, task.id, PROVIDER_FAILED_NOTE);
       const named = await this.lines.packageName(tx, task.packageId);
-      return this.tasks.taskNotice(tx, 'opened', task, SYSTEM, { packageName: named?.name ?? '', amount: task.posDelta });
+      return this.tasks.taskNotice(tx, 'opened', task, submitter, { packageName: named?.name ?? '', amount: task.posDelta, handlerName: SYSTEM_SENDER_NAME }, false, true);
     });
     if (!written) return 'skipped';
     await this.uow.publishQuietly(written);
@@ -195,14 +201,16 @@ export class ActivationSettlement {
    * Tells the accounts that may decide, once per task. Nothing else is written: the task stays frozen with its
    * hold, no line is made and no money moves. A late answer of the provider closes it through `settle`.
    */
-  private async tellUnknown(operation: OperationRow, task: TaskRow): Promise<Settled> {
+  private async tellUnknown(operation: OperationRow, task: TaskRow, submitter: Actor): Promise<Settled> {
     const written = await this.uow.runTx(async (tx) => {
       const current = await this.lockedTask(tx, task.id);
       const { operation: locked } = await lockedTaskOperation(tx, task.id);
       if (!current || current.status !== 'working' || !locked || locked.id !== operation.id || locked.status !== 'unknown') return null;
       // There is no column to mark it by, so the notice itself is the mark: read under the operation's lock.
-      if (await this.lines.systemNoteSent(tx, task.id, PROVIDER_UNKNOWN_NOTE)) return null;
-      return this.tellDeciders(tx, task, PROVIDER_UNKNOWN_NOTE);
+      if (await this.lines.taskNoteSent(tx, task.id, PROVIDER_UNKNOWN_NOTE)) return null;
+      const told = await this.tellDeciders(tx, task, submitter, PROVIDER_UNKNOWN_NOTE);
+      // Nobody to tell (no account may decide yet): nothing was said, and the next round asks again.
+      return told.length > 0 ? told : null;
     });
     if (!written) return 'skipped';
     await this.uow.publishQuietly(written);
@@ -217,12 +225,13 @@ export class ActivationSettlement {
   }
 
   /**
-   * A system note to the branch accounts that may decide on a provider operation (the owner and the holders of
-   * the decision grant). It names the task and says what happened in fixed words: never a serial or a code.
+   * A note to the branch accounts that may decide on a provider operation (the owner and the holders of the
+   * decision grant), and to nobody else. It is written in the submitter's name with «النظام» as its author
+   * (D12), names the task and says what happened in fixed words: never a serial or a code.
    */
-  private async tellDeciders(tx: Prisma.TransactionClient, task: TaskRow, text: string): Promise<WrittenNotice[]> {
+  private async tellDeciders(tx: Prisma.TransactionClient, task: TaskRow, submitter: Actor, text: string): Promise<WrittenNotice[]> {
     const audience = await this.tasks.branchAccountsWith(tx, DECISION_GRANT);
-    const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, authorName: SYSTEM_SENDER_NAME, excerpt: text };
-    return this.uow.notice.write(tx, audience, SYSTEM, { kind: 'task.note', payload });
+    const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, authorName: SYSTEM_SENDER_NAME, handlerName: SYSTEM_SENDER_NAME, excerpt: text };
+    return this.uow.notice.write(tx, audience, submitter, { kind: 'task.note', payload }, { tellActor: true });
   }
 }

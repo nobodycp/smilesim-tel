@@ -332,8 +332,11 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   *Transactions:* T4 (one more message), T5, T5′, T6, T7. *Locks:* T5 task → keys → operation → wallet.
   *Specs:* 6, 7, 11–13, 24, 27, 29.
   As built: ADR 0019 "As built in S.8". `lines/activation-settlement.db.spec.ts` (items 6, 7, 8, 11, 12, 13, 24,
-  27, 29; the queue test on real Redis), the rule specs, and the operations specs for T4. One point is left to
-  the owner: who a settlement notice is sent by (D12), stated in the ADR.
+  27, 29; the queue test on real Redis), the rule specs, and the operations specs for T4. Final review: the
+  notices follow D12 (`tellActor`, for the settlement only); the sweeper also announces an unknown answer whose
+  message was lost; and **one amendment to D16 is proposed and waits for the owner's approval**:
+  `esim-code-missing`, with its own migration `20261112120000_apply_error_esim_code_missing` (ten migrations are
+  now pending on the server, `docs/operations/2026-11-12-coolify-upgrade-preparation.md` 5.2).
 
 - [ ] **S.9 Decisions (O5).**
   `lines/provider-decisions.ts`; policy rows; `POST /office/tasks/:id/provider-decision` (propose or decide) and

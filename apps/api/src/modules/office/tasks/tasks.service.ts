@@ -371,6 +371,8 @@ export class TasksService {
     actor: Actor,
     extra: Partial<TaskNoticePayload> = {},
     branchOnly = false,
+    /** Only for a notice written in the actor's name by the system (ADR 0019, D12): the actor is told too. */
+    tellActor = false,
   ): Promise<WrittenNotice[]> {
     const handlers = await this.handlerIds(tx);
     let audience = taskAudience(event, task, handlers, { id: actor.id, handler: canHandleTasks(actor) });
@@ -379,7 +381,7 @@ export class TasksService {
       audience = audience.filter((id) => branch.has(id));
     }
     const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, ...extra };
-    return this.uow.notice.write(tx, audience, actor, { kind: `task.${event}`, payload });
+    return this.uow.notice.write(tx, audience, actor, { kind: `task.${event}`, payload }, tellActor ? { tellActor: true } : {});
   }
 
   noteLog(current: string, line: string) {

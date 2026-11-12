@@ -56,6 +56,26 @@ describe('notice writer', () => {
     expect(rows).toEqual([]);
   });
 
+  // ADR 0019, D12: a notice the settlement writes in the submitter's name reaches the submitter too.
+  it('tells the actor only when asked to, for a notice written in the actor\'s name by something else', async () => {
+    const created: Created[] = [];
+    const service = new NoticeService(memoryBus());
+    const rows = await service.write(fakeTx(created) as never, ['u1', 'u-actor', 'u-actor', ''], actor, draft, { tellActor: true });
+    expect(created.map((row) => row.userId)).toEqual(['u1', 'u-actor']);
+    expect(created.every((row) => row.actorId === 'u-actor' && row.actorName === 'سامي')).toBe(true);
+    expect(rows).toHaveLength(2);
+    // Not asked, asked with false, or with an empty option: the rule for every other notice.
+    for (const options of [undefined, {}, { tellActor: false }]) {
+      const plain: Created[] = [];
+      await service.write(fakeTx(plain) as never, ['u1', 'u-actor'], actor, draft, options);
+      expect(plain.map((row) => row.userId)).toEqual(['u1']);
+    }
+    // The actor is never added to an audience it is not in.
+    const others: Created[] = [];
+    await service.write(fakeTx(others) as never, ['u1', 'u2'], actor, draft, { tellActor: true });
+    expect(others.map((row) => row.userId)).toEqual(['u1', 'u2']);
+  });
+
   it('publishes each written notice on the recipient channel after commit', async () => {
     const bus = memoryBus();
     const service = new NoticeService(bus);

@@ -7,7 +7,7 @@ import { validKey, type OperationStatus } from '../providers/operations/provider
 // ── The operation as its task sees it ───────────────────────────────────────────────────────────────────────
 
 /** Why a succeeded operation could not be applied (D16). The database accepts no other value. */
-export const APPLY_ERRORS = ['number-taken', 'sim-taken', 'target-missing'] as const;
+export const APPLY_ERRORS = ['number-taken', 'sim-taken', 'target-missing', 'esim-code-missing'] as const;
 export type ApplyError = (typeof APPLY_ERRORS)[number];
 
 /** A task's operation, or null for a task that never went to a provider (the manual route). */

@@ -124,17 +124,23 @@ describe('decisions by people (D15)', () => {
   const refusal = (step: ReturnType<typeof decisionStep>) => (step.ok ? null : step.refusal);
 
   it('keeps its lists in step with what the database accepts', () => {
-    const sql = readFileSync(join(__dirname, '../../../../prisma/migrations/20261110190000_activation_settlement_schema/migration.sql'), 'utf8');
+    const migration = (name: string) => readFileSync(join(__dirname, `../../../../prisma/migrations/${name}/migration.sql`), 'utf8');
+    const sql = migration('20261110190000_activation_settlement_schema');
     // The quoted values of `CONSTRAINT "<name>" CHECK (… IN ('a', 'b', …))`.
-    const listOf = (constraint: string) => {
-      const from = sql.indexOf(`"${constraint}" CHECK`);
-      const list = sql.slice(sql.indexOf(' IN (', from) + 5, sql.indexOf(')', sql.indexOf(' IN (', from)));
+    const listOf = (constraint: string, source = sql) => {
+      const from = source.indexOf(`"${constraint}" CHECK`);
+      const list = source.slice(source.indexOf(' IN (', from) + 5, source.indexOf(')', source.indexOf(' IN (', from)));
       return from < 0 ? [] : [...list.matchAll(/'([^']+)'/g)].map((match) => match[1]);
     };
     expect(listOf('ProviderDecisionEvent_type_known')).toEqual([...DECISION_EVENT_TYPES]);
     expect(listOf('ProviderDecisionEvent_decision_known')).toEqual([...DECISIONS]);
     expect(listOf('ProviderDecisionEvent_evidenceKind_known')).toEqual([...EVIDENCE_KINDS]);
-    expect(listOf('ProviderOperation_applyError_known')).toEqual([...APPLY_ERRORS]);
+    // The reasons of D16 are what the latest migration of that constraint lists: the first three from the schema's
+    // own migration, `esim-code-missing` added by a later one that replaces the constraint and edits nothing.
+    const replaced = migration('20261112120000_apply_error_esim_code_missing');
+    expect(replaced).toContain('DROP CONSTRAINT "ProviderOperation_applyError_known"');
+    expect(listOf('ProviderOperation_applyError_known', replaced)).toEqual([...APPLY_ERRORS]);
+    expect(listOf('ProviderOperation_applyError_known')).toEqual(APPLY_ERRORS.slice(0, 3));
     expect(sql).toContain(`char_length(btrim("note")) >= ${MIN_DECISION_NOTE}`);
   });
 
