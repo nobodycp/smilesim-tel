@@ -162,6 +162,7 @@ export class LinesRepository {
 
   /** Writes on a claimed task what its completion handed back. */
   recordTaskResult(db: Db, id: string, data: Prisma.OfficeTaskUncheckedUpdateInput) {
+    assertStoredSealed(data.esimQr);
     return db.officeTask.update({ where: { id }, data });
   }
 

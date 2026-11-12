@@ -1,3 +1,4 @@
+import { assertStoredSealed } from './esim-code';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../shared/office-failure';
 import { isUniqueViolation } from '../../shared/prisma-errors';
@@ -89,6 +90,8 @@ export async function moveLineStatus(
   to: LineStatus,
   data: Omit<Prisma.LineUncheckedUpdateManyInput, 'status'> = {},
 ): Promise<void> {
+  // This write takes any column of a line; a code among them must be sealed like everywhere else (S.5b).
+  assertStoredSealed(data.esimQr);
   const changed = await tx.line.updateMany({ where: { id: lineId, status: { in: [...from] } }, data: { ...data, status: to } });
   if (changed.count !== 1) fail(400, 'INVALID');
 }

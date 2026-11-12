@@ -180,7 +180,7 @@ one). `src/architecture.spec.ts` checks the engineering rules. Locally: one spec
   `lines/activation-settlement.rules.ts`), which nothing calls yet, `capture` on manual completion (slice
   S.4), reading an eSIM code whether it is stored clear or sealed (slice S.5a) and sealing every code when it is
   written (slice S.5b: `lines/esim-code.ts` `storableEsimCode` before the transaction, `assertStoredSealed` in
-  `LinesRepository.createLine` / `setLineSim` and `TasksRepository.insertTask`, `ESIM_CODE_UNSEALABLE` when
+  `LinesRepository.createLine` / `setLineSim` / `recordTaskResult`, `moveLineStatus` and `TasksRepository.insertTask`, `ESIM_CODE_UNSEALABLE` when
   there is no valid key; stored codes are sealed by hand with `src/seal-secrets.ts` + `src/seal-esim-codes.ts`,
   `--dry-run` first; the line list still carries the code)**: `ProviderOperation.taskId` (unique),
   `appliedAt`, `applyError`, the result columns; `OfficeTask.requestKey`; the provider's dispatch approval;

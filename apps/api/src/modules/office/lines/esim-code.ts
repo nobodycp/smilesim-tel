@@ -108,6 +108,8 @@ export function storableEsimCode(code: string | null | undefined, where: string)
  * The last line before the database: a code that is not sealed is never written, whatever path led here. This is
  * a fault in the code that called, not in the request, so it throws and the transaction rolls back.
  */
-export function assertStoredSealed(code: string | null | undefined): void {
-  if (code && !isSealed(code)) throw new Error('An eSIM code must be sealed before it is stored');
+export function assertStoredSealed(code: string | null | undefined | { set?: string | null }): void {
+  // A write may name the value directly or as Prisma's `{ set }`.
+  const value = code && typeof code === 'object' ? code.set : code;
+  if (value && !isSealed(value)) throw new Error('An eSIM code must be sealed before it is stored');
 }

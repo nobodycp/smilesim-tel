@@ -247,6 +247,13 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     (one of them unreadable) byte-identical; a second run changes nothing; a run interrupted half-way and run
     again ends the same; a row updated during the run is not overwritten and is sealed by the next run; a dry
     run writes nothing; without a valid `SECRETS_KEY` it stops before reading; its lines carry counts only.
+    `src/seal-esim-codes-all.db.spec.ts` runs it with no `posId`, as the command does, in a database of its own
+    (`<test database>_seal`, kept between runs: creating and dropping one each run stalled the other PostgreSQL
+    specs): three points of sale, clear, sealed, damaged and empty codes, open and closed tasks; every column
+    but the code, and every other table, unchanged; two runs at once; the command itself with `--dry-run` and
+    without.
+    **Closing review:** `LinesRepository.recordTaskResult` and `line-state.ts` `moveLineStatus` take any column
+    of a task or a line; neither writes a code today, and both now call `assertStoredSealed` too.
   - **S.5c The response (the only step users can see), web first.**
     1. **Web, deployed first:** every screen found above reads the code from the **detail** response (or asks for
        the detail when it needs the code) and shows nothing, not an error, when a list row has no code. This works
