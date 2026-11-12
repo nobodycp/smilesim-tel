@@ -35,6 +35,9 @@ the database's single superuser role (4.5), and the "auto deploy" switch that is
 
 ## 3. Backup and restore (phase 1)
 
+**Superseded in detail by `backup-and-restore.md`** (the scripts, the storage rules, the restore proof and the
+rehearsal, tried on synthetic data). What follows is the first outline.
+
 ### 3.1 Design
 
 - **What:** `pg_dump --format=custom` of the SmileSim database, taken inside the postgres container (it has
@@ -160,7 +163,7 @@ All tables involved are tiny here (the largest is 240 kB), so every lock below i
 
 | # | Migration | Touches | Locks | Deletes / renames | Safe on today's data | Old API still works after it |
 |---|---|---|---|---|---|---|
-| 1 | `130000_session_token_hash` | `Session`: new `tokenHash`, filled with the hash of each id, NOT NULL, unique index | `ACCESS EXCLUSIVE` on `Session` for the column change | none | Yes: 143 rows, 143 distinct ids, so the unique index cannot collide. Existing cookies stay valid. Four statements, not one transaction: a failure between them would leave the column added but not required | **No.** The old API creates sessions without `tokenHash`: every new sign-in fails |
+| 1 | `130000_session_token_hash` | `Session`: new `tokenHash`, filled with the hash of each id, NOT NULL, unique index | `ACCESS EXCLUSIVE` on `Session` for the column change | none | Yes: 143 rows, 143 distinct ids, so the unique index cannot collide. The rows are kept, but **the sessions do not stay signed in**: the deployed version names the live-session key in Redis `session:<row id>`, the new one looks for `session:<hash>` (found by the rehearsal, `backup-and-restore.md` section 9). Everyone signs in again. Four statements, not one transaction: a failure between them would leave the column added but not required | **No.** The old API creates sessions without `tokenHash`: every new sign-in fails |
 | 2 | `140000_notice_login_name_keys` | `Notice.payload`: `toLogin` / `fromLogin` keys renamed | row locks | renames two JSON keys | Yes: 0 of 55 notices carry the old keys, it changes nothing | Yes |
 | 3 | `150000_package_public_codes` | `Package.code` rewritten; `Package.providerProductCode` filled; `Line.terms`, `ActivityEvent.subjectRef` follow | row locks, one DO block (all or nothing) | **renames every package's public code** | Yes, checked on the data: 25 packages give 25 distinct new codes, none equals another package's old code, none is null; the 23 packages with no product code get one without colliding on (provider, product code) | Yes, but links and bookmarks that hold an old package code stop resolving |
 | 4 | `160000_provider_operations` | two new tables | none on existing tables beyond the FK's brief lock on `Provider`, `Line` | none | Yes: neither table exists | Yes |
@@ -230,7 +233,7 @@ why W2 and W3 come immediately before W4.
 
 ### 6.4 Smoke tests
 
-Sign-in (password, then authenticator on an account that has one); a sign-in from an old cookie still works;
+Sign-in (password, then authenticator on an account that has one); a cookie from before the upgrade is refused and the account signs in again;
 numbers list with filters and pages; an eSIM's code opened from the list, from the line page and from a task
 page; a line outside the caller's tree answers 404; an eSIM activation on a trial number (code shown, charged
 once); a SIM change opened as a task and completed (code on the line, second completion refused); packages open
