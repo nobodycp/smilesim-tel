@@ -67,6 +67,8 @@ export const ACTIVITY_ACTIONS = [
   'transfer',
   'session_rules',
   'user_contact',
+  // An eSIM code was answered by a line's or a task's detail (ADR 0019, D17: `line.esim_read`).
+  'esim_read',
 ] as const;
 
 export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];

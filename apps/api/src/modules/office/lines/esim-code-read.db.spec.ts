@@ -43,7 +43,8 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     lines: await prisma.line.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true }, orderBy: { id: 'asc' } }),
     tasks: await prisma.officeTask.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true, updatedAt: true }, orderBy: { id: 'asc' } }),
   });
-  const listed = async () => Object.fromEntries((await service.lines(pos)).items.map((row) => [row.id, row.esimQr]));
+  /** What a list row carries of the code: nothing, ever (S.5c). `null` here means the row has no `esimQr` key at all. */
+  const listed = async () => Object.fromEntries((await service.lines(pos)).items.map((row) => [row.id, 'esimQr' in row ? 'A-CODE-IN-A-LIST' : null]));
   const REFUSED = '500 ESIM_CODE_UNREADABLE';
   /** The code a detail answers, or `<status> <code>` when the request is refused. Anything else thrown is a crash. */
   const answered = async (read: () => Promise<string | null>) => {
@@ -139,7 +140,8 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
 
   it('answers a code stored as it was written, and a sealed one opened, in the line list, the line detail and the task detail', async () => {
     const read = await capturedOutput(async () => undefined).then(everyRead);
-    expect(read.list).toMatchObject({ [line.clear]: QR.clear, [line.sealed]: QR.secret, [line.none]: null });
+    // A list carries no code, whatever the line holds; the details do.
+    expect(read.list).toMatchObject({ [line.clear]: null, [line.sealed]: null, [line.none]: null });
     expect(read.details).toMatchObject({ clear: QR.clear, sealed: QR.secret, none: null });
     // A task with no line shows its own code; a task on a line shows the line's.
     expect(read.tasks).toEqual({ clear: QR.clear, sealed: QR.taskSecret, onLine: QR.secret });
@@ -170,9 +172,10 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     // The detail does not call it «no code»: a line that truly has none answers null, this one is refused.
     expect(answers.details).toEqual({ clear: QR.clear, sealed: QR.secret, damaged: REFUSED, none: null });
     // The other records on the same page are answered as usual.
-    expect(answers.list).toMatchObject({ [line.clear]: QR.clear, [line.sealed]: QR.secret, [line.none]: null });
+    expect(answers.list).toMatchObject({ [line.clear]: null, [line.sealed]: null, [line.none]: null });
     expect(answers.tasks).toEqual({ clear: QR.clear, sealed: QR.taskSecret, onLine: QR.secret });
-    expect(output).toContain(`line ${line.damaged}: its eSIM code is stored sealed and could not be opened (unreadable); it is not shown`);
+    // The list does not open codes any more, so it logs nothing about one that does not open.
+    expect(output).not.toContain('it is not shown');
     expect(output).toContain(`line ${line.damaged}: its eSIM code is stored sealed and could not be opened (unreadable); the request is refused`);
     // The refusal itself carries the catalog message and nothing else.
     let refusal: unknown = null;
@@ -198,11 +201,10 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       read = await everyRead();
     });
     const answers = read as unknown as Awaited<ReturnType<typeof everyRead>>;
-    expect(answers.list).toMatchObject({ [line.clear]: QR.clear, [line.sealed]: null, [line.damaged]: null, [line.none]: null });
+    expect(answers.list).toMatchObject({ [line.clear]: null, [line.sealed]: null, [line.damaged]: null, [line.none]: null });
     expect(answers.details).toEqual({ clear: QR.clear, sealed: REFUSED, damaged: REFUSED, none: null });
     // A task with its own sealed code, and a task on a line whose code is sealed: both refused.
     expect(answers.tasks).toEqual({ clear: QR.clear, sealed: REFUSED, onLine: REFUSED });
-    expect(output).toContain(`line ${line.sealed}: its eSIM code is stored sealed and could not be opened (${reason}); it is not shown`);
     expect(output).toContain(`line ${line.sealed}: its eSIM code is stored sealed and could not be opened (${reason}); the request is refused`);
     expect(output).toContain(`task ${task.sealed}: its eSIM code is stored sealed and could not be opened (${reason}); the request is refused`);
     expectNoCode(output);
@@ -276,7 +278,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       expect(await service.lines(stranger, { sim: 'esim' })).toMatchObject({ total: 0, items: [] });
       expect(await service.lines(stranger, { sim: 'esim', loginName: `esim-${tag}-pos` })).toMatchObject({ total: 0, items: [] });
       // A code that does not open is null in a filtered page too.
-      expect(esims.items.find((row) => row.id === line.damaged)?.esimQr).toBeNull();
+      expect(esims.items.some((row) => 'esimQr' in row)).toBe(false);
       expect(JSON.stringify(esims)).not.toContain('v1:');
       // A kind that is not one of the two is refused, not read as «all».
       await expect(service.lines(pos, { sim: 'card' })).rejects.toMatchObject({ status: 400 });

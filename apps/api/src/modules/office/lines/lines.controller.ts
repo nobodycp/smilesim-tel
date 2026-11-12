@@ -1,10 +1,13 @@
-import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseInterceptors } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiZodQuery } from '../../../openapi/query';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, bodyField, param } from '../activity/activity.decorator';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
+import { ActivityRecorder } from '../activity/activity-recorder';
+import { gateOf } from '../../shared/cookies';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { LineReads } from './line-reads';
@@ -17,7 +20,7 @@ import { LinesService } from './lines.service';
 @Controller('office')
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class LinesController {
-  constructor(private readonly lineDesk: LinesService, private readonly reads: LineReads) {}
+  constructor(private readonly lineDesk: LinesService, private readonly reads: LineReads, private readonly activity: ActivityRecorder) {}
 
   @Get('lines')
   @ApiOperation({ summary: 'Paged lines / SIMs' })
@@ -31,8 +34,12 @@ export class LinesController {
   @ApiOperation({ summary: 'Single line detail' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
-  line(@Actor() actor: ActorShape, @Param('id') id: string) {
-    return this.reads.detail(actor, id);
+  async line(@Actor() actor: ActorShape, @Param('id') id: string, @Req() req: Request) {
+    const answer = await this.reads.detail(actor, id);
+    // An eSIM code is leaving: the read is on record before the answer goes (ADR 0019, D17: `line.esim_read`).
+    // The event names who, which line, when and from where; never the code. If it cannot be written, there is no answer.
+    if (answer.line.esimQr) await this.activity.recordOfficeOrFail(gateOf(req), req.ip ?? '', { action: 'esim_read', subjectKind: 'line', subjectRef: id });
+    return answer;
   }
 
   @Post('lines')

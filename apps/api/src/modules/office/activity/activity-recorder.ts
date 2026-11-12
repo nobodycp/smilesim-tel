@@ -32,24 +32,39 @@ export class ActivityRecorder {
     const db = this.client();
     if (!db) return;
     try {
-      const actor = await this.actorFromGate(db, gate);
-      const subjectRef = await this.subjectRef(db, event);
-      await db.activityEvent.create({
-        data: {
-          actorId: actor?.id ?? null,
-          actorLoginName: actor?.loginName ?? '',
-          actorLayer: actor?.layer ?? '',
-          action: event.action,
-          result,
-          reason: result === 'fail' ? reason : '',
-          ip: ip ?? '',
-          subjectKind: event.subjectKind ?? '',
-          subjectRef,
-        },
-      });
+      await this.write(db, gate, ip, event, result, reason);
     } catch (error) {
       log.error(why(error));
     }
+  }
+
+  /**
+   * Records an event that must exist before its answer leaves: the read of an eSIM code (ADR 0019, D17). Unlike
+   * `recordOffice` it does not swallow a failure: when the event cannot be written, the caller does not answer.
+   * Without a database (specs with no DATABASE_URL) there is nothing to read from either, and nothing is written.
+   */
+  async recordOfficeOrFail(gate: Gate, ip: string, event: ActivityDraft): Promise<void> {
+    const db = this.client();
+    if (!db) return;
+    await this.write(db, gate, ip, event, 'ok', '');
+  }
+
+  private async write(db: PrismaClient, gate: Gate, ip: string, event: ActivityDraft, result: 'ok' | 'fail', reason: string): Promise<void> {
+    const actor = await this.actorFromGate(db, gate);
+    const subjectRef = await this.subjectRef(db, event);
+    await db.activityEvent.create({
+      data: {
+        actorId: actor?.id ?? null,
+        actorLoginName: actor?.loginName ?? '',
+        actorLayer: actor?.layer ?? '',
+        action: event.action,
+        result,
+        reason: result === 'fail' ? reason : '',
+        ip: ip ?? '',
+        subjectKind: event.subjectKind ?? '',
+        subjectRef,
+      },
+    });
   }
 
   async recordLogin(input: { loginName: string; ip: string; result: 'ok' | 'fail'; reason: string }): Promise<void> {

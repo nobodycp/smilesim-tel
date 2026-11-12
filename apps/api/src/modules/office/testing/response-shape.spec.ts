@@ -16,7 +16,8 @@ const ME_KEYS = ['loginName', 'nickname', 'layer', 'isBranchOwner', 'grants', 's
 const HOME_KEYS = ['pendingTasks', 'openTasks', 'activeLines', 'inactiveLines', 'expiringLines', 'operations'];
 const HOME_OPERATION_KEYS = ['id', 'at', 'kind', 'amount', 'note', 'packageName', 'loginName'];
 const LINES_KEYS = ['items', 'poses', 'nextCursor', 'total'];
-const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'esimQr', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'posLoginName', 'posPrice', 'createdAt', 'endsAt', 'operations'];
+// No `esimQr`: a list row never carries the eSIM code (ADR 0019, D17; plan slice S.5c). The detail does (below).
+const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'suspended', 'packageCode', 'packageName', 'companyName', 'posLoginName', 'posPrice', 'createdAt', 'endsAt', 'operations'];
 const LINE_OPTIONAL_KEYS = ['agentLoginName', 'mainAgentLoginName', 'addons', 'opsLocked', 'dataGb', 'smsCount', 'minutes', 'months', 'subscriberPrice', 'companyImage', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
 const POS_CHOICE_KEYS = ['loginName', 'nickname'];
 const DISCONNECT_QUOTE_KEYS = ['amount', 'runsNow'];
@@ -153,6 +154,7 @@ describe('office response shapes', () => {
     const listed = await service.lines(gate);
     expect(keysOf(listed)).toEqual(sorted(LINES_KEYS));
     expect(keysOf(listed.items[0])).toEqual(sorted(LINE_KEYS));
+    expect('esimQr' in listed.items[0]).toBe(false);
     expect(listed.poses.length).toBeGreaterThan(0);
     expect(keysOf(listed.poses[0])).toEqual(sorted(POS_CHOICE_KEYS));
   });
@@ -417,6 +419,9 @@ describeWeb('web types match the pinned shapes', () => {
 
   it('LineRow, PosChoice and the officeLines envelope', () => {
     expect(declared(typeBody(source, 'LineRow'))).toEqual({ required: sorted(LINE_KEYS), optional: sorted(LINE_OPTIONAL_KEYS) });
+    // The code is declared on the detail only, and the detail call answers that type.
+    expect(source).toMatch(/export type LineDetail = LineRow & \{ esimQr: string \| null \};/);
+    expect(source).toMatch(/officeLine: \(id: string\) => request<\{ line: LineDetail; history: LineHistory\[\] \}>/);
     const pos = /export type PosChoice = \{([^}]*)\}/.exec(source);
     expect(sorted([...(pos?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]))).toEqual(sorted(POS_CHOICE_KEYS));
     // The envelope is the shared `Page<Row>` plus the list's own keys (shared/paging.ts on this side).

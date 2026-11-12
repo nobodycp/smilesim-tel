@@ -1,7 +1,7 @@
 # Activation through a provider — plan
 
 Spec: `docs/superpowers/specs/2026-11-10-activation-settlement.md` (decisions D1–D19, transactions T1–T11, specs
-1–29). ADR 0019 (accepted). **S.1–S.4, S.5a, S.5b and the web step of S.5c are built; each later slice starts on the owner's word.** Paths under `apps/api/`
+1–29). ADR 0019 (accepted). **S.1–S.4, S.5a, S.5b and S.5c (web and API) are built; each later slice starts on the owner's word.** Paths under `apps/api/`
 unless said. Operations beside this plan, not part of it and not a prerequisite for any slice from S.5c to S.12:
 backup and restore to Cloudflare R2 is ready in code and not enabled in operation (`docs/operations/backup-and-restore.md`). Each slice is one commit, leaves every existing spec green on CI (including the PostgreSQL and Redis
 job), and changes nothing a user can see unless it says **Visible**.
@@ -277,10 +277,26 @@ wallets (sorted). A slice's review checks that order in the code it adds.
        The other users of `GET /office/lines` (the user page's numbers, a package's numbers, the numbers
        report, the shell search) never read the code.
        *Specs:* e2e `tests/numbers-esim-code.spec.ts`, served list rows **without** `esimQr`.
-    2. **API, deployed after the web is live:** `esimQr` leaves `GET /office/lines` rows and the task list; the
-       line and task detail return it only to the line's point of sale, its ancestors and the branch, and record
-       `line.esim_read`. `response-shape.spec.ts` and `routes.http.spec.ts` change in the same commit; the web's
-       mocks and e2e are updated with the web step.
+    2. **API, deployed after the web is live (built; not deployed):** `esimQr` leaves `GET /office/lines` rows
+       (the task list never carried it); the line and task detail return it only to the line's point of sale,
+       its ancestors and the branch, and record the read.
+       *As built.* `LineReads.list` answers no `esimQr` key and no longer opens a stored code
+       (`listedEsimCode` is gone). `tasks/task-access.ts` `esimCodeReaders(posId, accounts)` is the one rule of
+       who is handed a code: the point of sale, the accounts above it on its own path, the branch. The line
+       detail applies it (today everyone who can read a line's detail is one of them); the task detail applies
+       it too, where it is narrower than who reads the task: an account that only opened the task and is no
+       longer above the point of sale reads the task with `esimQr: null`, and the code is not opened for it.
+       **The record (`line.esim_read`):** the activity action `esim_read`, written by the two controllers
+       through `ActivityRecorder.recordOfficeOrFail` **before** the answer leaves and only when the answer
+       carries a code: subject `line` + the line (stored as its number) from the line detail, `task` + the task
+       id from the task detail; the actor, the address and the time as every activity event has them; never the
+       code. If the event cannot be written the request answers 500 and no code. A detail with no code, a
+       refusal and a list write none. `LineRow.esimQr` leaves the web's type; `LineDetail` keeps it.
+       *Specs:* `lines/esim-code-access.db.spec.ts` (items 23 and 24, over HTTP on PostgreSQL),
+       `response-shape.spec.ts`, `office-routes.ts` (the two reads write an event only with a code).
+       **Before it is deployed:** every browser must be on the web of step 1. A web older than that reads the
+       code from the list row and would show every eSIM as having none. The services change together, in the
+       window of `docs/operations/2026-11-12-coolify-upgrade-preparation.md`, where everyone signs in again.
     3. **Never the other way round:** an API without the field under a web that still reads it from the list
        would show lines without their eSIM code. If the web step is reverted, the API step is reverted first.
     *Specs:* 23 (who receives the field, lists never, each read recorded) and 24 (no part of a code in the

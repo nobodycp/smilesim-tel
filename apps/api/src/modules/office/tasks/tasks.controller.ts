@@ -1,10 +1,13 @@
-import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseInterceptors } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiZodQuery } from '../../../openapi/query';
 import { ApiErrorResponse } from '../../../openapi/responses';
 import { Activity, param } from '../activity/activity.decorator';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
+import { ActivityRecorder } from '../activity/activity-recorder';
+import { gateOf } from '../../shared/cookies';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { TaskNoteBody, TaskRejectBody, TasksQuery } from './tasks.schemas';
@@ -18,7 +21,7 @@ import { TasksService } from './tasks.service';
 @Controller('office')
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class TasksController {
-  constructor(private readonly taskDesk: TasksService) {}
+  constructor(private readonly taskDesk: TasksService, private readonly activity: ActivityRecorder) {}
 
   @Get('tasks')
   @ApiOperation({ summary: 'Paged tasks' })
@@ -32,8 +35,12 @@ export class TasksController {
   @ApiOperation({ summary: 'Task ticket detail with timeline' })
   @ApiParam({ name: 'id' })
   @ApiErrorResponse(401, 403, 404)
-  task(@Actor() actor: ActorShape, @Param('id') id: string) {
-    return this.taskDesk.detail(actor, id);
+  async task(@Actor() actor: ActorShape, @Param('id') id: string, @Req() req: Request) {
+    const answer = await this.taskDesk.detail(actor, id);
+    // An eSIM code is leaving through the task's detail: on record before the answer goes (ADR 0019, D17). The
+    // subject is the task, which names its line; the code itself is never written.
+    if (answer.task.esimQr) await this.activity.recordOfficeOrFail(gateOf(req), req.ip ?? '', { action: 'esim_read', subjectKind: 'task', subjectRef: id });
+    return answer;
   }
 
   @Post('tasks/:id/notes')

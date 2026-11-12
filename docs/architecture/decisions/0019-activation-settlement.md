@@ -4,7 +4,7 @@ Date: 2026-11-10. Status: **accepted** (the owner approved the design and ordere
 05). The design is fixed; it is built slice by slice, and the plan says which slices exist: **S.1 (the schema, read
 by nothing yet), S.2 (the reservation of a serial and a number, which changes the manual path) S.3 (the pure
 rules, called by nothing yet), S.4 (`capture`, used by manual completion) S.5a (an eSIM code is read
-whether stored clear or sealed) and S.5b (every code is sealed when it is written; a backfill for the stored
+whether stored clear or sealed), S.5c (lists carry no code; the read is recorded) and S.5b (every code is sealed when it is written; a backfill for the stored
 ones, run on no real data yet) are built.** Builds on ADR 0004, 0016, 0017, 0018. Spec and plan:
 `docs/superpowers/{specs,plans}/2026-11-10-activation-settlement.md`.
 
@@ -219,6 +219,20 @@ come; the money must be safe in every state of the operation.
   side by side and both are read (S.5a).
 - A deployment must have `SECRETS_KEY` before this code: without it eSIM sales, eSIM SIM changes and eSIM
   completions are refused. Production already refuses to start without it (ADR 0016).
+
+## As built in S.5c (the code leaves the lists; who reads it; the record)
+
+- No list answers an eSIM code. `GET /office/lines` rows have no `esimQr` key; the task list never had one.
+- One rule says who is handed a code (`tasks/task-access.ts` `esimCodeReaders`): the line's point of sale, the
+  accounts above it on its own path, the branch. Both details apply it. For a line it equals who may read the
+  line at all; for a task it is narrower than the task's readers (a submitter that is no longer on the path reads
+  the task with no code).
+- `line.esim_read` is the activity action `esim_read` on subject `line` (from the line detail) or `task` (from the
+  task detail). It is written before the answer leaves, only when a code leaves, and the request fails when it
+  cannot be written. It carries the actor, the subject, the address and the time, never the code.
+- The detail carries the code whenever an entitled account opens it, so opening a line's page is a recorded read
+  even when the QR picture is not opened. A separate "show the code" call would record only deliberate reads;
+  the plan did not ask for it and it would change the screens.
 
 ## Consequences
 

@@ -701,6 +701,7 @@ export const ar = {
   actTaskComplete: 'إتمام مهمة',
   actTaskReject: 'رفض مهمة',
   actTaskCancel: 'إلغاء مهمة',
+  actEsimRead: 'عرض رمز eSIM',
   actProviderMode: 'وضع المزود',
   actCompanyAdd: 'إضافة شركة',
   actPackageAdd: 'إضافة رزمة',

@@ -18,7 +18,7 @@ import { excerpt, type TaskNoticePayload } from '../notices/notice-kinds';
 import { after, cursorPosition, page } from '../../shared/paging';
 import { TASKS_PAGE, taskStatusOf } from '../rules/office-paging';
 import { simRulesOf } from '../rules/sim-rules';
-import { canHandleTasks, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
+import { canHandleTasks, esimCodeReaders, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { stampTaskLog } from './task-log';
 import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 
@@ -115,12 +115,15 @@ export class TasksService {
    * the task carried and did not put on the line is not shown); until then the one the task carries. A code that cannot be opened refuses the request, it is never answered as
    * «no code» (lines/esim-code.ts); that holds for the new code of an open task too.
    */
-  private shownSim(row: { id: string; action: string; iccid: string | null; esim: boolean; esimQr: string | null; line: { id: string; iccid: string | null; esim: boolean; esimQr: string | null } | null }, open: boolean) {
-    const own = () => esimCodeOrFail(row.esimQr, `task ${row.id}`);
+  private shownSim(row: { id: string; action: string; iccid: string | null; esim: boolean; esimQr: string | null; line: { id: string; iccid: string | null; esim: boolean; esimQr: string | null } | null }, open: boolean, entitled: boolean) {
+    // The code goes to the point of sale, its path and the branch (D17). Any other reader of the task gets the
+    // serial and the kind, and no code: it is not opened for them, so a code that does not open refuses nothing.
+    const code = (stored: string | null, where: string) => (entitled ? esimCodeOrFail(stored, where) : null);
+    const own = () => code(row.esimQr, `task ${row.id}`);
     if (open && row.line && row.action === 'sim') return { iccid: row.iccid, esim: row.esim, esimQr: own() };
     if (open && row.line && row.action === 'esim') return { iccid: row.line.iccid, esim: row.line.esim, esimQr: own() };
     // With a line, all three come from the line: a closed task's unused code is not shown beside the line's SIM.
-    if (row.line) return { iccid: row.line.iccid, esim: row.line.esim, esimQr: esimCodeOrFail(row.line.esimQr, `line ${row.line.id}`) };
+    if (row.line) return { iccid: row.line.iccid, esim: row.line.esim, esimQr: code(row.line.esimQr, `line ${row.line.id}`) };
     return { iccid: row.iccid, esim: row.esim, esimQr: own() };
   }
 
@@ -147,7 +150,7 @@ export class TasksService {
         assigneeLoginName: row.assignee?.loginName ?? null,
         posDelta: row.posDelta,
         msisdn: row.line?.msisdn ?? row.msisdn,
-        ...this.shownSim(row, open),
+        ...this.shownSim(row, open, esimCodeReaders(row.posId, accounts).has(actor.id)),
         sim: simRulesOf(pkg?.company ?? null),
         lineStatus: row.line?.status ?? null,
         packageName: pkg?.name ?? '',

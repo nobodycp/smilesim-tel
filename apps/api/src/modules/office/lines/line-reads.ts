@@ -1,5 +1,6 @@
 import { parseInput } from '../../shared/input';
-import { esimCodeOrFail, listedEsimCode } from './esim-code';
+import { esimCodeOrFail } from './esim-code';
+import { esimCodeReaders } from '../tasks/task-access';
 import { LinesQuery } from './lines.schemas';
 import { LinesRepository } from './lines.repository';
 import { AccountTree } from '../kernel/account-tree';
@@ -52,8 +53,8 @@ export class LineReads {
         id: row.id,
         msisdn: row.msisdn,
         iccid: row.iccid,
+        // The eSIM code is not in a list (ADR 0019, D17; plan slice S.5c): it is read from the line's detail.
         esim: row.esim,
-        esimQr: listedEsimCode(row.esimQr, `line ${row.id}`),
         status: row.status,
         /** The subscription ended at least the package's period ago (spec 2026-11-08-overview-and-reports-nav, I). */
         suspended: isSuspended(row, row.package.suspendAfterDays),
@@ -106,7 +107,9 @@ export class LineReads {
         msisdn: line.msisdn,
         iccid: line.iccid,
         esim: line.esim,
-        esimQr: esimCodeOrFail(line.esimQr, `line ${line.id}`),
+        // Handed to the line's point of sale, the accounts above it on its path and the branch; anyone else
+        // gets none, and it is not even opened for them. Whoever reads this detail today is one of those.
+        esimQr: esimCodeReaders(line.posId, accounts).has(actor.id) ? esimCodeOrFail(line.esimQr, `line ${line.id}`) : null,
         lastRechargeAt: recharge ? recharge.createdAt.toISOString() : null,
         esimPrice: esimPriceOf({ pkg: line.package, provider: line.package.provider, company: line.package.company }).price,
         status: line.status,

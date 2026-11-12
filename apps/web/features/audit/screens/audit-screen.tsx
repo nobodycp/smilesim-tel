@@ -23,7 +23,7 @@ const ACTIONS = [
   'login', 'logout', 'password', 'two_factor', 'passkey_add', 'passkey_remove', 'session_rules',
   'user_create', 'user_freeze', 'user_restore', 'user_delete', 'user_transfer', 'user_contact', 'access', 'role_save', 'enter', 'leave',
   'fund', 'deduct', 'ceiling',
-  'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'addon', 'transfer', 'company_switch',
+  'activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'esim_read', 'refresh', 'addon', 'transfer', 'company_switch',
   'task_take', 'task_release', 'task_note', 'task_complete', 'task_reject', 'task_cancel',
   'company_add', 'company_sim', 'company_image', 'package_add', 'package_mode', 'package_price', 'package_chain', 'package_details', 'package_reprice',
   'package_renewals', 'package_switches', 'package_addon', 'user_package', 'user_ops', 'sell_price', 'offer',

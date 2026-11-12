@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Money, latinWhen } from '../../components/desk';
 import { Button } from '../../components/ui/button';
-import type { LineRow } from '../../lib/api';
+import type { LineDetail } from '../../lib/api';
 import { daysLeft } from '../../lib/days-left';
 import { usePrefs } from '../../lib/prefs';
 
@@ -14,7 +14,7 @@ import { usePrefs } from '../../lib/prefs';
  * package's allowance as three rings, then the subscription and the SIM as key and value rows under a titled head.
  * No cards. The API has no usage figures yet, so each ring shows «—» over the allowance until providers report it.
  */
-export function LineDetails({ line, isPos, onQr }: { line: LineRow; isPos: boolean; onQr: () => void }) {
+export function LineDetails({ line, isPos, onQr }: { line: LineDetail; isPos: boolean; onQr: () => void }) {
   const { t } = usePrefs();
   // The moment the tab opened: the timeline does not move while it is open.
   const [now] = useState(() => Date.now());

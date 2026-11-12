@@ -17,6 +17,23 @@ export function taskReaders(task: TaskSubject, accounts: AccountNode[]): Set<str
   return readers;
 }
 
+/**
+ * Who is handed an eSIM code (ADR 0019, D17): the line's point of sale, every account above it on its own path,
+ * and the branch. Narrower than `taskReaders`: a task's submitter that is no longer on that path (the point of
+ * sale was moved since) still reads the task, without the code.
+ */
+export function esimCodeReaders(posId: string, accounts: AccountNode[]): Set<string> {
+  const byId = new Map(accounts.map((node) => [node.id, node]));
+  const readers = new Set<string>();
+  for (const node of accounts) if (node.layer === 'branch') readers.add(node.id);
+  let cursor: AccountNode | undefined = byId.get(posId);
+  while (cursor) {
+    readers.add(cursor.id);
+    cursor = cursor.parentId ? byId.get(cursor.parentId) : undefined;
+  }
+  return readers;
+}
+
 /** Prisma `where` that lists the tasks an actor may read. The branch reads everything. */
 export function taskWhereFor(actor: { id: string; layer: string }, accounts: AccountNode[]) {
   if (actor.layer === 'branch') return {};

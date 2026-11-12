@@ -2,6 +2,8 @@
 // Shared by the route table (routes.http.spec.ts) and the permission matrix (permissions.http.spec.ts).
 // Generated from the controllers on 2026-11-08 before the domain split moved routes; a route that moves must
 // keep its row.
+// Two reads write an event only when they answer an eSIM code (`esim_read`, ADR 0019 D17): GET /office/lines/:id
+// and GET /office/tasks/:id. Refused, or with no code to hand over, they write none, so their rows say null.
 export type RouteRow = [method: string, path: string, event: [action: string, kind: string, subject: string] | null];
 
 export const ROUTES: RouteRow[] = [

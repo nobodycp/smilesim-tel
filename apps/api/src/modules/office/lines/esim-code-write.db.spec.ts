@@ -181,9 +181,11 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
   it('codes stored before sealing and after it are read side by side', async () => {
     const old = await newLine({ esim: true, esimQr: QR_OLD });
     const sold = await activateEsim();
-    const listed = Object.fromEntries((await service.lines(pos, { sim: 'esim' })).items.map((row) => [row.id, row.esimQr]));
-    expect(listed[old]).toBe(QR_OLD);
-    expect(listed[sold.line.id]).toBe(sold.line.esimQr);
+    // Both are in the list (without their codes, S.5c), and each detail reads its own.
+    const ids = (await service.lines(pos, { sim: 'esim' })).items.map((row) => row.id);
+    expect(ids).toEqual(expect.arrayContaining([old, sold.line.id]));
+    expect((await service.line(pos, old)).line.esimQr).toBe(QR_OLD);
+    expect((await service.line(pos, sold.line.id)).line.esimQr).toBe(sold.line.esimQr);
     expect((await lineOf(old)).esimQr).toBe(QR_OLD);
   });
 

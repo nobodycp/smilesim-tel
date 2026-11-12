@@ -28,19 +28,6 @@ function report(where: string, reason: Unreadable, then: string): void {
 }
 
 /**
- * The code in a row of a list. One unreadable code must not take the whole page down: that row answers `null`
- * and the log says so. A list therefore cannot tell «no code» from «unreadable»; the record's detail can.
- *
- * `where` names the record for the log: `line <id>` or `task <id>`.
- */
-export function listedEsimCode(stored: string | null | undefined, where: string): string | null {
-  const read = readEsimCode(stored);
-  if ('code' in read) return read.code;
-  report(where, read.unreadable, 'it is not shown');
-  return null;
-}
-
-/**
  * The code in the detail of one record. `null` only when the record has no code. A code that cannot be opened
  * is a fault, not «no code»: the request is refused with `ESIM_CODE_UNREADABLE`, whose body carries the catalog
  * message and nothing of the stored text or the key.

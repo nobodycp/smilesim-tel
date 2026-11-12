@@ -701,6 +701,7 @@ export const he: Copy = {
   actTaskComplete: 'השלמת משימה',
   actTaskReject: 'דחיית משימה',
   actTaskCancel: 'ביטול משימה',
+  actEsimRead: 'צפייה בקוד eSIM',
   actProviderMode: 'מצב ספק',
   actCompanyAdd: 'הוספת חברה',
   actPackageAdd: 'הוספת חבילה',

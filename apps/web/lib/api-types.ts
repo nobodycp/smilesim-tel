@@ -381,13 +381,6 @@ export type LineRow = {
   msisdn: string;
   iccid: string | null;
   esim: boolean;
-  /**
-   * The eSIM's QR picture, as the API answers it today in a list row too. No screen reads it from a list row: the
-   * code is taken from a line's own detail (`LineDetail`). It becomes optional here in the same change that takes
-   * it out of the list answer, with the guard in the API's `response-shape.spec.ts` (plan
-   * 2026-11-10-activation-settlement, S.5c, API step).
-   */
-  esimQr: string | null;
   status: string;
   /** The subscription ended at least its package's period ago (90 days by default): «معلّق». */
   suspended: boolean;
@@ -417,7 +410,10 @@ export type LineRow = {
   /** The package's live extra operations (spec 2026-11-09, 3), on the number's card. */
   addons?: { id: string; name: string; price: number }[];
 };
-/** One line as `GET /office/lines/:id` answers it. The one place a screen reads the eSIM code of a line from. */
+/**
+ * One line as `GET /office/lines/:id` answers it. A list row carries no eSIM code (ADR 0019, D17): the detail is
+ * the one place a screen reads it from, and the API records each such read.
+ */
 export type LineDetail = LineRow & { esimQr: string | null };
 export type LineHistory = {
   id: string;

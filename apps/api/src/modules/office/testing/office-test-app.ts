@@ -19,7 +19,14 @@ export async function officeTestApp(store: AuthStore, tables: Record<string, unk
       ...OFFICE_PROVIDERS,
       ...API_PROVIDERS,
       { provide: AUTH_STORE, useValue: store },
-      { provide: ActivityRecorder, useValue: { recordOffice: async (...args: unknown[]) => void recorded.push(args) } },
+      {
+        provide: ActivityRecorder,
+        useValue: {
+          recordOffice: async (...args: unknown[]) => void recorded.push(args),
+          // The read of an eSIM code: same shape in `recorded`, always `ok`. A spec replaces it to make it fail.
+          recordOfficeOrFail: async (...args: unknown[]) => void recorded.push([...args, 'ok', '']),
+        },
+      },
     ],
   });
   if (notice) builder = builder.overrideProvider(NoticeService).useValue(notice);

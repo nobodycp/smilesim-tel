@@ -701,6 +701,7 @@ export const en: Copy = {
   actTaskComplete: 'Complete task',
   actTaskReject: 'Reject task',
   actTaskCancel: 'Cancel task',
+  actEsimRead: 'Viewed an eSIM code',
   actProviderMode: 'Provider mode',
   actCompanyAdd: 'Company added',
   actPackageAdd: 'Package added',

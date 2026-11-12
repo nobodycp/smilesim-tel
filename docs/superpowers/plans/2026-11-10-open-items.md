@@ -7,7 +7,7 @@ or replaced by a later design. They stay in git history.
 ## Waiting for an owner decision (`docs/project-plan.md` «مفتوح»)
 
 - [ ] **Activation through a provider: the owner's word for each slice after S.1**
-  (plan `2026-11-10-activation-settlement.md`, ADR 0019 accepted). S.1–S.4, S.5a and S.5b are built (the backfill `npm run seal-secrets --workspace api` has been run on no deployment yet); S.5c: the web step is built and pushed (`3a2a3c1`); the API step (the code leaves list answers) is next.
+  (plan `2026-11-10-activation-settlement.md`, ADR 0019 accepted). S.1–S.4, S.5a and S.5b are built (the backfill `npm run seal-secrets --workspace api` has been run on no deployment yet); S.5c is built (web pushed at `3a2a3c1`; the API step committed locally, not deployed: it must go out together with that web); S.6 (the request key) is next.
   **Backup and restore to Cloudflare R2** (`scripts/backup/`, `docs/operations/backup-and-restore.md`, Arabic handover
   guides in `docs/handover/`) is ready in code and not enabled in operation (owner, 2026-11-12): tried on synthetic
   data against a local S3 stand-in, never on R2 itself, switched on later per client. It is not a prerequisite
