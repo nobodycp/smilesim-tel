@@ -12,8 +12,9 @@ import { AwaitsFirstAnswer, REPLAY_HEADER, SecretAnswer } from '../../shared/dup
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { LineReads } from './line-reads';
-import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, LinesQuery, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
+import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, LinesQuery, ProviderDecisionApprovalBody, ProviderDecisionBody, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
 import { LinesService } from './lines.service';
+import { ProviderDecisions } from './provider-decisions';
 
 /** Whether an activation's answer carries an eSIM code: only then is the duplicate guard's copy of it a secret. */
 const carriesEsimCode = (answer: unknown) => Boolean((answer as { line?: { esimQr?: unknown } } | null)?.line?.esimQr);
@@ -24,7 +25,7 @@ const carriesEsimCode = (answer: unknown) => Boolean((answer as { line?: { esimQ
 @Controller('office')
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class LinesController {
-  constructor(private readonly lineDesk: LinesService, private readonly reads: LineReads, private readonly activity: ActivityRecorder) {}
+  constructor(private readonly lineDesk: LinesService, private readonly reads: LineReads, private readonly activity: ActivityRecorder, private readonly decisions: ProviderDecisions) {}
 
   @Get('lines')
   @ApiOperation({ summary: 'Paged lines / SIMs' })
@@ -238,6 +239,34 @@ export class LinesController {
     @Body() body: CompleteTaskBody,
   ) {
     return this.lineDesk.completeTask(actor, id, body);
+  }
+
+  @Post('tasks/:id/provider-decision')
+  @ApiOperation({ summary: 'Decide on a task\'s provider operation: applied at once, or a proposal for a second account' })
+  @ApiParam({ name: 'id' })
+  @ApiZodBody(ProviderDecisionBody)
+  @ApiErrorResponse(401, 403, 400, 404, 409)
+  @Activity('provider_decision', 'task', param('id'))
+  providerDecision(
+    @Actor() actor: ActorShape,
+    @Param('id') id: string,
+    @Body() body: ProviderDecisionBody,
+  ) {
+    return this.decisions.decide(actor, id, body);
+  }
+
+  @Post('tasks/:id/provider-decision/approval')
+  @ApiOperation({ summary: 'Approve or refuse the proposed decision on a task\'s provider operation, as a second account' })
+  @ApiParam({ name: 'id' })
+  @ApiZodBody(ProviderDecisionApprovalBody)
+  @ApiErrorResponse(401, 403, 400, 404, 409)
+  @Activity('provider_decision_approval', 'task', param('id'))
+  providerDecisionApproval(
+    @Actor() actor: ActorShape,
+    @Param('id') id: string,
+    @Body() body: ProviderDecisionApprovalBody,
+  ) {
+    return this.decisions.answer(actor, id, body);
   }
 
   @Post('lines/:id/company-switch')

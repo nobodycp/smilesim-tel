@@ -23,8 +23,8 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   *Transactions:* none. *Specs:* `providers/operations/settlement-schema.db.spec.ts` (spec items 5 and 22, and the
   constraints). *Verified by hand on a fresh database:* the 55 earlier migrations, rows in nine tables, then this
   migration: every existing column of every row identical, the new columns empty. `prisma migrate diff` empty.
-  **Still to do for item 22 in S.9:** that the worker's activity purge leaves the table alone (it does not touch it
-  today; the spec belongs with the code that writes events).
+  Item 22's last part is closed in S.9: the purge is `purgeActivity` (`activity/activity-log.ts`), which names
+  `ActivityEvent` only, and `provider-decisions.db.spec.ts` runs it over decision events.
 
 - [x] **S.2 Reservation in the database (O1). Visible.** Migration `20261110200000_open_activation_reservations`.
   - **Rules** (`lines/reservation.rules.ts`, pure): what a claim locks and in which order (`claimKeys`), who
@@ -339,14 +339,28 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   `20261112120000_apply_error_esim_code_missing` (ten migrations are now pending on the server,
   `docs/operations/2026-11-12-coolify-upgrade-preparation.md` 5.2).
 
-- [ ] **S.9 Decisions (O5).**
-  `lines/provider-decisions.ts`; policy rows; `POST /office/tasks/:id/provider-decision` (propose or decide) and
-  `POST /office/tasks/:id/provider-decision/approval` (approve or refuse); zod, activity, `refuseEntered`;
-  `permissions.http.spec.ts`, `routes.http.spec.ts`, `response-shape.spec.ts`; error copy in ar / en / he.
-  *Transactions:* T10, T11. *Locks:* task → keys → operation → wallet. *Specs:* 19–22.
-  Carried over from S.8: *apply corrected* on an `esim-code-missing` exception must be given the activation
-  code (sealed before it is stored, never written to a decision event); without one the operation stays an
-  exception. The rules already treat every exception reason alike (`activation-settlement.rules.spec.ts`).
+- [x] **S.9 Decisions (O5).** Built 2026-11-12 (commit: see `git log --grep 'slice S.9'`).
+  `lines/provider-decisions.ts` (`ProviderDecisions.decide`, `.answer`); `POST /office/tasks/:id/provider-decision`
+  (decide: applied at once, or a proposal) and `POST /office/tasks/:id/provider-decision/approval` (the second
+  account approves or refuses); zod (`ProviderDecisionBody`, `ProviderDecisionApprovalBody`), activity actions
+  `provider_decision` and `provider_decision_approval`, `refuseEntered` + `requireGrant(accounting)` before
+  anything is read; `permissions.http.spec.ts` (`ynynnn` for both), `routes.http.spec.ts`,
+  `response-shape.spec.ts`; ten refusal codes with ar / en / he copy.
+  *Transactions:* T10, T11. *Locks:* task → keys → operation → wallet. *Specs:* 19–22
+  (`lines/provider-decisions.db.spec.ts`, over HTTP on PostgreSQL).
+  As built: ADR 0019 "As built in S.9". What the slice had to settle, each written there:
+  - *apply corrected* on `esim-code-missing` must be given the code (carried over from S.8): without one the
+    answer is `400 ESIM_CODE_REQUIRED` and nothing changes; with one it is sealed onto the line, and the event
+    says only that a code was supplied.
+  - A confirmation whose line cannot be made is recorded as `succeeded` with the exception of D16, not lost.
+  - A correction that does not fit (the number or the serial is taken too) changes nothing and writes no
+    decision event: the closed list of event types has no "attempted", and the refusal is on the activity
+    record. **Open for the owner:** whether such an attempt should also be in the permanent record (a fifth
+    event type, a change to D15).
+  - A proposal writes its event and nothing else (T10's table): no notice. The second account learns of it from
+    the screens of S.10, which must list open proposals.
+  - The handover of a declared failure to the branch (T6: the task's note and the handlers' notice) is the
+    settlement's, from the message the approval writes; the task is the branch's from the approval's commit.
 
 - [ ] **S.10 The screens (O6). Visible.**
   A web spec first: the waiting label, the exception state, the decision form with its evidence fields, the

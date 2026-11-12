@@ -228,6 +228,11 @@ export function openProposal(events: readonly DecisionEvent[]): DecisionEvent | 
   return last?.type === 'proposed' ? last : null;
 }
 
+/** Whether a release after the provider's success was approved: the last word on an operation. */
+export function released(events: readonly DecisionEvent[]): boolean {
+  return events.some((event) => event.type === 'approved' && event.decision === 'release-after-success');
+}
+
 function authorised(actor: DecisionActor): boolean {
   return mayDecide(actor);
 }
@@ -268,6 +273,9 @@ export function decisionStep(events: readonly DecisionEvent[], actor: DecisionAc
   if (actor.id === request.submitterId) return refuse('own-task');
 
   const proposal = openProposal(events);
+  // An approved release closed the task and gave its hold back: the operation keeps `succeeded` and its exception
+  // as the record of what the provider did, and nothing more is decided about it.
+  if (released(events)) return refuse('not-applicable');
   const sequence = events.reduce((highest, event) => Math.max(highest, event.sequence), 0) + 1;
   const phase = phaseOf(request.operation);
 

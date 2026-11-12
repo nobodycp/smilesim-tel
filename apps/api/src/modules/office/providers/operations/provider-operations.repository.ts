@@ -12,6 +12,20 @@ export const OPERATION_SETTLED = 'provider-operation.settled';
 /** What a confirmed activation handed back, as the columns hold it: the eSIM code sealed, or absent. */
 export type ResultColumns = { msisdn: string | null; iccid: string | null; sealedEsimCode: string | null };
 
+/** One step of a person's decision as it is stored (ADR 0019, D15). It has no column for an eSIM code. */
+export type NewDecisionEvent = {
+  operationId: string;
+  sequence: number;
+  type: string;
+  decision: string;
+  evidenceKind: string | null;
+  providerRef: string | null;
+  note: string;
+  suppliedEsimCode: boolean;
+  accountId: string;
+  accountLoginName: string;
+};
+
 export type NewOperation = Omit<OperationRequest, 'providerCode'> & { idempotencyKey: string; requestHash: string; providerId: string };
 /** `claim` starts a new attempt: counted, leased until the given time, with no send mark. */
 export type StatusChange = { status: OperationStatus; providerRef?: string | null; error: OperationError | null; claim?: { at: Date; leaseUntil: Date }; result?: ResultColumns | null };
@@ -143,6 +157,35 @@ export class ProviderOperationsRepository {
   async markApplyError(db: Db, id: string, error: string, at: Date): Promise<boolean> {
     const marked = await db.providerOperation.updateMany({ where: { id, status: 'succeeded', appliedAt: null, applyError: null }, data: { applyError: error, applyFailedAt: at } });
     return marked.count === 1;
+  }
+
+  /**
+   * Stamps an exception as applied by a person's decision (ADR 0019, D15 apply corrected), once: only while the
+   * operation is succeeded, not applied, and carries an exception. The reason it could not be applied stays on
+   * the row, with the time, as the record of what happened.
+   */
+  async markAppliedCorrected(db: Db, id: string, at: Date): Promise<boolean> {
+    const marked = await db.providerOperation.updateMany({ where: { id, status: 'succeeded', appliedAt: null, applyError: { not: null } }, data: { appliedAt: at } });
+    return marked.count === 1;
+  }
+
+  /** The operation of a task, or null for a task that never went to a provider. */
+  operationByTask(db: Db, taskId: string) {
+    return db.providerOperation.findUnique({ where: { taskId } });
+  }
+
+  /** The steps of the decisions people took on an operation, in order: what the rules read. */
+  decisionEvents(db: Db, operationId: string) {
+    return db.providerDecisionEvent.findMany({ where: { operationId }, orderBy: { sequence: 'asc' }, select: { sequence: true, type: true, decision: true, accountId: true } });
+  }
+
+  /**
+   * Appends one step of a decision. The table is append-only and holds one row per (operation, sequence): a
+   * second writer of the same step inserts nothing (`ON CONFLICT DO NOTHING`) and is answered false.
+   */
+  async addDecisionEvent(db: Db, row: NewDecisionEvent): Promise<boolean> {
+    const made = await db.providerDecisionEvent.createMany({ data: [{ id: randomUUID(), ...row }], skipDuplicates: true });
+    return made.count === 1;
   }
 
   /** Stamps a failed operation as handed to the branch, once. */

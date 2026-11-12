@@ -237,6 +237,17 @@ export class TasksService {
     return { ok: true };
   }
 
+  /**
+   * Rejects a task by an approved decision on its provider operation (ADR 0019, D15, T11): the caller holds the
+   * task's row and the operation's, and the rules allowed it. The task is closed and its hold given back, once.
+   */
+  async rejectByDecision(tx: Prisma.TransactionClient, task: { id: string; action: string; msisdn: string | null; submitterId: string; posId: string; assigneeId: string | null; held: number | null }, actor: Actor, reason: string): Promise<WrittenNotice[]> {
+    const updated = await this.repo.rejectTask(tx, task.id, reason, actor.id);
+    if (updated.count !== 1) fail(409, 'DUPLICATE_REQUEST');
+    await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, reason);
+    return this.taskNotice(tx, 'rejected', task, actor, { reason, handlerName: actor.nickname });
+  }
+
   async cancel(actor: Actor, id: string) {
     const task = await this.repo.task(id);
     if (!task || task.submitterId !== actor.id || (task.status !== 'pending' && task.status !== 'working')) fail(400, 'INVALID');

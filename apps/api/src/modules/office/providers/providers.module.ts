@@ -22,6 +22,6 @@ export const PROVIDERS_PROVIDERS = [ProvidersRepository, ProvidersService, Provi
   imports: [KernelModule, WalletsModule],
   controllers: PROVIDERS_CONTROLLERS,
   providers: PROVIDERS_PROVIDERS,
-  exports: [ProviderAccountsService, ProviderHealthService, PROVIDER_GATEWAY],
+  exports: [ProviderAccountsService, ProviderHealthService, ProviderOperationsService, PROVIDER_GATEWAY],
 })
 export class ProvidersModule {}

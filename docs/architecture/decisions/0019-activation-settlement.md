@@ -286,6 +286,16 @@ come; the money must be safe in every state of the operation.
 - The web makes one key per activation (`lib/request-key.ts`): the same content sent again carries the same key;
   changed content, or the next activation after an answer, carries a new one. Both activation forms use it.
 
+- **Corrected on 2026-11-12, found while S.9 was verified** (its own commit, `fix(api): a repeat never runs
+  on a key it does not hold`): the guard's Redis `claim` is two commands (`SET … NX`, then `GET` when the key
+  was taken). When the first request failed and dropped the key between the two, the read found nothing and the
+  claim answered "yours" for a key the request did not hold, so every repeat waiting on that key ran at once
+  (seen as four runs where one was expected, under load, in `duplicate-guard.answers.spec.ts`). The claim now
+  asks for the key again and answers "yours" only for a key it did set. What must not happen twice was always
+  the database's to refuse (`OfficeTask.requestKey`), so no task was ever opened twice by it; the guard's own
+  promise, one run and the same answer for the others, now holds in that window too
+  (`duplicate-guard.store.spec.ts`, which fails on the code before the fix).
+
 ## As built in S.7 (the guards of the manual path, and cancel)
 
 - One file holds it: `tasks/task-operation.ts`. It locks the task's operation row (`SELECT … FOR UPDATE`) and
@@ -362,4 +372,66 @@ come; the money must be safe in every state of the operation.
   `resultEsimCode LIKE 'v1:%'` is the last line of defence, and it is one that writes the refused value to the
   server's log: it must never be the line that is relied on.
 - Spec item 8 is closed: a completion, a reject and a cancel by hand raced with T5 change nothing, and T5 applies.
+
+## As built in S.9 (decisions by people)
+
+`lines/provider-decisions.ts` (`ProviderDecisions`), served by `POST /office/tasks/:id/provider-decision` and
+`POST /office/tasks/:id/provider-decision/approval`. D15 and D16 stand as written; nothing in them changed.
+
+- **The rules decide, twice.** Who may act, on what, with which evidence and what the step is are
+  `decisionStep`'s (S.3). The service asks it once before any lock, so a refusal costs nothing, and once more
+  under the operation's row lock (`lockedTaskOperation`, `FOR UPDATE`) on the events as they stand there: that
+  answer is the one acted on. The route's own gate (`refuseEntered`, `requireGrant(accounting)`) runs before
+  anything is read, so an account that may not decide learns nothing about a task. One rule was added:
+  `released` — once a release was approved, no further decision is taken on that operation.
+- **T10, one account** (*confirm success*, *apply corrected*): task claimed (`working → done`) → the claim keys
+  → the operation locked, the rules asked, the event written → `unknown → succeeded` with the reference and what
+  the person says the provider handed back (the eSIM code sealed), or for a correction the stamp alone → `appliedAt`
+  stamped by compare-and-set → `TaskCompletion.applyClaimed`, the code the settlement and the branch's
+  completion run → `task.done`. One transaction: a fault anywhere leaves no event, no move, no line and the hold
+  as it was. The entry and the notice name the account that decided (it is the handler, as in a completion by
+  hand); D12's «النظام» is for the settlement, which nobody did.
+- **What is put on the line:** what the person gave, else what the provider handed back, else what the task
+  named. A person who says the provider activated a line names the number: when none is known the answer is
+  `400 DECISION_NUMBER_REQUIRED`, and none is made up (the settlement's `freshNumber` is not used here). A serial
+  given is held to the company's SIM rules. An eSIM needs its code from one of the three: else
+  `400 ESIM_CODE_REQUIRED` and nothing is written, which is how *apply corrected* on `esim-code-missing` "must
+  be given the code". The code is rendered and sealed before the transaction (`storableEsimCode`); the decision
+  event has no column for it and carries `suppliedEsimCode` only; no notice, activity row or log line carries it.
+  On *apply corrected* the operation's own result columns are not rewritten: they stay what the provider
+  reported, and `applyError` stays as the record of why it could not be applied; the corrected number and serial
+  are on the line and on the task.
+- **A confirmation whose line cannot be made** (the number or the serial was taken meanwhile, the package or the
+  point of sale is gone): the first transaction rolls back whole, and a second one writes the event,
+  `unknown → succeeded` with the result, and `applyError` + `applyFailedAt` (D16), and tells the other accounts
+  that may decide. The confirmation is true whatever became of the line, so it is on record; the task stays
+  `working` with its hold, and *apply corrected* or the approved release closes it. The route answers
+  `{ ok, outcome: 'exception', reason }`.
+- **A correction that does not fit** (the corrected number or serial is taken too) is refused with what was
+  taken (`409 NUMBER_TAKEN`, `409 SIM_TAKEN`), and everything rolls back: the exception, the hold and the record
+  are as they were. No decision event is written for it, because nothing was decided that took effect and the
+  closed list of event types (`proposed`, `approved`, `refused`, `applied`) has none for an attempt; the attempt
+  is on the activity record (`provider_decision`, `fail`, the code), which is purged after its retention. Whether
+  an attempt belongs in the permanent record is left to the owner: it would add an event type, a change to D15.
+- **T10, a proposal** (*declare failure*, *release after success*): the event, under the operation's lock, and
+  nothing else: no notice, no change to the operation, the task or the hold. The unique `(operationId, sequence)`
+  is the second barrier: a writer that lost the row inserts nothing and is refused.
+- **T11, the answer of another account:** the task's row, then the operation's, then the rules. A refusal writes
+  its event and nothing else. An approval of a declared failure writes `unknown → failed` (guarded on the
+  attempt) and the `provider-operation.settled` message; the error stays what made the operation unknown, and
+  that people declared it failed is what the events say. From that commit `taskActions` opens the task to the
+  branch; its note and the handlers' notice are the settlement's (T6), as for any operation the provider did not
+  run. The hold stays. An approval of a release rejects the task (`TasksService.rejectByDecision`, with the fixed
+  reason `PROVIDER_RELEASED_NOTE`) and gives the hold back, once; the operation is not written at all: it keeps
+  `succeeded`, the provider's reference and result, and its exception. Nothing is sent again by either.
+- **The record.** Rows are written through `ProviderOperationsService.recordDecision` only; nothing in the
+  product updates or deletes one, and the database refuses both and a truncate. The worker's purge is
+  `purgeActivity`, which names `ActivityEvent` alone. The table's owner can switch its triggers off (the spec's
+  own clean-up does, in one transaction): the protection is against the application and its bugs, not against a
+  database administrator.
+- **Proved by mutation** (each made `provider-decisions.db.spec.ts` fail and was reverted): the operation's row
+  read without its lock; the rules not asked again under the lock; the proposer allowed to answer; an approved
+  release not final; a proposal that also moves the operation; the task's claim not checked; a release that does
+  not check the task is open.
+- Spec items 19 to 22 are closed. Not built here: any read of open proposals for a queue, and the screens (S.10).
 

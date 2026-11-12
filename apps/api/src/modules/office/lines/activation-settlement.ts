@@ -9,7 +9,7 @@ import type { TaskNoticePayload } from '../notices/notice-kinds';
 import type { OperationStatus } from '../providers/operations/provider-operation.rules';
 import type { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
-import { lockedTaskOperation } from '../tasks/task-operation';
+import { lockedTask, lockedTaskOperation } from '../tasks/task-operation';
 import type { TasksService } from '../tasks/tasks.service';
 import { DECISION_GRANT, applyErrorOf, settlementOf, type ApplyError } from './activation-settlement.rules';
 import { storableEsimCode } from './esim-code';
@@ -179,7 +179,7 @@ export class ActivationSettlement {
    */
   private async handToBranch(operation: OperationRow, task: TaskRow, submitter: Actor): Promise<Settled> {
     const written = await this.uow.runTx(async (tx) => {
-      const current = await this.lockedTask(tx, task.id);
+      const current = await lockedTask(tx, task.id);
       const { operation: locked } = await lockedTaskOperation(tx, task.id);
       if (!current || !locked || locked.id !== operation.id || settlementOf(locked) !== 'hand-to-branch') return null;
       if (!(await this.operations.stampHandedOver(tx, operation.id, new Date()))) return null;
@@ -203,7 +203,7 @@ export class ActivationSettlement {
    */
   private async tellUnknown(operation: OperationRow, task: TaskRow, submitter: Actor): Promise<Settled> {
     const written = await this.uow.runTx(async (tx) => {
-      const current = await this.lockedTask(tx, task.id);
+      const current = await lockedTask(tx, task.id);
       const { operation: locked } = await lockedTaskOperation(tx, task.id);
       if (!current || current.status !== 'working' || !locked || locked.id !== operation.id || locked.status !== 'unknown') return null;
       // There is no column to mark it by, so the notice itself is the mark: read under the operation's lock.
@@ -218,20 +218,19 @@ export class ActivationSettlement {
     return 'awaiting-decision';
   }
 
-  /** Holds the task's row until the transaction ends, and answers it as it stands. */
-  private async lockedTask(tx: Prisma.TransactionClient, id: string): Promise<{ id: string; status: string } | null> {
-    const rows = await tx.$queryRaw<{ id: string; status: string }[]>`SELECT "id", "status" FROM "OfficeTask" WHERE "id" = ${id} FOR UPDATE`;
-    return rows[0] ?? null;
+  private tellDeciders(tx: Prisma.TransactionClient, task: TaskRow, submitter: Actor, text: string): Promise<WrittenNotice[]> {
+    return tellDeciders(this.uow, this.tasks, tx, task, submitter, text, true);
   }
+}
 
-  /**
-   * A note to the branch accounts that may decide on a provider operation (the owner and the holders of the
-   * decision grant), and to nobody else. It is written in the submitter's name with «النظام» as its author
-   * (D12), names the task and says what happened in fixed words: never a serial or a code.
-   */
-  private async tellDeciders(tx: Prisma.TransactionClient, task: TaskRow, submitter: Actor, text: string): Promise<WrittenNotice[]> {
-    const audience = await this.tasks.branchAccountsWith(tx, DECISION_GRANT);
-    const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, authorName: SYSTEM_SENDER_NAME, handlerName: SYSTEM_SENDER_NAME, excerpt: text };
-    return this.uow.notice.write(tx, audience, submitter, { kind: 'task.note', payload }, { tellActor: true });
-  }
+/**
+ * A note to the branch accounts that may decide on a provider operation (the owner and the holders of the
+ * decision grant), and to nobody else. Its author is «النظام»; it names the task and says what happened in fixed
+ * words: never a serial or a code. Written by the settlement in the submitter's name (D12, `tellActor`), and by a
+ * person's decision in that person's name, who is then not told what they did themselves.
+ */
+export async function tellDeciders(uow: UnitOfWork, tasks: TasksService, tx: Prisma.TransactionClient, task: OfficeTask, actor: Actor, text: string, tellActor: boolean): Promise<WrittenNotice[]> {
+  const audience = await tasks.branchAccountsWith(tx, DECISION_GRANT);
+  const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, authorName: SYSTEM_SENDER_NAME, handlerName: SYSTEM_SENDER_NAME, excerpt: text };
+  return uow.notice.write(tx, audience, actor, { kind: 'task.note', payload }, tellActor ? { tellActor: true } : {});
 }

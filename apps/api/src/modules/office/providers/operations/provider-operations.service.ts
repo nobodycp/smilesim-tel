@@ -3,8 +3,8 @@ import { fail } from '../../../shared/office-failure';
 import { isSealed, seal } from '../../../shared/secret-box';
 import { UnitOfWork, type Db } from '../../kernel/unit-of-work';
 import type { Action } from '../../kernel/types';
-import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, settledSequence, storedRef, storedResult, validKey, type AttemptOutcome, type OperationRequest, type OperationStatus, type OutgoingOperation, type StoredResult, type Verdict } from './provider-operation.rules';
-import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository, type ResultColumns } from './provider-operations.repository';
+import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, settledSequence, storedRef, storedResult, validKey, type ActivationResult, type AttemptOutcome, type OperationError, type OperationRequest, type OperationStatus, type OutgoingOperation, type StoredResult, type Verdict } from './provider-operation.rules';
+import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository, type NewDecisionEvent, type ResultColumns } from './provider-operations.repository';
 
 /**
  * A confirmed activation's result as the columns hold it (ADR 0019, D11 and D17): the eSIM code sealed. A code
@@ -193,5 +193,60 @@ export class ProviderOperationsService {
   /** Stamps a failed operation as handed to the branch, once. */
   stampHandedOver(tx: Db, id: string, at: Date): Promise<boolean> {
     return this.repo.markHandedOver(tx, id, at);
+  }
+
+  // What a person's decision asks of the operation (ADR 0019, D15; T10, T11). The caller holds the operation's
+  // row lock and has asked the rules (`decisionStep`); each write here is still guarded on its own.
+
+  /** The operation of a task as it is stored, or null for a task that never went to a provider. */
+  ofTask(taskId: string) {
+    return this.repo.operationByTask(this.uow.prisma, taskId);
+  }
+
+  /** The steps of the decisions taken on an operation so far, in order. */
+  decisionEvents(db: Db, operationId: string) {
+    return this.repo.decisionEvents(db, operationId);
+  }
+
+  /** Appends one step of a decision; refused (409) when another writer wrote that step first. */
+  async recordDecision(tx: Db, event: NewDecisionEvent): Promise<void> {
+    if (!(await this.repo.addDecisionEvent(tx, event))) fail(409, 'DUPLICATE_REQUEST');
+  }
+
+  /**
+   * What a person says the provider handed back, as the columns hold it: the number and the serial as digits,
+   * the eSIM code sealed. Made before the transaction; a code that cannot be sealed throws and nothing is written.
+   */
+  storableResult(result: ActivationResult): ResultColumns | null {
+    return resultColumns(storedResult(result));
+  }
+
+  /**
+   * A person confirmed that the provider ran an unknown operation: `unknown → succeeded` with the provider's
+   * reference and what it handed back, guarded on the attempt. It writes no message: the caller applies the
+   * result, or records why it cannot be, in the same transaction. Answers whether it moved.
+   */
+  async confirmUnknown(tx: Db, id: string, providerRef: string | null, result: ResultColumns | null): Promise<boolean> {
+    const row = await this.repo.operationById(tx, id);
+    if (!row) return false;
+    return this.repo.moveStatus(tx, id, { status: 'unknown', attempts: row.attempts }, { status: 'succeeded', providerRef: storedRef(providerRef), error: null, result });
+  }
+
+  /**
+   * Two accounts declared that the provider did not run an unknown operation: `unknown → failed`, guarded on the
+   * attempt, with the message that has the task handed to the branch (T6). The error stays what made it unknown;
+   * that people declared the failure is what the decision events say. It never sends again. Answers whether it moved.
+   */
+  async declareFailed(tx: Db, id: string): Promise<boolean> {
+    const row = await this.repo.operationById(tx, id);
+    if (!row) return false;
+    const moved = await this.repo.moveStatus(tx, id, { status: 'unknown', attempts: row.attempts }, { status: 'failed', error: row.lastError as OperationError | null });
+    if (moved) await this.repo.addOutbox(tx, OPERATION_SETTLED, id, settledSequence(row.attempts, true));
+    return moved;
+  }
+
+  /** Stamps an exception as applied by a person's corrected data, once. */
+  stampAppliedCorrected(tx: Db, id: string, at: Date): Promise<boolean> {
+    return this.repo.markAppliedCorrected(tx, id, at);
   }
 }

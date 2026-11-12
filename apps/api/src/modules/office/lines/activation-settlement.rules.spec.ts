@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { OPERATION_STATUSES, validKey, type OperationStatus } from '../providers/operations/provider-operation.rules';
 import {
   APPLY_ERRORS, DECISIONS, DECISION_EVENT_TYPES, EVIDENCE_KINDS, MIN_DECISION_NOTE,
-  activationRequestHash, applyErrorOf, decisionStep, mayDecide, inFlight, needsSecondAccount, openProposal, operationKey, phaseOf, requestKeyOf, sameRequest, settlementOf, sweepable, taskActions,
+  activationRequestHash, applyErrorOf, decisionStep, mayDecide, inFlight, needsSecondAccount, openProposal, operationKey, phaseOf, released, requestKeyOf, sameRequest, settlementOf, sweepable, taskActions,
   type Decision, type DecisionActor, type DecisionEvent, type DecisionEvidence, type DecisionRequest, type OperationPhase, type TaskOperation,
 } from './activation-settlement.rules';
 
@@ -248,6 +248,25 @@ describe('decisions by people (D15)', () => {
     }
     // A success that waits to be applied is the system's to apply: no person releases it or corrects it yet.
     expect(refusal(decisionStep([], owner, decide('release-after-success', PHASES.unapplied)))).toBe('not-applicable');
+  });
+
+  it('takes no further decision once a release was approved: the operation stays an exception on record, and nothing is decided about it again', () => {
+    const closed: DecisionEvent[] = [proposed('release-after-success', 'owner', 1), { sequence: 2, type: 'approved', decision: 'release-after-success', accountId: 'accountant' }];
+    expect(released(closed)).toBe(true);
+    for (const actor of [owner, accountant, second]) {
+      for (const decision of DECISIONS) expect(refusal(decisionStep(closed, actor, decide(decision, PHASES.exception)))).toBe('not-applicable');
+      expect(refusal(decisionStep(closed, actor, answer('approve', PHASES.exception)))).toBe('not-applicable');
+      expect(refusal(decisionStep(closed, actor, answer('refuse', PHASES.exception)))).toBe('not-applicable');
+    }
+    // Only an approved release closes it: a proposed one, a refused one and the other decisions do not.
+    const refused: DecisionEvent[] = [proposed('release-after-success', 'owner', 1), { sequence: 2, type: 'refused', decision: 'release-after-success', accountId: 'accountant' }];
+    expect(released([proposed('release-after-success')])).toBe(false);
+    expect(released(refused)).toBe(false);
+    expect(released([{ sequence: 1, type: 'applied', decision: 'confirm-success', accountId: 'owner' }])).toBe(false);
+    expect(released([proposed('declare-failure'), { sequence: 2, type: 'approved', decision: 'declare-failure', accountId: 'accountant' }])).toBe(false);
+    expect(decisionStep(refused, second, decide('apply-corrected', PHASES.exception)).ok).toBe(true);
+    // Who asks is still judged first.
+    expect(refusal(decisionStep(closed, { ...owner, impersonating: true }, decide('apply-corrected', PHASES.exception)))).toBe('entered-session');
   });
 
   it('never approves a stale proposal, so it moves no money: once the operation left the state it was made about, it can only be refused', () => {

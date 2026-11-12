@@ -4,7 +4,7 @@ import 'reflect-metadata';
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
 import { createPrismaClient } from './db';
-import { purgeBefore } from './modules/office/activity/activity-log';
+import { purgeActivity } from './modules/office/activity/activity-log';
 import { SimulatedProviderGateway } from './modules/office/providers/gateway/simulated-gateway';
 import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, startProviderDispatchTimers } from './provider-dispatch';
 
@@ -51,8 +51,8 @@ export async function run(): Promise<void> {
   const purge = async () => {
     const prisma = createPrismaClient();
     try {
-      const removed = await prisma.activityEvent.deleteMany({ where: { at: { lt: purgeBefore() } } });
-      if (removed.count > 0) log.log(`activity purge: ${removed.count}`);
+      const removed = await purgeActivity(prisma);
+      if (removed > 0) log.log(`activity purge: ${removed}`);
     } catch (error) {
       log.error(`activity purge: ${reason(error)}`);
     } finally {

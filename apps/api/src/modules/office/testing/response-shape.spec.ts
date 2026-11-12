@@ -5,6 +5,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
 import { companies } from '../catalog/office-catalog';
 import { OfficeFacade } from './office-facade';
+import { APPLY_ERRORS } from '../lines/activation-settlement.rules';
 
 // The web app keeps its own copy of the shape of these answers (apps/web/lib/api-types.ts and features/lines/api.ts: OfficeMe,
 // HomePayload, LineRow, PosChoice). There is no shared package, so this test is the guard: the key
@@ -21,6 +22,7 @@ const LINE_KEYS = ['id', 'msisdn', 'iccid', 'esim', 'status', 'suspended', 'pack
 const LINE_OPTIONAL_KEYS = ['agentLoginName', 'mainAgentLoginName', 'addons', 'opsLocked', 'dataGb', 'smsCount', 'minutes', 'months', 'subscriberPrice', 'companyImage', 'sim', 'switchTargets', 'lastRechargeAt', 'esimPrice'];
 const POS_CHOICE_KEYS = ['loginName', 'nickname'];
 const DISCONNECT_QUOTE_KEYS = ['amount', 'runsNow'];
+const DECISION_ANSWER_KEYS = ['ok', 'outcome'];
 const SIM_RULES_KEYS = ['length', 'prefix', 'esim'];
 // `capped`: the shelf was cut at LIST_CAP packages (shared/paging.ts).
 const SHELF_KEYS = ['companies', 'capped'];
@@ -441,6 +443,18 @@ describeWeb('web types match the pinned shapes', () => {
 
   it('DisconnectQuote', () => {
     expect(declared(typeBody(source, 'DisconnectQuote'))).toEqual({ required: sorted(DISCONNECT_QUOTE_KEYS), optional: [] });
+  });
+
+  // ADR 0019, D15: the answers of the two decision routes. `provider-decisions.db.spec.ts` pins what the routes
+  // answer over HTTP; here the web's copy of the two shapes and of the closed lists.
+  it('ProviderDecisionAnswer and ProviderDecisionApprovalAnswer', () => {
+    const decision = typeBody(source, 'ProviderDecisionAnswer');
+    expect(declared(decision)).toEqual({ required: sorted(DECISION_ANSWER_KEYS), optional: ['reason'] });
+    expect(decision).toContain(`reason?: ${APPLY_ERRORS.map((reason) => `'${reason}'`).join(' | ')};`);
+    expect(decision).toContain("outcome: 'applied' | 'proposed' | 'exception';");
+    const approval = typeBody(source, 'ProviderDecisionApprovalAnswer');
+    expect(declared(approval)).toEqual({ required: sorted(DECISION_ANSWER_KEYS), optional: [] });
+    expect(approval).toContain("outcome: 'approved' | 'refused';");
   });
 
   it('SimRules', () => {

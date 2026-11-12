@@ -104,6 +104,8 @@ export const ROUTES: RouteRow[] = [
   ['POST', '/office/tasks/ID1/cancel', ['task_cancel', 'task', 'ID1']],
   ['POST', '/office/tasks/ID1/complete', ['task_complete', 'task', 'ID1']],
   ['POST', '/office/tasks/ID1/notes', ['task_note', 'task', 'ID1']],
+  ['POST', '/office/tasks/ID1/provider-decision', ['provider_decision', 'task', 'ID1']],
+  ['POST', '/office/tasks/ID1/provider-decision/approval', ['provider_decision_approval', 'task', 'ID1']],
   ['POST', '/office/tasks/ID1/reject', ['task_reject', 'task', 'ID1']],
   ['POST', '/office/tasks/ID1/release', ['task_release', 'task', 'ID1']],
   ['POST', '/office/tasks/ID1/take', ['task_take', 'task', 'ID1']],

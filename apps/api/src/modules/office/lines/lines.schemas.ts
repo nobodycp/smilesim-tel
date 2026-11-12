@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { id, optionalText, providerHint, queryCursor, queryOneOf, queryText } from '../../shared/schemas';
+import { RESULT_LIMITS } from '../providers/operations/provider-operation.rules';
 import { LINE_STATUSES } from '../rules/office-paging';
+import { DECISIONS } from './activation-settlement.rules';
 
 // The bodies of the line routes (backend-engineering.mdc 4.1). A field whose malformed value has its own
 // refusal stays wide here and is judged by the service: a SIM serial (`SIM_*`), a QR picture (`QR_INVALID`).
@@ -69,6 +71,27 @@ export const CompleteTaskBody = z.object({
   msisdn: optionalText(32),
 });
 export type CompleteTaskBody = z.input<typeof CompleteTaskBody>;
+
+/**
+ * A decision on a task's provider operation (ADR 0019, D15). Only the form is checked here: which decisions and
+ * kinds of evidence exist, how long a note must be and when a reference is required are the rules' to say
+ * (`decisionStep`). `msisdn`, `iccid` and `esimCode` are what the provider handed back, read only by the two
+ * decisions that make the line.
+ */
+export const ProviderDecisionBody = z.object({
+  decision: z.enum(DECISIONS),
+  evidenceKind: optionalText(40),
+  note: optionalText(TASK_TEXT_MAX),
+  providerRef: optionalText(120),
+  msisdn: optionalMsisdn,
+  iccid: simSerial,
+  esimCode: optionalText(RESULT_LIMITS.esimCode),
+});
+export type ProviderDecisionBody = z.input<typeof ProviderDecisionBody>;
+
+/** The second account's answer to the proposal that is open: approve it, or refuse it. */
+export const ProviderDecisionApprovalBody = z.object({ approve: z.boolean() });
+export type ProviderDecisionApprovalBody = z.input<typeof ProviderDecisionApprovalBody>;
 
 /** GET lines — the filters of the numbers list. `expiring` is not a stored status: it reads the end date. */
 export const LinesQuery = z.object({

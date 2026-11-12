@@ -511,6 +511,20 @@ export type DisconnectQuote = {
   amount: number;
   runsNow: boolean;
 };
+/**
+ * POST office/tasks/:id/provider-decision (ADR 0019, D15): applied at once, left as a proposal for a second
+ * account, or on record with the line still to be made (`exception`, which alone carries `reason`).
+ */
+export type ProviderDecisionAnswer = {
+  ok: true;
+  outcome: 'applied' | 'proposed' | 'exception';
+  reason?: 'number-taken' | 'sim-taken' | 'target-missing' | 'esim-code-missing';
+};
+/** POST office/tasks/:id/provider-decision/approval: what the second account's answer came to. */
+export type ProviderDecisionApprovalAnswer = {
+  ok: true;
+  outcome: 'approved' | 'refused';
+};
 export type SimRules = {
   length: number | null;
   prefix: string;

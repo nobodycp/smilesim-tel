@@ -117,6 +117,9 @@ const EXPECTED: [route: string, access: string][] = [
   ['POST /office/tasks/ID1/cancel', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['POST /office/tasks/ID1/complete', 'ynynnn'],
   ['POST /office/tasks/ID1/notes', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  // ADR 0019, D15: the branch owner, or a branch account holding `accounting`; nobody below the branch.
+  ['POST /office/tasks/ID1/provider-decision', 'ynynnn'],
+  ['POST /office/tasks/ID1/provider-decision/approval', 'ynynnn'],
   ['POST /office/tasks/ID1/reject', 'ynynnn'],
   ['POST /office/tasks/ID1/release', 'ynynnn'],
   ['POST /office/tasks/ID1/take', 'ynynnn'],

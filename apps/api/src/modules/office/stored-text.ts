@@ -24,5 +24,8 @@ export const PROVIDER_EXCEPTION_NOTES = {
   'esim-code-missing': 'نجح التفعيل عند المزود ولم يصل رمز تفعيل eSIM فلم يُنشأ الخط. المبلغ محجوز والمهمة بانتظار قرار',
 } as const;
 
+/** The reason a task carries when two accounts released it after the provider's success (ADR 0019, D15). */
+export const PROVIDER_RELEASED_NOTE = 'أُلغيت بقرار معتمد من حسابين بعد نجاح المزود، وأُعيد المبلغ المحجوز';
+
 /** Who a notice comes from when no person sent it. */
 export const SYSTEM_SENDER_NAME = 'النظام';

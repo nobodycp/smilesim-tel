@@ -37,6 +37,8 @@ export const ACTIVITY_ACTIONS = [
   'task_complete',
   'task_reject',
   'task_cancel',
+  'provider_decision',
+  'provider_decision_approval',
   'provider_mode',
   'company_sim',
   'package_mode',
@@ -75,6 +77,15 @@ export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 
 export function purgeBefore(now: Date = new Date()): Date {
   return new Date(now.getTime() - ACTIVITY_RETENTION_MS);
+}
+
+/**
+ * The worker's daily purge: activity events older than the retention window, and nothing else. The permanent
+ * record of decisions on provider operations (`ProviderDecisionEvent`, ADR 0019 D15) is another table, which this
+ * never names; the database refuses a delete there in any case. Answers how many events were removed.
+ */
+export async function purgeActivity(db: { activityEvent: { deleteMany: (args: { where: { at: { lt: Date } } }) => Promise<{ count: number }> } }, now: Date = new Date()): Promise<number> {
+  return (await db.activityEvent.deleteMany({ where: { at: { lt: purgeBefore(now) } } })).count;
 }
 
 /** Dates outside the retention window are pulled back inside it. */

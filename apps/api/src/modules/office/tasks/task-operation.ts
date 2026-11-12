@@ -23,6 +23,12 @@ export async function lockedTaskOperation(tx: Prisma.TransactionClient, taskId: 
   return { operation, actions: taskActions(operation) };
 }
 
+/** Holds a task's row until the transaction ends, and answers it as it stands; null when there is none. */
+export async function lockedTask(tx: Prisma.TransactionClient, id: string): Promise<{ id: string; status: string } | null> {
+  const rows = await tx.$queryRaw<{ id: string; status: string }[]>`SELECT "id", "status" FROM "OfficeTask" WHERE "id" = ${id} FOR UPDATE`;
+  return rows[0] ?? null;
+}
+
 /**
  * Refuses a completion by hand or a reject while the task's operation is anything but absent or `failed`
  * (409 `DUPLICATE_REQUEST`): the caller's transaction is rolled back, so the task and its hold stay as they were.

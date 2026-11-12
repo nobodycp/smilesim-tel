@@ -52,6 +52,17 @@ export const ERROR_MESSAGES = {
   ESIM_PACKAGE_OFF: 'الرزمة غير متاحة كـ eSIM',
   ESIM_CODE_UNSEALABLE: 'تعذّر حفظ رمز eSIM بأمان، ولم يُنفَّذ شيء. تواصل مع الدعم',
   ESIM_CODE_UNREADABLE: 'تعذّرت قراءة رمز eSIM المحفوظ. تواصل مع الدعم',
+  // Decisions by people on a provider operation (ADR 0019, D15).
+  DECISION_OWN_TASK: 'لا يتخذ مُرسِل الطلب قراراً على مهمته',
+  DECISION_OWN_PROPOSAL: 'لا يجيب صاحب الاقتراح على اقتراحه. يلزم حساب مخوَّل آخر',
+  DECISION_NOT_APPLICABLE: 'القرار لا ينطبق على حالة العملية الآن',
+  DECISION_PROPOSAL_OPEN: 'يوجد اقتراح بانتظار حساب ثانٍ. يُجاب عليه أولاً',
+  DECISION_NO_PROPOSAL: 'لا يوجد اقتراح بانتظار الجواب',
+  DECISION_EVIDENCE_REQUIRED: 'اختر نوع الدليل',
+  DECISION_NOTE_SHORT: 'الملاحظة عشرون حرفاً على الأقل',
+  DECISION_REFERENCE_REQUIRED: 'أدخل مرجع العملية عند المزود',
+  DECISION_NUMBER_REQUIRED: 'أدخل الرقم الذي فعّله المزود',
+  ESIM_CODE_REQUIRED: 'أدخل رمز تفعيل eSIM الذي سلّمه المزود',
   // Adding from the provider (spec 2026-11-09-admin-review, 3).
   COMPANY_EXISTS: 'الشركة مضافة من قبل',
   PACKAGE_EXISTS: 'الرزمة مضافة من قبل',

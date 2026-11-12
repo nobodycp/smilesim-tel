@@ -54,6 +54,8 @@ export function actionName(t: Copy, action: string): string {
   if (action === 'task_complete') return t.actTaskComplete;
   if (action === 'task_reject') return t.actTaskReject;
   if (action === 'task_cancel') return t.actTaskCancel;
+  if (action === 'provider_decision') return t.actProviderDecision;
+  if (action === 'provider_decision_approval') return t.actProviderDecisionApproval;
   if (action === 'esim_read') return t.actEsimRead;
   if (action === 'provider_mode') return t.actProviderMode;
   if (action === 'provider_esim_price') return t.actProviderEsimPrice;
