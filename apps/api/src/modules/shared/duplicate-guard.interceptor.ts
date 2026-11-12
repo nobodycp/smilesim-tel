@@ -47,17 +47,20 @@ export const SecretAnswer = (isSecret: (answer: unknown) => boolean) => SetMetad
 /** Marks a route where a repeat under the same `Idempotency-Key` waits for the first answer instead of being refused. */
 export const AwaitsFirstAnswer = () => SetMetadata(AWAITS_FIRST, true);
 
+/** Whether an answer is a secret: a route with no rule has none; a rule that throws is taken as "yes". */
+function holdsSecret(answer: unknown, isSecret: ((answer: unknown) => boolean) | undefined): boolean {
+  if (!isSecret) return false;
+  try {
+    return isSecret(answer);
+  } catch {
+    return true;
+  }
+}
+
 /** What is stored for an answer: the JSON, sealed for a secret one; the done mark when it cannot be sealed. */
 function kept(answer: unknown, isSecret: ((answer: unknown) => boolean) | undefined): string {
   const text = JSON.stringify(answer);
-  let secret = true;
-  try {
-    // A route with no rule has no secret; a rule that throws is taken as "yes".
-    secret = isSecret ? isSecret(answer) : false;
-  } catch {
-    secret = true;
-  }
-  if (!secret) return text;
+  if (!holdsSecret(answer, isSecret)) return text;
   const sealed = seal(text);
   return isSealed(sealed) ? sealed : DONE_UNKEPT;
 }

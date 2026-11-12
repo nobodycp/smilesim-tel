@@ -55,8 +55,11 @@ test('an activation sent again carries the same key; the next activation carries
   expect(sent[1].key).toBe(sent[0].key);
   expect(sent[1].body).toEqual(sent[0].body);
 
-  // It was answered: the next activation is another one, even with the very same serial typed again.
+  // It was answered: the next activation is another one, even with the very same serial typed again. Closing the
+  // result leaves for the home page, so the form is opened anew.
   await page.locator('.dialog-result').getByRole('button', { name: 'موافق' }).last().click();
+  await expect(page).toHaveURL('http://admin.localhost:3910/');
+  await page.goto('http://admin.localhost:3910/numbers');
   await openForm(page);
   await serialField(page).fill('8997202000000000011');
   await submit(page);
@@ -107,8 +110,12 @@ test('the point of sale’s own activation form does the same', async ({ page })
   await expect.poll(() => sent.length).toBe(2);
   expect(sent[0].key).toMatch(/^[A-Za-z0-9._:-]{8,120}$/);
   expect(sent[1].key).toBe(sent[0].key);
-  // Answered: the same serial typed again is a new activation.
+  // Answered: the same serial typed again is a new activation. Closing the result leaves for the home page.
   await page.locator('.dialog-result').getByRole('button', { name: 'موافق' }).last().click();
+  await expect(page).toHaveURL('http://pos.localhost:3910/');
+  await page.goto('http://pos.localhost:3910/packages');
+  await page.locator('.company-card').first().click();
+  await page.locator('.pack-card').first().click();
   await serial.fill('8997202000000000011');
   await join.getByRole('button', { name: 'تفعيل', exact: true }).click();
   await expect.poll(() => sent.length).toBe(3);
