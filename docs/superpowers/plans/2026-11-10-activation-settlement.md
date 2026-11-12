@@ -366,10 +366,28 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   - The handover of a declared failure to the branch (T6: the task's note and the handlers' notice) is the
     settlement's, from the message the approval writes; the task is the branch's from the approval's commit.
 
-- [ ] **S.10 The screens (O6). Visible.**
-  A web spec first: the waiting label, the exception state, the decision form with its evidence fields, the
-  approval queue for the second account, the eSIM code on the detail only. Checked at every width, ar + en, light
-  and dark.
+- [x] **S.10 The screens (O6). Visible** once a sale records an operation (S.11); until then seen only in specs.
+  Built 2026-11-12 (commit: see `git log --grep 'slice S.10'`). Web spec first:
+  `docs/superpowers/specs/2026-11-12-provider-operation-screens.md`.
+  - **Reads** (API): `GET /office/tasks` rows carry `operationPhase`; `GET /office/tasks/:id` carries
+    `operation { phase, reason, decisions }` and `hold`; `canTake`, `canWork` and `canCancel` now follow D6 in
+    both, so a screen offers by hand only what the routes accept. New, with the gate of a decision (the owner or
+    `accounting`, a session of its own): `GET /office/tasks/:id/provider-decision` (what this account may do now,
+    asked of `decisionStep` through `decisionChoices`; what the form must ask for; the open proposal; the record)
+    and `GET /office/provider-decisions` (the operations of open tasks that wait for a person). No read carries an
+    eSIM code; reads write nothing.
+  - **Screens** (web): the operation's panel on the task ticket (`provider-operation-panel.tsx`: phase, what it
+    means, what became of the amount, the reason for the branch); the decision form (`decision-dialog.tsx`); the
+    open proposal with approve and refuse behind a confirmation (`proposal-card.tsx`); the record; the queue at
+    `/tasks/decisions` (`provider-decisions-screen.tsx`), linked from the tasks page with its count; the phase as
+    a badge on the tasks list.
+  - *Specs:* `provider-decisions.db.spec.ts` (the reads, over HTTP on PostgreSQL), `activation-settlement.rules.spec.ts`
+    (`decisionChoices`, `holdOf`, `shownPhase`), `response-shape.spec.ts`, `permissions.http.spec.ts`,
+    `tests/provider-operation.spec.ts` (Playwright: every phase, a manual task, the four decisions, approve and
+    refuse, each kind of account, a stale proposal, `esim-code-missing`, the code's privacy, a 409, a lost
+    connection, phone / tablet / desktop in ar and en, light and dark).
+  - Left for later: the queue is not in the side navigation and raises no notice of its own; a proposal still
+    tells nobody (S.9), so the second account finds it through the link's count.
 
 - [ ] **S.11 Opening.**
   `ProviderGateway.dispatches(providerCode)`; `LinesService.route()` answers `dispatch`; `activate` opens the task

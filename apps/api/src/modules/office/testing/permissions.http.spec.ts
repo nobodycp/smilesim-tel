@@ -118,6 +118,8 @@ const EXPECTED: [route: string, access: string][] = [
   ['POST /office/tasks/ID1/complete', 'ynynnn'],
   ['POST /office/tasks/ID1/notes', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   // ADR 0019, D15: the branch owner, or a branch account holding `accounting`; nobody below the branch.
+  ['GET /office/provider-decisions', 'ynynnn'], // the same gate as a decision: what waits, with its evidence
+  ['GET /office/tasks/ID1/provider-decision', 'ynynnn'],
   ['POST /office/tasks/ID1/provider-decision', 'ynynnn'],
   ['POST /office/tasks/ID1/provider-decision/approval', 'ynynnn'],
   ['POST /office/tasks/ID1/reject', 'ynynnn'],

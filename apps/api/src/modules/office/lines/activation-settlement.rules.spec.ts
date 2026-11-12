@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { OPERATION_STATUSES, validKey, type OperationStatus } from '../providers/operations/provider-operation.rules';
 import {
   APPLY_ERRORS, DECISIONS, DECISION_EVENT_TYPES, EVIDENCE_KINDS, MIN_DECISION_NOTE,
-  activationRequestHash, applyErrorOf, decisionStep, mayDecide, inFlight, needsSecondAccount, openProposal, operationKey, phaseOf, released, requestKeyOf, sameRequest, settlementOf, sweepable, taskActions,
+  activationRequestHash, applyErrorOf, decisionChoices, decisionStep, holdOf, shownPhase, mayDecide, inFlight, needsSecondAccount, openProposal, operationKey, phaseOf, released, requestKeyOf, sameRequest, settlementOf, sweepable, taskActions,
   type Decision, type DecisionActor, type DecisionEvent, type DecisionEvidence, type DecisionRequest, type OperationPhase, type TaskOperation,
 } from './activation-settlement.rules';
 
@@ -267,6 +267,39 @@ describe('decisions by people (D15)', () => {
     expect(decisionStep(refused, second, decide('apply-corrected', PHASES.exception)).ok).toBe(true);
     // Who asks is still judged first.
     expect(refusal(decisionStep(closed, { ...owner, impersonating: true }, decide('apply-corrected', PHASES.exception)))).toBe('entered-session');
+  });
+
+  it('tells a screen what an account may do, by asking the same rules the routes ask', () => {
+    // An unknown operation: the two decisions about it, for anyone who may decide; nothing for the submitter.
+    expect(decisionChoices([], owner, PHASES.unknown, 'pos-1')).toEqual({ decisions: ['confirm-success', 'declare-failure'], approve: false, refuse: false, blocked: null });
+    expect(decisionChoices([], accountant, PHASES.exception, 'pos-1').decisions).toEqual(['apply-corrected', 'release-after-success']);
+    expect(decisionChoices([], accountant, PHASES.unknown, accountant.id)).toEqual({ decisions: [], approve: false, refuse: false, blocked: 'own-task' });
+    expect(decisionChoices([], { ...owner, impersonating: true }, PHASES.unknown, 'pos-1').blocked).toBe('entered-session');
+    expect(decisionChoices([], { ...accountant, grants: [] }, PHASES.unknown, 'pos-1').blocked).toBe('not-authorised');
+    // A proposal: its proposer answers neither way; another account does both; nobody states another decision.
+    const open = [proposed('declare-failure', 'owner')];
+    expect(decisionChoices(open, owner, PHASES.unknown, 'pos-1')).toEqual({ decisions: [], approve: false, refuse: false, blocked: 'own-proposal' });
+    expect(decisionChoices(open, accountant, PHASES.unknown, 'pos-1')).toEqual({ decisions: [], approve: true, refuse: true, blocked: null });
+    // Stale: refusal only. Nothing to do, for no reason of the account's: not blocked, just nothing.
+    expect(decisionChoices(open, accountant, PHASES.applied, 'pos-1')).toEqual({ decisions: [], approve: false, refuse: true, blocked: null });
+    for (const phase of [PHASES.requested, PHASES.pending, PHASES.unapplied, PHASES.applied, PHASES.failed, null]) {
+      expect(decisionChoices([], owner, phase, 'pos-1')).toEqual({ decisions: [], approve: false, refuse: false, blocked: null });
+    }
+    // Every choice offered is one the rules accept with real evidence, and none is left out.
+    for (const phase of Object.values(PHASES)) {
+      for (const decision of DECISIONS) {
+        expect(decisionChoices([], accountant, phase, 'pos-1').decisions.includes(decision)).toBe(decisionStep([], accountant, decide(decision, phase)).ok);
+      }
+    }
+  });
+
+  it('tells a screen the phase and what became of the hold', () => {
+    expect(shownPhase(null)).toBeNull();
+    expect(Object.values(PHASES).map((operation) => shownPhase(operation))).toEqual(Object.keys(PHASES).map((phase) => (phase === 'none' ? null : phase)));
+    const task = (status: string, held: number | null = 3500, posDelta = -3500) => ({ status, held, posDelta });
+    expect(['pending', 'working', 'done', 'cancelled'].map((status) => holdOf(task(status)))).toEqual(['held', 'held', 'captured', 'released']);
+    // A task that charges nothing, or was opened before holds existed, held nothing.
+    expect([holdOf(task('working', 0, 0)), holdOf(task('working', null)), holdOf(task('done', 0, -3500)), holdOf(task('working', 500, 500))]).toEqual(['none', 'none', 'none', 'none']);
   });
 
   it('never approves a stale proposal, so it moves no money: once the operation left the state it was made about, it can only be refused', () => {

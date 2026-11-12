@@ -20,6 +20,7 @@ import { taskTone } from '../../../lib/status-tone';
 import { usePageTitle } from '../../../lib/page-title';
 import { Fact, Facts } from '../../../components/facts';
 import { useCrumbs } from '../../../lib/crumbs';
+import { ProviderOperationPanel } from '../components/provider-operation-panel';
 
 const glyph = { size: 14, strokeWidth: 1.95, 'aria-hidden': true as const };
 
@@ -154,6 +155,8 @@ export function TaskTicketScreen() {
         <section className="pane task-ticket">
           <div className="task-board">
             <aside className="task-rail">
+              {/* A task that went to a provider says where that stands, above its details; a manual task has none. */}
+              <ProviderOperationPanel key={task.id} task={task} onChanged={card.reload} say={({ error: failed = '', note: said = '' }) => { setError(failed); setNote(said); }} />
               <Facts variant="list">
                 {task.msisdn ? (
                   <Fact label={t.number}>

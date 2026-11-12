@@ -10,7 +10,7 @@ import { FilterBar } from '../../../components/filter-bar';
 import { RowMenu } from '../../../components/row-menu';
 import { TableSearch } from '../../../components/table-search';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
+import { Button, buttonClass } from '../../../components/ui/button';
 import { Tabs } from '../../../components/tabs';
 import { Zap } from 'lucide-react';
 import { Select } from '../../../components/ui/select';
@@ -23,7 +23,9 @@ import { useAction } from '../../../lib/use-action';
 import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
-import { taskTone } from '../../../lib/status-tone';
+import { operationTone, taskTone } from '../../../lib/status-tone';
+import { useOffice } from '../../../lib/office-session';
+import { phaseName } from '../provider-operation-names';
 
 // One empty list for every render, so the memos below keep their inputs while the catalog loads.
 const NO_PACKAGES: PackageRow[] = [];
@@ -62,6 +64,11 @@ export function TasksScreen() {
       ),
   );
   const { run } = useAction({ setError, setNote, onDone: list.reload });
+  // Who is shown the way to the provider decisions: the owner or a branch account holding `accounting`, in a
+  // session of its own. The API decides who reads them; this only spares the others a link that would refuse.
+  const { me } = useOffice();
+  const mayDecide = Boolean(me && me.layer === 'branch' && !me.impersonating && (me.isBranchOwner || me.grants.includes('accounting')));
+  const waiting = useApiQuery(sharedKeys.providerDecisions, () => api.providerDecisions(), { enabled: mayDecide, fresh: true });
 
   const companyOptions = useMemo(() => {
     const names = new Set(packages.map((row) => row.companyName).filter(Boolean));
@@ -103,6 +110,8 @@ export function TasksScreen() {
             <span className="task-title">
               <b>{actionName(t, row.action)}</b>
               <Badge variant={taskTone(row.status)} dot>{taskStatus(t, row.status)}</Badge>
+              {/* Where its provider operation stands, while the task is open: waiting, unconfirmed, an exception. */}
+              {row.operationPhase && row.status === 'working' ? <Badge variant={operationTone(row.operationPhase)}>{phaseName(t, row.operationPhase)}</Badge> : null}
             </span>
             <span className="task-meta">
               {row.msisdn ? <bdi dir="ltr" className="task-msisdn">{row.msisdn}</bdi> : null}
@@ -139,7 +148,19 @@ export function TasksScreen() {
   ];
 
   return (
-    <Desk title={t.tasksTitle} lede={t.tasksLede} error={error || catalog.error} note={note}>
+    <Desk
+      title={t.tasksTitle}
+      lede={t.tasksLede}
+      error={error || catalog.error}
+      note={note}
+      action={mayDecide ? (
+        // The queue of provider decisions, for the accounts the API lets read it (it refuses everyone else).
+        <Link className={buttonClass({ variant: 'secondary' })} href="/tasks/decisions">
+          {t.decQueueLink}
+          {waiting.data && waiting.data.items.length > 0 ? <Badge variant="warning">{waiting.data.items.length}</Badge> : null}
+        </Link>
+      ) : undefined}
+    >
       <Tabs label={t.status} items={tabs} value={status} onChange={(next) => setFilters({ status: next })} />
       <FilterBar
         onClear={() => setFilters({ q: '', status: '', action: '', pack: '', company: '', provider: '' })}

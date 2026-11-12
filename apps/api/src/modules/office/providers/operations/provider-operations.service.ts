@@ -208,6 +208,16 @@ export class ProviderOperationsService {
     return this.repo.decisionEvents(db, operationId);
   }
 
+  /** The decision steps of these operations as they are stored, in order, for a screen. */
+  decisionRecords(operationIds: string[]) {
+    return this.repo.decisionRecords(this.uow.prisma, operationIds);
+  }
+
+  /** The operations of open tasks that wait for a person, oldest first, with their tasks. */
+  awaitingDecision(limit: number) {
+    return this.repo.awaitingDecision(this.uow.prisma, limit);
+  }
+
   /** Appends one step of a decision; refused (409) when another writer wrote that step first. */
   async recordDecision(tx: Db, event: NewDecisionEvent): Promise<void> {
     if (!(await this.repo.addDecisionEvent(tx, event))) fail(409, 'DUPLICATE_REQUEST');

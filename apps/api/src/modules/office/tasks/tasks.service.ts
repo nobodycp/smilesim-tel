@@ -7,7 +7,7 @@ import { UnitOfWork } from '../kernel/unit-of-work';
 import { assertBranch } from '../policy';
 import { taskEvents } from './task-events';
 import { esimCodeOrFail } from '../lines/esim-code';
-import { sameRequest, type TaskRequest } from '../lines/activation-settlement.rules';
+import { holdOf, mayDecide, sameRequest, shownPhase, taskActions, type TaskOperation, type TaskRequest } from '../lines/activation-settlement.rules';
 import { assertClaimFree, lockClaim, lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
@@ -67,10 +67,14 @@ export class TasksService {
       items: rows.map((row) => {
         const pkg = byPackage.get(row.packageId);
         const open = row.status === 'pending' || row.status === 'working';
+        const operation = row.providerOperation as TaskOperation;
+        // What the task's provider operation allows by hand (ADR 0019, D6): the routes refuse the rest.
+        const allowed = taskActions(operation);
         return {
           id: row.id,
           action: row.action,
           status: row.status,
+          operationPhase: shownPhase(operation),
           posLoginName: byId.get(row.posId)?.loginName ?? '',
           submitterLoginName: row.submitter.loginName,
           assigneeLoginName: row.assignee?.loginName ?? null,
@@ -85,9 +89,9 @@ export class TasksService {
           lastNote: row.notes[0]?.body ?? null,
           log: handler ? row.log : '',
           createdAt: row.createdAt.toISOString(),
-          canTake: handler && row.status === 'working' && !row.assigneeId,
-          canWork: handler && row.status === 'working',
-          canCancel: row.submitterId === actor.id && open,
+          canTake: handler && row.status === 'working' && !row.assigneeId && allowed.complete,
+          canWork: handler && row.status === 'working' && allowed.complete,
+          canCancel: row.submitterId === actor.id && open && allowed.cancel !== 'refused',
         };
       }),
       nextCursor,
@@ -142,11 +146,20 @@ export class TasksService {
     const resultNote = row.status === 'pending' && !handler ? null : row.resultNote;
     const events = taskEvents(row, handler ? row.log : '', resultNote);
     const open = row.status === 'pending' || row.status === 'working';
+    const operation = row.providerOperation as TaskOperation;
+    const allowed = taskActions(operation);
+    const phase = shownPhase(operation);
     return {
       task: {
         id: row.id,
         action: row.action,
         status: row.status,
+        // The task's provider operation as a screen shows it (ADR 0019, O6); null for a task that never went to
+        // a provider. Why an exception could not be applied is the branch's business, as the provider is.
+        operation: phase
+          ? { phase, reason: actor.layer === 'branch' ? operation?.applyError ?? null : null, decisions: mayDecide(actor) && !actor.impersonating }
+          : null,
+        hold: holdOf(row),
         posLoginName: byId.get(row.posId)?.loginName ?? '',
         submitterLoginName: row.submitter.loginName,
         assigneeLoginName: row.assignee?.loginName ?? null,
@@ -163,11 +176,11 @@ export class TasksService {
         log: handler ? row.log : '',
         createdAt: row.createdAt.toISOString(),
         updatedAt: row.updatedAt.toISOString(),
-        canTake: handler && row.status === 'working' && !row.assigneeId,
-        canWork: handler && row.status === 'working',
+        canTake: handler && row.status === 'working' && !row.assigneeId && allowed.complete,
+        canWork: handler && row.status === 'working' && allowed.complete,
         canNote: open,
         canNoteInternal: open && actor.layer === 'branch',
-        canCancel: row.submitterId === actor.id && open,
+        canCancel: row.submitterId === actor.id && open && allowed.cancel !== 'refused',
       },
       events,
     };

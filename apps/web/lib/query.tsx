@@ -59,6 +59,8 @@ export const sharedKeys = {
   companies: ['office', 'companies'] as const,
   providers: ['office', 'providers'] as const,
   task: (id: string) => ['office', 'task', id] as const,
+  taskDecision: (id: string) => ['office', 'task', id, 'decision'] as const,
+  providerDecisions: ['office', 'provider-decisions'] as const,
   account: (login: string) => ['office', 'account', login] as const,
   accountPackages: (login: string) => ['office', 'account', login, 'packages'] as const,
   accountOps: (login: string) => ['office', 'account', login, 'ops'] as const,

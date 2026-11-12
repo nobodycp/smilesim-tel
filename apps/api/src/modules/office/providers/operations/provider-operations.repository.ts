@@ -188,6 +188,27 @@ export class ProviderOperationsRepository {
     return made.count === 1;
   }
 
+  /** The steps of the decisions on these operations as a person reads them, in order. It has no eSIM code to read. */
+  decisionRecords(db: Db, operationIds: string[]) {
+    return db.providerDecisionEvent.findMany({ where: { operationId: { in: operationIds } }, orderBy: [{ operationId: 'asc' }, { sequence: 'asc' }] });
+  }
+
+  /**
+   * The operations of open tasks that only a person can move, oldest first, each with its task's own columns:
+   * unknown, or succeeded with an exception and not applied. What the provider handed back is not selected.
+   */
+  awaitingDecision(db: Db, limit: number) {
+    return db.providerOperation.findMany({
+      where: { task: { status: 'working' }, OR: [{ status: 'unknown' }, { status: 'succeeded', appliedAt: null, applyError: { not: null } }] },
+      orderBy: { updatedAt: 'asc' },
+      take: limit,
+      select: {
+        id: true, status: true, appliedAt: true, applyError: true, updatedAt: true,
+        task: { select: { id: true, action: true, msisdn: true, held: true, posDelta: true, submitterId: true, createdAt: true, submitter: { select: { loginName: true } }, pos: { select: { loginName: true } }, package: { select: { name: true } } } },
+      },
+    });
+  }
+
   /** Stamps a failed operation as handed to the branch, once. */
   async markHandedOver(db: Db, id: string, at: Date): Promise<boolean> {
     const marked = await db.providerOperation.updateMany({ where: { id, status: 'failed', appliedAt: null }, data: { appliedAt: at } });

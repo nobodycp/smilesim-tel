@@ -723,6 +723,45 @@ input[readonly] { background-color: transparent; }
 .task-tree-card { border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); }
 .task-rail { border: 0; }
 
+/* ── A task's provider operation (features/tasks/components/provider-operation-panel.tsx) and the decisions on it:
+   a compact block at the top of the ticket's details, ruled off from the facts under it; the queue reuses the rows. ── */
+.po-panel { display: grid; gap: var(--rd-space-2); padding: var(--rd-space-3-5); border-block-end: 1px solid var(--rd-line); }
+.po-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--rd-space-2); }
+.po-head h2 { margin: 0; font-size: var(--rd-text-sm); font-weight: 700; }
+.po-hint, .po-effect { margin: 0; color: var(--rd-ink-2); font-size: var(--rd-text-sm); line-height: 1.6; }
+.po-facts { display: grid; gap: var(--rd-space-1); margin: 0; }
+.po-facts > div { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--rd-space-2); }
+.po-facts dt { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 700; }
+.po-facts dd { margin: 0; font-size: var(--rd-text-sm); font-weight: 600; }
+.po-money { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2); }
+.po-decisions { display: grid; gap: var(--rd-space-2); padding-block-start: var(--rd-space-2); border-block-start: 1px dashed var(--rd-line); }
+.po-decisions h3 { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 700; }
+.po-decisions .hint, .po-row .hint { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); line-height: 1.55; }
+.po-actions { display: flex; flex-wrap: wrap; gap: var(--rd-space-2); }
+.po-proposal { display: grid; gap: var(--rd-space-1-5); padding: var(--rd-space-3); border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); }
+.po-proposal-head, .po-step, .po-evidence { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--rd-space-2-5); row-gap: 2px; margin: 0; font-size: var(--rd-text-sm); }
+.po-proposal-head > span, .po-proposal-head > bdi, .po-step > bdi, .po-evidence { color: var(--rd-muted); }
+.po-evidence > * + *::before { content: '· '; }
+.po-note { margin: 0; font-size: var(--rd-text-sm); line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.po-history summary { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 700; cursor: pointer; }
+.po-history ol { display: grid; gap: var(--rd-space-2); margin: var(--rd-space-2) 0 0; padding: 0; list-style: none; }
+.po-history li { display: grid; gap: 2px; padding-inline-start: var(--rd-space-2-5); border-inline-start: 2px solid var(--rd-line); }
+.po-step > span { font-weight: 600; }
+/* The decision form: the two line fields side by side while there is room, the note's count at the reading end. */
+.decision-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: var(--rd-space-3); }
+.decision-form textarea { min-block-size: 5.5rem; resize: vertical; }
+.decision-count { display: flex; justify-content: space-between; gap: var(--rd-space-2); }
+.decision-count .ok { color: var(--rd-success); }
+.decision-form [aria-invalid='true'] { box-shadow: inset 0 0 0 1px var(--rd-danger); }
+/* The queue: one ruled row per waiting operation. */
+.po-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.po-row { display: grid; gap: var(--rd-space-2); padding: var(--rd-space-3-5); }
+.po-row + .po-row { border-block-start: 1px solid var(--rd-line); }
+.po-row-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2); }
+.po-row-open { margin-inline-start: auto; }
+.po-row-reason, .po-row-next { margin: 0; color: var(--rd-ink-2); font-size: var(--rd-text-sm); }
+.po-row-meta { display: flex; flex-wrap: wrap; column-gap: var(--rd-space-3-5); row-gap: 2px; margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); }
+
 /* ── «طريقة التنفيذ» cards (components/mode-cards.tsx): a crimson mark, the operation, a three-way segmented control;
    a stopped operation's card dims. ── */
 .mode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }

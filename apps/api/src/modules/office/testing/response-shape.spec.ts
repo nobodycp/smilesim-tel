@@ -5,7 +5,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
 import { companies } from '../catalog/office-catalog';
 import { OfficeFacade } from './office-facade';
-import { APPLY_ERRORS } from '../lines/activation-settlement.rules';
+import { APPLY_ERRORS, DECISIONS } from '../lines/activation-settlement.rules';
 
 // The web app keeps its own copy of the shape of these answers (apps/web/lib/api-types.ts and features/lines/api.ts: OfficeMe,
 // HomePayload, LineRow, PosChoice). There is no shared package, so this test is the guard: the key
@@ -455,6 +455,26 @@ describeWeb('web types match the pinned shapes', () => {
     const approval = typeBody(source, 'ProviderDecisionApprovalAnswer');
     expect(declared(approval)).toEqual({ required: sorted(DECISION_ANSWER_KEYS), optional: [] });
     expect(approval).toContain("outcome: 'approved' | 'refused';");
+  });
+
+  // ADR 0019, O6: what the task and decision reads answer, as the web declares it. The API side of each list is
+  // pinned over HTTP in `provider-decisions.db.spec.ts` (the same key lists, written there against real answers).
+  it('the provider operation and decision reads', () => {
+    expect(declared(typeBody(source, 'TaskOperationState'))).toEqual({ required: ['decisions', 'phase', 'reason'], optional: [] });
+    expect(declared(typeBody(source, 'DecisionRecord'))).toEqual({ required: sorted(['sequence', 'type', 'decision', 'accountLoginName', 'evidenceKind', 'providerRef', 'note', 'suppliedEsimCode', 'at']), optional: [] });
+    const standing = ['phase', 'reason', 'held', 'proposal', 'decisions', 'canApprove', 'canRefuse', 'blocked'];
+    expect(declared(typeBody(source, 'DecisionStanding'))).toEqual({ required: sorted(standing), optional: [] });
+    expect(source).toMatch(/export type DecisionView = DecisionStanding & \{\n {2}needs: \{ number: boolean; esimCode: boolean \};\n {2}history: DecisionRecord\[\];\n\};/);
+    const waitingAt = source.indexOf('export type WaitingDecision = DecisionStanding & {');
+    const waiting = source.slice(source.indexOf('{', waitingAt) + 1, source.indexOf('\n};', waitingAt));
+    expect(waitingAt).toBeGreaterThan(0);
+    expect(declared(waiting)).toEqual({ required: sorted(['taskId', 'action', 'msisdn', 'packageName', 'posLoginName', 'submitterLoginName', 'waitingSince']), optional: [] });
+    // The closed lists are the API's own.
+    expect(source).toContain(`export type OperationPhase = ${['requested', 'pending', 'unknown', 'unapplied', 'exception', 'applied', 'failed'].map((phase) => `'${phase}'`).join(' | ')};`);
+    expect(source).toContain(`export type ProviderDecision = ${DECISIONS.map((decision) => `'${decision}'`).join(' | ')};`);
+    expect(source).toContain(`export type ApplyReason = ${APPLY_ERRORS.map((reason) => `'${reason}'`).join(' | ')};`);
+    // No read of a decision declares an eSIM code.
+    for (const body of [typeBody(source, 'DecisionRecord'), typeBody(source, 'DecisionStanding'), typeBody(source, 'TaskOperationState'), waiting]) expect(body).not.toMatch(/esimQr|esimCode:/);
   });
 
   it('SimRules', () => {

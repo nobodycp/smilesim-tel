@@ -241,6 +241,21 @@ export class LinesController {
     return this.lineDesk.completeTask(actor, id, body);
   }
 
+  @Get('provider-decisions')
+  @ApiOperation({ summary: 'The provider operations that wait for a person: proposals to answer, and those not decided on yet' })
+  @ApiErrorResponse(401, 403)
+  providerDecisions(@Actor() actor: ActorShape) {
+    return this.decisions.waiting(actor);
+  }
+
+  @Get('tasks/:id/provider-decision')
+  @ApiOperation({ summary: 'A task\'s provider operation as an account that may decide reads it: what it may do, the open proposal, the record' })
+  @ApiParam({ name: 'id' })
+  @ApiErrorResponse(401, 403, 404)
+  providerDecisionView(@Actor() actor: ActorShape, @Param('id') id: string) {
+    return this.decisions.view(actor, id);
+  }
+
   @Post('tasks/:id/provider-decision')
   @ApiOperation({ summary: 'Decide on a task\'s provider operation: applied at once, or a proposal for a second account' })
   @ApiParam({ name: 'id' })

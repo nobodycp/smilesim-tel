@@ -2,19 +2,21 @@ import { Injectable } from '@nestjs/common';
 import type { OfficeTask, Prisma, ProviderOperation } from '../../../generated/prisma/client';
 import type { ErrorCode } from '../../../errors';
 import { parseInput } from '../../shared/input';
+import { capList } from '../../shared/paging';
 import { logger } from '../../shared/log';
 import { OfficeFailure, fail } from '../../shared/office-failure';
 import type { Actor } from '../kernel/types';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import type { WrittenNotice } from '../notices/notice.service';
 import { refuseEntered, requireGrant } from '../policy';
+import type { OperationStatus } from '../providers/operations/provider-operation.rules';
 import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 import { simRefusal, simRulesOf } from '../rules/sim-rules';
 import { PROVIDER_EXCEPTION_NOTES, PROVIDER_RELEASED_NOTE } from '../stored-text';
 import { lockedTask, lockedTaskOperation } from '../tasks/task-operation';
 import { TasksService } from '../tasks/tasks.service';
 import { applyAsSettlement, submitterOf, tellDeciders } from './activation-settlement';
-import { DECISION_GRANT, applyErrorOf, decisionStep, needsSecondAccount, type ApplyError, type Decision, type DecisionEvent, type DecisionEvidence, type DecisionRefusal, type DecisionRequest, type DecisionStep, type TaskOperation } from './activation-settlement.rules';
+import { DECISION_GRANT, applyErrorOf, decisionChoices, decisionStep, needsSecondAccount, openProposal, shownPhase, type ApplyError, type Decision, type DecisionEvent, type DecisionEvidence, type DecisionRefusal, type DecisionRequest, type DecisionStep, type TaskOperation } from './activation-settlement.rules';
 import { esimCodeOrFail, storableEsimCode } from './esim-code';
 import { lockClaim } from './line-state';
 import { LinesRepository } from './lines.repository';
@@ -44,6 +46,41 @@ type Asked = DecisionRequest extends infer R ? (R extends unknown ? Omit<R, 'ope
 
 /** What the person says the provider handed back: read only by the two decisions that make the line. */
 type Given = { msisdn: string | null; iccid: string | null; esimCode: string | null };
+
+/** How many waiting operations one read of the queue answers. */
+const WAITING_CAP = 200;
+
+type StoredRecord = Awaited<ReturnType<ProviderOperationsService['decisionRecords']>>[number];
+
+/** One step of a decision as a screen shows it: who, what, on which evidence, when. Never an eSIM code. */
+export type DecisionRecord = {
+  sequence: number;
+  type: string;
+  decision: string;
+  accountLoginName: string;
+  evidenceKind: string | null;
+  providerRef: string | null;
+  note: string;
+  suppliedEsimCode: boolean;
+  at: string;
+};
+
+function recordOf(row: StoredRecord): DecisionRecord {
+  return { sequence: row.sequence, type: row.type, decision: row.decision, accountLoginName: row.accountLoginName, evidenceKind: row.evidenceKind, providerRef: row.providerRef, note: row.note, suppliedEsimCode: row.suppliedEsimCode, at: row.createdAt.toISOString() };
+}
+
+type Standing = {
+  phase: ReturnType<typeof shownPhase>;
+  reason: string | null;
+  held: number;
+  proposal: DecisionRecord | null;
+  decisions: Decision[];
+  canApprove: boolean;
+  canRefuse: boolean;
+  blocked: DecisionRefusal | null;
+};
+export type DecisionView = Standing & { needs: { number: boolean; esimCode: boolean }; history: DecisionRecord[] };
+export type WaitingDecision = Standing & { taskId: string; action: string; msisdn: string | null; packageName: string; posLoginName: string; submitterLoginName: string; waitingSince: string };
 
 /** What a decision came to. `exception`: the success is on record and the line could not be made (D16). */
 export type DecisionOutcome = { ok: true; outcome: 'applied' | 'proposed' } | { ok: true; outcome: 'exception'; reason: ApplyError };
@@ -121,6 +158,75 @@ export class ProviderDecisions {
     await this.uow.publishQuietly(written);
     if (outcome === 'approved') log.warn(`task ${task.id}: a proposed decision on its provider operation was approved by a second account`);
     return { ok: true, outcome };
+  }
+
+  // ── What a screen reads (O6) ────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * One task's operation as an account that may decide reads it: where it stands, what this account may do about
+   * it now (asked of the rules, so the screen offers what the routes will accept), what the form must ask for,
+   * the proposal that is open and the record so far. Refused like a decision for anyone else, so the evidence and
+   * the notes of a decision are read only by the accounts that could have written them. It reads no eSIM code:
+   * the record has none, and the operation's own is not selected for it.
+   */
+  async view(actor: Actor, taskId: string): Promise<DecisionView> {
+    this.assertMayDecide(actor);
+    const { task, operation } = await this.subject(taskId);
+    if (!operation) fail(404, 'NOT_FOUND');
+    const records = await this.operations.decisionRecords([operation.id]);
+    const state: TaskOperation = { status: operation.status as OperationStatus, appliedAt: operation.appliedAt, applyError: operation.applyError };
+    return {
+      ...this.standing(actor, state, task, records),
+      needs: {
+        number: !(operation.resultMsisdn ?? task.msisdn),
+        esimCode: task.esim && !operation.resultEsimCode && !task.esimQr,
+      },
+      history: records.map(recordOf),
+    };
+  }
+
+  /**
+   * The operations that wait for a person, oldest first: the ones with a proposal to answer, and the ones nobody
+   * has decided on yet. The same gate as a decision; the list never carries what a provider handed back.
+   */
+  async waiting(actor: Actor): Promise<{ items: WaitingDecision[]; capped: boolean }> {
+    this.assertMayDecide(actor);
+    const { rows, capped } = capList(await this.operations.awaitingDecision(WAITING_CAP + 1), WAITING_CAP);
+    const records = await this.operations.decisionRecords(rows.map((row) => row.id));
+    const items = rows.flatMap((row) => {
+      if (!row.task) return [];
+      const state: TaskOperation = { status: row.status as OperationStatus, appliedAt: row.appliedAt, applyError: row.applyError };
+      const standing = this.standing(actor, state, row.task, records.filter((record) => record.operationId === row.id));
+      return [{
+        taskId: row.task.id,
+        action: row.task.action,
+        msisdn: row.task.msisdn,
+        packageName: row.task.package.name,
+        posLoginName: row.task.pos.loginName,
+        submitterLoginName: row.task.submitter.loginName,
+        waitingSince: row.updatedAt.toISOString(),
+        ...standing,
+      }];
+    });
+    return { items, capped };
+  }
+
+  /** What both reads say of one operation: its state, the money, the open proposal and what this account may do. */
+  private standing(actor: Actor, operation: TaskOperation, task: { submitterId: string; held: number | null; posDelta: number }, records: StoredRecord[]) {
+    const events = records as unknown as DecisionEvent[];
+    const open = openProposal(events);
+    const choices = decisionChoices(events, actor, operation, task.submitterId);
+    const proposal = open ? records.find((record) => record.sequence === open.sequence) : undefined;
+    return {
+      phase: shownPhase(operation),
+      reason: operation?.applyError ?? null,
+      held: task.held ?? 0,
+      proposal: proposal ? recordOf(proposal) : null,
+      decisions: choices.decisions,
+      canApprove: choices.approve,
+      canRefuse: choices.refuse,
+      blocked: choices.blocked,
+    };
   }
 
   // ── Who, and on what ────────────────────────────────────────────────────────────────────────────────────

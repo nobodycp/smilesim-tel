@@ -11,6 +11,9 @@ import { TASKS_PAGE } from '../rules/office-paging';
  * returns or changes; a method that may run inside a transaction takes the client (`db`). No rule and no
  * permission lives here (backend-engineering.mdc 5.1).
  */
+/** What a task's screens read of its provider operation (ADR 0019, O6): its state, never what it handed back. */
+const OPERATION_STATE = { status: true, appliedAt: true, applyError: true } as const;
+
 @Injectable()
 export class TasksRepository {
   constructor(private readonly uow: UnitOfWork) {}
@@ -23,6 +26,7 @@ export class TasksRepository {
         submitter: true,
         assignee: true,
         notes: { where: notes, orderBy: { createdAt: 'desc' }, take: 1, select: { body: true } },
+        providerOperation: { select: OPERATION_STATE },
       },
       orderBy: [...NEWEST_FIRST],
       take: TASKS_PAGE + 1,
@@ -52,6 +56,7 @@ export class TasksRepository {
         assignee: true,
         notes: { where: notes, include: { author: true }, orderBy: { createdAt: 'asc' } },
         line: { include: { package: { include: { company: true, provider: true } } } },
+        providerOperation: { select: OPERATION_STATE },
       },
     });
   }

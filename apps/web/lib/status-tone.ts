@@ -38,3 +38,22 @@ export function termsTone(row: { locked: boolean; hidden: boolean; custom: boole
   if (row.locked || row.hidden) return 'danger';
   return row.custom ? 'success' : 'muted';
 }
+
+/**
+ * A provider operation: waiting is information, an unconfirmed result a warning, a failure danger, a success that
+ * could not be settled its own colour (it is neither), and an applied one good.
+ */
+export function operationTone(phase: string): Tone | 'info' | 'violet' {
+  if (phase === 'applied') return 'success';
+  if (phase === 'failed') return 'danger';
+  if (phase === 'unknown') return 'warning';
+  if (phase === 'exception') return 'violet';
+  return 'info';
+}
+
+/** The amount a task held: held is a warning (it is waiting), settled good, given back quiet. */
+export function holdTone(hold: string): Tone {
+  if (hold === 'captured') return 'success';
+  return hold === 'held' ? 'warning' : 'muted';
+}
+

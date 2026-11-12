@@ -148,6 +148,49 @@ export function sweepable(operation: TaskOperation): boolean {
   return step === 'apply' || step === 'hand-to-branch';
 }
 
+// ── What a screen is told (O6) ──────────────────────────────────────────────────────────────────────────────
+
+/** Where a task's money stands: nothing was ever held, it is held, it became the charge, or it went back. */
+export type HoldState = 'none' | 'held' | 'captured' | 'released';
+
+/**
+ * What became of the hold a task took when it opened, from the task alone: an open task holds it, a done one had
+ * it captured as its charge, a rejected or cancelled one had it given back. A task that charges nothing held nothing.
+ */
+export function holdOf(task: { status: string; held: number | null; posDelta: number }): HoldState {
+  if (!task.held || task.held <= 0 || task.posDelta >= 0) return 'none';
+  if (task.status === 'pending' || task.status === 'working') return 'held';
+  return task.status === 'done' ? 'captured' : 'released';
+}
+
+/** The phase a screen shows for a task's operation; null for a task that never went to a provider. */
+export function shownPhase(operation: TaskOperation): Exclude<OperationPhase, 'none'> | null {
+  const phase = phaseOf(operation);
+  return phase === 'none' ? null : phase;
+}
+
+/**
+ * What an account may do about a task's operation right now, asked of `decisionStep` with evidence that is
+ * complete: the decisions it may state, and whether it may approve or refuse the proposal that is open. A screen
+ * offers exactly these; the routes ask the rules again with what was really sent.
+ */
+export function decisionChoices(events: readonly DecisionEvent[], actor: DecisionActor, operation: TaskOperation, submitterId: string): { decisions: Decision[]; approve: boolean; refuse: boolean; blocked: DecisionRefusal | null } {
+  const evidence: DecisionEvidence = { kind: EVIDENCE_KINDS[0], note: 'x'.repeat(MIN_DECISION_NOTE), providerRef: 'x' };
+  const tried = DECISIONS.map((decision) => ({ decision, step: decisionStep(events, actor, { act: 'decide', decision, evidence, operation, submitterId }) }));
+  const approve = decisionStep(events, actor, { act: 'approve', operation, submitterId });
+  const refuse = decisionStep(events, actor, { act: 'refuse', operation, submitterId });
+  // Why this account can do nothing here, when the reason is the account and not the operation's state.
+  const personal: DecisionRefusal[] = ['entered-session', 'not-authorised', 'own-task', 'own-proposal'];
+  const refusals = [...tried.map((row) => row.step), approve, refuse].flatMap((step) => (step.ok ? [] : [step.refusal]));
+  const any = tried.some((row) => row.step.ok) || approve.ok || refuse.ok;
+  return {
+    decisions: tried.filter((row) => row.step.ok).map((row) => row.decision),
+    approve: approve.ok,
+    refuse: refuse.ok,
+    blocked: any ? null : refusals.find((refusal) => personal.includes(refusal)) ?? null,
+  };
+}
+
 // ── Decisions by people (D15) ───────────────────────────────────────────────────────────────────────────────
 
 export const DECISIONS = ['confirm-success', 'declare-failure', 'apply-corrected', 'release-after-success'] as const;

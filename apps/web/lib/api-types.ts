@@ -587,12 +587,65 @@ export type TaskRow = {
   resultNote: string | null;
   lastNote: string | null;
   log?: string;
+  /** Where the task's provider operation stands; null or absent for a task that never went to a provider. */
+  operationPhase?: OperationPhase | null;
   /** When the task was opened (the list since 2026-11-09). */
   createdAt?: string;
   canTake: boolean;
   canWork: boolean;
   canCancel: boolean;
 };
+/** Where a task's provider operation stands (ADR 0019): the API's `phaseOf`. */
+export type OperationPhase = 'requested' | 'pending' | 'unknown' | 'unapplied' | 'exception' | 'applied' | 'failed';
+export type ApplyReason = 'number-taken' | 'sim-taken' | 'target-missing' | 'esim-code-missing';
+export type ProviderDecision = 'confirm-success' | 'declare-failure' | 'apply-corrected' | 'release-after-success';
+/** A task's operation in its detail: `reason` for the branch only; `decisions` when this account reads the decision view. */
+export type TaskOperationState = {
+  phase: OperationPhase;
+  reason: ApplyReason | null;
+  decisions: boolean;
+};
+/** What became of the amount a task held when it opened. */
+export type HoldState = 'none' | 'held' | 'captured' | 'released';
+/** One step of a decision. It never carries an eSIM code, only that one was supplied. */
+export type DecisionRecord = {
+  sequence: number;
+  type: 'proposed' | 'approved' | 'refused' | 'applied';
+  decision: ProviderDecision;
+  accountLoginName: string;
+  evidenceKind: string | null;
+  providerRef: string | null;
+  note: string;
+  suppliedEsimCode: boolean;
+  at: string;
+};
+/** What both decision reads say of one operation, for the account that asked. */
+export type DecisionStanding = {
+  phase: OperationPhase | null;
+  reason: ApplyReason | null;
+  held: number;
+  proposal: DecisionRecord | null;
+  decisions: ProviderDecision[];
+  canApprove: boolean;
+  canRefuse: boolean;
+  blocked: string | null;
+};
+/** GET office/tasks/:id/provider-decision. */
+export type DecisionView = DecisionStanding & {
+  needs: { number: boolean; esimCode: boolean };
+  history: DecisionRecord[];
+};
+/** One row of GET office/provider-decisions. */
+export type WaitingDecision = DecisionStanding & {
+  taskId: string;
+  action: string;
+  msisdn: string | null;
+  packageName: string;
+  posLoginName: string;
+  submitterLoginName: string;
+  waitingSince: string;
+};
+export type ProviderDecisionBody = { decision: ProviderDecision; evidenceKind: string; note: string; providerRef?: string; msisdn?: string; iccid?: string; esimCode?: string };
 export type CompleteTaskBody = { note: string; iccid?: string; qr?: string | null; msisdn?: string };
 export type TaskDetail = TaskRow & {
   createdAt: string;
@@ -604,6 +657,8 @@ export type TaskDetail = TaskRow & {
   lineStatus: string | null;
   companyName: string;
   providerName: string;
+  operation?: TaskOperationState | null;
+  hold?: HoldState;
   canNote: boolean;
   /** The branch may write a note only the branch reads (spec 2026-11-09, 2). */
   canNoteInternal?: boolean;

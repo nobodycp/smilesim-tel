@@ -450,3 +450,34 @@ come; the money must be safe in every state of the operation.
   not check the task is open.
 - Spec items 19 to 22 are closed. Not built here: any read of open proposals for a queue, and the screens (S.10).
 
+## As built in S.10 (the screens)
+
+Spec: `docs/superpowers/specs/2026-11-12-provider-operation-screens.md`. No rule of the settlement or of the
+decisions changed; the screens show what the API decides.
+
+- **The API says what may be done; the screen only shows it.** `TasksService.list` and `.detail` read the task's
+  operation through the task's own relation (`status`, `appliedAt`, `applyError` and nothing else) and answer its
+  phase (`shownPhase`), what became of the hold (`holdOf`, from the task), and `canTake` / `canWork` /
+  `canCancel` as `taskActions` allows (D6). Before S.10 those three flags ignored the operation: the routes
+  refused, but the buttons were shown. The reason of an exception is answered to branch accounts only.
+- **What an account may decide is asked of the rules, not written twice.** `decisionChoices` runs `decisionStep`
+  for each decision and for approve and refuse, with evidence that is complete, and answers which of them this
+  account may take now and, when none, whether the reason is the account (`own-task`, `own-proposal`, an entered
+  session, no grant). `ProviderDecisions.view` and `.waiting` answer that, so the form and the queue offer what
+  the two write routes accept. The routes ask the rules again with what was really sent.
+- **Who reads the decisions.** The two new reads have the gate of a decision (`refuseEntered`, then
+  `requireGrant(accounting)`), before anything is read: the evidence and the notes of a decision are read by the
+  accounts that could have written them. Every reader of a task still reads its phase and its hold. A read writes
+  nothing (no activity event, no notice).
+- **No read carries an eSIM code.** The record has no column for one; the queue's query does not select the
+  operation's result; the decision view reads the result only to say whether the form must ask for a number or a
+  code. The code a person types lives in the dialog's own state, which is unmounted when it closes: it is never in
+  the address, in storage, in the query cache or in the console. The ticket's own read stays `fresh` (not kept
+  once the page closes), and so are the decision view and the queue.
+- **After a write** the task, the decision view and the queue are asked again. A refusal that means the screen is
+  stale (`DECISION_NOT_APPLICABLE`, `DECISION_PROPOSAL_OPEN`, `DECISION_NO_PROPOSAL`) closes the form, says so,
+  and asks again; any other refusal, and a lost connection, stay in the form with what was typed, and nothing is
+  sent again by itself. A button is disabled while its request runs.
+- **Three people on screen (D12).** The ticket shows the submitter as before; the record names the account that
+  decided; the entry and the notice of a decided activation are the submitter's, from «النظام» (S.9).
+

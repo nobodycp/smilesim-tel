@@ -70,6 +70,10 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - User page head: a 48px cut-corner crimson mark, the name, the layer tag, the state; wallet actions are secondary.
 - Task ticket: the operation and its state are the title, number · company · package the lede; the log is the wide
   side at the reading start, the details the narrow side, each its own card.
+  A task that went to a provider opens its details with the operation's block (`.po-panel`): a title and the
+  phase as a `Badge` (waiting `info`, unconfirmed `warning`, failed `danger`, a success that could not be settled
+  `violet`, applied `success`), one sentence, the amount with what became of it, then the decisions. The queue
+  (`/tasks/decisions`) reuses the proposal card and one ruled row per operation (`.po-row`).
 - Provider «طريقة التنفيذ»: `ModeCards` (`components/mode-cards.tsx`) — one cut-corner card per operation with a
   three-way segmented control (مباشر / مهمة فرع / متوقف) that spans the card in three equal parts, so longer languages
   never spill past its edge; a stopped one dims. Cards are at least 250px wide.
