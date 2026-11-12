@@ -266,10 +266,22 @@ come; the money must be safe in every state of the operation.
   The header is not required on any route yet: "required on the dispatch route" is S.11.
 - The Redis guard stays in front and is not relied on. The spec runs without it, with it, with two sessions of
   one account (which it cannot tell apart from two people) and with its store down: always one task, one hold.
+- **The guard and the key agree (final audit of S.6).** The guard's general rule refuses a repeat while the
+  first is running (`409 DUPLICATE_REQUEST`, spec 2026-11-08-duplicate-writes). Spec item 4 asks for the same
+  `taskId` from ten requests at once, so on the activation route (`@AwaitsFirstAnswer()`) a repeat under the same
+  key waits for the first answer and is given it; a repeat with another body is `400 INVALID`, before and after.
+  When the first failed, a waiting repeat runs in its place. A keyed write is marked as running for 60 s, not
+  24 h: a request that died no longer blocks its key, and the database answers for what it wrote. Every other
+  route keeps the general rule. Proved over HTTP on real Redis and PostgreSQL, ten at once, with a serial and
+  without one, in one session and in two. `409` remains only where an answer cannot be given safely: an
+  activation made at once whose kept answer cannot be sealed or no longer opens, and a first request still
+  running after 20 s.
 - Found while building this: the guard kept every answer in Redis as JSON, so the answer of an activation made
   at once sat there with its eSIM code in the clear (10 s without a key; it would have been 24 h once the web
-  sent one). The activation route is now marked `@SecretAnswer()`: its answer is kept sealed, or not at all where
-  it cannot be sealed, in which case the repeat is refused (`409 DUPLICATE_REQUEST`) and never run again. Spec
+  sent one). The activation route is now marked `@SecretAnswer(carriesEsimCode)`: an answer that carries a code
+  is kept sealed, or not at all where it cannot be sealed, in which case the repeat is refused (`409
+  DUPLICATE_REQUEST`) and never run again; the same when the sealed copy no longer opens. An answer with no code
+  (a task) is kept as before, so it is replayed with or without a sealing key. Spec
   item 24 (S.5c) did not see this because its test app has no guard; `activation-request-key.db.spec.ts` covers it.
 - The web makes one key per activation (`lib/request-key.ts`): the same content sent again carries the same key;
   changed content, or the next activation after an answer, carries a new one. Both activation forms use it.

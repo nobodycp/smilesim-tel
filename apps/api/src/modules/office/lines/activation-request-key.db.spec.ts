@@ -1,10 +1,12 @@
 import 'reflect-metadata';
 import { createHash, randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
+import IORedis from 'ioredis';
 import request from 'supertest';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { DuplicateGuardInterceptor, memoryWrites, type WriteStore } from '../../shared/duplicate-guard.interceptor';
+import { capturedOutput } from '../../shared/testing/captured-output';
+import { DuplicateGuardInterceptor, type WriteStore } from '../../shared/duplicate-guard.interceptor';
 import type { NoticeService } from '../notices/notice.service';
 import { officeTestApp } from '../testing/office-test-app';
 
@@ -12,7 +14,8 @@ import { officeTestApp } from '../testing/office-test-app';
 // A request that opens an activation task carries an `Idempotency-Key`. The database keeps one task per key and
 // submitter: the same request is answered with the first task and holds, records and tells nothing again; the
 // same key with another request is refused. Every request goes through HTTP. The first app has NO duplicate
-// guard in front, so what is proved is what the database does alone; the second has the guard, as production.
+// guard in front, so what is proved is what the database does alone; the second has the guard, as production,
+// on real Redis when the spec run has one (TEST_REDIS_URL) and on its memory store otherwise.
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
@@ -21,7 +24,8 @@ const KEY = Buffer.alloc(32, 77).toString('base64');
 
 suite('one activation task per request key (PostgreSQL)', () => {
   jest.setTimeout(90_000);
-  const before = { url: process.env.DATABASE_URL, key: process.env.SECRETS_KEY };
+  const before = { url: process.env.DATABASE_URL, key: process.env.SECRETS_KEY, redis: process.env.REDIS_URL };
+  const redisUrl = process.env.TEST_REDIS_URL;
   const tag = randomUUID().slice(0, 8);
   // owner (branch) > posA, posB
   const u = { owner: randomUUID(), posA: randomUUID(), posB: randomUUID() };
@@ -30,6 +34,8 @@ suite('one activation task per request key (PostgreSQL)', () => {
   let app: INestApplication;
   let guarded: INestApplication;
   let guard: DuplicateGuardInterceptor;
+  /** The guard's own store: Redis, or memory when the run has no Redis. */
+  let real: WriteStore;
   let recorded: unknown[][];
   let cookie: Record<keyof typeof u, string>;
   /** A second session of posA: the guard is per session, so only the database stands between the two. */
@@ -80,7 +86,11 @@ suite('one activation task per request key (PostgreSQL)', () => {
     await prisma.package.create({ data: { id: ids.pkg, code: `rk-${tag}`, name: 'rk', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     const notice = { write: async () => { noticeWrites += 1; return []; }, publish: async () => undefined } as unknown as NoticeService;
     ({ app, recorded } = await officeTestApp(auth, prisma as unknown as Record<string, unknown>, notice));
+    // The guard reads REDIS_URL when it is made.
+    if (redisUrl) process.env.REDIS_URL = redisUrl;
+    else delete process.env.REDIS_URL;
     guard = new DuplicateGuardInterceptor();
+    real = guard.store;
     ({ app: guarded } = await officeTestApp(auth, prisma as unknown as Record<string, unknown>, notice, [guard]));
   });
 
@@ -89,9 +99,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
     noticeWrites = 0;
     process.env.SECRETS_KEY = KEY;
     kept = [];
-    const inner = memoryWrites();
-    const store: WriteStore = { ...inner, save: (name, value, seconds) => { kept.push(value); return inner.save(name, value, seconds); } };
-    guard.store = store;
+    guard.store = { ...real, save: (name, value, seconds) => { kept.push(value); return real.save(name, value, seconds); } };
   });
 
   afterEach(async () => {
@@ -105,6 +113,9 @@ suite('one activation task per request key (PostgreSQL)', () => {
   afterAll(async () => {
     await app.close();
     await guarded.close();
+    await guard.onModuleDestroy();
+    if (before.redis === undefined) delete process.env.REDIS_URL;
+    else process.env.REDIS_URL = before.redis;
     await prisma.package.deleteMany({ where: { id: ids.pkg } });
     await prisma.company.deleteMany({ where: { id: ids.company } });
     await prisma.provider.deleteMany({ where: { id: ids.provider } });
@@ -273,31 +284,76 @@ suite('one activation task per request key (PostgreSQL)', () => {
   });
 
   describe('with the duplicate guard in front, as in production', () => {
-    it('one session, ten at once: each is answered with the one task or refused as a duplicate, and one task holds once', async () => {
-      const requestKey = key();
-      const sent = body({ iccid: serial() });
-      const result = summary(await Promise.all(Array.from({ length: 10 }, () => post('posA', sent, requestKey, guarded))));
-      expect(result.taskIds).toHaveLength(1);
-      expect(result.statuses.filter((status) => status !== '201' && status !== '409 DUPLICATE_REQUEST')).toEqual([]);
-      expect(await tasks()).toHaveLength(1);
-      expect(await holds()).toBe(1);
-      // Afterwards the guard answers it, and so does the database for a session the guard has never seen.
-      const fromGuard = await post('posA', sent, requestKey, guarded);
-      const fromDatabase = await post({ cookie: otherSession }, sent, requestKey, guarded);
-      expect([fromGuard.status, fromGuard.body.taskId, fromGuard.headers['idempotent-replay']]).toEqual([201, result.taskIds[0], 'true']);
-      expect([fromDatabase.status, fromDatabase.body.taskId, fromDatabase.headers['idempotent-replay']]).toEqual([201, result.taskIds[0], 'true']);
-      expect(await tasks()).toHaveLength(1);
-      expect(await holds()).toBe(1);
+    /** Every key and value the guard holds in Redis, with what it was asked to save. */
+    const stored = async () => {
+      if (!redisUrl) return kept.join('\n');
+      const redis = new IORedis(redisUrl, { maxRetriesPerRequest: 1 });
+      try {
+        const names = await redis.keys('write:*');
+        return [...names, ...(await Promise.all(names.map((name) => redis.get(name)))), ...kept].join('\n');
+      } finally {
+        redis.disconnect();
+      }
+    };
+    const fragments = (text: string) => Array.from({ length: 12 }, (_, at) => text.slice(40 + at * 97, 40 + at * 97 + 24)).filter((part) => part.length === 24);
+
+    it('one session, ten at once: every one is answered with the one task, none is refused, and one task holds once', async () => {
+      for (const sent of [body({ iccid: serial() }), body({ esim: true })]) {
+        const requestKey = key();
+        const responses = await Promise.all(Array.from({ length: 10 }, () => post('posA', sent, requestKey, guarded)));
+        const result = summary(responses);
+        expect(result.statuses).toEqual(Array.from({ length: 10 }, () => '201'));
+        expect(result.taskIds).toHaveLength(1);
+        expect(new Set(responses.map((response) => JSON.stringify(response.body))).size).toBe(1);
+        expect(await prisma.officeTask.count({ where: { id: result.taskIds[0] } })).toBe(1);
+        // Afterwards the guard answers it, and so does the database for a session the guard has never seen.
+        const fromGuard = await post('posA', sent, requestKey, guarded);
+        const fromDatabase = await post({ cookie: otherSession }, sent, requestKey, guarded);
+        expect([fromGuard.status, fromGuard.body.taskId, fromGuard.headers['idempotent-replay']]).toEqual([201, result.taskIds[0], 'true']);
+        expect([fromDatabase.status, fromDatabase.body.taskId, fromDatabase.headers['idempotent-replay']]).toEqual([201, result.taskIds[0], 'true']);
+      }
+      expect(await tasks()).toHaveLength(2);
+      expect(await holds()).toBe(2);
+      expect(await wallet()).toMatchObject({ balance: 1_000_000, held: (await tasks()).reduce((sum, row) => sum + (row.held ?? 0), 0) });
+      expect(await entries()).toBe(2);
+      expect(await operations()).toBe(0);
     });
 
-    it('two sessions of one account at once, which the guard cannot tell apart from two people: still one task', async () => {
+    it('two sessions of one account at once, which the guard cannot tell apart from two people: still one task, no refusal', async () => {
       const requestKey = key();
       const sent = body({ esim: true });
       const calls = Array.from({ length: 10 }, (_, at) => post(at % 2 ? 'posA' : { cookie: otherSession }, sent, requestKey, guarded));
       const result = summary(await Promise.all(calls));
+      expect(result.statuses).toEqual(Array.from({ length: 10 }, () => '201'));
       expect(result.taskIds).toHaveLength(1);
-      expect(result.statuses.filter((status) => status !== '201' && status !== '409 DUPLICATE_REQUEST')).toEqual([]);
       expect(await tasks()).toHaveLength(1);
+      expect(await holds()).toBe(1);
+    });
+
+    it('refuses the key with another body: ten at once after the first, and ten different ones together', async () => {
+      const requestKey = key();
+      const sent = body({ iccid: serial() });
+      const first = await post('posA', sent, requestKey, guarded);
+      expect(first.status).toBe(201);
+      const others = summary(await Promise.all(Array.from({ length: 10 }, () => post('posA', body({ iccid: serial() }), requestKey, guarded))));
+      expect(others.statuses).toEqual(Array.from({ length: 10 }, () => '400 INVALID'));
+      const together = summary(await Promise.all(Array.from({ length: 10 }, () => post('posA', body({ iccid: serial() }), `${requestKey}-b`, guarded))));
+      expect(together.statuses).toEqual(['201', ...Array.from({ length: 9 }, () => '400 INVALID')]);
+      expect(await tasks()).toHaveLength(2);
+      expect(await holds()).toBe(2);
+    });
+
+    it('lets the same key through again after a request that failed', async () => {
+      const requestKey = key();
+      const sent = body({ iccid: serial() });
+      await prisma.wallet.update({ where: { userId: u.posA }, data: { balance: 0 } });
+      const refused = summary(await Promise.all(Array.from({ length: 5 }, () => post('posA', sent, requestKey, guarded))));
+      expect(refused.statuses).toEqual(Array.from({ length: 5 }, () => '400 BALANCE_CEILING'));
+      expect(await tasks()).toEqual([]);
+      await prisma.wallet.update({ where: { userId: u.posA }, data: { balance: 1_000_000 } });
+      const retried = summary(await Promise.all(Array.from({ length: 10 }, () => post('posA', sent, requestKey, guarded))));
+      expect(retried.statuses).toEqual(Array.from({ length: 10 }, () => '201'));
+      expect(retried.taskIds).toHaveLength(1);
       expect(await holds()).toBe(1);
     });
 
@@ -313,35 +369,65 @@ suite('one activation task per request key (PostgreSQL)', () => {
       expect(await holds()).toBe(1);
     });
 
-    it('keeps the answer of an activation made at once sealed: the eSIM code is never in the guard’s store in the clear', async () => {
+    it('an activation made at once: ten at once make one line, the eSIM code is nowhere in Redis or the output in the clear, and neither is the key', async () => {
       const requestKey = key();
       const sent = body({ esim: true, outcome: 'success' });
-      const first = await post('posA', sent, requestKey, guarded);
-      expect([first.status, first.body.applied]).toEqual([201, true]);
-      const code: string = first.body.line.esimQr;
+      let responses: request.Response[] = [];
+      const output = await capturedOutput(async () => {
+        responses = await Promise.all(Array.from({ length: 10 }, () => post('posA', sent, requestKey, guarded)));
+      });
+      expect(responses.map((response) => response.status)).toEqual(Array.from({ length: 10 }, () => 201));
+      expect(new Set(responses.map((response) => JSON.stringify(response.body))).size).toBe(1);
+      expect(responses.filter((response) => response.headers['idempotent-replay'] === 'true')).toHaveLength(9);
+      const code: string = responses[0].body.line.esimQr;
       expect(code).toMatch(/^data:image\/png;base64,/);
+      expect(await prisma.line.count({ where: { posId: u.posA } })).toBe(1);
+      expect(await entries()).toBe(1);
       expect(kept).toHaveLength(1);
       expect(kept[0].startsWith('v1:')).toBe(true);
-      for (let start = 40; start + 24 <= code.length; start += 97) expect(kept.join('\n')).not.toContain(code.slice(start, start + 24));
-      // The repeat is answered from the sealed copy and sells nothing again.
-      const again = await post('posA', sent, requestKey, guarded);
-      expect([again.status, again.headers['idempotent-replay']]).toEqual([201, 'true']);
-      expect(again.body).toEqual(first.body);
-      expect(await prisma.line.count({ where: { posId: u.posA } })).toBe(1);
-      // No task was opened, so no key is stored: on this route the repeat is the guard's to stop.
+      const everything = await stored();
+      const parts = fragments(code);
+      expect(parts.length).toBeGreaterThan(5);
+      for (const part of parts) {
+        expect(everything).not.toContain(part);
+        expect(output).not.toContain(part);
+      }
+      expect(everything).not.toContain(requestKey);
+      expect(output).not.toContain(requestKey);
+      // The same without a key of the client's: the guard's ten-second copy is sealed too.
+      const unkeyed = await post('posA', body({ esim: true, outcome: 'success' }), undefined, guarded);
+      expect(unkeyed.status).toBe(201);
+      expect(kept[1].startsWith('v1:')).toBe(true);
+      for (const part of fragments(unkeyed.body.line.esimQr)) expect(await stored()).not.toContain(part);
+      // No task was opened, so no key is stored: on this route the repeat is the guard's to stop (D13: simulation only).
       expect(await tasks()).toEqual([]);
     });
 
-    it('keeps no answer at all when it cannot be sealed: the repeat is refused, never run again', async () => {
+    it('does not activate a second time when the kept answer cannot be read back', async () => {
+      const requestKey = key();
+      const sent = body({ esim: true, outcome: 'success' });
+      expect((await post('posA', sent, requestKey, guarded)).status).toBe(201);
+      // The sealing key is gone, then another one: the sealed copy does not open.
+      delete process.env.SECRETS_KEY;
+      const none = await post('posA', sent, requestKey, guarded);
+      process.env.SECRETS_KEY = Buffer.alloc(32, 78).toString('base64');
+      const other = summary(await Promise.all(Array.from({ length: 5 }, () => post('posA', sent, requestKey, guarded))));
+      expect([none.status, none.body.code]).toEqual([409, 'DUPLICATE_REQUEST']);
+      expect(other.statuses).toEqual(Array.from({ length: 5 }, () => '409 DUPLICATE_REQUEST'));
+      expect(await prisma.line.count({ where: { posId: u.posA } })).toBe(1);
+      expect(await entries()).toBe(1);
+    });
+
+    it('a task’s answer carries no code and is replayed with or without a sealing key', async () => {
       delete process.env.SECRETS_KEY;
       const requestKey = key();
-      const sent = body({ iccid: serial(), outcome: 'success' });
+      const sent = body({ iccid: serial() });
       const first = await post('posA', sent, requestKey, guarded);
-      expect([first.status, first.body.applied]).toEqual([201, true]);
-      expect(kept).toEqual(['__done__']);
       const again = await post('posA', sent, requestKey, guarded);
-      expect([again.status, again.body.code]).toEqual([409, 'DUPLICATE_REQUEST']);
-      expect(await prisma.line.count({ where: { posId: u.posA } })).toBe(1);
+      expect([first.status, again.status, again.headers['idempotent-replay']]).toEqual([201, 201, 'true']);
+      expect(again.body).toEqual(first.body);
+      expect(kept).toEqual([JSON.stringify(first.body)]);
+      expect(await tasks()).toHaveLength(1);
     });
   });
 });

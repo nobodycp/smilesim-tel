@@ -8,12 +8,15 @@ import { Activity, bodyField, param } from '../activity/activity.decorator';
 import { ActivityInterceptor } from '../activity/activity.interceptor';
 import { ActivityRecorder } from '../activity/activity-recorder';
 import { gateOf } from '../../shared/cookies';
-import { REPLAY_HEADER, SecretAnswer } from '../../shared/duplicate-guard.interceptor';
+import { AwaitsFirstAnswer, REPLAY_HEADER, SecretAnswer } from '../../shared/duplicate-guard.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { LineReads } from './line-reads';
 import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, LinesQuery, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
 import { LinesService } from './lines.service';
+
+/** Whether an activation's answer carries an eSIM code: only then is the duplicate guard's copy of it a secret. */
+const carriesEsimCode = (answer: unknown) => Boolean((answer as { line?: { esimQr?: unknown } } | null)?.line?.esimQr);
 
 @ApiTags('office')
 @ApiCookieAuth('sid')
@@ -49,7 +52,8 @@ export class LinesController {
   @ApiErrorResponse(401, 403, 400)
   @ApiHeader({ name: 'Idempotency-Key', required: false, description: 'One key per activation; a repeat of the request that opened a task is answered with that task (8 to 120 of A-Z a-z 0-9 . _ : -)' })
   @Activity('activate', 'line', bodyField('msisdn'))
-  @SecretAnswer()
+  @SecretAnswer(carriesEsimCode)
+  @AwaitsFirstAnswer()
   activate(@Actor() actor: ActorShape, @Body() body: ActivateBody, @Headers('idempotency-key') key: string | undefined, @Res({ passthrough: true }) res: Response) {
     // A repeat of a request that opened a task (ADR 0019, D14) says so, and is not recorded as a second activation.
     return this.lineDesk.activate(actor, body, { key, replayed: () => res.setHeader(REPLAY_HEADER, 'true') });

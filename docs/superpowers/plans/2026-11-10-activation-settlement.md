@@ -311,7 +311,8 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   *Transactions:* T1. *Specs:* 4 (without "required").
   As built: ADR 0019 "As built in S.6". Specs: `lines/activation-request-key.db.spec.ts` (item 4 over HTTP, with
   and without the Redis guard), `lines/activation-settlement.rules.spec.ts` (the key and the fingerprint), web
-  `tests/activation-request-key.spec.ts`. Also closed here: the guard no longer keeps the activation's answer in
+  `tests/activation-request-key.spec.ts`. Final audit: on this route a repeat under the same key waits for the first
+  answer instead of `409` (`shared/duplicate-guard.answers.spec.ts`, and the guarded part of the db spec on real Redis). Also closed here: the guard no longer keeps the activation's answer in
   the clear (`@SecretAnswer()`), a gap of S.5c found while adding the key.
 
 - [ ] **S.7 Guards on the manual path, and cancel (D6, D7).**

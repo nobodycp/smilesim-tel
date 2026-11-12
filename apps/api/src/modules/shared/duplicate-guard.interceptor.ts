@@ -18,11 +18,22 @@ import { isSealed, open, seal } from './secret-box';
 // This guard is a convenience in front of the database, never the protection: it expires and it fails open. What
 // must not happen twice is refused by the database itself (row locks, unique indexes, `OfficeTask.requestKey`).
 //
-// An answer that carries a secret (`@SecretAnswer()`: an activation's eSIM code) is kept sealed (secret-box), so
-// the store never holds it in the clear. Where it cannot be sealed it is not kept at all: the write stays marked
-// as done and a repeat inside the window is refused (409) instead of being answered or run again.
+// An answer that carries a secret (`@SecretAnswer(isSecret)`: an activation's eSIM code) is kept sealed
+// (secret-box), so the store never holds it in the clear. Where it cannot be sealed it is not kept at all: the
+// write stays marked as done and a repeat inside the window is refused (409) instead of being answered or run
+// again. The same when a sealed answer no longer opens. An answer of that route with no secret is kept as any other.
+//
+// A route marked `@AwaitsFirstAnswer()` (the activation, ADR 0019 D14) does not refuse a repeat that carries the
+// same `Idempotency-Key` while the first is running: the repeat waits for the first and is answered with it. If
+// the first failed, the repeat runs in its place. A request that never finishes (the process died) holds its mark
+// for `RUNNING_SECONDS` only, so the key can be sent again; what it wrote, if anything, is the database's to answer.
 export const SAME_WRITE_SECONDS = 10;
 export const KEYED_WRITE_SECONDS = 24 * 60 * 60;
+/** How long a keyed write may run before its mark lapses and the key can be sent again. */
+export const RUNNING_SECONDS = 60;
+/** How long a repeat waits for the first answer on a route that awaits it, and how often it looks. */
+export const AWAIT_FIRST_MS = 20_000;
+const AWAIT_STEP_MS = 40;
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const PENDING = '__pending__';
 /** The write succeeded and its answer is not kept. */
@@ -30,12 +41,22 @@ const DONE_UNKEPT = '__done__';
 /** The response header of an answer that repeats an earlier one and ran nothing. */
 export const REPLAY_HEADER = 'Idempotent-Replay';
 const SECRET_ANSWER = 'duplicate-guard:secret-answer';
-/** Marks a route whose answer may carry a secret: the guard keeps it sealed, or not at all. */
-export const SecretAnswer = () => SetMetadata(SECRET_ANSWER, true);
+const AWAITS_FIRST = 'duplicate-guard:awaits-first-answer';
+/** Marks a route whose answer may carry a secret; `isSecret` says whether this answer does. Such an answer is kept sealed, or not at all. */
+export const SecretAnswer = (isSecret: (answer: unknown) => boolean) => SetMetadata(SECRET_ANSWER, isSecret);
+/** Marks a route where a repeat under the same `Idempotency-Key` waits for the first answer instead of being refused. */
+export const AwaitsFirstAnswer = () => SetMetadata(AWAITS_FIRST, true);
 
 /** What is stored for an answer: the JSON, sealed for a secret one; the done mark when it cannot be sealed. */
-function kept(answer: unknown, secret: boolean): string {
+function kept(answer: unknown, isSecret: ((answer: unknown) => boolean) | undefined): string {
   const text = JSON.stringify(answer);
+  let secret = true;
+  try {
+    // A route with no rule has no secret; a rule that throws is taken as "yes".
+    secret = isSecret ? isSecret(answer) : false;
+  } catch {
+    secret = true;
+  }
   if (!secret) return text;
   const sealed = seal(text);
   return isSealed(sealed) ? sealed : DONE_UNKEPT;
@@ -116,12 +137,21 @@ export class DuplicateGuardInterceptor implements NestInterceptor, OnModuleDestr
     const request = hash(`${req.method} ${req.originalUrl}\n${JSON.stringify(req.body ?? null)}`);
     const key = `write:${hash(`${sessionId}\n${explicit ? `key:${explicit}` : request}`)}`;
     const seconds = explicit ? KEYED_WRITE_SECONDS : SAME_WRITE_SECONDS;
-    const secret = Reflect.getMetadata(SECRET_ANSWER, context.getHandler()) === true;
+    const isSecret = Reflect.getMetadata(SECRET_ANSWER, context.getHandler()) as ((answer: unknown) => boolean) | undefined;
+    const awaitsFirst = Boolean(explicit) && Reflect.getMetadata(AWAITS_FIRST, context.getHandler()) === true;
+    // A keyed write is marked as running for a short lease; its answer is then kept for the whole window.
+    const running = explicit ? RUNNING_SECONDS : seconds;
     // A Redis failure lets the write through: the guard is a convenience, the row locks are the protection.
     const claimed = async () => {
       // The key is bound to the first request sent with it.
       if (explicit && ((await this.store.claim(`${key}:of`, seconds, request)) ?? request) !== request) fail(400, 'INVALID');
-      return this.store.claim(key, seconds);
+      let found = await this.store.claim(key, running);
+      // The first is still running: wait for its answer. When it failed its mark is gone and this request takes it.
+      for (let waited = 0; awaitsFirst && found === PENDING && waited < AWAIT_FIRST_MS; waited += AWAIT_STEP_MS) {
+        await new Promise((resolve) => setTimeout(resolve, AWAIT_STEP_MS));
+        found = await this.store.claim(key, running);
+      }
+      return found;
     };
 
     return from(claimed().catch((error: unknown) => (error instanceof OfficeFailure ? Promise.reject(error) : null))).pipe(
@@ -137,7 +167,7 @@ export class DuplicateGuardInterceptor implements NestInterceptor, OnModuleDestr
         return next.handle().pipe(
           tap((answer) => {
             // A handler that wrote its own response returns nothing: keep no answer to replay.
-            const saved = answer === undefined ? this.store.drop(key) : this.store.save(key, kept(answer, secret), seconds);
+            const saved = answer === undefined ? this.store.drop(key) : this.store.save(key, kept(answer, isSecret), seconds);
             void saved.catch(() => undefined);
           }),
           catchError((error: unknown) => {
