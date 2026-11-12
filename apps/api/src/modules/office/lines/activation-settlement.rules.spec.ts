@@ -370,3 +370,34 @@ describe('what the settlement makes of a refusal, and who is told (ADR 0019, D16
   });
 });
 
+describe('an exception is closed by the same decisions whatever its reason (D15, D16)', () => {
+  const owner: DecisionActor = { id: 'owner', layer: 'branch', isBranchOwner: true, grants: [], impersonating: false };
+  const accountant: DecisionActor = { id: 'accountant', layer: 'branch', isBranchOwner: false, grants: ['accounting'], impersonating: false };
+  const evidence: DecisionEvidence = { kind: 'provider-portal', note: 'The provider portal shows the eSIM profile and its code.', providerRef: null };
+  const ask = (decision: Decision, on: TaskOperation): DecisionRequest => ({ act: 'decide', decision, evidence, operation: on, submitterId: 'pos-1' });
+
+  it.each([...APPLY_ERRORS])('%s: frozen for every hand, never swept, corrected by one authorised account, released only with a second one', (reason) => {
+    const exception: TaskOperation = { status: 'succeeded', appliedAt: null, applyError: reason };
+    expect(phaseOf(exception)).toBe('exception');
+    expect(taskActions(exception)).toEqual({ complete: false, reject: false, cancel: 'refused' });
+    expect(inFlight(exception)).toBe(true);
+    expect([settlementOf(exception), sweepable(exception)]).toEqual(['await-decision', false]);
+    // Apply corrected: one account that may decide, and nobody else.
+    expect(decisionStep([], accountant, ask('apply-corrected', exception))).toMatchObject({ ok: true, event: { type: 'applied' }, effect: 'apply-corrected' });
+    for (const actor of [
+      { ...accountant, id: 'pos-1' }, // the task's own submitter
+      { ...accountant, impersonating: true }, // an entered session
+      { ...accountant, grants: ['read', 'tasks'] }, // a branch account without the grant
+      { ...accountant, layer: 'pos' }, // a lower layer
+    ]) expect(decisionStep([], actor, ask('apply-corrected', exception)).ok).toBe(false);
+    // Release after success: a proposal that changes nothing until another authorised account approves it.
+    const proposal = decisionStep([], accountant, ask('release-after-success', exception));
+    expect(proposal).toMatchObject({ ok: true, event: { type: 'proposed' }, effect: 'none' });
+    const events: DecisionEvent[] = [{ sequence: 1, type: 'proposed', decision: 'release-after-success', accountId: 'accountant' }];
+    expect(decisionStep(events, accountant, { act: 'approve', operation: exception, submitterId: 'pos-1' }).ok).toBe(false);
+    expect(decisionStep(events, owner, { act: 'approve', operation: exception, submitterId: 'pos-1' })).toMatchObject({ ok: true, effect: 'release-after-success' });
+    // The decisions about an unknown answer do not apply to it.
+    for (const decision of ['confirm-success', 'declare-failure'] as const) expect(decisionStep([], owner, ask(decision, exception)).ok).toBe(false);
+  });
+});
+

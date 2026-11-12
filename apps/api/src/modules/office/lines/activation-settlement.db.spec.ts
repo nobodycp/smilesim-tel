@@ -581,16 +581,20 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     });
   });
 
-  describe('an eSIM the provider confirmed without an activation code (D16, proposed: esim-code-missing)', () => {
+  describe('an eSIM the provider confirmed without an activation code (D16: esim-code-missing)', () => {
     it('makes no line: an exception that keeps the verdict, its result, the task, the hold and the reservation, said once to those who may decide', async () => {
       const [msisdn, iccid] = [number(), serial()];
       const { taskId, operationId } = await succeeded({ esim: true }, { msisdn, iccid });
       const opened = await task(taskId);
       expect(opened).toMatchObject({ esim: true, esimQr: null });
       notices = [];
-      const outcomes = await Promise.all(Array.from({ length: 6 }, () => settlement.apply(operationId)));
+      let outcomes: string[] = [];
+      const output = await capturedOutput(async () => { outcomes = await Promise.all(Array.from({ length: 6 }, () => settlement.apply(operationId))); });
       expect(outcomes.filter((outcome) => outcome === 'exception')).toHaveLength(1);
       expect(outcomes.filter((outcome) => outcome !== 'exception' && outcome !== 'skipped')).toEqual([]);
+      // The worker says which operation and why, by its code; never the number or the serial the provider gave.
+      expect(output).toContain(`operation ${operationId}: succeeded at the provider and could not be applied to task ${taskId} (esim-code-missing); the hold is kept`);
+      for (const part of [msisdn, iccid]) expect(output).not.toContain(part);
 
       const row = await operation(operationId);
       expect(row).toMatchObject({ status: 'succeeded', providerRef: 'REF-1', resultMsisdn: msisdn, resultIccid: iccid, resultEsimCode: null, applyError: 'esim-code-missing', appliedAt: null });
@@ -639,12 +643,30 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       const before = await snapshot(taskId, operationId);
       const key = process.env.SECRETS_KEY;
       process.env.SECRETS_KEY = Buffer.alloc(32, 99).toString('base64');
-      try {
-        await expect(settlement.apply(operationId)).rejects.toThrow();
-        expect(await settlement.applyPending()).toBe(0);
-      } finally {
-        process.env.SECRETS_KEY = key;
+      let failure = '';
+      let jobFailure = '';
+      const output = await capturedOutput(async () => {
+        try {
+          await settlement.apply(operationId).catch((error: unknown) => { failure = String((error as Error)?.message ?? error); });
+          // The queue's own handler and the sweeper meet the same fault: each leaves a code, nothing else.
+          await dispatch.settle({ operationId }).catch((error: unknown) => { jobFailure = `${String((error as Error)?.message ?? error)} ${String((error as Error)?.stack ?? '')}`; });
+          expect(await settlement.applyPending()).toBe(0);
+        } finally {
+          process.env.SECRETS_KEY = key;
+        }
+      });
+      expect(failure).not.toBe('');
+      expect(output).toContain(`operation ${operationId}: the settlement failed and will be tried again (`);
+      expect(output).toContain(`operation ${operationId}: its settlement failed (`);
+      // What the queue keeps of a failed job is a code and no stack.
+      expect(jobFailure.trim()).toBe('provider-operation job failed: unclassified');
+      // Neither the code nor its sealed form is in the output, in the job's failure or in the error itself; and
+      // the cipher's own words stay out of the output and the job.
+      const sealedCode = before.operation.resultEsimCode as string;
+      for (const text of [output, jobFailure, failure]) {
+        for (const secret of ['S8-SECRET', 'smdp.s8-settlement', sealedCode.slice(3, 23), sealedCode.slice(-20)]) expect([secret, text.includes(secret)]).toEqual([secret, false]);
       }
+      for (const text of [output, jobFailure]) for (const words of ['authenticate data', 'Unsupported state']) expect([words, text.includes(words)]).toEqual([words, false]);
       expect(await snapshot(taskId, operationId)).toEqual(before);
       expect(before.operation).toMatchObject({ applyError: null, appliedAt: null });
       expect(await settlement.applyPending()).toBe(1);
