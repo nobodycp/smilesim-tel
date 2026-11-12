@@ -17,7 +17,11 @@ import { OutboxRelay } from './modules/office/outbox/outbox-relay';
 import { OutboxRepository } from './modules/office/outbox/outbox.repository';
 import { QueuePublisher } from './modules/office/outbox/queue-publisher';
 import type { ProviderGateway } from './modules/office/providers/gateway/provider-gateway';
-import { OperationDispatcher, recoverExpired } from './modules/office/providers/operations/operation-dispatcher';
+import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate';
+import { READY_EVERY_MS, type DispatchSettings, type ProviderTarget } from './modules/office/providers/dispatch/dispatch-policy';
+import type { BuiltAdapters } from './modules/office/providers/dispatch/provider-adapters';
+import { open } from './modules/shared/secret-box';
+import { OperationDispatcher, dispatchWaiting, recoverExpired } from './modules/office/providers/operations/operation-dispatcher';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from './modules/office/providers/operations/provider-operations.repository';
 import { ProviderOperationsService } from './modules/office/providers/operations/provider-operations.service';
 import { errorCode, logger } from './modules/shared/log';
@@ -59,12 +63,16 @@ export class JobFailure extends Error {
 }
 
 /** The pieces the worker runs for provider operations, built by hand: the worker is not a Nest application. */
-export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis, gateway: ProviderGateway, prefix?: string, notice?: NoticeService) {
+/**
+ * `gate` is required (ADR 0019, D18): every attempt is taken and marked through it. The worker passes its
+ * deployment's gate (`DeploymentSendGate`); there is no default, so nothing here sends ungated.
+ */
+export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis, gateway: ProviderGateway, gate: SendGate, prefix?: string, notice?: NoticeService) {
   const uow = new UnitOfWork(notice);
   uow.prismaClient = prisma;
   const operations = new ProviderOperationsService(uow, new ProviderOperationsRepository());
   const publisher = new QueuePublisher(connection, { [OPERATION_REQUESTED]: OPERATIONS_QUEUE, [OPERATION_SETTLED]: SETTLEMENTS_QUEUE }, prefix);
-  const dispatcher = new OperationDispatcher(operations, gateway);
+  const dispatcher = new OperationDispatcher(operations, gateway, gate);
   const settlement = buildActivationSettlement(uow, operations);
   /** A job carries the operation's id and nothing else. */
   const operationIdOf = (data: unknown): string => {
@@ -109,14 +117,24 @@ export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis,
 }
 
 /** Starts the relay and the recovery on their timers. Answers what stops them. */
-export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildProviderDispatch>, 'relay' | 'operations' | 'publisher' | 'settlement'>): () => Promise<void> {
+export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildProviderDispatch>, 'relay' | 'operations' | 'publisher' | 'settlement' | 'dispatcher'>): () => Promise<void> {
   let relaying = false;
   const relay = setInterval(() => {
     if (relaying) return;
     relaying = true;
     void parts.relay.runOnce().catch((error) => log.warn(`relay round failed: ${errorCode(error)}`)).finally(() => { relaying = false; });
   }, RELAY_EVERY_MS);
-  const recovery = setInterval(() => void recoverExpired(parts.operations).catch((error) => log.warn(`recovery failed: ${errorCode(error)}`)), RECOVERY_EVERY_MS);
+  let recovering = false;
+  const recovery = setInterval(() => {
+    if (recovering) return;
+    recovering = true;
+    // Attempts whose worker is gone, then the operations a closed gate left waiting: each goes through the gate
+    // again, so a provider that was resumed sends what waited and a paused one still sends nothing.
+    void recoverExpired(parts.operations)
+      .then(() => dispatchWaiting(parts.dispatcher, parts.operations))
+      .catch((error) => log.warn(`recovery failed: ${errorCode(error)}`))
+      .finally(() => { recovering = false; });
+  }, RECOVERY_EVERY_MS);
   let sweeping = false;
   const sweep = setInterval(() => {
     if (sweeping) return;
@@ -133,3 +151,50 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
     await parts.publisher.close();
   };
 }
+
+/**
+ * The opened credentials of the providers this deployment may build adapters for, read once at start (ADR 0019,
+ * D18). Only the worker calls this: it is the one place a stored credential is opened. Nothing is read unless
+ * dispatch is on, the settings hold together and a target is stated. A credential that does not open (the key
+ * changed, the value is damaged) is remembered as unreadable and throws when asked for, so no adapter is built
+ * with it; one that is not stored answers null. Neither the value nor the cipher's error is logged.
+ */
+export async function readCredentials(prisma: PrismaClient, settings: DispatchSettings): Promise<(providerCode: string, target: ProviderTarget) => string | null> {
+  const opened = new Map<string, string | Error>();
+  if (settings.on && settings.target && settings.problems.length === 0 && settings.adapters.length > 0) {
+    const rows = await prisma.providerCredential.findMany({ where: { target: settings.target, provider: { code: { in: [...settings.adapters] } } }, select: { sealedValue: true, target: true, provider: { select: { code: true } } } });
+    for (const row of rows) {
+      try {
+        const value = open(row.sealedValue);
+        opened.set(`${row.provider.code}:${row.target}`, value === '' ? new Error('empty') : value);
+      } catch {
+        opened.set(`${row.provider.code}:${row.target}`, new Error('unreadable'));
+      }
+    }
+  }
+  return (providerCode, target) => {
+    const found = opened.get(`${providerCode}:${target}`);
+    if (found instanceof Error) throw new Error('a provider credential could not be opened');
+    return found ?? null;
+  };
+}
+
+/**
+ * The worker's attestation (ADR 0019, D18): for each adapter it built, it writes on the provider's row that it
+ * holds one, for which target, now, and repeats it on a timer. The API opens the dispatch route only on a fresh
+ * one. A worker with no adapter writes nothing. Stopping withdraws what it wrote. Answers what stops it.
+ */
+export function startReadiness(prisma: PrismaClient, built: BuiltAdapters, settings: DispatchSettings): () => Promise<void> {
+  const codes = [...built.adapters.keys()];
+  const target = settings.target;
+  if (codes.length === 0 || !target) return async () => undefined;
+  const attest = () => prisma.provider.updateMany({ where: { code: { in: codes } }, data: { dispatchReadyAt: new Date(), dispatchReadyTarget: target } });
+  void attest().catch((error) => log.warn(`readiness failed: ${errorCode(error)}`));
+  const timer = setInterval(() => void attest().catch((error) => log.warn(`readiness failed: ${errorCode(error)}`)), READY_EVERY_MS);
+  timer.unref?.();
+  return async () => {
+    clearInterval(timer);
+    await prisma.provider.updateMany({ where: { code: { in: codes }, dispatchReadyTarget: target }, data: { dispatchReadyAt: null, dispatchReadyTarget: null } }).catch(() => undefined);
+  };
+}
+

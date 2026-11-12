@@ -1,6 +1,6 @@
 # 0018 — Provider operations are sent by a leased relay and a marked, leased attempt; a lost worker ends in `unknown`
 
-Date: 2026-11-10. Status: accepted as infrastructure (owner task 03); off by default and never on in production.
+Date: 2026-11-10. Status: accepted as infrastructure (owner task 03). Decision 10 ("off by default, never on in production") is replaced by ADR 0019, D18 (slice S.12a): see the note at the end.
 Builds on ADR 0017. Spec and plan: `docs/superpowers/{specs,plans}/2026-11-10-provider-dispatcher.md`.
 
 ## Flow
@@ -76,3 +76,21 @@ recovery (timer): pending and lease over ─┬─ no sentAt → requested + new
 - `unknown` operations accumulate until a status check or a screen exists (next phase).
 - Published outbox rows are never deleted yet.
 - The CI `db` job runs a Redis for the queue specs.
+
+## Amended by ADR 0019, D18 (slice S.12a, 2026-11-13)
+
+Decision 10 said `PROVIDER_DISPATCH=1` outside production only, and `config.ts` had `providerDispatchOn()` =
+"not production and `PROVIDER_DISPATCH=1`". Both are gone. No environment name decides anything now:
+
+- **Sending** is allowed per provider by four conditions that must all hold (`dispatch-policy.ts`):
+  `PROVIDER_DISPATCH=1`, the provider named in `PROVIDER_ADAPTERS`, `PROVIDER_TARGET` stated, and the owner's
+  approval for that target, not paused; **and** by an adapter the worker built. The dispatcher asks under the
+  provider's row lock, when it takes an attempt and again when it marks it as sent (`dispatch-gate.ts`).
+- **The worker's gateway** is `RoutingProviderGateway` over the adapters it built, not the simulated gateway. For
+  a provider it holds no adapter for, `send` answers that no connection was opened.
+- **Settling** (the relay, the settlements queue, recovery, the sweeper) always runs in the worker, whatever
+  `PROVIDER_DISPATCH` says: stopping sending never strands a result. Recovery's timer also looks again at
+  operations a closed gate left `requested` (`dispatchWaiting`).
+- An attempt that a closed gate refuses is **not counted**: the operation stays `requested` with its attempts as
+  they were. An attempt that was taken and then refused at the mark (the pause came between the two) is
+  provably unsent and is put back by recovery, as decision 6 already says.

@@ -16,7 +16,7 @@ migration, no backup and no account was changed while preparing it. What is stat
 - PostgreSQL 16.15, one volume on the same host, 66 MB on disk (database 10 MB). Redis 7 beside it.
 - Data: 4 accounts (the trial logins), 13 lines, 8 eSIM codes stored clear, 143 sessions (17 live), 25
   packages, 23 tasks (none open), 55 notices, 227 activity events.
-- 49 migrations applied, none failed. **9 pending** on the day it was read; **10** since slice S.8 added one (row 10 of 5.2). The count is of `main` as it stands, not of the server, which has not changed.
+- 49 migrations applied, none failed. **9 pending** on the day it was read; **10** since slice S.8 added one (row 10 of 5.2), **11** since slice S.12a added one (row 11). The count is of `main` as it stands, not of the server, which has not changed.
 - Host: 11 GB free of 48 GB (79 % used), 2.9 GB of memory available.
 
 ## 2. What still blocks the upgrade
@@ -173,6 +173,7 @@ All tables involved are tiny here (the largest is 240 kB), so every lock below i
 | 8 | `200000_open_activation_reservations` | two partial unique indexes on `OfficeTask` | `SHARE ROW EXCLUSIVE` on `OfficeTask`, 30 s lock timeout, one DO block | none | Yes: 0 groups share a serial, 0 share a number, and there is no open task at all | Yes (a duplicate open activation would be refused as a conflict) |
 | 9 | `20261111100000_two_factor_policy` | `LayerPolicy.method`, `User.twoFactorRequired`, `User.requiredMethod` | `ACCESS EXCLUSIVE` on `User`, `LayerPolicy`, momentarily | none | Yes: defaults fill every row | Yes |
 | 10 | `20261112120000_apply_error_esim_code_missing` (slice S.8; ADR 0019 D16 as amended, approved by the owner on 2026-11-12) | `ProviderOperation`: the CHECK on `applyError` is dropped and added again with one more allowed value | `ACCESS EXCLUSIVE` on `ProviderOperation`, momentarily (the table is created empty by migration 4) | none | Yes: it only widens the list, so every row the old CHECK accepted passes the new one; checked on a synthetic copy of the deployed schema (`e7679d9`, 49 migrations, 60 lines) taken through all ten, and on a database holding each earlier value | Yes |
+| 11 | `20261113100000_provider_dispatch_target_and_readiness` (slice S.12a; ADR 0019 D18) | `Provider`: three nullable columns (`dispatchApprovedTarget`, `dispatchReadyAt`, `dispatchReadyTarget`) and four CHECKs; one `UPDATE` that withdraws an approval on record with no target (none exists: no route ever wrote one) | — | — | — | — |
 
 ### 5.3 What this means for rollback
 

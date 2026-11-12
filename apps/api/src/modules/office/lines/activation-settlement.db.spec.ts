@@ -1,3 +1,4 @@
+import { OPEN_GATE } from '../providers/testing/open-gate';
 import { useSealingKey } from '../../shared/testing/sealing-key';
 import 'reflect-metadata';
 import { Queue, Worker } from 'bullmq';
@@ -157,7 +158,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     } as unknown as NoticeService;
     service = new OfficeFacade(auth, notice);
     if (redisUrl) redis = new IORedis(redisUrl, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
-    dispatch = buildProviderDispatch(prisma, redis ?? ({} as IORedis), new ScriptedGateway(), prefix, notice);
+    dispatch = buildProviderDispatch(prisma, redis ?? ({} as IORedis), new ScriptedGateway(), OPEN_GATE, prefix, notice);
     settlement = buildActivationSettlement(dispatch.uow, new ProviderOperationsService(dispatch.uow, new OwnOperations()));
   });
 
@@ -910,7 +911,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
 
     beforeEach(() => {
       gateway = new ScriptedGateway();
-      piped = buildProviderDispatch(prisma, redis as IORedis, gateway, prefix, dispatch.uow.notice);
+      piped = buildProviderDispatch(prisma, redis as IORedis, gateway, OPEN_GATE, prefix, dispatch.uow.notice);
       workers = [];
       queues = [new Queue(OPERATIONS_QUEUE, { connection: connection(), prefix }), new Queue(SETTLEMENTS_QUEUE, { connection: connection(), prefix })];
     });

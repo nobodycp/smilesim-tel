@@ -120,7 +120,7 @@ export class LinesService {
     // The dispatch route (ADR 0019, D13): the package runs activations automatically and the gateway takes this
     // provider's on record for the dispatcher. Nothing of the request chooses it, and no gateway built today
     // answers true (D18, slice S.12a). The provider is not called here, now or later: the worker's dispatcher is.
-    if (runsNow(pkg, 'activate') && this.gateway.dispatches(pkg.provider.code)) {
+    if (runsNow(pkg, 'activate') && (await this.gateway.dispatches(pkg.provider.code))) {
       const opening = { action: 'activate' as const, actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: storedIccid, esim, unitPrice: unit, note: currentDetails || PROVIDER_DISPATCH_NOTE };
       return this.openForDispatch(opening, request, { providerCode: pkg.provider.code, packageCode: pkg.providerProductCode ?? pkg.code }, sent.replayed);
     }

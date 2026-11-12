@@ -149,10 +149,20 @@ suite('activation settlement schema (PostgreSQL)', () => {
       const { provider } = await seed(tx);
       const set = (data: Prisma.ProviderUncheckedUpdateInput) => tx.provider.update({ where: { id: provider.id }, data });
       expect(provider).toMatchObject({ dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchPausedAt: null });
-      await refused(tx, () => set({ dispatchApprovedAt: new Date() }), /dispatch_approval_named/);
+      // Who gave it (S.1), and since S.12a the target it was given for: an approval is all three or none.
+      await refused(tx, () => set({ dispatchApprovedAt: new Date(), dispatchApprovedTarget: 'sandbox' }), /dispatch_approval_named/);
       await refused(tx, () => set({ dispatchApprovedByLoginName: 'owner' }), /dispatch_approval_named/);
-      await set({ dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: 'owner', dispatchPausedAt: new Date() });
-      await set({ dispatchApprovedAt: null, dispatchApprovedByLoginName: null });
+      await refused(tx, () => set({ dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: 'owner' }), /dispatchApproval_whole/);
+      await refused(tx, () => set({ dispatchApprovedTarget: 'live' }), /dispatchApproval_whole/);
+      await refused(tx, () => set({ dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: 'owner', dispatchApprovedTarget: 'production' }), /dispatchApprovedTarget_known/);
+      await set({ dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: 'owner', dispatchApprovedTarget: 'sandbox', dispatchPausedAt: new Date() });
+      await set({ dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchApprovedTarget: null });
+      // The worker's attestation: a time and a target together, the target one of the two.
+      await refused(tx, () => set({ dispatchReadyAt: new Date() }), /dispatchReady_whole/);
+      await refused(tx, () => set({ dispatchReadyTarget: 'live' }), /dispatchReady_whole/);
+      await refused(tx, () => set({ dispatchReadyAt: new Date(), dispatchReadyTarget: 'staging' }), /dispatchReadyTarget_known/);
+      await set({ dispatchReadyAt: new Date(), dispatchReadyTarget: 'live' });
+      await set({ dispatchReadyAt: null, dispatchReadyTarget: null });
     });
   });
 

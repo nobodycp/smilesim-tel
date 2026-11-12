@@ -100,6 +100,12 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /office/providers/CODE1/catalog/companies', 'ynynnn'],
   ['GET /office/providers/CODE1/catalog/products', 'ynynnn'],
   ['GET /office/providers/CODE1/settings', 'yyynnn'],
+  // ADR 0019, D18: a provider's dispatch switch is the branch owner's alone, whatever grants an employee holds.
+  ['GET /office/providers/CODE1/dispatch', 'ynnnnn'],
+  ['POST /office/providers/CODE1/dispatch/approve', 'ynnnnn'],
+  ['POST /office/providers/CODE1/dispatch/pause', 'ynnnnn'],
+  ['POST /office/providers/CODE1/dispatch/resume', 'ynnnnn'],
+  ['PUT /office/providers/CODE1/dispatch/credential', 'ynnnnn'],
   ['PATCH /office/providers/CODE1/settings', 'ynynnn'],
   ['GET /office/reports/providers', 'ynynnn'],
   ['GET /office/reports/operations', 'ynynnn'],

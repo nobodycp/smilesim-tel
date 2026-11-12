@@ -1,3 +1,4 @@
+import { OPEN_GATE } from '../providers/testing/open-gate';
 import { useSealingKey } from '../../shared/testing/sealing-key';
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
@@ -193,7 +194,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       publish: async () => undefined,
     } as unknown as NoticeService;
     ({ app, recorded } = await officeTestApp(auth, prisma as unknown as Record<string, unknown>, notice));
-    dispatch = buildProviderDispatch(prisma, {} as IORedis, new ScriptedGateway(), `s9-${tag}`, notice);
+    dispatch = buildProviderDispatch(prisma, {} as IORedis, new ScriptedGateway(), OPEN_GATE, `s9-${tag}`, notice);
   });
 
   afterEach(async () => {

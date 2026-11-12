@@ -112,3 +112,11 @@ export type ReconciliationItemBody = z.input<typeof ReconciliationItemBody>;
 /** GET providers/:code/catalog/products — the company whose products are listed. */
 export const CatalogProductsQuery = z.object({ company: queryText(64) });
 export type CatalogProductsQuery = z.input<typeof CatalogProductsQuery>;
+
+/**
+ * A provider's credential as the branch owner enters it (ADR 0019, D18). Write-only: no route answers it. What a
+ * provider issues is its own business (a key, a token, a JSON document), so only its size is judged here.
+ */
+export const ProviderCredentialBody = z.object({ value: z.string().trim().min(8).max(4000) });
+export type ProviderCredentialBody = z.input<typeof ProviderCredentialBody>;
+

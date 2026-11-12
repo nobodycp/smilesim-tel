@@ -1,3 +1,4 @@
+import type { SendGate } from '../dispatch/dispatch-gate';
 import { errorCode, logger } from '../../../shared/log';
 import { OfficeFailure } from '../../../shared/office-failure';
 import type { ProviderGateway } from '../gateway/provider-gateway';
@@ -17,14 +18,18 @@ export type Dispatched = OperationStatus | 'skipped' | 'missing' | 'stale';
  * A message may arrive twice, or after the operation moved on: `claim` answers null and nothing is sent.
  */
 export class OperationDispatcher {
-  constructor(private readonly operations: ProviderOperationsService, private readonly gateway: ProviderGateway, private readonly callTimeoutMs: number = CALL_TIMEOUT_MS) {}
+  /**
+   * `gate` is required: every attempt is taken and marked through it (ADR 0019, D18). The worker passes its
+   * deployment's gate; nothing in this class sends without one.
+   */
+  constructor(private readonly operations: ProviderOperationsService, private readonly gateway: ProviderGateway, private readonly gate: SendGate, private readonly callTimeoutMs: number = CALL_TIMEOUT_MS) {}
 
   async handle(operationId: string): Promise<Dispatched> {
     const attempt = await this.claim(operationId);
     if (attempt === 'missing') return 'missing';
     if (attempt === null) return 'skipped';
     // From here the attempt is this worker's until its lease ends. No mark, no call.
-    const outgoing = await this.operations.beginSend(operationId, attempt);
+    const outgoing = await this.operations.beginSend(operationId, attempt, new Date(), this.gate);
     if (!outgoing) return 'skipped';
     const outcome = outcomeOf(await this.send(outgoing));
     try {
@@ -43,7 +48,7 @@ export class OperationDispatcher {
 
   private async claim(operationId: string): Promise<number | null | 'missing'> {
     try {
-      return await this.operations.claim(operationId);
+      return await this.operations.claim(operationId, new Date(), this.gate);
     } catch (error) {
       if (error instanceof OfficeFailure && error.status === 404) {
         log.warn(`operation ${operationId} does not exist; its message is dropped`);
@@ -86,3 +91,17 @@ export async function recoverExpired(operations: ProviderOperationsService, now:
   }
   return changed;
 }
+
+/**
+ * Looks again at operations that wait to be sent (ADR 0019, D18): the ones a gate left where they were. Each goes
+ * through `handle`, so each is taken only if the gate now says yes. Answers how many were handled to a result.
+ */
+export async function dispatchWaiting(dispatcher: OperationDispatcher, operations: ProviderOperationsService, limit = 100): Promise<number> {
+  let sent = 0;
+  for (const id of await operations.waitingToSend(limit)) {
+    const outcome = await dispatcher.handle(id);
+    if (outcome !== 'skipped' && outcome !== 'missing') sent += 1;
+  }
+  return sent;
+}
+

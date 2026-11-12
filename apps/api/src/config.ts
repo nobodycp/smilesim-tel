@@ -12,6 +12,8 @@ export const ENV_NAMES = [
   'WEBAUTHN_RP_ID',
   'PROVIDER_SIMULATION',
   'PROVIDER_DISPATCH',
+  'PROVIDER_ADAPTERS',
+  'PROVIDER_TARGET',
   'TRUST_PROXY',
   'TRIAL_SEED',
   'TRIAL_SEED_ALLOW_PRODUCTION',
@@ -38,10 +40,3 @@ export function wholeEnv(): Record<string, string | undefined> {
   return process.env;
 }
 
-/**
- * Whether the worker runs the provider dispatcher (outbox relay, queue consumer, recovery): only when
- * `PROVIDER_DISPATCH=1`, and never in production until a real provider is connected and approved (ADR 0018).
- */
-export function providerDispatchOn(): boolean {
-  return !isProduction() && env('PROVIDER_DISPATCH') === '1';
-}

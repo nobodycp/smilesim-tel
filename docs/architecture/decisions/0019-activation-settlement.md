@@ -542,3 +542,57 @@ decisions changed; the screens show what the API decides.
   becomes D18's four conditions, each alone and every three of them still answering false; the API process keeps
   no adapter and no credential; the checks on the binding, on `testing/` and on the single caller stay.
 
+## As built in S.12a (the switch, no adapter)
+
+One new migration, `20261113100000_provider_dispatch_target_and_readiness` (three nullable columns on `Provider`,
+four CHECKs; no historical migration edited). Why it was needed: D18 kept the approval per deployment, and a
+deployment's target is a setting, so an approval with no target on record would have stood after `sandbox`
+became `live`; and the API could not know what the worker holds without the worker saying so in the database.
+
+- **Three questions, kept apart** (`providers/dispatch/dispatch-policy.ts`, pure):
+  1. *the policy* — `eligibility(settings, provider)`: the four conditions, all of them. `PROVIDER_DISPATCH` is
+     exactly `1`; the provider's code is in `PROVIDER_ADAPTERS`; `PROVIDER_TARGET` is `sandbox` or `live`; the
+     owner approved the provider **for that target** and has not paused it. Settings that do not hold together
+     refuse everything. No environment name is read.
+  2. *the adapter* — `buildAdapters` in the worker: only for a provider named, only for the deployment's target,
+     only with a credential for that target that opens, and only when the build has an adapter for it. **This
+     build has none** (`ADAPTER_FACTORIES` is an empty frozen object), so nothing is built whatever is set.
+  3. *the send* — `maySend` = the policy and an adapter this worker built.
+- **How the API and the worker agree.** They are two processes with their own environments. The API opens the
+  dispatch route (`mayOpenDispatch`) only when the four conditions hold **by its own settings** and the provider's
+  row carries the worker's **attestation**: `dispatchReadyAt` within `READY_TTL_MS` (60 s) and
+  `dispatchReadyTarget` equal to the API's own target. The worker writes it every 20 s, only for adapters it
+  built, and withdraws it when it stops (`startReadiness`). So: the API on and the worker off, the two on
+  different targets, the worker without the adapter or the credential, the worker stopped: each ends in the
+  manual route. The worker, for its part, sends by its own settings and its own adapter only; an operation the
+  API recorded while they agreed is not sent by a worker that no longer does. Every disagreement fails closed.
+- **The atomic line of a pause** (`dispatch-gate.ts`). `claim` and `beginSend` each run in a transaction that
+  first reads the provider's row `FOR SHARE` and asks `maySend`; approve, pause and resume are `UPDATE`s of that
+  row (`FOR UPDATE` first). The two never overlap. A pause committed before the claim: no attempt is taken, none
+  is counted. Between the claim and the mark: the attempt is not marked, so the provider is not called, and
+  recovery puts it back as provably unsent. After the mark: that one attempt had leave to go and ends as any
+  attempt does; a pause recalls nothing that left, and nothing after it is taken. A pause releases no hold.
+- **Settling is never switched off.** The worker always runs the relay, the settlements queue, recovery and the
+  sweeper; only sending goes through the gate. A paused provider's pending and unknown operations finish as
+  usual, and `dispatchWaiting` (on recovery's timer) sends what waited once the provider is resumed.
+- **The owner's switch**: `GET /office/providers/:code/dispatch` and `POST …/dispatch/approve`, `…/pause`,
+  `…/resume`, `PUT …/dispatch/credential`. `requireOwner`: the branch owner in a session of its own; an employee
+  with every grant, a lower layer and an entered session are refused. An approval is the last condition, never
+  the first: refused unless the deployment is set up for the provider and holds a credential for its target; it
+  records the target. A resume judges the same again and needs the approval on record to be for this target.
+  Each change writes its own activity action with the provider's code and nothing of what was sent.
+- **Credentials.** `ProviderCredential`, one row per provider and target, written by one `upsert` (a reader never
+  finds half a replacement), sealed with `SECRETS_KEY`; a deployment stores one for its own target only. The API
+  has no statement that selects `sealedValue` and no code that opens one; the worker's `readCredentials` is the
+  only reader, and a credential that is missing, empty or does not open builds no adapter. No route answers it.
+- **Start-up checks**: ADR 0016's amendment. A production process (API or worker) does not start with dispatch
+  settings that cannot be carried out, which today includes naming any provider at all, since the build has no
+  adapter.
+- **Specs.** `provider-dispatch-switch.spec.ts` replaces `provider-dispatch-off.spec.ts`: the sixteen
+  combinations of the four conditions, each alone and every three; the adapter as a separate question; the two
+  processes set up differently; the start-up checks; and what ships (one gateway bound by class, nothing imports
+  `testing/`, only the worker's two files build adapters or read a credential, nothing sends ungated, the worker
+  checks before it opens). `providers/dispatch/provider-dispatch.db.spec.ts`: the same over HTTP on PostgreSQL in
+  a production-grade process, with the races decided by the row lock. Items 25 and 26 are closed.
+- **For S.12b:** the first entry of `ADAPTER_FACTORIES`, in the worker's side only. The spec that pins the empty
+  list and the one that pins "no outgoing connection under the providers domain" change with it, on purpose.

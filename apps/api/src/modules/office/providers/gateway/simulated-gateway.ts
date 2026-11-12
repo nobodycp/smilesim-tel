@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { env, isProduction } from '../../../../config';
 import { fail } from '../../../shared/office-failure';
 import type { SendEvidence } from '../operations/provider-operation.rules';
+import { ProviderDispatchService } from '../dispatch/provider-dispatch.service';
 import { NOT_CONNECTED, type ProviderGateway, type ProviderRequest, type ProviderResult } from './provider-gateway';
 
 /**
@@ -16,17 +17,19 @@ import { NOT_CONNECTED, type ProviderGateway, type ProviderRequest, type Provide
 export class SimulatedProviderGateway implements ProviderGateway {
   readonly simulated = !isProduction() && env('PROVIDER_SIMULATION') !== '0';
 
+  constructor(@Optional() private readonly dispatch?: ProviderDispatchService) {}
+
   accept(hint: unknown): void {
     if (this.simulated && hint !== 'success' && hint !== 'fail') fail(400, 'INVALID');
   }
 
   /**
-   * Never: no provider is switched on (ADR 0019, D13 and D18; slice S.12a has not landed). A constant on purpose:
-   * no environment variable, setting, database row or request field makes it true, so nothing that is deployed
-   * today can put an activation on the dispatch route. `provider-dispatch-off.spec.ts` pins this.
+   * The dispatch route (ADR 0019, D13 and D18): what `ProviderDispatchService.opens` answers, the four conditions
+   * and the worker's fresh attestation. A gateway built without that service (the worker's, a spec's) answers no.
+   * It has nothing to do with the simulation: the request's hint is not read, and `simulated` does not matter.
    */
-  dispatches(): boolean {
-    return false;
+  async dispatches(providerCode: string): Promise<boolean> {
+    return this.dispatch ? this.dispatch.opens(providerCode) : false;
   }
 
   async run(request: ProviderRequest): Promise<ProviderResult> {

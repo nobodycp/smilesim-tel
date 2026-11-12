@@ -188,8 +188,13 @@ model Provider {
   /** When the owner approved dispatching this provider's operations on this deployment, and who (ADR 0019, D18). Empty: never approved, nothing is dispatched for it. */
   dispatchApprovedAt          DateTime?
   dispatchApprovedByLoginName String?
+  /** The target (`sandbox` or `live`) the approval was given for: it does not stand for the other one. */
+  dispatchApprovedTarget      String?
   /** Set while the owner has paused the provider: new sales take the manual route. */
   dispatchPausedAt            DateTime?
+  /** What the worker last attested: an adapter for this provider is built, for this target. The API opens the dispatch route only on a fresh one. */
+  dispatchReadyAt             DateTime?
+  dispatchReadyTarget         String?
   packages    Package[]
   entries     ProviderEntry[]
   reconciliations ProviderReconciliation[]

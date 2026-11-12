@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { fail } from '../../../shared/office-failure';
 import { isSealed, seal } from '../../../shared/secret-box';
 import { UnitOfWork, type Db } from '../../kernel/unit-of-work';
+import type { SendGate } from '../dispatch/dispatch-gate';
 import type { Action } from '../../kernel/types';
 import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, settledSequence, storedRef, storedResult, validKey, type ActivationResult, type AttemptOutcome, type OperationError, type OperationRequest, type OperationStatus, type OutgoingOperation, type StoredResult, type Verdict } from './provider-operation.rules';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository, type NewDecisionEvent, type ResultColumns, type WaitingFor } from './provider-operations.repository';
@@ -74,13 +75,17 @@ export class ProviderOperationsService {
    * the operation is not there to take (another worker has it, it is settled, or it is unknown). Committed
    * before the provider is called, so a process that dies mid-call leaves `pending`, never a second send.
    */
-  async claim(id: string, now: Date = new Date()): Promise<number | null> {
+  async claim(id: string, now: Date = new Date(), gate?: SendGate): Promise<number | null> {
     const row = await this.repo.operationById(this.uow.prisma, id);
     if (!row) fail(404, 'NOT_FOUND');
     if (!maySend(row.status as OperationStatus)) return null;
     // Compare-and-set on the count: of two workers that read the same row, one moves it.
     const claim = { at: now, leaseUntil: new Date(now.getTime() + ATTEMPT_LEASE_MS) };
-    const taken = await this.repo.moveStatus(this.uow.prisma, id, { status: 'requested', attempts: row.attempts }, { status: 'pending', error: null, claim });
+    const take = (db: Db) => this.repo.moveStatus(db, id, { status: 'requested', attempts: row.attempts }, { status: 'pending', error: null, claim });
+    // The dispatcher's gate (ADR 0019, D18): the provider's row is locked and judged in the transaction that
+    // takes the attempt, so an operation of a provider that is paused, not approved or without an adapter stays
+    // `requested`, uncounted, for its submitter to cancel or for the day the provider is switched on again.
+    const taken = gate ? await this.uow.runTx(async (tx) => ((await gate.permits(tx, row.providerId)) ? take(tx) : false)) : await take(this.uow.prisma);
     return taken ? attemptAfter(row.attempts) : null;
   }
 
@@ -90,9 +95,15 @@ export class ProviderOperationsService {
    * recovery already took it, or it was marked before. The caller calls the provider only on an answer: that
    * makes "no mark" proof that nothing left.
    */
-  async beginSend(id: string, attempt: number, now: Date = new Date()): Promise<OutgoingOperation | null> {
+  async beginSend(id: string, attempt: number, now: Date = new Date(), gate?: SendGate): Promise<OutgoingOperation | null> {
     const row = await this.repo.operationToSend(this.uow.prisma, id);
-    if (!row || !(await this.repo.markSent(this.uow.prisma, id, attempt, now))) return null;
+    if (!row) return null;
+    // The mark is the line a pause is judged against (`dispatch-gate.ts`): written only while the gate, asked
+    // under the provider's row lock in this same transaction, still says yes. No mark, no call.
+    const marked = gate
+      ? await this.uow.runTx(async (tx) => ((await gate.permits(tx, row.providerId)) ? this.repo.markSent(tx, id, attempt, now) : false))
+      : await this.repo.markSent(this.uow.prisma, id, attempt, now);
+    if (!marked) return null;
     return { idempotencyKey: row.idempotencyKey, attempt, action: row.action as Action, providerCode: row.provider.code, packageCode: row.packageCode, msisdn: row.msisdn, iccid: row.iccid };
   }
 
@@ -134,6 +145,15 @@ export class ProviderOperationsService {
       if (!row || !(await this.repo.moveStatus(tx, id, { status: 'unknown', attempts: row.attempts }, change))) fail(409, 'DUPLICATE_REQUEST');
       await this.repo.addOutbox(tx, OPERATION_SETTLED, id, settledSequence(row.attempts, true));
     });
+  }
+
+  /**
+   * The operations that wait to be sent and whose message has already been handed to the queue: the ones a gate
+   * left where they were (their provider was paused, or not switched on). The dispatcher looks at them again on
+   * its timer, so a provider that is resumed sends what waited, with no new message.
+   */
+  waitingToSend(limit: number): Promise<string[]> {
+    return this.repo.requestedIds(this.uow.prisma, limit);
   }
 
   /** The pending operations recovery should look at now. */

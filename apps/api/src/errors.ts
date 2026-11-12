@@ -62,6 +62,11 @@ export const ERROR_MESSAGES = {
   DECISION_NOTE_SHORT: 'الملاحظة عشرون حرفاً على الأقل',
   DECISION_REFERENCE_REQUIRED: 'أدخل مرجع العملية عند المزود',
   DECISION_NUMBER_REQUIRED: 'أدخل الرقم الذي فعّله المزود',
+  // Switching a provider's dispatch on (ADR 0019, D18).
+  DISPATCH_NOT_CONFIGURED: 'هذا النشر غير مهيّأ لإرسال عمليات هذا المزود',
+  DISPATCH_CREDENTIAL_MISSING: 'أدخل بيانات اعتماد المزود لهذا النشر أولاً',
+  DISPATCH_NOT_APPROVED: 'المزود غير معتمد للإرسال على هذا النشر',
+  CREDENTIAL_UNSEALABLE: 'تعذّر حفظ بيانات الاعتماد بأمان، ولم يُحفظ شيء. تواصل مع الدعم',
   // An activation that goes to a provider must carry the request's key (ADR 0019, D14).
   REQUEST_KEY_REQUIRED: 'تعذّر إرسال الطلب بأمان. حدّث الصفحة وأعد المحاولة',
   ESIM_CODE_REQUIRED: 'أدخل رمز تفعيل eSIM الذي سلّمه المزود',

@@ -36,3 +36,18 @@ the per-address sign-in limit silently off when `TRUST_PROXY` was missing.
 - In production every line operation is a branch task until a real gateway is bound to `PROVIDER_GATEWAY`.
 - A wrong `TRUST_PROXY` is not detected at start: `0` behind a proxy is said once in the log; a number that is too
   high is the deployer's to rule out.
+
+## Amended by ADR 0019, D18 (slice S.12a, 2026-11-13)
+
+- **A staging deployment of the provider flow is production-grade.** The advice above, that a trial server may be
+  given `NODE_ENV=staging` on purpose to keep the simulation, is withdrawn for any deployment that will dispatch:
+  it runs `NODE_ENV=production` with `PROVIDER_TARGET=sandbox`, passes this check as production does, and
+  simulates nothing. A copy that only demonstrates screens with simulated answers is a development copy.
+- **The check now covers dispatch**, for the API and the worker alike (`dispatchConfigProblems`): the three
+  variables `PROVIDER_DISPATCH`, `PROVIDER_ADAPTERS`, `PROVIDER_TARGET` must hold together (dispatch on needs a
+  list and a target; a list or a target needs dispatch on; `1`, `sandbox`, `live` and provider codes exactly),
+  and every provider named must be one the build has an adapter for. A process told to dispatch in a way that
+  cannot be carried out does not start.
+- **The worker is checked too** (`assertWorkerConfig`, the first statement of `worker.ts`'s `run`, before Redis
+  or PostgreSQL is opened): `REDIS_URL`, `DATABASE_URL`, no simulation, the dispatch settings, and `SECRETS_KEY`
+  when it is to dispatch. Messages name the variable and the rule, never the value.

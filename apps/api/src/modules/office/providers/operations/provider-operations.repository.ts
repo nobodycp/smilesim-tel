@@ -91,6 +91,12 @@ export class ProviderOperationsRepository {
     return db.providerOperation.findUnique({ where: { id }, include: { provider: { select: { code: true } } } });
   }
 
+  /** Operations that wait to be sent, oldest first. */
+  async requestedIds(db: Db, limit: number): Promise<string[]> {
+    const rows = await db.providerOperation.findMany({ where: { status: 'requested' }, orderBy: { updatedAt: 'asc' }, take: limit, select: { id: true } });
+    return rows.map((row) => row.id);
+  }
+
   /** Pending operations whose lease is over (or that never had one), oldest first. */
   async expiredPendingIds(db: Db, now: Date, limit: number): Promise<string[]> {
     const rows = await db.providerOperation.findMany({

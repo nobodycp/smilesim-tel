@@ -423,7 +423,14 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     `provider-dispatch-off.spec.ts` must be rewritten with it, and says how at its top: the constant becomes D18's
     four conditions, false unless all four hold; the API still holds no adapter and no credential.
 
-- [ ] **S.12 Switching on, in two parts with a review between them.**
+- [ ] **S.12 Switching on, in two parts with a review between them.** (S.12a done; S.12b not started.)
+  - **S.12a — built 2026-11-13** (commit: see `git log --grep 'slice S.12a'`), as ADR 0019 "As built in S.12a"
+    says. Migration `20261113100000_provider_dispatch_target_and_readiness`. The policy
+    (`providers/dispatch/dispatch-policy.ts`), the gate under the provider's row lock (`dispatch-gate.ts`), the
+    empty adapter list and the worker's routing gateway, the owner's five routes, the worker's and the API's
+    start-up checks, and the worker's attestation that lets the API agree with it. `providerDispatchOn()` is
+    gone. *Specs:* 25, 26 (`provider-dispatch-switch.spec.ts`, `provider-dispatch.db.spec.ts`). **No adapter
+    exists: nothing can be sent.** The original line of the plan follows.
   - **S.12a The switch (D18), no adapter.** `worker.ts` runs the production settings check with the worker's list;
     `PROVIDER_ADAPTERS`, `PROVIDER_TARGET`; `providerDispatchOn()` replaced by the four conditions; the owner's
     approve / pause / credential routes (write-only, sealed, audited); the routing gateway in the worker with an

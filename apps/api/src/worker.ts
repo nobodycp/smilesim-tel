@@ -1,21 +1,30 @@
 import { errorCode, logger, reason } from './modules/shared/log';
-import { env, isProduction, providerDispatchOn } from './config';
+import { env, wholeEnv } from './config';
 import 'reflect-metadata';
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
 import { createPrismaClient } from './db';
 import { purgeActivity } from './modules/office/activity/activity-log';
-import { SimulatedProviderGateway } from './modules/office/providers/gateway/simulated-gateway';
-import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, startProviderDispatchTimers } from './provider-dispatch';
+import { DeploymentSendGate } from './modules/office/providers/dispatch/dispatch-gate';
+import { dispatchSettings } from './modules/office/providers/dispatch/dispatch-policy';
+import { buildAdapters } from './modules/office/providers/dispatch/provider-adapters';
+import { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
+import { assertWorkerConfig } from './production-config';
+import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, readCredentials, startProviderDispatchTimers, startReadiness } from './provider-dispatch';
 
 const log = logger('Worker');
 
 export type WorkerProcessor = { queue: string; handle: (data: unknown) => Promise<void> };
 
-// Processors that always run. The provider dispatcher is added in `run` when it is switched on.
+// Processors that always run, beside the two of provider operations that `run` adds.
 export const backgroundProcessors: WorkerProcessor[] = [];
 
 export async function run(): Promise<void> {
+  // Before anything is opened (ADR 0019, D18): a production worker that is set up unsafely does not start.
+  const environment = wholeEnv();
+  assertWorkerConfig(environment);
+  const settings = dispatchSettings(environment);
+
   const url = env('REDIS_URL');
   if (!url) throw new Error('REDIS_URL is required');
 
@@ -23,26 +32,32 @@ export async function run(): Promise<void> {
   const connection = new IORedis(url, { maxRetriesPerRequest: null });
   connection.on('error', (error) => log.error(`redis: ${error.message}`));
 
-  // Provider operations: off unless PROVIDER_DISPATCH=1, and off in production whatever it says. The gateway is
-  // the simulated one, which sends nothing: a recorded operation goes back to `requested` and then fails.
+  // Provider operations (ADR 0018, ADR 0019). Two halves, kept apart on purpose:
+  // - SETTLING what was sent (the relay, the settlements queue, recovery, the sweeper) always runs: switching
+  //   sending off, or pausing a provider, never strands a result that is on its way or a verdict not acted on.
+  // - SENDING goes through the deployment's gate, which is closed unless the four conditions of D18 hold for the
+  //   provider **and** this worker built an adapter for it. This build has no adapter (S.12b adds the first), so
+  //   nothing is built, nothing is attested and nothing is sent, whatever the settings say.
   const processors = [...backgroundProcessors];
-  let stopDispatch: (() => Promise<void>) | null = null;
-  let dispatchPrisma: ReturnType<typeof createPrismaClient> | null = null;
-  let relayRedis: IORedis | null = null;
-  if (providerDispatchOn()) {
-    dispatchPrisma = createPrismaClient();
-    // The relay publishes on its own connection: it must fail fast when Redis is away, the workers must not.
-    relayRedis = new IORedis(url, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
-    relayRedis.on('error', (error) => log.error(`redis (relay): ${errorCode(error)}`));
-    const dispatch = buildProviderDispatch(dispatchPrisma, relayRedis, new SimulatedProviderGateway());
-    processors.push({ queue: OPERATIONS_QUEUE, handle: dispatch.handle });
-    // Verdicts are acted on by their own queue (ADR 0019, D8): it writes the line and the money, and calls nobody.
-    processors.push({ queue: SETTLEMENTS_QUEUE, handle: dispatch.settle });
-    stopDispatch = startProviderDispatchTimers(dispatch);
-    log.log('provider dispatch: on');
-  } else if (isProduction() && env('PROVIDER_DISPATCH')) {
-    log.warn('provider dispatch: PROVIDER_DISPATCH is set but the dispatcher never runs in production');
-  }
+  const dispatchPrisma = createPrismaClient();
+  // The relay publishes on its own connection: it must fail fast when Redis is away, the workers must not.
+  const relayRedis = new IORedis(url, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
+  relayRedis.on('error', (error) => log.error(`redis (relay): ${errorCode(error)}`));
+  const built = buildAdapters(settings, await readCredentials(dispatchPrisma, settings));
+  const gateway = new RoutingProviderGateway(built.adapters);
+  const dispatch = buildProviderDispatch(dispatchPrisma, relayRedis, gateway, new DeploymentSendGate(settings, (code) => gateway.holds(code)));
+  processors.push({ queue: OPERATIONS_QUEUE, handle: dispatch.handle });
+  // Verdicts are acted on by their own queue (ADR 0019, D8): it writes the line and the money, and calls nobody.
+  processors.push({ queue: SETTLEMENTS_QUEUE, handle: dispatch.settle });
+  const stopTimers = startProviderDispatchTimers(dispatch);
+  const stopReadiness = startReadiness(dispatchPrisma, built, settings);
+  const stopDispatch = async () => {
+    await stopReadiness();
+    await stopTimers();
+  };
+  // Codes only: which providers have an adapter, and why each named one has none. Never a credential.
+  for (const [code, why] of built.skipped) log.warn(`provider dispatch: no adapter for ${code} (${why})`);
+  log.log(`provider dispatch: settling on; sending ${built.adapters.size > 0 ? `on for ${[...built.adapters.keys()].join(', ')} (${settings.target})` : 'off (no adapter built)'}`);
 
   const workers = processors.map(
     (processor) => new Worker(processor.queue, (job) => processor.handle(job.data), { connection }),
@@ -67,10 +82,10 @@ export async function run(): Promise<void> {
   log.log(`ready: ${workers.length} processors`);
 
   const stop = async () => {
-    await stopDispatch?.();
+    await stopDispatch();
     await Promise.all(workers.map((worker) => worker.close()));
-    await dispatchPrisma?.$disconnect();
-    relayRedis?.disconnect();
+    await dispatchPrisma.$disconnect();
+    relayRedis.disconnect();
     connection.disconnect();
   };
   process.once('SIGTERM', () => void stop());

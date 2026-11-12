@@ -44,3 +44,12 @@ a branch task. If the trial server must go on simulating, its api service is giv
 
 **Going back.** `git revert` of this slice's commit restores the warnings and the old gateway; no data was
 migrated. Tasks opened in the meantime stay valid branch tasks.
+
+## Corrected by slice S.12a of `2026-11-10-activation-settlement.md` (ADR 0019, D18), 2026-11-13
+
+- "A trial server may set `NODE_ENV=staging` to keep the simulation" no longer applies to a deployment that will
+  dispatch to a provider: that staging is `NODE_ENV=production` with `PROVIDER_TARGET=sandbox`, checked as
+  production is.
+- The production check gained the dispatch settings (`PROVIDER_DISPATCH`, `PROVIDER_ADAPTERS`, `PROVIDER_TARGET`),
+  and the worker runs its own check (`assertWorkerConfig`) before it opens anything.
+- `providerDispatchOn()` is removed; `PROVIDER_DISPATCH=1` alone switches nothing on, in any environment.
