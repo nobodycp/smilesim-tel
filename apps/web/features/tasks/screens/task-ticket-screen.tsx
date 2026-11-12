@@ -47,7 +47,8 @@ export function TaskTicketScreen() {
   const [closeNumber, setCloseNumber] = useState('');
   const [qrOpen, setQrOpen] = useState(false);
 
-  const card = useApiQuery(sharedKeys.task(params.id), () => api.officeTask(params.id));
+  // `fresh`: the answer may carry an eSIM code, so it is not kept in the shared cache once this page closes.
+  const card = useApiQuery(sharedKeys.task(params.id), () => api.officeTask(params.id), { fresh: true });
   const task = card.data?.task ?? null;
   usePageTitle(task ? actionName(t, task.action) : t.taskTicket);
   useCrumbs({ [`/tasks/${encodeURIComponent(params.id)}`]: task ? `${actionName(t, task.action)}${task.msisdn ? ` · ${task.msisdn}` : ''}` : null });

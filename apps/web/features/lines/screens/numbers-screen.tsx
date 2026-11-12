@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
-import { useCallback, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { ActivationResult } from '../../../components/activation-result';
@@ -42,7 +42,7 @@ const FILTER_KEYS = ['q', 'status', 'pack', 'provider', 'company', 'sim'] as con
 const LINE_STATUSES = ['active', 'expiring', 'frozen', 'disconnected', 'suspended'];
 
 export function NumbersScreen() {
-  const { t, locale } = usePrefs();
+  const { t, locale, apiText } = usePrefs();
   const [posLoginName, setPosLoginName] = useState('');
   const [packageCode, setPackageCode] = useState('');
   const [esim, setEsim] = useState(false);
@@ -61,7 +61,10 @@ export function NumbersScreen() {
   const commitQuery = useCallback((value: string) => setFilters({ q: value }), [setFilters]);
   const [query, setQuery] = useDebouncedField(needle, commitQuery);
   const [ending, setEnding] = useState<LineRow | null>(null);
-  const [qrLine, setQrLine] = useState<LineRow | null>(null);
+  // The eSIM code is not read from the list (plan 2026-11-10-activation-settlement, S.5c): it is asked for from
+  // the line's own detail when the user opens it, held in this state only, and dropped when the dialog closes.
+  const [qr, setQr] = useState<{ asking: string } | { shown: { msisdn: string; iccid: string | null; esim: boolean; esimQr: string } } | null>(null);
+  const qrAsk = useRef(0);
   const [result, setResult] = useState<ApplyResult | null>(null);
   const { me } = useOffice();
   const door = useDoor();
@@ -81,6 +84,37 @@ export function NumbersScreen() {
   const { run, busy } = useAction({ setError, setNote, onDone: list.reload });
   // A failed list is shown once, in the table; the banner is for actions and the catalogue.
   const failure = error || catalog.error;
+
+  /** Asks the line's detail for its eSIM code and shows it. Nothing of a line is shown before its own answer. */
+  async function openQr(row: LineRow) {
+    if (qr && 'asking' in qr && qr.asking === row.id) return;
+    const ask = (qrAsk.current += 1);
+    setError('');
+    setNote('');
+    // Whatever was on screen for another line goes now, before this one is asked for.
+    setQr({ asking: row.id });
+    const read = await api.officeLine(row.id);
+    // Another line was asked for meanwhile, or this was closed: the answer is not used.
+    if (ask !== qrAsk.current) return;
+    if (!read.ok) {
+      setQr(null);
+      setError(apiText(read));
+      return;
+    }
+    const { line } = read.data;
+    if (line.id !== row.id || !line.esim || !line.esimQr) {
+      setQr(null);
+      setNote(t.esimNoQrFor.replace('{number}', row.msisdn));
+      return;
+    }
+    setQr({ shown: { msisdn: line.msisdn, iccid: line.iccid, esim: true, esimQr: line.esimQr } });
+  }
+
+  /** Closing drops the code from this screen's state, and any answer still on its way. */
+  function closeQr() {
+    qrAsk.current += 1;
+    setQr(null);
+  }
 
   const applied = { note: (data: { applied: boolean; debited?: boolean }) => applyNote(t, data) };
 
@@ -146,7 +180,7 @@ export function NumbersScreen() {
       render: (line) => (
         <span className="line-cell">
           <Link className="num-link" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
-          <SimBadge line={line} label={`${t.showQr} ${line.msisdn}`} onOpen={() => setQrLine(line)} />
+          <SimBadge line={{ esim: line.esim }} label={`${t.showQr} ${line.msisdn}`} busy={qr !== null && 'asking' in qr && qr.asking === line.id} onOpen={() => void openQr(line)} />
         </span>
       ),
     },
@@ -343,7 +377,7 @@ export function NumbersScreen() {
           empty={activeFilters > 0 ? t.noMatches : t.noLines}
           skeleton={{ rows: 5, columns: isPos ? 6 : 7 }}
         />
-        <EsimDialog line={qrLine} onClose={() => setQrLine(null)} />
+        <EsimDialog line={qr && 'shown' in qr ? qr.shown : null} onClose={closeQr} />
         <ActivationResult result={result} onClose={() => setResult(null)} />
         <DisconnectConfirm
           line={ending}

@@ -141,6 +141,8 @@
   transition: transform var(--rd-dur-fast) ease;
 }
 .esim-open:hover { transform: translateY(-1px); }
+/* While the line's code is being asked for (the list does not carry it): held, and shown as waiting. */
+.esim-open[aria-busy='true'] { opacity: 0.55; cursor: progress; transform: none; }
 .esim-open:focus-visible { outline: 2px solid var(--rd-focus); outline-offset: 2px; border-radius: var(--rd-radius-pill); }
 .esim-mark {
   display: inline-grid;

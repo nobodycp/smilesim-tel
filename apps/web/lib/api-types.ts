@@ -381,7 +381,11 @@ export type LineRow = {
   msisdn: string;
   iccid: string | null;
   esim: boolean;
-  esimQr: string | null;
+  /**
+   * The eSIM's QR picture. Only the detail of one line carries it for the screens (`LineDetail`); a row of a list
+   * may still hold it today and no screen reads it there (plan 2026-11-10-activation-settlement, S.5c).
+   */
+  esimQr?: string | null;
   status: string;
   /** The subscription ended at least its package's period ago (90 days by default): «معلّق». */
   suspended: boolean;
@@ -411,6 +415,8 @@ export type LineRow = {
   /** The package's live extra operations (spec 2026-11-09, 3), on the number's card. */
   addons?: { id: string; name: string; price: number }[];
 };
+/** One line as `GET /office/lines/:id` answers it: the row, with its eSIM code (null when it has none). */
+export type LineDetail = LineRow & { esimQr: string | null };
 export type LineHistory = {
   id: string;
   action: string;

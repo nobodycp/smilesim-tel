@@ -938,6 +938,7 @@ export const en: Copy = {
   simType: 'SIM type',
   physicalSim: 'SIM',
   esimNoQr: 'eSIM, no QR',
+  esimNoQrFor: 'Number {number} is an eSIM with no QR code stored',
   simSerial: 'SIM serial',
   esimQr: 'QR code',
   showQr: 'Show QR code',

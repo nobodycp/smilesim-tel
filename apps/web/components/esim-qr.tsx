@@ -14,20 +14,23 @@ import { Alert } from './alert';
 import { DataImage } from './data-image';
 import { Fact, Facts } from './facts';
 
-type SimLike = { esim: boolean; esimQr: string | null };
-type LineLike = SimLike & { msisdn: string; iccid: string | null };
+/** `esimQr` left out: the code is not known here (a row of a list, which does not carry it). */
+type SimLike = { esim: boolean; esimQr?: string | null };
+type LineLike = { esim: boolean; esimQr: string | null; msisdn: string; iccid: string | null };
 
 /**
- * The kind of SIM as a badge. When the line has a QR picture and `onOpen` is given, the eSIM badge
- * itself is the button that opens it; no separate thumbnail.
+ * The kind of SIM as a badge. With `onOpen`, the eSIM badge itself is the button that opens the QR picture; no
+ * separate thumbnail. A line known to have no picture says so. When the code is not known (a list row), the
+ * button is offered for every eSIM and the caller asks for the code when it is pressed; `busy` holds it while
+ * that request is out.
  */
-export function SimBadge({ line, onOpen, label }: { line: SimLike; onOpen?: () => void; label?: string }) {
+export function SimBadge({ line, onOpen, label, busy = false }: { line: SimLike; onOpen?: () => void; label?: string; busy?: boolean }) {
   const { t } = usePrefs();
   if (!line.esim) return <Badge variant="muted">{t.physicalSim}</Badge>;
-  if (!line.esimQr) return <Badge variant="warning">{t.esimNoQr}</Badge>;
+  if (line.esimQr === null || line.esimQr === '') return <Badge variant="warning">{t.esimNoQr}</Badge>;
   if (!onOpen) return <Badge variant="muted">eSIM</Badge>;
   return (
-    <button type="button" className="esim-open" aria-label={label ?? t.showQr} title={label ?? t.showQr} onClick={onOpen}>
+    <button type="button" className="esim-open" aria-label={label ?? t.showQr} title={label ?? t.showQr} aria-busy={busy || undefined} disabled={busy} onClick={onOpen}>
       <Badge variant="muted"><QrCode size={12} strokeWidth={2} aria-hidden="true" />eSIM</Badge>
     </button>
   );

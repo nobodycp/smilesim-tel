@@ -938,6 +938,7 @@ export const ar = {
   simType: 'نوع الشريحة',
   physicalSim: 'SIM',
   esimNoQr: 'eSIM بلا رمز',
+  esimNoQrFor: 'الرقم {number} eSIM بلا رمز QR محفوظ',
   simSerial: 'سيريال الشريحة',
   esimQr: 'رمز QR',
   showQr: 'عرض رمز QR',

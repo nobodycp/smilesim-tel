@@ -255,9 +255,26 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     **Closing review:** `LinesRepository.recordTaskResult` and `line-state.ts` `moveLineStatus` take any column
     of a task or a line; neither writes a code today, and both now call `assertStoredSealed` too.
   - **S.5c The response (the only step users can see), web first.**
-    1. **Web, deployed first:** every screen found above reads the code from the **detail** response (or asks for
-       the detail when it needs the code) and shows nothing, not an error, when a list row has no code. This works
-       against the API as it is today, because the detail already carries the field.
+    1. **Web, deployed first (built; the API step is not started):** every screen reads the code from a
+       **detail** response (or asks for the detail when it needs the code). This works against the API as it is
+       today, because the detail already carries the field.
+       *As built.* The numbers list (`features/lines/screens/numbers-screen.tsx`) was the only screen that read
+       `esimQr` from a list row. It now shows SIM / eSIM from the row's `esim` alone; pressing the eSIM badge
+       asks `GET /office/lines/:id` for that line, and the dialog opens only on an answer for that same line
+       that carries a code. No code: a note, no empty dialog. A refusal: its message. Another line chosen
+       meanwhile, or the dialog closed: the late answer is dropped. The code is held in the screen's own state
+       only, never in the shared query cache, the address or storage, and is dropped when the dialog closes.
+       The line page and the task page ask with `fresh`, so their answers leave the shared cache when the page
+       closes. `LineRow.esimQr` is optional in the web's types; `LineDetail` carries it.
+       | Reads the code | From |
+       |---|---|
+       | numbers list (`numbers-screen.tsx`) | `GET /office/lines/:id`, on demand |
+       | line page (`line-card-screen.tsx`, `line-details.tsx`) | `GET /office/lines/:id` |
+       | task page (`task-ticket-screen.tsx`) | `GET /office/tasks/:id` |
+       | activation result (`components/activation-result.tsx`) | the answer of `POST /office/lines` |
+       The other users of `GET /office/lines` (the user page's numbers, a package's numbers, the numbers
+       report, the shell search) never read the code.
+       *Specs:* e2e `tests/numbers-esim-code.spec.ts`, served list rows **without** `esimQr`.
     2. **API, deployed after the web is live:** `esimQr` leaves `GET /office/lines` rows and the task list; the
        line and task detail return it only to the line's point of sale, its ancestors and the branch, and record
        `line.esim_read`. `response-shape.spec.ts` and `routes.http.spec.ts` change in the same commit; the web's

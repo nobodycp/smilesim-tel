@@ -1,11 +1,11 @@
 import { request, segment, queryString } from '../../lib/http';
-import type { ActivateBody, ApplyResult, DisconnectQuote, LineHistory, LineRow, Outcome, PosChoice, Page } from '../../lib/api-types';
+import type { ActivateBody, ApplyResult, DisconnectQuote, LineDetail, LineHistory, LineRow, Outcome, PosChoice, Page } from '../../lib/api-types';
 
 /** The lines calls of the office API. Composed into `api` by lib/api.ts. */
 export const linesApi = {
   officeLines: (query?: { q?: string; status?: string; packageCode?: string; provider?: string; company?: string; sim?: string; loginName?: string; cursor?: string | null }) =>
     request<Page<LineRow> & { poses: PosChoice[] }>('GET', `/office/lines${queryString(query)}`),
-  officeLine: (id: string) => request<{ line: LineRow; history: LineHistory[] }>('GET', `/office/lines/${segment(id)}`),
+  officeLine: (id: string) => request<{ line: LineDetail; history: LineHistory[] }>('GET', `/office/lines/${segment(id)}`),
   activateLine: (body: ActivateBody) => request<ApplyResult>('POST', '/office/lines', body),
   extendLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/extend`, { outcome }),
   reactivateLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/reactivate`, { outcome }),

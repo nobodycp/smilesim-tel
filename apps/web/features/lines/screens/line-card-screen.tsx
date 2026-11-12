@@ -105,7 +105,8 @@ export function LineCardScreen() {
 
   // Three reads, each cached on its own (ADR 0001): the number, the catalog (shared with the numbers list) and the
   // accounts (shared with the users page). An action on the number asks for the number again, not the other two.
-  const numberRead = useApiQuery(sharedKeys.line(params.id), () => api.officeLine(params.id));
+  // `fresh`: the answer carries the eSIM code, so it is not kept in the shared cache once this page closes.
+  const numberRead = useApiQuery(sharedKeys.line(params.id), () => api.officeLine(params.id), { fresh: true });
   const catalogRead = useApiQuery(sharedKeys.packages, () => api.officePackages());
   const usersRead = useApiQuery(sharedKeys.users, everyAccount, { enabled: canTransfer });
   const card = {
