@@ -22,6 +22,13 @@ export class ScriptedGateway implements ProviderGateway {
 
   accept(): void {}
 
+  /** The provider codes this spec gateway takes on the dispatch route; none unless a spec names them. */
+  readonly dispatching = new Set<string>();
+
+  dispatches(providerCode: string): boolean {
+    return this.dispatching.has(providerCode);
+  }
+
   async run(): Promise<ProviderResult> {
     return { ok: false, reason: NOT_CONNECTED };
   }

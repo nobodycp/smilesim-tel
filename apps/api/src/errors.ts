@@ -62,6 +62,8 @@ export const ERROR_MESSAGES = {
   DECISION_NOTE_SHORT: 'الملاحظة عشرون حرفاً على الأقل',
   DECISION_REFERENCE_REQUIRED: 'أدخل مرجع العملية عند المزود',
   DECISION_NUMBER_REQUIRED: 'أدخل الرقم الذي فعّله المزود',
+  // An activation that goes to a provider must carry the request's key (ADR 0019, D14).
+  REQUEST_KEY_REQUIRED: 'تعذّر إرسال الطلب بأمان. حدّث الصفحة وأعد المحاولة',
   ESIM_CODE_REQUIRED: 'أدخل رمز تفعيل eSIM الذي سلّمه المزود',
   // Adding from the provider (spec 2026-11-09-admin-review, 3).
   COMPANY_EXISTS: 'الشركة مضافة من قبل',

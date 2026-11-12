@@ -1116,6 +1116,7 @@ export const ar = {
     DECISION_NOTE_SHORT: 'الملاحظة عشرون حرفاً على الأقل',
     DECISION_REFERENCE_REQUIRED: 'أدخل مرجع العملية عند المزود',
     DECISION_NUMBER_REQUIRED: 'أدخل الرقم الذي فعّله المزود',
+    REQUEST_KEY_REQUIRED: "تعذّر إرسال الطلب بأمان. حدّث الصفحة وأعد المحاولة",
     ESIM_CODE_REQUIRED: 'أدخل رمز تفعيل eSIM الذي سلّمه المزود',
     COMPANY_EXISTS: 'الشركة مضافة من قبل',
     PACKAGE_EXISTS: 'الرزمة مضافة من قبل',

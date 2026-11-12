@@ -1,4 +1,4 @@
-import { activationRequestHash, requestKeyOf, type ActivationInput, type TaskRequest } from './activation-settlement.rules';
+import { activationRequestHash, operationKey, requestKeyOf, type ActivationInput, type TaskRequest } from './activation-settlement.rules';
 import { assertCanSealEsimCode, storableEsimCode } from './esim-code';
 import { LinesRepository } from './lines.repository';
 import { LineAccess } from './line-access';
@@ -20,7 +20,8 @@ import { activateInputs, refreshMode } from '../rules/run-modes';
 import { issueSerial, simRefusal, simRulesOf } from '../rules/sim-rules';
 import { packageTermsOf } from '../rules/office-terms';
 import { NOT_CONNECTED, PROVIDER_GATEWAY, type ProviderGateway } from '../providers/gateway/provider-gateway';
-import { BRANCH_TASK_NOTE, PROVIDER_FAILED_NOTE } from '../stored-text';
+import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
+import { BRANCH_TASK_NOTE, PROVIDER_DISPATCH_NOTE, PROVIDER_FAILED_NOTE } from '../stored-text';
 import { TasksService } from '../tasks/tasks.service';
 import { deniedOpsFor, visibleTo } from '../rules/user-terms';
 import { periodOf, readQr } from './line-input';
@@ -56,6 +57,7 @@ export class LinesService {
     private readonly completion: TaskCompletion,
     @Inject(PROVIDER_GATEWAY) private readonly gateway: ProviderGateway,
     private readonly repo: LinesRepository,
+    private readonly operations: ProviderOperationsService,
   ) {}
 
   /**
@@ -115,6 +117,13 @@ export class LinesService {
     // The eSIM's code exists only after the provider has answered, so the ability to seal it is checked first:
     // a sale is never sent to the provider when its code could not be stored (ADR 0019, D17; S.5b).
     if (generatesEsim) assertCanSealEsimCode();
+    // The dispatch route (ADR 0019, D13): the package runs activations automatically and the gateway takes this
+    // provider's on record for the dispatcher. Nothing of the request chooses it, and no gateway built today
+    // answers true (D18, slice S.12a). The provider is not called here, now or later: the worker's dispatcher is.
+    if (runsNow(pkg, 'activate') && this.gateway.dispatches(pkg.provider.code)) {
+      const opening = { action: 'activate' as const, actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: storedIccid, esim, unitPrice: unit, note: currentDetails || PROVIDER_DISPATCH_NOTE };
+      return this.openForDispatch(opening, request, { providerCode: pkg.provider.code, packageCode: pkg.providerProductCode ?? pkg.code }, sent.replayed);
+    }
     const route = await this.route('activate', pkg, runsNow(pkg, 'activate'), input.outcome, { msisdn, iccid: storedIccid });
     if (!route.now) {
       const task = await this.tasks.openTask({
@@ -159,6 +168,30 @@ export class LinesService {
       debited: posDelta < 0,
       line: { id: created.id, msisdn: created.msisdn, iccid: created.iccid, esim: created.esim, esimQr: issuedQr },
     };
+  }
+
+  /**
+   * T1 (ADR 0019): the task, its reservation, its hold, the provider operation and the operation's outbox message
+   * are one transaction, the one `openTask` already runs. The operation is recorded inside it, under the task's
+   * own key and with the task's id, so neither exists without the other. The request key is required on this
+   * route (D14): a repeat must be answerable from the database for good. Nothing is sent from here.
+   */
+  private async openForDispatch(opening: Omit<OpenTask, 'request' | 'alongside'>, request: TaskRequest | null, product: { providerCode: string; packageCode: string }, replayed?: () => void) {
+    if (!request) fail(400, 'REQUEST_KEY_REQUIRED');
+    const task = await this.tasks.openTask({
+      ...opening,
+      request,
+      alongside: async (tx, opened) => {
+        await this.operations.recordIn(
+          tx,
+          operationKey(opened.id),
+          { action: 'activate', ...product, msisdn: opening.msisdn ?? null, iccid: opening.iccid ?? null, lineId: null },
+          { taskId: opened.id },
+        );
+      },
+    });
+    if (task.replayed) replayed?.();
+    return { applied: false as const, taskId: task.id };
   }
 
   /** The stored key and fingerprint of a request sent with an `Idempotency-Key`; null without one, 400 for a malformed one. */

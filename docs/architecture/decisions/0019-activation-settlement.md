@@ -492,3 +492,33 @@ decisions changed; the screens show what the API decides.
   from the two decision reads `403` with no body but the code. No evidence, note, reference, proposer or step of a
   decision is in any answer they can get; another point of sale does not read the task at all.
 
+## As built in S.11 (opening)
+
+- **The route (D13).** `ProviderGateway.dispatches(providerCode)` is asked in one place, `LinesService.activate`,
+  after the checks every activation passes (who sells, the package, the SIM, the price) and before the gateway is
+  asked to run anything: `runsNow(pkg, 'activate') && gateway.dispatches(provider.code)`. The simulation's hint
+  (`outcome`) is not read for it. A package run by hand, a provider the gateway does not take, the simulation and
+  "not connected" behave as before.
+- **Off, as a constant.** The application binds `SimulatedProviderGateway` and nothing else, and its `dispatches`
+  is `return false`. It is not a setting: `PROVIDER_DISPATCH=1`, `NODE_ENV`, `PROVIDER_SIMULATION`, a provider row,
+  nothing deployed today changes it. S.12a replaces the constant with D18's four conditions, established in the
+  worker. `provider-dispatch-off.spec.ts` reads the shipped source and pins: one gateway implementation; the
+  constant; one caller; the worker's dispatcher built over the same gateway, whose `send` opens no connection;
+  `PROVIDER_DISPATCH` read by `config.ts` and `worker.ts` only; no code that reads `ProviderCredential`; no
+  outgoing connection under the providers domain; no adapter but the catalog's two.
+- **T1 without a second copy of anything.** `TasksService.openTask` already was the transaction that locks the
+  claim keys, answers a repeated key, judges the reservation, inserts the task, takes the hold and writes the
+  notices (S.2, S.6). It gained `alongside(tx, task)`, a step the caller supplies that runs inside that
+  transaction after the task's row exists and before the wallet. For a dispatched activation it is
+  `recordIn(tx, operationKey(task.id), request, { taskId })`: the existing recorder, which writes the operation and
+  its outbox message, now also the task's id. A repeated request returns before it, so no second operation, hold,
+  message or notice is written; a failure of any statement rolls the whole opening back.
+- **The key is required on this route (D14).** Without one: `400 REQUEST_KEY_REQUIRED`, before anything is
+  written. The stored key is the database's (`OfficeTask.requestKey`), so a repeat is answered with the first task
+  when the duplicate guard's store is down, and for as long as the task exists.
+- **Nothing is sent by the opening.** It writes rows. A message is published by the worker's relay, which runs
+  only where `providerDispatchOn()` says so (never on a production-grade deployment), and what it leads to is the
+  dispatcher over the simulated gateway, which answers `left: false`: the operation is put back and fails after
+  its attempts with the hold kept. None of that is reachable today, because nothing records an operation.
+- Spec items 1, 4 and 28 are closed.
+

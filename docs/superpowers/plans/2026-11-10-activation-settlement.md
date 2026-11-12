@@ -395,11 +395,27 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   - Left for later: the queue is not in the side navigation and raises no notice of its own; a proposal still
     tells nobody (S.9), so the second account finds it through the link's count.
 
-- [ ] **S.11 Opening.**
-  `ProviderGateway.dispatches(providerCode)`; `LinesService.route()` answers `dispatch`; `activate` opens the task
-  and records the operation in one transaction; the request key is required on this route.
-  `dispatches` is false everywhere (S.12a has not landed), so no sale takes the route.
-  *Transactions:* T1 complete. *Specs:* 1 (with the operation), 4 ("required"), 28.
+- [x] **S.11 Opening.** Built 2026-11-13 (commit: see `git log --grep 'slice S.11'`). No migration.
+  - `ProviderGateway.dispatches(providerCode)`. The only gateway the application binds, `SimulatedProviderGateway`,
+    answers a constant `false`: no environment variable, setting, row or request field makes it true. The specs'
+    `ScriptedGateway` (under `testing/`) takes the providers a spec names.
+  - `LinesService.activate`: when the package runs activations automatically **and** the gateway takes its
+    provider (D13), the sale goes on the dispatch route. The request's simulation hint is not part of the question.
+    The request key is required there (`400 REQUEST_KEY_REQUIRED`); on the manual route it stays optional.
+  - **T1** is `TasksService.openTask` with one addition, `alongside(tx, task)`: run inside the opening's
+    transaction once the task's row exists, before the hold and the notices, never for a repeated request.
+    `activate` passes `ProviderOperationsService.recordIn(tx, 'activate:<taskId>', request, { taskId })`, which
+    writes the operation (`requested`, the task's id, unique) and its `provider-operation.requested` message. So
+    the reservation, the task, the operation, the message, the hold and the notices commit or roll back together,
+    in the lock order keys → (new task) → (new operation) → wallet, and nothing of the reservation or the money
+    is written twice. The API calls no provider: the answer is `{ applied: false, taskId }`.
+  - *Transactions:* T1 complete. *Specs:* 1 (with the operation), 4 ("required"), 28:
+    `lines/activation-dispatch.db.spec.ts` (HTTP on PostgreSQL: T1; the key required, repeated, changed, per
+    account, 10 / 30 / 50 at once, with the duplicate guard's store down; a fault at each write and a connection
+    cut before the commit; the opened sale through the dispatcher and the settlement over the scripted gateway;
+    cancel against claim; everything against everything) and `provider-dispatch-off.spec.ts` (what ships cannot
+    take a sale on the route or send one).
+  - `dispatches` is false everywhere (S.12a has not landed), so no sale takes the route.
 
 - [ ] **S.12 Switching on, in two parts with a review between them.**
   - **S.12a The switch (D18), no adapter.** `worker.ts` runs the production settings check with the worker's list;

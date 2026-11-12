@@ -5,14 +5,16 @@ import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import { ActivityRecorder } from '../activity/activity-recorder';
 import { API_PROVIDERS } from '../../shared/api-providers';
 import { NoticeService } from '../notices/notice.service';
+import { PROVIDER_GATEWAY, type ProviderGateway } from '../providers/gateway/provider-gateway';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
 
 /**
  * For HTTP specs: every office route, as the app serves it, over the given auth store and in-memory tables.
  * Activity events land in `recorded`; notices are written and published through `notice` when given. `global`
- * interceptors run in front of every route, as `OfficeModule` registers the duplicate guard.
+ * interceptors run in front of every route, as `OfficeModule` registers the duplicate guard. `gateway` replaces the
+ * provider gateway for the spec.
  */
-export async function officeTestApp(store: AuthStore, tables: Record<string, unknown>, notice?: Partial<NoticeService>, global: NestInterceptor[] = []) {
+export async function officeTestApp(store: AuthStore, tables: Record<string, unknown>, notice?: Partial<NoticeService>, global: NestInterceptor[] = [], gateway?: ProviderGateway) {
   const recorded: unknown[][] = [];
   let builder = Test.createTestingModule({
     controllers: OFFICE_CONTROLLERS,
@@ -31,6 +33,9 @@ export async function officeTestApp(store: AuthStore, tables: Record<string, unk
     ],
   });
   if (notice) builder = builder.overrideProvider(NoticeService).useValue(notice);
+  // A spec may stand in for the provider gateway (the scripted one). The application itself binds the simulated
+  // gateway and nothing else (`provider-dispatch-off.spec.ts`).
+  if (gateway) builder = builder.overrideProvider(PROVIDER_GATEWAY).useValue(gateway);
   const moduleRef = await builder.compile();
   moduleRef.get(UnitOfWork).prismaClient = tables as unknown as UnitOfWork['prismaClient'];
   const app: INestApplication = moduleRef.createNestApplication();

@@ -1116,6 +1116,7 @@ export const en: Copy = {
     DECISION_NOTE_SHORT: 'The note must be at least twenty characters',
     DECISION_REFERENCE_REQUIRED: 'Enter the reference of the operation at the provider',
     DECISION_NUMBER_REQUIRED: 'Enter the number the provider activated',
+    REQUEST_KEY_REQUIRED: "The request could not be sent safely. Refresh the page and try again",
     ESIM_CODE_REQUIRED: 'Enter the eSIM activation code the provider handed back',
     COMPANY_EXISTS: 'This company was already added',
     PACKAGE_EXISTS: 'This package was already added',

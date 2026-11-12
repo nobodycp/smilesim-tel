@@ -43,13 +43,14 @@ export class ProviderOperationsService {
    * writes. The same key with the same request answers the first operation and writes nothing; the same key with
    * another request is refused.
    */
-  async recordIn(tx: Db, idempotencyKey: string, request: OperationRequest): Promise<RecordedOperation> {
+  async recordIn(tx: Db, idempotencyKey: string, request: OperationRequest, link: { taskId?: string } = {}): Promise<RecordedOperation> {
     if (!validKey(idempotencyKey)) fail(400, 'INVALID');
     const providerId = await this.repo.providerIdByCode(tx, request.providerCode);
     if (!providerId) fail(404, 'NOT_FOUND');
     const hash = requestHash(request);
     const { action, packageCode, msisdn, iccid, lineId } = request;
-    const id = await this.repo.insertUnlessKeyTaken(tx, { idempotencyKey, requestHash: hash, providerId, action, packageCode, msisdn, iccid, lineId });
+    // An operation recorded for a task carries the task's id (unique): the task and its operation are one pair.
+    const id = await this.repo.insertUnlessKeyTaken(tx, { idempotencyKey, requestHash: hash, providerId, action, packageCode, msisdn, iccid, lineId, ...(link.taskId ? { taskId: link.taskId } : {}) });
     if (id) {
       await this.repo.addOutbox(tx, OPERATION_REQUESTED, id, 0);
       return { id, status: 'requested', created: true };

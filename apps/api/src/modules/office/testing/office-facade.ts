@@ -21,6 +21,8 @@ import { LineReads } from '../lines/line-reads';
 import { LinesService } from '../lines/lines.service';
 import { TaskCompletion } from '../lines/task-completion';
 import { SimulatedProviderGateway } from '../providers/gateway/simulated-gateway';
+import { ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 import { TransfersService } from '../transfers/transfers.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { DeskService } from '../desk/desk.service';
@@ -152,7 +154,7 @@ export class OfficeFacade {
   private lineDeskInstance: LinesService | null = null;
 
   private get lineDesk(): LinesService {
-    this.lineDeskInstance ??= new LinesService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.ladder, this.graph.lineAccess, this.tasksDomain, this.linePricing, new TaskCompletion(this.graph.uow, this.graph.ledger, this.tasksDomain, this.linePricing, new LinesRepository(this.graph.uow)), new SimulatedProviderGateway(), new LinesRepository(this.graph.uow));
+    this.lineDeskInstance ??= new LinesService(this.graph.uow, this.graph.tree, this.graph.ledger, this.graph.ladder, this.graph.lineAccess, this.tasksDomain, this.linePricing, new TaskCompletion(this.graph.uow, this.graph.ledger, this.tasksDomain, this.linePricing, new LinesRepository(this.graph.uow)), new SimulatedProviderGateway(), new LinesRepository(this.graph.uow), new ProviderOperationsService(this.graph.uow, new ProviderOperationsRepository()));
     return this.lineDeskInstance;
   }
 

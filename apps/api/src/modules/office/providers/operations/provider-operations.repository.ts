@@ -43,7 +43,8 @@ export type NewDecisionEvent = {
   accountLoginName: string;
 };
 
-export type NewOperation = Omit<OperationRequest, 'providerCode'> & { idempotencyKey: string; requestHash: string; providerId: string };
+/** `taskId` links the operation to the activation task it was recorded for (ADR 0019, D2): unique, one operation a task. */
+export type NewOperation = Omit<OperationRequest, 'providerCode'> & { idempotencyKey: string; requestHash: string; providerId: string; taskId?: string };
 /** `claim` starts a new attempt: counted, leased until the given time, with no send mark. */
 export type StatusChange = { status: OperationStatus; providerRef?: string | null; error: OperationError | null; claim?: { at: Date; leaseUntil: Date }; result?: ResultColumns | null };
 /** The state a guarded write expects: the status, and where given the attempt's number and that nothing was sent. */

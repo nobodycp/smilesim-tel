@@ -29,6 +29,13 @@ export interface ProviderGateway {
   readonly simulated: boolean;
   /** Refuses (400) a request this gateway cannot run as it is written, before anything is read or written. */
   accept(hint: unknown): void;
+  /**
+   * Whether an automatic activation at this provider is recorded as an operation for the dispatcher, instead of
+   * being answered inside the request (ADR 0019, D13). True only where every condition of D18 holds, and those
+   * are the worker's to establish (slice S.12a): until then no gateway the application builds answers true. It
+   * reads nothing from the request: the simulation's hint never chooses this route.
+   */
+  dispatches(providerCode: string): boolean;
   /** Runs the operation at the provider. Never throws for a provider refusal: it answers `ok: false`. */
   run(request: ProviderRequest): Promise<ProviderResult>;
   /**

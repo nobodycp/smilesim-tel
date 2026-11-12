@@ -301,6 +301,11 @@ export class TasksService {
     unitPrice?: number;
     /** The request's stored key and fingerprint (ADR 0019, D14): one task per key, for as long as the row exists. */
     request?: TaskRequest;
+    /**
+     * What else belongs to this opening and must commit or roll back with it (ADR 0019, T1): run inside the
+     * transaction once the task's row exists, before the hold and the notices. Never run for a repeated request.
+     */
+    alongside?: (tx: Prisma.TransactionClient, task: { id: string }) => Promise<void>;
   }): Promise<{ id: string; replayed: boolean }> {
     const { request } = input;
     const { task, written } = await this.uow.runTx(async (tx) => {
@@ -357,6 +362,9 @@ export class TasksService {
         await assertClaimFree(tx, claim);
         fail(409, 'DUPLICATE_REQUEST');
       }
+      // What the opening records beside the task (an activation's provider operation and its outbox message):
+      // after the task, which it names, and before the wallet (the one lock order).
+      await input.alongside?.(tx, created);
       // A task that will charge holds its price (roadmap N6): refused, and the task with it, when the wallet
       // cannot cover it; released when the task closes.
       if (price > 0) {

@@ -20,6 +20,15 @@ export class SimulatedProviderGateway implements ProviderGateway {
     if (this.simulated && hint !== 'success' && hint !== 'fail') fail(400, 'INVALID');
   }
 
+  /**
+   * Never: no provider is switched on (ADR 0019, D13 and D18; slice S.12a has not landed). A constant on purpose:
+   * no environment variable, setting, database row or request field makes it true, so nothing that is deployed
+   * today can put an activation on the dispatch route. `provider-dispatch-off.spec.ts` pins this.
+   */
+  dispatches(): boolean {
+    return false;
+  }
+
   async run(request: ProviderRequest): Promise<ProviderResult> {
     if (!this.simulated) return { ok: false, reason: NOT_CONNECTED };
     return request.hint === 'success' ? { ok: true } : { ok: false, reason: 'simulated-failure' };

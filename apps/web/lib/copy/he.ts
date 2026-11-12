@@ -1116,6 +1116,7 @@ export const he: Copy = {
     DECISION_NOTE_SHORT: 'ההערה צריכה להיות עשרים תווים לפחות',
     DECISION_REFERENCE_REQUIRED: 'הזינו את מספר האסמכתא של הפעולה אצל הספק',
     DECISION_NUMBER_REQUIRED: 'הזינו את המספר שהספק הפעיל',
+    REQUEST_KEY_REQUIRED: "לא ניתן היה לשלוח את הבקשה בבטחה. רעננו את הדף ונסו שוב",
     ESIM_CODE_REQUIRED: 'הזינו את קוד הפעלת ה-eSIM שהספק מסר',
     COMPANY_EXISTS: 'החברה כבר נוספה',
     PACKAGE_EXISTS: 'החבילה כבר נוספה',
