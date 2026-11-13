@@ -116,3 +116,13 @@ no provider ever saw.
 - A connection that was tried and did not leave (`left: false` from the adapter) is counted, as before: five of
   those fail the operation.
 - The column defaults to 0, so every operation recorded before it keeps the count it had.
+
+## Amended by slice S.12b.0 (2026-11-13): the permit, and the pass over waiting operations
+
+- **The dispatcher sends through a permit.** `OperationDispatcher(operations, gate)` holds no gateway. `claim`
+  and `beginSend` ask the gate, which answers a `SendPermit` or null; the permit `beginSend` was given in the
+  transaction that wrote the send mark is what the request is sent with. Claim, mark, call, settle are otherwise
+  as decided: the call is between two committed writes, and an attempt is fenced by its number.
+- **`dispatchWaiting` is replaced by `WaitingPass`**: a walk over `requested` operations by id, in pages, that
+  keeps its place between the rounds of recovery's timer (ADR 0019, "S.12b.0"). It replaces "the 100 oldest by
+  `updatedAt`", which the operations of one closed provider could fill for ever.

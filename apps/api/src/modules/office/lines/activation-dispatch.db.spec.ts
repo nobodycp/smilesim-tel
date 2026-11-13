@@ -1,4 +1,4 @@
-import { OPEN_GATE } from '../providers/testing/open-gate';
+import { openGate } from '../providers/testing/open-gate';
 import { useSealingKey } from '../../shared/testing/sealing-key';
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
@@ -164,7 +164,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     ({ app, recorded } = await officeTestApp(auth, faulty as unknown as Record<string, unknown>, notice, [], gateway));
     recordIn = jest.spyOn(app.get(ProviderOperationsService), 'recordIn');
     ({ app: real } = await officeTestApp(auth, plain as unknown as Record<string, unknown>, notice));
-    dispatch = buildProviderDispatch(plain, {} as IORedis, gateway, OPEN_GATE, `s11-${tag}`, notice);
+    dispatch = buildProviderDispatch(plain, {} as IORedis, openGate(gateway), `s11-${tag}`, notice);
   });
 
   afterEach(async () => {
@@ -491,7 +491,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       const { taskId, operationId } = await opened();
       // The dispatcher as the worker builds it today: over the simulated gateway.
       const { SimulatedProviderGateway } = await import('../providers/gateway/simulated-gateway');
-      const worker = buildProviderDispatch(prisma, {} as IORedis, new SimulatedProviderGateway(), OPEN_GATE, `s11w-${tag}`, { write: async () => [], publish: async () => undefined } as unknown as NoticeService);
+      const worker = buildProviderDispatch(prisma, {} as IORedis, openGate(new SimulatedProviderGateway()), `s11w-${tag}`, { write: async () => [], publish: async () => undefined } as unknown as NoticeService);
       for (let attempt = 0; attempt < 8; attempt += 1) await worker.handle({ operationId });
       const row = await operation(operationId);
       // `not-connected` is the gateway saying no connection was opened: each attempt was put back, never sent.

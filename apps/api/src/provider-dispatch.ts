@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type IORedis from 'ioredis';
 import type { PrismaClient } from './generated/prisma/client';
 import type { AuthStore } from './modules/auth/auth.store';
@@ -16,13 +17,12 @@ import { WalletLedger } from './modules/office/wallets/wallet-ledger';
 import { OutboxRelay } from './modules/office/outbox/outbox-relay';
 import { OutboxRepository } from './modules/office/outbox/outbox.repository';
 import { QueuePublisher } from './modules/office/outbox/queue-publisher';
-import type { ProviderGateway } from './modules/office/providers/gateway/provider-gateway';
 import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate';
-import { READY_EVERY_MS, type DispatchSettings, type ProviderTarget } from './modules/office/providers/dispatch/dispatch-policy';
+import { READY_EVERY_MS, READY_TTL_MS, type DispatchSettings, type ProviderTarget } from './modules/office/providers/dispatch/dispatch-policy';
 import type { BuiltAdapters, OpenedCredential } from './modules/office/providers/dispatch/provider-adapters';
 import type { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
 import { open } from './modules/shared/secret-box';
-import { OperationDispatcher, dispatchWaiting, recoverExpired } from './modules/office/providers/operations/operation-dispatcher';
+import { OperationDispatcher, WaitingPass, recoverExpired } from './modules/office/providers/operations/operation-dispatcher';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from './modules/office/providers/operations/provider-operations.repository';
 import { ProviderOperationsService } from './modules/office/providers/operations/provider-operations.service';
 import { errorCode, logger } from './modules/shared/log';
@@ -65,15 +65,16 @@ export class JobFailure extends Error {
 
 /** The pieces the worker runs for provider operations, built by hand: the worker is not a Nest application. */
 /**
- * `gate` is required (ADR 0019, D18): every attempt is taken and marked through it. The worker passes its
- * deployment's gate (`DeploymentSendGate`); there is no default, so nothing here sends ungated.
+ * `gate` is required (ADR 0019, D18): every attempt is taken and marked through it, and sent through the permit
+ * it gives at the mark. The worker passes its deployment's gate (`DeploymentSendGate`); there is no default and
+ * no gateway here, so nothing sends ungated or through anything the gate did not judge.
  */
-export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis, gateway: ProviderGateway, gate: SendGate, prefix?: string, notice?: NoticeService) {
+export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis, gate: SendGate, prefix?: string, notice?: NoticeService) {
   const uow = new UnitOfWork(notice);
   uow.prismaClient = prisma;
   const operations = new ProviderOperationsService(uow, new ProviderOperationsRepository());
   const publisher = new QueuePublisher(connection, { [OPERATION_REQUESTED]: OPERATIONS_QUEUE, [OPERATION_SETTLED]: SETTLEMENTS_QUEUE }, prefix);
-  const dispatcher = new OperationDispatcher(operations, gateway, gate);
+  const dispatcher = new OperationDispatcher(operations, gate);
   const settlement = buildActivationSettlement(uow, operations);
   /** A job carries the operation's id and nothing else. */
   const operationIdOf = (data: unknown): string => {
@@ -88,6 +89,8 @@ export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis,
     gate,
     relay: new OutboxRelay(uow, new OutboxRepository(), publisher, [OPERATION_REQUESTED, OPERATION_SETTLED]),
     dispatcher,
+    /** The pass over operations that wait to be sent: it keeps its place between rounds. */
+    waiting: new WaitingPass(dispatcher, operations),
     settlement,
     /**
      * The settlements queue's processor: acts on the verdict of one operation. A repeat, or a job that comes
@@ -119,7 +122,7 @@ export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis,
 }
 
 /** Starts the relay and the recovery on their timers. Answers what stops them. */
-export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildProviderDispatch>, 'relay' | 'operations' | 'publisher' | 'settlement' | 'dispatcher' | 'gate'>): () => Promise<void> {
+export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildProviderDispatch>, 'relay' | 'operations' | 'publisher' | 'settlement' | 'waiting' | 'gate'>): () => Promise<void> {
   let relaying = false;
   const relay = setInterval(() => {
     if (relaying) return;
@@ -134,7 +137,7 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
     // again, so a provider that was resumed sends what waited and a paused one still sends nothing.
     // Recovery is given the gate: an unsent attempt found while its provider is closed is not counted.
     void recoverExpired(parts.operations, new Date(), 100, parts.gate)
-      .then(() => dispatchWaiting(parts.dispatcher, parts.operations))
+      .then(() => parts.waiting.round())
       .catch((error) => log.warn(`recovery failed: ${errorCode(error)}`))
       .finally(() => { recovering = false; });
   }, RECOVERY_EVERY_MS);
@@ -151,6 +154,8 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
     clearInterval(relay);
     clearInterval(recovery);
     clearInterval(sweep);
+    // The pass in flight takes no further operation: nothing new is sent by a worker that is stopping.
+    parts.waiting.stop();
     await parts.publisher.close();
   };
 }
@@ -194,37 +199,57 @@ async function storedGenerations(prisma: PrismaClient, settings: DispatchSetting
   return rows.map((row) => `${row.provider.code}:${row.generation}`).sort().join(',');
 }
 
+/** How old a worker's row may be before any worker's round removes it: well past the time it is believed for. */
+const STALE_AFTER_MS = 10 * READY_TTL_MS;
+
 /**
- * The worker's attestation, and its adapters kept true to what is stored (ADR 0019, D18). Each round, on a timer:
+ * This worker's attestation, and its adapters kept true to what is stored (ADR 0019, D18). Each round, on a timer:
  *
  * 1. **Rebuild.** When a credential was written since the adapters were built (its generation moved, or one
  *    appeared), every adapter is built again from what is stored now (`rebuild`) and the gateway is handed the
  *    new set. An adapter built from a replaced credential is never kept.
- * 2. **Attest.** For each adapter it holds, the worker writes on the provider's row that this deployment's worker
- *    holds one, for which target and from which generation of the credential, now. The row is locked first and
- *    the stored generation read under the lock, so a worker that still holds a replaced credential writes
- *    nothing: it cannot bring back the attestation that the replacement withdrew, and cannot write over a newer
- *    worker's. It also leaves alone a provider that is approved for another deployment.
+ * 2. **Attest.** For each adapter it holds, the worker writes **its own row** (`ProviderWorkerAttestation`, by
+ *    its `workerId`): this deployment, this target, the generation of the credential the adapter was built from,
+ *    and the time **by the database's clock** (`now()`). The provider's row is locked first and the stored
+ *    generation read under the lock, so a worker that still holds a replaced credential writes nothing, and what
+ *    it wrote before is removed: it cannot bring back what the replacement withdrew. It never writes or removes
+ *    another worker's row, except rows long past belief (a worker that was killed), which any round clears.
  *
- * The API opens the dispatch route only on such an attestation, fresh. A worker with no adapter writes nothing.
- * Stopping withdraws what this deployment's workers wrote; another worker of it, still running, says so again
- * within a round. Answers `stop`, and `round` for a caller that does not wait for the timer.
+ * The API opens the dispatch route only on such a row, fresh by the database's clock. A worker with no adapter
+ * writes nothing. Stopping removes this worker's rows and nobody else's: another worker of the deployment keeps
+ * the route open. Answers `stop`, and `round` for a caller that does not wait for the timer.
  */
-export function startReadiness(prisma: PrismaClient, settings: DispatchSettings, gateway: RoutingProviderGateway, rebuild: () => Promise<BuiltAdapters>): { stop: () => Promise<void>; round: () => Promise<void> } {
-  if (!mayBuild(settings)) return { stop: async () => undefined, round: async () => undefined };
+export function startReadiness(
+  prisma: PrismaClient, settings: DispatchSettings, gateway: RoutingProviderGateway, rebuild: () => Promise<BuiltAdapters>, workerId: string = randomUUID(), everyMs: number = READY_EVERY_MS,
+): { stop: () => Promise<void>; round: () => Promise<void>; workerId: string } {
+  if (!mayBuild(settings)) return { stop: async () => undefined, round: async () => undefined, workerId };
   const { target, deployment } = settings;
   /** What was stored when the adapters were last built; null until the first round has looked. */
   let builtFrom: string | null = null;
+  let stopped = false;
   const attest = async (code: string, generation: number) => {
     await prisma.$transaction(async (tx) => {
-      const rows = await tx.$queryRaw<{ id: string; dispatchApprovedDeployment: string | null }[]>`SELECT "id", "dispatchApprovedDeployment" FROM "Provider" WHERE "code" = ${code} FOR UPDATE`;
+      // Shared: several workers attest at once, and each waits for a write of the credential, a pause or an approval.
+      const rows = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Provider" WHERE "code" = ${code} FOR SHARE`;
       const provider = rows[0];
-      if (!provider || (provider.dispatchApprovedDeployment !== null && provider.dispatchApprovedDeployment !== deployment)) return;
+      if (!provider) return;
       // Read after the lock is held: a replacement that committed while this waited is what it finds.
       const stored = await tx.$queryRaw<{ generation: number }[]>`SELECT "generation" FROM "ProviderCredential" WHERE "providerId" = ${provider.id} AND "target" = ${target}`;
-      if (stored[0]?.generation !== generation) return;
-      await tx.provider.update({ where: { id: provider.id }, data: { dispatchReadyAt: new Date(), dispatchReadyTarget: target, dispatchReadyDeployment: deployment, dispatchReadyGeneration: generation } });
+      if (stored[0]?.generation !== generation) {
+        await tx.$executeRaw`DELETE FROM "ProviderWorkerAttestation" WHERE "providerId" = ${provider.id} AND "workerId" = ${workerId}`;
+        return;
+      }
+      await tx.$executeRaw`
+        INSERT INTO "ProviderWorkerAttestation" ("id", "providerId", "workerId", "deployment", "target", "generation", "attestedAt")
+        VALUES (${randomUUID()}, ${provider.id}, ${workerId}, ${deployment}, ${target}, ${generation}, now())
+        ON CONFLICT ("providerId", "workerId") DO UPDATE SET "deployment" = EXCLUDED."deployment", "target" = EXCLUDED."target", "generation" = EXCLUDED."generation", "attestedAt" = now()`;
     });
+  };
+  /** This worker's rows for providers it no longer holds an adapter for, and anybody's rows long past belief. */
+  const clear = async (held: string[]) => {
+    await prisma.$executeRaw`
+      DELETE FROM "ProviderWorkerAttestation" a USING "Provider" p
+      WHERE p."id" = a."providerId" AND ((a."workerId" = ${workerId} AND NOT (p."code" = ANY(${held}::text[]))) OR a."attestedAt" < now() - make_interval(secs => ${STALE_AFTER_MS / 1000}))`;
   };
   let running: Promise<void> | null = null;
   const once = async () => {
@@ -237,27 +262,32 @@ export function startReadiness(prisma: PrismaClient, settings: DispatchSettings,
       for (const [code, why] of built.skipped) log.warn(`provider dispatch: no adapter for ${code} (${why})`);
       log.log(`provider dispatch: adapters rebuilt from the stored credentials (${built.adapters.size} held)`);
     }
-    for (const code of gateway.held()) {
+    const held = gateway.held();
+    for (const code of held) {
       const generation = gateway.generation(code);
-      if (generation !== null) await attest(code, generation);
+      // A worker that was told to stop writes nothing more: its rows are being removed.
+      if (generation !== null && !stopped) await attest(code, generation);
     }
+    await clear(held);
   };
   /** One round at a time: a slow round is not overtaken by the next tick. */
   const round = () => {
+    if (stopped) return Promise.resolve();
     running ??= once().catch((error) => log.warn(`readiness failed: ${errorCode(error)}`)).finally(() => { running = null; });
     return running;
   };
   void round();
-  const timer = setInterval(() => void round(), READY_EVERY_MS);
+  const timer = setInterval(() => void round(), everyMs);
   timer.unref?.();
   return {
+    workerId,
     round,
     stop: async () => {
+      stopped = true;
       clearInterval(timer);
+      // The round in flight ends first, so nothing it writes outlives the removal below.
       await running;
-      await prisma.provider
-        .updateMany({ where: { code: { in: [...settings.adapters] }, dispatchReadyDeployment: deployment }, data: { dispatchReadyAt: null, dispatchReadyTarget: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null } })
-        .catch(() => undefined);
+      await prisma.providerWorkerAttestation.deleteMany({ where: { workerId } }).catch(() => undefined);
     },
   };
 }

@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { fail } from '../../../shared/office-failure';
 import { isSealed, seal } from '../../../shared/secret-box';
 import { UnitOfWork, type Db } from '../../kernel/unit-of-work';
-import type { SendGate } from '../dispatch/dispatch-gate';
+import type { SendGate, SendPermit } from '../dispatch/dispatch-gate';
 import type { Action } from '../../kernel/types';
 import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, settledSequence, spentAttempts, storedRef, storedResult, validKey, type ActivationResult, type AttemptOutcome, type OperationError, type OperationRequest, type OperationStatus, type OutgoingOperation, type StoredResult, type Verdict } from './provider-operation.rules';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository, type NewDecisionEvent, type ResultColumns, type WaitingFor } from './provider-operations.repository';
@@ -85,7 +85,7 @@ export class ProviderOperationsService {
     // The dispatcher's gate (ADR 0019, D18): the provider's row is locked and judged in the transaction that
     // takes the attempt, so an operation of a provider that is paused, not approved or without an adapter stays
     // `requested`, uncounted, for its submitter to cancel or for the day the provider is switched on again.
-    const taken = gate ? await this.uow.runTx(async (tx) => ((await gate.permits(tx, row.providerId)) ? take(tx) : false)) : await take(this.uow.prisma);
+    const taken = gate ? await this.uow.runTx(async (tx) => ((await gate.permits(tx, row.providerId)) !== null ? take(tx) : false)) : await take(this.uow.prisma);
     return taken ? attemptAfter(row.attempts) : null;
   }
 
@@ -100,20 +100,23 @@ export class ProviderOperationsService {
    * with the message of its next send. So the operation is at once what D7 lets its submitter cancel, the
    * attempt uses nothing of the budget, and it is sent when the gate opens. Null is answered: nothing is sent.
    */
-  async beginSend(id: string, attempt: number, now: Date = new Date(), gate?: SendGate): Promise<OutgoingOperation | null> {
+  async beginSend(id: string, attempt: number, now: Date = new Date(), gate?: SendGate): Promise<(OutgoingOperation & { permit: SendPermit | null }) | null> {
     const row = await this.repo.operationToSend(this.uow.prisma, id);
     if (!row) return null;
     // The mark is the line a pause is judged against (`dispatch-gate.ts`): written only while the gate, asked
-    // under the provider's row lock in this same transaction, still says yes. No mark, no call.
-    const marked = gate
+    // under the provider's row lock in this same transaction, still says yes. No mark, no call. The permit the
+    // gate gave **in the transaction that wrote the mark** is answered with it: it is what the request is sent
+    // with, so the adapter that sends is the one that was judged when the mark was written.
+    const marked: { permit: SendPermit | null } | null = gate
       ? await this.uow.runTx(async (tx) => {
-          if (await gate.permits(tx, row.providerId)) return this.repo.markSent(tx, id, attempt, now);
+          const permit = await gate.permits(tx, row.providerId);
+          if (permit !== null) return (await this.repo.markSent(tx, id, attempt, now)) ? { permit } : null;
           await this.handBack(tx, id, attempt);
-          return false;
+          return null;
         })
-      : await this.repo.markSent(this.uow.prisma, id, attempt, now);
+      : (await this.repo.markSent(this.uow.prisma, id, attempt, now)) ? { permit: null } : null;
     if (!marked) return null;
-    return { idempotencyKey: row.idempotencyKey, attempt, action: row.action as Action, providerCode: row.provider.code, packageCode: row.packageCode, msisdn: row.msisdn, iccid: row.iccid };
+    return { idempotencyKey: row.idempotencyKey, attempt, action: row.action as Action, providerCode: row.provider.code, packageCode: row.packageCode, msisdn: row.msisdn, iccid: row.iccid, permit: marked.permit };
   }
 
   /**
@@ -172,12 +175,12 @@ export class ProviderOperationsService {
   }
 
   /**
-   * The operations that wait to be sent and whose message has already been handed to the queue: the ones a gate
-   * left where they were (their provider was paused, or not switched on). The dispatcher looks at them again on
-   * its timer, so a provider that is resumed sends what waited, with no new message.
+   * One page of the operations that wait to be sent, by id, after `afterId`: the ones a gate left where they
+   * were (their provider was paused, or not switched on) among them. The dispatcher walks these pages on its
+   * timer, so a provider that is resumed sends what waited, with no new message.
    */
-  waitingToSend(limit: number): Promise<string[]> {
-    return this.repo.requestedIds(this.uow.prisma, limit);
+  waitingToSend(afterId: string | null, limit: number): Promise<string[]> {
+    return this.repo.requestedPage(this.uow.prisma, afterId, limit);
   }
 
   /** The pending operations recovery should look at now. */
@@ -201,7 +204,7 @@ export class ProviderOperationsService {
       const outcome = recoveryOutcome(row, now);
       if (!outcome) return null;
       const unsent = outcome.kind === 'not-sent';
-      const waive = unsent && gate !== undefined && !(await gate.permits(tx, row.providerId));
+      const waive = unsent && gate !== undefined && (await gate.permits(tx, row.providerId)) === null;
       const next = afterAttempt(outcome, spentAttempts(row.attempts, row.waivedAttempts + (waive ? 1 : 0)));
       // Guarded by the attempt, and for "never sent" by the mark still being empty: a worker that writes the
       // mark first keeps the attempt, and one that comes after finds it gone and does not call the provider.

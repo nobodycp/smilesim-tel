@@ -468,21 +468,19 @@ wallets (sorted). A slice's review checks that order in the code it adds.
    also `SECRETS_KEY`) — a production process refuses to start with only some of them; then the live credential;
    then the owner's approval of the provider. Staging having passed sets none of them. (Corrected by the final
    verification of S.12a: the earlier wording set them one at a time, which the start-up check refuses.)
-9. **Review conditions before the first adapter runs (S.12b)**, found by the final verification of S.12a; none
-   can be met today because no adapter exists, and each fails closed or is safe for money as it stands:
-   - *Attestation per worker.* One worker stopping withdraws the deployment's attestation though another worker
-     of it is alive; that one says so again within `READY_EVERY_MS` (20 s), and sales take the manual route
-     meanwhile. Nothing unauthorised can be sent in that window (the gate, not the attestation, decides a send).
-     Decide whether an attestation per worker is wanted before running more than one worker or rolling restarts.
-   - *The pass over waiting operations* (`dispatchWaiting`) reads the 100 oldest `requested` operations of all
-     providers: 100 or more of a closed provider would keep a resumed provider's waiting operations from being
-     looked at. Page it, or select by the providers the worker holds an adapter for.
-   - *`SECRETS_KEY` on the worker* is required by its start-up check only while dispatch is on, but its settling
-     side needs it for an eSIM result whenever one is waiting. Require it on a worker that ever dispatched.
-   - *Clocks.* The attestation is stamped by the worker's clock and judged by the API's. Stamp it with the
-     database's clock (`now()`), and judge it there.
-   - *The adapter is picked when the request is sent*, after the mark; a rebuild between the two sends the
-     marked request with the newer credential. Hand the adapter to the send at the mark, or accept it in writing.
+9. **The review conditions before the first adapter runs (S.12b) are closed by slice S.12b.0** (built 2026-11-13;
+   commit: see `git log --grep 'S.12b.0'`; ADR 0019 "S.12b.0"; migration
+   `20261113130000_provider_worker_attestations`). The final verification of S.12a had found five; each is built
+   and tested, with no adapter yet:
+   - *Attestation per worker.* One row a worker process (`ProviderWorkerAttestation`); a worker removes its own
+     when it stops, and another worker of the deployment keeps the route open.
+   - *The pass over waiting operations* walks them by id, a page at a time, and keeps its place between rounds
+     (`WaitingPass`): a closed provider's operations, however many, hold nobody else's back.
+   - *`SECRETS_KEY` on the worker* is required in production whether or not it dispatches.
+   - *Clocks.* An attestation is written with PostgreSQL's `now()` and its age judged by PostgreSQL's clock.
+   - *The adapter that sends is the one that was judged at the mark*: the gate answers a permit bound to it, and
+     the dispatcher has no other way to a provider.
+   **Before deploying this code:** set `SECRETS_KEY` on the worker (the same as the API's).
 
 ## Order and safety
 

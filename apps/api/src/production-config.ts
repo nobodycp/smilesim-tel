@@ -90,8 +90,14 @@ export function dispatchConfigProblems(env: Env, known: readonly string[] = SUPP
 
 /**
  * What a production **worker** must be told (ADR 0019, D18), checked before it opens anything: where Redis and
- * the database are, its dispatch settings, no simulation, and, when it is to dispatch, the key that opens the
- * providers' credentials. It names the variable and the rule, never the value.
+ * the database are, its dispatch settings, no simulation, and `SECRETS_KEY`. It names the variable and the rule,
+ * never the value. Nothing of the HTTP API's settings (cookies, origins, proxies) is asked of it.
+ *
+ * `SECRETS_KEY` is required **whether or not it dispatches**. The worker always runs the settling side, and a
+ * confirmed eSIM activation is settled by opening the code the provider handed back, which is stored sealed. A
+ * worker with no key, or the wrong one, could not settle it: the operation would wait, with its hold, for as long
+ * as the worker runs that way. So the worker does not start without a key; whether it is the *right* key cannot
+ * be known at start, and a result it does not open is left as it is, with its hold, for the sweeper to meet again.
  */
 export function workerConfigProblems(env: Env): string[] {
   if (env.NODE_ENV !== 'production') return [];
@@ -103,8 +109,8 @@ export function workerConfigProblems(env: Env): string[] {
   const simulation = env.PROVIDER_SIMULATION;
   if (simulation !== undefined && simulation !== '' && simulation !== '0') problems.push('PROVIDER_SIMULATION: must be unset or "0"; provider operations are never simulated in production.');
   problems.push(...dispatchConfigProblems(env));
-  if (dispatchSettings(env).on && Buffer.from(env.SECRETS_KEY ?? '', 'base64').length !== 32) {
-    problems.push('SECRETS_KEY: must be 32 random bytes in base64 when PROVIDER_DISPATCH is "1"; it opens the providers\' credentials.');
+  if (Buffer.from(env.SECRETS_KEY ?? '', 'base64').length !== 32) {
+    problems.push("SECRETS_KEY: must be 32 random bytes in base64, the same as the API's; the worker opens eSIM codes when it settles an activation, and the providers' credentials when it dispatches.");
   }
   return problems;
 }

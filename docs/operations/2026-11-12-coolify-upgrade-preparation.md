@@ -16,7 +16,7 @@ migration, no backup and no account was changed while preparing it. What is stat
 - PostgreSQL 16.15, one volume on the same host, 66 MB on disk (database 10 MB). Redis 7 beside it.
 - Data: 4 accounts (the trial logins), 13 lines, 8 eSIM codes stored clear, 143 sessions (17 live), 25
   packages, 23 tasks (none open), 55 notices, 227 activity events.
-- 49 migrations applied, none failed. **9 pending** on the day it was read; **10** since slice S.8 added one (row 10 of 5.2), **11** since slice S.12a added one (row 11), **13** since its final corrections added two (rows 12 and 13). The count is of `main` as it stands, not of the server, which has not changed.
+- 49 migrations applied, none failed. **9 pending** on the day it was read; **10** since slice S.8 added one (row 10 of 5.2), **11** since slice S.12a added one (row 11), **13** since its final corrections added two (rows 12 and 13), **14** since slice S.12b.0 added one (row 14). The count is of `main` as it stands, not of the server, which has not changed.
 - Host: 11 GB free of 48 GB (79 % used), 2.9 GB of memory available.
 
 ## 2. What still blocks the upgrade
@@ -24,7 +24,7 @@ migration, no backup and no account was changed while preparing it. What is stat
 | # | Blocker | Why |
 |---|---|---|
 | B1 | No backup of any kind | No Coolify schedule for this database, no S3 storage defined, no dump file, no cron. |
-| B2 | `SECRETS_KEY` is not set on the API | The new API refuses to start without a 32-byte key (ADR 0016). |
+| B2 | `SECRETS_KEY` is not set on the API **or on the worker** | The new API refuses to start without a 32-byte key (ADR 0016). Since slice S.12b.0 the new **worker** refuses too, whether or not it dispatches: it settles eSIM activations, whose codes are stored sealed. Both are given the same key. |
 | B3 | `TRUST_PROXY` is not set on the API | Same refusal. |
 | B4 | A failed start would not be noticed | Health checks are off on all three applications. |
 | B5 | Rolling back after the migrations is not "redeploy the old image" | See 5.3: the old API cannot create a session on the new schema. |
@@ -89,11 +89,12 @@ private key, and installing the schedule.
 ### 4.1 `SECRETS_KEY`
 
 - Generate on the owner's machine, not on the server and not in a chat or a ticket:
-  `openssl rand -base64 32`. Paste it once into the API application's environment in Coolify (runtime only, not
-  build time). The worker and the web do not need it.
+  `openssl rand -base64 32`. Paste it into the API application's environment in Coolify **and, the same value,
+  into the worker application's** (runtime only, not build time). The web does not need it. Since slice S.12b.0
+  a production worker does not start without it.
 - Keep a second copy outside the server (a password manager entry named for this deployment). Losing the key
   loses every sealed eSIM code and authenticator secret.
-- Check without showing it, inside the API container: the length printed must be `32`.
+- Check without showing it, inside the API container and inside the worker container: the length printed must be `32`.
   `node -e "console.log(Buffer.from(process.env.SECRETS_KEY||'','base64').length)"`
 - Today nothing is sealed (0 sealed codes, 0 accounts with an authenticator, 1 pending secret stored clear), so
   a new key cannot break existing data.
@@ -151,13 +152,13 @@ keep and disables the rest. Until then the site should be treated as a trial sit
   Either as a command check in Coolify, or as a `HEALTHCHECK` line in the two Dockerfiles (the API's must do
   nothing when `APP_ROLE=worker`). The Dockerfile route is versioned and is a code change, for approval.
 - **Timing:** the API today is ready 9 s after its container starts (5 s to check migrations, 4 s to start).
-  With the thirteen migrations to apply on this data it stays in seconds. Proposed: start period 60 s, interval 10 s,
+  With the fourteen migrations to apply on this data it stays in seconds. Proposed: start period 60 s, interval 10 s,
   timeout 5 s, 6 retries.
 - **What a failed check gives:** with the check on, Coolify keeps the previous container when the new one does
   not become healthy. That protects against a refused configuration (B2, B3). It does **not** undo migrations
   the new container already applied before failing (5.3).
 
-### 5.2 The pending migrations, one by one (nine when the server was read, ten since slice S.8, thirteen since slice S.12a and its final corrections)
+### 5.2 The pending migrations, one by one (nine when the server was read, ten since slice S.8, thirteen since slice S.12a and its final corrections, fourteen since slice S.12b.0)
 
 All tables involved are tiny here (the largest is 240 kB), so every lock below is held for milliseconds.
 
@@ -176,12 +177,15 @@ All tables involved are tiny here (the largest is 240 kB), so every lock below i
 | 11 | `20261113100000_provider_dispatch_target_and_readiness` (slice S.12a; ADR 0019 D18) | `Provider`: three nullable columns (`dispatchApprovedTarget`, `dispatchReadyAt`, `dispatchReadyTarget`) and four CHECKs; one `UPDATE` that withdraws an approval on record with no target (none exists: no route ever wrote one) | `ACCESS EXCLUSIVE` on `Provider`, momentarily | none: the `UPDATE` matches no row on the server (no route ever wrote an approval) | Yes: the columns are nullable and the four CHECKs hold for rows where they are all empty | Yes: the old code neither reads nor writes the columns |
 | 12 | `20261113110000_provider_operation_waived_attempts` (final corrections of S.12a; ADR 0018 amended) | `ProviderOperation.waivedAttempts` (`INTEGER NOT NULL DEFAULT 0`) and one CHECK (`0 <= waivedAttempts <= attempts`) | `ACCESS EXCLUSIVE` on `ProviderOperation`, momentarily (a constant default: no rewrite; the table is empty on the server) | none | Yes: the default fills every row with 0, which the CHECK accepts; an operation keeps the count it had | Yes: the old code neither reads nor writes the column |
 | 13 | `20261113120000_provider_dispatch_deployment_and_generation` (final corrections of S.12a; ADR 0019 D18) | `Provider`: `dispatchApprovedDeployment`, `dispatchReadyDeployment`, `dispatchReadyGeneration` (nullable) and five CHECKs; `ProviderCredential.generation` (`INTEGER NOT NULL DEFAULT 1`) and one CHECK; two `UPDATE`s that withdraw every approval and every worker attestation on record (none names a deployment; none exists on the server) | `ACCESS EXCLUSIVE` on `Provider` and `ProviderCredential`, momentarily | none: both `UPDATE`s match no row on the server | Yes: checked by hand on a scratch database taken through every migration, with an approval, a pause, a credential and an operation as an older deployment could hold them: the approval is withdrawn, the pause and the credential kept, the operation's count unchanged | Fails closed: the code of `ef18a26` cannot write an approval or an attestation any more (the CHECKs refuse one with no deployment), so with the old image nothing is dispatched; everything else works. A second `prisma migrate deploy` sends nothing: Prisma finds each migration recorded and answers that none is pending (checked locally) |
+| 14 | `20261113130000_provider_worker_attestations` (slice S.12b.0; ADR 0019 D18) | New table `ProviderWorkerAttestation` (one row a worker process and provider; four CHECKs, a unique index, a foreign key that goes with its provider); `Provider`: the four `dispatchReady…` columns of migrations 11 and 13 **dropped**, with the five CHECKs that name them; new index `ProviderOperation(status, id)` | `ACCESS EXCLUSIVE` on `Provider` and `ProviderOperation`, momentarily (the columns are dropped without a rewrite; the index is built on an empty table) | the four columns, which hold nothing on the server (migrations 11 and 13 create them empty in the same run, and no worker has ever attested) | Yes (`attestedAt` is `timestamptz`): checked by hand on a scratch database at the state of `9f29f36` holding an approval, an attestation, a credential and two operations: the approval and the credential are kept, the attestation is gone (so no dispatch route is open until a new worker says so), every operation row is identical before and after | Fails closed: the code of `9f29f36` cannot attest (the columns are gone) and its owner's status route errors; nothing is dispatched; the rest works. A second `prisma migrate deploy` sends nothing |
 
 ### 5.3 What this means for rollback
 
 - **Going back to the old code once the new schema is applied is not an approved rollback plan.** The approved
-  one is (a) below: restore the pre-upgrade dump, then start the old images. This holds for all thirteen
+  one is (a) below: restore the pre-upgrade dump, then start the old images. This holds for all fourteen
   migrations; the notes that follow say what the old image would and would not do, for an emergency only.
+- Migration 14 (slice S.12b.0) drops four columns that code from between (`ef18a26` … `9f29f36`) reads: that code
+  cannot attest and cannot answer the owner's dispatch status on the new schema. It fails closed.
 - Migrations 11–13 (slice S.12a): the old image runs on them, and nothing is dispatched there either way. Code
   from between them (`ef18a26`, which has migration 11 only) cannot write an approval or an attestation once
   migration 13 is applied: it fails closed.
@@ -196,7 +200,7 @@ All tables involved are tiny here (the largest is 240 kB), so every lock below i
 ### 5.4 Tests before applying (off production)
 
 On the restored copy from 3.3: run `prisma migrate deploy` from the commit that is to be deployed and confirm every
-pending migration applied (thirteen from `main` as of the final corrections of S.12a; nine from `3a2a3c1`), none
+pending migration applied (fourteen from `main` as of slice S.12b.0; nine from `3a2a3c1`), none
 failed; start the new API against the copy with a test key and run the smoke list of 6.4; run
 `seal-secrets --dry-run` against the copy and compare its counts with section 1 (8 clear line codes).
 
@@ -218,12 +222,12 @@ Consequence: one maintenance window in which all three change, not a rolling upg
 |---|---|---|
 | P1 | Approvals of section 7 given; off-server storage and the backup key exist | — |
 | P2 | Nightly backup installed; one restore rehearsed off production (3.3); upgrade rehearsed on the copy (5.4) | the rehearsal fails: fix first |
-| P3 | Health checks defined with `node` (5.1); `SECRETS_KEY` and `TRUST_PROXY=1` saved in Coolify **without redeploying** (the running, older API ignores both) | — |
+| P3 | Health checks defined with `node` (5.1); `SECRETS_KEY` and `TRUST_PROXY=1` saved in Coolify **without redeploying** (the running, older API ignores both); **the same `SECRETS_KEY` saved on the worker application too**, without redeploying (the new worker does not start without it) | — |
 | W1 | Window opens: the web is put in Coolify's maintenance mode | — |
 | W2 | Fresh dump, encrypted, copied off the server, its size and readability checked | the dump cannot be verified |
 | W3 | Read-only checks again: 49 applied / 0 failed, 0 reservation conflicts, package-code map without collisions | any differs from section 5.2 |
-| W4 | Deploy the API. Its start applies the pending migrations (thirteen as of the final corrections of S.12a), then it must pass `/health` | the API is not healthy: restore W2's dump, start `e7679d9` again |
-| W5 | Deploy the worker | it restarts in a loop: read its log; roll back as W4 |
+| W4 | Deploy the API. Its start applies the pending migrations (fourteen as of slice S.12b.0), then it must pass `/health` | the API is not healthy: restore W2's dump, start `e7679d9` again |
+| W5 | Deploy the worker | it restarts in a loop: read its log (a missing or malformed `SECRETS_KEY` on the worker is named there); roll back as W4 |
 | W6 | Deploy the web; maintenance mode off for the testers only if possible, else off | — |
 | W7 | Smoke tests (6.4), then the `TRUST_PROXY` check of 4.2 | a blocking smoke test fails: roll back as W4 |
 | W8 | Window closes | — |

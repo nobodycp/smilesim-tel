@@ -194,17 +194,13 @@ model Provider {
   dispatchApprovedDeployment  String?
   /** Set while the owner has paused the provider: new sales take the manual route. */
   dispatchPausedAt            DateTime?
-  /** What the worker last attested: an adapter for this provider is built, for this target. The API opens the dispatch route only on a fresh one. */
-  dispatchReadyAt             DateTime?
-  dispatchReadyTarget         String?
-  /** Which deployment's worker attested, and the generation of the credential its adapter was built with. */
-  dispatchReadyDeployment     String?
-  dispatchReadyGeneration     Int?
   packages    Package[]
   entries     ProviderEntry[]
   reconciliations ProviderReconciliation[]
   operations  ProviderOperation[]
   credentials ProviderCredential[]
+  /** What each running worker says it holds for this provider (ADR 0019, D18). */
+  attestations ProviderWorkerAttestation[]
 }
 
 /// One operation asked of a provider, from the request to its settled answer (ADR 0017). It holds what was asked
@@ -257,6 +253,8 @@ model ProviderOperation {
   updatedAt      DateTime  @updatedAt
 
   @@index([status, updatedAt])
+  /// The pass over operations that wait to be sent walks them by id.
+  @@index([status, id])
   @@index([providerId, createdAt])
   @@index([lineId])
 }
@@ -304,6 +302,26 @@ model ProviderCredential {
   updatedAt          DateTime @updatedAt
 
   @@unique([providerId, target])
+}
+
+/// One worker process saying it holds an adapter for one provider (ADR 0019, D18): for which deployment and
+/// target, and built from which generation of the credential. Written by the worker on a timer with the
+/// database's clock, removed by that worker when it stops, and by any write of the provider's credential.
+/// The API believes a row only while it is fresh by the database's clock.
+model ProviderWorkerAttestation {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  /// The worker process: a random id it makes when it starts.
+  workerId   String
+  deployment String
+  /// `sandbox` or `live`.
+  target     String
+  generation Int
+  /// PostgreSQL's `now()` at the write: never a process's clock. A point in time, whatever the session's zone.
+  attestedAt DateTime @db.Timestamptz(3)
+
+  @@unique([providerId, workerId])
 }
 
 /// A message written in the same transaction as the change it announces; a relay publishes it afterwards and

@@ -3,7 +3,7 @@ import { join, relative } from 'node:path';
 import { PROVIDER_GATEWAY } from './modules/office/providers/gateway/provider-gateway';
 import { SimulatedProviderGateway } from './modules/office/providers/gateway/simulated-gateway';
 import {
-  READY_TTL_MS, dispatchSettings, eligibility, mayOpenDispatch, maySend, workerReady, type DispatchSettings, type ProviderDispatchState, type ProviderTarget,
+  READY_TTL_MS, dispatchSettings, eligibility, mayOpenDispatch, maySend, workerReady, type DispatchSettings, type ProviderDispatchState, type ProviderTarget, type WorkerAttestation,
 } from './modules/office/providers/dispatch/dispatch-policy';
 import { SUPPORTED_ADAPTERS } from './modules/office/providers/dispatch/adapter-manifest';
 import { ADAPTER_FACTORIES, buildAdapters, type AdapterFactory, type DispatchAdapter } from './modules/office/providers/dispatch/provider-adapters';
@@ -34,12 +34,14 @@ const settingsOf = (over: { on?: boolean; listed?: boolean; target?: ProviderTar
     ...(over.listed === false ? { PROVIDER_ADAPTERS: 'another' } : { PROVIDER_ADAPTERS: `${CODE},another` }),
     ...(over.target === null ? {} : { PROVIDER_TARGET: over.target ?? 'sandbox' }),
   });
+/** One worker's word, as its row holds it: this deployment, sandbox, generation 3, five seconds old as the database computed it. */
+const said = (over: Partial<WorkerAttestation> = {}): WorkerAttestation => ({ deployment: DEPLOYMENT, target: 'sandbox', generation: 3, ageMs: 5_000, ...over });
 const providerOf = (over: Partial<ProviderDispatchState> = {}): ProviderDispatchState => ({
   code: CODE, dispatchApprovedAt: new Date('2026-11-12T09:00:00.000Z'), dispatchApprovedTarget: 'sandbox', dispatchApprovedDeployment: DEPLOYMENT, dispatchPausedAt: null,
-  dispatchReadyAt: new Date(NOW.getTime() - 5_000), dispatchReadyTarget: 'sandbox', dispatchReadyDeployment: DEPLOYMENT, dispatchReadyGeneration: 3, credentialGeneration: 3, ...over,
+  attestations: [said()], credentialGeneration: 3, ...over,
 });
 const notApproved = { dispatchApprovedAt: null, dispatchApprovedTarget: null, dispatchApprovedDeployment: null };
-const notReady = { dispatchReadyAt: null, dispatchReadyTarget: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null };
+const notReady = { attestations: [] };
 /** A stored credential as the worker opened it. */
 const opened = (value: string, generation = 3) => ({ value, generation });
 
@@ -146,18 +148,18 @@ describe('the four conditions of D18 (item 25)', () => {
 
   it('condition 4 is an approval of THIS deployment: the same target on another deployment, even on the same database, opens nothing', () => {
     // Two sandbox deployments read the same row (a shared database, or one restored from the other's backup).
-    const approvedOnA = providerOf({ dispatchApprovedDeployment: 'staging-a', dispatchReadyDeployment: 'staging-a' });
+    const approvedOnA = providerOf({ dispatchApprovedDeployment: 'staging-a', attestations: [said({ deployment: 'staging-a' })] });
     const a = settingsOf({ deployment: 'staging-a' });
     const b = settingsOf({ deployment: 'staging-b' });
     expect(eligibility(a, approvedOnA)).toEqual({ eligible: true, target: 'sandbox' });
     expect(eligibility(b, approvedOnA)).toEqual({ eligible: false, refusal: 'approved-for-other-deployment' });
-    expect([mayOpenDispatch(a, approvedOnA, NOW), maySend(a, approvedOnA, 3)]).toEqual([true, true]);
+    expect([mayOpenDispatch(a, approvedOnA), maySend(a, approvedOnA, 3)]).toEqual([true, true]);
     // B's API opens nothing and B's worker sends nothing, though B holds an adapter and the row says "approved, ready".
-    expect([mayOpenDispatch(b, approvedOnA, NOW), maySend(b, approvedOnA, 3)]).toEqual([false, false]);
+    expect([mayOpenDispatch(b, approvedOnA), maySend(b, approvedOnA, 3)]).toEqual([false, false]);
     // An approval with no deployment on record (as before this rule) is no approval.
     expect(eligibility(a, providerOf({ dispatchApprovedDeployment: null }))).toEqual({ eligible: false, refusal: 'not-approved' });
     // A's approval and B's worker: A's API does not believe an attestation another deployment wrote.
-    expect(mayOpenDispatch(a, providerOf({ dispatchApprovedDeployment: 'staging-a', dispatchReadyDeployment: 'staging-b' }), NOW)).toBe(false);
+    expect(mayOpenDispatch(a, providerOf({ dispatchApprovedDeployment: 'staging-a', attestations: [said({ deployment: 'staging-b' })] }))).toBe(false);
     // A name is compared whole: no prefix, no case folding.
     for (const other of ['staging-a1', 'staging', 'STAGING-A', ' staging-a']) expect(eligibility(a, providerOf({ dispatchApprovedDeployment: other })).eligible).toBe(false);
   });
@@ -177,22 +179,22 @@ describe('the adapter is a separate question from the policy', () => {
     expect(eligibility(all, providerOf()).eligible).toBe(true);
     expect(maySend(all, providerOf(), null)).toBe(false);
     // The API believes the worker only through a fresh attestation of its own deployment, for the same target.
-    expect(mayOpenDispatch(all, providerOf(notReady), NOW)).toBe(false);
-    expect(mayOpenDispatch(all, providerOf({ dispatchReadyAt: new Date(NOW.getTime() - READY_TTL_MS - 1) }), NOW)).toBe(false);
-    expect(mayOpenDispatch(all, providerOf({ dispatchReadyTarget: 'live' }), NOW)).toBe(false);
-    expect(mayOpenDispatch(all, providerOf({ dispatchReadyDeployment: 'another-one' }), NOW)).toBe(false);
-    expect(mayOpenDispatch(all, providerOf({ dispatchReadyAt: new Date(NOW.getTime() + 60_000) }), NOW)).toBe(false);
-    expect(mayOpenDispatch(all, null, NOW)).toBe(false);
+    expect(mayOpenDispatch(all, providerOf(notReady))).toBe(false);
+    expect(mayOpenDispatch(all, providerOf({ attestations: [said({ ageMs: READY_TTL_MS + 1 })] }))).toBe(false);
+    expect(mayOpenDispatch(all, providerOf({ attestations: [said({ target: 'live' })] }))).toBe(false);
+    expect(mayOpenDispatch(all, providerOf({ attestations: [said({ deployment: 'another-one' })] }))).toBe(false);
+    expect(mayOpenDispatch(all, providerOf({ attestations: [said({ ageMs: -60_000 })] }))).toBe(false);
+    expect(mayOpenDispatch(all, null)).toBe(false);
     // And an adapter, or an attestation, without the policy is nothing either.
     expect(maySend(settingsOf({ on: false }), providerOf(), 3)).toBe(false);
     expect(maySend(all, providerOf({ dispatchPausedAt: NOW }), 3)).toBe(false);
     expect(maySend(all, providerOf(notApproved), 3)).toBe(false);
     expect(maySend(all, null, 3)).toBe(false);
-    expect(mayOpenDispatch(settingsOf({ listed: false }), providerOf(), NOW)).toBe(false);
-    expect(mayOpenDispatch(all, providerOf({ dispatchPausedAt: NOW }), NOW)).toBe(false);
+    expect(mayOpenDispatch(settingsOf({ listed: false }), providerOf())).toBe(false);
+    expect(mayOpenDispatch(all, providerOf({ dispatchPausedAt: NOW }))).toBe(false);
     // Only everything together.
-    expect([maySend(all, providerOf(), 3), mayOpenDispatch(all, providerOf(), NOW)]).toEqual([true, true]);
-    expect(workerReady(providerOf(), { target: 'sandbox', deployment: DEPLOYMENT }, NOW)).toBe(true);
+    expect([maySend(all, providerOf(), 3), mayOpenDispatch(all, providerOf())]).toEqual([true, true]);
+    expect(workerReady(providerOf(), { target: 'sandbox', deployment: DEPLOYMENT })).toBe(true);
   });
 
   it('an adapter is one built from the credential stored NOW: any other generation neither sends nor counts as ready', () => {
@@ -207,10 +209,35 @@ describe('the adapter is a separate question from the policy', () => {
     expect(maySend(all, providerOf({ credentialGeneration: null }), 3)).toBe(false);
     expect(maySend(all, providerOf({ credentialGeneration: undefined }), 3)).toBe(false);
     // The API: an attestation for generation 3 is not one for the credential stored now.
-    expect(mayOpenDispatch(all, replaced, NOW)).toBe(false);
-    expect(mayOpenDispatch(all, providerOf({ credentialGeneration: 4, dispatchReadyGeneration: 4 }), NOW)).toBe(true);
-    expect(mayOpenDispatch(all, providerOf({ dispatchReadyGeneration: null }), NOW)).toBe(false);
-    expect(mayOpenDispatch(all, providerOf({ credentialGeneration: null, dispatchReadyGeneration: null }), NOW)).toBe(false);
+    expect(mayOpenDispatch(all, replaced)).toBe(false);
+    expect(mayOpenDispatch(all, providerOf({ credentialGeneration: 4, attestations: [said({ generation: 4 })] }))).toBe(true);
+    expect(mayOpenDispatch(all, providerOf({ attestations: [] }))).toBe(false);
+    expect(mayOpenDispatch(all, providerOf({ credentialGeneration: null, attestations: [] }))).toBe(false);
+  });
+
+  it('each worker has a row of its own: one that passes is enough, and the others, whatever they say, neither help nor harm', () => {
+    const all = settingsOf();
+    const stale = said({ ageMs: READY_TTL_MS + 1 });
+    const elsewhere = said({ deployment: 'another-one' });
+    const live = said({ target: 'live' });
+    const old = said({ generation: 2 });
+    // None of these alone, nor all of them together, is a worker of this deployment holding the stored credential.
+    for (const rows of [[], [stale], [elsewhere], [live], [old], [stale, elsewhere, live, old]]) expect(mayOpenDispatch(all, providerOf({ attestations: rows }))).toBe(false);
+    // One good row among them is enough; a worker that stopped (its row gone) does not take the other's away.
+    expect(mayOpenDispatch(all, providerOf({ attestations: [stale, elsewhere, said(), old] }))).toBe(true);
+    expect(mayOpenDispatch(all, providerOf({ attestations: [said(), said()] }))).toBe(true);
+    expect(mayOpenDispatch(all, providerOf({ attestations: [said()] }))).toBe(true);
+    // Rows that nobody read (the worker's own question) are no attestation.
+    expect(mayOpenDispatch(all, providerOf({ attestations: undefined }))).toBe(false);
+  });
+
+  it('the age of an attestation is judged at the edges of the minute, as the database computed it: no clock is read here', () => {
+    const all = settingsOf();
+    const at = (ageMs: number) => providerOf({ attestations: [said({ ageMs })] });
+    expect([0, 1, READY_TTL_MS - 1, READY_TTL_MS].map((age) => mayOpenDispatch(all, at(age)))).toEqual([true, true, true, true]);
+    expect([READY_TTL_MS + 1, 10 * READY_TTL_MS, -1, -60_000, Number.NaN, Number.POSITIVE_INFINITY].map((age) => mayOpenDispatch(all, at(age)))).toEqual([false, false, false, false, false, false]);
+    // The policy has no clock of its own: its source names none.
+    expect(text('modules/office/providers/dispatch/dispatch-policy.ts').split('\n').filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line)).join('\n')).not.toMatch(/new Date\(|Date\.now\(/);
   });
 
   it('this build has no adapter: the list is empty and frozen, so a worker builds none whatever it is told', () => {
@@ -302,7 +329,7 @@ describe('the API and the worker are two processes, and a difference between the
   const held = (adapter: boolean) => (adapter ? 3 : null);
   const attested = (worker: DispatchSettings, adapter: boolean, provider: ProviderDispatchState): ProviderDispatchState =>
     maySend(worker, provider, held(adapter)) && worker.target && worker.deployment
-      ? { ...provider, dispatchReadyAt: new Date(NOW.getTime() - 1_000), dispatchReadyTarget: worker.target, dispatchReadyDeployment: worker.deployment, dispatchReadyGeneration: 3 }
+      ? { ...provider, attestations: [said({ ageMs: 1_000, target: worker.target, deployment: worker.deployment, generation: 3 })] }
       : { ...provider, ...notReady };
   const approved = providerOf(notReady);
   const cases: [string, DispatchSettings, DispatchSettings, boolean, boolean][] = [
@@ -324,7 +351,7 @@ describe('the API and the worker are two processes, and a difference between the
   it.each(cases)('%s', (_name, api, worker, adapter, opens) => {
     const seen = attested(worker, adapter, approved);
     // The sale is opened on the dispatch route only when the API's own conditions hold AND the worker said it can send.
-    expect(mayOpenDispatch(api, seen, NOW)).toBe(opens);
+    expect(mayOpenDispatch(api, seen)).toBe(opens);
     // And whatever the API did, the worker sends only by its own conditions and its own adapter.
     expect(maySend(worker, approved, held(adapter))).toBe(eligibility(worker, approved).eligible && adapter);
     if (opens) expect(maySend(worker, approved, held(adapter))).toBe(true);
@@ -333,7 +360,8 @@ describe('the API and the worker are two processes, and a difference between the
 
 describe('a production process that is set up for dispatch wrongly does not start', () => {
   const api = { NODE_ENV: 'production', COOKIE_SECURE: 'true', WEB_ORIGIN: 'https://admin.example.com', REDIS_URL: 'redis://redis:6379', TRUST_PROXY: '1', SECRETS_KEY: Buffer.alloc(32, 7).toString('base64') };
-  const worker = { NODE_ENV: 'production', REDIS_URL: 'redis://redis:6379', DATABASE_URL: 'postgresql://user:PASSWORD-IN-URL@db:5432/smilesim' };
+  // The worker's own variables, and nothing of the HTTP API's (no cookie, origin or proxy setting).
+  const worker = { NODE_ENV: 'production', REDIS_URL: 'redis://redis:6379', DATABASE_URL: 'postgresql://user:PASSWORD-IN-URL@db:5432/smilesim', SECRETS_KEY: Buffer.alloc(32, 9).toString('base64') };
 
   it('a deployment that does not dispatch names none of the three, and starts', () => {
     expect(productionConfigProblems(api)).toEqual([]);
@@ -343,9 +371,28 @@ describe('a production process that is set up for dispatch wrongly does not star
     expect(workerConfigProblems({ ...worker, NODE_ENV: 'development', PROVIDER_DISPATCH: '1' })).toEqual([]);
   });
 
+  it('a production worker needs SECRETS_KEY whether or not it dispatches: it settles eSIM activations, whose codes are stored sealed', () => {
+    const noKey = (value: string | undefined) => workerConfigProblems({ ...worker, SECRETS_KEY: value });
+    // Sending off, and no key, an empty one, one that is not base64 of 32 bytes: each stops the worker.
+    for (const value of [undefined, '', 'not-a-key', Buffer.alloc(16, 1).toString('base64'), Buffer.alloc(33, 1).toString('base64'), Buffer.alloc(31, 1).toString('base64')]) {
+      expect([value, noKey(value)]).toEqual([value, [expect.stringMatching(/^SECRETS_KEY: must be 32 random bytes in base64/)]]);
+      expect(() => assertWorkerConfig({ ...worker, SECRETS_KEY: value })).toThrow('Refusing to start');
+    }
+    expect(noKey(Buffer.alloc(32, 200).toString('base64'))).toEqual([]);
+    // The message names the rule and never the value.
+    expect(noKey('S12B0-A-KEY-THAT-IS-NOT-ONE').join(' ')).not.toContain('S12B0-');
+    // Outside production the check says nothing, as for every other setting.
+    expect(workerConfigProblems({ ...worker, NODE_ENV: 'development', SECRETS_KEY: undefined })).toEqual([]);
+    // Nothing of the HTTP API's is asked of the worker, set or not.
+    const httpOnly = { COOKIE_SECURE: 'false', WEB_ORIGIN: 'http://not-https', TRUST_PROXY: 'nonsense', COOKIE_DOMAIN: '', WEBAUTHN_RP_ID: '', PORT: 'x', TRIAL_SEED: 'true' };
+    expect(workerConfigProblems({ ...worker, ...httpOnly })).toEqual([]);
+    // And the API's own check is not relaxed or tightened by this: it always needed the key.
+    expect(productionConfigProblems({ ...api, SECRETS_KEY: undefined }).map((problem) => problem.split(':')[0])).toEqual(['SECRETS_KEY']);
+  });
+
   it('PROVIDER_DISPATCH=1 needs the list, the target, the deployment\'s name and, on the worker, the key: each missing one is named', () => {
     const names = (problems: string[]) => problems.map((problem) => problem.split(':')[0]).sort();
-    expect(names(workerConfigProblems({ ...worker, PROVIDER_DISPATCH: '1' }))).toEqual(['DEPLOYMENT_ID', 'PROVIDER_ADAPTERS', 'PROVIDER_TARGET', 'SECRETS_KEY']);
+    expect(names(workerConfigProblems({ ...worker, PROVIDER_DISPATCH: '1', SECRETS_KEY: undefined }))).toEqual(['DEPLOYMENT_ID', 'PROVIDER_ADAPTERS', 'PROVIDER_TARGET', 'SECRETS_KEY']);
     expect(names(productionConfigProblems({ ...api, PROVIDER_DISPATCH: '1' }))).toEqual(['DEPLOYMENT_ID', 'PROVIDER_ADAPTERS', 'PROVIDER_TARGET']);
     expect(names(workerConfigProblems({ ...worker, PROVIDER_DISPATCH: '1', PROVIDER_TARGET: 'sandbox', SECRETS_KEY: 'too-short', DEPLOYMENT_ID: 'staging-1' }))).toEqual(['PROVIDER_ADAPTERS', 'SECRETS_KEY']);
     expect(names(productionConfigProblems({ ...api, PROVIDER_DISPATCH: '1', PROVIDER_ADAPTERS: 'lian', PROVIDER_TARGET: 'sandbox', DEPLOYMENT_ID: 'Not A Name' }))).toEqual(['DEPLOYMENT_ID', 'PROVIDER_ADAPTERS']);
@@ -370,7 +417,7 @@ describe('a production process that is set up for dispatch wrongly does not star
     expect(dispatchConfigProblems({ PROVIDER_DISPATCH: 'yes', PROVIDER_ADAPTERS: 'lian', PROVIDER_TARGET: 'live', DEPLOYMENT_ID: 'staging-1' }, ['lian']).length).toBeGreaterThan(0);
     expect(dispatchConfigProblems({ PROVIDER_DISPATCH: '1', PROVIDER_ADAPTERS: 'lian', PROVIDER_TARGET: 'production', DEPLOYMENT_ID: 'staging-1' }, ['lian']).length).toBeGreaterThan(0);
     expect(workerConfigProblems({ ...worker, PROVIDER_SIMULATION: '1' })).toEqual([expect.stringMatching(/^PROVIDER_SIMULATION:/)]);
-    expect(workerConfigProblems({ NODE_ENV: 'production' }).map((problem) => problem.split(':')[0])).toEqual(['REDIS_URL', 'DATABASE_URL']);
+    expect(workerConfigProblems({ NODE_ENV: 'production' }).map((problem) => problem.split(':')[0])).toEqual(['REDIS_URL', 'DATABASE_URL', 'SECRETS_KEY']);
   });
 
   it('no message quotes a value: not the key, not a password in an address, not what was typed', () => {
@@ -515,16 +562,27 @@ describe('what ships: the API can decide a route and nothing more; only the work
   it('nothing sends ungated, and the three settings are read through the policy alone', () => {
     // The dispatcher is built in one place, with the gate; it has no default; `claim` and `beginSend` are given it.
     expect(paths(code.filter((line) => /new OperationDispatcher\(/.test(line.text)))).toEqual(['provider-dispatch.ts']);
-    expect(text('provider-dispatch.ts')).toContain('new OperationDispatcher(operations, gateway, gate)');
-    expect(text('provider-dispatch.ts')).toMatch(/export function buildProviderDispatch\(prisma: PrismaClient, connection: IORedis, gateway: ProviderGateway, gate: SendGate, /);
+    expect(text('provider-dispatch.ts')).toContain('new OperationDispatcher(operations, gate)');
+    expect(text('provider-dispatch.ts')).toMatch(/export function buildProviderDispatch\(prisma: PrismaClient, connection: IORedis, gate: SendGate, /);
     const dispatcher = text('modules/office/providers/operations/operation-dispatcher.ts');
     expect(dispatcher).toContain('this.operations.claim(operationId, new Date(), this.gate)');
     expect(dispatcher).toContain('this.operations.beginSend(operationId, attempt, new Date(), this.gate)');
-    expect(text('worker.ts')).toContain('new DeploymentSendGate(settings, (code) => gateway.generation(code))');
+    expect(text('worker.ts')).toContain('new DeploymentSendGate(settings, (code) => gateway.sender(code))');
+    // The dispatcher holds no gateway: the one way it has to a provider is the permit the gate gave at the mark.
+    const dispatcherCode = code.filter((line) => line.path === 'modules/office/providers/operations/operation-dispatcher.ts').map((line) => line.text).join('\n');
+    expect(dispatcherCode).not.toMatch(/gateway/i);
+    expect(dispatcherCode.match(/\.send\(/g)).toEqual(['.send(', '.send(']);
+    expect(dispatcher).toContain('Promise.race([permit.send(outgoing), waited])');
+    expect(dispatcher).toContain('constructor(private readonly operations: ProviderOperationsService, private readonly gate: SendGate, private readonly callTimeoutMs: number = CALL_TIMEOUT_MS) {}');
+    // The permit is the one answered in the transaction that wrote the mark.
+    expect(text('modules/office/providers/operations/provider-operations.service.ts')).toMatch(/const permit = await gate\.permits\(tx, row\.providerId\);\n\s+if \(permit !== null\) return \(await this\.repo\.markSent\(tx, id, attempt, now\)\) \? \{ permit \} : null;\n\s+await this\.handBack\(tx, id, attempt\);/);
+    // What the worker holds is read once in the gate, after the lock and the stored generation.
+    const gate = text('modules/office/providers/dispatch/dispatch-gate.ts');
+    expect(gate.match(/this\.held\(/g)).toHaveLength(1);
+    expect(gate.indexOf('this.held(')).toBeGreaterThan(gate.indexOf('FROM "ProviderCredential"'));
     // The gate reads the provider's row under a lock.
     expect(text('modules/office/providers/dispatch/dispatch-gate.ts')).toMatch(/FROM "Provider" WHERE "id" = \$\{providerId\} FOR SHARE/);
     // An attempt the gate refuses at the mark is handed back in the same transaction, and recovery is given the gate.
-    expect(text('modules/office/providers/operations/provider-operations.service.ts')).toMatch(/if \(await gate\.permits\(tx, row\.providerId\)\) return this\.repo\.markSent\(tx, id, attempt, now\);\n\s+await this\.handBack\(tx, id, attempt\);/);
     expect(text('provider-dispatch.ts')).toContain('recoverExpired(parts.operations, new Date(), 100, parts.gate)');
     // The variables are named by the policy (which is handed an environment), the list of known names and the
     // start-up check's messages; no other file reads them.

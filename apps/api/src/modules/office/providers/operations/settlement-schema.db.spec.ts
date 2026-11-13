@@ -83,14 +83,14 @@ suite('activation settlement schema (PostgreSQL)', () => {
       .toEqual(['OfficeTask_requestKey_key', 'ProviderCredential_providerId_target_key', 'ProviderDecisionEvent_operationId_sequence_key', 'ProviderOperation_taskId_key']);
     expect(await names(`SELECT conname AS name FROM pg_constraint WHERE contype = 'f' AND conname IN ('ProviderOperation_taskId_fkey', 'ProviderDecisionEvent_operationId_fkey', 'ProviderCredential_providerId_fkey') AND confdeltype = 'r'`))
       .toEqual(['ProviderCredential_providerId_fkey', 'ProviderDecisionEvent_operationId_fkey', 'ProviderOperation_taskId_fkey']);
-    expect(await names(`SELECT conname AS name FROM pg_constraint WHERE contype = 'c' AND conrelid IN ('"ProviderOperation"'::regclass, '"Provider"'::regclass, '"ProviderDecisionEvent"'::regclass, '"ProviderCredential"'::regclass) AND convalidated`))
+    expect(await names(`SELECT conname AS name FROM pg_constraint WHERE contype = 'c' AND conrelid IN ('"ProviderOperation"'::regclass, '"Provider"'::regclass, '"ProviderDecisionEvent"'::regclass, '"ProviderCredential"'::regclass, '"ProviderWorkerAttestation"'::regclass) AND convalidated`))
       .toEqual(expect.arrayContaining([
         'ProviderCredential_sealed', 'ProviderCredential_target_known',
         'ProviderDecisionEvent_account_named', 'ProviderDecisionEvent_decision_known', 'ProviderDecisionEvent_evidenceKind_known', 'ProviderDecisionEvent_evidence_given',
         'ProviderDecisionEvent_sequence_positive', 'ProviderDecisionEvent_success_referenced', 'ProviderDecisionEvent_type_known',
         'ProviderOperation_applyError_known', 'ProviderOperation_resultEsimCode_sealed', 'Provider_dispatch_approval_named',
         'ProviderOperation_waivedAttempts_bounds', 'ProviderCredential_generation_positive', 'Provider_dispatchApprovalDeployment_whole', 'Provider_dispatchApprovedDeployment_form',
-        'Provider_dispatchReadyIdentity_whole', 'Provider_dispatchReadyDeployment_form', 'Provider_dispatchReadyGeneration_positive', 'Provider_dispatchApproval_whole', 'Provider_dispatchReady_whole',
+        'Provider_dispatchApproval_whole', 'ProviderWorkerAttestation_target_known', 'ProviderWorkerAttestation_deployment_form', 'ProviderWorkerAttestation_generation_positive', 'ProviderWorkerAttestation_workerId_form',
       ]));
     // Both triggers are there and switched on.
     expect(await names(`SELECT tgname AS name FROM pg_trigger WHERE tgrelid = '"ProviderDecisionEvent"'::regclass AND NOT tgisinternal AND tgenabled = 'O'`))
@@ -166,19 +166,34 @@ suite('activation settlement schema (PostgreSQL)', () => {
       for (const name of ['Staging', 'ab', 'a b c', '-abc', 'x'.repeat(64), '']) await refused(tx, () => set({ ...approval, dispatchApprovedDeployment: name }), /dispatchApprovedDeployment_form/);
       await set({ ...approval, dispatchPausedAt: new Date() });
       await set(none);
-      // The worker's attestation: a time, a target, a deployment and a generation together.
-      const ready = { dispatchReadyAt: new Date(), dispatchReadyTarget: 'live', dispatchReadyDeployment: 'production-1', dispatchReadyGeneration: 1 };
-      await refused(tx, () => set({ dispatchReadyAt: new Date() }), /dispatchReady/);
-      await refused(tx, () => set({ dispatchReadyTarget: 'live' }), /dispatchReady_whole/);
-      await refused(tx, () => set({ ...ready, dispatchReadyTarget: 'staging' }), /dispatchReadyTarget_known/);
-      await refused(tx, () => set({ ...ready, dispatchReadyDeployment: null }), /dispatchReadyIdentity_whole/);
-      await refused(tx, () => set({ ...ready, dispatchReadyGeneration: null }), /dispatchReadyIdentity_whole/);
-      await refused(tx, () => set({ dispatchReadyDeployment: 'production-1' }), /dispatchReadyIdentity_whole/);
-      await refused(tx, () => set({ dispatchReadyGeneration: 1 }), /dispatchReadyIdentity_whole/);
-      await refused(tx, () => set({ ...ready, dispatchReadyGeneration: 0 }), /dispatchReadyGeneration_positive/);
-      await refused(tx, () => set({ ...ready, dispatchReadyDeployment: 'Production' }), /dispatchReadyDeployment_form/);
-      await set(ready);
-      await set({ dispatchReadyAt: null, dispatchReadyTarget: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null });
+      // A worker's attestation is a row of its own (S.12b.0): one a worker and provider, every part of it checked.
+      const said = (over: Partial<Prisma.ProviderWorkerAttestationUncheckedCreateInput> = {}) =>
+        tx.providerWorkerAttestation.create({ data: { providerId: provider.id, workerId: 'worker-0001', deployment: 'production-1', target: 'live', generation: 1, attestedAt: new Date(), ...over } });
+      await refused(tx, () => said({ target: 'staging' }), /target_known/);
+      await refused(tx, () => said({ deployment: 'Production' }), /deployment_form/);
+      await refused(tx, () => said({ generation: 0 }), /generation_positive/);
+      await refused(tx, () => said({ workerId: 'x' }), /workerId_form/);
+      await refused(tx, () => said({ providerId: 'no-such-provider' }));
+      await said();
+      // One row a worker and provider; another worker's is its own.
+      await refused(tx, () => said(), /providerId_workerId|Unique/i);
+      await said({ workerId: 'worker-0002' });
+      // The columns the deployment-wide attestation used are gone.
+      const columns = await tx.$queryRaw<{ column_name: string }[]>`SELECT column_name FROM information_schema.columns WHERE table_name = 'Provider' AND column_name LIKE 'dispatchReady%'`;
+      expect(columns).toEqual([]);
+      // Removing a provider removes what was said of it (the foreign key cascades), and nothing else's.
+      const gone = await tx.provider.create({ data: { code: `s1-gone-${randomUUID()}`, name: 'gone' } });
+      await tx.providerWorkerAttestation.create({ data: { providerId: gone.id, workerId: 'worker-0003', deployment: 'production-1', target: 'live', generation: 1, attestedAt: new Date() } });
+      await tx.provider.delete({ where: { id: gone.id } });
+      expect(await tx.providerWorkerAttestation.count({ where: { providerId: gone.id } })).toBe(0);
+      expect(await tx.providerWorkerAttestation.count({ where: { providerId: provider.id } })).toBe(2);
+      // A point in time, not a wall-clock reading; and the index the pass over waiting operations walks by.
+      const column = await tx.$queryRaw<{ data_type: string }[]>`SELECT data_type FROM information_schema.columns WHERE table_name = 'ProviderWorkerAttestation' AND column_name = 'attestedAt'`;
+      expect(column).toEqual([{ data_type: 'timestamp with time zone' }]);
+      const index = await tx.$queryRaw<{ indexdef: string }[]>`SELECT indexdef FROM pg_indexes WHERE indexname = 'ProviderOperation_status_id_idx'`;
+      expect(index.map((row) => row.indexdef)).toEqual([expect.stringMatching(/\("?status"?, "?id"?\)/)]);
+      const cascade = await tx.$queryRaw<{ confdeltype: string }[]>`SELECT confdeltype::text AS confdeltype FROM pg_constraint WHERE conname = 'ProviderWorkerAttestation_providerId_fkey'`;
+      expect(cascade).toEqual([{ confdeltype: 'c' }]);
     });
   });
 

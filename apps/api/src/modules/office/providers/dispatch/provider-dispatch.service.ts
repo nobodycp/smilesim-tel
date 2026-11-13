@@ -67,11 +67,12 @@ export class ProviderDispatchService {
    * D13: whether an automatic activation at this provider is opened on the dispatch route. The four conditions
    * and the worker's fresh attestation; anything else, a provider that is not there included, is no.
    */
-  async opens(providerCode: string, now: Date = new Date()): Promise<boolean> {
+  async opens(providerCode: string): Promise<boolean> {
     const settings = this.settings();
     // Nothing is read from the database for a deployment that does not dispatch at all.
     if (!settings.on || settings.problems.length > 0) return false;
-    return mayOpenDispatch(settings, await this.repo.state(this.uow.prisma, providerCode, settings.target), now);
+    // The age of each attestation comes with the state, computed by the database: this process's clock is not asked.
+    return mayOpenDispatch(settings, await this.repo.state(this.uow.prisma, providerCode, settings.target));
   }
 
   async status(actor: Actor, code: string): Promise<DispatchStatus> {
@@ -80,7 +81,6 @@ export class ProviderDispatchService {
     const provider = await this.repo.state(this.uow.prisma, code, settings.target);
     if (!provider) fail(404, 'NOT_FOUND');
     const judged = eligibility(settings, provider);
-    const now = new Date();
     const hasCredential = settings.target ? await this.repo.hasCredential(this.uow.prisma, provider.id, settings.target) : false;
     return {
       dispatchOn: settings.on,
@@ -93,10 +93,10 @@ export class ProviderDispatchService {
       approvedDeployment: provider.dispatchApprovedDeployment,
       pausedAt: provider.dispatchPausedAt?.toISOString() ?? null,
       hasCredential,
-      workerReady: settings.target && settings.deployment ? workerReady(provider, { target: settings.target, deployment: settings.deployment }, now) : false,
+      workerReady: settings.target && settings.deployment ? workerReady(provider, { target: settings.target, deployment: settings.deployment }) : false,
       eligible: judged.eligible,
       refusal: judged.eligible ? null : judged.refusal,
-      opens: mayOpenDispatch(settings, provider, now),
+      opens: mayOpenDispatch(settings, provider),
     };
   }
 

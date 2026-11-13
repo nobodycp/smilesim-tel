@@ -13,6 +13,7 @@ import { GRANT_CODES } from '../../rules/office-grants';
 import { PROVIDER_DISPATCH_NOTE } from '../../stored-text';
 import { officeTestApp } from '../../testing/office-test-app';
 import type { OutgoingOperation, SendEvidence } from '../operations/provider-operation.rules';
+import { WaitingPass } from '../operations/operation-dispatcher';
 import { DeploymentSendGate, type SendGate } from './dispatch-gate';
 import { READY_TTL_MS, dispatchSettings, type ProviderTarget } from './dispatch-policy';
 import { buildAdapters, type AdapterFactory, type BuiltAdapters } from './provider-adapters';
@@ -28,8 +29,9 @@ import { RoutingProviderGateway } from './routing-gateway';
 // its calls. That is the only place an adapter can come from in this file.
 //
 // Other spec files run at the same time on the same database. So this file never runs a pass over "every
-// operation" (`recoverExpired`, `dispatchWaiting`, the sweeper): it does what those passes do for its own
-// provider's operations only (`recoverMine`, `sendWaiting`), and judges a settlement by what is in the database.
+// operation" (`recoverExpired`, `WaitingPass` as the worker builds it, the sweeper): it does what those passes do
+// for its own providers' operations only (`recoverMine`, `sendWaiting`, `passOver`), and judges a settlement by
+// what is in the database. The one place it reads the whole list of waiting operations, it only reads.
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;
 
@@ -99,9 +101,9 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
   const calls: OutgoingOperation[] = [];
   const usedCredentials: string[] = [];
   let answer: (sent: OutgoingOperation) => Promise<SendEvidence> = async () => ({ left: true, answer: 'confirmed', providerRef: 'REF-S12' });
-  const factories: Record<string, AdapterFactory> = {
-    [code]: (target: ProviderTarget, secret: string) => ({ providerCode: code, target, send: async (sent) => { calls.push(sent); usedCredentials.push(secret); return answer(sent); } }),
-  };
+  const adapterFor = (provided: string): AdapterFactory => (target: ProviderTarget, secret: string) => ({ providerCode: provided, target, send: async (sent) => { calls.push(sent); usedCredentials.push(secret); return answer(sent); } });
+  /** The build's adapters, as far as this spec goes: the provider's, and the second provider's. */
+  const factories: Record<string, AdapterFactory> = { [code]: adapterFor(code), [`${code}-other`]: adapterFor(`${code}-other`) };
   const ownEnv = () => ({ PROVIDER_DISPATCH: process.env.PROVIDER_DISPATCH, PROVIDER_ADAPTERS: process.env.PROVIDER_ADAPTERS, PROVIDER_TARGET: process.env.PROVIDER_TARGET, DEPLOYMENT_ID: process.env.DEPLOYMENT_ID });
   /**
    * A worker as `worker.ts` builds one: its own settings, the adapters those allow (with the spec's adapter as the
@@ -113,11 +115,13 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     const rebuild = async (): Promise<BuiltAdapters> => buildAdapters(settings, await readCredentials(prisma, settings), factories);
     const built = await rebuild();
     const gateway = new RoutingProviderGateway(built);
-    const gate = new DeploymentSendGate(settings, (provided) => gateway.generation(provided));
-    const dispatch = buildProviderDispatch(prisma, {} as IORedis, gateway, wrap ? wrap(gate) : gate, `s12-${tag}`, quiet);
+    const gate = new DeploymentSendGate(settings, (provided) => gateway.sender(provided));
+    const dispatch = buildProviderDispatch(prisma, {} as IORedis, wrap ? wrap(gate) : gate, `s12-${tag}`, quiet);
     return { settings, built, gateway, dispatch, rebuild };
   };
   type TestWorker = Awaited<ReturnType<typeof workerWith>>;
+  /** The readiness timer's interval in this file: an hour, so that only the rounds a test runs itself write anything. */
+  const NO_TIMER = 3_600_000;
   /** Every readiness a test started: stopped after it, so none keeps attesting into the next test. */
   const started: (() => Promise<void>)[] = [];
   /**
@@ -125,10 +129,10 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
    * one more round, as its timer would run it.
    */
   const attest = async (worker: TestWorker) => {
-    const readiness = startReadiness(prisma, worker.settings, worker.gateway, worker.rebuild);
+    const readiness = startReadiness(prisma, worker.settings, worker.gateway, worker.rebuild, undefined, NO_TIMER);
     await readiness.round();
     started.push(readiness.stop);
-    return Object.assign(readiness.stop, { round: readiness.round });
+    return Object.assign(readiness.stop, { round: readiness.round, workerId: readiness.workerId });
   };
   /** Everything in place for the provider on a sandbox deployment: the credential, the approval, a worker attesting. */
   const switchedOn = async () => {
@@ -165,9 +169,17 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     const row = await operation(id);
     return row.appliedAt ? 'applied' : row.applyError ? 'exception' : 'not-applied';
   };
-  const NOT_SWITCHED = {
-    dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchApprovedTarget: null, dispatchApprovedDeployment: null, dispatchPausedAt: null,
-    dispatchReadyAt: null, dispatchReadyTarget: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null,
+  const NOT_SWITCHED = { dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchApprovedTarget: null, dispatchApprovedDeployment: null, dispatchPausedAt: null };
+  /** What the workers have said of this spec's provider: one row a worker, as [deployment, target, generation]. */
+  const attestedRows = () => prisma.providerWorkerAttestation.findMany({ where: { providerId: ids.provider }, orderBy: [{ deployment: 'asc' }, { generation: 'asc' }, { workerId: 'asc' }] });
+  const attested = async () => (await attestedRows()).map((row) => [row.deployment, row.target, row.generation]);
+  /** Makes every row said of the provider `ms` old **by the database's clock** (negative: from its future). */
+  const aged = (ms: number) => prisma.$executeRaw`UPDATE "ProviderWorkerAttestation" SET "attestedAt" = now() - make_interval(secs => ${ms / 1000}) WHERE "providerId" = ${ids.provider}`;
+  /** A row written by hand, as some worker would have had to write it, now by the database's clock. */
+  const writeRow = async (over: { deployment?: string; target?: string; generation?: number; workerId?: string } = {}) => {
+    const row = { deployment: HERE, target: 'sandbox', generation: 1, workerId: 'spec-written-row', ...over };
+    await prisma.providerWorkerAttestation.deleteMany({ where: { providerId: ids.provider, workerId: row.workerId } });
+    await prisma.$executeRaw`INSERT INTO "ProviderWorkerAttestation" ("id", "providerId", "workerId", "deployment", "target", "generation", "attestedAt") VALUES (${randomUUID()}, ${ids.provider}, ${row.workerId}, ${row.deployment}, ${row.target}, ${row.generation}, now())`;
   };
   const NOT_APPROVED = { dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchApprovedTarget: null, dispatchApprovedDeployment: null };
 
@@ -193,7 +205,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     sid.entered = await auth.saveImpersonation({ userId: ids.staff, operatorId: ids.owner, userAgent: '', ip: '' });
     await prisma.provider.create({ data: { id: ids.provider, code, name: 's12' } });
     await prisma.provider.create({ data: { id: ids.other, code: `${code}-other`, name: 's12 other' } });
-    await prisma.company.create({ data: { id: ids.company, code, name: 's12' } });
+    await prisma.company.create({ data: { id: ids.company, code, name: 's12', esim: true } });
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
     await prisma.package.create({ data: { id: ids.pkg, code, name: 's12 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
@@ -213,6 +225,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     await prisma.providerOperation.deleteMany({ where: { id: { in: operations } } });
     await prisma.providerCredential.deleteMany({ where: { providerId: { in: [ids.provider, ids.other] } } });
     await prisma.provider.updateMany({ where: { id: { in: [ids.provider, ids.other] } }, data: NOT_SWITCHED });
+    await prisma.providerWorkerAttestation.deleteMany({ where: { providerId: { in: [ids.provider, ids.other] } } });
     await prisma.notice.deleteMany({ where: { userId: { in: people } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: people } } });
     await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
@@ -454,7 +467,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect([[...real.adapters.keys()], [...real.skipped]]).toEqual([[], [[code, 'no-adapter']]]);
       const readiness = startReadiness(prisma, settings, new RoutingProviderGateway(real), rebuild);
       for (let round = 0; round < 3; round += 1) await readiness.round();
-      expect(await provider()).toMatchObject({ dispatchReadyAt: null, dispatchReadyTarget: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null });
+      expect(await attested()).toEqual([]);
       await readiness.stop();
       for (let sale = 0; sale < 3; sale += 1) expect((await sell()).route).toBe('manual');
       expect(await prisma.providerOperation.count({ where: { providerId: ids.provider } })).toBe(0);
@@ -479,19 +492,19 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect((await sell()).route).toBe('dispatch');
       // The attestation: withdrawn, stale, or for the other target.
       await stop();
-      expect(await provider()).toMatchObject({ dispatchReadyAt: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null });
+      expect(await attested()).toEqual([]);
       expect((await sell()).route).toBe('manual');
       // What a worker would have to have written for the route to open: each part of it, wrong in turn.
-      const ready = { dispatchReadyAt: new Date(), dispatchReadyTarget: 'sandbox', dispatchReadyDeployment: HERE, dispatchReadyGeneration: 1 };
-      const wrong: [string, Partial<typeof ready>][] = [
-        ['stale', { dispatchReadyAt: new Date(Date.now() - READY_TTL_MS - 1_000) }], ['from the future', { dispatchReadyAt: new Date(Date.now() + 120_000) }], ['for the other target', { dispatchReadyTarget: 'live' }],
-        ['another deployment\'s', { dispatchReadyDeployment: ELSEWHERE }], ['for a credential that is not the stored one', { dispatchReadyGeneration: 2 }],
+      const wrong: [string, Parameters<typeof writeRow>[0], number][] = [
+        ['stale', {}, READY_TTL_MS + 1_000], ['from the future', {}, -120_000], ['for the other target', { target: 'live' }, 0],
+        ['another deployment\'s', { deployment: ELSEWHERE }, 0], ['for a credential that is not the stored one', { generation: 2 }, 0],
       ];
-      for (const [what, part] of wrong) {
-        await prisma.provider.update({ where: { id: ids.provider }, data: { ...ready, ...part } });
+      for (const [what, part, age] of wrong) {
+        await writeRow(part);
+        if (age !== 0) await aged(age);
         expect([what, (await sell()).route]).toEqual([what, 'manual']);
       }
-      await prisma.provider.update({ where: { id: ids.provider }, data: ready });
+      await writeRow();
       expect((await sell()).route).toBe('dispatch');
       // The approval withdrawn, and a pause.
       await call('owner', 'post', at('/pause'));
@@ -512,7 +525,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
         const worker = await workerWith(env);
         expect([...worker.built.adapters.keys()]).toEqual([]);
         const stop = await attest(worker);
-        expect(await provider()).toMatchObject({ dispatchReadyAt: null });
+        expect(await attested()).toEqual([]);
         expect((await sell()).route).toBe('manual');
         await stop();
       }
@@ -957,7 +970,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     /** A worker process that started before the replacement and has not built its adapters again. */
     const neverRebuilds = (worker: TestWorker) => {
-      const readiness = startReadiness(prisma, worker.settings, worker.gateway, async () => worker.built);
+      const readiness = startReadiness(prisma, worker.settings, worker.gateway, async () => worker.built, undefined, NO_TIMER);
       started.push(readiness.stop);
       return readiness;
     };
@@ -970,7 +983,8 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       const done = prisma.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT 1 FROM "Provider" WHERE "id" = ${ids.provider} FOR UPDATE`;
         await tx.$executeRaw`UPDATE "ProviderCredential" SET "generation" = "generation" + 1 WHERE "providerId" = ${ids.provider} AND "target" = 'sandbox'`;
-        await tx.provider.update({ where: { id: ids.provider }, data: { ...NOT_SWITCHED, dispatchPausedAt: undefined } });
+        await tx.provider.update({ where: { id: ids.provider }, data: NOT_APPROVED });
+        await tx.providerWorkerAttestation.deleteMany({ where: { providerId: ids.provider } });
         held();
         await waiting;
       }, { timeout: 60_000, maxWait: 20_000 });
@@ -980,19 +994,20 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
 
     it('one write: the new value, the next generation, the approval withdrawn, the attestation withdrawn; a pause is kept', async () => {
       const { worker, stop } = await switchedOn();
-      expect(await provider()).toMatchObject({ dispatchApprovedDeployment: HERE, dispatchReadyDeployment: HERE, dispatchReadyTarget: 'sandbox', dispatchReadyGeneration: 1 });
+      expect([(await provider()).dispatchApprovedDeployment, await attested()]).toEqual([HERE, [[HERE, 'sandbox', 1]]]);
       expect((await sell()).route).toBe('dispatch');
       expect(said(await credential(NEW_CREDENTIAL))).toBe('ok');
       const stored = await credentials();
       expect(stored.map((row) => [row.target, row.generation, open(row.sealedValue)])).toEqual([['sandbox', 2, NEW_CREDENTIAL]]);
-      expect(await provider()).toMatchObject({ ...NOT_APPROVED, dispatchReadyAt: null, dispatchReadyTarget: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null, dispatchPausedAt: null });
+      expect(await provider()).toMatchObject({ ...NOT_APPROVED, dispatchPausedAt: null });
+      expect(await attested()).toEqual([]);
       expect(await status()).toMatchObject({ hasCredential: true, eligible: false, refusal: 'not-approved', workerReady: false, opens: false });
       expect((await sell()).route).toBe('manual');
       // A resume is not the owner's word on the new credential.
       expect(said(await call('owner', 'post', at('/resume')))).toBe('409 DISPATCH_NOT_APPROVED');
       // The worker's next round builds its adapter again from what is stored, and says so; the route stays closed.
       await stop.round();
-      expect([worker.gateway.generation(code), (await provider()).dispatchReadyGeneration]).toEqual([2, 2]);
+      expect([worker.gateway.generation(code), await attested()]).toEqual([2, [[HERE, 'sandbox', 2]]]);
       expect(await status()).toMatchObject({ workerReady: true, eligible: false, opens: false });
       expect((await sell()).route).toBe('manual');
       // Only the owner's new approval opens it.
@@ -1003,7 +1018,8 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       await call('owner', 'post', at('/pause'));
       const paused = (await provider()).dispatchPausedAt;
       await credential(`${NEW_CREDENTIAL}-AGAIN`);
-      expect(await provider()).toMatchObject({ ...NOT_APPROVED, dispatchPausedAt: paused, dispatchReadyAt: null });
+      expect(await provider()).toMatchObject({ ...NOT_APPROVED, dispatchPausedAt: paused });
+      expect(await attested()).toEqual([]);
       expect((await credentials())[0].generation).toBe(3);
       // Another provider's credential and approval are its own.
       expect(await prisma.provider.findUniqueOrThrow({ where: { id: ids.other } })).toMatchObject(NOT_SWITCHED);
@@ -1015,27 +1031,28 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       await stop();
       const stale = neverRebuilds(old);
       await stale.round();
-      expect((await provider()).dispatchReadyGeneration).toBe(1);
+      expect(await attested()).toEqual([[HERE, 'sandbox', 1]]);
       await credential(NEW_CREDENTIAL);
       await call('owner', 'post', at('/approve'));
       // Round after round, the old worker has nothing it may say.
       for (let round = 0; round < 3; round += 1) await stale.round();
-      expect([old.gateway.generation(code), await provider()]).toEqual([1, expect.objectContaining({ dispatchReadyAt: null, dispatchReadyGeneration: null })]);
+      expect([old.gateway.generation(code), await attested()]).toEqual([1, []]);
       expect(await status()).toMatchObject({ eligible: true, workerReady: false, opens: false });
       expect((await sell()).route).toBe('manual');
       // A newer worker attests the stored generation; the old one, on its next rounds, leaves that as it is.
       const fresh = await workerWith();
       const freshStop = await attest(fresh);
-      const said1 = await provider();
-      expect(said1).toMatchObject({ dispatchReadyDeployment: HERE, dispatchReadyGeneration: 2 });
+      const freshRow = await attestedRows();
+      expect(freshRow.map((row) => [row.workerId, row.generation])).toEqual([[freshStop.workerId, 2]]);
       for (let round = 0; round < 3; round += 1) await stale.round();
-      expect(await provider()).toMatchObject({ dispatchReadyAt: said1.dispatchReadyAt, dispatchReadyGeneration: 2 });
+      expect(await attestedRows()).toEqual(freshRow);
       expect((await sell()).route).toBe('dispatch');
-      // An attestation that names the old generation is not believed either, whoever wrote it.
-      await prisma.provider.update({ where: { id: ids.provider }, data: { dispatchReadyAt: new Date(), dispatchReadyGeneration: 1 } });
+      // A row that names the old generation is not believed, whoever wrote it, and takes nothing from the good one.
+      await writeRow({ generation: 1 });
+      expect((await sell()).route).toBe('dispatch');
+      await freshStop();
+      expect(await attested()).toEqual([[HERE, 'sandbox', 1]]);
       expect((await sell()).route).toBe('manual');
-      await freshStop.round();
-      expect((await sell()).route).toBe('dispatch');
     });
 
     it('while an operation is requested: no worker takes it until the new approval, and then only one that holds the new credential, once', async () => {
@@ -1061,7 +1078,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await rebuilt.dispatch.dispatcher.handle(operationId)).toBe('succeeded');
       expect([calls.map((sent) => sent.attempt), usedCredentials]).toEqual([[1], [NEW_CREDENTIAL]]);
       // And the old worker, once it has built again (its timer's round), holds the new one too.
-      const refreshed = startReadiness(prisma, old.settings, old.gateway, old.rebuild);
+      const refreshed = startReadiness(prisma, old.settings, old.gateway, old.rebuild, undefined, NO_TIMER);
       started.push(refreshed.stop);
       await refreshed.round();
       expect(old.gateway.generation(code)).toBe(2);
@@ -1170,7 +1187,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       // One request an operation, every one of them with the new credential; the old adapter was never used.
       expect(calls.map((sent) => sent.idempotencyKey).sort()).toEqual(sold.map(({ taskId }) => `activate:${taskId}`).sort());
       expect(new Set(usedCredentials)).toEqual(new Set([NEW_CREDENTIAL]));
-      expect(await provider()).toMatchObject({ dispatchReadyDeployment: HERE, dispatchReadyGeneration: 2 });
+      expect(await attested()).toEqual([[HERE, 'sandbox', 2]]);
       for (const { operationId } of sold) expect(await operation(operationId)).toMatchObject({ status: 'succeeded', attempts: 1, waivedAttempts: 0 });
     });
 
@@ -1178,7 +1195,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       const { worker: before, stop } = await switchedOn();
       const { operationId } = await sell();
       await stop();
-      expect(await provider()).toMatchObject({ dispatchReadyAt: null, dispatchReadyGeneration: null });
+      expect(await attested()).toEqual([]);
       expect((await sell()).route).toBe('manual');
       // Replaced while no worker runs.
       await credential(NEW_CREDENTIAL);
@@ -1189,7 +1206,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       const after = await workerWith();
       expect([before.gateway.generation(code), after.gateway.generation(code)]).toEqual([1, 2]);
       await attest(after);
-      expect(await provider()).toMatchObject({ dispatchReadyDeployment: HERE, dispatchReadyGeneration: 2 });
+      expect(await attested()).toEqual([[HERE, 'sandbox', 2]]);
       expect((await sell()).route).toBe('dispatch');
       expect(await after.dispatch.dispatcher.handle(operationId)).toBe('succeeded');
       expect(usedCredentials).toEqual([NEW_CREDENTIAL]);
@@ -1300,25 +1317,29 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     it('two deployments of the same target on one database: the approval given on one opens nothing on the other, for its API or its worker', async () => {
       const { worker: here } = await switchedOn();
       const { operationId } = await sell();
-      const hereSaid = await provider();
-      expect(hereSaid).toMatchObject({ dispatchApprovedDeployment: HERE, dispatchReadyDeployment: HERE });
+      const hereSaid = await attestedRows();
+      expect([(await provider()).dispatchApprovedDeployment, hereSaid.map((row) => row.deployment)]).toEqual([HERE, [HERE]]);
       // The other deployment: same database, same target, same list, same key, its own name.
       deployment({ id: ELSEWHERE });
       expect(await status()).toMatchObject({ deployment: ELSEWHERE, approvedDeployment: HERE, hasCredential: true, eligible: false, refusal: 'approved-for-other-deployment', workerReady: false, opens: false });
       expect((await sell()).route).toBe('manual');
       expect(said(await call('owner', 'post', at('/resume')))).toBe('409 DISPATCH_NOT_APPROVED');
-      // Its worker can open the credential and build an adapter, and still neither sends nor attests.
+      // Its worker can open the credential and build an adapter, and says so in a row of its own. It still sends
+      // nothing, its row opens nothing for its API (no approval here), and the first deployment's row is untouched.
       const there = await workerWith();
       expect(there.gateway.generation(code)).toBe(1);
       const thereStop = await attest(there);
       for (let round = 0; round < 3; round += 1) await thereStop.round();
-      expect(await provider()).toMatchObject({ dispatchReadyDeployment: HERE, dispatchReadyAt: hereSaid.dispatchReadyAt });
+      expect(await attested()).toEqual([[HERE, 'sandbox', 1], [ELSEWHERE, 'sandbox', 1]].sort());
+      expect((await attestedRows()).filter((row) => row.deployment === HERE)).toEqual(hereSaid);
+      expect(await status()).toMatchObject({ workerReady: true, eligible: false, opens: false });
+      expect((await sell()).route).toBe('manual');
       expect(await there.dispatch.dispatcher.handle(operationId)).toBe('skipped');
       expect(await sendWaiting(there)).toBe(0);
       expect(await operation(operationId)).toMatchObject({ status: 'requested', attempts: 0 });
       // Its stopping withdraws nothing of the first deployment's.
       await thereStop();
-      expect(await provider()).toMatchObject({ dispatchReadyDeployment: HERE, dispatchReadyAt: hereSaid.dispatchReadyAt });
+      expect(await attestedRows()).toEqual(hereSaid);
       expect(calls).toEqual([]);
       // The first deployment is untouched by all of it.
       deployment();
@@ -1341,16 +1362,20 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect((await sell()).route).toBe('manual');
       expect(await here.dispatch.dispatcher.handle(operationId)).toBe('skipped');
       expect(await operation(operationId)).toMatchObject({ status: 'requested', attempts: 0 });
-      // The second deployment's worker attests and sends; the first's can no longer write its attestation.
+      // The second deployment's worker attests and sends; the first's keeps its own row, which the second's API does not read as its own.
       deployment({ id: ELSEWHERE });
       const there = await workerWith();
       await attest(there);
-      expect(await provider()).toMatchObject({ dispatchReadyDeployment: ELSEWHERE, dispatchReadyGeneration: 1 });
-      const readyThere = (await provider()).dispatchReadyAt;
-      const hereAgain = startReadiness(prisma, here.settings, here.gateway, here.rebuild);
+      expect(await attested()).toEqual([[HERE, 'sandbox', 1], [ELSEWHERE, 'sandbox', 1]].sort());
+      const thereRow = (await attestedRows()).filter((row) => row.deployment === ELSEWHERE);
+      const hereAgain = startReadiness(prisma, here.settings, here.gateway, here.rebuild, undefined, NO_TIMER);
       started.push(hereAgain.stop);
       for (let round = 0; round < 3; round += 1) await hereAgain.round();
-      expect(await provider()).toMatchObject({ dispatchReadyDeployment: ELSEWHERE, dispatchReadyAt: readyThere });
+      expect((await attestedRows()).filter((row) => row.deployment === ELSEWHERE)).toEqual(thereRow);
+      // With only the first deployment's row left, the second's API opens nothing.
+      await prisma.providerWorkerAttestation.deleteMany({ where: { providerId: ids.provider, deployment: ELSEWHERE } });
+      expect((await sell()).route).toBe('manual');
+      await writeRow({ deployment: ELSEWHERE });
       expect((await sell()).route).toBe('dispatch');
       expect(await there.dispatch.dispatcher.handle(operationId)).toBe('succeeded');
       expect(calls).toHaveLength(1);
@@ -1362,8 +1387,9 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       await credential(SANDBOX_CREDENTIAL);
       await prisma.provider.update({
         where: { id: ids.provider },
-        data: { dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: name('owner'), dispatchApprovedTarget: 'sandbox', dispatchApprovedDeployment: ELSEWHERE, dispatchReadyAt: new Date(), dispatchReadyTarget: 'sandbox', dispatchReadyDeployment: ELSEWHERE, dispatchReadyGeneration: 1 },
+        data: { dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: name('owner'), dispatchApprovedTarget: 'sandbox', dispatchApprovedDeployment: ELSEWHERE },
       });
+      await writeRow({ deployment: ELSEWHERE });
       expect(await status()).toMatchObject({ eligible: false, refusal: 'approved-for-other-deployment', workerReady: false, opens: false });
       expect((await sell()).route).toBe('manual');
       const worker = await workerWith();
@@ -1373,8 +1399,8 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(calls).toEqual([]);
       // The database itself refuses an approval or an attestation that names no deployment.
       await expect(prisma.provider.update({ where: { id: ids.provider }, data: { dispatchApprovedDeployment: null } })).rejects.toThrow();
-      await expect(prisma.provider.update({ where: { id: ids.provider }, data: { dispatchReadyDeployment: null } })).rejects.toThrow();
-      await expect(prisma.provider.update({ where: { id: ids.provider }, data: { dispatchReadyGeneration: null } })).rejects.toThrow();
+      await expect(writeRow({ deployment: 'Not A Name' })).rejects.toThrow();
+      await expect(writeRow({ generation: 0 })).rejects.toThrow();
       await expect(prisma.provider.update({ where: { id: ids.provider }, data: { dispatchApprovedDeployment: 'Not A Name' } })).rejects.toThrow();
     });
   });
@@ -1385,7 +1411,6 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     it('a worker that is killed leaves its last word behind: the route opens until it is a minute old; what is opened then waits, and is sent when a worker is back', async () => {
       const { worker } = await switchedOn();
       // Killed: no round, no withdrawal. Its last attestation ages.
-      const aged = (ms: number) => prisma.provider.update({ where: { id: ids.provider }, data: { dispatchReadyAt: new Date(Date.now() - ms) } });
       await aged(READY_TTL_MS - 5_000);
       const inWindow = await sell();
       expect(inWindow.route).toBe('dispatch');
@@ -1420,7 +1445,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       // A gate that says yes at the claim and no at the mark: nothing leaves, whatever was attested.
       const second = await sell();
       let turn = 0;
-      const refusingAtMark = await workerWith(undefined, (gate) => ({ permits: async (tx, providerId) => { turn += 1; return turn === 2 ? false : gate.permits(tx, providerId); } }));
+      const refusingAtMark = await workerWith(undefined, (gate) => ({ permits: async (tx, providerId) => { turn += 1; return turn === 2 ? null : gate.permits(tx, providerId); } }));
       expect(await refusingAtMark.dispatch.dispatcher.handle(second.operationId)).toBe('skipped');
       expect(await operation(second.operationId)).toMatchObject({ status: 'requested', attempts: 1, waivedAttempts: 1, sentAt: null });
       expect(calls).toHaveLength(1);
@@ -1429,6 +1454,437 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await status()).toMatchObject({ workerReady: false, opens: false });
       await worker.gateway.use(await worker.rebuild());
       expect((await sell()).route).toBe('manual');
+    });
+  });
+
+  // ── S.12b.0: hardening before the first adapter ─────────────────────────────────────────────────────────
+
+  describe('the request goes through the adapter that was judged at the mark, whatever is rebuilt after it (S.12b.0)', () => {
+    const NEW_CREDENTIAL = 'S12A-SANDBOX-CREDENTIAL-PINNED-4D8F2A6C0E';
+
+    it('marked, then the credential is replaced and the worker\'s adapters rebuilt, then the call: it is sent once, with the credential it was marked under', async () => {
+      await switchedOn();
+      let between = '';
+      // Between the committed mark and the call: the owner writes a new credential, and this worker builds its
+      // adapters again from it. Both are done before the permit's own `send` is entered.
+      const worker = await workerWith(undefined, (gate) => ({
+        permits: async (tx, providerId) => {
+          const permit = await gate.permits(tx, providerId);
+          if (!permit) return null;
+          return {
+            send: async (sent) => {
+              if (between === '') {
+                between = said(await credential(NEW_CREDENTIAL));
+                worker.gateway.use(await worker.rebuild());
+              }
+              return permit.send(sent);
+            },
+          };
+        },
+      }));
+      const first = await sell();
+      const second = await sell();
+      expect(await worker.dispatch.dispatcher.handle(first.operationId)).toBe('succeeded');
+      expect(between).toBe('ok');
+      // The worker now holds the new generation, and the request still went with the old one: the one that was judged.
+      expect([worker.gateway.generation(code), (await credentials())[0].generation]).toEqual([2, 2]);
+      expect([calls.map((sent) => [sent.idempotencyKey, sent.attempt]), usedCredentials]).toEqual([[[`activate:${first.taskId}`, 1]], [SANDBOX_CREDENTIAL]]);
+      const sent = await operation(first.operationId);
+      expect(sent).toMatchObject({ status: 'succeeded', attempts: 1, waivedAttempts: 0 });
+      // The mark was written before the replacement, so the attempt is treated as any attempt that left.
+      expect((sent.sentAt as Date).getTime()).toBeLessThan((await credentials())[0].updatedAt.getTime());
+      expect(await settled(worker, first.operationId)).toBe('applied');
+      // Had the dispatcher picked the adapter at the call, it would have been the new one: that path is not the dispatcher's.
+      await worker.gateway.send({ idempotencyKey: 'not-an-operation', attempt: 1, action: 'activate', providerCode: code, packageCode: code, msisdn: null, iccid: null });
+      expect(usedCredentials).toEqual([SANDBOX_CREDENTIAL, NEW_CREDENTIAL]);
+      calls.length = 0;
+      usedCredentials.length = 0;
+      // Nothing after it is taken until the owner approves again; then it goes with the new credential, once.
+      expect(await worker.dispatch.dispatcher.handle(second.operationId)).toBe('skipped');
+      expect(await operation(second.operationId)).toMatchObject({ status: 'requested', attempts: 0 });
+      await call('owner', 'post', at('/approve'));
+      expect(await worker.dispatch.dispatcher.handle(second.operationId)).toBe('succeeded');
+      expect([calls.map((sent_) => sent_.idempotencyKey), usedCredentials]).toEqual([[`activate:${second.taskId}`], [NEW_CREDENTIAL]]);
+      // The first is never sent again: by its message delivered again, by the pass, or by recovery.
+      for (let again = 0; again < 3; again += 1) expect(await worker.dispatch.dispatcher.handle(first.operationId)).toBe('skipped');
+      expect([await sendWaiting(worker), await recoverMine(worker), calls.length]).toEqual([0, 0, 1]);
+      expect(await settled(worker, second.operationId)).toBe('applied');
+      expect(await wallet()).toMatchObject({ balance: START - 2 * PRICE, held: 0 });
+      expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(2);
+    });
+  });
+
+  describe('the pass over waiting operations is fair: a closed provider\'s operations, however many, hold nobody else\'s back (S.12b.0)', () => {
+    const otherCode = `${code}-other`;
+    /** Both providers switched on for this deployment, each with its credential and approval, and a worker that holds both adapters. */
+    const twoProviders = async () => {
+      deployment({ adapters: `${code},${otherCode}` });
+      for (const provided of [code, otherCode]) {
+        expect(said(await call('owner', 'put', `/office/providers/${provided}/dispatch/credential`, { value: SANDBOX_CREDENTIAL }))).toBe('ok');
+        expect(said(await call('owner', 'post', `/office/providers/${provided}/dispatch/approve`))).toBe('ok');
+      }
+      const worker = await workerWith();
+      expect(worker.gateway.held().sort()).toEqual([code, otherCode].sort());
+      return worker;
+    };
+    /** Operations recorded for a provider, with ids that sort where the test wants them. */
+    const record = async (providerId: string, prefix: string, count: number) => {
+      const made = Array.from({ length: count }, (_, index) => ({
+        id: `${prefix}-${tag}-${String(index).padStart(4, '0')}`, idempotencyKey: `s12b0:${prefix}:${tag}:${index}`, requestHash: 'h', action: 'activate', providerId, packageCode: code, status: 'requested',
+        createdAt: new Date(Date.now() - (prefix.startsWith('0') ? 3_600_000 : 0)),
+      }));
+      await prisma.providerOperation.createMany({ data: made });
+      return made.map((row) => row.id);
+    };
+    const ours = () => prisma.providerOperation.findMany({ where: { providerId: { in: [ids.provider, ids.other] } }, orderBy: { id: 'asc' } });
+    /**
+     * The worker's own pass, reading this file's two providers alone: other spec files' operations are in the same
+     * table. The page is read as the repository reads it (waiting, by id, after the cursor, at most `limit`).
+     */
+    const passOver = (worker: TestWorker, page?: number, pages?: number, sends?: number, seen?: { looked: string[]; reads: number[] }) => {
+      const operations = Object.create(worker.dispatch.operations) as typeof worker.dispatch.operations;
+      operations.waitingToSend = async (after, limit) => {
+        const rows = await prisma.providerOperation.findMany({ where: { status: 'requested', providerId: { in: [ids.provider, ids.other] }, ...(after ? { id: { gt: after } } : {}) }, orderBy: { id: 'asc' }, take: limit, select: { id: true } });
+        seen?.reads.push(rows.length);
+        return rows.map((row) => row.id);
+      };
+      const dispatcher = Object.create(worker.dispatch.dispatcher) as typeof worker.dispatch.dispatcher;
+      dispatcher.handle = async (id) => { seen?.looked.push(id); return worker.dispatch.dispatcher.handle(id); };
+      return new WaitingPass(dispatcher, operations, page, pages, sends);
+    };
+    afterEach(async () => {
+      // The second provider's operations and their messages: the ids are used again by the next test.
+      const made = (await prisma.providerOperation.findMany({ where: { providerId: ids.other }, select: { id: true } })).map((row) => row.id);
+      await prisma.outboxMessage.deleteMany({ where: { aggregateId: { in: made } } });
+      await prisma.providerOperation.deleteMany({ where: { id: { in: made } } });
+    });
+
+    it('150 operations of a paused provider, older and first in every order, and 10 of an open one: the ten are sent in one round, the 150 untouched', async () => {
+      const worker = await twoProviders();
+      // The paused provider's 150 are older and their ids sort first: every order the old pass could use meets them first.
+      const closed = await record(ids.other, '00000000', 150);
+      const open_ = await record(ids.provider, 'ffffffff', 10);
+      expect(said(await call('owner', 'post', `/office/providers/${otherCode}/dispatch/pause`))).toBe('ok');
+      const pass = passOver(worker);
+      expect(await pass.round()).toBe(10);
+      const rows = await ours();
+      expect(rows.filter((row) => open_.includes(row.id)).map((row) => [row.status, row.attempts])).toEqual(open_.map(() => ['succeeded', 1]));
+      // The paused provider's: looked at, left, uncounted, unsent.
+      expect(rows.filter((row) => closed.includes(row.id)).map((row) => [row.status, row.attempts, row.waivedAttempts, row.sentAt])).toEqual(closed.map(() => ['requested', 0, 0, null]));
+      expect(calls.map((sent) => sent.providerCode)).toEqual(open_.map(() => code));
+      expect(new Set(calls.map((sent) => sent.idempotencyKey)).size).toBe(10);
+      // More rounds send nothing more while it stays paused.
+      for (let round = 0; round < 3; round += 1) expect(await pass.round()).toBe(0);
+      expect(calls).toHaveLength(10);
+      // Resumed: its 150 go, once each, and nothing of the open provider's goes again.
+      expect(said(await call('owner', 'post', `/office/providers/${otherCode}/dispatch/resume`))).toBe('ok');
+      // A round sends at most a hundred: the 150 take two, and recovery is not kept waiting behind them.
+      expect([await pass.round(), await pass.round(), await pass.round()]).toEqual([100, 50, 0]);
+      expect(calls).toHaveLength(160);
+      expect(new Set(calls.map((sent) => sent.idempotencyKey)).size).toBe(160);
+      expect((await ours()).every((row) => row.status === 'succeeded' && row.attempts === 1)).toBe(true);
+    });
+
+    it('a round reads a bounded number of rows and keeps its place: with a page of 20 and two pages a round, the ten behind 150 are still reached, and nothing is handled twice in a walk', async () => {
+      const worker = await twoProviders();
+      const closed = await record(ids.other, '00000000', 150);
+      const open_ = await record(ids.provider, 'ffffffff', 10);
+      await call('owner', 'post', `/office/providers/${otherCode}/dispatch/pause`);
+      // Count what the pass looks at, and in what order.
+      const seen = { looked: [] as string[], reads: [] as number[] };
+      const { looked, reads } = seen;
+      const pass = passOver(worker, 20, 2, 100, seen);
+      // The first rounds meet only the paused provider's operations (their ids sort first) and send nothing.
+      expect(await pass.round()).toBe(0);
+      expect(looked.filter((id) => closed.includes(id)).length).toBeGreaterThan(0);
+      expect(calls).toEqual([]);
+      let rounds = 1;
+      // 150 before them, forty looked at a round: the ten are reached in the fourth round, and never later than the fifth.
+      while (calls.length < 10 && rounds < 5) {
+        await pass.round();
+        rounds += 1;
+      }
+      expect(calls).toHaveLength(10);
+      expect(calls.map((sent) => sent.idempotencyKey).sort()).toEqual(open_.map((id) => `s12b0:ffffffff:${tag}:${Number(id.slice(-4))}`).sort());
+      // Never more than two pages of twenty in a round, and never a page above its size.
+      expect(Math.max(...reads)).toBeLessThanOrEqual(20);
+      expect(reads.length).toBeLessThanOrEqual(rounds * 2);
+      // Within the one walk that reached the ten, no operation of ours was looked at twice.
+      const mine_ = looked.filter((id) => closed.includes(id) || open_.includes(id));
+      const firstWalk = mine_.slice(0, mine_.indexOf(open_[open_.length - 1]) + 1);
+      expect(new Set(firstWalk).size).toBe(firstWalk.length);
+      expect(firstWalk.filter((id) => closed.includes(id))).toHaveLength(150);
+      // The paused provider's are all still waiting, uncounted.
+      expect((await ours()).filter((row) => closed.includes(row.id)).every((row) => row.status === 'requested' && row.attempts === 0 && row.sentAt === null)).toBe(true);
+    });
+
+    it('the page the worker really reads: waiting operations only, by id, after the cursor, never more than asked for; and one that cannot be handled does not end the round', async () => {
+      const worker = await twoProviders();
+      const made = [...(await record(ids.other, '00000000', 30)), ...(await record(ids.provider, 'ffffffff', 30))];
+      await prisma.providerOperation.update({ where: { id: made[3] }, data: { status: 'failed', lastError: 'abandoned', appliedAt: new Date() } });
+      // The order the old pass used (the time of the last write) is made the reverse of the order of the ids.
+      for (const [index, id] of made.entries()) await prisma.$executeRaw`UPDATE "ProviderOperation" SET "updatedAt" = now() - make_interval(secs => ${index}) WHERE "id" = ${id}`;
+      // Read only: the whole list, twenty-five at a time, as the repository answers it.
+      const walked: string[] = [];
+      let after: string | null = null;
+      for (let page = 0; page < 10_000; page += 1) {
+        const ids_: string[] = await worker.dispatch.operations.waitingToSend(after, 25);
+        expect(ids_.length).toBeLessThanOrEqual(25);
+        walked.push(...ids_);
+        if (ids_.length < 25) break;
+        after = ids_[ids_.length - 1];
+      }
+      // Strictly rising, so nothing twice; every one of ours that waits is in it, and the one that does not is not.
+      expect(walked.every((id, index) => index === 0 || walked[index - 1] < id)).toBe(true);
+      expect(made.filter((id) => walked.includes(id))).toEqual(made.filter((id) => id !== made[3]));
+      // One operation whose handling throws: logged by a code, passed, and the rest of the round goes on.
+      const broken = made[40];
+      const pass = passOver(worker);
+      const real = worker.dispatch.dispatcher.handle.bind(worker.dispatch.dispatcher);
+      worker.dispatch.dispatcher.handle = async (id) => {
+        if (id === broken) throw new Error('S12A-SECRET-IN-AN-ERROR');
+        return real(id);
+      };
+      let sent = 0;
+      const output = await capturedOutput(async () => { sent = await pass.round(); });
+      expect(sent).toBe(59 - 1);
+      // Whatever is written of it is a code: the error's own words go nowhere.
+      expect(output).not.toContain('S12A-');
+      expect((await ours()).filter((row) => row.status === 'requested').map((row) => row.id)).toEqual([broken]);
+    });
+
+    it('what changes while the walk is on its way: one that is cancelled is not sent, one that starts waiting behind the walk is met on the next, none is lost', async () => {
+      const worker = await twoProviders();
+      const open_ = await record(ids.provider, 'ffffffff', 6);
+      const early = await record(ids.provider, '00000000', 1);
+      // The first of the walk is answered "no connection" and so waits again, behind the place the walk has reached.
+      let turn = 0;
+      answer = async (sent) => {
+        turn += 1;
+        if (sent.idempotencyKey.includes(':00000000:') && sent.attempt === 1) {
+          // While the walk is here, the third of the open ones is withdrawn.
+          await prisma.providerOperation.update({ where: { id: open_[2] }, data: { status: 'failed', lastError: 'abandoned', appliedAt: new Date() } });
+          return { left: false, error: 'unreachable' };
+        }
+        return { left: true, answer: 'confirmed', providerRef: `R-${turn}` };
+      };
+      const pass = passOver(worker);
+      await pass.round();
+      const after = await ours();
+      const by = (id: string) => after.find((row) => row.id === id);
+      expect(by(open_[2])).toMatchObject({ status: 'failed', attempts: 0, sentAt: null });
+      expect(open_.filter((id) => id !== open_[2]).map((id) => by(id)?.status)).toEqual(['succeeded', 'succeeded', 'succeeded', 'succeeded', 'succeeded']);
+      // The one that went back to waiting was not met again in this walk: one attempt, counted, and still there.
+      expect(by(early[0])).toMatchObject({ status: 'requested', attempts: 1, waivedAttempts: 0, lastError: 'unreachable' });
+      // The next walk meets it.
+      await pass.round();
+      expect((await ours()).find((row) => row.id === early[0])).toMatchObject({ status: 'succeeded', attempts: 2 });
+      expect(calls.filter((sent) => sent.idempotencyKey.includes(`:ffffffff:${tag}:2`))).toEqual([]);
+      expect(new Set(calls.map((sent) => `${sent.idempotencyKey}#${sent.attempt}`)).size).toBe(calls.length);
+    });
+  });
+
+  describe('an attestation is written and judged by the database\'s clock, and each worker has its own (S.12b.0)', () => {
+    const timers = ['setTimeout', 'setInterval', 'setImmediate', 'clearTimeout', 'clearInterval', 'clearImmediate', 'nextTick', 'queueMicrotask', 'performance', 'hrtime'] as const;
+    /** This process's clock set `ms` away from the real one (and so from PostgreSQL's); timers are left real. */
+    const processClock = (ms: number) => jest.useFakeTimers({ now: Date.now() + ms, doNotFake: [...timers] });
+    const databaseNow = async () => (await prisma.$queryRaw<{ now: Date }[]>`SELECT clock_timestamp() AS "now"`)[0].now;
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('a process whose clock is ten minutes ahead, or behind: the attestation it writes is stamped by PostgreSQL, and the route opens and closes by PostgreSQL\'s minute alone', async () => {
+      const { worker, stop } = await switchedOn();
+      for (const skew of [600_000, -600_000]) {
+        processClock(skew);
+        // The process believes it is ten minutes off; what it writes is not.
+        expect(Math.abs(Date.now() - (await databaseNow()).getTime())).toBeGreaterThan(500_000);
+        await stop.round();
+        const [row] = await attestedRows();
+        expect(Math.abs(row.attestedAt.getTime() - (await databaseNow()).getTime())).toBeLessThan(10_000);
+        // Fresh by the database: open, whatever this process's clock says.
+        expect(await status()).toMatchObject({ workerReady: true, opens: true });
+        expect([skew, (await sell()).route]).toEqual([skew, 'dispatch']);
+        // A minute old by the database: closed. A process ahead does not shorten the minute, one behind does not stretch it.
+        await aged(READY_TTL_MS - 5_000);
+        expect([skew, (await sell()).route]).toEqual([skew, 'dispatch']);
+        await aged(READY_TTL_MS + 2_000);
+        expect(await status()).toMatchObject({ workerReady: false, opens: false });
+        expect([skew, (await sell()).route]).toEqual([skew, 'manual']);
+        // Stamped in the database's future (by hand: a worker cannot): not believed.
+        await aged(-30_000);
+        expect([skew, (await sell()).route]).toEqual([skew, 'manual']);
+        jest.useRealTimers();
+      }
+      // A send is still decided by the gate, clock or no clock: what was recorded is sent once each.
+      const waiting = await mine('requested');
+      expect(waiting.length).toBe(4);
+      expect(await sendWaiting(worker)).toBe(4);
+      expect(new Set(calls.map((sent) => sent.idempotencyKey)).size).toBe(4);
+    });
+
+    it('two workers of one deployment: each has its row; one stopping, or being killed, takes nothing from the other', async () => {
+      const { worker: first, stop: stopFirst } = await switchedOn();
+      const second = await workerWith();
+      const stopSecond = await attest(second);
+      expect(stopFirst.workerId).not.toBe(stopSecond.workerId);
+      const rows = await attestedRows();
+      expect(rows.map((row) => [row.workerId, row.deployment, row.target, row.generation]).sort()).toEqual([[stopFirst.workerId, HERE, 'sandbox', 1], [stopSecond.workerId, HERE, 'sandbox', 1]].sort());
+      expect((await sell()).route).toBe('dispatch');
+      // The first stops as a worker does: its own row goes, the other's stays as it was, and there is no gap.
+      await stopFirst();
+      const left = await attestedRows();
+      expect(left).toEqual(rows.filter((row) => row.workerId === stopSecond.workerId));
+      expect(await status()).toMatchObject({ workerReady: true, opens: true });
+      expect((await sell()).route).toBe('dispatch');
+      // A stopped worker writes nothing more, whatever its timer does.
+      await stopFirst.round();
+      expect(await attestedRows()).toEqual(left);
+      // A third starts and is then killed (no stop): its row stays, and stops being believed after the minute.
+      const third = await workerWith();
+      const killed = startReadiness(prisma, third.settings, third.gateway, third.rebuild, `killed-${tag}`, NO_TIMER);
+      await killed.round();
+      expect((await attestedRows()).map((row) => row.workerId).sort()).toEqual([stopSecond.workerId, `killed-${tag}`].sort());
+      await prisma.$executeRaw`UPDATE "ProviderWorkerAttestation" SET "attestedAt" = now() - interval '61 seconds' WHERE "workerId" = ${`killed-${tag}`}`;
+      expect((await sell()).route).toBe('dispatch');
+      // The live one stops too: only the killed worker's old row is left, and nothing opens on it.
+      await stopSecond();
+      expect((await attestedRows()).map((row) => row.workerId)).toEqual([`killed-${tag}`]);
+      expect(await status()).toMatchObject({ eligible: true, workerReady: false, opens: false });
+      expect((await sell()).route).toBe('manual');
+      // Long past belief, any worker's round clears it; a fresh worker's own row is all that is left.
+      await prisma.$executeRaw`UPDATE "ProviderWorkerAttestation" SET "attestedAt" = now() - interval '11 minutes' WHERE "workerId" = ${`killed-${tag}`}`;
+      const fourth = await workerWith();
+      const stopFourth = await attest(fourth);
+      expect((await attestedRows()).map((row) => row.workerId)).toEqual([stopFourth.workerId]);
+      expect((await sell()).route).toBe('dispatch');
+      // The timer of the killed process, were it to fire, is not this test's: stop it without its removal running first.
+      await killed.stop();
+      // Both workers were delivered every message: each operation is sent once.
+      const waiting = await mine('requested');
+      await Promise.all(waiting.flatMap((id) => [first, second, fourth].map((worker) => worker.dispatch.dispatcher.handle(id))));
+      expect(calls.map((sent) => sent.idempotencyKey).sort()).toEqual([...new Set(calls.map((sent) => sent.idempotencyKey))].sort());
+      expect(calls).toHaveLength(waiting.length);
+    });
+
+    it('a new credential, or a pause, closes the provider at once for every worker\'s row; a worker on the old credential cannot write one again', async () => {
+      const NEW = 'S12A-SANDBOX-CREDENTIAL-ROWS-7B1E5C9A3F';
+      const { worker: first, stop: stopFirst } = await switchedOn();
+      const second = await workerWith();
+      await attest(second);
+      expect(await attested()).toEqual([[HERE, 'sandbox', 1], [HERE, 'sandbox', 1]]);
+      // A pause: the rows stay (the workers are alive), and nothing opens on them.
+      await call('owner', 'post', at('/pause'));
+      expect(await status()).toMatchObject({ workerReady: true, eligible: false, refusal: 'paused', opens: false });
+      expect((await sell()).route).toBe('manual');
+      await call('owner', 'post', at('/resume'));
+      expect((await sell()).route).toBe('dispatch');
+      // A new credential: every row of the provider is gone in the same write.
+      await credential(NEW);
+      expect(await attested()).toEqual([]);
+      await call('owner', 'post', at('/approve'));
+      expect((await sell()).route).toBe('manual');
+      // A worker that cannot build again keeps holding generation 1: round after round it writes nothing.
+      const stale = startReadiness(prisma, second.settings, second.gateway, async () => second.built, `stale-${tag}`, NO_TIMER);
+      started.push(stale.stop);
+      for (let round = 0; round < 3; round += 1) await stale.round();
+      expect(await attested()).toEqual([]);
+      // A row written before the replacement by a worker that then fell behind is removed by its own next round.
+      await writeRow({ workerId: `stale-${tag}`, generation: 1 });
+      await stale.round();
+      expect(await attested()).toEqual([]);
+      // The first worker builds again on its round and says so; the route opens on that row alone.
+      await stopFirst.round();
+      expect([first.gateway.generation(code), await attested()]).toEqual([2, [[HERE, 'sandbox', 2]]]);
+      expect((await sell()).route).toBe('dispatch');
+      expect(calls).toEqual([]);
+    });
+  });
+
+  describe('a worker that does not send still settles, and an eSIM result it cannot open is left as it is (S.12b.0)', () => {
+    const ESIM = 'LPA:1$smdp.s12b0.example$S12A-ESIM-ACTIVATION-CODE-9Q4W7E2R6T';
+    const sellEsim = async () => {
+      const got = await call('pos', 'post', '/office/lines', { packageCode: code, posLoginName: name('pos'), esim: true }, `s12-key-${randomUUID()}`);
+      const row = await prisma.providerOperation.findUniqueOrThrow({ where: { taskId: String(got.body.taskId) } });
+      return { taskId: String(got.body.taskId), operationId: row.id };
+    };
+    /** A worker of a deployment that does not dispatch: no setting, no adapter, a gate that is always closed. */
+    const settlingOnly = () => workerWith({});
+
+    it('the result of an eSIM activation arrives while sending is off: with the key it is applied; without it, or with another, nothing is written and the hold stays', async () => {
+      const { worker } = await switchedOn();
+      const esim = await sellEsim();
+      const plain = await sell();
+      // What the eSIM sale holds (the package's price and the eSIM's own).
+      const esimHeld = (await prisma.officeTask.findUniqueOrThrow({ where: { id: esim.taskId } })).held;
+      expect(esimHeld).toBeGreaterThanOrEqual(PRICE);
+      // Both were sent while the provider was on; their answers come back after sending was switched off.
+      const { operations, gate } = worker.dispatch;
+      for (const id of [esim.operationId, plain.operationId]) {
+        expect(await operations.claim(id, new Date(), gate)).toBe(1);
+        expect(await operations.beginSend(id, 1, new Date(), gate)).not.toBeNull();
+      }
+      await call('owner', 'post', at('/pause'));
+      const off = await settlingOnly();
+      expect([off.gateway.held(), off.settings.on]).toEqual([[], false]);
+      expect(await off.dispatch.operations.settle(esim.operationId, 1, { kind: 'confirmed', providerRef: 'R-ESIM', result: { msisdn: '0591111111', iccid: '8997201234567890123', esimCode: ESIM } })).toBe('succeeded');
+      expect(await off.dispatch.operations.settle(plain.operationId, 1, { kind: 'confirmed', providerRef: 'R-PLAIN', result: null })).toBe('succeeded');
+      const stored = await operation(esim.operationId);
+      expect([stored.resultEsimCode?.startsWith('v1:'), stored.resultEsimCode?.includes('S12A-ESIM')]).toEqual([true, false]);
+      const untouched = async () => {
+        expect(await operation(esim.operationId)).toMatchObject({ status: 'succeeded', appliedAt: null, applyError: null, resultEsimCode: stored.resultEsimCode });
+        expect(await prisma.officeTask.findUniqueOrThrow({ where: { id: esim.taskId } })).toMatchObject({ status: 'working', held: esimHeld });
+        expect(await prisma.line.count({ where: { posId: ids.pos, esim: true } })).toBe(0);
+      };
+      // No key, a key that is not one, another deployment's key: the settlement fails by a code and writes nothing.
+      for (const key of [undefined, 'not-a-key', OTHER_KEY]) {
+        if (key === undefined) delete process.env.SECRETS_KEY;
+        else process.env.SECRETS_KEY = key;
+        let failure: unknown;
+        const output = await capturedOutput(async () => {
+          failure = await off.dispatch.settle({ operationId: esim.operationId }).then(() => null, (error: unknown) => error);
+        });
+        expect(failure).toBeInstanceOf(Error);
+        // Neither the code, nor the sealed value, nor the cipher's own words leave the process.
+        const leaked = `${output} ${(failure as Error).message} ${String((failure as Error).stack)}`;
+        for (const secret of ['S12A-ESIM', 'smdp.s12b0', String(stored.resultEsimCode).slice(6, 40), 'auth tag', 'Unsupported state', 'bad decrypt']) expect([secret, leaked.includes(secret)]).toEqual([secret, false]);
+        await untouched();
+        // The same worker, still without a key that opens the eSIM result, applies the plain activation: an operation
+        // it cannot settle is left for later and is not a state the worker is stuck in.
+        if (key === undefined) expect(await settled(off, plain.operationId)).toBe('applied');
+      }
+      expect(await wallet()).toMatchObject({ balance: START - PRICE, held: esimHeld });
+      // The right key: the same message, delivered again, applies it. One line, one debit, the code sealed on the line.
+      process.env.SECRETS_KEY = KEY;
+      for (let again = 0; again < 3; again += 1) await off.dispatch.settle({ operationId: esim.operationId });
+      expect(await operation(esim.operationId)).toMatchObject({ status: 'succeeded', applyError: null });
+      expect((await operation(esim.operationId)).appliedAt).toBeInstanceOf(Date);
+      const lines = await prisma.line.findMany({ where: { posId: ids.pos, esim: true } });
+      expect(lines).toHaveLength(1);
+      expect([lines[0].esimQr?.startsWith('v1:'), lines[0].esimQr?.includes('S12A-ESIM')]).toEqual([true, false]);
+      expect(await wallet()).toMatchObject({ balance: START - PRICE - esimHeld, held: 0 });
+      expect(await prisma.walletEntry.count({ where: { userId: ids.pos, kind: 'activate' } })).toBe(2);
+      // And all the while nothing was sent: the adapter of the worker that had sent them was never called.
+      expect(calls).toEqual([]);
+    });
+
+    it('messages delivered again, to the dispatcher and to the settlement, by workers at once: one request, one line, one debit an operation', async () => {
+      const { worker } = await switchedOn();
+      const second = await workerWith();
+      const sold = [await sell(), await sell(), await sell()];
+      const data = sold.map(({ operationId }) => ({ operationId }));
+      // Each message five times to each worker's dispatcher, at once; then each verdict's message five times to each settlement.
+      await Promise.all(data.flatMap((job) => Array.from({ length: 5 }, () => [worker.dispatch.handle(job), second.dispatch.handle(job)]).flat()));
+      expect(calls.map((sent) => sent.idempotencyKey).sort()).toEqual(sold.map(({ taskId }) => `activate:${taskId}`).sort());
+      const applied = await Promise.allSettled(data.flatMap((job) => Array.from({ length: 5 }, () => [worker.dispatch.settle(job), second.dispatch.settle(job)]).flat()));
+      expect(applied.filter((result) => result.status === 'rejected')).toEqual([]);
+      for (const { operationId } of sold) expect(await operation(operationId)).toMatchObject({ status: 'succeeded', attempts: 1 });
+      expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(3);
+      expect(await prisma.walletEntry.count({ where: { userId: ids.pos, kind: 'activate' } })).toBe(3);
+      expect(await wallet()).toMatchObject({ balance: START - 3 * PRICE, held: 0 });
+      // One message a send and one a verdict: none was written twice.
+      const messages = await prisma.outboxMessage.findMany({ where: { aggregateId: { in: sold.map((sale) => sale.operationId) } } });
+      expect(messages.map((message) => `${message.topic}#${message.sequence}`).sort()).toEqual(sold.flatMap(() => ['provider-operation.requested#0', 'provider-operation.settled#2']).sort());
     });
   });
 });

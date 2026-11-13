@@ -675,3 +675,57 @@ on its own: `20261113110000_provider_operation_waived_attempts` and
   deployment's name in the settings and in every comparison, the generation in `maySend` and `workerReady`, and
   the import graph. `settlement-schema.db.spec.ts`: the new constraints. The file runs no pass over "every
   operation" of the database, which other spec files share.
+
+## S.12b.0: hardening before the first adapter (2026-11-13)
+
+The final verification of S.12a left five things to settle before an adapter may run. They are built here, with
+no adapter: `ADAPTER_FACTORIES` and the manifest are still empty. One migration,
+`20261113130000_provider_worker_attestations`; no historical migration is edited.
+
+- **The request is sent by the adapter that was judged.** Before, the gate compared the generation the worker
+  held with the stored one, the mark was written, and only then did the gateway look the adapter up: a rebuild
+  between the two sent a marked request with a credential nobody had judged for it. Now `SendGate.permits`
+  answers a **permit** (`SendPermit`) or null. `DeploymentSendGate` reads what the worker holds for the provider
+  once, as one object (`RoutingProviderGateway.sender`: the adapter with the generation it was built from),
+  judges that generation under the provider's row lock, and answers that same object. `beginSend` answers the
+  permit it was given **in the transaction that wrote the mark**, and `OperationDispatcher` sends through it: it
+  holds no gateway, so it has no other way to a provider. The permit is a reference in the worker's memory for
+  one attempt: it is not stored, queued or logged, and exposes no credential. The row lock ends with the mark's
+  transaction; the provider is called after it. A request marked before a credential was replaced goes with the
+  credential it was marked under and is treated as any attempt that left (`sentAt` is written); nothing after it
+  is taken until the owner approves again. Fencing and the outbox are untouched.
+- **The pass over waiting operations is fair** (`WaitingPass`). It reads `requested` operations **by id**, a page
+  (100) at a time, at most 20 pages a round and **at most 100 operations sent a round** (so recovery, on the same
+  timer, is not kept behind a long run of calls), and remembers the last id it looked at: a round that stops before
+  the end continues there, one that reaches the end starts again from the beginning. The id never changes, so a
+  walk meets every operation that stays waiting once and none twice. Each operation still goes through `handle`,
+  so the gate is asked at every claim and every mark: a closed provider's operation is looked at and left,
+  uncounted. One that starts waiting behind the walk is met on the next; one that is taken or cancelled meanwhile
+  is no longer in the list. One whose handling fails is logged by a code and passed; a worker that is stopping
+  takes no further operation. Index `ProviderOperation(status, id)`.
+- **One attestation a worker** (`ProviderWorkerAttestation`: provider, worker id, deployment, target, generation,
+  `attestedAt`). A worker process makes an id when it starts and writes its own row for each adapter it holds,
+  under the provider's row lock (shared) and only for the stored generation; with any other generation it
+  removes its row instead. Stopping removes its own rows and nobody else's. A worker that is killed leaves a row
+  that is believed for `READY_TTL_MS` and no longer; any worker's round clears rows ten times that old. Writing
+  the credential removes every row of the provider in the same transaction as the approval. A pause closes the
+  provider at once by the policy, rows or no rows. The API's `workerReady` is: some row of this deployment, this
+  target and the stored generation, fresh. The four `Provider.dispatchReady…` columns are dropped. As before, an
+  attestation only opens the dispatch route for new sales; a send is decided by the gate.
+- **One clock.** `attestedAt` is written by PostgreSQL (`now()`), and its age is computed by PostgreSQL in the
+  read (`clock_timestamp() - "attestedAt"`, answered as milliseconds). The policy reads no clock at all. The
+  column is a point in time (`timestamptz`), so the session's time zone plays no part. A process whose clock is
+  ahead or behind neither shortens nor stretches the minute.
+- **A production worker needs `SECRETS_KEY` always** (`workerConfigProblems`), the same as the API's. It settles
+  eSIM activations, and the code a provider handed back is stored sealed. With a key that does not open it (the
+  check at start can only tell that a key is there and well formed), the settlement of that operation fails by a
+  code and writes nothing: no line, no capture, no release, no exception; the hold stays and the sweeper meets it
+  again. Other operations are settled meanwhile. `docker-compose.yml` hands the worker the same `SECRETS_KEY` as
+  the API.
+- **Specs** (`provider-dispatch.db.spec.ts`, PostgreSQL, production-grade): the mark, then a new credential and
+  a rebuild, then the call; a rebuild in the middle of many attempts; 150 operations of a paused provider and 10
+  of an open one, in one round and with small pages; changes during a walk; a process clock ten minutes ahead
+  and behind; two workers, one stopping and one killed; a new credential and a pause against every worker's
+  row; an eSIM result arriving while sending is off, with no key, a malformed key, another key and the right
+  key; messages delivered again to two workers' dispatchers and settlements. `provider-dispatch-switch.spec.ts`:
+  the worker's check, the rows in `workerReady`, and that the dispatcher holds no gateway.

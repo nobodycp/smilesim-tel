@@ -16,6 +16,10 @@ services:
       NODE_ENV: development
       TRIAL_SEED: ${TRIAL_SEED:-true}
       TRIAL_SEED_ALLOW_PRODUCTION: ${TRIAL_SEED_ALLOW_PRODUCTION:-true}
+  # The worker too is a development copy here: a production worker does not start without SECRETS_KEY.
+  worker:
+    environment:
+      NODE_ENV: development
   # The local copy runs the API from source (scripts/dev-local.sh): it reaches the data containers on these ports,
   # bound to this machine only.
   postgres:

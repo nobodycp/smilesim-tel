@@ -48,7 +48,7 @@ export async function run(): Promise<void> {
   const rebuild = async () => buildAdapters(settings, await readCredentials(dispatchPrisma, settings));
   const built = await rebuild();
   const gateway = new RoutingProviderGateway(built);
-  const dispatch = buildProviderDispatch(dispatchPrisma, relayRedis, gateway, new DeploymentSendGate(settings, (code) => gateway.generation(code)));
+  const dispatch = buildProviderDispatch(dispatchPrisma, relayRedis, new DeploymentSendGate(settings, (code) => gateway.sender(code)));
   processors.push({ queue: OPERATIONS_QUEUE, handle: dispatch.handle });
   // Verdicts are acted on by their own queue (ADR 0019, D8): it writes the line and the money, and calls nobody.
   processors.push({ queue: SETTLEMENTS_QUEUE, handle: dispatch.settle });

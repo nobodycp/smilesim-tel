@@ -1,4 +1,4 @@
-import { OPEN_GATE } from '../testing/open-gate';
+import { openGate } from '../testing/open-gate';
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -69,7 +69,7 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     await prisma.provider.create({ data: { id: providerId, code: providerCode, name: 'dispatcher spec' } });
     request = { action: 'activate', providerCode, packageCode: 'pkg-1', msisdn: '0500000001', iccid: '8997202000000000777', lineId: null };
     gateway = new ScriptedGateway();
-    dispatcher = new OperationDispatcher(service, gateway, OPEN_GATE);
+    dispatcher = new OperationDispatcher(service, openGate(gateway));
   });
 
   afterEach(async () => {
@@ -96,7 +96,7 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
 
   it('lets one of two workers send an operation they both received', async () => {
     const id = await record();
-    const other = new OperationDispatcher(service, gateway, OPEN_GATE);
+    const other = new OperationDispatcher(service, openGate(gateway));
     const results = await Promise.all([dispatcher.handle(id), other.handle(id), dispatcher.handle(id), other.handle(id)]);
     expect(results.filter((result) => result === 'succeeded')).toHaveLength(1);
     expect(results.filter((result) => result === 'skipped')).toHaveLength(3);
@@ -134,7 +134,7 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
 
     const silent = await record();
     gateway.next(() => new Promise<SendEvidence>(() => undefined));
-    expect(await new OperationDispatcher(service, gateway, OPEN_GATE, 30).handle(silent)).toBe('unknown');
+    expect(await new OperationDispatcher(service, openGate(gateway), 30).handle(silent)).toBe('unknown');
     expect(await status(silent)).toMatchObject({ status: 'unknown', lastError: 'no-evidence' });
 
     expect(await dispatcher.handle(thrown)).toBe('skipped');
@@ -218,7 +218,7 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
       }
     }
     const stalled = new Stalled(uowOf(), new ProviderOperationsRepository());
-    expect(await new OperationDispatcher(stalled, gateway, OPEN_GATE).handle(id)).toBe('skipped');
+    expect(await new OperationDispatcher(stalled, openGate(gateway)).handle(id)).toBe('skipped');
     expect(gateway.calls).toHaveLength(0);
     // Nothing was marked and nothing changed: the attempt is still pending, for recovery to take back.
     const row = await prisma.providerOperation.findUniqueOrThrow({ where: { id } });
@@ -299,8 +299,8 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
       expect(await dispatcher.handle(disguised)).toBe('unknown');
     });
     // The lines are there, and say what happened in codes.
-    expect(output).toContain('the gateway failed without evidence (unclassified)');
-    expect(output).toContain('the gateway failed without evidence (ECONNRESET)');
+    expect(output).toContain('the adapter failed without evidence (unclassified)');
+    expect(output).toContain('the adapter failed without evidence (ECONNRESET)');
     expect(output).toContain(`operation ${thrown} attempt 1: no-answer -> unknown`);
     // A "code" that is not on the list is not written either, though it is shaped like one.
     for (const secret of [...secrets, 'api-pass', 'Authorization', 'password', 'adapter.ts', 'EAPIKEY', 'ABC123456789']) expect(output).not.toContain(secret);

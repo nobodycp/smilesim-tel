@@ -1,5 +1,17 @@
 import type { Db } from '../../kernel/unit-of-work';
+import type { OutgoingOperation, SendEvidence } from '../operations/provider-operation.rules';
 import { maySend, type DispatchSettings, type ProviderDispatchState } from './dispatch-policy';
+
+/**
+ * Leave to send, as the gate gave it: it **is** the way to send. `send` goes through the one adapter the gate
+ * judged, built from the generation of the credential that was stored at that moment. The dispatcher calls it
+ * after the mark is committed and the transaction is over; it has no other way to reach a provider, so what is
+ * sent cannot come from an adapter the gate did not see. It carries no credential that can be read, and it is
+ * never stored, queued or logged: it lives in the worker's memory for one attempt.
+ */
+export interface SendPermit {
+  send(operation: OutgoingOperation): Promise<SendEvidence>;
+}
 
 /**
  * The point where sending is allowed or not (ADR 0019, D18 "Pausing"). The dispatcher passes a gate to the two
@@ -8,11 +20,17 @@ import { maySend, type DispatchSettings, type ProviderDispatchState } from './di
  * Recovery asks it too, to know whether an unsent attempt counts.
  */
 export interface SendGate {
-  /** Whether an operation of this provider may be taken or marked now. Called inside the caller's transaction. */
-  permits(tx: Db, providerId: string): Promise<boolean>;
+  /**
+   * Leave for an operation of this provider to be taken or marked now, or null. Called inside the caller's
+   * transaction. The permit answered at the mark is the one the request is then sent with.
+   */
+  permits(tx: Db, providerId: string): Promise<SendPermit | null>;
 }
 
-type LockedProvider = Omit<ProviderDispatchState, 'credentialGeneration'> & { id: string };
+type LockedProvider = Omit<ProviderDispatchState, 'credentialGeneration' | 'attestations'> & { id: string };
+
+/** What a worker holds for one provider at one moment: the adapter and the generation it was built from, as one thing. */
+export type HeldSender = { readonly generation: number; send(operation: OutgoingOperation): Promise<SendEvidence> };
 
 /**
  * The gate of a deployment: the four conditions as this worker's settings and the provider's row state them, and
@@ -30,20 +48,28 @@ type LockedProvider = Omit<ProviderDispatchState, 'credentialGeneration'> & { id
  * The credential's generation is read by a second statement, after the lock is held. In one statement it would be
  * read from the snapshot taken before the wait for the lock, and a replacement that committed during the wait
  * would be missed.
+ *
+ * What the worker holds is read **once**, as one object (the adapter with its generation), judged, and handed
+ * back as the permit. The worker may build its adapters again a moment later: the request that was marked under
+ * this permit still goes through the adapter that was judged, never through the newer one, and no lock is held
+ * while it does.
  */
 export class DeploymentSendGate implements SendGate {
-  /** `heldGeneration`: the generation of the credential this worker's adapter for the provider was built with; null when it holds none. */
-  constructor(private readonly settings: DispatchSettings, private readonly heldGeneration: (providerCode: string) => number | null) {}
+  /** `held`: what this worker holds for the provider right now; null when it holds no adapter for it. */
+  constructor(private readonly settings: DispatchSettings, private readonly held: (providerCode: string) => HeldSender | null) {}
 
-  async permits(tx: Db, providerId: string): Promise<boolean> {
+  async permits(tx: Db, providerId: string): Promise<SendPermit | null> {
     const { target } = this.settings;
     // Nothing is locked for a deployment that cannot send at all.
-    if (!target) return false;
+    if (!target) return null;
     const rows = await tx.$queryRaw<LockedProvider[]>`
       SELECT "id", "code", "dispatchApprovedAt", "dispatchApprovedTarget", "dispatchApprovedDeployment", "dispatchPausedAt" FROM "Provider" WHERE "id" = ${providerId} FOR SHARE`;
     const provider = rows[0] ?? null;
-    if (!provider) return false;
+    if (!provider) return null;
     const stored = await tx.$queryRaw<{ generation: number }[]>`SELECT "generation" FROM "ProviderCredential" WHERE "providerId" = ${provider.id} AND "target" = ${target}`;
-    return maySend(this.settings, { ...provider, credentialGeneration: stored[0]?.generation ?? null }, this.heldGeneration(provider.code));
+    // One read of what is held: the generation that is judged and the adapter that will send are the same object's.
+    const sender = this.held(provider.code);
+    if (!maySend(this.settings, { ...provider, credentialGeneration: stored[0]?.generation ?? null }, sender ? sender.generation : null)) return null;
+    return sender;
   }
 }

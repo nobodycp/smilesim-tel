@@ -1,14 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Db } from '../../kernel/unit-of-work';
-import type { ProviderTarget } from './dispatch-policy';
+import type { ProviderTarget, WorkerAttestation } from './dispatch-policy';
 
-/** What the dispatch switch reads of a provider: the approval, the pause and the worker's attestation. */
-const STATE = {
-  id: true, code: true, dispatchApprovedAt: true, dispatchApprovedByLoginName: true, dispatchApprovedTarget: true, dispatchApprovedDeployment: true, dispatchPausedAt: true,
-  dispatchReadyAt: true, dispatchReadyTarget: true, dispatchReadyDeployment: true, dispatchReadyGeneration: true,
-} as const;
+/** What the dispatch switch reads of a provider: the approval and the pause. */
+const STATE = { id: true, code: true, dispatchApprovedAt: true, dispatchApprovedByLoginName: true, dispatchApprovedTarget: true, dispatchApprovedDeployment: true, dispatchPausedAt: true } as const;
 
-/** The same, with the generation of the credential stored for one target (never its value); null when none is. */
+/** The same, with the generation of the credential stored for one target (never its value; null when none is). */
 function stateFor(target: ProviderTarget | null) {
   return { ...STATE, credentials: { where: { target: target ?? '' }, select: { generation: true } } } as const;
 }
@@ -20,12 +17,20 @@ function stateFor(target: ProviderTarget | null) {
  */
 @Injectable()
 export class ProviderDispatchRepository {
-  /** The provider's state as a deployment of `target` asks for it: with the generation of that target's credential. */
+  /**
+   * The provider's state as a deployment of `target` asks for it: with the generation of that target's
+   * credential, and what the workers attested for the provider, **each with its age as the database computes
+   * it** (`clock_timestamp() - "attestedAt"`). The row was written with the database's `now()`, so no process's
+   * clock, and no time zone, is part of how old it is.
+   */
   async state(db: Db, code: string, target: ProviderTarget | null) {
     const row = await db.provider.findUnique({ where: { code }, select: stateFor(target) });
     if (!row) return null;
     const { credentials, ...state } = row;
-    return { ...state, credentialGeneration: credentials[0]?.generation ?? null };
+    const attestations = await db.$queryRaw<WorkerAttestation[]>`
+      SELECT "deployment", "target", "generation", (EXTRACT(EPOCH FROM (clock_timestamp() - "attestedAt")) * 1000)::float8 AS "ageMs"
+      FROM "ProviderWorkerAttestation" WHERE "providerId" = ${row.id}`;
+    return { ...state, credentialGeneration: credentials[0]?.generation ?? null, attestations };
   }
 
   /**
@@ -46,17 +51,12 @@ export class ProviderDispatchRepository {
   }
 
   /**
-   * Closes the provider's dispatch for a credential that is being written: the approval on record is withdrawn
-   * and the worker's attestation with it. A pause, if there is one, stays.
+   * Closes the provider's dispatch for a credential that is being written: the approval on record is withdrawn,
+   * and every worker's attestation for the provider is removed with it. A pause, if there is one, stays.
    */
-  closeForNewCredential(tx: Db, id: string) {
-    return tx.provider.update({
-      where: { id },
-      data: {
-        dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchApprovedTarget: null, dispatchApprovedDeployment: null,
-        dispatchReadyAt: null, dispatchReadyTarget: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null,
-      },
-    });
+  async closeForNewCredential(tx: Db, id: string): Promise<void> {
+    await tx.provider.update({ where: { id }, data: { dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchApprovedTarget: null, dispatchApprovedDeployment: null } });
+    await tx.providerWorkerAttestation.deleteMany({ where: { providerId: id } });
   }
 
   /** Whether a credential is stored for the provider and the target. The value is not read. */

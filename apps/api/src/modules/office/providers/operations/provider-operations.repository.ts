@@ -95,9 +95,14 @@ export class ProviderOperationsRepository {
     return db.providerOperation.findUnique({ where: { id }, include: { provider: { select: { code: true } } } });
   }
 
-  /** Operations that wait to be sent, oldest first. */
-  async requestedIds(db: Db, limit: number): Promise<string[]> {
-    const rows = await db.providerOperation.findMany({ where: { status: 'requested' }, orderBy: { updatedAt: 'asc' }, take: limit, select: { id: true } });
+  /**
+   * One page of the operations that wait to be sent, in the order of their ids, after `afterId` (from the start
+   * when it is null). The id never changes, so a walk by it meets every operation that stays waiting once and
+   * none twice, whatever is taken, sent or recorded meanwhile; it is never ordered by a column a write moves.
+   * At most `limit` rows are read: the walk is a page at a time, never the whole table.
+   */
+  async requestedPage(db: Db, afterId: string | null, limit: number): Promise<string[]> {
+    const rows = await db.providerOperation.findMany({ where: { status: 'requested', ...(afterId ? { id: { gt: afterId } } : {}) }, orderBy: { id: 'asc' }, take: limit, select: { id: true } });
     return rows.map((row) => row.id);
   }
 

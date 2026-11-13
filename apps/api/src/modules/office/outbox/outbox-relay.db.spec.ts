@@ -1,4 +1,4 @@
-import { OPEN_GATE } from '../providers/testing/open-gate';
+import { openGate } from '../providers/testing/open-gate';
 import 'reflect-metadata';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
@@ -201,7 +201,7 @@ withRedis('outbox relay and dispatcher on a real queue (PostgreSQL + Redis)', ()
     providerCode = `relay-test-${providerId}`;
     await prisma.provider.create({ data: { id: providerId, code: providerCode, name: 'relay spec' } });
     gateway = new ScriptedGateway();
-    dispatch = buildProviderDispatch(prisma, redis, gateway, OPEN_GATE, prefix);
+    dispatch = buildProviderDispatch(prisma, redis, openGate(gateway), prefix);
     relay = relayOf(dispatch);
   });
   afterEach(async () => {
@@ -303,7 +303,7 @@ withRedis('outbox relay and dispatcher on a real queue (PostgreSQL + Redis)', ()
     // Nothing listens on this port: every command is refused at once.
     const away = new IORedis('redis://127.0.0.1:1', { maxRetriesPerRequest: 1, enableOfflineQueue: false, retryStrategy: () => null });
     away.on('error', () => undefined);
-    const broken = buildProviderDispatch(prisma, away, gateway, OPEN_GATE, prefix);
+    const broken = buildProviderDispatch(prisma, away, openGate(gateway), prefix);
     expect(await relayOf(broken).runOnce()).toMatchObject({ claimed: 1, published: 0, failed: 1 });
     await broken.publisher.close();
     away.disconnect();

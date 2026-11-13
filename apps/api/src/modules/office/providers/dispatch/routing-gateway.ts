@@ -1,5 +1,6 @@
 import { NOT_CONNECTED, type ProviderGateway, type ProviderResult } from '../gateway/provider-gateway';
 import type { OutgoingOperation, SendEvidence } from '../operations/provider-operation.rules';
+import type { HeldSender } from './dispatch-gate';
 import { NO_ADAPTERS, type BuiltAdapters } from './provider-adapters';
 
 /**
@@ -10,8 +11,10 @@ import { NO_ADAPTERS, type BuiltAdapters } from './provider-adapters';
  *
  * What it holds is replaced as a whole (`use`) when a credential was written since the adapters were built: the
  * new set is built from what is stored now, and the old adapters, with the credentials they were given, are
- * dropped. A send that was already handed to an old adapter finishes with it; the gate lets no new one start
- * until the worker holds the stored generation.
+ * dropped. The dispatcher does not send through `send` here: it sends through the permit the gate gave it at the
+ * mark (`sender`), which is bound to the adapter that was judged. So a request that was marked before a
+ * replacement goes with the adapter it was marked under, and the gate lets no new one start until the worker
+ * holds the stored generation.
  */
 export class RoutingProviderGateway implements ProviderGateway {
   readonly simulated = false;
@@ -31,6 +34,19 @@ export class RoutingProviderGateway implements ProviderGateway {
   /** The generation of the credential the provider's adapter was built with; null when this worker holds none. */
   generation(providerCode: string): number | null {
     return this.built.adapters.has(providerCode) ? this.built.generations.get(providerCode) ?? null : null;
+  }
+
+  /**
+   * What this worker holds for the provider now, as one object: the adapter and the generation of the credential
+   * it was built from. The gate judges it and hands it to the dispatcher as the leave to send, so a later `use`
+   * changes nothing for a request that was already given leave. Null when no adapter is held.
+   */
+  sender(providerCode: string): HeldSender | null {
+    const built = this.built;
+    const adapter = built.adapters.get(providerCode);
+    const generation = built.generations.get(providerCode);
+    if (!adapter || generation === undefined) return null;
+    return { generation, send: (operation) => adapter.send(operation) };
   }
 
   /** The codes this worker holds an adapter for. */

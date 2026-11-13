@@ -69,6 +69,13 @@ export function dispatchSettings(env: Env): DispatchSettings {
   return { on, adapters, target, deployment, problems };
 }
 
+/** One worker process's word that it holds an adapter for a provider, as the database holds it. */
+/**
+ * `ageMs` is how long ago it was written, **as the database computed it** from its own clock: no process's clock
+ * is part of it.
+ */
+export type WorkerAttestation = { deployment: string; target: string; generation: number; ageMs: number };
+
 /** What the database says of one provider: condition 4, the worker's attestation, and its credential's generation. */
 export type ProviderDispatchState = {
   code: string;
@@ -76,10 +83,8 @@ export type ProviderDispatchState = {
   dispatchApprovedTarget: string | null;
   dispatchApprovedDeployment: string | null;
   dispatchPausedAt: Date | null;
-  dispatchReadyAt?: Date | null;
-  dispatchReadyTarget?: string | null;
-  dispatchReadyDeployment?: string | null;
-  dispatchReadyGeneration?: number | null;
+  /** What workers attested for this provider: one row a worker process. Absent where nobody asked for them. */
+  attestations?: readonly WorkerAttestation[];
   /** The generation of the credential stored for the asking deployment's target; null when none is stored. */
   credentialGeneration?: number | null;
 };
@@ -134,33 +139,37 @@ export const READY_TTL_MS = 60_000;
 export type Deployment = { target: ProviderTarget; deployment: string };
 
 /**
- * Whether a worker **of this deployment** has said, recently, for this target and for the credential now stored,
- * that it holds an adapter for the provider. The API cannot see the worker's settings or what it built, so this
- * is the only thing it believes about them. A worker that stopped, belongs to another deployment, was set up for
- * another target, was never given the adapter, or built its adapter from a credential that has since been
- * replaced leaves no attestation that passes.
+ * Whether some worker **of this deployment** has said, recently, for this target and for the credential now
+ * stored, that it holds an adapter for the provider. The API cannot see a worker's settings or what it built, so
+ * this is the only thing it believes about them. Each worker process has a row of its own: one that stopped took
+ * its row with it, one that belongs to another deployment or target, or built its adapter from a credential that
+ * has since been replaced, has no row that passes, and none of them touches another worker's.
  *
- * A worker that stops without saying so (it was killed) leaves its last attestation behind: it passes for at most
- * `READY_TTL_MS`. A sale opened on the dispatch route in that window is recorded and waits: nothing sends it until
- * a worker is back, and its submitter may cancel it meanwhile (D7).
+ * The age of a row is computed by the database from its own clock (the worker writes it with `now()`, and the
+ * read subtracts it from `clock_timestamp()`), so a process whose own clock is ahead or behind neither shortens
+ * nor stretches the time allowed, and nothing here reads a clock at all.
+ *
+ * A worker that is killed leaves its last row behind: it passes for at most `READY_TTL_MS`. A sale opened on the
+ * dispatch route in that window is recorded and waits: nothing sends it until a worker is back, and its submitter
+ * may cancel it meanwhile (D7).
  */
-export function workerReady(provider: ProviderDispatchState, asking: Deployment, now: Date): boolean {
-  if (!provider.dispatchReadyAt || provider.dispatchReadyTarget !== asking.target || provider.dispatchReadyDeployment !== asking.deployment) return false;
-  const generation = provider.dispatchReadyGeneration ?? null;
-  if (generation === null || generation !== (provider.credentialGeneration ?? null)) return false;
-  const age = now.getTime() - provider.dispatchReadyAt.getTime();
-  return age >= 0 && age <= READY_TTL_MS;
+export function workerReady(provider: ProviderDispatchState, asking: Deployment): boolean {
+  const stored = provider.credentialGeneration ?? null;
+  if (stored === null) return false;
+  return (provider.attestations ?? []).some(
+    (said) => said.deployment === asking.deployment && said.target === asking.target && said.generation === stored && Number.isFinite(said.ageMs) && said.ageMs >= 0 && said.ageMs <= READY_TTL_MS,
+  );
 }
 
 /**
  * The API's question (D13): may an activation at this provider be opened on the dispatch route? The four
- * conditions as the API's own settings and the database state them, **and** the fresh attestation of this
- * deployment's worker for the same target and the stored credential. Any disagreement between the two processes
+ * conditions as the API's own settings and the database state them, **and** the fresh attestation of one of this
+ * deployment's workers for the same target and the stored credential. `now` is the database's clock. Any disagreement between the two processes
  * answers no, and the sale takes the manual route.
  */
-export function mayOpenDispatch(settings: DispatchSettings, provider: ProviderDispatchState | null, now: Date): boolean {
+export function mayOpenDispatch(settings: DispatchSettings, provider: ProviderDispatchState | null): boolean {
   const judged = eligibility(settings, provider);
-  return judged.eligible && provider !== null && settings.deployment !== null && workerReady(provider, { target: judged.target, deployment: settings.deployment }, now);
+  return judged.eligible && provider !== null && settings.deployment !== null && workerReady(provider, { target: judged.target, deployment: settings.deployment });
 }
 
 /**
