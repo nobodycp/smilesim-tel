@@ -85,7 +85,7 @@ What the code does say, as fit and not as evidence of an API:
   is the path with the most to verify. A `number-and-sim` provider is the narrowest contract (nothing secret comes
   back) and would be the lowest-risk first adapter **if** its API is otherwise equal.
 - `current-details` (`neod`) cannot be dispatched as the code stands: the subscriber's text is not part of
-  `OutgoingOperation` (section 6, G4).
+  `OutgoingOperation` (section 6.3).
 
 **Selection rule for when documents arrive** (hard requirements first, then preference):
 
