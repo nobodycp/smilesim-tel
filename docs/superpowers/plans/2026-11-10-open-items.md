@@ -48,17 +48,21 @@ or replaced by a later design. They stay in git history.
      loaded run did fail elsewhere with "A query cannot be executed on an expired transaction … 5000 ms".
   To settle it: have the spec keep the first error line it captures when a status is not the expected one, and
   run the suite repeatedly. Not done here: it is outside slice S.12a and blocks neither it nor CI.
-- **Seen 2026-11-14 (slice R.1), cause found for this one:** in one full local run,
+- **Seen 2026-11-14 (slice R.1); what failed is known, why it was slow is not proved:** in one full local run,
   `provider-dispatch.db.spec.ts` › "messages delivered again … by workers at once" got about ten rejected
   settlements, each `JobFailure: provider-operation job failed: P2028`. P2028 is Prisma's "a transaction could not
   be started in time": the test fires thirty settlements of three operations at once, they queue on the same task
   and operation rows, and a transaction that waits longer than `runTx`'s default 2 s to start is refused. The file
   took 156.8 s in that run against 24.7 s alone; it passed alone three times and in the next full run (132 files,
-  1722 tests). So mechanism 2 above is real under load. What it is in production: a settlement refused this way
+  1722 tests). So mechanism 2 above happens: Prisma's own code says a start limit was passed. Why the transactions
+  waited that long in that run is **not proved**: the machine's load was not recorded during it, and the other
+  spec files running beside it on the same database (their rows, their locks) are as likely. What it is in
+  production: a settlement refused this way
   is a failed job that changed nothing, and the sweeper applies the verdict on its next round; what it is in the
   suite: a concurrency test whose result depends on the machine's speed. Not changed in R.1 (a rename with no
   run-time effect); a fix would be its own decision (a longer `maxWait` for `runTx`, or fewer settlements at once
-  in the test).
+  in the test), taken only after the failure is understood. If it fails on CI: read the Prisma message, the
+  file's time and which rows were locked before changing anything.
 - Related, also open: some spec files run a pass over every operation in the shared database
   (`settlement.applyPending`, `recoverExpired`), which can act on another file's rows. `provider-dispatch.db.spec.ts`
   no longer does, and judges a settlement by the row.
