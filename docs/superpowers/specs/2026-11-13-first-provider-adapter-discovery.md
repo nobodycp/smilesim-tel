@@ -90,8 +90,8 @@ What the code does say, as fit and not as evidence of an API:
 **Selection rule for when documents arrive** (hard requirements first, then preference):
 
 1. Hard: a written API document from the provider; a sandbox that moves no money; either an idempotency key the
-   provider honours or an inquiry by our own reference; an inquiry that answers "done / not done / not found" for a
-   request that got no answer.
+   provider honours or an inquiry by our own reference; an inquiry whose document says which of its answers are
+   final for a request that got no answer.
 2. Preferred, in order: stable machine-readable error codes; `number-and-sim` or physical-SIM-only for the first
    run; stated rate limits; a provider the office already sells with `activate: auto`.
 
@@ -134,7 +134,7 @@ provider's half as questions. It is the template the real spec fills in; it inve
 | Provider says done | `left:true, confirmed` + `providerRef` + `result` | `succeeded` |
 | Provider says it did not run it, by a documented code | `left:true, refused, refused` | `failed`, handed to the branch |
 | Provider says our request is malformed, by a documented code | `left:true, refused, invalid-request` | `failed`, handed to the branch |
-| Provider says "accepted, in progress" | `left:true, none, provider-error` (inquiry decides) | `unknown` |
+| Provider says "accepted, in progress" | `left:true, none`; which code, and what follows, are UNRESOLVED (P7) | `unknown` |
 | Adapter threw, or the dispatcher's wait ran out | no evidence → `no-evidence` | `unknown` |
 
 Rules that do not depend on the provider:
@@ -184,7 +184,7 @@ S.12b builds none of this again.
 
 | Decision | On | Effect | Accounts |
 |---|---|---|---|
-| `confirm-success` | `unknown` | `unknown → succeeded` (`confirmUnknown`); the line is made and the hold captured through the settlement's own last step | one |
+| `confirm-success` | `unknown` | `unknown → succeeded` (`confirmUnknown`); the line is made and the hold captured through the settlement's own last step, or the reason it could not be made is recorded (D16) | one |
 | `declare-failure` | `unknown` | `unknown → failed` (`declareFailed`) with the `settled` message; the task is handed to the branch, the hold stays | two: a proposal, then another account's approval |
 | `apply-corrected` | a success that could not be applied (D16) | the line is made with corrected data | one |
 | `release-after-success` | the same | the task is rejected and the hold given back; the operation stays `succeeded` | two |
@@ -213,8 +213,11 @@ Both wait for a real contract (P7, P8). What can be said now without inventing o
   defines as final. Which of the provider's answers are final, what "in progress" and "never seen" mean, and
   whether an inquiry is by our key or by its reference are **UNRESOLVED**: no meaning is assigned to them here.
 - A failed, timed-out or not-understood inquiry changes nothing; the operation stays `unknown` for the people.
-- How an automatic verdict and a person's open proposal on the same operation meet is decided in S.12b's spec. The
-  store already guards it: every close is a guarded move from `unknown` on the attempt, so only one wins.
+- An automatic verdict and a person's decision on the same operation are already ordered by the code: every close
+  is a guarded move from `unknown` on the attempt, so only one wins; the provider's own answer is never held back
+  by an open proposal, and a proposal made about a state the operation has left is stale and can only be refused
+  (`decisionStep`). Whether an inquiry's verdict counts as "the provider's own answer" in that sense is confirmed
+  in S.12b's spec.
 
 ### 3.5 Protection of credentials and eSIM data
 
@@ -229,35 +232,37 @@ Both wait for a real contract (P7, P8). What can be said now without inventing o
 ### 3.6 Rate limits and operating limits
 
 - Provider's limits: UNRESOLVED (P10).
-- Ours today: the waiting pass sends at most 100 a round; the queue's concurrency is the worker's setting. The
+- Ours today: the waiting pass sends at most 100 a round; each worker process takes one job of a queue at a time
+  (`worker.ts` sets no concurrency, so BullMQ's default of 1 holds). The
   adapter needs a per-provider limit only if P10 states one; then it is a constant beside the endpoints.
 
 ## 4. Test plan
 
 Written against a **scripted HTTP server on the loopback**, started by the spec, so the real adapter code runs with
-no provider and no money. Each case runs with PostgreSQL and Redis through the real dispatcher.
+no provider and no money. Each case runs with PostgreSQL and Redis through the real dispatcher. Cases are numbered C1–C18; T6, T7, T10 and
+T11 elsewhere in this document are the transactions of ADR 0019.
 
 | # | Case | What must hold |
 |---|---|---|
-| T1 | Activation succeeds | `succeeded`; one line; one debit; the hold captured; number, serial and sealed eSIM code stored |
-| T2 | Provider refuses by a documented code | `failed`; the task handed to the branch once; the hold stays; no line; nothing sent again |
-| T3 | No response within the adapter's timeout | `unknown`; the hold stays; nothing sent again |
-| T4 | Connection dropped after the request was written | `unknown`, `connection-lost`; never `not-sent` |
-| T5 | Connection refused before any byte | `requested` again; attempt counted; at five, `failed`, handed to the branch, the hold stays |
-| T6 | The same idempotency key sent twice (redelivered job, two workers) | the server sees the same key; one line, one debit |
-| T7 | A late answer after recovery marked the operation unknown | closes it once; a second late answer changes nothing |
-| T8 | Provider down (5xx, then refused connections) | 5xx → `unknown`; refused connection → retried; provider health noticed once |
-| T9 | Owner pauses, then resumes | nothing sent while paused; no attempt spent; waiting operations sent after resume, once |
-| T10 | Credential replaced while a job is in flight | the old adapter sends nothing after the write; approval withdrawn |
-| T11 | Inquiry answers with a verdict the document defines as final | `resolveUnknown` once; one line, or one hand-over to the branch |
-| T12 | Inquiry fails, times out or answers nonsense | the operation stays `unknown`; nothing moves |
-| T13 | Inquiry answers "in progress" or "never seen" | UNRESOLVED (P8): until the document defines them, the operation stays `unknown` |
-| T13b | An automatic verdict and a person's decision on the same operation at once | one of them closes it; the other is refused; one line or one hand-over |
-| T14 | Sweeper, inquiry, redelivery and a late answer at once | exactly one line and one ledger entry; no deadlock |
-| T15 | Worker stopped in order / killed mid-call | finishes the job / leaves `unknown`; never a second send |
-| T16 | Response carries an oversized or malformed serial or code | the part is dropped, not cut; the sale still settles |
-| T17 | Log capture across T1–T16 | no credential, no key value, no eSIM code, no response body |
-| T18 | Wrong target | a sandbox factory refuses `live`; live endpoints are never opened in the suite |
+| C1 | Activation succeeds | `succeeded`; one line; one debit; the hold captured; number, serial and sealed eSIM code stored |
+| C2 | Provider refuses by a documented code | `failed`; the task handed to the branch once; the hold stays; no line; nothing sent again |
+| C3 | No response within the adapter's timeout | `unknown`; the hold stays; nothing sent again |
+| C4 | Connection dropped after the request was written | `unknown`, `connection-lost`; never `not-sent` |
+| C5 | Connection refused before any byte | `requested` again; attempt counted; at five, `failed`, handed to the branch, the hold stays |
+| C6 | The same idempotency key sent twice (redelivered job, two workers) | the server sees the same key; one line, one debit |
+| C7 | A late answer after recovery marked the operation unknown | closes it once; a second late answer changes nothing |
+| C8 | Provider down (5xx, then refused connections) | 5xx → `unknown`; refused connection → retried within the budget; nothing sent twice |
+| C9 | Owner pauses, then resumes | nothing sent while paused; no attempt spent; waiting operations sent after resume, once |
+| C10 | Credential replaced while a job is in flight | the old adapter sends nothing after the write; approval withdrawn |
+| C11 | Inquiry answers with a verdict the document defines as final | `resolveUnknown` once; one line, or one hand-over to the branch |
+| C12 | Inquiry fails, times out or answers nonsense | the operation stays `unknown`; nothing moves |
+| C13 | Inquiry answers "in progress" or "never seen" | UNRESOLVED (P8): until the document defines them, the operation stays `unknown` |
+| C13b | An automatic verdict and a person's decision on the same operation at once | one of them closes it; the other is refused; one line or one hand-over |
+| C14 | Sweeper, inquiry, redelivery and a late answer at once | exactly one line and one ledger entry; no deadlock |
+| C15 | Worker stopped in order / killed mid-call | finishes the job / leaves `unknown`; never a second send |
+| C16 | Response carries an oversized or malformed serial or code | the part is dropped, not cut; the sale still settles |
+| C17 | Log capture across C1–C16 | no credential, no key value, no eSIM code, no response body |
+| C18 | Wrong target | a sandbox factory refuses `live`; live endpoints are never opened in the suite |
 
 Mutation tests: evidence downgraded from `left:true` to `left:false`; an undocumented status mapped to `refused`;
 the key changed between attempts; inquiry sending instead of asking; an inquiry answer the document does not
@@ -284,7 +289,7 @@ A deployment separate from production in every part:
   need a proposal and another account's approval and neither may be the task's submitter. The owner's account
   approves, pauses and writes the credential. Their names are recorded in the handover register, not their secrets.
 - Watching: the provider-operations screens; counts of `unknown` and of operations waiting; the worker's
-  attestation age; provider health notices; the worker's log for `skipped` reasons.
+  attestation age; the worker's log for `skipped` reasons.
 - Stopping at once, from the mildest: the owner's pause (takes effect under the row lock, spends no attempt);
   withdrawing the approval; `PROVIDER_DISPATCH=0` and a restart; stopping the worker application.
 - Before the first sandbox call: a backup taken and restored once; the migrations applied; the test catalogue's
@@ -310,7 +315,8 @@ Nothing here is changed now.
 
 ### 6.3 Missing from the activation request (`OutgoingOperation`)
 
-- No eSIM flag: a `generated` eSIM is told apart from a physical SIM only by an empty serial.
+- No eSIM flag: the request does not say whether the line is an eSIM; one the provider must issue is
+  recognisable only by its empty serial.
 - No subscriber details: `current-details` (`neod`) cannot be dispatched as the code stands.
 - Whether more is needed (the company, a customer's identity, a SIM type) is the provider's to say (P3).
 - `activateInputs` is keyed on `neod` and `tokman`, which no seed creates: they exist only where the owner added

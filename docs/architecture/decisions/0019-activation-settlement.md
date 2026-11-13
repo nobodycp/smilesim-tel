@@ -746,3 +746,12 @@ no adapter: `ADAPTER_FACTORIES` and the manifest are still empty. One migration,
   row; an eSIM result arriving while sending is off, with no key, a malformed key, another key and the right
   key; messages delivered again to two workers' dispatchers and settlements. `provider-dispatch-switch.spec.ts`:
   the worker's check, the rows in `workerReady`, and that the dispatcher holds no gateway.
+
+## S.12b.1: discovery for the first adapter (2026-11-13; documents only)
+
+`docs/superpowers/specs/2026-11-13-first-provider-adapter-discovery.md`. No provider has an API document in the
+repository, so no adapter is specified and S.12b waits for one provider's documents and sandbox. No decision of
+this ADR changes. For the record of what S.12b inherits: people already close an unknown operation (D15, D16;
+`provider-decisions.ts`), a failed operation is handed to the branch with its hold (T6), and the only caller
+`resolveUnknown` still lacks is the automatic status inquiry, whose answers get their meaning from the provider's
+contract and from nowhere else.
