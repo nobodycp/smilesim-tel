@@ -2,6 +2,8 @@
 
 Text codemaps (read these first, keep them current): [`frontend.md`](./frontend.md), [`backend.md`](./backend.md). Decisions: [`decisions/`](./decisions/).
 
+Backend audit and the proposed plan to retire the `office` umbrella (2026-11-13, analysis only, not approved): [`2026-11-13-backend-audit-and-office-refactor-plan.md`](./2026-11-13-backend-audit-and-office-refactor-plan.md).
+
 Visual maps of `smilesim-tel`. Open the `.excalidraw` files with the **Excalidraw** extension in Cursor (`pomdtr.excalidraw-editor`) or [excalidraw.com](https://excalidraw.com).
 
 If a file still opens as raw JSON: Command Palette → **Developer: Reload Window**, then open the file again (or right-click → **Open With…** → **Excalidraw**).
