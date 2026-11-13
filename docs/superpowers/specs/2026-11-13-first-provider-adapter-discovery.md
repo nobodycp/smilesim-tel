@@ -4,6 +4,9 @@
 - **Base commit:** `859cd3e5e4092bebe013c6d20bee1f8571ae446b`
 - **Status:** discovery finished. **Decision: S.12b cannot start.** No provider's API documentation exists in the
   repository, so no adapter can be specified without inventing its contract.
+- **Corrected 2026-11-13** after the owner's review, against the code of S.8 and S.9: a person's route that closes
+  an unknown operation exists and is tested (section 3.4), and a provider failure does not release the hold
+  (section 3.2). The first version said otherwise on both; sections 3.2, 3.4, 4, 5, 6 and 8 are rewritten.
 - **Scope:** documents only. No adapter, no endpoint, no credential, no setting, no deployment.
 - **References:** ADR 0017, 0018, 0019 (D8, D11, D13, D17, D18, "S.12b.0"); `adapter-manifest.ts`;
   `provider-adapters.ts`; `dispatch-gate.ts`; `provider-operation.rules.ts`; `provider-dispatch.ts`.
@@ -123,22 +126,29 @@ provider's half as questions. It is the template the real spec fills in; it inve
 
 | What happened | Evidence | Operation becomes |
 |---|---|---|
-| No adapter for the code | `left:false, not-connected` | `requested` again, or `failed` at the budget |
+| No adapter for the code | `left:false, not-connected` | `requested` again; at the budget `failed`, and the task is handed to the branch |
 | DNS / connect refused / TLS handshake failed | `left:false, unreachable` | same |
 | Request written, no response before the timeout | `left:true, none, timeout` | `unknown` |
 | Connection dropped after the request was written | `left:true, none, connection-lost` | `unknown` |
 | Response not parseable, or 5xx with no stated meaning | `left:true, none, provider-error` | `unknown` |
 | Provider says done | `left:true, confirmed` + `providerRef` + `result` | `succeeded` |
-| Provider says it did not run it, by a documented code | `left:true, refused, refused` | `failed` |
-| Provider says our request is malformed, by a documented code | `left:true, refused, invalid-request` | `failed` |
+| Provider says it did not run it, by a documented code | `left:true, refused, refused` | `failed`, handed to the branch |
+| Provider says our request is malformed, by a documented code | `left:true, refused, invalid-request` | `failed`, handed to the branch |
 | Provider says "accepted, in progress" | `left:true, none, provider-error` (inquiry decides) | `unknown` |
 | Adapter threw, or the dispatcher's wait ran out | no evidence → `no-evidence` | `unknown` |
 
 Rules that do not depend on the provider:
 
+- **What `failed` does** (`ActivationSettlement.handToBranch`, T6): the task becomes an ordinary branch task noted
+  as a provider failure, once. **The hold stays.** Nothing is refunded, no line is made, and the operation is never
+  sent again. The branch then completes the task by hand (the hold becomes the charge) or rejects it (the hold is
+  given back), by its own permissions.
 - `refused` is used **only** for a response the provider's document says means "not executed". An undocumented
-  status, an authentication failure after bytes left, a rate-limit answer and any 5xx are `none`, not `refused`:
-  a wrong `refused` releases the hold while the line may exist at the provider.
+  status, an authentication failure after bytes left, a rate-limit answer and any 5xx are `none`, not `refused`.
+  **The risk of a wrong `refused` is double handling, not a released hold:** an activation the provider did run is
+  handed to the branch as a failure, and the branch may activate the subscriber a second time by hand (two lines at
+  the provider, one in SmileSim, the provider's charge twice) or reject a sale that exists at the provider (the
+  seller refunded for a live line). `unknown` avoids both: the task stays frozen until evidence closes it.
 - The provider's message text is never stored or logged; only a code from `OPERATION_ERRORS`.
 - No new `OPERATION_ERRORS` code is proposed now. If a provider's document shows a case the nine codes cannot
   carry, that is a decision for the real spec.
@@ -162,20 +172,49 @@ Rules that do not depend on the provider:
 | P13 | Cancellation or reversal of an activation made in error | UNRESOLVED |
 | P14 | Whether the provider's answers carry personal data that must not be stored | UNRESOLVED |
 
-### 3.4 Status inquiry and `resolveUnknown`
+### 3.4 Closing an unknown operation: what exists, and what is missing
 
-- `resolveUnknown(id, verdict)` exists (`provider-operations.service.ts`) and is correct: it closes `unknown` only,
-  never sends, and writes the `settled` message in the same transaction.
-- **It has no caller outside tests.** There is no inquiry on `DispatchAdapter`, no job that asks a provider about an
-  unknown operation, and no route by which a person closes one (section 6, G1–G3).
-- Design for S.12b, once P8 is known:
-  - `DispatchAdapter.inquire(operation): Promise<Verdict | null>`: `null` means "no verdict yet" (in progress,
-    inquiry failed, answer not understood). **"Never seen" is a `failed` verdict only if the provider's document
-    guarantees that a request it never saw can no longer arrive**; otherwise it is `null`.
-  - A worker timer walks unknown operations by cursor (the same fairness as the sweeper), under the same send gate
-    and permit as `send`, with a back-off per operation and a stated limit per round.
-  - An inquiry never changes an operation except through `resolveUnknown`. A failed inquiry changes nothing.
-  - An operation no inquiry closes within a stated age is announced to the branch, as today.
+**Exists, built and tested (S.8, S.9; ADR 0019 D15, D16; `provider-decisions.ts`, `provider-decisions.db.spec.ts`).**
+S.12b builds none of this again.
+
+- **By the provider's own late answer:** `settle` accepts a `confirmed` or `refused` outcome for the attempt of an
+  operation that recovery marked unknown (`closesUnknown`), once.
+- **By people**, on `POST /office/tasks/:id/provider-decision`, `POST /office/tasks/:id/provider-decision/approval`,
+  `GET /office/tasks/:id/provider-decision` and `GET /office/provider-decisions`; the screen is `tasks/decisions`.
+
+| Decision | On | Effect | Accounts |
+|---|---|---|---|
+| `confirm-success` | `unknown` | `unknown → succeeded` (`confirmUnknown`); the line is made and the hold captured through the settlement's own last step | one |
+| `declare-failure` | `unknown` | `unknown → failed` (`declareFailed`) with the `settled` message; the task is handed to the branch, the hold stays | two: a proposal, then another account's approval |
+| `apply-corrected` | a success that could not be applied (D16) | the line is made with corrected data | one |
+| `release-after-success` | the same | the task is rejected and the hold given back; the operation stays `succeeded` | two |
+
+- **Who:** a branch account that is the branch owner or holds the `accounting` grant (`mayDecide`), never from an
+  entered (impersonating) session. Not on a task the account submitted (`own-task`); the approval never by the
+  account that proposed (`own-proposal`).
+- **Evidence, required with every decision:** a kind (`provider-portal`, `provider-statement`, `provider-answer`,
+  `line-test`), a note of at least 20 characters, and for `confirm-success` the provider's reference. Each step is
+  an event (`proposed`, `approved`, `refused`, `applied`) naming the account; an eSIM code is never in the record.
+- **Announcement:** the sweeper tells the accounts that may decide, once per task (`tellUnknown`, T7).
+- These decisions never call a provider and never send anything again.
+
+**Missing: the automatic status inquiry.** The first version of this document read the absence of a caller of
+`resolveUnknown` as "no one can close an unknown operation". That was wrong: people close it through
+`confirmUnknown` and `declareFailed`. What is true is narrower:
+
+- `resolveUnknown(id, verdict)` (closes `unknown` only, never sends, writes the `settled` message in the same
+  transaction) has no caller outside tests. It is the entry kept for an answer the provider gives when asked.
+- `DispatchAdapter` has `send` only, and no worker job asks a provider about an unknown operation.
+
+Both wait for a real contract (P7, P8). What can be said now without inventing one:
+
+- An inquiry is an adapter's method, in the worker only, under the same gate and permit as `send`.
+- An inquiry changes an operation only through `resolveUnknown`, and only with a verdict the provider's document
+  defines as final. Which of the provider's answers are final, what "in progress" and "never seen" mean, and
+  whether an inquiry is by our key or by its reference are **UNRESOLVED**: no meaning is assigned to them here.
+- A failed, timed-out or not-understood inquiry changes nothing; the operation stays `unknown` for the people.
+- How an automatic verdict and a person's open proposal on the same operation meet is decided in S.12b's spec. The
+  store already guards it: every close is a guarded move from `unknown` on the attempt, so only one wins.
 
 ### 3.5 Protection of credentials and eSIM data
 
@@ -201,18 +240,19 @@ no provider and no money. Each case runs with PostgreSQL and Redis through the r
 | # | Case | What must hold |
 |---|---|---|
 | T1 | Activation succeeds | `succeeded`; one line; one debit; the hold captured; number, serial and sealed eSIM code stored |
-| T2 | Provider refuses by a documented code | `failed`; the hold released once; no line |
+| T2 | Provider refuses by a documented code | `failed`; the task handed to the branch once; the hold stays; no line; nothing sent again |
 | T3 | No response within the adapter's timeout | `unknown`; the hold stays; nothing sent again |
 | T4 | Connection dropped after the request was written | `unknown`, `connection-lost`; never `not-sent` |
-| T5 | Connection refused before any byte | `requested` again; attempt counted; at five, `failed` and the hold released |
+| T5 | Connection refused before any byte | `requested` again; attempt counted; at five, `failed`, handed to the branch, the hold stays |
 | T6 | The same idempotency key sent twice (redelivered job, two workers) | the server sees the same key; one line, one debit |
 | T7 | A late answer after recovery marked the operation unknown | closes it once; a second late answer changes nothing |
 | T8 | Provider down (5xx, then refused connections) | 5xx → `unknown`; refused connection → retried; provider health noticed once |
 | T9 | Owner pauses, then resumes | nothing sent while paused; no attempt spent; waiting operations sent after resume, once |
 | T10 | Credential replaced while a job is in flight | the old adapter sends nothing after the write; approval withdrawn |
-| T11 | Inquiry answers done / refused | `resolveUnknown` once; one line or one release |
+| T11 | Inquiry answers with a verdict the document defines as final | `resolveUnknown` once; one line, or one hand-over to the branch |
 | T12 | Inquiry fails, times out or answers nonsense | the operation stays `unknown`; nothing moves |
-| T13 | Inquiry says "never seen" | per P8: `failed` only with the provider's guarantee, else stays `unknown` |
+| T13 | Inquiry answers "in progress" or "never seen" | UNRESOLVED (P8): until the document defines them, the operation stays `unknown` |
+| T13b | An automatic verdict and a person's decision on the same operation at once | one of them closes it; the other is refused; one line or one hand-over |
 | T14 | Sweeper, inquiry, redelivery and a late answer at once | exactly one line and one ledger entry; no deadlock |
 | T15 | Worker stopped in order / killed mid-call | finishes the job / leaves `unknown`; never a second send |
 | T16 | Response carries an oversized or malformed serial or code | the part is dropped, not cut; the sale still settles |
@@ -220,8 +260,8 @@ no provider and no money. Each case runs with PostgreSQL and Redis through the r
 | T18 | Wrong target | a sandbox factory refuses `live`; live endpoints are never opened in the suite |
 
 Mutation tests: evidence downgraded from `left:true` to `left:false`; an undocumented status mapped to `refused`;
-the key changed between attempts; inquiry sending instead of asking; "never seen" treated as failed without the
-guarantee. Each must fail at least one test.
+the key changed between attempts; inquiry sending instead of asking; an inquiry answer the document does not
+define as final treated as a verdict. Each must fail at least one test.
 
 Not possible before documents: contract tests against the provider's real sandbox (S.12b's staging run).
 
@@ -239,8 +279,10 @@ A deployment separate from production in every part:
   2. The sandbox credential written through the owner's route.
   3. `PROVIDER_DISPATCH=1` on both.
   4. The owner's approval for this deployment and target.
-- Two accounts allowed to approve, pause and write the credential, each with two-factor sign-in, so one can stop
-  the provider when the other is away. Their names are recorded in the handover register, not their secrets.
+- Two branch accounts, each with two-factor sign-in, neither of them the one that submits the test sales: both
+  hold the `accounting` grant (or one is the branch owner), because `declare-failure` and `release-after-success`
+  need a proposal and another account's approval and neither may be the task's submitter. The owner's account
+  approves, pauses and writes the credential. Their names are recorded in the handover register, not their secrets.
 - Watching: the provider-operations screens; counts of `unknown` and of operations waiting; the worker's
   attestation age; provider health notices; the worker's log for `skipped` reasons.
 - Stopping at once, from the mildest: the owner's pause (takes effect under the row lock, spends no attempt);
@@ -249,19 +291,35 @@ A deployment separate from production in every part:
   product codes confirmed against the sandbox (P12).
 - Leaving staging for live needs the go-live gate of the plan, a separate decision.
 
-## 6. Gaps in SmileSim found by this discovery
+## 6. What S.12b has, and what it lacks
 
-To be closed in S.12b's own spec; none is changed now.
+Nothing here is changed now.
 
-- **G1.** `DispatchAdapter` has `send` only: no inquiry.
-- **G2.** No worker job asks a provider about unknown operations.
-- **G3.** `resolveUnknown` has no caller outside tests: no person's route closes an unknown operation either. Until
-  one exists, an unknown operation holds its money until someone acts in the database. This must be closed before
-  any provider is called, sandbox included.
-- **G4.** `OutgoingOperation` carries no eSIM flag and no subscriber details: a `generated` eSIM is told apart from
-  a physical SIM only by an empty serial, and `current-details` cannot be dispatched.
-- **G5.** `activateInputs` names `neod` and `tokman`, which no seed creates: the rule is keyed on codes that exist
-  only where the owner added them by hand.
+### 6.1 Exists and tested: not rebuilt
+
+- People's decisions on an unknown operation and on a success that could not be applied (section 3.4): routes,
+  rules, evidence, two-account approval, the screen.
+- The provider's late answer closing an unknown operation through `settle`.
+- The hand-over of a failed operation to the branch with its hold (T6), and the announcement of an unknown one (T7).
+- The gate, the permit, the attestation, the waiting pass, the fair sweeper, recovery (S.12a, S.12b.0).
+
+### 6.2 Missing, and needs a real API contract
+
+- An inquiry on `DispatchAdapter` and the worker job that calls it, ending in `resolveUnknown` (its only use).
+- The adapter itself: `send`, its endpoints, its error mapping.
+
+### 6.3 Missing from the activation request (`OutgoingOperation`)
+
+- No eSIM flag: a `generated` eSIM is told apart from a physical SIM only by an empty serial.
+- No subscriber details: `current-details` (`neod`) cannot be dispatched as the code stands.
+- Whether more is needed (the company, a customer's identity, a SIM type) is the provider's to say (P3).
+- `activateInputs` is keyed on `neod` and `tokman`, which no seed creates: they exist only where the owner added
+  them by hand.
+
+### 6.4 Cannot be settled without the provider's documents
+
+P1–P14 of section 3.3; the meaning of every inquiry answer; whether any `OPERATION_ERRORS` code is missing; the
+adapter's rate limit; whether a sandbox activation moves money.
 
 ## 7. What is needed from the owner
 
@@ -279,5 +337,7 @@ For at least one provider:
 sandbox, an idempotency rule or an inquiry in the repository. Writing an adapter now would mean inventing endpoints
 and error codes, which the rules of this slice forbid and which would put money at risk.
 
-What can proceed without a provider, if the owner approves it as its own slice: G1–G3 (the inquiry port, the
-inquiry job and a person's route to close an unknown operation) and the scripted-server test harness of section 4.
+The blocker is the provider's API document and a sandbox for at least one provider. It is not the people's
+decisions on unknown operations: those exist. Without a provider only the scripted-server test harness of
+section 4 could be prepared, and only as its own approved slice; the inquiry is not designed further until a
+contract says what its answers mean.

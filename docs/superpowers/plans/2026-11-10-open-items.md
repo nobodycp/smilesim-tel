@@ -55,9 +55,8 @@ or replaced by a later design. They stay in git history.
 - **S.12b is blocked on provider documents (2026-11-13).** Discovery
   (`docs/superpowers/specs/2026-11-13-first-provider-adapter-discovery.md`): none of the provider codes (`sky`,
   `lian`, `aren`, `quickline`, `alloha`, `neod`, `tokman`) has an API document in the repository. Needed from the
-  owner: one provider's document, sandbox access, and answers to P1–P14 of the spec. Open on our side whatever the
-  provider: an inquiry port, an inquiry job and a person's route that closes an unknown operation (`resolveUnknown`
-  has no caller outside tests).
+  owner: one provider's document, sandbox access, and answers to P1–P14 of the spec. People's decisions on an unknown
+  operation exist (S.9); only the automatic status inquiry is missing, and it waits for the provider's contract.
 
 ## Settled on 2026-11-10
 

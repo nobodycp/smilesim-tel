@@ -452,8 +452,9 @@ wallets (sorted). A slice's review checks that order in the code it adds.
   - **S.12b.1 Discovery for the first adapter** (2026-11-13; documents only): spec
     `docs/superpowers/specs/2026-11-13-first-provider-adapter-discovery.md`. No provider code has an API document,
     a sandbox, an idempotency rule or an inquiry in the repository, so **S.12b is blocked** until the owner supplies
-    one provider's documents. Found on our side: no inquiry on `DispatchAdapter`, no inquiry job, and no caller of
-    `resolveUnknown` outside tests (G1–G3 of the spec), to close before any provider is called.
+    one provider's documents. People already close an unknown operation (S.9, `provider-decisions.ts`); what is
+    missing is the automatic inquiry (an adapter method and a worker job ending in `resolveUnknown`), which needs
+    the provider's contract, and two fields of the activation request (spec section 6).
 
 ## Go-live gate: nothing is dispatched to a live provider until all of these are true
 
