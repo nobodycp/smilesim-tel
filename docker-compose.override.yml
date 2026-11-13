@@ -1,5 +1,7 @@
 # LOCAL DEVELOPMENT ONLY. `docker compose up` merges this file into docker-compose.yml by itself.
-# Production on Coolify deploys docker-compose.yml alone and never reads this file: keep it that way.
+# A Coolify deployment never reads this file: keep it that way. (The deployment that exists today is not a
+# Compose resource at all: it is three Dockerfile applications, each with its own environment variables; see
+# docs/handover/technical-operations-ar.md, section 4.)
 #
 # It turns the trial accounts on (branch, main, agent, pos; password 123456) so a fresh local
 # database has a way in, and runs the api image as a development copy: a production api refuses

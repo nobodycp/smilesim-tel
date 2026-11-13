@@ -149,14 +149,17 @@ export class ProviderOperationsRepository {
   }
 
   /**
-   * The operations of tasks whose verdict the settlement still has to act on, oldest first: succeeded with
-   * neither `appliedAt` nor `applyError`, and failed with no `appliedAt`. An exception (`applyError`) and an
-   * unknown one are not among them: only a person, or the provider's late answer, moves those.
+   * One page of the operations of tasks whose verdict the settlement still has to act on, in the order of their
+   * ids, after `afterId` (from the start when it is null): succeeded with neither `appliedAt` nor `applyError`,
+   * and failed with no `appliedAt`. An exception (`applyError`) and an unknown one are not among them: only a
+   * person, or the provider's late answer, moves those. By id, never by the time of the last write: an operation
+   * the settlement cannot act on for a technical reason is not written, so by that time it would stay first for
+   * ever and, a hundred of them, hide every other.
    */
-  async unsettledIds(db: Db, limit: number): Promise<string[]> {
+  async unsettledPage(db: Db, afterId: string | null, limit: number): Promise<string[]> {
     const rows = await db.providerOperation.findMany({
-      where: { taskId: { not: null }, appliedAt: null, OR: [{ status: 'succeeded', applyError: null }, { status: 'failed' }] },
-      orderBy: { updatedAt: 'asc' },
+      where: { taskId: { not: null }, appliedAt: null, OR: [{ status: 'succeeded', applyError: null }, { status: 'failed' }], ...(afterId ? { id: { gt: afterId } } : {}) },
+      orderBy: { id: 'asc' },
       take: limit,
       select: { id: true },
     });
@@ -164,11 +167,12 @@ export class ProviderOperationsRepository {
   }
 
   /**
-   * The operations of tasks whose answer is not known, newest first: the ones the settlement may still have to
-   * announce. Newest first, so one that was just made unknown is always within the limit.
+   * One page of the operations of tasks whose answer is not known, by id, after `afterId`: the ones the
+   * settlement may still have to announce. An unknown operation stays in this list until a person or the
+   * provider's late answer closes it, so the list is walked, not read from its top.
    */
-  async unknownTaskOperationIds(db: Db, limit: number): Promise<string[]> {
-    const rows = await db.providerOperation.findMany({ where: { taskId: { not: null }, status: 'unknown' }, orderBy: { updatedAt: 'desc' }, take: limit, select: { id: true } });
+  async unknownTaskOperationPage(db: Db, afterId: string | null, limit: number): Promise<string[]> {
+    const rows = await db.providerOperation.findMany({ where: { taskId: { not: null }, status: 'unknown', ...(afterId ? { id: { gt: afterId } } : {}) }, orderBy: { id: 'asc' }, take: limit, select: { id: true } });
     return rows.map((row) => row.id);
   }
 

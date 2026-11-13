@@ -66,7 +66,7 @@ DESIGN.md        نظام التصميم، مصدر الحقيقة البصري
 
 ## النشر على Coolify
 
-`docker-compose.yml` هو ملف النشر نفسه. Coolify يقرأه وحده ولا يقرأ `docker-compose.override.yml`، فلا تُزرع حسابات التجربة.
+`docker-compose.yml` يصلح ملف نشر: Coolify يقرؤه وحده ولا يقرأ `docker-compose.override.yml`، فلا تُزرع حسابات التجربة. (النشر القائم اليوم ليس بهذه الطريقة: هو ثلاثة تطبيقات Dockerfile منفصلة، لكل منها متغيراته، ومنها `SECRETS_KEY` الذي يُضبط على الـAPI **وعلى الـWorker** بالقيمة نفسها. التفاصيل في `docs/handover/technical-operations-ar.md`.)
 
 1. أنشئ مورداً من هذا المستودع بنوع Docker Compose.
 2. اضبط المتغيرات في Coolify (القائمة في `.env.example`):

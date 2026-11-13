@@ -21,6 +21,10 @@ import type { TaskCompletion } from './task-completion';
 
 const log = logger('ActivationSettlement');
 
+/** How many operations one page of the sweeper reads, and how many pages of each of its two lists one round walks. */
+export const SWEEP_PAGE = 100;
+export const SWEEP_PAGES_A_ROUND = 5;
+
 /**
  * What acting on an operation's verdict came to:
  * - `applied`: the line exists, the hold was captured, the task is done (T5).
@@ -72,21 +76,57 @@ export class ActivationSettlement {
     return this.tellUnknown(operation, task, submitter);
   }
 
+  /** Where each of the sweeper's two walks has reached: the last id it looked at, null at the start of a walk. */
+  private readonly swept: { unsettled: string | null; unknown: string | null } = { unsettled: null, unknown: null };
+  private stopped = false;
+
+  /** The worker is stopping: the round in flight acts on no further operation. */
+  stopSweeping(): void {
+    this.stopped = true;
+  }
+
   /**
-   * The sweeper (D8): acts on every operation whose verdict was recorded and not acted on, a batch at a time, so
-   * a lost message or a worker that died loses nothing. One that fails for a technical reason is logged by its
-   * code and met again on the next round. Answers how many it changed.
+   * The sweeper (D8): acts on the operations whose verdict was recorded and not acted on, so a lost message or a
+   * worker that died loses nothing. Answers how many it changed.
+   *
+   * Two lists, each walked **by id, a page at a time, from where its last round stopped**:
+   * 1. what can be applied or handed over (`unsettled`);
+   * 2. the unknown ones, each of which is announced once (`awaitingAnswer`), so a lost or failed message does not
+   *    leave an unknown answer unsaid.
+   *
+   * Each list has its own place and its own bound (`pages` pages of `page` rows a round), so neither holds the
+   * other back, and no number of operations at the front of one holds back those behind them:
+   * - an operation that cannot be acted on for a technical reason (a result that does not open, a fault of the
+   *   database) is logged by a code, **left exactly as it is**, and passed; the walk goes on to the next;
+   * - it is met again on the next walk, for as long as it is there: nothing is dropped and nothing is marked;
+   * - a round that stops before the end of a list goes on from there next time; one that reaches the end starts
+   *   again from the beginning. The id never changes, so a walk meets each operation that stays in the list once
+   *   and none twice; one that joins behind the walk is met on the next;
+   * - what is applied is applied by `apply`, whose every write is guarded: a second round, another worker or the
+   *   message's own delivery finds nothing to do.
    */
-  async applyPending(limit = 100): Promise<number> {
+  async applyPending(page: number = SWEEP_PAGE, pages: number = SWEEP_PAGES_A_ROUND): Promise<number> {
+    const changed = await this.walk('unsettled', (after) => this.operations.unsettled(after, page), page, pages);
+    return changed + (await this.walk('unknown', (after) => this.operations.awaitingAnswer(after, page), page, pages));
+  }
+
+  private async walk(list: 'unsettled' | 'unknown', read: (after: string | null) => Promise<string[]>, page: number, pages: number): Promise<number> {
     let changed = 0;
-    // What can be applied or handed over, then the unknown ones: each of those is announced once, so a lost or
-    // failed message does not leave an unknown answer unsaid.
-    const ids = [...(await this.operations.unsettled(limit)), ...(await this.operations.awaitingAnswer(limit))];
-    for (const id of ids) {
-      try {
-        if ((await this.apply(id)) !== 'skipped') changed += 1;
-      } catch (error) {
-        log.error(`operation ${id}: the settlement failed and will be tried again (${errorCode(error)})`);
+    for (let turn = 0; turn < pages && !this.stopped; turn += 1) {
+      const ids = await read(this.swept[list]);
+      for (const id of ids) {
+        if (this.stopped) return changed;
+        try {
+          if ((await this.apply(id)) !== 'skipped') changed += 1;
+        } catch (error) {
+          log.error(`operation ${id}: the settlement failed and will be tried again (${errorCode(error)})`);
+        }
+        this.swept[list] = id;
+      }
+      // A short page is the end of the list: the next round starts a new walk.
+      if (ids.length < page) {
+        this.swept[list] = null;
+        break;
       }
     }
     return changed;

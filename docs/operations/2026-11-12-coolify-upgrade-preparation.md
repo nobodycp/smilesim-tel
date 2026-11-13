@@ -135,7 +135,12 @@ keep and disables the rest. Until then the site should be treated as a trial sit
 - The API sits on the `coolify` network with 31 other containers of other projects. Any of them can reach it
   directly and name any caller address in a header. A network of its own for the three services and the data
   containers closes that. Also listed for approval.
-- The worker needs only `DATABASE_URL`, `REDIS_URL`, `APP_ROLE=worker` (present). It does not need the key.
+- The worker needs `DATABASE_URL`, `REDIS_URL`, `APP_ROLE=worker` (present) **and, since slice S.12b.0,
+  `SECRETS_KEY`** (absent today). It is a Dockerfile application of its own (`smilesim-worker`), with its own
+  environment variables: it does not inherit the API's, and `docker-compose.yml`, which now hands the worker the
+  key, is not what is deployed here. So the key must be saved on `smilesim-worker` itself, with the same value
+  as on `smilesim-api` (the worker opens what the API sealed: one key seals and opens). Without it the new
+  worker refuses to start, by design; with a different one it starts and cannot settle an eSIM activation.
 
 ## 5. Health checks, migrations and rollback (phases 3 and 4)
 
@@ -259,7 +264,8 @@ setting.
 
 1. Taking dumps of the database, and where the off-server copy lives.
 2. Who generates and holds the backup private key and `SECRETS_KEY`.
-3. Saving `SECRETS_KEY` and `TRUST_PROXY=1` in Coolify.
+3. Saving `SECRETS_KEY` and `TRUST_PROXY=1` in Coolify: `SECRETS_KEY` on **both** `smilesim-api` and
+   `smilesim-worker` (the same value, pasted, never written anywhere else), `TRUST_PROXY=1` on `smilesim-api`.
 4. Health checks: a command check in Coolify, or a `HEALTHCHECK` in the Dockerfiles (a code change).
 5. The maintenance window and its date.
 6. The trial accounts: new passwords, or disabling.

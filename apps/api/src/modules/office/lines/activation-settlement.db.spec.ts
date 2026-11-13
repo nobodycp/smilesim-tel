@@ -57,17 +57,34 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
   /** How many of the next notice writes fail: a fault after the line and the money were written. */
   let breakNotices = 0;
 
+  /**
+   * The sweeper's two lists as the repository reads them (by id, after the cursor, a page at a time), among this
+   * spec's own operations: other spec files keep operations of their own in the same database.
+   */
   class OwnOperations extends ProviderOperationsRepository {
-    override async unsettledIds(db: Db, limit: number): Promise<string[]> {
+    private async own(db: Db, read: (after: string | null, limit: number) => Promise<string[]>, afterId: string | null, limit: number): Promise<string[]> {
       const mine = new Set((await db.providerOperation.findMany({ where: { providerId: ids.provider }, select: { id: true } })).map((row) => row.id));
-      return (await super.unsettledIds(db, 10_000)).filter((id) => mine.has(id)).slice(0, limit);
+      const found: string[] = [];
+      let after = afterId;
+      for (;;) {
+        const page = await read(after, 200);
+        found.push(...page.filter((id) => mine.has(id)));
+        if (page.length < 200 || found.length >= limit) break;
+        after = page[page.length - 1];
+      }
+      return found.slice(0, limit);
     }
 
-    override async unknownTaskOperationIds(db: Db, limit: number): Promise<string[]> {
-      const mine = new Set((await db.providerOperation.findMany({ where: { providerId: ids.provider }, select: { id: true } })).map((row) => row.id));
-      return (await super.unknownTaskOperationIds(db, 10_000)).filter((id) => mine.has(id)).slice(0, limit);
+    override unsettledPage(db: Db, afterId: string | null, limit: number): Promise<string[]> {
+      return this.own(db, (after, size) => super.unsettledPage(db, after, size), afterId, limit);
+    }
+
+    override unknownTaskOperationPage(db: Db, afterId: string | null, limit: number): Promise<string[]> {
+      return this.own(db, (after, size) => super.unknownTaskOperationPage(db, after, size), afterId, limit);
     }
   }
+  /** A sweeper of its own (its own place in each list), over this spec's operations: as another worker would be. */
+  const anotherSweeper = () => buildActivationSettlement(dispatch.uow, new ProviderOperationsService(dispatch.uow, new OwnOperations()));
 
   const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
   const number = () => `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
@@ -782,12 +799,12 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       await dispatch.operations.settle(unknown, 1, { kind: 'no-answer', error: 'timeout' });
       const waiting = await sent(await openTask());
       // No message of any of them was ever published or handled. The sweeper's list is the two it can act on.
-      expect((await new OwnOperations().unsettledIds(prisma, 100)).sort()).toEqual([lost.operationId, failed].sort());
+      expect((await new OwnOperations().unsettledPage(prisma, null, 100)).sort()).toEqual([lost.operationId, failed].sort());
       notices = [];
       // Three things happen: the lost verdict is applied, the failure is handed over, and the unknown answer,
       // whose message was lost too, is announced.
       expect(await settlement.applyPending()).toBe(3);
-      expect(await new OwnOperations().unsettledIds(prisma, 100)).toEqual([]);
+      expect(await new OwnOperations().unsettledPage(prisma, null, 100)).toEqual([]);
       expect(notices.filter((notice) => notice.payload.excerpt === PROVIDER_UNKNOWN_NOTE).map((notice) => notice.to)).toEqual([[ids.accountant, ids.owner].sort()]);
       expect(await task(lost.taskId)).toMatchObject({ status: 'done' });
       expect((await operation(failed)).appliedAt).toBeInstanceOf(Date);
@@ -924,6 +941,58 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       await piped.publisher.close();
     });
 
+    it('a worker told to stop while its request is at the provider finishes that job and takes no other; one that is killed leaves the attempt to recovery, which never sends it again', async () => {
+      const requested = async () => {
+        const taskId = await openTask();
+        const row = await prisma.providerOperation.create({ data: { idempotencyKey: operationKey(taskId), requestHash: 'h', action: 'activate', providerId: ids.provider, packageCode: `s8-${tag}`, taskId, status: 'requested' } });
+        return { taskId, id: row.id };
+      };
+      const [active, queued, killed] = [await requested(), await requested(), await requested()];
+      // The provider holds the first request until the test lets it answer.
+      let entered = () => undefined as void;
+      const atProvider = new Promise<void>((resolve) => { entered = resolve; });
+      let answer = () => undefined as void;
+      const released = new Promise<void>((resolve) => { answer = resolve; });
+      gateway.next(async () => { entered(); await released; return { left: true, answer: 'confirmed', providerRef: 'REF-STOP' }; });
+      const worker = new Worker(OPERATIONS_QUEUE, (job) => piped.handle(job.data), { connection: connection(), prefix, concurrency: 1 });
+      await queues[0].add('operation', { operationId: active.id });
+      await atProvider;
+      await queues[0].add('operation', { operationId: queued.id });
+      // 1. An orderly stop (what SIGTERM does: the queue workers are closed and waited for).
+      let closed = false;
+      const closing = worker.close().then(() => { closed = true; });
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      // It waits for the job in hand: the request is at the provider, marked, and nothing else was taken.
+      expect(closed).toBe(false);
+      expect(await operation(active.id)).toMatchObject({ status: 'pending', attempts: 1 });
+      expect((await operation(active.id)).sentAt).toBeInstanceOf(Date);
+      expect(await operation(queued.id)).toMatchObject({ status: 'requested', attempts: 0 });
+      answer();
+      await closing;
+      // The job in hand was finished and its verdict written; the one behind it stays in the queue for another worker.
+      expect(await operation(active.id)).toMatchObject({ status: 'succeeded', attempts: 1, providerRef: 'REF-STOP' });
+      expect(await operation(queued.id)).toMatchObject({ status: 'requested', attempts: 0, sentAt: null });
+      expect(gateway.calls.map((sent_) => sent_.idempotencyKey)).toEqual([operationKey(active.taskId)]);
+      expect(await queues[0].getWaitingCount()).toBe(1);
+      expect(await settlement.apply(active.id)).toBe('applied');
+      // 2. Killed: the process is gone after the mark, with no answer written and nothing closed.
+      const attempt = (await piped.operations.claim(killed.id, new Date(), piped.gate)) as number;
+      expect(await piped.operations.beginSend(killed.id, attempt, new Date(), piped.gate)).not.toBeNull();
+      // While its lease runs nobody touches it; after it, recovery makes it unknown: it may have reached the provider.
+      expect(await piped.operations.recover(killed.id, new Date(), piped.gate)).toBeNull();
+      expect(await piped.operations.recover(killed.id, new Date(Date.now() + 3_600_000), piped.gate)).toBe('unknown');
+      // It is never sent again, by its message or by another worker, and its hold stays for a person to decide.
+      for (let again = 0; again < 3; again += 1) expect(await piped.dispatcher.handle(killed.id)).toBe('skipped');
+      expect(gateway.calls).toHaveLength(1);
+      expect(await operation(killed.id)).toMatchObject({ status: 'unknown', attempts: 1, appliedAt: null });
+      expect(await task(killed.taskId)).toMatchObject({ status: 'working', held: PRICE });
+      // The one left in the queue is sent by the next worker, once.
+      workers.push(new Worker(OPERATIONS_QUEUE, (job) => piped.handle(job.data), { connection: connection(), prefix }));
+      await until(async () => (await operation(queued.id)).status === 'succeeded');
+      expect(gateway.calls.map((sent_) => sent_.idempotencyKey)).toEqual([operationKey(active.taskId), operationKey(queued.taskId)]);
+      await expectWalletAddsUp();
+    });
+
     it('carries an eSIM activation from the request to its line: sent once, settled once, and no part of the code in the output, the outbox, Redis or a notice (spec 24)', async () => {
       const taskId = await openTask({ esim: true });
       const [msisdn, iccid] = [number(), serial()];
@@ -1000,6 +1069,207 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       await piped.settle({ operationId: operationRow.id });
       expect(await snapshot(taskId, operationRow.id)).toEqual(state);
       expect(gateway.calls).toHaveLength(1);
+    });
+  });
+
+  // ── The sweeper's fairness (S.12b.0 final audit) ────────────────────────────────────────────────────────
+
+  describe('the sweeper is fair: operations it cannot act on, however many, do not keep it from the ones behind them', () => {
+    /** A verdict stored for a task, with an id that sorts where the test wants it: succeeded and not acted on, unless said otherwise. */
+    const verdict = async (prefix: string, index: number, over: Record<string, unknown> = {}, task_: Record<string, unknown> = {}) => {
+      const taskId = await openTask(task_);
+      const id = `${prefix}-${tag}-${String(index).padStart(4, '0')}`;
+      await prisma.providerOperation.create({
+        data: { id, idempotencyKey: operationKey(taskId), requestHash: 'h', action: 'activate', providerId: ids.provider, packageCode: `s8-${tag}`, taskId, status: 'succeeded', attempts: 1, lastAttemptAt: new Date(), sentAt: new Date(), providerRef: 'REF', ...over },
+      });
+      return { taskId, id };
+    };
+    const inTurns = async <T>(count: number, make: (index: number) => Promise<T>): Promise<T[]> => {
+      const made: T[] = [];
+      for (let from = 0; from < count; from += 10) made.push(...(await Promise.all(Array.from({ length: Math.min(10, count - from) }, (_, at) => make(from + at)))));
+      return made;
+    };
+    /** An eSIM code sealed with a key that is not this deployment's: the settlement cannot open it. */
+    const unopenable = () => {
+      const key = process.env.SECRETS_KEY;
+      process.env.SECRETS_KEY = Buffer.alloc(32, 77).toString('base64');
+      try {
+        return seal(CODE);
+      } finally {
+        process.env.SECRETS_KEY = key;
+      }
+    };
+    /** `count` eSIM activations the provider confirmed, whose code this worker cannot open: a technical fault, each time. */
+    const stuck = (count: number, sealed: string, prefix = '00000000') => inTurns(count, (index) => verdict(prefix, index, { resultMsisdn: number(), resultIccid: serial(), resultEsimCode: sealed }, { esim: true }));
+    const good = (count: number, prefix = 'ffffffff') => inTurns(count, (index) => verdict(prefix, index));
+    const applied = async (rows: { id: string }[]) => (await prisma.providerOperation.findMany({ where: { id: { in: rows.map((row) => row.id) } } })).filter((row) => row.appliedAt !== null).length;
+    const untouched = async (rows: { id: string; taskId: string }[], sealed: string) => {
+      const operations = await prisma.providerOperation.findMany({ where: { id: { in: rows.map((row) => row.id) } } });
+      expect(operations.filter((row) => row.status === 'succeeded' && row.appliedAt === null && row.applyError === null && row.applyFailedAt === null && row.resultEsimCode === sealed)).toHaveLength(rows.length);
+      const tasks = await prisma.officeTask.findMany({ where: { id: { in: rows.map((row) => row.taskId) } } });
+      expect(tasks.filter((row) => row.status === 'working' && row.held > 0)).toHaveLength(rows.length);
+    };
+
+    it('150 confirmed activations it cannot open, then 10 it can: with forty looked at a round the ten are settled in the fourth round, and the 150 are left exactly as they were', async () => {
+      const sealed = unopenable();
+      const blocked = await stuck(150, sealed);
+      const fine = await good(10);
+      const sweeper = anotherSweeper();
+      const progress: number[] = [];
+      const output = await capturedOutput(async () => {
+        // Three rounds look at 120 of the 150 and settle nothing; the fourth reaches the ten.
+        for (let round = 0; round < 4; round += 1) {
+          const changed = await sweeper.applyPending(20, 2);
+          progress.push(changed);
+        }
+      });
+      expect(progress).toEqual([0, 0, 0, 10]);
+      expect(await applied(fine)).toBe(10);
+      expect(await lines()).toHaveLength(10);
+      await untouched(blocked, sealed);
+      // Each failure is a code in the log: nothing of the code, the sealed value or the cipher's own words.
+      expect(output).toContain('the settlement failed and will be tried again');
+      for (const secret of ['S8-SECRET', 'smdp.s8', sealed.slice(6, 40), 'auth', 'decrypt', 'Unsupported state']) expect([secret, output.includes(secret)]).toEqual([secret, false]);
+      // The walk goes on: the next rounds meet the 150 again (they are still tried), and settle nothing twice.
+      const again: number[] = [];
+      await capturedOutput(async () => {
+        for (let round = 0; round < 5; round += 1) again.push(await sweeper.applyPending(20, 2));
+      });
+      expect(again).toEqual([0, 0, 0, 0, 0]);
+      expect(await lines()).toHaveLength(10);
+      await expectWalletAddsUp();
+      expect((await wallet()).balance).toBe(START - 10 * PRICE);
+      // With the worker's own sizes one round is enough.
+      const more = await good(3, 'fffffffe');
+      await capturedOutput(async () => expect(await anotherSweeper().applyPending()).toBe(3));
+      expect(await applied(more)).toBe(3);
+    });
+
+    it('one that could not be settled, once it can: it is settled on the walk that meets it, once', async () => {
+      const sealed = unopenable();
+      const [blocked] = await stuck(1, sealed);
+      const sweeper = anotherSweeper();
+      await capturedOutput(async () => {
+        for (let round = 0; round < 3; round += 1) expect(await sweeper.applyPending()).toBe(0);
+      });
+      await untouched([blocked], sealed);
+      // The fault is put right (the result is sealed with this deployment's key): nothing else is touched.
+      await prisma.providerOperation.update({ where: { id: blocked.id }, data: { resultEsimCode: seal(CODE) } });
+      expect([await sweeper.applyPending(), await sweeper.applyPending(), await sweeper.applyPending()]).toEqual([1, 0, 0]);
+      expect(await operation(blocked.id)).toMatchObject({ status: 'succeeded', applyError: null });
+      expect((await lines()).map((line) => line.esim)).toEqual([true]);
+      expect((await kinds()).filter((kind) => kind === 'activate')).toHaveLength(1);
+      await expectWalletAddsUp();
+    });
+
+    it('two sweepers and the message\'s own delivery on the same operations at once: one line and one debit each', async () => {
+      const fine = await good(12);
+      const first = anotherSweeper();
+      const second = anotherSweeper();
+      const results = await Promise.allSettled([
+        first.applyPending(5, 10), second.applyPending(5, 10), first.applyPending(), second.applyPending(),
+        ...fine.flatMap(({ id }) => [dispatch.settle({ operationId: id }), settlement.apply(id)]),
+      ]);
+      expect(results.filter((result) => result.status === 'rejected')).toEqual([]);
+      expect(await applied(fine)).toBe(12);
+      expect(await lines()).toHaveLength(12);
+      expect((await kinds()).filter((kind) => kind === 'activate')).toHaveLength(12);
+      expect((await wallet())).toMatchObject({ balance: START - 12 * PRICE, held: 0 });
+      await expectWalletAddsUp();
+    });
+
+    it('rows that change while the walk is on its way: one settled by someone else ahead of it is not settled again, one that joins behind it is met on the next walk, none is lost', async () => {
+      const fine = await good(30);
+      const ids_ = fine.map((row) => row.id).sort();
+      let late: { id: string; taskId: string } | null = null;
+      // After the first page of ten: another worker settles two that are ahead, and a new verdict is stored behind.
+      class Meddled extends OwnOperations {
+        private pages = 0;
+        override async unsettledPage(db: Db, afterId: string | null, limit: number): Promise<string[]> {
+          const page = await super.unsettledPage(db, afterId, limit);
+          this.pages += 1;
+          if (this.pages === 2) {
+            for (const id of [ids_[25], ids_[26]]) expect(await settlement.apply(id)).toBe('applied');
+            late = await verdict('00000000', 1);
+          }
+          return page;
+        }
+      }
+      const sweeper = buildActivationSettlement(dispatch.uow, new ProviderOperationsService(dispatch.uow, new Meddled()));
+      // The page with the two was read before they were settled: the sweeper meets them and finds nothing to do.
+      expect(await sweeper.applyPending(10, 10)).toBe(28);
+      expect(await applied(fine)).toBe(30);
+      expect(await lines()).toHaveLength(30);
+      expect(late).not.toBeNull();
+      expect(await applied([late as unknown as { id: string }])).toBe(0);
+      // The next walk starts from the beginning and meets the one that joined behind.
+      expect(await sweeper.applyPending(10, 10)).toBe(1);
+      expect(await lines()).toHaveLength(31);
+      expect((await kinds()).filter((kind) => kind === 'activate')).toHaveLength(31);
+      await expectWalletAddsUp();
+    });
+
+    it('a hundred unknown answers and verdicts to settle, each in a list of its own: neither holds the other back, in either order of trouble', async () => {
+      // 1. A hundred unknown operations (each to be announced once) and ten verdicts: one round does both.
+      const unknown = await inTurns(100, (index) => verdict('00000000', index, { status: 'unknown', lastError: 'timeout' }));
+      const fine = await good(10);
+      const sweeper = anotherSweeper();
+      expect(await sweeper.applyPending(20, 2)).toBe(10 + 40);
+      expect(await applied(fine)).toBe(10);
+      // The unknown ones are announced forty a round, each once, while the settled ones are done.
+      for (let round = 0; round < 2; round += 1) await sweeper.applyPending(20, 2);
+      const announced = () => notices.filter((notice) => notice.payload.excerpt === PROVIDER_UNKNOWN_NOTE).map((notice) => notice.payload.taskId as string);
+      expect(new Set(announced()).size).toBe(100);
+      expect(announced()).toHaveLength(100);
+      for (let round = 0; round < 6; round += 1) expect(await sweeper.applyPending(20, 2)).toBe(0);
+      expect(announced()).toHaveLength(100);
+      expect((await prisma.providerOperation.findMany({ where: { id: { in: unknown.map((row) => row.id) } } })).every((row) => row.status === 'unknown' && row.appliedAt === null)).toBe(true);
+      await expectWalletAddsUp();
+    });
+
+    it('the other way: sixty verdicts it cannot open at the front of the first list, and an unknown answer in the second: it is announced in the first round', async () => {
+      const sealed = unopenable();
+      const blocked = await stuck(60, sealed);
+      const [one] = await inTurns(1, () => verdict('ffffffff', 1, { status: 'unknown', lastError: 'timeout' }));
+      const announced = () => notices.filter((notice) => notice.payload.excerpt === PROVIDER_UNKNOWN_NOTE).map((notice) => notice.payload.taskId as string);
+      const sweeper = anotherSweeper();
+      let changed = -1;
+      await capturedOutput(async () => { changed = await sweeper.applyPending(20, 2); });
+      // The first list is far from walked (forty of sixty looked at, none settled), and the unknown one has been announced all the same.
+      expect([changed, announced()]).toEqual([1, [one.taskId]]);
+      await untouched(blocked, sealed);
+      await capturedOutput(async () => { for (let round = 0; round < 4; round += 1) expect(await sweeper.applyPending(20, 2)).toBe(0); });
+      expect(announced()).toEqual([one.taskId]);
+      await expectWalletAddsUp();
+    });
+
+    it('the sweeper, the settlement messages delivered again and new verdicts, all at once with operations that cannot be settled: nothing is aborted as a deadlock, and the money adds up', async () => {
+      const sealed = unopenable();
+      const blocked = await stuck(20, sealed);
+      const fine = await good(20);
+      const sweepers = [anotherSweeper(), anotherSweeper(), anotherSweeper()];
+      const settled: PromiseSettledResult<unknown>[] = [];
+      await capturedOutput(async () => {
+        for (let wave = 0; wave < 4; wave += 1) {
+          settled.push(...(await Promise.allSettled([
+            ...sweepers.map((sweeper) => sweeper.applyPending(7, 3)),
+            ...fine.slice(wave * 5, wave * 5 + 5).flatMap(({ id }) => [dispatch.settle({ operationId: id }), dispatch.settle({ operationId: id })]),
+            // A message for one that cannot be settled fails by a code, as its job would, and aborts nothing else.
+            ...blocked.slice(wave * 5, wave * 5 + 5).map(({ id }) => dispatch.settle({ operationId: id }).then(() => 'settled', (error: unknown) => (error as Error).name)),
+            good(2, `eeeeeee${wave}`),
+          ])));
+        }
+        for (let round = 0; round < 6; round += 1) await sweepers[0].applyPending(7, 3);
+      });
+      const failures = settled.filter((result) => result.status === 'rejected').map((result) => String((result as PromiseRejectedResult).reason));
+      expect(failures).toEqual([]);
+      expect(settled.filter((result) => result.status === 'fulfilled' && result.value === 'JobFailure')).toHaveLength(20);
+      // Every verdict that could be settled was, once: 20 and the 8 that arrived meanwhile.
+      expect(await lines()).toHaveLength(28);
+      expect((await kinds()).filter((kind) => kind === 'activate')).toHaveLength(28);
+      expect((await wallet()).balance).toBe(START - 28 * PRICE);
+      await untouched(blocked, sealed);
+      await expectWalletAddsUp();
     });
   });
 });

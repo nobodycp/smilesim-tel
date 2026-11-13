@@ -156,6 +156,7 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
     clearInterval(sweep);
     // The pass in flight takes no further operation: nothing new is sent by a worker that is stopping.
     parts.waiting.stop();
+    parts.settlement.stopSweeping();
     await parts.publisher.close();
   };
 }

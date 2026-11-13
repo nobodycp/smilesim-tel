@@ -722,6 +722,23 @@ no adapter: `ADAPTER_FACTORIES` and the manifest are still empty. One migration,
   code and writes nothing: no line, no capture, no release, no exception; the hold stays and the sweeper meets it
   again. Other operations are settled meanwhile. `docker-compose.yml` hands the worker the same `SECRETS_KEY` as
   the API.
+- **The settlement's sweeper is fair too** (final audit of S.12b.0; no migration). `applyPending` read the 100
+  oldest unsettled operations by the time of their last write. An operation it cannot act on for a technical
+  reason is not written, so it stayed first: a hundred of them (results a worker with the wrong key cannot open)
+  hid every verdict behind them, for ever. Now it walks its two lists **by id, a page (100) at a time, at most
+  five pages of each a round, each from where its last round stopped**: the verdicts to apply or hand over, and
+  the unknown answers to announce. Each list has its own place and its own bound, so neither holds the other
+  back. One that fails is logged by a code, left exactly as it is (no status, no stamp, no release) and passed;
+  it is met again on every later walk. Nothing about applying changes: `apply` and its guards are as they were,
+  so a second round, another worker and the message's own delivery still find nothing to do.
+- **Stopping a worker.** An orderly stop (SIGTERM) closes the queue workers and waits for the job in hand: the
+  request at the provider is finished and its verdict written, and no other job is taken; the two passes take
+  no further operation. A worker that is killed leaves a marked attempt to recovery, which makes it unknown and
+  never sends it again. Tested; the shutdown itself is unchanged.
+- **How the deployment gets the worker's key.** The deployment of today is three Dockerfile applications in
+  Coolify, each with its own environment: `docker-compose.yml` is not what runs there, so the line that hands the
+  worker `SECRETS_KEY` in it reaches nothing. The key is set on the worker application itself, the same value as
+  the API's, before this code is deployed (the upgrade plan, 4.1 and step P3).
 - **Specs** (`provider-dispatch.db.spec.ts`, PostgreSQL, production-grade): the mark, then a new credential and
   a rebuild, then the call; a rebuild in the middle of many attempts; 150 operations of a paused provider and 10
   of an open one, in one round and with small pages; changes during a walk; a process clock ten minutes ahead

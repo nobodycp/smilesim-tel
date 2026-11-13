@@ -219,14 +219,14 @@ export class ProviderOperationsService {
   // What the settlement of a verdict asks of the operation (ADR 0019, D8, D9, D16). Each is one guarded
   // statement inside the settlement's own transaction; what they mean is the settlement's to say.
 
-  /** The operations whose verdict the settlement still has to act on (the sweeper's list). */
-  unsettled(limit: number): Promise<string[]> {
-    return this.repo.unsettledIds(this.uow.prisma, limit);
+  /** One page, by id after `afterId`, of the operations whose verdict the settlement still has to act on (the sweeper's first list). */
+  unsettled(afterId: string | null, limit: number): Promise<string[]> {
+    return this.repo.unsettledPage(this.uow.prisma, afterId, limit);
   }
 
-  /** The operations of tasks whose answer is not known: the settlement makes sure each was announced. */
-  awaitingAnswer(limit: number): Promise<string[]> {
-    return this.repo.unknownTaskOperationIds(this.uow.prisma, limit);
+  /** One page, by id after `afterId`, of the operations of tasks whose answer is not known: the settlement makes sure each was announced. */
+  awaitingAnswer(afterId: string | null, limit: number): Promise<string[]> {
+    return this.repo.unknownTaskOperationPage(this.uow.prisma, afterId, limit);
   }
 
   /** The operation as it is stored, with its task and what the provider handed back; null when there is none. */

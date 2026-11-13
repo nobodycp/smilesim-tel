@@ -62,7 +62,9 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://smilesim:smilesim@postgres:5432/smilesim}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       # The same key as the api: the worker settles eSIM activations, whose codes are stored sealed. A production
-      # worker does not start without it (ADR 0019, S.12b.0).
+      # worker does not start without it (ADR 0019, S.12b.0). This line reaches a worker only where this file is
+      # what is deployed. Where the worker is an application of its own (the Coolify deployment of today: three
+      # Dockerfile applications), the key must be set in THAT application's environment: nothing here does it.
       SECRETS_KEY: ${SECRETS_KEY:-}
     depends_on:
       - api

@@ -480,7 +480,10 @@ wallets (sorted). A slice's review checks that order in the code it adds.
    - *Clocks.* An attestation is written with PostgreSQL's `now()` and its age judged by PostgreSQL's clock.
    - *The adapter that sends is the one that was judged at the mark*: the gate answers a permit bound to it, and
      the dispatcher has no other way to a provider.
-   **Before deploying this code:** set `SECRETS_KEY` on the worker (the same as the API's).
+   - *The settlement's sweeper* (final audit) walks its two lists by id, in pages, each from where it stopped:
+     verdicts it cannot act on, however many, hide none behind them.
+   **Before deploying this code:** set `SECRETS_KEY` on the worker application itself (the same as the API's):
+   on the Coolify deployment of today the worker is a Dockerfile application with its own environment.
 
 ## Order and safety
 
