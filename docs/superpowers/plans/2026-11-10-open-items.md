@@ -57,3 +57,9 @@ or replaced by a later design. They stay in git history.
 - «سكاي» is both a provider and a network (a company) of the same name: the seed is right as it is.
 - `PUT /branding` from an entered session: covered by `branding.http.spec.ts`.
 - `session-and-secret-storage` T.3, T.5 and S.7: done (see that plan).
+- **S.12b is blocked on provider documents (2026-11-13).** Discovery
+  (`docs/superpowers/specs/2026-11-13-first-provider-adapter-discovery.md`): none of the provider codes (`sky`,
+  `lian`, `aren`, `quickline`, `alloha`, `neod`, `tokman`) has an API document in the repository. Needed from the
+  owner: one provider's document, sandbox access, and answers to P1–P14 of the spec. Open on our side whatever the
+  provider: an inquiry port, an inquiry job and a person's route that closes an unknown operation (`resolveUnknown`
+  has no caller outside tests).

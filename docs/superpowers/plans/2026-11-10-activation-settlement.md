@@ -449,6 +449,11 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     error mapping to `OPERATION_ERRORS`, the status check feeding `resolveUnknown`. Exercised on a staging
     deployment that is production-grade (`NODE_ENV=production`, `PROVIDER_TARGET=sandbox`, its own database, Redis
     and sandbox credentials).
+  - **S.12b.1 Discovery for the first adapter** (2026-11-13; documents only): spec
+    `docs/superpowers/specs/2026-11-13-first-provider-adapter-discovery.md`. No provider code has an API document,
+    a sandbox, an idempotency rule or an inquiry in the repository, so **S.12b is blocked** until the owner supplies
+    one provider's documents. Found on our side: no inquiry on `DispatchAdapter`, no inquiry job, and no caller of
+    `resolveUnknown` outside tests (G1–G3 of the spec), to close before any provider is called.
 
 ## Go-live gate: nothing is dispatched to a live provider until all of these are true
 
