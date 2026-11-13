@@ -74,52 +74,70 @@ const GUARDED_PREFIX = '/office/';
 const guarded = (path: string) => path.startsWith(GUARDED_PREFIX);
 
 /**
- * The write routes outside the guarded prefix, and why each has no duplicate guard today. Stated one by one: a
- * write route that is not under the prefix and not here fails the spec.
+ * How a write route outside the guarded prefix stands without the duplicate guard (reviewed 2026-11-13):
+ * - `needs`: a repeat does something the first did not, or answers differently: it needs protection of its own.
+ * - `equivalent`: something else already makes a repeat harmless (a one-time code or challenge, a send limit, a
+ *   stated value or state, a delete).
+ * - `no-replay`: an authentication step. Its answer carries a session or a secret, so it must never be kept and
+ *   handed to a second request; a repeat is judged afresh. The duplicate guard is NOT to be widened to these.
  */
-const UNGUARDED_WRITES: Record<string, string> = {
-  // Sign-in and its steps: no session yet, or a step that issues a challenge; each has its own counter or code.
-  'POST /auth/login': 'no session; failed sign-ins are counted per login and per address',
-  'POST /auth/passkey-login/options': 'no session; issues a challenge',
-  'POST /auth/passkey-login': 'no session; the challenge is used once',
-  'POST /auth/logout': 'ending a session twice is ending it once',
-  'POST /auth/two-factor/setup': 'issues a secret to confirm; nothing is enabled',
-  'POST /auth/two-factor/confirm': 'a one-time code',
-  'POST /auth/two-factor/verify': 'a one-time code',
-  'POST /auth/two-factor/method': 'issues a code to confirm',
-  'POST /auth/two-factor/method/confirm': 'a one-time code',
-  'POST /auth/two-factor/send': 'has its own send limit',
-  'POST /auth/passkeys/options': 'issues a challenge',
-  'POST /auth/passkeys': 'the challenge is used once',
-  // Settings written to a stated value: sending one twice writes the same value. NOT GUARDED TODAY, by the prefix
-  // and not by a decision: they are listed so that the day the guard leaves the prefix they are judged one by one.
-  'POST /auth/password': 'UNGUARDED by the prefix: a stated new value',
-  'PATCH /auth/profile': 'UNGUARDED by the prefix: a stated value',
-  'POST /auth/users/:loginName/password': 'UNGUARDED by the prefix: a stated new value',
-  'DELETE /auth/sessions/:id': 'UNGUARDED by the prefix: deleting twice is deleting once',
-  'DELETE /auth/two-factor': 'UNGUARDED by the prefix: removing twice is removing once',
-  'DELETE /auth/two-factor/:loginName': 'UNGUARDED by the prefix: removing twice is removing once',
-  'POST /auth/users/:loginName/disable': 'UNGUARDED by the prefix: a stated state',
-  'PATCH /auth/policy': 'UNGUARDED by the prefix: a stated value',
-  'PATCH /auth/exemptions/:loginName': 'UNGUARDED by the prefix: a stated value',
-  'DELETE /auth/passkeys/:id': 'UNGUARDED by the prefix: deleting twice is deleting once',
-  'PATCH /auth/session-rules/:layer': 'UNGUARDED by the prefix: a stated value',
-  'PATCH /auth/users/:loginName/two-factor': 'UNGUARDED by the prefix: a stated value',
-  'PATCH /auth/users/:loginName/contact': 'UNGUARDED by the prefix: a stated value',
-  'PATCH /auth/users/:loginName/session-rules': 'UNGUARDED by the prefix: a stated value',
-  'PUT /branding': 'UNGUARDED by the prefix: replaces the identity with a stated one, checked by its version',
+type Standing = 'needs' | 'equivalent' | 'no-replay';
+
+/**
+ * The write routes outside the guarded prefix, one by one. A write route that is not under the prefix and not
+ * here fails the spec. Widening the guard is a decision per route (plan R.11a), never a change of the prefix test
+ * alone: sign-in, passkeys and one-time codes stay out of it.
+ */
+const UNGUARDED_WRITES: Record<string, [standing: Standing, why: string]> = {
+  // A repeat answers differently.
+  'PATCH /auth/profile': ['needs', 'with a new password the first request succeeds and the same request sent again is refused (WRONG_CURRENT_PASSWORD): a double submit shows an error for a change that was made'],
+  // Authentication steps: never replayed.
+  'POST /auth/login': ['no-replay', 'answers a session; failed sign-ins are counted per login and per address'],
+  'POST /auth/passkey-login/options': ['no-replay', 'issues a challenge; no session yet'],
+  'POST /auth/passkey-login': ['no-replay', 'answers a session; the challenge is used once'],
+  'POST /auth/logout': ['no-replay', 'ends the session it is sent with'],
+  'POST /auth/password': ['no-replay', 'answers a new session; needs the current password'],
+  'POST /auth/two-factor/setup': ['no-replay', 'answers a secret to enrol with'],
+  'POST /auth/two-factor/confirm': ['no-replay', 'a one-time code; answers a session'],
+  'POST /auth/two-factor/verify': ['no-replay', 'a one-time code; answers a session'],
+  'POST /auth/two-factor/method/confirm': ['no-replay', 'a one-time code; answers a session'],
+  'POST /auth/passkeys/options': ['no-replay', 'issues a challenge'],
+  // Something else already makes a repeat harmless.
+  'POST /auth/two-factor/method': ['equivalent', 'sends a code: one every 30 seconds'],
+  'POST /auth/two-factor/send': ['equivalent', 'sends a code: one every 30 seconds'],
+  'POST /auth/passkeys': ['equivalent', 'the challenge is used once: a repeat adds nothing'],
+  'DELETE /auth/sessions/:id': ['equivalent', 'deleting twice is deleting once'],
+  'DELETE /auth/two-factor': ['equivalent', 'removing twice is removing once'],
+  'DELETE /auth/two-factor/:loginName': ['equivalent', 'removing twice is removing once'],
+  'DELETE /auth/passkeys/:id': ['equivalent', 'deleting twice is deleting once'],
+  'POST /auth/users/:loginName/password': ['equivalent', 'a stated new value'],
+  'POST /auth/users/:loginName/disable': ['equivalent', 'a stated state, not a toggle'],
+  'PATCH /auth/policy': ['equivalent', 'a stated value'],
+  'PATCH /auth/exemptions/:loginName': ['equivalent', 'a stated value'],
+  'PATCH /auth/session-rules/:layer': ['equivalent', 'a stated value'],
+  'PATCH /auth/users/:loginName/two-factor': ['equivalent', 'a stated value'],
+  'PATCH /auth/users/:loginName/contact': ['equivalent', 'a stated value'],
+  'PATCH /auth/users/:loginName/session-rules': ['equivalent', 'a stated value'],
+  'PUT /branding': ['equivalent', 'replaces the identity with a stated one'],
 };
 
-/** Write routes that record no activity today (`write-without-activity` counts the same seven). */
-const UNRECORDED_WRITES = [
-  'PATCH /auth/profile',
-  'POST /auth/two-factor/setup',
-  'DELETE /auth/two-factor',
-  'POST /auth/two-factor/method',
-  'POST /auth/two-factor/send',
-  'POST /auth/passkeys/options',
-  'POST /auth/passkey-login/options',
-];
+/**
+ * Write routes that record no activity today (`write-without-activity` counts the same seven; reviewed
+ * 2026-11-13). Nothing records them anywhere: the auth service and its store write no activity, only the
+ * controller does. `gap`: a change to an account that leaves no trace. `step`: a step whose outcome is recorded
+ * by the route that finishes it, success and failure both; the rule has no way to be told so, because the auth
+ * controller has no `@NoActivity`. What a record of any of them may hold is the action and the account, never a
+ * password, a code, a secret or a challenge.
+ */
+const UNRECORDED_WRITES: Record<string, ['gap' | 'step', string]> = {
+  'PATCH /auth/profile': ['gap', 'changes the e-mail, the phone and the password with no record; POST /auth/password records the same change'],
+  'DELETE /auth/two-factor': ['gap', 'an account turns its own second step off with no record; the owner clearing another account is recorded'],
+  'POST /auth/two-factor/setup': ['step', 'issues a secret; POST /auth/two-factor/confirm records the enrolment'],
+  'POST /auth/two-factor/method': ['step', 'sends a code; POST /auth/two-factor/method/confirm records the enrolment'],
+  'POST /auth/two-factor/send': ['step', 'sends a code; POST /auth/two-factor/verify records the outcome'],
+  'POST /auth/passkeys/options': ['step', 'issues a challenge; POST /auth/passkeys records the passkey'],
+  'POST /auth/passkey-login/options': ['step', 'issues a challenge; POST /auth/passkey-login records the sign-in'],
+};
 
 const named = (route: Route) => `${route.method} ${route.path}`;
 
@@ -160,6 +178,14 @@ describe('the duplicate guard and the idempotency key', () => {
     expect(Object.keys(UNGUARDED_WRITES)).toHaveLength(27);
   });
 
+  it('each stated route has a standing: one needs protection, sixteen have an equivalent, ten are never replayed', () => {
+    const count = (standing: Standing) => Object.values(UNGUARDED_WRITES).filter(([its]) => its === standing).length;
+    expect({ needs: count('needs'), equivalent: count('equivalent'), noReplay: count('no-replay') }).toEqual({ needs: 1, equivalent: 16, noReplay: 10 });
+    // Sign-in, passkey and one-time-code steps are never among the routes to be guarded by replaying an answer.
+    const authSteps = Object.keys(UNGUARDED_WRITES).filter((name) => /\/(login|logout|passkey-login|two-factor\/(setup|confirm|verify|method\/confirm)|passkeys\/options)/.test(name));
+    for (const name of authSteps) expect({ name, standing: UNGUARDED_WRITES[name][0] }).toEqual({ name, standing: 'no-replay' });
+  });
+
   it('a write route moved out of the prefix is caught: the check fails for it until it is stated', () => {
     // The same check as above, on the real routes with one of them moved the way plan R.11 would move it.
     const moved = writes.map((route) => (named(route) === 'POST /office/lines' ? { ...route, path: '/v1/lines' } : route));
@@ -189,8 +215,10 @@ describe('authorization and activity follow the controller, not the path', () =>
     ]);
   });
 
-  it('every write route records its activity, or says why not; seven of sign-in record nothing today', () => {
-    expect(writes.filter((route) => !route.recorded).map(named).sort()).toEqual([...UNRECORDED_WRITES].sort());
+  it('every write route records its activity, or says why not; seven of sign-in record nothing today: two gaps, five steps', () => {
+    expect(writes.filter((route) => !route.recorded).map(named).sort()).toEqual(Object.keys(UNRECORDED_WRITES).sort());
+    const kinds = Object.values(UNRECORDED_WRITES).map(([kind]) => kind);
+    expect({ gaps: kinds.filter((kind) => kind === 'gap').length, steps: kinds.filter((kind) => kind === 'step').length }).toEqual({ gaps: 2, steps: 5 });
   });
 });
 

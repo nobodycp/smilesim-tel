@@ -23,7 +23,7 @@ Each rule names where it lives and what proves it. "Guard" is a rule of `archite
 
 | Rule | Where | Proof |
 |---|---|---|
-| One primitive: `UnitOfWork.runTx` (Read Committed). Notices written inside are published only after the commit. | `kernel/unit-of-work.ts` | guard `transaction-outside-unit-of-work` (5 known sites outside it today, none on the money path of a sale: the auth store, saving a provider-statement reconciliation, saving a provider's modes with its packages, the worker's attestation, the eSIM sealing script) |
+| One primitive: `UnitOfWork.runTx` (Read Committed). Notices written inside are published only after the commit. | `kernel/unit-of-work.ts` | guard `transaction-outside-unit-of-work` (5 known sites outside it today, none on the path of a sale, a hold, a capture or a verdict: the trial-accounts seeder of the auth store, saving a provider-statement reconciliation, saving a provider's modes with its packages, the worker's attestation, the eSIM sealing script; each is judged in the plan `2026-11-13-office-retirement`, "R.0 verified") |
 | A transaction reads through its own client, never the root one. | every `runTx` body | guard `root-client-in-tx` |
 | Writes that belong together are one transaction. | services | guard `multi-write-outside-tx` |
 | A status changes only through a guarded write (the expected current status is in the `WHERE`). | `line-state.ts` `moveLineStatus`, `provider-operations.repository.ts` `moveStatus`, task claims | guards `unguarded-status-write`, `operation-writes` |
@@ -64,7 +64,7 @@ No guard checks the order across files today. It is held by the specs above and 
 | An attempt is named by its number, which only grows. A result is accepted only for the attempt the operation is on. `waivedAttempts` reduces the budget spent, never the number. | `attemptAfter`, `spentAttempts`, `moveStatus` guarded on `attempts` | `provider-dispatch.db.spec.ts` |
 | An attempt belongs to its worker for its lease (`ATTEMPT_LEASE_MS`); the send mark (`sentAt`) is written under the lease and through the gate's permit; recovery acts only after the lease: unsent → `requested` again, possibly sent → `unknown`. | `beginSend`, `recover` | `operation-dispatcher.db.spec.ts` |
 | The request is sent by the adapter that was judged at the mark (the permit), built from the stored credential generation. | `dispatch-gate.ts`, `routing-gateway.ts` | `provider-dispatch.db.spec.ts` |
-| An operation is written by `provider-operations.repository.ts` only. One known exception today: `tasks/task-operation.ts` `withdrawOperation` marks a never-sent operation abandoned when its task is cancelled. | — | guard `operation-writes` (baseline 1) |
+| An operation is written by `provider-operations.repository.ts` only. One known exception today: `tasks/task-operation.ts` `withdrawOperation` marks a never-sent operation abandoned when its task is cancelled, in the cancel's transaction, under the task's lock and then the operation's. Its place in the transaction is necessary; only the statement's file is to change (R.4). | — | guard `operation-writes` (baseline 1) |
 | The duplicate-write guard and the `Idempotency-Key` header are a convenience in front of these: the row locks and the unique keys are the protection. They apply to `/office/*` writes only. | `shared/duplicate-guard.interceptor.ts` | `http-security-contract.spec.ts` |
 
 ## 5. Outbox and settlement

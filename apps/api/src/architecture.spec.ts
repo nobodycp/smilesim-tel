@@ -71,10 +71,18 @@ function check(rule: string, found: Hit[]) {
 // `modules/office/` stays under the same rules. `domains` is all the application code under `modules/`.
 const domains = production.filter(({ file }) => file.startsWith('modules/'));
 const controllers = domains.filter(({ file }) => file.endsWith('.controller.ts'));
-/** The folder a file's domain is today: `modules/office/<domain>/…` or `modules/<domain>/…`. */
-const domainOf = (file: string) => (file.startsWith('modules/office/') ? file.split('/')[2] : file.split('/')[1]);
 
 describe('engineering rules (backend-engineering.mdc)', () => {
+  it('looks at the real source: a count that falls is a fix, not files that left the scope', () => {
+    // The rules read `production`, `domains` and `controllers`. If a move took files out of them, every count
+    // would fall for nothing; these floors, and `unmapped-file` in architecture-boundaries.spec.ts, say so first.
+    expect(production.length).toBeGreaterThan(220);
+    expect(domains.length).toBeGreaterThan(200);
+    expect(controllers.length).toBeGreaterThanOrEqual(20);
+    expect(domains.filter(({ file }) => file.endsWith('.service.ts')).length).toBeGreaterThanOrEqual(25);
+    expect(domains.filter(({ file }) => file.endsWith('.repository.ts')).length).toBeGreaterThanOrEqual(15);
+  });
+
   it('1.2 wallet-writes: only the wallet ledger writes a wallet row', () => {
     // Named, not placed: the two files may move and keep their right.
     const allowed = ['wallet-ledger.ts', 'catalog-seed.ts'];
@@ -222,6 +230,9 @@ describe('engineering rules (backend-engineering.mdc)', () => {
 
   it('5.1 flat-office-module: each domain registers its own providers', () => {
     const module = production.find(({ file }) => file === 'modules/office/office.module.ts');
+    // The rule is about this one file. The slice that removes the file removes the rule: it does not pass by
+    // finding nothing.
+    if (!module) throw new Error('flat-office-module: modules/office/office.module.ts is gone. Remove this rule in the same commit.');
     const list = /export const OFFICE_PROVIDERS = \[([^\]]*)\]/.exec(module?.text ?? '')?.[1] ?? '';
     // Classes named one by one in the flat list; a spread of a domain's own list is not counted.
     const named = list.split(',').map((entry) => entry.trim()).filter((entry) => /^[A-Z]\w+$/.test(entry));
@@ -233,9 +244,12 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     for (const { file, text } of domains) {
       const importer = /from '([^']+\.repository)'/g;
       for (let match = importer.exec(text); match; match = importer.exec(text)) {
-        // The repository's own domain is the folder it is in, wherever that folder is.
-        const target = normalize(join(dirname(file), match[1]));
-        if (domainOf(target) !== domainOf(file)) found.push({ file, line: lineOf(text, match.index), text: match[0] });
+        // A repository belongs to the folder it is in, wherever that folder is: it is imported from that folder,
+        // from one inside it, or from the folder that holds it (a module file listing its providers).
+        const home = dirname(normalize(join(dirname(file), match[1])));
+        const from = dirname(file);
+        const own = home === from || home.startsWith(`${from}/`) || from.startsWith(`${home}/`);
+        if (!own) found.push({ file, line: lineOf(text, match.index), text: match[0] });
       }
     }
     check('cross-domain-repository-import', found);
