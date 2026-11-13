@@ -12,7 +12,9 @@ goes down; the backend map updated in the same commit.
   `architecture-boundaries.spec.ts`), the existing rules widened to every module, the HTTP security contract,
   the worker wiring contract, the financial invariants in one file. No production file changed. Commit: see
   `git log --grep 'R.0'`.
-- [ ] **R.1** `OfficeFailure` → `ApiFailure`.
+- [x] **R.1** `OfficeFailure` → `ApiFailure` (`shared/office-failure.ts` → `shared/api-failure.ts` by `git mv`; 111
+  references in 70 files and the lint rule that names the file; `fail(status, code)` unchanged; no alias kept:
+  nothing outside `apps/api` used the name). `api-failure.spec.ts` pins the contract. Commit: see `git log --grep 'R.1'`.
 - [ ] **R.2** Auditing and notifications out of the umbrella; the notice writer behind a port of the platform.
 - [ ] **R.3** Rules to their owners; the kernel dissolved into platform and access.
 - [ ] **R.4** Tasks and sales untangled (`tasks` imports nothing of `sales`). May change how services are composed

@@ -1,4 +1,4 @@
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { PERIOD_DAYS } from '../rules/periods';
 
 /** A mobile number as the office writes it. */

@@ -1,6 +1,6 @@
 import type { OfficeTask, Prisma, ProviderOperation } from '../../../generated/prisma/client';
 import { errorCode, logger } from '../../shared/log';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { open } from '../../shared/secret-box';
 import type { UnitOfWork } from '../kernel/unit-of-work';
 import type { Actor } from '../kernel/types';
@@ -165,7 +165,7 @@ export class ActivationSettlement {
     } catch (error) {
       if (error instanceof NothingToApply) return 'skipped';
       // A business refusal becomes the exception of D16; everything else is technical and is thrown on.
-      const refused = error instanceof OfficeFailure ? applyErrorOf(error) : null;
+      const refused = error instanceof ApiFailure ? applyErrorOf(error) : null;
       if (!refused) throw error;
       return this.recordException(operation, task, submitter, refused);
     }
@@ -277,7 +277,7 @@ export async function tellDeciders(uow: UnitOfWork, tasks: TasksService, tx: Pri
  */
 export async function submitterOf(lines: LinesRepository, task: OfficeTask): Promise<Actor> {
   const user = await lines.userById(task.submitterId);
-  if (!user) throw new OfficeFailure(404, 'NOT_FOUND');
+  if (!user) throw new ApiFailure(404, 'NOT_FOUND');
   return { id: user.id, loginName: user.loginName, nickname: user.nickname, layer: user.layer, isBranchOwner: user.isBranchOwner, grants: [], operatorId: user.id, impersonating: false };
 }
 

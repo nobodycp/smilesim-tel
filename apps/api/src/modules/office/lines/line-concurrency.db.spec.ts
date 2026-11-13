@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import type { NoticeService } from '../notices/notice.service';
 import { captureTerms } from '../rules/prices';
 import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
@@ -77,8 +77,8 @@ suite('operations on one number at the same moment (PostgreSQL)', () => {
     return {
       // Applied now at the provider, not left as a task.
       applied: settled.filter((result) => result.status === 'fulfilled' && (result.value as { applied?: boolean }).applied === true).length,
-      refused: settled.filter((result) => result.status === 'rejected' && result.reason instanceof OfficeFailure).map((result) => (result as PromiseRejectedResult).reason.code as string),
-      crashed: settled.filter((result) => result.status === 'rejected' && !(result.reason instanceof OfficeFailure)).length,
+      refused: settled.filter((result) => result.status === 'rejected' && result.reason instanceof ApiFailure).map((result) => (result as PromiseRejectedResult).reason.code as string),
+      crashed: settled.filter((result) => result.status === 'rejected' && !(result.reason instanceof ApiFailure)).length,
     };
   };
 

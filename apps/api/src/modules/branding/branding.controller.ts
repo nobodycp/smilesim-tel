@@ -6,7 +6,7 @@ import type { Request, Response } from 'express';
 import { errorBody } from '../../errors';
 import { ApiErrorResponse } from '../../openapi/responses';
 import { ActivityRecorder } from '../office/activity/activity-recorder';
-import { OfficeFailure } from '../shared/office-failure';
+import { ApiFailure } from '../shared/api-failure';
 import { BrandingService, type ImageKind } from './branding.service';
 
 export class BrandingBodyDto {
@@ -74,7 +74,7 @@ export class BrandingController {
       await this.activity.recordOffice(gate, req.ip ?? '', event, 'ok', '');
       return summary;
     } catch (error) {
-      if (error instanceof OfficeFailure) {
+      if (error instanceof ApiFailure) {
         await this.activity.recordOffice(gate, req.ip ?? '', event, 'fail', error.code);
         res.status(error.status);
         return { message: error.message, code: error.code };

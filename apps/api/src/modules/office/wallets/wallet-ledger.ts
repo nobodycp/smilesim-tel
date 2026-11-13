@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { logger } from '../../shared/log';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { AccountTree } from '../kernel/account-tree';
 import type { Sale } from '../kernel/types';
 import { UnitOfWork, type Db } from '../kernel/unit-of-work';

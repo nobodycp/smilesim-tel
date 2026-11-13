@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { parseInput } from '../../shared/input';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import type { NoticeService } from '../notices/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 import { CeilingBody, FundBody } from './wallets.schemas';
@@ -10,7 +10,7 @@ const invalid = (run: () => unknown) => {
   try {
     run();
   } catch (error) {
-    return error instanceof OfficeFailure && error.status === 400 && error.code === 'INVALID';
+    return error instanceof ApiFailure && error.status === 400 && error.code === 'INVALID';
   }
   return false;
 };

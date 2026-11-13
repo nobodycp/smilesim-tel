@@ -5,7 +5,7 @@ import IORedis from 'ioredis';
 import request from 'supertest';
 import { API_PROVIDERS } from './api-providers';
 import { AwaitsFirstAnswer, DuplicateGuardInterceptor, RUNNING_SECONDS, SecretAnswer, memoryWrites, type WriteStore } from './duplicate-guard.interceptor';
-import { OfficeFailure } from './office-failure';
+import { ApiFailure } from './api-failure';
 import { capturedOutput } from './testing/captured-output';
 
 // What the duplicate guard keeps of an answer, and what a repeat gets while the first is still running, on a
@@ -35,7 +35,7 @@ class ProbeController {
     if (hold) await hold;
     if (failNext) {
       failNext = false;
-      throw new OfficeFailure(400, 'BALANCE_CEILING');
+      throw new ApiFailure(400, 'BALANCE_CEILING');
     }
     return body.secret ? { applied: true, run, line: { esimQr: SECRET } } : { applied: false, taskId: `task-${run}` };
   }

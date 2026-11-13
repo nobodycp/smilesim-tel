@@ -1,4 +1,4 @@
-import { OfficeFailure } from './office-failure';
+import { ApiFailure } from './api-failure';
 import { after, cursorPosition, decodeCursor, encodeCursor, encodeKeyCursor, capList, keyCursor, keyPage, page } from './paging';
 
 const at = (second: number) => new Date(Date.UTC(2026, 10, 1, 0, 0, second));
@@ -16,7 +16,7 @@ describe('the list cursor', () => {
     expect(decodeCursor('')).toBeUndefined();
     expect(decodeCursor('not-ours')).toBeNull();
     expect(decodeCursor(Buffer.from('abc~x').toString('base64url'))).toBeNull();
-    expect(() => cursorPosition('not-ours')).toThrow(OfficeFailure);
+    expect(() => cursorPosition('not-ours')).toThrow(ApiFailure);
     expect(cursorPosition(undefined)).toBeUndefined();
   });
 
@@ -49,8 +49,8 @@ describe('the key cursor', () => {
   it('round-trips a key and refuses a cursor of the other kind', () => {
     expect(keyCursor(encodeKeyCursor('3:pos1'))).toBe('3:pos1');
     expect(keyCursor(undefined)).toBeUndefined();
-    expect(() => keyCursor(encodeCursor(at(1), 'x'))).toThrow(OfficeFailure);
-    expect(() => keyCursor('???')).toThrow(OfficeFailure);
+    expect(() => keyCursor(encodeCursor(at(1), 'x'))).toThrow(ApiFailure);
+    expect(() => keyCursor('???')).toThrow(ApiFailure);
   });
 });
 
@@ -75,7 +75,7 @@ describe('keyPage()', () => {
 
   it('ends without a cursor on an exact page and refuses a foreign cursor', () => {
     expect(keyPage(rows.slice(0, 2), 2, undefined, key).nextCursor).toBeNull();
-    expect(() => keyPage(rows, 2, 'junk', key)).toThrow(OfficeFailure);
+    expect(() => keyPage(rows, 2, 'junk', key)).toThrow(ApiFailure);
   });
 });
 

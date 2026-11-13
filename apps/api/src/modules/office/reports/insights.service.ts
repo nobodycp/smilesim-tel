@@ -9,7 +9,7 @@ import { BALANCES_PAGE } from '../rules/office-paging';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { visibleAccountIds } from '../rules/account-visibility';
 import { REFUND_KINDS, SALE_KINDS } from '../rules/profit-ladder';

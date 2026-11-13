@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { fail } from './office-failure';
+import { fail } from './api-failure';
 
 /**
  * Checks a request body or query against its schema and answers 400 INVALID when it does not fit, the same refusal

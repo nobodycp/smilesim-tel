@@ -7,7 +7,7 @@ import { dayRange } from '../../shared/dates';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { parseInput } from '../../shared/input';
 import type { Actor } from '../kernel/types';
 import { after, cursorPosition, keyPage, page } from '../../shared/paging';

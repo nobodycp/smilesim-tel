@@ -27,7 +27,7 @@ const none = (): string => '';
 
 /**
  * Logs the route in the activity log: once with `ok` after it answers, or with `fail` and the refusal code
- * when it throws an OfficeFailure. See ActivityInterceptor.
+ * when it throws an ApiFailure. See ActivityInterceptor.
  */
 export const Activity = (action: ActivityAction, subjectKind: string, subject: (req: Request) => string = none) =>
   SetMetadata(ACTIVITY_KEY, { action, subjectKind, subject } satisfies ActivityMeta);

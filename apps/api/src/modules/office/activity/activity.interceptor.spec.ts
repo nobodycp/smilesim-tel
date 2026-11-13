@@ -5,7 +5,7 @@ import request from 'supertest';
 import { Activity, param } from './activity.decorator';
 import { ActivityInterceptor } from './activity.interceptor';
 import { ActivityRecorder } from './activity-recorder';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { ApiExceptionFilter } from '../../shared/api-exception.filter';
 
 @Controller('t')
@@ -21,7 +21,7 @@ class ProbeController {
   @Post('refused')
   @Activity('fund', 'account')
   refused() {
-    throw new OfficeFailure(403, 'FORBIDDEN');
+    throw new ApiFailure(403, 'FORBIDDEN');
   }
 
   @Post('broken')
@@ -32,7 +32,7 @@ class ProbeController {
 
   @Get('quiet')
   quiet() {
-    throw new OfficeFailure(404, 'NOT_FOUND');
+    throw new ApiFailure(404, 'NOT_FOUND');
   }
 }
 

@@ -1,7 +1,7 @@
 import { ProvidersRepository } from './providers.repository';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { parseInput } from '../../shared/input';
 import type { Prisma } from '../../../generated/prisma/client';

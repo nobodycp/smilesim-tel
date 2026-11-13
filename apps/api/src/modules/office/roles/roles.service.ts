@@ -3,7 +3,7 @@ import { RolesRepository } from './roles.repository';
 import { isOwner, requireOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { parseInput } from '../../shared/input';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { LAYER_ORDER } from '../kernel/values';
 import { FLAG_CODES, flagsFor, roleGrantCodes, splitGrants } from '../rules/office-grants';

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../../db';
-import { OfficeFailure } from '../../../shared/office-failure';
+import { ApiFailure } from '../../../shared/api-failure';
 import { UnitOfWork } from '../../kernel/unit-of-work';
 import type { NoticeService } from '../../notices/notice.service';
 import type { OperationRequest } from './provider-operation.rules';
@@ -24,7 +24,7 @@ suite('provider operations (PostgreSQL)', () => {
   let request: OperationRequest;
 
   const newKey = () => `test:${randomUUID()}`;
-  const refusal = (run: Promise<unknown>) => run.then(() => null, (error: unknown) => (error instanceof OfficeFailure ? { status: error.status, code: error.code } : Promise.reject(error)));
+  const refusal = (run: Promise<unknown>) => run.then(() => null, (error: unknown) => (error instanceof ApiFailure ? { status: error.status, code: error.code } : Promise.reject(error)));
   const operations = () => prisma.providerOperation.findMany({ where: { providerId } });
   const outbox = async () => prisma.outboxMessage.findMany({ where: { aggregateId: { in: (await operations()).map((row) => row.id) } } });
 

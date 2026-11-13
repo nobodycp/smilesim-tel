@@ -1,4 +1,4 @@
-import { OfficeFailure } from '../shared/office-failure';
+import { ApiFailure } from '../shared/api-failure';
 import { brandingSummary, decodeImage, parseBrandingBody } from './branding-rules';
 
 describe('branding rules', () => {
@@ -25,22 +25,22 @@ describe('branding rules', () => {
   });
 
   it('refuses a name over 120 characters and a tagline over 160', () => {
-    expect(() => parseBrandingBody({ siteName: 'x'.repeat(121), tagline: '' })).toThrow(OfficeFailure);
-    expect(() => parseBrandingBody({ siteName: '', tagline: 'x'.repeat(161) })).toThrow(OfficeFailure);
+    expect(() => parseBrandingBody({ siteName: 'x'.repeat(121), tagline: '' })).toThrow(ApiFailure);
+    expect(() => parseBrandingBody({ siteName: '', tagline: 'x'.repeat(161) })).toThrow(ApiFailure);
     expect(parseBrandingBody({ siteName: 'x'.repeat(120), tagline: 'y'.repeat(160) }).siteName).toHaveLength(120);
   });
 
   it('refuses a jpeg and an oversize image', () => {
     const jpeg = `data:image/jpeg;base64,${Buffer.alloc(64, 1).toString('base64')}`;
     const big = `data:image/png;base64,${Buffer.alloc(300_001, 1).toString('base64')}`;
-    expect(() => parseBrandingBody({ siteName: '', tagline: '', logo: jpeg })).toThrow(OfficeFailure);
-    expect(() => parseBrandingBody({ siteName: '', tagline: '', favicon: big })).toThrow(OfficeFailure);
-    expect(() => parseBrandingBody({ siteName: '', tagline: '', favicon: 'not a url' })).toThrow(OfficeFailure);
+    expect(() => parseBrandingBody({ siteName: '', tagline: '', logo: jpeg })).toThrow(ApiFailure);
+    expect(() => parseBrandingBody({ siteName: '', tagline: '', favicon: big })).toThrow(ApiFailure);
+    expect(() => parseBrandingBody({ siteName: '', tagline: '', favicon: 'not a url' })).toThrow(ApiFailure);
   });
 
   it('refuses a body that is not an object', () => {
-    expect(() => parseBrandingBody(null)).toThrow(OfficeFailure);
-    expect(() => parseBrandingBody({ siteName: 5 })).toThrow(OfficeFailure);
+    expect(() => parseBrandingBody(null)).toThrow(ApiFailure);
+    expect(() => parseBrandingBody({ siteName: 5 })).toThrow(ApiFailure);
   });
 
   it('decodes a data url to bytes and a type', () => {

@@ -3,7 +3,7 @@ import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { API_PROVIDERS } from './api-providers';
-import { fail } from './office-failure';
+import { fail } from './api-failure';
 
 // Review 2026-11-10, A2: every error answers `{ message, code }`, whatever threw it, and a write with no body
 // reaches its handler as `{}`.

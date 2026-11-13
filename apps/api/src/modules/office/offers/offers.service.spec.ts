@@ -2,7 +2,7 @@ import { OffersRepository } from './offers.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../kernel/types';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { OffersService, offerShows } from './offers.service';
 
 // Offers on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1).
@@ -36,21 +36,21 @@ describe('offers', () => {
     const { service } = setup();
     await service.save(owner, { title: 'عرض الشتاء', body: 'خصم 10٪', image: picture, seconds: 5, layers: ['pos', 'agent'] });
     await service.save(actor('branch', false, ['edit']), { title: 'عرض ثانٍ' });
-    await expect(service.save(actor('branch'), { title: 'x' })).rejects.toBeInstanceOf(OfficeFailure);
-    await expect(service.list(actor('pos'))).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.save(actor('branch'), { title: 'x' })).rejects.toBeInstanceOf(ApiFailure);
+    await expect(service.list(actor('pos'))).rejects.toBeInstanceOf(ApiFailure);
     const { offers } = await service.list(owner);
     expect(offers.map((row) => [row.title, row.seconds, row.layers, row.position])).toEqual([['عرض الشتاء', 5, ['pos', 'agent'], 0], ['عرض ثانٍ', 7, ['branch', 'main_agent', 'agent', 'pos'], 1]]);
   });
 
   it('refuses a bad picture, an oversized one, a bad link, out-of-range seconds and unknown layers', async () => {
     const { service } = setup();
-    await expect(service.save(owner, { title: 't', image: 'data:text/html;base64,PGI+' })).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.save(owner, { title: 't', image: 'data:text/html;base64,PGI+' })).rejects.toBeInstanceOf(ApiFailure);
     await expect(service.save(owner, { title: 't', image: `data:image/png;base64,${'A'.repeat(960_000)}` })).rejects.toMatchObject({ code: 'IMAGE_TOO_LARGE' });
-    await expect(service.save(owner, { title: 't', actionHref: 'javascript:alert(1)' })).rejects.toBeInstanceOf(OfficeFailure);
-    await expect(service.save(owner, { title: 't', actionHref: '//evil.example' })).rejects.toBeInstanceOf(OfficeFailure);
-    await expect(service.save(owner, { title: 't', seconds: 2 })).rejects.toBeInstanceOf(OfficeFailure);
-    await expect(service.save(owner, { title: 't', layers: ['staff'] })).rejects.toBeInstanceOf(OfficeFailure);
-    await expect(service.save(owner, { title: '' })).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.save(owner, { title: 't', actionHref: 'javascript:alert(1)' })).rejects.toBeInstanceOf(ApiFailure);
+    await expect(service.save(owner, { title: 't', actionHref: '//evil.example' })).rejects.toBeInstanceOf(ApiFailure);
+    await expect(service.save(owner, { title: 't', seconds: 2 })).rejects.toBeInstanceOf(ApiFailure);
+    await expect(service.save(owner, { title: 't', layers: ['staff'] })).rejects.toBeInstanceOf(ApiFailure);
+    await expect(service.save(owner, { title: '' })).rejects.toBeInstanceOf(ApiFailure);
   });
 
   it('shows each layer only the live offers meant for it, inside their dates, in order', async () => {

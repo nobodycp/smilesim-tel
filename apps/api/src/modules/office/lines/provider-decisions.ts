@@ -4,7 +4,7 @@ import type { ErrorCode } from '../../../errors';
 import { parseInput } from '../../shared/input';
 import { cursorPosition, page, type Page } from '../../shared/paging';
 import { logger } from '../../shared/log';
-import { OfficeFailure, fail } from '../../shared/office-failure';
+import { ApiFailure, fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import type { WrittenNotice } from '../notices/notice.service';
@@ -340,7 +340,7 @@ export class ProviderDecisions {
       // The line could not be made for a business reason: the transaction rolled back whole. A confirmation is
       // still true (the provider ran it), so it is recorded with the exception of D16. A correction that does not
       // fit either changes nothing: the exception and the hold stay, and the refusal says what was taken.
-      const reason = error instanceof OfficeFailure ? applyErrorOf(error) : null;
+      const reason = error instanceof ApiFailure ? applyErrorOf(error) : null;
       if (!reason || decision !== 'confirm-success') throw error;
       return this.confirmAsException(actor, submitter, task, asked, evidence, columns, suppliedEsimCode, reason);
     }

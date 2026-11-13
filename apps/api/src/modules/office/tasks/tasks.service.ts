@@ -12,7 +12,7 @@ import { assertClaimFree, lockClaim, lockLine } from '../lines/line-state';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Action, Actor } from '../kernel/types';
 import type { WrittenNotice } from '../notices/notice.service';
 import { excerpt, type TaskNoticePayload } from '../notices/notice-kinds';

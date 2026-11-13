@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Layer } from '../../auth/decide-login';
 import { hashOnce } from './test-hash';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { OfficeFacade } from './office-facade';
 import { after, decodeCursor, encodeCursor } from '../../shared/paging';
 import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhere, suspendedWhere } from '../rules/office-paging';
@@ -370,7 +370,7 @@ describe('time-ordered lists', () => {
 
   it('refuses a cursor that is not ours', async () => {
     const { service, gate } = await serviceWith({ walletEntry: table([]) });
-    await expect(service.finance(gate, { cursor: 'not-a-cursor' })).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.finance(gate, { cursor: 'not-a-cursor' })).rejects.toBeInstanceOf(ApiFailure);
   });
 
   it('pages the activity log and filters by action', async () => {
@@ -510,7 +510,7 @@ describe('task reading follows the number', () => {
     const list = await service.tasks(gate, {});
     expect(list.items).toHaveLength(2);
     expect(list.items.every((row) => row.canTake === false && row.log === '')).toBe(true);
-    await expect(service.takeTask(gate, 't-agent')).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.takeTask(gate, 't-agent')).rejects.toBeInstanceOf(ApiFailure);
   });
 
   it('lets the branch owner take', async () => {

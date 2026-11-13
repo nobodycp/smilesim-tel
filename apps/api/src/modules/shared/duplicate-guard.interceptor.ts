@@ -5,7 +5,7 @@ import type { Request, Response } from 'express';
 import IORedis from 'ioredis';
 import { Observable, catchError, from, mergeMap, of, tap, throwError } from 'rxjs';
 import { readCookie } from './cookies';
-import { OfficeFailure, fail } from './office-failure';
+import { ApiFailure, fail } from './api-failure';
 import { isSealed, open, seal } from './secret-box';
 
 // Server-side guard against a write sent twice (a double click, a retried request), spec 2026-11-08-duplicate-writes.
@@ -168,7 +168,7 @@ export class DuplicateGuardInterceptor implements NestInterceptor, OnModuleDestr
       return found;
     };
 
-    return from(claimed().catch((error: unknown) => (error instanceof OfficeFailure ? Promise.reject(error) : null))).pipe(
+    return from(claimed().catch((error: unknown) => (error instanceof ApiFailure ? Promise.reject(error) : null))).pipe(
       mergeMap((found) => {
         if (found === PENDING || found === DONE_UNKEPT) fail(409, 'DUPLICATE_REQUEST');
         if (found !== null) {

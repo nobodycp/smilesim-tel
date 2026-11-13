@@ -1,4 +1,4 @@
-import { fail } from '../shared/office-failure';
+import { fail } from '../shared/api-failure';
 import type { ErrorCode } from '../../errors';
 import type { Actor } from './kernel/types';
 import { LAYER_ORDER } from './kernel/values';

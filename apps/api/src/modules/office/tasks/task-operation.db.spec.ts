@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { operationKey } from '../lines/activation-settlement.rules';
 import type { NoticeService } from '../notices/notice.service';
@@ -46,7 +46,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
   const operationOf = (taskId: string) => prisma.providerOperation.findUniqueOrThrow({ where: { taskId } });
   const kinds = async () => (await prisma.walletEntry.findMany({ where: { userId: ids.pos } })).map((row) => row.kind).sort();
   const lines = () => prisma.line.count({ where: { posId: ids.pos } });
-  const refusal = (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof OfficeFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
+  const refusal = (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof ApiFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
 
   /** Writes the task's operation in the given state, as the dispatcher, a settlement or recovery would have left it. */
   const operationIn = async (taskId: string, state: State) => {
@@ -351,7 +351,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
   it('never deadlocks and never loses or doubles money: every action on every state at once, with claims, settlements and recovery, on one wallet', async () => {
     const states: State[] = ['requested', 'requested-after-attempt', 'pending', 'unknown', 'unapplied', 'exception', 'failed'];
     const crashed: string[] = [];
-    const settle = (run: Promise<unknown>) => run.catch((error: unknown) => { if (!(error instanceof OfficeFailure)) crashed.push(String((error as Error)?.message ?? error).slice(0, 200)); });
+    const settle = (run: Promise<unknown>) => run.catch((error: unknown) => { if (!(error instanceof ApiFailure)) crashed.push(String((error as Error)?.message ?? error).slice(0, 200)); });
     for (let round = 0; round < 4; round += 1) {
       const opened: { taskId: string; operationId: string | null; state: State | 'none' }[] = [];
       for (const state of [...states, 'none' as const, ...states]) {

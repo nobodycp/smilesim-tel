@@ -1,10 +1,10 @@
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { tree } from '../testing/tree.fixture';
 
 // Backend review 2026-11-10, M1–M8: a number's state is locked and checked again inside the transaction, so a
 // refund is paid once, a stale task is refused, and a SIM serial belongs to one live number.
 describe('line state under tasks and repeats', () => {
-  const refusal = async (run: Promise<unknown>) => run.then(() => null, (error: unknown) => (error instanceof OfficeFailure ? { status: error.status, code: error.code } : Promise.reject(error)));
+  const refusal = async (run: Promise<unknown>) => run.then(() => null, (error: unknown) => (error instanceof ApiFailure ? { status: error.status, code: error.code } : Promise.reject(error)));
 
   it('refuses a second open task for the same number and operation', async () => {
     const { service, gates, tasks } = await tree();

@@ -1,4 +1,4 @@
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { logger } from '../../shared/log';
 import { isSealed, seal, secretsKey, tryOpen, type Unreadable } from '../../shared/secret-box';
 

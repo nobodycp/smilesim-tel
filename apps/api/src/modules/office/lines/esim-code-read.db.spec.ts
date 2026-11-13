@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { open, seal } from '../../shared/secret-box';
 import { capturedOutput } from '../../shared/testing/captured-output';
 import type { NoticeService } from '../notices/notice.service';
@@ -51,7 +51,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     try {
       return await read();
     } catch (error) {
-      if (error instanceof OfficeFailure) return `${error.status} ${error.code}`;
+      if (error instanceof ApiFailure) return `${error.status} ${error.code}`;
       throw error;
     }
   };
@@ -182,8 +182,8 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     await capturedOutput(async () => {
       refusal = await service.line(pos, line.damaged).catch((error: unknown) => error);
     });
-    expect(refusal).toBeInstanceOf(OfficeFailure);
-    expect([(refusal as OfficeFailure).status, (refusal as OfficeFailure).code, (refusal as OfficeFailure).message]).toEqual([500, 'ESIM_CODE_UNREADABLE', 'تعذّرت قراءة رمز eSIM المحفوظ. تواصل مع الدعم']);
+    expect(refusal).toBeInstanceOf(ApiFailure);
+    expect([(refusal as ApiFailure).status, (refusal as ApiFailure).code, (refusal as ApiFailure).message]).toEqual([500, 'ESIM_CODE_UNREADABLE', 'تعذّرت قراءة رمز eSIM المحفوظ. تواصل مع الدعم']);
     expectNoCode(`${(refusal as Error).message} ${(refusal as Error).stack ?? ''} ${JSON.stringify(refusal)}`);
     expectNoCode(output);
     expect((await stored()).lines.find((row) => row.id === line.damaged)?.esimQr).toBe(damagedQr);
@@ -303,7 +303,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       const entries = await prisma.walletEntry.findMany({ where: { lineId } });
       return { balance: wallet.balance, held: wallet.held, moved: entries.filter((entry) => entry.amount !== 0).map((entry) => entry.amount), entries: entries.length };
     };
-    const refusalOf = async (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof OfficeFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
+    const refusalOf = async (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof ApiFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
     const taskAs = (gate: { sessionId: string }, id: string) => answered(async () => (await service.task(gate, id)).task.esimQr);
     const lineCode = async (id: string) => (await prisma.line.findUniqueOrThrow({ where: { id } })).esimQr;
     /** The line's stored code, which must be sealed (S.5b), opened. */

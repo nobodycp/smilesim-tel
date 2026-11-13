@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { AccountTree } from '../kernel/account-tree';
 import type { Actor } from '../kernel/types';
 import { UnitOfWork } from '../kernel/unit-of-work';

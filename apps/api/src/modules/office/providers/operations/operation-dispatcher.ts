@@ -1,6 +1,6 @@
 import type { SendGate, SendPermit } from '../dispatch/dispatch-gate';
 import { errorCode, logger } from '../../../shared/log';
-import { OfficeFailure } from '../../../shared/office-failure';
+import { ApiFailure } from '../../../shared/api-failure';
 import { CALL_TIMEOUT_MS, outcomeOf, type OperationStatus, type OutgoingOperation, type SendEvidence } from './provider-operation.rules';
 import { ProviderOperationsService } from './provider-operations.service';
 
@@ -41,7 +41,7 @@ export class OperationDispatcher {
       return status;
     } catch (error) {
       // The attempt is no longer the one in flight: its answer is dropped, the operation is untouched.
-      if (error instanceof OfficeFailure && error.status === 409) {
+      if (error instanceof ApiFailure && error.status === 409) {
         log.warn(`operation ${operationId} attempt ${attempt}: ${outcome.kind} arrived late and was not written`);
         return 'stale';
       }
@@ -53,7 +53,7 @@ export class OperationDispatcher {
     try {
       return await this.operations.claim(operationId, new Date(), this.gate);
     } catch (error) {
-      if (error instanceof OfficeFailure && error.status === 404) {
+      if (error instanceof ApiFailure && error.status === 404) {
         log.warn(`operation ${operationId} does not exist; its message is dropped`);
         return 'missing';
       }

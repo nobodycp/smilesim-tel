@@ -3,7 +3,7 @@ import { parseInput } from '../../shared/input';
 import { ReportsRepository } from './reports.repository';
 import { requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { after, capList, cursorPosition, page } from '../../shared/paging';
 import { FEED_PAGE } from '../rules/office-paging';

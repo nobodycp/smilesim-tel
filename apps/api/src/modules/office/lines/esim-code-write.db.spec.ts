@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import * as secretBox from '../../shared/secret-box';
 import { capturedOutput } from '../../shared/testing/captured-output';
 import type { NoticeService } from '../notices/notice.service';
@@ -50,7 +50,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
       entries: await prisma.walletEntry.count({ where: { userId: ids.pos } }),
     };
   };
-  const refusalOf = (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof OfficeFailure ? `${error.status} ${error.code}` : `threw ${(error as Error).message}`));
+  const refusalOf = (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof ApiFailure ? `${error.status} ${error.code}` : `threw ${(error as Error).message}`));
   /** A stored value is sealed, and opens to the code. */
   const expectSealed = (stored: string | null, code: string) => {
     expect(stored?.startsWith('v1:')).toBe(true);

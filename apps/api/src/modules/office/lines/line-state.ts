@@ -1,6 +1,6 @@
 import { assertStoredSealed } from './esim-code';
 import type { Prisma } from '../../../generated/prisma/client';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { isUniqueViolation } from '../../shared/prisma-errors';
 import type { Action } from '../kernel/types';
 import { claimKeys, refusalOf, type Claim } from './reservation.rules';

@@ -6,7 +6,7 @@ import { UnitOfWork } from '../kernel/unit-of-work';
 import { granted } from '../policy';
 import { Injectable } from '@nestjs/common';
 import { parseInput } from '../../shared/input';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { TermsService } from '../terms/terms.service';
 import type { Prisma } from '../../../generated/prisma/client';

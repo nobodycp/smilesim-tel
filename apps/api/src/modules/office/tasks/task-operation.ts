@@ -1,5 +1,5 @@
 import type { Prisma } from '../../../generated/prisma/client';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { taskActions, type TaskActions } from '../lines/activation-settlement.rules';
 import type { OperationStatus } from '../providers/operations/provider-operation.rules';
 

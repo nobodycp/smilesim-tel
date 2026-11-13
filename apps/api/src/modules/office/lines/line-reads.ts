@@ -5,7 +5,7 @@ import { LinesQuery } from './lines.schemas';
 import { LinesRepository } from './lines.repository';
 import { AccountTree } from '../kernel/account-tree';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { after, cursorPosition, page } from '../../shared/paging';
 import { LINES_PAGE, isSuspended, linesWhere } from '../rules/office-paging';

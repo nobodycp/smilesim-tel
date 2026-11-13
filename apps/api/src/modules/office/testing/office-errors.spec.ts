@@ -9,7 +9,7 @@ import { AUTH_STORE } from '../../auth/auth.store';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 
 // A refusal from any office route carries `{ message, code }`. The Arabic message is the one the
 // web app has always shown; the code is what it now routes and translates on.
@@ -95,7 +95,7 @@ describe('office refusals', () => {
   });
 
   it('builds the failure message from the code', () => {
-    const failure = new OfficeFailure(400, 'BALANCE_CEILING');
+    const failure = new ApiFailure(400, 'BALANCE_CEILING');
     expect(failure.status).toBe(400);
     expect(failure.code).toBe('BALANCE_CEILING');
     expect(failure.message).toBe('الرصيد لا يكفي ضمن السقف');

@@ -1,4 +1,4 @@
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { tree } from '../testing/tree.fixture';
 
 // Line add-ons (spec 2026-11-09-offers-tasks-addons-wallet-esim, 3): an extra operation named on the package opens
@@ -30,8 +30,8 @@ describe('line add-ons', () => {
     const answer = await service.requestAddon(gates.pos1, 'ln1', { addonId: 'ad1' });
     expect(answer).toMatchObject({ applied: false, taskId: expect.any(String) });
     expect(tasks.at(-1)).toMatchObject({ action: 'addon', status: 'working', posDelta: -1500, note: '10 جيجا إضافية', held: 1500 });
-    await expect(service.requestAddon(gates.pos1, 'ln1', { addonId: 'ad2' })).rejects.toBeInstanceOf(OfficeFailure);
-    await expect(service.requestAddon(gates.pos1, 'ln1', { addonId: 'ad3' })).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.requestAddon(gates.pos1, 'ln1', { addonId: 'ad2' })).rejects.toBeInstanceOf(ApiFailure);
+    await expect(service.requestAddon(gates.pos1, 'ln1', { addonId: 'ad3' })).rejects.toBeInstanceOf(ApiFailure);
   });
 
   it('charges the add-on under its name when the branch marks the task done', async () => {

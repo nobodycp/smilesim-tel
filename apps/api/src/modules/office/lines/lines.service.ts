@@ -9,7 +9,7 @@ import { UnitOfWork } from '../kernel/unit-of-work';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { lineTermsOf } from '../kernel/line-terms';
 import { saleOf } from '../kernel/sale';
 import type { Action, Actor } from '../kernel/types';

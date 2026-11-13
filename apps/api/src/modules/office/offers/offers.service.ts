@@ -5,7 +5,7 @@ import { refuseEntered, requireGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
 import type { Offer } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { OFFER_IMAGE_LIMIT, OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
 

@@ -1,7 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
-import { OfficeFailure } from './office-failure';
+import { ApiFailure } from './api-failure';
 import { isMissingRow, isUniqueViolation } from './prisma-errors';
 
 /** The code a plain HTTP status answers with when nothing more specific is known. */
@@ -17,7 +17,7 @@ const CODE_OF_STATUS: Record<number, ErrorCode> = {
 
 /**
  * Every error the API answers has the body `{ message, code }` (backend-engineering.mdc 4.3), whatever threw it:
- * a refusal of ours (`OfficeFailure`), a framework error (unknown route, malformed JSON, body too large), a
+ * a refusal of ours (`ApiFailure`), a framework error (unknown route, malformed JSON, body too large), a
  * database conflict, or a bug. A bug answers 500 `SERVER_ERROR` and is logged with its stack; nothing internal
  * reaches the client.
  */
@@ -35,7 +35,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
   }
 
   private answerOf(error: unknown): { status: number; code: ErrorCode } {
-    if (error instanceof OfficeFailure) return { status: error.status, code: error.code };
+    if (error instanceof ApiFailure) return { status: error.status, code: error.code };
     if (error instanceof HttpException) {
       const status = error.getStatus();
       if (status >= 500) return { status, code: 'SERVER_ERROR' };

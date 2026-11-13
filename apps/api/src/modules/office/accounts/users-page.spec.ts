@@ -1,4 +1,4 @@
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { USERS_PAGE, cursorOf, usersPage } from './users-page';
 
 const row = (loginName: string, layer: string, nickname = loginName) => ({ loginName, layer, nickname });
@@ -32,7 +32,7 @@ describe('usersPage', () => {
     // ma1 deleted between two reads: the next page still starts after where it stood.
     expect(usersPage(rows.filter((item) => item.loginName !== 'ma1'), { cursor: first.nextCursor! }, 2).items[0].loginName).toBe('ag1');
     // A cursor this list did not issue is refused, like on every other list.
-    expect(() => usersPage(rows, { cursor: 'junk' }, 2)).toThrow(OfficeFailure);
+    expect(() => usersPage(rows, { cursor: 'junk' }, 2)).toThrow(ApiFailure);
     expect(first.nextCursor).toMatch(/^[A-Za-z0-9_-]+$/);
   });
 

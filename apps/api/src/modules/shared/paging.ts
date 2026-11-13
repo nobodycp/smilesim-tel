@@ -1,4 +1,4 @@
-import { fail } from './office-failure';
+import { fail } from './api-failure';
 
 // The one list contract (backend-engineering.mdc 4.7). Every list answers `{ items, nextCursor, total }` plus its
 // own extra keys, takes `?cursor=` and nothing else, and reads `size + 1` rows so the extra one tells whether

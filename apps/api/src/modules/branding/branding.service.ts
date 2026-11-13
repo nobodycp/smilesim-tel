@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AUTH_STORE, AuthStore } from '../auth/auth.store';
-import { OfficeFailure } from '../shared/office-failure';
+import { ApiFailure } from '../shared/api-failure';
 import {
   brandingSummary,
   decodeImage,
@@ -41,10 +41,10 @@ export class BrandingService {
   }
 
   private async assertOwner(gate: Gate): Promise<void> {
-    if (!gate.sessionId) throw new OfficeFailure(401, 'LOGIN_REQUIRED');
+    if (!gate.sessionId) throw new ApiFailure(401, 'LOGIN_REQUIRED');
     const live = await this.auth.liveSession(gate.sessionId);
-    if (!live || live.session.scope !== 'full' || live.user.disabledAt) throw new OfficeFailure(401, 'LOGIN_REQUIRED');
+    if (!live || live.session.scope !== 'full' || live.user.disabledAt) throw new ApiFailure(401, 'LOGIN_REQUIRED');
     const owner = live.user.layer === 'branch' && live.user.isBranchOwner && live.session.kind !== 'impersonation';
-    if (!owner) throw new OfficeFailure(403, 'FORBIDDEN');
+    if (!owner) throw new ApiFailure(403, 'FORBIDDEN');
   }
 }

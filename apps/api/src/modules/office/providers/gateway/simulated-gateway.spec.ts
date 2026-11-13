@@ -1,4 +1,4 @@
-import { OfficeFailure } from '../../../shared/office-failure';
+import { ApiFailure } from '../../../shared/api-failure';
 import { tree } from '../../testing/tree.fixture';
 import { BRANCH_TASK_NOTE, PROVIDER_FAILED_NOTE } from '../../stored-text';
 import { NOT_CONNECTED, type ProviderRequest } from './provider-gateway';
@@ -29,7 +29,7 @@ describe('SimulatedProviderGateway', () => {
     expect(gateway.simulated).toBe(true);
     expect(await gateway.run(request('success'))).toEqual({ ok: true });
     expect(await gateway.run(request('fail'))).toEqual({ ok: false, reason: 'simulated-failure' });
-    expect(() => gateway.accept('maybe')).toThrow(OfficeFailure);
+    expect(() => gateway.accept('maybe')).toThrow(ApiFailure);
   });
 
   it.each([

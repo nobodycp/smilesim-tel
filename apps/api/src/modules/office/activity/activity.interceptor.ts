@@ -6,7 +6,7 @@ import { ACTIVITY_KEY, type ActivityMeta } from './activity.decorator';
 import { ActivityRecorder } from './activity-recorder';
 import { gateOf } from '../../shared/cookies';
 import { REPLAY_HEADER } from '../../shared/duplicate-guard.interceptor';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 
 /** Writes the activity event a route declares with `@Activity`, after the route answered or refused. */
 @Injectable()
@@ -27,7 +27,7 @@ export class ActivityInterceptor implements NestInterceptor {
       // A repeat of a request already answered did nothing: the act is on record once, from the first time.
       mergeMap((value) => (res.getHeader(REPLAY_HEADER) ? [value] : from(record('ok', '').then(() => value)))),
       catchError((error: unknown) =>
-        error instanceof OfficeFailure
+        error instanceof ApiFailure
           ? from(record('fail', error.code)).pipe(mergeMap(() => throwError(() => error)))
           : throwError(() => error),
       ),

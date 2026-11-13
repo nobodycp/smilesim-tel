@@ -4,7 +4,7 @@ import { UnitOfWork } from '../kernel/unit-of-work';
 import { dayRange } from '../../shared/dates';
 import { requireAnyGrant } from '../policy';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { parseInput } from '../../shared/input';
 import { matchOf, matchOverdue } from './match-simulator';
 import type { Actor } from '../kernel/types';

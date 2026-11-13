@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import type { Prisma } from '../../../generated/prisma/client';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import type { Sale } from '../kernel/types';
 import type { NoticeService } from '../notices/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
@@ -51,8 +51,8 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
     const failures = settled.filter((result): result is PromiseRejectedResult => result.status === 'rejected').map((result) => result.reason as unknown);
     return {
       done: settled.filter((result) => result.status === 'fulfilled').length,
-      refused: failures.filter((reason) => reason instanceof OfficeFailure).map((reason) => `${(reason as OfficeFailure).status} ${(reason as OfficeFailure).code}`).sort(),
-      crashed: failures.filter((reason) => !(reason instanceof OfficeFailure)).map((reason) => String((reason as Error)?.message ?? reason).slice(0, 200)),
+      refused: failures.filter((reason) => reason instanceof ApiFailure).map((reason) => `${(reason as ApiFailure).status} ${(reason as ApiFailure).code}`).sort(),
+      crashed: failures.filter((reason) => !(reason instanceof ApiFailure)).map((reason) => String((reason as Error)?.message ?? reason).slice(0, 200)),
     };
   };
 

@@ -11,7 +11,7 @@ import { DOOR_HOSTS } from '../../../doors';
 import { hashPassword } from '../../auth/password';
 import { fullNameProblem, newPasswordProblem } from '../../auth/validators';
 import { parseInput } from '../../shared/input';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { GRANT_CODES, effectiveGrantCodes, roleGrantCodes, splitGrants } from '../rules/office-grants';
 import { visibleAccountIds } from '../rules/account-visibility';

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { visibleAccountIds } from '../rules/account-visibility';
 import type { PathNode } from '../rules/user-terms';
 import type { Account, Actor } from './types';

@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../../db';
 import type { Prisma } from '../../../../generated/prisma/client';
-import { OfficeFailure } from '../../../shared/office-failure';
+import { ApiFailure } from '../../../shared/api-failure';
 import { seal } from '../../../shared/secret-box';
 import { UnitOfWork } from '../../kernel/unit-of-work';
 import { decisionStep, type DecisionActor, type DecisionEvent } from '../../lines/activation-settlement.rules';
@@ -350,7 +350,7 @@ suite('activation settlement schema (PostgreSQL)', () => {
         for (const approver of [accountant, second]) expect(decisionStep(after.events, approver, approval(after.operation))).toEqual({ ok: false, refusal: 'not-applicable' });
         expect(decisionStep(after.events, accountant, { act: 'refuse', operation: after.operation, submitterId: 'pos-1' })).toEqual({ ok: true, event: { sequence: 2, type: 'refused', decision: 'declare-failure' }, effect: 'none' });
         // And the verdict is final: a second answer for the attempt is refused.
-        await expect(service.settle(id, attempt, { kind: 'refused', error: 'refused' })).rejects.toBeInstanceOf(OfficeFailure);
+        await expect(service.settle(id, attempt, { kind: 'refused', error: 'refused' })).rejects.toBeInstanceOf(ApiFailure);
         expect((await stored(tx, id)).row.status).toBe(status);
       });
     });

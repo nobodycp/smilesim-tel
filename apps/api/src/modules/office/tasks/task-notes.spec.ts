@@ -2,7 +2,7 @@ import { TasksRepository } from './tasks.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../kernel/types';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { TasksService } from './tasks.service';
 
 // Task notes and statuses (spec 2026-11-09-offers-tasks-addons-wallet-esim, 2): an internal note is the branch's
@@ -57,7 +57,7 @@ describe('task notes and statuses', () => {
 
   it('refuses an internal note from outside the branch, and keeps an ordinary note ordinary', async () => {
     const { service, notes } = setup();
-    await expect(service.addNote(actor('pos', 'pos'), 't1', { text: 'سر', internal: true })).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.addNote(actor('pos', 'pos'), 't1', { text: 'سر', internal: true })).rejects.toBeInstanceOf(ApiFailure);
     await service.addNote(actor('pos', 'pos'), 't1', { text: 'متى؟' });
     expect(notes).toEqual([{ body: 'متى؟', internal: false }]);
   });
@@ -66,7 +66,7 @@ describe('task notes and statuses', () => {
     const { service, task } = setup();
     await service.take(actor('owner', 'branch', true), 't1');
     expect(task).toMatchObject({ status: 'working', assigneeId: 'owner' });
-    await expect(service.take(actor('owner', 'branch', true), 't1')).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.take(actor('owner', 'branch', true), 't1')).rejects.toBeInstanceOf(ApiFailure);
     await service.release(actor('owner', 'branch', true), 't1');
     expect(task).toMatchObject({ status: 'working', assigneeId: null });
   });
@@ -79,7 +79,7 @@ describe('task notes and statuses', () => {
     (service as unknown as { ledger: { release: unknown } }).ledger.release = async (...args: unknown[]) => { releases.push(args); };
     await service.reject(owner, 't1', { reason: 'رقم خاطئ' });
     expect(task).toMatchObject({ status: 'cancelled', assigneeId: 'owner', resultNote: 'رقم خاطئ' });
-    await expect(service.reject(owner, 't1', { reason: 'مرة ثانية' })).rejects.toBeInstanceOf(OfficeFailure);
+    await expect(service.reject(owner, 't1', { reason: 'مرة ثانية' })).rejects.toBeInstanceOf(ApiFailure);
     expect(releases).toHaveLength(1);
   });
 });

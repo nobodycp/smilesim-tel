@@ -1,4 +1,4 @@
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Account, Actor } from '../kernel/types';
 import { visibleAccountIds } from '../rules/account-visibility';
 import { resolvePackageMode, type ActionKey } from '../rules/run-modes';

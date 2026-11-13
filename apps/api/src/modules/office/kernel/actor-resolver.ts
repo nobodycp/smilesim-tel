@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import type { Gate } from '../../shared/cookies';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { GRANT_CODES, effectiveGrantCodes } from '../rules/office-grants';
 import type { Actor } from './types';
 import { UnitOfWork, type Db } from './unit-of-work';

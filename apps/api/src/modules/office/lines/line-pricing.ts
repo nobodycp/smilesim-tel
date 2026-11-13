@@ -4,7 +4,7 @@ import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { Injectable } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import { lineTermsOf } from '../kernel/line-terms';
 import { lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf } from '../rules/periods';
 import { type LineTerms } from '../rules/prices';

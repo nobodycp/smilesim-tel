@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 
 // A provider's statement and its comparison with our operations (spec 2026-11-08-provider-reconciliation, roadmap N8).
 // Reading turns an .xlsx or .csv file into header + rows of text; matching is pure and works on normalized lines.

@@ -1,6 +1,6 @@
 // The office identity rules, pure: what a saved row looks like, what a PUT body may carry,
 // and how a stored data URL becomes bytes for the image routes.
-import { OfficeFailure } from '../shared/office-failure';
+import { ApiFailure } from '../shared/api-failure';
 
 export const NAME_LIMIT = 120;
 export const TAGLINE_LIMIT = 160;
@@ -38,7 +38,7 @@ export type BrandingSummary = {
 const DATA_URL = /^data:image\/(png|webp);base64,([A-Za-z0-9+/=]+)$/;
 
 function invalid(): never {
-  throw new OfficeFailure(400, 'INVALID');
+  throw new ApiFailure(400, 'INVALID');
 }
 
 function textOf(value: unknown, limit: number): string {

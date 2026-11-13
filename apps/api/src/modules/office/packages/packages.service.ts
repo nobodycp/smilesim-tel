@@ -5,7 +5,7 @@ import { AccountTree } from '../kernel/account-tree';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { requireGrant, seesLayer } from '../policy';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/office-failure';
+import { fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../shared/input';

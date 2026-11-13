@@ -3,7 +3,7 @@ import { wholeEnv } from '../../../../config';
 import type { Prisma } from '../../../../generated/prisma/client';
 import type { ErrorCode } from '../../../../errors';
 import { parseInput } from '../../../shared/input';
-import { fail } from '../../../shared/office-failure';
+import { fail } from '../../../shared/api-failure';
 import { isSealed, seal, secretsKey } from '../../../shared/secret-box';
 import type { Actor } from '../../kernel/types';
 import { UnitOfWork } from '../../kernel/unit-of-work';

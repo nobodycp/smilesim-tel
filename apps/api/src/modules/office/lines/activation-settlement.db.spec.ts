@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildActivationSettlement, buildProviderDispatch } from '../../../provider-dispatch';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeFailure } from '../../shared/office-failure';
+import { ApiFailure } from '../../shared/api-failure';
 import { open, seal } from '../../shared/secret-box';
 import { capturedOutput } from '../../shared/testing/captured-output';
 import type { Db } from '../kernel/unit-of-work';
@@ -97,7 +97,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
   const kinds = async () => (await entries()).map((row) => row.kind).sort();
   const lines = () => prisma.line.findMany({ where: { posId: ids.pos } });
   const messages = async (operationId: string, topic = OPERATION_SETTLED) => prisma.outboxMessage.findMany({ where: { aggregateId: operationId, topic }, orderBy: { sequence: 'asc' } });
-  const refusal = (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof OfficeFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
+  const refusal = (run: Promise<unknown>) => run.then(() => 'done', (error: unknown) => (error instanceof ApiFailure ? `${error.status} ${error.code}` : Promise.reject(error)));
   const told = (kind: string, taskId: string) => notices.filter((notice) => notice.kind === kind && notice.payload.taskId === taskId);
 
   /** The task's operation as the dispatcher leaves it once the request has gone out: claimed, leased, marked. */
@@ -843,7 +843,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     const taken = number();
     await prisma.line.create({ data: { msisdn: taken, iccid: serial(), esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
     const crashed: string[] = [];
-    const quiet = (run: Promise<unknown>) => run.catch((error: unknown) => { if (!(error instanceof OfficeFailure)) crashed.push(String((error as Error)?.message ?? error).slice(0, 200)); });
+    const quiet = (run: Promise<unknown>) => run.catch((error: unknown) => { if (!(error instanceof ApiFailure)) crashed.push(String((error as Error)?.message ?? error).slice(0, 200)); });
     const untouched: string[] = [];
     for (let round = 0; round < 3; round += 1) {
       const runs: Promise<unknown>[] = [];

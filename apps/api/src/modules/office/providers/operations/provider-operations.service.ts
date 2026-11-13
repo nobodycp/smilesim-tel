@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../../shared/office-failure';
+import { fail } from '../../../shared/api-failure';
 import { isSealed, seal } from '../../../shared/secret-box';
 import { UnitOfWork, type Db } from '../../kernel/unit-of-work';
 import type { SendGate, SendPermit } from '../dispatch/dispatch-gate';
