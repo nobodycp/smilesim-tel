@@ -51,3 +51,13 @@ the per-address sign-in limit silently off when `TRUST_PROXY` was missing.
 - **The worker is checked too** (`assertWorkerConfig`, the first statement of `worker.ts`'s `run`, before Redis
   or PostgreSQL is opened): `REDIS_URL`, `DATABASE_URL`, no simulation, the dispatch settings, and `SECRETS_KEY`
   when it is to dispatch. Messages name the variable and the rule, never the value.
+
+## Amended by the final corrections of S.12a (2026-11-13)
+
+- **`DEPLOYMENT_ID`** joins the dispatch settings: the deployment's name (3 to 63 lower-case letters, digits or
+  `-`). With `PROVIDER_DISPATCH=1` it is required, for the API and the worker, and both must be given the same
+  one. Malformed, it is refused whether or not dispatch is on. A deployment that does not dispatch need not set
+  it. Approvals and worker attestations are written with it (ADR 0019).
+- **What the build supports is read from a manifest of codes** (`dispatch/adapter-manifest.ts`), not from the
+  adapters. The check that refuses a provider the build has no adapter for is unchanged in what it refuses; the
+  API runs it without loading the code that reaches a provider, and needs no provider credential to start.

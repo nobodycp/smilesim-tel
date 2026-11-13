@@ -89,6 +89,8 @@ suite('activation settlement schema (PostgreSQL)', () => {
         'ProviderDecisionEvent_account_named', 'ProviderDecisionEvent_decision_known', 'ProviderDecisionEvent_evidenceKind_known', 'ProviderDecisionEvent_evidence_given',
         'ProviderDecisionEvent_sequence_positive', 'ProviderDecisionEvent_success_referenced', 'ProviderDecisionEvent_type_known',
         'ProviderOperation_applyError_known', 'ProviderOperation_resultEsimCode_sealed', 'Provider_dispatch_approval_named',
+        'ProviderOperation_waivedAttempts_bounds', 'ProviderCredential_generation_positive', 'Provider_dispatchApprovalDeployment_whole', 'Provider_dispatchApprovedDeployment_form',
+        'Provider_dispatchReadyIdentity_whole', 'Provider_dispatchReadyDeployment_form', 'Provider_dispatchReadyGeneration_positive', 'Provider_dispatchApproval_whole', 'Provider_dispatchReady_whole',
       ]));
     // Both triggers are there and switched on.
     expect(await names(`SELECT tgname AS name FROM pg_trigger WHERE tgrelid = '"ProviderDecisionEvent"'::regclass AND NOT tgisinternal AND tgenabled = 'O'`))
@@ -149,20 +151,52 @@ suite('activation settlement schema (PostgreSQL)', () => {
       const { provider } = await seed(tx);
       const set = (data: Prisma.ProviderUncheckedUpdateInput) => tx.provider.update({ where: { id: provider.id }, data });
       expect(provider).toMatchObject({ dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchPausedAt: null });
-      // Who gave it (S.1), and since S.12a the target it was given for: an approval is all three or none.
-      await refused(tx, () => set({ dispatchApprovedAt: new Date(), dispatchApprovedTarget: 'sandbox' }), /dispatch_approval_named/);
+      // Who gave it (S.1), the target it was given for (S.12a) and the deployment it was given on (its final
+      // corrections): an approval is all four or none.
+      const approval = { dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: 'owner', dispatchApprovedTarget: 'sandbox', dispatchApprovedDeployment: 'staging-1' };
+      const none = { dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchApprovedTarget: null, dispatchApprovedDeployment: null };
+      await refused(tx, () => set({ ...approval, dispatchApprovedByLoginName: null }), /dispatch_approval_named/);
       await refused(tx, () => set({ dispatchApprovedByLoginName: 'owner' }), /dispatch_approval_named/);
-      await refused(tx, () => set({ dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: 'owner' }), /dispatchApproval_whole/);
+      await refused(tx, () => set({ ...approval, dispatchApprovedTarget: null }), /dispatchApproval_whole/);
       await refused(tx, () => set({ dispatchApprovedTarget: 'live' }), /dispatchApproval_whole/);
-      await refused(tx, () => set({ dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: 'owner', dispatchApprovedTarget: 'production' }), /dispatchApprovedTarget_known/);
-      await set({ dispatchApprovedAt: new Date(), dispatchApprovedByLoginName: 'owner', dispatchApprovedTarget: 'sandbox', dispatchPausedAt: new Date() });
-      await set({ dispatchApprovedAt: null, dispatchApprovedByLoginName: null, dispatchApprovedTarget: null });
-      // The worker's attestation: a time and a target together, the target one of the two.
-      await refused(tx, () => set({ dispatchReadyAt: new Date() }), /dispatchReady_whole/);
+      await refused(tx, () => set({ ...approval, dispatchApprovedTarget: 'production' }), /dispatchApprovedTarget_known/);
+      // What the code before the deployment's name wrote: refused, so an approval never stands for "any deployment".
+      await refused(tx, () => set({ ...approval, dispatchApprovedDeployment: null }), /dispatchApprovalDeployment_whole/);
+      await refused(tx, () => set({ dispatchApprovedDeployment: 'staging-1' }), /dispatchApprovalDeployment_whole/);
+      for (const name of ['Staging', 'ab', 'a b c', '-abc', 'x'.repeat(64), '']) await refused(tx, () => set({ ...approval, dispatchApprovedDeployment: name }), /dispatchApprovedDeployment_form/);
+      await set({ ...approval, dispatchPausedAt: new Date() });
+      await set(none);
+      // The worker's attestation: a time, a target, a deployment and a generation together.
+      const ready = { dispatchReadyAt: new Date(), dispatchReadyTarget: 'live', dispatchReadyDeployment: 'production-1', dispatchReadyGeneration: 1 };
+      await refused(tx, () => set({ dispatchReadyAt: new Date() }), /dispatchReady/);
       await refused(tx, () => set({ dispatchReadyTarget: 'live' }), /dispatchReady_whole/);
-      await refused(tx, () => set({ dispatchReadyAt: new Date(), dispatchReadyTarget: 'staging' }), /dispatchReadyTarget_known/);
-      await set({ dispatchReadyAt: new Date(), dispatchReadyTarget: 'live' });
-      await set({ dispatchReadyAt: null, dispatchReadyTarget: null });
+      await refused(tx, () => set({ ...ready, dispatchReadyTarget: 'staging' }), /dispatchReadyTarget_known/);
+      await refused(tx, () => set({ ...ready, dispatchReadyDeployment: null }), /dispatchReadyIdentity_whole/);
+      await refused(tx, () => set({ ...ready, dispatchReadyGeneration: null }), /dispatchReadyIdentity_whole/);
+      await refused(tx, () => set({ dispatchReadyDeployment: 'production-1' }), /dispatchReadyIdentity_whole/);
+      await refused(tx, () => set({ dispatchReadyGeneration: 1 }), /dispatchReadyIdentity_whole/);
+      await refused(tx, () => set({ ...ready, dispatchReadyGeneration: 0 }), /dispatchReadyGeneration_positive/);
+      await refused(tx, () => set({ ...ready, dispatchReadyDeployment: 'Production' }), /dispatchReadyDeployment_form/);
+      await set(ready);
+      await set({ dispatchReadyAt: null, dispatchReadyTarget: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null });
+    });
+  });
+
+  it('numbers a credential\'s writes from one, and keeps the waived attempts of an operation within its attempts', async () => {
+    await scratch(async (tx) => {
+      const { provider, operation: record } = await seed(tx);
+      const operation = await record();
+      const credential = await tx.providerCredential.create({ data: { providerId: provider.id, target: 'sandbox', sealedValue: `v1:${'A'.repeat(40)}`, updatedByLoginName: 'owner' } });
+      expect(credential.generation).toBe(1);
+      await refused(tx, () => tx.providerCredential.update({ where: { id: credential.id }, data: { generation: 0 } }), /generation_positive/);
+      await tx.providerCredential.update({ where: { id: credential.id }, data: { generation: { increment: 1 } } });
+      // An operation as it was before the column: nothing waived, so its budget is what it was.
+      expect(await tx.providerOperation.findUniqueOrThrow({ where: { id: operation.id } })).toMatchObject({ attempts: 0, waivedAttempts: 0 });
+      const waive = (data: Prisma.ProviderOperationUncheckedUpdateInput) => tx.providerOperation.update({ where: { id: operation.id }, data });
+      await refused(tx, () => waive({ waivedAttempts: 1 }), /waivedAttempts_bounds/);
+      await refused(tx, () => waive({ attempts: 3, waivedAttempts: 4 }), /waivedAttempts_bounds/);
+      await refused(tx, () => waive({ waivedAttempts: -1 }), /waivedAttempts_bounds/);
+      await waive({ attempts: 3, waivedAttempts: 3 });
     });
   });
 

@@ -53,3 +53,10 @@ migrated. Tasks opened in the meantime stay valid branch tasks.
 - The production check gained the dispatch settings (`PROVIDER_DISPATCH`, `PROVIDER_ADAPTERS`, `PROVIDER_TARGET`),
   and the worker runs its own check (`assertWorkerConfig`) before it opens anything.
 - `providerDispatchOn()` is removed; `PROVIDER_DISPATCH=1` alone switches nothing on, in any environment.
+
+## Corrected by the final corrections of S.12a (ADR 0019), 2026-11-13
+
+- The dispatch settings are four: `PROVIDER_DISPATCH`, `PROVIDER_ADAPTERS`, `PROVIDER_TARGET` and `DEPLOYMENT_ID`
+  (the deployment's name, required when dispatch is on, the same on the API and the worker).
+- The start-up check reads the manifest of supported provider codes (`dispatch/adapter-manifest.ts`); the API
+  does not load the worker's adapter registry.

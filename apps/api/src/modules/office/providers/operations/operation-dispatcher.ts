@@ -79,11 +79,14 @@ export class OperationDispatcher {
   }
 }
 
-/** Recovers pending attempts whose worker is gone, a batch at a time. Answers how many it changed. */
-export async function recoverExpired(operations: ProviderOperationsService, now: Date = new Date(), limit = 100): Promise<number> {
+/**
+ * Recovers pending attempts whose worker is gone, a batch at a time. Answers how many it changed. The worker
+ * passes its gate, so an unsent attempt found while its provider's gate is closed is not counted (ADR 0018, amended).
+ */
+export async function recoverExpired(operations: ProviderOperationsService, now: Date = new Date(), limit = 100, gate?: SendGate): Promise<number> {
   let changed = 0;
   for (const id of await operations.expiredPending(now, limit)) {
-    const status = await operations.recover(id, now);
+    const status = await operations.recover(id, now, gate);
     if (status) {
       changed += 1;
       log.warn(`operation ${id}: recovered to ${status}`);

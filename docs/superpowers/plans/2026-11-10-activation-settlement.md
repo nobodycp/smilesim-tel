@@ -431,6 +431,15 @@ wallets (sorted). A slice's review checks that order in the code it adds.
     start-up checks, and the worker's attestation that lets the API agree with it. `providerDispatchOn()` is
     gone. *Specs:* 25, 26 (`provider-dispatch-switch.spec.ts`, `provider-dispatch.db.spec.ts`). **No adapter
     exists: nothing can be sent.** The original line of the plan follows.
+  - **S.12a final corrections — built 2026-11-13** (commit: see `git log --grep 'S.12a final corrections'`), as
+    ADR 0019 "Final corrections of S.12a" says. Migrations `20261113110000_provider_operation_waived_attempts`
+    and `20261113120000_provider_dispatch_deployment_and_generation`. An attempt a closed gate hands back keeps
+    its number and uses nothing of the budget; the deployment has a name (`DEPLOYMENT_ID`) that approvals and
+    attestations carry; a credential has a generation, writing it withdraws the approval and the attestation,
+    and a worker rebuilds its adapters from what is stored; the manifest of codes is apart from the worker's
+    registry. **For S.12b:** add the adapter's factory to `provider-adapters.ts` and its code to
+    `adapter-manifest.ts`, nothing to the API; set `DEPLOYMENT_ID` on the API and the worker of each deployment
+    before `PROVIDER_DISPATCH`.
   - **S.12a The switch (D18), no adapter.** `worker.ts` runs the production settings check with the worker's list;
     `PROVIDER_ADAPTERS`, `PROVIDER_TARGET`; `providerDispatchOn()` replaced by the four conditions; the owner's
     approve / pause / credential routes (write-only, sealed, audited); the routing gateway in the worker with an

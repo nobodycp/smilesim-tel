@@ -2,7 +2,7 @@
 // main.ts before anything is opened. It names the variable and the rule, never the value.
 
 import { dispatchSettings } from './modules/office/providers/dispatch/dispatch-policy';
-import { knownAdapters } from './modules/office/providers/dispatch/provider-adapters';
+import { SUPPORTED_ADAPTERS } from './modules/office/providers/dispatch/adapter-manifest';
 
 type Env = Record<string, string | undefined>;
 
@@ -70,12 +70,16 @@ export function productionConfigProblems(env: Env): string[] {
 }
 
 /**
- * The dispatch settings of a production process (ADR 0019, D18), the same for the API and the worker: the three
- * variables must hold together (`dispatchSettings`), and every provider named must be one this code base has an
- * adapter for. A process that is told to dispatch, or told about adapters, in a way that cannot be carried out
- * does not start. No environment name relaxes this: a staging deployment is production-grade.
+ * The dispatch settings of a production process (ADR 0019, D18), the same for the API and the worker: the
+ * variables must hold together (`dispatchSettings`), and every provider named must be one this build supports.
+ * A process that is told to dispatch, or told about adapters, in a way that cannot be carried out does not start.
+ * No environment name relaxes this: a staging deployment is production-grade.
+ *
+ * What the build supports is read from the manifest of codes (`adapter-manifest.ts`), never from the adapters
+ * themselves: the API checks its settings without importing the code that reaches a provider, and needs no
+ * provider credential to start.
  */
-export function dispatchConfigProblems(env: Env, known: readonly string[] = knownAdapters()): string[] {
+export function dispatchConfigProblems(env: Env, known: readonly string[] = SUPPORTED_ADAPTERS): string[] {
   const settings = dispatchSettings(env);
   const problems = [...settings.problems];
   const unknown = settings.adapters.filter((name) => !known.includes(name));

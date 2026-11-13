@@ -596,3 +596,75 @@ became `live`; and the API could not know what the worker holds without the work
   a production-grade process, with the races decided by the row lock. Items 25 and 26 are closed.
 - **For S.12b:** the first entry of `ADAPTER_FACTORIES`, in the worker's side only. The spec that pins the empty
   list and the one that pins "no outgoing connection under the providers domain" change with it, on purpose.
+
+## Final corrections of S.12a (2026-11-13)
+
+A review of S.12a as built found five things that were safe by accident or not safe enough. Two migrations, each
+on its own: `20261113110000_provider_operation_waived_attempts` and
+`20261113120000_provider_dispatch_deployment_and_generation`. No historical migration is edited. Still no adapter.
+
+- **A closed gate does not use the budget of attempts** (ADR 0018, amended). An attempt that was taken and then
+  refused at the mark (the owner paused the provider, withdrew its approval or replaced its credential between
+  the two) is handed back **in the transaction that refused it**: `pending → requested`, with the message of its
+  next send. So the operation is at once what D7 lets its submitter cancel; nothing waits for a lease to end. The
+  attempt keeps its number and is counted in `ProviderOperation.waivedAttempts`; the budget is
+  `attempts − waivedAttempts` (`spentAttempts`). Recovery, given the worker's gate, waives an unsent attempt it
+  finds while the gate is closed in the same way, so no operation is failed for its attempts while its provider
+  is closed. `attempts` is never reduced: it still fences an old answer from a later attempt and still orders
+  the outbox messages, and a hand-back writes the message of the next send under a sequence no earlier one used.
+- **"This deployment" is a name** (D18, condition 4). `sandbox` and `live` say which of the provider's systems
+  is called; two deployments can call the same one. `DEPLOYMENT_ID` names the deployment (3 to 63 lower-case
+  letters, digits or `-`; required with `PROVIDER_DISPATCH=1`, by the settings and by both start-up checks). The
+  approval records it (`Provider.dispatchApprovedDeployment`) and so does the worker's attestation
+  (`dispatchReadyDeployment`); each is read back against the reader's own name. A deployment that shares the
+  database, or a database restored from another deployment's backup, is opened by neither. A provider has one
+  approval: giving it on one deployment takes it from another. The database refuses an approval or an
+  attestation that names no deployment.
+  *Why a name and not "one database per deployment" as the only guarantee.* Separate databases remain the rule
+  of every deployment (sessions, money and accounts already depend on it) and nothing here relaxes it. But a rule
+  about infrastructure cannot be tested by the application, and it does not cover the case that does happen: a
+  staging database restored from a backup of another deployment carries that deployment's approvals with it. A
+  name on the row is checked in the policy, under the lock, and in the database's own constraints.
+  *What it does not do.* Two deployments given the same name are one deployment as far as the application can
+  tell. The name is an operator's setting, like the target.
+- **A credential has a generation, and writing it closes the provider.** `ProviderCredential.generation` is
+  raised by every write. `saveCredential` is one transaction under the provider's row lock (the lock the worker's
+  gate reads under): the new sealed value and its generation, **the owner's approval withdrawn**, **the worker's
+  attestation withdrawn**. A pause, if there is one, stays. Sending again needs `approve`; a `resume` is
+  refused. From that commit no attempt is taken or marked, by any worker.
+- **No adapter outlives its credential.** An adapter remembers the generation of the credential it was built
+  with. The gate (`maySend`) requires it to equal the stored generation, read after the row lock is held; the
+  worker's attestation is written under the row lock and only for the stored generation, and never over a
+  provider approved for another deployment. So a worker that still holds a replaced credential can neither send
+  nor bring back the attestation that the replacement withdrew, nor write over a newer worker's, even after the
+  owner approved again. On its readiness round (every `READY_EVERY_MS`) a worker compares the stored generations
+  with what it built from and, when they differ, builds **every** adapter again from what is stored and drops
+  the old set. The API also requires the attested generation to be the stored one (`workerReady`).
+  An attempt that was already marked finishes as any attempt does, with the adapter it was handed to; nothing is
+  recalled, and no hold is released by a replacement.
+- **The manifest, the registry and the attestation are three things.** `dispatch/adapter-manifest.ts` is the
+  list of provider codes the build supports: names only, shared by the API and the worker, read by both start-up
+  checks. `dispatch/provider-adapters.ts` is the registry of the code that reaches each provider: the worker's
+  only. The worker's attestation in the database is what a running worker actually built. The API loads the
+  first and reads the third; `provider-dispatch-switch.spec.ts` walks the API's import graph from `main.ts` and
+  finds neither the registry, the routing gateway, the deployment's gate nor the worker's wiring in it. Adding
+  the first adapter (S.12b) adds a factory to the registry and its code to the manifest (a spec keeps the two
+  equal) and moves nothing into the API. The API needs no provider credential to start. Refusing to start a
+  production process that names a provider the build does not support is kept: it reads the manifest.
+- **The attestation's life.** Written every 20 s, believed for 60 s, for this deployment, this target and the
+  stored generation only. A worker that stops withdraws it. A worker that is killed leaves its last one behind:
+  for at most 60 s the API may still open the dispatch route. A sale opened then is recorded with its hold and
+  waits `requested`: nobody sends it until a worker is back, and its submitter may cancel it (D7). After that
+  every sale takes the manual route. An attestation never lets a request leave: the gate is asked again at the
+  claim and at the mark.
+- **Settling is untouched** by a pause, a withdrawn approval or a new credential: verdicts, an unknown answer and
+  its late verdict, exceptions, recovery and the sweeper run as before.
+- **Specs.** `provider-dispatch.db.spec.ts` (PostgreSQL, HTTP, production-grade): five pauses then one send; the
+  budget with waived attempts between counted ones; recovery while open and while closed; fencing after a
+  hand-back; a replacement while an operation is requested, pending before its mark, pending after it, during
+  the provider's call, with two workers at once, and across a worker's stop and start; a replacement and each of
+  the owner's writes against the row lock; thirty rounds of a replacement against a dispatch; two deployments on
+  one database; a restored database; the attestation's minute. `provider-dispatch-switch.spec.ts`: the
+  deployment's name in the settings and in every comparison, the generation in `maySend` and `workerReady`, and
+  the import graph. `settlement-schema.db.spec.ts`: the new constraints. The file runs no pass over "every
+  operation" of the database, which other spec files share.

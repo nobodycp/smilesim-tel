@@ -94,3 +94,25 @@ Decision 10 said `PROVIDER_DISPATCH=1` outside production only, and `config.ts` 
 - An attempt that a closed gate refuses is **not counted**: the operation stays `requested` with its attempts as
   they were. An attempt that was taken and then refused at the mark (the pause came between the two) is
   provably unsent and is put back by recovery, as decision 6 already says.
+
+## Amended by the final corrections of S.12a (2026-11-13): the attempt's number and the budget are two things
+
+Decision 6 counted every claimed attempt against `MAX_ATTEMPTS`. That was right while the only way an attempt
+ended unsent was a connection that failed or a worker that died. Since D18 an attempt can also end unsent because
+the owner closed the provider between the claim and the mark, and five of those would have failed an operation
+no provider ever saw.
+
+- `attempts` is the attempt's **number**. It only grows. It fences (an answer is written only for the attempt the
+  operation is on) and it is the outbox sequence (one message per send; a `settled` message per verdict). It is
+  never reduced and no number is used twice.
+- `waivedAttempts` counts the attempts handed back before their send mark while the provider's gate was closed.
+  The **budget** is `attempts − waivedAttempts` (`spentAttempts`); `afterAttempt` is given that.
+- `beginSend`, refused by the gate, hands the attempt back in the same transaction (`pending → requested`,
+  waived, with the next send's message). It replaces the last sentence of the amendment above: nothing waits
+  for recovery.
+- `recover`, given the worker's gate, waives an unsent attempt found while the gate is closed. An unsent attempt
+  found while the gate is open is counted as before (a worker that keeps dying before the mark must not loop for
+  ever). Without a gate, `recover` counts every attempt, as before.
+- A connection that was tried and did not leave (`left: false` from the adapter) is counted, as before: five of
+  those fail the operation.
+- The column defaults to 0, so every operation recorded before it keeps the count it had.

@@ -43,21 +43,24 @@ export async function run(): Promise<void> {
   // The relay publishes on its own connection: it must fail fast when Redis is away, the workers must not.
   const relayRedis = new IORedis(url, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
   relayRedis.on('error', (error) => log.error(`redis (relay): ${errorCode(error)}`));
-  const built = buildAdapters(settings, await readCredentials(dispatchPrisma, settings));
-  const gateway = new RoutingProviderGateway(built.adapters);
-  const dispatch = buildProviderDispatch(dispatchPrisma, relayRedis, gateway, new DeploymentSendGate(settings, (code) => gateway.holds(code)));
+  // Every adapter is built from the credentials as they are stored at that moment; `startReadiness` builds them
+  // again when one is written, so no adapter outlives the credential it was given.
+  const rebuild = async () => buildAdapters(settings, await readCredentials(dispatchPrisma, settings));
+  const built = await rebuild();
+  const gateway = new RoutingProviderGateway(built);
+  const dispatch = buildProviderDispatch(dispatchPrisma, relayRedis, gateway, new DeploymentSendGate(settings, (code) => gateway.generation(code)));
   processors.push({ queue: OPERATIONS_QUEUE, handle: dispatch.handle });
   // Verdicts are acted on by their own queue (ADR 0019, D8): it writes the line and the money, and calls nobody.
   processors.push({ queue: SETTLEMENTS_QUEUE, handle: dispatch.settle });
   const stopTimers = startProviderDispatchTimers(dispatch);
-  const stopReadiness = startReadiness(dispatchPrisma, built, settings);
+  const readiness = startReadiness(dispatchPrisma, settings, gateway, rebuild);
   const stopDispatch = async () => {
-    await stopReadiness();
+    await readiness.stop();
     await stopTimers();
   };
   // Codes only: which providers have an adapter, and why each named one has none. Never a credential.
   for (const [code, why] of built.skipped) log.warn(`provider dispatch: no adapter for ${code} (${why})`);
-  log.log(`provider dispatch: settling on; sending ${built.adapters.size > 0 ? `on for ${[...built.adapters.keys()].join(', ')} (${settings.target})` : 'off (no adapter built)'}`);
+  log.log(`provider dispatch: settling on; sending ${built.adapters.size > 0 ? `on for ${[...built.adapters.keys()].join(', ')} (${settings.target}, ${settings.deployment})` : 'off (no adapter built)'}`);
 
   const workers = processors.map(
     (processor) => new Worker(processor.queue, (job) => processor.handle(job.data), { connection }),

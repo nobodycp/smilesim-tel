@@ -316,6 +316,14 @@ terminal, so it is never sent again, and no path releases the hold except the ap
 - **Staging proves the flow; it does not enable production.** Approval, credentials and adapter list are per
   deployment. Passing staging changes nothing on production: there the four conditions are set again, by name,
   after the go-live gate.
+- **As built (S.12a and its final corrections, 2026-11-13; ADR 0019).** The decision above stands. What it left
+  open was made exact, each in the direction of refusing: "that deployment" in condition 4 is the deployment's
+  name (`DEPLOYMENT_ID`), recorded with the approval, so an approval does not follow a shared or restored
+  database; the API reads the worker's part of the conditions from the worker's attestation in the database
+  (the settings are not shared between two processes); writing a credential withdraws the approval and the
+  attestation, and an adapter is used only while it was built from the stored credential; an attempt that a
+  pause meets between the claim and the mark is handed back at once and is not counted against `MAX_ATTEMPTS`
+  (ADR 0018, amended). One new setting follows from it: `DEPLOYMENT_ID`, on the API and the worker.
 
 **D19. Layers.**
 

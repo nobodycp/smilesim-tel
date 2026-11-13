@@ -19,7 +19,8 @@ import { QueuePublisher } from './modules/office/outbox/queue-publisher';
 import type { ProviderGateway } from './modules/office/providers/gateway/provider-gateway';
 import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate';
 import { READY_EVERY_MS, type DispatchSettings, type ProviderTarget } from './modules/office/providers/dispatch/dispatch-policy';
-import type { BuiltAdapters } from './modules/office/providers/dispatch/provider-adapters';
+import type { BuiltAdapters, OpenedCredential } from './modules/office/providers/dispatch/provider-adapters';
+import type { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
 import { open } from './modules/shared/secret-box';
 import { OperationDispatcher, dispatchWaiting, recoverExpired } from './modules/office/providers/operations/operation-dispatcher';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from './modules/office/providers/operations/provider-operations.repository';
@@ -84,6 +85,7 @@ export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis,
     uow,
     operations,
     publisher,
+    gate,
     relay: new OutboxRelay(uow, new OutboxRepository(), publisher, [OPERATION_REQUESTED, OPERATION_SETTLED]),
     dispatcher,
     settlement,
@@ -117,7 +119,7 @@ export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis,
 }
 
 /** Starts the relay and the recovery on their timers. Answers what stops them. */
-export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildProviderDispatch>, 'relay' | 'operations' | 'publisher' | 'settlement' | 'dispatcher'>): () => Promise<void> {
+export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildProviderDispatch>, 'relay' | 'operations' | 'publisher' | 'settlement' | 'dispatcher' | 'gate'>): () => Promise<void> {
   let relaying = false;
   const relay = setInterval(() => {
     if (relaying) return;
@@ -130,7 +132,8 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
     recovering = true;
     // Attempts whose worker is gone, then the operations a closed gate left waiting: each goes through the gate
     // again, so a provider that was resumed sends what waited and a paused one still sends nothing.
-    void recoverExpired(parts.operations)
+    // Recovery is given the gate: an unsent attempt found while its provider is closed is not counted.
+    void recoverExpired(parts.operations, new Date(), 100, parts.gate)
       .then(() => dispatchWaiting(parts.dispatcher, parts.operations))
       .catch((error) => log.warn(`recovery failed: ${errorCode(error)}`))
       .finally(() => { recovering = false; });
@@ -152,21 +155,27 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
   };
 }
 
+/** Whether this deployment may build adapters at all: dispatch on, coherent settings, a target, a name, a provider named. */
+function mayBuild(settings: DispatchSettings): settings is DispatchSettings & { target: ProviderTarget; deployment: string } {
+  return settings.on && settings.problems.length === 0 && settings.target !== null && settings.deployment !== null && settings.adapters.length > 0;
+}
+
 /**
- * The opened credentials of the providers this deployment may build adapters for, read once at start (ADR 0019,
- * D18). Only the worker calls this: it is the one place a stored credential is opened. Nothing is read unless
- * dispatch is on, the settings hold together and a target is stated. A credential that does not open (the key
- * changed, the value is damaged) is remembered as unreadable and throws when asked for, so no adapter is built
- * with it; one that is not stored answers null. Neither the value nor the cipher's error is logged.
+ * The opened credentials of the providers this deployment may build adapters for, as they are stored now (ADR
+ * 0019, D18), each with its generation. Only the worker calls this: it is the one place a stored credential is
+ * opened. Nothing is read unless dispatch is on, the settings hold together and a target is stated. A credential
+ * that does not open (the key changed, the value is damaged) is remembered as unreadable and throws when asked
+ * for, so no adapter is built with it; one that is not stored answers null. Neither the value nor the cipher's
+ * error is logged.
  */
-export async function readCredentials(prisma: PrismaClient, settings: DispatchSettings): Promise<(providerCode: string, target: ProviderTarget) => string | null> {
-  const opened = new Map<string, string | Error>();
-  if (settings.on && settings.target && settings.problems.length === 0 && settings.adapters.length > 0) {
-    const rows = await prisma.providerCredential.findMany({ where: { target: settings.target, provider: { code: { in: [...settings.adapters] } } }, select: { sealedValue: true, target: true, provider: { select: { code: true } } } });
+export async function readCredentials(prisma: PrismaClient, settings: DispatchSettings): Promise<(providerCode: string, target: ProviderTarget) => OpenedCredential | null> {
+  const opened = new Map<string, OpenedCredential | Error>();
+  if (mayBuild(settings)) {
+    const rows = await prisma.providerCredential.findMany({ where: { target: settings.target, provider: { code: { in: [...settings.adapters] } } }, select: { sealedValue: true, generation: true, target: true, provider: { select: { code: true } } } });
     for (const row of rows) {
       try {
         const value = open(row.sealedValue);
-        opened.set(`${row.provider.code}:${row.target}`, value === '' ? new Error('empty') : value);
+        opened.set(`${row.provider.code}:${row.target}`, value === '' ? new Error('empty') : { value, generation: row.generation });
       } catch {
         opened.set(`${row.provider.code}:${row.target}`, new Error('unreadable'));
       }
@@ -179,22 +188,76 @@ export async function readCredentials(prisma: PrismaClient, settings: DispatchSe
   };
 }
 
-/**
- * The worker's attestation (ADR 0019, D18): for each adapter it built, it writes on the provider's row that it
- * holds one, for which target, now, and repeats it on a timer. The API opens the dispatch route only on a fresh
- * one. A worker with no adapter writes nothing. Stopping withdraws what it wrote. Answers what stops it.
- */
-export function startReadiness(prisma: PrismaClient, built: BuiltAdapters, settings: DispatchSettings): () => Promise<void> {
-  const codes = [...built.adapters.keys()];
-  const target = settings.target;
-  if (codes.length === 0 || !target) return async () => undefined;
-  const attest = () => prisma.provider.updateMany({ where: { code: { in: codes } }, data: { dispatchReadyAt: new Date(), dispatchReadyTarget: target } });
-  void attest().catch((error) => log.warn(`readiness failed: ${errorCode(error)}`));
-  const timer = setInterval(() => void attest().catch((error) => log.warn(`readiness failed: ${errorCode(error)}`)), READY_EVERY_MS);
-  timer.unref?.();
-  return async () => {
-    clearInterval(timer);
-    await prisma.provider.updateMany({ where: { code: { in: codes }, dispatchReadyTarget: target }, data: { dispatchReadyAt: null, dispatchReadyTarget: null } }).catch(() => undefined);
-  };
+/** The generation of each named provider's stored credential for the deployment's target. No value is read. */
+async function storedGenerations(prisma: PrismaClient, settings: DispatchSettings & { target: ProviderTarget }): Promise<string> {
+  const rows = await prisma.providerCredential.findMany({ where: { target: settings.target, provider: { code: { in: [...settings.adapters] } } }, select: { generation: true, provider: { select: { code: true } } } });
+  return rows.map((row) => `${row.provider.code}:${row.generation}`).sort().join(',');
 }
 
+/**
+ * The worker's attestation, and its adapters kept true to what is stored (ADR 0019, D18). Each round, on a timer:
+ *
+ * 1. **Rebuild.** When a credential was written since the adapters were built (its generation moved, or one
+ *    appeared), every adapter is built again from what is stored now (`rebuild`) and the gateway is handed the
+ *    new set. An adapter built from a replaced credential is never kept.
+ * 2. **Attest.** For each adapter it holds, the worker writes on the provider's row that this deployment's worker
+ *    holds one, for which target and from which generation of the credential, now. The row is locked first and
+ *    the stored generation read under the lock, so a worker that still holds a replaced credential writes
+ *    nothing: it cannot bring back the attestation that the replacement withdrew, and cannot write over a newer
+ *    worker's. It also leaves alone a provider that is approved for another deployment.
+ *
+ * The API opens the dispatch route only on such an attestation, fresh. A worker with no adapter writes nothing.
+ * Stopping withdraws what this deployment's workers wrote; another worker of it, still running, says so again
+ * within a round. Answers `stop`, and `round` for a caller that does not wait for the timer.
+ */
+export function startReadiness(prisma: PrismaClient, settings: DispatchSettings, gateway: RoutingProviderGateway, rebuild: () => Promise<BuiltAdapters>): { stop: () => Promise<void>; round: () => Promise<void> } {
+  if (!mayBuild(settings)) return { stop: async () => undefined, round: async () => undefined };
+  const { target, deployment } = settings;
+  /** What was stored when the adapters were last built; null until the first round has looked. */
+  let builtFrom: string | null = null;
+  const attest = async (code: string, generation: number) => {
+    await prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<{ id: string; dispatchApprovedDeployment: string | null }[]>`SELECT "id", "dispatchApprovedDeployment" FROM "Provider" WHERE "code" = ${code} FOR UPDATE`;
+      const provider = rows[0];
+      if (!provider || (provider.dispatchApprovedDeployment !== null && provider.dispatchApprovedDeployment !== deployment)) return;
+      // Read after the lock is held: a replacement that committed while this waited is what it finds.
+      const stored = await tx.$queryRaw<{ generation: number }[]>`SELECT "generation" FROM "ProviderCredential" WHERE "providerId" = ${provider.id} AND "target" = ${target}`;
+      if (stored[0]?.generation !== generation) return;
+      await tx.provider.update({ where: { id: provider.id }, data: { dispatchReadyAt: new Date(), dispatchReadyTarget: target, dispatchReadyDeployment: deployment, dispatchReadyGeneration: generation } });
+    });
+  };
+  let running: Promise<void> | null = null;
+  const once = async () => {
+    const stored = await storedGenerations(prisma, settings);
+    if (builtFrom === null) builtFrom = [...gateway.held()].map((code) => `${code}:${gateway.generation(code)}`).sort().join(',');
+    if (stored !== builtFrom) {
+      const built = await rebuild();
+      gateway.use(built);
+      builtFrom = stored;
+      for (const [code, why] of built.skipped) log.warn(`provider dispatch: no adapter for ${code} (${why})`);
+      log.log(`provider dispatch: adapters rebuilt from the stored credentials (${built.adapters.size} held)`);
+    }
+    for (const code of gateway.held()) {
+      const generation = gateway.generation(code);
+      if (generation !== null) await attest(code, generation);
+    }
+  };
+  /** One round at a time: a slow round is not overtaken by the next tick. */
+  const round = () => {
+    running ??= once().catch((error) => log.warn(`readiness failed: ${errorCode(error)}`)).finally(() => { running = null; });
+    return running;
+  };
+  void round();
+  const timer = setInterval(() => void round(), READY_EVERY_MS);
+  timer.unref?.();
+  return {
+    round,
+    stop: async () => {
+      clearInterval(timer);
+      await running;
+      await prisma.provider
+        .updateMany({ where: { code: { in: [...settings.adapters] }, dispatchReadyDeployment: deployment }, data: { dispatchReadyAt: null, dispatchReadyTarget: null, dispatchReadyDeployment: null, dispatchReadyGeneration: null } })
+        .catch(() => undefined);
+    },
+  };
+}

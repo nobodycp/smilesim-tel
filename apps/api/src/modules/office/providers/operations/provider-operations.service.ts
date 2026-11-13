@@ -4,7 +4,7 @@ import { isSealed, seal } from '../../../shared/secret-box';
 import { UnitOfWork, type Db } from '../../kernel/unit-of-work';
 import type { SendGate } from '../dispatch/dispatch-gate';
 import type { Action } from '../../kernel/types';
-import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, settledSequence, storedRef, storedResult, validKey, type ActivationResult, type AttemptOutcome, type OperationError, type OperationRequest, type OperationStatus, type OutgoingOperation, type StoredResult, type Verdict } from './provider-operation.rules';
+import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, settledSequence, spentAttempts, storedRef, storedResult, validKey, type ActivationResult, type AttemptOutcome, type OperationError, type OperationRequest, type OperationStatus, type OutgoingOperation, type StoredResult, type Verdict } from './provider-operation.rules';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository, type NewDecisionEvent, type ResultColumns, type WaitingFor } from './provider-operations.repository';
 
 /**
@@ -66,7 +66,7 @@ export class ProviderOperationsService {
   async status(by: { id: string } | { idempotencyKey: string }) {
     const row = 'id' in by ? await this.repo.operationById(this.uow.prisma, by.id) : await this.repo.operationByKey(this.uow.prisma, by.idempotencyKey);
     if (!row) fail(404, 'NOT_FOUND');
-    return { id: row.id, status: row.status as OperationStatus, providerRef: row.providerRef, attempts: row.attempts, lastError: row.lastError, createdAt: row.createdAt, updatedAt: row.updatedAt };
+    return { id: row.id, status: row.status as OperationStatus, providerRef: row.providerRef, attempts: row.attempts, waivedAttempts: row.waivedAttempts, lastError: row.lastError, createdAt: row.createdAt, updatedAt: row.updatedAt };
   }
 
   /**
@@ -94,6 +94,11 @@ export class ProviderOperationsService {
    * caller's: its lease is over (the worker was slow, and recovery may take the attempt back at any moment),
    * recovery already took it, or it was marked before. The caller calls the provider only on an answer: that
    * makes "no mark" proof that nothing left.
+   *
+   * When the gate refuses (the provider was paused, its approval withdrawn or its credential replaced after the
+   * attempt was taken), the attempt is **handed back in this same transaction**: `pending → requested`, waived,
+   * with the message of its next send. So the operation is at once what D7 lets its submitter cancel, the
+   * attempt uses nothing of the budget, and it is sent when the gate opens. Null is answered: nothing is sent.
    */
   async beginSend(id: string, attempt: number, now: Date = new Date(), gate?: SendGate): Promise<OutgoingOperation | null> {
     const row = await this.repo.operationToSend(this.uow.prisma, id);
@@ -101,10 +106,26 @@ export class ProviderOperationsService {
     // The mark is the line a pause is judged against (`dispatch-gate.ts`): written only while the gate, asked
     // under the provider's row lock in this same transaction, still says yes. No mark, no call.
     const marked = gate
-      ? await this.uow.runTx(async (tx) => ((await gate.permits(tx, row.providerId)) ? this.repo.markSent(tx, id, attempt, now) : false))
+      ? await this.uow.runTx(async (tx) => {
+          if (await gate.permits(tx, row.providerId)) return this.repo.markSent(tx, id, attempt, now);
+          await this.handBack(tx, id, attempt);
+          return false;
+        })
       : await this.repo.markSent(this.uow.prisma, id, attempt, now);
     if (!marked) return null;
     return { idempotencyKey: row.idempotencyKey, attempt, action: row.action as Action, providerCode: row.provider.code, packageCode: row.packageCode, msisdn: row.msisdn, iccid: row.iccid };
+  }
+
+  /**
+   * Hands an unsent attempt back: `pending → requested` while the operation is still on that attempt and its send
+   * mark is empty, so it cannot undo an attempt that left or one that recovery already took. The attempt keeps its
+   * number (`attempts` is not reduced: an answer stays fenced, and the message of the next send has a sequence no
+   * earlier message used) and is waived from the budget. Answers whether it did.
+   */
+  private async handBack(tx: Db, id: string, attempt: number): Promise<boolean> {
+    const moved = await this.repo.moveStatus(tx, id, { status: 'pending', attempts: attempt, unsent: true }, { status: 'requested', error: null, waive: true });
+    if (moved) await this.repo.addOutbox(tx, OPERATION_REQUESTED, id, attempt);
+    return moved;
   }
 
   /**
@@ -115,11 +136,14 @@ export class ProviderOperationsService {
    * marked unknown.
    */
   async settle(id: string, attempt: number, outcome: AttemptOutcome): Promise<OperationStatus> {
-    const next = afterAttempt(outcome, attempt);
     // What the provider handed back is made storable before the transaction: its eSIM code sealed, or refused.
-    const result = resultColumns(next.result);
+    // It does not depend on how many attempts were spent.
+    const result = resultColumns(afterAttempt(outcome, attempt).result);
     return this.uow.runTx(async (tx) => {
-      if (!(await this.repo.operationById(tx, id))) fail(404, 'NOT_FOUND');
+      const row = await this.repo.operationById(tx, id);
+      if (!row) fail(404, 'NOT_FOUND');
+      // The budget counts the attempts that were not waived; the guard below is on the attempt's number.
+      const next = afterAttempt(outcome, spentAttempts(attempt, row.waivedAttempts));
       if (!canMove('pending', next.status)) fail(409, 'DUPLICATE_REQUEST');
       const change = { status: next.status, providerRef: storedRef(next.providerRef), error: next.error, result };
       const moved = await this.repo.moveStatus(tx, id, { status: 'pending', attempts: attempt }, change);
@@ -165,18 +189,24 @@ export class ProviderOperationsService {
    * Recovers one pending attempt whose worker is gone (`recoveryOutcome`): back to `requested` with its next
    * message when the send mark proves nothing left, `unknown` when the provider may have been called. Answers the
    * new status, or null when there was nothing to do (the lease still runs, or a worker settled it meanwhile).
+   *
+   * With a gate (the worker's): an attempt that provably did not leave, found while the provider's gate is closed,
+   * is waived as `beginSend` waives it. So no operation is failed for its attempts while its provider is paused,
+   * unapproved or between two credentials: the budget is for connections that were tried.
    */
-  recover(id: string, now: Date = new Date()): Promise<OperationStatus | null> {
+  recover(id: string, now: Date = new Date(), gate?: SendGate): Promise<OperationStatus | null> {
     return this.uow.runTx(async (tx) => {
       const row = await this.repo.operationById(tx, id);
       if (!row || row.status !== 'pending') return null;
       const outcome = recoveryOutcome(row, now);
       if (!outcome) return null;
-      const next = afterAttempt(outcome, row.attempts);
+      const unsent = outcome.kind === 'not-sent';
+      const waive = unsent && gate !== undefined && !(await gate.permits(tx, row.providerId));
+      const next = afterAttempt(outcome, spentAttempts(row.attempts, row.waivedAttempts + (waive ? 1 : 0)));
       // Guarded by the attempt, and for "never sent" by the mark still being empty: a worker that writes the
       // mark first keeps the attempt, and one that comes after finds it gone and does not call the provider.
-      const expected = { status: 'pending' as const, attempts: row.attempts, ...(outcome.kind === 'not-sent' ? { unsent: true as const } : {}) };
-      if (!(await this.repo.moveStatus(tx, id, expected, { status: next.status, error: next.error }))) return null;
+      const expected = { status: 'pending' as const, attempts: row.attempts, ...(unsent ? { unsent: true as const } : {}) };
+      if (!(await this.repo.moveStatus(tx, id, expected, { status: next.status, error: next.error, ...(waive ? { waive: true as const } : {}) }))) return null;
       if (maySend(next.status)) await this.repo.addOutbox(tx, OPERATION_REQUESTED, id, row.attempts);
       else await this.repo.addOutbox(tx, OPERATION_SETTLED, id, settledSequence(row.attempts, false));
       return next.status;

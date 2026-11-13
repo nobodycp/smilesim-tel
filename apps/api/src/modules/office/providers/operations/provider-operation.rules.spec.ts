@@ -1,4 +1,4 @@
-import { ATTEMPT_LEASE_MS, CALL_TIMEOUT_MS, MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, canMove, RESULT_LIMITS, closesUnknown, leaseRuns, outcomeOf, recoveryOutcome, storedResult, isSettled, maySend, requestHash, settledSequence, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
+import { ATTEMPT_LEASE_MS, CALL_TIMEOUT_MS, MAX_ATTEMPTS, OPERATION_STATUSES, afterAttempt, attemptAfter, spentAttempts, canMove, RESULT_LIMITS, closesUnknown, leaseRuns, outcomeOf, recoveryOutcome, storedResult, isSettled, maySend, requestHash, settledSequence, storedRef, validKey, type OperationRequest, type OperationStatus } from './provider-operation.rules';
 
 const request: OperationRequest = { action: 'activate', providerCode: 'sky', packageCode: 'p-1', msisdn: '0500000001', iccid: '8997202000000000777', lineId: null };
 
@@ -30,6 +30,18 @@ describe('provider operation rules', () => {
     // The request left and nothing came back: not a failure, and not sent again.
     expect(afterAttempt({ kind: 'no-answer', error: 'timeout' }, 1)).toEqual({ status: 'unknown', providerRef: null, error: 'timeout', result: null });
     expect(afterAttempt({ kind: 'no-answer', error: 'connection-lost' }, MAX_ATTEMPTS)).toMatchObject({ status: 'unknown' });
+  });
+
+  it('counts against the budget only the attempts that were not waived, and never reduces an attempt\'s number', () => {
+    expect([spentAttempts(0, 0), spentAttempts(1, 0), spentAttempts(5, 0), spentAttempts(6, 5), spentAttempts(7, 2)]).toEqual([0, 1, 5, 1, 5]);
+    // Nonsense in is nothing spent, never a negative count that would buy extra attempts.
+    expect([spentAttempts(2, 9), spentAttempts(3, -4)]).toEqual([0, 3]);
+    // Five attempts handed back by a closed gate, then one that did not leave: it is the first of the five, not the sixth.
+    expect(afterAttempt({ kind: 'not-sent', error: 'unreachable' }, spentAttempts(6, 5))).toMatchObject({ status: 'requested' });
+    // And five that were counted fail the operation whatever was waived between them.
+    expect(afterAttempt({ kind: 'not-sent', error: 'unreachable' }, spentAttempts(MAX_ATTEMPTS + 3, 3))).toMatchObject({ status: 'failed' });
+    // The number of the next attempt comes from the attempts taken, waived or not: it is never used twice.
+    expect([attemptAfter(5), settledSequence(6, false), settledSequence(6, true)]).toEqual([6, 12, 13]);
   });
 
   it('sends again only what never left, and only so many times', () => {

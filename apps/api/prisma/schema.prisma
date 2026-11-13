@@ -190,11 +190,16 @@ model Provider {
   dispatchApprovedByLoginName String?
   /** The target (`sandbox` or `live`) the approval was given for: it does not stand for the other one. */
   dispatchApprovedTarget      String?
+  /** The deployment (`DEPLOYMENT_ID`) the approval was given on: it does not stand for another one, even on the same database. */
+  dispatchApprovedDeployment  String?
   /** Set while the owner has paused the provider: new sales take the manual route. */
   dispatchPausedAt            DateTime?
   /** What the worker last attested: an adapter for this provider is built, for this target. The API opens the dispatch route only on a fresh one. */
   dispatchReadyAt             DateTime?
   dispatchReadyTarget         String?
+  /** Which deployment's worker attested, and the generation of the credential its adapter was built with. */
+  dispatchReadyDeployment     String?
+  dispatchReadyGeneration     Int?
   packages    Package[]
   entries     ProviderEntry[]
   reconciliations ProviderReconciliation[]
@@ -222,7 +227,10 @@ model ProviderOperation {
   status         String
   /// The provider's own reference for the operation, once it gives one.
   providerRef    String?
+  /// The number of the current attempt. It only grows: it fences old answers and orders the outbox messages.
   attempts       Int       @default(0)
+  /// Attempts handed back unsent while the provider's gate was closed: not counted against `MAX_ATTEMPTS`.
+  waivedAttempts Int       @default(0)
   /// A code from `OPERATION_ERRORS`, never free text.
   lastError      String?
   lastAttemptAt  DateTime?
@@ -289,6 +297,8 @@ model ProviderCredential {
   /// `sandbox` or `live`.
   target             String
   sealedValue        String
+  /// Raised by every write of the credential. A worker sends only with an adapter built from the stored generation.
+  generation         Int      @default(1)
   updatedByLoginName String
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

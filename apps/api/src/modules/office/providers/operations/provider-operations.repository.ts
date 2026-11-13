@@ -45,8 +45,12 @@ export type NewDecisionEvent = {
 
 /** `taskId` links the operation to the activation task it was recorded for (ADR 0019, D2): unique, one operation a task. */
 export type NewOperation = Omit<OperationRequest, 'providerCode'> & { idempotencyKey: string; requestHash: string; providerId: string; taskId?: string };
-/** `claim` starts a new attempt: counted, leased until the given time, with no send mark. */
-export type StatusChange = { status: OperationStatus; providerRef?: string | null; error: OperationError | null; claim?: { at: Date; leaseUntil: Date }; result?: ResultColumns | null };
+/**
+ * `claim` starts a new attempt: numbered, leased until the given time, with no send mark. `waive` says the attempt
+ * being ended is not counted against the budget (it was handed back while the provider's gate was closed); the
+ * attempt's number stays.
+ */
+export type StatusChange = { status: OperationStatus; providerRef?: string | null; error: OperationError | null; claim?: { at: Date; leaseUntil: Date }; result?: ResultColumns | null; waive?: true };
 /** The state a guarded write expects: the status, and where given the attempt's number and that nothing was sent. */
 export type Expected = { status: OperationStatus; attempts?: number; unsent?: true };
 
@@ -132,6 +136,7 @@ export class ProviderOperationsRepository {
         lastError: change.error,
         ...(change.providerRef !== undefined ? { providerRef: change.providerRef } : {}),
         ...(change.claim ? { attempts: { increment: 1 }, lastAttemptAt: change.claim.at, leaseUntil: change.claim.leaseUntil, sentAt: null } : {}),
+        ...(change.waive ? { waivedAttempts: { increment: 1 } } : {}),
         ...(change.result ? { resultMsisdn: change.result.msisdn, resultIccid: change.result.iccid, resultEsimCode: change.result.sealedEsimCode } : {}),
       },
     });

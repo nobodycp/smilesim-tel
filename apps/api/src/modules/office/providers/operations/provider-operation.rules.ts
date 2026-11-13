@@ -22,6 +22,18 @@ export type OperationError = (typeof OPERATION_ERRORS)[number];
 /** How many times one operation may be sent while every earlier attempt is known not to have left. */
 export const MAX_ATTEMPTS = 5;
 
+/**
+ * How many attempts count against `MAX_ATTEMPTS` (ADR 0018, amended): every attempt taken, less the ones that were
+ * handed back before their send mark because the provider's gate was closed (the owner paused it, withdrew its
+ * approval or replaced its credential). Those tried no connection, so they use nothing of the budget.
+ *
+ * The attempt's NUMBER is a different thing and is never reduced: `attempts` only grows, so an answer is still
+ * fenced to the attempt it belongs to and an outbox sequence is never used twice.
+ */
+export function spentAttempts(attempts: number, waived: number): number {
+  return Math.max(0, attempts - Math.max(0, waived));
+}
+
 const MOVES: Record<OperationStatus, readonly OperationStatus[]> = {
   requested: ['pending', 'failed'],
   pending: ['succeeded', 'failed', 'unknown', 'requested'],
@@ -67,12 +79,15 @@ export type AttemptOutcome =
 /** `result` is what a confirmed activation handed back, as it may be stored; null for every other outcome. */
 export type Settlement = { status: OperationStatus; providerRef: string | null; error: OperationError | null; result: StoredResult | null };
 
-/** The state a pending operation moves to after attempt number `attempt`. */
-export function afterAttempt(outcome: AttemptOutcome, attempt: number): Settlement {
+/**
+ * The state a pending operation moves to after an attempt. `spent` is how many attempts count against the budget
+ * with this one (`spentAttempts`), not the attempt's number: the two differ once an attempt was waived.
+ */
+export function afterAttempt(outcome: AttemptOutcome, spent: number): Settlement {
   if (outcome.kind === 'confirmed') return { status: 'succeeded', providerRef: outcome.providerRef, error: null, result: storedResult(outcome.result) };
   if (outcome.kind === 'refused') return { status: 'failed', providerRef: null, error: outcome.error, result: null };
   if (outcome.kind === 'no-answer') return { status: 'unknown', providerRef: null, error: outcome.error, result: null };
-  return { status: attempt >= MAX_ATTEMPTS ? 'failed' : 'requested', providerRef: null, error: outcome.error, result: null };
+  return { status: spent >= MAX_ATTEMPTS ? 'failed' : 'requested', providerRef: null, error: outcome.error, result: null };
 }
 
 /** How long the provider is given to answer one attempt before the dispatcher stops waiting. */
