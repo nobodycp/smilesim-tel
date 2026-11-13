@@ -12,6 +12,13 @@ check that enforces it. A rule without a check is a review rule: the reviewer re
 violations that existed when a rule was written. The count may only go **down**: a new violation fails CI; when you
 fix one, lower the baseline in the same commit. Never raise a baseline number.
 
+`apps/api/src/architecture-boundaries.spec.ts` (ADR 0020) holds the module boundaries with the same baseline:
+which target module owns each file and what it may import (`architecture-map.fixture.ts`), and which file may
+write money, a provider operation, an outbox message or a verdict. A new production file needs an owner in the
+map. A rule there names no folder: moving a file does not take it out of a rule. What no refactor may change
+about money is `docs/architecture/financial-invariants.md`. A write route that is not under `/office/` must be
+stated in `http-security-contract.spec.ts` with why it has no duplicate guard.
+
 ## 1. Money
 
 1. Money is integer agorot. No float arithmetic on money; one `Math.round` per proration, in a pure rule file.

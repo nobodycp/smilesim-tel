@@ -2,8 +2,15 @@
 
 - **Date:** 2026-11-13
 - **Base commit:** `626f61b5b0b6b14ccd5093bcff91f777d9b64420`
-- **Status:** analysis and design only. Nothing is moved, renamed or migrated by this document. Each slice below
-  needs the owner's approval, and its own spec and plan (`work-plan.mdc`), before it starts.
+- **Status:** the design is accepted by the owner (2026-11-13; ADR 0020). Slice R.0 is built. Each later slice
+  still needs the owner's word before it starts. Checklist: `docs/superpowers/plans/2026-11-13-office-retirement.md`.
+- **Owner's decisions (2026-11-13):** a modular monolith, no services; removing `office` covers the internal
+  structure, the web **and the HTTP paths**; `/office/*` stays served during the move and its final removal is a
+  required end, after the clients and the upgrade are proved safe; the slices run before the first provider
+  adapter; accounts and access may be one module provided it does not become a new large kernel.
+- **Corrected after R.0 measured the code:** the modules are twelve, not ten; no import cycle between files
+  crosses a module edge at run time (the "cycles" of the first version are pairs of modules that import each
+  other, 14 of them); reading the audit trail and the notice inbox need the actor, so they sit above `access`.
 - **Scope read:** `apps/api/src` (all of it), `apps/api/prisma/schema.prisma`, the web's API callers and tests,
   the worker, `docs/architecture/backend.md`, ADR 0012, `architecture.spec.ts`.
 - **Not done:** an exhaustive unused-export scan (section 2.6 says what was and was not checked).
@@ -210,8 +217,8 @@ nothing is deleted on a guess.
 
 ## 3. Target architecture
 
-A modular monolith with the same runtime (one API process, one worker process, one database, Redis). Ten modules
-in four layers. A module is a folder under `modules/` with one Nest module, a public surface and private files.
+A modular monolith with the same runtime (one API process, one worker process, one database, Redis). Twelve
+modules, layered. A module is a folder under `modules/` with one Nest module, a public surface and private files.
 
 ### 3.1 Modules, what each owns
 
@@ -219,8 +226,8 @@ in four layers. A module is a folder under `modules/` with one Nest module, a pu
 |---|---|---|
 | **platform** | transactions (`UnitOfWork`), Prisma client, failure type, input parsing, paging, logging, idempotency guard, outbox relay, queue publisher, secrets sealing, config | `shared/`, `kernel/unit-of-work`, `outbox/`, `rules/office-paging` |
 | **identity** | sign-in, sessions, passkeys, two-factor, password rules. Tables: `User` (credentials), `Session`, `Passkey` | `auth/` |
-| **auditing** | the audit trail's writer and its reads. Table: `ActivityEvent` (`AccessLog` is written by `accounts` today and goes with `access`) | `activity/`, `audit/` |
-| **notifications** | the notice writer, inbox, stream. Table: `Notice` | `notices/` (with `NoticeService`) |
+| **auditing** | the audit trail's writer (decorator, interceptor, recorder, purge). Table: `ActivityEvent` (`AccessLog` is written by `accounts` today and goes with `access`). Reading and exporting the trail needs the actor and the tree: it is `reporting` | `activity/` |
+| **notifications** | the notice writer, inbox, stream. Table: `Notice`. It sits above `access` (the inbox needs the actor); a transaction hands its notices to the writer through a port of the platform | `notices/` (with `NoticeService`) |
 | **access** | the actor, grants, policy, roles, layer policy; the account tree and visibility; accounts and their lifecycle; entering an account; moving an account. Tables: `Role`, `UserRole`, `LayerPolicy`, `User` (profile and parent) | `kernel/{actor-resolver,actor.interceptor,account-tree}`, `policy.ts`, `roles/`, `accounts/`, `rules/{office-grants,account-visibility}`, `transfers` (account part) |
 | **catalog** | companies, packages, modes, renewal chains, switches, add-ons, offers, the shipped catalog and its seed, SIM rules, package codes. Tables: `Company`, `Package`, `PackageRenewal`, `PackageSwitch`, `PackageAddon`, `Offer`, `SiteBranding` (as `catalog/branding` or left as `branding`) | `catalog/`, `companies/`, `packages/`, `offers/`, `rules/{run-modes,sim-rules,package-code}` |
 | **pricing** | the price ladder, per-account terms, sell prices, custom prices, line terms. Tables: `UserPackage`, `SellPrice` | `terms/`, `rules/{prices,line-prices,user-terms,office-terms,profit-ladder}`, `kernel/line-terms` |
@@ -228,7 +235,7 @@ in four layers. A module is a folder under `modules/` with one Nest module, a pu
 | **providers** | three sub-folders with one public surface each: `providers/directory` (settings, health, the provider's catalog), `providers/account` (our ledger with a provider, statements, reconciliation; `ProviderEntry`, `ProviderReconciliation`, `ProviderReconItem`), `providers/integration` (gateway port, dispatch policy and gate, operations and their rules, the adapters registry, the worker's wiring; `ProviderOperation`, `ProviderCredential`, `ProviderWorkerAttestation`, `ProviderDecisionEvent`) | `providers/`, `src/provider-dispatch.ts` |
 | **tasks** | the task's life, its hold state, notes, who may handle it, the locks on a task and its operation, and the rules of what a task may do while its operation is in flight. Tables: `OfficeTask`, `OfficeTaskNote` (models renamed `Task`, `TaskNote`, tables kept) | `tasks/`, the task-facing part of `lines/activation-settlement.rules`, `stored-text.ts` |
 | **sales** | `sales/lines` (activation, line operations, line reads, eSIM code, reservations, moving a line) and `sales/settlement` (task completion handlers, activation settlement, people's decisions). Table: `Line` | `lines/`, `transfers` (line part), `kernel/{sale,types}` |
-| **reporting** | reports, insights, overview, daily snapshots, CSV, `me`/home composition. Table: `LineCountSnapshot` | `reports/`, `desk/` |
+| **reporting** | reports, insights, overview, daily snapshots, CSV, `me`/home composition, reading the audit trail. Table: `LineCountSnapshot` | `reports/`, `desk/`, `audit/` |
 
 Notes on the choices:
 
@@ -246,32 +253,34 @@ Notes on the choices:
 ```mermaid
 graph TD
   reporting --> sales
-  reporting --> wallets
-  reporting --> providers
   reporting --> tasks
+  reporting --> providers
+  reporting --> wallets
   sales --> tasks
   sales --> providers
   sales --> pricing
   sales --> wallets
   sales --> catalog
   tasks --> wallets
+  tasks --> notifications
   tasks --> access
   providers --> wallets
   providers --> catalog
+  providers --> notifications
   wallets --> pricing
   pricing --> catalog
   pricing --> access
   catalog --> access
+  notifications --> access
+  notifications --> auditing
   access --> identity
-  access --> notifications
   access --> auditing
   identity --> auditing
-  identity --> platform
-  auditing --> platform
-  notifications --> platform
 ```
 
-Every module may also use `platform`, `auditing` and `notifications` (arrows omitted). Nothing points upward.
+Every module may also use `platform` (arrows omitted), and whatever is reachable below it. Nothing points
+upward. The graph as the guards read it is `apps/api/src/architecture-map.fixture.ts` (`DEPENDS_ON`); a spec
+proves it has no cycle.
 
 Two edges are inverted relative to today and need a port, not an import:
 
@@ -302,8 +311,8 @@ New ratchet rules in `architecture.spec.ts` (same mechanism as the 24 existing o
 - `module-layering`: an import from module A to module B is allowed only if the graph of 3.2 allows it. Baseline =
   today's count of violations; the refactor drives it to 0.
 - `module-surface`: a cross-module import must target `modules/<name>/index.ts`.
-- `file-cycles`: no import cycle between files of different modules (today: five through the kernel, plus
-  `tasks ↔ lines`, `providers ↔ wallets`, `auth ↔ activity`).
+- `file-cycles`: no import cycle between files of different modules (measured by R.0: none today).
+- `module-mutual`: no two modules import each other (measured: 14 pairs today).
 - `root-domain-code`: `src/` root holds bootstrap and middleware only.
 - `worker-wiring`: a spec builds the worker's graph and the Nest graph and compares the classes and constructor
   arguments of the money path.
@@ -326,7 +335,7 @@ New ratchet rules in `architecture.spec.ts` (same mechanism as the 24 existing o
 | Prisma `OfficeTask`, `OfficeTaskNote` | models `Task`, `TaskNote` with `@@map("OfficeTask")`, `@@map("OfficeTaskNote")` | R.10 | **tables, columns, constraints and raw SQL keep their names; no migration** |
 | table names `"OfficeTask"`, `"OfficeTaskNote"`, constraint `OfficeTask_requestKey_key` | **kept** | not planned | a physical rename breaks rollback to the previous image; not worth it |
 | migration folder `20261030000000_office` | **kept** | never | historical migrations are not edited |
-| `@Controller('office')`, `/office/*` | **kept through R.10**; see section 6 for the optional last step | R.11, optional | dual paths for at least one release |
+| `@Controller('office')`, `/office/*` | **kept through R.10**, then removed in three steps (section 6) | R.11, required | dual paths for at least one release |
 | Swagger tag `office` | one tag per module | R.9 | documentation only |
 | web `useOffice`, `OfficeSession`, `OfficeContext`, `OfficeMe`, `office-session.tsx` | `useSession`/`useDesk`, `DeskSession`, … (the web already uses "desk") | W.1, separate web slice | web only |
 | web `OfficeShell`, `OfficeFrame`, CSS `.office` | `AppShell`, `AppFrame`, `.app` | W.1 | web only; visual check at every width |
@@ -339,6 +348,13 @@ New ratchet rules in `architecture.spec.ts` (same mechanism as the 24 existing o
 Order: guards first, then the cuts that protect money, then the mechanical moves, then names seen from outside.
 Every slice is behaviour-preserving: same routes, same response shapes (`response-shape.spec.ts`), same activity
 events (`routes.http.spec.ts`), same permissions (`permissions.http.spec.ts`), same SQL.
+
+**R.4 and R.5 are not pure moves.** Untangling tasks from sales and giving the worker one composition may change
+how services are composed and what depends on what: a port and its token, a provider registered in another
+module, a constructor that takes an interface, the worker built from a shared factory or a Nest context. They
+change **no business behaviour and no rule of money**: no transaction body, no statement order, no lock order,
+no status rule, no queue, no job payload (`docs/architecture/financial-invariants.md`). Their diff is reviewed
+on that line: wiring may change, the bodies of the money path may not.
 
 Common acceptance for every slice: lint, typecheck, check:copy at 0; the full API suite with PostgreSQL and Redis;
 full Playwright; every existing ratchet still at 0; `git diff --stat` shows moves and import paths only unless the
@@ -360,7 +376,7 @@ commit; no data, no migration, no setting is involved unless stated.
 | **R.10 Prisma model names** | `schema.prisma`, 148 delegate uses | `OfficeTask` → `Task` with `@@map`; relation fields renamed | none | none | `prisma migrate diff` between the database and the schema is **empty**; `settlement-schema.db.spec` | low; rollback is a revert, the database is untouched | no migration created |
 | **R.A Auth controller thinned** (independent track) | `auth.controller.ts` | logic to `AuthService` and small services; activity through the interceptor | none | none | the 18 auth specs, Playwright sign-in flows | medium (security code) | controller under 150 lines, 0 branches |
 | **W.1, W.2 Web names** (independent track) | `apps/web` | section 4 | none | web only | `verify-before-reply` checks, full Playwright | low | no `office` identifier in `apps/web` outside paths |
-| **R.11 Paths** (optional, last) | controllers, web api files, infra keyed on the prefix | section 6 | — | all three | section 6 | medium | owner's decision |
+| **R.11 Paths** (required, last; three steps a, b, c) | controllers, web api files, infra keyed on the prefix | section 6: the guard leaves the prefix, both paths served, `/office/*` removed | — | all three | section 6; `http-security-contract.spec.ts` | medium | no route under `/office/` |
 
 **Priority before S.12b:** R.0, R.4, R.5 and R.7. They are the ones that touch what a real provider will run
 through: who owns the task's rules, one wiring of the money path, and a clear edge around the integration. R.1–R.3
@@ -374,8 +390,8 @@ to S.12b: R.0, R.4, R.5 only.
 
 The only known client is the web, through its own origin (`/api/:path*` rewritten to the API). There is no public
 API contract with third parties in the repository. So a path change buys clarity in Swagger and logs, and costs
-risk in three infrastructure checks. **Recommendation: keep `/office/*` until every other slice is done, then
-decide.** If it is done:
+risk in three infrastructure checks. **Decided (owner, 2026-11-13): `/office/*` is removed in the end; it stays
+served until every other slice is done and the clients and the upgrade are proved safe.** The steps:
 
 1. **Make the infrastructure independent of the prefix first** (its own slice): the duplicate guard applies to every
    authenticated write except an explicit list; the rate limiter and the door middleware name routes by a constant
@@ -454,3 +470,11 @@ decide.** If it is done:
 - lint, typecheck, check:copy at 0; full API suite and Playwright green on CI.
 
 **Not in R.0:** any move, any rename, any route, any schema change.
+
+## 9. End of the project
+
+The project is done when the ten criteria of `docs/superpowers/plans/2026-11-13-office-retirement.md` ("End of the
+project") hold: no `office` left outside history and table names, no route under `/office/`, every guard at 0
+with public surfaces in force, every authenticated write guarded whatever its path, the same permissions, events
+and shapes on the new paths, one composition for the worker and the API, no migration, the financial invariants
+true and their specs unchanged, and the web proved in ar and en, light and dark.

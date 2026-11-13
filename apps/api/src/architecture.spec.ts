@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, normalize, relative } from 'node:path';
 
 // The engineering rules of `.cursor/rules/backend-engineering.mdc`, checked on the source itself.
 // Each rule counts its violations and compares with `architecture.baseline.json`. The count may only go down:
@@ -67,15 +67,21 @@ function check(rule: string, found: Hit[]) {
   }
 }
 
-const within = (prefix: string) => production.filter(({ file }) => file.startsWith(prefix));
-const office = within('modules/office/');
-const officeControllers = office.filter(({ file }) => file.endsWith('.controller.ts'));
+// The rules below look at every module, not at one folder: since slice R.0 (ADR 0020) a file that leaves
+// `modules/office/` stays under the same rules. `domains` is all the application code under `modules/`.
+const domains = production.filter(({ file }) => file.startsWith('modules/'));
+const controllers = domains.filter(({ file }) => file.endsWith('.controller.ts'));
+/** The folder a file's domain is today: `modules/office/<domain>/…` or `modules/<domain>/…`. */
+const domainOf = (file: string) => (file.startsWith('modules/office/') ? file.split('/')[2] : file.split('/')[1]);
 
 describe('engineering rules (backend-engineering.mdc)', () => {
   it('1.2 wallet-writes: only the wallet ledger writes a wallet row', () => {
-    const allowed = ['modules/office/wallets/wallet-ledger.ts', 'modules/office/catalog/catalog-seed.ts'];
+    // Named, not placed: the two files may move and keep their right.
+    const allowed = ['wallet-ledger.ts', 'catalog-seed.ts'];
+    const writes = hits(production, /\bwallet\.(update|updateMany|upsert|create|delete)\(/);
+    if (!writes.some(({ file }) => file.endsWith('/wallet-ledger.ts'))) throw new Error('wallet-writes: no wallet write was found in wallet-ledger.ts, so the rule looks at nothing');
     check('wallet-writes', hits(production, /\bwallet\.(update|updateMany|upsert|create|delete)\(/, (match, text, file) => {
-      if (allowed.some((prefix) => file.startsWith(prefix))) return false;
+      if (allowed.some((name) => file.endsWith(`/${name}`))) return false;
       // The credit ceiling is a setting, not money: `wallets.service.ts` may write it.
       return !/data:\s*\{\s*ceiling\b/.test(text.slice(match.index, match.index + 200));
     }));
@@ -88,7 +94,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     const WRITE = /await this\.repo\.(remove|delete|set|save|create|update|add|mark|write|store|clear|replace|move|put)[A-Z]\w*\(([^;]*);/g;
     const isWrite = (call: RegExpMatchArray) => !/Count\(/.test(call[0]) && !/\b(db|tx)\b/.test(call[2]);
     const found: Hit[] = [];
-    for (const { file, text } of office.filter(({ file }) => file.endsWith('.service.ts'))) {
+    for (const { file, text } of domains.filter(({ file }) => file.endsWith('.service.ts'))) {
       const method = /\n {2}(?:private |protected )?async (\w+)\(/g;
       for (let match = method.exec(text); match; match = method.exec(text)) {
         const body = blockAt(text, text.indexOf(')', match.index));
@@ -116,14 +122,14 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   });
 
   it('2.1 unguarded-status-write: a status changes only through a guarded write', () => {
-    check('unguarded-status-write', hits(office, /\.(line|officeTask)\.update\(/, (match, text) => {
+    check('unguarded-status-write', hits(production, /\.(line|officeTask)\.update\(/, (match, text) => {
       const call = text.slice(match.index, text.indexOf('});', match.index) + 3);
       return /\bstatus\s*:/.test(call);
     }));
   });
 
   it('3.1 inline-grant-checks: services ask the policy, not the actor', () => {
-    const askers = production.filter(({ file }) => file.startsWith('modules/office/') && /\.(service|controller)\.ts$/.test(file));
+    const askers = domains.filter(({ file }) => /\.(service|controller)\.ts$/.test(file));
     check('inline-grant-checks', hits(askers, /actor\.grants\.includes\(|actor\.isBranchOwner/));
   });
 
@@ -138,7 +144,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   it('4.7 list-envelope: a paged answer is { items, nextCursor, total } (shared/paging.ts)', () => {
     // An object that carries `nextCursor` names its rows `items`. Left on purpose until their slices of the
     // lists-and-routes plan: the users page (L.9) and the three report shapes (L.17).
-    const answers = hits(office, /return \{/, (match, text) => {
+    const answers = hits(domains, /return \{/, (match, text) => {
       const body = blockAt(text, match.index);
       return /\bnextCursor\b/.test(body) && !/\bitems\b/.test(body);
     });
@@ -154,21 +160,26 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   it('4.1 untyped-query: a query is parsed by a schema, like a body', () => {
     // `@Query('name') name?: string` reads a filter as free text; `@Query() query: XQuery` hands the whole query
     // to the service, which parses it (`<domain>.schemas.ts`, `parseInput`). 73 named parameters on 2026-11-10.
-    check('untyped-query', hits(officeControllers, /@Query\('[^']+'\)/));
+    check('untyped-query', hits(controllers, /@Query\('[^']+'\)/));
   });
 
   it('4.3 conflict-status: a conflict answers 409', () => {
     check('conflict-status', hits(production, /fail\(4(?!09)\d\d, '(\w+_(TAKEN|EXISTS)|DUPLICATE_REQUEST)'/));
   });
 
-  it('4.4 write-without-activity: every office write is recorded', () => {
+  it('4.4 write-without-activity: every write is recorded, by its decorator or by hand', () => {
     const found: Hit[] = [];
-    for (const { file, text } of officeControllers) {
+    for (const { file, text } of controllers) {
       const route = /@(Post|Put|Patch|Delete)\(/g;
       for (let match = route.exec(text); match; match = route.exec(text)) {
         // The decorators of one handler: from this one to the handler's opening brace.
         const head = text.slice(match.index, text.indexOf(') {', match.index));
-        if (!/@Activity\(|@NoActivity\(/.test(head)) found.push({ file, line: lineOf(text, match.index), text: head.split('\n')[0] });
+        // A controller with no interceptor (sign-in, the site identity) records by hand: its handler calls the
+        // recorder. The handler runs to the next route's decorator.
+        const end = text.slice(match.index + 1).search(/\n {2}@(Get|Post|Put|Patch|Delete)\(/);
+        const handler = end < 0 ? text.slice(match.index) : text.slice(match.index, match.index + 1 + end);
+        const byHand = /\b(recordOwner|activity\.record\w+)\(/.test(handler);
+        if (!/@Activity\(|@NoActivity\(/.test(head) && !byHand) found.push({ file, line: lineOf(text, match.index), text: head.split('\n')[0] });
       }
     }
     check('write-without-activity', found);
@@ -195,7 +206,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     // A constructor parameter kept as a property (`private readonly x: X`) that the class never reads as `this.x`:
     // left from a refactor, it hides what the class depends on (eight of them on 2026-11-10, plan loose-ends B.2).
     const found: Hit[] = [];
-    for (const { file, text } of office) {
+    for (const { file, text } of domains) {
       const ctor = /constructor\(([^{]*)\)\s*\{/g;
       for (let match = ctor.exec(text); match; match = ctor.exec(text)) {
         for (const param of match[1].matchAll(/(?:private |protected |public )?readonly (\w+)\s*:/g)) {
@@ -219,12 +230,12 @@ describe('engineering rules (backend-engineering.mdc)', () => {
 
   it('5.2 cross-domain-repository-import: a domain reaches another through its service, never its queries', () => {
     const found: Hit[] = [];
-    for (const { file, text } of office) {
-      const domain = file.split('/')[2];
+    for (const { file, text } of domains) {
       const importer = /from '([^']+\.repository)'/g;
       for (let match = importer.exec(text); match; match = importer.exec(text)) {
-        // `./x.repository` is the domain's own; `../other/x.repository` is another domain's.
-        if (match[1].startsWith('../') && !match[1].startsWith(`../${domain}/`)) found.push({ file, line: lineOf(text, match.index), text: match[0] });
+        // The repository's own domain is the folder it is in, wherever that folder is.
+        const target = normalize(join(dirname(file), match[1]));
+        if (domainOf(target) !== domainOf(file)) found.push({ file, line: lineOf(text, match.index), text: match[0] });
       }
     }
     check('cross-domain-repository-import', found);

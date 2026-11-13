@@ -6,7 +6,7 @@
   "hand-parsed-input": 0,
   "untyped-body": 0,
   "conflict-status": 0,
-  "write-without-activity": 0,
+  "write-without-activity": 7,
   "cross-domain-controller-import": 0,
   "test-code-imported": 0,
   "test-code-in-src": 0,
@@ -22,5 +22,18 @@
   "login-field-name": 0,
   "multi-write-outside-tx": 0,
   "unused-injection": 0,
-  "untyped-query": 0
+  "untyped-query": 0,
+  "unmapped-file": 0,
+  "module-layering": 32,
+  "module-mutual": 14,
+  "file-cycles": 0,
+  "module-surface": 0,
+  "root-domain-code": 5,
+  "wallet-entry-writes": 0,
+  "operation-writes": 1,
+  "outbox-writes": 0,
+  "verdict-path": 0,
+  "hold-path": 0,
+  "line-creation": 0,
+  "transaction-outside-unit-of-work": 5
 }
