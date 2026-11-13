@@ -35,6 +35,23 @@ or replaced by a later design. They stay in git history.
   postponed.
 - [ ] **Message management; WhatsApp and email notices.**
 
+## Open: an intermittent test failure, cause not settled (recorded 2026-11-13)
+
+- In one full local run of `npm run test:api` (all spec files in parallel on one PostgreSQL database), one request
+  of `lines/esim-code-access.db.spec.ts` answered `500`. It passed alone and in every later full run, locally and
+  on CI. The spec captures the process output, so the error's text was not kept. **The cause is not known**, and
+  it is not attributed to the machine's load. Two mechanisms the code makes possible, neither proved to be the one:
+  1. *Another spec file's rows.* A branch-layer list (`linesPage`, `tasks`) reads every account's rows; Prisma
+     reads a relation in a second statement, and a row another spec file deleted between the two makes the
+     relation null where the type says it is not. Spec files share the database and clean up after themselves.
+  2. *A transaction's limits.* `UnitOfWork.runTx` uses Prisma's defaults (2 s to start, 5 s to finish). A later
+     loaded run did fail elsewhere with "A query cannot be executed on an expired transaction … 5000 ms".
+  To settle it: have the spec keep the first error line it captures when a status is not the expected one, and
+  run the suite repeatedly. Not done here: it is outside slice S.12a and blocks neither it nor CI.
+- Related, also open: some spec files run a pass over every operation in the shared database
+  (`settlement.applyPending`, `recoverExpired`), which can act on another file's rows. `provider-dispatch.db.spec.ts`
+  no longer does, and judges a settlement by the row.
+
 ## Settled on 2026-11-10
 
 - «سكاي» is both a provider and a network (a company) of the same name: the seed is right as it is.

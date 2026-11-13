@@ -463,9 +463,26 @@ wallets (sorted). A slice's review checks that order in the code it adds.
 6. The staging run on the sandbox target passed its checklist: success, refusal, timeout → unknown → decision,
    exception, cancel while requested, pause.
 7. A written procedure for the branch: an unknown operation, an exception, a provider failure, a pause.
-8. On the production deployment, by name and in this order: `PROVIDER_ADAPTERS`, `PROVIDER_TARGET=live`, the live
-   credential, `PROVIDER_DISPATCH=1`, then the owner's approval of the provider. Staging having passed sets none of
-   them.
+8. On the production deployment, by name: the four settings **together, in one change**, on the API and the
+   worker alike (`PROVIDER_DISPATCH=1`, `PROVIDER_ADAPTERS`, `PROVIDER_TARGET=live`, `DEPLOYMENT_ID`; the worker
+   also `SECRETS_KEY`) — a production process refuses to start with only some of them; then the live credential;
+   then the owner's approval of the provider. Staging having passed sets none of them. (Corrected by the final
+   verification of S.12a: the earlier wording set them one at a time, which the start-up check refuses.)
+9. **Review conditions before the first adapter runs (S.12b)**, found by the final verification of S.12a; none
+   can be met today because no adapter exists, and each fails closed or is safe for money as it stands:
+   - *Attestation per worker.* One worker stopping withdraws the deployment's attestation though another worker
+     of it is alive; that one says so again within `READY_EVERY_MS` (20 s), and sales take the manual route
+     meanwhile. Nothing unauthorised can be sent in that window (the gate, not the attestation, decides a send).
+     Decide whether an attestation per worker is wanted before running more than one worker or rolling restarts.
+   - *The pass over waiting operations* (`dispatchWaiting`) reads the 100 oldest `requested` operations of all
+     providers: 100 or more of a closed provider would keep a resumed provider's waiting operations from being
+     looked at. Page it, or select by the providers the worker holds an adapter for.
+   - *`SECRETS_KEY` on the worker* is required by its start-up check only while dispatch is on, but its settling
+     side needs it for an eSIM result whenever one is waiting. Require it on a worker that ever dispatched.
+   - *Clocks.* The attestation is stamped by the worker's clock and judged by the API's. Stamp it with the
+     database's clock (`now()`), and judge it there.
+   - *The adapter is picked when the request is sent*, after the mark; a rebuild between the two sends the
+     marked request with the newer credential. Hand the adapter to the send at the mark, or accept it in writing.
 
 ## Order and safety
 

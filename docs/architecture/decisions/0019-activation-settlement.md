@@ -657,6 +657,13 @@ on its own: `20261113110000_provider_operation_waived_attempts` and
   waits `requested`: nobody sends it until a worker is back, and its submitter may cancel it (D7). After that
   every sale takes the manual route. An attestation never lets a request leave: the gate is asked again at the
   claim and at the mark.
+- **More than one worker in a deployment (accepted for S.12a, to be reviewed before S.12b).** The attestation
+  is the deployment's, not a worker's: a worker that stops withdraws it though another worker of the deployment
+  is alive. That one writes it again on its next round (at most 20 s), and until then the API opens no dispatch
+  route. It is fail closed and lets nothing leave: a send is decided by the gate at the claim and at the mark,
+  never by the attestation. A worker that holds a replaced credential, or belongs to another deployment, cannot
+  write one at any time. An attestation per worker, and the four other review conditions the final verification
+  found, are listed in the plan's go-live gate (item 9) and must be decided before the first adapter runs.
 - **Settling is untouched** by a pause, a withdrawn approval or a new credential: verdicts, an unknown answer and
   its late verdict, exceptions, recovery and the sweeper run as before.
 - **Specs.** `provider-dispatch.db.spec.ts` (PostgreSQL, HTTP, production-grade): five pauses then one send; the

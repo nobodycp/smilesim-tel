@@ -151,13 +151,13 @@ keep and disables the rest. Until then the site should be treated as a trial sit
   Either as a command check in Coolify, or as a `HEALTHCHECK` line in the two Dockerfiles (the API's must do
   nothing when `APP_ROLE=worker`). The Dockerfile route is versioned and is a code change, for approval.
 - **Timing:** the API today is ready 9 s after its container starts (5 s to check migrations, 4 s to start).
-  With the ten migrations to apply on this data it stays in seconds. Proposed: start period 60 s, interval 10 s,
+  With the thirteen migrations to apply on this data it stays in seconds. Proposed: start period 60 s, interval 10 s,
   timeout 5 s, 6 retries.
 - **What a failed check gives:** with the check on, Coolify keeps the previous container when the new one does
   not become healthy. That protects against a refused configuration (B2, B3). It does **not** undo migrations
   the new container already applied before failing (5.3).
 
-### 5.2 The pending migrations, one by one (nine when the server was read, ten since slice S.8)
+### 5.2 The pending migrations, one by one (nine when the server was read, ten since slice S.8, thirteen since slice S.12a and its final corrections)
 
 All tables involved are tiny here (the largest is 240 kB), so every lock below is held for milliseconds.
 
@@ -173,12 +173,18 @@ All tables involved are tiny here (the largest is 240 kB), so every lock below i
 | 8 | `200000_open_activation_reservations` | two partial unique indexes on `OfficeTask` | `SHARE ROW EXCLUSIVE` on `OfficeTask`, 30 s lock timeout, one DO block | none | Yes: 0 groups share a serial, 0 share a number, and there is no open task at all | Yes (a duplicate open activation would be refused as a conflict) |
 | 9 | `20261111100000_two_factor_policy` | `LayerPolicy.method`, `User.twoFactorRequired`, `User.requiredMethod` | `ACCESS EXCLUSIVE` on `User`, `LayerPolicy`, momentarily | none | Yes: defaults fill every row | Yes |
 | 10 | `20261112120000_apply_error_esim_code_missing` (slice S.8; ADR 0019 D16 as amended, approved by the owner on 2026-11-12) | `ProviderOperation`: the CHECK on `applyError` is dropped and added again with one more allowed value | `ACCESS EXCLUSIVE` on `ProviderOperation`, momentarily (the table is created empty by migration 4) | none | Yes: it only widens the list, so every row the old CHECK accepted passes the new one; checked on a synthetic copy of the deployed schema (`e7679d9`, 49 migrations, 60 lines) taken through all ten, and on a database holding each earlier value | Yes |
-| 11 | `20261113100000_provider_dispatch_target_and_readiness` (slice S.12a; ADR 0019 D18) | `Provider`: three nullable columns (`dispatchApprovedTarget`, `dispatchReadyAt`, `dispatchReadyTarget`) and four CHECKs; one `UPDATE` that withdraws an approval on record with no target (none exists: no route ever wrote one) | — | — | — | — |
+| 11 | `20261113100000_provider_dispatch_target_and_readiness` (slice S.12a; ADR 0019 D18) | `Provider`: three nullable columns (`dispatchApprovedTarget`, `dispatchReadyAt`, `dispatchReadyTarget`) and four CHECKs; one `UPDATE` that withdraws an approval on record with no target (none exists: no route ever wrote one) | `ACCESS EXCLUSIVE` on `Provider`, momentarily | none: the `UPDATE` matches no row on the server (no route ever wrote an approval) | Yes: the columns are nullable and the four CHECKs hold for rows where they are all empty | Yes: the old code neither reads nor writes the columns |
 | 12 | `20261113110000_provider_operation_waived_attempts` (final corrections of S.12a; ADR 0018 amended) | `ProviderOperation.waivedAttempts` (`INTEGER NOT NULL DEFAULT 0`) and one CHECK (`0 <= waivedAttempts <= attempts`) | `ACCESS EXCLUSIVE` on `ProviderOperation`, momentarily (a constant default: no rewrite; the table is empty on the server) | none | Yes: the default fills every row with 0, which the CHECK accepts; an operation keeps the count it had | Yes: the old code neither reads nor writes the column |
-| 13 | `20261113120000_provider_dispatch_deployment_and_generation` (final corrections of S.12a; ADR 0019 D18) | `Provider`: `dispatchApprovedDeployment`, `dispatchReadyDeployment`, `dispatchReadyGeneration` (nullable) and five CHECKs; `ProviderCredential.generation` (`INTEGER NOT NULL DEFAULT 1`) and one CHECK; two `UPDATE`s that withdraw every approval and every worker attestation on record (none names a deployment; none exists on the server) | `ACCESS EXCLUSIVE` on `Provider` and `ProviderCredential`, momentarily | none: both `UPDATE`s match no row on the server | Yes: checked by hand on a scratch database taken through every migration, with an approval, a pause, a credential and an operation as an older deployment could hold them: the approval is withdrawn, the pause and the credential kept, the operation's count unchanged | Fails closed: the code of `ef18a26` cannot write an approval or an attestation any more (the CHECKs refuse one with no deployment), so with the old image nothing is dispatched; everything else works. Run again, each migration is refused by PostgreSQL as already applied; Prisma records each once |
+| 13 | `20261113120000_provider_dispatch_deployment_and_generation` (final corrections of S.12a; ADR 0019 D18) | `Provider`: `dispatchApprovedDeployment`, `dispatchReadyDeployment`, `dispatchReadyGeneration` (nullable) and five CHECKs; `ProviderCredential.generation` (`INTEGER NOT NULL DEFAULT 1`) and one CHECK; two `UPDATE`s that withdraw every approval and every worker attestation on record (none names a deployment; none exists on the server) | `ACCESS EXCLUSIVE` on `Provider` and `ProviderCredential`, momentarily | none: both `UPDATE`s match no row on the server | Yes: checked by hand on a scratch database taken through every migration, with an approval, a pause, a credential and an operation as an older deployment could hold them: the approval is withdrawn, the pause and the credential kept, the operation's count unchanged | Fails closed: the code of `ef18a26` cannot write an approval or an attestation any more (the CHECKs refuse one with no deployment), so with the old image nothing is dispatched; everything else works. A second `prisma migrate deploy` sends nothing: Prisma finds each migration recorded and answers that none is pending (checked locally) |
 
 ### 5.3 What this means for rollback
 
+- **Going back to the old code once the new schema is applied is not an approved rollback plan.** The approved
+  one is (a) below: restore the pre-upgrade dump, then start the old images. This holds for all thirteen
+  migrations; the notes that follow say what the old image would and would not do, for an emergency only.
+- Migrations 11–13 (slice S.12a): the old image runs on them, and nothing is dispatched there either way. Code
+  from between them (`ef18a26`, which has migration 11 only) cannot write an approval or an attestation once
+  migration 13 is applied: it fails closed.
 - Migrations 2–10 leave the old API working. **Migration 1 does not:** once it has run, the old image serves
   existing sessions but cannot sign anyone in.
 - So after the migrations, "keep the old container" or "redeploy the old image" is not a working rollback by
@@ -189,7 +195,8 @@ All tables involved are tiny here (the largest is 240 kB), so every lock below i
 
 ### 5.4 Tests before applying (off production)
 
-On the restored copy from 3.3: run `prisma migrate deploy` from `3a2a3c1` and confirm nine applied, none
+On the restored copy from 3.3: run `prisma migrate deploy` from the commit that is to be deployed and confirm every
+pending migration applied (thirteen from `main` as of the final corrections of S.12a; nine from `3a2a3c1`), none
 failed; start the new API against the copy with a test key and run the smoke list of 6.4; run
 `seal-secrets --dry-run` against the copy and compare its counts with section 1 (8 clear line codes).
 
@@ -215,7 +222,7 @@ Consequence: one maintenance window in which all three change, not a rolling upg
 | W1 | Window opens: the web is put in Coolify's maintenance mode | — |
 | W2 | Fresh dump, encrypted, copied off the server, its size and readability checked | the dump cannot be verified |
 | W3 | Read-only checks again: 49 applied / 0 failed, 0 reservation conflicts, package-code map without collisions | any differs from section 5.2 |
-| W4 | Deploy the API. Its start applies the pending migrations (ten as of slice S.8), then it must pass `/health` | the API is not healthy: restore W2's dump, start `e7679d9` again |
+| W4 | Deploy the API. Its start applies the pending migrations (thirteen as of the final corrections of S.12a), then it must pass `/health` | the API is not healthy: restore W2's dump, start `e7679d9` again |
 | W5 | Deploy the worker | it restarts in a loop: read its log; roll back as W4 |
 | W6 | Deploy the web; maintenance mode off for the testers only if possible, else off | — |
 | W7 | Smoke tests (6.4), then the `TRUST_PROXY` check of 4.2 | a blocking smoke test fails: roll back as W4 |
