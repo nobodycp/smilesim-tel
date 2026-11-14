@@ -65,4 +65,3 @@ enforced, and the word `office` gone from the internal structure, the web and, i
   ledger, the profit report, the reports and a provider's account use it too, so the logic is in one place. The
   worker closes the notice writer it built, last, after its timers' running rounds and its queues' running jobs
   finished; a writer it was handed is never closed by it.
-

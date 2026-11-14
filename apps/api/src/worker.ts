@@ -84,11 +84,11 @@ export async function run(): Promise<void> {
   // The open Redis connection keeps the process alive, so the container does not restart.
   log.log(`ready: ${workers.length} processors`);
 
-  // In order: no new round or job (the timers, then the queues, which wait for the jobs that are running), then the
-  // notice writer this worker built (after the last settlement published), then the database and Redis.
+  // In order: no new round and no new job, at once (the timers wait for the round in flight, the queues stop taking
+  // jobs at once and wait for the ones that are running), then the notice writer this worker built (after the last
+  // settlement published), then the database and Redis.
   const stop = async () => {
-    await stopDispatch();
-    await Promise.all(workers.map((worker) => worker.close()));
+    await Promise.all([stopDispatch(), ...workers.map((worker) => worker.close())]);
     await dispatch.closeNotices();
     await dispatchPrisma.$disconnect();
     relayRedis.disconnect();

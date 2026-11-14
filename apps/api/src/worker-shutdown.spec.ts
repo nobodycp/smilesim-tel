@@ -126,7 +126,7 @@ describe('stopping the timers waits for the round in flight', () => {
 });
 
 describe('the worker stops in this order', () => {
-  it('timers, then the queues (which wait for running jobs), then the notice writer, then the database and Redis', () => {
+  it('the timers and the queues at once (no new round, no new job), then the notice writer, then the database and Redis', () => {
     const worker = readFileSync(join(__dirname, 'worker.ts'), 'utf8');
     const stop = worker.slice(worker.indexOf('const stop = async () => {'));
     const at = (text: string) => {
@@ -134,7 +134,8 @@ describe('the worker stops in this order', () => {
       expect({ text, found: index >= 0 }).toEqual({ text, found: true });
       return index;
     };
-    const steps = ['await stopDispatch();', 'workers.map((worker) => worker.close())', 'await dispatch.closeNotices();', 'await dispatchPrisma.$disconnect();', 'relayRedis.disconnect();', 'connection.disconnect();'].map(at);
+    // The queues stop taking jobs while the timers wait for their round: no job starts during the wait.
+    const steps = ['await Promise.all([stopDispatch(), ...workers.map((worker) => worker.close())]);', 'await dispatch.closeNotices();', 'await dispatchPrisma.$disconnect();', 'relayRedis.disconnect();', 'connection.disconnect();'].map(at);
     expect([...steps].sort((a, b) => a - b)).toEqual(steps);
   });
 });
