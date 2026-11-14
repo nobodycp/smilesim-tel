@@ -66,11 +66,11 @@ function sourceFiles(dir, found = []) {
   return found;
 }
 
-// ACTIVITY_ACTIONS in apps/api: every name a route logs under.
+// ACTIVITY_ACTIONS in apps/api: every name a route logs under (the platform's activity port, `shared/activity.ts`).
 function apiActions() {
-  const text = readFileSync(join(web, '..', 'api', 'src', 'modules', 'office', 'activity', 'activity-log.ts'), 'utf8');
+  const text = readFileSync(join(web, '..', 'api', 'src', 'modules', 'shared', 'activity.ts'), 'utf8');
   const block = /export const ACTIVITY_ACTIONS = \[([\s\S]*?)\] as const;/.exec(text);
-  if (!block) throw new Error('ACTIVITY_ACTIONS not found in apps/api activity-log.ts');
+  if (!block) throw new Error('ACTIVITY_ACTIONS not found in apps/api shared/activity.ts');
   return [...block[1].matchAll(/'([a-z_]+)'/g)].map((match) => match[1]);
 }
 

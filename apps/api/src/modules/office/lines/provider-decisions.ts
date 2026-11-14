@@ -7,7 +7,7 @@ import { logger } from '../../shared/log';
 import { ApiFailure, fail } from '../../shared/api-failure';
 import type { Actor } from '../kernel/types';
 import { UnitOfWork } from '../kernel/unit-of-work';
-import type { WrittenNotice } from '../notices/notice.service';
+import type { WrittenNotice } from '../../notifications/notice.service';
 import { refuseEntered, requireGrant } from '../policy';
 import type { OperationStatus } from '../providers/operations/provider-operation.rules';
 import { ProviderOperationsService } from '../providers/operations/provider-operations.service';

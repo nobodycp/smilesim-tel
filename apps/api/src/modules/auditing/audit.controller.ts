@@ -1,12 +1,12 @@
 import { AuditQuery } from './audit.schemas';
-import { ApiZodQuery } from '../../../openapi/query';
+import { ApiZodQuery } from '../../openapi/query';
 import { Controller, Get, Query, Res, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../activity/activity.interceptor';
-import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../kernel/types';
+import { ApiErrorResponse } from '../../openapi/responses';
+import { ActivityInterceptor } from '../shared/activity.interceptor';
+import { Actor, ActorInterceptor } from '../office/kernel/actor.interceptor';
+import type { Actor as ActorShape } from '../office/kernel/types';
 import { AuditService } from './audit.service';
 
 @ApiTags('office')

@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from '../auth/auth.module';
+import { ActivityModule } from '../auditing/activity.module';
 import { AUTH_STORE, StoredUser } from '../auth/auth.store';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { hashPassword } from '../auth/password';
@@ -48,7 +49,7 @@ describe('branding endpoints', () => {
     store.addUser(await user({ loginName: 'pos' }, '123456'));
     store.addUser(await user({ loginName: 'staff', layer: 'branch' }, 'staffpass1'));
     store.addUser(await user({ loginName: 'owner', layer: 'branch', isBranchOwner: true }, 'ownerpass1'));
-    const moduleRef = await Test.createTestingModule({ imports: [AuthModule, BrandingModule] })
+    const moduleRef = await Test.createTestingModule({ imports: [ActivityModule, AuthModule, BrandingModule] })
       .overrideProvider(AUTH_STORE)
       .useValue(store)
       .overrideProvider(BRANDING_STORE)

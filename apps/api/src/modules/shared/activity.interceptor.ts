@@ -3,10 +3,10 @@ import { Reflector } from '@nestjs/core';
 import type { Request, Response } from 'express';
 import { Observable, catchError, from, mergeMap, throwError } from 'rxjs';
 import { ACTIVITY_KEY, type ActivityMeta } from './activity.decorator';
-import { ActivityRecorder } from './activity-recorder';
-import { gateOf } from '../../shared/cookies';
-import { REPLAY_HEADER } from '../../shared/duplicate-guard.interceptor';
-import { ApiFailure } from '../../shared/api-failure';
+import { ActivityRecorder } from './activity';
+import { gateOf } from './cookies';
+import { REPLAY_HEADER } from './duplicate-guard.interceptor';
+import { ApiFailure } from './api-failure';
 
 /** Writes the activity event a route declares with `@Activity`, after the route answered or refused. */
 @Injectable()

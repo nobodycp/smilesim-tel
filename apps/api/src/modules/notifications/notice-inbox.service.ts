@@ -1,13 +1,13 @@
 import { NoticesQuery } from './notices.schemas';
-import { parseInput } from '../../shared/input';
-import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
+import { parseInput } from '../shared/input';
+import { AUTH_STORE, type AuthStore } from '../auth/auth.store';
 import { NoticesRepository } from './notices.repository';
 import { NoticeService } from './notice.service';
 import { Inject, Injectable } from '@nestjs/common';
-import type { Actor } from '../kernel/types';
+import type { Actor } from '../office/kernel/types';
 import { NOTICE_GROUPS, noticeGroupOf } from './notice-kinds';
-import { after, cursorPosition, page } from '../../shared/paging';
-import { NOTICES_PAGE } from '../rules/office-paging';
+import { after, cursorPosition, page } from '../shared/paging';
+import { NOTICES_PAGE } from '../office/rules/office-paging';
 
 /** The signed-in account's own notices: the paged inbox, marking read, and the live channel. */
 @Injectable()

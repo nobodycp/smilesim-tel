@@ -7,7 +7,7 @@ import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { capturedOutput } from '../../shared/testing/captured-output';
 import { DuplicateGuardInterceptor, type WriteStore } from '../../shared/duplicate-guard.interceptor';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { officeTestApp } from '../testing/office-test-app';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D14; spec item 4 (without "required"); plan slice S.6.

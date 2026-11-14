@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from './auth.module';
+import { ActivityModule } from '../auditing/activity.module';
 import { AUTH_STORE, StoredUser } from './auth.store';
 import { MemoryAuthStore } from './testing/memory-auth.store';
 import { hashPassword } from './password';
@@ -44,7 +45,7 @@ describe('session limit and account disabling', () => {
     store.addUser(await user({ loginName: 'pos' }, '123456'));
     store.addUser(await user({ loginName: 'other' }, '123456'));
     store.addUser(await user({ loginName: 'owner', layer: 'branch', isBranchOwner: true }, 'ownerpass1'));
-    const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
+    const moduleRef = await Test.createTestingModule({ imports: [ActivityModule, AuthModule] })
       .overrideProvider(AUTH_STORE)
       .useValue(store)
       .compile();

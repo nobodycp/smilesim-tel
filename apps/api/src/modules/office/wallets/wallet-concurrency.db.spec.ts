@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { createPrismaClient } from '../../../db';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 
 // Runs against a real PostgreSQL only: in-memory stores cannot show a lost update.

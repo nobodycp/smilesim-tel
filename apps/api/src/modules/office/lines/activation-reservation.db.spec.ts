@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ApiFailure } from '../../shared/api-failure';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 
 // PostgreSQL only (TEST_DATABASE_URL). An open activation task reserves its SIM serial and its number (ADR 0019,

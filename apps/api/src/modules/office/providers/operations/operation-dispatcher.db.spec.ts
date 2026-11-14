@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { createPrismaClient } from '../../../../db';
 import { capturedOutput } from '../../../shared/testing/captured-output';
 import { UnitOfWork } from '../../kernel/unit-of-work';
-import type { NoticeService } from '../../notices/notice.service';
+import type { NoticeService } from '../../../notifications/notice.service';
 import { ScriptedGateway } from '../testing/scripted-gateway';
 import { OperationDispatcher, recoverExpired } from './operation-dispatcher';
 import { ATTEMPT_LEASE_MS, MAX_ATTEMPTS, type OperationRequest, type SendEvidence } from './provider-operation.rules';

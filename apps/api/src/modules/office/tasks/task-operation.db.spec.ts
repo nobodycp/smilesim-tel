@@ -6,7 +6,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ApiFailure } from '../../shared/api-failure';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { operationKey } from '../lines/activation-settlement.rules';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 import { OfficeFacade } from '../testing/office-facade';

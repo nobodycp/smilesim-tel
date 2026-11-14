@@ -6,7 +6,8 @@ import { AccountTree } from '../kernel/account-tree';
 import { ActorResolver } from '../kernel/actor-resolver';
 import { UnitOfWork } from '../kernel/unit-of-work';
 import { LineAccess } from '../lines/line-access';
-import type { NoticeService } from '../notices/notice.service';
+import { NoticeService } from '../../notifications/notice.service';
+import type { NoticeWriter } from '../../shared/notices';
 import { LayerRoles } from '../roles/layer-roles';
 import { PriceLadder } from '../terms/price-ladder';
 import { WalletLedger } from '../wallets/wallet-ledger';
@@ -25,8 +26,9 @@ export class OfficeGraph {
   readonly ledger: WalletLedger;
   readonly lineAccess: LineAccess;
 
-  constructor(readonly auth: AuthStore, notice?: NoticeService, db?: PrismaService) {
-    this.uow = new UnitOfWork(notice, db);
+  constructor(readonly auth: AuthStore, notice?: NoticeWriter, db?: PrismaService) {
+    // As the unit of work did itself before slice R.2: the real writer when a spec hands in none.
+    this.uow = new UnitOfWork(notice ?? new NoticeService(), db);
     this.tree = new AccountTree(this.uow);
     this.actors = new ActorResolver(auth, this.uow);
     this.layerRoles = new LayerRoles(this.uow);

@@ -4,9 +4,9 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { Activity, param } from './activity.decorator';
 import { ActivityInterceptor } from './activity.interceptor';
-import { ActivityRecorder } from './activity-recorder';
-import { ApiFailure } from '../../shared/api-failure';
-import { ApiExceptionFilter } from '../../shared/api-exception.filter';
+import { ActivityRecorder } from './activity';
+import { ApiFailure } from './api-failure';
+import { ApiExceptionFilter } from './api-exception.filter';
 
 @Controller('t')
 @UseFilters(ApiExceptionFilter)

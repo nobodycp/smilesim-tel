@@ -1,5 +1,5 @@
 import { NoticesRepository } from './notices.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { KernelModule } from '../office/kernel/kernel.module';
 import { NoticeInboxService } from './notice-inbox.service';
 import { NoticesController } from './notices.controller';
 import { Module } from '@nestjs/common';

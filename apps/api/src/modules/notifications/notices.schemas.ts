@@ -1,4 +1,4 @@
-import { queryCursor, queryFlag, queryOneOf } from '../../shared/schemas';
+import { queryCursor, queryFlag, queryOneOf } from '../shared/schemas';
 import { NOTICE_GROUPS } from './notice-kinds';
 import { z } from 'zod';
 

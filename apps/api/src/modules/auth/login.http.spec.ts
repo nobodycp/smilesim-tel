@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from './auth.module';
+import { ActivityModule } from '../auditing/activity.module';
 import { AUTH_STORE } from './auth.store';
 import { MemoryAuthStore } from './testing/memory-auth.store';
 import { hashPassword } from './password';
@@ -27,7 +28,7 @@ describe('POST /auth/login', () => {
       isBranchOwner: false,
       passwordHash: await hashPassword('123456'),
     });
-    const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
+    const moduleRef = await Test.createTestingModule({ imports: [ActivityModule, AuthModule] })
       .overrideProvider(AUTH_STORE)
       .useValue(store)
       .compile();

@@ -125,6 +125,24 @@ describe('module boundaries, on the source as it is', () => {
     expect(Object.keys(surfaces)).toEqual([]);
   });
 
+  it('the cuts of slice R.2 hold: the platform and sign-in import neither auditing nor notifications', () => {
+    // `module-layering` counts these too; named here so that bringing one back fails with its own message.
+    const back = edges.filter((edge) => {
+      const from = ownerOf(edge.from);
+      const to = ownerOf(edge.to);
+      return (from === 'platform' || from === 'identity') && (to === 'auditing' || to === 'notifications');
+    });
+    expect(back.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual([]);
+    // The unit of work holds the notice port, never the implementation.
+    const uow = production.find(({ file }) => file.endsWith('/unit-of-work.ts'));
+    expect(uow?.text).toContain("from '../../shared/notices'");
+    expect(uow?.text).not.toMatch(/notifications\/|NoticeService/);
+    // The activity interceptor and decorator are the platform's, and record through the port.
+    for (const name of ['activity.interceptor.ts', 'activity.decorator.ts', 'activity.ts', 'notices.ts']) {
+      expect({ name, owner: ownerOf(`modules/shared/${name}`), exists: production.some(({ file }) => file === `modules/shared/${name}`) }).toEqual({ name, owner: 'platform', exists: true });
+    }
+  });
+
   it('root-domain-code: the source root holds bootstrap and middleware, not domain code', () => {
     const bootstrap = /^(main|app\.module|worker|health\.controller|(door|origin|rate-limit)\.middleware)\.ts$/;
     const rootFiles = production.filter(({ file }) => !file.includes('/') && !bootstrap.test(file));
@@ -222,6 +240,19 @@ describe('the rules catch what they are for (made-up cases)', () => {
     }));
     expect(surfaceViolations(cases, {}, byFolder)).toEqual([]);
     expect(surfaceViolations(cases, { wallets: 'wallets/index.ts' }, byFolder).map((hit) => hit.file)).toEqual(['sales/a.ts']);
+  });
+
+  it('R.2: bringing back the kernel’s import of the notice writer, or sign-in’s of the recorder, is a layering violation', () => {
+    const cases = importEdges(made({
+      'modules/office/kernel/unit-of-work.ts': "import { NoticeService } from '../../notifications/notice.service';",
+      'modules/notifications/notice.service.ts': '',
+      'modules/auth/auth.controller.ts': "import { PrismaActivityRecorder } from '../auditing/activity-recorder';",
+      'modules/auditing/activity-recorder.ts': '',
+    }));
+    expect(layeringViolations(cases).map((hit) => hit.text)).toEqual([
+      'platform -> notifications  (modules/notifications/notice.service.ts)',
+      'identity -> auditing  (modules/auditing/activity-recorder.ts)',
+    ]);
   });
 
   it('unmapped: a file in a folder the map does not know has no owner', () => {

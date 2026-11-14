@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 
 // Runs against a real PostgreSQL only (see wallet-concurrency.db.spec.ts for how to give it one): in-memory tables

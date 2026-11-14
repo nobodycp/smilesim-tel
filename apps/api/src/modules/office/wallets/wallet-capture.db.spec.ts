@@ -6,7 +6,7 @@ import type { Prisma } from '../../../generated/prisma/client';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ApiFailure } from '../../shared/api-failure';
 import type { Sale } from '../kernel/types';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 import type { WalletLedger } from './wallet-ledger';
 

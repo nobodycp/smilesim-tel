@@ -1,9 +1,9 @@
-import { Activity, bodyField, param } from '../activity/activity.decorator';
+import { Activity, bodyField, param } from '../../shared/activity.decorator';
 import { Body, Controller, Get, Param, Post, Put, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../activity/activity.interceptor';
+import { ActivityInterceptor } from '../../shared/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { RoleBody } from './roles.schemas';

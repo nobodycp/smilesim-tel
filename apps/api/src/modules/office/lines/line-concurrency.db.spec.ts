@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ApiFailure } from '../../shared/api-failure';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { captureTerms } from '../rules/prices';
 import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
 import { OfficeFacade } from '../testing/office-facade';

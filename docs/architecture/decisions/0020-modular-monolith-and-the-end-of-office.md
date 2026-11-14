@@ -41,3 +41,24 @@ enforced, and the word `office` gone from the internal structure, the web and, i
 - The worker keeps its hand-built graph until R.5; `worker-wiring.spec.ts` holds it to the API's.
 - The project is finished only when the end criteria of the plan hold (no `office` left but in history and in
   table names, every route and screen proved).
+
+## Amended by slice R.2 (2026-11-14): two ports, and auditing above access
+
+- **The activity log is recorded through a port of the platform** (`shared/activity.ts`: the abstract
+  `ActivityRecorder`, `ActivityDraft`, the action list; the decorator and the interceptor beside it). Auditing owns
+  the one implementation (`PrismaActivityRecorder`, provided under the port by the global `ActivityModule`) and
+  the reading of the log (the audit page). So **auditing owns recording and reading**, as the owner asked, and it
+  sits **above access and identity**: it reads sessions (the token's hash, `auth/session-token.ts`) and, for the
+  audit page, the actor and the tree. Identity no longer imports auditing; the hashing did not move and did not
+  change.
+- **Notices are written through a port of the platform** (`shared/notices.ts`: `NoticeWriter`, its token
+  `NOTICE_WRITER`, and the notice kinds as a type-only contract, as `errors.ts` holds the error codes). The unit of
+  work holds the port and never builds a writer; notifications owns the one implementation (`NoticeService`,
+  provided as itself and under the token, one instance, by the global `NoticeWriterModule`). Notifications sits
+  above access only.
+- `DEPENDS_ON` changed accordingly: `identity: [platform]`, `access: [identity, platform]`,
+  `auditing: [access, identity, platform]`, `notifications: [access, platform]`. Still no cycle.
+- The R.0 map's choice to put the audit page under reporting is withdrawn: it reads the log auditing writes. Its
+  CSV helper is still `reports/report-csv.ts`, which makes one new `module-layering` violation
+  (`auditing -> reporting`) until that helper moves to the platform (R.8).
+

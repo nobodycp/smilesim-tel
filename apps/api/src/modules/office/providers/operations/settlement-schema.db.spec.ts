@@ -6,7 +6,7 @@ import { ApiFailure } from '../../../shared/api-failure';
 import { seal } from '../../../shared/secret-box';
 import { UnitOfWork } from '../../kernel/unit-of-work';
 import { decisionStep, type DecisionActor, type DecisionEvent } from '../../lines/activation-settlement.rules';
-import type { NoticeService } from '../../notices/notice.service';
+import type { NoticeService } from '../../../notifications/notice.service';
 import { ATTEMPT_LEASE_MS, type OperationStatus } from './provider-operation.rules';
 import { ProviderOperationsRepository } from './provider-operations.repository';
 import { ProviderOperationsService } from './provider-operations.service';

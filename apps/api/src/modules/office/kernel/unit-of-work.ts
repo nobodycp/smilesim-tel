@@ -1,9 +1,9 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../../db';
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { logger, reason } from '../../shared/log';
 import { PrismaService } from '../../shared/prisma.service';
-import { NoticeService, type WrittenNotice } from '../notices/notice.service';
+import { NOTICE_WRITER, type NoticeWriter, type WrittenNotice } from '../../shared/notices';
 
 const log = logger('Office');
 
@@ -19,14 +19,14 @@ export class UnitOfWork {
   /** The client; specs replace it to run on in-memory tables. */
   prismaClient: PrismaClient | null = null;
 
-  readonly notice: NoticeService;
-
   /** Notices written inside a transaction wait here until that transaction commits. */
   private readonly queued = new WeakMap<object, WrittenNotice[]>();
 
-  constructor(@Optional() notice?: NoticeService, @Optional() private readonly db?: PrismaService) {
-    this.notice = notice ?? new NoticeService();
-  }
+  /**
+   * `notice` is the notice writer behind its port: provided by `NoticeWriterModule` in the app, handed in by the
+   * worker (`provider-dispatch.ts`) and by specs. The unit of work never builds one.
+   */
+  constructor(@Inject(NOTICE_WRITER) readonly notice: NoticeWriter, @Optional() private readonly db?: PrismaService) {}
 
   get prisma(): PrismaClient {
     this.prismaClient ??= this.db?.client ?? createPrismaClient();

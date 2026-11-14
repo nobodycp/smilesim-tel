@@ -5,7 +5,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { errorBody } from '../../errors';
 import { ApiErrorResponse } from '../../openapi/responses';
-import { ActivityRecorder } from '../office/activity/activity-recorder';
+import { ActivityRecorder } from '../shared/activity';
 import { ApiFailure } from '../shared/api-failure';
 import { BrandingService, type ImageKind } from './branding.service';
 

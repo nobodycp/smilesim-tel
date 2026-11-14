@@ -5,6 +5,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from '../../auth/auth.module';
+import { ActivityModule } from '../../auditing/activity.module';
 import { AUTH_STORE } from '../../auth/auth.store';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
@@ -37,7 +38,7 @@ describe('office refusals', () => {
     });
     posSession = await store.saveSession({ userId: 'pos1', scope: 'full', userAgent: '', ip: '' });
     const moduleRef = await Test.createTestingModule({
-      imports: [AuthModule],
+      imports: [ActivityModule, AuthModule],
       // Every office route, whichever controller holds it.
       controllers: OFFICE_CONTROLLERS,
       providers: [...OFFICE_PROVIDERS, ...API_PROVIDERS],

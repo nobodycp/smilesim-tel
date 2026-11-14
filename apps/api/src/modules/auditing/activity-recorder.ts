@@ -1,26 +1,27 @@
-import { hashSessionToken } from '../../auth/session-token';
-import { logger, reason as why } from '../../shared/log';
-import { env } from '../../../config';
+import { hashSessionToken } from '../auth/session-token';
+import { logger, reason as why } from '../shared/log';
+import { env } from '../../config';
 import { Injectable, Optional } from '@nestjs/common';
-import { createPrismaClient } from '../../../db';
-import { PrismaClient } from '../../../generated/prisma/client';
-import { PrismaService } from '../../shared/prisma.service';
+import { createPrismaClient } from '../../db';
+import { PrismaClient } from '../../generated/prisma/client';
+import { PrismaService } from '../shared/prisma.service';
 
-export type ActivityDraft = {
-  action: string;
-  subjectKind?: string;
-  subjectRef?: string;
-};
-
-import type { Gate } from '../../shared/cookies';
+import type { Gate } from '../shared/cookies';
+import { ActivityRecorder, type ActivityDraft } from '../shared/activity';
 
 const log = logger('ActivityLog');
 
+/**
+ * The activity log in PostgreSQL: the implementation of the platform's `ActivityRecorder` port. An entered session
+ * is recorded under the account that entered; a session is found by the hash of its token, as sign-in stores it.
+ */
 @Injectable()
-export class ActivityRecorder {
+export class PrismaActivityRecorder extends ActivityRecorder {
   private prismaClient: PrismaClient | null = null;
 
-  constructor(@Optional() private readonly db?: PrismaService) {}
+  constructor(@Optional() private readonly db?: PrismaService) {
+    super();
+  }
 
   private client(): PrismaClient | null {
     if (!env('DATABASE_URL')) return null;

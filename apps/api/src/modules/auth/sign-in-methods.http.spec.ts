@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from './auth.module';
+import { ActivityModule } from '../auditing/activity.module';
 import { AUTH_STORE, StoredUser } from './auth.store';
 import { MemoryAuthStore } from './testing/memory-auth.store';
 import { MESSAGE_SENDER, type OutgoingMessage } from './message-sender';
@@ -64,7 +65,7 @@ describe('sign-in methods', () => {
     store.addUser(await user({ loginName: 'sara', phone: '+972 52-123-4567', email: 'sara@example.com' }));
     store.addUser(await user({ loginName: 'bare' }));
     store.addUser(await user({ loginName: 'seller', layer: 'pos', email: 'seller@example.com' }));
-    const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
+    const moduleRef = await Test.createTestingModule({ imports: [ActivityModule, AuthModule] })
       .overrideProvider(AUTH_STORE)
       .useValue(store)
       .overrideProvider(MESSAGE_SENDER)

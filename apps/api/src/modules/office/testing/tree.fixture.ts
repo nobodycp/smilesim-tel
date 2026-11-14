@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashPassword } from '../../auth/password';
-import { NoticeService } from '../notices/notice.service';
+import { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from './office-facade';
 import { captureTerms } from '../rules/prices';
 import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';

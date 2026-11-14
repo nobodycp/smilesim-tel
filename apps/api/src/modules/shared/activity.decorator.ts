@@ -1,8 +1,8 @@
 import { SetMetadata } from '@nestjs/common';
 import type { Request } from 'express';
-import type { ActivityAction } from './activity-log';
+import type { ActivityAction } from './activity';
 
-export const ACTIVITY_KEY = 'office:activity';
+export const ACTIVITY_KEY = 'audit:activity';
 
 export type ActivityMeta = {
   action: string;
@@ -32,7 +32,7 @@ const none = (): string => '';
 export const Activity = (action: ActivityAction, subjectKind: string, subject: (req: Request) => string = none) =>
   SetMetadata(ACTIVITY_KEY, { action, subjectKind, subject } satisfies ActivityMeta);
 
-export const NO_ACTIVITY_KEY = 'office:no-activity';
+export const NO_ACTIVITY_KEY = 'audit:no-activity';
 
 /**
  * Says on purpose that a write is not logged, and why (backend-engineering.mdc 4.4): every office write carries

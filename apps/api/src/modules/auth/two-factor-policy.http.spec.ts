@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from './auth.module';
+import { ActivityModule } from '../auditing/activity.module';
 import { AUTH_STORE, StoredUser } from './auth.store';
 import { MESSAGE_SENDER } from './message-sender';
 import { MemoryAuthStore } from './testing/memory-auth.store';
@@ -57,7 +58,7 @@ describe('two-step policy per layer and per account', () => {
     store.addUser(await user({ loginName: 'bob' }));
     store.addUser(await user({ loginName: 'enrolled', twoFactorEnabled: true, twoFactorMethod: 'app', twoFactorSecret: 'S' }));
     store.addUser(await user({ loginName: 'other-layer', layer: 'pos' }));
-    const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
+    const moduleRef = await Test.createTestingModule({ imports: [ActivityModule, AuthModule] })
       .overrideProvider(AUTH_STORE)
       .useValue(store)
       .overrideProvider(MESSAGE_SENDER)

@@ -4,7 +4,7 @@ import 'reflect-metadata';
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
 import { createPrismaClient } from './db';
-import { purgeActivity } from './modules/office/activity/activity-log';
+import { purgeActivity } from './modules/auditing/activity-log';
 import { DeploymentSendGate } from './modules/office/providers/dispatch/dispatch-gate';
 import { dispatchSettings } from './modules/office/providers/dispatch/dispatch-policy';
 import { buildAdapters } from './modules/office/providers/dispatch/provider-adapters';

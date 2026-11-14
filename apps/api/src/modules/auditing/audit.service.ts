@@ -1,17 +1,17 @@
-import { isOn } from '../../shared/schemas';
+import { isOn } from '../shared/schemas';
 import { AuditQuery, type AuditFilter } from './audit.schemas';
-import { parseInput } from '../../shared/input';
-import { AccountTree } from '../kernel/account-tree';
+import { parseInput } from '../shared/input';
+import { AccountTree } from '../office/kernel/account-tree';
 import { AuditRepository } from './audit.repository';
-import { dayRange } from '../../shared/dates';
+import { dayRange } from '../shared/dates';
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '../../../generated/prisma/client';
-import { activityActorFilter, clampActivityRange } from '../activity/activity-log';
-import type { Actor } from '../kernel/types';
-import { after, cursorPosition, page } from '../../shared/paging';
-import { FEED_PAGE } from '../rules/office-paging';
-import { visibleAccountIds } from '../rules/account-visibility';
-import { csvOf } from '../reports/report-csv';
+import type { Prisma } from '../../generated/prisma/client';
+import { activityActorFilter, clampActivityRange } from './activity-log';
+import type { Actor } from '../office/kernel/types';
+import { after, cursorPosition, page } from '../shared/paging';
+import { FEED_PAGE } from '../office/rules/office-paging';
+import { visibleAccountIds } from '../office/rules/account-visibility';
+import { csvOf } from '../office/reports/report-csv';
 
 /** The most events one CSV holds. */
 export const AUDIT_EXPORT_LIMIT = 5_000;

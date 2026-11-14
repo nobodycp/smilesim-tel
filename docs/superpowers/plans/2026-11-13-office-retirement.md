@@ -15,7 +15,12 @@ goes down; the backend map updated in the same commit.
 - [x] **R.1** `OfficeFailure` → `ApiFailure` (`shared/office-failure.ts` → `shared/api-failure.ts` by `git mv`; 111
   references in 70 files and the lint rule that names the file; `fail(status, code)` unchanged; no alias kept:
   nothing outside `apps/api` used the name). `api-failure.spec.ts` pins the contract. Commit: see `git log --grep 'R.1'`.
-- [ ] **R.2** Auditing and notifications out of the umbrella; the notice writer behind a port of the platform.
+- [x] **R.2** Auditing and notifications out of the umbrella (`modules/auditing`, `modules/notifications`), two ports
+  in the platform: `shared/notices.ts` (`NoticeWriter`; the unit of work holds it, `NoticeService` implements it) and
+  `shared/activity.ts` (`ActivityRecorder`; `PrismaActivityRecorder` implements it; sign-in and every controller
+  record through it). Auditing owns recording and reading and sits above access (ADR 0020, amended). No route,
+  table, Redis channel, message or transaction changed. `module-layering` 32 → 29, `module-mutual` 14 → 10.
+  `shared/ports.db.spec.ts` on PostgreSQL and Redis. Commit: see `git log --grep 'R.2'`.
 - [ ] **R.3** Rules to their owners; the kernel dissolved into platform and access.
 - [ ] **R.4** Tasks and sales untangled (`tasks` imports nothing of `sales`). May change how services are composed
   (a port, a provider moved to another module); changes no business rule and no transaction.
@@ -38,8 +43,8 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 
 | Guard | Count | What it is | Closed by |
 |---|---|---|---|
-| `module-layering` | 32 | imports the target graph does not allow | R.2–R.8 |
-| `module-mutual` | 14 | pairs of modules that import each other | R.2–R.8 |
+| `module-layering` | 29 (was 32; R.2 closed 4 and made 1: `audit.service.ts` uses `reports/report-csv.ts`) | imports the target graph does not allow | R.3–R.8 |
+| `module-mutual` | 10 (was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales) | pairs of modules that import each other | R.3–R.8 |
 | `root-domain-code` | 5 | domain code at `src/` root | R.3, R.5 |
 | `operation-writes` | 1 | `tasks/task-operation.ts` writes a provider operation | R.4 |
 | `transaction-outside-unit-of-work` | 5 | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |

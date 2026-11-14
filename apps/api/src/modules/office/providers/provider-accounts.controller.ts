@@ -5,8 +5,8 @@ import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@ne
 import type { Response } from 'express';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, NoActivity, param } from '../activity/activity.decorator';
-import { ActivityInterceptor } from '../activity/activity.interceptor';
+import { Activity, NoActivity, param } from '../../shared/activity.decorator';
+import { ActivityInterceptor } from '../../shared/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { ProviderAccountsService } from './provider-accounts.service';

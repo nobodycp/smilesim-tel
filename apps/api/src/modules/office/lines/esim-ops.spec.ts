@@ -3,7 +3,7 @@ import { useSealingKey } from '../../shared/testing/sealing-key';
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from '../testing/test-hash';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 
 // An eSIM request is a branch task priced from the package, the provider, or the company; the employee

@@ -7,7 +7,7 @@ import { createPrismaClient } from '../../../db';
 import { OPERATIONS_QUEUE, buildProviderDispatch } from '../../../provider-dispatch';
 import { capturedOutput } from '../../shared/testing/captured-output';
 import { UnitOfWork } from '../kernel/unit-of-work';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { OPERATION_REQUESTED } from '../providers/operations/provider-operations.repository';
 import { ScriptedGateway } from '../providers/testing/scripted-gateway';
 import { OutboxRelay, RELAY_LEASE_MS, type OutboxPublisher } from './outbox-relay';

@@ -11,7 +11,7 @@ import { ApiFailure } from '../../shared/api-failure';
 import { open, seal } from '../../shared/secret-box';
 import { capturedOutput } from '../../shared/testing/captured-output';
 import type { Db } from '../kernel/unit-of-work';
-import { NoticeService } from '../notices/notice.service';
+import { NoticeService } from '../../notifications/notice.service';
 import { OutboxRelay } from '../outbox/outbox-relay';
 import { OutboxRepository, type ClaimedMessage } from '../outbox/outbox.repository';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';

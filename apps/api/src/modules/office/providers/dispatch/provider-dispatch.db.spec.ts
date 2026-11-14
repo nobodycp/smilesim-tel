@@ -8,7 +8,7 @@ import { buildProviderDispatch, readCredentials, startReadiness } from '../../..
 import { MemoryAuthStore } from '../../../auth/testing/memory-auth.store';
 import { open } from '../../../shared/secret-box';
 import { capturedOutput } from '../../../shared/testing/captured-output';
-import type { NoticeService } from '../../notices/notice.service';
+import type { NoticeService } from '../../../notifications/notice.service';
 import { GRANT_CODES } from '../../rules/office-grants';
 import { PROVIDER_DISPATCH_NOTE } from '../../stored-text';
 import { officeTestApp } from '../../testing/office-test-app';

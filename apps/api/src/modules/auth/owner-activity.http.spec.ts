@@ -2,8 +2,9 @@ import 'reflect-metadata';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { ActivityRecorder } from '../office/activity/activity-recorder';
+import { ActivityRecorder } from '../shared/activity';
 import { AuthModule } from './auth.module';
+import { ActivityModule } from '../auditing/activity.module';
 import { AUTH_STORE, StoredUser } from './auth.store';
 import { MemoryAuthStore } from './testing/memory-auth.store';
 
@@ -27,7 +28,7 @@ describe('owner writes in /auth are recorded', () => {
     store.addUser(user({ loginName: 'owner', layer: 'branch', isBranchOwner: true }));
     store.addUser(user({ loginName: 'agent1', layer: 'agent' }));
     store.addUser(user({ loginName: 'seller' }));
-    const moduleRef = await Test.createTestingModule({ imports: [AuthModule] })
+    const moduleRef = await Test.createTestingModule({ imports: [ActivityModule, AuthModule] })
       .overrideProvider(AUTH_STORE).useValue(store)
       .overrideProvider(ActivityRecorder)
       .useValue({ recordOffice: async (_gate: unknown, _ip: string, event: { action: string; subjectKind?: string; subjectRef?: string }, result: string, reason: string) => void recorded.push({ ...event, result, reason }) })

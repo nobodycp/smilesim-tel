@@ -4,9 +4,9 @@ import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@ne
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiZodQuery } from '../../../openapi/query';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, param } from '../activity/activity.decorator';
-import { ActivityInterceptor } from '../activity/activity.interceptor';
-import { ActivityRecorder } from '../activity/activity-recorder';
+import { Activity, param } from '../../shared/activity.decorator';
+import { ActivityInterceptor } from '../../shared/activity.interceptor';
+import { ActivityRecorder } from '../../shared/activity';
 import { gateOf } from '../../shared/cookies';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';

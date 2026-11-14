@@ -10,7 +10,7 @@ import { buildProviderDispatch } from '../../../provider-dispatch';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { DuplicateGuardInterceptor } from '../../shared/duplicate-guard.interceptor';
 import { open } from '../../shared/secret-box';
-import { NoticeService } from '../notices/notice.service';
+import { NoticeService } from '../../notifications/notice.service';
 import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../providers/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 import { ScriptedGateway } from '../providers/testing/scripted-gateway';

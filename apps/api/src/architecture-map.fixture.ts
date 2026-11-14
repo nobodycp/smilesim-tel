@@ -19,12 +19,14 @@ export type Owner = ModuleName | 'app';
  */
 export const DEPENDS_ON: Record<ModuleName, readonly ModuleName[]> = {
   platform: [],
-  auditing: ['platform'],
-  identity: ['auditing', 'platform'],
-  access: ['identity', 'auditing', 'platform'],
-  // The inbox and the stream need the actor, so notices sit above access; a transaction hands its notices to
-  // the writer through a port of the platform (plan R.2), not by importing it.
-  notifications: ['access', 'auditing', 'platform'],
+  // Slice R.2: the activity log is recorded through a port of the platform (`shared/activity.ts`) and notices are
+  // written through another (`shared/notices.ts`). So sign-in and the account tree import neither, and the two
+  // modules that implement the ports sit above what they read: auditing reads sessions (identity) and, for the
+  // audit page, the actor and the tree (access); notifications reads the actor for the inbox and the stream.
+  identity: ['platform'],
+  access: ['identity', 'platform'],
+  auditing: ['access', 'identity', 'platform'],
+  notifications: ['access', 'platform'],
   catalog: ['access', 'platform'],
   pricing: ['catalog', 'access', 'platform'],
   wallets: ['pricing', 'platform'],
@@ -53,11 +55,9 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^modules\/office\/rules\/office-paging\.ts$/, 'platform'],
   // ── identity, auditing, notifications ─────────────────────────────────────────────────────────────
   [/^modules\/auth\//, 'identity'],
-  // The writer of the audit trail is low (everything records through it); reading it needs the actor and the
-  // tree, so the reads are reporting.
-  [/^modules\/office\/activity\//, 'auditing'],
-  [/^modules\/office\/audit\//, 'reporting'],
-  [/^modules\/office\/notices\//, 'notifications'],
+  // The log's writer (the port's implementation) and its reading; notices, with the port's implementation.
+  [/^modules\/auditing\//, 'auditing'],
+  [/^modules\/notifications\//, 'notifications'],
   // ── access (the actor, grants, roles, the account tree, accounts) ────────────────────────────────
   [/^modules\/office\/kernel\/(line-terms)\.ts$/, 'pricing'],
   [/^modules\/office\/kernel\/sale\.ts$/, 'wallets'],

@@ -9,7 +9,8 @@ import { ActivationSettlement } from './modules/office/lines/activation-settleme
 import { LinePricing } from './modules/office/lines/line-pricing';
 import { LinesRepository } from './modules/office/lines/lines.repository';
 import { TaskCompletion } from './modules/office/lines/task-completion';
-import type { NoticeService } from './modules/office/notices/notice.service';
+import { NoticeService } from './modules/notifications/notice.service';
+import type { NoticeWriter } from './modules/shared/notices';
 import { TasksRepository } from './modules/office/tasks/tasks.repository';
 import { TasksService } from './modules/office/tasks/tasks.service';
 import { PriceLadder } from './modules/office/terms/price-ladder';
@@ -69,8 +70,10 @@ export class JobFailure extends Error {
  * it gives at the mark. The worker passes its deployment's gate (`DeploymentSendGate`); there is no default and
  * no gateway here, so nothing sends ungated or through anything the gate did not judge.
  */
-export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis, gate: SendGate, prefix?: string, notice?: NoticeService) {
-  const uow = new UnitOfWork(notice);
+export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis, gate: SendGate, prefix?: string, notice?: NoticeWriter) {
+  // The worker's notice writer: the same implementation the API's NoticeWriterModule provides, one for the worker
+  // (built here because the unit of work no longer builds one; slice R.2). Specs hand in their own.
+  const uow = new UnitOfWork(notice ?? new NoticeService());
   uow.prismaClient = prisma;
   const operations = new ProviderOperationsService(uow, new ProviderOperationsRepository());
   const publisher = new QueuePublisher(connection, { [OPERATION_REQUESTED]: OPERATIONS_QUEUE, [OPERATION_SETTLED]: SETTLEMENTS_QUEUE }, prefix);

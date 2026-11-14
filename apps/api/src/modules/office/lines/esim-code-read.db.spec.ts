@@ -5,7 +5,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ApiFailure } from '../../shared/api-failure';
 import { open, seal } from '../../shared/secret-box';
 import { capturedOutput } from '../../shared/testing/captured-output';
-import type { NoticeService } from '../notices/notice.service';
+import type { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 import { LinesRepository } from './lines.repository';
 

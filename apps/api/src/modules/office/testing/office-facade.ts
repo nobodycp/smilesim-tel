@@ -1,4 +1,4 @@
-import { AuditRepository } from '../audit/audit.repository';
+import { AuditRepository } from '../../auditing/audit.repository';
 import { RolesRepository } from '../roles/roles.repository';
 import { DeskRepository } from '../desk/desk.repository';
 import { ProvidersRepository } from '../providers/providers.repository';
@@ -15,7 +15,8 @@ import { PrismaService } from '../../shared/prisma.service';
 import { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { AuthStore } from '../../auth/auth.store';
 import type { LineFilter } from '../rules/office-paging';
-import { NoticeService } from '../notices/notice.service';
+import { NoticeService } from '../../notifications/notice.service';
+import type { NoticeWriter } from '../../shared/notices';
 import { LinePricing } from '../lines/line-pricing';
 import { LineReads } from '../lines/line-reads';
 import { LinesService } from '../lines/lines.service';
@@ -32,7 +33,7 @@ import { PackagesService } from '../packages/packages.service';
 import { CompaniesService } from '../companies/companies.service';
 import { ProvidersService } from '../providers/providers.service';
 import { WalletsService } from '../wallets/wallets.service';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../../auditing/audit.service';
 import { TasksService } from '../tasks/tasks.service';
 import type { Gate, Sale } from '../kernel/types';
 import type { TransferAccountBody } from '../transfers/transfers.service';
@@ -61,7 +62,7 @@ export class OfficeFacade {
     return this.graph.uow.prisma;
   }
 
-  get notice(): NoticeService {
+  get notice(): NoticeWriter {
     return this.graph.uow.notice;
   }
 

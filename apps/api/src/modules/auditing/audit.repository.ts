@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork } from '../kernel/unit-of-work';
+import type { Prisma } from '../../generated/prisma/client';
+import { UnitOfWork } from '../office/kernel/unit-of-work';
 
 /**
  * The database as this domain reads and writes it: the activity log. One method per query, named for what it returns or

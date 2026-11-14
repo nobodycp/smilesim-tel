@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../../db';
 import { ApiFailure } from '../../../shared/api-failure';
 import { UnitOfWork } from '../../kernel/unit-of-work';
-import type { NoticeService } from '../../notices/notice.service';
+import type { NoticeService } from '../../../notifications/notice.service';
 import type { OperationRequest } from './provider-operation.rules';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from './provider-operations.repository';
 import { ProviderOperationsService } from './provider-operations.service';

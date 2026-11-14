@@ -5,8 +5,12 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type IORedis from 'ioredis';
 import type { PrismaClient } from './generated/prisma/client';
 import { AUTH_STORE } from './modules/auth/auth.store';
-import { ActivityRecorder } from './modules/office/activity/activity-recorder';
+import { ActivityRecorder } from './modules/shared/activity';
+import { NoticeService } from './modules/notifications/notice.service';
+import { NoticeInboxService } from './modules/notifications/notice-inbox.service';
+import { UnitOfWork } from './modules/office/kernel/unit-of-work';
 import { ProviderDecisions } from './modules/office/lines/provider-decisions';
+import { NOTICE_WRITER } from './modules/shared/notices';
 import { OFFICE_PROVIDERS } from './modules/office/office.module';
 import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate';
 import { API_PROVIDERS } from './modules/shared/api-providers';
@@ -146,6 +150,18 @@ describe('the worker and the API build the money path alike', () => {
 
   it('every critical class is given the same kinds of collaborators on both sides, and the worker has one of each', () => {
     expect(contractProblems(workerGraph, apiGraph)).toEqual([]);
+  });
+
+  it('both write notices through the one notice writer behind the port (slice R.2)', () => {
+    // The API: the unit of work, the port and the inbox hold one NoticeService (one Redis publisher, one subscriber).
+    const writer = api.get(NoticeService);
+    expect(api.get(NOTICE_WRITER)).toBe(writer);
+    expect(api.get(UnitOfWork).notice).toBe(writer);
+    expect((api.get(NoticeInboxService) as unknown as { notice: unknown }).notice).toBe(writer);
+    // The worker: its one unit of work holds a NoticeService of its own (the worker is another process).
+    expect(dispatch.uow.notice).toBeInstanceOf(NoticeService);
+    expect(workerGraph.collaborators.get('UnitOfWork')?.has('NoticeService')).toBe(true);
+    expect(apiGraph.collaborators.get('UnitOfWork')?.has('NoticeService')).toBe(true);
   });
 
   it('the parts the worker runs share the settlement’s unit of work and operations', () => {

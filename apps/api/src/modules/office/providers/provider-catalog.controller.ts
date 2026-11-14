@@ -4,8 +4,8 @@ import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nes
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, bodyField } from '../activity/activity.decorator';
-import { ActivityInterceptor } from '../activity/activity.interceptor';
+import { Activity, bodyField } from '../../shared/activity.decorator';
+import { ActivityInterceptor } from '../../shared/activity.interceptor';
 import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
 import type { Actor as ActorShape } from '../kernel/types';
 import { ProviderCatalogService } from './provider-catalog.service';

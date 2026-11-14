@@ -1,5 +1,5 @@
 import { AuditRepository } from './audit.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { KernelModule } from '../office/kernel/kernel.module';
 import { AuditController } from './audit.controller';
 import { AuditService } from './audit.service';
 import { Module } from '@nestjs/common';

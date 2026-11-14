@@ -7,9 +7,9 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { emptyTables } from './empty-tables';
 import { officeTestApp } from './office-test-app';
 import { hashOnce } from './test-hash';
-import { AuditQuery } from '../audit/audit.schemas';
+import { AuditQuery } from '../../auditing/audit.schemas';
 import { LinesQuery } from '../lines/lines.schemas';
-import { NoticesQuery } from '../notices/notices.schemas';
+import { NoticesQuery } from '../../notifications/notices.schemas';
 import { TasksQuery } from '../tasks/tasks.schemas';
 import { FinanceQuery, ProviderOperationsQuery } from '../wallets/wallets.schemas';
 

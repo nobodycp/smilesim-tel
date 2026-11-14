@@ -1,10 +1,13 @@
 import { insertNotices } from './notice-insert.repository';
-import { env } from '../../../config';
+import { env } from '../../config';
 import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import IORedis, { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
-import type { Prisma } from '../../../generated/prisma/client';
-import { hrefFor, type NoticeDraft } from './notice-kinds';
+import type { Prisma } from '../../generated/prisma/client';
+import { hrefFor } from './notice-kinds';
+import type { NoticeActor, NoticeDraft, NoticeWriter, WrittenNotice } from '../shared/notices';
+
+export type { NoticeView, WrittenNotice } from '../shared/notices';
 
 /** Pub/sub behind the live channel. Redis in the app, memory in tests. */
 export type NoticeBus = {
@@ -12,20 +15,6 @@ export type NoticeBus = {
   subscribe(channel: string, handler: (message: string) => void): Promise<() => Promise<void>>;
 };
 
-/** What a browser receives: the same shape the list endpoint returns. */
-export type NoticeView = {
-  id: string;
-  kind: string;
-  payload: unknown;
-  actorName: string;
-  href: string;
-  read: boolean;
-  createdAt: string;
-};
-
-export type WrittenNotice = NoticeView & { userId: string };
-
-type Actor = { id: string; nickname: string };
 
 function channelOf(userId: string) {
   return `notice:${userId}`;
@@ -82,11 +71,12 @@ class RedisBus implements NoticeBus {
 }
 
 /**
- * Writes notices inside the caller's transaction and publishes them after that transaction commits.
+ * The notice writer (the platform's `NoticeWriter` port): writes notices inside the caller's transaction, and
+ * publishes them when the unit of work says the transaction committed. Also the live channel's subscriptions.
  * The actor never receives a notice for their own action.
  */
 @Injectable()
-export class NoticeService implements OnModuleDestroy {
+export class NoticeService implements NoticeWriter, OnModuleDestroy {
   private readonly bus: NoticeBus;
 
   constructor(@Optional() bus?: NoticeBus) {
@@ -103,7 +93,7 @@ export class NoticeService implements OnModuleDestroy {
    * account's name by something else: the settlement of a provider's verdict names the task's submitter as the
    * actor (ADR 0019, D12) and the submitter did not do it, so the submitter is told like any other recipient.
    */
-  async write(tx: Prisma.TransactionClient, userIds: string[], actor: Actor, draft: NoticeDraft, options: { tellActor?: boolean } = {}): Promise<WrittenNotice[]> {
+  async write(tx: Prisma.TransactionClient, userIds: string[], actor: NoticeActor, draft: NoticeDraft, options: { tellActor?: boolean } = {}): Promise<WrittenNotice[]> {
     const recipients = [...new Set(userIds)].filter((id) => id && (options.tellActor === true || id !== actor.id));
     if (recipients.length === 0) return [];
     const href = hrefFor(draft);

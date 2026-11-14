@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AuthModule } from './auth.module';
+import { ActivityModule } from '../auditing/activity.module';
 import { AUTH_STORE, StoredUser } from './auth.store';
 import { MemoryAuthStore } from './testing/memory-auth.store';
 
@@ -25,7 +26,7 @@ describe('user settings', () => {
     store.addUser(user({ loginName: 'owner', layer: 'branch', isBranchOwner: true }));
     store.addUser(user({ loginName: 'agent1', layer: 'agent' }));
     store.addUser(user({ loginName: 'seller', email: 'shop@example.com', twoFactorEnabled: true, twoFactorExempt: false, twoFactorMethod: 'sms' }));
-    const moduleRef = await Test.createTestingModule({ imports: [AuthModule] }).overrideProvider(AUTH_STORE).useValue(store).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [ActivityModule, AuthModule] }).overrideProvider(AUTH_STORE).useValue(store).compile();
     app = moduleRef.createNestApplication();
     await app.init();
     owner = `sid=${await store.saveSession({ userId: 'owner', scope: 'full', userAgent: '', ip: '' })}`;

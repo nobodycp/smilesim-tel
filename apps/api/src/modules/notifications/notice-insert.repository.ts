@@ -1,4 +1,4 @@
-import type { Prisma } from '../../../generated/prisma/client';
+import type { Prisma } from '../../generated/prisma/client';
 
 /**
  * The notice writer's one query: the rows go in through the caller's transaction, so they are taken back with

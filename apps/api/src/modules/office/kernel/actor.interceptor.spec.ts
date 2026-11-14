@@ -8,9 +8,10 @@ import { AUTH_STORE } from '../../auth/auth.store';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ApiExceptionFilter } from '../../shared/api-exception.filter';
 import { parseInput } from '../../shared/input';
-import { Activity } from '../activity/activity.decorator';
-import { ActivityInterceptor } from '../activity/activity.interceptor';
-import { ActivityRecorder } from '../activity/activity-recorder';
+import { Activity } from '../../shared/activity.decorator';
+import { ActivityInterceptor } from '../../shared/activity.interceptor';
+import { ActivityRecorder } from '../../shared/activity';
+import { NOTICE_WRITER_PROVIDERS } from '../../notifications/notice-writer.module';
 import { FundBody } from '../wallets/wallets.schemas';
 import { Actor, ActorInterceptor } from './actor.interceptor';
 import type { Actor as ActorShape } from './types';
@@ -43,6 +44,7 @@ describe('ActorInterceptor with ActivityInterceptor and a body pipe', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [ProbeController],
       providers: [
+        ...NOTICE_WRITER_PROVIDERS,
         ...KERNEL_PROVIDERS,
         { provide: AUTH_STORE, useValue: store },
         { provide: ActivityRecorder, useValue: { recordOffice: async (...args: unknown[]) => void recorded.push(args) } },

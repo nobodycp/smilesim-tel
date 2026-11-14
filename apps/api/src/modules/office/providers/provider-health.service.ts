@@ -8,7 +8,7 @@ import { PROVIDER_FAILED_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
 import { FAILURE_WINDOW_MINUTES, HEALTH_CHECK_SECONDS, healthOf, type Health } from './provider-health';
 import { ProviderAccountsService } from './provider-accounts.service';
 import { matchOverdue } from './match-simulator';
-import type { NoticeDraft } from '../notices/notice-kinds';
+import type { NoticeDraft } from '../../notifications/notice-kinds';
 
 const log = logger('ProviderHealth');
 
