@@ -129,14 +129,16 @@ const UNGUARDED_WRITES: Record<string, [standing: Standing, why: string]> = {
  * controller has no `@NoActivity`. What a record of any of them may hold is the action and the account, never a
  * password, a code, a secret or a challenge.
  */
-const UNRECORDED_WRITES: Record<string, ['gap' | 'step', string]> = {
-  'PATCH /auth/profile': ['gap', 'changes the e-mail, the phone and the password with no record; POST /auth/password records the same change'],
-  'DELETE /auth/two-factor': ['gap', 'an account turns its own second step off with no record; the owner clearing another account is recorded'],
-  'POST /auth/two-factor/setup': ['step', 'issues a secret; POST /auth/two-factor/confirm records the enrolment'],
-  'POST /auth/two-factor/method': ['step', 'sends a code; POST /auth/two-factor/method/confirm records the enrolment'],
-  'POST /auth/two-factor/send': ['step', 'sends a code; POST /auth/two-factor/verify records the outcome'],
-  'POST /auth/passkeys/options': ['step', 'issues a challenge; POST /auth/passkeys records the passkey'],
-  'POST /auth/passkey-login/options': ['step', 'issues a challenge; POST /auth/passkey-login records the sign-in'],
+// Slice R.A closed the seven writes of sign-in that recorded nothing: the two gaps are recorded (`PATCH /auth/profile`
+// as a password change or the account's contact, `DELETE /auth/two-factor` as `two_factor`), and the five steps say
+// why they record nothing (`@NoActivity`: each only issues a secret, a challenge or a code; the step that follows
+// records the outcome). The record of a gap holds the action and the account only.
+const DECLARED_STEPS: Record<string, string> = {
+  'POST /auth/two-factor/setup': 'issues a secret',
+  'POST /auth/two-factor/method': 'sends a code',
+  'POST /auth/two-factor/send': 'sends a code',
+  'POST /auth/passkeys/options': 'issues a challenge',
+  'POST /auth/passkey-login/options': 'issues a challenge',
 };
 
 const named = (route: Route) => `${route.method} ${route.path}`;
@@ -217,11 +219,16 @@ describe('authorization and activity follow the controller, not the path', () =>
     ]);
   });
 
-  it('every write route records its activity, or says why not; seven of sign-in record nothing today: two gaps, five steps', () => {
-    expect(writes.filter((route) => !route.recorded).map(named).sort()).toEqual(Object.keys(UNRECORDED_WRITES).sort());
-    const kinds = Object.values(UNRECORDED_WRITES).map(([kind]) => kind);
-    expect({ gaps: kinds.filter((kind) => kind === 'gap').length, steps: kinds.filter((kind) => kind === 'step').length }).toEqual({ gaps: 2, steps: 5 });
+  it('every write route records its activity, or says why not (slice R.A: none records nothing); the five steps of sign-in say why', () => {
+    expect(writes.filter((route) => !route.recorded).map(named)).toEqual([]);
+    const auth = readFileSync(join(SRC, 'modules/auth/auth.controller.ts'), 'utf8');
+    for (const [route, what] of Object.entries(DECLARED_STEPS)) {
+      const path = route.split(' ')[1].replace('/auth/', '');
+      const declared = new RegExp(`@Post\\('${path.replace(/\//g, '\\/')}'\\)\\n\\s+@NoActivity\\('a step: ${what}`).test(auth);
+      expect({ route, declared }).toEqual({ route, declared: true });
+    }
   });
+
 });
 
 describe('the protections that are on every route', () => {

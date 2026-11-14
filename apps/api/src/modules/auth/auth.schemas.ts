@@ -48,6 +48,15 @@ export const UpdateProfileBody = z.object({
 });
 export type UpdateProfileBody = z.input<typeof UpdateProfileBody>;
 
+/**
+ * Which activity a profile change is recorded under (slice R.A): a new password is a password change, any other
+ * field the account's contact. Read through the schema; the record never carries a value.
+ */
+export function profileChangeAction(body: unknown): 'password' | 'user_contact' {
+  const parsed = UpdateProfileBody.safeParse(body);
+  return parsed.success && parsed.data.nextPassword ? 'password' : 'user_contact';
+}
+
 /** `POST /auth/users/:loginName/password` */
 export const SetPasswordBody = z.object({ password });
 export type SetPasswordBody = z.input<typeof SetPasswordBody>;

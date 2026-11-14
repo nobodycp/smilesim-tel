@@ -28,8 +28,8 @@ pushed; the owner approves before one push and one CI run.
 | R.7 Providers | DONE | `9ec5b65` |
 | R.8 Remaining domains | DONE | `dc59623` |
 | R.9 Umbrella removal | DONE | `71f38aa` |
-| R.10 Prisma model names | DONE | see its section |
-| R.A Authentication | pending | |
+| R.10 Prisma model names | DONE | `c9f10f9` |
+| R.A Authentication | PARTIAL | see its section |
 | W.1, W.2 Web names | pending | |
 | R.11a HTTP security | pending | |
 | R.11b Route migration | pending | |
@@ -249,7 +249,7 @@ pushed; the owner approves before one push and one CI run.
   as in the R.8 run; alone and beside the heavy database specs it passes; recorded in the open items with what is
   and is not known). Architecture 64/64 (rules), lint, typecheck, check:copy 0.
 
-## R.10 Prisma model names — DONE
+## R.10 Prisma model names — DONE (`c9f10f9`)
 
 - `schema.prisma`: `model OfficeTask` → `model Task` + `@@map("OfficeTask")`, `model OfficeTaskNote` → `model TaskNote`
   + `@@map("OfficeTaskNote")`; relation types follow; relation field names were already neutral (`task`, `tasks`).
@@ -263,3 +263,22 @@ pushed; the owner approves before one push and one CI run.
 - **Results:** typecheck 0; tasks, sales, sealing, settlement schema, architecture, worker, HTTP contract and access
   specs on PostgreSQL and Redis: 45 files, 1005 tests passed.
 - **Rollback:** a revert; the database is untouched, so the previous image runs against it as before.
+
+## R.A Authentication audit and cleanup — PARTIAL
+
+- **Done:** `PATCH /auth/profile` records `password` when a new password is sent, else `user_contact`
+  (`profileChangeAction`, through the body's schema), success and refusal with the refusal code; `DELETE
+  /auth/two-factor` records `two_factor`, success and refusal. The record holds the action and the account (the
+  session) only. The five steps (`two-factor/setup`, `two-factor/method`, `two-factor/send`, `passkeys/options`,
+  `passkey-login/options`) carry `@NoActivity('a step: …')`: each only issues a secret, a challenge or a code, and
+  the step that follows records the outcome. `write-without-activity` 7 → 0; the HTTP contract now requires every
+  write route to record or declare, and pins the five declarations.
+- **Tests:** `modules/auth/own-activity.http.spec.ts` (new): the contact change, a refused password change and the
+  second step's removal are recorded under the right action, and no password, field value or code appears in any
+  record. Auth, HTTP contract and architecture specs: 248 passed.
+- **Not done:** thinning `auth.controller.ts` (35 routes, about 620 lines). It is security code whose contracts
+  (cookies, session rotation, records) are spread over every handler; reorganising it is a structural change with no
+  failing test to drive it and the risk sits on sign-in. Left for its own slice with the owner's word.
+- **Seen in passing (not changed):** a stored password hash that is not an argon2 string makes `passwordMatches`
+  throw, so such an account's sensitive profile change answers 500 instead of `WRONG_CURRENT_PASSWORD`. Real
+  accounts are created with argon2 hashes; only hand-made test rows have such a hash.

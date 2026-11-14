@@ -100,7 +100,13 @@ goes down; the backend map updated in the same commit.
   delegates `officeTask`/`officeTaskNote` → `task`/`taskNote`, the types `Prisma.OfficeTask*` → `Prisma.Task*`; raw
   SQL, constraint names and the sealing script's table list keep `OfficeTask` (database names). The fault-injection
   spec names the model `Task` (Prisma's query hooks are given the model's name). Commit: see `git log --grep 'R.10'`.
-- [ ] **R.A** `auth.controller.ts` thinned; the seven unrecorded writes judged.
+- [~] **R.A** `auth.controller.ts` thinned; the seven unrecorded writes judged. **Partial.** Done: the two gaps are
+  recorded (`PATCH /auth/profile` as `password` when a new password is sent, else `user_contact`;
+  `DELETE /auth/two-factor` as `two_factor`; success and refusal; the action and the account only, chosen through the
+  schema, never a value), the five steps declared `@NoActivity('a step: …')`; `write-without-activity` 7 → 0;
+  `own-activity.http.spec.ts` proves no password, value or code reaches a record. Not done: thinning the controller
+  (35 routes of sign-in, sessions and second steps): a structural change to security code that no test asked for;
+  left for its own slice. Commit: see `git log --grep 'R.A'`.
 - [ ] **W.1, W.2** Web names.
 - [ ] **R.11a** The duplicate guard and the path-named middleware rules separated from the prefix.
 - [ ] **R.11b** Both paths served; the web moved; old-path hits counted for one release.
@@ -117,7 +123,7 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 | `root-domain-code` | 2 (R.3: `doors.ts`; R.5: the worker's wiring; R.7: the start-up check is bootstrap; left: two command-line scripts that reach a module, whose `dist/` path operators run) | domain code at `src/` root | R.3, R.5 |
 | `operation-writes` | 0 (R.4) | `tasks/task-operation.ts` wrote a provider operation | done |
 | `transaction-outside-unit-of-work` | 2 (R.5: the attestation; R.7: the reconciliation and the run modes; left: the auth store's boot seeder and the eSIM sealing script, both stated) | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
-| `write-without-activity` | 7 | sign-in routes that record nothing | R.A |
+| `write-without-activity` | 0 (R.A) | sign-in routes that recorded nothing | done |
 | `module-surface` | in force for 5 of 12 (R.9: reporting, auditing, notifications, tasks, sales) | the others still import each other's files | later, module by module |
 | unguarded writes | 27 | `auth` and `branding` writes have no duplicate guard: 1 needs protection, 16 have an equivalent, 10 are authentication steps that are never replayed (below) | R.11a, R.A |
 | lock order | no guard | written in `financial-invariants.md`, held by the PostgreSQL specs | stays a review rule |

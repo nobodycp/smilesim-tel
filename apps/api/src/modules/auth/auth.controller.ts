@@ -9,6 +9,7 @@ import {
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ActivityRecorder, type ActivityDraft } from '../platform/activity';
+import { NoActivity } from '../platform/activity.decorator';
 import { cookieBase, readCookie } from '../platform/cookies';
 import { AuthService, Failure, type Outcome } from './auth.service';
 import { SESSION_COOKIE_SECONDS } from './sessions';
@@ -31,6 +32,7 @@ import {
   TwoFactorCodeBody,
   TwoFactorMethodBody,
   UpdateProfileBody,
+  profileChangeAction,
   UserContactBody,
   parseBody,
 } from './auth.schemas';
@@ -155,6 +157,9 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.auth.updateProfile(sessionIdOf(req), body);
+    // Slice R.A: recorded, as `POST /auth/password` is. A new password is a password change; any other field is the
+    // account's contact. The record holds the action and the account only, never a password or a field's value.
+    await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: profileChangeAction(body) }, result.kind === 'error' ? 'fail' : 'ok', result.kind === 'error' ? result.code : '');
     if (result.kind === 'error') return failWith(res, result);
     return result.profile;
   }
@@ -234,6 +239,7 @@ export class AuthController {
   }
 
   @Post('two-factor/setup')
+  @NoActivity('a step: issues a secret; `two-factor/confirm` records the enrolment, success and failure')
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Begin 2FA enrollment; returns otpauth URI' })
@@ -297,6 +303,8 @@ export class AuthController {
   @ApiErrorResponse(401)
   async disableTwoFactor(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.disableOwnTwoFactor(sessionIdOf(req));
+    // Slice R.A: an account turning its own second step off is recorded, as the owner clearing another's is.
+    await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, result.kind === 'error' ? 'fail' : 'ok', result.kind === 'error' ? result.code : '');
     if (result.kind === 'error') return failWith(res, result);
     return { ok: true };
   }
@@ -394,6 +402,7 @@ export class AuthController {
   }
 
   @Post('two-factor/method')
+  @NoActivity('a step: sends a code; `two-factor/method/confirm` records, success and failure')
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Choose SMS or email as the 2FA method; sends a code to confirm it' })
@@ -424,6 +433,7 @@ export class AuthController {
   }
 
   @Post('two-factor/send')
+  @NoActivity('a step: sends a code; `two-factor/verify` records, success and failure')
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'During the sign-in challenge: send the SMS or email code (once every 30 seconds)' })
@@ -445,6 +455,7 @@ export class AuthController {
   }
 
   @Post('passkeys/options')
+  @NoActivity('a step: issues a challenge; `POST passkeys` records, success and failure')
   @HttpCode(200)
   @ApiCookieAuth('sid')
   @ApiOperation({ summary: 'Begin adding a passkey: options for navigator.credentials.create' })
@@ -486,6 +497,7 @@ export class AuthController {
   }
 
   @Post('passkey-login/options')
+  @NoActivity('a step: issues a challenge; `passkey-login` records the sign-in, success and failure')
   @HttpCode(200)
   @ApiOperation({ summary: 'Begin a passkey sign-in: a one-time id and options for navigator.credentials.get' })
   @ApiErrorResponse(400)
