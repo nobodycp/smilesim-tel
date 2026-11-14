@@ -48,7 +48,7 @@ describe('DuplicateGuardInterceptor over HTTP', () => {
       },
     } as unknown as UnitOfWork['prismaClient'];
     app = moduleRef.createNestApplication();
-    // Global, as OfficeModule registers it (APP_INTERCEPTOR): it runs before each controller's own interceptors.
+    // Global, as the platform's DuplicateGuardModule registers it (APP_INTERCEPTOR): it runs before each controller's own interceptors.
     guard = new DuplicateGuardInterceptor();
     app.useGlobalInterceptors(guard);
     await app.init();

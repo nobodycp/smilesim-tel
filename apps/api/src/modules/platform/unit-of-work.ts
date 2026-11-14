@@ -5,7 +5,7 @@ import { logger, reason } from './log';
 import { PrismaService } from './prisma.service';
 import { NOTICE_WRITER, type NoticeWriter, type WrittenNotice } from './notices';
 
-const log = logger('Office');
+const log = logger('UnitOfWork');
 
 /** A client to read or write with: the process's own, or the one a transaction handed out (rule 1.3). */
 export type Db = Prisma.TransactionClient | PrismaClient;

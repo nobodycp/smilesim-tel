@@ -7,7 +7,7 @@ import { companies } from '../catalog/shipped/shipped-catalog';
 import { ApiFacade } from './api-facade';
 import { APPLY_ERRORS, DECISIONS } from '../sales/settlement/activation-settlement.rules';
 
-// The web app keeps its own copy of the shape of these answers (apps/web/lib/api-types.ts and features/lines/api.ts: OfficeMe,
+// The web app keeps its own copy of the shape of these answers (apps/web/lib/api-types.ts and features/lines/api.ts: DeskMe,
 // HomePayload, LineRow, PosChoice). There is no shared package, so this test is the guard: the key
 // lists below are written by hand, the service must answer with exactly them, and the web types must
 // declare exactly them. Change a shape on one side and this fails until the other side and the list follow.
@@ -121,7 +121,7 @@ async function posServiceWith(tables: Record<string, unknown>) {
 const at = new Date(Date.UTC(2026, 9, 1));
 
 describe('office response shapes', () => {
-  it('answers /office/me with the keys of OfficeMe', async () => {
+  it('answers /office/me with the keys of DeskMe (the web\'s type, `OfficeMe` before slice W.1)', async () => {
     const { service, gate } = await serviceWith({ wallet: { findUnique: async () => ({ balance: 10, ceiling: 100 }) } });
     expect(keysOf(await service.me(gate))).toEqual(sorted(ME_KEYS));
   });
@@ -378,7 +378,7 @@ describe('office response shapes', () => {
 
 // The same lists against the web declarations. Skipped where the web app is not checked out beside the API.
 const webApi = join(__dirname, '../../../../web/lib/api-types.ts');
-// The officeLines envelope is declared with its call (phase 4.3 split the web client by domain).
+// The lines envelope (the web's `lines` call, `officeLines` before slice W.2) is declared with its call (phase 4.3 split the web client by domain).
 const webLines = join(__dirname, '../../../../web/features/lines/api.ts');
 const describeWeb = existsSync(webApi) ? describe : describe.skip;
 
@@ -414,8 +414,8 @@ function inlineKeys(body: string, field: string): string[] {
 describeWeb('web types match the pinned shapes', () => {
   const source = [webApi, webLines].map((file) => (existsSync(file) ? readFileSync(file, 'utf8') : '')).join('\n');
 
-  it('OfficeMe', () => {
-    expect(declared(typeBody(source, 'OfficeMe'))).toEqual({ required: sorted(ME_KEYS), optional: [] });
+  it('DeskMe', () => {
+    expect(declared(typeBody(source, 'DeskMe'))).toEqual({ required: sorted(ME_KEYS), optional: [] });
   });
 
   it('HomePayload and its rows', () => {
@@ -424,16 +424,16 @@ describeWeb('web types match the pinned shapes', () => {
     expect(inlineKeys(body, 'operations')).toEqual(sorted(HOME_OPERATION_KEYS));
   });
 
-  it('LineRow, PosChoice and the officeLines envelope', () => {
+  it('LineRow, PosChoice and the lines envelope', () => {
     expect(declared(typeBody(source, 'LineRow'))).toEqual({ required: sorted(LINE_KEYS), optional: sorted(LINE_OPTIONAL_KEYS) });
     // The code is declared on the detail only, and the detail call answers that type.
     expect(source).toMatch(/export type LineDetail = LineRow & \{ esimQr: string \| null \};/);
-    expect(source).toMatch(/officeLine: \(id: string\) => request<\{ line: LineDetail; history: LineHistory\[\] \}>/);
+    expect(source).toMatch(/\n {2}line: \(id: string\) => request<\{ line: LineDetail; history: LineHistory\[\] \}>/);
     const pos = /export type PosChoice = \{([^}]*)\}/.exec(source);
     expect(sorted([...(pos?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]))).toEqual(sorted(POS_CHOICE_KEYS));
     // The envelope is the shared `Page<Row>` plus the list's own keys (platform/paging.ts on this side).
     const page = /export type Page<Row> = \{([^}]*)\}/.exec(source);
-    const own = /officeLines:[\s\S]*?request<Page<LineRow> & \{([^}]*)\}>/.exec(source);
+    const own = /\n {2}lines:[\s\S]*?request<Page<LineRow> & \{([^}]*)\}>/.exec(source);
     const keys = [page?.[1] ?? '', own?.[1] ?? ''].flatMap((body) => [...body.matchAll(/(\w+):/g)].map((match) => match[1]));
     expect(sorted(keys)).toEqual(sorted(LINES_KEYS));
   });

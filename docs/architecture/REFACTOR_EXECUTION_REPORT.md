@@ -32,8 +32,8 @@ pushed; the owner approves before one push and one CI run.
 | R.A Authentication | PARTIAL | `77c1cf8` |
 | W.1, W.2 Web names | DONE | `99c50fa` |
 | R.11a HTTP security | DONE | `518f039` |
-| R.11b Route migration | DONE | see its section |
-| R.11c Legacy route removal | pending | |
+| R.11b Route migration | DONE | `5cc9f2f` |
+| R.11c Legacy route removal | BLOCKED_EXTERNAL_VALIDATION | none (nothing removed) |
 
 ## Guard counts
 
@@ -318,7 +318,7 @@ pushed; the owner approves before one push and one CI run.
   and activity checks are unchanged and green. Contract, duplicate-guard, auth and branding specs: 215 passed.
 - **Not changed:** the middleware's path lists (single routes). R.11b adds the new paths beside them.
 
-## R.11b API route migration — DONE
+## R.11b API route migration — DONE (`5cc9f2f`)
 
 - **Both paths served:** `modules/platform/route-prefixes.ts` holds `RESOURCE_PREFIXES = ['v1', 'office']`; all 20
   resource controllers are `@Controller(RESOURCE_CONTROLLER_PREFIXES)`. `resourcePaths(x)` gives the middleware's
@@ -339,3 +339,18 @@ pushed; the owner approves before one push and one CI run.
   answer and activity event; the same permission matrix): 516 tests; the contract reads both prefixes (76 writes
   each, one for one) and the middleware's lists; registry spec. All green.
 - **Not done:** Swagger marking `/office/…` deprecated (documentation only; the paths are listed twice).
+
+## R.11c Final legacy route removal — BLOCKED_EXTERNAL_VALIDATION
+
+- **Why blocked:** removing `/office/*` safely needs evidence that only a deployment can give: a release that serves
+  both paths (R.11b) running long enough that its logs show no `[LegacyPaths] old paths used:` line, and no web image
+  older than R.11b remaining as a rollback target. Local tests cannot show what real browsers and caches call.
+- **Conditions to complete:** (1) R.11b deployed (API first, then worker, then web); (2) one full release with no
+  old-path line in the API logs; (3) the previous web image retired as a rollback target; (4) the owner's word.
+- **Then the slice is small:** `RESOURCE_PREFIXES = ['v1']` (the middleware's `office` twins go with it);
+  `LegacyPathCounter` and `LegacyPathsModule` deleted; the route specs' `/office/` rows replaced by the `/v1/` ones;
+  `scripts/backup/rehearsal-smoke.mjs` and the Arabic handover move to `/v1/…`; `canonicalPath` keeps mapping to one
+  prefix (`v1`), which resets the guard's keys once at that deploy (a 10 s / 24 h window).
+- **Rollback rule introduced by R.11b (recorded in the Arabic handover):** the new web calls `/v1/…`, which an API
+  image older than R.11b does not serve. Deploy the API first; never roll the API back alone below R.11b while the new
+  web runs: roll the web back first. The old web against the new API works.

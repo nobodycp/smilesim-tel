@@ -134,7 +134,12 @@ goes down; the backend map updated in the same commit.
   permission for every route under `/v1` (516 tests), the contract asserts both prefixes one for one and the
   two-path write, `legacy-paths.spec.ts` the counter; checked on port 3000 (`/api/v1/…` answers, the stream
   included). Handover (Arabic) says what the log line means. Commit: see `git log --grep 'R.11b'`.
-- [ ] **R.11c** `/office/*` removed.
+- [ ] **R.11c** `/office/*` removed. **BLOCKED_EXTERNAL_VALIDATION** (2026-11-14). It needs what no local test can
+  give: a deployed release that serves both paths (R.11b) and whose logs show no `[LegacyPaths] old paths used:` line
+  for the whole release, and no web image older than R.11b left as a rollback target. Then: `RESOURCE_PREFIXES =
+  ['v1']`, the `office` twins leave the middleware's lists by themselves, `LegacyPathCounter` and its module go,
+  the route specs drop the `/office/` rows, and `scripts/backup/rehearsal-smoke.mjs` and the handover move to
+  `/v1/…`. Until then nothing is removed.
 
 Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 

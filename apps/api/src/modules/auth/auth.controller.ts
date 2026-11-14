@@ -161,7 +161,9 @@ export class AuthController {
     const result = await this.auth.updateProfile(sessionIdOf(req), body);
     // Slice R.A: recorded, as `POST /auth/password` is. A new password is a password change; any other field is the
     // account's contact. The record holds the action and the account only, never a password or a field's value.
-    await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: profileChangeAction(body) }, result.kind === 'error' ? 'fail' : 'ok', result.kind === 'error' ? result.code : '');
+    // Only a request that brought a session is recorded: an anonymous one has no account to name, and recording it
+    // would let anyone add rows without signing in (review of slice R.A).
+    if (sessionIdOf(req)) await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: profileChangeAction(body) }, result.kind === 'error' ? 'fail' : 'ok', result.kind === 'error' ? result.code : '');
     if (result.kind === 'error') return failWith(res, result);
     return result.profile;
   }
@@ -306,7 +308,7 @@ export class AuthController {
   async disableTwoFactor(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.disableOwnTwoFactor(sessionIdOf(req));
     // Slice R.A: an account turning its own second step off is recorded, as the owner clearing another's is.
-    await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, result.kind === 'error' ? 'fail' : 'ok', result.kind === 'error' ? result.code : '');
+    if (sessionIdOf(req)) await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, result.kind === 'error' ? 'fail' : 'ok', result.kind === 'error' ? result.code : '');
     if (result.kind === 'error') return failWith(res, result);
     return { ok: true };
   }

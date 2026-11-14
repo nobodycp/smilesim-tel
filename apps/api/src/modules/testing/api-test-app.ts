@@ -11,7 +11,7 @@ import { DOMAIN_CONTROLLERS, DOMAIN_PROVIDERS } from './domain-lists';
 /**
  * For HTTP specs: every office route, as the app serves it, over the given auth store and in-memory tables.
  * Activity events land in `recorded`; notices are written and published through `notice` when given. `global`
- * interceptors run in front of every route, as `OfficeModule` registers the duplicate guard. `gateway` replaces the
+ * interceptors run in front of every route, as the platform's `DuplicateGuardModule` registers the duplicate guard. `gateway` replaces the
  * provider gateway for the spec.
  */
 export async function apiTestApp(store: AuthStore, tables: Record<string, unknown>, notice?: Partial<NoticeService>, global: NestInterceptor[] = [], gateway?: ProviderGateway) {

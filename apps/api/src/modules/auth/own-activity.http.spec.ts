@@ -60,11 +60,12 @@ describe('an account’s own writes in /auth are recorded, and the record holds 
     expect(JSON.stringify(recorded)).not.toMatch(/Wrong-Current-9|Next-Secret-Pass-7/);
   });
 
-  it('turning the account’s own second step off is recorded under two_factor, and a request with no session as a refusal', async () => {
+  it('turning the account’s own second step off is recorded under two_factor; a request with no session is refused and records nothing', async () => {
     await request(app.getHttpServer()).delete('/auth/two-factor').set('Cookie', seller);
     const anonymous = await request(app.getHttpServer()).delete('/auth/two-factor');
-    expect(anonymous.status).toBe(401);
-    expect(recorded.map(({ event }) => event)).toEqual([{ action: 'two_factor' }, { action: 'two_factor' }]);
-    expect(recorded[1]).toMatchObject({ result: 'fail', reason: 'LOGIN_REQUIRED' });
+    const anonymousProfile = await request(app.getHttpServer()).patch('/auth/profile').send({ email: 'x@example.com' });
+    expect([anonymous.status, anonymousProfile.status]).toEqual([401, 401]);
+    // An anonymous call names no account: recording it would let anyone add rows without signing in.
+    expect(recorded.map(({ event }) => event)).toEqual([{ action: 'two_factor' }]);
   });
 });
