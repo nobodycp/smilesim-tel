@@ -14,7 +14,7 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
-| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | — |
+| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0 |
 | P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started | — |
 | P2 Fold graphite.css into its owners, remove dead rules | P2.1a–P2.11 | not started | — |
 | P3 Core components | P3.1–P3.14 | not started | — |
@@ -446,7 +446,7 @@ decision", not as open defects, and the owner was told they remain visible. |
 
 ## P0 — Owner decisions and isolated high-severity fixes
 
-### P0.1 Owner decisions record
+### P0.1 Owner decisions record — 7517db0
 
 - **Goal:** get D1–D28 (spec table) answered and recorded before any code changes; tell the owner that CHK-AUDIT and P8 runner logins can sign out his own oldest `branch` sessions beyond the account's limit; fix the button contradiction in the
   doc and in the always-applied rule file first (conflict 10), so later demotions are not read as regressions.
