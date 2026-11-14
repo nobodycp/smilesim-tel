@@ -14,7 +14,7 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
-| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0 |
+| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10 |
 | P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started | — |
 | P2 Fold graphite.css into its owners, remove dead rules | P2.1a–P2.11 | not started | — |
 | P3 Core components | P3.1–P3.14 | not started | — |
@@ -506,7 +506,7 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
   a) and P0.1 is committed on it; the audit file tracked or the spec says it stays local.
 - **Commit:** `docs: UI maintenance decisions D1–D28, one button model in DESIGN.md and the UI rule (UI maintenance P0.1; ADR 0021)`
 
-### P0.2 Textarea uses the interface font
+### P0.2 Textarea uses the interface font — 983ea10
 
 - **Goal:** every `textarea` inherits the font (today the browser's monospace ≈13px).
 - **Files:** `app/styles/base.css` (rule `button, input, select { font: inherit; color: inherit; }`, :19),
