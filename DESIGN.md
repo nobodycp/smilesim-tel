@@ -74,7 +74,10 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
 - Folded sidebar: pressing or hovering a group (التقارير) opens its pages in the flyout menu; it never leaves the page.
 - User page head: a 48px cut-corner crimson mark, the name, the layer tag, the state; wallet actions are secondary.
 - Task ticket: the operation and its state are the title, number · company · package the lede; the log is the wide
-  side at the reading start, the details the narrow side, each its own card.
+  side at the reading start, the details the narrow side, each its own card. On a ticket 36rem wide or narrower
+  (`@container task-ticket`) the details sit above the log, at most 40% of the board high and scrolling inside it;
+  the board then scrolls as one column, the log at its full length with the compose bar at its end (a message wider
+  than the ticket scrolls sideways in the log).
   A task that went to a provider opens its details with the operation's block (`.po-panel`): a title and the
   phase as a `Badge` (waiting `info`, unconfirmed `warning`, failed `danger`, a success that could not be settled
   `violet`, applied `success`), one sentence, the amount with what became of it, then the decisions. The queue

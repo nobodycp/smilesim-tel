@@ -1,5 +1,6 @@
 /* Tasks (app/tasks, app/tasks/[id]): task facts, operations, the ticket and the inspection tree. */
-/* Ticket fills the canvas; only the inspection tree scrolls. */
+/* Ticket fills the canvas; only the inspection tree scrolls (on a ticket 36rem or narrower the board scrolls instead,
+   see the container block below). */
 .desk > .pane.task-ticket {
   display: flex;
   flex-direction: column;
@@ -220,17 +221,31 @@
   height: 32px;
   min-height: 32px;
 }
+/* A narrow ticket: the details above the log, at most 40% of the board (a flex column, so the percentage resolves
+   against the board), and the board scrolls to the log's end and its compose bar. The log is then at its full length
+   and scrolls only sideways (a message wider than the ticket), so a vertical wheel or touch scroll that starts on it
+   reaches the board. */
 @container task-ticket (max-width: 36rem) {
   .task-board {
-    grid-template-columns: 1fr;
-    grid-template-rows: max-content minmax(18rem, 1fr);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
   }
   .task-rail {
-    min-height: max-content;
+    flex: none;
     max-height: 40%;
     border-inline-end: 0;
     border-block-end: 1px solid var(--rd-line);
     overflow: auto;
+  }
+  .task-thread {
+    flex: 1 0 auto;
+    min-height: 12rem;
+  }
+  .task-tree-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior: auto;
   }
 }
 @container task-ticket (max-width: 28rem) {
