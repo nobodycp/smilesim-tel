@@ -14,7 +14,7 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
-| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48 |
+| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48, P0.5 b8bcb4d |
 | P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started | — |
 | P2 Fold graphite.css into its owners, remove dead rules | P2.1a–P2.11 | not started | — |
 | P3 Core components | P3.1–P3.14 | not started | — |
@@ -578,7 +578,7 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
   recorded in `look.md` (the diagonal stays inside the visible shape, never outside it).
 - **Commit:** `fix(web): number-card operations show focus inside their cut corner (UI maintenance P0.4; closes 3.10-03)`
 
-### P0.5 Task ticket scrolls on narrow widths
+### P0.5 Task ticket scrolls on narrow widths — b8bcb4d
 
 - **Goal:** under `@container task-ticket (max-width: 36rem)` the conversation and compose bar stay reachable.
 - **Files:** `app/styles/desk/tasks.css` (`@container task-ticket (max-width: 36rem)` block, :223–235); `DESIGN.md`
