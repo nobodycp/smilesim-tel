@@ -9,7 +9,7 @@ import type { Actor } from '../../../access/types';
 import { UnitOfWork } from '../../../platform/unit-of-work';
 import { requireOwner } from '../../../access/policy';
 import { ProviderDispatchRepository } from './provider-dispatch.repository';
-import { ProviderCredentialBody } from '../providers.schemas';
+import { ProviderCredentialBody } from '../../providers.schemas';
 import { dispatchSettings, eligibility, mayOpenDispatch, workerReady, type DispatchRefusal, type DispatchSettings, type ProviderDispatchState, type ProviderTarget } from './dispatch-policy';
 
 /** What the branch owner reads of a provider's dispatch: where each condition stands. Never a credential. */

@@ -1,4 +1,4 @@
-import { openGate } from '../office/providers/testing/open-gate';
+import { openGate } from '../providers/testing/open-gate';
 import { useSealingKey } from '../platform/testing/sealing-key';
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
@@ -11,9 +11,9 @@ import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { DuplicateGuardInterceptor } from '../platform/duplicate-guard.interceptor';
 import { open } from '../platform/secret-box';
 import { NoticeService } from '../notifications/notice.service';
-import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../office/providers/operations/provider-operations.repository';
-import { ProviderOperationsService } from '../office/providers/operations/provider-operations.service';
-import { ScriptedGateway } from '../office/providers/testing/scripted-gateway';
+import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../providers/integration/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../providers/integration/operations/provider-operations.service';
+import { ScriptedGateway } from '../providers/testing/scripted-gateway';
 import { PROVIDER_DISPATCH_NOTE, PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../platform/stored-text';
 import { officeTestApp } from '../office/testing/office-test-app';
 import { operationKey } from './settlement/activation-settlement.rules';
@@ -490,7 +490,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     it('an operation that does get recorded is sent nowhere by the worker\'s own gateway: it is put back, and fails after its attempts, with the hold kept', async () => {
       const { taskId, operationId } = await opened();
       // The dispatcher as the worker builds it today: over the simulated gateway.
-      const { SimulatedProviderGateway } = await import('../office/providers/gateway/simulated-gateway');
+      const { SimulatedProviderGateway } = await import('../providers/integration/gateway/simulated-gateway');
       const worker = buildProviderDispatch(prisma, {} as IORedis, openGate(new SimulatedProviderGateway()), `s11w-${tag}`, { write: async () => [], publish: async () => undefined } as unknown as NoticeService);
       for (let attempt = 0; attempt < 8; attempt += 1) await worker.handle({ operationId });
       const row = await operation(operationId);

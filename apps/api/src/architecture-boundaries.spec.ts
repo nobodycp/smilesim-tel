@@ -161,6 +161,19 @@ describe('module boundaries, on the source as it is', () => {
     expect(back.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual([]);
   });
 
+  it('the cuts of slice R.7 hold: the integration imports nothing of the directory or the account, wallets nothing of providers, the platform nothing above it', () => {
+    // The integration (gateway, dispatch, operations) is what a real provider is put behind (S.12b): it stands on
+    // its own. The wallets read no provider (the provider-operations read with its match state is the accounts').
+    const inside = (file: string, folder: string) => file.startsWith(`modules/providers/${folder}/`);
+    const back = edges.filter((edge) =>
+      (inside(edge.from, 'integration') && (inside(edge.to, 'directory') || inside(edge.to, 'account'))) ||
+      (ownerOf(edge.from) === 'wallets' && ownerOf(edge.to) === 'providers') ||
+      (ownerOf(edge.from) === 'platform' && ownerOf(edge.to) !== 'platform' && ownerOf(edge.to) !== null));
+    expect(back.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual([]);
+    // It looked at the three folders.
+    for (const folder of ['integration', 'directory', 'account']) expect({ folder, files: production.some(({ file }) => inside(file, folder)) }).toEqual({ folder, files: true });
+  });
+
   it('the worker’s composition root composes and schedules; it holds no query and no rule (slice R.5)', () => {
     // `src/worker/` is the worker's bootstrap: the one description of the money path, the timers, the stop. What
     // reads or writes the database there would be domain code outside every module, as `provider-dispatch.ts` at the
@@ -172,7 +185,8 @@ describe('module boundaries, on the source as it is', () => {
   });
 
   it('root-domain-code: the source root holds bootstrap and middleware, not domain code', () => {
-    const bootstrap = /^(main|app\.module|worker|health\.controller|(door|origin|rate-limit)\.middleware)\.ts$/;
+    // `production-config.ts` is the start-up check `main.ts` and `worker.ts` run first (slice R.7): bootstrap.
+    const bootstrap = /^(main|app\.module|worker|health\.controller|production-config|(door|origin|rate-limit)\.middleware)\.ts$/;
     const rootFiles = production.filter(({ file }) => !file.includes('/') && !bootstrap.test(file));
     const reaching = rootFiles.filter(({ file }) => edges.some((edge) => edge.from === file && edge.to.startsWith('modules/') && ownerOf(edge.to) !== 'platform'));
     check('root-domain-code', reaching.map(({ file }) => ({ file, line: 1, text: 'imports a module that is not the platform' })));

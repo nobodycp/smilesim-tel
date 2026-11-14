@@ -1,4 +1,4 @@
-import { openGate } from '../providers/testing/open-gate';
+import { openGate } from '../../providers/testing/open-gate';
 import 'reflect-metadata';
 import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
@@ -8,8 +8,8 @@ import { OPERATIONS_QUEUE, buildProviderDispatch } from '../../../worker/provide
 import { capturedOutput } from '../../platform/testing/captured-output';
 import { UnitOfWork } from '../../platform/unit-of-work';
 import type { NoticeService } from '../../notifications/notice.service';
-import { OPERATION_REQUESTED } from '../providers/operations/provider-operations.repository';
-import { ScriptedGateway } from '../providers/testing/scripted-gateway';
+import { OPERATION_REQUESTED } from '../../providers/integration/operations/provider-operations.repository';
+import { ScriptedGateway } from '../../providers/testing/scripted-gateway';
 import { OutboxRelay, RELAY_LEASE_MS, type OutboxPublisher } from './outbox-relay';
 import { OutboxRepository, type ClaimedMessage } from './outbox.repository';
 

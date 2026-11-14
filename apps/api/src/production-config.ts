@@ -1,8 +1,8 @@
 // What a production process must be told before it starts (ADR 0016). One pure check over the environment, run by
 // main.ts before anything is opened. It names the variable and the rule, never the value.
 
-import { dispatchSettings } from './modules/office/providers/dispatch/dispatch-policy';
-import { SUPPORTED_ADAPTERS } from './modules/office/providers/dispatch/adapter-manifest';
+import { dispatchSettings } from './modules/providers/integration/dispatch/dispatch-policy';
+import { SUPPORTED_ADAPTERS } from './modules/providers/integration/dispatch/adapter-manifest';
 
 type Env = Record<string, string | undefined>;
 

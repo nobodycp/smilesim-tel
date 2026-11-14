@@ -1,5 +1,8 @@
-import { csvDocument } from '../../platform/csv';
-import { shekels } from '../wallets/finance-summary';
+import { csvDocument } from '../platform/csv';
+import { shekels } from '../office/wallets/finance-summary';
+
+// A report's CSV with its money in shekels: the wallets' (who write money as text, `shekels`) since slice R.7, so
+// that the provider accounts and the reports use it without one importing the other.
 
 /** One report cell: text or a number as is, or `{ money }` in agorot written in shekels. */
 export type CsvValue = string | number | { money: number };

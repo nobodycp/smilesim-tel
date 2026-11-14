@@ -1,4 +1,4 @@
-import type { OperationStatus } from '../providers/operations/provider-operation.rules';
+import type { OperationStatus } from '../../providers/integration/operations/provider-operation.rules';
 
 // What a task reads of its provider operation (ADR 0019 D6, D7, D14, O6): the operation's phase for the task, what
 // the phase allows on the task, what became of the task's hold, whether a repeated request is the same one, and

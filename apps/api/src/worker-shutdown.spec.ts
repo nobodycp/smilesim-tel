@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type IORedis from 'ioredis';
 import type { PrismaClient } from './generated/prisma/client';
 import { NoticeService, type NoticeBus } from './modules/notifications/notice.service';
-import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate';
+import type { SendGate } from './modules/providers/integration/dispatch/dispatch-gate';
 import type { NoticeWriter } from './modules/platform/notices';
 import { SWEEP_EVERY_MS, buildProviderDispatch, startProviderDispatchTimers } from './worker/provider-dispatch';
 

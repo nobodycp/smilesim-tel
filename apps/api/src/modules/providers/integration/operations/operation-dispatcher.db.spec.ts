@@ -1,4 +1,4 @@
-import { openGate } from '../testing/open-gate';
+import { openGate } from '../../testing/open-gate';
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -7,7 +7,7 @@ import { createPrismaClient } from '../../../../db';
 import { capturedOutput } from '../../../platform/testing/captured-output';
 import { UnitOfWork } from '../../../platform/unit-of-work';
 import type { NoticeService } from '../../../notifications/notice.service';
-import { ScriptedGateway } from '../testing/scripted-gateway';
+import { ScriptedGateway } from '../../testing/scripted-gateway';
 import { OperationDispatcher, recoverExpired } from './operation-dispatcher';
 import { ATTEMPT_LEASE_MS, MAX_ATTEMPTS, type OperationRequest, type SendEvidence } from './provider-operation.rules';
 import { OPERATION_REQUESTED, ProviderOperationsRepository } from './provider-operations.repository';
@@ -342,10 +342,11 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     await recoverExpired(service);
     // Every test above ran through the watched client: only these three tables were ever asked for.
     expect([...touched].sort()).toEqual(['OutboxMessage', 'Provider', 'ProviderOperation']);
-    // And by construction: nothing under operations/ or outbox/ imports the wallets, the lines or the tasks.
-    const folders = [__dirname, join(__dirname, '..', '..', 'outbox')];
+    // And by construction: nothing under operations/ or outbox/ imports the wallets, the lines (`sales/` since slice
+    // R.6) or the tasks.
+    const folders = [__dirname, join(__dirname, '..', '..', '..', 'office', 'outbox')];
     const sources = folders.flatMap((folder) => readdirSync(folder).filter((file) => file.endsWith('.ts') && !file.endsWith('.spec.ts')).map((file) => readFileSync(join(folder, file), 'utf8')));
     expect(sources.length).toBeGreaterThanOrEqual(7);
-    for (const source of sources) expect(source).not.toMatch(/from '[^']*\/(wallets|lines|tasks)\//);
+    for (const source of sources) expect(source).not.toMatch(/from '[^']*\/(wallets|lines|tasks|sales)\//);
   });
 });

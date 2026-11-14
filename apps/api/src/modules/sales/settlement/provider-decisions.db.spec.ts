@@ -1,4 +1,4 @@
-import { openGate } from '../../office/providers/testing/open-gate';
+import { openGate } from '../../providers/testing/open-gate';
 import { useSealingKey } from '../../platform/testing/sealing-key';
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
@@ -11,8 +11,8 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { open } from '../../platform/secret-box';
 import { purgeActivity, purgeBefore } from '../../auditing/activity-log';
 import { NoticeService } from '../../notifications/notice.service';
-import { ScriptedGateway } from '../../office/providers/testing/scripted-gateway';
-import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../../office/providers/operations/provider-operations.repository';
+import { ScriptedGateway } from '../../providers/testing/scripted-gateway';
+import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../../providers/integration/operations/provider-operations.repository';
 import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_RELEASED_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
 import { officeTestApp } from '../../office/testing/office-test-app';
 import { operationKey } from './activation-settlement.rules';

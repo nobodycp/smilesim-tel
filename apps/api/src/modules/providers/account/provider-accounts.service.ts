@@ -1,17 +1,19 @@
 import { PeriodQuery } from '../../platform/schemas';
-import { ProvidersRepository } from './providers.repository';
+import { ProvidersRepository } from '../providers.repository';
 import { UnitOfWork } from '../../platform/unit-of-work';
 import { dayRange } from '../../platform/dates';
-import { requireAnyGrant } from '../../access/policy';
+import { requireAnyGrant, requireGrant } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../platform/api-failure';
 import { parseInput } from '../../platform/input';
 import { matchOf, matchOverdue } from './match-simulator';
 import type { Actor } from '../../access/types';
 import { providerBranchCost } from '../../pricing/rules/prices';
-import { csvOf } from '../reports/report-csv';
-import { WalletsService } from '../wallets/wallets.service';
-import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from './providers.schemas';
+import { csvOf } from '../../wallets/report-csv';
+import { WalletsService } from '../../office/wallets/wallets.service';
+import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ProviderOperationsQuery, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from '../providers.schemas';
+import { PROVIDER_OPERATION_KINDS } from '../../office/wallets/provider-cost';
+import { cursorPosition, page, FEED_PAGE } from '../../platform/paging';
 import { linesOf, readSheet, reconcile, suggestMap, type StatementMap } from './statement';
 
 // Our account with each provider (spec 2026-11-08-provider-accounts, roadmap N7): what we bought through our operations,
@@ -29,6 +31,79 @@ export class ProviderAccountsService {
     private readonly wallets: WalletsService,
     private readonly repo: ProvidersRepository,
   ) {}
+
+  /**
+   * The branch's line operations by provider with their match state (`GET provider-operations`). Slice R.7: from
+   * `WalletsService`, text unchanged but for whom it reads through: the priced operations are still the wallets'
+   * (`pricedOperations`); the providers and the match are the provider accounts'.
+   */
+  async providerOperations(actor: Actor, input: ProviderOperationsQuery = {}) {
+    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
+    requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
+    const query = parseInput(ProviderOperationsQuery, input);
+    const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
+    const needle = (query.q ?? '').replace(/\s/g, '');
+    const { from, to } = dayRange(query.from, query.to);
+    const [resolved, providers] = await Promise.all([
+      this.wallets.pricedOperations({ kind: kind || undefined, msisdn: needle || undefined }),
+      this.repo.providersByName(),
+    ]);
+    const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
+    // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
+    const providerByCode = new Map(providers.map((item) => [item.code, item]));
+    const matchFor = (row: { id: string; at: Date; cost: number; providerCode: string }) => {
+      const provider = providerByCode.get(row.providerCode);
+      return matchOf(row, { matchSource: provider?.matchSource ?? 'statement', lastMatchedAt: provider?.lastMatchedAt ?? null });
+    };
+    const dated = chosen.filter((row) => {
+      if (from && !Number.isNaN(from.getTime()) && row.at < from) return false;
+      if (to && !Number.isNaN(to.getTime()) && row.at > to) return false;
+      return true;
+    });
+    const matches = new Map(dated.map((row) => [row.id, matchFor(row)]));
+    const ranged = query.match === 'matched' || query.match === 'difference' || query.match === 'pending'
+      ? dated.filter((row) => matches.get(row.id)?.state === query.match)
+      : dated;
+    const now = new Date();
+    const monthCost = chosen
+      .filter((row) => row.at.getFullYear() === now.getFullYear() && row.at.getMonth() === now.getMonth())
+      .reduce((sum, row) => sum + row.cost, 0);
+    const position = cursorPosition(query.cursor);
+    const window = position
+      ? ranged.filter((row) => row.at < position.at || (row.at.getTime() === position.at.getTime() && row.id < position.id))
+      : ranged;
+    const { items, nextCursor } = page(window, FEED_PAGE, (row) => row.at);
+    return {
+      items: items.map((row) => ({
+        id: row.id,
+        at: row.at.toISOString(),
+        kind: row.kind,
+        msisdn: row.msisdn,
+        providerCode: row.providerCode,
+        providerName: row.providerName,
+        companyName: row.companyName,
+        packageName: row.packageName,
+        cost: row.cost,
+        esimPrice: row.esimPrice,
+        matchSource: providerByCode.get(row.providerCode)?.matchSource ?? 'statement',
+        matchState: matches.get(row.id)?.state ?? 'pending',
+        providerAmount: matches.get(row.id)?.providerAmount ?? null,
+        difference: matches.get(row.id)?.difference ?? null,
+      })),
+      nextCursor,
+      total: ranged.length,
+      stats: {
+        count: ranged.length,
+        cost: ranged.reduce((sum, row) => sum + row.cost, 0),
+        monthCost,
+        matched: dated.filter((row) => matches.get(row.id)?.state === 'matched').length,
+        differences: dated.filter((row) => matches.get(row.id)?.state === 'difference').length,
+        pending: dated.filter((row) => matches.get(row.id)?.state === 'pending').length,
+        differenceAmount: dated.reduce((sum, row) => sum + (matches.get(row.id)?.difference ?? 0), 0),
+      },
+      providers: providers.map((item) => ({ code: item.code, name: item.name, matchSource: item.matchSource })),
+    };
+  }
 
   /** Reading needs the branch owner or the accounting or reports grant; writing the owner or accounting. */
   private gate(actor: Actor, write: boolean) {
@@ -236,7 +311,8 @@ export class ProviderAccountsService {
       .filter((op) => op.providerCode === code && op.cost !== 0 && op.at >= from && op.at <= to)
       .map((op) => ({ id: op.id, msisdn: op.msisdn, at: op.at, amount: op.cost }));
     const result = reconcile(lines, ours);
-    const run = await this.uow.prisma.$transaction(async (tx) => {
+    // The unit of work's transaction (slice R.7; before it, the root client's own): the same two writes, in order.
+    const run = await this.uow.runTx(async (tx) => {
       await this.repo.saveStatementMap(tx, provider.id, map);
       return this.repo.saveReconciliation(tx, {
         providerId: provider.id,

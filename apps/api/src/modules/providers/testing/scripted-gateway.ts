@@ -1,6 +1,6 @@
-import type { ProviderGateway, ProviderResult } from '../gateway/provider-gateway';
-import { NOT_CONNECTED } from '../gateway/provider-gateway';
-import type { OutgoingOperation, SendEvidence } from '../operations/provider-operation.rules';
+import type { ProviderGateway, ProviderResult } from '../integration/gateway/provider-gateway';
+import { NOT_CONNECTED } from '../integration/gateway/provider-gateway';
+import type { OutgoingOperation, SendEvidence } from '../integration/operations/provider-operation.rules';
 
 /** One scripted answer: evidence, or a function that produces it (to hold a call open, or to throw). */
 export type Scripted = SendEvidence | ((operation: OutgoingOperation) => Promise<SendEvidence>);

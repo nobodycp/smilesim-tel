@@ -4,7 +4,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
 import type { WalletsService } from '../wallets/wallets.service';
 import { InsightsService } from './insights.service';
-import { csvOf } from './report-csv';
+import { csvOf } from '../../wallets/report-csv';
 
 const accounts = [
   { id: 'branch', loginName: 'branch', nickname: 'فرع', layer: 'branch', parentId: null, deniedOps: '', disabledAt: null },

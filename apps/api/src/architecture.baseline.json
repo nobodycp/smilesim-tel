@@ -24,17 +24,17 @@
   "unused-injection": 0,
   "untyped-query": 0,
   "unmapped-file": 0,
-  "module-layering": 11,
-  "module-mutual": 6,
+  "module-layering": 7,
+  "module-mutual": 3,
   "file-cycles": 0,
   "catch-all-module": 0,
   "module-surface": 0,
-  "root-domain-code": 3,
+  "root-domain-code": 2,
   "wallet-entry-writes": 0,
   "operation-writes": 0,
   "outbox-writes": 0,
   "verdict-path": 0,
   "hold-path": 0,
   "line-creation": 0,
-  "transaction-outside-unit-of-work": 4
+  "transaction-outside-unit-of-work": 2
 }

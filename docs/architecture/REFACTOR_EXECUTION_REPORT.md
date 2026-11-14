@@ -24,8 +24,8 @@ pushed; the owner approves before one push and one CI run.
 | R.3 Kernel and rules | DONE | `cf984d4` |
 | R.4 Tasks and sales | DONE | `d07ebf2` |
 | R.5 Worker composition | DONE | `6375d24` |
-| R.6 Sales | DONE | see its section |
-| R.7 Providers | pending | |
+| R.6 Sales | DONE | `6eeea2f` |
+| R.7 Providers | DONE | see its section |
 | R.8 Remaining domains | pending | |
 | R.9 Umbrella removal | pending | |
 | R.10 Prisma model names | pending | |
@@ -37,16 +37,16 @@ pushed; the owner approves before one push and one CI run.
 
 ## Guard counts
 
-| Rule | Base `d7259ef` | After R.2.1 | After R.3 | After R.4 | After R.5 |
-|---|---|---|---|---|---|
-| module-layering | 28 | 28 | 19 | 11 | 11 |
-| module-mutual | 10 | 10 | 8 | 6 | 6 |
-| root-domain-code | 5 | 5 | 4 | 4 | 3 |
-| operation-writes | 1 | 1 | 1 | 0 | 0 |
-| transaction-outside-unit-of-work | 5 | 5 | 5 | 5 | 4 |
-| write-without-activity | 7 | 7 | 7 | 7 | 7 |
-| catch-all-module | — | — | 0 (new) | 0 | 0 |
-| module-surface | not in force | not in force | not in force | not in force | not in force |
+| Rule | Base `d7259ef` | After R.2.1 | After R.3 | After R.4 | After R.5 | After R.7 |
+|---|---|---|---|---|---|---|
+| module-layering | 28 | 28 | 19 | 11 | 11 | 7 |
+| module-mutual | 10 | 10 | 8 | 6 | 6 | 3 |
+| root-domain-code | 5 | 5 | 4 | 4 | 3 | 2 |
+| operation-writes | 1 | 1 | 1 | 0 | 0 | 0 |
+| transaction-outside-unit-of-work | 5 | 5 | 5 | 5 | 4 | 2 |
+| write-without-activity | 7 | 7 | 7 | 7 | 7 | 7 |
+| catch-all-module | — | — | 0 (new) | 0 | 0 | 0 |
+| module-surface | not in force | not in force | not in force | not in force | not in force | not in force |
 
 ## R.2.1 Worker shutdown race — DONE (`000e411`)
 
@@ -154,7 +154,7 @@ pushed; the owner approves before one push and one CI run.
   `two-factor-methods`) stay at the root: operators run `node dist/<name>.js` (handover runbook, backup rehearsal);
   moving them changes an operational contract. Left for a slice that updates the runbook with them.
 
-## R.6 Sales module — DONE
+## R.6 Sales module — DONE (`6eeea2f`)
 
 - **Moves (git mv + import paths only):** `modules/office/lines/*` → `modules/sales/`; `task-completion`,
   `task-charge.rules`, `activation-settlement`, `activation-settlement.rules`, `provider-decisions` and their five
@@ -169,3 +169,29 @@ pushed; the owner approves before one push and one CI run.
   transfers and tasks specs on PostgreSQL and Redis: 36 files, 930 tests (one expectation's sorted order updated
   in `provider-dispatch-switch.spec.ts`: the paths are sorted and the folder name changed).
 - **Counts:** unchanged (moves do not lower them; layering 11, mutual 6).
+
+## R.7 Providers module — DONE
+
+- **Folders:** `modules/providers/` holds `providers.module.ts`, `providers.repository.ts`, `providers.schemas.ts`,
+  `testing/`; `directory/` (settings, health, the provider's catalog and its simulated adapters), `account/`
+  (accounts, statements, reconciliation, matching), `integration/` (gateway, dispatch, operations). All `git mv`.
+- **Couplings closed:** `GET provider-operations` moved from wallets to the provider accounts (method text unchanged
+  but for reading the priced operations through `this.wallets` and the providers through the providers'
+  repository, which already had the identical query; the wallets' copy deleted as dead). `ProviderOperationsQuery`
+  moved to `providers.schemas.ts`. The route keeps its path, decorators, permission and body; `routes.http`,
+  `permissions.http`, `response-shape` and `query-filters` specs green. `report-csv.ts` → `modules/wallets/`.
+  `production-config.ts` → owner `app` (bootstrap; the root-domain rule lists it with `main.ts`, `worker.ts`).
+- **Transactions:** the reconciliation (`runReconciliation`) and the run modes (`saveModes`) run in `uow.runTx`.
+  Same writes, same order. Residual risk: `saveModes` was an array (batch) transaction with no interactive time
+  limit; as an interactive transaction it has Prisma's 5 s, which a provider followed by very many packages could
+  reach (one update per package). Not a money path.
+- **Spec updates (no expectation weakened):** `mode-inheritance.spec.ts`'s stand-in client learned the interactive
+  transaction form; `operation-dispatcher.db.spec.ts` reads the outbox's folder at its place and its import check
+  now also names `sales/` (the lines' folder since R.6 — without it the check would have gone blind);
+  `provider-dispatch-switch.spec.ts` names the new paths.
+- **New guard:** the integration imports nothing of the directory or the account; wallets nothing of providers;
+  the platform nothing above it.
+- **Results:** typecheck, lint 0; architecture 65/65; providers, wallets, HTTP contract, sales, reports, packages,
+  production-config, worker and platform specs on PostgreSQL and Redis green (two suites failed on the first run for
+  the two stand-in/path reasons above; both fixed and re-run green: 14 files, 164 tests).
+- **Counts:** layering 11 → 7, mutual 6 → 3, root-domain-code 3 → 2, transaction-outside-unit-of-work 4 → 2.

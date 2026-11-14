@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { MAX_AGOROT, agorot, code, optionalText, queryText } from '../../platform/schemas';
-import { simLength, simPrefix } from '../companies/companies.schemas';
-import { ACTION_KEYS, type ActionKey } from '../../catalog/rules/run-modes';
-import { ceilingValue } from '../wallets/wallets.schemas';
+import { MAX_AGOROT, agorot, code, optionalText, queryCursor, queryDay, queryOneOf, queryText } from '../platform/schemas';
+import { simLength, simPrefix } from '../office/companies/companies.schemas';
+import { ACTION_KEYS, type ActionKey } from '../catalog/rules/run-modes';
+import { ceilingValue } from '../office/wallets/wallets.schemas';
+import { PROVIDER_OPERATION_KINDS } from '../office/wallets/provider-cost';
 
 // The bodies of the provider routes (backend-engineering.mdc 4.1): provider settings, adding to the catalog from
 // the provider, and our account with each provider. The services parse them with `parseInput` after their
@@ -120,3 +121,14 @@ export type CatalogProductsQuery = z.input<typeof CatalogProductsQuery>;
 export const ProviderCredentialBody = z.object({ value: z.string().trim().min(8).max(4000) });
 export type ProviderCredentialBody = z.input<typeof ProviderCredentialBody>;
 
+/** GET provider-operations — the branch's operations by provider, with their match state. */
+export const ProviderOperationsQuery = z.object({
+  cursor: queryCursor,
+  kind: queryOneOf(PROVIDER_OPERATION_KINDS),
+  provider: queryText(),
+  q: queryText(),
+  from: queryDay,
+  to: queryDay,
+  match: queryOneOf(['matched', 'difference', 'pending']),
+});
+export type ProviderOperationsQuery = z.input<typeof ProviderOperationsQuery>;

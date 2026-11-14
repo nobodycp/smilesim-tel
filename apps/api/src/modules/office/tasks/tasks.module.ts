@@ -2,7 +2,7 @@ import { TasksRepository } from './tasks.repository';
 import { AccessModule } from '../../access/access.module';
 import { PlatformModule } from '../../platform/platform.module';
 import { WalletsModule } from '../wallets/wallets.module';
-import { ProvidersModule } from '../providers/providers.module';
+import { ProvidersModule } from '../../providers/providers.module';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { Module } from '@nestjs/common';

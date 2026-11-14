@@ -1,4 +1,4 @@
-import { ProvidersRepository } from './providers.repository';
+import { ProvidersRepository } from '../providers.repository';
 import { requireGrant } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../platform/api-failure';
@@ -6,7 +6,7 @@ import type { Actor } from '../../access/types';
 import { parseInput } from '../../platform/input';
 import type { Prisma } from '../../../generated/prisma/client';
 import { normalizeActionModes, packageModeData } from '../../catalog/rules/run-modes';
-import { ProviderEsimPriceBody, ProviderModeBody } from './providers.schemas';
+import { ProviderEsimPriceBody, ProviderModeBody } from '../providers.schemas';
 
 /** Providers, for the branch: the list with each provider's companies and packages, the per-provider action modes, and the provider eSIM price. */
 @Injectable()

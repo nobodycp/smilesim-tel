@@ -12,7 +12,7 @@ import { TERMS_CONTROLLERS, TERMS_PROVIDERS, TermsModule } from './terms/terms.m
 import { PACKAGES_CONTROLLERS, PACKAGES_PROVIDERS, PackagesModule } from './packages/packages.module';
 import { WALLETS_CONTROLLERS, WALLETS_PROVIDERS, WalletsModule } from './wallets/wallets.module';
 import { TASKS_CONTROLLERS, TASKS_PROVIDERS, TasksModule } from './tasks/tasks.module';
-import { PROVIDERS_CONTROLLERS, PROVIDERS_PROVIDERS, ProvidersModule } from './providers/providers.module';
+import { PROVIDERS_CONTROLLERS, PROVIDERS_PROVIDERS, ProvidersModule } from '../providers/providers.module';
 import { LINES_CONTROLLERS, LINES_PROVIDERS, LinesModule } from '../sales/lines.module';
 import { TRANSFERS_CONTROLLERS, TRANSFERS_PROVIDERS, TransfersModule } from './transfers/transfers.module';
 import { REPORTS_CONTROLLERS, REPORTS_PROVIDERS, ReportsModule } from './reports/reports.module';

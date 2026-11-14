@@ -1,7 +1,7 @@
 import { LinesRepository } from './lines.repository';
 import { AccessModule } from '../access/access.module';
 import { PlatformModule } from '../platform/platform.module';
-import { ProvidersModule } from '../office/providers/providers.module';
+import { ProvidersModule } from '../providers/providers.module';
 import { TasksModule } from '../office/tasks/tasks.module';
 import { TermsModule } from '../office/terms/terms.module';
 import { WalletsModule } from '../office/wallets/wallets.module';

@@ -1,5 +1,5 @@
-import { ProvidersRepository } from './providers.repository';
-import { OfficeGraph } from '../testing/office-graph';
+import { ProvidersRepository } from '../providers.repository';
+import { OfficeGraph } from '../../office/testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
 import { ProviderCatalogService } from './provider-catalog.service';

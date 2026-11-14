@@ -4,8 +4,8 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
 import { ApiFailure } from '../../platform/api-failure';
 import { TasksService } from './tasks.service';
-import { ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';
-import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
+import { ProviderOperationsRepository } from '../../providers/integration/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
 
 // Task notes and statuses (spec 2026-11-09-offers-tasks-addons-wallet-esim, 2): an internal note is the branch's
 // only; a task opens in progress, may be taken (named) and released, and any handler finishes it.

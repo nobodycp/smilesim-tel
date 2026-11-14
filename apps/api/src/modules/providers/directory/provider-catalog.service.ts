@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { publicPackageCode } from '../../catalog/rules/package-code';
-import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from './providers.schemas';
-import { ProvidersRepository } from './providers.repository';
+import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from '../providers.schemas';
+import { ProvidersRepository } from '../providers.repository';
 import { refuseEntered, requireGrant } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
 import { fail } from '../../platform/api-failure';

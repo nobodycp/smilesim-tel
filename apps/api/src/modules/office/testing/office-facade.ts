@@ -1,7 +1,7 @@
 import { AuditRepository } from '../../auditing/audit.repository';
 import { RolesRepository } from '../roles/roles.repository';
 import { DeskRepository } from '../desk/desk.repository';
-import { ProvidersRepository } from '../providers/providers.repository';
+import { ProvidersRepository } from '../../providers/providers.repository';
 import { LinesRepository } from '../../sales/lines.repository';
 import { TasksRepository } from '../tasks/tasks.repository';
 import { WalletsRepository } from '../wallets/wallets.repository';
@@ -21,9 +21,9 @@ import { LinePricing } from '../../sales/line-pricing';
 import { LineReads } from '../../sales/line-reads';
 import { LinesService } from '../../sales/lines.service';
 import { TaskCompletion } from '../../sales/settlement/task-completion';
-import { SimulatedProviderGateway } from '../providers/gateway/simulated-gateway';
-import { ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';
-import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
+import { SimulatedProviderGateway } from '../../providers/integration/gateway/simulated-gateway';
+import { ProviderOperationsRepository } from '../../providers/integration/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
 import { TransfersService } from '../transfers/transfers.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { DeskService } from '../desk/desk.service';
@@ -31,7 +31,8 @@ import { RolesService } from '../roles/roles.service';
 import { TermsService } from '../terms/terms.service';
 import { PackagesService } from '../packages/packages.service';
 import { CompaniesService } from '../companies/companies.service';
-import { ProvidersService } from '../providers/providers.service';
+import { ProviderAccountsService } from '../../providers/account/provider-accounts.service';
+import { ProvidersService } from '../../providers/directory/providers.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { AuditService } from '../../auditing/audit.service';
 import { TasksService } from '../tasks/tasks.service';
@@ -215,7 +216,8 @@ export class OfficeFacade {
   }
 
   async providerOperations(gate: Gate, query: { cursor?: string; kind?: string; provider?: string; q?: string; from?: string; to?: string } = {}) {
-    return this.walletDesk.providerOperations(await this.actor(gate), query);
+    // Slice R.7: the read moved to the provider accounts, which read the priced operations through the wallets.
+    return new ProviderAccountsService(this.graph.uow, this.walletDesk, new ProvidersRepository(this.graph.uow)).providerOperations(await this.actor(gate), query);
   }
 
   async finance(gate: Gate, query: { cursor?: string; kind?: string; layer?: string; q?: string; from?: string; to?: string; scope?: string } = {}) {

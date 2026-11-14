@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { id, optionalText, providerHint, queryCursor, queryOneOf, queryText } from '../platform/schemas';
-import { RESULT_LIMITS } from '../office/providers/operations/provider-operation.rules';
+import { RESULT_LIMITS } from '../providers/integration/operations/provider-operation.rules';
 import { LINE_STATUSES } from './rules/line-filters';
 import { DECISIONS } from './settlement/activation-settlement.rules';
 

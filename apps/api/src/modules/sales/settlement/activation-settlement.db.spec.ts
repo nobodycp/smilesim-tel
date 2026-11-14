@@ -1,4 +1,4 @@
-import { openGate } from '../../office/providers/testing/open-gate';
+import { openGate } from '../../providers/testing/open-gate';
 import { useSealingKey } from '../../platform/testing/sealing-key';
 import 'reflect-metadata';
 import { Queue, Worker } from 'bullmq';
@@ -14,9 +14,9 @@ import type { Db } from '../../platform/unit-of-work';
 import { NoticeService } from '../../notifications/notice.service';
 import { OutboxRelay } from '../../office/outbox/outbox-relay';
 import { OutboxRepository, type ClaimedMessage } from '../../office/outbox/outbox.repository';
-import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from '../../office/providers/operations/provider-operations.repository';
-import { ProviderOperationsService } from '../../office/providers/operations/provider-operations.service';
-import { ScriptedGateway } from '../../office/providers/testing/scripted-gateway';
+import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from '../../providers/integration/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
+import { ScriptedGateway } from '../../providers/testing/scripted-gateway';
 import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
 import { OfficeFacade } from '../../office/testing/office-facade';
 import type { ActivationSettlement } from './activation-settlement';

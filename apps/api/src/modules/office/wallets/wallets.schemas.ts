@@ -60,18 +60,6 @@ export const LedgerQuery = z.object({
 });
 export type LedgerQuery = z.input<typeof LedgerQuery>;
 
-/** GET provider-operations — the branch's operations by provider, with their match state. */
-export const ProviderOperationsQuery = z.object({
-  cursor: queryCursor,
-  kind: queryOneOf(PROVIDER_OPERATION_KINDS),
-  provider: queryText(),
-  q: queryText(),
-  from: queryDay,
-  to: queryDay,
-  match: queryOneOf(['matched', 'difference', 'pending']),
-});
-export type ProviderOperationsQuery = z.input<typeof ProviderOperationsQuery>;
-
 /** GET finance/summary — the window in days; 30 when it is not sent. */
 export const FinanceSummaryQuery = z.object({ days: queryOneOf(SUMMARY_WINDOWS.map(String)) });
 export type FinanceSummaryQuery = z.input<typeof FinanceSummaryQuery>;

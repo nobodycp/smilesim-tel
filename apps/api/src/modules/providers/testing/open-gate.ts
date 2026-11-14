@@ -1,5 +1,5 @@
-import type { SendGate } from '../dispatch/dispatch-gate';
-import type { ProviderGateway } from '../gateway/provider-gateway';
+import type { SendGate } from '../integration/dispatch/dispatch-gate';
+import type { ProviderGateway } from '../integration/gateway/provider-gateway';
 
 /**
  * For specs only: a gate that lets every attempt through and sends through the given gateway, for the specs that

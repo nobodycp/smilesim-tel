@@ -10,7 +10,7 @@ import { ActivityInterceptor } from '../../platform/activity.interceptor';
 import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
 import type { Actor as ActorShape } from '../../access/types';
 import { ProviderAccountsService } from './provider-accounts.service';
-import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from './providers.schemas';
+import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ProviderOperationsQuery, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from '../providers.schemas';
 
 /** Our account with each provider (spec 2026-11-08-provider-accounts). */
 @ApiTags('office')
@@ -132,5 +132,14 @@ export class ProviderAccountsController {
   @Activity('provider_reconcile_item', 'provider', param('id'))
   updateItem(@Actor() actor: ActorShape, @Param('id') id: string, @Body() body: ReconciliationItemBody) {
     return this.accounts.updateItem(actor, id, body);
+  }
+
+  // Slice R.7: from `WalletsController`, the same path, decorators and answer.
+  @Get('provider-operations')
+  @ApiOperation({ summary: 'Line operations with the branch cost at the provider (paged)' })
+  @ApiZodQuery(ProviderOperationsQuery)
+  @ApiErrorResponse(400, 401, 403)
+  providerOperations(@Actor() actor: ActorShape, @Query() query: ProviderOperationsQuery) {
+    return this.accounts.providerOperations(actor, query);
   }
 }

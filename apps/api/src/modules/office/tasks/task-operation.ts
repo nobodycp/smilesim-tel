@@ -1,8 +1,8 @@
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../platform/api-failure';
 import { taskActions, type TaskActions } from './task-operation.rules';
-import type { OperationStatus } from '../providers/operations/provider-operation.rules';
-import type { ProviderOperationsService } from '../providers/operations/provider-operations.service';
+import type { OperationStatus } from '../../providers/integration/operations/provider-operation.rules';
+import type { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
 
 // The provider operation of a task, as the manual path sees it (ADR 0019, D6 and D7). Completion, reject and
 // cancel lock the operation's row inside their own transaction, after the task's row, the line and the claim keys

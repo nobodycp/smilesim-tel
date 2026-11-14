@@ -2,11 +2,11 @@ import 'reflect-metadata';
 import type { PrismaClient } from './generated/prisma/client';
 import type { NoticeWriter } from './modules/platform/notices';
 import { UnitOfWork } from './modules/platform/unit-of-work';
-import type { DispatchSettings } from './modules/office/providers/dispatch/dispatch-policy';
-import { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
-import { NO_ADAPTERS } from './modules/office/providers/dispatch/provider-adapters';
+import type { DispatchSettings } from './modules/providers/integration/dispatch/dispatch-policy';
+import { RoutingProviderGateway } from './modules/providers/integration/dispatch/routing-gateway';
+import { NO_ADAPTERS } from './modules/providers/integration/dispatch/provider-adapters';
 import { RECOVERY_EVERY_MS, RELAY_EVERY_MS, SWEEP_EVERY_MS, startProviderDispatchTimers, workerShutdown } from './worker/provider-dispatch';
-import { startReadiness } from './modules/office/providers/dispatch/worker-readiness';
+import { startReadiness } from './modules/providers/integration/dispatch/worker-readiness';
 
 // Slice R.2.1: the worker's stop, run for real (`workerShutdown`, the function `worker.ts` calls on SIGTERM), with
 // the real readiness loop and the real timers. Only what reaches the outside is a stand-in: the database the

@@ -5,13 +5,13 @@ import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
 import { createPrismaClient } from './db';
 import { purgeActivity } from './modules/auditing/activity-log';
-import { DeploymentSendGate } from './modules/office/providers/dispatch/dispatch-gate';
-import { dispatchSettings } from './modules/office/providers/dispatch/dispatch-policy';
-import { buildAdapters } from './modules/office/providers/dispatch/provider-adapters';
-import { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
+import { DeploymentSendGate } from './modules/providers/integration/dispatch/dispatch-gate';
+import { dispatchSettings } from './modules/providers/integration/dispatch/dispatch-policy';
+import { buildAdapters } from './modules/providers/integration/dispatch/provider-adapters';
+import { RoutingProviderGateway } from './modules/providers/integration/dispatch/routing-gateway';
 import { assertWorkerConfig } from './production-config';
 import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, startProviderDispatchTimers, workerShutdown } from './worker/provider-dispatch';
-import { readCredentials, startReadiness } from './modules/office/providers/dispatch/worker-readiness';
+import { readCredentials, startReadiness } from './modules/providers/integration/dispatch/worker-readiness';
 
 const log = logger('Worker');
 

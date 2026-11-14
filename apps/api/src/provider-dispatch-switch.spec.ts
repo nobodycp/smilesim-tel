@@ -1,14 +1,14 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { PROVIDER_GATEWAY } from './modules/office/providers/gateway/provider-gateway';
-import { SimulatedProviderGateway } from './modules/office/providers/gateway/simulated-gateway';
+import { PROVIDER_GATEWAY } from './modules/providers/integration/gateway/provider-gateway';
+import { SimulatedProviderGateway } from './modules/providers/integration/gateway/simulated-gateway';
 import {
   READY_TTL_MS, dispatchSettings, eligibility, mayOpenDispatch, maySend, workerReady, type DispatchSettings, type ProviderDispatchState, type ProviderTarget, type WorkerAttestation,
-} from './modules/office/providers/dispatch/dispatch-policy';
-import { SUPPORTED_ADAPTERS } from './modules/office/providers/dispatch/adapter-manifest';
-import { ADAPTER_FACTORIES, buildAdapters, type AdapterFactory, type DispatchAdapter } from './modules/office/providers/dispatch/provider-adapters';
-import { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
-import { PROVIDERS_PROVIDERS } from './modules/office/providers/providers.module';
+} from './modules/providers/integration/dispatch/dispatch-policy';
+import { SUPPORTED_ADAPTERS } from './modules/providers/integration/dispatch/adapter-manifest';
+import { ADAPTER_FACTORIES, buildAdapters, type AdapterFactory, type DispatchAdapter } from './modules/providers/integration/dispatch/provider-adapters';
+import { RoutingProviderGateway } from './modules/providers/integration/dispatch/routing-gateway';
+import { PROVIDERS_PROVIDERS } from './modules/providers/providers.module';
 import { assertWorkerConfig, dispatchConfigProblems, productionConfigProblems, workerConfigProblems } from './production-config';
 
 // How a provider is switched on (ADR 0019, D18; plan slice S.12a; spec items 25 and 26). It replaces
@@ -237,7 +237,7 @@ describe('the adapter is a separate question from the policy', () => {
     expect([0, 1, READY_TTL_MS - 1, READY_TTL_MS].map((age) => mayOpenDispatch(all, at(age)))).toEqual([true, true, true, true]);
     expect([READY_TTL_MS + 1, 10 * READY_TTL_MS, -1, -60_000, Number.NaN, Number.POSITIVE_INFINITY].map((age) => mayOpenDispatch(all, at(age)))).toEqual([false, false, false, false, false, false]);
     // The policy has no clock of its own: its source names none.
-    expect(text('modules/office/providers/dispatch/dispatch-policy.ts').split('\n').filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line)).join('\n')).not.toMatch(/new Date\(|Date\.now\(/);
+    expect(text('modules/providers/integration/dispatch/dispatch-policy.ts').split('\n').filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line)).join('\n')).not.toMatch(/new Date\(|Date\.now\(/);
   });
 
   it('this build has no adapter: the list is empty and frozen, so a worker builds none whatever it is told', () => {
@@ -475,8 +475,8 @@ describe('what ships: the API can decide a route and nothing more; only the work
   it('the API binds one gateway by class, with no factory or setting to choose another, and no test gateway is in the build', () => {
     const binding = PROVIDERS_PROVIDERS.find((provider) => typeof provider === 'object' && 'provide' in provider && provider.provide === PROVIDER_GATEWAY);
     expect(binding).toEqual({ provide: PROVIDER_GATEWAY, useClass: SimulatedProviderGateway });
-    expect(text('modules/office/providers/providers.module.ts')).not.toMatch(/useFactory|useValue|env\(|process\.env/);
-    expect(paths(files.filter((file) => /implements\s+ProviderGateway/.test(file.text)))).toEqual(['modules/office/providers/dispatch/routing-gateway.ts', 'modules/office/providers/gateway/simulated-gateway.ts']);
+    expect(text('modules/providers/providers.module.ts')).not.toMatch(/useFactory|useValue|env\(|process\.env/);
+    expect(paths(files.filter((file) => /implements\s+ProviderGateway/.test(file.text)))).toEqual(['modules/providers/integration/dispatch/routing-gateway.ts', 'modules/providers/integration/gateway/simulated-gateway.ts']);
     // Nothing shipped imports a `testing` folder (the scripted gateway, the open gate), and the build leaves them out.
     expect(paths(files.filter((file) => /from '[^']*\/testing\/[^']*'/.test(file.text) || /import\([^)]*\/testing\//.test(file.text)))).toEqual([]);
     const build = JSON.parse(readFileSync(join(src, '../tsconfig.build.json'), 'utf8')) as { exclude: string[] };
@@ -502,37 +502,37 @@ describe('what ships: the API can decide a route and nothing more; only the work
     // `dispatches` is asked in one place, for the activation, and the request's hint is not part of the question.
     expect(paths(code.filter((line) => /\.dispatches\(/.test(line.text)))).toEqual(['modules/sales/lines.service.ts']);
     expect(text('modules/sales/lines.service.ts')).toContain("if (runsNow(pkg, 'activate') && (await this.gateway.dispatches(pkg.provider.code))) {");
-    expect(text('modules/office/providers/gateway/simulated-gateway.ts')).toMatch(/async dispatches\(providerCode: string\): Promise<boolean> \{\n\s+return this\.dispatch \? this\.dispatch\.opens\(providerCode\) : false;/);
+    expect(text('modules/providers/integration/gateway/simulated-gateway.ts')).toMatch(/async dispatches\(providerCode: string\): Promise<boolean> \{\n\s+return this\.dispatch \? this\.dispatch\.opens\(providerCode\) : false;/);
   });
 
   it('only the worker builds adapters, reads a stored credential or opens one', () => {
     // Building adapters, the routing gateway and the deployment's gate are used by the worker's two files alone.
-    const users = (pattern: RegExp) => paths(code.filter((line) => pattern.test(line.text))).filter((path) => !path.startsWith('modules/office/providers/dispatch/'));
+    const users = (pattern: RegExp) => paths(code.filter((line) => pattern.test(line.text))).filter((path) => !path.startsWith('modules/providers/integration/dispatch/'));
     // Since slice R.5 the reader and the readiness loop live beside the gate (`worker-readiness.ts`); `worker.ts` alone uses them.
     expect(users(/\bbuildAdapters\(|\bRoutingProviderGateway\b|\bDeploymentSendGate\b|\breadCredentials\(|\bstartReadiness\(/)).toEqual(['worker.ts']);
     // The sealed value is selected in one place, the worker's reader; the API's service writes it and never reads it.
-    expect(paths(code.filter((line) => /sealedValue: true/.test(line.text)))).toEqual(['modules/office/providers/dispatch/worker-readiness.ts']);
-    expect(paths(code.filter((line) => /providerCredential\b/.test(line.text)))).toEqual(['modules/office/providers/dispatch/provider-dispatch.repository.ts', 'modules/office/providers/dispatch/worker-readiness.ts']);
+    expect(paths(code.filter((line) => /sealedValue: true/.test(line.text)))).toEqual(['modules/providers/integration/dispatch/worker-readiness.ts']);
+    expect(paths(code.filter((line) => /providerCredential\b/.test(line.text)))).toEqual(['modules/providers/integration/dispatch/provider-dispatch.repository.ts', 'modules/providers/integration/dispatch/worker-readiness.ts']);
     // The table is read by SQL in two places, both the worker's and both for the generation alone: the gate and the attestation.
     const rawReads = code.filter((line) => /FROM "ProviderCredential"/.test(line.text));
-    expect(paths(rawReads)).toEqual(['modules/office/providers/dispatch/dispatch-gate.ts', 'modules/office/providers/dispatch/worker-readiness.ts']);
+    expect(paths(rawReads)).toEqual(['modules/providers/integration/dispatch/dispatch-gate.ts', 'modules/providers/integration/dispatch/worker-readiness.ts']);
     expect(rawReads.every((line) => /SELECT "generation" FROM "ProviderCredential"/.test(line.text))).toBe(true);
     // The API's side counts and writes; it has no statement that reads the value, and nothing there opens one.
-    const repository = text('modules/office/providers/dispatch/provider-dispatch.repository.ts');
+    const repository = text('modules/providers/integration/dispatch/provider-dispatch.repository.ts');
     expect(repository.match(/providerCredential\.(\w+)/g)?.sort()).toEqual(['providerCredential.count', 'providerCredential.upsert']);
     expect(repository).toContain('credentials: { where: { target: target ?? \'\' }, select: { generation: true } }');
-    for (const path of ['modules/office/providers/dispatch/provider-dispatch.repository.ts', 'modules/office/providers/dispatch/provider-dispatch.service.ts']) {
+    for (const path of ['modules/providers/integration/dispatch/provider-dispatch.repository.ts', 'modules/providers/integration/dispatch/provider-dispatch.service.ts']) {
       expect(text(path)).not.toMatch(/\bopen\(|tryOpen\(|sealedValue: true|select: \{[^}]*sealedValue/);
     }
     // No adapter exists, and nothing under the providers domain or the dispatch wiring opens an outgoing connection.
     const outgoing = /\bfetch\(|from 'node:https?'|from 'https?'|from 'axios'|from 'undici'|from 'got'|XMLHttpRequest|net\.connect\(|tls\.connect\(/;
-    expect(code.filter((line) => (line.path.startsWith('modules/office/providers/') || WORKER_ONLY.includes(line.path)) && outgoing.test(line.text))).toEqual([]);
-    expect(text('modules/office/providers/dispatch/provider-adapters.ts')).toContain('export const ADAPTER_FACTORIES: Readonly<Record<string, AdapterFactory>> = Object.freeze({});');
+    expect(code.filter((line) => (line.path.startsWith('modules/providers/') || WORKER_ONLY.includes(line.path)) && outgoing.test(line.text))).toEqual([]);
+    expect(text('modules/providers/integration/dispatch/provider-adapters.ts')).toContain('export const ADAPTER_FACTORIES: Readonly<Record<string, AdapterFactory>> = Object.freeze({});');
   });
 
   it('the manifest of codes, the worker\'s registry and the worker\'s attestation are three things, and the API loads only the first', () => {
-    const REGISTRY = 'modules/office/providers/dispatch/provider-adapters.ts';
-    const MANIFEST = 'modules/office/providers/dispatch/adapter-manifest.ts';
+    const REGISTRY = 'modules/providers/integration/dispatch/provider-adapters.ts';
+    const MANIFEST = 'modules/providers/integration/dispatch/adapter-manifest.ts';
     // The manifest is names and nothing else: it imports nothing, and is the registry's keys exactly.
     expect(text(MANIFEST)).not.toMatch(/^\s*(import|export)\s[^;]*from\s|\brequire\(/m);
     expect(Object.isFrozen(SUPPORTED_ADAPTERS)).toBe(true);
@@ -542,15 +542,15 @@ describe('what ships: the API can decide a route and nothing more; only the work
     // never becomes part of the API.
     const api = loadedFrom('main.ts');
     expect(api.length).toBeGreaterThan(100);
-    expect(api).toEqual(expect.arrayContaining(['app.module.ts', 'production-config.ts', MANIFEST, 'modules/office/providers/dispatch/dispatch-policy.ts', 'modules/office/providers/dispatch/provider-dispatch.service.ts']));
-    const workerSide = [REGISTRY, 'modules/office/providers/dispatch/routing-gateway.ts', 'modules/office/providers/dispatch/dispatch-gate.ts', 'modules/office/providers/dispatch/worker-readiness.ts', 'worker/provider-dispatch.ts', 'worker.ts'];
+    expect(api).toEqual(expect.arrayContaining(['app.module.ts', 'production-config.ts', MANIFEST, 'modules/providers/integration/dispatch/dispatch-policy.ts', 'modules/providers/integration/dispatch/provider-dispatch.service.ts']));
+    const workerSide = [REGISTRY, 'modules/providers/integration/dispatch/routing-gateway.ts', 'modules/providers/integration/dispatch/dispatch-gate.ts', 'modules/providers/integration/dispatch/worker-readiness.ts', 'worker/provider-dispatch.ts', 'worker.ts'];
     expect(api.filter((path) => workerSide.includes(path))).toEqual([]);
     // The worker loads all of them.
     expect(loadedFrom('worker.ts')).toEqual(expect.arrayContaining(workerSide));
     // The registry has one importer that loads it, the worker; the start-up check reads the manifest.
     const importers = (file: string) => paths(files.filter((other) => other.path !== file && loadedFrom(other.path).includes(file) && new RegExp(`from '[^']*/${file.split('/').pop()?.replace('.ts', '')}'`).test(other.text) && !new RegExp(`import type [^;]*from '[^']*/${file.split('/').pop()?.replace('.ts', '')}'`).test(other.text)));
-    expect(importers(REGISTRY)).toEqual(['modules/office/providers/dispatch/routing-gateway.ts', 'worker.ts']);
-    expect(text('production-config.ts')).toContain("import { SUPPORTED_ADAPTERS } from './modules/office/providers/dispatch/adapter-manifest';");
+    expect(importers(REGISTRY)).toEqual(['modules/providers/integration/dispatch/routing-gateway.ts', 'worker.ts']);
+    expect(text('production-config.ts')).toContain("import { SUPPORTED_ADAPTERS } from './modules/providers/integration/dispatch/adapter-manifest';");
     expect(text('production-config.ts')).not.toMatch(/provider-adapters|ADAPTER_FACTORIES/);
     // The API needs no provider credential to start: its check names no such thing, and it has no reader of one.
     expect(productionConfigProblems({ NODE_ENV: 'production', COOKIE_SECURE: 'true', WEB_ORIGIN: 'https://admin.example.com', REDIS_URL: 'redis://redis:6379', TRUST_PROXY: '1', SECRETS_KEY: Buffer.alloc(32, 7).toString('base64') })).toEqual([]);
@@ -565,32 +565,32 @@ describe('what ships: the API can decide a route and nothing more; only the work
     expect(paths(code.filter((line) => /new OperationDispatcher\(/.test(line.text)))).toEqual(['worker/provider-dispatch.ts']);
     expect(text('worker/provider-dispatch.ts')).toContain('new OperationDispatcher(operations, gate)');
     expect(text('worker/provider-dispatch.ts')).toMatch(/export function buildProviderDispatch\(prisma: PrismaClient, connection: IORedis, gate: SendGate, /);
-    const dispatcher = text('modules/office/providers/operations/operation-dispatcher.ts');
+    const dispatcher = text('modules/providers/integration/operations/operation-dispatcher.ts');
     expect(dispatcher).toContain('this.operations.claim(operationId, new Date(), this.gate)');
     expect(dispatcher).toContain('this.operations.beginSend(operationId, attempt, new Date(), this.gate)');
     expect(text('worker.ts')).toContain('new DeploymentSendGate(settings, (code) => gateway.sender(code))');
     // The dispatcher holds no gateway: the one way it has to a provider is the permit the gate gave at the mark.
-    const dispatcherCode = code.filter((line) => line.path === 'modules/office/providers/operations/operation-dispatcher.ts').map((line) => line.text).join('\n');
+    const dispatcherCode = code.filter((line) => line.path === 'modules/providers/integration/operations/operation-dispatcher.ts').map((line) => line.text).join('\n');
     expect(dispatcherCode).not.toMatch(/gateway/i);
     expect(dispatcherCode.match(/\.send\(/g)).toEqual(['.send(', '.send(']);
     expect(dispatcher).toContain('Promise.race([permit.send(outgoing), waited])');
     expect(dispatcher).toContain('constructor(private readonly operations: ProviderOperationsService, private readonly gate: SendGate, private readonly callTimeoutMs: number = CALL_TIMEOUT_MS) {}');
     // The permit is the one answered in the transaction that wrote the mark.
-    expect(text('modules/office/providers/operations/provider-operations.service.ts')).toMatch(/const permit = await gate\.permits\(tx, row\.providerId\);\n\s+if \(permit !== null\) return \(await this\.repo\.markSent\(tx, id, attempt, now\)\) \? \{ permit \} : null;\n\s+await this\.handBack\(tx, id, attempt\);/);
+    expect(text('modules/providers/integration/operations/provider-operations.service.ts')).toMatch(/const permit = await gate\.permits\(tx, row\.providerId\);\n\s+if \(permit !== null\) return \(await this\.repo\.markSent\(tx, id, attempt, now\)\) \? \{ permit \} : null;\n\s+await this\.handBack\(tx, id, attempt\);/);
     // What the worker holds is read once in the gate, after the lock and the stored generation.
-    const gate = text('modules/office/providers/dispatch/dispatch-gate.ts');
+    const gate = text('modules/providers/integration/dispatch/dispatch-gate.ts');
     expect(gate.match(/this\.held\(/g)).toHaveLength(1);
     expect(gate.indexOf('this.held(')).toBeGreaterThan(gate.indexOf('FROM "ProviderCredential"'));
     // The gate reads the provider's row under a lock.
-    expect(text('modules/office/providers/dispatch/dispatch-gate.ts')).toMatch(/FROM "Provider" WHERE "id" = \$\{providerId\} FOR SHARE/);
+    expect(text('modules/providers/integration/dispatch/dispatch-gate.ts')).toMatch(/FROM "Provider" WHERE "id" = \$\{providerId\} FOR SHARE/);
     // An attempt the gate refuses at the mark is handed back in the same transaction, and recovery is given the gate.
     expect(text('worker/provider-dispatch.ts')).toContain('recoverExpired(parts.operations, new Date(), 100, parts.gate)');
     // The variables are named by the policy (which is handed an environment), the list of known names and the
     // start-up check's messages; no other file reads them.
     const readers = paths(code.filter((line) => /PROVIDER_DISPATCH\b|PROVIDER_ADAPTERS|PROVIDER_TARGETS?\b|DEPLOYMENT_ID/.test(line.text) && !/PROVIDER_DISPATCH_NOTE|PROVIDER_TARGETS/.test(line.text)));
-    expect(readers).toEqual(['config.ts', 'modules/office/providers/dispatch/dispatch-policy.ts', 'production-config.ts']);
-    expect(paths(code.filter((line) => /\bdispatchSettings\(/.test(line.text)))).toEqual(['modules/office/providers/dispatch/dispatch-policy.ts', 'modules/office/providers/dispatch/provider-dispatch.service.ts', 'production-config.ts', 'worker.ts']);
-    expect(paths(code.filter((line) => /isProduction\(\)|NODE_ENV/.test(line.text))).filter((path) => path.startsWith('modules/office/providers/dispatch/'))).toEqual([]);
+    expect(readers).toEqual(['config.ts', 'modules/providers/integration/dispatch/dispatch-policy.ts', 'production-config.ts']);
+    expect(paths(code.filter((line) => /\bdispatchSettings\(/.test(line.text)))).toEqual(['modules/providers/integration/dispatch/dispatch-policy.ts', 'modules/providers/integration/dispatch/provider-dispatch.service.ts', 'production-config.ts', 'worker.ts']);
+    expect(paths(code.filter((line) => /isProduction\(\)|NODE_ENV/.test(line.text))).filter((path) => path.startsWith('modules/providers/integration/dispatch/'))).toEqual([]);
   });
 
   it('the worker checks its settings before it opens anything', () => {

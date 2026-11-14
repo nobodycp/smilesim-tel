@@ -54,10 +54,6 @@ export class WalletsRepository {
     return this.uow.prisma.package.findMany({ include: { provider: true, company: true } });
   }
 
-  providersByName() {
-    return this.uow.prisma.provider.findMany({ orderBy: { name: 'asc' } });
-  }
-
   /** The terms these numbers carry (the package code a sale without a kept ladder is priced from). */
   lineTerms(ids: string[]) {
     return this.uow.prisma.line.findMany({ where: { id: { in: ids } }, select: { id: true, terms: true } });

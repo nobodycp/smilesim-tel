@@ -22,7 +22,7 @@ import { simRulesOf } from '../../catalog/rules/sim-rules';
 import { canHandleTasks, esimCodeReaders, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { stampTaskLog } from './task-log';
 import { assertOperationAllows, withdrawOperation } from './task-operation';
-import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
+import { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
 
 /**
  * What opening a task locks and checks on what it names, provided by sales (slice R.4: tasks knows no line, no

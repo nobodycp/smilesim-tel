@@ -42,6 +42,9 @@ export const DEPENDS_ON: Record<ModuleName, readonly ModuleName[]> = {
 export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   // ── composition roots ─────────────────────────────────────────────────────────────────────────────
   [/^(main|app\.module|worker|health\.controller)\.ts$/, 'app'],
+  // The start-up check (slice R.7): run by `main.ts` and `worker.ts` before anything opens; it reads the platform's
+  // settings and the providers' dispatch settings, so it is part of the bootstrap, not of the platform.
+  [/^production-config\.ts$/, 'app'],
   [/^(door|origin|rate-limit)\.middleware\.ts$/, 'app'],
   [/^openapi\/setup\.ts$/, 'app'],
   [/^modules\/registry\.ts$/, 'app'],
@@ -52,7 +55,7 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   // is in the operators' handbook; counted by `root-domain-code`.
   [/^(reservation-conflicts|seal-esim-codes|seal-secrets|two-factor-methods)\.ts$/, 'app'],
   // ── platform ──────────────────────────────────────────────────────────────────────────────────────
-  [/^(config|errors|db|doors|cors|security-headers|production-config)\.ts$/, 'platform'],
+  [/^(config|errors|db|doors|cors|security-headers)\.ts$/, 'platform'],
   [/^openapi\//, 'platform'],
   [/^modules\/platform\//, 'platform'],
   [/^modules\/office\/outbox\//, 'platform'],
@@ -73,7 +76,7 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   // ── wallets, providers, tasks, sales, reporting ───────────────────────────────────────────────────
   [/^modules\/wallets\//, 'wallets'],
   [/^modules\/office\/wallets\//, 'wallets'],
-  [/^modules\/office\/providers\//, 'providers'],
+  [/^modules\/providers\//, 'providers'],
   [/^modules\/office\/tasks\//, 'tasks'],
   [/^modules\/sales\//, 'sales'],
   [/^modules\/office\/transfers\//, 'sales'],

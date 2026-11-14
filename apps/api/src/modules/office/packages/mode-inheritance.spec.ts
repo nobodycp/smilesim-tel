@@ -1,9 +1,9 @@
-import { ProvidersRepository } from '../providers/providers.repository';
+import { ProvidersRepository } from '../../providers/providers.repository';
 import { PackagesRepository } from './packages.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
-import { ProvidersService } from '../providers/providers.service';
+import { ProvidersService } from '../../providers/directory/providers.service';
 import { PackagesService } from './packages.service';
 
 // Run modes that follow the provider (spec 2026-11-09-admin-review, 3): a package lists the actions it inherits; the
@@ -36,7 +36,8 @@ function world() {
       update: async ({ where, data }: { where: { id?: string; code?: string }; data: Record<string, unknown> }) =>
         apply(packages.find((row) => row.id === where.id || row.code === where.code) as Record<string, unknown>, data),
     },
-    $transaction: async (work: Promise<unknown>[]) => Promise.all(work),
+    // The unit of work's transaction hands the work this same client (slice R.7: `saveModes` runs in `runTx`).
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) => work(kernel.prismaClient),
   } as unknown as OfficeGraph['prismaClient'];
   return { provider, packages, providers: new ProvidersService(new ProvidersRepository(kernel.uow)), catalog: new PackagesService(kernel.uow, kernel.tree, kernel.ladder, new PackagesRepository(kernel.uow)) };
 }

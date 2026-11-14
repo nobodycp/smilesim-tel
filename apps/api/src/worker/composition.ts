@@ -6,8 +6,8 @@ import { ActivationSettlement } from '../modules/sales/settlement/activation-set
 import { LinePricing } from '../modules/sales/line-pricing';
 import { LinesRepository } from '../modules/sales/lines.repository';
 import { TaskCompletion } from '../modules/sales/settlement/task-completion';
-import { ProviderOperationsRepository } from '../modules/office/providers/operations/provider-operations.repository';
-import { ProviderOperationsService } from '../modules/office/providers/operations/provider-operations.service';
+import { ProviderOperationsRepository } from '../modules/providers/integration/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../modules/providers/integration/operations/provider-operations.service';
 import { TasksRepository } from '../modules/office/tasks/tasks.repository';
 import { TasksService } from '../modules/office/tasks/tasks.service';
 import { PriceLadder } from '../modules/office/terms/price-ladder';

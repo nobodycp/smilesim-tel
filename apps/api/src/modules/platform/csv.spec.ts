@@ -1,6 +1,6 @@
 import { csvCell, csvDocument } from './csv';
 import { cell, ledgerCsv, profitCsv, shekels } from '../office/wallets/finance-summary';
-import { csvOf } from '../office/reports/report-csv';
+import { csvOf } from '../wallets/report-csv';
 
 // The CSV writer was taken out of the wallets and the reports into the platform (slice R.2 corrections). These
 // are the writers as they were before, kept here verbatim as the oracle: every document the API writes must be

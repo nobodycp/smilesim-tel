@@ -8,10 +8,10 @@ import type { NoticeWriter } from '../modules/platform/notices';
 import { OutboxRelay } from '../modules/office/outbox/outbox-relay';
 import { OutboxRepository } from '../modules/office/outbox/outbox.repository';
 import { QueuePublisher } from '../modules/office/outbox/queue-publisher';
-import type { SendGate } from '../modules/office/providers/dispatch/dispatch-gate';
-import { OperationDispatcher, WaitingPass, recoverExpired } from '../modules/office/providers/operations/operation-dispatcher';
-import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../modules/office/providers/operations/provider-operations.repository';
-import { ProviderOperationsService } from '../modules/office/providers/operations/provider-operations.service';
+import type { SendGate } from '../modules/providers/integration/dispatch/dispatch-gate';
+import { OperationDispatcher, WaitingPass, recoverExpired } from '../modules/providers/integration/operations/operation-dispatcher';
+import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../modules/providers/integration/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../modules/providers/integration/operations/provider-operations.service';
 import { errorCode, logger } from '../modules/platform/log';
 import { composeWorker } from './composition';
 

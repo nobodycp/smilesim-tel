@@ -14,7 +14,7 @@ import { visibleAccountIds } from '../../access/account-visibility';
 import { REFUND_KINDS, SALE_KINDS } from '../../pricing/rules/profit-ladder';
 import { PROVIDER_OPERATION_KINDS } from '../wallets/provider-cost';
 import { WalletsService } from '../wallets/wallets.service';
-import { csvOf } from './report-csv';
+import { csvOf } from '../../wallets/report-csv';
 
 // The «التقارير» page (spec 2026-11-08-reports, roadmap N5): balances and providers, each scoped to the signed-in
 // account's chain like the ledger, with totals and a CSV of the same filters. Sales and orders left by spec

@@ -4,7 +4,6 @@ import { WalletLedger } from './wallet-ledger';
 import { AccountTree } from '../../access/account-tree';
 import { UnitOfWork } from '../../platform/unit-of-work';
 import { dayRange } from '../../platform/dates';
-import { requireGrant } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../platform/api-failure';
@@ -12,9 +11,8 @@ import { parseInput } from '../../platform/input';
 import type { Actor, Account } from '../../access/types';
 import { after, cursorPosition, keyPage, page, BALANCES_PAGE, FEED_PAGE } from '../../platform/paging';
 import { visibleAccountIds } from '../../access/account-visibility';
-import { CeilingBody, CursorQuery, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, ProviderOperationsQuery, type FinanceFilter } from './wallets.schemas';
+import { CeilingBody, CursorQuery, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
-import { matchOf } from '../providers/match-simulator';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
 import { REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../../pricing/rules/profit-ladder';
 
@@ -191,74 +189,6 @@ export class WalletsService {
         esimPrice: row.esimPrice ?? null,
       };
     });
-  }
-
-  async providerOperations(actor: Actor, input: ProviderOperationsQuery = {}) {
-    if (actor.layer !== 'branch' || actor.impersonating) fail(403, 'REPORTS_BRANCH_ONLY');
-    requireGrant(actor, 'reports', 'REPORTS_BRANCH_ONLY');
-    const query = parseInput(ProviderOperationsQuery, input);
-    const kind = query.kind && PROVIDER_OPERATION_KINDS.includes(query.kind) ? query.kind : '';
-    const needle = (query.q ?? '').replace(/\s/g, '');
-    const { from, to } = dayRange(query.from, query.to);
-    const [resolved, providers] = await Promise.all([
-      this.pricedOperations({ kind: kind || undefined, msisdn: needle || undefined }),
-      this.repo.providersByName(),
-    ]);
-    const chosen = query.provider ? resolved.filter((row) => row.providerCode === query.provider) : resolved;
-    // Matching, simulated until real providers are connected (spec E): each row's state against its provider.
-    const providerByCode = new Map(providers.map((item) => [item.code, item]));
-    const matchFor = (row: { id: string; at: Date; cost: number; providerCode: string }) => {
-      const provider = providerByCode.get(row.providerCode);
-      return matchOf(row, { matchSource: provider?.matchSource ?? 'statement', lastMatchedAt: provider?.lastMatchedAt ?? null });
-    };
-    const dated = chosen.filter((row) => {
-      if (from && !Number.isNaN(from.getTime()) && row.at < from) return false;
-      if (to && !Number.isNaN(to.getTime()) && row.at > to) return false;
-      return true;
-    });
-    const matches = new Map(dated.map((row) => [row.id, matchFor(row)]));
-    const ranged = query.match === 'matched' || query.match === 'difference' || query.match === 'pending'
-      ? dated.filter((row) => matches.get(row.id)?.state === query.match)
-      : dated;
-    const now = new Date();
-    const monthCost = chosen
-      .filter((row) => row.at.getFullYear() === now.getFullYear() && row.at.getMonth() === now.getMonth())
-      .reduce((sum, row) => sum + row.cost, 0);
-    const position = cursorPosition(query.cursor);
-    const window = position
-      ? ranged.filter((row) => row.at < position.at || (row.at.getTime() === position.at.getTime() && row.id < position.id))
-      : ranged;
-    const { items, nextCursor } = page(window, FEED_PAGE, (row) => row.at);
-    return {
-      items: items.map((row) => ({
-        id: row.id,
-        at: row.at.toISOString(),
-        kind: row.kind,
-        msisdn: row.msisdn,
-        providerCode: row.providerCode,
-        providerName: row.providerName,
-        companyName: row.companyName,
-        packageName: row.packageName,
-        cost: row.cost,
-        esimPrice: row.esimPrice,
-        matchSource: providerByCode.get(row.providerCode)?.matchSource ?? 'statement',
-        matchState: matches.get(row.id)?.state ?? 'pending',
-        providerAmount: matches.get(row.id)?.providerAmount ?? null,
-        difference: matches.get(row.id)?.difference ?? null,
-      })),
-      nextCursor,
-      total: ranged.length,
-      stats: {
-        count: ranged.length,
-        cost: ranged.reduce((sum, row) => sum + row.cost, 0),
-        monthCost,
-        matched: dated.filter((row) => matches.get(row.id)?.state === 'matched').length,
-        differences: dated.filter((row) => matches.get(row.id)?.state === 'difference').length,
-        pending: dated.filter((row) => matches.get(row.id)?.state === 'pending').length,
-        differenceAmount: dated.reduce((sum, row) => sum + (matches.get(row.id)?.difference ?? 0), 0),
-      },
-      providers: providers.map((item) => ({ code: item.code, name: item.name, matchSource: item.matchSource })),
-    };
   }
 
   /** The ledger's filter: the entries of the visible accounts (every entry for the branch), narrowed by the query. */

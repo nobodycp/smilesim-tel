@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork, type Db } from '../../platform/unit-of-work';
+import type { Prisma } from '../../generated/prisma/client';
+import { UnitOfWork, type Db } from '../platform/unit-of-work';
 
 /**
  * The database as this domain reads and writes it: providers, their ledger entries, reconciliations and the catalog rows made from them. One method per query, named for what it
@@ -39,15 +39,15 @@ export class ProvidersRepository {
     return this.uow.prisma.package.findMany({ where: { providerId, inheritedModes: { has: action } } });
   }
 
-  /** The provider's action modes and the packages that follow them, in one batch. */
-  saveModes(code: string, modes: Prisma.ProviderUpdateInput['actionModes'], packages: Array<{ id: string; data: Prisma.PackageUpdateInput }>) {
-    return this.uow.prisma.$transaction([
-      this.uow.prisma.provider.update({ where: { code }, data: { actionModes: modes } }),
-      ...packages.map((pkg) => this.uow.prisma.package.update({
-        where: { id: pkg.id },
-        data: pkg.data,
-      })),
-    ]);
+  /**
+   * The provider's action modes and the packages that follow them, in one transaction. Slice R.7: the unit of work's
+   * (before it, an array transaction on the root client), the same updates in the same order.
+   */
+  async saveModes(code: string, modes: Prisma.ProviderUpdateInput['actionModes'], packages: Array<{ id: string; data: Prisma.PackageUpdateInput }>): Promise<void> {
+    await this.uow.runTx(async (tx) => {
+      await tx.provider.update({ where: { code }, data: { actionModes: modes } });
+      for (const pkg of packages) await tx.package.update({ where: { id: pkg.id }, data: pkg.data });
+    });
   }
 
   // ── Catalog made from a provider ───────────────────────────────────────────────────────────────────────────

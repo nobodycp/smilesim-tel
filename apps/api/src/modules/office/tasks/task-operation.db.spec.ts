@@ -7,8 +7,8 @@ import { ApiFailure } from '../../platform/api-failure';
 import { UnitOfWork } from '../../platform/unit-of-work';
 import { operationKey } from '../../sales/settlement/activation-settlement.rules';
 import type { NoticeService } from '../../notifications/notice.service';
-import { ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';
-import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
+import { ProviderOperationsRepository } from '../../providers/integration/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
 import { OfficeFacade } from '../testing/office-facade';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D6 and D7; transactions T8 and T9; spec items 8 to 10 (the

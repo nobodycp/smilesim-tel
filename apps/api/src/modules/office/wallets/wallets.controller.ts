@@ -1,6 +1,6 @@
 import { ApiZodQuery } from '../../../openapi/query';
 import { ApiZodBody } from '../../../openapi/body';
-import { CeilingBody, CursorQuery, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, ProviderOperationsQuery } from './wallets.schemas';
+import { CeilingBody, CursorQuery, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery } from './wallets.schemas';
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
@@ -67,14 +67,6 @@ export class WalletsController {
     @Body() body: CeilingBody,
   ) {
     return this.walletDesk.setCeiling(actor, loginName, body);
-  }
-
-  @Get('provider-operations')
-  @ApiOperation({ summary: 'Line operations with the branch cost at the provider (paged)' })
-  @ApiZodQuery(ProviderOperationsQuery)
-  @ApiErrorResponse(400, 401, 403)
-  providerOperations(@Actor() actor: ActorShape, @Query() query: ProviderOperationsQuery) {
-    return this.walletDesk.providerOperations(actor, query);
   }
 
   @Get('finance/summary')

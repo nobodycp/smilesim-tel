@@ -6,8 +6,8 @@ import { Activity, param } from '../../platform/activity.decorator';
 import { ActivityInterceptor } from '../../platform/activity.interceptor';
 import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
 import type { Actor as ActorShape } from '../../access/types';
-import { ProviderDispatchService } from './dispatch/provider-dispatch.service';
-import { ProviderCredentialBody, ProviderEsimPriceBody, ProviderModeBody } from './providers.schemas';
+import { ProviderDispatchService } from '../integration/dispatch/provider-dispatch.service';
+import { ProviderCredentialBody, ProviderEsimPriceBody, ProviderModeBody } from '../providers.schemas';
 import { ProvidersService } from './providers.service';
 
 @ApiTags('office')

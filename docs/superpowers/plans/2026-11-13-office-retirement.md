@@ -65,7 +65,17 @@ goes down; the backend map updated in the same commit.
   `modules/sales/lines.repository.ts`, so the settlement imports it from inside its module: `cross-domain-repository-
   import` stays 0); `office-esim.ts` → `esim-activation-code.ts`. Nest classes keep their names (`LinesModule`).
   `transfers` stays in `office/` until R.8 (it moves an account and a line). Commit: see `git log --grep 'R.6'`.
-- [ ] **R.7** Providers in three folders (directory, account, integration).
+- [x] **R.7** Providers in three folders (directory, account, integration) under `modules/providers/`; the module,
+  its repository and its schemas at the module's root (so each folder reads the repository from inside its module).
+  `GET provider-operations` (the operations with their match state) moved from `WalletsService`/`WalletsController`
+  to `ProviderAccountsService`/`ProviderAccountsController`: same path, decorators, permission and answer; it reads
+  the priced operations through the wallets, so `wallets → providers` is gone (the wallets' unused provider query
+  removed). `report-csv.ts` → `modules/wallets/` (money as text). `production-config.ts` is bootstrap (owner `app`).
+  The reconciliation's transaction and the run modes' batch run in `uow.runTx` (same writes, same order; the batch
+  form had no interactive time limit, the interactive one has Prisma's 5 s: a provider with very many following
+  packages would meet it; recorded). Guard: the integration imports nothing of the directory or the account.
+  `module-layering` 11 → 7, `module-mutual` 6 → 3, `root-domain-code` 3 → 2, `transaction-outside-unit-of-work`
+  4 → 2. Commit: see `git log --grep 'R.7'`.
 - [ ] **R.8** Catalog, pricing, wallets, access, reporting.
 - [ ] **R.9** The umbrella goes; public surfaces in force (`module-surface`).
 - [ ] **R.10** Prisma models `Task`, `TaskNote` with `@@map`; no migration.
@@ -81,11 +91,11 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 
 | Guard | Count | What it is | Closed by |
 |---|---|---|---|
-| `module-layering` | 11 (was 32; R.2 closed 4, R.3 9, R.4 8) | imports the target graph does not allow | R.3–R.8 |
-| `module-mutual` | 6 (R.4 closed sales ↔ tasks, providers ↔ tasks; was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales; R.3 closed identity ↔ platform, access ↔ pricing, access ↔ sales and opened catalog ↔ pricing, closed by R.8) | pairs of modules that import each other | R.3–R.8 |
-| `root-domain-code` | 3 (R.3: `doors.ts`; R.5: the worker's wiring; left: three command-line scripts that reach a module, whose `dist/` path operators run) | domain code at `src/` root | R.3, R.5 |
+| `module-layering` | 7 (was 32; R.2 closed 4, R.3 9, R.4 8, R.7 4) | imports the target graph does not allow | R.3–R.8 |
+| `module-mutual` | 3 (R.7 closed providers ↔ wallets, providers ↔ reporting, platform ↔ providers; R.4 closed sales ↔ tasks, providers ↔ tasks; was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales; R.3 closed identity ↔ platform, access ↔ pricing, access ↔ sales and opened catalog ↔ pricing, closed by R.8) | pairs of modules that import each other | R.3–R.8 |
+| `root-domain-code` | 2 (R.3: `doors.ts`; R.5: the worker's wiring; R.7: the start-up check is bootstrap; left: two command-line scripts that reach a module, whose `dist/` path operators run) | domain code at `src/` root | R.3, R.5 |
 | `operation-writes` | 0 (R.4) | `tasks/task-operation.ts` wrote a provider operation | done |
-| `transaction-outside-unit-of-work` | 4 (R.5: the attestation) | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
+| `transaction-outside-unit-of-work` | 2 (R.5: the attestation; R.7: the reconciliation and the run modes; left: the auth store's boot seeder and the eSIM sealing script, both stated) | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
 | `write-without-activity` | 7 | sign-in routes that record nothing | R.A |
 | `module-surface` | not in force | no module has a public surface | R.9, module by module |
 | unguarded writes | 27 | `auth` and `branding` writes have no duplicate guard: 1 needs protection, 16 have an equivalent, 10 are authentication steps that are never replayed (below) | R.11a, R.A |

@@ -5,7 +5,7 @@ import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import { ActivityRecorder } from '../../platform/activity';
 import { API_PROVIDERS } from '../../platform/api-providers';
 import { NoticeService } from '../../notifications/notice.service';
-import { PROVIDER_GATEWAY, type ProviderGateway } from '../providers/gateway/provider-gateway';
+import { PROVIDER_GATEWAY, type ProviderGateway } from '../../providers/integration/gateway/provider-gateway';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
 
 /**

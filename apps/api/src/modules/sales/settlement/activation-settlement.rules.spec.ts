@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { OPERATION_STATUSES, validKey, type OperationStatus } from '../../office/providers/operations/provider-operation.rules';
+import { OPERATION_STATUSES, validKey, type OperationStatus } from '../../providers/integration/operations/provider-operation.rules';
 import { APPLY_ERRORS, DECISIONS, DECISION_EVENT_TYPES, EVIDENCE_KINDS, MIN_DECISION_NOTE, activationRequestHash, applyErrorOf, decisionChoices, decisionStep, needsSecondAccount, openProposal, operationKey, released, requestKeyOf, settlementOf, sweepable, type Decision, type DecisionActor, type DecisionEvent, type DecisionEvidence, type DecisionRequest } from './activation-settlement.rules';
 import { holdOf, shownPhase, mayDecide, inFlight, phaseOf, sameRequest, taskActions, type OperationPhase, type TaskOperation } from '../../office/tasks/task-operation.rules';
 

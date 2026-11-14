@@ -1,7 +1,7 @@
 import { DeskRepository } from './desk.repository';
 import { AccessModule } from '../../access/access.module';
 import { PlatformModule } from '../../platform/platform.module';
-import { ProvidersModule } from '../providers/providers.module';
+import { ProvidersModule } from '../../providers/providers.module';
 import { ReportsModule } from '../reports/reports.module';
 import { WalletsModule } from '../wallets/wallets.module';
 import { DeskController } from './desk.controller';
