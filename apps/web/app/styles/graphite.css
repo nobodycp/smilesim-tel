@@ -1351,6 +1351,13 @@ input[readonly] { background-color: transparent; }
   .sheet:has(> table.data td[data-label]) { overflow-x: visible; }
   /* Inside a card a cell's content fits the card: no desktop minimum width. */
   table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td > * { min-inline-size: 0; max-inline-size: 100%; }
+  /* A cell that holds price editors (a sell cell's two fields and save, a default beside its own price field) takes
+     the card's whole row and wraps there; a price field keeps users.css's 6.5rem and is never wider than its cell.
+     A cap, not `inline-size: min(6.5rem, 100%)`: a percentage width counts as auto when the shrink-to-fit
+     `.terms-price` sizes itself, so the label grew to the input's default width (187px) (UI maintenance P0.7). */
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td:has(.sell-cell, .price-pair) { grid-column: 1 / -1; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) :is(.sell-cell, .price-pair) { flex-wrap: wrap; justify-content: flex-start; }
+  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) .terms-price input { max-inline-size: 100%; }
 }
 
 /* Phones, continued: every tab in view (the strip wraps instead of hiding the last tabs off its edge), 40px pager and

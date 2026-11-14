@@ -215,6 +215,23 @@ test('the package sheet opens the table for the whole system and then for one ac
   expect(calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=pos1');
 });
 
+// UI maintenance P0.7 (3.2-02): the phone card rules for price editors are limited to data tables drawn as cards
+// (cells with `data-label`); the dialog's own table is not one, so its field keeps 6.5rem (104px) at 375.
+test('on a phone the line prices dialog keeps its price fields at their width', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await serveApi(page, 'branch', {
+    ...sheetRoutes(),
+    'GET /packages/lian-wecom-500/line-prices': () => ({ body: { current: null, groups: [{ price: 3200, count: 1 }, { price: 123456, count: 12 }] } }),
+  });
+  await page.goto(`${admin}/providers/lian/lian-wecom-500`);
+  await page.getByRole('tab', { name: 'الأسعار' }).click();
+  await page.locator('.account-fund').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' }).getByRole('button', { name: 'عرض الأرقام' }).click();
+  const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
+  await expect(dialog.locator('table.data tbody tr')).toHaveCount(2);
+  const widths = await dialog.locator('.terms-price input').evaluateAll((inputs) => inputs.map((input) => input.getBoundingClientRect().width));
+  expect(widths).toEqual([104, 104]);
+});
+
 test('a custom price row opens the table for its account', async ({ page }) => {
   const calls = await serveApi(page, 'branch', {
     ...sheetRoutes(),

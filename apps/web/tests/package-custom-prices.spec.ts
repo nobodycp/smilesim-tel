@@ -79,3 +79,37 @@ test('the custom prices table sorts by each account own price and by a signed di
   await price.click();
   await expect.poll(order).toEqual(['pos3', 'pos2', 'pos1']);
 });
+
+// UI maintenance P0.7 (3.2-02): under 640px a table row is a card, two values a row; a cell that holds a price pair
+// (the default beside its own price field, and the difference pair) takes the card's whole row instead, so the field
+// stays inside its cell.
+test('on a phone the custom price cells take the card row and keep their fields inside', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await serveApi(page, 'branch', {
+    'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
+    'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [{ ...customRow, renewalPrice: 123456 }] }),
+    'GET /users': () => ({ body: { users: [] } }),
+    'GET /companies': () => ({ body: { companies: [] } }),
+    'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
+  });
+  await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
+  await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
+
+  const row = page.locator('.data tbody tr', { hasText: 'pos1' });
+  await expect(row.getByRole('textbox', { name: /اشتراك/ })).toBeVisible();
+  const cells = await row.locator('td:has(.price-pair)').evaluateAll((tds) => tds.map((td) => {
+    const cell = td.getBoundingClientRect();
+    const card = td.parentElement!.getBoundingClientRect();
+    const inside = [...td.querySelectorAll('*')].every((child) => {
+      const box = child.getBoundingClientRect();
+      return !box.width || (box.left >= cell.left - 1 && box.right <= cell.right + 1);
+    });
+    return { spare: card.width - cell.width, inside };
+  }));
+  expect(cells).toHaveLength(3);
+  for (const cell of cells) {
+    // The card's padding (16px a side) is all that is left beside a cell that spans the row.
+    expect(cell.spare).toBeLessThanOrEqual(34);
+    expect(cell.inside).toBe(true);
+  }
+});

@@ -52,6 +52,42 @@ test('an agent sees its own buy price and writes a sell price', async ({ page })
   await expect(row150.getByRole('textbox', { name: /اشتراك/ })).toHaveValue('');
 });
 
+// UI maintenance P0.7 (3.2-02): under 640px a table row is a card; the sell cell (two price fields, save, and the
+// reset menu on a row with its own price) takes the card's whole row and wraps there, every part inside the cell.
+test('on a phone the sell cell takes the card row and keeps its fields inside', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await serveApi(page, 'agent', {
+    'GET /packages': () => ({
+      body: {
+        companies: [],
+        packages: [
+          { ...base, code: 'lian-wecom-150', name: '150 جيجا', companyName: 'ويكوم', editableField: 'pos', price: 3100, renewalPrice: 2700, canActivate: true, sellPrice: 123456, sellRenewalPrice: 98765, sellDefault: 3500, sellRenewalDefault: 3200 },
+        ],
+      },
+    }),
+  });
+  await page.goto('http://agent.localhost:3910/packages');
+
+  const row = page.locator('table.data tbody tr', { hasText: '150 جيجا' });
+  await expect(row.getByRole('textbox', { name: /اشتراك/ })).toHaveValue('1234.56');
+  const cell = await row.locator('td:has(.sell-cell)').evaluate((td) => {
+    const box = td.getBoundingClientRect();
+    const card = td.parentElement!.getBoundingClientRect();
+    const parts = [...td.querySelectorAll('input, button')].map((part) => part.getBoundingClientRect());
+    return {
+      spare: card.width - box.width,
+      parts: parts.length,
+      inside: parts.every((part) => part.left >= box.left - 1 && part.right <= box.right + 1),
+    };
+  });
+  // The card's padding (16px a side) is all that is left beside a cell that spans the row.
+  expect(cell.spare).toBeLessThanOrEqual(34);
+  expect(cell.parts).toBe(4);
+  expect(cell.inside).toBe(true);
+  // The save button is pressable where it is drawn: nothing covers it.
+  await row.getByRole('button', { name: 'حفظ' }).click({ trial: true });
+});
+
 test('the point of sale sees its effective price and a stopped activation', async ({ page }) => {
   await serveApi(page, 'pos', {
     'GET /packages': () => ({
