@@ -1,5 +1,5 @@
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { OfficeGraph } from '../../office/testing/office-graph';
+import { ServiceGraph } from '../../testing/service-graph';
 import { DeskRepository } from './desk.repository';
 import { LineSnapshotsService } from './line-snapshots.service';
 
@@ -12,7 +12,7 @@ type Snapshot = { userId: string; day: string; active: number; expiring: number;
 function service() {
   const snapshots: Snapshot[] = [];
   const groups: unknown[] = [];
-  const graph = new OfficeGraph(new MemoryAuthStore());
+  const graph = new ServiceGraph(new MemoryAuthStore());
   // What each point of sale has under each filter, as `groupBy posId` answers it.
   const counted = (where: Record<string, unknown>) => {
     const text = JSON.stringify(where);
@@ -33,7 +33,7 @@ function service() {
         else snapshots.push(create);
       },
     },
-  } as unknown as OfficeGraph['prismaClient'];
+  } as unknown as ServiceGraph['prismaClient'];
   return { snapshots, groups, service: new LineSnapshotsService(graph.tree, new DeskRepository(graph.uow)) };
 }
 

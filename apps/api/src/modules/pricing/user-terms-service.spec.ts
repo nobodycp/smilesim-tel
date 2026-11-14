@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { groupLinePrices } from './rules/line-prices';
 import { captureTerms, type LineTerms } from './rules/prices';
 import { packageTermsOf, type PackagePriceRow } from './rules/package-terms';
-import { account, tree, type Row } from '../office/testing/tree.fixture';
+import { account, tree, type Row } from '../testing/tree.fixture';
 
 /** A number beside the tree's first line: the same package and point of sale, carrying `posPrice` at renewal. */
 const at = (line: Row, id: string, posPrice: number, status = 'active'): Row => ({

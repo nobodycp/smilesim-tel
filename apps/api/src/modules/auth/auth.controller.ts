@@ -75,7 +75,7 @@ export class AuthController {
   /** One activity event for an owner-only action on another account or on a layer, done or refused. */
   private async recordOwner(req: Request, event: ActivityDraft, result: Outcome<unknown>): Promise<void> {
     const failed = result.kind === 'error';
-    await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, event, failed ? 'fail' : 'ok', failed ? result.code : '');
+    await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, event, failed ? 'fail' : 'ok', failed ? result.code : '');
   }
 
   @Post('login')
@@ -123,10 +123,10 @@ export class AuthController {
   ) {
     const result = await this.auth.changePassword(sessionIdOf(req), body, metaOf(req));
     if (result.kind === 'error') {
-      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'password' }, 'fail', result.code);
+      await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'password' }, 'fail', result.code);
       return failWith(res, result);
     }
-    await this.activity.recordOffice({ sessionId: result.sessionId }, metaOf(req).ip, { action: 'password' }, 'ok', '');
+    await this.activity.record({ sessionId: result.sessionId }, metaOf(req).ip, { action: 'password' }, 'ok', '');
     setSessionCookie(res, result.sessionId);
     return result.body;
   }
@@ -200,10 +200,10 @@ export class AuthController {
   async revokeSession(@Param('id') id: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.revokeSession(sessionIdOf(req), id);
     if (result.kind === 'error') {
-      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'logout' }, 'fail', result.code);
+      await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'logout' }, 'fail', result.code);
       return failWith(res, result);
     }
-    await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'logout' }, 'ok', '');
+    await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'logout' }, 'ok', '');
     if (result.current) res.clearCookie('sid', cookieBase());
     return { ok: true };
   }
@@ -217,7 +217,7 @@ export class AuthController {
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const gate = { sessionId: sessionIdOf(req) };
     const result = await this.auth.logout(gate.sessionId);
-    await this.activity.recordOffice(gate, metaOf(req).ip, { action: 'logout' }, result.kind === 'error' ? 'fail' : 'ok', result.kind === 'error' ? result.code : '');
+    await this.activity.record(gate, metaOf(req).ip, { action: 'logout' }, result.kind === 'error' ? 'fail' : 'ok', result.kind === 'error' ? result.code : '');
     if (result.kind === 'error') return failWith(res, result);
     res.clearCookie('sid', cookieBase());
     return { ok: true };
@@ -259,10 +259,10 @@ export class AuthController {
   ) {
     const result = await this.auth.confirmTwoFactor(sessionIdOf(req), body, metaOf(req));
     if (result.kind === 'error') {
-      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
+      await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
       return failWith(res, result);
     }
-    await this.activity.recordOffice({ sessionId: result.sessionId ?? sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'ok', '');
+    await this.activity.record({ sessionId: result.sessionId ?? sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'ok', '');
     if (result.sessionId) setSessionCookie(res, result.sessionId);
     return { next: 'app' };
   }
@@ -281,10 +281,10 @@ export class AuthController {
   ) {
     const result = await this.auth.verifyTwoFactor(sessionIdOf(req), body, metaOf(req));
     if (result.kind === 'error') {
-      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
+      await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
       return failWith(res, result);
     }
-    await this.activity.recordOffice({ sessionId: result.sessionId }, metaOf(req).ip, { action: 'two_factor' }, 'ok', '');
+    await this.activity.record({ sessionId: result.sessionId }, metaOf(req).ip, { action: 'two_factor' }, 'ok', '');
     setSessionCookie(res, result.sessionId);
     return { next: 'app' };
   }
@@ -415,10 +415,10 @@ export class AuthController {
   async confirmMethod(@Body() body: ConfirmMethodBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.confirmCodeMethod(sessionIdOf(req), body, metaOf(req));
     if (result.kind === 'error') {
-      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
+      await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'fail', result.code);
       return failWith(res, result);
     }
-    await this.activity.recordOffice({ sessionId: result.sessionId ?? sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'ok', '');
+    await this.activity.record({ sessionId: result.sessionId ?? sessionIdOf(req) }, metaOf(req).ip, { action: 'two_factor' }, 'ok', '');
     if (result.sessionId) setSessionCookie(res, result.sessionId);
     return { next: 'app' };
   }
@@ -464,10 +464,10 @@ export class AuthController {
   async addPasskey(@Body() body: PasskeyBody, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.passkeys.register(sessionIdOf(req), body);
     if (result.kind === 'error') {
-      await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_add' }, 'fail', result.code);
+      await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_add' }, 'fail', result.code);
       return failWith(res, result);
     }
-    await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_add' }, 'ok', '');
+    await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_add' }, 'ok', '');
     return result.passkey;
   }
 
@@ -481,7 +481,7 @@ export class AuthController {
   async removePasskey(@Param('id') id: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.passkeys.remove(sessionIdOf(req), id);
     if (result.kind === 'error') return failWith(res, result);
-    await this.activity.recordOffice({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_remove' }, 'ok', '');
+    await this.activity.record({ sessionId: sessionIdOf(req) }, metaOf(req).ip, { action: 'passkey_remove' }, 'ok', '');
     return { ok: true };
   }
 

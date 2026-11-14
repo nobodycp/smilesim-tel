@@ -9,7 +9,7 @@ import type { Actor as ActorShape } from '../types';
 import { RoleBody } from './roles.schemas';
 import { RolesService } from './roles.service';
 
-@ApiTags('office')
+@ApiTags('access')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

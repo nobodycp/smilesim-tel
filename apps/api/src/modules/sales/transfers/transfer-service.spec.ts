@@ -1,5 +1,5 @@
-import { OfficeGraph } from '../../office/testing/office-graph';
-import { SHARED_COLLABORATORS } from '../../office/testing/collaborators';
+import { ServiceGraph } from '../../testing/service-graph';
+import { SHARED_COLLABORATORS } from '../../testing/collaborators';
 import { AUTH_STORE } from '../../auth/auth.store';
 import 'reflect-metadata';
 import { API_PROVIDERS } from '../../platform/api-providers';
@@ -9,10 +9,10 @@ import request from 'supertest';
 import { ActivityRecorder } from '../../platform/activity';
 import { NOTICE_GROUPS, hrefFor, type NoticeDraft } from '../../notifications/notice-kinds';
 import type { NoticeService, WrittenNotice } from '../../notifications/notice.service';
-import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../../office/office.module';
-import { OfficeFacade } from '../../office/testing/office-facade';
+import { DOMAIN_CONTROLLERS, DOMAIN_PROVIDERS } from '../../testing/domain-lists';
+import { ApiFacade } from '../../testing/api-facade';
 import type { LineTerms } from '../../pricing/rules/prices';
-import { account, tree, type Row } from '../../office/testing/tree.fixture';
+import { account, tree, type Row } from '../../testing/tree.fixture';
 
 // Moving an account or a number, and what the office is told before it does.
 // The tree is the one in tree-fixture.ts: branch → ma1 → ag1 → pos1 and ma1 → ag2 → pos2, plus ma2 with nothing under it.
@@ -891,21 +891,21 @@ describe('the transfer routes under /office', () => {
     recorded.length = 0;
   });
 
-  async function appFor(service: OfficeFacade) {
+  async function appFor(service: ApiFacade) {
     // Every office route, whichever controller holds it, over this service's own collaborators (its in-memory tables).
-    const graph = (service as unknown as { graph: OfficeGraph }).graph;
+    const graph = (service as unknown as { graph: ServiceGraph }).graph;
     const moduleRef = await Test.createTestingModule({
-      controllers: OFFICE_CONTROLLERS,
+      controllers: DOMAIN_CONTROLLERS,
       providers: [
         // Everything but the shared collaborators, which come from this service's own graph.
-        ...OFFICE_PROVIDERS.filter((provider) => !(SHARED_COLLABORATORS as unknown[]).includes(provider)),
+        ...DOMAIN_PROVIDERS.filter((provider) => !(SHARED_COLLABORATORS as unknown[]).includes(provider)),
         ...API_PROVIDERS,
         ...graph.providers(),
         { provide: AUTH_STORE, useValue: graph.auth },
         {
           provide: ActivityRecorder,
           useValue: {
-            recordOffice: async (...args: unknown[]) => {
+            record: async (...args: unknown[]) => {
               recorded.push(args);
             },
           },

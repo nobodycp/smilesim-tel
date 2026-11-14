@@ -2,7 +2,7 @@ import { LinesRepository } from './lines.repository';
 import { AccessModule } from '../access/access.module';
 import { PlatformModule } from '../platform/platform.module';
 import { ProvidersModule } from '../providers/providers.module';
-import { TasksModule } from '../tasks/tasks.module';
+import { TasksModule } from '../tasks';
 import { TermsModule } from '../pricing/terms.module';
 import { WalletsModule } from '../wallets/wallets.module';
 import { LineAccess } from './line-access';

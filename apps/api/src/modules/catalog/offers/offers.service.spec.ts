@@ -1,5 +1,5 @@
 import { OffersRepository } from './offers.repository';
-import { OfficeGraph } from '../../office/testing/office-graph';
+import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
 import { ApiFailure } from '../../platform/api-failure';
@@ -9,7 +9,7 @@ import { OffersService, offerShows } from './offers.service';
 type Row = Record<string, unknown> & { id: string; position: number };
 
 function setup() {
-  const kernel = new OfficeGraph(new MemoryAuthStore());
+  const kernel = new ServiceGraph(new MemoryAuthStore());
   const rows: Row[] = [];
   const offer = {
     findMany: async () => [...rows].sort((a, b) => a.position - b.position),
@@ -23,7 +23,7 @@ function setup() {
     update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => Object.assign(rows.find((row) => row.id === where.id)!, data),
     delete: async ({ where }: { where: { id: string } }) => rows.splice(rows.findIndex((row) => row.id === where.id), 1)[0],
   };
-  kernel.prismaClient = { offer, $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({ offer }) } as unknown as OfficeGraph['prismaClient'];
+  kernel.prismaClient = { offer, $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({ offer }) } as unknown as ServiceGraph['prismaClient'];
   return { service: new OffersService(kernel.uow, new OffersRepository(kernel.uow)), rows };
 }
 

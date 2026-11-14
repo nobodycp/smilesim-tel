@@ -1,5 +1,5 @@
 import { activationRequestHash, operationKey, requestKeyOf, type ActivationInput } from './settlement/activation-settlement.rules';
-import type { TaskRequest } from '../tasks/task-operation.rules';
+import type { TaskRequest } from '../tasks';
 import { assertCanSealEsimCode, storableEsimCode } from '../platform/esim-code';
 import { LinesRepository } from './lines.repository';
 import { LineAccess } from './line-access';
@@ -25,7 +25,7 @@ import { packageTermsOf } from '../pricing/rules/package-terms';
 import { NOT_CONNECTED, PROVIDER_GATEWAY, type ProviderGateway } from '../providers/integration/gateway/provider-gateway';
 import { ProviderOperationsService } from '../providers/integration/operations/provider-operations.service';
 import { BRANCH_TASK_NOTE, PROVIDER_DISPATCH_NOTE, PROVIDER_FAILED_NOTE } from '../platform/stored-text';
-import { TasksService } from '../tasks/tasks.service';
+import { TasksService } from '../tasks';
 import { deniedOpsFor, visibleTo } from '../pricing/rules/user-terms';
 import { periodOf, readQr } from './line-input';
 import { assertRunnable, canActivateFor, runsNow, type RunnablePackage } from './line-ops';

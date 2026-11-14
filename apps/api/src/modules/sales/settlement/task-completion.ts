@@ -1,4 +1,4 @@
-import { assertOperationAllows } from '../../tasks/task-operation';
+import { assertOperationAllows, canHandleTasks, TasksService } from '../../tasks';
 import { esimCodeOrFail, storableEsimCode } from '../../platform/esim-code';
 import { LinesRepository } from '../lines.repository';
 import { WalletLedger } from '../../wallets/wallet-ledger';
@@ -19,8 +19,6 @@ import { activationProviderCost, captureTerms, providerBranchCost } from '../../
 import { esimPriceOf } from '../../catalog/rules/package-prices';
 import { simRefusal, simRulesOf } from '../../catalog/rules/sim-rules';
 import { packageTermsOf } from '../../pricing/rules/package-terms';
-import { canHandleTasks } from '../../tasks/task-access';
-import { TasksService } from '../../tasks/tasks.service';
 import { LinePricing } from '../line-pricing';
 import { assertClaimFree, lockClaim, lockedTaskLine, moveLineStatus, numberTaken } from '../line-state';
 import { completionClaim, type Claim } from '../reservation.rules';

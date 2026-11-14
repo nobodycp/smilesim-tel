@@ -29,7 +29,7 @@ export class PrismaActivityRecorder extends ActivityRecorder {
     return this.prismaClient;
   }
 
-  async recordOffice(gate: Gate, ip: string, event: ActivityDraft, result: 'ok' | 'fail', reason: string): Promise<void> {
+  async record(gate: Gate, ip: string, event: ActivityDraft, result: 'ok' | 'fail', reason: string): Promise<void> {
     const db = this.client();
     if (!db) return;
     try {
@@ -41,10 +41,10 @@ export class PrismaActivityRecorder extends ActivityRecorder {
 
   /**
    * Records an event that must exist before its answer leaves: the read of an eSIM code (ADR 0019, D17). Unlike
-   * `recordOffice` it does not swallow a failure: when the event cannot be written, the caller does not answer.
+   * `record` it does not swallow a failure: when the event cannot be written, the caller does not answer.
    * Without a database (specs with no DATABASE_URL) there is nothing to read from either, and nothing is written.
    */
-  async recordOfficeOrFail(gate: Gate, ip: string, event: ActivityDraft): Promise<void> {
+  async recordOrFail(gate: Gate, ip: string, event: ActivityDraft): Promise<void> {
     const db = this.client();
     if (!db) return;
     await this.write(db, gate, ip, event, 'ok', '');

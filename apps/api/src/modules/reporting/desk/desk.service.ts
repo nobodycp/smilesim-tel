@@ -4,9 +4,9 @@ import { isOwner } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access/types';
 import { visibleAccountIds } from '../../access/account-visibility';
-import { taskWhereFor } from '../../tasks/task-access';
+import { taskWhereFor } from '../../tasks';
 import { deniedOpsFor, parseOps, serializeOps } from '../../pricing/rules/user-terms';
-import { expiringWhere } from '../../sales/rules/line-filters';
+import { expiringWhere } from '../../sales';
 
 /** The signed-in account's desk: who it is (identity, balance, grants, stops), and the home board. */
 @Injectable()

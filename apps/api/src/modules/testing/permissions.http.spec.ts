@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { officeTestApp } from './office-test-app';
-import { GRANT_CODES } from '../../access/grants';
-import { ROUTES } from './office-routes';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
+import { apiTestApp } from './api-test-app';
+import { GRANT_CODES } from '../access/grants';
+import { ROUTES } from './routes';
 
 // Who gets past the gate of each office route (improvement 2, spec 2026-11-08-sorting-permissions-api-guards.md).
 // Six accounts call every route over tables that hold only the caller: `y` = the route lets this account through
@@ -199,7 +199,7 @@ describe('office permission matrix', () => {
         });
       }
       const sid = await store.saveSession({ userId: actor.id, scope: 'full', userAgent: '', ip: '' });
-      apps[actor.id] = { app: (await officeTestApp(store, tables(actor.id))).app, sid };
+      apps[actor.id] = { app: (await apiTestApp(store, tables(actor.id))).app, sid };
     }
   });
 

@@ -1,11 +1,11 @@
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Layer } from '../../../doors';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
+import type { Layer } from '../../doors';
 import { hashOnce } from './test-hash';
-import { ApiFailure } from '../../platform/api-failure';
-import { OfficeFacade } from './office-facade';
-import { after, decodeCursor, encodeCursor } from '../../platform/paging';
-import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhere, suspendedWhere } from '../../sales/rules/line-filters';
+import { ApiFailure } from '../platform/api-failure';
+import { ApiFacade } from './api-facade';
+import { after, decodeCursor, encodeCursor } from '../platform/paging';
+import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhere, suspendedWhere } from '../sales/rules/line-filters';
 
 // A small in-memory stand-in for the Prisma client: it reads the `where`, `orderBy`, `cursor`,
 // `skip` and `take` the service sends, so the lists are proven to page in the query and not in memory.
@@ -107,7 +107,7 @@ async function serviceWith(tables: Record<string, unknown>) {
     passwordHash: await hashOnce('ownerpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
-  const service = new OfficeFacade(auth);
+  const service = new ApiFacade(auth);
   const prisma = {
     user: {
       findUnique: async () => ({ liveGrants: '', isBranchOwner: true }),
@@ -137,7 +137,7 @@ describe('numbers list paging', () => {
     endsAt: new Date(t0 + 86_400_000),
   }));
 
-  async function walk(query: Parameters<OfficeFacade['lines']>[1]) {
+  async function walk(query: Parameters<ApiFacade['lines']>[1]) {
     const calls: FindArgs[] = [];
     const { service, gate } = await serviceWith({ line: table(lines, calls) });
     const pages: string[][] = [];
@@ -482,7 +482,7 @@ describe('task reading follows the number', () => {
       passwordHash: await hashOnce('ownerpass1'),
     });
     const sessionId = await auth.saveSession({ userId: id, scope: 'full', userAgent: '', ip: '' });
-    const service = new OfficeFacade(auth);
+    const service = new ApiFacade(auth);
     (service as unknown as { prismaClient: unknown }).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: grants, isBranchOwner: owner }), findMany: async () => chain },
       officeTask: table(rows),

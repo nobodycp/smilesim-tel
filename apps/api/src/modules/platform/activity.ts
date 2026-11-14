@@ -95,12 +95,12 @@ export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 
 export abstract class ActivityRecorder {
   /** Records what a signed-in request did, `ok` or `fail` with the refusal code. A failure to write is logged, never thrown. */
-  abstract recordOffice(gate: Gate, ip: string, event: ActivityDraft, result: 'ok' | 'fail', reason: string): Promise<void>;
+  abstract record(gate: Gate, ip: string, event: ActivityDraft, result: 'ok' | 'fail', reason: string): Promise<void>;
   /**
    * Records an event that must exist before its answer leaves (the read of an eSIM code, ADR 0019 D17): a failure
    * to write is thrown, and the caller does not answer.
    */
-  abstract recordOfficeOrFail(gate: Gate, ip: string, event: ActivityDraft): Promise<void>;
+  abstract recordOrFail(gate: Gate, ip: string, event: ActivityDraft): Promise<void>;
   /** Records a sign-in attempt by the login name it was made with. A failure to write is logged, never thrown. */
   abstract recordLogin(input: { loginName: string; ip: string; result: 'ok' | 'fail'; reason: string }): Promise<void>;
 }

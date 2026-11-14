@@ -6,12 +6,12 @@ import { holdsAny } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access/types';
 import { visibleAccountIds } from '../../access/account-visibility';
-import { expiringWhere, suspendedWhere } from '../../sales/rules/line-filters';
+import { expiringWhere, suspendedWhere } from '../../sales';
 import { REFUND_KINDS, SALE_KINDS, marginOf } from '../../pricing/rules/profit-ladder';
 import { ProviderAccountsService } from '../../providers/account/provider-accounts.service';
 import { ProviderHealthService } from '../../providers/directory/provider-health.service';
 import { InsightsService } from '../reports/insights.service';
-import { taskWhereFor } from '../../tasks/task-access';
+import { taskWhereFor } from '../../tasks';
 import { WalletsService } from '../../wallets/wallets.service';
 import { addEntry, axis, bucketOf, emptyTotals, stepOf, previousWindow, type PulsePoint, type PulseTotals } from './pulse';
 

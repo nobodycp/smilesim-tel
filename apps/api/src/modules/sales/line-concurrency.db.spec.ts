@@ -6,7 +6,7 @@ import { ApiFailure } from '../platform/api-failure';
 import type { NoticeService } from '../notifications/notice.service';
 import { captureTerms } from '../pricing/rules/prices';
 import { packageTermsOf, type PackagePriceRow } from '../pricing/rules/package-terms';
-import { OfficeFacade } from '../office/testing/office-facade';
+import { ApiFacade } from '../testing/api-facade';
 
 // Runs against a real PostgreSQL only (see wallet-concurrency.db.spec.ts for how to give it one): in-memory
 // tables cannot show two transactions racing for one line. Backend review 2026-11-10, M3.
@@ -19,7 +19,7 @@ suite('operations on one number at the same moment (PostgreSQL)', () => {
   const tag = randomUUID().slice(0, 8);
   const ids = { owner: randomUUID(), pos: randomUUID(), provider: randomUUID(), company: randomUUID(), pkg: randomUUID(), line: randomUUID() };
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeFacade;
+  let service: ApiFacade;
   let gate: { sessionId: string };
 
   beforeAll(async () => {
@@ -47,7 +47,7 @@ suite('operations on one number at the same moment (PostgreSQL)', () => {
       include: { company: true, provider: true },
     });
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
-    service = new OfficeFacade(auth, notice);
+    service = new ApiFacade(auth, notice);
     await prisma.line.create({
       data: {
         id: ids.line, msisdn: `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`, status: 'active', packageId: ids.pkg, posId: ids.pos,

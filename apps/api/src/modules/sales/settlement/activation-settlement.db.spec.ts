@@ -18,7 +18,7 @@ import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } 
 import { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
 import { ScriptedGateway } from '../../providers/testing/scripted-gateway';
 import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
-import { OfficeFacade } from '../../office/testing/office-facade';
+import { ApiFacade } from '../../testing/api-facade';
 import type { ActivationSettlement } from './activation-settlement';
 import { operationKey } from './activation-settlement.rules';
 
@@ -45,7 +45,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
   const prefix = `s8-${tag}`;
   const ids = { owner: randomUUID(), accountant: randomUUID(), clerk: randomUUID(), pos: randomUUID(), provider: randomUUID(), company: randomUUID(), pkg: randomUUID(), role: randomUUID(), plain: randomUUID() };
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeFacade;
+  let service: ApiFacade;
   let dispatch: ReturnType<typeof buildProviderDispatch>;
   /** The settlement over this spec's own operations: other specs keep operations of their own in the same database. */
   let settlement: ActivationSettlement;
@@ -173,7 +173,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       },
       publish: async () => undefined,
     } as unknown as NoticeService;
-    service = new OfficeFacade(auth, notice);
+    service = new ApiFacade(auth, notice);
     if (redisUrl) redis = new IORedis(redisUrl, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
     dispatch = buildProviderDispatch(prisma, redis ?? ({} as IORedis), openGate(new ScriptedGateway()), prefix, notice);
     settlement = buildActivationSettlement(dispatch.uow, new ProviderOperationsService(dispatch.uow, new OwnOperations()));

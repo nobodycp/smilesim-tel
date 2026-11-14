@@ -1,54 +1,54 @@
-import { AuditRepository } from '../../auditing/audit.repository';
-import { RolesRepository } from '../../access/roles/roles.repository';
-import { DeskRepository } from '../../reporting/desk/desk.repository';
-import { ProvidersRepository } from '../../providers/providers.repository';
-import { LinesRepository } from '../../sales/lines.repository';
-import { TasksRepository } from '../../tasks/tasks.repository';
-import { WalletsRepository } from '../../wallets/wallets.repository';
-import { TransfersRepository } from '../../sales/transfers/transfers.repository';
-import { TermsRepository } from '../../pricing/terms.repository';
-import { PackagesRepository } from '../../catalog/packages/packages.repository';
-import { CompaniesRepository } from '../../catalog/companies/companies.repository';
-import { AccountsRepository } from '../../access/accounts/accounts.repository';
-import { OfficeGraph } from './office-graph';
-import { PrismaService } from '../../platform/prisma.service';
-import { Prisma, PrismaClient } from '../../../generated/prisma/client';
-import { AuthStore } from '../../auth/auth.store';
-import type { LineFilter } from '../../sales/rules/line-filters';
-import { NoticeService } from '../../notifications/notice.service';
-import type { NoticeWriter } from '../../platform/notices';
-import { LinePricing } from '../../sales/line-pricing';
-import { LineReads } from '../../sales/line-reads';
-import { LinesService } from '../../sales/lines.service';
-import { TaskCompletion } from '../../sales/settlement/task-completion';
-import { SimulatedProviderGateway } from '../../providers/integration/gateway/simulated-gateway';
-import { ProviderOperationsRepository } from '../../providers/integration/operations/provider-operations.repository';
-import { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
-import { TransfersService } from '../../sales/transfers/transfers.service';
-import { AccountsService } from '../../access/accounts/accounts.service';
-import { DeskService } from '../../reporting/desk/desk.service';
-import { RolesService } from '../../access/roles/roles.service';
-import { TermsService } from '../../pricing/terms.service';
-import { PackageShelfService } from '../../pricing/package-shelf.service';
-import { PackagesService } from '../../catalog/packages/packages.service';
-import { CompaniesService } from '../../catalog/companies/companies.service';
-import { ProviderAccountsService } from '../../providers/account/provider-accounts.service';
-import { ProvidersService } from '../../providers/directory/providers.service';
-import { WalletsService } from '../../wallets/wallets.service';
-import { AuditService } from '../../auditing/audit.service';
-import { TasksService } from '../../tasks/tasks.service';
-import type { Gate } from '../../platform/cookies';
-import type { Sale } from '../../wallets/sale';
-import type { TransferAccountBody } from '../../sales/transfers/transfers.service';
+import { AuditRepository } from '../auditing/audit.repository';
+import { RolesRepository } from '../access/roles/roles.repository';
+import { DeskRepository } from '../reporting/desk/desk.repository';
+import { ProvidersRepository } from '../providers/providers.repository';
+import { LinesRepository } from '../sales/lines.repository';
+import { TasksRepository } from '../tasks/tasks.repository';
+import { WalletsRepository } from '../wallets/wallets.repository';
+import { TransfersRepository } from '../sales/transfers/transfers.repository';
+import { TermsRepository } from '../pricing/terms.repository';
+import { PackagesRepository } from '../catalog/packages/packages.repository';
+import { CompaniesRepository } from '../catalog/companies/companies.repository';
+import { AccountsRepository } from '../access/accounts/accounts.repository';
+import { ServiceGraph } from './service-graph';
+import { PrismaService } from '../platform/prisma.service';
+import { Prisma, PrismaClient } from '../../generated/prisma/client';
+import { AuthStore } from '../auth/auth.store';
+import type { LineFilter } from '../sales/rules/line-filters';
+import { NoticeService } from '../notifications/notice.service';
+import type { NoticeWriter } from '../platform/notices';
+import { LinePricing } from '../sales/line-pricing';
+import { LineReads } from '../sales/line-reads';
+import { LinesService } from '../sales/lines.service';
+import { TaskCompletion } from '../sales/settlement/task-completion';
+import { SimulatedProviderGateway } from '../providers/integration/gateway/simulated-gateway';
+import { ProviderOperationsRepository } from '../providers/integration/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../providers/integration/operations/provider-operations.service';
+import { TransfersService } from '../sales/transfers/transfers.service';
+import { AccountsService } from '../access/accounts/accounts.service';
+import { DeskService } from '../reporting/desk/desk.service';
+import { RolesService } from '../access/roles/roles.service';
+import { TermsService } from '../pricing/terms.service';
+import { PackageShelfService } from '../pricing/package-shelf.service';
+import { PackagesService } from '../catalog/packages/packages.service';
+import { CompaniesService } from '../catalog/companies/companies.service';
+import { ProviderAccountsService } from '../providers/account/provider-accounts.service';
+import { ProvidersService } from '../providers/directory/providers.service';
+import { WalletsService } from '../wallets/wallets.service';
+import { AuditService } from '../auditing/audit.service';
+import { TasksService } from '../tasks/tasks.service';
+import type { Gate } from '../platform/cookies';
+import type { Sale } from '../wallets/sale';
+import type { TransferAccountBody } from '../sales/transfers/transfers.service';
 
 /**
  * Test-only adapter: the office methods as the specs have always called them, `(gate, ...)`, each
  * resolving the actor and handing the call to the domain service that owns it. Production code never uses it;
  * every route lives in a domain controller under `modules/office/<domain>/`.
  */
-export class OfficeFacade {
+export class ApiFacade {
   /** Shared by every office domain: the client, the actor, accounts, transactions, wallet moves (testing/office-graph.ts). */
-  private readonly graph: OfficeGraph;
+  private readonly graph: ServiceGraph;
 
   // The members below without `private` are the hooks specs reach in by: the client, the notice writer, a
   // transaction, a wallet move, the price stamp.
@@ -87,9 +87,9 @@ export class OfficeFacade {
     auth: AuthStore,
     notice?: NoticeService,
     db?: PrismaService,
-    graph?: OfficeGraph,
+    graph?: ServiceGraph,
   ) {
-    this.graph = graph ?? new OfficeGraph(auth, notice, db);
+    this.graph = graph ?? new ServiceGraph(auth, notice, db);
   }
 
   private walletDeskInstance: WalletsService | null = null;

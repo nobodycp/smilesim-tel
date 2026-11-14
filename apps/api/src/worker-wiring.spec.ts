@@ -12,7 +12,7 @@ import { UnitOfWork } from './modules/platform/unit-of-work';
 import { ProviderDecisions } from './modules/sales/settlement/provider-decisions';
 import { ProviderOperationsService } from './modules/providers/integration/operations/provider-operations.service';
 import { NOTICE_WRITER } from './modules/platform/notices';
-import { OFFICE_PROVIDERS } from './modules/office/office.module';
+import { DOMAIN_PROVIDERS } from './modules/testing/domain-lists';
 import type { SendGate } from './modules/providers/integration/dispatch/dispatch-gate';
 import { API_PROVIDERS } from './modules/platform/api-providers';
 import { Inject, Injectable, Optional } from '@nestjs/common';
@@ -126,7 +126,7 @@ describe('the worker and the API build the money path alike', () => {
   beforeAll(async () => {
     // The API's providers, as its modules list them, compiled by Nest. Nothing is started: no hook runs.
     api = await Test.createTestingModule({
-      providers: [...OFFICE_PROVIDERS, ...API_PROVIDERS, { provide: AUTH_STORE, useValue: {} }, { provide: ActivityRecorder, useValue: { recordOffice: async () => undefined } }],
+      providers: [...DOMAIN_PROVIDERS, ...API_PROVIDERS, { provide: AUTH_STORE, useValue: {} }, { provide: ActivityRecorder, useValue: { record: async () => undefined } }],
     }).compile();
     apiGraph = graphOf(api.get(ProviderDecisions));
     dispatch = buildWorker();
@@ -200,7 +200,7 @@ describe('the worker and the API build the money path alike', () => {
 
 describe('one description: the worker builds the money path from the classes the API registers (slice R.5)', () => {
   it('every class the worker builds, but the settlement, is a provider of the API registered as itself', () => {
-    const registered = OFFICE_PROVIDERS as unknown[];
+    const registered = DOMAIN_PROVIDERS as unknown[];
     for (const type of WORKER_MONEY_PATH) {
       const shipped = registered.includes(type);
       const replaced = registered.some((provider) => typeof provider === 'object' && provider !== null && (provider as { provide?: unknown }).provide === type);

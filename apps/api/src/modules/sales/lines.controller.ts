@@ -19,7 +19,7 @@ import { ProviderDecisions } from './settlement/provider-decisions';
 /** Whether an activation's answer carries an eSIM code: only then is the duplicate guard's copy of it a secret. */
 const carriesEsimCode = (answer: unknown) => Boolean((answer as { line?: { esimQr?: unknown } } | null)?.line?.esimQr);
 
-@ApiTags('office')
+@ApiTags('sales')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')
@@ -43,7 +43,7 @@ export class LinesController {
     const answer = await this.reads.detail(actor, id);
     // An eSIM code is leaving: the read is on record before the answer goes (ADR 0019, D17: `line.esim_read`).
     // The event names who, which line, when and from where; never the code. If it cannot be written, there is no answer.
-    if (answer.line.esimQr) await this.activity.recordOfficeOrFail(gateOf(req), req.ip ?? '', { action: 'esim_read', subjectKind: 'line', subjectRef: id });
+    if (answer.line.esimQr) await this.activity.recordOrFail(gateOf(req), req.ip ?? '', { action: 'esim_read', subjectKind: 'line', subjectRef: id });
     return answer;
   }
 

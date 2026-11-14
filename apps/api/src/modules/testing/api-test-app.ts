@@ -1,12 +1,12 @@
-import { UnitOfWork } from '../../platform/unit-of-work';
+import { UnitOfWork } from '../platform/unit-of-work';
 import { INestApplication, type NestInterceptor } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
-import { ActivityRecorder } from '../../platform/activity';
-import { API_PROVIDERS } from '../../platform/api-providers';
-import { NoticeService } from '../../notifications/notice.service';
-import { PROVIDER_GATEWAY, type ProviderGateway } from '../../providers/integration/gateway/provider-gateway';
-import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
+import { AUTH_STORE, type AuthStore } from '../auth/auth.store';
+import { ActivityRecorder } from '../platform/activity';
+import { API_PROVIDERS } from '../platform/api-providers';
+import { NoticeService } from '../notifications/notice.service';
+import { PROVIDER_GATEWAY, type ProviderGateway } from '../providers/integration/gateway/provider-gateway';
+import { DOMAIN_CONTROLLERS, DOMAIN_PROVIDERS } from './domain-lists';
 
 /**
  * For HTTP specs: every office route, as the app serves it, over the given auth store and in-memory tables.
@@ -14,20 +14,20 @@ import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
  * interceptors run in front of every route, as `OfficeModule` registers the duplicate guard. `gateway` replaces the
  * provider gateway for the spec.
  */
-export async function officeTestApp(store: AuthStore, tables: Record<string, unknown>, notice?: Partial<NoticeService>, global: NestInterceptor[] = [], gateway?: ProviderGateway) {
+export async function apiTestApp(store: AuthStore, tables: Record<string, unknown>, notice?: Partial<NoticeService>, global: NestInterceptor[] = [], gateway?: ProviderGateway) {
   const recorded: unknown[][] = [];
   let builder = Test.createTestingModule({
-    controllers: OFFICE_CONTROLLERS,
+    controllers: DOMAIN_CONTROLLERS,
     providers: [
-      ...OFFICE_PROVIDERS,
+      ...DOMAIN_PROVIDERS,
       ...API_PROVIDERS,
       { provide: AUTH_STORE, useValue: store },
       {
         provide: ActivityRecorder,
         useValue: {
-          recordOffice: async (...args: unknown[]) => void recorded.push(args),
+          record: async (...args: unknown[]) => void recorded.push(args),
           // The read of an eSIM code: same shape in `recorded`, always `ok`. A spec replaces it to make it fail.
-          recordOfficeOrFail: async (...args: unknown[]) => void recorded.push([...args, 'ok', '']),
+          recordOrFail: async (...args: unknown[]) => void recorded.push([...args, 'ok', '']),
         },
       },
     ],

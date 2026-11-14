@@ -6,7 +6,7 @@ import { ApiFailure } from '../platform/api-failure';
 import { open, seal } from '../platform/secret-box';
 import { capturedOutput } from '../platform/testing/captured-output';
 import type { NoticeService } from '../notifications/notice.service';
-import { OfficeFacade } from '../office/testing/office-facade';
+import { ApiFacade } from '../testing/api-facade';
 import { LinesRepository } from './lines.repository';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D17; plan slice S.5a: an eSIM code is read whether it is stored
@@ -30,7 +30,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
   const line = { clear: randomUUID(), sealed: randomUUID(), damaged: randomUUID(), none: randomUUID() };
   const task = { clear: randomUUID(), sealed: randomUUID(), onLine: randomUUID() };
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeFacade;
+  let service: ApiFacade;
   let pos: { sessionId: string };
   let owner: { sessionId: string };
   let stranger: { sessionId: string };
@@ -114,7 +114,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
         taskRow(task.onLine, { action: 'freeze', lineId: line.sealed, esimQr: null }),
       ],
     });
-    service = new OfficeFacade(auth, { write: async () => [], publish: async () => undefined } as unknown as NoticeService);
+    service = new ApiFacade(auth, { write: async () => [], publish: async () => undefined } as unknown as NoticeService);
   });
 
   afterEach(() => {

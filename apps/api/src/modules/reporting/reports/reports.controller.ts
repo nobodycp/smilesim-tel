@@ -12,7 +12,7 @@ import type { Actor as ActorShape } from '../../access/types';
 import { InsightsService } from './insights.service';
 import { ReportsService } from './reports.service';
 
-@ApiTags('office')
+@ApiTags('reporting')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

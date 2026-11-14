@@ -1,5 +1,5 @@
 import { ProvidersRepository } from '../providers.repository';
-import { OfficeGraph } from '../../office/testing/office-graph';
+import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { PROVIDER_FAILED_NOTE } from '../../platform/stored-text';
 import { FAILURE_THRESHOLD, healthOf } from './provider-health';
@@ -16,7 +16,7 @@ describe('provider health', () => {
   });
 
   function setup(stored: Record<string, string>, failures: number, available: Record<string, number>) {
-    const kernel = new OfficeGraph(new MemoryAuthStore());
+    const kernel = new ServiceGraph(new MemoryAuthStore());
     const notices: { userIds: string[]; kind: string; payload: unknown }[] = [];
     const providers = [
       { code: 'sky', alertFloor: 0, packages: [{ id: 'p1' }] },
@@ -42,7 +42,7 @@ describe('provider health', () => {
         ],
       },
       $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({}),
-    } as unknown as OfficeGraph['prismaClient'];
+    } as unknown as ServiceGraph['prismaClient'];
     (kernel.uow as unknown as { notice: unknown }).notice = {
       write: async (_tx: unknown, userIds: string[], _actor: unknown, draft: { kind: string; payload: unknown }) => {
         notices.push({ userIds, ...draft });
@@ -75,7 +75,7 @@ describe('provider health', () => {
 
 describe('overdue matching notice', () => {
   function setup(rows: { code: string; name: string; matchSource: string; matchEveryDays: number; lastMatchedAt: Date | null; matchOverdueNoticeAt: Date | null }[]) {
-    const kernel = new OfficeGraph(new MemoryAuthStore());
+    const kernel = new ServiceGraph(new MemoryAuthStore());
     const notices: { kind: string; payload: unknown }[] = [];
     kernel.prismaClient = {
       provider: {
@@ -89,7 +89,7 @@ describe('overdue matching notice', () => {
       },
       user: { findMany: async () => [{ id: 'owner', isBranchOwner: true, liveGrants: '' }] },
       $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({}),
-    } as unknown as OfficeGraph['prismaClient'];
+    } as unknown as ServiceGraph['prismaClient'];
     (kernel.uow as unknown as { notice: unknown }).notice = {
       write: async (_tx: unknown, _ids: string[], _actor: unknown, draft: { kind: string; payload: unknown }) => { notices.push(draft); return []; },
       publish: async () => undefined,

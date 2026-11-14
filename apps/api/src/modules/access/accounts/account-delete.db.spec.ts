@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { NoticeService } from '../../notifications/notice.service';
-import { OfficeFacade } from '../../office/testing/office-facade';
+import { ApiFacade } from '../../testing/api-facade';
 
 // Runs against a real PostgreSQL only (see wallet-concurrency.db.spec.ts for how to give it one): in-memory tables
 // do not roll back and cannot show a delete racing a movement of money. Plan backend-loose-ends A.1.
@@ -17,7 +17,7 @@ suite('deleting an account (PostgreSQL)', () => {
   const owner = randomUUID();
   const made: string[] = [];
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeFacade;
+  let service: ApiFacade;
   let auth: MemoryAuthStore;
   let gate: { sessionId: string };
 
@@ -48,7 +48,7 @@ suite('deleting an account (PostgreSQL)', () => {
     auth.addUser({ ...row, disabledAt: null, mustChangePassword: false, twoFactorExempt: true, twoFactorEnabled: false } as Parameters<MemoryAuthStore['addUser']>[0]);
     gate = { sessionId: await auth.saveSession({ userId: owner, scope: 'full', userAgent: '', ip: '' }) };
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
-    service = new OfficeFacade(auth, notice);
+    service = new ApiFacade(auth, notice);
   });
 
   afterAll(async () => {

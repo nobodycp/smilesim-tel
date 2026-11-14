@@ -3,16 +3,16 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { emptyTables } from './empty-tables';
-import { officeTestApp } from './office-test-app';
+import { apiTestApp } from './api-test-app';
 import { hashOnce } from './test-hash';
-import { AuditQuery } from '../../auditing/audit.schemas';
-import { LinesQuery } from '../../sales/lines.schemas';
-import { NoticesQuery } from '../../notifications/notices.schemas';
-import { TasksQuery } from '../../tasks/tasks.schemas';
-import { FinanceQuery } from '../../wallets/wallets.schemas';
-import { ProviderOperationsQuery } from '../../providers/providers.schemas';
+import { AuditQuery } from '../auditing/audit.schemas';
+import { LinesQuery } from '../sales/lines.schemas';
+import { NoticesQuery } from '../notifications/notices.schemas';
+import { TasksQuery } from '../tasks/tasks.schemas';
+import { FinanceQuery } from '../wallets/wallets.schemas';
+import { ProviderOperationsQuery } from '../providers/providers.schemas';
 
 // A query is parsed by a schema, like a body (backend-engineering.mdc 4.1; plan backend-loose-ends A.4): a filter
 // with a value outside its set is 400 INVALID, where it used to be dropped and the list came back unfiltered; a
@@ -69,7 +69,7 @@ describe('query filters', () => {
       twoFactorExempt: true, twoFactorEnabled: false, isBranchOwner: true, passwordHash: await hashOnce('ownerpass1'),
     });
     session = await store.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
-    ({ app } = await officeTestApp(store, emptyTables().tables));
+    ({ app } = await apiTestApp(store, emptyTables().tables));
   });
 
   afterAll(async () => {
@@ -97,8 +97,15 @@ describe('query filters', () => {
 // The web keeps the options of its filter selects in its own files (there is no shared package). Each list below
 // is read from the screen that sends it and parsed by the schema of the route it goes to: a value the web can
 // send and the API would refuse fails here, before a person meets it as an error on the screen.
-const web = join(__dirname, '../../../../../web/features');
+const web = join(__dirname, '../../../../web/features');
 const describeWeb = existsSync(web) ? describe : describe.skip;
+
+// This repository holds the web beside the API: the checks below must run here, not skip (slice R.9: a move of this
+// folder made the path wrong and the checks skipped without a word).
+it('finds the web app beside the API, so the checks against its filter lists run', () => {
+  expect(existsSync(join(__dirname, '../../../../web/package.json'))).toBe(true);
+  expect(existsSync(web)).toBe(true);
+});
 
 /** The strings of `const NAME = [ … ]` in a web file. */
 function listOf(file: string, name: string): string[] {

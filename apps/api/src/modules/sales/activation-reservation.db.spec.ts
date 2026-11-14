@@ -5,7 +5,7 @@ import { createPrismaClient } from '../../db';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { ApiFailure } from '../platform/api-failure';
 import type { NoticeService } from '../notifications/notice.service';
-import { OfficeFacade } from '../office/testing/office-facade';
+import { ApiFacade } from '../testing/api-facade';
 
 // PostgreSQL only (TEST_DATABASE_URL). An open activation task reserves its SIM serial and its number (ADR 0019,
 // D5; plan slice S.2): what the database refuses, what the service answers, and that no money is held for a
@@ -23,7 +23,7 @@ suite('activation reservations (PostgreSQL)', () => {
   const tag = randomUUID().slice(0, 8);
   const ids = { owner: randomUUID(), pos: randomUUID(), provider: randomUUID(), company: randomUUID(), pkg: randomUUID() };
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeFacade;
+  let service: ApiFacade;
   let pos: { sessionId: string };
   let owner: { sessionId: string };
   /** Set to make the next notice write fail: an error after the task and the hold are written. */
@@ -83,7 +83,7 @@ suite('activation reservations (PostgreSQL)', () => {
       },
       publish: async () => undefined,
     } as unknown as NoticeService;
-    service = new OfficeFacade(auth, notice);
+    service = new ApiFacade(auth, notice);
   });
 
   afterEach(async () => {

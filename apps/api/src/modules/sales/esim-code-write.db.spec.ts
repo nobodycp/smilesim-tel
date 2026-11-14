@@ -6,7 +6,7 @@ import { ApiFailure } from '../platform/api-failure';
 import * as secretBox from '../platform/secret-box';
 import { capturedOutput } from '../platform/testing/captured-output';
 import type { NoticeService } from '../notifications/notice.service';
-import { OfficeFacade } from '../office/testing/office-facade';
+import { ApiFacade } from '../testing/api-facade';
 import * as esimCode from '../platform/esim-code';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D17; plan slice S.5b: an eSIM code is stored sealed on every
@@ -25,7 +25,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
   const tag = randomUUID().slice(0, 8);
   const ids = { owner: randomUUID(), pos: randomUUID(), provider: randomUUID(), company: randomUUID(), pkg: randomUUID() };
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeFacade;
+  let service: ApiFacade;
   let pos: { sessionId: string };
   let owner: { sessionId: string };
 
@@ -85,7 +85,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: 3500, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoSim: true };
     await prisma.package.create({ data: { id: ids.pkg, code: `wr-${tag}`, name: 'wr', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
-    service = new OfficeFacade(auth, { write: async () => [], publish: async () => undefined } as unknown as NoticeService);
+    service = new ApiFacade(auth, { write: async () => [], publish: async () => undefined } as unknown as NoticeService);
   });
 
   afterEach(() => {

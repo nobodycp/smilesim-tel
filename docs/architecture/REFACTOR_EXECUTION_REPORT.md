@@ -26,8 +26,8 @@ pushed; the owner approves before one push and one CI run.
 | R.5 Worker composition | DONE | `6375d24` |
 | R.6 Sales | DONE | `6eeea2f` |
 | R.7 Providers | DONE | `9ec5b65` |
-| R.8 Remaining domains | DONE | see its section |
-| R.9 Umbrella removal | pending | |
+| R.8 Remaining domains | DONE | `dc59623` |
+| R.9 Umbrella removal | DONE | see its section |
 | R.10 Prisma model names | pending | |
 | R.A Authentication | pending | |
 | W.1, W.2 Web names | pending | |
@@ -37,16 +37,16 @@ pushed; the owner approves before one push and one CI run.
 
 ## Guard counts
 
-| Rule | Base `d7259ef` | After R.2.1 | After R.3 | After R.4 | After R.5 | After R.7 | After R.8 |
-|---|---|---|---|---|---|---|---|
-| module-layering | 28 | 28 | 19 | 11 | 11 | 7 | 0 |
-| module-mutual | 10 | 10 | 8 | 6 | 6 | 3 | 0 |
-| root-domain-code | 5 | 5 | 4 | 4 | 3 | 2 | 2 |
-| operation-writes | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
-| transaction-outside-unit-of-work | 5 | 5 | 5 | 5 | 4 | 2 | 2 |
-| write-without-activity | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
-| catch-all-module | — | — | 0 (new) | 0 | 0 | 0 | 0 |
-| module-surface | not in force | not in force | not in force | not in force | not in force | not in force | not in force |
+| Rule | Base `d7259ef` | After R.2.1 | After R.3 | After R.4 | After R.5 | After R.7 | After R.8 | After R.9 |
+|---|---|---|---|---|---|---|---|---|
+| module-layering | 28 | 28 | 19 | 11 | 11 | 7 | 0 | 0 |
+| module-mutual | 10 | 10 | 8 | 6 | 6 | 3 | 0 | 0 |
+| root-domain-code | 5 | 5 | 4 | 4 | 3 | 2 | 2 | 2 |
+| operation-writes | 1 | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| transaction-outside-unit-of-work | 5 | 5 | 5 | 5 | 4 | 2 | 2 | 2 |
+| write-without-activity | 7 | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
+| catch-all-module | — | — | 0 (new) | 0 | 0 | 0 | 0 | 0 |
+| module-surface | not in force | not in force | not in force | not in force | not in force | not in force | not in force | 0 (in force for 5) |
 
 ## R.2.1 Worker shutdown race — DONE (`000e411`)
 
@@ -201,7 +201,7 @@ pushed; the owner approves before one push and one CI run.
   the two stand-in/path reasons above; both fixed and re-run green: 14 files, 164 tests).
 - **Counts:** layering 11 → 7, mutual 6 → 3, root-domain-code 3 → 2, transaction-outside-unit-of-work 4 → 2.
 
-## R.8 Remaining domains — DONE
+## R.8 Remaining domains — DONE (`dc59623`)
 
 - **Code (behaviour kept):**
   - The priced shelf (`GET packages`) and the sell prices (`PUT|DELETE sell-prices/:code`) moved from
@@ -226,3 +226,25 @@ pushed; the owner approves before one push and one CI run.
   `beforeAll` (six inserts) passed the 5 s hook limit in the full run; alone 10/10; R.8 changed nothing it runs;
   recorded in the open items, not attributed to load.
 - **Counts:** layering 7 → **0**, mutual 3 → **0**.
+
+## R.9 Umbrella removal — DONE
+
+- **Umbrella gone:** `modules/office/office.module.ts` deleted; `modules/registry.ts` lists the sixteen domain
+  modules in the order the umbrella imported them, and `DuplicateGuardModule` (`modules/platform/`) registers the
+  same `APP_INTERCEPTOR` (the only global interceptor). `modules/office/` no longer exists.
+- **Test helpers:** `modules/office/testing/` → `modules/testing/`; `OfficeFacade` → `ApiFacade`, `OfficeGraph` →
+  `ServiceGraph`, `officeTestApp` → `apiTestApp`, `office-routes.ts` → `routes.ts`, `OFFICE_CONTROLLERS/PROVIDERS` →
+  `DOMAIN_CONTROLLERS/PROVIDERS` (`domain-lists.ts`, test-only).
+- **Rules:** `flat-office-module` removed with its file (the rule said so); `module-surface` in force for reporting,
+  auditing, notifications, tasks, sales: each `index.ts` re-exports exactly what other modules imported (generated
+  from the imports), and those imports now go through it; the fixture no longer judges a composition root (`app`).
+  The activity rules' patterns follow the recorder's new method name (`activity.record\w*`, same strength).
+- **Names:** `recordOffice`/`recordOfficeOrFail` → `record`/`recordOrFail`; the request field `officeActor` →
+  `actor` (in process only); Swagger tag `office` → one tag a module (documentation only).
+- **Found and fixed, a test that had gone blind:** after the move, `query-filters.http.spec.ts` and
+  `response-shape.spec.ts` looked for the web app one folder too high, found nothing and skipped 17 tests without a
+  word. Paths fixed; each file has a test that fails when the web is not found (green: 66/66).
+- **Checkpoint 2 (full API, PostgreSQL + Redis):** 138 files, 1771 tests: 1744 passed, 17 skipped (the blind suites
+  above, fixed after the run), 10 failed in `platform/ports.db.spec.ts` (its `beforeAll`, six inserts, over 5 s,
+  as in the R.8 run; alone and beside the heavy database specs it passes; recorded in the open items with what is
+  and is not known). Architecture 64/64 (rules), lint, typecheck, check:copy 0.

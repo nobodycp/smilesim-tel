@@ -85,6 +85,10 @@ or replaced by a later design. They stay in git history.
   Nest) passed Jest's 5 s hook limit. It passed alone right after (10/10). R.8 changed no file it runs (the unit of
   work, the notice writer, the activity recorder). Not attributed to load: the database's locks and connections
   were not recorded during the run. To settle: log the time of each insert in that hook on the next failure.
+  **Seen again in the R.9 full run** (ten tests, hook timeouts, the file 41.4 s; load 2.6 before, 8.7 after). Not
+  reproduced beside the heavy database specs (seven files, 39 tests green). It began after R.8, which moved many
+  files: Jest orders files by the durations it cached under their old paths, so the order of the run changed;
+  whether that is the cause is not proved.
 - Related, also open: some spec files run a pass over every operation in the shared database
   (`settlement.applyPending`, `recoverExpired`), which can act on another file's rows. `provider-dispatch.db.spec.ts`
   no longer does, and judges a settlement by the row.

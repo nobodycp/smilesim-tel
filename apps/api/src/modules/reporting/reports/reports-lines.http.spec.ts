@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { officeTestApp } from '../../office/testing/office-test-app';
+import { apiTestApp } from '../../testing/api-test-app';
 
 // Branch reports, and the refusals of the disconnect quote and reactivation, over HTTP. Written before these
 // routes left office.controller.ts.
@@ -39,7 +39,7 @@ describe('reports and line refusals over HTTP', () => {
       walletEntry: { findMany: async () => [entry], count: async () => 1 },
       line: { findUnique: async () => line },
     };
-    ({ app } = await officeTestApp(store, tables));
+    ({ app } = await apiTestApp(store, tables));
   });
 
   afterEach(async () => {

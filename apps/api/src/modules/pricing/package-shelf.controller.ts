@@ -9,7 +9,7 @@ import type { Actor as ActorShape } from '../access/types';
 import { SellPriceBody } from '../catalog/packages/packages.schemas';
 import { PackageShelfService } from './package-shelf.service';
 
-@ApiTags('office')
+@ApiTags('pricing')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

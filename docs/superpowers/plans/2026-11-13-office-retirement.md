@@ -86,7 +86,14 @@ goes down; the backend map updated in the same commit.
   the frozen account's tasks, moved with its query; the tasks' identical `releaseTask` reused). `module-layering`
   7 → 0, `module-mutual` 3 → 0. `modules/office/` holds `office.module.ts` and `testing/`. Full API: 138 files, 1772
   tests, 2 files failed and analysed (see the report). Commit: see `git log --grep 'R.8'`.
-- [ ] **R.9** The umbrella goes; public surfaces in force (`module-surface`).
+- [x] **R.9** The umbrella goes; public surfaces in force (`module-surface`). `OfficeModule` deleted; the registry
+  lists one module per domain and the platform's `DuplicateGuardModule` (the same `APP_INTERCEPTOR`); test helpers in
+  `modules/testing/` (`ApiFacade`, `ServiceGraph`, `apiTestApp`, `routes.ts`, `DOMAIN_CONTROLLERS`/`DOMAIN_PROVIDERS`);
+  the `flat-office-module` rule went with the file it judged; `module-surface` in force for reporting, auditing,
+  notifications, tasks and sales (generated from the real imports; a composition root may reach inside); one
+  Swagger tag a module; `recordOffice`/`recordOfficeOrFail` → `record`/`recordOrFail`, the request's `officeActor` →
+  `actor`. Found and fixed: the move made two web cross-check suites skip silently (17 tests, wrong relative path);
+  each now has a test that fails if it cannot find the web. Commit: see `git log --grep 'R.9'`.
 - [ ] **R.10** Prisma models `Task`, `TaskNote` with `@@map`; no migration.
 - [ ] **R.A** `auth.controller.ts` thinned; the seven unrecorded writes judged.
 - [ ] **W.1, W.2** Web names.
@@ -106,7 +113,7 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 | `operation-writes` | 0 (R.4) | `tasks/task-operation.ts` wrote a provider operation | done |
 | `transaction-outside-unit-of-work` | 2 (R.5: the attestation; R.7: the reconciliation and the run modes; left: the auth store's boot seeder and the eSIM sealing script, both stated) | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
 | `write-without-activity` | 7 | sign-in routes that record nothing | R.A |
-| `module-surface` | not in force | no module has a public surface | R.9, module by module |
+| `module-surface` | in force for 5 of 12 (R.9: reporting, auditing, notifications, tasks, sales) | the others still import each other's files | later, module by module |
 | unguarded writes | 27 | `auth` and `branding` writes have no duplicate guard: 1 needs protection, 16 have an equivalent, 10 are authentication steps that are never replayed (below) | R.11a, R.A |
 | lock order | no guard | written in `financial-invariants.md`, held by the PostgreSQL specs | stays a review rule |
 | unused exports | not scanned | no tool for it is installed; none was added in R.0 | a later slice, with the owner's word on the tool |

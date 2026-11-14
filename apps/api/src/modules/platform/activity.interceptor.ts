@@ -21,7 +21,7 @@ export class ActivityInterceptor implements NestInterceptor {
     if (!meta) return next.handle();
     const req = context.switchToHttp().getRequest<Request>();
     const event = { action: meta.action, subjectKind: meta.subjectKind, subjectRef: meta.subject(req) };
-    const record = (result: 'ok' | 'fail', reason: string) => this.activity.recordOffice(gateOf(req), req.ip ?? '', event, result, reason);
+    const record = (result: 'ok' | 'fail', reason: string) => this.activity.record(gateOf(req), req.ip ?? '', event, result, reason);
     const res = context.switchToHttp().getResponse<Response>();
     return next.handle().pipe(
       // A repeat of a request already answered did nothing: the act is on record once, from the first time.

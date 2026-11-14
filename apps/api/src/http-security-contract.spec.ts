@@ -5,7 +5,7 @@ import { Controller, Post, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { DuplicateGuardInterceptor } from './modules/platform/duplicate-guard.interceptor';
-import { ROUTES } from './modules/office/testing/office-routes';
+import { ROUTES } from './modules/testing/routes';
 
 // What protects a write route, and what a route would lose by moving (ADR 0020, slice R.0).
 //
@@ -58,7 +58,7 @@ function routesOf(): { routes: Route[]; controllers: { file: string; prefix: str
         path: `/${[prefix, match[2] ?? ''].filter(Boolean).join('/')}`,
         file,
         controller: prefix,
-        recorded: /@Activity\(|@NoActivity\(|\b(recordOwner|activity\.record\w+)\(/.test(handler),
+        recorded: /@Activity\(|@NoActivity\(|\b(recordOwner|activity\.record\w*)\(/.test(handler),
       });
     }
   }

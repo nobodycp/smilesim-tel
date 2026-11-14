@@ -7,7 +7,7 @@ import request from 'supertest';
 import { AUTH_STORE } from '../auth/auth.store';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { ActivityRecorder } from './activity';
-import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office/office.module';
+import { DOMAIN_CONTROLLERS, DOMAIN_PROVIDERS } from '../testing/domain-lists';
 import { DuplicateGuardInterceptor, SAME_WRITE_SECONDS, memoryWrites } from './duplicate-guard.interceptor';
 
 // A write sent twice runs once (spec 2026-11-08-duplicate-writes): the repeat gets the first answer, a repeat while the
@@ -27,12 +27,12 @@ describe('DuplicateGuardInterceptor over HTTP', () => {
       sessions[id] = await store.saveSession({ userId: id, scope: 'full', userAgent: '', ip: '' });
     }
     const moduleRef = await Test.createTestingModule({
-      controllers: OFFICE_CONTROLLERS,
+      controllers: DOMAIN_CONTROLLERS,
       providers: [
-        ...OFFICE_PROVIDERS,
+        ...DOMAIN_PROVIDERS,
         ...API_PROVIDERS,
         { provide: AUTH_STORE, useValue: store },
-        { provide: ActivityRecorder, useValue: { recordOffice: async () => undefined } },
+        { provide: ActivityRecorder, useValue: { record: async () => undefined } },
       ],
     }).compile();
     moduleRef.get(UnitOfWork).prismaClient = {

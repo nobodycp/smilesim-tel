@@ -1,11 +1,11 @@
 import 'reflect-metadata';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
-import { companies } from '../../catalog/shipped/shipped-catalog';
-import { OfficeFacade } from './office-facade';
-import { APPLY_ERRORS, DECISIONS } from '../../sales/settlement/activation-settlement.rules';
+import { companies } from '../catalog/shipped/shipped-catalog';
+import { ApiFacade } from './api-facade';
+import { APPLY_ERRORS, DECISIONS } from '../sales/settlement/activation-settlement.rules';
 
 // The web app keeps its own copy of the shape of these answers (apps/web/lib/api-types.ts and features/lines/api.ts: OfficeMe,
 // HomePayload, LineRow, PosChoice). There is no shared package, so this test is the guard: the key
@@ -83,7 +83,7 @@ async function serviceWith(tables: Record<string, unknown>) {
     passwordHash: await hashOnce('ownerpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
-  const service = new OfficeFacade(auth);
+  const service = new ApiFacade(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: true }), findMany: async () => accounts },
     userPackage: { findMany: async () => [] },
@@ -108,7 +108,7 @@ async function posServiceWith(tables: Record<string, unknown>) {
     passwordHash: await hashOnce('pointpass1'),
   });
   const sessionId = await auth.saveSession({ userId: 'pos1', scope: 'full', userAgent: '', ip: '' });
-  const service = new OfficeFacade(auth);
+  const service = new ApiFacade(auth);
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: { findUnique: async () => ({ liveGrants: '', isBranchOwner: false }), findMany: async () => accounts },
     userPackage: { findMany: async () => [] },
@@ -377,10 +377,15 @@ describe('office response shapes', () => {
 });
 
 // The same lists against the web declarations. Skipped where the web app is not checked out beside the API.
-const webApi = join(__dirname, '../../../../../web/lib/api-types.ts');
+const webApi = join(__dirname, '../../../../web/lib/api-types.ts');
 // The officeLines envelope is declared with its call (phase 4.3 split the web client by domain).
-const webLines = join(__dirname, '../../../../../web/features/lines/api.ts');
+const webLines = join(__dirname, '../../../../web/features/lines/api.ts');
 const describeWeb = existsSync(webApi) ? describe : describe.skip;
+
+// This repository holds the web beside the API: the checks below must run here, not skip (slice R.9).
+it('finds the web app beside the API, so the shape checks against its declarations run', () => {
+  expect([existsSync(webApi), existsSync(webLines)]).toEqual([true, true]);
+});
 
 /** The text between `export type NAME = {` and the `};` that closes it. */
 function typeBody(source: string, name: string): string {

@@ -15,7 +15,7 @@ import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../providers/integration
 import { ProviderOperationsService } from '../providers/integration/operations/provider-operations.service';
 import { ScriptedGateway } from '../providers/testing/scripted-gateway';
 import { PROVIDER_DISPATCH_NOTE, PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../platform/stored-text';
-import { officeTestApp } from '../office/testing/office-test-app';
+import { apiTestApp } from '../testing/api-test-app';
 import { operationKey } from './settlement/activation-settlement.rules';
 
 // PostgreSQL only (TEST_DATABASE_URL), over HTTP. ADR 0019, D3, D5, D13, D14; transaction T1; spec items 1, 4
@@ -161,9 +161,9 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     } as unknown as NoticeService;
     gateway = new ScriptedGateway();
     gateway.dispatching.add(name('pkg'));
-    ({ app, recorded } = await officeTestApp(auth, faulty as unknown as Record<string, unknown>, notice, [], gateway));
+    ({ app, recorded } = await apiTestApp(auth, faulty as unknown as Record<string, unknown>, notice, [], gateway));
     recordIn = jest.spyOn(app.get(ProviderOperationsService), 'recordIn');
-    ({ app: real } = await officeTestApp(auth, plain as unknown as Record<string, unknown>, notice));
+    ({ app: real } = await apiTestApp(auth, plain as unknown as Record<string, unknown>, notice));
     dispatch = buildProviderDispatch(plain, {} as IORedis, openGate(gateway), `s11-${tag}`, notice);
   });
 
@@ -380,7 +380,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
       const row = { id: ids.pos, loginName: name('pos'), nickname: 'pos', passwordHash: 'x', layer: 'pos', parentId: ids.owner, isBranchOwner: false };
       auth.addUser({ ...row, disabledAt: null, mustChangePassword: false, twoFactorExempt: true, twoFactorEnabled: false } as Parameters<MemoryAuthStore['addUser']>[0]);
       const session = await auth.saveSession({ userId: ids.pos, scope: 'full', userAgent: '', ip: '' });
-      const guarded = await officeTestApp(auth, prisma as unknown as Record<string, unknown>, { write: async () => [], publish: async () => undefined } as unknown as NoticeService, [guard], gateway);
+      const guarded = await apiTestApp(auth, prisma as unknown as Record<string, unknown>, { write: async () => [], publish: async () => undefined } as unknown as NoticeService, [guard], gateway);
       try {
         const body = sale({ msisdn: number() });
         const idempotencyKey = key();

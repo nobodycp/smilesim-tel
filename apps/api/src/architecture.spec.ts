@@ -186,7 +186,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
         // recorder. The handler runs to the next route's decorator.
         const end = text.slice(match.index + 1).search(/\n {2}@(Get|Post|Put|Patch|Delete)\(/);
         const handler = end < 0 ? text.slice(match.index) : text.slice(match.index, match.index + 1 + end);
-        const byHand = /\b(recordOwner|activity\.record\w+)\(/.test(handler);
+        const byHand = /\b(recordOwner|activity\.record\w*)\(/.test(handler);
         if (!/@Activity\(|@NoActivity\(/.test(head) && !byHand) found.push({ file, line: lineOf(text, match.index), text: head.split('\n')[0] });
       }
     }
@@ -226,17 +226,6 @@ describe('engineering rules (backend-engineering.mdc)', () => {
       }
     }
     check('unused-injection', found);
-  });
-
-  it('5.1 flat-office-module: each domain registers its own providers', () => {
-    const module = production.find(({ file }) => file === 'modules/office/office.module.ts');
-    // The rule is about this one file. The slice that removes the file removes the rule: it does not pass by
-    // finding nothing.
-    if (!module) throw new Error('flat-office-module: modules/office/office.module.ts is gone. Remove this rule in the same commit.');
-    const list = /export const OFFICE_PROVIDERS = \[([^\]]*)\]/.exec(module?.text ?? '')?.[1] ?? '';
-    // Classes named one by one in the flat list; a spread of a domain's own list is not counted.
-    const named = list.split(',').map((entry) => entry.trim()).filter((entry) => /^[A-Z]\w+$/.test(entry));
-    check('flat-office-module', named.map((name) => ({ file: 'modules/office/office.module.ts', line: 1, text: name })));
   });
 
   it('5.2 cross-domain-repository-import: a domain reaches another through its service, never its queries', () => {

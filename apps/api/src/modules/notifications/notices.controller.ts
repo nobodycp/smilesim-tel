@@ -16,7 +16,7 @@ import { NoticeInboxService } from './notice-inbox.service';
 /** How often an open notices stream is pinged and its session checked again. */
 const STREAM_BEAT_MS = 25_000;
 
-@ApiTags('office')
+@ApiTags('notifications')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

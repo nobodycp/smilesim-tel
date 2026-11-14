@@ -31,7 +31,17 @@ export function setupOpenApi(app: INestApplication): void {
       )
       .addTag('health', 'Liveness')
       .addTag('auth', 'Login, profile, sessions, 2FA, policy')
-      .addTag('office', 'Desk operations behind a door session')
+      // One tag a module (slice R.9; before it one tag, `office`). Routes and their paths are unchanged.
+      .addTag('access', 'Accounts, roles, entering an account')
+      .addTag('auditing', 'The activity log')
+      .addTag('notifications', 'Notices: inbox and live stream')
+      .addTag('catalog', 'Companies, packages, offers, the shipped catalog')
+      .addTag('pricing', 'Per-account terms, the priced shelf, sell prices')
+      .addTag('wallets', 'Wallets, funding, ceilings, finance')
+      .addTag('providers', 'Providers: settings, accounts, dispatch')
+      .addTag('tasks', 'Branch tasks')
+      .addTag('sales', 'Lines, activation, settlement, decisions, transfers')
+      .addTag('reporting', 'Reports, home, overview')
       .build(),
   );
 

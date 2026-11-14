@@ -3,7 +3,7 @@ import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { parseInput } from '../platform/input';
 import { ApiFailure } from '../platform/api-failure';
 import type { NoticeService } from '../notifications/notice.service';
-import { OfficeFacade } from '../office/testing/office-facade';
+import { ApiFacade } from '../testing/api-facade';
 import { CeilingBody, FundBody } from './wallets.schemas';
 
 const invalid = (run: () => unknown) => {
@@ -45,7 +45,7 @@ describe('wallet schemas', () => {
 
   it('judges the session before the body: no session answers 401 even for a bad body', async () => {
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
-    const service = new OfficeFacade(new MemoryAuthStore(), notice);
+    const service = new ApiFacade(new MemoryAuthStore(), notice);
     await expect(service.fund({}, 'pos1', { amount: 'bad' })).rejects.toMatchObject({ status: 401, code: 'LOGIN_REQUIRED' });
     await expect(service.setCeiling({}, 'pos1', { ceiling: -1 })).rejects.toMatchObject({ status: 401, code: 'LOGIN_REQUIRED' });
   });

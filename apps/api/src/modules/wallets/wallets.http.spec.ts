@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { officeTestApp } from '../office/testing/office-test-app';
+import { apiTestApp } from '../testing/api-test-app';
 
 // GET /office/wallets over HTTP, written before the wallet routes left office.controller.ts.
 describe('GET /office/wallets', () => {
@@ -33,7 +33,7 @@ describe('GET /office/wallets', () => {
           [{ userId: 'ag1', balance: 5000, ceiling: 1000 }, { userId: 'pos1', balance: -200, ceiling: 300 }].filter((row) => where.userId.in.includes(row.userId)),
       },
     };
-    ({ app } = await officeTestApp(store, tables));
+    ({ app } = await apiTestApp(store, tables));
   });
 
   afterEach(async () => {

@@ -14,7 +14,7 @@ import { NoticeService } from '../../notifications/notice.service';
 import { ScriptedGateway } from '../../providers/testing/scripted-gateway';
 import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../../providers/integration/operations/provider-operations.repository';
 import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_RELEASED_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
-import { officeTestApp } from '../../office/testing/office-test-app';
+import { apiTestApp } from '../../testing/api-test-app';
 import { operationKey } from './activation-settlement.rules';
 
 // PostgreSQL only (TEST_DATABASE_URL), over HTTP. ADR 0019, D15 and D16; transactions T10 and T11; spec items 19
@@ -193,7 +193,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       },
       publish: async () => undefined,
     } as unknown as NoticeService;
-    ({ app, recorded } = await officeTestApp(auth, prisma as unknown as Record<string, unknown>, notice));
+    ({ app, recorded } = await apiTestApp(auth, prisma as unknown as Record<string, unknown>, notice));
     dispatch = buildProviderDispatch(prisma, {} as IORedis, openGate(new ScriptedGateway()), `s9-${tag}`, notice);
   });
 

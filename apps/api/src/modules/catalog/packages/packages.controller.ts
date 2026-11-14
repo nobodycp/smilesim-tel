@@ -9,7 +9,7 @@ import type { Actor as ActorShape } from '../../access/types';
 import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody } from './packages.schemas';
 import { PackagesService } from './packages.service';
 
-@ApiTags('office')
+@ApiTags('catalog')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

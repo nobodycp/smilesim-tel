@@ -117,13 +117,20 @@ describe('module boundaries, on the source as it is', () => {
   });
 
   it('module-surface: a module with a public surface is imported through it', () => {
-    // NOT IN FORCE YET. No module has a public surface (an `index.ts` other modules must use): making one is a
-    // change to production code, which slice R.0 does not make. A module is added here in the slice that gives
-    // it its surface, and from then on a deep import of it is counted. The rule itself is proved below.
-    const surfaces: Partial<Record<ModuleName, string>> = {};
+    // IN FORCE, module by module (slice R.9): a module listed here is imported by other modules through its
+    // `index.ts` only. The five below were given theirs in R.9; the others keep reaching inside until the slice that
+    // gives them one. A composition root (`app`) may reach inside any module.
+    const surfaces: Partial<Record<ModuleName, string>> = {
+      reporting: 'modules/reporting/index.ts',
+      auditing: 'modules/auditing/index.ts',
+      notifications: 'modules/notifications/index.ts',
+      tasks: 'modules/tasks/index.ts',
+      sales: 'modules/sales/index.ts',
+    };
     check('module-surface', surfaceViolations(edges, surfaces));
-    expect(Object.keys(surfaces)).toEqual([]);
+    for (const surface of Object.values(surfaces)) expect({ surface, exists: production.some(({ file }) => file === surface) }).toEqual({ surface, exists: true });
   });
+
 
   it('catch-all-module: no kernel under any name; a Nest module exports only what its own module owns', () => {
     // Slice R.3 took the kernel module apart (it handed on the unit of work, the account tree, the actor and the

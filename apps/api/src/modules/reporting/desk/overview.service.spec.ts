@@ -1,6 +1,6 @@
 import { DeskRepository } from './desk.repository';
 import { WalletsRepository } from '../../wallets/wallets.repository';
-import { OfficeGraph } from '../../office/testing/office-graph';
+import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
 import { WalletsService } from '../../wallets/wallets.service';
@@ -24,7 +24,7 @@ const entries = [
 ];
 
 function service(snapshots: { userId: string; day: string; active: number; expiring: number; frozen: number; disconnected: number; suspended: number }[] = []) {
-  const kernel = new OfficeGraph(new MemoryAuthStore());
+  const kernel = new ServiceGraph(new MemoryAuthStore());
   const lineCounts: Record<string, number> = { active: 10, frozen: 2, disconnected: 3 };
   kernel.prismaClient = {
     user: { findMany: async () => accounts },
@@ -51,7 +51,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
       count: async ({ where }: { where: { AND: { status?: string }[] } }) => (where.AND[1]?.status === 'pending' ? 4 : 1),
       findFirst: async () => ({ createdAt: new Date(Date.now() - 90 * 60_000) }),
     },
-  } as unknown as OfficeGraph['prismaClient'];
+  } as unknown as ServiceGraph['prismaClient'];
   const wallets = new WalletsService(kernel.uow, kernel.tree, kernel.ledger, kernel.ladder, new WalletsRepository(kernel.uow));
   return new OverviewService(kernel.tree, wallets, {} as never, {} as never, {} as never, new DeskRepository(kernel.uow));
 }

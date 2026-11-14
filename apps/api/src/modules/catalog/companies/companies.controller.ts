@@ -9,7 +9,7 @@ import type { Actor as ActorShape } from '../../access/types';
 import { CompanyImageBody, CompanySimBody } from './companies.schemas';
 import { CompaniesService } from './companies.service';
 
-@ApiTags('office')
+@ApiTags('catalog')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

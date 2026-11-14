@@ -1,23 +1,23 @@
 import type { Provider } from '@nestjs/common';
-import type { PrismaClient } from '../../../generated/prisma/client';
-import type { AuthStore } from '../../auth/auth.store';
-import type { PrismaService } from '../../platform/prisma.service';
-import { AccountTree } from '../../access/account-tree';
-import { ActorResolver } from '../../access/actor-resolver';
-import { UnitOfWork } from '../../platform/unit-of-work';
-import { LineAccess } from '../../sales/line-access';
-import { NoticeService } from '../../notifications/notice.service';
-import type { NoticeWriter } from '../../platform/notices';
-import { LayerRoles } from '../../access/roles/layer-roles';
-import { PriceLadder } from '../../pricing/price-ladder';
-import { WalletLedger } from '../../wallets/wallet-ledger';
+import type { PrismaClient } from '../../generated/prisma/client';
+import type { AuthStore } from '../auth/auth.store';
+import type { PrismaService } from '../platform/prisma.service';
+import { AccountTree } from '../access/account-tree';
+import { ActorResolver } from '../access/actor-resolver';
+import { UnitOfWork } from '../platform/unit-of-work';
+import { LineAccess } from '../sales/line-access';
+import { NoticeService } from '../notifications/notice.service';
+import type { NoticeWriter } from '../platform/notices';
+import { LayerRoles } from '../access/roles/layer-roles';
+import { PriceLadder } from '../pricing/price-ladder';
+import { WalletLedger } from '../wallets/wallet-ledger';
 
 /**
  * Test-only: the collaborators every office service is built from, wired by hand as Nest wires them in the app.
  * A spec builds a service with `new XService(graph.uow, graph.tree, …)` and swaps in its in-memory tables through
  * `graph.prismaClient`.
  */
-export class OfficeGraph {
+export class ServiceGraph {
   readonly uow: UnitOfWork;
   readonly tree: AccountTree;
   readonly actors: ActorResolver;

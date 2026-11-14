@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { officeTestApp } from '../../office/testing/office-test-app';
+import { apiTestApp } from '../../testing/api-test-app';
 
 // Providers and companies over HTTP, written before these routes left office.controller.ts.
 
@@ -48,7 +48,7 @@ describe('providers and companies over HTTP', () => {
         },
       },
     };
-    ({ app } = await officeTestApp(store, tables));
+    ({ app } = await apiTestApp(store, tables));
   });
 
   afterEach(async () => {

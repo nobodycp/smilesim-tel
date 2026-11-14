@@ -15,7 +15,7 @@ import { TasksService } from './tasks.service';
 
 // POST /office/tasks/:id/complete is served by LinesController: closing a task applies a line operation
 // (lines/task-completion.ts).
-@ApiTags('office')
+@ApiTags('tasks')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')
@@ -39,7 +39,7 @@ export class TasksController {
     const answer = await this.taskDesk.detail(actor, id);
     // An eSIM code is leaving through the task's detail: on record before the answer goes (ADR 0019, D17). The
     // subject is the task, which names its line; the code itself is never written.
-    if (answer.task.esimQr) await this.activity.recordOfficeOrFail(gateOf(req), req.ip ?? '', { action: 'esim_read', subjectKind: 'task', subjectRef: id });
+    if (answer.task.esimQr) await this.activity.recordOrFail(gateOf(req), req.ip ?? '', { action: 'esim_read', subjectKind: 'task', subjectRef: id });
     return answer;
   }
 

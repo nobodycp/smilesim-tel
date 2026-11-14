@@ -9,7 +9,7 @@ import { Actor, ActorInterceptor } from '../access/actor.interceptor';
 import type { Actor as ActorShape } from '../access/types';
 import { AuditService } from './audit.service';
 
-@ApiTags('office')
+@ApiTags('auditing')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

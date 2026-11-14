@@ -9,7 +9,7 @@ import type { Actor as ActorShape } from '../../access/types';
 import { DeskService } from './desk.service';
 import { OverviewService } from './overview.service';
 
-@ApiTags('office')
+@ApiTags('reporting')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

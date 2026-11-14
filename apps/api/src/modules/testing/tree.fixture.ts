@@ -1,10 +1,10 @@
 import 'reflect-metadata';
-import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { hashPassword } from '../../auth/password';
-import { NoticeService } from '../../notifications/notice.service';
-import { OfficeFacade } from './office-facade';
-import { captureTerms } from '../../pricing/rules/prices';
-import { packageTermsOf, type PackagePriceRow } from '../../pricing/rules/package-terms';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
+import { hashPassword } from '../auth/password';
+import { NoticeService } from '../notifications/notice.service';
+import { ApiFacade } from './api-facade';
+import { captureTerms } from '../pricing/rules/prices';
+import { packageTermsOf, type PackagePriceRow } from '../pricing/rules/package-terms';
 
 // The tree the office service specs run on: branch → ma1 → ag1 → pos1 and ma1 → ag2 → pos2, plus a second
 // main agent, ma2, with nothing under it. It lives here and not in a spec file because importing a spec
@@ -72,7 +72,7 @@ export async function tree() {
     gates[row.id] = { sessionId: await auth.saveSession({ userId: row.id, scope: 'full', userAgent: '', ip: '' }) };
   }
   const notice = new NoticeService({ publish: async () => undefined, subscribe: async () => async () => undefined });
-  const service = new OfficeFacade(auth, notice);
+  const service = new ApiFacade(auth, notice);
 
   const whereMatch = (row: Row, where: Record<string, unknown> | undefined) =>
     !where ||

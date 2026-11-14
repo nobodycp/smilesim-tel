@@ -4,7 +4,7 @@ import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ApiFailure } from '../../platform/api-failure';
 import type { NoticeService } from '../../notifications/notice.service';
-import { OfficeFacade } from '../../office/testing/office-facade';
+import { ApiFacade } from '../../testing/api-facade';
 
 // PostgreSQL only (TEST_DATABASE_URL). The two operations whose money is the money of the day they are carried
 // out (owner's rule, 2026-11-10; rule 1.5 of backend-engineering.mdc): a package switch's difference and a
@@ -40,7 +40,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
   const ids = { owner: randomUUID(), pos: randomUUID(), provider: randomUUID(), company: randomUUID(), base: randomUUID(), dearer: randomUUID(), cheaper: randomUUID() };
   const code = { base: `sw-${tag}-base`, dearer: `sw-${tag}-dearer`, cheaper: `sw-${tag}-cheaper` };
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeFacade;
+  let service: ApiFacade;
   let pos: { sessionId: string };
   let owner: { sessionId: string };
   let breakNotices = false;
@@ -134,7 +134,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
       },
       publish: async () => undefined,
     } as unknown as NoticeService;
-    service = new OfficeFacade(auth, notice);
+    service = new ApiFacade(auth, notice);
   });
 
   afterEach(async () => {

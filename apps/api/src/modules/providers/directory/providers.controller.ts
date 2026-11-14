@@ -10,7 +10,7 @@ import { ProviderDispatchService } from '../integration/dispatch/provider-dispat
 import { ProviderCredentialBody, ProviderEsimPriceBody, ProviderModeBody } from '../providers.schemas';
 import { ProvidersService } from './providers.service';
 
-@ApiTags('office')
+@ApiTags('providers')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

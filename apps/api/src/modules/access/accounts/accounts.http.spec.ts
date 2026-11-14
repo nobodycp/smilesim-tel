@@ -3,7 +3,7 @@ import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { officeTestApp } from '../../office/testing/office-test-app';
+import { apiTestApp } from '../../testing/api-test-app';
 
 // Accounts and roles over HTTP: who may list, create, reset, freeze, delete, enter and leave accounts, and edit
 // roles and access. Written before these routes left office.controller.ts, so the move is checked against the
@@ -102,7 +102,7 @@ describe('accounts and roles over HTTP', () => {
       });
       sessions[user.id] = await store.saveSession({ userId: user.id, scope: 'full', userAgent: '', ip: '' });
     }
-    ({ app } = await officeTestApp(store, w.tables));
+    ({ app } = await apiTestApp(store, w.tables));
   });
 
   afterEach(async () => {

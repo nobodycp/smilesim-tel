@@ -31,7 +31,7 @@ describe('owner writes in /auth are recorded', () => {
     const moduleRef = await Test.createTestingModule({ imports: [ActivityModule, AuthModule] })
       .overrideProvider(AUTH_STORE).useValue(store)
       .overrideProvider(ActivityRecorder)
-      .useValue({ recordOffice: async (_gate: unknown, _ip: string, event: { action: string; subjectKind?: string; subjectRef?: string }, result: string, reason: string) => void recorded.push({ ...event, result, reason }) })
+      .useValue({ record: async (_gate: unknown, _ip: string, event: { action: string; subjectKind?: string; subjectRef?: string }, result: string, reason: string) => void recorded.push({ ...event, result, reason }) })
       .compile();
     app = moduleRef.createNestApplication();
     await app.init();

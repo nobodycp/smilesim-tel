@@ -13,7 +13,7 @@ import { ProviderAccountsService } from './provider-accounts.service';
 import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ProviderOperationsQuery, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from '../providers.schemas';
 
 /** Our account with each provider (spec 2026-11-08-provider-accounts). */
-@ApiTags('office')
+@ApiTags('providers')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

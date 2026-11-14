@@ -4,7 +4,7 @@ import { env, isTest } from '../../../config';
 import { logger, reason } from '../../platform/log';
 import { AccountTree } from '../../access/account-tree';
 import { visibleAccountIds } from '../../access/account-visibility';
-import { expiringWhere, suspendedWhere } from '../../sales/rules/line-filters';
+import { expiringWhere, suspendedWhere } from '../../sales';
 import { DeskRepository } from './desk.repository';
 
 const log = logger('LineSnapshots');

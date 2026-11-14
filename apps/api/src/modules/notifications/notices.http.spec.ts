@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
-import { officeTestApp } from '../office/testing/office-test-app';
+import { apiTestApp } from '../testing/api-test-app';
 import { encodeCursor } from '../platform/paging';
 
 // The notice inbox over HTTP: written before the notices routes left office.controller.ts, so the move is
@@ -55,7 +55,7 @@ describe('notices over HTTP', () => {
         return async () => undefined;
       },
     };
-    ({ app } = await officeTestApp(store, tables, notice));
+    ({ app } = await apiTestApp(store, tables, notice));
   });
 
   afterEach(async () => {

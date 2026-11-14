@@ -7,7 +7,7 @@ import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { ApiFailure } from '../platform/api-failure';
 import type { Sale } from './sale';
 import type { NoticeService } from '../notifications/notice.service';
-import { OfficeFacade } from '../office/testing/office-facade';
+import { ApiFacade } from '../testing/api-facade';
 import type { WalletLedger } from './wallet-ledger';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D10 (plan slice S.4): completing a task turns its hold into its
@@ -28,7 +28,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
   const tag = randomUUID().slice(0, 8);
   const ids = { owner: randomUUID(), pos: randomUUID(), provider: randomUUID(), company: randomUUID(), pkg: randomUUID() };
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeFacade;
+  let service: ApiFacade;
   let ledger: WalletLedger;
   let runTx: <T>(run: (tx: Prisma.TransactionClient) => Promise<T>) => Promise<T>;
   let pos: { sessionId: string };
@@ -99,7 +99,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
       },
       publish: async () => undefined,
     } as unknown as NoticeService;
-    service = new OfficeFacade(auth, notice);
+    service = new ApiFacade(auth, notice);
     const graph = (service as unknown as { graph: { ledger: WalletLedger; uow: { runTx: typeof runTx } } }).graph;
     ledger = graph.ledger;
     runTx = (run) => graph.uow.runTx(run);

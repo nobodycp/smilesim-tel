@@ -10,7 +10,7 @@ import { Actor, ActorInterceptor } from '../access/actor.interceptor';
 import type { Actor as ActorShape } from '../access/types';
 import { TermsService } from './terms.service';
 
-@ApiTags('office')
+@ApiTags('pricing')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

@@ -10,7 +10,7 @@ import { seal } from '../platform/secret-box';
 import { capturedOutput } from '../platform/testing/captured-output';
 import { PrismaActivityRecorder } from '../auditing/activity-recorder';
 import { ActivityRecorder } from '../platform/activity';
-import { officeTestApp } from '../office/testing/office-test-app';
+import { apiTestApp } from '../testing/api-test-app';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D17; spec items 23 and 24; plan slice S.5c (API step):
 //   - a list never carries an eSIM code;
@@ -92,7 +92,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
         taskRow(task.movedSubmitter, { action: 'freeze', lineId: line.clear, submitterId: u.agent2 }),
       ],
     });
-    ({ app, recorded } = await officeTestApp(auth, prisma as unknown as Record<string, unknown>));
+    ({ app, recorded } = await apiTestApp(auth, prisma as unknown as Record<string, unknown>));
   });
 
   beforeEach(() => {
@@ -206,9 +206,9 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
   });
 
   it('when the read cannot be recorded, the code is not answered', async () => {
-    const recorder = app.get(ActivityRecorder) as unknown as { recordOfficeOrFail: (...args: unknown[]) => Promise<void> };
-    const real = recorder.recordOfficeOrFail;
-    recorder.recordOfficeOrFail = async () => {
+    const recorder = app.get(ActivityRecorder) as unknown as { recordOrFail: (...args: unknown[]) => Promise<void> };
+    const real = recorder.recordOrFail;
+    recorder.recordOrFail = async () => {
       throw new Error('the activity log is down');
     };
     try {
@@ -229,7 +229,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
       // A read that hands over no code needs no record and still answers.
       expect((await get('posA', `/office/lines/${line.none}`)).status).toBe(200);
     } finally {
-      recorder.recordOfficeOrFail = real;
+      recorder.recordOrFail = real;
     }
   });
 
@@ -238,8 +238,8 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     await prisma.session.create({ data: { id: randomUUID(), tokenHash: hashSessionToken(token), userId: u.posA, userAgent: 'spec', ip: '203.0.113.9', scope: 'full', kind: 'account', expiresAt: new Date(Date.now() + 3_600_000) } });
     const recorder = new PrismaActivityRecorder({ client: prisma, available: true } as never);
     const startedAt = new Date(Date.now() - 1000);
-    await recorder.recordOfficeOrFail({ sessionId: token }, '203.0.113.9', { action: 'esim_read', subjectKind: 'line', subjectRef: line.sealed });
-    await recorder.recordOfficeOrFail({ sessionId: token }, '203.0.113.9', { action: 'esim_read', subjectKind: 'task', subjectRef: task.own });
+    await recorder.recordOrFail({ sessionId: token }, '203.0.113.9', { action: 'esim_read', subjectKind: 'line', subjectRef: line.sealed });
+    await recorder.recordOrFail({ sessionId: token }, '203.0.113.9', { action: 'esim_read', subjectKind: 'task', subjectRef: task.own });
     const stored = await prisma.activityEvent.findMany({ where: { actorId: u.posA, action: 'esim_read' }, orderBy: { at: 'asc' } });
     const number = (await prisma.line.findUniqueOrThrow({ where: { id: line.sealed } })).msisdn;
     expect(stored.map((event) => [event.actorLoginName, event.actorLayer, event.action, event.result, event.subjectKind, event.subjectRef, event.ip])).toEqual([
@@ -252,7 +252,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     expect(await prisma.walletEntry.count({ where: { userId: u.posA } })).toBe(0);
     expect((await prisma.line.findUniqueOrThrow({ where: { id: line.sealed } })).esimQr).toBe(sealedCode);
     // The strict recorder does not swallow a failure.
-    await expect(new PrismaActivityRecorder({ client: { session: prisma.session, line: prisma.line, activityEvent: { create: async () => { throw new Error('down'); } } }, available: true } as never).recordOfficeOrFail({ sessionId: token }, '', { action: 'esim_read', subjectKind: 'line', subjectRef: line.sealed })).rejects.toThrow('down');
+    await expect(new PrismaActivityRecorder({ client: { session: prisma.session, line: prisma.line, activityEvent: { create: async () => { throw new Error('down'); } } }, available: true } as never).recordOrFail({ sessionId: token }, '', { action: 'esim_read', subjectKind: 'line', subjectRef: line.sealed })).rejects.toThrow('down');
   });
 
   it('an activation that returns a code leaves no part of it in the output, the activity log, the notices, the outbox or the queue', async () => {

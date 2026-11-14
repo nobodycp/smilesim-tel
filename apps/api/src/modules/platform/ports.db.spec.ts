@@ -201,9 +201,9 @@ suite('the ports of slice R.2 (PostgreSQL)', () => {
     });
 
     it('an own session is recorded under its account; an entered one under the account that entered', async () => {
-      await recorder().recordOffice({ sessionId: await session(ids.pos, 'account') }, '203.0.113.7', { action: 'fund', subjectKind: 'account', subjectRef: login('other') }, 'ok', '');
+      await recorder().record({ sessionId: await session(ids.pos, 'account') }, '203.0.113.7', { action: 'fund', subjectKind: 'account', subjectRef: login('other') }, 'ok', '');
       expect(await last({ action: 'fund', subjectRef: login('other'), actorId: ids.pos })).toMatchObject({ actorLoginName: login('pos'), actorLayer: 'pos', result: 'ok', reason: '', ip: '203.0.113.7' });
-      await recorder().recordOffice({ sessionId: await session(ids.pos, 'impersonation', ids.owner) }, '203.0.113.7', { action: 'deduct', subjectKind: 'account', subjectRef: login('other') }, 'fail', 'FORBIDDEN');
+      await recorder().record({ sessionId: await session(ids.pos, 'impersonation', ids.owner) }, '203.0.113.7', { action: 'deduct', subjectKind: 'account', subjectRef: login('other') }, 'fail', 'FORBIDDEN');
       expect(await last({ action: 'deduct', subjectRef: login('other') })).toMatchObject({ actorId: ids.owner, actorLoginName: login('owner'), actorLayer: 'branch', result: 'fail', reason: 'FORBIDDEN' });
     });
 
@@ -218,10 +218,10 @@ suite('the ports of slice R.2 (PostgreSQL)', () => {
       const broken = new PrismaActivityRecorder({ client: { session: prisma.session, user: prisma.user, line: prisma.line, activityEvent: { create: async () => { throw new Error('the log is down'); } } }, available: true } as never);
       const token = await session(ids.pos, 'account');
       const output = await capturedOutput(async () => {
-        await expect(broken.recordOffice({ sessionId: token }, '', { action: 'fund' }, 'ok', '')).resolves.toBeUndefined();
+        await expect(broken.record({ sessionId: token }, '', { action: 'fund' }, 'ok', '')).resolves.toBeUndefined();
       });
       expect(output).toContain('the log is down');
-      await expect(broken.recordOfficeOrFail({ sessionId: token }, '', { action: 'esim_read' })).rejects.toThrow('the log is down');
+      await expect(broken.recordOrFail({ sessionId: token }, '', { action: 'esim_read' })).rejects.toThrow('the log is down');
     });
   });
 });

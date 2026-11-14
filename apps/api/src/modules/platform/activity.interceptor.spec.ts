@@ -44,7 +44,7 @@ describe('ActivityInterceptor and ApiExceptionFilter', () => {
     recorded.length = 0;
     const moduleRef = await Test.createTestingModule({
       controllers: [ProbeController],
-      providers: [{ provide: ActivityRecorder, useValue: { recordOffice: async (...args: unknown[]) => void recorded.push(args) } }],
+      providers: [{ provide: ActivityRecorder, useValue: { record: async (...args: unknown[]) => void recorded.push(args) } }],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();

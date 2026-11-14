@@ -12,7 +12,7 @@ import { Actor, ActorInterceptor } from '../actor.interceptor';
 import type { Actor as ActorShape } from '../types';
 import { AccountsService } from './accounts.service';
 
-@ApiTags('office')
+@ApiTags('access')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

@@ -70,11 +70,11 @@ export class BrandingController {
     const event = { action: 'site_branding' };
     try {
       const summary = await this.branding.save(gate, body);
-      await this.activity.recordOffice(gate, req.ip ?? '', event, 'ok', '');
+      await this.activity.record(gate, req.ip ?? '', event, 'ok', '');
       return summary;
     } catch (error) {
       if (error instanceof ApiFailure) {
-        await this.activity.recordOffice(gate, req.ip ?? '', event, 'fail', error.code);
+        await this.activity.record(gate, req.ip ?? '', event, 'fail', error.code);
         res.status(error.status);
         return { message: error.message, code: error.code };
       }

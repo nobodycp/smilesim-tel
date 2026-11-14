@@ -10,7 +10,7 @@ import { OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
 import { OffersService } from './offers.service';
 
 /** Offers on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1). */
-@ApiTags('office')
+@ApiTags('catalog')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

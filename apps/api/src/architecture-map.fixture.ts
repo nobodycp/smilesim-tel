@@ -48,7 +48,6 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^(door|origin|rate-limit)\.middleware\.ts$/, 'app'],
   [/^openapi\/setup\.ts$/, 'app'],
   [/^modules\/registry\.ts$/, 'app'],
-  [/^modules\/office\/office\.module\.ts$/, 'app'],
   // The worker's composition root (slice R.5): its one description of the money path, its timers and its stop.
   [/^worker\//, 'app'],
   // Command-line scripts at the root (audit finding L1): composition roots whose compiled path (`node dist/<name>.js`)
@@ -192,14 +191,16 @@ export function crossModuleCycles(edges: readonly Edge[], owner: (file: string) 
 
 /**
  * Imports that reach inside a module that has a public surface. `surfaces` maps a module to the file other
- * modules must import it through; a module with no entry has no surface yet and is not judged.
+ * modules must import it through; a module with no entry has no surface yet and is not judged. An import from a
+ * composition root (`app`: the registry, the worker's composition) is not judged.
  */
 export function surfaceViolations(edges: readonly Edge[], surfaces: Partial<Record<ModuleName, string>>, owner: (file: string) => Owner | null = ownerOf): Violation[] {
   const found: Violation[] = [];
   for (const edge of edges) {
     const from = owner(edge.from);
     const to = owner(edge.to);
-    if (!from || !to || from === to || to === 'app') continue;
+    // The composition roots wire what is inside a module (as Nest's root module does): only modules are judged.
+    if (!from || !to || from === to || to === 'app' || from === 'app') continue;
     const surface = surfaces[to as ModuleName];
     if (surface && edge.to !== surface) found.push({ file: edge.from, line: edge.line, text: `${edge.to} is inside ${to}: import ${surface}` });
   }

@@ -11,7 +11,7 @@ import type { Actor as ActorShape } from '../access/types';
 import { WalletsService } from './wallets.service';
 import type { Response } from 'express';
 
-@ApiTags('office')
+@ApiTags('wallets')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

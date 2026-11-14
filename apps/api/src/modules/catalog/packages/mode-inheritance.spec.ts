@@ -1,6 +1,6 @@
 import { ProvidersRepository } from '../../providers/providers.repository';
 import { PackagesRepository } from './packages.repository';
-import { OfficeGraph } from '../../office/testing/office-graph';
+import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
 import { ProvidersService } from '../../providers/directory/providers.service';
@@ -22,7 +22,7 @@ function world() {
     { id: 'k1', code: 'sky-a', providerId: 'p1', ...flags, actionModes: {}, inheritedModes: ['charge'] },
     { id: 'k2', code: 'sky-b', providerId: 'p1', ...flags, actionModes: {}, inheritedModes: [] as string[] },
   ];
-  const kernel = new OfficeGraph(new MemoryAuthStore());
+  const kernel = new ServiceGraph(new MemoryAuthStore());
   const apply = (row: Record<string, unknown>, data: Record<string, unknown>) => Object.assign(row, data);
   kernel.prismaClient = {
     provider: {
@@ -38,7 +38,7 @@ function world() {
     },
     // The unit of work's transaction hands the work this same client (slice R.7: `saveModes` runs in `runTx`).
     $transaction: async (work: (tx: unknown) => Promise<unknown>) => work(kernel.prismaClient),
-  } as unknown as OfficeGraph['prismaClient'];
+  } as unknown as ServiceGraph['prismaClient'];
   return { provider, packages, providers: new ProvidersService(new ProvidersRepository(kernel.uow)), catalog: new PackagesService(kernel.uow, new PackagesRepository(kernel.uow)) };
 }
 

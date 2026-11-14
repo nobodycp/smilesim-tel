@@ -1,5 +1,5 @@
 import { ProvidersRepository } from '../providers.repository';
-import { OfficeGraph } from '../../office/testing/office-graph';
+import { ServiceGraph } from '../../testing/service-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
 import { ProviderCatalogService } from './provider-catalog.service';
@@ -18,7 +18,7 @@ function world() {
   // A package's public code never names its provider; the provider's product code is kept beside it.
   const packages = [{ id: 'k1', code: 'cellcom-300gb-k1k1k', providerId: 'p-sky', providerProductCode: 'sky-cellcom-300' as string | null }];
   const created: Record<string, unknown>[] = [];
-  const kernel = new OfficeGraph(new MemoryAuthStore());
+  const kernel = new ServiceGraph(new MemoryAuthStore());
   kernel.prismaClient = {
     provider: { findUnique: async ({ where }: { where: { code: string } }) => (where.code === 'sky' ? provider : null) },
     company: {
@@ -40,7 +40,7 @@ function world() {
         return { ...data };
       },
     },
-  } as unknown as OfficeGraph['prismaClient'];
+  } as unknown as ServiceGraph['prismaClient'];
   return { service: new ProviderCatalogService(new ProvidersRepository(kernel.uow)), created, companies };
 }
 

@@ -14,7 +14,7 @@ import { HandoffBody } from './accounts.schemas';
  * Leaving an entered account. It reads the impersonation session itself (any scope, any layer), so it has no
  * ActorInterceptor: going behind it would refuse a session `actor()` does not accept before this can end it.
  */
-@ApiTags('office')
+@ApiTags('access')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

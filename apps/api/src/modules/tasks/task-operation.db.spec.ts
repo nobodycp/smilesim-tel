@@ -9,7 +9,7 @@ import { operationKey } from '../sales/settlement/activation-settlement.rules';
 import type { NoticeService } from '../notifications/notice.service';
 import { ProviderOperationsRepository } from '../providers/integration/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../providers/integration/operations/provider-operations.service';
-import { OfficeFacade } from '../office/testing/office-facade';
+import { ApiFacade } from '../testing/api-facade';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D6 and D7; transactions T8 and T9; spec items 8 to 10 (the
 // manual side) and 14 to 16; plan slice S.7. What a task's provider operation allows on the task: completion by
@@ -32,7 +32,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
   const tag = randomUUID().slice(0, 8);
   const ids = { owner: randomUUID(), pos: randomUUID(), provider: randomUUID(), company: randomUUID(), pkg: randomUUID() };
   let prisma: ReturnType<typeof createPrismaClient>;
-  let service: OfficeFacade;
+  let service: ApiFacade;
   let operations: ProviderOperationsService;
   let pos: { sessionId: string };
   let owner: { sessionId: string };
@@ -109,7 +109,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
       },
       publish: async () => undefined,
     } as unknown as NoticeService;
-    service = new OfficeFacade(auth, notice);
+    service = new ApiFacade(auth, notice);
     const uow = new UnitOfWork(notice);
     uow.prismaClient = prisma;
     operations = new ProviderOperationsService(uow, new ProviderOperationsRepository());

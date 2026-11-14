@@ -8,7 +8,7 @@ import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { capturedOutput } from '../platform/testing/captured-output';
 import { DuplicateGuardInterceptor, type WriteStore } from '../platform/duplicate-guard.interceptor';
 import type { NoticeService } from '../notifications/notice.service';
-import { officeTestApp } from '../office/testing/office-test-app';
+import { apiTestApp } from '../testing/api-test-app';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D14; spec item 4 (without "required"); plan slice S.6.
 // A request that opens an activation task carries an `Idempotency-Key`. The database keeps one task per key and
@@ -85,13 +85,13 @@ suite('one activation task per request key (PostgreSQL)', () => {
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     await prisma.package.create({ data: { id: ids.pkg, code: `rk-${tag}`, name: 'rk', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
     const notice = { write: async () => { noticeWrites += 1; return []; }, publish: async () => undefined } as unknown as NoticeService;
-    ({ app, recorded } = await officeTestApp(auth, prisma as unknown as Record<string, unknown>, notice));
+    ({ app, recorded } = await apiTestApp(auth, prisma as unknown as Record<string, unknown>, notice));
     // The guard reads REDIS_URL when it is made.
     if (redisUrl) process.env.REDIS_URL = redisUrl;
     else delete process.env.REDIS_URL;
     guard = new DuplicateGuardInterceptor();
     real = guard.store;
-    ({ app: guarded } = await officeTestApp(auth, prisma as unknown as Record<string, unknown>, notice, [guard]));
+    ({ app: guarded } = await apiTestApp(auth, prisma as unknown as Record<string, unknown>, notice, [guard]));
   });
 
   beforeEach(() => {

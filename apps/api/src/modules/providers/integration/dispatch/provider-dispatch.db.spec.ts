@@ -13,7 +13,7 @@ import { capturedOutput } from '../../../platform/testing/captured-output';
 import type { NoticeService } from '../../../notifications/notice.service';
 import { GRANT_CODES } from '../../../access/grants';
 import { PROVIDER_DISPATCH_NOTE } from '../../../platform/stored-text';
-import { officeTestApp } from '../../../office/testing/office-test-app';
+import { apiTestApp } from '../../../testing/api-test-app';
 import type { OutgoingOperation, SendEvidence } from '../operations/provider-operation.rules';
 import { WaitingPass } from '../operations/operation-dispatcher';
 import { DeploymentSendGate, type SendGate } from './dispatch-gate';
@@ -217,7 +217,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     const auto = { autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true, autoExtend: true };
     const prices = { branchCost: 2000, mainPrice: 2500, agentPrice: 3000, posPrice: PRICE, subscriberPrice: 3800, renewalBranchCost: 1800, renewalMainPrice: 2200, renewalAgentPrice: 2700, renewalPosPrice: 3200, renewalSubscriberPrice: 3500 };
     await prisma.package.create({ data: { id: ids.pkg, code, name: 's12 package', providerId: ids.provider, companyId: ids.company, ...prices, ...auto } });
-    ({ app, recorded } = await officeTestApp(auth, prisma as unknown as Record<string, unknown>, quiet));
+    ({ app, recorded } = await apiTestApp(auth, prisma as unknown as Record<string, unknown>, quiet));
   });
 
   afterEach(async () => {

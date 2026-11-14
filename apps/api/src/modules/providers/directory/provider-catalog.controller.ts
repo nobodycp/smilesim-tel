@@ -11,7 +11,7 @@ import type { Actor as ActorShape } from '../../access/types';
 import { ProviderCatalogService } from './provider-catalog.service';
 
 /** Adding to the catalog from the provider (spec 2026-11-09-admin-review, 3): query, then add a company or a package. */
-@ApiTags('office')
+@ApiTags('providers')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
 @Controller('office')

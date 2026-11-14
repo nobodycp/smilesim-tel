@@ -1,10 +1,10 @@
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { emptyTables } from './empty-tables';
-import { officeTestApp } from './office-test-app';
-import { ROUTES } from './office-routes';
+import { apiTestApp } from './api-test-app';
+import { ROUTES } from './routes';
 import { hashOnce } from './test-hash';
 
 // A GET reads (backend-engineering.mdc 4.10): it can be retried, cached and served by a read-only database. Every
@@ -26,7 +26,7 @@ describe('a GET route writes nothing', () => {
       twoFactorExempt: true, twoFactorEnabled: false, isBranchOwner: true, passwordHash: await hashOnce('ownerpass1'),
     });
     session = await store.saveSession({ userId: 'admin', scope: 'full', userAgent: '', ip: '' });
-    ({ app } = await officeTestApp(store, tables));
+    ({ app } = await apiTestApp(store, tables));
   });
 
   afterAll(async () => {

@@ -1,16 +1,16 @@
-import { UnitOfWork } from '../../platform/unit-of-work';
+import { UnitOfWork } from '../platform/unit-of-work';
 import 'reflect-metadata';
-import { API_PROVIDERS } from '../../platform/api-providers';
+import { API_PROVIDERS } from '../platform/api-providers';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { AuthModule } from '../../auth/auth.module';
-import { ActivityModule } from '../../auditing/activity.module';
-import { AUTH_STORE } from '../../auth/auth.store';
-import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
+import { AuthModule } from '../auth/auth.module';
+import { ActivityModule } from '../auditing/activity.module';
+import { AUTH_STORE } from '../auth/auth.store';
+import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
-import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
-import { ApiFailure } from '../../platform/api-failure';
+import { DOMAIN_CONTROLLERS, DOMAIN_PROVIDERS } from './domain-lists';
+import { ApiFailure } from '../platform/api-failure';
 
 // A refusal from any office route carries `{ message, code }`. The Arabic message is the one the
 // web app has always shown; the code is what it now routes and translates on.
@@ -40,8 +40,8 @@ describe('office refusals', () => {
     const moduleRef = await Test.createTestingModule({
       imports: [ActivityModule, AuthModule],
       // Every office route, whichever controller holds it.
-      controllers: OFFICE_CONTROLLERS,
-      providers: [...OFFICE_PROVIDERS, ...API_PROVIDERS],
+      controllers: DOMAIN_CONTROLLERS,
+      providers: [...DOMAIN_PROVIDERS, ...API_PROVIDERS],
     })
       .overrideProvider(AUTH_STORE)
       .useValue(store)

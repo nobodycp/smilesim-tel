@@ -1,5 +1,5 @@
 import { UnitOfWork } from '../platform/unit-of-work';
-import { SHARED_COLLABORATORS } from '../office/testing/collaborators';
+import { SHARED_COLLABORATORS } from '../testing/collaborators';
 import 'reflect-metadata';
 import { Body, Controller, INestApplication, Post, UseFilters, UseInterceptors } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -47,7 +47,7 @@ describe('ActorInterceptor with ActivityInterceptor and a body pipe', () => {
         ...NOTICE_WRITER_PROVIDERS,
         ...SHARED_COLLABORATORS,
         { provide: AUTH_STORE, useValue: store },
-        { provide: ActivityRecorder, useValue: { recordOffice: async (...args: unknown[]) => void recorded.push(args) } },
+        { provide: ActivityRecorder, useValue: { record: async (...args: unknown[]) => void recorded.push(args) } },
       ],
     }).compile();
     moduleRef.get(UnitOfWork).prismaClient = {
