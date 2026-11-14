@@ -735,6 +735,17 @@ positioned descendants; the evidence note states these three facts with their me
   `users.css`'s `width: 6.5rem` because `inline-size` and `width` share one cascade slot (logical and physical
   properties resolve together) and the new selector has higher specificity — the executor states this in the evidence
   note. `.terms-price` is an `inline-flex` column, so `100%` resolves against its shrink-to-fit width: measure it.
+  *Amended in P0.7 (measured, `audit-output/maintenance/P0.7/fix1/min-trial.json` for the `min()` form,
+  `extra-320/` for the cap at 320):* the third rule is
+  `table.data:has(td[data-label]) .terms-price input { max-inline-size: 100%; }` instead of `inline-size: min(6.5rem,
+  100%)`; the field keeps users.css's `width: 6.5rem`. Measured with the `min()` form: while the shrink-to-fit
+  `.terms-price` sizes itself, the input's percentage width counts as auto, so each label grew to the input's default
+  width (187px at 375, ar-dark, main door) with the 104px field at its edge, and the sell cell's two fields stacked one
+  per row in a 275px cell where two 104px fields fit side by side. A percentage cap does not enter that sizing (the
+  label is 104px) and still holds the field to its cell: on the package page's addons tab at 320 the price cell is
+  103px and the field 103px (104px before, 1px past the cell). All three rules carry the block's
+  `:not(:is(.notice-list, .task-list, .roles-matrix) *)` like every other rule in it, so they reach exactly the tables
+  drawn as cards. The block is at graphite :1311–1353 on HEAD `e5757cc` (not :1308–1350).
 - **Closes:** 3.2-02.
 - **Risks:** `.terms-price input` is also in the line-prices dialog and `package-addons` — the selectors above are
   limited to `table.data:has(td[data-label])` inside the 640 block; check the line-prices dialog at 375 is unchanged.
@@ -742,7 +753,8 @@ positioned descendants; the evidence note states these three facts with their me
   «أسعار خاصة» tab, the line-prices dialog, at 375/390/640/641/768, ar-dark/en-light/he-light; audit runner's
   `cell-overflow` = 0 on those routes; measure the `.terms-price input` width at 375 in the phone card (≤ cell width)
   and in the line-prices dialog (unchanged 6.5rem). E2E: `package-custom-prices.spec.ts`, `line-prices.spec.ts`,
-  `branch-packages.spec.ts`.
+  `packages-terms.spec.ts` (*amended in P0.7:* it holds the `/packages` sell-cell tests; `branch-packages.spec.ts`,
+  named here before, has no editor table and is not touched).
 - **Done:** no editor overflows its cell; desktop unchanged — checked by a CHK-READ inside CHK-LOOK, not CHK-ZERO (before P1.1 the
   snapshot reaches no main/agent door, `tests/dom-snapshot.mjs:161`, and its `package-sheet` case is PackageMoved, not
   the price sheet): at 1280, ar-dark and en-light, on `main.localhost:3000/packages` (sell cells) and the real package
