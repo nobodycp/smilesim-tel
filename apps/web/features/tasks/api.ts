@@ -3,7 +3,7 @@ import type { CompleteTaskBody, DecisionView, ProviderDecisionAnswer, ProviderDe
 
 /** The tasks calls of the office API. Composed into `api` by lib/api.ts. */
 export const tasksApi = {
-  officeTasks: (query?: {
+  tasks: (query?: {
     q?: string;
     status?: string;
     action?: string;
@@ -12,7 +12,7 @@ export const tasksApi = {
     provider?: string;
     cursor?: string | null;
   }) => request<Page<TaskRow>>('GET', `/office/tasks${queryString(query)}`),
-  officeTask: (id: string) => request<{ task: TaskDetail; events: TaskEvent[] }>('GET', `/office/tasks/${segment(id)}`),
+  task: (id: string) => request<{ task: TaskDetail; events: TaskEvent[] }>('GET', `/office/tasks/${segment(id)}`),
   addTaskNote: (id: string, text: string, internal = false) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/notes`, { text, ...(internal ? { internal: true } : {}) }),
   takeTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/take`),
   releaseTask: (id: string) => request<{ ok: true }>('POST', `/office/tasks/${segment(id)}/release`),

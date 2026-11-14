@@ -77,7 +77,7 @@ export type BrandingBody = { siteName: string; tagline: string; logo: string | n
 
 
 export type Outcome = 'success' | 'fail';
-export type OfficeMe = {
+export type DeskMe = {
   loginName: string;
   nickname: string;
   layer: string;

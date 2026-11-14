@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveOffice, type Reply } from './desk';
+import { serveApi, type Reply } from './desk';
 
 // The request key of an activation (ADR 0019, D14; plan 2026-11-10-activation-settlement, S.6 web step). Each
 // activation is sent with its own `Idempotency-Key`. Sending the same activation again, after an answer that was
@@ -18,7 +18,7 @@ const down: Reply = { status: 500, body: { message: 'خطأ', code: 'GENERIC' } 
 async function serve(page: Page, layer: 'branch' | 'pos', answers: Reply[]) {
   const sent: { key: string | undefined; body: Record<string, unknown> }[] = [];
   let at = 0;
-  await serveOffice(page, layer, {
+  await serveApi(page, layer, {
     'GET /lines': () => ({ body: { items: [], total: 0, nextCursor: null, poses: [{ loginName: 'pos', nickname: 'نقطة بيع' }] } }),
     'GET /packages': () => ({ body: { packages: [pack], companies: [] } }),
     'POST /lines': () => answers[Math.min(at++, answers.length - 1)],

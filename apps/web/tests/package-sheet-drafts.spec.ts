@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const base = {
   code: 'lian-wecom-500', name: '500 جيجا', providerCode: 'lian', providerName: 'ليان', companyCode: 'wecom', companyName: 'ويكوم',
@@ -16,7 +16,7 @@ const base = {
 test('a reload keeps typed chain prices and refreshes untouched ones', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   let sheet = base;
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
     'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
     'PATCH /packages/lian-wecom-500/mode': () => {
@@ -53,7 +53,7 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
     companyCode: 'wecom', companyName: 'ويكوم', providerCode: 'lian', posLoginName: 'pos1', posNickname: 'نقطة', endsAt: '2026-12-01T00:00:00.000Z',
     createdAt: '2026-11-01T00:00:00.000Z', operations: null,
   });
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /packages/lian-wecom-500/sheet': () => ({ body: { ...base, lines: 3, activeLines: 3 } }),
     'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
     'GET /users': () => ({ body: { users: [] } }),
@@ -72,7 +72,7 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
 // An action on the sheet asks again for what belongs to this package, not the shared shelf and accounts.
 test('a mode change re-reads the sheet, its numbers and its custom prices, not the companies or the accounts', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /packages/lian-wecom-500/sheet': () => ({ body: base }),
     'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
     'PATCH /packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),

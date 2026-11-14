@@ -88,7 +88,7 @@ function asDirectory(reply: Reply): Reply {
   return { ...reply, body: { items, nextCursor: null, total: items.length } };
 }
 
-export async function serveOffice(page: Page, layer: keyof typeof accounts, routes: Routes = {}) {
+export async function serveApi(page: Page, layer: keyof typeof accounts, routes: Routes = {}) {
   const calls: string[] = [];
   await page.route('**/api/office/**', async (route) => {
     const request = route.request();

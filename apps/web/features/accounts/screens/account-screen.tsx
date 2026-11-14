@@ -19,7 +19,7 @@ import { api, type LineRow, type UserRow } from '../../../lib/api';
 import { GRANT_CODES, grantLabel } from '../../../lib/grants';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { UserOpsTab } from './line-ops';
 import { UserPackagesTab } from './packages-terms';
@@ -35,7 +35,7 @@ import { useAccountActions } from '../account-actions';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
 
-const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
+const ACCOUNT_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
 type Choice = 'role' | 'allow' | 'deny';
 // Two tabs since spec 2026-11-08-overview-and-reports-nav, H: «الحساب» (permissions, number operations and the
@@ -63,15 +63,15 @@ function useHashTab(): [Tab, (next: Tab) => void] {
 export function AccountScreen() {
   const { t } = usePrefs();
   const params = useParams<{ login: string }>();
-  const allowed = useRequireLayer(OFFICE_LAYERS);
-  const { me } = useOffice();
+  const allowed = useRequireLayer(ACCOUNT_LAYERS);
+  const { me } = useDesk();
   const [tab, setTab] = useHashTab();
   const [choices, setChoices] = useState<Record<string, Choice> | null>(null);
   const [extraRoleIds, setExtraRoleIds] = useState<string[] | null>(null);
   const [roleId, setRoleId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const account = useApiQuery(sharedKeys.account(params.login), () => api.officeAccount(params.login), { enabled: allowed });
+  const account = useApiQuery(sharedKeys.account(params.login), () => api.account(params.login), { enabled: allowed });
   const row = account.data;
   useCrumbs({ [`/users/${encodeURIComponent(params.login)}`]: row ? `${row.loginName} (${row.nickname})` : null });
   const picked = choices ?? Object.fromEntries(GRANT_CODES.map((code) => {
@@ -320,7 +320,7 @@ function MoneyCards({ row }: { row: UserRow }) {
 function AccountLines({ login }: { login: string }) {
   const { t } = usePrefs();
   const list = usePaged<LineRow>(`account:${login}`, async (cursor) =>
-    pick(await api.officeLines({ loginName: login, cursor }), pageRows),
+    pick(await api.lines({ loginName: login, cursor }), pageRows),
   );
   const columns: Column<LineRow>[] = [
     { key: 'number', header: t.number, render: (line) => <a href={`/numbers/${encodeURIComponent(line.id)}`}><bdi dir="ltr">{line.msisdn}</bdi></a> },

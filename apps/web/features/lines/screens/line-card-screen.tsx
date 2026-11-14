@@ -18,7 +18,7 @@ import { Button } from '../../../components/ui/button';
 import { api, type LineHistory, type LineRow, type Outcome, type PackageRow, type Shelf, type TransferLinePrices } from '../../../lib/api';
 import { everyAccount } from '../../../lib/directory';
 import { useDoor } from '../../../lib/door-context';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
@@ -82,7 +82,7 @@ export function LineCardScreen() {
   const { t } = usePrefs();
   const params = useParams<{ id: string }>();
   const door = useDoor();
-  const { me } = useOffice();
+  const { me } = useDesk();
   const isPos = door.layer === 'pos';
   // The grant moves a number; a stopped transfer takes the action away, as the server would refuse it.
   const canTransfer = Boolean(me?.grants.includes('transferLines') && !me.stops.includes('transfer'));
@@ -106,8 +106,8 @@ export function LineCardScreen() {
   // Three reads, each cached on its own (ADR 0001): the number, the catalog (shared with the numbers list) and the
   // accounts (shared with the users page). An action on the number asks for the number again, not the other two.
   // `fresh`: the answer carries the eSIM code, so it is not kept in the shared cache once this page closes.
-  const numberRead = useApiQuery(sharedKeys.line(params.id), () => api.officeLine(params.id), { fresh: true });
-  const catalogRead = useApiQuery(sharedKeys.packages, () => api.officePackages());
+  const numberRead = useApiQuery(sharedKeys.line(params.id), () => api.line(params.id), { fresh: true });
+  const catalogRead = useApiQuery(sharedKeys.packages, () => api.packages());
   const usersRead = useApiQuery(sharedKeys.users, everyAccount, { enabled: canTransfer });
   const card = {
     loaded: numberRead.loaded && catalogRead.loaded && (!canTransfer || usersRead.loaded),

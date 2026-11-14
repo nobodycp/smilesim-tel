@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { pickName, serveOffice } from './desk';
+import { pickName, serveApi } from './desk';
 
 // Adding from the provider (spec 2026-11-09-admin-review, 3): query the provider, pick what it offers, set it up, save.
 const admin = 'http://admin.localhost:3910';
@@ -15,7 +15,7 @@ const providerModes = { activate: 'auto', charge: 'manual', extend: 'manual', di
 
 test('a package is added from a provider product: details, add-ons, inherited modes, prices', async ({ page }) => {
   const sent: unknown[] = [];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /companies': () => ({ body: shelf }),
     'GET /providers': () => ({ body: providers }),
     'GET /providers/sky/settings': () => ({ body: { code: 'sky', name: 'سكاي', modes: providerModes, esimPrice: null } }),
@@ -69,7 +69,7 @@ test('a package is added from a provider product: details, add-ons, inherited mo
 
 test('a company is added from the provider with its SIM rules', async ({ page }) => {
   const sent: unknown[] = [];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /companies': () => ({ body: shelf }),
     'GET /providers': () => ({ body: providers }),
     'GET /providers/lian/catalog/companies': () => ({ body: { simulated: true, companies: [
@@ -96,7 +96,7 @@ test('a company is added from the provider with its SIM rules', async ({ page })
 });
 
 test('an agent cannot open the add pages', async ({ page }) => {
-  await serveOffice(page, 'agent');
+  await serveApi(page, 'agent');
   await page.goto('http://agent.localhost:3910/companies/new');
   await expect(page).not.toHaveURL(/\/companies\/new$/);
 });

@@ -24,7 +24,7 @@ import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { operationTone, taskTone } from '../../../lib/status-tone';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { phaseName } from '../provider-operation-names';
 
 // One empty list for every render, so the memos below keep their inputs while the catalog loads.
@@ -45,13 +45,13 @@ export function TasksScreen() {
   const status = TASK_STATUSES.includes(filters.status) ? filters.status : '';
   const commitQuery = useCallback((value: string) => setFilters({ q: value }), [setFilters]);
   const [query, setQuery] = useDebouncedField(needle, commitQuery);
-  const catalog = useApiQuery(sharedKeys.packages, () => api.officePackages());
+  const catalog = useApiQuery(sharedKeys.packages, () => api.packages());
   const packages = catalog.data?.packages ?? NO_PACKAGES;
   const list = usePaged<TaskRow>(
     `${needle}|${status}|${action}|${pack}|${company}|${provider}`,
     async (cursor) =>
       pick(
-        await api.officeTasks({
+        await api.tasks({
           q: needle,
           status,
           action,
@@ -66,7 +66,7 @@ export function TasksScreen() {
   const { run } = useAction({ setError, setNote, onDone: list.reload });
   // Who is shown the way to the provider decisions: the owner or a branch account holding `accounting`, in a
   // session of its own. The API decides who reads them; this only spares the others a link that would refuse.
-  const { me } = useOffice();
+  const { me } = useDesk();
   const mayDecide = Boolean(me && me.layer === 'branch' && !me.impersonating && (me.isBranchOwner || me.grants.includes('accounting')));
   const waiting = useApiQuery(sharedKeys.providerDecisions, () => api.providerDecisions(), { enabled: mayDecide, fresh: true });
 
@@ -88,7 +88,7 @@ export function TasksScreen() {
   }, [packages, company, provider]);
 
   // The status tabs (Graphite): all, in progress, done, closed — with the counts of the whole picture.
-  const counts = useApiQuery(sharedKeys.overview('all'), () => api.officeOverview('all')).data?.tasks;
+  const counts = useApiQuery(sharedKeys.overview('all'), () => api.overview('all')).data?.tasks;
   const tabs: { key: string; label: string; count?: number }[] = [
     { key: '', label: t.tasksAllTab },
     { key: 'working', label: taskStatus(t, 'working'), count: counts ? counts.pending + counts.working : undefined },

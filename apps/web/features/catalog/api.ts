@@ -3,15 +3,15 @@ import type { NewPackage, PackageAddon, PackageRow, PackageSheet, ProviderCatalo
 
 /** The catalog calls of the office API. Composed into `api` by lib/api.ts. */
 export const catalogApi = {
-  officePackages: () => request<{ packages: PackageRow[]; companies: { name: string; image: string }[]; capped?: boolean }>('GET', '/office/packages'),
-  officeCompanies: () => request<Shelf>('GET', '/office/companies'),
+  packages: () => request<{ packages: PackageRow[]; companies: { name: string; image: string }[]; capped?: boolean }>('GET', '/office/packages'),
+  companies: () => request<Shelf>('GET', '/office/companies'),
   setCompanyImage: (code: string, image: string | null) => request<{ ok: true }>('PUT', `/office/companies/${segment(code)}/image`, { image }),
   setCompanySim: (code: string, sim: SimRules & { esimPrice: number }) =>
     request<{ ok: true; sim: SimRules; esimPrice: number }>('PUT', `/office/companies/${segment(code)}/sim`, sim),
   setSellPrice: (code: string, price: number, renewalPrice?: number | null) =>
     request<{ price: number; renewalPrice: number | null }>('PUT', `/office/sell-prices/${segment(code)}`, { price, renewalPrice }),
   clearSellPrice: (code: string) => request<{ ok: true }>('DELETE', `/office/sell-prices/${segment(code)}`),
-  officeProviders: () => request<{ providers: ProviderRow[] }>('GET', '/office/providers'),
+  providers: () => request<{ providers: ProviderRow[] }>('GET', '/office/providers'),
   providerSettings: (code: string) =>
     request<ProviderSettings>('GET', `/office/providers/${segment(code)}/settings`),
   setProviderEsimPrice: (code: string, price: number | null) =>

@@ -8,7 +8,7 @@ import { Desk } from '../../../components/desk';
 import { api } from '../../../lib/api';
 import { brandingImageUrl } from '../../../lib/branding-load';
 import { darkVariant, FAVICON_SIDE, fetchAsDataUrl, LOGO_SIDE, shrinkImage } from '../../../lib/branding-image';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { pick, type Fetched } from '../../../lib/fetched';
@@ -39,7 +39,7 @@ const same = (a: Draft, b: Draft) => (Object.keys(EMPTY) as (keyof Draft)[]).eve
 export function BrandingScreen() {
   const { t } = usePrefs();
   const router = useRouter();
-  const { me } = useOffice();
+  const { me } = useDesk();
   const allowed = useRequireLayer(['branch']);
   const owner = allowed && Boolean(me?.isBranchOwner);
   const [error, setError] = useState('');

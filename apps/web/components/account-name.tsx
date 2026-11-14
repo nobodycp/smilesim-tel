@@ -1,6 +1,6 @@
 'use client';
 
-import { useOffice } from '../lib/office-session';
+import { useDesk } from '../lib/desk-session';
 
 /** `login (Full Name)` as plain text, for option labels and aria labels. Just the login when the name is missing or the same. */
 export function accountLabel(login: string, name?: string | null): string {
@@ -10,7 +10,7 @@ export function accountLabel(login: string, name?: string | null): string {
 
 /** `accountLabel` with the session directory filling in a name the caller does not hold. */
 export function useAccountLabel() {
-  const { names } = useOffice();
+  const { names } = useDesk();
   return (login: string, name?: string | null) => accountLabel(login, name ?? names[login]);
 }
 
@@ -19,7 +19,7 @@ export function useAccountLabel() {
  * The name comes from the prop when the row carries it, else from the session directory.
  */
 export function AccountName({ login, name, className }: { login: string | null | undefined; name?: string | null; className?: string }) {
-  const { names } = useOffice();
+  const { names } = useDesk();
   if (!login) return <>—</>;
   const full = (name ?? names[login] ?? '').trim();
   return (

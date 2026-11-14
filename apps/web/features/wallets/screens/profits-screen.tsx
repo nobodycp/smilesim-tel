@@ -24,7 +24,7 @@ export function ProfitsScreen() {
   const [days, setDays] = useState<PeriodDays>(30);
   const [q, setQ] = useState('');
   const query = { from: periodFrom(days), to: '', q: q.trim() };
-  const report = useApiQuery(['office', 'profits', query.from, query.q], () => api.profitReport(query));
+  const report = useApiQuery(['api', 'profits', query.from, query.q], () => api.profitReport(query));
   const data = report.data;
   const rows = data?.packages ?? [];
   const best = rows.reduce<ProfitRow | null>((top, row) => (!top || row.profit > top.profit ? row : top), null);

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const balances = {
   items: [{ loginName: 'pos', nickname: 'الكاشير', layer: 'pos', parentLoginName: 'agent1', balance: -2000, ceiling: 5000, used: 2000, available: 3000, frozen: false, lastAt: '2026-11-06T10:00:00.000Z' }],
@@ -11,7 +11,7 @@ const balances = {
 // «التقارير» (roadmap N5; one page each since spec 2026-11-08-overview-and-reports-nav, C; five since spec
 // 2026-11-09-admin-review, 1): finance, profits and balances for an agent; providers for the branch with reports.
 test('an agent reads its balances on their own page, and exports them with their filters', async ({ page }) => {
-  await serveOffice(page, 'agent', {
+  await serveApi(page, 'agent', {
     'GET /finance': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
     'GET /reports/balances': () => ({ body: balances }),
   });
@@ -26,7 +26,7 @@ test('an agent reads its balances on their own page, and exports them with their
 });
 
 test('the sidebar folds five reports in one group that starts closed and opens on a report page', async ({ page }) => {
-  await serveOffice(page, 'agent', { 'GET /reports/balances': () => ({ body: balances }) });
+  await serveApi(page, 'agent', { 'GET /reports/balances': () => ({ body: balances }) });
   await page.goto('http://agent.localhost:3910/numbers');
   const nav = page.locator('.sidebar .side-nav');
   const head = nav.getByRole('button', { name: 'التقارير' });
@@ -42,7 +42,7 @@ test('the sidebar folds five reports in one group that starts closed and opens o
 });
 
 test('the old report paths land where their rows now live', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /finance': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
     'GET /tasks': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });

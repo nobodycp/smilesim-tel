@@ -34,7 +34,7 @@ import { useBranding } from '../lib/branding';
 import { useConnection } from '../lib/connection';
 import { forgetIdentity, useIdentity } from '../lib/identity';
 import { useDoor } from '../lib/door-context';
-import { useOffice } from '../lib/office-session';
+import { useDesk } from '../lib/desk-session';
 import { formatShekel } from '../lib/money';
 import { usePrefs } from '../lib/prefs';
 import { usePopover } from '../lib/use-popover';
@@ -88,7 +88,7 @@ type NavGroup = { key: string; label: string; icon: LucideIcon; items: NavItem[]
 type NavEntry = NavItem | NavGroup;
 const isGroup = (entry: NavEntry): entry is NavGroup => 'items' in entry;
 
-export function OfficeShell({ children }: { children: ReactNode }) {
+export function AppShell({ children }: { children: ReactNode }) {
   const { t } = usePrefs();
   const branding = useBranding();
   const pathname = usePathname();
@@ -97,7 +97,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   const { open: noticeOpen, close: closeNotices, toggle: toggleNotices, root: noticeRoot, trigger: noticeTrigger } = usePopover();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [flyout, setFlyout] = useState<{ top: number; label: string; items?: NavItem[] } | null>(null);
-  const { ready, failed, retrying, retry, me, initialName, initialBalance } = useOffice();
+  const { ready, failed, retrying, retry, me, initialName, initialBalance } = useDesk();
   const { reachable } = useConnection();
   const { notices, unread, fresh, markRead, dismiss } = useNotices(ready);
   const pageTitle = usePageTitleValue();
@@ -199,7 +199,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   }
 
   // The open tasks beside «المهام» (Graphite): the home board's count, read once and kept in the shared cache.
-  const board = useApiQuery(sharedKeys.home, () => api.officeHome(), { enabled: ready });
+  const board = useApiQuery(sharedKeys.home, () => api.home(), { enabled: ready });
   const openTasks = board.data?.openTasks ?? 0;
   const desk = ['branch', 'main_agent', 'agent'] as const;
   // «التقارير» (spec 2026-11-08-overview-and-reports-nav, C): every report is its own page, folded in one group
@@ -230,7 +230,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       ],
     },
   ];
-  const officeGroups: { title: string; items: NavEntry[] }[] = [
+  const deskGroups: { title: string; items: NavEntry[] }[] = [
     {
       title: '',
       items: [
@@ -240,7 +240,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       ],
     },
     {
-      title: t.navOffice,
+      title: t.navDesk,
       items: [
         { label: t.navNumbers, href: '/numbers', icon: Phone },
         { label: t.navUsers, href: '/users', icon: Users, layers: desk },
@@ -275,7 +275,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       ],
     },
   ];
-  const groups: { title: string; items: NavEntry[] }[] = layer === 'pos' ? posGroups : officeGroups;
+  const groups: { title: string; items: NavEntry[] }[] = layer === 'pos' ? posGroups : deskGroups;
   const allowed = (item: NavItem) => {
     if (item.layers && !item.layers.includes(layer)) return false;
     // The account arrives after the first paint. Dropping gated items before
@@ -462,7 +462,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
   return (
     <>
     <title>{tabTitle(pageTitle, branding.name, unread)}</title>
-    <div className="office">
+    <div className="app-shell">
       {mobileOpen && <div className="backdrop" onClick={() => setMobileOpen(false)} />}
       <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'} onMouseLeave={() => setFlyout(null)}>{sidebar(false)}</aside>
       {flyout && collapsed ? (
@@ -491,7 +491,7 @@ export function OfficeShell({ children }: { children: ReactNode }) {
       {/* Closed, the drawer is off screen but still in the page: `inert` keeps it out of the tab order and the
           accessibility tree until it opens. */}
       <aside className={mobileOpen ? 'drawer open' : 'drawer'} inert={!mobileOpen}>{sidebar(true)}</aside>
-      <div className="office-main">
+      <div className="app-main">
         <header className="topbar">
           <div className="topbar-start">
             <button type="button" className="shell-icon menu-btn" onClick={() => setMobileOpen(true)} aria-label={t.openMenu}>

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { asBranch, expectFullTable, serveOffice } from './desk';
+import { asBranch, expectFullTable, serveApi } from './desk';
 
 test('users is a full table on the branch door', async ({ page }) => {
   await asBranch(page);
@@ -15,7 +15,7 @@ test('an account is named by its login with the full name in parentheses, in the
     loginName, nickname, layer, roleName: '', parentLoginName, balance: 0, ceiling: 0, frozen: false, self: false, directChild: false,
     canEnter: false, canFreeze: false, canDelete: false,
   });
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /users': () => ({ body: { users: [user('agent1', 'وكيل', 'agent', 'main1'), user('pos', 'الكاشير', 'pos', 'agent1')] } }),
   });
   await page.goto('http://admin.localhost:3910/users');
@@ -34,7 +34,7 @@ test('the users table is paged by the server: filters go in the request, the nex
     canEnter: false, canFreeze: false, canDelete: false,
   });
   const many = Array.from({ length: 60 }, (_, index) => user(`p${String(index).padStart(2, '0')}`, 'pos'));
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /users': (url) => {
       if (url.searchParams.get('whole')) return { body: { users: [...many, user('agent9', 'agent')] } };
       if (url.searchParams.get('layer') === 'agent') return { body: { users: [user('agent9', 'agent')], nextCursor: null, total: 1 } };
@@ -70,7 +70,7 @@ test('the users table and the roles table both sort from their headers', async (
     loginName, nickname: loginName, layer: 'pos', roleName: '', parentLoginName: null, balance, ceiling: 0, frozen: false, self: false,
     directChild: true, canEnter: false, canFreeze: false, canDelete: false,
   });
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /users': () => ({ body: { users: [user('p1', 5), user('p2', 9)] } }),
     'GET /roles': () => ({ body: { roles: [{ id: 'r2', name: 'ب', kind: 'job', layer: null, grants: 'read' }, { id: 'r1', name: 'أ', kind: 'job', layer: null, grants: 'read' }] } }),
   });

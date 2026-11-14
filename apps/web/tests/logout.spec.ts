@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const sessions = { sessions: [{ id: 's1', current: true, userAgent: '', ip: '', createdAt: '2026-11-08T00:00:00.000Z', lastSeenAt: '2026-11-08T00:00:00.000Z' }] };
 
@@ -18,7 +18,7 @@ async function serveAuth(page: import('@playwright/test').Page, revoke: { status
 }
 
 test('signing out revokes this session and lands on the sign-in page', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /users': () => ({ body: { users: [] } }) });
+  await serveApi(page, 'branch', { 'GET /users': () => ({ body: { users: [] } }) });
   const revoked = await serveAuth(page, { status: 200, body: { ok: true } });
   await page.goto('http://admin.localhost:3910/users');
   // Graphite: signing out sits at the sidebar's foot, under the account.
@@ -28,7 +28,7 @@ test('signing out revokes this session and lands on the sign-in page', async ({ 
 });
 
 test('a failed sign-out keeps the account signed in where it was', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /users': () => ({ body: { users: [] } }) });
+  await serveApi(page, 'branch', { 'GET /users': () => ({ body: { users: [] } }) });
   await serveAuth(page, { status: 500, body: { message: 'boom' } });
   await page.goto('http://admin.localhost:3910/users');
   // Graphite: signing out sits at the sidebar's foot, under the account.

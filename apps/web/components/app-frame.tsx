@@ -6,10 +6,10 @@
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useBranding } from '../lib/branding';
-import { authPath } from '../lib/office-session';
-import { OfficeShell } from './office-shell';
+import { authPath } from '../lib/desk-session';
+import { AppShell } from './app-shell';
 
-export function OfficeFrame({ children }: { children: ReactNode }) {
+export function AppFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const branding = useBranding();
   if (authPath(pathname)) {
@@ -20,5 +20,5 @@ export function OfficeFrame({ children }: { children: ReactNode }) {
       </>
     );
   }
-  return <OfficeShell>{children}</OfficeShell>;
+  return <AppShell>{children}</AppShell>;
 }

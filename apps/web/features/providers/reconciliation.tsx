@@ -37,9 +37,9 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
   const [runId, setRunId] = useState('');
   const [handling, setHandling] = useState<ReconItem | null>(null);
   const [text, setText] = useState('');
-  const runs = useApiQuery(['office', 'reconciliations', code], () => api.reconciliations(code));
+  const runs = useApiQuery(['api', 'reconciliations', code], () => api.reconciliations(code));
   const chosen = runId || runs.data?.runs[0]?.id || '';
-  const run = useApiQuery(['office', 'reconciliation', chosen], () => api.reconciliation(chosen), { enabled: Boolean(chosen) });
+  const run = useApiQuery(['api', 'reconciliation', chosen], () => api.reconciliation(chosen), { enabled: Boolean(chosen) });
   const { run: send, busy } = useAction({ setError, setNote, onDone: async () => { await runs.reload(); await run.reload(); } });
 
   async function pick(event: ChangeEvent<HTMLInputElement>) {

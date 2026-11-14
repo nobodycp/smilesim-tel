@@ -29,8 +29,8 @@ pushed; the owner approves before one push and one CI run.
 | R.8 Remaining domains | DONE | `dc59623` |
 | R.9 Umbrella removal | DONE | `71f38aa` |
 | R.10 Prisma model names | DONE | `c9f10f9` |
-| R.A Authentication | PARTIAL | see its section |
-| W.1, W.2 Web names | pending | |
+| R.A Authentication | PARTIAL | `77c1cf8` |
+| W.1, W.2 Web names | DONE | see its section |
 | R.11a HTTP security | pending | |
 | R.11b Route migration | pending | |
 | R.11c Legacy route removal | pending | |
@@ -264,7 +264,7 @@ pushed; the owner approves before one push and one CI run.
   specs on PostgreSQL and Redis: 45 files, 1005 tests passed.
 - **Rollback:** a revert; the database is untouched, so the previous image runs against it as before.
 
-## R.A Authentication audit and cleanup — PARTIAL
+## R.A Authentication audit and cleanup — PARTIAL (`77c1cf8`)
 
 - **Done:** `PATCH /auth/profile` records `password` when a new password is sent, else `user_contact`
   (`profileChangeAction`, through the body's schema), success and refusal with the refusal code; `DELETE
@@ -282,3 +282,22 @@ pushed; the owner approves before one push and one CI run.
 - **Seen in passing (not changed):** a stored password hash that is not an argon2 string makes `passwordMatches`
   throw, so such an account's sensitive profile change answers 500 instead of `WRONG_CURRENT_PASSWORD`. Real
   accounts are created with argon2 hashes; only hand-made test rows have such a hash.
+
+## W.1, W.2 Frontend naming — DONE
+
+- **Renamed (101 files, identifiers and paths only):** `OfficeShell`/`OfficeFrame` → `AppShell`/`AppFrame` (files
+  `app-shell.tsx`, `app-frame.tsx`); `OfficeSession`, `OfficeContext`, `OfficeMe`, `OfficeSessionValue`, `useOffice`
+  → `DeskSession`, `DeskContext`, `DeskMe`, `DeskSessionValue`, `useDesk` (`lib/desk-session.tsx`); the `api`
+  methods `officeX` → `x` (no clash: checked against every method of `features/*/api.ts`); the query keys' root
+  `'office'` → `'api'` (structure unchanged, so prefix invalidation is unchanged); CSS `.office`, `.office-main` →
+  `.app-shell`, `.app-main`; the copy key `navOffice` → `navDesk` (texts unchanged; check:copy green);
+  `OFFICE_LAYERS` → `ACCOUNT_LAYERS`; `serveOffice` → `serveApi`. One clash found by the compiler and fixed in the
+  shell (`officeGroups` would have become `groups`; it is `deskGroups`).
+- **Kept:** `/office/*` paths (R.11), raw SQL table names in the audit scripts, comments that use "office" as the
+  business's word.
+- **Checked in the browser (port 3000, the one dev copy):** signed in as the trial owner from the seed file; home,
+  numbers and companies render as before; `.app-shell` computed `display: flex`, height 100% of the viewport;
+  `.office` no longer in the DOM; the moved shelf route `GET /api/office/packages` answers 200.
+- **Results:** web typecheck 0 (outside the git-ignored local `apps/web/audit-output/` scratch folder, which still
+  imports the old helper name and is not part of the repository), lint 0, check:copy 0; Playwright `tools-pages` and
+  `users-desk`: 22/22. Full Playwright runs at the end.

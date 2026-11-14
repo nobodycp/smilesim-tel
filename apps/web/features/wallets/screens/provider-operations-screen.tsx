@@ -31,7 +31,7 @@ export function ProviderOperationsScreen() {
   const [match, setMatch] = useState('');
   const list = usePaged<ProviderOpRow, { stats: ProviderOpStats; providers: { code: string; name: string }[] }>(
     `${provider}|${kind}|${q}|${from}|${to}|${match}`,
-    async (cursor) => pick(await api.officeProviderOperations({ provider, kind, q, from, to, match, cursor }), (data) => ({
+    async (cursor) => pick(await api.providerOperations({ provider, kind, q, from, to, match, cursor }), (data) => ({
       ...pageRows(data),
       extra: { stats: data.stats ?? EMPTY_STATS, providers: data.providers ?? [] },
     })),

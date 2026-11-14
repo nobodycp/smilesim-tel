@@ -17,7 +17,7 @@ import { pageRows, usePaged } from '../../../lib/use-paged';
 import { Badge } from '../../../components/ui/badge';
 import { Select } from '../../../components/ui/select';
 import { Dialog } from '../../../components/dialog';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { CsvLink } from '../../reports/report-kit';
 import { Fact, Facts } from '../../../components/facts';
 
@@ -69,9 +69,9 @@ export function FinanceScreen() {
     return asked === 'money' || asked === 'operations' ? asked : '';
   });
   const [chainOf, setChainOf] = useState<FinanceRow | null>(null);
-  const { me } = useOffice();
+  const { me } = useDesk();
   const list = usePaged<FinanceRow>(`${kind}|${layer}|${q}|${from}|${to}|${scope}`, async (cursor) =>
-    pick(await api.officeFinance({ kind, layer, q, from, to, scope, cursor }), pageRows),
+    pick(await api.finance({ kind, layer, q, from, to, scope, cursor }), pageRows),
   );
 
   // The design's ledger: the time, the reason as a coloured tag, what it was about, the amount, my margin, the balance

@@ -12,7 +12,7 @@ import { sharedKeys } from '../../../lib/query';
 import { api } from '../../../lib/api';
 import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
 import { Link2 } from 'lucide-react';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
@@ -43,8 +43,8 @@ export function ProviderPackagesScreen() {
   const [note, setNote] = useState('');
   const [priceDraft, setPriceDraft] = useState<string | null>(null);
   const allowed = useRequireLayer(BRANCH);
-  const providers = useApiQuery(sharedKeys.providers, () => api.officeProviders(), { enabled: allowed });
-  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
+  const providers = useApiQuery(sharedKeys.providers, () => api.providers(), { enabled: allowed });
+  const shelf = useApiQuery(sharedKeys.companies, () => api.companies(), { enabled: allowed });
   const settings = useApiQuery(sharedKeys.providerSettings(params.code), () => api.providerSettings(params.code), { enabled: allowed });
   const { run } = useAction({ setError, setNote, onDone: settings.reload });
   const provider = providers.data?.providers.find((row) => row.code === params.code) ?? null;
@@ -112,9 +112,9 @@ export function ProviderPackagesScreen() {
   }
 
   // The head as in the design: the companies it supplies, its packages and your balance with it; the account beside.
-  const { me } = useOffice();
+  const { me } = useDesk();
   const canAccount = Boolean(me?.isBranchOwner || me?.grants?.includes('accounting'));
-  const accounts = useApiQuery(['office', 'provider-accounts'], () => api.providerAccounts(), { enabled: canAccount });
+  const accounts = useApiQuery(['api', 'provider-accounts'], () => api.providerAccounts(), { enabled: canAccount });
   const account = accounts.data?.rows.find((row) => row.code === params.code);
   const companiesOf = [...new Set(rows.map((row) => row.company).filter(Boolean))];
 

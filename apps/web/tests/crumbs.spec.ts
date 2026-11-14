@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // The topbar path, like a folder path (spec 2026-11-09-graphite-identity): ⌂ / section / list / item, no back button.
 test('the topbar path: the list links back, the page names itself, a list page ends the path', async ({ page }) => {
@@ -7,7 +7,7 @@ test('the topbar path: the list links back, the page names itself, a list page e
     loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'ag1', frozen: false, isBranchOwner: false, staff: false,
     roleId: '', roleName: '', roleGrants: [], extraGrants: [], deniedGrants: [], extraRoleIds: [], grants: [], roles: [], canEdit: true,
   };
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users': () => ({ body: { users: [] } }),
   });

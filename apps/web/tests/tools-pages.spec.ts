@@ -1,7 +1,7 @@
 // The shared page tools (useLoad, usePaged, useAction, useRequireLayer, DataTable, EmptyState, lineActions)
 // have no React harness of their own, so they are exercised through the real pages that use them.
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 
@@ -20,7 +20,7 @@ test.describe('layer guard', () => {
   test('a point of sale is sent away from /users through the router, not by a page load', async ({ page }) => {
     // Counts document loads in this tab: a router redirect leaves it at 1, window.location makes it 2.
     await page.addInitScript(() => sessionStorage.setItem('loads', String(Number(sessionStorage.getItem('loads') ?? 0) + 1)));
-    const calls = await serveOffice(page, 'pos');
+    const calls = await serveApi(page, 'pos');
     await page.goto('/users');
     await page.waitForURL((url) => url.pathname === '/');
     expect(await page.evaluate(() => sessionStorage.getItem('loads'))).toBe('1');
@@ -28,13 +28,13 @@ test.describe('layer guard', () => {
   });
 
   test('a branch page closes for another layer on the branch door, and opens for the branch', async ({ page }) => {
-    const calls = await serveOffice(page, 'agent', { 'GET /providers': () => ({ body: { providers: [] } }) });
+    const calls = await serveApi(page, 'agent', { 'GET /providers': () => ({ body: { providers: [] } }) });
     await page.goto(`${admin}/providers`);
     await page.waitForURL((url) => url.pathname === '/');
     expect(calls.filter((call) => call.startsWith('GET /providers'))).toEqual([]);
 
     const open = await page.context().newPage();
-    const branchCalls = await serveOffice(open, 'branch', { 'GET /providers': () => ({ body: { providers: [] } }) });
+    const branchCalls = await serveApi(open, 'branch', { 'GET /providers': () => ({ body: { providers: [] } }) });
     await open.goto(`${admin}/providers`);
     await expect(open.getByRole('heading', { level: 1, name: 'المزودون' })).toBeVisible();
     expect(new URL(open.url()).pathname).toBe('/providers');
@@ -50,7 +50,7 @@ test.describe('DataTable and EmptyState', () => {
 
   // Graphite: a task is one card row (task, amount, actions); the head stays for screen readers.
   test('the tasks table writes num and row-actions on header and cells, shows a skeleton while loading, and a RowMenu on every row', async ({ page }) => {
-    await serveOffice(page, 'branch', { 'GET /tasks': () => ({ body: { items: [task('1', { canTake: true }), task('2')], nextCursor: null }, delay: 700 }) });
+    await serveApi(page, 'branch', { 'GET /tasks': () => ({ body: { items: [task('1', { canTake: true }), task('2')], nextCursor: null }, delay: 700 }) });
     await page.goto(`${admin}/tasks`);
     await expect(page.locator('.sheet .table-skeleton')).toBeVisible();
     await expect(page.locator('table.data tbody tr')).toHaveCount(2);
@@ -67,7 +67,7 @@ test.describe('DataTable and EmptyState', () => {
   });
 
   test('an empty list shows .empty inside the pane with no inline style; the ledger lists keep their head', async ({ page }) => {
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
       'GET /packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /finance': () => ({ body: { items: [], nextCursor: null } }),
@@ -99,7 +99,7 @@ test.describe('usePaged', () => {
         providerName: 'مزود', actorName: 'الكاشير', note: null, actorLoginName: 'pos',
       });
       const first = Array.from({ length: 10 }, (_, index) => row(index + 1));
-      const calls = await serveOffice(page, 'branch', {
+      const calls = await serveApi(page, 'branch', {
         [route]: (url) => (url.searchParams.get('cursor') === 'c2'
           ? { body: { [key]: [row(11)], nextCursor: null, total: 11 } }
           : { body: { [key]: first, nextCursor: 'c2', total: 11 } }),
@@ -118,7 +118,7 @@ test.describe('usePaged', () => {
   }
 
   test('an answer for an older filter set is dropped', async ({ page }) => {
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /finance': (url) => {
         const q = url.searchParams.get('q');
         if (q === '111') return { body: { items: [account('slow', '0551110000')], nextCursor: null }, delay: 1500 };
@@ -139,7 +139,7 @@ test.describe('usePaged', () => {
   });
 
   test('a failed load shows the failed state with its error and a retry inside the pane, then recovers on the next filter', async ({ page }) => {
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /audit': (url) => (url.searchParams.get('action') === 'extend'
         ? { body: { items: [], nextCursor: null } }
         : { status: 400, body: { message: 'بيانات غير صالحة' } }),
@@ -162,7 +162,7 @@ test.describe('useAction and lineActions', () => {
 
   test('the line card runs an action once, even on a double click, then says so and reloads', async ({ page }) => {
     let reads = 0;
-    const calls = await serveOffice(page, 'branch', {
+    const calls = await serveApi(page, 'branch', {
       'GET /lines/ln1': () => { reads += 1; return { body: card('active') }; },
       'GET /packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
@@ -182,7 +182,7 @@ test.describe('useAction and lineActions', () => {
   // The card's three reads are cached apart: an action on the number asks for the number again, not the catalog
   // or the accounts (they used to be read again, one after the other, on every action).
   test('an action on the line card reads the number again and leaves the catalog and the accounts alone', async ({ page }) => {
-    const calls = await serveOffice(page, 'branch', {
+    const calls = await serveApi(page, 'branch', {
       'GET /lines/ln1': () => ({ body: card('active') }),
       'GET /packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
@@ -202,7 +202,7 @@ test.describe('useAction and lineActions', () => {
 
   test('a refused action shows the error, leaves the card as it was, and can be tried again', async ({ page }) => {
     let tries = 0;
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /lines/ln1': () => ({ body: card('active') }),
       'GET /packages': () => ({ body: { packages: [], companies: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
@@ -224,7 +224,7 @@ test.describe('useAction and lineActions', () => {
   });
 
   test('the list menu and the line card come from the same rules; only the card offers freeze', async ({ page }) => {
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /lines': () => ({ body: { items: [line('ln1', 'active'), line('ln2', 'frozen'), line('ln3', 'disconnected'), line('ln4', 'active', { opsLocked: true })], poses: [], nextCursor: null } }),
       'GET /lines/ln1': () => ({ body: card('active') }),
       'GET /lines/ln2': () => ({ body: card('frozen') }),
@@ -269,7 +269,7 @@ test.describe('reports', () => {
   } as const;
 
   test('each report draws the table its answer calls for', async ({ page }) => {
-    await serveOffice(page, 'branch', Object.fromEntries(
+    await serveApi(page, 'branch', Object.fromEntries(
       // The tasks and numbers reports read the lists themselves; the other two have their own routes.
       Object.entries(kinds).map(([kind, body]) => [kind === 'tasks' ? 'GET /tasks' : kind === 'numbers' ? 'GET /lines' : `GET /reports/${kind}`, () => ({ body })]),
     ));
@@ -289,7 +289,7 @@ test.describe('reports', () => {
   test('a report pages by cursor and keeps the table while it loads more', async ({ page }) => {
     const entry = (id: string) => ({ id, at: '2026-10-02T10:30:00.000Z', loginName: 'pos', actorLoginName: 'admin', kind: 'extend', amount: -26, balanceAfter: 74, note: null });
     const first = Array.from({ length: 10 }, (_, index) => entry(`e${index + 1}`));
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /reports/operations': (url) => (url.searchParams.get('cursor') === 'c2'
         ? { body: { items: [entry('e11')], nextCursor: null, total: 11 } }
         : { body: { items: first, nextCursor: 'c2', total: 11 } }),
@@ -304,7 +304,7 @@ test.describe('reports', () => {
 
 test.describe('shell', () => {
   test('the shell search reads the first page of numbers and ignores nextCursor', async ({ page }) => {
-    const calls = await serveOffice(page, 'branch', {
+    const calls = await serveApi(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /users': () => ({ body: { users: [] } }),
       'GET /lines': () => ({ body: { items: [line('ln1'), line('ln2')], poses: [], nextCursor: 'c9' } }),
@@ -318,7 +318,7 @@ test.describe('shell', () => {
   // The accounts are read once when the box opens and filtered as the reader types; numbers go to the server.
   test('the shell search reads the accounts once, however much is typed', async ({ page }) => {
     const user = (loginName: string, nickname: string) => ({ loginName, nickname, layer: 'pos', roleName: '', parentLoginName: null, balance: 0, ceiling: 0, frozen: false, self: false, directChild: true, canEnter: false, canFreeze: false, canDelete: false });
-    const calls = await serveOffice(page, 'branch', {
+    const calls = await serveApi(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /users': () => ({ body: { users: [user('samir1', 'سمير'), user('sara2', 'سارة')] } }),
       'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
@@ -333,7 +333,7 @@ test.describe('shell', () => {
   });
 
   test('a notice names its action with the same words as the desk', async ({ page }) => {
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /notices': () => ({
         body: {

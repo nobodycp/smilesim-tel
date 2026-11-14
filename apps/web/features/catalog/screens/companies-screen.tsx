@@ -15,7 +15,7 @@ import { useRequireLayer } from '../../../lib/use-require-layer';
 import { DataImage } from '../../../components/data-image';
 import { Plus } from 'lucide-react';
 import { buttonClass } from '../../../components/ui/button';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 
 const BRANCH = ['branch'];
 type Company = Shelf['companies'][number];
@@ -38,9 +38,9 @@ function totals(company: Company) {
 export function CompaniesScreen() {
   const { t } = usePrefs();
   const allowed = useRequireLayer(BRANCH);
-  const { me } = useOffice();
+  const { me } = useDesk();
   const canAdd = Boolean(me && (me.isBranchOwner || me.grants.includes('edit')) && !me.impersonating);
-  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
+  const shelf = useApiQuery(sharedKeys.companies, () => api.companies(), { enabled: allowed });
 
   // Each company a cut-corner card: its mark, its name, its SIM rules, then its packages and providers. The whole card
   // opens the company, where its settings and picture live (spec 2026-11-11-ui-consistency-pass, D2).

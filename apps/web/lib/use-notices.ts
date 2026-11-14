@@ -19,7 +19,7 @@ export function useNotices(ready: boolean) {
   const toastTimer = useRef<number | null>(null);
 
   const pull = useCallback(async () => {
-    const result = await api.officeNotices();
+    const result = await api.notices();
     if (!result.ok) return;
     setNotices(result.data.items.slice(0, PANEL));
     setUnread(result.data.unread);

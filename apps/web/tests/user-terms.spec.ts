@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const account = {
   loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'ag1', frozen: false, isBranchOwner: false, staff: false,
@@ -27,7 +27,7 @@ const sheet = {
 
 test('the packages tab folds each company, keeps one line per package, and edits a price from the row menu', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users/pos1/packages': () => ({ body: sheet }),
     'PUT /users/pos1/packages/alloha-150': () => ({ body: { ...row('alloha-150', '150 جيجا', 'alloha'), hidden: true } }),
@@ -76,7 +76,7 @@ test('the packages tab folds each company, keeps one line per package, and edits
 });
 
 test('a search opens the companies it finds', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users/pos1/packages': () => ({ body: sheet }),
   });
@@ -88,7 +88,7 @@ test('a search opens the companies it finds', async ({ page }) => {
 
 test('a main agent opening a grandchild sees only the access tab, and a hash to a hidden tab falls back', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await serveOffice(page, 'main_agent', {
+  await serveApi(page, 'main_agent', {
     'GET /users/pos1': () => ({ body: { ...account, canEdit: false } }),
   });
   await page.goto('http://main.localhost:3910/users/pos1#packages');
@@ -101,7 +101,7 @@ test('a main agent opening a grandchild sees only the access tab, and a hash to 
 // Graphite: the number operations are their own tab; an old `#ops` link opens it.
 test('the number operations section shows ten cards and marks an inherited stop', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [{ op: 'charge', login: 'ma1' }] } }),
   });

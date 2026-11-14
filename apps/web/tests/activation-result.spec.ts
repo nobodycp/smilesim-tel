@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // The result of an activation made at once (plan 2026-11-10-activation-settlement, S.5c web step): the eSIM code
 // shown is the one the answer of `POST /office/lines` carries. No detail is asked for, no list row is read for it
@@ -16,7 +16,7 @@ const pack = { code: 'cell-400', name: '400 جيجا', companyName: 'سلكوم'
 /** Serves the numbers page for the branch; `answer` is what `POST /office/lines` gives. Returns the calls and the bodies sent. */
 async function serve(page: Page, answer: unknown) {
   const sent: unknown[] = [];
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /lines': () => ({ body: { items: [listRow], total: 1, nextCursor: null, poses: [{ loginName: 'pos', nickname: 'نقطة بيع' }] } }),
     'GET /packages': () => ({ body: { packages: [pack], companies: [] } }),
     'POST /lines': () => ({ body: answer }),

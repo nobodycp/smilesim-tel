@@ -40,7 +40,7 @@ export function RolesScreen() {
   const [draft, setDraft] = useState<RoleDraft>(emptyDraft);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const roles = useApiQuery(sharedKeys.roles, () => api.officeRoles());
+  const roles = useApiQuery(sharedKeys.roles, () => api.roles());
   const rows = roles.data?.roles ?? [];
   const { run, busy } = useAction({ setError, setNote, onDone: roles.reload });
   const failure = error;

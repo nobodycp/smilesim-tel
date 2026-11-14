@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const shelf = {
@@ -22,7 +22,7 @@ const shelf = {
 };
 
 test('the branch opens the company shelf', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /companies': () => ({ body: shelf }),
   });
 
@@ -56,7 +56,7 @@ test('the branch opens the company shelf', async ({ page }) => {
 });
 
 test('an agent is sent away without loading the company shelf', async ({ page }) => {
-  const calls = await serveOffice(page, 'agent', {
+  const calls = await serveApi(page, 'agent', {
     'GET /home': () => ({
       body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] },
     }),
@@ -69,7 +69,7 @@ test('an agent is sent away without loading the company shelf', async ({ page })
 });
 
 test('the package sheet shows both ladders, targets, and selectable numbers', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /packages/lian-wecom-500/sheet': () => ({
       body: {
         code: 'lian-wecom-500',

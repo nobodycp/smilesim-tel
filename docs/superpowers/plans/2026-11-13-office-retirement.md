@@ -107,7 +107,14 @@ goes down; the backend map updated in the same commit.
   `own-activity.http.spec.ts` proves no password, value or code reaches a record. Not done: thinning the controller
   (35 routes of sign-in, sessions and second steps): a structural change to security code that no test asked for;
   left for its own slice. Commit: see `git log --grep 'R.A'`.
-- [ ] **W.1, W.2** Web names.
+- [x] **W.1, W.2** Web names. `components/office-{shell,frame}.tsx` → `app-{shell,frame}.tsx` (`AppShell`,
+  `AppFrame`); `lib/office-session.tsx` → `lib/desk-session.tsx` (`DeskSession`, `DeskContext`, `DeskMe`,
+  `useDesk`); API methods lose the `office` prefix (`officeLines` → `lines`, …); query keys root `'office'` → `'api'`
+  (one root as before, so every invalidation by prefix is unchanged); CSS `.office`/`.office-main` → `.app-shell`/
+  `.app-main` (the same rules); copy key `navOffice` → `navDesk` (same texts); `serveOffice` → `serveApi` in tests.
+  Paths `/office/*` stay until R.11. Checked on port 3000 (signed in as the local trial owner): home, numbers and
+  companies render as before, `.app-shell` is `display: flex`, 100dvh; `tools-pages` and `users-desk` Playwright 22/22.
+  Commit: see `git log --grep 'W.1'`.
 - [ ] **R.11a** The duplicate guard and the path-named middleware rules separated from the prefix.
 - [ ] **R.11b** Both paths served; the web moved; old-path hits counted for one release.
 - [ ] **R.11c** `/office/*` removed.

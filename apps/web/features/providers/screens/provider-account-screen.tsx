@@ -15,7 +15,7 @@ import { Select } from '../../../components/ui/select';
 import { api, type ProviderLedgerRow } from '../../../lib/api';
 import { useCrumbs } from '../../../lib/crumbs';
 import { parseShekel, shekelField } from '../../../lib/money';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useApiQuery } from '../../../lib/use-api-query';
@@ -31,7 +31,7 @@ export function ProviderAccountScreen() {
   const { t, apiText } = usePrefs();
   const params = useParams<{ code: string }>();
   const allowed = useRequireLayer(BRANCH);
-  const { me } = useOffice();
+  const { me } = useDesk();
   const canWrite = Boolean(me?.isBranchOwner || me?.grants.includes('accounting'));
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -45,7 +45,7 @@ export function ProviderAccountScreen() {
   const [floor, setFloor] = useState('');
   const [tab, setTab] = useState<'ledger' | 'recon'>('ledger');
   const query = { from, to };
-  const read = useApiQuery(['office', 'provider-account', params.code, query], () => api.providerAccount(params.code, query), { enabled: allowed });
+  const read = useApiQuery(['api', 'provider-account', params.code, query], () => api.providerAccount(params.code, query), { enabled: allowed });
   const summary = read.data?.summary;
   useCrumbs({ [`/provider-accounts/${encodeURIComponent(params.code)}`]: summary?.name });
   const { run, busy } = useAction({ setError, setNote, onDone: read.reload });

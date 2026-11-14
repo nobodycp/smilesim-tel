@@ -5,7 +5,7 @@ import { DataTable, type Column } from '../../../components/data-table';
 import { useRouter } from 'next/navigation';
 import { Desk, Money } from '../../../components/desk';
 import { RowMenu } from '../../../components/row-menu';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type ProviderRow } from '../../../lib/api';
@@ -18,15 +18,15 @@ export function ProvidersScreen() {
   const { t } = usePrefs();
   const allowed = useRequireLayer(BRANCH);
   const router = useRouter();
-  const { me } = useOffice();
-  const providers = useApiQuery(sharedKeys.providers, () => api.officeProviders(), { enabled: allowed });
-  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
+  const { me } = useDesk();
+  const providers = useApiQuery(sharedKeys.providers, () => api.providers(), { enabled: allowed });
+  const shelf = useApiQuery(sharedKeys.companies, () => api.companies(), { enabled: allowed });
 
 
   // The list as in the approved design: the provider, its companies, its packages, how its activations run, and your
   // account with it (balance and credit, for those who keep the accounts); ⋯ opens the provider or its account.
   const canAccount = Boolean(me?.isBranchOwner || me?.grants?.includes('accounting'));
-  const accounts = useApiQuery(['office', 'provider-accounts'], () => api.providerAccounts(), { enabled: allowed && canAccount });
+  const accounts = useApiQuery(['api', 'provider-accounts'], () => api.providerAccounts(), { enabled: allowed && canAccount });
   const accountOf = (code: string) => accounts.data?.rows.find((row) => row.code === code);
   const runsOf = (provider: ProviderRow) => {
     const all = provider.companies.flatMap((company) => company.packages);

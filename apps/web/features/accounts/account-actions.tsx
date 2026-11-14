@@ -11,7 +11,7 @@ import { Select } from '../../components/ui/select';
 import { api, type UserRow } from '../../lib/api';
 import { everyAccount } from '../../lib/directory';
 import { parseShekel, shekelField } from '../../lib/money';
-import { useOffice } from '../../lib/office-session';
+import { useDesk } from '../../lib/desk-session';
 import { usePrefs } from '../../lib/prefs';
 import { sharedKeys } from '../../lib/query';
 import { doorUrl } from '../../lib/doors';
@@ -42,7 +42,7 @@ export function useAccountActions({
   onDeleted?: () => void;
 }) {
   const { t, apiText } = usePrefs();
-  const { me } = useOffice();
+  const { me } = useDesk();
   const router = useRouter();
   const [op, setOp] = useState<{ row: UserRow; kind: AccountOp } | null>(null);
   const [amount, setAmount] = useState('');

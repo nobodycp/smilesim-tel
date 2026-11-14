@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // A task's provider operation on its ticket, the decisions people take on it and the queue of the second
 // approval (spec 2026-11-12-provider-operation-screens; ADR 0019 D6, D15, D16, D17; plan slice S.10). The answers
@@ -66,7 +66,7 @@ const phases: [Phase, string, string, string][] = [
 ];
 for (const [phase, label, hint, money] of phases) {
   test(`an operation that is ${phase} says so, says what became of the amount, and shows only the buttons the API allows`, async ({ page }) => {
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /tasks/t1': () => ({ body: { task: taskIn(phase), events: [] } }),
       'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase, decisions: [] }) }),
     });
@@ -87,7 +87,7 @@ for (const [phase, label, hint, money] of phases) {
 }
 
 test('a requested operation leaves its submitter the cancel button, and nothing else', async ({ page }) => {
-  const calls = await serveOffice(page, 'pos', {
+  const calls = await serveApi(page, 'pos', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('requested', { canCancel: true, canNoteInternal: false, providerName: '', operation: { phase: 'requested', reason: null, decisions: false } }), events: [] } }),
   });
   await page.goto(`${admin.replace('admin', 'pos')}/tasks/t1`);
@@ -99,7 +99,7 @@ test('a requested operation leaves its submitter the cancel button, and nothing 
 });
 
 test('a manual task has no provider panel and keeps its buttons', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: { ...baseTask, canWork: true, canTake: true, note: 'مهمة فرع' }, events: [] } }),
   });
   await page.goto(`${admin}/tasks/t1`);
@@ -113,7 +113,7 @@ test('a manual task has no provider panel and keeps its buttons', async ({ page 
 test('an older API answer with no operation field reads as a manual task', async ({ page }) => {
   const { operation: _operation, hold: _hold, ...old } = baseTask;
   void _operation; void _hold;
-  await serveOffice(page, 'branch', { 'GET /tasks/t1': () => ({ body: { task: { ...old, canWork: true }, events: [] } }) });
+  await serveApi(page, 'branch', { 'GET /tasks/t1': () => ({ body: { task: { ...old, canWork: true }, events: [] } }) });
   await page.goto(`${admin}/tasks/t1`);
   await expect(page.locator('.task-rail')).toBeVisible();
   await expect(panel(page)).toHaveCount(0);
@@ -122,7 +122,7 @@ test('an older API answer with no operation field reads as a manual task', async
 // ── Who sees what ─────────────────────────────────────────────────────────────────────────────────────────
 
 test('a point of sale reads where its activation stands and the amount, not the reason, and is offered no decision', async ({ page }) => {
-  await serveOffice(page, 'pos', {
+  await serveApi(page, 'pos', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('exception', { providerName: '', canNoteInternal: false, operation: { phase: 'exception', reason: null, decisions: false } }), events: [] } }),
   });
   await page.goto(`${admin.replace('admin', 'pos')}/tasks/t1`);
@@ -133,7 +133,7 @@ test('a point of sale reads where its activation stands and the amount, not the 
 });
 
 test('an account the API refuses the decision view sees the refusal, and no decision', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ status: 403, body: { message: 'غير مسموح', code: 'FORBIDDEN' } }),
   });
@@ -143,7 +143,7 @@ test('an account the API refuses the decision view sees the refusal, and no deci
 });
 
 test('the task\'s submitter is told it decides nothing here', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ decisions: [], blocked: 'own-task' }) }),
   });
@@ -156,7 +156,7 @@ test('the task\'s submitter is told it decides nothing here', async ({ page }) =
 
 test('confirm success: the form checks what the API will, sends it once, and the ticket is read again', async ({ page }) => {
   let applied = false;
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: applied ? taskIn('applied') : taskIn('unknown'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: applied ? viewOf({ phase: 'applied', decisions: [], history: [record({ type: 'applied', decision: 'confirm-success', providerRef: 'REF-77', accountLoginName: 'admin' })] }) : viewOf() }),
     'POST /tasks/t1/provider-decision': () => { applied = true; return { body: { ok: true, outcome: 'applied' }, delay: 300 }; },
@@ -204,7 +204,7 @@ test('confirm success: the form checks what the API will, sends it once, and the
 
 test('a confirmation whose line could not be made says so, and the ticket shows the exception', async ({ page }) => {
   let decided = false;
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: decided ? taskIn('exception') : taskIn('unknown'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: decided ? viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) : viewOf() }),
     'POST /tasks/t1/provider-decision': () => { decided = true; return { body: { ok: true, outcome: 'exception', reason: 'number-taken' } }; },
@@ -220,7 +220,7 @@ test('a confirmation whose line could not be made says so, and the ticket shows 
 
 test('declare failure is sent as a proposal; its proposer is then told another account answers it', async ({ page }) => {
   let proposed = false;
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: proposed ? viewOf({ decisions: [], blocked: 'own-proposal', proposal: record({ accountLoginName: 'admin' }), history: [record({ accountLoginName: 'admin' })] }) : viewOf() }),
     'POST /tasks/t1/provider-decision': () => { proposed = true; return { body: { ok: true, outcome: 'proposed' } }; },
@@ -248,7 +248,7 @@ test('declare failure is sent as a proposal; its proposer is then told another a
 });
 
 test('apply corrected on a plain exception asks for no eSIM code, and release is a proposal that says where the money goes', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('exception'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) }),
     'POST /tasks/t1/provider-decision': () => ({ body: { ok: true, outcome: 'applied' } }),
@@ -276,7 +276,7 @@ test('esim-code-missing: the form asks for the code, sends it in the request onl
   const logged: string[] = [];
   page.on('console', (message) => logged.push(message.text()));
   let applied = false;
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: applied ? taskIn('applied', { esim: true }) : taskIn('exception', { esim: true, operation: { phase: 'exception', reason: 'esim-code-missing', decisions: true } }), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: applied
       ? viewOf({ phase: 'applied', decisions: [], history: [record({ type: 'applied', decision: 'apply-corrected', suppliedEsimCode: true, accountLoginName: 'admin' })] })
@@ -317,7 +317,7 @@ test('esim-code-missing: the form asks for the code, sends it in the request onl
 });
 
 test('the queue and the decision view are given no eSIM code, and moving from one task to another shows nothing of the first', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /provider-decisions': (url) => ({ body: { nextCursor: null, total: 2, totals: { approval: 0, decision: 2 }, items: url.searchParams.get('waiting') === 'approval' ? [] : [
       { taskId: 'ta', action: 'activate', msisdn: '0550000001', packageName: 'باقة', posLoginName: 'pos', submitterLoginName: 'pos', waitingSince: '2026-11-12T09:00:00.000Z', ...viewOf({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'] }), needs: undefined, history: undefined },
       { taskId: 'tb', action: 'activate', msisdn: '0550000002', packageName: 'باقة', posLoginName: 'pos', submitterLoginName: 'pos', waitingSince: '2026-11-12T09:05:00.000Z', ...viewOf(), needs: undefined, history: undefined },
@@ -357,7 +357,7 @@ test('the queue and the decision view are given no eSIM code, and moving from on
 
 test('a second account approves a proposed release after reading what it does to the money', async ({ page }) => {
   let approved = false;
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /me': () => ({ body: accountant }),
     'GET /tasks/t1': () => ({ body: { task: approved ? taskIn('exception', { status: 'cancelled', hold: 'released' }) : taskIn('exception'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: approved
@@ -391,7 +391,7 @@ test('a second account approves a proposed release after reading what it does to
 
 test('a second account refuses a proposal: nothing changes, and a decision can be stated again', async ({ page }) => {
   let refused = false;
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /me': () => ({ body: accountant }),
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: refused ? viewOf() : viewOf({ decisions: [], canApprove: true, canRefuse: true, proposal: record() }) }),
@@ -410,7 +410,7 @@ test('a second account refuses a proposal: nothing changes, and a decision can b
 });
 
 test('a proposal that went stale is offered for refusal only, and says why', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /me': () => ({ body: accountant }),
     'GET /tasks/t1': () => ({ body: { task: taskIn('applied'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'applied', decisions: [], canApprove: false, canRefuse: true, proposal: record() }) }),
@@ -425,7 +425,7 @@ test('a proposal that went stale is offered for refusal only, and says why', asy
 
 test('a 409 says the operation changed, closes the form and reads the ticket again: nothing stale is left to press', async ({ page }) => {
   let moved = false;
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: moved ? taskIn('applied') : taskIn('unknown'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: moved ? viewOf({ phase: 'applied', decisions: [] }) : viewOf() }),
     // The provider's own answer arrived first.
@@ -444,7 +444,7 @@ test('a 409 says the operation changed, closes the form and reads the ticket aga
 });
 
 test('a refusal of the request itself stays in the form with its message, and what was typed stays too', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('exception'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) }),
     'POST /tasks/t1/provider-decision': () => ({ status: 409, body: { message: 'الرقم مستخدم', code: 'NUMBER_TAKEN' } }),
@@ -460,7 +460,7 @@ test('a refusal of the request itself stays in the form with its message, and wh
 });
 
 test('a lost connection is said in the form: no success is claimed and nothing is sent again by itself', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: viewOf() }),
   });
@@ -500,7 +500,7 @@ const tab = (page: Page, name: string) => page.getByRole('tab', { name: new RegE
 
 test('the queue keeps what waits for a second approval and what waits for a decision in two tabs; an approval there is asked once more and the list is read again', async ({ page }) => {
   let approved = false;
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /me': () => ({ body: accountant }),
     'GET /provider-decisions': (url) => queueAnswer(url, approved
       ? [queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })]
@@ -543,7 +543,7 @@ test('the queue keeps what waits for a second approval and what waits for a deci
 test('the queue pages by the API\'s total and cursor: more than two hundred operations are all reachable, none twice', async ({ page }) => {
   // 230 undecided operations and 3 proposals, served fifty at a time by cursor, as the API does.
   const all = Array.from({ length: 230 }, (_, index) => ({ ...queueRow(`w${index}`, { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }), msisdn: `05${String(50000000 + index)}` }));
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /provider-decisions': (url) => {
       if (url.searchParams.get('waiting') !== 'decision') return { body: { items: [], nextCursor: null, total: url.searchParams.get('waiting') ? 0 : 233, totals: { approval: 3, decision: 230 } } };
       const from = Number((url.searchParams.get('cursor') ?? 'c0').slice(1));
@@ -576,7 +576,7 @@ test('the queue pages by the API\'s total and cursor: more than two hundred oper
 });
 
 test('the queue shows the proposer and the submitter why they may not answer, and offers them no button', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /provider-decisions': (url) => queueAnswer(url, [
       queueRow('q1', { decisions: [], blocked: 'own-proposal', proposal: record({ accountLoginName: 'admin' }) }),
       queueRow('q2', { decisions: [], blocked: 'own-task' }),
@@ -592,7 +592,7 @@ test('the queue shows the proposer and the submitter why they may not answer, an
 
 test('the queue is empty, is refused, or fails: each is said, and none shows a row', async ({ page }) => {
   let mode: 'empty' | 'refused' | 'down' = 'empty';
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /provider-decisions': (url) => (mode === 'empty' ? queueAnswer(url, []) : mode === 'refused' ? { status: 403, body: { message: 'غير مسموح', code: 'FORBIDDEN' } } : { status: 500, body: { message: 'حدث خطأ في الخادم. أعد المحاولة', code: 'SERVER_ERROR' } }),
   });
   await page.goto(`${admin}/tasks/decisions`);
@@ -613,7 +613,7 @@ test('the tasks page links to the queue for an account that may decide, with the
     { ...baseTask, id: 'a', operationPhase: 'unknown' }, { ...baseTask, id: 'b', msisdn: '0550000002', operationPhase: 'exception' },
     { ...baseTask, id: 'c', msisdn: '0550000003', operationPhase: null, canWork: true }, { ...baseTask, id: 'd', msisdn: '0550000004', status: 'done', operationPhase: 'applied' },
   ];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks': () => ({ body: { items: rows, nextCursor: null, total: rows.length } }),
     'GET /packages': () => ({ body: { packages: [] } }),
     // One page of two rows out of a queue of 237: the link shows the queue's total.
@@ -636,7 +636,7 @@ for (const [who, me] of [
   ['an entered session', { loginName: 'acc2', nickname: 'محاسب', layer: 'branch', isBranchOwner: false, grants: ['read', 'accounting'], impersonating: true }],
 ] as const) {
   test(`the tasks page shows ${who} no way to the queue and never asks for it`, async ({ page }) => {
-    const calls = await serveOffice(page, 'branch', {
+    const calls = await serveApi(page, 'branch', {
       'GET /me': () => ({ body: { ...me, stops: [], balance: 0, ceiling: 0 } }),
       'GET /tasks': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
       'GET /packages': () => ({ body: { packages: [] } }),
@@ -659,7 +659,7 @@ for (const [device, width, height] of widths) {
       const ar = locale === 'ar';
       await page.setViewportSize({ width, height });
       await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: admin }, { name: 'smilesim-theme', value: 'light', url: admin }]);
-      await serveOffice(page, 'branch', {
+      await serveApi(page, 'branch', {
         'GET /me': () => ({ body: accountant }),
         'GET /tasks/t1': () => ({ body: { task: taskIn('exception', { esim: true, operation: { phase: 'exception', reason: 'esim-code-missing', decisions: true } }), events: [] } }),
         'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'], needs: { number: true, esimCode: true }, history: [record({ decision: 'release-after-success' }), record({ sequence: 2, type: 'refused', decision: 'release-after-success', accountLoginName: 'acc2', evidenceKind: null, note: '' })] }) }),
@@ -734,7 +734,7 @@ for (const [device, width, height] of widths) {
 
 test('the Hebrew copy is complete on the ticket: no key shows through', async ({ page }) => {
   await page.context().addCookies([{ name: 'smilesim-locale', value: 'he', url: admin }]);
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task: taskIn('unknown'), events: [] } }),
     'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ decisions: [], canApprove: true, canRefuse: true, proposal: record() }) }),
   });

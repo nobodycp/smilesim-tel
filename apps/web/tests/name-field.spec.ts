@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // NameField (spec 2026-11-09-admin-review, 2a): names are picked by typing, closest first, with the keyboard or the
 // pointer; a picked name has a «×»; leaving the field puts the picked name back.
@@ -12,7 +12,7 @@ const packages = [
 ];
 
 test('a filter is typed: closest names first, keys move, Enter picks, × clears', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /packages': () => ({ body: { packages, companies: [] } }),
     'GET /tasks': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });
@@ -55,7 +55,7 @@ test('a filter is typed: closest names first, keys move, Enter picks, × clears'
 });
 
 test('Esc closes the list and leaves a dialog around the field open', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /lines': () => ({ body: { items: [], nextCursor: null, total: 0, poses: [{ loginName: 'pos1', nickname: 'محل الأمل' }, { loginName: 'pos2', nickname: 'نقطة النور' }] } }),
     'GET /packages': () => ({ body: { packages: packages.map((row) => ({ ...row, forSale: true, enabled: true })), companies: [] } }),
   });

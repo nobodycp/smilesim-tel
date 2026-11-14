@@ -22,7 +22,7 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { packageKeys, sharedKeys } from '../../../lib/query';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { lineTone, onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { NameField } from '../../../components/name-field';
@@ -64,7 +64,7 @@ async function packageLines(packageCode: string): Promise<Fetched<LineRow[]>> {
   const rows: LineRow[] = [];
   let cursor: string | null = null;
   for (let page = 0; page < MAX_LINE_PAGES; page += 1) {
-    const result = await api.officeLines({ packageCode, cursor });
+    const result = await api.lines({ packageCode, cursor });
     if (!result.ok) return result;
     rows.push(...result.data.items);
     cursor = result.data.nextCursor;
@@ -95,7 +95,7 @@ export function PackageSheetScreen() {
   const [note, setNote] = useState('');
   const allowed = useRequireLayer(BRANCH);
   // The owner and staff with the edit grant change the extra operations; other branch staff read them.
-  const { me } = useOffice();
+  const { me } = useDesk();
   const canEditAddons = Boolean(me && (me.isBranchOwner || me.grants.includes('edit')));
   // Five reads, cached apart (ADR 0001). The sheet, its numbers and its custom prices belong to this package and are
   // asked again after an action here; the companies shelf and the accounts are shared with other screens and stay.
@@ -103,7 +103,7 @@ export function PackageSheetScreen() {
   const sheetRead = useApiQuery(packageKeys.sheet(code), () => api.packageSheet(code), { enabled: allowed });
   const linesRead = useApiQuery(packageKeys.lines(code), () => packageLines(code), { enabled: allowed });
   const pricesRead = useApiQuery(packageKeys.customPrices(code), () => api.customPrices(code), { enabled: allowed });
-  const shelfRead = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
+  const shelfRead = useApiQuery(sharedKeys.companies, () => api.companies(), { enabled: allowed });
   const usersRead = useApiQuery(sharedKeys.users, everyAccount, { enabled: allowed });
   const cardData = useMemo(
     () =>

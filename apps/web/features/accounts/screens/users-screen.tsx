@@ -17,7 +17,7 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type UserRow } from '../../../lib/api';
 import { everyAccount } from '../../../lib/directory';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { pick } from '../../../lib/fetched';
@@ -29,7 +29,7 @@ import { useAccountActions } from '../account-actions';
 
 const layerOrder = ['branch', 'main_agent', 'agent', 'pos'];
 // Everyone but a point of sale; a staff account opens the desk through the branch door.
-const OFFICE_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
+const ACCOUNT_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
 const FILTER_KEYS = ['q', 'layer'] as const;
 
@@ -45,19 +45,19 @@ export function UsersScreen() {
   const [query, setQuery] = useDebouncedField(filters.q, commitQuery);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const { me } = useOffice();
-  const allowed = useRequireLayer(OFFICE_LAYERS);
+  const { me } = useDesk();
+  const allowed = useRequireLayer(ACCOUNT_LAYERS);
   const needle = filters.q.trim();
   const list = usePaged<UserRow>(
     `${needle}|${layerFilter}`,
-    async (cursor) => pick(await api.officeUsersPage({ q: needle, layer: layerFilter, cursor }), pageRows),
+    async (cursor) => pick(await api.usersPage({ q: needle, layer: layerFilter, cursor }), pageRows),
     { enabled: allowed },
   );
   // The whole visible tree, read only while "new account" needs it for the parent choice. The shell search, the line
   // card and a move's destinations share this entry.
   const accounts = useApiQuery(sharedKeys.users, everyAccount, { enabled: allowed && creating });
   const everyone = accounts.data?.users ?? [];
-  const roles = useApiQuery(sharedKeys.roles, () => api.officeRoles(), { enabled: draft.layer === 'staff' }).data?.roles ?? [];
+  const roles = useApiQuery(sharedKeys.roles, () => api.roles(), { enabled: draft.layer === 'staff' }).data?.roles ?? [];
   const reloadAll = useCallback(async () => {
     await Promise.all([list.reload(), accounts.reload()]);
   }, [list, accounts]);

@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const home = { body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } };
 
 // Graphite (spec 2026-11-09-graphite-identity): the account is at the sidebar's foot, not in the topbar.
 test('the sidebar foot holds the account, which opens the profile, and signing out', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /home': () => home });
+  await serveApi(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
   const sidebar = page.locator('aside.sidebar');
   await expect(page.locator('.topbar .avatar-btn')).toHaveCount(0);
@@ -17,7 +17,7 @@ test('the sidebar foot holds the account, which opens the profile, and signing o
 // «المحفظة» (spec 2026-11-09, 4): the balance chip is a link to the wallet page, also in the account menu.
 test('the wallet chip opens the wallet page, and Escape on the notices gives the focus back', async ({ page }) => {
   // An agent: the branch has no wallet (spec 2026-11-09-admin-review, 7).
-  await serveOffice(page, 'agent', {
+  await serveApi(page, 'agent', {
     'GET /home': () => home,
     'GET /ledger': () => ({ body: { items: [{ id: 'e1', at: '2026-11-08T10:00:00.000Z', kind: 'fund', amount: 5000, balanceBefore: 0, balanceAfter: 5000, note: 'إيداع', packageName: null, msisdn: null, actorLoginName: 'admin', loginName: 'admin', layer: 'branch', margin: null }], nextCursor: null, total: 1 } }),
   });
@@ -43,7 +43,7 @@ test('the wallet chip opens the wallet page, and Escape on the notices gives the
 // Closed, the mobile drawer stays in the page off screen; it must not take the keyboard or screen readers.
 test('the closed drawer is inert, and the open one is not', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await serveOffice(page, 'branch', { 'GET /home': () => home });
+  await serveApi(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
   const drawer = page.locator('aside.drawer');
   await expect(drawer).toHaveAttribute('inert', '');
@@ -54,7 +54,7 @@ test('the closed drawer is inert, and the open one is not', async ({ page }) => 
 
 // The collapsed sidebar is a browser preference (useSyncExternalStore over localStorage): it survives a reload.
 test('a collapsed sidebar stays collapsed after a reload', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /home': () => home });
+  await serveApi(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
   const sidebar = page.locator('aside.sidebar');
   await expect(sidebar).not.toHaveClass(/collapsed/);

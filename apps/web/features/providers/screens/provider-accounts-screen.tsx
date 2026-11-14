@@ -16,7 +16,7 @@ const BRANCH = ['branch'];
 export function ProviderAccountsScreen() {
   const { t } = usePrefs();
   const allowed = useRequireLayer(BRANCH);
-  const read = useApiQuery(['office', 'provider-accounts'], () => api.providerAccounts(), { enabled: allowed });
+  const read = useApiQuery(['api', 'provider-accounts'], () => api.providerAccounts(), { enabled: allowed });
   const data = read.data;
   const columns: Column<ProviderAccount>[] = [
     { key: 'name', header: t.provider, render: (row) => <Link className="row-link" href={`/provider-accounts/${row.code}`}>{row.name}</Link> },

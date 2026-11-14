@@ -3,7 +3,7 @@
 import { type ReactNode } from 'react';
 import { type Outcome } from '../lib/api';
 import { formatShekel } from '../lib/money';
-import { useOffice } from '../lib/office-session';
+import { useDesk } from '../lib/desk-session';
 import { usePageTitle } from '../lib/page-title';
 import { usePrefs } from '../lib/prefs';
 import { PageAlert } from './dialog';
@@ -26,7 +26,7 @@ export function Desk({
   note: string;
   children: ReactNode;
 }) {
-  const { ready } = useOffice();
+  const { ready } = useDesk();
   usePageTitle(typeof title === 'string' ? title : '');
   // The page's own loads already started; the content waits for the session so a guarded page
   // never flashes before the account is known.

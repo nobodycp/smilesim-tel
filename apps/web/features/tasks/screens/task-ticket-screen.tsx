@@ -8,7 +8,7 @@ import { Desk, Money, actionName, latinWhen, taskStatus } from '../../../compone
 import { EsimDialog, EsimMark, QrPicker } from '../../../components/esim-qr';
 import { TableSkeleton } from '../../../components/loading';
 import { Badge } from '../../../components/ui/badge';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { Button } from '../../../components/ui/button';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -36,7 +36,7 @@ export function TaskTicketScreen() {
   const params = useParams<{ id: string }>();
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const { me } = useOffice();
+  const { me } = useDesk();
   const [draft, setDraft] = useState('');
   // An internal note (spec 2026-11-09, 2): the branch's, hidden from the point of sale and the agents.
   const [internalNote, setInternalNote] = useState(true);
@@ -49,7 +49,7 @@ export function TaskTicketScreen() {
   const [qrOpen, setQrOpen] = useState(false);
 
   // `fresh`: the answer may carry an eSIM code, so it is not kept in the shared cache once this page closes.
-  const card = useApiQuery(sharedKeys.task(params.id), () => api.officeTask(params.id), { fresh: true });
+  const card = useApiQuery(sharedKeys.task(params.id), () => api.task(params.id), { fresh: true });
   const task = card.data?.task ?? null;
   usePageTitle(task ? actionName(t, task.action) : t.taskTicket);
   useCrumbs({ [`/tasks/${encodeURIComponent(params.id)}`]: task ? `${actionName(t, task.action)}${task.msisdn ? ` · ${task.msisdn}` : ''}` : null });

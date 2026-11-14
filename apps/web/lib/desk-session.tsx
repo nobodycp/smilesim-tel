@@ -3,13 +3,13 @@
 import { usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from 'react';
-import { api, type Directory, type OfficeMe } from './api';
+import { api, type Directory, type DeskMe } from './api';
 import { directoryNames } from './directory';
 import { useConnection } from './connection';
 import { rememberBalance, rememberIdentity } from './identity';
 import { ApiFailure, queryKeys, unwrap } from './query';
 
-type OfficeSessionValue = {
+type DeskSessionValue = {
   /** `/office/me` answered: the pages may draw. */
   ready: boolean;
   /** `/office/me` did not answer yet and the last attempt failed; the shell shows the outage instead of a page. */
@@ -20,7 +20,7 @@ type OfficeSessionValue = {
   retry: () => void;
   /** Re-read `/office/me` into `me` after the account changed (a profile save, a money write). */
   refresh: () => Promise<void>;
-  me: OfficeMe | null;
+  me: DeskMe | null;
   /** Login name → full name for the accounts this viewer may meet; empty until loaded. */
   names: Directory;
   initialName: string;
@@ -29,7 +29,7 @@ type OfficeSessionValue = {
 
 const NO_NAMES: Directory = {};
 
-const OfficeContext = createContext<OfficeSessionValue>({
+const DeskContext = createContext<DeskSessionValue>({
   ready: false,
   failed: false,
   retrying: false,
@@ -50,7 +50,7 @@ export function authPath(pathname: string) {
 const FIRST_RETRY_MS = 2_000;
 const MAX_RETRY_MS = 30_000;
 
-export function OfficeSession({
+export function DeskSession({
   children,
   initialName = '',
   initialBalance = null,
@@ -68,7 +68,7 @@ export function OfficeSession({
   // only when asked (`refresh`, or a write through useAction): it never goes stale on its own.
   const session = useQuery({
     queryKey: queryKeys.me,
-    queryFn: () => unwrap(api.officeMe()),
+    queryFn: () => unwrap(api.me()),
     enabled: !skip,
     staleTime: Infinity,
   });
@@ -126,7 +126,7 @@ export function OfficeSession({
   }, [client]);
 
   return (
-    <OfficeContext.Provider
+    <DeskContext.Provider
       value={{
         ready: skip || ready,
         failed: !skip && failed,
@@ -140,10 +140,10 @@ export function OfficeSession({
       }}
     >
       {children}
-    </OfficeContext.Provider>
+    </DeskContext.Provider>
   );
 }
 
-export function useOffice() {
-  return useContext(OfficeContext);
+export function useDesk() {
+  return useContext(DeskContext);
 }

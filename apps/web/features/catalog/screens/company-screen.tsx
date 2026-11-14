@@ -12,7 +12,7 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type Shelf, type SimRules } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simShape } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
@@ -44,7 +44,7 @@ export function CompanyScreen() {
   const { t, apiText } = usePrefs();
   const params = useParams<{ code: string }>();
   const allowed = useRequireLayer(BRANCH);
-  const { me } = useOffice();
+  const { me } = useDesk();
   // The tab and the provider filter live in the address: `/companies/[c]?provider=[p]` opens its packages filtered
   // (the old `/companies/[c]/[p]` page lands there; spec 2026-11-09-admin-review, 4).
   const [filters, setFilters] = useUrlFilters(URL_KEYS);
@@ -53,7 +53,7 @@ export function CompanyScreen() {
   const [edited, setEdited] = useState<Draft | null>(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
-  const shelf = useApiQuery(sharedKeys.companies, () => api.officeCompanies(), { enabled: allowed });
+  const shelf = useApiQuery(sharedKeys.companies, () => api.companies(), { enabled: allowed });
   const { run, busy } = useAction({ setError, setNote, onDone: shelf.reload });
   const company = shelf.data?.companies.find((item) => item.code === params.code) ?? null;
   usePageTitle(company?.name ?? '');

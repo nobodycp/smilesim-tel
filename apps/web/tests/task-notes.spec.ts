@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // Task notes and statuses (spec 2026-11-09-offers-tasks-addons-wallet-esim, 2): the branch writes internal notes,
 // which carry a badge; an open task reads «قيد المعالجة» and has no «بانتظار الاستلام».
@@ -17,7 +17,7 @@ const events = [
 
 test('the branch writes an internal note, sees it marked, and the task reads in progress', async ({ page }) => {
   const sent: unknown[] = [];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks/t1': () => ({ body: { task, events } }),
     'POST /tasks/t1/notes': () => ({ body: { ok: true } }),
   });

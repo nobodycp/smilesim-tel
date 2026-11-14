@@ -6,7 +6,7 @@ import { api } from '../../../lib/api';
 import { sharedKeys } from '../../../lib/query';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { citiesFor } from '../../../lib/cities';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePageTitle } from '../../../lib/page-title';
 import { usePrefs } from '../../../lib/prefs';
 import { Alert } from '../../../components/alert';
@@ -18,7 +18,7 @@ import { PasskeysPane, TwoFactorPane, useSignInMethods } from '../sign-in-method
 
 export function SettingsScreen() {
   const { t, apiText, locale } = usePrefs();
-  const { ready, refresh } = useOffice();
+  const { ready, refresh } = useDesk();
   usePageTitle(t.settingsTitle);
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');

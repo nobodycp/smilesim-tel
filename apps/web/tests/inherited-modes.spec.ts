@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // A package's run modes follow its provider unless set on the package (spec 2026-11-09-admin-review, 3; ADR 0009):
 // folded with a count, each card says where its mode comes from, and «رجوع للموروث» follows the provider again.
@@ -16,7 +16,7 @@ const sheet = {
 
 test('the run tab shows which modes follow the provider and sends «inherit» to follow it again', async ({ page }) => {
   const sent: unknown[] = [];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
     'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [] }),
     'GET /users': () => ({ body: { users: [] } }),

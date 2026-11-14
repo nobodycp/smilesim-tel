@@ -92,7 +92,7 @@ export const he: Copy = {
   enabledTwoFactor: 'האימות הדו-שלבי הופעל',
   logout: 'יציאה',
   accountSettings: 'פרופיל',
-  navOffice: 'המשרד',
+  navDesk: 'המשרד',
   navOps: 'ספקים וחברות',
   navAdmin: 'ניהול',
   navPlans: 'חבילות',

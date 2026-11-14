@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useDoor } from './door-context';
-import { useOffice } from './office-session';
+import { useDesk } from './desk-session';
 
 /**
  * The one layer guard for pages that only some layers may open.
@@ -16,7 +16,7 @@ import { useOffice } from './office-session';
 export function useRequireLayer(layers: readonly string[]): boolean {
   const router = useRouter();
   const door = useDoor();
-  const { me } = useOffice();
+  const { me } = useDesk();
   const doorOk = layers.includes(door.layer);
   const meOk = !me || layers.includes(me.layer);
 

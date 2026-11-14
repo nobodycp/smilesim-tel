@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const sheet = {
   code: 'lian-wecom-500', name: '500 جيجا', providerCode: 'lian', providerName: 'ليان', companyCode: 'wecom', companyName: 'ويكوم',
@@ -18,7 +18,7 @@ const customRow = {
 
 test('the custom prices tab lists priced accounts and edits them inline', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
     'GET /packages/lian-wecom-500/custom-prices': () => ({ body: [customRow] }),
     'PUT /packages/lian-wecom-500/custom-prices/pos1': () => ({ body: { ...customRow, price: 3100 } }),
@@ -54,7 +54,7 @@ test('the custom prices table sorts by each account own price and by a signed di
     { ...customRow, loginName: 'pos2', nickname: 'ب', price: 3400 },
     { ...customRow, loginName: 'pos3', nickname: 'ج', price: 3700 },
   ];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
     'GET /packages/lian-wecom-500/custom-prices': () => ({ body: rows }),
     'GET /users': () => ({ body: { users: [] } }),

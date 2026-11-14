@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // Typing re-renders the page that owns the dialog. The dialog must keep the focus on the field being typed in,
 // not move it back to the first field on every keystroke.
 test('typing in a later dialog field keeps the focus there', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /users': () => ({ body: { users: [] } }) });
+  await serveApi(page, 'branch', { 'GET /users': () => ({ body: { users: [] } }) });
   await page.goto('http://admin.localhost:3910/users');
   await page.getByRole('button', { name: 'حساب جديد' }).click();
   const dialog = page.getByRole('dialog', { name: 'حساب جديد' });

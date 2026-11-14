@@ -24,7 +24,7 @@ import { sharedKeys } from '../../../lib/query';
 import { PackageFacts } from '../../../components/package-facts';
 import { api, type ApplyResult, type LineRow, type Outcome, type PackageRow, type PosChoice } from '../../../lib/api';
 import { useDoor } from '../../../lib/door-context';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simFits, simHint, withPrefix } from '../../../lib/sim-rules';
 import { useRequestKey } from '../../../lib/request-key';
@@ -67,7 +67,7 @@ export function NumbersScreen() {
   const [qr, setQr] = useState<{ asking: string } | { shown: { msisdn: string; iccid: string | null; esim: boolean; esimQr: string } } | null>(null);
   const qrAsk = useRef(0);
   const [result, setResult] = useState<ApplyResult | null>(null);
-  const { me } = useOffice();
+  const { me } = useDesk();
   const door = useDoor();
   const isPos = door.layer === 'pos' || me?.layer === 'pos';
   const verdict: Outcome = isPos ? 'success' : outcome;
@@ -76,9 +76,9 @@ export function NumbersScreen() {
   const list = usePaged<LineRow, PosChoice[]>(
     `${needle}|${status}|${pack}|${provider}|${company}|${sim}`,
     async (cursor) =>
-      pick(await api.officeLines({ q: needle, status, packageCode: pack, provider, company, sim, cursor }), (data) => ({ ...pageRows(data), extra: data.poses })),
+      pick(await api.lines({ q: needle, status, packageCode: pack, provider, company, sim, cursor }), (data) => ({ ...pageRows(data), extra: data.poses })),
   );
-  const catalog = useApiQuery(sharedKeys.packages, () => api.officePackages());
+  const catalog = useApiQuery(sharedKeys.packages, () => api.packages());
   const packages = catalog.data?.packages ?? NO_PACKAGES;
   const poses = list.extra ?? NO_POSES;
   const ready = catalog.loaded && list.started;
@@ -95,7 +95,7 @@ export function NumbersScreen() {
     setNote('');
     // Whatever was on screen for another line goes now, before this one is asked for.
     setQr({ asking: row.id });
-    const read = await api.officeLine(row.id);
+    const read = await api.line(row.id);
     // Another line was asked for meanwhile, or this was closed: the answer is not used.
     if (ask !== qrAsk.current) return;
     if (!read.ok) {

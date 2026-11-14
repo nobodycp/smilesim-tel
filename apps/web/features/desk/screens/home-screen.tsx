@@ -11,7 +11,7 @@ import { OfferHero } from '../../../components/offer-hero';
 import { AccountBand, LastOperations, WaitingTasks } from '../home-top';
 import { ActiveCard, LinesCard, ProvidersCard, TasksCard, TopCard, UsersCard } from '../overview';
 import { api } from '../../../lib/api';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePageTitle } from '../../../lib/page-title';
 import { usePrefs } from '../../../lib/prefs';
 import { useGreeting } from '../../../lib/greeting';
@@ -22,14 +22,14 @@ import { buttonClass } from '../../../components/ui/button';
 
 export function HomeScreen() {
   const { t, locale } = usePrefs();
-  const { ready, me } = useOffice();
+  const { ready, me } = useDesk();
   const greeting = useGreeting();
   usePageTitle(t.homeTitle);
   const layer = me?.layer ?? '';
-  const board = useApiQuery(sharedKeys.home, () => api.officeHome());
+  const board = useApiQuery(sharedKeys.home, () => api.home());
   // The full picture (spec 2026-11-08-overview-and-reports-nav, F): one read per period, kept per period in the cache.
   const [period, setPeriod] = useState<'day' | 'month' | 'all'>('month');
-  const overview = useApiQuery(sharedKeys.overview(period), () => api.officeOverview(period));
+  const overview = useApiQuery(sharedKeys.overview(period), () => api.overview(period));
   // The offers hero (spec 2026-11-09, 1): the live offers for this account's layer, first on the page.
   const offers = useApiQuery(sharedKeys.liveOffers, () => api.liveOffers()).data?.offers ?? [];
   const home = board.data;
@@ -37,7 +37,7 @@ export function HomeScreen() {
   const summary = useApiQuery(sharedKeys.financeSummary, () => api.financeSummary());
   // The branch's home has no «مهام بانتظارك» and no «آخر العمليات» (spec 2026-11-09-admin-review, 6.3).
   const branch = layer === 'branch';
-  const waiting = useApiQuery(['office', 'tasks', 'home-waiting'], () => api.officeTasks({ status: 'working' }), { enabled: Boolean(layer) && !branch });
+  const waiting = useApiQuery(['api', 'tasks', 'home-waiting'], () => api.tasks({ status: 'working' }), { enabled: Boolean(layer) && !branch });
   // A failed board is shown once, in its panes.
   const broken = !home && Boolean(board.error);
 

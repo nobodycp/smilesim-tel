@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const me = { loginName: 'admin', nickname: 'الإدارة', layer: 'branch', isBranchOwner: true, grants: ['edit', 'reports', 'staff'], stops: [], impersonating: false, ceiling: 0 };
@@ -8,7 +8,7 @@ const me = { loginName: 'admin', nickname: 'الإدارة', layer: 'branch', is
 test('the shell shows the outage while /me does not answer, and the page once it does', async ({ page }) => {
   await page.context().addCookies([{ name: 'smilesim-locale', value: 'en', url: admin }]);
   let down = true;
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /me': () => (down ? { body: { message: 'down' }, status: 503 } : { body: { ...me, balance: 1000 } }),
     'GET /users': () => ({ body: { users: [] } }),
   });
@@ -27,7 +27,7 @@ test('a failed background refresh of /me keeps the page on screen', async ({ pag
     loginName: 'admin', nickname: 'الإدارة', layer: 'branch', roleName: '', parentLoginName: null, balance: 1000, ceiling: 0, frozen: false, self: true,
     directChild: false, canEnter: false, canFreeze: false, canDelete: false,
   };
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /me': () => (meDown ? { body: { message: 'down' }, status: 503 } : { body: { ...me, balance: 1000 } }),
     'GET /users': () => ({ body: { users: [self] } }),
     'POST /wallets/admin/fund': () => {

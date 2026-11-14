@@ -9,7 +9,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { api, type ProviderCatalogCompany } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
-import { useOffice } from '../../../lib/office-session';
+import { useDesk } from '../../../lib/desk-session';
 import { usePageTitle } from '../../../lib/page-title';
 import { usePrefs } from '../../../lib/prefs';
 import { sharedKeys } from '../../../lib/query';
@@ -24,10 +24,10 @@ import { useRequireLayer } from '../../../lib/use-require-layer';
 export function AddCompanyScreen() {
   const { t, apiText } = usePrefs();
   const router = useRouter();
-  const { me } = useOffice();
+  const { me } = useDesk();
   const allowed = useRequireLayer(['branch']);
   const canEdit = Boolean(me && (me.isBranchOwner || me.grants.includes('edit')) && !me.impersonating);
-  const providers = useApiQuery(sharedKeys.providers, () => api.officeProviders(), { enabled: allowed });
+  const providers = useApiQuery(sharedKeys.providers, () => api.providers(), { enabled: allowed });
   usePageTitle(t.addCompany);
 
   const [provider, setProvider] = useState('');

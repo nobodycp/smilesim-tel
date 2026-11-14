@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 
@@ -70,7 +70,7 @@ const everyTransferLabel = [
 for (const locale of ['ar', 'en', 'he'] as const) {
   test(`the roles matrix names each transfer grant for the layer of the role in ${locale}`, async ({ page }) => {
     await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: admin }]);
-    await serveOffice(page, 'branch', { 'GET /roles': () => ({ body: { roles: cases.map((item) => item.row) } }) });
+    await serveApi(page, 'branch', { 'GET /roles': () => ({ body: { roles: cases.map((item) => item.row) } }) });
     await page.goto(`${admin}/roles`);
     const rows = page.locator('.data tbody tr');
     await expect(rows).toHaveCount(cases.length);
@@ -84,7 +84,7 @@ for (const locale of ['ar', 'en', 'he'] as const) {
 
 for (const item of cases) {
   test(`the ${item.who} role form lists only the transfer grants its layer can use`, async ({ page }) => {
-    await serveOffice(page, 'branch', { 'GET /roles': () => ({ body: { roles: [item.row] } }) });
+    await serveApi(page, 'branch', { 'GET /roles': () => ({ body: { roles: [item.row] } }) });
     await page.goto(`${admin}/roles`);
     await page.getByRole('button', { name: `إجراءات ${item.who}`, exact: true }).click();
     await page.getByRole('menuitem', { name: 'تعديل' }).click();
@@ -102,7 +102,7 @@ for (const item of cases) {
 
 test('an agent role form has no switch for points of sale or agents and still saves the grants it holds', async ({ page }) => {
   const agent = cases[2];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /roles': () => ({ body: { roles: [agent.row] } }),
     'PUT /roles/r-agent': () => ({ body: { ok: true } }),
   });

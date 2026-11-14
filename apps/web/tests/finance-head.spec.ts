@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const series = Array.from({ length: 30 }, (_, index) => ({
   day: new Date(Date.UTC(2026, 9, 10 + index)).toISOString().slice(0, 10),
@@ -16,7 +16,7 @@ const entry = {
 // «المالية» is a statement only (spec 2026-11-09-admin-review, 1): no wallet cards, the table first, the CSV of the
 // filters on screen, and «العمليات فقط», which the old «العمليات» page opens with `?scope=operations`.
 test('finance opens on the statement, without the wallet head, and exports the filtered statement', async ({ page }) => {
-  const calls = await serveOffice(page, 'agent', {
+  const calls = await serveApi(page, 'agent', {
     'GET /finance/summary': () => ({ body: summary }),
     'GET /finance': () => ({ body: { items: [entry], nextCursor: null, total: 1 } }),
   });
@@ -33,7 +33,7 @@ test('finance opens on the statement, without the wallet head, and exports the f
 });
 
 test('finance opened with ?scope=operations lists the operations only', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /finance': () => ({ body: { items: [entry], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://admin.localhost:3910/finance?scope=operations');
@@ -45,7 +45,7 @@ test('finance opened with ?scope=operations lists the operations only', async ({
 // The wallet head lives on «المحفظة»: the balance leads, money in and out over the window, the movements with those
 // made by hand, the balance over time, and the 7 / 30 / 90 days switch the tiles follow.
 test('the wallet page shows the head and its window switch', async ({ page }) => {
-  const calls = await serveOffice(page, 'agent', {
+  const calls = await serveApi(page, 'agent', {
     'GET /finance/summary': () => ({ body: summary }),
     'GET /ledger': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });

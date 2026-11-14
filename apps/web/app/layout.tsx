@@ -5,7 +5,7 @@ import { IBM_Plex_Sans_Hebrew, Noto_Kufi_Arabic } from 'next/font/google';
 import { Bootstrap } from '../components/bootstrap';
 import { Toasts } from '../components/toast';
 import { Doors } from '../components/doors';
-import { OfficeFrame } from '../components/office-frame';
+import { AppFrame } from '../components/app-frame';
 import { Preferences } from '../components/preferences';
 import { BrandingProvider } from '../lib/branding';
 import { brandingImageUrl, loadBranding } from '../lib/branding-load';
@@ -14,7 +14,7 @@ import { DoorProvider } from '../lib/door-context';
 import { doorFromHost } from '../lib/doors';
 import { BALANCE_COOKIE, dirFor, LOCALE_KEY, NAME_COOKIE, PAGE_SIZE_KEY, parseLocale, parsePageSize, parseTheme, THEME_KEY } from '../lib/document-prefs';
 import { QueryProvider } from '../lib/query';
-import { OfficeSession } from '../lib/office-session';
+import { DeskSession } from '../lib/desk-session';
 import './globals.css';
 
 // Graphite (spec 2026-11-09-graphite-identity): Noto Kufi Arabic, angular like a stamp and clear at small sizes, for
@@ -72,9 +72,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {door ? (
             <QueryProvider>
               <DoorProvider door={door}>
-                <OfficeSession initialName={initialName} initialBalance={initialBalance}>
-                  <OfficeFrame>{children}</OfficeFrame>
-                </OfficeSession>
+                <DeskSession initialName={initialName} initialBalance={initialBalance}>
+                  <AppFrame>{children}</AppFrame>
+                </DeskSession>
               </DoorProvider>
             </QueryProvider>
           ) : (

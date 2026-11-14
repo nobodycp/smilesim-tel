@@ -33,8 +33,8 @@ function viewOf<Row>(list: PagedView<unknown>): PagedView<Row> {
 /** One page of the report `kind`: the providers and operations reports, or the tasks and numbers lists themselves. */
 async function readReport(kind: Kind, cursor: string | null): Promise<Fetched<PageOf<unknown>>> {
   if (kind === 'providers') return pick(await api.reportProviders(), pageRows);
-  if (kind === 'tasks') return pick(await api.officeTasks({ cursor }), pageRows);
-  if (kind === 'numbers') return pick(await api.officeLines({ cursor }), pageRows);
+  if (kind === 'tasks') return pick(await api.tasks({ cursor }), pageRows);
+  if (kind === 'numbers') return pick(await api.lines({ cursor }), pageRows);
   return pick(await api.reportOperations(cursor), pageRows);
 }
 

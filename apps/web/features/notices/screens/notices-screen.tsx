@@ -27,7 +27,7 @@ export function NoticesScreen() {
     `${group}|${unreadOnly ? 1 : 0}`,
     async (cursor) =>
       pick(
-        await api.officeNotices({ cursor, group: group || undefined, unread: unreadOnly }),
+        await api.notices({ cursor, group: group || undefined, unread: unreadOnly }),
         (data) => ({ ...pageRows(data), extra: { unread: data.unread } }),
       ),
   );

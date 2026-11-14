@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const day = 86_400_000;
 const line = (id: string, msisdn: string, inDays: number, status = 'active') => ({
@@ -17,7 +17,7 @@ const overview = {
 
 // «ينتهي قريباً» (roadmap N2): days left on every active number, a warning when three or fewer, a filter, and a home card.
 test('numbers show the days left and filter the lines ending soon; the home counts them', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /lines': () => ({ body: { items: [line('l1', '0550000001', 2), line('l2', '0550000002', 20), line('l3', '0550000003', 1, 'disconnected')], poses: [], nextCursor: null, total: 3 } }),
     'GET /packages': () => ({ body: { packages: [], companies: [] } }),
     'GET /home': () => ({ body: { pendingTasks: 1, activeLines: 2, inactiveLines: 1, expiringLines: 1, operations: [] } }),

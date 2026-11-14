@@ -49,7 +49,7 @@ export function OutageBar() {
       if (asking.current || !live.current) return;
       asking.current = true;
       setBusy(true);
-      await api.officeMe();
+      await api.me();
       asking.current = false;
       if (!live.current) return;
       setBusy(false);
@@ -67,7 +67,7 @@ export function OutageBar() {
     if (asking.current) return;
     asking.current = true;
     setBusy(true);
-    await api.officeMe();
+    await api.me();
     asking.current = false;
     if (live.current) setBusy(false);
   }

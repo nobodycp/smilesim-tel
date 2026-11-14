@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const at = '2026-10-02T10:30:00.000Z';
@@ -34,7 +34,7 @@ const words = {
 for (const locale of ['ar', 'en', 'he'] as const) {
   test(`the shell words a transfer notice in ${locale}: what moved, to or from which account, and who moved it`, async ({ page }) => {
     await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: admin }]);
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operations: [] } }),
       'GET /notices': () => ({ body: { unread: notices.length, nextCursor: null, items: notices } }),
     });
@@ -48,7 +48,7 @@ for (const locale of ['ar', 'en', 'he'] as const) {
 }
 
 test('the activity log names an account transfer and offers it as a filter', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /audit': () => ({
       body: {
         items: [{

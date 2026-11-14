@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // Offers (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1): a hero carousel on the home, moving on after each
 // offer's seconds, and the «الإعلانات» page that manages them.
@@ -11,7 +11,7 @@ const offer = (id: string, title: string, seconds = 3) => ({
 });
 
 test('the home hero shows the live offers, moves by dot and key, and moves on by itself after the offer\'s seconds', async ({ page }) => {
-  await serveOffice(page, 'agent', {
+  await serveApi(page, 'agent', {
     'GET /home': () => ({ body: home }),
     'GET /offers/live': () => ({ body: { offers: [offer('o1', 'عرض الشتاء', 3), offer('o2', 'عرض الربيع', 3)] } }),
   });
@@ -36,7 +36,7 @@ test('the home hero shows the live offers, moves by dot and key, and moves on by
 });
 
 test('an offer without a picture is text only and takes the whole width', async ({ page }) => {
-  await serveOffice(page, 'agent', {
+  await serveApi(page, 'agent', {
     'GET /home': () => ({ body: home }),
     'GET /offers/live': () => ({ body: { offers: [{ ...offer('o3', 'تنبيه: صيانة الليلة'), image: null, actionHref: null, actionLabel: null }] } }),
   });
@@ -50,7 +50,7 @@ test('an offer without a picture is text only and takes the whole width', async 
 });
 
 test('a home without live offers has no hero', async ({ page }) => {
-  await serveOffice(page, 'agent', { 'GET /home': () => ({ body: home }), 'GET /offers/live': () => ({ body: { offers: [] } }) });
+  await serveApi(page, 'agent', { 'GET /home': () => ({ body: home }), 'GET /offers/live': () => ({ body: { offers: [] } }) });
   await page.goto('http://agent.localhost:3910/');
   await expect(page.locator('.page-head h1')).toBeVisible();
   await expect(page.locator('.offer-hero')).toHaveCount(0);
@@ -60,7 +60,7 @@ test('the owner adds an offer with its seconds and audience, and switches one of
   const posted: unknown[] = [];
   const patched: unknown[] = [];
   let offers = [offer('o1', 'عرض الشتاء', 7)];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /offers': () => ({ body: { offers } }),
     'POST /offers': () => ({ body: { offers } }),
     'PATCH /offers/o1': () => { offers = [{ ...offers[0], active: false }]; return { body: { offers } }; },

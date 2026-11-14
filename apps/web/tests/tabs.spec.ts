@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const account = {
   loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'ag1', frozen: false, isBranchOwner: false, staff: false,
@@ -9,7 +9,7 @@ const account = {
 // One tab strip everywhere (components/tabs.tsx): only the selected tab is in the Tab order, and the arrows move the
 // selection, mirrored right to left.
 test('tabs move with the arrow keys and keep one tab in the Tab order', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
     'GET /users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),

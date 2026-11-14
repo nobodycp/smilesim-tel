@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // The profits page (roadmap N4): every layer sees its own profit by package over a period, refunds taken back.
 test('profits show the totals and each package, follow the dates, and export them', async ({ page }) => {
-  const calls = await serveOffice(page, 'agent', {
+  const calls = await serveApi(page, 'agent', {
     'GET /finance/profits': () => ({
       body: {
         packages: [

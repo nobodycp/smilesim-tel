@@ -48,30 +48,30 @@ export async function unwrap<T>(answer: Promise<Answer<T>>): Promise<T> {
 
 /** Query keys, one place, so a write can invalidate what it changed. */
 export const queryKeys = {
-  me: ['office', 'me'] as const,
-  directory: ['office', 'directory'] as const,
+  me: ['api', 'me'] as const,
+  directory: ['api', 'directory'] as const,
 };
 
 /** Keys of shared reads: one cache entry, whichever screen asked first. */
 export const sharedKeys = {
-  packages: ['office', 'packages'] as const,
-  users: ['office', 'users'] as const,
-  companies: ['office', 'companies'] as const,
-  providers: ['office', 'providers'] as const,
-  task: (id: string) => ['office', 'task', id] as const,
-  taskDecision: (id: string) => ['office', 'task', id, 'decision'] as const,
-  providerDecisions: ['office', 'provider-decisions'] as const,
-  account: (login: string) => ['office', 'account', login] as const,
-  accountPackages: (login: string) => ['office', 'account', login, 'packages'] as const,
-  accountOps: (login: string) => ['office', 'account', login, 'ops'] as const,
-  providerSettings: (code: string) => ['office', 'provider', code, 'settings'] as const,
-  line: (id: string) => ['office', 'line', id] as const,
-  home: ['office', 'home'] as const,
-  overview: (period: string) => ['office', 'overview', period] as const,
-  liveOffers: ['office', 'offers', 'live'] as const,
-  offers: ['office', 'offers'] as const,
-  financeSummary: ['office', 'finance', 'summary'] as const,
-  roles: ['office', 'roles'] as const,
+  packages: ['api', 'packages'] as const,
+  users: ['api', 'users'] as const,
+  companies: ['api', 'companies'] as const,
+  providers: ['api', 'providers'] as const,
+  task: (id: string) => ['api', 'task', id] as const,
+  taskDecision: (id: string) => ['api', 'task', id, 'decision'] as const,
+  providerDecisions: ['api', 'provider-decisions'] as const,
+  account: (login: string) => ['api', 'account', login] as const,
+  accountPackages: (login: string) => ['api', 'account', login, 'packages'] as const,
+  accountOps: (login: string) => ['api', 'account', login, 'ops'] as const,
+  providerSettings: (code: string) => ['api', 'provider', code, 'settings'] as const,
+  line: (id: string) => ['api', 'line', id] as const,
+  home: ['api', 'home'] as const,
+  overview: (period: string) => ['api', 'overview', period] as const,
+  liveOffers: ['api', 'offers', 'live'] as const,
+  offers: ['api', 'offers'] as const,
+  financeSummary: ['api', 'finance', 'summary'] as const,
+  roles: ['api', 'roles'] as const,
   brandingDraft: ['branding', 'draft'] as const,
   profile: ['auth', 'profile'] as const,
   sessions: ['auth', 'sessions'] as const,
@@ -79,9 +79,9 @@ export const sharedKeys = {
 
 /** Reads that belong to one package's sheet; an action on the sheet asks for these again. */
 export const packageKeys = {
-  sheet: (code: string) => ['office', 'package', code, 'sheet'] as const,
-  lines: (code: string) => ['office', 'package', code, 'lines'] as const,
-  customPrices: (code: string) => ['office', 'package', code, 'custom-prices'] as const,
-  linePrices: (code: string, scope: string) => ['office', 'package', code, 'line-prices', scope] as const,
-  all: (code: string) => ['office', 'package', code] as const,
+  sheet: (code: string) => ['api', 'package', code, 'sheet'] as const,
+  lines: (code: string) => ['api', 'package', code, 'lines'] as const,
+  customPrices: (code: string) => ['api', 'package', code, 'custom-prices'] as const,
+  linePrices: (code: string, scope: string) => ['api', 'package', code, 'line-prices', scope] as const,
+  all: (code: string) => ['api', 'package', code] as const,
 };

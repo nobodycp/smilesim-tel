@@ -92,7 +92,7 @@ export const en: Copy = {
   enabledTwoFactor: 'Two-factor is on',
   logout: 'Sign out',
   accountSettings: 'Profile',
-  navOffice: 'Desk',
+  navDesk: 'Desk',
   navOps: 'Providers & companies',
   navAdmin: 'Admin',
   navPlans: 'Packages',

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 
@@ -7,7 +7,7 @@ const admin = 'http://admin.localhost:3910';
 // back button returns to the filter before it.
 test('numbers read their filters from the address, write them back, and follow back/forward', async ({ page }) => {
   const asked: string[] = [];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /lines': (url) => {
       asked.push(url.searchParams.get('status') ?? '');
       return { body: { items: [], poses: [], nextCursor: null, total: 0 } };
@@ -34,7 +34,7 @@ test('users follow a new ?q= while already on the page, and the typed search goe
     loginName, nickname: loginName, layer: 'pos', roleName: '', parentLoginName: 'agent1', balance: 0, ceiling: 0, frozen: false, self: false, directChild: false,
     canEnter: false, canFreeze: false, canDelete: false,
   });
-  await serveOffice(page, 'branch', { 'GET /users': () => ({ body: { users: [user('alpha'), user('beta'), user('gamma')] } }) });
+  await serveApi(page, 'branch', { 'GET /users': () => ({ body: { users: [user('alpha'), user('beta'), user('gamma')] } }) });
   await page.goto(`${admin}/users`);
   const rows = page.locator('.data tbody tr');
   await expect(rows).toHaveCount(3);

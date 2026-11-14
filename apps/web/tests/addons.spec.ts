@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // Line add-ons (spec 2026-11-09-offers-tasks-addons-wallet-esim, 3): named on the package, asked for on a number's
 // card, each becoming a manual task.
@@ -12,7 +12,7 @@ const line = {
 
 test('a number asks for one of its package\'s extra operations, which becomes a task', async ({ page }) => {
   const sent: unknown[] = [];
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /lines/ln1': () => ({ body: { line, history: [] } }),
     'GET /packages': () => ({ body: { packages: [], companies: [] } }),
     'GET /users': () => ({ body: { users: [] } }),
@@ -32,7 +32,7 @@ test('a number asks for one of its package\'s extra operations, which becomes a 
 });
 
 test('a number with no extra operations shows no such tile', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /lines/ln1': () => ({ body: { line: { ...line, addons: [] }, history: [] } }),
     'GET /packages': () => ({ body: { packages: [], companies: [] } }),
     'GET /users': () => ({ body: { users: [] } }),

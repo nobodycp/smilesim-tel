@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useOffice } from './office-session';
+import { useDesk } from './desk-session';
 import { usePrefs } from './prefs';
 import type { Fetched } from './fetched';
 
@@ -28,7 +28,7 @@ type Step<T> = {
  */
 export function useAction({ setError, setNote, onDone }: Options) {
   const { apiText } = usePrefs();
-  const { refresh: refreshMe } = useOffice();
+  const { refresh: refreshMe } = useDesk();
   const [busy, setBusy] = useState(false);
   const flying = useRef(false);
   const live = useRef(true);

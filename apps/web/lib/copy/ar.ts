@@ -92,7 +92,7 @@ export const ar = {
   enabledTwoFactor: 'تم تفعيل التحقق بخطوتين',
   logout: 'تسجيل الخروج',
   accountSettings: 'الملف الشخصي',
-  navOffice: 'المكتب',
+  navDesk: 'المكتب',
   navOps: 'المزودون والشركات',
   navAdmin: 'الإدارة',
   navPlans: 'الرزم',

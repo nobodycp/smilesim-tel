@@ -73,7 +73,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
     let stop = false;
     const timer = window.setTimeout(async () => {
       // Only the first page of numbers is read: the box shows at most 8 hits, so `nextCursor` is ignored on purpose.
-      const lines = await api.officeLines({ q: needle });
+      const lines = await api.lines({ q: needle });
       if (stop) return;
       const next: Hit[] = [];
       if (users) {

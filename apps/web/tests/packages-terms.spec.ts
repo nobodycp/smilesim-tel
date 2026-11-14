@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const sim = { length: 19, prefix: '8997', esim: true };
 const base = {
@@ -10,7 +10,7 @@ const base = {
 
 test('an agent sees its own buy price and writes a sell price', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const calls = await serveOffice(page, 'agent', {
+  const calls = await serveApi(page, 'agent', {
     'GET /packages': () => ({
       body: {
         companies: [],
@@ -53,7 +53,7 @@ test('an agent sees its own buy price and writes a sell price', async ({ page })
 });
 
 test('the point of sale sees its effective price and a stopped activation', async ({ page }) => {
-  await serveOffice(page, 'pos', {
+  await serveApi(page, 'pos', {
     'GET /packages': () => ({
       body: {
         companies: [],

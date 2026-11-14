@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // The topbar wallet is read from `/office/me`. After a write that moves money, the shell asks for it again,
 // so the balance in the topbar follows the wallet without a full reload. The branch has no wallet (spec
@@ -11,7 +11,7 @@ test('the topbar balance follows a fund without a reload', async ({ page }) => {
     loginName: 'ag1', nickname: 'وكيل', layer: 'agent', roleName: '', parentLoginName: 'main1', ceiling: 0, frozen: false, self: false,
     directChild: true, canEnter: true, canFreeze: true, canDelete: true, balance: 0,
   };
-  await serveOffice(page, 'main_agent', {
+  await serveApi(page, 'main_agent', {
     'GET /me': () => ({ body: { ...me, balance } }),
     'GET /users': () => ({ body: { users: [child] } }),
     'POST /wallets/ag1/fund': () => {
@@ -33,7 +33,7 @@ test('the topbar balance follows a fund without a reload', async ({ page }) => {
 });
 
 test('the branch has no wallet: no chip in the topbar, and /wallet goes home', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] } }) });
+  await serveApi(page, 'branch', { 'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] } }) });
   await page.goto('http://admin.localhost:3910/');
   await expect(page.locator('.topbar .notice-btn')).toBeVisible();
   await expect(page.locator('.wallet-chip')).toHaveCount(0);
@@ -45,7 +45,7 @@ test('the branch has no wallet: no chip in the topbar, and /wallet goes home', a
 // 2026-11-09-admin-review, 8.6);
 // the sidebar holds neither language nor theme.
 test('the topbar ends with notices, theme and language, and the sidebar has neither preference', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] } }) });
+  await serveApi(page, 'branch', { 'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] } }) });
   await page.goto('http://admin.localhost:3910/');
   const order = await page.locator('.topbar-tools').evaluate((tools) =>
     [...tools.querySelectorAll('.lang > button, .shell-icon')].map((el) =>

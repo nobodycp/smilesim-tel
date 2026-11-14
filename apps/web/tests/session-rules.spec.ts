@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // Session rules (spec 2026-11-08-session-rules): the branch owner sets them per layer on «قواعد الدخول» (spec
 // 2026-11-09-admin-review, 5; out of the owner's own settings) and per account on the user page; an empty choice
@@ -19,7 +19,7 @@ const account = {
 test('the owner sets a layer’s sessions and idle time on that layer\'s role', async ({ page }) => {
   const saved: unknown[] = [];
   const posRole = { id: 'r-pos', name: 'pos', kind: 'layer', layer: 'pos', grants: ['read'], read: true, edit: false, accounting: false, tasks: false, reports: false, staff: false, enter: false };
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /roles': () => ({ body: { roles: [posRole] } }),
     'PUT /roles/r-pos': () => ({ body: { ok: true } }),
   });
@@ -45,7 +45,7 @@ test('the owner sets a layer’s sessions and idle time on that layer\'s role', 
 });
 
 test('the owner\'s own settings hold only the account: no layer rules there any more', async ({ page }) => {
-  await serveOffice(page, 'branch');
+  await serveApi(page, 'branch');
   await page.route('**/auth/session-rules', (route) => route.fulfill(json({ defaults: { maxSessions: 3, sessionMinutes: 360 }, layers: { branch: none, main_agent: none, agent: none, pos: none } })));
   await page.goto('http://admin.localhost:3910/settings');
   await expect(page.getByRole('heading', { name: 'الجلسات', exact: true })).toBeVisible();
@@ -53,7 +53,7 @@ test('the owner\'s own settings hold only the account: no layer rules there any 
 });
 
 test('the owner edits one account from its page\'s «إعدادات الحساب»: contact, two-step and its own session values', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
     'GET /users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),
@@ -113,7 +113,7 @@ test('the owner edits one account from its page\'s «إعدادات الحساب
 // Spec 2026-11-12-two-factor-available-methods: the screens save a rule with a method they offer, never one the
 // API refuses, when the layer's stored method is one that is switched off.
 test('making an account required under a layer left on SMS saves it with the app', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users/pos1/packages': () => ({ body: { summary: { total: 0, visible: 0, custom: 0 }, companies: [] } }),
     'GET /users/pos1/ops': () => ({ body: { denied: [], deniedAbove: [] } }),

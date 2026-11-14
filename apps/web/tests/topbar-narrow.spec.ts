@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // Graphite topbar: the menu button, search, wallet, then the notices, the theme and the language menu (spec
 // 2026-11-09-admin-review, 2b, 7 and 8.6), at every width; the drawer holds no preference. Nothing in the topbar leaves the
@@ -9,7 +9,7 @@ for (const locale of ['ar', 'en']) {
     test(`the topbar fits from 320px up with the language in it (${locale}, ${layer})`, async ({ page }) => {
       const origin = layer === 'branch' ? 'http://admin.localhost:3910' : 'http://pos.localhost:3910';
       await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: origin }]);
-      await serveOffice(page, layer);
+      await serveApi(page, layer);
       for (const width of [320, 360, 390]) {
         await page.setViewportSize({ width, height: 760 });
         await page.goto(`${origin}/`);
@@ -30,7 +30,7 @@ for (const locale of ['ar', 'en']) {
 }
 
 test('the topbar language is the login page\'s menu: the current language, a menu of the others', async ({ page }) => {
-  await serveOffice(page, 'branch');
+  await serveApi(page, 'branch');
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('http://admin.localhost:3910/');
   await expect(page.locator('.sidebar .shell-lang')).toHaveCount(0);
@@ -47,7 +47,7 @@ test('the topbar language is the login page\'s menu: the current language, a men
 // Wide screens too (spec 2026-11-09-admin-review, 6.5 and 7): at 1280px nothing in the topbar leaves the screen and
 // the page does not scroll sideways; the message lists every topbar control's box if it does.
 test('the topbar fits a 1280px screen without a sideways scroll', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /companies': () => ({ body: { companies: [] } }) });
+  await serveApi(page, 'branch', { 'GET /companies': () => ({ body: { companies: [] } }) });
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('http://admin.localhost:3910/companies');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();

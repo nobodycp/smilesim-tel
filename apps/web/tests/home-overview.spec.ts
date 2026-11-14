@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // The home overview (spec 2026-11-08-overview-and-reports-nav, F): a period switch, then one card per part of the
 // picture, each shown only to the layers its data belongs to.
@@ -37,7 +37,7 @@ const overview = (period: string, withProviders: boolean) => ({
 });
 
 test('the branch reads the full overview, switches the period, and sees its providers', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /home': () => ({ body: home }),
     'GET /overview': (url) => ({ body: overview(new URL(url, 'http://x').searchParams.get('period') ?? 'month', true) }),
   });
@@ -113,7 +113,7 @@ test('the branch reads the full overview, switches the period, and sees its prov
 });
 
 test('an agent sees no providers card and no main-agent tab', async ({ page }) => {
-  await serveOffice(page, 'agent', {
+  await serveApi(page, 'agent', {
     'GET /home': () => ({ body: home }),
     'GET /overview': () => ({ body: overview('month', false) }),
   });

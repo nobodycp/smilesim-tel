@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const listed = {
   loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', roleName: '', parentLoginName: 'admin', balance: -5000, ceiling: 20000, frozen: false,
@@ -14,7 +14,7 @@ const account = {
 // status beside the name, the wallet's actions under «المحفظة», the rest behind ⋯, the wallet as cards, two tabs,
 // and the number operations and numbers as closed sections of «الحساب».
 test('the user page heads with its status, actions and wallet cards', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /users/pos1': () => ({ body: account }),
     'GET /users/pos1/packages': () => ({ body: { summary: { total: 3, visible: 3, custom: 2 }, companies: [] } }),
     'GET /users/pos1/ops': () => ({ body: { denied: ['sim'], deniedAbove: [] } }),

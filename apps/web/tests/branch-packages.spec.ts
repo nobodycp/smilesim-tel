@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 // Spec 2026-11-08-branch-packages-and-details: the branch list in the users-tab shape (child price, margin, switch),
 // and package details shown where a package is chosen.
@@ -33,7 +33,7 @@ const twoProviders = {
 };
 
 test('the branch reaches packages through their company: one table, provider, prices, margin, status', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /companies': () => ({ body: twoProviders }) });
+  await serveApi(page, 'branch', { 'GET /companies': () => ({ body: twoProviders }) });
   await page.goto(`${admin}/packages`);
   await expect(page).toHaveURL(`${admin}/companies`);
   await expect(page.locator('.sidebar').getByRole('link', { name: 'الرزم', exact: true })).toHaveCount(0);
@@ -57,7 +57,7 @@ test('the branch reaches packages through their company: one table, provider, pr
 });
 
 test('the provider filter narrows a company\'s packages, and the old company-provider page lands on it', async ({ page }) => {
-  await serveOffice(page, 'branch', { 'GET /companies': () => ({ body: twoProviders }) });
+  await serveApi(page, 'branch', { 'GET /companies': () => ({ body: twoProviders }) });
   await page.goto(`${admin}/companies/wecom/sky`);
   await expect(page).toHaveURL(`${admin}/companies/wecom?provider=sky`);
   await expect(page.locator('tbody tr')).toHaveCount(1);
@@ -79,7 +79,7 @@ test('the package page edits its details', async ({ page }) => {
     esimPrice: null, esimPriceEffective: 0, esimPriceSource: 'company', lines: 0, activeLines: 0, renewals: [], switches: [],
     modes: { activate: 'auto', charge: 'auto', extend: 'auto', disconnect: 'auto', freeze: 'auto', switch: 'auto', rename: 'auto', sim: 'auto' },
   };
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /packages/lian-wecom-500/sheet': () => ({ body: sheet }),
     'GET /packages/lian-wecom-500/prices': () => ({ body: { offers: [] } }),
     'GET /users': () => ({ body: { users: [] } }),
@@ -116,7 +116,7 @@ test('the point of sale sees the details on the package card and the subscribe s
     autoActivate: true, autoCharge: true, autoDisconnect: true, autoFreeze: true, autoSwitch: true,
     price: 2700, renewalPrice: 2700, canActivate: true, sellPrice: null, sellRenewalPrice: null, sellDefault: null, sellRenewalDefault: null,
   };
-  await serveOffice(page, 'pos', { 'GET /packages': () => ({ body: { packages: [row], companies: [{ name: 'ويكوم', image: '' }] } }) });
+  await serveApi(page, 'pos', { 'GET /packages': () => ({ body: { packages: [row], companies: [{ name: 'ويكوم', image: '' }] } }) });
   await page.goto('/packages');
   await page.getByRole('button', { name: /ويكوم/ }).click();
   const card = page.locator('.pack-card');
@@ -127,7 +127,7 @@ test('the point of sale sees the details on the package card and the subscribe s
 });
 
 test('the company list turns a package on and off, and the package page only shows its state', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /companies': () => ({ body: twoProviders }),
     'PATCH /packages/lian-wecom-300/mode': () => ({ body: { ok: true } }),
   });

@@ -21,7 +21,7 @@ import { useApiQuery } from '../../lib/use-api-query';
  */
 export function PackageAddons({ code, canEdit, setError, setNote }: { code: string; canEdit: boolean; setError: (text: string) => void; setNote: (text: string) => void }) {
   const { t, apiText } = usePrefs();
-  const read = useApiQuery(['office', 'package-addons', code], () => api.packageAddons(code));
+  const read = useApiQuery(['api', 'package-addons', code], () => api.packageAddons(code));
   const { run, busy } = useAction({ setError, setNote, onDone: read.reload });
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');

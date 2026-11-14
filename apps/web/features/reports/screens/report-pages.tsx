@@ -32,7 +32,7 @@ export function BalancesReportScreen() {
   const [layer, setLayer] = useState('');
   const [negative, setNegative] = useState(false);
   const query = { q: q.trim(), layer, negative: negative ? '1' : '' };
-  const report = useApiQuery(['office', 'reports', 'balances', query], () => api.reportBalances(query), { enabled: allowed });
+  const report = useApiQuery(['api', 'reports', 'balances', query], () => api.reportBalances(query), { enabled: allowed });
   const data = report.data;
   const rows = data?.rows ?? [];
   const held = rows.reduce((sum, row) => sum + (row.held ?? 0), 0);
@@ -91,7 +91,7 @@ export function SupplyReportScreen() {
   const allowed = useRequireLayer(['branch']);
   const [days, setDays] = useState<PeriodDays>(30);
   const query = { from: periodFrom(days), to: '' };
-  const report = useApiQuery(['office', 'reports', 'supply', query], () => api.reportSupply(query), { enabled: allowed });
+  const report = useApiQuery(['api', 'reports', 'supply', query], () => api.reportSupply(query), { enabled: allowed });
   const data = report.data;
   const rows = data?.rows ?? [];
   const total = data?.totals.cost ?? 0;

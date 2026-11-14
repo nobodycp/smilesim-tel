@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const event = (id: string, result: string) => ({
@@ -8,7 +8,7 @@ const event = (id: string, result: string) => ({
 
 // A filter change asks the server for the new list and keeps the rows on screen until it lands: no blank table.
 test('a filter change keeps the previous rows until the new list arrives', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /audit': (url) =>
       url.searchParams.get('result') === 'fail'
         ? { body: { total: 1, items: [event('f1', 'fail')], nextCursor: null }, delay: 1500 }
@@ -33,7 +33,7 @@ test('taking a task on page 3 keeps the reader on page 3, with rows on screen wh
   });
   const all = Array.from({ length: 25 }, (_, i) => task(i));
   let taken = 0;
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /tasks': (url) => {
       const start = Number(url.searchParams.get('cursor') ?? 0);
       return {

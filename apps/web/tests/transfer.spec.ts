@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { expectNames, pickName, serveOffice, type Routes } from './desk';
+import { expectNames, pickName, serveApi, type Routes } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const main = 'http://main.localhost:3910';
@@ -15,7 +15,7 @@ const user = (loginName: string, nickname: string, layer: string, parentLoginNam
   canEnter: false, canFreeze: false, canDelete: false, ...patch,
 });
 
-// What `GET /me` answers. `serveOffice` has a profile per door, but its grants are those of a plain account;
+// What `GET /me` answers. `serveApi` has a profile per door, but its grants are those of a plain account;
 // a transfer needs its own grants, and a stop or an impersonation changes what the page offers.
 const me = (layer: string, loginName: string, grants: string[], patch: Record<string, unknown> = {}) => ({
   loginName, nickname: loginName, layer, isBranchOwner: layer === 'branch', grants, stops: [], impersonating: false, balance: 1000, ceiling: 0, ...patch,
@@ -80,7 +80,7 @@ const accountGroups = (dialog: Locator) => ({
 
 test('branch moves an agent: destination, preview, five choices, request body', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /me': () => ({ body: branchMe() }),
     'GET /users': () => ({ body: { users: tree } }),
     'GET /users/ag1/transfer-preview': () => ({ body: agentPreview }),
@@ -129,7 +129,7 @@ test('branch moves an agent: destination, preview, five choices, request body', 
 });
 
 test('a point of sale asks three choices, shows no terms for what is below it, and sends no child choice', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /me': () => ({ body: branchMe() }),
     'GET /users': () => ({ body: { users: tree } }),
     'GET /users/pos1/transfer-preview': () => ({ body: posPreview }),
@@ -161,7 +161,7 @@ test('a point of sale asks three choices, shows no terms for what is below it, a
 });
 
 test('a refused preview shows its message in the dialog and opens no choices', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /me': () => ({ body: branchMe() }),
     'GET /users': () => ({ body: { users: tree } }),
     'GET /users/ag1/transfer-preview': () => ({ status: 403, body: { code: 'FORBIDDEN', message: 'غير مسموح' } }),
@@ -175,7 +175,7 @@ test('a refused preview shows its message in the dialog and opens no choices', a
 });
 
 test('changing the destination reads its own preview and keeps the choices already made', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     'GET /me': () => ({ body: branchMe() }),
     'GET /users': () => ({ body: { users: tree } }),
     'GET /users/ag1/transfer-preview': (url) => ({
@@ -199,7 +199,7 @@ test('changing the destination reads its own preview and keeps the choices alrea
 });
 
 test('a late preview of an earlier destination never replaces the one now chosen', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /me': () => ({ body: branchMe() }),
     'GET /users': () => ({ body: { users: tree } }),
     'GET /users/ag1/transfer-preview': (url) => (
@@ -223,7 +223,7 @@ test('a late preview of an earlier destination never replaces the one now chosen
 });
 
 test('a main agent sees only its own agents as destinations and no «نقل» on agent rows', async ({ page }) => {
-  await serveOffice(page, 'main_agent', {
+  await serveApi(page, 'main_agent', {
     'GET /me': () => ({ body: me('main_agent', 'main1', ['transferLines', 'transferPos']) }),
     'GET /users': () => ({ body: { users: chain } }),
   });
@@ -247,7 +247,7 @@ for (const ask of [
   { grants: ['transferLines'], pos: 0, agent: 0 },
 ]) {
   test(`the «نقل» item follows the grant of the kind it moves: ${ask.grants.join()}`, async ({ page }) => {
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /me': () => ({ body: branchMe({ grants: ask.grants }) }),
       'GET /users': () => ({ body: { users: tree } }),
     });
@@ -263,7 +263,7 @@ for (const ask of [
 
 for (const [why, patch] of [['transfer is stopped on the actor path', { stops: ['transfer'] }], ['the session is an impersonation', { impersonating: true }]] as const) {
   test(`«نقل» is absent when ${why}`, async ({ page }) => {
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /me': () => ({ body: branchMe(patch) }),
       'GET /users': () => ({ body: { users: tree } }),
     });
@@ -278,7 +278,7 @@ for (const [why, patch] of [['transfer is stopped on the actor path', { stops: [
 }
 
 test('the term groups sit side by side on a wide screen and stack on a narrow one; every choice is a 44px target', async ({ page }) => {
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /me': () => ({ body: branchMe() }),
     'GET /users': () => ({ body: { users: tree } }),
     'GET /users/ag1/transfer-preview': () => ({ body: agentPreview }),
@@ -352,7 +352,7 @@ for (const locale of ['ar', 'en', 'he'] as const) {
     const w = words[locale];
     await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: admin }]);
     await page.setViewportSize({ width: 1440, height: 900 });
-    await serveOffice(page, 'branch', {
+    await serveApi(page, 'branch', {
       'GET /me': () => ({ body: branchMe() }),
       'GET /users': () => ({ body: { users: tree } }),
       'GET /users/ag1/transfer-preview': () => ({ body: agentPreview }),
@@ -396,7 +396,7 @@ const line = {
 };
 
 function serveNumber(page: Page, patch: Record<string, unknown> = {}, extra: Routes = {}) {
-  return serveOffice(page, 'agent', {
+  return serveApi(page, 'agent', {
     'GET /me': () => ({ body: me('agent', 'agent1', ['transferLines'], patch) }),
     'GET /lines/ln1': () => ({ body: { line, history: [] } }),
     'GET /packages': () => ({ body: { packages: [], companies: [] } }),

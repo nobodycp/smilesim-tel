@@ -4,9 +4,9 @@ import type { AccountAccess, Page, UserRow } from '../../lib/api-types';
 /** The accounts calls of the office API. Composed into `api` by lib/api.ts. */
 export const accountsApi = {
   /** One page of the users table; the server filters, orders (layer, then login) and counts. */
-  officeUsersPage: (query: { q?: string; layer?: string; cursor?: string | null }) =>
+  usersPage: (query: { q?: string; layer?: string; cursor?: string | null }) =>
     request<Page<UserRow>>('GET', `/office/users${queryString(query)}`),
-  officeAccount: (loginName: string) => request<AccountAccess>('GET', `/office/users/${segment(loginName)}`),
+  account: (loginName: string) => request<AccountAccess>('GET', `/office/users/${segment(loginName)}`),
   saveAccountAccess: (loginName: string, body: { extraGrants: string[]; deniedGrants: string[]; extraRoleIds: string[]; roleId?: string }) =>
     request<{ ok: true }>('PATCH', `/office/users/${segment(loginName)}/access`, body),
   createUser: (body: { loginName: string; nickname: string; password: string; layer: string; parentLoginName?: string; roleId?: string }) =>

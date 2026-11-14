@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { pickName, serveOffice, type Routes } from './desk';
+import { pickName, serveApi, type Routes } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 
@@ -42,7 +42,7 @@ async function openFromUserPage(page: import('@playwright/test').Page) {
 }
 
 test('the user page groups existing numbers and saves two new prices', async ({ page }) => {
-  const calls = await serveOffice(page, 'agent', userRoutes());
+  const calls = await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
 
   await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
@@ -65,7 +65,7 @@ test('the user page groups existing numbers and saves two new prices', async ({ 
 });
 
 test('one click on save sends a price typed without Enter', async ({ page }) => {
-  await serveOffice(page, 'agent', userRoutes());
+  await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
   await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
 
@@ -79,7 +79,7 @@ test('one click on save sends a price typed without Enter', async ({ page }) => 
 });
 
 test('follow the current price fills every row', async ({ page }) => {
-  await serveOffice(page, 'agent', userRoutes());
+  await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
 
   await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
@@ -97,7 +97,7 @@ test('follow the current price fills every row', async ({ page }) => {
 });
 
 test('a bad price is refused in the dialog and a cleared one leaves the group alone', async ({ page }) => {
-  const calls = await serveOffice(page, 'agent', userRoutes());
+  const calls = await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
   await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
 
@@ -120,7 +120,7 @@ test('a bad price is refused in the dialog and a cleared one leaves the group al
 });
 
 test('a refused price keeps the dialog open when save is pressed', async ({ page }) => {
-  const calls = await serveOffice(page, 'agent', userRoutes());
+  const calls = await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
   await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
 
@@ -139,7 +139,7 @@ test('a refused price keeps the dialog open when save is pressed', async ({ page
 });
 
 test('a package without renewable numbers has no entry, and an empty table says so', async ({ page }) => {
-  await serveOffice(page, 'agent', {
+  await serveApi(page, 'agent', {
     ...userRoutes(),
     'GET /users/pos/packages': () => ({ body: userSheet(row('lian-wecom-150', '150 جيجا'), row('lian-wecom-400', '400 جيجا', { lines: 0 })) }),
     'GET /packages/lian-wecom-150/line-prices': () => ({ body: { current: 3500, groups: [] } }),
@@ -185,7 +185,7 @@ function sheetRoutes(): Routes {
 }
 
 test('the package sheet opens the table for the whole system and then for one account', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     ...sheetRoutes(),
     'GET /packages/lian-wecom-500/line-prices': (url) => ({
       body: url.searchParams.get('scope') === 'all'
@@ -216,7 +216,7 @@ test('the package sheet opens the table for the whole system and then for one ac
 });
 
 test('a custom price row opens the table for its account', async ({ page }) => {
-  const calls = await serveOffice(page, 'branch', {
+  const calls = await serveApi(page, 'branch', {
     ...sheetRoutes(),
     'GET /packages/lian-wecom-500/line-prices': () => ({ body: { current: 2900, groups: [{ price: 3200, count: 2 }] } }),
     'PUT /packages/lian-wecom-500/line-prices': () => ({ body: { ok: true, lines: 2 } }),
@@ -239,7 +239,7 @@ test('a custom price row opens the table for its account', async ({ page }) => {
 
 test('opening the table again after a save waits for the new table instead of showing the old one', async ({ page }) => {
   let saved = false;
-  await serveOffice(page, 'agent', {
+  await serveApi(page, 'agent', {
     ...userRoutes(),
     'GET /packages/lian-wecom-150/line-prices': () => (saved
       ? { body: { current: 3700, groups: [{ price: 3700, count: 150 }] }, delay: 800 }

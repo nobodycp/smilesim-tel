@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveOffice } from './desk';
+import { serveApi } from './desk';
 
 const sky = { code: 'sky', name: 'سكاي', purchases: 6500, payments: 0, settlements: 0, balance: -6500, creditLimit: 0, held: 0, available: -6500 };
 const run = {
@@ -14,7 +14,7 @@ const run = {
 // Reconciliation (roadmap N8): upload a statement, pick its columns, compare, and handle each difference.
 test('the branch uploads a statement, compares it and handles a difference', async ({ page }) => {
   let ran = false;
-  await serveOffice(page, 'branch', {
+  await serveApi(page, 'branch', {
     'GET /provider-accounts/sky': () => ({ body: { summary: sky, ledger: [], capped: false } }),
     'GET /provider-accounts/sky/reconciliations': () => ({ body: { runs: ran ? [{ ...run, open: 2 }] : [] } }),
     'POST /provider-accounts/sky/statements/preview': () => ({ body: { columns: ['رقم', 'تاريخ', 'مبلغ'], sample: [['0521000001', '06/11/2026', '35']], rows: 4, map: { msisdn: 0, date: 1, amount: 2, reference: null } } }),

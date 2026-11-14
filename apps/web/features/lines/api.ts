@@ -3,9 +3,9 @@ import type { ActivateBody, ApplyResult, DisconnectQuote, LineDetail, LineHistor
 
 /** The lines calls of the office API. Composed into `api` by lib/api.ts. */
 export const linesApi = {
-  officeLines: (query?: { q?: string; status?: string; packageCode?: string; provider?: string; company?: string; sim?: string; loginName?: string; cursor?: string | null }) =>
+  lines: (query?: { q?: string; status?: string; packageCode?: string; provider?: string; company?: string; sim?: string; loginName?: string; cursor?: string | null }) =>
     request<Page<LineRow> & { poses: PosChoice[] }>('GET', `/office/lines${queryString(query)}`),
-  officeLine: (id: string) => request<{ line: LineDetail; history: LineHistory[] }>('GET', `/office/lines/${segment(id)}`),
+  line: (id: string) => request<{ line: LineDetail; history: LineHistory[] }>('GET', `/office/lines/${segment(id)}`),
   /** `requestKey` names this activation (lib/request-key.ts): sent again with it, the API answers the first one. */
   activateLine: (body: ActivateBody, requestKey: string) => request<ApplyResult>('POST', '/office/lines', body, { 'idempotency-key': requestKey }),
   extendLine: (id: string, outcome: Outcome) => request<ApplyResult>('POST', `/office/lines/${segment(id)}/extend`, { outcome }),

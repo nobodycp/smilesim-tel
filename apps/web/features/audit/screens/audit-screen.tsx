@@ -44,10 +44,10 @@ export function AuditScreen() {
   const from = periodFrom(days);
   const to = '';
   // The figures: the events of the period under the filters, failed sign-ins and price changes.
-  const failed = useApiQuery(['office', 'audit', 'failed-logins', from], () => api.officeAudit({ action: 'login', result: 'fail', from, addresses: '1' }));
-  const prices = useApiQuery(['office', 'audit', 'price-edits', from], () => api.officeAudit({ action: 'package_price', from }));
+  const failed = useApiQuery(['api', 'audit', 'failed-logins', from], () => api.audit({ action: 'login', result: 'fail', from, addresses: '1' }));
+  const prices = useApiQuery(['api', 'audit', 'price-edits', from], () => api.audit({ action: 'package_price', from }));
   const list = usePaged<ActivityRow>(`${action}|${result}|${layer}|${q}|${from}|${to}`, async (cursor) =>
-    pick(await api.officeAudit({ action, result, layer, q, from, to, cursor }), pageRows),
+    pick(await api.audit({ action, result, layer, q, from, to, cursor }), pageRows),
   );
 
   const columns: Column<ActivityRow>[] = [
