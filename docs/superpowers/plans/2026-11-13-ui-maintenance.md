@@ -681,9 +681,31 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
 (:235, layout containment) and `backdrop-filter` (:238–239), each of which makes it the containing block for
 positioned descendants; the evidence note states these three facts with their measured lines). Do **not** shrink by vw instead. Both popups
   then render the same bar-wide sheet at every width ≤767.
+  *Amended in P0.6 (measured, `audit-output/maintenance/P0.6/`):* the same new block also caps the notice list,
+  `.notice-wrap .shell-panel { max-height: min(480px, calc(100dvh - 100% - 0.6rem - var(--rd-space-2))); }`, with a
+  comment. Anchored to the topbar, the panel starts under the whole bar, not under the bell: the phone topbar is
+  101px tall (two rows) and 151px at 320 on the main, agent and pos doors (the wallet chip wraps a third row), so the
+  panel's top is at 109.6px / 159.6px. With the plain 480px cap its bottom reached 589.6px at 320×568 (22px past the
+  screen; before the slice it was 541.6px, under the bell). `100%` in an absolutely positioned box's `max-height`
+  resolves against its containing block, here the topbar's padding box, so the list ends `--rd-space-2` above the
+  screen's bottom whatever the bar's height, and scrolls inside as it does today. At 375×667 and taller nothing
+  changes: the formula gives more than 480px there.
+  *Fix round 1:* the search sheet needs the same cap. Anchored to the topbar it starts at 106px (156px on a
+  three-row bar) instead of about 58px, so field plus results (`min(420px, 60vh)`) ran past a short or landscape
+  screen (667×375: bottom 395px, 20px past; 568×320: 42px past), where it fitted before. The same block makes the open
+  `.shell-search-desk` a column flex box with `gap: 0` (it is a `<form>`, and forms.css gives forms a gap) and
+  `max-height: calc(100dvh - 100% - 6px - var(--rd-space-2))`, keeps the field at its height (`flex: none`) and lets
+  the results shrink (`min-height: 0`), which scroll as they do today. Where the sheet already fits nothing moves.
+  CHK-LOOK adds short and landscape screens on all four doors: 320×480, 568×320, 640×360, 667×375, 736×414, 740×360 and
+  767×400, both sheets inside the viewport.
+  *Fix round 2:* step (1) also deletes `display: block;` from that rule, so "the rest of that rule stays" now means
+  everything but the two insets, the width and the display. The new block's `display: flex` has the same media
+  condition, selector and specificity and comes later, so it always won; the old line was a dead same-key duplicate.
+  No computed value changes (re-read of the open search sheet at 320–768 and on short screens:
+  `audit-output/maintenance/P0.6/fix2/`, `display: flex` at every width ≤767).
 - **Closes:** 3.2-01.
 - **Risks:** under 900px the topbar has two rows (path row below, responsive.css:22–26), so the menus open under the
-  path row — accepted (spec D16 note in R1); check the notice panel's `max-height: 480px` still fits at 375×667.
+  path row — accepted (spec D16 note in R1); check the notice panel's `max-height: 480px` still fits at 375×667 (amended in P0.6: it does; at 320×568 it did not, so the new block caps it, and on short and landscape screens the search sheet too, see Steps).
   Conflict 4: this must land before P6.5 grows topbar icons. Other `.shell-panel` users (account menu, language) are
   not in these wrappers — grep `shell-panel` in `components/` and confirm.
 - **Verify:** CHK-LOCAL; CHK-LOOK any desk page at 320, 375, 390, 600, 767, 768, 899, 900 with search open and with
