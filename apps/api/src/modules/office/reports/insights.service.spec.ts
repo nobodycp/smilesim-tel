@@ -1,7 +1,7 @@
 import { ReportsRepository } from './reports.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Actor } from '../kernel/types';
+import type { Actor } from '../../access/types';
 import type { WalletsService } from '../wallets/wallets.service';
 import { InsightsService } from './insights.service';
 import { csvOf } from './report-csv';

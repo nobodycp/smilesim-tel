@@ -1,5 +1,6 @@
 import { TasksRepository } from './tasks.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { WalletsModule } from '../wallets/wallets.module';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
@@ -10,7 +11,7 @@ export const TASKS_CONTROLLERS = [TasksController];
 export const TASKS_PROVIDERS = [TasksRepository, TasksService];
 
 @Module({
-  imports: [KernelModule, WalletsModule],
+  imports: [PlatformModule, AccessModule, WalletsModule],
   controllers: TASKS_CONTROLLERS,
   providers: TASKS_PROVIDERS,
   exports: [TasksService],

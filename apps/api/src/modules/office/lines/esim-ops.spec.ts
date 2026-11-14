@@ -1,5 +1,5 @@
-import { open } from '../../shared/secret-box';
-import { useSealingKey } from '../../shared/testing/sealing-key';
+import { open } from '../../platform/secret-box';
+import { useSealingKey } from '../../platform/testing/sealing-key';
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from '../testing/test-hash';

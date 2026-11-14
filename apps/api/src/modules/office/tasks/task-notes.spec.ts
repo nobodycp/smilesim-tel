@@ -1,8 +1,8 @@
 import { TasksRepository } from './tasks.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Actor } from '../kernel/types';
-import { ApiFailure } from '../../shared/api-failure';
+import type { Actor } from '../../access/types';
+import { ApiFailure } from '../../platform/api-failure';
 import { TasksService } from './tasks.service';
 
 // Task notes and statuses (spec 2026-11-09-offers-tasks-addons-wallet-esim, 2): an internal note is the branch's

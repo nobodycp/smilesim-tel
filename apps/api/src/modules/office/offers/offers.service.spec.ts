@@ -1,8 +1,8 @@
 import { OffersRepository } from './offers.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Actor } from '../kernel/types';
-import { ApiFailure } from '../../shared/api-failure';
+import type { Actor } from '../../access/types';
+import { ApiFailure } from '../../platform/api-failure';
 import { OffersService, offerShows } from './offers.service';
 
 // Offers on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1).

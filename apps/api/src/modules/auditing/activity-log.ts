@@ -1,7 +1,7 @@
 export const ACTIVITY_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
-// The actions an event may name are the platform's (`shared/activity.ts`): every module records through the port.
-export { ACTIVITY_ACTIONS, type ActivityAction } from '../shared/activity';
+// The actions an event may name are the platform's (`platform/activity.ts`): every module records through the port.
+export { ACTIVITY_ACTIONS, type ActivityAction } from '../platform/activity';
 
 export function purgeBefore(now: Date = new Date()): Date {
   return new Date(now.getTime() - ACTIVITY_RETENTION_MS);

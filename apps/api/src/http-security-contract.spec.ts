@@ -4,7 +4,7 @@ import { join, relative } from 'node:path';
 import { Controller, Post, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { DuplicateGuardInterceptor } from './modules/shared/duplicate-guard.interceptor';
+import { DuplicateGuardInterceptor } from './modules/platform/duplicate-guard.interceptor';
 import { ROUTES } from './modules/office/testing/office-routes';
 
 // What protects a write route, and what a route would lose by moving (ADR 0020, slice R.0).
@@ -161,7 +161,7 @@ describe('the write routes, as the source has them', () => {
 
 describe('the duplicate guard and the idempotency key', () => {
   it('the guard is keyed on the prefix, and on nothing else: its condition is the one this spec reads', () => {
-    const guard = readFileSync(join(SRC, 'modules/shared/duplicate-guard.interceptor.ts'), 'utf8');
+    const guard = readFileSync(join(SRC, 'modules/platform/duplicate-guard.interceptor.ts'), 'utf8');
     expect(guard).toContain(`!path.startsWith('${GUARDED_PREFIX}')`);
     expect(guard.match(/path\.startsWith\(/g)).toHaveLength(1);
   });

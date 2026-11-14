@@ -5,7 +5,7 @@ import { ActivityModule } from './auditing/activity.module';
 import { NoticeWriterModule } from './notifications/notice-writer.module';
 import { OfficeModule } from './office/office.module';
 import { featureModules } from './registry';
-import { PrismaModule } from './shared/prisma.service';
+import { PrismaModule } from './platform/prisma.service';
 
 describe('featureModules', () => {
   it('registers every feature module', () => {

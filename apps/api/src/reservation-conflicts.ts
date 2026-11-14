@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { createPrismaClient } from './db';
 import { conflictLines, type ReservationConflict } from './modules/office/lines/reservation.rules';
-import { errorCode, logger } from './modules/shared/log';
+import { errorCode, logger } from './modules/platform/log';
 
 const log = logger('ReservationConflicts');
 

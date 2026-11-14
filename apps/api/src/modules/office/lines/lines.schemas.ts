@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { id, optionalText, providerHint, queryCursor, queryOneOf, queryText } from '../../shared/schemas';
+import { id, optionalText, providerHint, queryCursor, queryOneOf, queryText } from '../../platform/schemas';
 import { RESULT_LIMITS } from '../providers/operations/provider-operation.rules';
-import { LINE_STATUSES } from '../rules/office-paging';
+import { LINE_STATUSES } from '../../sales/rules/line-filters';
 import { DECISIONS } from './activation-settlement.rules';
 
 // The bodies of the line routes (backend-engineering.mdc 4.1). A field whose malformed value has its own

@@ -5,8 +5,8 @@ import IORedis from 'ioredis';
 import request from 'supertest';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { capturedOutput } from '../../shared/testing/captured-output';
-import { DuplicateGuardInterceptor, type WriteStore } from '../../shared/duplicate-guard.interceptor';
+import { capturedOutput } from '../../platform/testing/captured-output';
+import { DuplicateGuardInterceptor, type WriteStore } from '../../platform/duplicate-guard.interceptor';
 import type { NoticeService } from '../../notifications/notice.service';
 import { officeTestApp } from '../testing/office-test-app';
 

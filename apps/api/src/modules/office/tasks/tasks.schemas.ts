@@ -1,6 +1,6 @@
-import type { Action } from '../kernel/types';
-import { TASK_STATUSES } from '../rules/office-paging';
-import { queryCursor, queryOneOf, queryText } from '../../shared/schemas';
+import type { Action } from '../../catalog/rules/actions';
+import { TASK_STATUSES } from './task-status';
+import { queryCursor, queryOneOf, queryText } from '../../platform/schemas';
 import { z } from 'zod';
 
 /** The longest note or refusal reason written on a task. */

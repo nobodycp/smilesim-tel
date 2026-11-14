@@ -1,7 +1,7 @@
 import { WalletsRepository } from './wallets.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Actor } from '../kernel/types';
+import type { Actor } from '../../access/types';
 import { WalletsService } from './wallets.service';
 
 // Each account sees what it earned on a sale (roadmap N4): from the chain kept on the entry, or, for an older sale,

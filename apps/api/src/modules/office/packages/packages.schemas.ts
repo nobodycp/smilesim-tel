@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { agorot, optionalAgorot, text } from '../../shared/schemas';
-import { ACTION_KEYS } from '../rules/run-modes';
+import { agorot, optionalAgorot, text } from '../../platform/schemas';
+import { ACTION_KEYS } from '../../catalog/rules/run-modes';
 
 // The bodies of the package routes (backend-engineering.mdc 4.1). The service parses them with `parseInput`
 // after its permission checks; the controller documents each route from the same schema.

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { createPrismaClient } from './db';
-import { errorCode, logger } from './modules/shared/log';
+import { errorCode, logger } from './modules/platform/log';
 
 const log = logger('TwoFactorMethods');
 

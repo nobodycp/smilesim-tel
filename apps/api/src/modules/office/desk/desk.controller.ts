@@ -3,9 +3,9 @@ import { ApiZodQuery } from '../../../openapi/query';
 import { Controller, Get, Query, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../../shared/activity.interceptor';
-import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../kernel/types';
+import { ActivityInterceptor } from '../../platform/activity.interceptor';
+import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
+import type { Actor as ActorShape } from '../../access/types';
 import { DeskService } from './desk.service';
 import { OverviewService } from './overview.service';
 

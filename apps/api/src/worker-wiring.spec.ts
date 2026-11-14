@@ -5,15 +5,15 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type IORedis from 'ioredis';
 import type { PrismaClient } from './generated/prisma/client';
 import { AUTH_STORE } from './modules/auth/auth.store';
-import { ActivityRecorder } from './modules/shared/activity';
+import { ActivityRecorder } from './modules/platform/activity';
 import { NoticeService } from './modules/notifications/notice.service';
 import { NoticeInboxService } from './modules/notifications/notice-inbox.service';
-import { UnitOfWork } from './modules/office/kernel/unit-of-work';
+import { UnitOfWork } from './modules/platform/unit-of-work';
 import { ProviderDecisions } from './modules/office/lines/provider-decisions';
-import { NOTICE_WRITER } from './modules/shared/notices';
+import { NOTICE_WRITER } from './modules/platform/notices';
 import { OFFICE_PROVIDERS } from './modules/office/office.module';
 import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate';
-import { API_PROVIDERS } from './modules/shared/api-providers';
+import { API_PROVIDERS } from './modules/platform/api-providers';
 import { buildProviderDispatch } from './provider-dispatch';
 
 // The worker builds the money path by hand (`provider-dispatch.ts`); the API builds the same classes through its

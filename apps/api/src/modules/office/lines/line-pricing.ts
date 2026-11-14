@@ -1,15 +1,16 @@
 import { LinesRepository } from './lines.repository';
 import { PriceLadder } from '../terms/price-ladder';
-import { AccountTree } from '../kernel/account-tree';
-import { UnitOfWork } from '../kernel/unit-of-work';
+import { AccountTree } from '../../access/account-tree';
+import { UnitOfWork } from '../../platform/unit-of-work';
 import { Injectable } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '../../../generated/prisma/client';
-import { fail } from '../../shared/api-failure';
-import { lineTermsOf } from '../kernel/line-terms';
-import { lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf } from '../rules/periods';
-import { type LineTerms } from '../rules/prices';
-import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
-import { buyPriceFor, visibleTo, type LayerPrices, type PathNode, type PriceKind } from '../rules/user-terms';
+import { fail } from '../../platform/api-failure';
+import { lineTermsOf } from '../../pricing/line-terms';
+import { lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf } from '../../sales/rules/periods';
+import { type LineTerms } from '../../pricing/rules/prices';
+import { packageTermsOf, type PackagePriceRow } from '../../pricing/rules/package-terms';
+import { buyPriceFor, visibleTo, type LayerPrices, type PriceKind } from '../../pricing/rules/user-terms';
+import type { PathNode } from '../../access/types';
 
 type Db = Prisma.TransactionClient | PrismaClient;
 type PricedLine = { id: string; endsAt: Date; terms: Prisma.JsonValue; package: PackagePriceRow };

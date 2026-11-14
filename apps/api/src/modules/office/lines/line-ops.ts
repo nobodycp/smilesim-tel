@@ -1,8 +1,8 @@
-import { fail } from '../../shared/api-failure';
-import type { Account, Actor } from '../kernel/types';
-import { visibleAccountIds } from '../rules/account-visibility';
-import { resolvePackageMode, type ActionKey } from '../rules/run-modes';
-import { isOpKey, type OpKey } from '../rules/user-terms';
+import { fail } from '../../platform/api-failure';
+import type { Account, Actor } from '../../access/types';
+import { visibleAccountIds } from '../../access/account-visibility';
+import { resolvePackageMode, type ActionKey } from '../../catalog/rules/run-modes';
+import { isOpKey, type OpKey } from '../../pricing/rules/user-terms';
 
 // Pure rules about which operation may run on a number. No database, no Nest.
 

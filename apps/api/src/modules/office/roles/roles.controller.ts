@@ -1,11 +1,11 @@
-import { Activity, bodyField, param } from '../../shared/activity.decorator';
+import { Activity, bodyField, param } from '../../platform/activity.decorator';
 import { Body, Controller, Get, Param, Post, Put, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../../shared/activity.interceptor';
-import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../kernel/types';
+import { ActivityInterceptor } from '../../platform/activity.interceptor';
+import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
+import type { Actor as ActorShape } from '../../access/types';
 import { RoleBody } from './roles.schemas';
 import { RolesService } from './roles.service';
 

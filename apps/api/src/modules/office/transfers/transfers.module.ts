@@ -1,5 +1,6 @@
 import { TransfersRepository } from './transfers.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { LinesModule } from '../lines/lines.module';
 import { TermsModule } from '../terms/terms.module';
 import { WalletsModule } from '../wallets/wallets.module';
@@ -12,7 +13,7 @@ export const TRANSFERS_CONTROLLERS = [TransfersController];
 export const TRANSFERS_PROVIDERS = [TransfersRepository, TransfersService];
 
 @Module({
-  imports: [KernelModule, TermsModule, LinesModule, WalletsModule],
+  imports: [PlatformModule, AccessModule, TermsModule, LinesModule, WalletsModule],
   controllers: TRANSFERS_CONTROLLERS,
   providers: TRANSFERS_PROVIDERS,
   exports: [],

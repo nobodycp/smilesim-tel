@@ -1,7 +1,7 @@
 import { WalletsRepository } from './wallets.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Actor } from '../kernel/types';
+import type { Actor } from '../../access/types';
 import { WalletsService } from './wallets.service';
 
 // «المالية» (owner 2026-11-09: «شامله كل العمليات للاب والابناء الي تحته»): every entry of the viewer and the

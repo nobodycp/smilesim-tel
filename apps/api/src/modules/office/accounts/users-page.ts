@@ -1,4 +1,4 @@
-import { encodeKeyCursor, keyCursor } from '../../shared/paging';
+import { encodeKeyCursor, keyCursor } from '../../platform/paging';
 
 // The users list and the directory, paged by the server. The list is ordered by layer (branch, main agent, agent, point of sale)
 // and then by login name, the order the desk always drew; `q` matches the login or the full name as typed, and
@@ -23,7 +23,7 @@ export function cursorOf(row: Row) {
   return encodeKeyCursor(`${rank(row.layer)}:${row.loginName}`);
 }
 
-/** The place a cursor names; a cursor this list did not issue is 400 INVALID (shared/paging.ts). */
+/** The place a cursor names; a cursor this list did not issue is 400 INVALID (platform/paging.ts). */
 function readCursor(cursor: string | undefined) {
   const key = keyCursor(cursor);
   if (key === undefined) return null;

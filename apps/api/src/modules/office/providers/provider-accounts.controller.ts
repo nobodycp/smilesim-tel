@@ -1,14 +1,14 @@
-import { PeriodQuery } from '../../shared/schemas';
+import { PeriodQuery } from '../../platform/schemas';
 import { ApiZodQuery } from '../../../openapi/query';
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, NoActivity, param } from '../../shared/activity.decorator';
-import { ActivityInterceptor } from '../../shared/activity.interceptor';
-import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../kernel/types';
+import { Activity, NoActivity, param } from '../../platform/activity.decorator';
+import { ActivityInterceptor } from '../../platform/activity.interceptor';
+import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
+import type { Actor as ActorShape } from '../../access/types';
 import { ProviderAccountsService } from './provider-accounts.service';
 import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from './providers.schemas';
 

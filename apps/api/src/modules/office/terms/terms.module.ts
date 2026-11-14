@@ -1,5 +1,6 @@
 import { TermsRepository } from './terms.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { PriceLadder } from './price-ladder';
 import { TermsController } from './terms.controller';
 import { TermsService } from './terms.service';
@@ -10,7 +11,7 @@ export const TERMS_CONTROLLERS = [TermsController];
 export const TERMS_PROVIDERS = [TermsRepository, TermsService, PriceLadder];
 
 @Module({
-  imports: [KernelModule],
+  imports: [PlatformModule, AccessModule],
   controllers: TERMS_CONTROLLERS,
   providers: TERMS_PROVIDERS,
   exports: [TermsService, PriceLadder],

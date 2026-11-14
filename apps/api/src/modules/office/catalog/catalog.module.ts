@@ -1,4 +1,5 @@
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { RolesModule } from '../roles/roles.module';
 import { CatalogSeed } from './catalog-seed';
 import { Module } from '@nestjs/common';
@@ -8,7 +9,7 @@ export const CATALOG_CONTROLLERS = [];
 export const CATALOG_PROVIDERS = [CatalogSeed];
 
 @Module({
-  imports: [KernelModule, RolesModule],
+  imports: [PlatformModule, AccessModule, RolesModule],
   controllers: CATALOG_CONTROLLERS,
   providers: CATALOG_PROVIDERS,
   exports: [],

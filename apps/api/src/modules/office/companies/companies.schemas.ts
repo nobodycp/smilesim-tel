@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { agorot, dataUrl } from '../../shared/schemas';
-import { SIM_LENGTH_MAX, SIM_LENGTH_MIN } from '../rules/sim-rules';
+import { agorot, dataUrl } from '../../platform/schemas';
+import { SIM_LENGTH_MAX, SIM_LENGTH_MIN } from '../../catalog/rules/sim-rules';
 
 // The bodies of the company routes (backend-engineering.mdc 4.1). The service parses them with `parseInput`
 // after its permission checks; the controller documents each route from the same schema.

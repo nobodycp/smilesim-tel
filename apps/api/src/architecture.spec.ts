@@ -149,7 +149,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
     check('untyped-body', hits(production.filter(({ file }) => file.endsWith('.controller.ts')), /@Body\(\) \w+: (Record<string, unknown>|unknown)|schema: freeFormObject/));
   });
 
-  it('4.7 list-envelope: a paged answer is { items, nextCursor, total } (shared/paging.ts)', () => {
+  it('4.7 list-envelope: a paged answer is { items, nextCursor, total } (platform/paging.ts)', () => {
     // An object that carries `nextCursor` names its rows `items`. Left on purpose until their slices of the
     // lists-and-routes plan: the users page (L.9) and the three report shapes (L.17).
     const answers = hits(domains, /return \{/, (match, text) => {

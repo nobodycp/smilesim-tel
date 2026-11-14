@@ -1,9 +1,9 @@
-import { UnitOfWork } from '../kernel/unit-of-work';
+import { UnitOfWork } from '../../platform/unit-of-work';
 import { INestApplication, type NestInterceptor } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
-import { ActivityRecorder } from '../../shared/activity';
-import { API_PROVIDERS } from '../../shared/api-providers';
+import { ActivityRecorder } from '../../platform/activity';
+import { API_PROVIDERS } from '../../platform/api-providers';
 import { NoticeService } from '../../notifications/notice.service';
 import { PROVIDER_GATEWAY, type ProviderGateway } from '../providers/gateway/provider-gateway';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';

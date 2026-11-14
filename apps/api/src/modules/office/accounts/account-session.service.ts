@@ -1,8 +1,8 @@
 import { AUTH_STORE, type AuthStore } from '../../auth/auth.store';
 import { Inject, Injectable } from '@nestjs/common';
-import { parseInput } from '../../shared/input';
-import { fail } from '../../shared/api-failure';
-import type { Gate } from '../kernel/types';
+import { parseInput } from '../../platform/input';
+import { fail } from '../../platform/api-failure';
+import type { Gate } from '../../platform/cookies';
 import { HandoffBody } from './accounts.schemas';
 import { handoffKey } from './handoff';
 

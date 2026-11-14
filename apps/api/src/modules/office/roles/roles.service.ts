@@ -1,12 +1,12 @@
-import { LIST_CAP, capList } from '../../shared/paging';
+import { LIST_CAP, capList } from '../../platform/paging';
 import { RolesRepository } from './roles.repository';
-import { isOwner, requireOwner } from '../policy';
+import { isOwner, requireOwner } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
-import { parseInput } from '../../shared/input';
-import { fail } from '../../shared/api-failure';
-import type { Actor } from '../kernel/types';
-import { LAYER_ORDER } from '../kernel/values';
-import { FLAG_CODES, flagsFor, roleGrantCodes, splitGrants } from '../rules/office-grants';
+import { parseInput } from '../../platform/input';
+import { fail } from '../../platform/api-failure';
+import type { Actor } from '../../access/types';
+import { LAYER_ORDER } from '../../platform/values';
+import { FLAG_CODES, flagsFor, roleGrantCodes, splitGrants } from '../../access/grants';
 import { RoleBody } from './roles.schemas';
 
 /** Roles, for the branch owner: the four layer roles and the job roles, with their grants. */

@@ -1,4 +1,4 @@
-import { ApiFailure } from '../../shared/api-failure';
+import { ApiFailure } from '../../platform/api-failure';
 import { tree } from '../testing/tree.fixture';
 
 // Backend review 2026-11-10, M1–M8: a number's state is locked and checked again inside the transaction, so a

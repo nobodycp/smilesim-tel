@@ -1,6 +1,6 @@
 import type { SendGate, SendPermit } from '../dispatch/dispatch-gate';
-import { errorCode, logger } from '../../../shared/log';
-import { ApiFailure } from '../../../shared/api-failure';
+import { errorCode, logger } from '../../../platform/log';
+import { ApiFailure } from '../../../platform/api-failure';
 import { CALL_TIMEOUT_MS, outcomeOf, type OperationStatus, type OutgoingOperation, type SendEvidence } from './provider-operation.rules';
 import { ProviderOperationsService } from './provider-operations.service';
 

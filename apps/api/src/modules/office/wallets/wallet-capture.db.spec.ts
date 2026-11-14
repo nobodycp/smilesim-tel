@@ -1,11 +1,11 @@
-import { useSealingKey } from '../../shared/testing/sealing-key';
+import { useSealingKey } from '../../platform/testing/sealing-key';
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import type { Prisma } from '../../../generated/prisma/client';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { ApiFailure } from '../../shared/api-failure';
-import type { Sale } from '../kernel/types';
+import { ApiFailure } from '../../platform/api-failure';
+import type { Sale } from '../../wallets/sale';
 import type { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 import type { WalletLedger } from './wallet-ledger';

@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { ActivityRecorder } from '../shared/activity';
+import { ActivityRecorder } from '../platform/activity';
 import { PrismaActivityRecorder } from './activity-recorder';
 
 /**

@@ -2,10 +2,10 @@ import { Body, Controller, Get, Param, Put, UseInterceptors } from '@nestjs/comm
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, param } from '../../shared/activity.decorator';
-import { ActivityInterceptor } from '../../shared/activity.interceptor';
-import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../kernel/types';
+import { Activity, param } from '../../platform/activity.decorator';
+import { ActivityInterceptor } from '../../platform/activity.interceptor';
+import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
+import type { Actor as ActorShape } from '../../access/types';
 import { CompanyImageBody, CompanySimBody } from './companies.schemas';
 import { CompaniesService } from './companies.service';
 

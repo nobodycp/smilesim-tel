@@ -2,7 +2,7 @@ import { DeskRepository } from './desk.repository';
 import { WalletsRepository } from '../wallets/wallets.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Actor } from '../kernel/types';
+import type { Actor } from '../../access/types';
 import { WalletsService } from '../wallets/wallets.service';
 import { OverviewService, periodStart } from './overview.service';
 

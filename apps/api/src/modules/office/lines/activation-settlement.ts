@@ -1,9 +1,9 @@
 import type { OfficeTask, Prisma, ProviderOperation } from '../../../generated/prisma/client';
-import { errorCode, logger } from '../../shared/log';
-import { ApiFailure } from '../../shared/api-failure';
-import { open } from '../../shared/secret-box';
-import type { UnitOfWork } from '../kernel/unit-of-work';
-import type { Actor } from '../kernel/types';
+import { errorCode, logger } from '../../platform/log';
+import { ApiFailure } from '../../platform/api-failure';
+import { open } from '../../platform/secret-box';
+import type { UnitOfWork } from '../../platform/unit-of-work';
+import type { Actor } from '../../access/types';
 import type { WrittenNotice } from '../../notifications/notice.service';
 import type { TaskNoticePayload } from '../../notifications/notice-kinds';
 import type { OperationStatus } from '../providers/operations/provider-operation.rules';

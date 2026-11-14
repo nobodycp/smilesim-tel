@@ -6,10 +6,10 @@ import request from 'supertest';
 import { createPrismaClient } from '../../../db';
 import { hashSessionToken } from '../../auth/session-token';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { seal } from '../../shared/secret-box';
-import { capturedOutput } from '../../shared/testing/captured-output';
+import { seal } from '../../platform/secret-box';
+import { capturedOutput } from '../../platform/testing/captured-output';
 import { PrismaActivityRecorder } from '../../auditing/activity-recorder';
-import { ActivityRecorder } from '../../shared/activity';
+import { ActivityRecorder } from '../../platform/activity';
 import { officeTestApp } from '../testing/office-test-app';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D17; spec items 23 and 24; plan slice S.5c (API step):

@@ -1,17 +1,17 @@
 import { OfficeGraph } from '../testing/office-graph';
-import { KERNEL_PROVIDERS } from '../kernel/kernel.providers';
+import { SHARED_COLLABORATORS } from '../testing/collaborators';
 import { AUTH_STORE } from '../../auth/auth.store';
 import 'reflect-metadata';
-import { API_PROVIDERS } from '../../shared/api-providers';
+import { API_PROVIDERS } from '../../platform/api-providers';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { ActivityRecorder } from '../../shared/activity';
+import { ActivityRecorder } from '../../platform/activity';
 import { NOTICE_GROUPS, hrefFor, type NoticeDraft } from '../../notifications/notice-kinds';
 import type { NoticeService, WrittenNotice } from '../../notifications/notice.service';
 import { OFFICE_CONTROLLERS, OFFICE_PROVIDERS } from '../office.module';
 import { OfficeFacade } from '../testing/office-facade';
-import type { LineTerms } from '../rules/prices';
+import type { LineTerms } from '../../pricing/rules/prices';
 import { account, tree, type Row } from '../testing/tree.fixture';
 
 // Moving an account or a number, and what the office is told before it does.
@@ -898,7 +898,7 @@ describe('the transfer routes under /office', () => {
       controllers: OFFICE_CONTROLLERS,
       providers: [
         // Everything but the shared collaborators, which come from this service's own graph.
-        ...OFFICE_PROVIDERS.filter((provider) => !(KERNEL_PROVIDERS as unknown[]).includes(provider)),
+        ...OFFICE_PROVIDERS.filter((provider) => !(SHARED_COLLABORATORS as unknown[]).includes(provider)),
         ...API_PROVIDERS,
         ...graph.providers(),
         { provide: AUTH_STORE, useValue: graph.auth },

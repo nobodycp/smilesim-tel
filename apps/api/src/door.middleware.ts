@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { expectedLayer } from './doors';
 import { errorBody } from './errors';
 import { AUTH_STORE, AuthStore } from './modules/auth/auth.store';
-import { readCookie } from './modules/shared/cookies';
+import { readCookie } from './modules/platform/cookies';
 
 /**
  * The routes that start a session on this door. The `sid` cookie is shared by every door of the site

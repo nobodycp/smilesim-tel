@@ -1,5 +1,6 @@
 import { CompaniesRepository } from './companies.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { CompaniesController } from './companies.controller';
 import { CompaniesService } from './companies.service';
 import { Module } from '@nestjs/common';
@@ -9,7 +10,7 @@ export const COMPANIES_CONTROLLERS = [CompaniesController];
 export const COMPANIES_PROVIDERS = [CompaniesRepository, CompaniesService];
 
 @Module({
-  imports: [KernelModule],
+  imports: [PlatformModule, AccessModule],
   controllers: COMPANIES_CONTROLLERS,
   providers: COMPANIES_PROVIDERS,
   exports: [],

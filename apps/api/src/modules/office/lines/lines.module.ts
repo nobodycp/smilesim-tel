@@ -1,5 +1,6 @@
 import { LinesRepository } from './lines.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { ProvidersModule } from '../providers/providers.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { TermsModule } from '../terms/terms.module';
@@ -18,7 +19,7 @@ export const LINES_CONTROLLERS = [LinesController];
 export const LINES_PROVIDERS = [LinesRepository, LinePricing, LineReads, LineAccess, TaskCompletion, ProviderDecisions, LinesService];
 
 @Module({
-  imports: [KernelModule, TasksModule, WalletsModule, TermsModule, ProvidersModule],
+  imports: [PlatformModule, AccessModule, TasksModule, WalletsModule, TermsModule, ProvidersModule],
   controllers: LINES_CONTROLLERS,
   providers: LINES_PROVIDERS,
   exports: [LineReads, LineAccess],

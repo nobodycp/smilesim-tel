@@ -14,7 +14,7 @@ import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
 import { PasskeyBody, PasskeyLoginBody, parseBody } from './auth.schemas';
 import { AUTH_STORE, AuthStore, PasskeyRow } from './auth.store';
 import { AuthService, type Failure, type Outcome } from './auth.service';
-import { Layer } from './decide-login';
+import { Layer } from '../../doors';
 
 // Passkeys (spec 2026-11-08-signin-methods): added from settings with a full session, and a sign-in of their own
 // that stands for the password and the second step together. Challenges live CHALLENGE_SECONDS and are spent once.

@@ -1,5 +1,7 @@
 import { NoticesRepository } from './notices.repository';
-import { KernelModule } from '../office/kernel/kernel.module';
+import { AccessModule } from '../access/access.module';
+import { PlatformModule } from '../platform/platform.module';
+import { AuthModule } from '../auth/auth.module';
 import { NoticeInboxService } from './notice-inbox.service';
 import { NoticesController } from './notices.controller';
 import { Module } from '@nestjs/common';
@@ -9,7 +11,7 @@ export const NOTICES_CONTROLLERS = [NoticesController];
 export const NOTICES_PROVIDERS = [NoticesRepository, NoticeInboxService];
 
 @Module({
-  imports: [KernelModule],
+  imports: [PlatformModule, AccessModule, AuthModule],
   controllers: NOTICES_CONTROLLERS,
   providers: NOTICES_PROVIDERS,
   exports: [],

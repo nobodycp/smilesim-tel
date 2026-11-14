@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import { groupLinePrices } from '../rules/line-prices';
-import { captureTerms, type LineTerms } from '../rules/prices';
-import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
+import { groupLinePrices } from '../../pricing/rules/line-prices';
+import { captureTerms, type LineTerms } from '../../pricing/rules/prices';
+import { packageTermsOf, type PackagePriceRow } from '../../pricing/rules/package-terms';
 import { account, tree, type Row } from '../testing/tree.fixture';
 
 /** A number beside the tree's first line: the same package and point of sale, carrying `posPrice` at renewal. */

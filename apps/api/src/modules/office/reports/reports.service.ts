@@ -1,12 +1,12 @@
 import { CursorQuery } from '../wallets/wallets.schemas';
-import { parseInput } from '../../shared/input';
+import { parseInput } from '../../platform/input';
 import { ReportsRepository } from './reports.repository';
-import { requireGrant } from '../policy';
+import { requireGrant } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/api-failure';
-import type { Actor } from '../kernel/types';
-import { after, capList, cursorPosition, page } from '../../shared/paging';
-import { FEED_PAGE } from '../rules/office-paging';
+import { fail } from '../../platform/api-failure';
+import type { Actor } from '../../access/types';
+import { after, capList, cursorPosition, page } from '../../platform/paging';
+import { FEED_PAGE } from '../../platform/paging';
 import { PROVIDER_OPERATION_KINDS } from '../wallets/provider-cost';
 
 /** Branch reports: providers and packages, and the provider-operations ledger. */

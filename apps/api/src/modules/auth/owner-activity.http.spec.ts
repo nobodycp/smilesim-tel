@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { ActivityRecorder } from '../shared/activity';
+import { ActivityRecorder } from '../platform/activity';
 import { AuthModule } from './auth.module';
 import { ActivityModule } from '../auditing/activity.module';
 import { AUTH_STORE, StoredUser } from './auth.store';

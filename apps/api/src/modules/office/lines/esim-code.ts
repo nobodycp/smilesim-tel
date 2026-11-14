@@ -1,6 +1,6 @@
-import { fail } from '../../shared/api-failure';
-import { logger } from '../../shared/log';
-import { isSealed, seal, secretsKey, tryOpen, type Unreadable } from '../../shared/secret-box';
+import { fail } from '../../platform/api-failure';
+import { logger } from '../../platform/log';
+import { isSealed, seal, secretsKey, tryOpen, type Unreadable } from '../../platform/secret-box';
 
 const log = logger('EsimCode');
 

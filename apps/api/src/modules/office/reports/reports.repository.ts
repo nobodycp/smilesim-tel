@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork } from '../kernel/unit-of-work';
-import { LIST_CAP, NEWEST_FIRST } from '../../shared/paging';
+import { UnitOfWork } from '../../platform/unit-of-work';
+import { LIST_CAP, NEWEST_FIRST } from '../../platform/paging';
 
 /**
  * The database as this domain reads and writes it: the rows the branch reports list. One method per query, named for what it

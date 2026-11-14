@@ -1,4 +1,4 @@
-import { uncoveredDebit } from '../rules/prices';
+import { uncoveredDebit } from '../../wallets/ceiling';
 import { keepsHoldForHandler, requotedSettlement, taskCharge } from './task-charge.rules';
 
 describe('how a completed task is charged', () => {

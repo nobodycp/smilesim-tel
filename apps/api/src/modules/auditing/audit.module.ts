@@ -1,5 +1,6 @@
 import { AuditRepository } from './audit.repository';
-import { KernelModule } from '../office/kernel/kernel.module';
+import { AccessModule } from '../access/access.module';
+import { PlatformModule } from '../platform/platform.module';
 import { AuditController } from './audit.controller';
 import { AuditService } from './audit.service';
 import { Module } from '@nestjs/common';
@@ -9,7 +10,7 @@ export const AUDIT_CONTROLLERS = [AuditController];
 export const AUDIT_PROVIDERS = [AuditRepository, AuditService];
 
 @Module({
-  imports: [KernelModule],
+  imports: [PlatformModule, AccessModule],
   controllers: AUDIT_CONTROLLERS,
   providers: AUDIT_PROVIDERS,
   exports: [],

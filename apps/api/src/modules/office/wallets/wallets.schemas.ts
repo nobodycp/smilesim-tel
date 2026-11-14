@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { MAX_AGOROT, agorot, positiveAgorot, queryCursor, queryDay, queryOneOf, queryText } from '../../shared/schemas';
-import { LAYER_ORDER } from '../kernel/values';
+import { MAX_AGOROT, agorot, positiveAgorot, queryCursor, queryDay, queryOneOf, queryText } from '../../platform/schemas';
+import { LAYER_ORDER } from '../../platform/values';
 import { SUMMARY_WINDOWS } from './finance-summary';
 import { PROVIDER_OPERATION_KINDS } from './provider-cost';
 

@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
-import { DEPENDS_ON, MODULES, OWNERS, allowedFor, crossModuleCycles, importEdges, layeringViolations, mutualModules, ownerOf, surfaceViolations, type Edge, type ModuleName, type SourceFile, type Violation } from './architecture-map.fixture';
+import { DEPENDS_ON, MODULES, OWNERS, allowedFor, catchAllModules, crossModuleCycles, importEdges, layeringViolations, mutualModules, ownerOf, surfaceViolations, type Edge, type ModuleName, type SourceFile, type Violation } from './architecture-map.fixture';
 
 // The boundaries of the modular monolith (ADR 0020), measured on the source as it is today, wherever a file
 // lives. Slice R.0 of the plan `2026-11-13-office-retirement`: it moves nothing; it counts.
@@ -125,6 +125,12 @@ describe('module boundaries, on the source as it is', () => {
     expect(Object.keys(surfaces)).toEqual([]);
   });
 
+  it('catch-all-module: no kernel under any name; a Nest module exports only what its own module owns', () => {
+    // Slice R.3 took the kernel module apart (it handed on the unit of work, the account tree, the actor and the
+    // auth module to every domain). The same thing renamed is caught here, by shape, not by name alone.
+    check('catch-all-module', catchAllModules(production));
+  });
+
   it('the cuts of slice R.2 hold: the platform and sign-in import neither auditing nor notifications', () => {
     // `module-layering` counts these too; named here so that bringing one back fails with its own message.
     const back = edges.filter((edge) => {
@@ -135,11 +141,11 @@ describe('module boundaries, on the source as it is', () => {
     expect(back.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual([]);
     // The unit of work holds the notice port, never the implementation.
     const uow = production.find(({ file }) => file.endsWith('/unit-of-work.ts'));
-    expect(uow?.text).toContain("from '../../shared/notices'");
+    expect(uow?.text).toContain("from './notices'");
     expect(uow?.text).not.toMatch(/notifications\/|NoticeService/);
     // The activity interceptor and decorator are the platform's, and record through the port.
     for (const name of ['activity.interceptor.ts', 'activity.decorator.ts', 'activity.ts', 'notices.ts']) {
-      expect({ name, owner: ownerOf(`modules/shared/${name}`), exists: production.some(({ file }) => file === `modules/shared/${name}`) }).toEqual({ name, owner: 'platform', exists: true });
+      expect({ name, owner: ownerOf(`modules/platform/${name}`), exists: production.some(({ file }) => file === `modules/platform/${name}`) }).toEqual({ name, owner: 'platform', exists: true });
     }
   });
 
@@ -242,9 +248,9 @@ describe('the rules catch what they are for (made-up cases)', () => {
     expect(surfaceViolations(cases, { wallets: 'wallets/index.ts' }, byFolder).map((hit) => hit.file)).toEqual(['sales/a.ts']);
   });
 
-  it('R.2: bringing back the kernel’s import of the notice writer, or sign-in’s of the recorder, is a layering violation', () => {
+  it('R.2: bringing back the unit of work’s import of the notice writer, or sign-in’s of the recorder, is a layering violation', () => {
     const cases = importEdges(made({
-      'modules/office/kernel/unit-of-work.ts': "import { NoticeService } from '../../notifications/notice.service';",
+      'modules/platform/unit-of-work.ts': "import { NoticeService } from '../notifications/notice.service';",
       'modules/notifications/notice.service.ts': '',
       'modules/auth/auth.controller.ts': "import { PrismaActivityRecorder } from '../auditing/activity-recorder';",
       'modules/auditing/activity-recorder.ts': '',
@@ -252,6 +258,20 @@ describe('the rules catch what they are for (made-up cases)', () => {
     expect(layeringViolations(cases).map((hit) => hit.text)).toEqual([
       'platform -> notifications  (modules/notifications/notice.service.ts)',
       'identity -> auditing  (modules/auditing/activity-recorder.ts)',
+    ]);
+  });
+
+  it('catch-all: a folder named kernel, and a module that hands on another module’s service or module, are caught; its own are not', () => {
+    const files = made({
+      'modules/access/access.module.ts': "import { AuthModule } from '../auth/auth.module';\nimport { AccountTree } from './account-tree';\nimport { UnitOfWork } from '../platform/unit-of-work';\nexport const LIST = [AccountTree, UnitOfWork];\n@Module({ imports: [AuthModule], providers: LIST, exports: [...LIST, AuthModule] })",
+      'modules/access/account-tree.ts': '', 'modules/platform/unit-of-work.ts': '', 'modules/auth/auth.module.ts': '',
+      'modules/catalog/core/core.module.ts': "import { Companies } from '../companies';\n@Module({ exports: [Companies] })", 'modules/catalog/companies.ts': '',
+      'modules/sales/kernel/sale.ts': '',
+    });
+    expect(catchAllModules(files).map((hit) => `${hit.file}: ${hit.text}`)).toEqual([
+      'modules/access/access.module.ts: exports UnitOfWork, owned by platform',
+      'modules/access/access.module.ts: exports AuthModule, owned by identity',
+      'modules/sales/kernel/sale.ts: a kernel by name',
     ]);
   });
 

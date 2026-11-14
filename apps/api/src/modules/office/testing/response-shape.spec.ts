@@ -24,7 +24,7 @@ const POS_CHOICE_KEYS = ['loginName', 'nickname'];
 const DISCONNECT_QUOTE_KEYS = ['amount', 'runsNow'];
 const DECISION_ANSWER_KEYS = ['ok', 'outcome'];
 const SIM_RULES_KEYS = ['length', 'prefix', 'esim'];
-// `capped`: the shelf was cut at LIST_CAP packages (shared/paging.ts).
+// `capped`: the shelf was cut at LIST_CAP packages (platform/paging.ts).
 const SHELF_KEYS = ['companies', 'capped'];
 const SHELF_COMPANY_KEYS = ['code', 'name', 'image', 'sim', 'esimPrice', 'providers'];
 const SHELF_PROVIDER_KEYS = ['code', 'name', 'packages'];
@@ -426,7 +426,7 @@ describeWeb('web types match the pinned shapes', () => {
     expect(source).toMatch(/officeLine: \(id: string\) => request<\{ line: LineDetail; history: LineHistory\[\] \}>/);
     const pos = /export type PosChoice = \{([^}]*)\}/.exec(source);
     expect(sorted([...(pos?.[1] ?? '').matchAll(/(\w+):/g)].map((match) => match[1]))).toEqual(sorted(POS_CHOICE_KEYS));
-    // The envelope is the shared `Page<Row>` plus the list's own keys (shared/paging.ts on this side).
+    // The envelope is the shared `Page<Row>` plus the list's own keys (platform/paging.ts on this side).
     const page = /export type Page<Row> = \{([^}]*)\}/.exec(source);
     const own = /officeLines:[\s\S]*?request<Page<LineRow> & \{([^}]*)\}>/.exec(source);
     const keys = [page?.[1] ?? '', own?.[1] ?? ''].flatMap((body) => [...body.matchAll(/(\w+):/g)].map((match) => match[1]));

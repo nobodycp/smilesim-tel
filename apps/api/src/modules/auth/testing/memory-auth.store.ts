@@ -2,7 +2,8 @@ import { hashSessionToken, newSessionToken } from '../session-token';
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { AuthStore, FullSessionRow, NewPasskey, PasskeyRow, SessionKind, SessionRow, SessionScope, StoredUser, TwoFactorMethod, UserPatch } from '../auth.store';
-import { Layer, LoginUser } from '../decide-login';
+import { LoginUser } from '../decide-login';
+import { Layer } from '../../../doors';
 import { SessionRuleValues, SessionRules, effectiveRules } from '../sessions';
 import { failureWindowExpired } from '../validators';
 

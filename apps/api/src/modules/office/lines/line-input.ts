@@ -1,5 +1,5 @@
-import { fail } from '../../shared/api-failure';
-import { PERIOD_DAYS } from '../rules/periods';
+import { fail } from '../../platform/api-failure';
+import { PERIOD_DAYS } from '../../sales/rules/periods';
 
 /** A mobile number as the office writes it. */
 export const MSISDN = /^05\d{8}$/;

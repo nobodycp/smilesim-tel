@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
-import { UnitOfWork } from '../office/kernel/unit-of-work';
-import { NEWEST_FIRST } from '../shared/paging';
+import { UnitOfWork } from '../platform/unit-of-work';
+import { NEWEST_FIRST } from '../platform/paging';
 
 /**
  * The database as this domain reads and writes it: an account's notices. One method per query, named for what it returns or

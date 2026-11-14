@@ -1,4 +1,4 @@
-import { ApiFailure } from '../../../shared/api-failure';
+import { ApiFailure } from '../../../platform/api-failure';
 import { tree } from '../../testing/tree.fixture';
 import { BRANCH_TASK_NOTE, PROVIDER_FAILED_NOTE } from '../../stored-text';
 import { NOT_CONNECTED, type ProviderRequest } from './provider-gateway';

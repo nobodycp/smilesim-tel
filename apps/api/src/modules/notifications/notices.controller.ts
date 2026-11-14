@@ -1,16 +1,16 @@
 import { NoticesQuery } from './notices.schemas';
 import { ApiZodQuery } from '../../openapi/query';
-import { readCookie } from '../shared/cookies';
-import { NoActivity } from '../shared/activity.decorator';
+import { readCookie } from '../platform/cookies';
+import { NoActivity } from '../platform/activity.decorator';
 import { Body, Controller, Get, Post, Query, Req, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { ApiZodBody } from '../../openapi/body';
 import { ApiErrorResponse } from '../../openapi/responses';
-import { parseInput } from '../shared/input';
-import { ActivityInterceptor } from '../shared/activity.interceptor';
-import { Actor, ActorInterceptor } from '../office/kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../office/kernel/types';
+import { parseInput } from '../platform/input';
+import { ActivityInterceptor } from '../platform/activity.interceptor';
+import { Actor, ActorInterceptor } from '../access/actor.interceptor';
+import type { Actor as ActorShape } from '../access/types';
 import { NoticeInboxService } from './notice-inbox.service';
 import { NoticeReadBody } from './notices.schemas';
 

@@ -1,7 +1,7 @@
 import { ProvidersRepository } from './providers.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Actor } from '../kernel/types';
+import type { Actor } from '../../access/types';
 import { ProviderCatalogService } from './provider-catalog.service';
 
 // Adding to the catalog from the provider (spec 2026-11-09-admin-review, 3), over the simulated adapter: the query

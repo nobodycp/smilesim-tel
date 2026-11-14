@@ -1,8 +1,8 @@
 import { assertStoredSealed } from './esim-code';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork, type Db } from '../kernel/unit-of-work';
-import { NEWEST_FIRST } from '../../shared/paging';
+import { UnitOfWork, type Db } from '../../platform/unit-of-work';
+import { NEWEST_FIRST } from '../../platform/paging';
 
 /**
  * The database as this domain reads and writes it: numbers, and the packages and add-ons an operation on a number reads. One method per query, named for what it

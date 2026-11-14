@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { publicPackageCode } from '../rules/package-code';
+import { publicPackageCode } from '../../catalog/rules/package-code';
 import { CatalogProductsQuery } from './providers.schemas';
 import { ProvidersRepository } from './providers.repository';
-import { refuseEntered, requireGrant } from '../policy';
+import { refuseEntered, requireGrant } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/api-failure';
-import type { Actor } from '../kernel/types';
-import { parseInput } from '../../shared/input';
-import { chainHolds } from '../rules/prices';
-import { ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../rules/run-modes';
+import { fail } from '../../platform/api-failure';
+import type { Actor } from '../../access/types';
+import { parseInput } from '../../platform/input';
+import { chainHolds } from '../../catalog/rules/package-prices';
+import { ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../../catalog/rules/run-modes';
 import { adapterFor } from './adapters/simulated-adapter';
 import { CompanyCreateBody, PackageCreateBody } from './providers.schemas';
 

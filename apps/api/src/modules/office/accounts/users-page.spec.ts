@@ -1,4 +1,4 @@
-import { ApiFailure } from '../../shared/api-failure';
+import { ApiFailure } from '../../platform/api-failure';
 import { USERS_PAGE, cursorOf, usersPage } from './users-page';
 
 const row = (loginName: string, layer: string, nickname = loginName) => ({ loginName, layer, nickname });

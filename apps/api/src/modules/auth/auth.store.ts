@@ -1,4 +1,5 @@
-import { Layer, LoginUser } from './decide-login';
+import { LoginUser } from './decide-login';
+import { Layer } from '../../doors';
 import { SessionRuleValues, SessionRules } from './sessions';
 
 export const AUTH_STORE = Symbol('AUTH_STORE');

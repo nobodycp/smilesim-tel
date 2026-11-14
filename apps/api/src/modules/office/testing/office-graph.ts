@@ -1,13 +1,13 @@
 import type { Provider } from '@nestjs/common';
 import type { PrismaClient } from '../../../generated/prisma/client';
 import type { AuthStore } from '../../auth/auth.store';
-import type { PrismaService } from '../../shared/prisma.service';
-import { AccountTree } from '../kernel/account-tree';
-import { ActorResolver } from '../kernel/actor-resolver';
-import { UnitOfWork } from '../kernel/unit-of-work';
+import type { PrismaService } from '../../platform/prisma.service';
+import { AccountTree } from '../../access/account-tree';
+import { ActorResolver } from '../../access/actor-resolver';
+import { UnitOfWork } from '../../platform/unit-of-work';
 import { LineAccess } from '../lines/line-access';
 import { NoticeService } from '../../notifications/notice.service';
-import type { NoticeWriter } from '../../shared/notices';
+import type { NoticeWriter } from '../../platform/notices';
 import { LayerRoles } from '../roles/layer-roles';
 import { PriceLadder } from '../terms/price-ladder';
 import { WalletLedger } from '../wallets/wallet-ledger';

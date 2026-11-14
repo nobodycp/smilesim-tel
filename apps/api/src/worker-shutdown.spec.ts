@@ -5,7 +5,7 @@ import type IORedis from 'ioredis';
 import type { PrismaClient } from './generated/prisma/client';
 import { NoticeService, type NoticeBus } from './modules/notifications/notice.service';
 import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate';
-import type { NoticeWriter } from './modules/shared/notices';
+import type { NoticeWriter } from './modules/platform/notices';
 import { SWEEP_EVERY_MS, buildProviderDispatch, startProviderDispatchTimers } from './provider-dispatch';
 
 // How a worker lets go of what it holds (slice R.2 corrections): the timers wait for the round in flight, the

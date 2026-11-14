@@ -1,4 +1,4 @@
-import { ApiFailure } from '../../shared/api-failure';
+import { ApiFailure } from '../../platform/api-failure';
 import { tree } from '../testing/tree.fixture';
 
 // Line add-ons (spec 2026-11-09-offers-tasks-addons-wallet-esim, 3): an extra operation named on the package opens

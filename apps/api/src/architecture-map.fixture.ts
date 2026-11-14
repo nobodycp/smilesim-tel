@@ -19,8 +19,8 @@ export type Owner = ModuleName | 'app';
  */
 export const DEPENDS_ON: Record<ModuleName, readonly ModuleName[]> = {
   platform: [],
-  // Slice R.2: the activity log is recorded through a port of the platform (`shared/activity.ts`) and notices are
-  // written through another (`shared/notices.ts`). So sign-in and the account tree import neither, and the two
+  // Slice R.2: the activity log is recorded through a port of the platform (`platform/activity.ts`) and notices are
+  // written through another (`platform/notices.ts`). So sign-in and the account tree import neither, and the two
   // modules that implement the ports sit above what they read: auditing reads sessions (identity) and, for the
   // audit page, the actor and the tree (access); notifications reads the actor for the inbox and the stream.
   identity: ['platform'],
@@ -49,35 +49,30 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   // ── platform ──────────────────────────────────────────────────────────────────────────────────────
   [/^(config|errors|db|doors|cors|security-headers|production-config)\.ts$/, 'platform'],
   [/^openapi\//, 'platform'],
-  [/^modules\/shared\//, 'platform'],
+  [/^modules\/platform\//, 'platform'],
   [/^modules\/office\/outbox\//, 'platform'],
-  [/^modules\/office\/kernel\/(unit-of-work|query|values)\.ts$/, 'platform'],
-  [/^modules\/office\/rules\/office-paging\.ts$/, 'platform'],
   // ── identity, auditing, notifications ─────────────────────────────────────────────────────────────
   [/^modules\/auth\//, 'identity'],
   // The log's writer (the port's implementation) and its reading; notices, with the port's implementation.
   [/^modules\/auditing\//, 'auditing'],
   [/^modules\/notifications\//, 'notifications'],
   // ── access (the actor, grants, roles, the account tree, accounts) ────────────────────────────────
-  [/^modules\/office\/kernel\/(line-terms)\.ts$/, 'pricing'],
-  [/^modules\/office\/kernel\/sale\.ts$/, 'wallets'],
-  [/^modules\/office\/kernel\//, 'access'],
-  [/^modules\/office\/policy\.ts$/, 'access'],
+  [/^modules\/access\//, 'access'],
   [/^modules\/office\/(accounts|roles)\//, 'access'],
-  [/^modules\/office\/rules\/(office-grants|account-visibility)\.ts$/, 'access'],
   // ── catalog, pricing ──────────────────────────────────────────────────────────────────────────────
+  [/^modules\/catalog\//, 'catalog'],
   [/^modules\/branding\//, 'catalog'],
   [/^modules\/office\/(catalog|companies|packages|offers)\//, 'catalog'],
-  [/^modules\/office\/rules\/(run-modes|sim-rules|package-code)\.ts$/, 'catalog'],
+  [/^modules\/pricing\//, 'pricing'],
   [/^modules\/office\/terms\//, 'pricing'],
-  [/^modules\/office\/rules\/(prices|line-prices|user-terms|office-terms|profit-ladder)\.ts$/, 'pricing'],
   // ── wallets, providers, tasks, sales, reporting ───────────────────────────────────────────────────
+  [/^modules\/wallets\//, 'wallets'],
   [/^modules\/office\/wallets\//, 'wallets'],
   [/^modules\/office\/providers\//, 'providers'],
   [/^modules\/office\/tasks\//, 'tasks'],
   [/^modules\/office\/stored-text\.ts$/, 'tasks'],
+  [/^modules\/sales\//, 'sales'],
   [/^modules\/office\/(lines|transfers)\//, 'sales'],
-  [/^modules\/office\/rules\/periods\.ts$/, 'sales'],
   [/^modules\/office\/(reports|desk)\//, 'reporting'],
 ];
 
@@ -206,6 +201,45 @@ export function surfaceViolations(edges: readonly Edge[], surfaces: Partial<Reco
     if (!from || !to || from === to || to === 'app') continue;
     const surface = surfaces[to as ModuleName];
     if (surface && edge.to !== surface) found.push({ file: edge.from, line: edge.line, text: `${edge.to} is inside ${to}: import ${surface}` });
+  }
+  return found;
+}
+
+/**
+ * A catch-all under any name (slice R.3: the kernel is gone, and nothing comes back in its place). Two shapes:
+ * a folder or a file named `kernel`; and a Nest module (`*.module.ts`) that hands on something another module
+ * owns: a provider or a Nest module imported from a file of another owner, in its `exports`. A module exports what
+ * it owns; a module that needs another's services imports that module itself. A module that binds a port of the
+ * platform to its own class (`{ provide: NOTICE_WRITER, useExisting: NoticeService }`) exports the port: that is
+ * its own implementation.
+ */
+export function catchAllModules(files: readonly SourceFile[], owner: (file: string) => Owner | null = ownerOf): Violation[] {
+  const found: Violation[] = [];
+  const known = new Set(files.map(({ file }) => file));
+  for (const { file, text } of files) {
+    if (/(^|\/)kernel(\/|\.|-)/i.test(file)) found.push({ file, line: 1, text: 'a kernel by name' });
+    if (!file.endsWith('.module.ts')) continue;
+    const mine = owner(file);
+    const lists = new Map<string, string>();
+    for (const list of text.matchAll(/(?:export )?const (\w+) = \[([^\]]*)\]/g)) lists.set(list[1], list[2]);
+    const names = (body: string, depth = 0): string[] =>
+      body.split(',').map((entry) => entry.trim()).filter(Boolean).flatMap((entry) => {
+        const spread = /^\.\.\.(\w+)$/.exec(entry);
+        if (spread) return depth < 5 && lists.has(spread[1]) ? names(lists.get(spread[1]) as string, depth + 1) : [];
+        return /^[A-Z_]\w*$/.test(entry) ? [entry] : [];
+      });
+    for (const exported of text.matchAll(/\bexports:\s*(\[[^\]]*\]|\w+)/g)) {
+      const body = exported[1].startsWith('[') ? exported[1].slice(1, -1) : `...${exported[1]}`;
+      for (const name of names(body)) {
+        const from = new RegExp(`import\\s+(?:type\\s+)?\\{[^}]*\\b${name}\\b[^}]*\\}\\s+from\\s+'(\\.[^']+)'`).exec(text);
+        // A module that binds a port of another module (`provide: NOTICE_WRITER`) hands on its own implementation.
+        if (!from || new RegExp(`provide:\\s*${name}\\b`).test(text)) continue;
+        const target = normalize(join(dirname(file), from[1]));
+        const to = [`${target}.ts`, join(target, 'index.ts'), target].find((candidate) => known.has(candidate));
+        const theirs = to ? owner(to) : null;
+        if (theirs && theirs !== mine) found.push({ file, line: text.slice(0, exported.index).split('\n').length, text: `exports ${name}, owned by ${theirs}` });
+      }
+    }
   }
   return found;
 }

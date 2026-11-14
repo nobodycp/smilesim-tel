@@ -1,5 +1,5 @@
-import { holds } from '../policy';
-import { type AccountNode, visibleAccountIds } from '../rules/account-visibility';
+import { holds } from '../../access/policy';
+import { type AccountNode, visibleAccountIds } from '../../access/account-visibility';
 
 export type TaskSubject = { submitterId: string; posId: string };
 export type Handler = { layer: string; isBranchOwner: boolean; grants: string[] };

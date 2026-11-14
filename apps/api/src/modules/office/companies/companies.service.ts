@@ -1,13 +1,13 @@
-import { capList } from '../../shared/paging';
+import { capList } from '../../platform/paging';
 import { CompaniesRepository } from './companies.repository';
-import { requireGrant } from '../policy';
+import { requireGrant } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/api-failure';
-import type { Actor } from '../kernel/types';
-import { parseInput } from '../../shared/input';
+import { fail } from '../../platform/api-failure';
+import type { Actor } from '../../access/types';
+import { parseInput } from '../../platform/input';
 import { companies } from '../catalog/office-catalog';
-import { ESIM_PRICE_DEFAULT } from '../rules/prices';
-import { readSimRules, simRulesOf } from '../rules/sim-rules';
+import { ESIM_PRICE_DEFAULT } from '../../catalog/rules/package-prices';
+import { readSimRules, simRulesOf } from '../../catalog/rules/sim-rules';
 import { COMPANY_IMAGE_BYTES, CompanyImageBody, CompanySimBody } from './companies.schemas';
 
 /** A package as the branch's shelf lists it under its provider. */

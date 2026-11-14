@@ -1,6 +1,6 @@
+import type { Layer } from '../../doors';
 import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
 
-export type Layer = 'branch' | 'main_agent' | 'agent' | 'pos';
 export type LoginUser = {
   id: string;
   loginName: string;

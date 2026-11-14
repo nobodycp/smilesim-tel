@@ -1,4 +1,4 @@
-import { ApiFailure } from '../shared/api-failure';
+import { ApiFailure } from '../platform/api-failure';
 import { brandingSummary, decodeImage, parseBrandingBody } from './branding-rules';
 
 describe('branding rules', () => {

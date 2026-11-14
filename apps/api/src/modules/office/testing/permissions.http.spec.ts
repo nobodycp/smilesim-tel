@@ -3,7 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { officeTestApp } from './office-test-app';
-import { GRANT_CODES } from '../rules/office-grants';
+import { GRANT_CODES } from '../../access/grants';
 import { ROUTES } from './office-routes';
 
 // Who gets past the gate of each office route (improvement 2, spec 2026-11-08-sorting-permissions-api-guards.md).

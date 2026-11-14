@@ -1,4 +1,4 @@
-import { errorCode, logger, reason } from './modules/shared/log';
+import { errorCode, logger, reason } from './modules/platform/log';
 import { env, wholeEnv } from './config';
 import 'reflect-metadata';
 import IORedis from 'ioredis';

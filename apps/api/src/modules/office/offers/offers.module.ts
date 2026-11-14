@@ -1,5 +1,6 @@
 import { OffersRepository } from './offers.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { OffersController } from './offers.controller';
 import { OffersService } from './offers.service';
 import { Module } from '@nestjs/common';
@@ -9,7 +10,7 @@ export const OFFERS_CONTROLLERS = [OffersController];
 export const OFFERS_PROVIDERS = [OffersRepository, OffersService];
 
 @Module({
-  imports: [KernelModule],
+  imports: [PlatformModule, AccessModule],
   controllers: OFFERS_CONTROLLERS,
   providers: OFFERS_PROVIDERS,
   exports: [],

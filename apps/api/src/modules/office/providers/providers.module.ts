@@ -1,5 +1,6 @@
 import { ProvidersRepository } from './providers.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { WalletsModule } from '../wallets/wallets.module';
 import { PROVIDER_GATEWAY } from './gateway/provider-gateway';
 import { SimulatedProviderGateway } from './gateway/simulated-gateway';
@@ -21,7 +22,7 @@ export const PROVIDERS_CONTROLLERS = [ProvidersController, ProviderCatalogContro
 export const PROVIDERS_PROVIDERS = [ProvidersRepository, ProvidersService, ProviderCatalogService, ProviderAccountsService, ProviderHealthService, ProviderOperationsRepository, ProviderOperationsService, ProviderDispatchRepository, ProviderDispatchService, { provide: PROVIDER_GATEWAY, useClass: SimulatedProviderGateway }];
 
 @Module({
-  imports: [KernelModule, WalletsModule],
+  imports: [PlatformModule, AccessModule, WalletsModule],
   controllers: PROVIDERS_CONTROLLERS,
   providers: PROVIDERS_PROVIDERS,
   exports: [ProviderAccountsService, ProviderHealthService, ProviderOperationsService, PROVIDER_GATEWAY],

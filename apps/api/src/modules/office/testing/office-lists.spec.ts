@@ -1,11 +1,11 @@
 import 'reflect-metadata';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Layer } from '../../auth/decide-login';
+import type { Layer } from '../../../doors';
 import { hashOnce } from './test-hash';
-import { ApiFailure } from '../../shared/api-failure';
+import { ApiFailure } from '../../platform/api-failure';
 import { OfficeFacade } from './office-facade';
-import { after, decodeCursor, encodeCursor } from '../../shared/paging';
-import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhere, suspendedWhere } from '../rules/office-paging';
+import { after, decodeCursor, encodeCursor } from '../../platform/paging';
+import { EXPIRING_DAYS, SUSPEND_AFTER_DAYS, expiringWhere, isSuspended, linesWhere, suspendedWhere } from '../../sales/rules/line-filters';
 
 // A small in-memory stand-in for the Prisma client: it reads the `where`, `orderBy`, `cursor`,
 // `skip` and `take` the service sends, so the lists are proven to page in the query and not in memory.
@@ -159,7 +159,7 @@ describe('numbers list paging', () => {
     expect(all).toEqual(newestFirst.map((line) => line.id));
     expect(calls.map((call) => call.take)).toEqual([31, 31, 31]);
     expect(calls[0].orderBy).toEqual([{ createdAt: 'desc' }, { id: 'desc' }]);
-    // The one cursor: a condition in the query, never Prisma's row cursor (shared/paging.ts).
+    // The one cursor: a condition in the query, never Prisma's row cursor (platform/paging.ts).
     expect(calls.every((call) => call.cursor === undefined && call.skip === undefined)).toBe(true);
     const last = lines.find((line) => line.id === pages[0][29])!;
     expect(JSON.stringify(calls[1].where)).toContain(JSON.stringify({ createdAt: last.createdAt, id: { lt: last.id } }));

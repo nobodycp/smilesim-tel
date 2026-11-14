@@ -1,4 +1,4 @@
-import { PeriodQuery } from '../../shared/schemas';
+import { PeriodQuery } from '../../platform/schemas';
 import { CursorQuery } from '../wallets/wallets.schemas';
 import { BalancesQuery } from './reports.schemas';
 import { ApiZodQuery } from '../../../openapi/query';
@@ -6,9 +6,9 @@ import { Controller, Get, Query, Res, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../../shared/activity.interceptor';
-import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../kernel/types';
+import { ActivityInterceptor } from '../../platform/activity.interceptor';
+import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
+import type { Actor as ActorShape } from '../../access/types';
 import { InsightsService } from './insights.service';
 import { ReportsService } from './reports.service';
 

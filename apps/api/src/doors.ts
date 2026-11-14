@@ -1,4 +1,5 @@
-import type { Layer } from './modules/auth/decide-login';
+/** The four layers of the ladder, top to bottom; a door host names one (slice R.3: from sign-in's `decide-login.ts`). */
+export type Layer = 'branch' | 'main_agent' | 'agent' | 'pos';
 
 export const DOOR_HOSTS = [
   { host: 'admin', layer: 'branch' },

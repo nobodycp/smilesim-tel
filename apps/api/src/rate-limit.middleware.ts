@@ -3,9 +3,9 @@ import { createHash } from 'node:crypto';
 import { Injectable, type NestMiddleware, type OnModuleDestroy } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import IORedis from 'ioredis';
-import { readCookie } from './modules/shared/cookies';
+import { readCookie } from './modules/platform/cookies';
 import { errorBody } from './errors';
-import { logger } from './modules/shared/log';
+import { logger } from './modules/platform/log';
 
 // Requests per signed-in session in a one-minute window, shared by every API process through Redis.
 // A page load asks for about ten reads; a busy desk stays far under these. Writes have their own, lower ceiling.

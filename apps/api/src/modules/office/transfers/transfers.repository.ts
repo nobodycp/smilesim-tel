@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork, type Db } from '../kernel/unit-of-work';
-import { RENEWABLE_STATUSES } from '../rules/line-prices';
+import { UnitOfWork, type Db } from '../../platform/unit-of-work';
+import { RENEWABLE_STATUSES } from '../../pricing/rules/line-prices';
 import { PRICE_COLUMNS } from '../terms/price-ladder';
 
 /**

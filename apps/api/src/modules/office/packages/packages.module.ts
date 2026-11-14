@@ -1,5 +1,6 @@
 import { PackagesRepository } from './packages.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { TermsModule } from '../terms/terms.module';
 import { PackagesController } from './packages.controller';
 import { PackagesService } from './packages.service';
@@ -10,7 +11,7 @@ export const PACKAGES_CONTROLLERS = [PackagesController];
 export const PACKAGES_PROVIDERS = [PackagesRepository, PackagesService];
 
 @Module({
-  imports: [KernelModule, TermsModule],
+  imports: [PlatformModule, AccessModule, TermsModule],
   controllers: PACKAGES_CONTROLLERS,
   providers: PACKAGES_PROVIDERS,
   exports: [],

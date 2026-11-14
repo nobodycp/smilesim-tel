@@ -1,5 +1,5 @@
 import { openGate } from '../providers/testing/open-gate';
-import { useSealingKey } from '../../shared/testing/sealing-key';
+import { useSealingKey } from '../../platform/testing/sealing-key';
 import 'reflect-metadata';
 import type { INestApplication } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
@@ -8,8 +8,8 @@ import request from 'supertest';
 import { createPrismaClient } from '../../../db';
 import { buildProviderDispatch } from '../../../provider-dispatch';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { DuplicateGuardInterceptor } from '../../shared/duplicate-guard.interceptor';
-import { open } from '../../shared/secret-box';
+import { DuplicateGuardInterceptor } from '../../platform/duplicate-guard.interceptor';
+import { open } from '../../platform/secret-box';
 import { NoticeService } from '../../notifications/notice.service';
 import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../providers/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../providers/operations/provider-operations.service';

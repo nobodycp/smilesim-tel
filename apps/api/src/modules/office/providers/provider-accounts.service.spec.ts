@@ -1,5 +1,5 @@
 import { ProvidersRepository } from './providers.repository';
-import type { Actor } from '../kernel/types';
+import type { Actor } from '../../access/types';
 import type { WalletsService } from '../wallets/wallets.service';
 import { ProviderAccountsService } from './provider-accounts.service';
 

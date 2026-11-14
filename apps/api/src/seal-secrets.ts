@@ -3,9 +3,9 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { AUTH_STORE } from './modules/auth/auth.store';
 import { PrismaAuthStore } from './modules/auth/prisma-auth.store';
-import { errorCode, logger } from './modules/shared/log';
-import { PrismaService } from './modules/shared/prisma.service';
-import { secretsKey } from './modules/shared/secret-box';
+import { errorCode, logger } from './modules/platform/log';
+import { PrismaService } from './modules/platform/prisma.service';
+import { secretsKey } from './modules/platform/secret-box';
 import { NoSealingKey, sealEsimCodes, sealRunLines } from './seal-esim-codes';
 
 // Run by hand on each environment after SECRETS_KEY is set, never at boot: seals what was stored before sealing

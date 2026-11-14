@@ -1,4 +1,4 @@
-import type { Db } from '../kernel/unit-of-work';
+import type { Db } from '../../platform/unit-of-work';
 
 export type ClaimedMessage = { id: string; topic: string; aggregateId: string; sequence: number; payload: unknown };
 

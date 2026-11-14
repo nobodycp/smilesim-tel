@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from './db';
-import { capturedOutput } from './modules/shared/testing/captured-output';
+import { capturedOutput } from './modules/platform/testing/captured-output';
 import { report, storedFindings } from './two-factor-methods';
 
 // PostgreSQL only (TEST_DATABASE_URL). Spec 2026-11-12-two-factor-available-methods: the report reads the stored

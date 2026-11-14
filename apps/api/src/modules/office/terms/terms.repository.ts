@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork, type Db } from '../kernel/unit-of-work';
-import { RENEWABLE_STATUSES } from '../rules/line-prices';
+import { UnitOfWork, type Db } from '../../platform/unit-of-work';
+import { RENEWABLE_STATUSES } from '../../pricing/rules/line-prices';
 
 /**
  * The database as this domain reads and writes it: the terms an account sets for the accounts below it, and the renewal prices its lines carry. One method per query, named for what it

@@ -1,10 +1,10 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { env, isTest } from '../../../config';
-import { logger, reason } from '../../shared/log';
-import { AccountTree } from '../kernel/account-tree';
-import { visibleAccountIds } from '../rules/account-visibility';
-import { expiringWhere, suspendedWhere } from '../rules/office-paging';
+import { logger, reason } from '../../platform/log';
+import { AccountTree } from '../../access/account-tree';
+import { visibleAccountIds } from '../../access/account-visibility';
+import { expiringWhere, suspendedWhere } from '../../sales/rules/line-filters';
 import { DeskRepository } from './desk.repository';
 
 const log = logger('LineSnapshots');

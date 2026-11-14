@@ -1,7 +1,7 @@
 // The finance page's head for one wallet: the money that came in and went out over the last days, and the balance
 // at the end of each day. Pure: the service reads the entries.
 
-import { csvCell, csvDocument } from '../../shared/csv';
+import { csvCell, csvDocument } from '../../platform/csv';
 
 export const SUMMARY_DAYS = 30;
 /** The windows the finance page offers (owner 2026-11-09: 7 days, 30 days, 3 months). */

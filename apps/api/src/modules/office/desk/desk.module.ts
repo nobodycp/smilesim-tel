@@ -1,5 +1,6 @@
 import { DeskRepository } from './desk.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { ProvidersModule } from '../providers/providers.module';
 import { ReportsModule } from '../reports/reports.module';
 import { WalletsModule } from '../wallets/wallets.module';
@@ -14,7 +15,7 @@ export const DESK_CONTROLLERS = [DeskController];
 export const DESK_PROVIDERS = [DeskRepository, DeskService, OverviewService, LineSnapshotsService];
 
 @Module({
-  imports: [KernelModule, WalletsModule, ReportsModule, ProvidersModule],
+  imports: [PlatformModule, AccessModule, WalletsModule, ReportsModule, ProvidersModule],
   controllers: DESK_CONTROLLERS,
   providers: DESK_PROVIDERS,
   exports: [],

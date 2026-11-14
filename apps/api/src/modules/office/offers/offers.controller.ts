@@ -2,10 +2,10 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, UseInterceptors } fr
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, param } from '../../shared/activity.decorator';
-import { ActivityInterceptor } from '../../shared/activity.interceptor';
-import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../kernel/types';
+import { Activity, param } from '../../platform/activity.decorator';
+import { ActivityInterceptor } from '../../platform/activity.interceptor';
+import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
+import type { Actor as ActorShape } from '../../access/types';
 import { OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
 import { OffersService } from './offers.service';
 

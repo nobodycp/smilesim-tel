@@ -8,8 +8,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { ActivityRecorder, type ActivityDraft } from '../shared/activity';
-import { cookieBase, readCookie } from '../shared/cookies';
+import { ActivityRecorder, type ActivityDraft } from '../platform/activity';
+import { cookieBase, readCookie } from '../platform/cookies';
 import { AuthService, Failure, type Outcome } from './auth.service';
 import { SESSION_COOKIE_SECONDS } from './sessions';
 import { expectedLayer } from '../../doors';

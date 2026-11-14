@@ -11,12 +11,12 @@ import { PackagesRepository } from '../packages/packages.repository';
 import { CompaniesRepository } from '../companies/companies.repository';
 import { AccountsRepository } from '../accounts/accounts.repository';
 import { OfficeGraph } from './office-graph';
-import { PrismaService } from '../../shared/prisma.service';
+import { PrismaService } from '../../platform/prisma.service';
 import { Prisma, PrismaClient } from '../../../generated/prisma/client';
 import { AuthStore } from '../../auth/auth.store';
-import type { LineFilter } from '../rules/office-paging';
+import type { LineFilter } from '../../sales/rules/line-filters';
 import { NoticeService } from '../../notifications/notice.service';
-import type { NoticeWriter } from '../../shared/notices';
+import type { NoticeWriter } from '../../platform/notices';
 import { LinePricing } from '../lines/line-pricing';
 import { LineReads } from '../lines/line-reads';
 import { LinesService } from '../lines/lines.service';
@@ -35,7 +35,8 @@ import { ProvidersService } from '../providers/providers.service';
 import { WalletsService } from '../wallets/wallets.service';
 import { AuditService } from '../../auditing/audit.service';
 import { TasksService } from '../tasks/tasks.service';
-import type { Gate, Sale } from '../kernel/types';
+import type { Gate } from '../../platform/cookies';
+import type { Sale } from '../../wallets/sale';
 import type { TransferAccountBody } from '../transfers/transfers.service';
 
 /**

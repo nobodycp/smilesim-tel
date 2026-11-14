@@ -32,7 +32,16 @@ goes down; the backend map updated in the same commit.
   rule changed. How long a stop may take is not bounded by a constant: each path is bounded only by its own
   limits (a transaction's 5 s, a queue publish's 5 s, a provider call's 30 s), and plain reads have none.
   Commit: see `git log --grep 'R.2.1'`.
-- [ ] **R.3** Rules to their owners; the kernel dissolved into platform and access.
+- [x] **R.3** Rules to their owners; the kernel dissolved into platform and access. `modules/shared/` is
+  `modules/platform/` (with the unit of work, `query`, `values` and `PlatformModule`); the actor, the tree, the
+  policy and the grants are `modules/access/` (`AccessModule`, which imports `AuthModule` and hands on nothing of
+  it: notifications and accounts import it themselves); the rules went to catalog (`package-prices`, `actions`,
+  `run-modes`, `sim-rules`, `package-code`), pricing (`prices`, `user-terms`, `line-prices`, `profit-ladder`,
+  `package-terms`, `line-terms`), wallets (`sale`, `ceiling`), sales (`periods`, `line-filters`), tasks
+  (`task-status`) and the platform (page sizes); `Layer` is the platform's (`doors.ts`), `PathNode` access's. Split
+  files keep every function's body as it was. New guard `catch-all-module` (no `kernel` by name; a Nest module
+  exports only what its module owns). `module-layering` 28 → 19, `module-mutual` 10 → 8 (catalog ↔ pricing is
+  new: `packages.service.ts` still prices, R.8), `root-domain-code` 5 → 4. Commit: see `git log --grep 'R.3'`.
 - [ ] **R.4** Tasks and sales untangled (`tasks` imports nothing of `sales`). May change how services are composed
   (a port, a provider moved to another module); changes no business rule and no transaction.
 - [ ] **R.5** One composition for the worker. May change how the worker is built (a shared factory, or a Nest
@@ -54,9 +63,9 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 
 | Guard | Count | What it is | Closed by |
 |---|---|---|---|
-| `module-layering` | 28 (was 32; R.2 closed 4) | imports the target graph does not allow | R.3–R.8 |
-| `module-mutual` | 10 (was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales) | pairs of modules that import each other | R.3–R.8 |
-| `root-domain-code` | 5 | domain code at `src/` root | R.3, R.5 |
+| `module-layering` | 19 (was 32; R.2 closed 4, R.3 9) | imports the target graph does not allow | R.3–R.8 |
+| `module-mutual` | 8 (was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales; R.3 closed identity ↔ platform, access ↔ pricing, access ↔ sales and opened catalog ↔ pricing, closed by R.8) | pairs of modules that import each other | R.3–R.8 |
+| `root-domain-code` | 4 (R.3: `doors.ts` no longer reads sign-in) | domain code at `src/` root | R.3, R.5 |
 | `operation-writes` | 1 | `tasks/task-operation.ts` writes a provider operation | R.4 |
 | `transaction-outside-unit-of-work` | 5 | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
 | `write-without-activity` | 7 | sign-in routes that record nothing | R.A |

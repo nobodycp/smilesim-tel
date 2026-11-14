@@ -1,5 +1,5 @@
-import { errorCode, logger } from '../../shared/log';
-import type { UnitOfWork } from '../kernel/unit-of-work';
+import { errorCode, logger } from '../../platform/log';
+import type { UnitOfWork } from '../../platform/unit-of-work';
 import { OutboxRepository, type ClaimedMessage } from './outbox.repository';
 
 const log = logger('OutboxRelay');

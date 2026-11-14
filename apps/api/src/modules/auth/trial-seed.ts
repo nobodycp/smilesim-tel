@@ -1,4 +1,4 @@
-import { Layer } from './decide-login';
+import { Layer } from '../../doors';
 
 export const TRIAL_PASSWORD = '123456';
 

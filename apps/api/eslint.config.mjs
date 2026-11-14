@@ -16,7 +16,7 @@ export default tseslint.config(
     // silently stop throwing ApiFailure.
     files: ['src/**/*.ts'],
     ignores: ['src/**/*.spec.ts'],
-    rules: { 'no-restricted-globals': ['error', { name: 'fail', message: "Import fail from 'modules/shared/api-failure'." }] },
+    rules: { 'no-restricted-globals': ['error', { name: 'fail', message: "Import fail from 'modules/platform/api-failure'." }] },
   },
   {
     // backend-engineering.mdc 5.3: a function is at most 80 lines, a file at most 600. No exceptions.

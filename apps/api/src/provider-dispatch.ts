@@ -2,15 +2,15 @@ import { randomUUID } from 'node:crypto';
 import type IORedis from 'ioredis';
 import type { PrismaClient } from './generated/prisma/client';
 import type { AuthStore } from './modules/auth/auth.store';
-import { AccountTree } from './modules/office/kernel/account-tree';
-import { ActorResolver } from './modules/office/kernel/actor-resolver';
-import { UnitOfWork } from './modules/office/kernel/unit-of-work';
+import { AccountTree } from './modules/access/account-tree';
+import { ActorResolver } from './modules/access/actor-resolver';
+import { UnitOfWork } from './modules/platform/unit-of-work';
 import { ActivationSettlement } from './modules/office/lines/activation-settlement';
 import { LinePricing } from './modules/office/lines/line-pricing';
 import { LinesRepository } from './modules/office/lines/lines.repository';
 import { TaskCompletion } from './modules/office/lines/task-completion';
 import { NoticeService } from './modules/notifications/notice.service';
-import type { NoticeWriter } from './modules/shared/notices';
+import type { NoticeWriter } from './modules/platform/notices';
 import { TasksRepository } from './modules/office/tasks/tasks.repository';
 import { TasksService } from './modules/office/tasks/tasks.service';
 import { PriceLadder } from './modules/office/terms/price-ladder';
@@ -22,11 +22,11 @@ import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate
 import { READY_EVERY_MS, READY_TTL_MS, type DispatchSettings, type ProviderTarget } from './modules/office/providers/dispatch/dispatch-policy';
 import type { BuiltAdapters, OpenedCredential } from './modules/office/providers/dispatch/provider-adapters';
 import type { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
-import { open } from './modules/shared/secret-box';
+import { open } from './modules/platform/secret-box';
 import { OperationDispatcher, WaitingPass, recoverExpired } from './modules/office/providers/operations/operation-dispatcher';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from './modules/office/providers/operations/provider-operations.repository';
 import { ProviderOperationsService } from './modules/office/providers/operations/provider-operations.service';
-import { errorCode, logger } from './modules/shared/log';
+import { errorCode, logger } from './modules/platform/log';
 
 const log = logger('ProviderDispatch');
 

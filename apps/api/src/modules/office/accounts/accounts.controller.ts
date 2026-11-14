@@ -5,11 +5,11 @@ import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@ne
 import type { Request } from 'express';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, bodyField, param } from '../../shared/activity.decorator';
-import { ActivityInterceptor } from '../../shared/activity.interceptor';
-import { readCookie } from '../../shared/cookies';
-import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../kernel/types';
+import { Activity, bodyField, param } from '../../platform/activity.decorator';
+import { ActivityInterceptor } from '../../platform/activity.interceptor';
+import { readCookie } from '../../platform/cookies';
+import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
+import type { Actor as ActorShape } from '../../access/types';
 import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { AccountsService } from './accounts.service';
 

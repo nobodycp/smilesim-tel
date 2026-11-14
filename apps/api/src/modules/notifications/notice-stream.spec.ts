@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { EventEmitter } from 'node:events';
 import type { Request, Response } from 'express';
-import type { Actor } from '../office/kernel/types';
+import type { Actor } from '../access/types';
 import type { NoticeInboxService } from './notice-inbox.service';
 import { NoticesController } from './notices.controller';
 

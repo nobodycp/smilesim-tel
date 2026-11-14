@@ -1,5 +1,6 @@
 import { WalletsRepository } from './wallets.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { TermsModule } from '../terms/terms.module';
 import { WalletLedger } from './wallet-ledger';
 import { WalletsController } from './wallets.controller';
@@ -11,7 +12,7 @@ export const WALLETS_CONTROLLERS = [WalletsController];
 export const WALLETS_PROVIDERS = [WalletsRepository, WalletsService, WalletLedger];
 
 @Module({
-  imports: [KernelModule, TermsModule],
+  imports: [PlatformModule, AccessModule, TermsModule],
   controllers: WALLETS_CONTROLLERS,
   providers: WALLETS_PROVIDERS,
   exports: [WalletsService, WalletLedger],

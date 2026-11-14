@@ -2,10 +2,10 @@ import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { ApiFailure } from '../../shared/api-failure';
+import { ApiFailure } from '../../platform/api-failure';
 import type { NoticeService } from '../../notifications/notice.service';
-import { captureTerms } from '../rules/prices';
-import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
+import { captureTerms } from '../../pricing/rules/prices';
+import { packageTermsOf, type PackagePriceRow } from '../../pricing/rules/package-terms';
 import { OfficeFacade } from '../testing/office-facade';
 
 // Runs against a real PostgreSQL only (see wallet-concurrency.db.spec.ts for how to give it one): in-memory

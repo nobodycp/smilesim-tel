@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { createPrismaClient } from './db';
 import { LinesRepository } from './modules/office/lines/lines.repository';
 import { moveLineStatus } from './modules/office/lines/line-state';
-import { open, seal } from './modules/shared/secret-box';
-import { capturedOutput } from './modules/shared/testing/captured-output';
+import { open, seal } from './modules/platform/secret-box';
+import { capturedOutput } from './modules/platform/testing/captured-output';
 import { sealEsimCodes } from './seal-esim-codes';
 import { run } from './seal-secrets';
 

@@ -2,7 +2,7 @@ import { ProvidersRepository } from '../providers/providers.repository';
 import { PackagesRepository } from './packages.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import type { Actor } from '../kernel/types';
+import type { Actor } from '../../access/types';
 import { ProvidersService } from '../providers/providers.service';
 import { PackagesService } from './packages.service';
 

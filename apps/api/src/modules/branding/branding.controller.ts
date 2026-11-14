@@ -1,12 +1,12 @@
-import { gateOf } from '../shared/cookies';
+import { gateOf } from '../platform/cookies';
 import { Body, Controller, Get, Param, Put, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { errorBody } from '../../errors';
 import { ApiErrorResponse } from '../../openapi/responses';
-import { ActivityRecorder } from '../shared/activity';
-import { ApiFailure } from '../shared/api-failure';
+import { ActivityRecorder } from '../platform/activity';
+import { ApiFailure } from '../platform/api-failure';
 import { BrandingService, type ImageKind } from './branding.service';
 
 export class BrandingBodyDto {

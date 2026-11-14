@@ -3,8 +3,8 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashPassword } from '../../auth/password';
 import { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from './office-facade';
-import { captureTerms } from '../rules/prices';
-import { packageTermsOf, type PackagePriceRow } from '../rules/office-terms';
+import { captureTerms } from '../../pricing/rules/prices';
+import { packageTermsOf, type PackagePriceRow } from '../../pricing/rules/package-terms';
 
 // The tree the office service specs run on: branch → ma1 → ag1 → pos1 and ma1 → ag2 → pos2, plus a second
 // main agent, ma2, with nothing under it. It lives here and not in a spec file because importing a spec

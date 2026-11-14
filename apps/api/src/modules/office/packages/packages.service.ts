@@ -1,20 +1,21 @@
-import { capList } from '../../shared/paging';
+import { capList } from '../../platform/paging';
 import { PackagesRepository } from './packages.repository';
 import { PriceLadder } from '../terms/price-ladder';
-import { AccountTree } from '../kernel/account-tree';
-import { UnitOfWork } from '../kernel/unit-of-work';
-import { requireGrant, seesLayer } from '../policy';
+import { AccountTree } from '../../access/account-tree';
+import { UnitOfWork } from '../../platform/unit-of-work';
+import { requireGrant, seesLayer } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../shared/api-failure';
-import type { Actor } from '../kernel/types';
+import { fail } from '../../platform/api-failure';
+import type { Actor } from '../../access/types';
 import type { Prisma } from '../../../generated/prisma/client';
-import { parseInput } from '../../shared/input';
-import { chainHolds, editableField, esimPriceOf } from '../rules/prices';
-import { ACTION_KEYS, activateInputs, normalizeActionModes, packageModeData, resolvePackageMode, type ActionMode } from '../rules/run-modes';
-import { simRulesOf } from '../rules/sim-rules';
-import { buyPriceFor, deniedOpsFor, layerPrice, visibleTo } from '../rules/user-terms';
+import { parseInput } from '../../platform/input';
+import { editableField } from '../../pricing/rules/prices';
+import { chainHolds, esimPriceOf } from '../../catalog/rules/package-prices';
+import { ACTION_KEYS, activateInputs, normalizeActionModes, packageModeData, resolvePackageMode, type ActionMode } from '../../catalog/rules/run-modes';
+import { simRulesOf } from '../../catalog/rules/sim-rules';
+import { buyPriceFor, deniedOpsFor, layerPrice, visibleTo } from '../../pricing/rules/user-terms';
 import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody, SellPriceBody } from './packages.schemas';
-import type { Prices } from '../rules/prices';
+import type { Prices } from '../../catalog/rules/package-prices';
 
 // Which package flags a provider mode sets.
 function pricesOf(row: Prices): Prices {

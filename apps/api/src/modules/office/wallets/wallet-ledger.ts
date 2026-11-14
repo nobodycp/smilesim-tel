@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { logger } from '../../shared/log';
-import { fail } from '../../shared/api-failure';
-import { AccountTree } from '../kernel/account-tree';
-import type { Sale } from '../kernel/types';
-import { UnitOfWork, type Db } from '../kernel/unit-of-work';
-import { uncoveredDebit, withinCeiling } from '../rules/prices';
-import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder } from '../rules/profit-ladder';
+import { logger } from '../../platform/log';
+import { fail } from '../../platform/api-failure';
+import { AccountTree } from '../../access/account-tree';
+import type { Sale } from '../../wallets/sale';
+import { UnitOfWork, type Db } from '../../platform/unit-of-work';
+import { uncoveredDebit, withinCeiling } from '../../wallets/ceiling';
+import { REFUND_KINDS, SALE_KINDS, ladderOf, refundLadder, type Ladder } from '../../pricing/rules/profit-ladder';
 import { PriceLadder } from '../terms/price-ladder';
 
 const log = logger('WalletLedger');

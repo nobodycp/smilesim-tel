@@ -1,5 +1,6 @@
 import { RolesRepository } from './roles.repository';
-import { KernelModule } from '../kernel/kernel.module';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
 import { LayerRoles } from './layer-roles';
 import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
@@ -10,7 +11,7 @@ export const ROLES_CONTROLLERS = [RolesController];
 export const ROLES_PROVIDERS = [RolesRepository, RolesService, LayerRoles];
 
 @Module({
-  imports: [KernelModule],
+  imports: [PlatformModule, AccessModule],
   controllers: ROLES_CONTROLLERS,
   providers: ROLES_PROVIDERS,
   exports: [LayerRoles],

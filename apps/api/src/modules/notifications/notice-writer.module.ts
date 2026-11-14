@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { NOTICE_WRITER } from '../shared/notices';
+import { NOTICE_WRITER } from '../platform/notices';
 import { NoticeService } from './notice.service';
 
 /**

@@ -1,5 +1,5 @@
 import { WalletsRepository } from './wallets.repository';
-import type { Actor } from '../kernel/types';
+import type { Actor } from '../../access/types';
 import { WalletsService } from './wallets.service';
 
 // Taking money back (roadmap N6): from a child to its parent, with a reason and a note; no transfers sideways.

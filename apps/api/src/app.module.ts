@@ -4,7 +4,7 @@ import { HealthController } from './health.controller';
 import { OriginMiddleware } from './origin.middleware';
 import { RateLimitMiddleware } from './rate-limit.middleware';
 import { featureModules } from './modules/registry';
-import { API_PROVIDERS } from './modules/shared/api-providers';
+import { API_PROVIDERS } from './modules/platform/api-providers';
 
 @Module({
   imports: featureModules,

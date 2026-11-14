@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { Action } from '../../kernel/types';
+import type { Action } from '../../../catalog/rules/actions';
 
 // The life of one operation asked of a provider (ADR 0017). Pure: no Nest, no Prisma, no HTTP.
 //

@@ -1,9 +1,9 @@
-import { useSealingKey } from '../../shared/testing/sealing-key';
+import { useSealingKey } from '../../platform/testing/sealing-key';
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { ApiFailure } from '../../shared/api-failure';
+import { ApiFailure } from '../../platform/api-failure';
 import type { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
 

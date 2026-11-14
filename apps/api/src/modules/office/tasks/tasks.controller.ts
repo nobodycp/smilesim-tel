@@ -4,12 +4,12 @@ import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@ne
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiZodQuery } from '../../../openapi/query';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, param } from '../../shared/activity.decorator';
-import { ActivityInterceptor } from '../../shared/activity.interceptor';
-import { ActivityRecorder } from '../../shared/activity';
-import { gateOf } from '../../shared/cookies';
-import { Actor, ActorInterceptor } from '../kernel/actor.interceptor';
-import type { Actor as ActorShape } from '../kernel/types';
+import { Activity, param } from '../../platform/activity.decorator';
+import { ActivityInterceptor } from '../../platform/activity.interceptor';
+import { ActivityRecorder } from '../../platform/activity';
+import { gateOf } from '../../platform/cookies';
+import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
+import type { Actor as ActorShape } from '../../access/types';
 import { TaskNoteBody, TaskRejectBody, TasksQuery } from './tasks.schemas';
 import { TasksService } from './tasks.service';
 

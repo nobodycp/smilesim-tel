@@ -1,5 +1,5 @@
 import { Prisma, type PrismaClient } from './generated/prisma/client';
-import { isSealed, open, seal, secretsKey } from './modules/shared/secret-box';
+import { isSealed, open, seal, secretsKey } from './modules/platform/secret-box';
 
 // Seals the eSIM codes that were stored before sealing on write (ADR 0019, D17; plan slice S.5b). Run by hand
 // through `src/seal-secrets.ts`, never at boot.

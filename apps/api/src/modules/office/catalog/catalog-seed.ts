@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { publicPackageCode } from '../rules/package-code';
+import { publicPackageCode } from '../../catalog/rules/package-code';
 import { LayerRoles } from '../roles/layer-roles';
-import { UnitOfWork } from '../kernel/unit-of-work';
+import { UnitOfWork } from '../../platform/unit-of-work';
 import { env, isTest } from '../../../config';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { catalog, companies, packageCode, packageName } from './office-catalog';
-import { AGOROT } from '../rules/prices';
-import { normalizeActionModes, packageFlagsFromModes } from '../rules/run-modes';
+import { AGOROT } from '../../catalog/rules/package-prices';
+import { normalizeActionModes, packageFlagsFromModes } from '../../catalog/rules/run-modes';
 
 /**
  * At boot, makes sure the shipped catalog (providers, companies, packages) and the four layer roles exist. Skipped

@@ -1,10 +1,10 @@
-import { useSealingKey } from '../../shared/testing/sealing-key';
+import { useSealingKey } from '../../platform/testing/sealing-key';
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { ApiFailure } from '../../shared/api-failure';
-import { UnitOfWork } from '../kernel/unit-of-work';
+import { ApiFailure } from '../../platform/api-failure';
+import { UnitOfWork } from '../../platform/unit-of-work';
 import { operationKey } from '../lines/activation-settlement.rules';
 import type { NoticeService } from '../../notifications/notice.service';
 import { ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';

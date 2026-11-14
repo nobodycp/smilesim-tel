@@ -4,7 +4,7 @@ import { BrandingModule } from './branding/branding.module';
 import { ActivityModule } from './auditing/activity.module';
 import { NoticeWriterModule } from './notifications/notice-writer.module';
 import { OfficeModule } from './office/office.module';
-import { PrismaModule } from './shared/prisma.service';
+import { PrismaModule } from './platform/prisma.service';
 
 // The two global writers first: the activity log and the notice writer, each the one implementation of a port of
 // the platform (ADR 0020, slice R.2).

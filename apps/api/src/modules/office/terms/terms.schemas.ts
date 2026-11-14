@@ -1,7 +1,7 @@
-import { queryText } from '../../shared/schemas';
+import { queryText } from '../../platform/schemas';
 import { z } from 'zod';
-import { agorot } from '../../shared/schemas';
-import { OP_KEYS } from '../rules/user-terms';
+import { agorot } from '../../platform/schemas';
+import { OP_KEYS } from '../../pricing/rules/user-terms';
 
 /** A price of its own: agorot to set it, null to clear it, absent to leave it as it is. */
 const price = agorot.nullable().optional();

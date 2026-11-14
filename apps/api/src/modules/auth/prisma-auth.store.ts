@@ -1,10 +1,10 @@
-import { open, seal } from '../shared/secret-box';
+import { open, seal } from '../platform/secret-box';
 import { hashSessionToken, newSessionToken } from './session-token';
-import { logger } from '../shared/log';
+import { logger } from '../platform/log';
 import { env as readEnv, wholeEnv } from '../../config';
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { createPrismaClient } from '../../db';
-import { PrismaService } from '../shared/prisma.service';
+import { PrismaService } from '../platform/prisma.service';
 import { PrismaClient } from '../../generated/prisma/client';
 import IORedis, { Redis } from 'ioredis';
 import {
@@ -20,7 +20,8 @@ import {
   TwoFactorMethod,
   UserPatch,
 } from './auth.store';
-import { Layer, LoginUser } from './decide-login';
+import { LoginUser } from './decide-login';
+import { Layer } from '../../doors';
 import { hashPassword } from './password';
 import { SessionRuleValues, SessionRules, effectiveRules } from './sessions';
 import { TRIAL_PASSWORD, buildTrialSeed, trialSeedDecision } from './trial-seed';
@@ -71,7 +72,7 @@ function toStoredUser(row: UserRecord): StoredUser {
     phone: row.phone ?? undefined,
     city: row.city,
     address: row.address,
-    // Sealed at rest (shared/secret-box.ts); a row written before sealing reads as it is.
+    // Sealed at rest (platform/secret-box.ts); a row written before sealing reads as it is.
     twoFactorSecret: row.twoFactorSecret ? open(row.twoFactorSecret) : row.twoFactorSecret,
     pendingTwoFactorSecret: row.pendingTwoFactorSecret ? open(row.pendingTwoFactorSecret) : row.pendingTwoFactorSecret,
     twoFactorMethod: TWO_FACTOR_METHODS.find((method) => method === row.twoFactorMethod) ?? 'app',

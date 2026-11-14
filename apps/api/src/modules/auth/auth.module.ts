@@ -9,7 +9,7 @@ import { TwoFactorPolicyService } from './two-factor-policy.service';
 
 // The AuthStore contract is implemented by Prisma (PostgreSQL) and Redis; HTTP tests override AUTH_STORE with MemoryAuthStore.
 // MESSAGE_SENDER carries sign-in codes by SMS or email; LogSender until the gateways are chosen.
-// ActivityRecorder is the platform's port (`shared/activity.ts`); the one implementation is provided by the global
+// ActivityRecorder is the platform's port (`platform/activity.ts`); the one implementation is provided by the global
 // ActivityModule of auditing, which the app imports once (`registry.ts`). Sign-in does not import auditing.
 @Module({
   controllers: [AuthController],

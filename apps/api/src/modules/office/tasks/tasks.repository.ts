@@ -2,9 +2,9 @@ import { assertStoredSealed } from '../lines/esim-code';
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork, type Db } from '../kernel/unit-of-work';
-import { NEWEST_FIRST } from '../../shared/paging';
-import { TASKS_PAGE } from '../rules/office-paging';
+import { UnitOfWork, type Db } from '../../platform/unit-of-work';
+import { NEWEST_FIRST } from '../../platform/paging';
+import { TASKS_PAGE } from '../../platform/paging';
 
 /**
  * The database as this domain reads and writes it: tasks and their notes. One method per query, named for what it
