@@ -20,6 +20,7 @@ import { TransfersModule } from './sales/transfers/transfers.module';
 import { ReportsModule } from './reporting/reports/reports.module';
 import { DeskModule } from './reporting/desk/desk.module';
 import { DuplicateGuardModule } from './platform/duplicate-guard.module';
+import { LegacyPathsModule } from './platform/legacy-paths';
 import { AccountTasksModule } from './tasks/account-tasks.module';
 import { AccountWalletsModule } from './wallets/account-wallets.module';
 import { PrismaModule } from './platform/prisma.service';
@@ -31,4 +32,4 @@ import { PrismaModule } from './platform/prisma.service';
 // Then the bindings of access's two ports (slice R.8), global like the writers.
 // The extension contract requires `any[]` here.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const featureModules: any[] = [PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule];
+export const featureModules: any[] = [PrismaModule, ActivityModule, NoticeWriterModule, AuthModule, LegacyPathsModule, DuplicateGuardModule, RolesModule, CompaniesModule, OffersModule, AuditModule, NoticesModule, CatalogModule, AccountsModule, TermsModule, PackagesModule, WalletsModule, TasksModule, ProvidersModule, LinesModule, TransfersModule, ReportsModule, DeskModule, AccountWalletsModule, AccountTasksModule, BrandingModule];

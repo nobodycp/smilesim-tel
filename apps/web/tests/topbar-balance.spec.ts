@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { serveApi } from './desk';
 
-// The topbar wallet is read from `/office/me`. After a write that moves money, the shell asks for it again,
+// The topbar wallet is read from `/v1/me`. After a write that moves money, the shell asks for it again,
 // so the balance in the topbar follows the wallet without a full reload. The branch has no wallet (spec
 // 2026-11-09-admin-review, 7): this is a main agent funding one of its accounts.
 test('the topbar balance follows a fund without a reload', async ({ page }) => {

@@ -212,8 +212,7 @@ describe('office permission matrix', () => {
     expect(EXPECTED.map(([route]) => route).sort()).toEqual(served.sort());
   });
 
-  it.each(EXPECTED)('%s → %s', async (route, access) => {
-    const [method, path] = route.split(' ');
+  const matrixRow = async (method: string, path: string) => {
     const got: string[] = [];
     for (const column of COLUMNS) {
       const { app, sid } = apps[column]!;
@@ -222,6 +221,17 @@ describe('office permission matrix', () => {
       expect([401, 500]).not.toContain(response.status);
       got.push(response.status === 403 ? 'n' : 'y');
     }
-    expect(got.join('')).toBe(access);
+    return got.join('');
+  };
+
+  it.each(EXPECTED)('%s → %s', async (route, access) => {
+    const [method, path] = route.split(' ');
+    expect(await matrixRow(method, path)).toBe(access);
+  });
+
+  // Slice R.11b: the same permissions under `/v1/`, route for route.
+  it.each(EXPECTED)('%s under /v1/ → %s', async (route, access) => {
+    const [method, path] = route.split(' ');
+    expect(await matrixRow(method, path.replace(/^\/office\//, '/v1/'))).toBe(access);
   });
 });

@@ -24,7 +24,7 @@ test('a package is added from a provider product: details, add-ons, inherited mo
     'GET /packages/sky-cellcom-250/sheet': () => ({ status: 404, body: { message: 'غير موجود', code: 'NOT_FOUND' } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/office/packages')) sent.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/packages')) sent.push(request.postDataJSON());
   });
   await page.goto(`${admin}/companies/cellcom`);
   await page.getByRole('link', { name: 'إضافة رزمة' }).click();
@@ -79,7 +79,7 @@ test('a company is added from the provider with its SIM rules', async ({ page })
     'POST /companies': () => ({ body: { ok: true, code: 'golan' } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/office/companies')) sent.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/companies')) sent.push(request.postDataJSON());
   });
   await page.goto(`${admin}/companies`);
   await page.getByRole('link', { name: 'إضافة شركة' }).click();

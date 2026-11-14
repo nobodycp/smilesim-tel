@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { expectFullTable } from './desk';
 
 test('tasks drops the repeated title and keeps the status tabs visible', async ({ page }) => {
-  await page.route('**/office/tasks**', (route) =>
+  await page.route('**/v1/tasks**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [] }) }),
   );
   await page.goto('/tasks');

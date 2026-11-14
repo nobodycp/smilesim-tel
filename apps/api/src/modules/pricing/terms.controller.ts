@@ -9,11 +9,12 @@ import { ActivityInterceptor } from '../platform/activity.interceptor';
 import { Actor, ActorInterceptor } from '../access/actor.interceptor';
 import type { Actor as ActorShape } from '../access/types';
 import { TermsService } from './terms.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 @ApiTags('pricing')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class TermsController {
   constructor(private readonly termDesk: TermsService) {}

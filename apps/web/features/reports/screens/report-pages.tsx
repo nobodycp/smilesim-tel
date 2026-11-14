@@ -22,7 +22,7 @@ import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../
  * Graphite report layout. Balances and providers live here; «المبيعات» and «الطلبات» left by spec
  * 2026-11-09-admin-review, 1 (their rows are in «المالية» and «المهام»).
  */
-const exportHref = (kind: string, query: Record<string, string>) => `/api/office/reports/${kind}/export${queryString(query)}`;
+const exportHref = (kind: string, query: Record<string, string>) => `/api/v1/reports/${kind}/export${queryString(query)}`;
 
 /** Main agent, agent and the branch: the wallets under the account, now (no period). */
 export function BalancesReportScreen() {

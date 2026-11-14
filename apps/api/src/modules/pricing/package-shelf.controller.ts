@@ -8,11 +8,12 @@ import { Actor, ActorInterceptor } from '../access/actor.interceptor';
 import type { Actor as ActorShape } from '../access/types';
 import { SellPriceBody } from '../catalog/packages/packages.schemas';
 import { PackageShelfService } from './package-shelf.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 @ApiTags('pricing')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class PackageShelfController {
   constructor(private readonly shelf: PackageShelfService) {}

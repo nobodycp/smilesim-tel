@@ -3,7 +3,7 @@ import { asBranch, expectFullTable } from './desk';
 
 test('roles puts the create button on the title row', async ({ page }) => {
   await asBranch(page);
-  await page.route('**/office/roles**', (route) =>
+  await page.route('**/v1/roles**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ roles: [] }) }),
   );
   await page.goto('http://admin.localhost:3910/roles');
@@ -12,7 +12,7 @@ test('roles puts the create button on the title row', async ({ page }) => {
 });
 
 test('package steps stay on the point-of-sale door', async ({ page }) => {
-  await page.route('**/office/packages**', (route) =>
+  await page.route('**/v1/packages**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
   );
   await page.goto('/packages');

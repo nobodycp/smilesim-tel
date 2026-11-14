@@ -8,11 +8,12 @@ import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
 import type { Actor as ActorShape } from '../../access/types';
 import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody } from './packages.schemas';
 import { PackagesService } from './packages.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('catalog')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class PackagesController {
   constructor(private readonly packageDesk: PackagesService) {}

@@ -10,11 +10,12 @@ import { Actor, ActorInterceptor } from '../access/actor.interceptor';
 import type { Actor as ActorShape } from '../access/types';
 import { WalletsService } from './wallets.service';
 import type { Response } from 'express';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 @ApiTags('wallets')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class WalletsController {
   constructor(private readonly walletDesk: WalletsService) {}

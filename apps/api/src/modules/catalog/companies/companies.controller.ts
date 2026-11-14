@@ -8,11 +8,12 @@ import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
 import type { Actor as ActorShape } from '../../access/types';
 import { CompanyImageBody, CompanySimBody } from './companies.schemas';
 import { CompaniesService } from './companies.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('catalog')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class CompaniesController {
   constructor(private readonly companyDesk: CompaniesService) {}

@@ -21,7 +21,7 @@ test('the wallet chip opens the wallet page, and Escape on the notices gives the
     'GET /home': () => home,
     'GET /ledger': () => ({ body: { items: [{ id: 'e1', at: '2026-11-08T10:00:00.000Z', kind: 'fund', amount: 5000, balanceBefore: 0, balanceAfter: 5000, note: 'إيداع', packageName: null, msisdn: null, actorLoginName: 'admin', loginName: 'admin', layer: 'branch', margin: null }], nextCursor: null, total: 1 } }),
   });
-  const session = page.waitForResponse((response) => response.url().endsWith('/office/me'));
+  const session = page.waitForResponse((response) => response.url().endsWith('/v1/me'));
   await page.goto('http://agent.localhost:3910/');
   await session;
   const chip = page.getByRole('link', { name: 'المحفظة' }).first();

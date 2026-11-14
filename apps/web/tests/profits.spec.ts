@@ -32,5 +32,5 @@ test('profits show the totals and each package, follow the dates, and export the
 
   await page.getByRole('button', { name: 'اليوم' }).click();
   const today = new Date().toISOString().slice(0, 10);
-  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', new RegExp(`/api/office/finance/profits/export\\?from=${today}`));
+  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', new RegExp(`/api/v1/finance/profits/export\\?from=${today}`));
 });

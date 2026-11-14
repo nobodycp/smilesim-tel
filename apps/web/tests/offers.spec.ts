@@ -66,8 +66,8 @@ test('the owner adds an offer with its seconds and audience, and switches one of
     'PATCH /offers/o1': () => { offers = [{ ...offers[0], active: false }]; return { body: { offers } }; },
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/office/offers')) posted.push(request.postDataJSON());
-    if (request.method() === 'PATCH' && request.url().endsWith('/office/offers/o1')) patched.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/offers')) posted.push(request.postDataJSON());
+    if (request.method() === 'PATCH' && request.url().endsWith('/v1/offers/o1')) patched.push(request.postDataJSON());
   });
   await page.goto('http://admin.localhost:3910/offers');
   await expect(page.locator('.offer-hero')).toBeVisible();

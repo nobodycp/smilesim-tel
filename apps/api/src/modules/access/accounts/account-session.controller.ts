@@ -9,6 +9,7 @@ import { ActivityInterceptor } from '../../platform/activity.interceptor';
 import { cookieBase, gateOf, readCookie } from '../../platform/cookies';
 import { AccountSessionService } from './account-session.service';
 import { HandoffBody } from './accounts.schemas';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 /**
  * Leaving an entered account. It reads the impersonation session itself (any scope, any layer), so it has no
@@ -17,7 +18,7 @@ import { HandoffBody } from './accounts.schemas';
 @ApiTags('access')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor)
 export class AccountSessionController {
   constructor(private readonly sessions: AccountSessionService) {}

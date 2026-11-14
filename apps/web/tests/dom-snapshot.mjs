@@ -92,21 +92,21 @@ const reports = {
 // What each office endpoint answers. `empty` swaps the lists for empty ones.
 function answer(path, layer, empty) {
   const list = (rows) => (empty ? [] : rows);
-  if (path === '/office/me') return me(layer);
-  if (path === '/office/notices') return { unread: 0, items: [] };
-  if (path === '/office/home') return home;
-  if (path === '/office/lines') return { items: list(lines), poses: [{ loginName: 'pos', nickname: 'الكاشير' }], nextCursor: empty ? null : 'c2' };
-  if (path.startsWith('/office/lines/')) return { line: lines[0], history: [{ id: 'h1', action: 'extend', at: '2026-10-02T10:30:00.000Z', msisdn: '0550000001', companyName: 'سلكوم', packageName: '400 جيجا', actorName: 'الكاشير' }] };
-  if (path === '/office/packages') return { packages: list(packages), companies: [{ name: 'سلكوم', image: '' }] };
+  if (path === '/v1/me') return me(layer);
+  if (path === '/v1/notices') return { unread: 0, items: [] };
+  if (path === '/v1/home') return home;
+  if (path === '/v1/lines') return { items: list(lines), poses: [{ loginName: 'pos', nickname: 'الكاشير' }], nextCursor: empty ? null : 'c2' };
+  if (path.startsWith('/v1/lines/')) return { line: lines[0], history: [{ id: 'h1', action: 'extend', at: '2026-10-02T10:30:00.000Z', msisdn: '0550000001', companyName: 'سلكوم', packageName: '400 جيجا', actorName: 'الكاشير' }] };
+  if (path === '/v1/packages') return { packages: list(packages), companies: [{ name: 'سلكوم', image: '' }] };
   if (path.endsWith('/sheet')) return sheet;
-  if (path === '/office/providers') return { providers: [provider] };
-  if (path === '/office/tasks') return { items: list([task('t1', 'pending'), task('t2', 'working'), task('t3', 'done')]), nextCursor: empty ? null : 'c2' };
-  if (path === '/office/users') return { items: list(users), nextCursor: null, total: list(users).length };
-  if (path === '/office/directory') return { items: users.map((row) => ({ loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLoginName: null, frozen: false, mine: true })), nextCursor: null, total: users.length };
-  if (path === '/office/roles') return { roles: list(roles) };
-  if (path === '/office/audit') return { items: list([audit('a1'), audit('a2')]), nextCursor: empty ? null : 'c2' };
-  if (path === '/office/finance') return { items: list([finance('c1'), finance('c2')]), nextCursor: empty ? null : 'c2' };
-  if (path === '/office/provider-operations') return {
+  if (path === '/v1/providers') return { providers: [provider] };
+  if (path === '/v1/tasks') return { items: list([task('t1', 'pending'), task('t2', 'working'), task('t3', 'done')]), nextCursor: empty ? null : 'c2' };
+  if (path === '/v1/users') return { items: list(users), nextCursor: null, total: list(users).length };
+  if (path === '/v1/directory') return { items: users.map((row) => ({ loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLoginName: null, frozen: false, mine: true })), nextCursor: null, total: users.length };
+  if (path === '/v1/roles') return { roles: list(roles) };
+  if (path === '/v1/audit') return { items: list([audit('a1'), audit('a2')]), nextCursor: empty ? null : 'c2' };
+  if (path === '/v1/finance') return { items: list([finance('c1'), finance('c2')]), nextCursor: empty ? null : 'c2' };
+  if (path === '/v1/provider-operations') return {
     items: list([{
       id: 'p1', at: '2026-10-02T10:30:00.000Z', kind: 'charge', msisdn: '0550000001',
       providerCode: 'cell', providerName: 'مزود', companyName: 'سلكوم', packageName: '400 جيجا', cost: 20,
@@ -115,8 +115,8 @@ function answer(path, layer, empty) {
     stats: empty ? { count: 0, cost: 0, monthCost: 0 } : { count: 1, cost: 20, monthCost: 20 },
     providers: [{ code: 'cell', name: 'مزود' }],
   };
-  if (path === '/office/ledger') return { items: list([ledger('l1'), ledger('l2')]), nextCursor: empty ? null : 'c2' };
-  if (path.startsWith('/office/reports/')) {
+  if (path === '/v1/ledger') return { items: list([ledger('l1'), ledger('l2')]), nextCursor: empty ? null : 'c2' };
+  if (path.startsWith('/v1/reports/')) {
     const body = reports[path.split('/').pop()];
     return empty ? { ...body, items: [], nextCursor: null } : body;
   }

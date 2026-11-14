@@ -25,7 +25,7 @@ test('the run tab shows which modes follow the provider and sends «inherit» to
     'PATCH /packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'PATCH' && request.url().endsWith('/office/packages/lian-wecom-500/mode')) sent.push(request.postDataJSON());
+    if (request.method() === 'PATCH' && request.url().endsWith('/v1/packages/lian-wecom-500/mode')) sent.push(request.postDataJSON());
   });
   await page.goto('http://admin.localhost:3910/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();

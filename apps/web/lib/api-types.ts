@@ -14,7 +14,7 @@ export type AccountProfile = Profile & { loginName: string };
 /** Login name → full name for the accounts the viewer may meet on a screen. */
 export type Directory = Record<string, string>;
 /**
- * One account of `GET /office/directory`: an account the viewer may meet on a screen. `mine` marks the viewer's own
+ * One account of `GET /v1/directory`: an account the viewer may meet on a screen. `mine` marks the viewer's own
  * tree; outside it only the name and the layer are told (`parentLoginName` null, `frozen` false).
  */
 export type DirectoryRow = { loginName: string; nickname: string; layer: string; parentLoginName: string | null; frozen: boolean; mine: boolean };
@@ -91,7 +91,7 @@ export type DeskMe = {
 /** One ranked row of the overview: a package, company, provider or account, by count or profit. */
 export type OverviewRanked = { key: string; label: string; count: number; amount: number; profit: number; nickname?: string };
 export type PulseTotals = { count: number; amount: number; activations: number; profit: number };
-/** `GET /office/overview` (spec 2026-11-08-overview-and-reports-nav, F). */
+/** `GET /v1/overview` (spec 2026-11-08-overview-and-reports-nav, F). */
 export type OverviewPayload = {
   period: 'day' | 'month' | 'all';
   from: string | null;
@@ -411,7 +411,7 @@ export type LineRow = {
   addons?: { id: string; name: string; price: number }[];
 };
 /**
- * One line as `GET /office/lines/:id` answers it. A list row carries no eSIM code (ADR 0019, D17): the detail is
+ * One line as `GET /v1/lines/:id` answers it. A list row carries no eSIM code (ADR 0019, D17): the detail is
  * the one place a screen reads it from, and the API records each such read.
  */
 export type LineDetail = LineRow & { esimQr: string | null };
@@ -702,7 +702,7 @@ export function routeFor(next: Next): string {
   }
 }
 
-/** The signed-in account's wallet over the last 30 days (`GET /office/finance/summary`). */
+/** The signed-in account's wallet over the last 30 days (`GET /v1/finance/summary`). */
 export type FinanceSummary = {
   balance: number;
   ceiling: number;
@@ -722,17 +722,17 @@ export type FinanceSummary = {
   series: { day: string; balance: number }[];
 };
 
-/** The signed-in account's profit by package over a period (`GET /office/finance/profits`). */
+/** The signed-in account's profit by package over a period (`GET /v1/finance/profits`). */
 export type ProfitRow = { packageName: string; companyName: string; sales: number; refunds: number; profit: number };
 export type ProfitReport = { packages: ProfitRow[]; totals: { sales: number; refunds: number; profit: number }; capped: boolean };
 
-/** Rows of the «التقارير» page (`GET /office/reports/{sales,orders,balances,supply}`). */
+/** Rows of the «التقارير» page (`GET /v1/reports/{sales,orders,balances,supply}`). */
 export type BalanceReportRow = {
   loginName: string; nickname: string; layer: string; parentLoginName: string | null; balance: number; ceiling: number; used: number; held: number; available: number; frozen: boolean; lastAt: string | null;
 };
 export type SupplyReportRow = { providerCode: string; providerName: string; operations: number; cost: number; profit: number };
 
-/** Our account with one provider (`GET /office/provider-accounts`): payments + settlements − purchases. */
+/** Our account with one provider (`GET /v1/provider-accounts`): payments + settlements − purchases. */
 export type ProviderAccount = {
   code: string; name: string; purchases: number; payments: number; settlements: number;
   balance: number; creditLimit: number; alertFloor: number; held: number; available: number;

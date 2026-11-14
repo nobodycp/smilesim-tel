@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 export async function asBranch(page: Page) {
-  await page.route('**/office/me', (route) =>
+  await page.route('**/v1/me', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -47,7 +47,7 @@ const accounts = {
 } as const;
 
 /**
- * Answers every /office call in the browser. `routes` is keyed "METHOD /path" (the path after /office);
+ * Answers every /v1 call in the browser (slice R.11b: the web calls `/v1/…`). `routes` is keyed "METHOD /path" (the path after /v1);
  * a route answers with its body, an optional status, and an optional delay in milliseconds.
  * The account and the notices have defaults. The returned list records every call as "METHOD /path?query",
  * so a test can say which requests were made, and in what order.
@@ -90,16 +90,16 @@ function asDirectory(reply: Reply): Reply {
 
 export async function serveApi(page: Page, layer: keyof typeof accounts, routes: Routes = {}) {
   const calls: string[] = [];
-  await page.route('**/api/office/**', async (route) => {
+  await page.route('**/api/v1/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
-    const path = url.pathname.replace(/^\/api\/office/, '');
+    const path = url.pathname.replace(/^\/api\/v1/, '');
     const key = `${request.method()} ${path}`;
     calls.push(`${key}${url.search}`);
     let reply: Reply = { body: { message: 'none' }, status: 404 };
     if (routes[key]) reply = key === 'GET /users' ? asUsersPage(url, routes[key](url)) : routes[key](url);
     else if (key === 'GET /me') reply = { body: { ...accounts[layer], stops: [], impersonating: false, balance: 1000, ceiling: 0 } };
-    else if (key === 'GET /directory' && url.searchParams.get('mine') && routes['GET /users']) reply = asDirectory(routes['GET /users'](new URL('http://desk/office/users?whole=1')));
+    else if (key === 'GET /directory' && url.searchParams.get('mine') && routes['GET /users']) reply = asDirectory(routes['GET /users'](new URL('http://desk/v1/users?whole=1')));
     else if (key === 'GET /directory') {
       const items = Object.values(accounts).map((row) => ({ loginName: row.loginName, nickname: row.nickname, layer: row.layer, parentLoginName: null, frozen: false, mine: false }));
       reply = { body: { items, nextCursor: null, total: items.length } };

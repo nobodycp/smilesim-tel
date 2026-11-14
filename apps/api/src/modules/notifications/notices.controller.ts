@@ -12,6 +12,7 @@ import { ActivityInterceptor } from '../platform/activity.interceptor';
 import { Actor, ActorInterceptor } from '../access/actor.interceptor';
 import type { Actor as ActorShape } from '../access/types';
 import { NoticeInboxService } from './notice-inbox.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 /** How often an open notices stream is pinged and its session checked again. */
 const STREAM_BEAT_MS = 25_000;
@@ -19,7 +20,7 @@ const STREAM_BEAT_MS = 25_000;
 @ApiTags('notifications')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class NoticesController {
   constructor(private readonly inbox: NoticeInboxService) {}

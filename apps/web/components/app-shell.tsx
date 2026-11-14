@@ -572,7 +572,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           {ready && !reachable && <OutageBar />}
           <div className="canvas-inner wide">
-            {/* The page mounts at once so its loads run beside `/office/me`; `Desk` draws the
+            {/* The page mounts at once so its loads run beside `/v1/me`; `Desk` draws the
                 skeleton until the session answers. Only an API that is down replaces it. */}
             {failed ? <OutagePanel onRetry={retry} busy={retrying} /> : children}
           </div>

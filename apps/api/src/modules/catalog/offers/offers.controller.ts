@@ -8,12 +8,13 @@ import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
 import type { Actor as ActorShape } from '../../access/types';
 import { OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
 import { OffersService } from './offers.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 /** Offers on the home hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1). */
 @ApiTags('catalog')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class OffersController {
   constructor(private readonly offers: OffersService) {}

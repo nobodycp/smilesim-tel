@@ -12,13 +12,14 @@ import { Actor, ActorInterceptor } from '../access/actor.interceptor';
 import type { Actor as ActorShape } from '../access/types';
 import { TaskNoteBody, TaskRejectBody, TasksQuery } from './tasks.schemas';
 import { TasksService } from './tasks.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 // POST /office/tasks/:id/complete is served by LinesController: closing a task applies a line operation
 // (lines/task-completion.ts).
 @ApiTags('tasks')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class TasksController {
   constructor(private readonly taskDesk: TasksService, private readonly activity: ActivityRecorder) {}

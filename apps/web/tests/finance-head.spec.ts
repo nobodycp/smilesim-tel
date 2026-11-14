@@ -29,7 +29,7 @@ test('finance opens on the statement, without the wallet head, and exports the f
   expect(calls.some((call) => call.startsWith('GET /finance/summary'))).toBe(false);
 
   await page.getByLabel('من', { exact: true }).fill('2026-11-01');
-  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', '/api/office/finance/export?from=2026-11-01');
+  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', '/api/v1/finance/export?from=2026-11-01');
 });
 
 test('finance opened with ?scope=operations lists the operations only', async ({ page }) => {

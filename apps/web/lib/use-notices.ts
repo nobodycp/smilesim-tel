@@ -10,7 +10,7 @@ import { api, type NoticeRow } from './api';
 const PANEL = 10;
 const POLL_MS = 60_000;
 const TOAST_MS = 4_000;
-const STREAM = '/api/office/notices/stream';
+const STREAM = '/api/v1/notices/stream';
 
 export function useNotices(ready: boolean) {
   const [notices, setNotices] = useState<NoticeRow[]>([]);

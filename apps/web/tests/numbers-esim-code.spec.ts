@@ -16,16 +16,16 @@ const row = (id: string, msisdn: string, esim: boolean) => ({
 const rows = [row('ln1', '0550000001', true), row('ln2', '0550000002', true), row('ln3', '0550000003', false)];
 const detail = (id: string, esimQr: string | null) => ({ line: { ...rows.find((line) => line.id === id), esimQr }, history: [] });
 
-/** Serves the list and the packages; `onDetail` answers each `GET /office/lines/:id`. Returns the detail calls made. */
+/** Serves the list and the packages; `onDetail` answers each `GET /v1/lines/:id`. Returns the detail calls made. */
 async function serve(page: Page, onDetail: (id: string, route: Route) => Promise<unknown> | unknown) {
   const asked: string[] = [];
-  await page.route(/\/office\/lines(\?[^/]*)?$/, (route) => route.fulfill(json({ items: rows, total: rows.length, nextCursor: null, poses: [] })));
-  await page.route(/\/office\/lines\/[^/?]+$/, async (route) => {
+  await page.route(/\/v1\/lines(\?[^/]*)?$/, (route) => route.fulfill(json({ items: rows, total: rows.length, nextCursor: null, poses: [] })));
+  await page.route(/\/v1\/lines\/[^/?]+$/, async (route) => {
     const id = new URL(route.request().url()).pathname.split('/').pop() ?? '';
     asked.push(id);
     await onDetail(id, route);
   });
-  await page.route('**/office/packages', (route) => route.fulfill(json({ packages: [], companies: [] })));
+  await page.route('**/v1/packages', (route) => route.fulfill(json({ packages: [], companies: [] })));
   await page.goto('/numbers');
   await expect(page.locator('table.data tbody tr')).toHaveCount(3);
   return asked;
@@ -171,7 +171,7 @@ test('closing drops the code: nothing of it stays on the page, in the address or
 // The pages that already read the code from a detail go on as before, and do not keep it once they close.
 test('the line page shows the code from its own detail, and asks again after it was left', async ({ page }) => {
   let asked = 0;
-  await page.route('**/office/lines/ln1**', (route) => {
+  await page.route('**/v1/lines/ln1**', (route) => {
     asked += 1;
     return route.fulfill(json({ line: { ...row('ln1', '0550000001', true), esimQr: QR_A }, history: [] }));
   });
@@ -199,7 +199,7 @@ test('a task page shows the code its detail carries, large when opened', async (
     iccid: '8997202000000000009', esim: true, esimQr: QR_B, sim: { length: null, prefix: '', esim: true }, lineStatus: 'active',
     companyName: 'سلكوم', providerName: '', canNote: false, canNoteInternal: false,
   };
-  await page.route('**/office/tasks/t1', (route) => route.fulfill(json({ task, events: [] })));
+  await page.route('**/v1/tasks/t1', (route) => route.fulfill(json({ task, events: [] })));
   await page.goto('/tasks/t1');
   await page.locator('.esim-mark').click();
   await expect(picture(page)).toHaveAttribute('src', QR_B);
@@ -230,14 +230,14 @@ for (const [name, path, first, second] of [
     let asked = 0;
     let release: () => void = () => undefined;
     const held = new Promise<void>((resolve) => { release = resolve; });
-    await page.route(name === 'line' ? '**/office/lines/ln1**' : '**/office/tasks/t1', async (route) => {
+    await page.route(name === 'line' ? '**/v1/lines/ln1**' : '**/v1/tasks/t1', async (route) => {
       asked += 1;
       if (asked === 1) return route.fulfill(json(first));
       await held;
       return route.fulfill(json(second));
     });
-    await page.route(/\/office\/lines(\?[^/]*)?$/, (route) => route.fulfill(json({ items: rows, total: rows.length, nextCursor: null, poses: [] })));
-    await page.route('**/office/packages', (route) => route.fulfill(json({ packages: [], companies: [] })));
+    await page.route(/\/v1\/lines(\?[^/]*)?$/, (route) => route.fulfill(json({ items: rows, total: rows.length, nextCursor: null, poses: [] })));
+    await page.route('**/v1/packages', (route) => route.fulfill(json({ packages: [], companies: [] })));
     const open = async () => {
       if (name === 'line') {
         await page.getByRole('tab', { name: 'التفاصيل' }).click();

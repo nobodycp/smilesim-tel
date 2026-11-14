@@ -22,7 +22,7 @@ test('the branch writes an internal note, sees it marked, and the task reads in 
     'POST /tasks/t1/notes': () => ({ body: { ok: true } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/office/tasks/t1/notes')) sent.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/tasks/t1/notes')) sent.push(request.postDataJSON());
   });
   await page.goto('http://admin.localhost:3910/tasks/t1');
   await expect(page.getByText('قيد المعالجة').first()).toBeVisible();

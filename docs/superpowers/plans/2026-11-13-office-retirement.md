@@ -125,7 +125,15 @@ goes down; the backend map updated in the same commit.
   middleware's path lists (`/office/handoff` as a sign-in and a session start, the notices stream exempt from the
   limit) name single routes, not a prefix: they gain the new paths beside the old in R.11b. Commit: see
   `git log --grep 'R.11a'`.
-- [ ] **R.11b** Both paths served; the web moved; old-path hits counted for one release.
+- [x] **R.11b** Both paths served; the web moved; old-path hits counted for one release. Every resource
+  controller is `@Controller(RESOURCE_CONTROLLER_PREFIXES)` (`/v1` and `/office`, `platform/route-prefixes.ts`); the
+  middleware's single-route rules name both (`resourcePaths`); the duplicate guard keys the canonical path, so one
+  write sent to both paths runs once; `LegacyPathCounter` logs old-path hits by method and route pattern every ten
+  minutes, nothing else of the request; the web calls `/v1/…` (features, the notices stream, the hand-off; its
+  Playwright mocks follow). Proved: `routes.http` and `permissions.http` assert the same answer, event and
+  permission for every route under `/v1` (516 tests), the contract asserts both prefixes one for one and the
+  two-path write, `legacy-paths.spec.ts` the counter; checked on port 3000 (`/api/v1/…` answers, the stream
+  included). Handover (Arabic) says what the log line means. Commit: see `git log --grep 'R.11b'`.
 - [ ] **R.11c** `/office/*` removed.
 
 Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.

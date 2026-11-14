@@ -8,11 +8,12 @@ import { Actor, ActorInterceptor } from '../actor.interceptor';
 import type { Actor as ActorShape } from '../types';
 import { RoleBody } from './roles.schemas';
 import { RolesService } from './roles.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('access')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class RolesController {
   constructor(private readonly roleDesk: RolesService) {}

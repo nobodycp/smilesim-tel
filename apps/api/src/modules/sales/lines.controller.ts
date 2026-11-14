@@ -15,6 +15,7 @@ import { LineReads } from './line-reads';
 import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, LinesQuery, ProviderDecisionApprovalBody, ProviderDecisionBody, ProviderDecisionsQuery, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
 import { LinesService } from './lines.service';
 import { ProviderDecisions } from './settlement/provider-decisions';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 /** Whether an activation's answer carries an eSIM code: only then is the duplicate guard's copy of it a secret. */
 const carriesEsimCode = (answer: unknown) => Boolean((answer as { line?: { esimQr?: unknown } } | null)?.line?.esimQr);
@@ -22,7 +23,7 @@ const carriesEsimCode = (answer: unknown) => Boolean((answer as { line?: { esimQ
 @ApiTags('sales')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class LinesController {
   constructor(private readonly lineDesk: LinesService, private readonly reads: LineReads, private readonly activity: ActivityRecorder, private readonly decisions: ProviderDecisions) {}

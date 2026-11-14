@@ -9,11 +9,12 @@ import type { Actor as ActorShape } from '../../access/types';
 import { ProviderDispatchService } from '../integration/dispatch/provider-dispatch.service';
 import { ProviderCredentialBody, ProviderEsimPriceBody, ProviderModeBody } from '../providers.schemas';
 import { ProvidersService } from './providers.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('providers')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class ProvidersController {
   constructor(private readonly providerDesk: ProvidersService, private readonly dispatch: ProviderDispatchService) {}

@@ -57,7 +57,7 @@ test('the packages tab folds each company, keeps one line per package, and edits
   await expect(locked.getByRole('switch')).toBeDisabled();
   await expect(locked.getByText('موقوف من فوق')).toBeVisible();
 
-  const toggle = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/office/users/pos1/packages/alloha-150'));
+  const toggle = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/v1/users/pos1/packages/alloha-150'));
   await open.getByRole('switch').click();
   expect((await toggle).postDataJSON()).toEqual({ hidden: true });
 
@@ -69,7 +69,7 @@ test('the packages tab folds each company, keeps one line per package, and edits
   await page.getByRole('menuitem', { name: 'تعديل السعر' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('اشتراك').fill('36.5');
-  const price = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/office/users/pos1/packages/alloha-150'));
+  const price = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/v1/users/pos1/packages/alloha-150'));
   await dialog.getByRole('button', { name: 'حفظ' }).click();
   expect((await price).postDataJSON()).toEqual({ price: 3650, renewalPrice: null });
   await expect(dialog).toHaveCount(0);

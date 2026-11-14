@@ -103,7 +103,7 @@ test('the package page edits its details', async ({ page }) => {
   await page.getByLabel('مدة تعليق الرقم (بالأيام)').fill('60');
   // eSIM per package (spec 2026-11-09, 5): on by default; turned off here.
   await page.getByLabel('الرزمة متاحة كـ eSIM').uncheck();
-  const sent = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/office/packages/lian-wecom-500/details'));
+  const sent = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/details'));
   await page.locator('.package-details-form').getByRole('button', { name: 'حفظ' }).click();
   expect((await sent).postDataJSON()).toEqual({ dataGb: 500, smsCount: 200, minutes: -1, details: 'تجوال في الأردن', suspendAfterDays: 60, esimAvailable: false });
 });

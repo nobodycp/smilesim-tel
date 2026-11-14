@@ -9,12 +9,12 @@ export const reportsApi = {
   /** The balances report whole: the screen sorts and sums its rows, so the pages are read one after another. */
   reportBalances: async (query: { q?: string; layer?: string; negative?: string }): Promise<ApiResult<{ rows: BalanceReportRow[]; totals: BalanceTotals }>> => {
     const read = await allPages((cursor) =>
-      request<Page<BalanceReportRow> & { totals: BalanceTotals }>('GET', `/office/reports/balances${queryString({ ...query, cursor })}`));
+      request<Page<BalanceReportRow> & { totals: BalanceTotals }>('GET', `/v1/reports/balances${queryString({ ...query, cursor })}`));
     return read.ok ? { ...read, data: { rows: read.data.rows, totals: read.data.first.totals } } : read;
   },
   reportSupply: (query: { from?: string; to?: string }) =>
-    request<{ rows: SupplyReportRow[]; totals: { operations: number; cost: number; profit: number }; capped: boolean }>('GET', `/office/reports/supply${queryString(query)}`),
+    request<{ rows: SupplyReportRow[]; totals: { operations: number; cost: number; profit: number }; capped: boolean }>('GET', `/v1/reports/supply${queryString(query)}`),
   /** The branch's reports by URL: every package by provider (one page, capped), and the provider operations ledger. */
-  reportProviders: () => request<Page<ProviderReportRow>>('GET', '/office/reports/providers'),
-  reportOperations: (cursor?: string | null) => request<Page<ReportRow>>('GET', `/office/reports/operations${queryString({ cursor })}`),
+  reportProviders: () => request<Page<ProviderReportRow>>('GET', '/v1/reports/providers'),
+  reportOperations: (cursor?: string | null) => request<Page<ReportRow>>('GET', `/v1/reports/operations${queryString({ cursor })}`),
 };

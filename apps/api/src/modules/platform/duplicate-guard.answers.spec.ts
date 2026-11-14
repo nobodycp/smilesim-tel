@@ -7,6 +7,7 @@ import { API_PROVIDERS } from './api-providers';
 import { AwaitsFirstAnswer, DuplicateGuardInterceptor, RUNNING_SECONDS, SecretAnswer, memoryWrites, type WriteStore } from './duplicate-guard.interceptor';
 import { ApiFailure } from './api-failure';
 import { capturedOutput } from './testing/captured-output';
+import { RESOURCE_CONTROLLER_PREFIXES } from './route-prefixes';
 
 // What the duplicate guard keeps of an answer, and what a repeat gets while the first is still running, on a
 // route marked as the activation is (`@SecretAnswer`, `@AwaitsFirstAnswer`; ADR 0019 D14 and D17). Over HTTP, on
@@ -23,7 +24,7 @@ let runs = 0;
 let hold: Promise<void> | null = null;
 let failNext = false;
 
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 class ProbeController {
   @Post('probe')
   @HttpCode(201)

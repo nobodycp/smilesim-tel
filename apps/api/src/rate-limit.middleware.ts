@@ -6,6 +6,7 @@ import IORedis from 'ioredis';
 import { readCookie } from './modules/platform/cookies';
 import { errorBody } from './errors';
 import { logger } from './modules/platform/log';
+import { resourcePaths } from './modules/platform/route-prefixes';
 
 // Requests per signed-in session in a one-minute window, shared by every API process through Redis.
 // A page load asks for about ten reads; a busy desk stays far under these. Writes have their own, lower ceiling.
@@ -17,9 +18,10 @@ export const RATE_LIMIT_SIGN_IN = 30;
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 /** The routes a caller with no session uses to get one. */
-const SIGN_IN = [/^\/auth\/login$/, /^\/auth\/passkey-login(\/options)?$/, /^\/office\/handoff$/];
+// The hand-off is a sign-in under each prefix it is served under (slice R.11b: `/v1/handoff` and `/office/handoff`).
+const SIGN_IN = [/^\/auth\/login$/, /^\/auth\/passkey-login(\/options)?$/, ...resourcePaths('handoff').map((path) => new RegExp(`^${path}$`))];
 // Not counted: the long-lived notices stream (one per open tab) and the health probe.
-const EXEMPT = [/\/office\/notices\/stream$/, /^\/health$/];
+const EXEMPT = [...resourcePaths('notices/stream').map((path) => new RegExp(`${path}$`)), /^\/health$/];
 
 /** One counter per key and window: returns the count after this request and the seconds left in the window. */
 export type RateCounter = { hit: (key: string) => Promise<{ count: number; ttl: number }> };

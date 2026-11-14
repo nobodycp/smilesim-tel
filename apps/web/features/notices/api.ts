@@ -6,7 +6,7 @@ export const noticesApi = {
   notices: (query?: { cursor?: string | null; group?: string; unread?: boolean }) =>
     request<Page<NoticeRow> & { unread: number }>(
       'GET',
-      `/office/notices${queryString({ cursor: query?.cursor ?? undefined, group: query?.group, unread: query?.unread ? '1' : undefined })}`,
+      `/v1/notices${queryString({ cursor: query?.cursor ?? undefined, group: query?.group, unread: query?.unread ? '1' : undefined })}`,
     ),
-  readNotices: (id?: string) => request<{ ok: true }>('POST', '/office/notices/read', id ? { id } : {}),
+  readNotices: (id?: string) => request<{ ok: true }>('POST', '/v1/notices/read', id ? { id } : {}),
 };

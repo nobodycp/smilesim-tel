@@ -70,7 +70,7 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   await back.getByLabel('السبب').selectOption('correction');
   await back.getByLabel('المبلغ').fill('10');
   await back.getByLabel('ملاحظة').fill('شحنة مكررة');
-  const sent = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/office/wallets/pos1/deduct'));
+  const sent = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/v1/wallets/pos1/deduct'));
   await back.getByRole('button', { name: 'خصم' }).click();
   expect((await sent).postDataJSON()).toEqual({ amount: 1000, note: 'شحنة مكررة', reason: 'correction' });
 });

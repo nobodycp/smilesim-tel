@@ -19,7 +19,7 @@ test('a number asks for one of its package\'s extra operations, which becomes a 
     'POST /lines/ln1/addon': () => ({ body: { applied: false, taskId: 't9' } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/office/lines/ln1/addon')) sent.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/lines/ln1/addon')) sent.push(request.postDataJSON());
   });
   await page.goto(`${admin}/numbers/ln1`);
   await page.getByRole('button', { name: 'العمليات الإضافية' }).click();

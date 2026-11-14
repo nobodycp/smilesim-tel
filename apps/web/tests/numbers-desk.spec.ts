@@ -17,14 +17,14 @@ const line = {
 };
 
 test('numbers row actions live in the menu', async ({ page }) => {
-  await page.route('**/office/lines**', (route) =>
+  await page.route('**/v1/lines**', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ items: [line], poses: [] }),
     }),
   );
-  await page.route('**/office/packages', (route) =>
+  await page.route('**/v1/packages', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -42,10 +42,10 @@ test('numbers row actions live in the menu', async ({ page }) => {
 });
 
 test('a row menu opens on its first item, walks with the arrows, and Escape gives the focus back', async ({ page }) => {
-  await page.route('**/office/lines**', (route) =>
+  await page.route('**/v1/lines**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [line], poses: [] }) }),
   );
-  await page.route('**/office/packages', (route) =>
+  await page.route('**/v1/packages', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
   );
   await page.goto('/numbers');
@@ -63,11 +63,11 @@ test('a row menu opens on its first item, walks with the arrows, and Escape give
 
 test('the SIM / eSIM filter is sent with the others, and an empty answer under it says «no matches», not «no numbers yet»', async ({ page }) => {
   const asked: string[] = [];
-  await page.route('**/office/lines**', (route) => {
+  await page.route('**/v1/lines**', (route) => {
     asked.push(new URL(route.request().url()).search);
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items: [], total: 0, poses: [] }) });
   });
-  await page.route('**/office/packages', (route) =>
+  await page.route('**/v1/packages', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
   );
   // No filter: the list is simply empty.

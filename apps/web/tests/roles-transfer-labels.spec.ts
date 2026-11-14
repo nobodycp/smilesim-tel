@@ -112,7 +112,7 @@ test('an agent role form has no switch for points of sale or agents and still sa
   const form = page.getByRole('dialog');
   await expect(form.getByRole('switch', { name: /نقل نقاط البيع/ })).toHaveCount(0);
   await expect(form.getByRole('switch', { name: /نقل الوكلاء/ })).toHaveCount(0);
-  const saved = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/office/roles/r-agent'));
+  const saved = page.waitForRequest((request) => request.method() === 'PUT' && request.url().endsWith('/v1/roles/r-agent'));
   await form.getByRole('button', { name: 'حفظ' }).click();
   expect((await saved).postDataJSON()).toMatchObject({ grants: ['read', 'transferLines'] });
 });

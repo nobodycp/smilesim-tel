@@ -31,8 +31,8 @@ pushed; the owner approves before one push and one CI run.
 | R.10 Prisma model names | DONE | `c9f10f9` |
 | R.A Authentication | PARTIAL | `77c1cf8` |
 | W.1, W.2 Web names | DONE | `99c50fa` |
-| R.11a HTTP security | DONE | see its section |
-| R.11b Route migration | pending | |
+| R.11a HTTP security | DONE | `518f039` |
+| R.11b Route migration | DONE | see its section |
 | R.11c Legacy route removal | pending | |
 
 ## Guard counts
@@ -302,7 +302,7 @@ pushed; the owner approves before one push and one CI run.
   imports the old helper name and is not part of the repository), lint 0, check:copy 0; Playwright `tools-pages` and
   `users-desk`: 22/22. Full Playwright runs at the end.
 
-## R.11a HTTP security independence — DONE
+## R.11a HTTP security independence — DONE (`518f039`)
 
 - **Change:** `DuplicateGuardInterceptor` no longer reads the path: a write of a signed-in session is guarded unless
   `@NotDuplicateGuarded(why)` is on its handler or its controller (`Reflect.getMetadata` on both, as the other two
@@ -317,3 +317,25 @@ pushed; the owner approves before one push and one CI run.
   and a not-guarded controller runs every repeat and replays nothing. CSRF (origin), rate limit, door, authorization
   and activity checks are unchanged and green. Contract, duplicate-guard, auth and branding specs: 215 passed.
 - **Not changed:** the middleware's path lists (single routes). R.11b adds the new paths beside them.
+
+## R.11b API route migration — DONE
+
+- **Both paths served:** `modules/platform/route-prefixes.ts` holds `RESOURCE_PREFIXES = ['v1', 'office']`; all 20
+  resource controllers are `@Controller(RESOURCE_CONTROLLER_PREFIXES)`. `resourcePaths(x)` gives the middleware's
+  single-route rules both forms (`/v1/handoff` and `/office/handoff` are sign-ins for the rate limit and start a
+  session for the door; both notice streams are exempt from the limit).
+- **One write across two paths:** the duplicate guard hashes `canonicalPath(originalUrl)` (any resource prefix →
+  `/office/…`, so a key taken before the deploy still matches); proved over HTTP: the same write sent to `/v1/x`
+  and `/office/x` runs once, with or without a key.
+- **Old-path count:** `LegacyPathCounter` (`modules/platform/legacy-paths.ts`, global, registered before the guard
+  so a replay is counted) counts `/office/…` hits by method and route pattern and logs one line every ten minutes
+  (`old paths used: GET /office/lines/:id x2, …`), never a value, query, body, session or address
+  (`legacy-paths.spec.ts`). The Arabic operations handover tells the operator what the line means and the condition
+  for removal.
+- **The web:** every call moved to `/v1/…` (features' API files, the notices stream, the hand-off), Playwright mocks
+  (`**/api/v1/**`) and regex routes with it; docs comments follow. Checked on port 3000: the pages call
+  `/api/v1/…` and get 200, the event stream included.
+- **Tests:** `routes.http.spec.ts` and `permissions.http.spec.ts` run every route under `/v1/` too (the same anonymous
+  answer and activity event; the same permission matrix): 516 tests; the contract reads both prefixes (76 writes
+  each, one for one) and the middleware's lists; registry spec. All green.
+- **Not done:** Swagger marking `/office/…` deprecated (documentation only; the paths are listed twice).

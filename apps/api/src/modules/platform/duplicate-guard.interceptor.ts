@@ -7,6 +7,7 @@ import { Observable, catchError, from, mergeMap, of, tap, throwError } from 'rxj
 import { readCookie } from './cookies';
 import { ApiFailure, fail } from './api-failure';
 import { isSealed, open, seal } from './secret-box';
+import { canonicalPath } from './route-prefixes';
 
 // Server-side guard against a write sent twice (a double click, a retried request), spec 2026-11-08-duplicate-writes.
 // A write is the same when it comes from the same session with the same method, path and body, or carries the same
@@ -157,7 +158,8 @@ export class DuplicateGuardInterceptor implements NestInterceptor, OnModuleDestr
     const explicit = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'].slice(0, 120) : '';
     const hash = (text: string) => createHash('sha256').update(text).digest('hex');
     // What the request is: its route and its body.
-    const request = hash(`${req.method} ${req.originalUrl}\n${JSON.stringify(req.body ?? null)}`);
+    // The route under its canonical path (slice R.11b): the same write sent under its two prefixes is one.
+    const request = hash(`${req.method} ${canonicalPath(req.originalUrl)}\n${JSON.stringify(req.body ?? null)}`);
     const key = `write:${hash(`${sessionId}\n${explicit ? `key:${explicit}` : request}`)}`;
     const seconds = explicit ? KEYED_WRITE_SECONDS : SAME_WRITE_SECONDS;
     const isSecret = Reflect.getMetadata(SECRET_ANSWER, context.getHandler()) as ((answer: unknown) => boolean) | undefined;

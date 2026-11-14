@@ -11,11 +11,12 @@ import { readCookie } from '../../platform/cookies';
 import { Actor, ActorInterceptor } from '../actor.interceptor';
 import type { Actor as ActorShape } from '../types';
 import { AccountsService } from './accounts.service';
+import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('access')
 @ApiCookieAuth('sid')
 @ApiSecurity('x-door')
-@Controller('office')
+@Controller(RESOURCE_CONTROLLER_PREFIXES)
 @UseInterceptors(ActivityInterceptor, ActorInterceptor)
 export class AccountsController {
   constructor(private readonly accountDesk: AccountsService) {}

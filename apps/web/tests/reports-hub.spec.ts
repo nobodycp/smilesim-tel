@@ -22,7 +22,7 @@ test('an agent reads its balances on their own page, and exports them with their
   await expect(page).toHaveURL(/\/reports\/balances$/);
   await expect(page.locator('table.data tbody tr').first()).toContainText('30.00 ₪');
   await page.getByLabel('السالب فقط').check();
-  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', '/api/office/reports/balances/export?negative=1');
+  await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', '/api/v1/reports/balances/export?negative=1');
 });
 
 test('the sidebar folds five reports in one group that starts closed and opens on a report page', async ({ page }) => {

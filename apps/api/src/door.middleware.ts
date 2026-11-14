@@ -4,13 +4,15 @@ import { expectedLayer } from './doors';
 import { errorBody } from './errors';
 import { AUTH_STORE, AuthStore } from './modules/auth/auth.store';
 import { readCookie } from './modules/platform/cookies';
+import { resourcePaths } from './modules/platform/route-prefixes';
 
 /**
  * The routes that start a session on this door. The `sid` cookie is shared by every door of the site
  * (`COOKIE_DOMAIN`), so a browser signed in on another door brings that session here; refusing it would leave the
  * door with no way in. These routes replace the cookie, so they pass whatever session came with them.
  */
-const STARTS_SESSION = new Set(['/auth/login', '/auth/passkey-login/options', '/auth/passkey-login', '/office/handoff']);
+// The hand-off starts a session under each prefix it is served under (slice R.11b).
+const STARTS_SESSION = new Set(['/auth/login', '/auth/passkey-login/options', '/auth/passkey-login', ...resourcePaths('handoff')]);
 
 function startsSession(req: Request): boolean {
   const path = String(req.originalUrl ?? req.url ?? '').split('?')[0].replace(/\/+$/, '');

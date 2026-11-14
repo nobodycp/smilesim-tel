@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { serveApi } from './desk';
 
 // The result of an activation made at once (plan 2026-11-10-activation-settlement, S.5c web step): the eSIM code
-// shown is the one the answer of `POST /office/lines` carries. No detail is asked for, no list row is read for it
+// shown is the one the answer of `POST /v1/lines` carries. No detail is asked for, no list row is read for it
 // (the list is served WITHOUT `esimQr`), and nothing of it stays once the result is closed.
 
 const QR = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
@@ -13,7 +13,7 @@ const listRow = {
 };
 const pack = { code: 'cell-400', name: '400 جيجا', companyName: 'سلكوم', providerName: 'سكاي', sellable: true, activateInput: 'generated', sim: { length: null, prefix: '', esim: true } };
 
-/** Serves the numbers page for the branch; `answer` is what `POST /office/lines` gives. Returns the calls and the bodies sent. */
+/** Serves the numbers page for the branch; `answer` is what `POST /v1/lines` gives. Returns the calls and the bodies sent. */
 async function serve(page: Page, answer: unknown) {
   const sent: unknown[] = [];
   const calls = await serveApi(page, 'branch', {
@@ -23,7 +23,7 @@ async function serve(page: Page, answer: unknown) {
     'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 1, inactiveLines: 0, expiringLines: 0, operations: [] } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/office/lines')) sent.push(request.postDataJSON());
+    if (request.method() === 'POST' && request.url().endsWith('/v1/lines')) sent.push(request.postDataJSON());
   });
   await page.goto('http://admin.localhost:3910/numbers');
   await expect(page.locator('table.data tbody tr')).toHaveCount(1);

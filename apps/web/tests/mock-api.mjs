@@ -85,7 +85,7 @@ createServer((req, res) => {
       return;
     }
     if ((req.headers.cookie ?? '').includes('mock-branch=1') && req.method === 'GET') {
-      if (url.pathname === '/office/me') {
+      if (url.pathname === '/v1/me') {
         res.writeHead(200, json).end(
           JSON.stringify({
             loginName: 'admin',
@@ -101,7 +101,7 @@ createServer((req, res) => {
         );
         return;
       }
-      if (url.pathname === '/office/directory') {
+      if (url.pathname === '/v1/directory') {
         res.writeHead(200, json).end(JSON.stringify({
           items: [
             { loginName: 'admin', nickname: 'الإدارة', layer: 'branch', parentLoginName: null, frozen: false, mine: true },
@@ -112,7 +112,7 @@ createServer((req, res) => {
         }));
         return;
       }
-      if (url.pathname === '/office/packages') {
+      if (url.pathname === '/v1/packages') {
         res.writeHead(200, json).end(
           JSON.stringify({
             packages: [
@@ -128,7 +128,7 @@ createServer((req, res) => {
         );
         return;
       }
-      if (url.pathname === '/office/lines') {
+      if (url.pathname === '/v1/lines') {
         linesLog.push(Object.fromEntries(url.searchParams));
         const status = url.searchParams.get('status');
         const cursor = url.searchParams.get('cursor');

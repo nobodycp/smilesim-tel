@@ -14,7 +14,7 @@ const pack = {
 const opened = { applied: false, taskId: 'task-1' };
 const down: Reply = { status: 500, body: { message: 'خطأ', code: 'GENERIC' } };
 
-/** Serves a page with an activation form; `answers` are what `POST /office/lines` gives, in order (the last repeats). */
+/** Serves a page with an activation form; `answers` are what `POST /v1/lines` gives, in order (the last repeats). */
 async function serve(page: Page, layer: 'branch' | 'pos', answers: Reply[]) {
   const sent: { key: string | undefined; body: Record<string, unknown> }[] = [];
   let at = 0;
@@ -25,7 +25,7 @@ async function serve(page: Page, layer: 'branch' | 'pos', answers: Reply[]) {
     'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] } }),
   });
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/office/lines')) sent.push({ key: request.headers()['idempotency-key'], body: request.postDataJSON() });
+    if (request.method() === 'POST' && request.url().endsWith('/v1/lines')) sent.push({ key: request.headers()['idempotency-key'], body: request.postDataJSON() });
   });
   return sent;
 }

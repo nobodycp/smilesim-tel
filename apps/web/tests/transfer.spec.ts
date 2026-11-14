@@ -118,7 +118,7 @@ test('branch moves an agent: destination, preview, five choices, request body', 
   await radio(lines, RECAPTURE).check();
   await expect(submit).toBeEnabled();
 
-  const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/office/users/ag1/transfer'));
+  const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/v1/users/ag1/transfer'));
   await submit.click();
   expect((await sent).postDataJSON()).toEqual({
     parentLoginName: 'ma2', ownPrices: 'keep', ownStops: 'reset', childPrices: 'reset', childStops: 'keep', linePrices: 'recapture',
@@ -155,7 +155,7 @@ test('a point of sale asks three choices, shows no terms for what is below it, a
   await radio(own, KEEP, 'الإيقافات').check();
   await expect(submit).toBeDisabled();
   await radio(lines, KEEP).check();
-  const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/office/users/pos1/transfer'));
+  const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/v1/users/pos1/transfer'));
   await submit.click();
   expect((await sent).postDataJSON()).toEqual({ parentLoginName: 'ag2', ownPrices: 'reset', ownStops: 'keep', linePrices: 'keep' });
 });
@@ -423,7 +423,7 @@ for (const [label, wire] of [[KEEP, 'keep'], [RECAPTURE, 'recapture']] as const)
     await expect(choice).toBeFocused();
     await expect(submit).toBeEnabled();
 
-    const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/office/lines/ln1/transfer'));
+    const sent = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/v1/lines/ln1/transfer'));
     await submit.click();
     expect((await sent).postDataJSON()).toEqual({ posLoginName: 'pos2', linePrices: wire });
   });

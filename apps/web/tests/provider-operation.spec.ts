@@ -161,7 +161,7 @@ test('confirm success: the form checks what the API will, sends it once, and the
     'GET /tasks/t1/provider-decision': () => ({ body: applied ? viewOf({ phase: 'applied', decisions: [], history: [record({ type: 'applied', decision: 'confirm-success', providerRef: 'REF-77', accountLoginName: 'admin' })] }) : viewOf() }),
     'POST /tasks/t1/provider-decision': () => { applied = true; return { body: { ok: true, outcome: 'applied' }, delay: 300 }; },
   });
-  const sent = sentTo(page, '/office/tasks/t1/provider-decision');
+  const sent = sentTo(page, '/v1/tasks/t1/provider-decision');
   await page.goto(`${admin}/tasks/t1`);
   await expect(panel(page).getByRole('button', { name: 'تأكيد النجاح' })).toBeVisible();
   await expect(panel(page).getByRole('button', { name: 'إعلان الفشل' })).toBeVisible();
@@ -225,7 +225,7 @@ test('declare failure is sent as a proposal; its proposer is then told another a
     'GET /tasks/t1/provider-decision': () => ({ body: proposed ? viewOf({ decisions: [], blocked: 'own-proposal', proposal: record({ accountLoginName: 'admin' }), history: [record({ accountLoginName: 'admin' })] }) : viewOf() }),
     'POST /tasks/t1/provider-decision': () => { proposed = true; return { body: { ok: true, outcome: 'proposed' } }; },
   });
-  const sent = sentTo(page, '/office/tasks/t1/provider-decision');
+  const sent = sentTo(page, '/v1/tasks/t1/provider-decision');
   await page.goto(`${admin}/tasks/t1`);
   await panel(page).getByRole('button', { name: 'إعلان الفشل' }).click();
   await expect(dialog(page)).toContainText('اقتراح يحتاج موافقة حساب مخوَّل ثانٍ');
@@ -253,7 +253,7 @@ test('apply corrected on a plain exception asks for no eSIM code, and release is
     'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] }) }),
     'POST /tasks/t1/provider-decision': () => ({ body: { ok: true, outcome: 'applied' } }),
   });
-  const sent = sentTo(page, '/office/tasks/t1/provider-decision');
+  const sent = sentTo(page, '/v1/tasks/t1/provider-decision');
   await page.goto(`${admin}/tasks/t1`);
   await panel(page).getByRole('button', { name: 'تحرير بعد نجاح المزوّد' }).click();
   await expect(dialog(page)).toContainText('تُرفض المهمة ويُعاد المبلغ المحجوز إلى نقطة البيع، ولا يُنشأ خط');
@@ -283,7 +283,7 @@ test('esim-code-missing: the form asks for the code, sends it in the request onl
       : viewOf({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'], needs: { number: false, esimCode: true } }) }),
     'POST /tasks/t1/provider-decision': () => { applied = true; return { body: { ok: true, outcome: 'applied' } }; },
   });
-  const sent = sentTo(page, '/office/tasks/t1/provider-decision');
+  const sent = sentTo(page, '/v1/tasks/t1/provider-decision');
   await page.goto(`${admin}/tasks/t1`);
   await expect(panel(page)).toContainText('لم يصل رمز تفعيل eSIM');
   await panel(page).getByRole('button', { name: 'تطبيق ببيانات مصحَّحة' }).click();
@@ -365,7 +365,7 @@ test('a second account approves a proposed release after reading what it does to
       : viewOf({ phase: 'exception', reason: 'number-taken', decisions: [], canApprove: true, canRefuse: true, proposal: record({ decision: 'release-after-success', providerRef: 'REF-9' }), history: [record({ decision: 'release-after-success', providerRef: 'REF-9' })] }) }),
     'POST /tasks/t1/provider-decision/approval': () => { approved = true; return { body: { ok: true, outcome: 'approved' }, delay: 250 }; },
   });
-  const sent = sentTo(page, '/office/tasks/t1/provider-decision/approval');
+  const sent = sentTo(page, '/v1/tasks/t1/provider-decision/approval');
   await page.goto(`${admin}/tasks/t1`);
   const proposal = panel(page).locator('.po-proposal');
   await expect(proposal).toContainText('تحرير بعد نجاح المزوّد');
@@ -397,7 +397,7 @@ test('a second account refuses a proposal: nothing changes, and a decision can b
     'GET /tasks/t1/provider-decision': () => ({ body: refused ? viewOf() : viewOf({ decisions: [], canApprove: true, canRefuse: true, proposal: record() }) }),
     'POST /tasks/t1/provider-decision/approval': () => { refused = true; return { body: { ok: true, outcome: 'refused' } }; },
   });
-  const sent = sentTo(page, '/office/tasks/t1/provider-decision/approval');
+  const sent = sentTo(page, '/v1/tasks/t1/provider-decision/approval');
   await page.goto(`${admin}/tasks/t1`);
   await expect(panel(page).locator('.po-proposal')).toContainText('بالموافقة تصبح العملية فاشلة وتنتقل المهمة إلى الفرع. المبلغ يبقى محجوزاً.');
   await panel(page).getByRole('button', { name: 'رفض الاقتراح' }).click();
@@ -465,7 +465,7 @@ test('a lost connection is said in the form: no success is claimed and nothing i
     'GET /tasks/t1/provider-decision': () => ({ body: viewOf() }),
   });
   let posts = 0;
-  await page.route('**/api/office/tasks/t1/provider-decision', async (route) => {
+  await page.route('**/api/v1/tasks/t1/provider-decision', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     posts += 1;
     await route.abort('connectionfailed');
@@ -507,7 +507,7 @@ test('the queue keeps what waits for a second approval and what waits for a deci
       : [queueRow('q1', { decisions: [], canApprove: true, canRefuse: true, proposal: record({ providerRef: 'REF-5' }) }), queueRow('q2', { phase: 'exception', reason: 'number-taken', decisions: ['apply-corrected', 'release-after-success'] })]),
     'POST /tasks/q1/provider-decision/approval': () => { approved = true; return { body: { ok: true, outcome: 'approved' } }; },
   });
-  const sent = sentTo(page, '/office/tasks/q1/provider-decision/approval');
+  const sent = sentTo(page, '/v1/tasks/q1/provider-decision/approval');
   await page.goto(`${admin}/tasks/decisions`);
   await expect(page.getByRole('heading', { level: 1, name: 'قرارات عمليات المزوّد' })).toBeVisible();
   // The first tab is the second approval; both tabs carry the API's counts.

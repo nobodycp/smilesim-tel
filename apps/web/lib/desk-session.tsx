@@ -10,15 +10,15 @@ import { rememberBalance, rememberIdentity } from './identity';
 import { ApiFailure, queryKeys, unwrap } from './query';
 
 type DeskSessionValue = {
-  /** `/office/me` answered: the pages may draw. */
+  /** `/v1/me` answered: the pages may draw. */
   ready: boolean;
-  /** `/office/me` did not answer yet and the last attempt failed; the shell shows the outage instead of a page. */
+  /** `/v1/me` did not answer yet and the last attempt failed; the shell shows the outage instead of a page. */
   failed: boolean;
   /** An attempt is in flight after a failure. */
   retrying: boolean;
-  /** Ask `/office/me` again now. */
+  /** Ask `/v1/me` again now. */
   retry: () => void;
-  /** Re-read `/office/me` into `me` after the account changed (a profile save, a money write). */
+  /** Re-read `/v1/me` into `me` after the account changed (a profile save, a money write). */
   refresh: () => Promise<void>;
   me: DeskMe | null;
   /** Login name → full name for the accounts this viewer may meet; empty until loaded. */
@@ -64,7 +64,7 @@ export function DeskSession({
   const client = useQueryClient();
   const { generation } = useConnection();
 
-  // `/office/me` lives in the query cache (ADR 0001), so a write can invalidate it. It is read once and then
+  // `/v1/me` lives in the query cache (ADR 0001), so a write can invalidate it. It is read once and then
   // only when asked (`refresh`, or a write through useAction): it never goes stale on its own.
   const session = useQuery({
     queryKey: queryKeys.me,
