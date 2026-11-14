@@ -76,7 +76,16 @@ goes down; the backend map updated in the same commit.
   packages would meet it; recorded). Guard: the integration imports nothing of the directory or the account.
   `module-layering` 11 → 7, `module-mutual` 6 → 3, `root-domain-code` 3 → 2, `transaction-outside-unit-of-work`
   4 → 2. Commit: see `git log --grep 'R.7'`.
-- [ ] **R.8** Catalog, pricing, wallets, access, reporting.
+- [x] **R.8** Catalog, pricing, wallets, access, reporting. Every domain folder left `modules/office/` (`git mv`):
+  `access/{accounts,roles}`, `catalog/{shipped,companies,packages,offers}` (`office-catalog.ts` →
+  `shipped-catalog.ts`), `pricing/`, `wallets/`, `tasks/`, `sales/transfers/`, `reporting/{reports,desk}`,
+  `platform/outbox/`. Code: the priced shelf and the sell prices (`list`, `setSellPrice`, `clearSellPrice`, their
+  three routes and their queries) moved from the packages to pricing (`PackageShelfService`,
+  `PackageShelfController`; same paths, decorators, answers); access declares two ports (`AccountWallets`,
+  `AccountTasks`), bound globally by wallets (`WalletLedger.lockWallets`) and tasks (`TasksService.releaseHandledBy`,
+  the frozen account's tasks, moved with its query; the tasks' identical `releaseTask` reused). `module-layering`
+  7 → 0, `module-mutual` 3 → 0. `modules/office/` holds `office.module.ts` and `testing/`. Full API: 138 files, 1772
+  tests, 2 files failed and analysed (see the report). Commit: see `git log --grep 'R.8'`.
 - [ ] **R.9** The umbrella goes; public surfaces in force (`module-surface`).
 - [ ] **R.10** Prisma models `Task`, `TaskNote` with `@@map`; no migration.
 - [ ] **R.A** `auth.controller.ts` thinned; the seven unrecorded writes judged.
@@ -91,8 +100,8 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 
 | Guard | Count | What it is | Closed by |
 |---|---|---|---|
-| `module-layering` | 7 (was 32; R.2 closed 4, R.3 9, R.4 8, R.7 4) | imports the target graph does not allow | R.3–R.8 |
-| `module-mutual` | 3 (R.7 closed providers ↔ wallets, providers ↔ reporting, platform ↔ providers; R.4 closed sales ↔ tasks, providers ↔ tasks; was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales; R.3 closed identity ↔ platform, access ↔ pricing, access ↔ sales and opened catalog ↔ pricing, closed by R.8) | pairs of modules that import each other | R.3–R.8 |
+| `module-layering` | **0** (was 32; R.2 closed 4, R.3 9, R.4 8, R.7 4, R.8 7) | imports the target graph does not allow | R.3–R.8 |
+| `module-mutual` | **0** (R.8 closed access ↔ tasks, access ↔ wallets, catalog ↔ pricing; R.7 closed providers ↔ wallets, providers ↔ reporting, platform ↔ providers; R.4 closed sales ↔ tasks, providers ↔ tasks; was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales; R.3 closed identity ↔ platform, access ↔ pricing, access ↔ sales and opened catalog ↔ pricing, closed by R.8) | pairs of modules that import each other | R.3–R.8 |
 | `root-domain-code` | 2 (R.3: `doors.ts`; R.5: the worker's wiring; R.7: the start-up check is bootstrap; left: two command-line scripts that reach a module, whose `dist/` path operators run) | domain code at `src/` root | R.3, R.5 |
 | `operation-writes` | 0 (R.4) | `tasks/task-operation.ts` wrote a provider operation | done |
 | `transaction-outside-unit-of-work` | 2 (R.5: the attestation; R.7: the reconciliation and the run modes; left: the auth store's boot seeder and the eSIM sealing script, both stated) | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |

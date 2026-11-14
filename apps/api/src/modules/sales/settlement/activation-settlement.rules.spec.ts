@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OPERATION_STATUSES, validKey, type OperationStatus } from '../../providers/integration/operations/provider-operation.rules';
 import { APPLY_ERRORS, DECISIONS, DECISION_EVENT_TYPES, EVIDENCE_KINDS, MIN_DECISION_NOTE, activationRequestHash, applyErrorOf, decisionChoices, decisionStep, needsSecondAccount, openProposal, operationKey, released, requestKeyOf, settlementOf, sweepable, type Decision, type DecisionActor, type DecisionEvent, type DecisionEvidence, type DecisionRequest } from './activation-settlement.rules';
-import { holdOf, shownPhase, mayDecide, inFlight, phaseOf, sameRequest, taskActions, type OperationPhase, type TaskOperation } from '../../office/tasks/task-operation.rules';
+import { holdOf, shownPhase, mayDecide, inFlight, phaseOf, sameRequest, taskActions, type OperationPhase, type TaskOperation } from '../../tasks/task-operation.rules';
 
 const at = new Date('2026-11-10T12:00:00Z');
 const operation = (status: OperationStatus, over: Partial<NonNullable<TaskOperation>> = {}): TaskOperation => ({ status, appliedAt: null, applyError: null, ...over });

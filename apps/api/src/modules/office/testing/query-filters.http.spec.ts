@@ -10,8 +10,8 @@ import { hashOnce } from './test-hash';
 import { AuditQuery } from '../../auditing/audit.schemas';
 import { LinesQuery } from '../../sales/lines.schemas';
 import { NoticesQuery } from '../../notifications/notices.schemas';
-import { TasksQuery } from '../tasks/tasks.schemas';
-import { FinanceQuery } from '../wallets/wallets.schemas';
+import { TasksQuery } from '../../tasks/tasks.schemas';
+import { FinanceQuery } from '../../wallets/wallets.schemas';
 import { ProviderOperationsQuery } from '../../providers/providers.schemas';
 
 // A query is parsed by a schema, like a body (backend-engineering.mdc 4.1; plan backend-loose-ends A.4): a filter

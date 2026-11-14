@@ -8,10 +8,10 @@ import { LinesRepository } from '../modules/sales/lines.repository';
 import { TaskCompletion } from '../modules/sales/settlement/task-completion';
 import { ProviderOperationsRepository } from '../modules/providers/integration/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../modules/providers/integration/operations/provider-operations.service';
-import { TasksRepository } from '../modules/office/tasks/tasks.repository';
-import { TasksService } from '../modules/office/tasks/tasks.service';
-import { PriceLadder } from '../modules/office/terms/price-ladder';
-import { WalletLedger } from '../modules/office/wallets/wallet-ledger';
+import { TasksRepository } from '../modules/tasks/tasks.repository';
+import { TasksService } from '../modules/tasks/tasks.service';
+import { PriceLadder } from '../modules/pricing/price-ladder';
+import { WalletLedger } from '../modules/wallets/wallet-ledger';
 
 // The worker's money path, composed from ONE description (slice R.5; audit finding H2). Before it, the worker
 // called `new` on each class with its arguments written out by hand, beside the Nest modules that build the same

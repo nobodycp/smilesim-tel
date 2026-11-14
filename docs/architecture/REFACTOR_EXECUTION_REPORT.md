@@ -25,8 +25,8 @@ pushed; the owner approves before one push and one CI run.
 | R.4 Tasks and sales | DONE | `d07ebf2` |
 | R.5 Worker composition | DONE | `6375d24` |
 | R.6 Sales | DONE | `6eeea2f` |
-| R.7 Providers | DONE | see its section |
-| R.8 Remaining domains | pending | |
+| R.7 Providers | DONE | `9ec5b65` |
+| R.8 Remaining domains | DONE | see its section |
 | R.9 Umbrella removal | pending | |
 | R.10 Prisma model names | pending | |
 | R.A Authentication | pending | |
@@ -37,16 +37,16 @@ pushed; the owner approves before one push and one CI run.
 
 ## Guard counts
 
-| Rule | Base `d7259ef` | After R.2.1 | After R.3 | After R.4 | After R.5 | After R.7 |
-|---|---|---|---|---|---|---|
-| module-layering | 28 | 28 | 19 | 11 | 11 | 7 |
-| module-mutual | 10 | 10 | 8 | 6 | 6 | 3 |
-| root-domain-code | 5 | 5 | 4 | 4 | 3 | 2 |
-| operation-writes | 1 | 1 | 1 | 0 | 0 | 0 |
-| transaction-outside-unit-of-work | 5 | 5 | 5 | 5 | 4 | 2 |
-| write-without-activity | 7 | 7 | 7 | 7 | 7 | 7 |
-| catch-all-module | — | — | 0 (new) | 0 | 0 | 0 |
-| module-surface | not in force | not in force | not in force | not in force | not in force | not in force |
+| Rule | Base `d7259ef` | After R.2.1 | After R.3 | After R.4 | After R.5 | After R.7 | After R.8 |
+|---|---|---|---|---|---|---|---|
+| module-layering | 28 | 28 | 19 | 11 | 11 | 7 | 0 |
+| module-mutual | 10 | 10 | 8 | 6 | 6 | 3 | 0 |
+| root-domain-code | 5 | 5 | 4 | 4 | 3 | 2 | 2 |
+| operation-writes | 1 | 1 | 1 | 0 | 0 | 0 | 0 |
+| transaction-outside-unit-of-work | 5 | 5 | 5 | 5 | 4 | 2 | 2 |
+| write-without-activity | 7 | 7 | 7 | 7 | 7 | 7 | 7 |
+| catch-all-module | — | — | 0 (new) | 0 | 0 | 0 | 0 |
+| module-surface | not in force | not in force | not in force | not in force | not in force | not in force | not in force |
 
 ## R.2.1 Worker shutdown race — DONE (`000e411`)
 
@@ -170,7 +170,12 @@ pushed; the owner approves before one push and one CI run.
   in `provider-dispatch-switch.spec.ts`: the paths are sorted and the folder name changed).
 - **Counts:** unchanged (moves do not lower them; layering 11, mutual 6).
 
-## R.7 Providers module — DONE
+## R.7 Providers module — DONE (`9ec5b65`)
+
+- **Found afterwards (in R.8):** `catalog/shipped/catalog.http.spec.ts`'s stand-in client knew only the array
+  transaction form, so `PATCH providers/:code/settings` answered 500 there after `saveModes` moved to `runTx`. The R.7
+  run had not included that file. Fixed in the R.8 commit (the stand-in hands the work its tables); expectations
+  unchanged.
 
 - **Folders:** `modules/providers/` holds `providers.module.ts`, `providers.repository.ts`, `providers.schemas.ts`,
   `testing/`; `directory/` (settings, health, the provider's catalog and its simulated adapters), `account/`
@@ -195,3 +200,29 @@ pushed; the owner approves before one push and one CI run.
   production-config, worker and platform specs on PostgreSQL and Redis green (two suites failed on the first run for
   the two stand-in/path reasons above; both fixed and re-run green: 14 files, 164 tests).
 - **Counts:** layering 11 → 7, mutual 6 → 3, root-domain-code 3 → 2, transaction-outside-unit-of-work 4 → 2.
+
+## R.8 Remaining domains — DONE
+
+- **Code (behaviour kept):**
+  - The priced shelf (`GET packages`) and the sell prices (`PUT|DELETE sell-prices/:code`) moved from
+    `PackagesService`/`PackagesController` to pricing (`modules/pricing/package-shelf.service.ts`,
+    `package-shelf.controller.ts`), text unchanged but for the shelf query's name (`shelfPackages`, the packages'
+    `packagesOnSale` query moved to `TermsRepository`, which already had the identical `termRowsOf`, `sellRowsOf`,
+    `packageByCode`); `saveSellPrice`, `clearSellPrice` moved with them. `PackagesService` lost its ladder and tree,
+    `PackagesModule` no longer imports `TermsModule`; `TermsModule` registers the shelf.
+  - Access declares `AccountWallets` and `AccountTasks` (`access/account-ports.ts`); wallets bind the first to
+    `WalletLedger` (its `lockWallets`, in the removal's transaction as before) and tasks the second to
+    `TasksService.releaseHandledBy` (the frozen account's tasks: the same read and the same guarded write, the copy
+    in the accounts' repository deleted in favour of the tasks' identical `releaseTask`). Global binding modules
+    `AccountWalletsModule`, `AccountTasksModule` (registry; flat test lists).
+- **Moves:** every remaining domain folder of `modules/office/` to its module (see the plan). `office/` keeps
+  `office.module.ts` and `testing/` for R.9.
+- **Spec updates:** `registry.spec.ts` (two binding modules), `http-security-contract.spec.ts` (22 controllers, 19
+  under the prefix: the new shelf controller), `catalog.http.spec.ts` (the R.7 stand-in fix above), paths in
+  `provider-dispatch-switch`, `architecture-boundaries`, `operation-dispatcher.db` specs; the stored-text rule's seed
+  exemption follows the shipped catalog to `catalog/shipped/` (it named `office/catalog/`).
+- **Full API (PostgreSQL + Redis):** 138 files, 1772 tests: 1760 passed, 12 failed in 2 files. (1)
+  `http-security-contract.spec.ts`: the controller counts (fixed, 14/14). (2) `platform/ports.db.spec.ts`: its
+  `beforeAll` (six inserts) passed the 5 s hook limit in the full run; alone 10/10; R.8 changed nothing it runs;
+  recorded in the open items, not attributed to load.
+- **Counts:** layering 7 → **0**, mutual 3 → **0**.

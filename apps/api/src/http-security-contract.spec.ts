@@ -142,8 +142,10 @@ const UNRECORDED_WRITES: Record<string, ['gap' | 'step', string]> = {
 const named = (route: Route) => `${route.method} ${route.path}`;
 
 describe('the write routes, as the source has them', () => {
-  it('reads the real controllers: twenty-one of them, their prefixes, and the write routes of each', () => {
-    expect(controllers).toHaveLength(21);
+  it('reads the real controllers: twenty-two of them, their prefixes, and the write routes of each', () => {
+    // Twenty-two since slice R.8: the priced shelf and the sell prices have a controller of their own in pricing
+    // (`PackageShelfController`); the routes are the same three, under the same prefix.
+    expect(controllers).toHaveLength(22);
     // The empty prefix is the health probe: one read, no write.
     expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'office']);
     const count = (prefix: string) => writes.filter((route) => route.controller === prefix).length;
@@ -199,10 +201,10 @@ describe('the duplicate guard and the idempotency key', () => {
 describe('authorization and activity follow the controller, not the path', () => {
   it('every controller of the office resolves the actor, but the one that starts and ends an entered session', () => {
     const office = controllers.filter((controller) => controller.prefix === 'office');
-    expect(office).toHaveLength(18);
+    expect(office).toHaveLength(19);
     const without = office.filter((controller) => !/ActivityInterceptor,\s*ActorInterceptor/.test(controller.interceptors)).map((controller) => controller.file);
     // `handoff` has no session yet and `leave` ends one: the service checks the session itself.
-    expect(without).toEqual(['modules/office/accounts/account-session.controller.ts']);
+    expect(without).toEqual(['modules/access/accounts/account-session.controller.ts']);
     expect(office.find((controller) => controller.file.endsWith('account-session.controller.ts'))?.interceptors).toBe('ActivityInterceptor');
   });
 

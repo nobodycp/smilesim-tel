@@ -1,4 +1,4 @@
-import type { OpeningLocks } from '../office/tasks/tasks.service';
+import type { OpeningLocks } from '../tasks/tasks.service';
 import { assertClaimFree, lockClaim, lockLine } from './line-state';
 
 /**

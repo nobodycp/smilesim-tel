@@ -279,7 +279,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   });
 
   it('5.9 stored-text: the API stores codes, not sentences', () => {
-    const seeds = /office\/catalog\/|trial-seed|cities\.ts|simulated-adapter|office-catalog\.ts|errors\.ts|stored-text\.ts/;
+    const seeds = /catalog\/shipped\/|trial-seed|cities\.ts|simulated-adapter|shipped-catalog\.ts|errors\.ts|stored-text\.ts/;
     check('stored-text', hits(production.filter(({ file }) => !seeds.test(file)), /^(?!\s*(\/\/|\*|\/\*)).*'[^'\n]*[֐-ۿ][^'\n]*'/m, (match) => !/@Api\w+\(/.test(match[0])));
   });
 });

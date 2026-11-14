@@ -13,11 +13,11 @@ import type { OperationStatus } from '../../providers/integration/operations/pro
 import { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
 import { simRefusal, simRulesOf } from '../../catalog/rules/sim-rules';
 import { PROVIDER_EXCEPTION_NOTES, PROVIDER_RELEASED_NOTE } from '../../platform/stored-text';
-import { lockedTask, lockedTaskOperation } from '../../office/tasks/task-operation';
-import { TasksService } from '../../office/tasks/tasks.service';
+import { lockedTask, lockedTaskOperation } from '../../tasks/task-operation';
+import { TasksService } from '../../tasks/tasks.service';
 import { applyAsSettlement, submitterOf, tellDeciders } from './activation-settlement';
 import { applyErrorOf, decisionChoices, decisionStep, needsSecondAccount, openProposal, type ApplyError, type Decision, type DecisionEvent, type DecisionEvidence, type DecisionRefusal, type DecisionRequest, type DecisionStep } from './activation-settlement.rules';
-import { DECISION_GRANT, shownPhase, type TaskOperation } from '../../office/tasks/task-operation.rules';
+import { DECISION_GRANT, shownPhase, type TaskOperation } from '../../tasks/task-operation.rules';
 import { esimCodeOrFail, storableEsimCode } from '../../platform/esim-code';
 import { lockClaim } from '../line-state';
 import { LinesRepository } from '../lines.repository';

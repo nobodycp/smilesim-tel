@@ -1,0 +1,20 @@
+import { ReportsRepository } from './reports.repository';
+import { AccessModule } from '../../access/access.module';
+import { PlatformModule } from '../../platform/platform.module';
+import { WalletsModule } from '../../wallets/wallets.module';
+import { InsightsService } from './insights.service';
+import { ReportsController } from './reports.controller';
+import { ReportsService } from './reports.service';
+import { Module } from '@nestjs/common';
+
+/** The branch's reports and their CSV exports. */
+export const REPORTS_CONTROLLERS = [ReportsController];
+export const REPORTS_PROVIDERS = [ReportsRepository, ReportsService, InsightsService];
+
+@Module({
+  imports: [PlatformModule, AccessModule, WalletsModule],
+  controllers: REPORTS_CONTROLLERS,
+  providers: REPORTS_PROVIDERS,
+  exports: [InsightsService],
+})
+export class ReportsModule {}

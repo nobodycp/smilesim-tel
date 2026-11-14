@@ -58,7 +58,6 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^(config|errors|db|doors|cors|security-headers)\.ts$/, 'platform'],
   [/^openapi\//, 'platform'],
   [/^modules\/platform\//, 'platform'],
-  [/^modules\/office\/outbox\//, 'platform'],
   // ── identity, auditing, notifications ─────────────────────────────────────────────────────────────
   [/^modules\/auth\//, 'identity'],
   // The log's writer (the port's implementation) and its reading; notices, with the port's implementation.
@@ -66,21 +65,16 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^modules\/notifications\//, 'notifications'],
   // ── access (the actor, grants, roles, the account tree, accounts) ────────────────────────────────
   [/^modules\/access\//, 'access'],
-  [/^modules\/office\/(accounts|roles)\//, 'access'],
   // ── catalog, pricing ──────────────────────────────────────────────────────────────────────────────
   [/^modules\/catalog\//, 'catalog'],
   [/^modules\/branding\//, 'catalog'],
-  [/^modules\/office\/(catalog|companies|packages|offers)\//, 'catalog'],
   [/^modules\/pricing\//, 'pricing'],
-  [/^modules\/office\/terms\//, 'pricing'],
   // ── wallets, providers, tasks, sales, reporting ───────────────────────────────────────────────────
   [/^modules\/wallets\//, 'wallets'],
-  [/^modules\/office\/wallets\//, 'wallets'],
   [/^modules\/providers\//, 'providers'],
-  [/^modules\/office\/tasks\//, 'tasks'],
+  [/^modules\/tasks\//, 'tasks'],
   [/^modules\/sales\//, 'sales'],
-  [/^modules\/office\/transfers\//, 'sales'],
-  [/^modules\/office\/(reports|desk)\//, 'reporting'],
+  [/^modules\/reporting\//, 'reporting'],
 ];
 
 export function ownerOf(file: string): Owner | null {

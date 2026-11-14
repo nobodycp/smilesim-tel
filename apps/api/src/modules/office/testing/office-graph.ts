@@ -8,9 +8,9 @@ import { UnitOfWork } from '../../platform/unit-of-work';
 import { LineAccess } from '../../sales/line-access';
 import { NoticeService } from '../../notifications/notice.service';
 import type { NoticeWriter } from '../../platform/notices';
-import { LayerRoles } from '../roles/layer-roles';
-import { PriceLadder } from '../terms/price-ladder';
-import { WalletLedger } from '../wallets/wallet-ledger';
+import { LayerRoles } from '../../access/roles/layer-roles';
+import { PriceLadder } from '../../pricing/price-ladder';
+import { WalletLedger } from '../../wallets/wallet-ledger';
 
 /**
  * Test-only: the collaborators every office service is built from, wired by hand as Nest wires them in the app.

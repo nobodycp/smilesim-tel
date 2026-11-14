@@ -1,5 +1,5 @@
 import { csvCell, csvDocument } from './csv';
-import { cell, ledgerCsv, profitCsv, shekels } from '../office/wallets/finance-summary';
+import { cell, ledgerCsv, profitCsv, shekels } from '../wallets/finance-summary';
 import { csvOf } from '../wallets/report-csv';
 
 // The CSV writer was taken out of the wallets and the reports into the platform (slice R.2 corrections). These

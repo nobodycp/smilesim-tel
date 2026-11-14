@@ -602,7 +602,7 @@ describe('what ships: the API can decide a route and nothing more; only the work
   });
 
   it('T1\'s step inside the opening still has one caller, and it writes through the recorder alone', () => {
-    expect(paths(files.filter((file) => /\balongside\b/.test(file.text)))).toEqual(['modules/office/tasks/tasks.service.ts', 'modules/sales/lines.service.ts']);
+    expect(paths(files.filter((file) => /\balongside\b/.test(file.text)))).toEqual(['modules/sales/lines.service.ts', 'modules/tasks/tasks.service.ts']);
     const step = /alongside: async \(tx, opened\) => \{([\s\S]*?)\n {6}\},/.exec(text('modules/sales/lines.service.ts'))?.[1] ?? '';
     expect(step).toContain('await this.operations.recordIn(');
     expect(step).not.toMatch(/this\.uow|runTx|prisma|this\.gateway|\.record\(/);

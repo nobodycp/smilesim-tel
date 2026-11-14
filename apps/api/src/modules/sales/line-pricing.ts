@@ -1,5 +1,5 @@
 import { LinesRepository } from './lines.repository';
-import { PriceLadder } from '../office/terms/price-ladder';
+import { PriceLadder } from '../pricing/price-ladder';
 import { AccountTree } from '../access/account-tree';
 import { UnitOfWork } from '../platform/unit-of-work';
 import { Injectable } from '@nestjs/common';

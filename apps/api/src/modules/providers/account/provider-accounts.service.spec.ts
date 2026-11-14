@@ -1,6 +1,6 @@
 import { ProvidersRepository } from '../providers.repository';
 import type { Actor } from '../../access/types';
-import type { WalletsService } from '../../office/wallets/wallets.service';
+import type { WalletsService } from '../../wallets/wallets.service';
 import { ProviderAccountsService } from './provider-accounts.service';
 
 // Our account with a provider (roadmap N7): payments and settlements minus purchases, the credit limit, what open

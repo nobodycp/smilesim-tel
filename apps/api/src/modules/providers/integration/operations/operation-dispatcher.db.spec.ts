@@ -344,7 +344,7 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     expect([...touched].sort()).toEqual(['OutboxMessage', 'Provider', 'ProviderOperation']);
     // And by construction: nothing under operations/ or outbox/ imports the wallets, the lines (`sales/` since slice
     // R.6) or the tasks.
-    const folders = [__dirname, join(__dirname, '..', '..', '..', 'office', 'outbox')];
+    const folders = [__dirname, join(__dirname, '..', '..', '..', 'platform', 'outbox')];
     const sources = folders.flatMap((folder) => readdirSync(folder).filter((file) => file.endsWith('.ts') && !file.endsWith('.spec.ts')).map((file) => readFileSync(join(folder, file), 'utf8')));
     expect(sources.length).toBeGreaterThanOrEqual(7);
     for (const source of sources) expect(source).not.toMatch(/from '[^']*\/(wallets|lines|tasks|sales)\//);

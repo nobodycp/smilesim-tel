@@ -1,7 +1,7 @@
 import { LineAccess } from '../../sales/line-access';
-import { LayerRoles } from '../roles/layer-roles';
-import { PriceLadder } from '../terms/price-ladder';
-import { WalletLedger } from '../wallets/wallet-ledger';
+import { LayerRoles } from '../../access/roles/layer-roles';
+import { PriceLadder } from '../../pricing/price-ladder';
+import { WalletLedger } from '../../wallets/wallet-ledger';
 import { AccountTree } from '../../access/account-tree';
 import { ActorResolver } from '../../access/actor-resolver';
 import { UnitOfWork } from '../../platform/unit-of-work';

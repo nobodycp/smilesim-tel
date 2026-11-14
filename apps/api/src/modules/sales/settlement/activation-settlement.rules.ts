@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { validKey } from '../../providers/integration/operations/provider-operation.rules';
-import { mayDecide, phaseOf, type OperationPhase, type TaskOperation } from '../../office/tasks/task-operation.rules';
+import { mayDecide, phaseOf, type OperationPhase, type TaskOperation } from '../../tasks/task-operation.rules';
 
 // How a provider operation and its activation task stand to each other (ADR 0019). Pure: no Nest, no Prisma, no
 // HTTP. The services of later slices ask these functions and decide nothing themselves. What a task itself reads of

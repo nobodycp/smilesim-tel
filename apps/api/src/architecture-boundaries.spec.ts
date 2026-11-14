@@ -313,7 +313,7 @@ describe('the rules catch what they are for (made-up cases)', () => {
 
   it('unmapped: a file in a folder the map does not know has no owner', () => {
     expect(ownerOf('modules/billing/invoices.service.ts')).toBeNull();
-    expect(ownerOf('modules/office/wallets/wallet-ledger.ts')).toBe('wallets');
+    expect(ownerOf('modules/wallets/wallet-ledger.ts')).toBe('wallets');
   });
 
   it.each([

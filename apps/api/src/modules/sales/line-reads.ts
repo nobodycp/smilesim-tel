@@ -1,6 +1,6 @@
 import { parseInput } from '../platform/input';
 import { esimCodeOrFail } from '../platform/esim-code';
-import { esimCodeReaders } from '../office/tasks/task-access';
+import { esimCodeReaders } from '../tasks/task-access';
 import { LinesQuery } from './lines.schemas';
 import { LinesRepository } from './lines.repository';
 import { AccountTree } from '../access/account-tree';

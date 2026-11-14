@@ -1,15 +1,15 @@
 import { AuditRepository } from '../../auditing/audit.repository';
-import { RolesRepository } from '../roles/roles.repository';
-import { DeskRepository } from '../desk/desk.repository';
+import { RolesRepository } from '../../access/roles/roles.repository';
+import { DeskRepository } from '../../reporting/desk/desk.repository';
 import { ProvidersRepository } from '../../providers/providers.repository';
 import { LinesRepository } from '../../sales/lines.repository';
-import { TasksRepository } from '../tasks/tasks.repository';
-import { WalletsRepository } from '../wallets/wallets.repository';
-import { TransfersRepository } from '../transfers/transfers.repository';
-import { TermsRepository } from '../terms/terms.repository';
-import { PackagesRepository } from '../packages/packages.repository';
-import { CompaniesRepository } from '../companies/companies.repository';
-import { AccountsRepository } from '../accounts/accounts.repository';
+import { TasksRepository } from '../../tasks/tasks.repository';
+import { WalletsRepository } from '../../wallets/wallets.repository';
+import { TransfersRepository } from '../../sales/transfers/transfers.repository';
+import { TermsRepository } from '../../pricing/terms.repository';
+import { PackagesRepository } from '../../catalog/packages/packages.repository';
+import { CompaniesRepository } from '../../catalog/companies/companies.repository';
+import { AccountsRepository } from '../../access/accounts/accounts.repository';
 import { OfficeGraph } from './office-graph';
 import { PrismaService } from '../../platform/prisma.service';
 import { Prisma, PrismaClient } from '../../../generated/prisma/client';
@@ -24,21 +24,22 @@ import { TaskCompletion } from '../../sales/settlement/task-completion';
 import { SimulatedProviderGateway } from '../../providers/integration/gateway/simulated-gateway';
 import { ProviderOperationsRepository } from '../../providers/integration/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../../providers/integration/operations/provider-operations.service';
-import { TransfersService } from '../transfers/transfers.service';
-import { AccountsService } from '../accounts/accounts.service';
-import { DeskService } from '../desk/desk.service';
-import { RolesService } from '../roles/roles.service';
-import { TermsService } from '../terms/terms.service';
-import { PackagesService } from '../packages/packages.service';
-import { CompaniesService } from '../companies/companies.service';
+import { TransfersService } from '../../sales/transfers/transfers.service';
+import { AccountsService } from '../../access/accounts/accounts.service';
+import { DeskService } from '../../reporting/desk/desk.service';
+import { RolesService } from '../../access/roles/roles.service';
+import { TermsService } from '../../pricing/terms.service';
+import { PackageShelfService } from '../../pricing/package-shelf.service';
+import { PackagesService } from '../../catalog/packages/packages.service';
+import { CompaniesService } from '../../catalog/companies/companies.service';
 import { ProviderAccountsService } from '../../providers/account/provider-accounts.service';
 import { ProvidersService } from '../../providers/directory/providers.service';
-import { WalletsService } from '../wallets/wallets.service';
+import { WalletsService } from '../../wallets/wallets.service';
 import { AuditService } from '../../auditing/audit.service';
-import { TasksService } from '../tasks/tasks.service';
+import { TasksService } from '../../tasks/tasks.service';
 import type { Gate } from '../../platform/cookies';
 import type { Sale } from '../../wallets/sale';
-import type { TransferAccountBody } from '../transfers/transfers.service';
+import type { TransferAccountBody } from '../../sales/transfers/transfers.service';
 
 /**
  * Test-only adapter: the office methods as the specs have always called them, `(gate, ...)`, each
@@ -115,8 +116,13 @@ export class OfficeFacade {
   private packageDeskInstance: PackagesService | null = null;
 
   private get packageDesk(): PackagesService {
-    this.packageDeskInstance ??= new PackagesService(this.graph.uow, this.graph.tree, this.graph.ladder, new PackagesRepository(this.graph.uow));
+    this.packageDeskInstance ??= new PackagesService(this.graph.uow, new PackagesRepository(this.graph.uow));
     return this.packageDeskInstance;
+  }
+
+  /** The priced shelf and the sell prices (slice R.8: pricing's `PackageShelfService`). */
+  private get shelfDesk(): PackageShelfService {
+    return new PackageShelfService(this.graph.tree, this.graph.ladder, new TermsRepository(this.graph.uow));
   }
 
   private termDeskInstance: TermsService | null = null;
@@ -143,7 +149,7 @@ export class OfficeFacade {
   private accountDeskInstance: AccountsService | null = null;
 
   private get accountDesk(): AccountsService {
-    this.accountDeskInstance ??= new AccountsService(this.graph.uow, this.graph.tree, this.graph.auth, new AccountsRepository(this.graph.uow), this.graph.ledger);
+    this.accountDeskInstance ??= new AccountsService(this.graph.uow, this.graph.tree, this.graph.auth, new AccountsRepository(this.graph.uow), this.graph.ledger, this.tasksDomain);
     return this.accountDeskInstance;
   }
 
@@ -226,15 +232,15 @@ export class OfficeFacade {
 
   // Spec entry points; the routes live in packages/packages.controller.ts.
   async packages(gate: Gate) {
-    return this.packageDesk.list(await this.actor(gate));
+    return this.shelfDesk.list(await this.actor(gate));
   }
 
   async setSellPrice(gate: Gate, code: string, body: { price?: unknown; renewalPrice?: unknown }) {
-    return this.packageDesk.setSellPrice(await this.actor(gate), code, body);
+    return this.shelfDesk.setSellPrice(await this.actor(gate), code, body);
   }
 
   async clearSellPrice(gate: Gate, code: string) {
-    return this.packageDesk.clearSellPrice(await this.actor(gate), code);
+    return this.shelfDesk.clearSellPrice(await this.actor(gate), code);
   }
 
   async setPackageMode(gate: Gate, code: string, body: Record<string, unknown>) {

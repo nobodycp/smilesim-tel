@@ -12,7 +12,7 @@ import { Activity } from '../platform/activity.decorator';
 import { ActivityInterceptor } from '../platform/activity.interceptor';
 import { ActivityRecorder } from '../platform/activity';
 import { NOTICE_WRITER_PROVIDERS } from '../notifications/notice-writer.module';
-import { FundBody } from '../office/wallets/wallets.schemas';
+import { FundBody } from '../wallets/wallets.schemas';
 import { Actor, ActorInterceptor } from './actor.interceptor';
 import type { Actor as ActorShape } from './types';
 

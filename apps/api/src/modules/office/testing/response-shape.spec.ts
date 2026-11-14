@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
-import { companies } from '../catalog/office-catalog';
+import { companies } from '../../catalog/shipped/shipped-catalog';
 import { OfficeFacade } from './office-facade';
 import { APPLY_ERRORS, DECISIONS } from '../../sales/settlement/activation-settlement.rules';
 

@@ -10,9 +10,9 @@ import { matchOf, matchOverdue } from './match-simulator';
 import type { Actor } from '../../access/types';
 import { providerBranchCost } from '../../pricing/rules/prices';
 import { csvOf } from '../../wallets/report-csv';
-import { WalletsService } from '../../office/wallets/wallets.service';
+import { WalletsService } from '../../wallets/wallets.service';
 import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ProviderOperationsQuery, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from '../providers.schemas';
-import { PROVIDER_OPERATION_KINDS } from '../../office/wallets/provider-cost';
+import { PROVIDER_OPERATION_KINDS } from '../../wallets/provider-cost';
 import { cursorPosition, page, FEED_PAGE } from '../../platform/paging';
 import { linesOf, readSheet, reconcile, suggestMap, type StatementMap } from './statement';
 

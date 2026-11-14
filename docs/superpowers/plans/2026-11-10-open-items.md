@@ -80,6 +80,11 @@ or replaced by a later design. They stay in git history.
   test in 6.0 s). R.2.1 changes no web file (only the worker's stop). Not attributed to load or to the dev
   server's first compile of the page: neither was recorded. To settle: keep the trace (`test-results/…/trace.zip`)
   of the next failure and read which request the page was waiting on.
+- **Seen 2026-11-14 (slice R.8), cause not settled:** in one full local run (138 files, load 3.3 before and 10.6
+  after) `platform/ports.db.spec.ts` failed all ten tests: its `beforeAll` (a new Prisma client and six inserts, no
+  Nest) passed Jest's 5 s hook limit. It passed alone right after (10/10). R.8 changed no file it runs (the unit of
+  work, the notice writer, the activity recorder). Not attributed to load: the database's locks and connections
+  were not recorded during the run. To settle: log the time of each insert in that hook on the next failure.
 - Related, also open: some spec files run a pass over every operation in the shared database
   (`settlement.applyPending`, `recoverExpired`), which can act on another file's rows. `provider-dispatch.db.spec.ts`
   no longer does, and judges a settlement by the row.
