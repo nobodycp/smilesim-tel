@@ -581,14 +581,48 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
 ### P0.5 Task ticket scrolls on narrow widths
 
 - **Goal:** under `@container task-ticket (max-width: 36rem)` the conversation and compose bar stay reachable.
-- **Files:** `app/styles/desk/tasks.css` (`@container task-ticket (max-width: 36rem)` block, :223–235).
-- **Steps:** in that block set `.task-board { grid-template-rows: fit-content(40%) minmax(12rem, 1fr); }` and delete
-  `min-height: max-content` from `.task-rail` (keep `max-height: 40%` and `overflow: auto`; leave the block's two
-  border lines as they are — they are already dead under graphite `.task-rail { border: 0 }` :724 and the frame is
-  graphite :721's inset shadow; P2.8 deletes the dead border lines when it moves the rule).
+- **Files:** `app/styles/desk/tasks.css` (`@container task-ticket (max-width: 36rem)` block, :223–235); `DESIGN.md`
+  (the task-ticket bullet says how a narrow ticket reads; added in P0.5).
+- **Steps (amended in P0.5, see the note below):** in that block, on `.task-board` replace `grid-template-columns: 1fr;
+  grid-template-rows: max-content minmax(18rem, 1fr);` with `display: flex; flex-direction: column; overflow-y: auto;`;
+  on `.task-rail` delete `min-height: max-content` and add `flex: none` (keep `max-height: 40%` and `overflow: auto`;
+  leave the block's two border lines as they are — they are already dead under graphite `.task-rail { border: 0 }`
+  :726, and the frame is graphite :723's inset shadow on `.task-rail, .task-thread`; P2.8 deletes the dead border lines
+  when it moves the rule); add `.task-thread { flex: 1 0 auto; min-height: 12rem; }` and `.task-tree-scroll {
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior: auto; }` (fix round 1: the log's base `overflow: auto;
+  overscroll-behavior: contain` would keep a vertical scroll box that no longer overflows, and Chromium ≥ 144 applies
+  `overscroll-behavior` to such a box, so a wheel or touch scroll starting on the log would not reach the board; fix
+  round 2: the log keeps its sideways scroll — `overflow: visible` there cut a message wider than the ticket, an
+  unbroken string or a long URL in `.task-tree-card p` (`white-space: pre-wrap`, no `overflow-wrap`), at the ticket's
+  edge with no way to reach it, where before the slice and at 768 and wider the log scrolls sideways to it; with
+  `overflow-y: hidden` the log does not scroll vertically, so a vertical wheel or swipe on it still reaches the board);
+  qualify the file's head comment ("only the inspection tree scrolls") for the narrow ticket. Above 36rem nothing changes: the
+  board keeps its two-column grid.
+  *Amended in P0.5 (measured, `audit-output/maintenance/P0.5/preview.mjs` injecting each candidate on the live page,
+  then the after run):* the first text, `grid-template-rows: fit-content(40%) minmax(12rem, 1fr)` with `min-height`
+  deleted, does not reach Done. At 375×667 on a working task the board is 323.5px tall (the page head with its
+  wrapped actions takes the rest). The rows resolve to 117.5px + 192px. The rail's `max-height: 40%` resolves against
+  its grid row, not the board, so the rail is 47px with 70px of empty row under it. The thread's 192px cannot hold its
+  head plus the compose bar, which is 197px at ≤28rem, where its controls stack, so the compose bar stays clipped by
+  the thread's and the ticket's `overflow: hidden`. At 320×568 the board also overflows by 11px. Letting the rail
+  fill its row (`max-height` removed) and the Risks fallback (`auto minmax(12rem, 1fr)`, `40dvh`) both leave the same
+  192px thread. No fixed-height grid fits rail, thread head and compose bar into 323px, so under 36rem the board
+  itself scrolls. It becomes a flex column. The rail's percentage `max-height` then resolves against the board's
+  definite height: 40% = 129.4px at 375×667. `flex: none` stops the rail shrinking to 0 against the growing thread.
+  The thread grows to its whole log, at least 12rem, and fills the rest when the log is short. The last message and
+  the compose bar scroll into view in the board, and the log has no vertical scroll of its own there (it keeps the
+  sideways scroll it has today for a message wider than the ticket; fix round 2). This is the spec's
+  "the task ticket's conversation and compose bar scroll into view".
 - **Closes:** 3.2-03.
 - **Risks:** removing only `min-height` is not enough (report) — both lines change; the 28rem compose block
-  (`:236–241`) stays after it. `fit-content(40%)` as a row track resolves only against a definite block size;
+  (`:236–241`) stays after it. (Amended in P0.5: the paragraph from here to the fallback describes the first
+  text, which the note under Steps replaces; it is kept as the record of what was measured. `order` applies in the
+  flex column as it does in grid auto-placement, so P5.6's reordering is unaffected in kind: P5.6 must reset `order` in
+  the container block to keep the rail above the thread. The P0.5 measurement that the container block never applies
+  at a viewport ≥ 900 (Verify below) also amended the premise of P2.8's Steps, P5.6's stated visible change and Verify,
+  and the review note on P2.8/P5.6; their executors re-measure the ticket width at 900–920 with the sidebar open
+  before relying on it. The spec's P5.6 line still holds its first text, the 900–~916 stacking; P0.5 does not edit the
+  spec. P5.6's executor corrects that line as its own amendment before it starts, with the text written in P5.6.) `fit-content(40%)` as a row track resolves only against a definite block size;
   `.task-board` is `flex: 1` inside `.task-ticket` (`.desk > .pane.task-ticket`, (0,3,0), gives `flex: 1;
   overflow: hidden` and beats graphite's `.desk > .pane { flex: none }`), so it is definite. **Fallback** if the 375
   measurement shows the rail row at `max-content`: `grid-template-rows: auto minmax(12rem, 1fr)` with the rail's cap
@@ -597,10 +631,28 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
   the measured rail height.
 - **Verify:** CHK-LOCAL; CHK-LOOK `/tasks/[id]` (a task with ≥10 log entries and the internal-note toggle) at 375, 390,
   768, 1024 with the sidebar open and folded, **and 900 and 960 with the sidebar open** (there the ticket can be
-  ≤36rem while graphite's `@media (min-width: 900px) .task-board { grid-template-columns: … }` (graphite.css:713–717)
+  ≤36rem while graphite's `@media (min-width: 900px) .task-board { grid-template-columns: … }` (graphite.css:716–720)
   beats the container block's one column — today's behaviour, measured and recorded, not changed),
   ar-dark/en-light/he-light: the last message and the compose bar visible after scrolling the thread; rail scrolls
-  inside 40%. E2E: `task-notes.spec.ts`, `tasks-desk.spec.ts`.
+  inside 40%. (Amended in P0.5: the scroll is the board's, not the thread's. Measured at 900 and 960 with the sidebar
+  open, the ticket is 596px and 654px wide, the sidebar being 268px, so the container block does not apply there today.
+  It applies only in drawer mode up to a viewport of about 608px, ticket width = viewport − 32px; 600, 608 and 610 are
+  added to the measured widths.) *Amended in P0.5 fix round 1:* the scroll is checked with real input, not by setting
+  `scrollTop`: wheel (`page.mouse.wheel`) on the log to the board's end and back, on the thread head, on the compose bar,
+  its textarea and button, and on the rail (the rail first, then the board; back up the rail first); touch
+  (`Input.synthesizeScrollGesture`) on the log, the thread head, the rail to its end and on, and up from the compose
+  bar; keys (PageDown, Space, End, Home, PageUp after a click on a log card's text). *Fix round 2:* a long-string case
+  (a log message with an 80-character unbroken string, wider than the ticket): a horizontal wheel and a horizontal
+  touch swipe on it scroll the log sideways to the message's far edge and back while the board stays still, a
+  vertical wheel and swipe on it still move the board, and the log does not clip its messages vertically (also with a
+  15px space-taking scrollbar on the log). Data states add a task with a
+  provider operation (`.po-panel` first in the rail, from `provider-operation.spec.ts`'s fixture shape): the panel's
+  share at load, its first decision and its history's last entry reached by wheeling the rail, a click on the decision
+  (its dialog opens, Escape closes it, nothing sent), and the reject form open in the rail (phase failed). E2E:
+  `task-notes.spec.ts`, `tasks-desk.spec.ts`, `provider-operation.spec.ts` (its phone case loads `/tasks/t1` at 390×844,
+  inside the block: the panel is now in a rail capped at 40% of the board; its checks are horizontal
+  (`boundingBox` x, `scrollWidth`) and `click()` scrolls the nested rail itself, so no change is expected; not run
+  locally).
 - **Done:** at 375 the compose bar is reachable with no clipped content.
 - **Commit:** `fix(web): the task ticket keeps its conversation and compose bar in reach on narrow widths (UI maintenance P0.5; closes 3.2-03)`
 
@@ -1279,9 +1331,12 @@ cannot reach (a JS-driven open state) is checked in CHK-LOOK with a screenshot b
 - **Steps:** move; the task board order (graphite :714–718) moves as an `@media (min-width: 900px)` block in
   `tasks.css` **after the `@container task-ticket (max-width: 36rem)` block** (tasks.css:223, i.e. at the end of the
   board rules), not just after the base: today graphite loads after `tasks.css`, so at equal specificity the media
-  rule beats the container rule wherever both apply (viewport 900 to about 916 with the sidebar open, where the ticket
-  pane is ≤36rem); placed before the container block it would lose and the slice would not be zero-diff. Add a 910
-  sidebar-open run on `tasks/t1` to CHK-ZERO for this slice (R14 rewrite is P5.6). `.task-rail { border: 0 }` (graphite :724) wins over the
+  rule beats the container rule wherever both apply; placed before the container block it would lose wherever they
+  overlap. *(Amended in P0.5: measured, they do not overlap today. The ticket pane is 596px at viewport 900 with the
+  sidebar open, 606 at 910, 611 at 916, 615 at 920, all above 36rem = 576px, and the container block applies only in
+  drawer mode up to a viewport of about 608px. The placement is kept as a safeguard. Re-measure the ticket width at
+  900 and 910 with the sidebar open before the move; CHK-ZERO adds a 608 run on `tasks/t1`, the widest width inside
+  the container block, in place of the 910 sidebar-open run the first text named.)* (R14 rewrite is P5.6.) `.task-rail { border: 0 }` (graphite :724) wins over the
   `border-inline-end` / `border-block-end` lines in the `@container task-ticket (max-width: 36rem)` block
   (`tasks.css`): delete those two dead lines and keep `border: 0` in the base (zero-diff).
 - **Verify:** CHK-LOCAL; CHK-ZERO (`tasks`, `tasks/t1`, `users`, `users/main1`, `settings`, `roles`, `notices`).
@@ -2079,12 +2134,34 @@ Every P3 slice: **visible** unless it says zero-diff; CHK-LOCAL, CHK-LOOK, CHK-A
   block (R10) — not two `max-height` declarations in one rule, which guard (a) would count as a duplicate key; toast `top: calc(var(--shell-topbar-h,
   64px) + var(--rd-space-2))`, the variable set from a `ResizeObserver` on `.topbar` in the shell (R20); task board:
   make the ≥900 order and widths the base, delete the 900 override, keep the 36rem container block after it (R14).
-  **Stated visible change:** the container block then wins wherever the ticket pane is ≤36rem, so at viewport 900 to
-  about 916 with the sidebar open the board stacks (rail above thread) instead of the two cramped columns it shows
-  today (P2.8 kept today's precedence); listed in the spec's "What changes for users".
+  The container block then wins wherever the ticket pane is ≤36rem; it must reset `order` there (rail above thread),
+  since the base order would otherwise put the rail under the thread in the narrow column. *(Amended in P0.5: the first
+  text stated a visible change, the board stacking at viewport 900 to about 916 with the sidebar open. Measured in
+  P0.5, the ticket pane is wider than 36rem at every viewport ≥ 900, sidebar open (596px at 900, 615 at 920) or folded,
+  so no stacking happens there and nothing on the board changes at 900–920; re-measure before relying on it. The
+  visible change is the base change itself: from viewport 609 to 899 (drawer mode, the ticket wider than 36rem) the
+  board shows the ≥900 order and widths, the thread first and the rail `minmax(18rem, 22rem)` at the inline end, where
+  today the rail is first at 320px (P0.5 `widths.log`: 880 `320px 510.812px`, 899 `320px 529.062px`). That is R14's
+  intended change. Amended again in P0.5 fix round 2, which corrected "880–920".)*
+  **Before you start (amendment carried from P0.5):** the spec's "What changes for users" P5.6 line ("Task ticket
+  (P5.6): the board stacks (rail above thread) whenever the ticket pane is 36rem or narrower, including viewport 900
+  to about 916 with the sidebar open, …") still holds its first text. P0.5 measured it untrue and did not edit the
+  spec. Re-measure the ticket width at 600/608/610 in drawer mode and at 900/910/920 with the sidebar open; if the
+  P0.5 figures hold, replace that bullet in the spec, as this slice's amendment (`docs(plan): amend P5.6`, files: the
+  plan and the spec), with: "Task ticket (P5.6): one task-board order in the base rule. From viewport 609 to 899
+  (drawer mode, the ticket pane wider than 36rem) the board shows the order and widths it has from 900 today: the log
+  first and the details at the inline end, 18–22rem wide, where today the details come first at 320px. The board
+  stacks (details above log) whenever the ticket pane is 36rem or narrower. Measured in P0.5, that happens only in
+  drawer mode up to a viewport of about 608px: at 900 and wider the ticket pane is wider than 36rem (596px at 900
+  with the sidebar open, 615px at 920), so the stacking at 900 to about 916 this line first named does not occur, and
+  nothing on the board changes there." If the figures differ, write the measured ones in its place. The 609–899
+  change this text names is a visible change: if the spec's list does not already cover it, the amendment rules apply
+  (an owner question, or parking under the autonomous run).
 - **Closes:** 3.2-10, 3.2-20, 3.2-14.
 - **Verify:** dialog on a 375×667 phone with the browser bar; notice toast at 375/768/899/900; `/tasks/[id]` at
-  880/899/900/910/920 (sidebar open: stacked up to the 36rem pane width, two columns above it). E2E: `transfer-notices.spec.ts`, `dialog-focus.spec.ts`, `task-notes.spec.ts`.
+  600/608 (stacked, the board scrolling, rail above thread); 610, 768, 880, 899 in drawer mode (two columns, thread
+  first, rail 18–22rem: the stated change); 900/910/920 with the sidebar open and folded (two columns, as today).
+  (Amended in P0.5: the first text expected stacking at 900–916; fix round 2 split the drawer widths out.) E2E: `transfer-notices.spec.ts`, `dialog-focus.spec.ts`, `task-notes.spec.ts`.
 - **Commit:** `fix(web): dynamic viewport height, the toast under a wrapped topbar, one task-board order (UI maintenance P5.6; closes 3.2-10, 3.2-20, 3.2-14)`
 
 ---
@@ -2839,7 +2916,9 @@ names all six graphite-640 40px members and the `frame.css:51–55` 720 rule, st
 field rule needs for `desk-system.spec.ts`, and raises the toast through the notice **stream** (`use-notices.ts:13`;
 the shell has no toast-raising poll); P1.2 removes the `.grant` (:1078) and `.trend-tip` (:1143) fallbacks; P2.8 places
 the 900 media block after the 36rem container block, and P5.6 states the 900–~916 stacking as a visible change (added
-to the spec); P0.5 fallback caps the rail in `dvh`/`rem`; P0.4 makes the `::before` ring the primary approach; P0.9
+to the spec; amended in P0.5: measured, no viewport ≥ 900 has a ticket ≤ 36rem, so that stacking does not occur — see
+P0.5 Verify, P2.8 and P5.6; the spec's P5.6 line still holds the first text, and P5.6's executor corrects it as its
+own amendment, with the text written in P5.6's "Before you start"); P0.5 fallback caps the rail in `dvh`/`rem`; P0.4 makes the `::before` ring the primary approach; P0.9
 records the new `primaryBg` and lists `smilesim-ui.mdc`; appendix 3.7-03 points at P2.11/P3.8 for weights; P4.4 writes
 the create template in DESIGN.md; branch precondition and owner wording (plan and spec); P8.2 restore order and path,
 §4 deferral and pre-capture CI recommendation asked of the owner, consolidation agent appointed at the end of P8.2;
