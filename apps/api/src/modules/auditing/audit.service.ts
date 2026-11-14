@@ -11,7 +11,7 @@ import type { Actor } from '../office/kernel/types';
 import { after, cursorPosition, page } from '../shared/paging';
 import { FEED_PAGE } from '../office/rules/office-paging';
 import { visibleAccountIds } from '../office/rules/account-visibility';
-import { csvOf } from '../office/reports/report-csv';
+import { csvDocument } from '../shared/csv';
 
 /** The most events one CSV holds. */
 export const AUDIT_EXPORT_LIMIT = 5_000;
@@ -75,7 +75,7 @@ export class AuditService {
   async csv(actor: Actor, input: AuditQuery = {}) {
     const query = parseInput(AuditQuery, input);
     const rows = await this.repo.events(await this.whereFor(actor, query), AUDIT_EXPORT_LIMIT);
-    return csvOf(
+    return csvDocument(
       ['at', 'account', 'layer', 'action', 'subject', 'result', 'reason', 'ip'],
       rows.map((row) => [row.at.toISOString(), row.actorLoginName, row.actorLayer ?? '', row.action, row.subjectRef ?? '', row.result, row.reason ?? '', (row.ip ?? '').replace(/^::ffff:/, '')]),
     );

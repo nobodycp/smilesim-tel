@@ -24,7 +24,7 @@
   "unused-injection": 0,
   "untyped-query": 0,
   "unmapped-file": 0,
-  "module-layering": 29,
+  "module-layering": 28,
   "module-mutual": 10,
   "file-cycles": 0,
   "module-surface": 0,

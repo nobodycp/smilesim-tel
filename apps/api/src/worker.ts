@@ -84,9 +84,12 @@ export async function run(): Promise<void> {
   // The open Redis connection keeps the process alive, so the container does not restart.
   log.log(`ready: ${workers.length} processors`);
 
+  // In order: no new round or job (the timers, then the queues, which wait for the jobs that are running), then the
+  // notice writer this worker built (after the last settlement published), then the database and Redis.
   const stop = async () => {
     await stopDispatch();
     await Promise.all(workers.map((worker) => worker.close()));
+    await dispatch.closeNotices();
     await dispatchPrisma.$disconnect();
     relayRedis.disconnect();
     connection.disconnect();

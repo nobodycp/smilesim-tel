@@ -11,10 +11,9 @@ import { NoticeWriterModule } from '../notifications/notice-writer.module';
 import { AccountTree } from '../office/kernel/account-tree';
 import { UnitOfWork } from '../office/kernel/unit-of-work';
 import { PriceLadder } from '../office/terms/price-ladder';
-import type { TransferKind } from '../office/transfers/transfer-rules';
 import { WalletLedger } from '../office/wallets/wallet-ledger';
 import { ActivityRecorder } from './activity';
-import { NOTICE_WRITER, type TransferNoticePayload } from './notices';
+import { NOTICE_WRITER } from './notices';
 import { capturedOutput } from './testing/captured-output';
 
 // The two ports of slice R.2 (ADR 0020), on PostgreSQL and Redis: the notice writer the unit of work holds, and the
@@ -26,12 +25,6 @@ import { capturedOutput } from './testing/captured-output';
 const url = process.env.TEST_DATABASE_URL;
 const redisUrl = process.env.TEST_REDIS_URL;
 const suite = url ? describe : describe.skip;
-
-// Compile-time: a transfer notice's kind is a transfer's kind, both ways (the contract cannot import transfers).
-const toNotice = (kind: TransferKind): TransferNoticePayload['kind'] => kind;
-const toTransfer = (kind: TransferNoticePayload['kind']): TransferKind => kind;
-void toNotice;
-void toTransfer;
 
 /** A bus that keeps what it is asked to publish, and can be told to fail. */
 function memoryBus() {

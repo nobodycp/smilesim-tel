@@ -65,8 +65,13 @@ class RedisBus implements NoticeBus {
     };
   }
 
+  /** Quits the connections this bus opened, once: a second call finds none and does nothing. */
   async close() {
-    await Promise.all([this.publisher?.quit(), this.subscriber?.quit()]);
+    const opened = [this.publisher, this.subscriber];
+    this.publisher = null;
+    this.subscriber = null;
+    this.handlers.clear();
+    await Promise.all(opened.map((connection) => connection?.quit()));
   }
 }
 
@@ -84,6 +89,14 @@ export class NoticeService implements NoticeWriter, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
+    await this.close();
+  }
+
+  /**
+   * Closes the Redis connections of its own bus (the publisher and the subscriber it opened, if it opened them).
+   * A bus handed in (a spec's) is the caller's and is left alone. Safe to call more than once.
+   */
+  async close() {
     if (this.bus instanceof RedisBus) await this.bus.close();
   }
 

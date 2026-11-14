@@ -63,6 +63,16 @@ or replaced by a later design. They stay in git history.
   run-time effect); a fix would be its own decision (a longer `maxWait` for `runTx`, or fewer settlements at once
   in the test), taken only after the failure is understood. If it fails on CI: read the Prisma message, the
   file's time and which rows were locked before changing anything.
+- **Seen 2026-11-14 (corrections to slice R.2), cause not settled:** one full local run (137 files) failed three
+  tests, each in a file that ran 4 to 10 times slower than alone: `actor.interceptor.spec.ts` "answers 401 …" passed
+  its 5 s test limit (22.9 s for the file, 2.1 s alone); `provider-decisions.db.spec.ts` "pages through more than two
+  hundred waiting operations" read 238 waiting decisions where its two reads agreed on 237 (83 s, 18.7 s alone);
+  `provider-dispatch.db.spec.ts` "the pass over waiting operations is fair" sent `[100, 49, 1]` over three rounds
+  where it expects `[100, 50, 0]` (163 s, 23 s alone): one operation of its own waited one round longer, and the
+  log kept no line saying why. All three passed alone, with the machine's load at 19, and the next full run passed
+  (137 files, 1757 tests). None of them runs the code that change touched (the CSV writer, closing the notice
+  writer, the timers' stop). Not attributed to load. To settle: keep the pass's warning in that spec's captured
+  output, and repeat the full suite.
 - Related, also open: some spec files run a pass over every operation in the shared database
   (`settlement.applyPending`, `recoverExpired`), which can act on another file's rows. `provider-dispatch.db.spec.ts`
   no longer does, and judges a settlement by the row.

@@ -19,7 +19,10 @@ goes down; the backend map updated in the same commit.
   in the platform: `shared/notices.ts` (`NoticeWriter`; the unit of work holds it, `NoticeService` implements it) and
   `shared/activity.ts` (`ActivityRecorder`; `PrismaActivityRecorder` implements it; sign-in and every controller
   record through it). Auditing owns recording and reading and sits above access (ADR 0020, amended). No route,
-  table, Redis channel, message or transaction changed. `module-layering` 32 → 29, `module-mutual` 14 → 10.
+  table, Redis channel, message or transaction changed. `module-layering` 32 → 28, `module-mutual` 14 → 10.
+  Corrections before the push: one CSV writer in the platform (`shared/csv.ts`, byte for byte the old output,
+  `csv.spec.ts`), so auditing does not import reporting; the worker closes the notice writer it built, after its
+  running rounds and jobs (`worker-shutdown.spec.ts`).
   `shared/ports.db.spec.ts` on PostgreSQL and Redis. Commit: see `git log --grep 'R.2'`.
 - [ ] **R.3** Rules to their owners; the kernel dissolved into platform and access.
 - [ ] **R.4** Tasks and sales untangled (`tasks` imports nothing of `sales`). May change how services are composed
@@ -43,7 +46,7 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 
 | Guard | Count | What it is | Closed by |
 |---|---|---|---|
-| `module-layering` | 29 (was 32; R.2 closed 4 and made 1: `audit.service.ts` uses `reports/report-csv.ts`) | imports the target graph does not allow | R.3–R.8 |
+| `module-layering` | 28 (was 32; R.2 closed 4) | imports the target graph does not allow | R.3–R.8 |
 | `module-mutual` | 10 (was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales) | pairs of modules that import each other | R.3–R.8 |
 | `root-domain-code` | 5 | domain code at `src/` root | R.3, R.5 |
 | `operation-writes` | 1 | `tasks/task-operation.ts` writes a provider operation | R.4 |

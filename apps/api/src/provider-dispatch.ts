@@ -72,8 +72,10 @@ export class JobFailure extends Error {
  */
 export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis, gate: SendGate, prefix?: string, notice?: NoticeWriter) {
   // The worker's notice writer: the same implementation the API's NoticeWriterModule provides, one for the worker
-  // (built here because the unit of work no longer builds one; slice R.2). Specs hand in their own.
-  const uow = new UnitOfWork(notice ?? new NoticeService());
+  // (built here because the unit of work no longer builds one; slice R.2). Specs hand in their own. A writer built
+  // here is this dispatch's to close (`closeNotices`); one handed in is the caller's and is never closed here.
+  let owned: NoticeService | null = notice ? null : new NoticeService();
+  const uow = new UnitOfWork(notice ?? (owned as NoticeService));
   uow.prismaClient = prisma;
   const operations = new ProviderOperationsService(uow, new ProviderOperationsRepository());
   const publisher = new QueuePublisher(connection, { [OPERATION_REQUESTED]: OPERATIONS_QUEUE, [OPERATION_SETTLED]: SETTLEMENTS_QUEUE }, prefix);
@@ -87,6 +89,15 @@ export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis,
   };
   return {
     uow,
+    /**
+     * Closes the Redis connections of the notice writer this dispatch built, once. The worker calls it last, after
+     * its queues stopped and every job that was running finished, so no settlement publishes into a closed writer.
+     */
+    closeNotices: async () => {
+      const writer = owned;
+      owned = null;
+      await writer?.close();
+    },
     operations,
     publisher,
     gate,
@@ -126,11 +137,17 @@ export function buildProviderDispatch(prisma: PrismaClient, connection: IORedis,
 
 /** Starts the relay and the recovery on their timers. Answers what stops them. */
 export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildProviderDispatch>, 'relay' | 'operations' | 'publisher' | 'settlement' | 'waiting' | 'gate'>): () => Promise<void> {
+  /** The rounds running now. Stopping waits for them, so nothing they write or publish meets a closed connection. */
+  const running = new Set<Promise<unknown>>();
+  const track = (round: Promise<unknown>) => {
+    running.add(round);
+    void round.finally(() => running.delete(round));
+  };
   let relaying = false;
   const relay = setInterval(() => {
     if (relaying) return;
     relaying = true;
-    void parts.relay.runOnce().catch((error) => log.warn(`relay round failed: ${errorCode(error)}`)).finally(() => { relaying = false; });
+    track(parts.relay.runOnce().catch((error) => log.warn(`relay round failed: ${errorCode(error)}`)).finally(() => { relaying = false; }));
   }, RELAY_EVERY_MS);
   let recovering = false;
   const recovery = setInterval(() => {
@@ -139,16 +156,16 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
     // Attempts whose worker is gone, then the operations a closed gate left waiting: each goes through the gate
     // again, so a provider that was resumed sends what waited and a paused one still sends nothing.
     // Recovery is given the gate: an unsent attempt found while its provider is closed is not counted.
-    void recoverExpired(parts.operations, new Date(), 100, parts.gate)
+    track(recoverExpired(parts.operations, new Date(), 100, parts.gate)
       .then(() => parts.waiting.round())
       .catch((error) => log.warn(`recovery failed: ${errorCode(error)}`))
-      .finally(() => { recovering = false; });
+      .finally(() => { recovering = false; }));
   }, RECOVERY_EVERY_MS);
   let sweeping = false;
   const sweep = setInterval(() => {
     if (sweeping) return;
     sweeping = true;
-    void parts.settlement.applyPending().catch((error) => log.warn(`settlement sweep failed: ${errorCode(error)}`)).finally(() => { sweeping = false; });
+    track(parts.settlement.applyPending().catch((error) => log.warn(`settlement sweep failed: ${errorCode(error)}`)).finally(() => { sweeping = false; }));
   }, SWEEP_EVERY_MS);
   relay.unref?.();
   recovery.unref?.();
@@ -160,6 +177,9 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
     // The pass in flight takes no further operation: nothing new is sent by a worker that is stopping.
     parts.waiting.stop();
     parts.settlement.stopSweeping();
+    // The round in flight finishes what it holds (a settlement and the notices it publishes after its commit, a
+    // relay publish): each stops at its next step and is bounded by its own timeouts. Then the queues close.
+    await Promise.allSettled([...running]);
     await parts.publisher.close();
   };
 }

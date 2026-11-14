@@ -58,7 +58,11 @@ enforced, and the word `office` gone from the internal structure, the web and, i
   above access only.
 - `DEPENDS_ON` changed accordingly: `identity: [platform]`, `access: [identity, platform]`,
   `auditing: [access, identity, platform]`, `notifications: [access, platform]`. Still no cycle.
-- The R.0 map's choice to put the audit page under reporting is withdrawn: it reads the log auditing writes. Its
-  CSV helper is still `reports/report-csv.ts`, which makes one new `module-layering` violation
-  (`auditing -> reporting`) until that helper moves to the platform (R.8).
+- The R.0 map's choice to put the audit page under reporting is withdrawn: it reads the log auditing writes.
+- **Corrections before R.2 was pushed:** the audit page's CSV no longer comes from reporting. The one CSV writer
+  of the API is the platform's `shared/csv.ts` (`csvCell`, `csvDocument`: BOM, CRLF, quoting, the formula guard),
+  and it knows nothing of money: amounts are written as text by the wallets (`shekels`) before they reach it. The
+  ledger, the profit report, the reports and a provider's account use it too, so the logic is in one place. The
+  worker closes the notice writer it built, last, after its timers' running rounds and its queues' running jobs
+  finished; a writer it was handed is never closed by it.
 
