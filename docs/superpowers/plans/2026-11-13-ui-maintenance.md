@@ -555,9 +555,12 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
   `isolation: isolate`) paints **above** the element's own inset box-shadow, so an inset ring on the element itself
   would be tinted on hover. Draw the ring on a pseudo-element above the glow instead:
   `.line-op:focus-visible { outline: none; }` and `.line-op:focus-visible::before { content: ''; position: absolute;
-  inset: 0; z-index: 1; box-shadow: inset 0 0 0 2px var(--rd-accent); pointer-events: none; }` (`.line-op` has no
-  `::before` today and is the positioned containing block of its `::after`; P6.6 later swaps `2px` for
-  `var(--rd-ring-width)`). The element keeps its 1px hairline; the 2px ring covers it.
+  inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 2px var(--rd-accent); pointer-events: none; }`
+  (`.line-op` has no `::before` today and is the positioned containing block of its `::after`; P6.6 later swaps `2px`
+  for `var(--rd-ring-width)`). The element keeps its 1px hairline; the 2px ring covers it. (Amended in P0.4:
+  `border-radius: inherit` added — the card has 6px corners (`--rd-radius-sm`) and `clip-path` is a sharp polygon that
+  does not round them, so a pseudo-element with square corners would paint crimson outside the card's rounded
+  corners; with it the ring follows the card's three rounded corners, as the hairline does.)
 - **Closes:** 3.10-03.
 - **Risks:** the hover glow `.line-op::after` (`z-index: -1`) — check that with hover and focus together the ring is
   still 2px and not tinted by the glow; the cut corner (`clip-path`) clips the ring on the diagonal — the ring must
