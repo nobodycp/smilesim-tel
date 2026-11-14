@@ -677,7 +677,9 @@ input[readonly] { background-color: transparent; }
 [dir='ltr'] .line-op:hover .line-op-go { transform: scaleX(-1) translateX(-4px); }
 .line-op::after { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(180px circle at var(--mx, 50%) var(--my, 0%), var(--rd-glow), transparent 70%); opacity: 0; transition: opacity var(--rd-dur-base) var(--rd-ease-standard); pointer-events: none; }
 .line-op:hover::after { opacity: 1; }
-.line-op:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
+.line-op:focus-visible { outline: none; }
+/* The ring sits inside the card (its clip-path cuts away anything outside) and above the hover glow (::after). */
+.line-op:focus-visible::before { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: inherit; box-shadow: inset 0 0 0 2px var(--rd-accent); pointer-events: none; }
 .line-op:disabled { opacity: 0.45; }
 @media (prefers-reduced-motion: no-preference) {
   .line-op-grid > * { animation: rd-rise 420ms var(--rd-ease-out) both; }

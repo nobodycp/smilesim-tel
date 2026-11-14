@@ -68,7 +68,9 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   company · package · point of sale (a crimson link); no action buttons in the head (every operation is a card of
   «العمليات»); four cut-corner facts (package, ends on, price, last recharge); tabs العمليات / السجل (count) /
   التفاصيل; every operation a `.line-op` card — crimson mark, name, one line on what it does, a chevron that slides on
-  hover; disconnect in danger.
+  hover; disconnect in danger. A card with keyboard focus draws a 2px crimson ring inside its edge, on its `::before`
+  above the hover glow (an outline outside the card would be cut away by its `clip-path`); the ring follows the
+  rounded corners and stops where the cut corner begins.
 - Folded sidebar: pressing or hovering a group (التقارير) opens its pages in the flyout menu; it never leaves the page.
 - User page head: a 48px cut-corner crimson mark, the name, the layer tag, the state; wallet actions are secondary.
 - Task ticket: the operation and its state are the title, number · company · package the lede; the log is the wide
