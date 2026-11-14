@@ -60,7 +60,11 @@ goes down; the backend map updated in the same commit.
   and publishes nothing when nothing is queued). `worker-wiring.spec.ts` holds the description to the API's
   providers. `root-domain-code` 4 → 3 (the command-line scripts stay: `node dist/<name>.js` is in the handbook),
   `transaction-outside-unit-of-work` 5 → 4. Full API: 138 files, 1771 tests. Commit: see `git log --grep 'R.5'`.
-- [ ] **R.6** Sales (`lines`, settlement, decisions).
+- [x] **R.6** Sales (`lines`, settlement, decisions). `office/lines/` → `modules/sales/` by `git mv` and import paths;
+  the completion, the settlement, its rules and the decisions → `modules/sales/settlement/` (the line repository is
+  `modules/sales/lines.repository.ts`, so the settlement imports it from inside its module: `cross-domain-repository-
+  import` stays 0); `office-esim.ts` → `esim-activation-code.ts`. Nest classes keep their names (`LinesModule`).
+  `transfers` stays in `office/` until R.8 (it moves an account and a line). Commit: see `git log --grep 'R.6'`.
 - [ ] **R.7** Providers in three folders (directory, account, integration).
 - [ ] **R.8** Catalog, pricing, wallets, access, reporting.
 - [ ] **R.9** The umbrella goes; public surfaces in force (`module-surface`).

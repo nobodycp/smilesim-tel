@@ -500,8 +500,8 @@ describe('what ships: the API can decide a route and nothing more; only the work
       }
     }
     // `dispatches` is asked in one place, for the activation, and the request's hint is not part of the question.
-    expect(paths(code.filter((line) => /\.dispatches\(/.test(line.text)))).toEqual(['modules/office/lines/lines.service.ts']);
-    expect(text('modules/office/lines/lines.service.ts')).toContain("if (runsNow(pkg, 'activate') && (await this.gateway.dispatches(pkg.provider.code))) {");
+    expect(paths(code.filter((line) => /\.dispatches\(/.test(line.text)))).toEqual(['modules/sales/lines.service.ts']);
+    expect(text('modules/sales/lines.service.ts')).toContain("if (runsNow(pkg, 'activate') && (await this.gateway.dispatches(pkg.provider.code))) {");
     expect(text('modules/office/providers/gateway/simulated-gateway.ts')).toMatch(/async dispatches\(providerCode: string\): Promise<boolean> \{\n\s+return this\.dispatch \? this\.dispatch\.opens\(providerCode\) : false;/);
   });
 
@@ -602,8 +602,8 @@ describe('what ships: the API can decide a route and nothing more; only the work
   });
 
   it('T1\'s step inside the opening still has one caller, and it writes through the recorder alone', () => {
-    expect(paths(files.filter((file) => /\balongside\b/.test(file.text)))).toEqual(['modules/office/lines/lines.service.ts', 'modules/office/tasks/tasks.service.ts']);
-    const step = /alongside: async \(tx, opened\) => \{([\s\S]*?)\n {6}\},/.exec(text('modules/office/lines/lines.service.ts'))?.[1] ?? '';
+    expect(paths(files.filter((file) => /\balongside\b/.test(file.text)))).toEqual(['modules/office/tasks/tasks.service.ts', 'modules/sales/lines.service.ts']);
+    const step = /alongside: async \(tx, opened\) => \{([\s\S]*?)\n {6}\},/.exec(text('modules/sales/lines.service.ts'))?.[1] ?? '';
     expect(step).toContain('await this.operations.recordIn(');
     expect(step).not.toMatch(/this\.uow|runTx|prisma|this\.gateway|\.record\(/);
   });

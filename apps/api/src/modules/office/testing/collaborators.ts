@@ -1,4 +1,4 @@
-import { LineAccess } from '../lines/line-access';
+import { LineAccess } from '../../sales/line-access';
 import { LayerRoles } from '../roles/layer-roles';
 import { PriceLadder } from '../terms/price-ladder';
 import { WalletLedger } from '../wallets/wallet-ledger';

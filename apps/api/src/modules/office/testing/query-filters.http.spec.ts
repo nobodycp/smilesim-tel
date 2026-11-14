@@ -8,7 +8,7 @@ import { emptyTables } from './empty-tables';
 import { officeTestApp } from './office-test-app';
 import { hashOnce } from './test-hash';
 import { AuditQuery } from '../../auditing/audit.schemas';
-import { LinesQuery } from '../lines/lines.schemas';
+import { LinesQuery } from '../../sales/lines.schemas';
 import { NoticesQuery } from '../../notifications/notices.schemas';
 import { TasksQuery } from '../tasks/tasks.schemas';
 import { FinanceQuery, ProviderOperationsQuery } from '../wallets/wallets.schemas';

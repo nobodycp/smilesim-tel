@@ -9,7 +9,7 @@ import { ActivityRecorder } from './modules/platform/activity';
 import { NoticeService } from './modules/notifications/notice.service';
 import { NoticeInboxService } from './modules/notifications/notice-inbox.service';
 import { UnitOfWork } from './modules/platform/unit-of-work';
-import { ProviderDecisions } from './modules/office/lines/provider-decisions';
+import { ProviderDecisions } from './modules/sales/settlement/provider-decisions';
 import { ProviderOperationsService } from './modules/office/providers/operations/provider-operations.service';
 import { NOTICE_WRITER } from './modules/platform/notices';
 import { OFFICE_PROVIDERS } from './modules/office/office.module';
@@ -17,7 +17,7 @@ import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate
 import { API_PROVIDERS } from './modules/platform/api-providers';
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import { WORKER_MONEY_PATH, WORKER_ONLY, composeWorker } from './worker/composition';
-import { ActivationSettlement } from './modules/office/lines/activation-settlement';
+import { ActivationSettlement } from './modules/sales/settlement/activation-settlement';
 import { buildProviderDispatch } from './worker/provider-dispatch';
 
 // The worker composes the money path from one description (`worker/composition.ts`, slice R.5: the classes, built

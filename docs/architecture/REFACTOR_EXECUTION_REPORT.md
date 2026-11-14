@@ -23,8 +23,8 @@ pushed; the owner approves before one push and one CI run.
 | R.2.1 Worker shutdown race | DONE | `000e411` |
 | R.3 Kernel and rules | DONE | `cf984d4` |
 | R.4 Tasks and sales | DONE | `d07ebf2` |
-| R.5 Worker composition | DONE | see its section |
-| R.6 Sales | pending | |
+| R.5 Worker composition | DONE | `6375d24` |
+| R.6 Sales | DONE | see its section |
 | R.7 Providers | pending | |
 | R.8 Remaining domains | pending | |
 | R.9 Umbrella removal | pending | |
@@ -123,7 +123,7 @@ pushed; the owner approves before one push and one CI run.
 - **Left:** access ↔ tasks (accounts reads `task-log`), access ↔ wallets, catalog ↔ pricing (R.8); providers ↔
   wallets, providers ↔ reporting (R.7); platform ↔ providers (R.5/R.7).
 
-## R.5 Worker composition — DONE
+## R.5 Worker composition — DONE (`6375d24`)
 
 - **One description:** `src/worker/composition.ts` — `WORKER_MONEY_PATH` (12 classes) and `composeWorker(root,
   given, description?)`, which builds each class once from `design:paramtypes`, `@Inject` (`self:paramtypes`) and
@@ -153,3 +153,19 @@ pushed; the owner approves before one push and one CI run.
 - **Deviation:** the command-line scripts (`reservation-conflicts`, `seal-esim-codes`, `seal-secrets`,
   `two-factor-methods`) stay at the root: operators run `node dist/<name>.js` (handover runbook, backup rehearsal);
   moving them changes an operational contract. Left for a slice that updates the runbook with them.
+
+## R.6 Sales module — DONE
+
+- **Moves (git mv + import paths only):** `modules/office/lines/*` → `modules/sales/`; `task-completion`,
+  `task-charge.rules`, `activation-settlement`, `activation-settlement.rules`, `provider-decisions` and their five
+  specs → `modules/sales/settlement/`; `office-esim.ts` → `modules/sales/esim-activation-code.ts`.
+- **Why one folder with a `settlement/` inside, not `sales/lines` beside `sales/settlement`:** the settlement reads
+  through `LinesRepository`; a repository is private to its folder and the folders inside it
+  (`cross-domain-repository-import`). With the repository at the module's root, the settlement imports it from
+  inside its own module, as the guard allows; two sibling folders would need a second repository or a service in
+  between, a change of code, not of place.
+- **Not changed:** class names (`LinesModule`, `LINES_PROVIDERS`), routes, any statement. `transfers` waits for R.8.
+- **Results:** typecheck, lint 0; architecture 64/64; sales, worker, provider-dispatch switch, HTTP contract,
+  transfers and tasks specs on PostgreSQL and Redis: 36 files, 930 tests (one expectation's sorted order updated
+  in `provider-dispatch-switch.spec.ts`: the paths are sorted and the folder name changed).
+- **Counts:** unchanged (moves do not lower them; layering 11, mutual 6).

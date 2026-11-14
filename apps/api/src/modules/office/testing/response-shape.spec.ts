@@ -5,7 +5,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { hashOnce } from './test-hash';
 import { companies } from '../catalog/office-catalog';
 import { OfficeFacade } from './office-facade';
-import { APPLY_ERRORS, DECISIONS } from '../lines/activation-settlement.rules';
+import { APPLY_ERRORS, DECISIONS } from '../../sales/settlement/activation-settlement.rules';
 
 // The web app keeps its own copy of the shape of these answers (apps/web/lib/api-types.ts and features/lines/api.ts: OfficeMe,
 // HomePayload, LineRow, PosChoice). There is no shared package, so this test is the guard: the key

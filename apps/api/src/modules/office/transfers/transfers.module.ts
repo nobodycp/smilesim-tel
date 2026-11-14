@@ -1,7 +1,7 @@
 import { TransfersRepository } from './transfers.repository';
 import { AccessModule } from '../../access/access.module';
 import { PlatformModule } from '../../platform/platform.module';
-import { LinesModule } from '../lines/lines.module';
+import { LinesModule } from '../../sales/lines.module';
 import { TermsModule } from '../terms/terms.module';
 import { WalletsModule } from '../wallets/wallets.module';
 import { TransfersController } from './transfers.controller';

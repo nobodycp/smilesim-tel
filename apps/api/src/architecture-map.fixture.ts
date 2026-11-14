@@ -76,7 +76,7 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^modules\/office\/providers\//, 'providers'],
   [/^modules\/office\/tasks\//, 'tasks'],
   [/^modules\/sales\//, 'sales'],
-  [/^modules\/office\/(lines|transfers)\//, 'sales'],
+  [/^modules\/office\/transfers\//, 'sales'],
   [/^modules\/office\/(reports|desk)\//, 'reporting'],
 ];
 

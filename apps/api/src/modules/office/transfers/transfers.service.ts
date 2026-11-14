@@ -1,5 +1,5 @@
 import { TransfersRepository } from './transfers.repository';
-import { LineAccess } from '../lines/line-access';
+import { LineAccess } from '../../sales/line-access';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { AccountTree, nodeOf } from '../../access/account-tree';
 import { UnitOfWork } from '../../platform/unit-of-work';

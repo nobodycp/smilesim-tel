@@ -2,7 +2,7 @@ import type IORedis from 'ioredis';
 import type { PrismaClient } from '../generated/prisma/client';
 import { AUTH_STORE, type AuthStore } from '../modules/auth/auth.store';
 import { UnitOfWork } from '../modules/platform/unit-of-work';
-import { ActivationSettlement } from '../modules/office/lines/activation-settlement';
+import { ActivationSettlement } from '../modules/sales/settlement/activation-settlement';
 import { NoticeService } from '../modules/notifications/notice.service';
 import type { NoticeWriter } from '../modules/platform/notices';
 import { OutboxRelay } from '../modules/office/outbox/outbox-relay';

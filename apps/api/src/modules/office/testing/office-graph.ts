@@ -5,7 +5,7 @@ import type { PrismaService } from '../../platform/prisma.service';
 import { AccountTree } from '../../access/account-tree';
 import { ActorResolver } from '../../access/actor-resolver';
 import { UnitOfWork } from '../../platform/unit-of-work';
-import { LineAccess } from '../lines/line-access';
+import { LineAccess } from '../../sales/line-access';
 import { NoticeService } from '../../notifications/notice.service';
 import type { NoticeWriter } from '../../platform/notices';
 import { LayerRoles } from '../roles/layer-roles';

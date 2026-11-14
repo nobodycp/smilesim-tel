@@ -5,7 +5,7 @@ import type { Prisma } from '../../../../generated/prisma/client';
 import { ApiFailure } from '../../../platform/api-failure';
 import { seal } from '../../../platform/secret-box';
 import { UnitOfWork } from '../../../platform/unit-of-work';
-import { decisionStep, type DecisionActor, type DecisionEvent } from '../../lines/activation-settlement.rules';
+import { decisionStep, type DecisionActor, type DecisionEvent } from '../../../sales/settlement/activation-settlement.rules';
 import type { NoticeService } from '../../../notifications/notice.service';
 import { ATTEMPT_LEASE_MS, type OperationStatus } from './provider-operation.rules';
 import { ProviderOperationsRepository } from './provider-operations.repository';
