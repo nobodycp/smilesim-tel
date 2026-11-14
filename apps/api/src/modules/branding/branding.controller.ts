@@ -7,7 +7,9 @@ import { ApiErrorResponse } from '../../openapi/responses';
 import { ActivityRecorder } from '../platform/activity';
 import { ApiFailure } from '../platform/api-failure';
 import { BrandingService, type ImageKind } from './branding.service';
+import { NotDuplicateGuarded } from '../platform/duplicate-guard.interceptor';
 
+@NotDuplicateGuarded('one write, PUT /branding, replaces the identity with a stated one: a repeat changes nothing')
 export class BrandingBodyDto {
   @ApiPropertyOptional({ maxLength: 120 })
   siteName?: string;

@@ -65,7 +65,7 @@ No guard checks the order across files today. It is held by the specs above and 
 | An attempt belongs to its worker for its lease (`ATTEMPT_LEASE_MS`); the send mark (`sentAt`) is written under the lease and through the gate's permit; recovery acts only after the lease: unsent → `requested` again, possibly sent → `unknown`. | `beginSend`, `recover` | `operation-dispatcher.db.spec.ts` |
 | The request is sent by the adapter that was judged at the mark (the permit), built from the stored credential generation. | `dispatch-gate.ts`, `routing-gateway.ts` | `provider-dispatch.db.spec.ts` |
 | An operation is written by `provider-operations.repository.ts` only. One known exception today: `tasks/task-operation.ts` `withdrawOperation` marks a never-sent operation abandoned when its task is cancelled, in the cancel's transaction, under the task's lock and then the operation's. Its place in the transaction is necessary; only the statement's file is to change (R.4). | — | guard `operation-writes` (baseline 1) |
-| The duplicate-write guard and the `Idempotency-Key` header are a convenience in front of these: the row locks and the unique keys are the protection. They apply to `/office/*` writes only. | `shared/duplicate-guard.interceptor.ts` | `http-security-contract.spec.ts` |
+| The duplicate-write guard and the `Idempotency-Key` header are a convenience in front of these: the row locks and the unique keys are the protection. They apply to every signed-in write whose controller does not say `@NotDuplicateGuarded` (slice R.11a; before it, `/office/*` writes only). | `shared/duplicate-guard.interceptor.ts` | `http-security-contract.spec.ts` |
 
 ## 5. Outbox and settlement
 

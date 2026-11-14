@@ -4,7 +4,7 @@ import { join, relative } from 'node:path';
 import { Controller, Post, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { DuplicateGuardInterceptor } from './modules/platform/duplicate-guard.interceptor';
+import { DuplicateGuardInterceptor, NotDuplicateGuarded } from './modules/platform/duplicate-guard.interceptor';
 import { ROUTES } from './modules/testing/routes';
 
 // What protects a write route, and what a route would lose by moving (ADR 0020, slice R.0).
@@ -18,14 +18,14 @@ import { ROUTES } from './modules/testing/routes';
 //   door              DoorMiddleware, every route         the x-door header; four paths that start a session
 //   authorization     ActorInterceptor on the controller  the controller's own decorator
 //   activity          @Activity / @NoActivity, or by hand the handler's own decorator
-//   duplicate write   DuplicateGuardInterceptor, global   **the path prefix `/office/`**
-//   idempotency key   the same interceptor                **the path prefix `/office/`**
+//   duplicate write   DuplicateGuardInterceptor, global   the controller's declaration (slice R.11a)
+//   idempotency key   the same interceptor                the controller's declaration (slice R.11a)
 //
-// So four of them follow a route wherever it goes, and the last two do not: a write that leaves `/office/` keeps
-// its permission and its audit and silently loses its duplicate guard and its `Idempotency-Key`. This spec makes
-// that loud. It changes no route and no guard. Before any route leaves the prefix (plan R.11), the guard is
-// separated from the prefix (every authenticated write, less a stated list), and the last test here is replaced
-// by its opposite in that same change.
+// Until slice R.11a the last two were keyed on the path prefix `/office/`: a write that left it would have kept
+// its permission and its audit and silently lost its duplicate guard and its `Idempotency-Key`. Since R.11a every
+// write of a signed-in session is guarded unless its controller (or the route) says `@NotDuplicateGuarded(why)`;
+// the auth and branding controllers do, and their write routes are stated below with their standing. So all six
+// follow a route wherever it goes.
 
 const SRC = __dirname;
 
@@ -37,7 +37,7 @@ function walk(dir: string): string[] {
   });
 }
 
-type Route = { method: string; path: string; file: string; controller: string; recorded: boolean };
+type Route = { method: string; path: string; file: string; controller: string; recorded: boolean; notGuarded: boolean };
 
 /** Every route of every controller in the source, read from the decorators. */
 function routesOf(): { routes: Route[]; controllers: { file: string; prefix: string; interceptors: string }[] } {
@@ -48,6 +48,7 @@ function routesOf(): { routes: Route[]; controllers: { file: string; prefix: str
     const text = readFileSync(path, 'utf8');
     const prefix = /@Controller\(\s*'?([^')]*)'?\s*\)/.exec(text)?.[1] ?? '';
     const head = text.slice(0, text.indexOf('export class'));
+    const classNotGuarded = /@NotDuplicateGuarded\(/.test(head);
     controllers.push({ file, prefix, interceptors: /@UseInterceptors\(([^)]*)\)/.exec(head)?.[1] ?? '' });
     const decorator = /\n {2}@(Get|Post|Put|Patch|Delete)\(\s*(?:'([^']*)')?\s*\)/g;
     for (let match = decorator.exec(text); match; match = decorator.exec(text)) {
@@ -59,6 +60,7 @@ function routesOf(): { routes: Route[]; controllers: { file: string; prefix: str
         file,
         controller: prefix,
         recorded: /@Activity\(|@NoActivity\(|\b(recordOwner|activity\.record\w*)\(/.test(handler),
+        notGuarded: classNotGuarded || /@NotDuplicateGuarded\(/.test(handler),
       });
     }
   }
@@ -69,12 +71,12 @@ const { routes, controllers } = routesOf();
 const isWrite = (route: { method: string }) => route.method !== 'GET';
 const writes = routes.filter(isWrite);
 
-/** The prefix the duplicate guard and the idempotency key are keyed on today. One place: this constant. */
-const GUARDED_PREFIX = '/office/';
-const guarded = (path: string) => path.startsWith(GUARDED_PREFIX);
+/** Whether the duplicate guard and the idempotency key apply to a route: decided by its controller, never its path. */
+const guarded = (route: Route) => !route.notGuarded;
 
 /**
- * How a write route outside the guarded prefix stands without the duplicate guard (reviewed 2026-11-13):
+ * How a write route that is not guarded stands without the duplicate guard (reviewed 2026-11-13; R.11a judged the one
+ * that `needs` it):
  * - `needs`: a repeat does something the first did not, or answers differently: it needs protection of its own.
  * - `equivalent`: something else already makes a repeat harmless (a one-time code or challenge, a send limit, a
  *   stated value or state, a delete).
@@ -84,13 +86,15 @@ const guarded = (path: string) => path.startsWith(GUARDED_PREFIX);
 type Standing = 'needs' | 'equivalent' | 'no-replay';
 
 /**
- * The write routes outside the guarded prefix, one by one. A write route that is not under the prefix and not
- * here fails the spec. Widening the guard is a decision per route (plan R.11a), never a change of the prefix test
- * alone: sign-in, passkeys and one-time codes stay out of it.
+ * The write routes that are not guarded, one by one. A write route that is not guarded and not here fails the
+ * spec. Sign-in, passkeys and one-time codes stay out of the guard.
  */
 const UNGUARDED_WRITES: Record<string, [standing: Standing, why: string]> = {
   // A repeat answers differently.
-  'PATCH /auth/profile': ['needs', 'with a new password the first request succeeds and the same request sent again is refused (WRONG_CURRENT_PASSWORD): a double submit shows an error for a change that was made'],
+  // Judged in R.11a: the current password it must carry is its equivalent. A repeat after a change of password is
+  // refused (WRONG_CURRENT_PASSWORD) and changes nothing; a repeat of a contact change states the same value. Its
+  // answer (the profile, with the e-mail and the phone) is not one to keep in Redis for a replay.
+  'PATCH /auth/profile': ['equivalent', 'needs the current password: a repeat after the change is refused and changes nothing; a contact change states a value'],
   // Authentication steps: never replayed.
   'POST /auth/login': ['no-replay', 'answers a session; failed sign-ins are counted per login and per address'],
   'POST /auth/passkey-login/options': ['no-replay', 'issues a challenge; no session yet'],
@@ -164,39 +168,40 @@ describe('the write routes, as the source has them', () => {
 });
 
 describe('the duplicate guard and the idempotency key', () => {
-  it('the guard is keyed on the prefix, and on nothing else: its condition is the one this spec reads', () => {
+  it('the guard is keyed on the controller\'s declaration, and on nothing else: no path in its condition', () => {
     const guard = readFileSync(join(SRC, 'modules/platform/duplicate-guard.interceptor.ts'), 'utf8');
-    expect(guard).toContain(`!path.startsWith('${GUARDED_PREFIX}')`);
-    expect(guard.match(/path\.startsWith\(/g)).toHaveLength(1);
+    expect(guard).not.toMatch(/startsWith\(|originalUrl\.split|\/office\//);
+    expect(guard).toContain('Reflect.getMetadata(NOT_GUARDED, context.getHandler()) ?? Reflect.getMetadata(NOT_GUARDED, context.getClass())');
   });
 
-  it('every write route is under the guarded prefix, or is stated here with its reason', () => {
-    const stray = writes.filter((route) => !guarded(route.path) && !(named(route) in UNGUARDED_WRITES)).map(named);
+  it('every write route is guarded, or is stated here with its reason, and only the auth and branding controllers say otherwise', () => {
+    const stray = writes.filter((route) => !guarded(route) && !(named(route) in UNGUARDED_WRITES)).map(named);
     expect(stray).toEqual([]);
+    expect([...new Set(writes.filter((route) => !guarded(route)).map((route) => route.file))].sort()).toEqual(['modules/auth/auth.controller.ts', 'modules/branding/branding.controller.ts']);
   });
 
   it('the stated list holds no route that does not exist, and none that is guarded', () => {
-    const all = new Set(writes.map(named));
+    const all = new Map(writes.map((route) => [named(route), route]));
     expect(Object.keys(UNGUARDED_WRITES).filter((name) => !all.has(name))).toEqual([]);
-    expect(Object.keys(UNGUARDED_WRITES).filter((name) => guarded(name.split(' ')[1]))).toEqual([]);
+    expect(Object.keys(UNGUARDED_WRITES).filter((name) => guarded(all.get(name) as Route))).toEqual([]);
     expect(Object.keys(UNGUARDED_WRITES)).toHaveLength(27);
   });
 
-  it('each stated route has a standing: one needs protection, sixteen have an equivalent, ten are never replayed', () => {
+  it('each stated route has a standing: none needs protection (R.11a), seventeen have an equivalent, ten are never replayed', () => {
     const count = (standing: Standing) => Object.values(UNGUARDED_WRITES).filter(([its]) => its === standing).length;
-    expect({ needs: count('needs'), equivalent: count('equivalent'), noReplay: count('no-replay') }).toEqual({ needs: 1, equivalent: 16, noReplay: 10 });
+    expect({ needs: count('needs'), equivalent: count('equivalent'), noReplay: count('no-replay') }).toEqual({ needs: 0, equivalent: 17, noReplay: 10 });
     // Sign-in, passkey and one-time-code steps are never among the routes to be guarded by replaying an answer.
     const authSteps = Object.keys(UNGUARDED_WRITES).filter((name) => /\/(login|logout|passkey-login|two-factor\/(setup|confirm|verify|method\/confirm)|passkeys\/options)/.test(name));
     for (const name of authSteps) expect({ name, standing: UNGUARDED_WRITES[name][0] }).toEqual({ name, standing: 'no-replay' });
   });
 
-  it('a write route moved out of the prefix is caught: the check fails for it until it is stated', () => {
-    // The same check as above, on the real routes with one of them moved the way plan R.11 would move it.
-    const moved = writes.map((route) => (named(route) === 'POST /office/lines' ? { ...route, path: '/v1/lines' } : route));
-    expect(moved.filter((route) => !guarded(route.path) && !(named(route) in UNGUARDED_WRITES)).map(named)).toEqual(['POST /v1/lines']);
-    // And with every office route moved, every one of them is caught: 76, none lost on the way.
-    const all = writes.map((route) => ({ ...route, path: route.path.replace(/^\/office\//, '/v1/') }));
-    expect(all.filter((route) => !guarded(route.path) && !(named(route) in UNGUARDED_WRITES))).toHaveLength(76);
+  it('a write route that moves keeps its guard: the guarded routes are the same whatever their paths', () => {
+    // The plan R.11 move, made on the real routes: every `/office/` route given another path. The guard is decided
+    // by the controller, so the same 76 are guarded and nothing new is unguarded.
+    const before = writes.filter(guarded).map((route) => `${route.file} ${route.method}`).sort();
+    const moved = writes.map((route) => ({ ...route, path: route.path.replace(/^\/office\//, '/v1/') }));
+    expect(moved.filter(guarded).map((route) => `${route.file} ${route.method}`).sort()).toEqual(before);
+    expect(moved.filter(guarded)).toHaveLength(76);
   });
 });
 
@@ -252,7 +257,7 @@ describe('the protections that are on every route', () => {
   });
 });
 
-// ── The guard itself, over HTTP: what the prefix decides ────────────────────────────────────────────────────
+// ── The guard itself, over HTTP: what the controller decides (slice R.11a) ─────────────────────────────────────
 
 let ran: Record<string, number> = {};
 
@@ -271,11 +276,22 @@ class Probe {
   }
 }
 
-describe('what the prefix decides today (the guard over HTTP)', () => {
+/** A controller that says it is not guarded, as the auth and branding controllers do. */
+@NotDuplicateGuarded('a probe of the declaration')
+@Controller()
+class UnguardedProbe {
+  @Post('v1/unguarded-probe')
+  unguarded() {
+    ran.unguarded = (ran.unguarded ?? 0) + 1;
+    return { ok: true };
+  }
+}
+
+describe('what the controller decides (the guard over HTTP)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ controllers: [Probe] }).compile();
+    const moduleRef = await Test.createTestingModule({ controllers: [Probe, UnguardedProbe] }).compile();
     app = moduleRef.createNestApplication();
     app.useGlobalInterceptors(new DuplicateGuardInterceptor());
     await app.init();
@@ -294,7 +310,7 @@ describe('what the prefix decides today (the guard over HTTP)', () => {
     return key ? call.set('Idempotency-Key', key) : call;
   };
 
-  it('under the prefix: the same write sent twice runs once, with or without a key', async () => {
+  it('under the old prefix: the same write sent twice runs once, with or without a key', async () => {
     await send('/office/probe');
     await send('/office/probe');
     expect(ran.inside).toBe(1);
@@ -303,15 +319,21 @@ describe('what the prefix decides today (the guard over HTTP)', () => {
     expect(ran.inside).toBe(2);
   });
 
-  it('OUTSIDE THE PREFIX THE SAME WRITE RUNS TWICE, and its key is ignored: the hazard of moving a route', async () => {
-    // This is what the code does today, written down so that nobody finds it by accident. It is not what is
-    // wanted for a route that moves: before plan R.11 this test is replaced by "runs once" in the change that
-    // separates the guard from the prefix.
+  it('outside the prefix, the same: a route that moves keeps its guard and its key (slice R.11a)', async () => {
+    // Before R.11a this test said the opposite: outside `/office/` the same write ran twice and its key was ignored.
     await send('/v1/probe');
-    await send('/v1/probe');
+    const repeat = await send('/v1/probe');
+    expect(ran.outside).toBe(1);
+    expect(repeat.headers['idempotent-replay']).toBe('true');
+    await send('/v1/probe', 'contract-key-0002');
+    await send('/v1/probe', 'contract-key-0002');
     expect(ran.outside).toBe(2);
-    await send('/v1/probe', 'contract-key-0002');
-    await send('/v1/probe', 'contract-key-0002');
-    expect(ran.outside).toBe(4);
+  });
+
+  it('a controller that says it is not guarded runs every repeat: nothing is kept or replayed for it', async () => {
+    const first = await send('/v1/unguarded-probe', 'contract-key-0003');
+    const second = await send('/v1/unguarded-probe', 'contract-key-0003');
+    expect(ran.unguarded).toBe(2);
+    expect([first.headers['idempotent-replay'], second.headers['idempotent-replay']]).toEqual([undefined, undefined]);
   });
 });

@@ -48,6 +48,14 @@ const AWAITS_FIRST = 'duplicate-guard:awaits-first-answer';
 export const SecretAnswer = (isSecret: (answer: unknown) => boolean) => SetMetadata(SECRET_ANSWER, isSecret);
 /** Marks a route where a repeat under the same `Idempotency-Key` waits for the first answer instead of being refused. */
 export const AwaitsFirstAnswer = () => SetMetadata(AWAITS_FIRST, true);
+const NOT_GUARDED = 'duplicate-guard:not-guarded';
+/**
+ * Takes a controller (or one route) out of the guard, with the reason (slice R.11a). Every other write route of a
+ * signed-in session is guarded, whatever its path: before R.11a the guard applied to one path prefix only, so a
+ * route that moved would have lost it. Sign-in and its steps are never guarded: their answers carry a session, a
+ * secret or a challenge and must never be kept or handed to a repeat.
+ */
+export const NotDuplicateGuarded = (why: string) => SetMetadata(NOT_GUARDED, why);
 
 /** Whether an answer is a secret: a route with no rule has none; a rule that throws is taken as "yes". */
 function holdsSecret(answer: unknown, isSecret: ((answer: unknown) => boolean) | undefined): boolean {
@@ -142,9 +150,10 @@ export class DuplicateGuardInterceptor implements NestInterceptor, OnModuleDestr
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     if (context.getType() !== 'http') return next.handle();
     const req = context.switchToHttp().getRequest<Request>();
-    const path = req.originalUrl.split('?')[0] ?? '';
     const sessionId = readCookie(req, 'sid');
-    if (!WRITE_METHODS.has(req.method) || !path.startsWith('/office/') || !sessionId) return next.handle();
+    // Decided by the route's controller, never by its path (slice R.11a): a route keeps its guard wherever it moves.
+    const notGuarded = (Reflect.getMetadata(NOT_GUARDED, context.getHandler()) ?? Reflect.getMetadata(NOT_GUARDED, context.getClass())) as string | undefined;
+    if (!WRITE_METHODS.has(req.method) || notGuarded !== undefined || !sessionId) return next.handle();
     const explicit = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'].slice(0, 120) : '';
     const hash = (text: string) => createHash('sha256').update(text).digest('hex');
     // What the request is: its route and its body.

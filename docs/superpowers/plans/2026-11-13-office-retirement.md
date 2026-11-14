@@ -115,7 +115,16 @@ goes down; the backend map updated in the same commit.
   Paths `/office/*` stay until R.11. Checked on port 3000 (signed in as the local trial owner): home, numbers and
   companies render as before, `.app-shell` is `display: flex`, 100dvh; `tools-pages` and `users-desk` Playwright 22/22.
   Commit: see `git log --grep 'W.1'`.
-- [ ] **R.11a** The duplicate guard and the path-named middleware rules separated from the prefix.
+- [x] **R.11a** The duplicate guard separated from the prefix: `DuplicateGuardInterceptor` reads
+  `@NotDuplicateGuarded(why)` from the route's controller or handler and never the path; `AuthController` and
+  `BrandingController` say it (sign-in answers are never kept or replayed). The guarded routes are exactly those of
+  before (the 76 `/office/` writes) and stay so wherever they move: proved on the real routes and over HTTP (a write
+  under `/v1/` now runs once and honours its key; a not-guarded controller runs every repeat and keeps nothing).
+  `PATCH /auth/profile` judged: its current password is its equivalent (a repeat after the change is refused and
+  changes nothing), and its answer is personal data not to be kept for a replay; standing `equivalent`. The
+  middleware's path lists (`/office/handoff` as a sign-in and a session start, the notices stream exempt from the
+  limit) name single routes, not a prefix: they gain the new paths beside the old in R.11b. Commit: see
+  `git log --grep 'R.11a'`.
 - [ ] **R.11b** Both paths served; the web moved; old-path hits counted for one release.
 - [ ] **R.11c** `/office/*` removed.
 

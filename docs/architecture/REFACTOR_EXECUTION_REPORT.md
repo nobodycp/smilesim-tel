@@ -30,8 +30,8 @@ pushed; the owner approves before one push and one CI run.
 | R.9 Umbrella removal | DONE | `71f38aa` |
 | R.10 Prisma model names | DONE | `c9f10f9` |
 | R.A Authentication | PARTIAL | `77c1cf8` |
-| W.1, W.2 Web names | DONE | see its section |
-| R.11a HTTP security | pending | |
+| W.1, W.2 Web names | DONE | `99c50fa` |
+| R.11a HTTP security | DONE | see its section |
 | R.11b Route migration | pending | |
 | R.11c Legacy route removal | pending | |
 
@@ -283,7 +283,7 @@ pushed; the owner approves before one push and one CI run.
   throw, so such an account's sensitive profile change answers 500 instead of `WRONG_CURRENT_PASSWORD`. Real
   accounts are created with argon2 hashes; only hand-made test rows have such a hash.
 
-## W.1, W.2 Frontend naming — DONE
+## W.1, W.2 Frontend naming — DONE (`99c50fa`)
 
 - **Renamed (101 files, identifiers and paths only):** `OfficeShell`/`OfficeFrame` → `AppShell`/`AppFrame` (files
   `app-shell.tsx`, `app-frame.tsx`); `OfficeSession`, `OfficeContext`, `OfficeMe`, `OfficeSessionValue`, `useOffice`
@@ -301,3 +301,19 @@ pushed; the owner approves before one push and one CI run.
 - **Results:** web typecheck 0 (outside the git-ignored local `apps/web/audit-output/` scratch folder, which still
   imports the old helper name and is not part of the repository), lint 0, check:copy 0; Playwright `tools-pages` and
   `users-desk`: 22/22. Full Playwright runs at the end.
+
+## R.11a HTTP security independence — DONE
+
+- **Change:** `DuplicateGuardInterceptor` no longer reads the path: a write of a signed-in session is guarded unless
+  `@NotDuplicateGuarded(why)` is on its handler or its controller (`Reflect.getMetadata` on both, as the other two
+  markers of the guard are read). `AuthController` and `BrandingController` carry it with their reason. What is
+  guarded today is unchanged: the same 76 write routes, the same 27 not.
+- **Auth classification kept:** the ten authentication steps stay `no-replay` (their answers carry a session, a
+  secret or a challenge; nothing of them is kept); `PATCH /auth/profile` judged `equivalent` (its current password).
+- **Tests:** `http-security-contract.spec.ts` rewritten where it pinned the prefix: the guard's source holds no
+  path test; every write route is guarded or stated; only the auth and branding controllers are not guarded; moving
+  every `/office/` route to `/v1/` leaves the same 76 guarded; over HTTP a write under `/v1/` runs once and is
+  answered with `Idempotent-Replay` (the test that pinned the old hazard is replaced by its opposite, as R.0 said),
+  and a not-guarded controller runs every repeat and replays nothing. CSRF (origin), rate limit, door, authorization
+  and activity checks are unchanged and green. Contract, duplicate-guard, auth and branding specs: 215 passed.
+- **Not changed:** the middleware's path lists (single routes). R.11b adds the new paths beside them.

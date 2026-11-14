@@ -38,6 +38,7 @@ import {
 } from './auth.schemas';
 import { PasskeyService } from './passkeys';
 import { TwoFactorPolicyService } from './two-factor-policy.service';
+import { NotDuplicateGuarded } from '../platform/duplicate-guard.interceptor';
 
 function setSessionCookie(res: Response, sessionId: string): void {
   res.cookie('sid', sessionId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });
@@ -66,6 +67,7 @@ function failWith(res: Response, failure: Failure) {
 @ApiTags('auth')
 @ApiSecurity('x-door')
 @Controller('auth')
+@NotDuplicateGuarded('sign-in, sessions and second steps: an answer that carries a session, a secret or a challenge is never kept or replayed; each route that changes something has its own equivalent (a one-time code or challenge, a send limit, a stated value, a delete)')
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
