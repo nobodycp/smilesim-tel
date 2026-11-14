@@ -538,8 +538,11 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
 - **Closes:** 3.10-02.
 - **Risks:** the inset outline must not be clipped by `.filter-pop`'s overflow — check the first and last option.
 - **Verify:** CHK-LOCAL; CHK-LOOK `/numbers`, `/finance`, `/tasks` filter chips at 1280 and 768: open a chip,
-  ArrowDown through options, screenshot each focused row, ar-dark and en-light. E2E: `url-filters.spec.ts`,
-  `lists-desk.spec.ts` (no change expected).
+  Tab through options, screenshot each focused row, ar-dark and en-light (amended in P0.3: the list has no arrow-key
+  handling — an arrow key goes to the chip's native `<select>` and never moves the focus into the list; probe in
+  headless Chromium on macOS: focus stays on the `<select>`, value and URL unchanged; what the `<select>` itself does
+  with an arrow key is the browser's and differs by platform — so the keyboard reaches the options by Tab, which lands
+  on the first option after the bar's remaining controls; arrow keys in the list are not this slice's to add). E2E: `url-filters.spec.ts`, `lists-desk.spec.ts` (no change expected).
 - **Done:** focus ring visible on every option in both themes.
 - **Commit:** `fix(web): the filter list shows keyboard focus (UI maintenance P0.3; closes 3.10-02)`
 
