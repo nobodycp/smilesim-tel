@@ -5,7 +5,7 @@ import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
-import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildActivationSettlement, buildProviderDispatch } from '../../../provider-dispatch';
+import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildActivationSettlement, buildProviderDispatch } from '../../../worker/provider-dispatch';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { ApiFailure } from '../../platform/api-failure';
 import { open, seal } from '../../platform/secret-box';

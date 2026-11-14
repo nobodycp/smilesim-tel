@@ -1,24 +1,25 @@
+import { Injectable } from '@nestjs/common';
 import type { OfficeTask, Prisma, ProviderOperation } from '../../../generated/prisma/client';
 import { errorCode, logger } from '../../platform/log';
 import { ApiFailure } from '../../platform/api-failure';
 import { open } from '../../platform/secret-box';
-import type { UnitOfWork } from '../../platform/unit-of-work';
+import { UnitOfWork } from '../../platform/unit-of-work';
 import type { Actor } from '../../access/types';
 import type { WrittenNotice } from '../../notifications/notice.service';
 import type { TaskNoticePayload } from '../../notifications/notice-kinds';
 import type { OperationStatus } from '../providers/operations/provider-operation.rules';
-import type { ProviderOperationsService } from '../providers/operations/provider-operations.service';
+import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
 import { lockedTask, lockedTaskOperation } from '../tasks/task-operation';
-import type { TasksService } from '../tasks/tasks.service';
+import { TasksService } from '../tasks/tasks.service';
 import { applyErrorOf, settlementOf, type ApplyError } from './activation-settlement.rules';
 import { DECISION_GRANT } from '../tasks/task-operation.rules';
 import { storableEsimCode } from '../../platform/esim-code';
 import { lockClaim } from './line-state';
-import type { LinesRepository } from './lines.repository';
+import { LinesRepository } from './lines.repository';
 import { renderActivationCode } from './office-esim';
 import { settlementClaim, type Claim } from './reservation.rules';
-import type { TaskCompletion } from './task-completion';
+import { TaskCompletion } from './task-completion';
 
 const log = logger('ActivationSettlement');
 
@@ -53,7 +54,11 @@ type OperationRow = ProviderOperation;
  * Who is named (D12): the entry and every notice written here name the task's submitter as the actor and
  * «النظام» as the handler. The submitter did not do it, so a notice in the submitter's name reaches the submitter
  * too when the submitter is in its audience (`tellActor`): a point of sale is told that its own activation is done.
+ *
+ * `@Injectable()` only so that the worker builds it from its constructor's metadata, as Nest would (slice R.5,
+ * `worker/composition.ts`); no module of the API registers it.
  */
+@Injectable()
 export class ActivationSettlement {
   constructor(
     private readonly uow: UnitOfWork,

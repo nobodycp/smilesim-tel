@@ -90,3 +90,11 @@ enforced, and the word `office` gone from the internal structure, the web and, i
   `ProviderOperationsService.abandonRequested`), the same guarded statement on the row the task's transaction has
   locked. The stored sentences and the eSIM code's storage helpers are the platform's (`stored-text.ts`,
   `esim-code.ts`): tasks, providers, access and sales all write or read them.
+
+## Amended by slice R.5 (2026-11-14): the worker's one composition
+
+- The worker builds its money path from one description (`src/worker/composition.ts`): the list of classes and
+  the constructor metadata Nest reads for the API. It starts no Nest application, on purpose: the API's modules
+  start timers (provider health, line snapshots, the catalog seed) that must run once, in the API. A collaborator
+  added to a constructor reaches the worker from the same declaration, or the worker refuses to start naming it.
+  `worker-wiring.spec.ts` holds the description to the API's providers.

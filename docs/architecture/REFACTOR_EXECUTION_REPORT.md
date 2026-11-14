@@ -22,8 +22,8 @@ pushed; the owner approves before one push and one CI run.
 |---|---|---|
 | R.2.1 Worker shutdown race | DONE | `000e411` |
 | R.3 Kernel and rules | DONE | `cf984d4` |
-| R.4 Tasks and sales | DONE | see its section |
-| R.5 Worker composition | pending | |
+| R.4 Tasks and sales | DONE | `d07ebf2` |
+| R.5 Worker composition | DONE | see its section |
 | R.6 Sales | pending | |
 | R.7 Providers | pending | |
 | R.8 Remaining domains | pending | |
@@ -37,16 +37,16 @@ pushed; the owner approves before one push and one CI run.
 
 ## Guard counts
 
-| Rule | Base `d7259ef` | After R.2.1 | After R.3 | After R.4 |
-|---|---|---|---|---|
-| module-layering | 28 | 28 | 19 | 11 |
-| module-mutual | 10 | 10 | 8 | 6 |
-| root-domain-code | 5 | 5 | 4 | 4 |
-| operation-writes | 1 | 1 | 1 | 0 |
-| transaction-outside-unit-of-work | 5 | 5 | 5 | 5 |
-| write-without-activity | 7 | 7 | 7 | 7 |
-| catch-all-module | — | — | 0 (new) | 0 |
-| module-surface | not in force | not in force | not in force | not in force |
+| Rule | Base `d7259ef` | After R.2.1 | After R.3 | After R.4 | After R.5 |
+|---|---|---|---|---|---|
+| module-layering | 28 | 28 | 19 | 11 | 11 |
+| module-mutual | 10 | 10 | 8 | 6 | 6 |
+| root-domain-code | 5 | 5 | 4 | 4 | 3 |
+| operation-writes | 1 | 1 | 1 | 0 | 0 |
+| transaction-outside-unit-of-work | 5 | 5 | 5 | 5 | 4 |
+| write-without-activity | 7 | 7 | 7 | 7 | 7 |
+| catch-all-module | — | — | 0 (new) | 0 | 0 |
+| module-surface | not in force | not in force | not in force | not in force | not in force |
 
 ## R.2.1 Worker shutdown race — DONE (`000e411`)
 
@@ -95,7 +95,7 @@ pushed; the owner approves before one push and one CI run.
 - **Left for later slices:** access ↔ tasks, access ↔ wallets (R.8), providers ↔ tasks, providers ↔ reporting,
   providers ↔ wallets, platform ↔ providers (R.7, R.5), sales ↔ tasks (R.4).
 
-## R.4 Tasks and sales boundaries — DONE
+## R.4 Tasks and sales boundaries — DONE (`d07ebf2`)
 
 - **Decision (ADR 0020 amended):** `tasks → providers` is allowed. A task and its operation are locked together
   in the task's transaction (task, line, claim keys, operation, wallet) and the task asks what its operation allows;
@@ -122,3 +122,34 @@ pushed; the owner approves before one push and one CI run.
 - **Counts:** layering 19 → 11, mutual 8 → 6, operation-writes 1 → 0.
 - **Left:** access ↔ tasks (accounts reads `task-log`), access ↔ wallets, catalog ↔ pricing (R.8); providers ↔
   wallets, providers ↔ reporting (R.7); platform ↔ providers (R.5/R.7).
+
+## R.5 Worker composition — DONE
+
+- **One description:** `src/worker/composition.ts` — `WORKER_MONEY_PATH` (12 classes) and `composeWorker(root,
+  given, description?)`, which builds each class once from `design:paramtypes`, `@Inject` (`self:paramtypes`) and
+  `@Optional` (`optional:paramtypes`), Nest's own metadata, and throws naming what it neither builds nor is given,
+  or a class with no metadata. `ActivationSettlement` got `@Injectable()` (metadata only; no module registers it)
+  and value imports of its five collaborator types, so its metadata names them.
+- **The worker hands in three tokens:** its `UnitOfWork` (on its own client), the `ProviderOperationsService` it
+  built (one in the graph), and `AUTH_STORE` (a store that throws if read). It calls `new` on none of the twelve.
+- **Why not a Nest application context:** the API's modules start timers in their hooks (provider health, line
+  snapshots, the catalog seed); started in the worker they would run twice. Recorded in ADR 0020 (amended).
+- **Moves:** `src/provider-dispatch.ts` → `src/worker/provider-dispatch.ts` (owner `app`; a guard proves the folder
+  holds only `composition.ts` and `provider-dispatch.ts` and no query); `mayBuild`, `readCredentials`,
+  `storedGenerations`, `startReadiness` → `modules/office/providers/dispatch/worker-readiness.ts`, the attestation
+  in `uow.runTx` (same statements, same order; `runTx` is `prisma.$transaction(fn)` with no options, as before, and
+  publishes nothing since nothing is queued). `startReadiness` takes the unit of work (worker: `dispatch.uow`).
+- **Specs:** `worker-wiring.spec.ts` (+4: the description is the API's providers as themselves; the three given
+  tokens and no `new` of the twelve; `composeWorker` refusals on made-up classes; the real description refuses a
+  missing `AUTH_STORE` by name); `provider-dispatch-switch.spec.ts` updated to the new file homes (the sealed
+  credential is selected only in `worker-readiness.ts`, which the API never loads); `provider-dispatch.db.spec.ts`
+  and `worker-shutdown-race.spec.ts` pass a unit of work.
+- **Startup, shutdown, recovery:** start-up order (`assertWorkerConfig` before anything opens) and the shutdown
+  race specs unchanged and green; readiness/attestation and recovery covered by `provider-dispatch.db.spec.ts` and
+  `operation-dispatcher.db.spec.ts` in the full run.
+- **Checkpoint 1 (full API, PostgreSQL + Redis):** 138 files, 1771 tests, all passed (152.6 s; load 2.4 before,
+  11.9 after). lint, typecheck 0.
+- **Counts:** root-domain-code 4 → 3, transaction-outside-unit-of-work 5 → 4.
+- **Deviation:** the command-line scripts (`reservation-conflicts`, `seal-esim-codes`, `seal-secrets`,
+  `two-factor-methods`) stay at the root: operators run `node dist/<name>.js` (handover runbook, backup rehearsal);
+  moving them changes an operational contract. Left for a slice that updates the runbook with them.

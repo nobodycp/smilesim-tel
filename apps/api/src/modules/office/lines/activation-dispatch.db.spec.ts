@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import type IORedis from 'ioredis';
 import request from 'supertest';
 import { createPrismaClient } from '../../../db';
-import { buildProviderDispatch } from '../../../provider-dispatch';
+import { buildProviderDispatch } from '../../../worker/provider-dispatch';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { DuplicateGuardInterceptor } from '../../platform/duplicate-guard.interceptor';
 import { open } from '../../platform/secret-box';

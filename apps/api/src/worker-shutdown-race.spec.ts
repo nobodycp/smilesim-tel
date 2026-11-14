@@ -1,9 +1,12 @@
 import 'reflect-metadata';
 import type { PrismaClient } from './generated/prisma/client';
+import type { NoticeWriter } from './modules/platform/notices';
+import { UnitOfWork } from './modules/platform/unit-of-work';
 import type { DispatchSettings } from './modules/office/providers/dispatch/dispatch-policy';
 import { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
 import { NO_ADAPTERS } from './modules/office/providers/dispatch/provider-adapters';
-import { RECOVERY_EVERY_MS, RELAY_EVERY_MS, SWEEP_EVERY_MS, startProviderDispatchTimers, startReadiness, workerShutdown } from './provider-dispatch';
+import { RECOVERY_EVERY_MS, RELAY_EVERY_MS, SWEEP_EVERY_MS, startProviderDispatchTimers, workerShutdown } from './worker/provider-dispatch';
+import { startReadiness } from './modules/office/providers/dispatch/worker-readiness';
 
 // Slice R.2.1: the worker's stop, run for real (`workerShutdown`, the function `worker.ts` calls on SIGTERM), with
 // the real readiness loop and the real timers. Only what reaches the outside is a stand-in: the database the
@@ -46,7 +49,9 @@ function harness() {
     publisher: { close: async () => void log.push('queue publisher closed') },
   } as unknown as Parameters<typeof startProviderDispatchTimers>[0];
   const stopTimers = startProviderDispatchTimers(parts);
-  const readiness = startReadiness(prisma, SETTINGS, new RoutingProviderGateway(NO_ADAPTERS), async () => NO_ADAPTERS, 'race-worker', 10 * 60_000);
+  const uow = new UnitOfWork({ write: async () => [], publish: async () => undefined } as unknown as NoticeWriter);
+  uow.prismaClient = prisma;
+  const readiness = startReadiness(uow, SETTINGS, new RoutingProviderGateway(NO_ADAPTERS), async () => NO_ADAPTERS, 'race-worker', 10 * 60_000);
   // A BullMQ worker as `close()` behaves: it stops taking jobs at once and resolves when its running job ended.
   const job = held();
   let jobRunning = false;

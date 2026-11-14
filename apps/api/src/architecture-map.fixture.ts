@@ -46,8 +46,11 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^openapi\/setup\.ts$/, 'app'],
   [/^modules\/registry\.ts$/, 'app'],
   [/^modules\/office\/office\.module\.ts$/, 'app'],
-  // Domain code at the root (audit finding H2, L1): composition roots for now, counted by `root-domain-code`.
-  [/^(provider-dispatch|reservation-conflicts|seal-esim-codes|seal-secrets|two-factor-methods)\.ts$/, 'app'],
+  // The worker's composition root (slice R.5): its one description of the money path, its timers and its stop.
+  [/^worker\//, 'app'],
+  // Command-line scripts at the root (audit finding L1): composition roots whose compiled path (`node dist/<name>.js`)
+  // is in the operators' handbook; counted by `root-domain-code`.
+  [/^(reservation-conflicts|seal-esim-codes|seal-secrets|two-factor-methods)\.ts$/, 'app'],
   // ── platform ──────────────────────────────────────────────────────────────────────────────────────
   [/^(config|errors|db|doors|cors|security-headers|production-config)\.ts$/, 'platform'],
   [/^openapi\//, 'platform'],

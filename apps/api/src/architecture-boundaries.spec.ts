@@ -161,6 +161,16 @@ describe('module boundaries, on the source as it is', () => {
     expect(back.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual([]);
   });
 
+  it('the worker’s composition root composes and schedules; it holds no query and no rule (slice R.5)', () => {
+    // `src/worker/` is the worker's bootstrap: the one description of the money path, the timers, the stop. What
+    // reads or writes the database there would be domain code outside every module, as `provider-dispatch.ts` at the
+    // source root was before R.5 (its readiness and credential reads are `providers/dispatch/worker-readiness.ts`).
+    const worker = production.filter(({ file }) => file.startsWith('worker/'));
+    expect(worker.map(({ file }) => file).sort()).toEqual(['worker/composition.ts', 'worker/provider-dispatch.ts']);
+    const queries = sites(worker, /\$(queryRaw|executeRaw|transaction)\b|\b(prisma|tx|db|client)\.\w+\.(findMany|findUnique|findFirst|create|update|updateMany|upsert|delete|deleteMany|count)\(/);
+    expect(queries).toEqual([]);
+  });
+
   it('root-domain-code: the source root holds bootstrap and middleware, not domain code', () => {
     const bootstrap = /^(main|app\.module|worker|health\.controller|(door|origin|rate-limit)\.middleware)\.ts$/;
     const rootFiles = production.filter(({ file }) => !file.includes('/') && !bootstrap.test(file));

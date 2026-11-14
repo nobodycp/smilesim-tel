@@ -4,7 +4,7 @@ import { Queue, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import { createPrismaClient } from '../../../db';
-import { OPERATIONS_QUEUE, buildProviderDispatch } from '../../../provider-dispatch';
+import { OPERATIONS_QUEUE, buildProviderDispatch } from '../../../worker/provider-dispatch';
 import { capturedOutput } from '../../platform/testing/captured-output';
 import { UnitOfWork } from '../../platform/unit-of-work';
 import type { NoticeService } from '../../notifications/notice.service';

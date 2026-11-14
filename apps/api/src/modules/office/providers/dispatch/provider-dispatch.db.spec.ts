@@ -4,9 +4,11 @@ import { randomUUID } from 'node:crypto';
 import type IORedis from 'ioredis';
 import request from 'supertest';
 import { createPrismaClient } from '../../../../db';
-import { buildProviderDispatch, readCredentials, startReadiness } from '../../../../provider-dispatch';
+import { buildProviderDispatch } from '../../../../worker/provider-dispatch';
+import { readCredentials, startReadiness } from './worker-readiness';
 import { MemoryAuthStore } from '../../../auth/testing/memory-auth.store';
 import { open } from '../../../platform/secret-box';
+import { UnitOfWork } from '../../../platform/unit-of-work';
 import { capturedOutput } from '../../../platform/testing/captured-output';
 import type { NoticeService } from '../../../notifications/notice.service';
 import { GRANT_CODES } from '../../../access/grants';
@@ -59,6 +61,12 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
   let recorded: unknown[][];
   const sid: Record<Who, string> = { owner: '', staff: '', pos: '', entered: '' };
   const quiet = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
+  /** A unit of work on a client, as the worker's dispatch builds one (`startReadiness` attests through it, slice R.5). */
+  const uowOn = (client: typeof prisma) => {
+    const uow = new UnitOfWork(quiet);
+    uow.prismaClient = client;
+    return uow;
+  };
 
   /** This deployment's name, and another's that is set up for the same target. */
   const HERE = `s12-${tag}-a`;
@@ -129,7 +137,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
    * one more round, as its timer would run it.
    */
   const attest = async (worker: TestWorker) => {
-    const readiness = startReadiness(prisma, worker.settings, worker.gateway, worker.rebuild, undefined, NO_TIMER);
+    const readiness = startReadiness(uowOn(prisma), worker.settings, worker.gateway, worker.rebuild, undefined, NO_TIMER);
     await readiness.round();
     started.push(readiness.stop);
     return Object.assign(readiness.stop, { round: readiness.round, workerId: readiness.workerId });
@@ -465,7 +473,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       const rebuild = async () => buildAdapters(settings, await readCredentials(prisma, settings));
       const real = await rebuild();
       expect([[...real.adapters.keys()], [...real.skipped]]).toEqual([[], [[code, 'no-adapter']]]);
-      const readiness = startReadiness(prisma, settings, new RoutingProviderGateway(real), rebuild);
+      const readiness = startReadiness(uowOn(prisma), settings, new RoutingProviderGateway(real), rebuild);
       for (let round = 0; round < 3; round += 1) await readiness.round();
       expect(await attested()).toEqual([]);
       await readiness.stop();
@@ -970,7 +978,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     /** A worker process that started before the replacement and has not built its adapters again. */
     const neverRebuilds = (worker: TestWorker) => {
-      const readiness = startReadiness(prisma, worker.settings, worker.gateway, async () => worker.built, undefined, NO_TIMER);
+      const readiness = startReadiness(uowOn(prisma), worker.settings, worker.gateway, async () => worker.built, undefined, NO_TIMER);
       started.push(readiness.stop);
       return readiness;
     };
@@ -1078,7 +1086,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await rebuilt.dispatch.dispatcher.handle(operationId)).toBe('succeeded');
       expect([calls.map((sent) => sent.attempt), usedCredentials]).toEqual([[1], [NEW_CREDENTIAL]]);
       // And the old worker, once it has built again (its timer's round), holds the new one too.
-      const refreshed = startReadiness(prisma, old.settings, old.gateway, old.rebuild, undefined, NO_TIMER);
+      const refreshed = startReadiness(uowOn(prisma), old.settings, old.gateway, old.rebuild, undefined, NO_TIMER);
       started.push(refreshed.stop);
       await refreshed.round();
       expect(old.gateway.generation(code)).toBe(2);
@@ -1368,7 +1376,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       await attest(there);
       expect(await attested()).toEqual([[HERE, 'sandbox', 1], [ELSEWHERE, 'sandbox', 1]].sort());
       const thereRow = (await attestedRows()).filter((row) => row.deployment === ELSEWHERE);
-      const hereAgain = startReadiness(prisma, here.settings, here.gateway, here.rebuild, undefined, NO_TIMER);
+      const hereAgain = startReadiness(uowOn(prisma), here.settings, here.gateway, here.rebuild, undefined, NO_TIMER);
       started.push(hereAgain.stop);
       for (let round = 0; round < 3; round += 1) await hereAgain.round();
       expect((await attestedRows()).filter((row) => row.deployment === ELSEWHERE)).toEqual(thereRow);
@@ -1742,7 +1750,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await attestedRows()).toEqual(left);
       // A third starts and is then killed (no stop): its row stays, and stops being believed after the minute.
       const third = await workerWith();
-      const killed = startReadiness(prisma, third.settings, third.gateway, third.rebuild, `killed-${tag}`, NO_TIMER);
+      const killed = startReadiness(uowOn(prisma), third.settings, third.gateway, third.rebuild, `killed-${tag}`, NO_TIMER);
       await killed.round();
       expect((await attestedRows()).map((row) => row.workerId).sort()).toEqual([stopSecond.workerId, `killed-${tag}`].sort());
       await prisma.$executeRaw`UPDATE "ProviderWorkerAttestation" SET "attestedAt" = now() - interval '61 seconds' WHERE "workerId" = ${`killed-${tag}`}`;
@@ -1785,7 +1793,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       await call('owner', 'post', at('/approve'));
       expect((await sell()).route).toBe('manual');
       // A worker that cannot build again keeps holding generation 1: round after round it writes nothing.
-      const stale = startReadiness(prisma, second.settings, second.gateway, async () => second.built, `stale-${tag}`, NO_TIMER);
+      const stale = startReadiness(uowOn(prisma), second.settings, second.gateway, async () => second.built, `stale-${tag}`, NO_TIMER);
       started.push(stale.stop);
       for (let round = 0; round < 3; round += 1) await stale.round();
       expect(await attested()).toEqual([]);

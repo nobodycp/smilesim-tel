@@ -10,15 +10,19 @@ import { NoticeService } from './modules/notifications/notice.service';
 import { NoticeInboxService } from './modules/notifications/notice-inbox.service';
 import { UnitOfWork } from './modules/platform/unit-of-work';
 import { ProviderDecisions } from './modules/office/lines/provider-decisions';
+import { ProviderOperationsService } from './modules/office/providers/operations/provider-operations.service';
 import { NOTICE_WRITER } from './modules/platform/notices';
 import { OFFICE_PROVIDERS } from './modules/office/office.module';
 import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate';
 import { API_PROVIDERS } from './modules/platform/api-providers';
-import { buildProviderDispatch } from './provider-dispatch';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { WORKER_MONEY_PATH, WORKER_ONLY, composeWorker } from './worker/composition';
+import { ActivationSettlement } from './modules/office/lines/activation-settlement';
+import { buildProviderDispatch } from './worker/provider-dispatch';
 
-// The worker builds the money path by hand (`provider-dispatch.ts`); the API builds the same classes through its
-// Nest modules (audit finding H2, ADR 0020). The compiler makes sure each constructor gets its arguments on both
-// sides. It cannot see what this spec checks:
+// The worker composes the money path from one description (`worker/composition.ts`, slice R.5: the classes, built
+// from the constructor metadata Nest reads); the API builds the same classes through its Nest modules (audit
+// finding H2, ADR 0020). This spec checks what neither side can see alone:
 //
 //   - that the two sides give a critical class the SAME KINDS of collaborators (a stand-in, a subclass or a
 //     second implementation on one side only);
@@ -187,10 +191,57 @@ describe('the worker and the API build the money path alike', () => {
     expect(worker).toContain('processors.push({ queue: OPERATIONS_QUEUE, handle: dispatch.handle });');
     expect(worker).toContain('processors.push({ queue: SETTLEMENTS_QUEUE, handle: dispatch.settle });');
     expect(worker).toContain('startProviderDispatchTimers(dispatch)');
-    const timers = readFileSync(join(__dirname, 'provider-dispatch.ts'), 'utf8');
+    const timers = readFileSync(join(__dirname, 'worker', 'provider-dispatch.ts'), 'utf8');
     for (const part of ['parts.relay.runOnce()', 'recoverExpired(parts.operations, new Date(), 100, parts.gate)', 'parts.waiting.round()', 'parts.settlement.applyPending()', 'parts.waiting.stop()', 'parts.settlement.stopSweeping()']) {
       expect({ part, there: timers.includes(part) }).toEqual({ part, there: true });
     }
+  });
+});
+
+describe('one description: the worker builds the money path from the classes the API registers (slice R.5)', () => {
+  it('every class the worker builds, but the settlement, is a provider of the API registered as itself', () => {
+    const registered = OFFICE_PROVIDERS as unknown[];
+    for (const type of WORKER_MONEY_PATH) {
+      const shipped = registered.includes(type);
+      const replaced = registered.some((provider) => typeof provider === 'object' && provider !== null && (provider as { provide?: unknown }).provide === type);
+      expect({ type: type.name, shipped, replaced }).toEqual({ type: type.name, shipped: !WORKER_ONLY.includes(type), replaced: false });
+    }
+  });
+
+  it('the worker hands in three things and builds the rest: its unit of work, its operations service, an auth store it never reads', () => {
+    const source = readFileSync(join(__dirname, 'worker', 'provider-dispatch.ts'), 'utf8');
+    const given = [...source.matchAll(/composeWorker\(\w+, new Map<unknown, unknown>\(\[([^\n]*)\]\)\)/g)].map((found) => found[1]);
+    expect(given).toEqual(['[UnitOfWork, uow], [ProviderOperationsService, operations], [AUTH_STORE, NO_SESSIONS]', '[UnitOfWork, uow]']);
+    expect(source).not.toMatch(/new (AccountTree|PriceLadder|WalletLedger|LinesRepository|TasksService|TasksRepository|TaskCompletion|LinePricing|ActivationSettlement|ProviderOperationsService|ActorResolver)\(/);
+  });
+
+  it('a collaborator neither built nor given stops the worker by name; a class with no metadata too; an optional one is left out', () => {
+    @Injectable()
+    class Ledger {}
+    @Injectable()
+    class Clock {}
+    @Injectable()
+    class Needs {
+      constructor(readonly ledger: Ledger, @Inject('TOKEN') readonly token: unknown, @Optional() readonly clock?: Clock) {}
+    }
+    class Bare {
+      constructor(readonly value: unknown) {}
+    }
+    const ledger = new Ledger();
+    const built = composeWorker(Needs, new Map<unknown, unknown>([[Ledger, ledger], ['TOKEN', 7]]), [Needs]);
+    expect([built.ledger, built.token, built.clock]).toEqual([ledger, 7, undefined]);
+    // The ledger built from the description when it is not given: one of it.
+    const twice = composeWorker(Needs, new Map<unknown, unknown>([['TOKEN', 7]]), [Needs, Ledger]);
+    expect(twice.ledger).toBeInstanceOf(Ledger);
+    expect(() => composeWorker(Needs, new Map<unknown, unknown>([['TOKEN', 7]]), [Needs])).toThrow('worker composition: Needs needs Ledger, which the worker neither builds nor is given');
+    expect(() => composeWorker(Needs, new Map<unknown, unknown>([[Ledger, ledger]]), [Needs])).toThrow('worker composition: Needs needs TOKEN, which the worker neither builds nor is given');
+    expect(() => composeWorker(Bare, new Map(), [Bare])).toThrow('worker composition: Bare has no constructor metadata (is it @Injectable()?)');
+  });
+
+  it('the real description builds one graph whatever is asked first, and refuses a missing token by its name', () => {
+    const uow = { tag: 'uow' };
+    const operations = { tag: 'operations' };
+    expect(() => composeWorker(ActivationSettlement, new Map<unknown, unknown>([[UnitOfWork, uow], [ProviderOperationsService, operations]]))).toThrow('worker composition: ActorResolver needs Symbol(AUTH_STORE), which the worker neither builds nor is given');
   });
 });
 

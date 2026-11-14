@@ -448,7 +448,7 @@ const text = (path: string) => files.find((file) => file.path === path)?.text ??
 const code = files.flatMap((file) => file.text.split('\n').map((line) => ({ path: file.path, text: line }))).filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line.text));
 const paths = (lines: { path: string }[]) => [...new Set(lines.map((line) => line.path))].sort();
 /** The worker's own files: the only ones that may build an adapter or open a credential. */
-const WORKER_ONLY = ['provider-dispatch.ts', 'worker.ts'];
+const WORKER_ONLY = ['worker/provider-dispatch.ts', 'worker.ts'];
 
 /**
  * Every shipped file a process loads when it starts from `entry`: the files it imports, and theirs. An
@@ -508,13 +508,14 @@ describe('what ships: the API can decide a route and nothing more; only the work
   it('only the worker builds adapters, reads a stored credential or opens one', () => {
     // Building adapters, the routing gateway and the deployment's gate are used by the worker's two files alone.
     const users = (pattern: RegExp) => paths(code.filter((line) => pattern.test(line.text))).filter((path) => !path.startsWith('modules/office/providers/dispatch/'));
-    expect(users(/\bbuildAdapters\(|\bRoutingProviderGateway\b|\bDeploymentSendGate\b|\breadCredentials\(|\bstartReadiness\(/)).toEqual(WORKER_ONLY);
+    // Since slice R.5 the reader and the readiness loop live beside the gate (`worker-readiness.ts`); `worker.ts` alone uses them.
+    expect(users(/\bbuildAdapters\(|\bRoutingProviderGateway\b|\bDeploymentSendGate\b|\breadCredentials\(|\bstartReadiness\(/)).toEqual(['worker.ts']);
     // The sealed value is selected in one place, the worker's reader; the API's service writes it and never reads it.
-    expect(paths(code.filter((line) => /sealedValue: true/.test(line.text)))).toEqual(['provider-dispatch.ts']);
-    expect(paths(code.filter((line) => /providerCredential\b/.test(line.text)))).toEqual(['modules/office/providers/dispatch/provider-dispatch.repository.ts', 'provider-dispatch.ts']);
+    expect(paths(code.filter((line) => /sealedValue: true/.test(line.text)))).toEqual(['modules/office/providers/dispatch/worker-readiness.ts']);
+    expect(paths(code.filter((line) => /providerCredential\b/.test(line.text)))).toEqual(['modules/office/providers/dispatch/provider-dispatch.repository.ts', 'modules/office/providers/dispatch/worker-readiness.ts']);
     // The table is read by SQL in two places, both the worker's and both for the generation alone: the gate and the attestation.
     const rawReads = code.filter((line) => /FROM "ProviderCredential"/.test(line.text));
-    expect(paths(rawReads)).toEqual(['modules/office/providers/dispatch/dispatch-gate.ts', 'provider-dispatch.ts']);
+    expect(paths(rawReads)).toEqual(['modules/office/providers/dispatch/dispatch-gate.ts', 'modules/office/providers/dispatch/worker-readiness.ts']);
     expect(rawReads.every((line) => /SELECT "generation" FROM "ProviderCredential"/.test(line.text))).toBe(true);
     // The API's side counts and writes; it has no statement that reads the value, and nothing there opens one.
     const repository = text('modules/office/providers/dispatch/provider-dispatch.repository.ts');
@@ -542,7 +543,7 @@ describe('what ships: the API can decide a route and nothing more; only the work
     const api = loadedFrom('main.ts');
     expect(api.length).toBeGreaterThan(100);
     expect(api).toEqual(expect.arrayContaining(['app.module.ts', 'production-config.ts', MANIFEST, 'modules/office/providers/dispatch/dispatch-policy.ts', 'modules/office/providers/dispatch/provider-dispatch.service.ts']));
-    const workerSide = [REGISTRY, 'modules/office/providers/dispatch/routing-gateway.ts', 'modules/office/providers/dispatch/dispatch-gate.ts', 'provider-dispatch.ts', 'worker.ts'];
+    const workerSide = [REGISTRY, 'modules/office/providers/dispatch/routing-gateway.ts', 'modules/office/providers/dispatch/dispatch-gate.ts', 'modules/office/providers/dispatch/worker-readiness.ts', 'worker/provider-dispatch.ts', 'worker.ts'];
     expect(api.filter((path) => workerSide.includes(path))).toEqual([]);
     // The worker loads all of them.
     expect(loadedFrom('worker.ts')).toEqual(expect.arrayContaining(workerSide));
@@ -561,9 +562,9 @@ describe('what ships: the API can decide a route and nothing more; only the work
 
   it('nothing sends ungated, and the three settings are read through the policy alone', () => {
     // The dispatcher is built in one place, with the gate; it has no default; `claim` and `beginSend` are given it.
-    expect(paths(code.filter((line) => /new OperationDispatcher\(/.test(line.text)))).toEqual(['provider-dispatch.ts']);
-    expect(text('provider-dispatch.ts')).toContain('new OperationDispatcher(operations, gate)');
-    expect(text('provider-dispatch.ts')).toMatch(/export function buildProviderDispatch\(prisma: PrismaClient, connection: IORedis, gate: SendGate, /);
+    expect(paths(code.filter((line) => /new OperationDispatcher\(/.test(line.text)))).toEqual(['worker/provider-dispatch.ts']);
+    expect(text('worker/provider-dispatch.ts')).toContain('new OperationDispatcher(operations, gate)');
+    expect(text('worker/provider-dispatch.ts')).toMatch(/export function buildProviderDispatch\(prisma: PrismaClient, connection: IORedis, gate: SendGate, /);
     const dispatcher = text('modules/office/providers/operations/operation-dispatcher.ts');
     expect(dispatcher).toContain('this.operations.claim(operationId, new Date(), this.gate)');
     expect(dispatcher).toContain('this.operations.beginSend(operationId, attempt, new Date(), this.gate)');
@@ -583,7 +584,7 @@ describe('what ships: the API can decide a route and nothing more; only the work
     // The gate reads the provider's row under a lock.
     expect(text('modules/office/providers/dispatch/dispatch-gate.ts')).toMatch(/FROM "Provider" WHERE "id" = \$\{providerId\} FOR SHARE/);
     // An attempt the gate refuses at the mark is handed back in the same transaction, and recovery is given the gate.
-    expect(text('provider-dispatch.ts')).toContain('recoverExpired(parts.operations, new Date(), 100, parts.gate)');
+    expect(text('worker/provider-dispatch.ts')).toContain('recoverExpired(parts.operations, new Date(), 100, parts.gate)');
     // The variables are named by the policy (which is handed an environment), the list of known names and the
     // start-up check's messages; no other file reads them.
     const readers = paths(code.filter((line) => /PROVIDER_DISPATCH\b|PROVIDER_ADAPTERS|PROVIDER_TARGETS?\b|DEPLOYMENT_ID/.test(line.text) && !/PROVIDER_DISPATCH_NOTE|PROVIDER_TARGETS/.test(line.text)));

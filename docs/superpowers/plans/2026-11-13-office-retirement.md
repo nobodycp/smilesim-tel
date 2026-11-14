@@ -50,8 +50,16 @@ goes down; the backend map updated in the same commit.
   `DEPENDS_ON` gains `tasks → providers` (ADR 0020, amended). `module-layering` 19 → 11, `module-mutual` 8 → 6,
   `operation-writes` 1 → 0. Lines, tasks, providers, wallets, worker and HTTP contract specs on PostgreSQL and
   Redis: 74 files, 1210 tests. Commit: see `git log --grep 'R.4'`.
-- [ ] **R.5** One composition for the worker. May change how the worker is built (a shared factory, or a Nest
-  application context); changes no business rule, no transaction, no queue, no job payload.
+- [x] **R.5** One composition for the worker. `src/worker/composition.ts`: the money path's classes
+  (`WORKER_MONEY_PATH`) built by `composeWorker` from the constructor metadata Nest reads, once each; the worker
+  hands in three tokens (its unit of work, its operations service, an auth store it never reads) and calls `new`
+  on none of the twelve classes. A Nest application context was not used: it would start the API modules' timers
+  (provider health, line snapshots) in the worker. `src/provider-dispatch.ts` → `src/worker/provider-dispatch.ts`
+  (owner `app`, no query: guarded); `readCredentials` and `startReadiness` → `providers/dispatch/worker-readiness.ts`,
+  the attestation in `uow.runTx` (the same statements; `runTx` is the client's transaction with the same defaults
+  and publishes nothing when nothing is queued). `worker-wiring.spec.ts` holds the description to the API's
+  providers. `root-domain-code` 4 → 3 (the command-line scripts stay: `node dist/<name>.js` is in the handbook),
+  `transaction-outside-unit-of-work` 5 → 4. Full API: 138 files, 1771 tests. Commit: see `git log --grep 'R.5'`.
 - [ ] **R.6** Sales (`lines`, settlement, decisions).
 - [ ] **R.7** Providers in three folders (directory, account, integration).
 - [ ] **R.8** Catalog, pricing, wallets, access, reporting.
@@ -71,9 +79,9 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 |---|---|---|---|
 | `module-layering` | 11 (was 32; R.2 closed 4, R.3 9, R.4 8) | imports the target graph does not allow | R.3–R.8 |
 | `module-mutual` | 6 (R.4 closed sales ↔ tasks, providers ↔ tasks; was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales; R.3 closed identity ↔ platform, access ↔ pricing, access ↔ sales and opened catalog ↔ pricing, closed by R.8) | pairs of modules that import each other | R.3–R.8 |
-| `root-domain-code` | 4 (R.3: `doors.ts` no longer reads sign-in) | domain code at `src/` root | R.3, R.5 |
+| `root-domain-code` | 3 (R.3: `doors.ts`; R.5: the worker's wiring; left: three command-line scripts that reach a module, whose `dist/` path operators run) | domain code at `src/` root | R.3, R.5 |
 | `operation-writes` | 0 (R.4) | `tasks/task-operation.ts` wrote a provider operation | done |
-| `transaction-outside-unit-of-work` | 5 | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
+| `transaction-outside-unit-of-work` | 4 (R.5: the attestation) | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
 | `write-without-activity` | 7 | sign-in routes that record nothing | R.A |
 | `module-surface` | not in force | no module has a public surface | R.9, module by module |
 | unguarded writes | 27 | `auth` and `branding` writes have no duplicate guard: 1 needs protection, 16 have an equivalent, 10 are authentication steps that are never replayed (below) | R.11a, R.A |

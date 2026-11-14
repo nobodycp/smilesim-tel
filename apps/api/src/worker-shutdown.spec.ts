@@ -6,7 +6,7 @@ import type { PrismaClient } from './generated/prisma/client';
 import { NoticeService, type NoticeBus } from './modules/notifications/notice.service';
 import type { SendGate } from './modules/office/providers/dispatch/dispatch-gate';
 import type { NoticeWriter } from './modules/platform/notices';
-import { SWEEP_EVERY_MS, buildProviderDispatch, startProviderDispatchTimers } from './provider-dispatch';
+import { SWEEP_EVERY_MS, buildProviderDispatch, startProviderDispatchTimers } from './worker/provider-dispatch';
 
 // How a worker lets go of what it holds (slice R.2 corrections): the timers wait for the round in flight, the
 // queues wait for their jobs, and only then is the notice writer it built closed, once; a writer it was handed is

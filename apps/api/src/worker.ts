@@ -10,7 +10,8 @@ import { dispatchSettings } from './modules/office/providers/dispatch/dispatch-p
 import { buildAdapters } from './modules/office/providers/dispatch/provider-adapters';
 import { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
 import { assertWorkerConfig } from './production-config';
-import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, readCredentials, startProviderDispatchTimers, startReadiness, workerShutdown } from './provider-dispatch';
+import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, startProviderDispatchTimers, workerShutdown } from './worker/provider-dispatch';
+import { readCredentials, startReadiness } from './modules/office/providers/dispatch/worker-readiness';
 
 const log = logger('Worker');
 
@@ -53,7 +54,8 @@ export async function run(): Promise<void> {
   // Verdicts are acted on by their own queue (ADR 0019, D8): it writes the line and the money, and calls nobody.
   processors.push({ queue: SETTLEMENTS_QUEUE, handle: dispatch.settle });
   const stopTimers = startProviderDispatchTimers(dispatch);
-  const readiness = startReadiness(dispatchPrisma, settings, gateway, rebuild);
+  // The readiness loop attests through the dispatch's unit of work, on the same client (slice R.5).
+  const readiness = startReadiness(dispatch.uow, settings, gateway, rebuild);
   // Codes only: which providers have an adapter, and why each named one has none. Never a credential.
   for (const [code, why] of built.skipped) log.warn(`provider dispatch: no adapter for ${code} (${why})`);
   log.log(`provider dispatch: settling on; sending ${built.adapters.size > 0 ? `on for ${[...built.adapters.keys()].join(', ')} (${settings.target}, ${settings.deployment})` : 'off (no adapter built)'}`);
