@@ -33,7 +33,7 @@ pushed; the owner approves before one push and one CI run.
 | W.1, W.2 Web names | DONE | `99c50fa` |
 | R.11a HTTP security | DONE | `518f039` |
 | R.11b Route migration | DONE | `5cc9f2f` |
-| R.11c Legacy route removal | BLOCKED_EXTERNAL_VALIDATION | none (nothing removed) |
+| R.11c Legacy route removal | BLOCKED_EXTERNAL_VALIDATION | `808f49f` (documentation) |
 
 ## Guard counts
 
@@ -354,3 +354,26 @@ pushed; the owner approves before one push and one CI run.
 - **Rollback rule introduced by R.11b (recorded in the Arabic handover):** the new web calls `/v1/…`, which an API
   image older than R.11b does not serve. Deploy the API first; never roll the API back alone below R.11b while the new
   web runs: roll the web back first. The old web against the new API works.
+
+## Final verification (2026-11-14)
+
+- **Static:** lint 0 (api, web), typecheck 0 (api; web outside the git-ignored `audit-output/` and `.next-view/`),
+  check:copy 0, architecture guards: every count at 0 but `root-domain-code` 2 and
+  `transaction-outside-unit-of-work` 2 (both stated), `module-surface` in force for 5 of 12 modules.
+- **Schema drift:** `prisma migrate diff --from-config-datasource --to-schema` against the migrated test database:
+  empty; no file under `prisma/migrations` changed.
+- **Playwright (full):** 239 passed, 2 skipped (as at the base).
+- **Full API run 1 (after R.11b):** 140 files, 2036 tests: 1983 passed, 53 failed in 2 files. `response-shape`: I
+  edited the spec during the run (the renamed web types); `get-writes-nothing`: its `beforeAll` passed 5 s with the
+  load at 20. Both alone: green.
+- **Full API run 2 (after the review fixes):** started with the load at 66 (macOS `mediaanalysisd` at about 294 % CPU,
+  measured); 1996 passed, 40 failed in 6 files, every one a time limit (78 hook or test timeouts, and P2028 "unable to
+  start a transaction in the given time" in the settlement's concurrency test). The six files alone, with the load
+  under 10: 127 passed. **No fully green full run was obtained on this machine after R.11b**; the last fully green
+  one is checkpoint 1 (R.5: 1771/1771). GitHub CI is the arbiter.
+- **Independent review (two agents that had not seen the work):** money, transactions and worker: approve, no
+  defect; one optional point (run modes' transaction under Prisma's 5 s) already recorded. Security, routes and web:
+  no critical, high or medium; lows: anonymous rows on the two new records (fixed in `808f49f`), the sign-in limit's
+  regexes miss a trailing slash or upper case (as before this project), `canonicalPath` is case-sensitive (only
+  weakens a repeat's detection for `/V1/…`); medium operational: new web against an old API (rollback order
+  documented).
