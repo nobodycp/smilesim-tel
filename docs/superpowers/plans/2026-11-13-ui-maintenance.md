@@ -519,7 +519,13 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
 - **Verify:** CHK-LOCAL; CHK-LOOK on: the decision dialog (`/tasks/[id]` of a task with a provider decision →
   decision form), `/offers` (add offer → text), `/tasks/[id]` compose box, `/companies/[code]/packages/[pkg]`
   «التفاصيل» tab, at 375/768/1280, ar-dark, en-light, he-light; measure `font-family` and `font-size` of every
-  textarea (must equal the body's). E2E affected: `task-notes.spec.ts`, `offers.spec.ts` (no assertion change expected).
+  textarea: the family must equal the body's, and size, weight and line-height must equal the textarea's parent's
+  (amended in P0.2: `font: inherit` takes the parent's font, so "the body's size" holds only where the parent has it —
+  the compose box, 14px; a textarea inside a `label` takes the label's, as every text input in that label already
+  does — 11px/700 in a dialog, 11px/600 in the details form, where the pane inputs beside it are 13px only because
+  `desk/pane.css:68` sizes `input` and not `textarea`, unchanged from today; field size against label size is left
+  to P3.7, which owns the label and field rules, and P3.7's Verify line carries the measurement).
+  E2E affected: `task-notes.spec.ts`, `offers.spec.ts` (no assertion change expected).
 - **Done:** no textarea computes a monospace family.
 - **Commit:** `fix(web): textareas use the interface font (UI maintenance P0.2; closes 3.7-01)`
 
@@ -1551,7 +1557,12 @@ Every P3 slice: **visible** unless it says zero-diff; CHK-LOCAL, CHK-LOOK, CHK-A
   and `role="group"` on the labelled div (A30).
 - **Closes:** 3.6-13, 3.6-35, 3.7-06, 3.7-07, 3.7-22, 3.4-06, 3.10-30.
 - **Risks:** long dialogs (role dialog) may start to scroll — check at 768×700.
-- **Verify:** measure label font/weight/colour in dialog, pane, filter, sign-in on 8 routes. E2E: `session-rules.spec.ts`,
+- **Verify:** measure label font/weight/colour in dialog, pane, filter, sign-in on 8 routes. Also measure the
+  font-size, weight and line-height of the **text inside every input and textarea** that sits in a label this slice
+  restyles (found in P0.2: fields inherit the label's font through `font: inherit` — the offer body and the decision
+  note are typed at 11px/700 from `dialog.css:178`, the «التفاصيل» textarea at 11px/600 while the pane inputs beside
+  it are 13px from `desk/pane.css:68`); record each before/after, and list any field whose typed text changes as a
+  visible change. E2E: `session-rules.spec.ts`,
   `package-sheet-drafts.spec.ts`, `transfer.spec.ts` (44px label assertion), `name-field.spec.ts`.
 - **Commit:** `feat(web): one field row, one label style, one form rhythm (UI maintenance P3.7; closes 3.6-13, 3.6-35, 3.7-06, 3.7-07, 3.7-22, 3.4-06, 3.10-30)`
 
