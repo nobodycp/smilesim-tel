@@ -889,7 +889,8 @@ input[readonly] { background-color: transparent; }
   font-weight: 500;
   text-align: start;
 }
-.filter-pop button:hover, .filter-pop button:focus-visible { background: var(--rd-surface); color: var(--rd-ink); outline: none; }
+.filter-pop button:hover { background: var(--rd-surface); color: var(--rd-ink); }
+.filter-pop button:focus-visible { background: var(--rd-surface); color: var(--rd-ink); outline: 2px solid var(--rd-accent); outline-offset: -2px; }
 .filter-pop button.sel { color: var(--rd-accent); font-weight: 700; }
 .filter-pop .tick { flex: none; margin-inline-start: auto; }
 @media (prefers-reduced-motion: no-preference) {
