@@ -309,4 +309,4 @@
   gap: var(--rd-space-3);
 }
 .package-amount { display: grid; gap: var(--rd-space-1); align-content: start; }
-.package-details-form textarea { resize: vertical; font: inherit; }
+.package-details-form textarea { resize: vertical; }
