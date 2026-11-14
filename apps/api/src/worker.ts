@@ -10,7 +10,7 @@ import { dispatchSettings } from './modules/office/providers/dispatch/dispatch-p
 import { buildAdapters } from './modules/office/providers/dispatch/provider-adapters';
 import { RoutingProviderGateway } from './modules/office/providers/dispatch/routing-gateway';
 import { assertWorkerConfig } from './production-config';
-import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, readCredentials, startProviderDispatchTimers, startReadiness } from './provider-dispatch';
+import { OPERATIONS_QUEUE, SETTLEMENTS_QUEUE, buildProviderDispatch, readCredentials, startProviderDispatchTimers, startReadiness, workerShutdown } from './provider-dispatch';
 
 const log = logger('Worker');
 
@@ -54,10 +54,6 @@ export async function run(): Promise<void> {
   processors.push({ queue: SETTLEMENTS_QUEUE, handle: dispatch.settle });
   const stopTimers = startProviderDispatchTimers(dispatch);
   const readiness = startReadiness(dispatchPrisma, settings, gateway, rebuild);
-  const stopDispatch = async () => {
-    await readiness.stop();
-    await stopTimers();
-  };
   // Codes only: which providers have an adapter, and why each named one has none. Never a credential.
   for (const [code, why] of built.skipped) log.warn(`provider dispatch: no adapter for ${code} (${why})`);
   log.log(`provider dispatch: settling on; sending ${built.adapters.size > 0 ? `on for ${[...built.adapters.keys()].join(', ')} (${settings.target}, ${settings.deployment})` : 'off (no adapter built)'}`);
@@ -84,16 +80,17 @@ export async function run(): Promise<void> {
   // The open Redis connection keeps the process alive, so the container does not restart.
   log.log(`ready: ${workers.length} processors`);
 
-  // In order: no new round and no new job, at once (the timers wait for the round in flight, the queues stop taking
-  // jobs at once and wait for the ones that are running), then the notice writer this worker built (after the last
-  // settlement published), then the database and Redis.
-  const stop = async () => {
-    await Promise.all([stopDispatch(), ...workers.map((worker) => worker.close())]);
-    await dispatch.closeNotices();
-    await dispatchPrisma.$disconnect();
-    relayRedis.disconnect();
-    connection.disconnect();
-  };
+  const stop = workerShutdown({
+    readiness,
+    stopTimers,
+    queues: workers,
+    closeNotices: dispatch.closeNotices,
+    release: async () => {
+      await dispatchPrisma.$disconnect();
+      relayRedis.disconnect();
+      connection.disconnect();
+    },
+  });
   process.once('SIGTERM', () => void stop());
   process.once('SIGINT', () => void stop());
 }

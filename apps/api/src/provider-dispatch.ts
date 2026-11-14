@@ -184,6 +184,41 @@ export function startProviderDispatchTimers(parts: Pick<ReturnType<typeof buildP
   };
 }
 
+/** What a worker lets go of when it stops, and in which order (`worker.ts` calls the answer on SIGTERM and SIGINT). */
+export type WorkerShutdownParts = {
+  readiness: { stop: () => Promise<void> };
+  stopTimers: () => Promise<void>;
+  queues: readonly { close: () => Promise<void> }[];
+  closeNotices: () => Promise<void>;
+  /** The database and the Redis connections, last. */
+  release: () => Promise<void>;
+};
+
+/**
+ * The worker's stop (slice R.2.1). Everything that starts new work is told to stop **at once**, in the same turn:
+ * the readiness loop, the relay, recovery and sweep timers (each stop clears its timer before it waits for
+ * anything), and the queues (BullMQ stops taking jobs when `close` is called). Only then does anything wait: the
+ * readiness round in flight and the removal of this worker's rows, the timers' rounds in flight and then the
+ * queue publisher, the queues' running jobs. After all of them, the notice writer (no settlement is left to
+ * publish), then the database and Redis.
+ *
+ * Before R.2.1 the readiness stop was awaited before the timers were told: while a slow readiness round finished,
+ * the timers kept firing and started new relay, recovery and sweep rounds (`worker-shutdown-race.spec.ts`).
+ *
+ * Asked twice (SIGTERM, then SIGINT), it lets go of everything once: the second call gets the first one's promise.
+ */
+export function workerShutdown(parts: WorkerShutdownParts): () => Promise<void> {
+  let stopping: Promise<void> | null = null;
+  return () => {
+    stopping ??= (async () => {
+      await Promise.all([parts.readiness.stop(), parts.stopTimers(), ...parts.queues.map((queue) => queue.close())]);
+      await parts.closeNotices();
+      await parts.release();
+    })();
+    return stopping;
+  };
+}
+
 /** Whether this deployment may build adapters at all: dispatch on, coherent settings, a target, a name, a provider named. */
 function mayBuild(settings: DispatchSettings): settings is DispatchSettings & { target: ProviderTarget; deployment: string } {
   return settings.on && settings.problems.length === 0 && settings.target !== null && settings.deployment !== null && settings.adapters.length > 0;

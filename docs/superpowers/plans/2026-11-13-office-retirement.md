@@ -24,6 +24,14 @@ goes down; the backend map updated in the same commit.
   `csv.spec.ts`), so auditing does not import reporting; the worker closes the notice writer it built, after its
   running rounds and jobs (`worker-shutdown.spec.ts`).
   `shared/ports.db.spec.ts` on PostgreSQL and Redis. Commit: see `git log --grep 'R.2'`.
+- [x] **R.2.1** The worker's stop (`workerShutdown`): a test that runs it with the real readiness loop and timers
+  showed that, while a slow readiness round finished, the timers still started relay, recovery and sweep rounds
+  (readiness was awaited before the timers were told), and that SIGTERM then SIGINT let go of everything twice.
+  Now everything that starts work is told in the same turn, then the running work is waited for, then the notice
+  writer, then the connections; a second call gets the first one's promise. No timeout, queue, money or dispatch
+  rule changed. How long a stop may take is not bounded by a constant: each path is bounded only by its own
+  limits (a transaction's 5 s, a queue publish's 5 s, a provider call's 30 s), and plain reads have none.
+  Commit: see `git log --grep 'R.2.1'`.
 - [ ] **R.3** Rules to their owners; the kernel dissolved into platform and access.
 - [ ] **R.4** Tasks and sales untangled (`tasks` imports nothing of `sales`). May change how services are composed
   (a port, a provider moved to another module); changes no business rule and no transaction.
