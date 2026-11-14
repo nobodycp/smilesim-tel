@@ -1,4 +1,4 @@
-import { assertStoredSealed } from './esim-code';
+import { assertStoredSealed } from '../../platform/esim-code';
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../platform/api-failure';
 import { isUniqueViolation } from '../../platform/prisma-errors';

@@ -1,4 +1,4 @@
-import { DirectoryQuery, UsersQuery } from './accounts.schemas';
+import { DirectoryQuery, UsersQuery, AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { isOn } from '../../platform/schemas';
 import { AccountsRepository } from './accounts.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
@@ -17,8 +17,7 @@ import { GRANT_CODES, effectiveGrantCodes, roleGrantCodes, splitGrants } from '.
 import { visibleAccountIds } from '../../access/account-visibility';
 import { holds, isBranch, isOwner, layerRank, requireAnyGrant, requireGrant, requireOwner, assertBranch } from '../../access/policy';
 import { stampTaskLog } from '../tasks/task-log';
-import { HANDLER_FROZEN_NOTE } from '../stored-text';
-import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
+import { HANDLER_FROZEN_NOTE } from '../../platform/stored-text';
 import { HANDOFF_SECONDS, handoffKey } from './handoff';
 import { DIRECTORY_PAGE, usersPage } from './users-page';
 

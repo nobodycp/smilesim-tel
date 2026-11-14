@@ -1,4 +1,4 @@
-import { NoticesQuery } from './notices.schemas';
+import { NoticesQuery, NoticeReadBody } from './notices.schemas';
 import { ApiZodQuery } from '../../openapi/query';
 import { readCookie } from '../platform/cookies';
 import { NoActivity } from '../platform/activity.decorator';
@@ -12,7 +12,6 @@ import { ActivityInterceptor } from '../platform/activity.interceptor';
 import { Actor, ActorInterceptor } from '../access/actor.interceptor';
 import type { Actor as ActorShape } from '../access/types';
 import { NoticeInboxService } from './notice-inbox.service';
-import { NoticeReadBody } from './notices.schemas';
 
 /** How often an open notices stream is pinged and its session checked again. */
 const STREAM_BEAT_MS = 25_000;

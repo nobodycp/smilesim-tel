@@ -149,6 +149,18 @@ describe('module boundaries, on the source as it is', () => {
     }
   });
 
+  it('the cut of slice R.4 holds: tasks imports nothing of sales, and the integration nothing of tasks or sales', () => {
+    // `module-layering` counts these too; named here so that bringing one back fails with its own message. A task's
+    // rules about its operation are the tasks' (`task-operation.rules.ts`); the locks on a line and a claim reach
+    // `openTask` as the `OpeningLocks` port that sales hands it.
+    const back = edges.filter((edge) => {
+      const from = ownerOf(edge.from);
+      const to = ownerOf(edge.to);
+      return (from === 'tasks' && to === 'sales') || (from === 'providers' && (to === 'tasks' || to === 'sales'));
+    });
+    expect(back.map((edge) => `${edge.from} -> ${edge.to}`)).toEqual([]);
+  });
+
   it('root-domain-code: the source root holds bootstrap and middleware, not domain code', () => {
     const bootstrap = /^(main|app\.module|worker|health\.controller|(door|origin|rate-limit)\.middleware)\.ts$/;
     const rootFiles = production.filter(({ file }) => !file.includes('/') && !bootstrap.test(file));

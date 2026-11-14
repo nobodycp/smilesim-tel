@@ -77,7 +77,7 @@ export class OfficeFacade {
   private tasksService: TasksService | null = null;
 
   private get tasksDomain(): TasksService {
-    this.tasksService ??= new TasksService(this.graph.uow, this.graph.tree, this.graph.actors, this.graph.ledger, new TasksRepository(this.graph.uow));
+    this.tasksService ??= new TasksService(this.graph.uow, this.graph.tree, this.graph.actors, this.graph.ledger, new TasksRepository(this.graph.uow), new ProviderOperationsService(this.graph.uow, new ProviderOperationsRepository()));
     return this.tasksService;
   }
 

@@ -1,7 +1,6 @@
 import { gateOf } from '../platform/cookies';
 import { Body, Controller, Get, Param, Put, Req, Res } from '@nestjs/common';
-import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiTags, ApiPropertyOptional } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { errorBody } from '../../errors';
 import { ApiErrorResponse } from '../../openapi/responses';

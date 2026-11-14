@@ -1,4 +1,4 @@
-import { LinePricesQuery } from './terms.schemas';
+import { LinePricesQuery, CustomPriceBody, LinePricesBody, UserOpsBody, UserPackageBody, UserPackagesBulkBody } from './terms.schemas';
 import { ApiZodQuery } from '../../../openapi/query';
 import { Body, Controller, Delete, Get, Param, Put, Query, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
@@ -8,7 +8,6 @@ import { Activity, param } from '../../platform/activity.decorator';
 import { ActivityInterceptor } from '../../platform/activity.interceptor';
 import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
 import type { Actor as ActorShape } from '../../access/types';
-import { CustomPriceBody, LinePricesBody, UserOpsBody, UserPackageBody, UserPackagesBulkBody } from './terms.schemas';
 import { TermsService } from './terms.service';
 
 @ApiTags('office')

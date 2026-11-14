@@ -13,7 +13,7 @@ import { purgeActivity, purgeBefore } from '../../auditing/activity-log';
 import { NoticeService } from '../../notifications/notice.service';
 import { ScriptedGateway } from '../providers/testing/scripted-gateway';
 import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../providers/operations/provider-operations.repository';
-import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_RELEASED_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
+import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_RELEASED_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
 import { officeTestApp } from '../testing/office-test-app';
 import { operationKey } from './activation-settlement.rules';
 

@@ -1,4 +1,4 @@
-import { TransferPreviewQuery } from './transfers.schemas';
+import { TransferPreviewQuery, TransferAccountBody, TransferLineBody } from './transfers.schemas';
 import { ApiZodQuery } from '../../../openapi/query';
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
@@ -8,7 +8,6 @@ import { Activity, param } from '../../platform/activity.decorator';
 import { ActivityInterceptor } from '../../platform/activity.interceptor';
 import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
 import type { Actor as ActorShape } from '../../access/types';
-import { TransferAccountBody, TransferLineBody } from './transfers.schemas';
 import { TransfersService } from './transfers.service';
 
 @ApiTags('office')

@@ -50,7 +50,7 @@ export function buildActivationSettlement(uow: UnitOfWork, operations: ProviderO
   const ladder = new PriceLadder(uow);
   const ledger = new WalletLedger(uow, tree, ladder);
   const lines = new LinesRepository(uow);
-  const tasks = new TasksService(uow, tree, new ActorResolver(NO_SESSIONS, uow), ledger, new TasksRepository(uow));
+  const tasks = new TasksService(uow, tree, new ActorResolver(NO_SESSIONS, uow), ledger, new TasksRepository(uow), operations);
   const completion = new TaskCompletion(uow, ledger, tasks, new LinePricing(uow, tree, ladder, lines), lines);
   return new ActivationSettlement(uow, completion, tasks, lines, operations);
 }

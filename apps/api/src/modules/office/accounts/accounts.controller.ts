@@ -1,4 +1,4 @@
-import { DirectoryQuery, UsersQuery } from './accounts.schemas';
+import { DirectoryQuery, UsersQuery, AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { ApiZodQuery } from '../../../openapi/query';
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
@@ -10,7 +10,6 @@ import { ActivityInterceptor } from '../../platform/activity.interceptor';
 import { readCookie } from '../../platform/cookies';
 import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
 import type { Actor as ActorShape } from '../../access/types';
-import { AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
 import { AccountsService } from './accounts.service';
 
 @ApiTags('office')

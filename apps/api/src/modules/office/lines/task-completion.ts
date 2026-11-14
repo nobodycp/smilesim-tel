@@ -1,5 +1,5 @@
 import { assertOperationAllows } from '../tasks/task-operation';
-import { esimCodeOrFail, storableEsimCode } from './esim-code';
+import { esimCodeOrFail, storableEsimCode } from '../../platform/esim-code';
 import { LinesRepository } from './lines.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { UnitOfWork } from '../../platform/unit-of-work';

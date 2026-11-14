@@ -1,7 +1,8 @@
 import type { Prisma } from '../../../generated/prisma/client';
 import { fail } from '../../platform/api-failure';
-import { taskActions, type TaskActions } from '../lines/activation-settlement.rules';
+import { taskActions, type TaskActions } from './task-operation.rules';
 import type { OperationStatus } from '../providers/operations/provider-operation.rules';
+import type { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 
 // The provider operation of a task, as the manual path sees it (ADR 0019, D6 and D7). Completion, reject and
 // cancel lock the operation's row inside their own transaction, after the task's row, the line and the claim keys
@@ -45,13 +46,11 @@ export async function assertOperationAllows(tx: Prisma.TransactionClient, taskId
  *   (the settlement sweeper has nothing to do for it, and no claim can take it);
  * - anything else: refused (409 `DUPLICATE_REQUEST`), and the caller's transaction is rolled back.
  */
-export async function withdrawOperation(tx: Prisma.TransactionClient, taskId: string, now: Date = new Date()): Promise<void> {
+export async function withdrawOperation(tx: Prisma.TransactionClient, taskId: string, operations: Pick<ProviderOperationsService, 'abandonRequested'>, now: Date = new Date()): Promise<void> {
   const { operation, actions } = await lockedTaskOperation(tx, taskId);
   if (actions.cancel === 'refused') fail(409, 'DUPLICATE_REQUEST');
   if (actions.cancel !== 'abandons-operation' || !operation) return;
-  const abandoned = await tx.providerOperation.updateMany({
-    where: { id: operation.id, status: 'requested' },
-    data: { status: 'failed', lastError: 'abandoned', appliedAt: now, leaseUntil: null },
-  });
-  if (abandoned.count !== 1) fail(409, 'DUPLICATE_REQUEST');
+  // The one write a cancel makes to its operation: the operations' own, guarded statement (slice R.4), with the
+  // same client, at the same point, on the row locked just above.
+  if (!(await operations.abandonRequested(tx, operation.id, now))) fail(409, 'DUPLICATE_REQUEST');
 }

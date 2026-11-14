@@ -4,7 +4,7 @@ import { logger, reason } from '../../platform/log';
 import { env, isTest } from '../../../config';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { Actor } from '../../access/types';
-import { PROVIDER_FAILED_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
+import { PROVIDER_FAILED_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
 import { FAILURE_WINDOW_MINUTES, HEALTH_CHECK_SECONDS, healthOf, type Health } from './provider-health';
 import { ProviderAccountsService } from './provider-accounts.service';
 import { matchOverdue } from './match-simulator';

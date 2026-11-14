@@ -14,7 +14,7 @@ import { NoticeService } from '../../notifications/notice.service';
 import { OPERATION_REQUESTED, OPERATION_SETTLED } from '../providers/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 import { ScriptedGateway } from '../providers/testing/scripted-gateway';
-import { PROVIDER_DISPATCH_NOTE, PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
+import { PROVIDER_DISPATCH_NOTE, PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
 import { officeTestApp } from '../testing/office-test-app';
 import { operationKey } from './activation-settlement.rules';
 

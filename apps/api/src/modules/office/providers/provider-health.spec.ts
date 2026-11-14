@@ -1,7 +1,7 @@
 import { ProvidersRepository } from './providers.repository';
 import { OfficeGraph } from '../testing/office-graph';
 import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
-import { PROVIDER_FAILED_NOTE } from '../stored-text';
+import { PROVIDER_FAILED_NOTE } from '../../platform/stored-text';
 import { FAILURE_THRESHOLD, healthOf } from './provider-health';
 import { ProviderHealthService } from './provider-health.service';
 

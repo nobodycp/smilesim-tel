@@ -270,4 +270,17 @@ export class ProviderOperationsRepository {
     const marked = await db.providerOperation.updateMany({ where: { id, status: 'failed', appliedAt: null }, data: { appliedAt: at } });
     return marked.count === 1;
   }
+
+  /**
+   * Closes an operation nothing was sent for as `failed (abandoned)`, stamped, only while it is `requested`: the
+   * cancel of its task by the submitter (ADR 0019, D7), on the row its caller locked. Slice R.4: the statement of
+   * `tasks/task-operation.ts` `withdrawOperation`, moved here unchanged.
+   */
+  async markAbandoned(db: Db, id: string, at: Date): Promise<boolean> {
+    const abandoned = await db.providerOperation.updateMany({
+      where: { id, status: 'requested' },
+      data: { status: 'failed', lastError: 'abandoned', appliedAt: at, leaseUntil: null },
+    });
+    return abandoned.count === 1;
+  }
 }

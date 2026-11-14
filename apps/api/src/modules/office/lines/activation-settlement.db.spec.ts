@@ -17,7 +17,7 @@ import { OutboxRepository, type ClaimedMessage } from '../outbox/outbox.reposito
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';
 import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 import { ScriptedGateway } from '../providers/testing/scripted-gateway';
-import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../stored-text';
+import { PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
 import { OfficeFacade } from '../testing/office-facade';
 import type { ActivationSettlement } from './activation-settlement';
 import { operationKey } from './activation-settlement.rules';

@@ -7,7 +7,7 @@ import * as secretBox from '../../platform/secret-box';
 import { capturedOutput } from '../../platform/testing/captured-output';
 import type { NoticeService } from '../../notifications/notice.service';
 import { OfficeFacade } from '../testing/office-facade';
-import * as esimCode from './esim-code';
+import * as esimCode from '../../platform/esim-code';
 
 // PostgreSQL only (TEST_DATABASE_URL). ADR 0019, D17; plan slice S.5b: an eSIM code is stored sealed on every
 // path that writes one, sealed and read back before the transaction, and never stored as written.

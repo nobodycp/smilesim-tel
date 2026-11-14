@@ -1,7 +1,6 @@
-import { queryCursor, queryFlag, queryOneOf, queryText } from '../../platform/schemas';
+import { queryCursor, queryFlag, queryOneOf, queryText, loginName, optionalText } from '../../platform/schemas';
 import { USER_LAYERS } from './users-page';
 import { z } from 'zod';
-import { loginName, optionalText } from '../../platform/schemas';
 
 // The bodies of the account routes (backend-engineering.mdc 4.1, 4.2). A full name and a password are only capped
 // here: `fullNameProblem` and `newPasswordProblem` answer their own codes in the service.

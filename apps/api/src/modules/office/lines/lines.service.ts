@@ -1,5 +1,6 @@
-import { activationRequestHash, operationKey, requestKeyOf, type ActivationInput, type TaskRequest } from './activation-settlement.rules';
-import { assertCanSealEsimCode, storableEsimCode } from './esim-code';
+import { activationRequestHash, operationKey, requestKeyOf, type ActivationInput } from './activation-settlement.rules';
+import type { TaskRequest } from '../tasks/task-operation.rules';
+import { assertCanSealEsimCode, storableEsimCode } from '../../platform/esim-code';
 import { LinesRepository } from './lines.repository';
 import { LineAccess } from './line-access';
 import { PriceLadder } from '../terms/price-ladder';
@@ -23,7 +24,7 @@ import { issueSerial, simRefusal, simRulesOf } from '../../catalog/rules/sim-rul
 import { packageTermsOf } from '../../pricing/rules/package-terms';
 import { NOT_CONNECTED, PROVIDER_GATEWAY, type ProviderGateway } from '../providers/gateway/provider-gateway';
 import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
-import { BRANCH_TASK_NOTE, PROVIDER_DISPATCH_NOTE, PROVIDER_FAILED_NOTE } from '../stored-text';
+import { BRANCH_TASK_NOTE, PROVIDER_DISPATCH_NOTE, PROVIDER_FAILED_NOTE } from '../../platform/stored-text';
 import { TasksService } from '../tasks/tasks.service';
 import { deniedOpsFor, visibleTo } from '../../pricing/rules/user-terms';
 import { periodOf, readQr } from './line-input';
@@ -31,10 +32,11 @@ import { assertRunnable, canActivateFor, runsNow, type RunnablePackage } from '.
 import { LinePricing } from './line-pricing';
 import { ActivateBody, AddonBody, ExtendBody, OutcomeBody, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
 import { assertClaimFree, assertSimFree, lockUnchanged, moveLineStatus, numberTaken } from './line-state';
+import { OPENING_LOCKS } from './opening-locks';
 import { TaskCompletion } from './task-completion';
 
 type VisibleLine = Awaited<ReturnType<LineAccess['visibleLine']>>;
-type OpenTask = Parameters<TasksService['openTask']>[0];
+type OpenTask = Omit<Parameters<TasksService['openTask']>[0], 'locks'>;
 /** How an operation goes: applied at the provider now, or left to the branch as a task with this note. */
 type Route = { now: true } | { now: false; note: string };
 type RoutedPackage = RunnablePackage & { code: string; providerProductCode?: string | null; provider: { code: string } | null };
@@ -76,7 +78,7 @@ export class LinesService {
   }
 
   private async defer(actor: Actor, line: VisibleLine, task: Omit<OpenTask, 'actor' | 'posId' | 'packageId' | 'lineId'>) {
-    const opened = await this.tasks.openTask({ actor, posId: line.posId, packageId: line.packageId, lineId: line.id, ...task });
+    const opened = await this.tasks.openTask({ actor, posId: line.posId, packageId: line.packageId, lineId: line.id, ...task, locks: OPENING_LOCKS });
     return { applied: false as const, taskId: opened.id };
   }
 
@@ -132,6 +134,7 @@ export class LinesService {
         action: 'activate', actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: storedIccid, esim, unitPrice: unit,
         note: route.note === BRANCH_TASK_NOTE ? currentDetails || BRANCH_TASK_NOTE : route.note,
         ...(request ? { request } : {}),
+        locks: OPENING_LOCKS,
       });
       if (task.replayed) sent.replayed?.();
       return { applied: false, taskId: task.id };
@@ -183,6 +186,7 @@ export class LinesService {
     const task = await this.tasks.openTask({
       ...opening,
       request,
+      locks: OPENING_LOCKS,
       // Nobody at the branch is told a task opened: there is nothing for them to take while the provider has it.
       announce: false,
       alongside: async (tx, opened) => {

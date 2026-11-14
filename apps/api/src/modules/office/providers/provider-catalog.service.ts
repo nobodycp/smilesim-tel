@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { publicPackageCode } from '../../catalog/rules/package-code';
-import { CatalogProductsQuery } from './providers.schemas';
+import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from './providers.schemas';
 import { ProvidersRepository } from './providers.repository';
 import { refuseEntered, requireGrant } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
@@ -10,7 +10,6 @@ import { parseInput } from '../../platform/input';
 import { chainHolds } from '../../catalog/rules/package-prices';
 import { ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../../catalog/rules/run-modes';
 import { adapterFor } from './adapters/simulated-adapter';
-import { CompanyCreateBody, PackageCreateBody } from './providers.schemas';
 
 const MODE_COLUMNS: Record<Exclude<ActionKey, 'companySwitch'>, [string, string]> = {
   activate: ['autoActivate', 'allowActivate'],

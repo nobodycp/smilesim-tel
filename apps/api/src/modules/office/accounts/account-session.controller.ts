@@ -1,11 +1,10 @@
-import { NoActivity } from '../../platform/activity.decorator';
+import { NoActivity, Activity } from '../../platform/activity.decorator';
 import { Body, Controller, Post, Req, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { SESSION_COOKIE_SECONDS } from '../../auth/sessions';
 import { ApiZodBody } from '../../../openapi/body';
 import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity } from '../../platform/activity.decorator';
 import { ActivityInterceptor } from '../../platform/activity.interceptor';
 import { cookieBase, gateOf, readCookie } from '../../platform/cookies';
 import { AccountSessionService } from './account-session.service';

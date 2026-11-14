@@ -4,6 +4,8 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import type { Actor } from '../../access/types';
 import { ApiFailure } from '../../platform/api-failure';
 import { TasksService } from './tasks.service';
+import { ProviderOperationsRepository } from '../providers/operations/provider-operations.repository';
+import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
 
 // Task notes and statuses (spec 2026-11-09-offers-tasks-addons-wallet-esim, 2): an internal note is the branch's
 // only; a task opens in progress, may be taken (named) and released, and any handler finishes it.
@@ -42,7 +44,7 @@ function setup() {
     write: async (_tx: unknown, ids: string[]) => { noticed.push(ids); return []; },
     publish: async () => undefined,
   };
-  return { service: new TasksService(kernel.uow, kernel.tree, kernel.actors, kernel.ledger, new TasksRepository(kernel.uow)), task, notes, noticed };
+  return { service: new TasksService(kernel.uow, kernel.tree, kernel.actors, kernel.ledger, new TasksRepository(kernel.uow), new ProviderOperationsService(kernel.uow, new ProviderOperationsRepository())), task, notes, noticed };
 }
 
 const actor = (id: string, layer: string, owner = false): Actor => ({ id, loginName: id, nickname: id, layer, isBranchOwner: owner, grants: [], operatorId: id, impersonating: false });

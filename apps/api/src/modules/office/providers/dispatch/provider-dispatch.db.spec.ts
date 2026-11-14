@@ -10,7 +10,7 @@ import { open } from '../../../platform/secret-box';
 import { capturedOutput } from '../../../platform/testing/captured-output';
 import type { NoticeService } from '../../../notifications/notice.service';
 import { GRANT_CODES } from '../../../access/grants';
-import { PROVIDER_DISPATCH_NOTE } from '../../stored-text';
+import { PROVIDER_DISPATCH_NOTE } from '../../../platform/stored-text';
 import { officeTestApp } from '../../testing/office-test-app';
 import type { OutgoingOperation, SendEvidence } from '../operations/provider-operation.rules';
 import { WaitingPass } from '../operations/operation-dispatcher';

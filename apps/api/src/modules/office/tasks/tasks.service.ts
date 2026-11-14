@@ -1,4 +1,4 @@
-import { TasksQuery } from './tasks.schemas';
+import { TasksQuery, TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 import { TasksRepository } from './tasks.repository';
 import { WalletLedger } from '../wallets/wallet-ledger';
 import { ActorResolver } from '../../access/actor-resolver';
@@ -6,9 +6,8 @@ import { AccountTree } from '../../access/account-tree';
 import { UnitOfWork } from '../../platform/unit-of-work';
 import { assertBranch } from '../../access/policy';
 import { taskEvents } from './task-events';
-import { esimCodeOrFail } from '../lines/esim-code';
-import { holdOf, mayDecide, sameRequest, shownPhase, taskActions, type TaskOperation, type TaskRequest } from '../lines/activation-settlement.rules';
-import { assertClaimFree, lockClaim, lockLine } from '../lines/line-state';
+import { esimCodeOrFail } from '../../platform/esim-code';
+import { holdOf, mayDecide, sameRequest, shownPhase, taskActions, type TaskOperation, type TaskRequest } from './task-operation.rules';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../platform/input';
@@ -17,14 +16,24 @@ import type { Actor } from '../../access/types';
 import type { Action } from '../../catalog/rules/actions';
 import type { WrittenNotice } from '../../notifications/notice.service';
 import { excerpt, type TaskNoticePayload } from '../../notifications/notice-kinds';
-import { after, cursorPosition, page } from '../../platform/paging';
-import { TASKS_PAGE } from '../../platform/paging';
+import { after, cursorPosition, page, TASKS_PAGE } from '../../platform/paging';
 import { taskStatusOf } from './task-status';
 import { simRulesOf } from '../../catalog/rules/sim-rules';
 import { canHandleTasks, esimCodeReaders, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { stampTaskLog } from './task-log';
 import { assertOperationAllows, withdrawOperation } from './task-operation';
-import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
+import { ProviderOperationsService } from '../providers/operations/provider-operations.service';
+
+/**
+ * What opening a task locks and checks on what it names, provided by sales (slice R.4: tasks knows no line, no
+ * serial and no number). `openTask` calls them at the same points as before, in the one lock order: the line's
+ * row, then the claim keys, then the reservation's check, all before the task's row and any wallet.
+ */
+export type OpeningLocks = {
+  lockLine: (tx: Prisma.TransactionClient, lineId: string) => Promise<void>;
+  lockClaim: (tx: Prisma.TransactionClient, claim: { iccid?: string | null; msisdn?: string | null }) => Promise<void>;
+  assertClaimFree: (tx: Prisma.TransactionClient, claim: { iccid?: string | null; msisdn?: string | null }) => Promise<void>;
+};
 
 /**
  * Branch tasks: the inbox and one task, inspection notes, take and release, reject and cancel, plus the helpers
@@ -33,7 +42,7 @@ import { TaskNoteBody, TaskRejectBody } from './tasks.schemas';
  */
 @Injectable()
 export class TasksService {
-  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly actors: ActorResolver, private readonly ledger: WalletLedger, private readonly repo: TasksRepository) {}
+  constructor(private readonly uow: UnitOfWork, private readonly tree: AccountTree, private readonly actors: ActorResolver, private readonly ledger: WalletLedger, private readonly repo: TasksRepository, private readonly operations: ProviderOperationsService) {}
 
   async list(actor: Actor, input: TasksQuery = {}) {
     const query = parseInput(TasksQuery, input);
@@ -121,7 +130,7 @@ export class TasksService {
    *
    * Every other task, and a replacing task once it is closed, shows the line's SIM once there is a line (a code
    * the task carried and did not put on the line is not shown); until then the one the task carries. A code that cannot be opened refuses the request, it is never answered as
-   * «no code» (lines/esim-code.ts); that holds for the new code of an open task too.
+   * «no code» (platform/esim-code.ts); that holds for the new code of an open task too.
    */
   private shownSim(row: { id: string; action: string; iccid: string | null; esim: boolean; esimQr: string | null; line: { id: string; iccid: string | null; esim: boolean; esimQr: string | null } | null }, open: boolean, entitled: boolean) {
     // The code goes to the point of sale, its path and the branch (D17). Any other reader of the task gets the
@@ -271,7 +280,7 @@ export class TasksService {
       if (updated.count !== 1) fail(400, 'INVALID');
       // T9 (ADR 0019, D7): an operation nothing has left for is closed as abandoned in this same transaction; one
       // the dispatcher has, or whose answer is not known or not applied yet, refuses the cancel and nothing changes.
-      await withdrawOperation(tx, id);
+      await withdrawOperation(tx, id, this.operations);
       await this.ledger.release(tx, task.posId, task.held ?? 0, actor.operatorId, '');
       return this.taskNotice(tx, 'cancelled', task, actor);
     });
@@ -314,6 +323,8 @@ export class TasksService {
      * it becomes theirs (the settlement's T6), and the accounts that decide when it needs a decision (T7, T5′).
      */
     announce?: boolean;
+    /** The locks on what the task names and the reservation's check: sales provides them (`OpeningLocks`). */
+    locks: OpeningLocks;
   }): Promise<{ id: string; replayed: boolean }> {
     const { request } = input;
     const { task, written } = await this.uow.runTx(async (tx) => {
@@ -325,7 +336,7 @@ export class TasksService {
       };
       // One open task per number and operation (rule 2.3). The line's row serialises two requests for it.
       if (input.lineId && input.action !== 'addon') {
-        await lockLine(tx, input.lineId);
+        await input.locks.lockLine(tx, input.lineId);
         const open = await this.repo.openTaskOn(tx, input.lineId, input.action);
         if (open) fail(409, 'DUPLICATE_REQUEST');
       }
@@ -334,10 +345,10 @@ export class TasksService {
       const claim = input.action === 'activate' ? { iccid: input.iccid, msisdn: input.msisdn } : {};
       // A repeated request is answered before the reservation is judged, or it would be refused by its own first
       // task. The keys are locked first: a repeat sent at the same moment waits here for the first to commit.
-      await lockClaim(tx, claim);
+      await input.locks.lockClaim(tx, claim);
       const before = await firstAnswer();
       if (before) return before;
-      await assertClaimFree(tx, claim);
+      await input.locks.assertClaimFree(tx, claim);
       // The task is written first, the hold second: a request the database refuses has held nothing.
       const price = input.posDelta < 0 ? -input.posDelta : 0;
       const created = await this.repo.insertTask(tx, {
@@ -367,7 +378,7 @@ export class TasksService {
         if (raced) return raced;
         // The reservation indexes refused it although the check above passed: someone wrote past the locks. The
         // check says which of the two it was; if it finds neither, the request is still a duplicate.
-        await assertClaimFree(tx, claim);
+        await input.locks.assertClaimFree(tx, claim);
         fail(409, 'DUPLICATE_REQUEST');
       }
       // What the opening records beside the task (an activation's provider operation and its outbox message):

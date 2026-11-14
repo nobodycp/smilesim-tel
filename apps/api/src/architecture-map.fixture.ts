@@ -31,7 +31,9 @@ export const DEPENDS_ON: Record<ModuleName, readonly ModuleName[]> = {
   pricing: ['catalog', 'access', 'platform'],
   wallets: ['pricing', 'platform'],
   providers: ['wallets', 'catalog', 'notifications', 'platform'],
-  tasks: ['wallets', 'notifications', 'access', 'platform'],
+  // Slice R.4: a task and its provider operation are locked together, and a task asks what its operation allows
+  // (ADR 0019 D6, D7); the integration knows nothing of tasks, so the edge points this way only.
+  tasks: ['providers', 'wallets', 'notifications', 'access', 'platform'],
   sales: ['tasks', 'providers', 'pricing', 'wallets', 'catalog', 'platform'],
   reporting: ['sales', 'tasks', 'providers', 'wallets', 'platform'],
 };
@@ -70,7 +72,6 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^modules\/office\/wallets\//, 'wallets'],
   [/^modules\/office\/providers\//, 'providers'],
   [/^modules\/office\/tasks\//, 'tasks'],
-  [/^modules\/office\/stored-text\.ts$/, 'tasks'],
   [/^modules\/sales\//, 'sales'],
   [/^modules\/office\/(lines|transfers)\//, 'sales'],
   [/^modules\/office\/(reports|desk)\//, 'reporting'],

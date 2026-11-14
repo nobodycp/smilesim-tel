@@ -21,8 +21,8 @@ pushed; the owner approves before one push and one CI run.
 | Slice | Status | Local commit |
 |---|---|---|
 | R.2.1 Worker shutdown race | DONE | `000e411` |
-| R.3 Kernel and rules | DONE | see its section |
-| R.4 Tasks and sales | pending | |
+| R.3 Kernel and rules | DONE | `cf984d4` |
+| R.4 Tasks and sales | DONE | see its section |
 | R.5 Worker composition | pending | |
 | R.6 Sales | pending | |
 | R.7 Providers | pending | |
@@ -37,16 +37,16 @@ pushed; the owner approves before one push and one CI run.
 
 ## Guard counts
 
-| Rule | Base `d7259ef` | After R.2.1 | After R.3 |
-|---|---|---|---|
-| module-layering | 28 | 28 | 19 |
-| module-mutual | 10 | 10 | 8 |
-| root-domain-code | 5 | 5 | 4 |
-| operation-writes | 1 | 1 | 1 |
-| transaction-outside-unit-of-work | 5 | 5 | 5 |
-| write-without-activity | 7 | 7 | 7 |
-| catch-all-module | — | — | 0 (new) |
-| module-surface | not in force | not in force | not in force |
+| Rule | Base `d7259ef` | After R.2.1 | After R.3 | After R.4 |
+|---|---|---|---|---|
+| module-layering | 28 | 28 | 19 | 11 |
+| module-mutual | 10 | 10 | 8 | 6 |
+| root-domain-code | 5 | 5 | 4 | 4 |
+| operation-writes | 1 | 1 | 1 | 0 |
+| transaction-outside-unit-of-work | 5 | 5 | 5 | 5 |
+| write-without-activity | 7 | 7 | 7 | 7 |
+| catch-all-module | — | — | 0 (new) | 0 |
+| module-surface | not in force | not in force | not in force | not in force |
 
 ## R.2.1 Worker shutdown race — DONE (`000e411`)
 
@@ -65,7 +65,7 @@ pushed; the owner approves before one push and one CI run.
 - **Residual risk:** none known in the stop path. No constant bounds a stop: each path is bounded by its own limit
   (transaction 5 s, queue publish 5 s, provider call 30 s).
 
-## R.3 Kernel and business rules — DONE
+## R.3 Kernel and business rules — DONE (`cf984d4`)
 
 - **What moved (git mv + imports):** `modules/shared/` → `modules/platform/`; kernel `unit-of-work`, `query`,
   `values` → platform; `account-tree`, `actor-resolver`, `actor.interceptor`, `types` (Actor, Account), `policy.ts`,
@@ -94,3 +94,31 @@ pushed; the owner approves before one push and one CI run.
   catalog's prices. Both close when R.8 settles who owns package prices.
 - **Left for later slices:** access ↔ tasks, access ↔ wallets (R.8), providers ↔ tasks, providers ↔ reporting,
   providers ↔ wallets, platform ↔ providers (R.7, R.5), sales ↔ tasks (R.4).
+
+## R.4 Tasks and sales boundaries — DONE
+
+- **Decision (ADR 0020 amended):** `tasks → providers` is allowed. A task and its operation are locked together
+  in the task's transaction (task, line, claim keys, operation, wallet) and the task asks what its operation allows;
+  the integration imports neither tasks nor sales (named test). A port that providers implements for tasks was
+  rejected: it would hide a lock taken inside the task's transaction behind an interface for no gain.
+- **Moved, text unchanged:** the task-facing rules of `lines/activation-settlement.rules.ts` (`TaskOperation`,
+  `OperationPhase`, `phaseOf`, `TaskRequest`, `sameRequest`, `TaskActions`, `taskActions`, `inFlight`, `HoldState`,
+  `holdOf`, `shownPhase`, `DECISION_GRANT`, `mayDecide`) → `tasks/task-operation.rules.ts`; `office/stored-text.ts`
+  and `lines/esim-code.ts` → `modules/platform/`.
+- **Port:** `OpeningLocks` (in `tasks.service.ts`): `openTask` takes `locks`, and calls `lockLine`, `lockClaim`,
+  `assertClaimFree` through it at the same three points; `LinesService` passes `OPENING_LOCKS`
+  (`lines/opening-locks.ts`, the functions of `line-state.ts`). No other caller of `openTask` exists.
+- **The one operation write of a cancel:** `ProviderOperationsRepository.markAbandoned` holds the identical
+  guarded `updateMany` (`requested` → `failed`, `lastError: 'abandoned'`, `appliedAt`, `leaseUntil: null`);
+  `withdrawOperation(tx, taskId, operations, now)` calls it through `ProviderOperationsService.abandonRequested`
+  with the same client, after the same row lock. `TasksService` injects `ProviderOperationsService`; `TasksModule`
+  imports `ProvidersModule`; the three hand-built `TasksService` (worker's `buildActivationSettlement`, the test
+  facade, `task-notes.spec.ts`) pass it.
+- **Not changed:** any transaction body's statements or their order, the lock order, a status rule, a queue, a
+  message. Duplicate import lines left by R.3's rewrites were merged (22 files, imports only).
+- **Results:** typecheck, lint 0; architecture 63/63; lines, tasks, providers, wallets, the cross-domain HTTP
+  contract specs, worker, provider-dispatch, platform, access, HTTP security and eSIM sealing specs on PostgreSQL
+  and Redis: 74 files, 1210 tests, all passed.
+- **Counts:** layering 19 → 11, mutual 8 → 6, operation-writes 1 → 0.
+- **Left:** access ↔ tasks (accounts reads `task-log`), access ↔ wallets, catalog ↔ pricing (R.8); providers ↔
+  wallets, providers ↔ reporting (R.7); platform ↔ providers (R.5/R.7).

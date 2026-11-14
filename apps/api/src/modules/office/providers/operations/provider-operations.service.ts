@@ -249,6 +249,11 @@ export class ProviderOperationsService {
     return this.repo.markHandedOver(tx, id, at);
   }
 
+  /** The cancel of a task whose operation was never sent (D7): `requested` → `failed (abandoned)`, once; false otherwise. */
+  abandonRequested(tx: Db, id: string, at: Date): Promise<boolean> {
+    return this.repo.markAbandoned(tx, id, at);
+  }
+
   // What a person's decision asks of the operation (ADR 0019, D15; T10, T11). The caller holds the operation's
   // row lock and has asked the rules (`decisionStep`); each write here is still guarded on its own.
 

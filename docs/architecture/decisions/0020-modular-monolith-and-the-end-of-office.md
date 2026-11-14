@@ -65,3 +65,28 @@ enforced, and the word `office` gone from the internal structure, the web and, i
   ledger, the profit report, the reports and a provider's account use it too, so the logic is in one place. The
   worker closes the notice writer it built, last, after its timers' running rounds and its queues' running jobs
   finished; a writer it was handed is never closed by it.
+
+## Amended by slice R.3 (2026-11-14): no kernel, under any name
+
+- `modules/shared/` is `modules/platform/`, and holds the unit of work (`PlatformModule`). The actor, the tree, the
+  policy and the grants are `modules/access/` (`AccessModule`), which imports the auth module and hands on nothing
+  of it. The kernel module is gone; the guard `catch-all-module` refuses a file or folder named `kernel` and a Nest
+  module that exports what another module owns (a port it binds excepted). The rules went to their owners
+  (catalog, pricing, wallets, sales, tasks, platform). `Layer` is the platform's (`doors.ts`): the door hosts name
+  the four layers, and sign-in imports it from there.
+
+## Amended by slice R.4 (2026-11-14): tasks above providers
+
+- `DEPENDS_ON` gains `tasks → providers`. A task and its provider operation are locked together, in one order, in
+  the task's own transaction (task, line, claim keys, operation, wallet), and a task asks what its operation allows
+  (D6, D7). The integration knows nothing of tasks: the edge points one way, and `providers` imports neither tasks
+  nor sales (a named test holds it). The alternative, a port that providers implements for tasks, would put a
+  lock taken inside the task's transaction behind an interface for no gain.
+- What a task reads of its operation (its phase, what it allows, its hold, a repeated request, who may decide) is
+  the tasks' (`tasks/task-operation.rules.ts`), moved out of the settlement's rules with its text unchanged. The
+  locks an opening takes on a line, a serial and a number stay the sales' and reach `TasksService.openTask` as a
+  port (`OpeningLocks`, handed in by `LinesService`): same functions, same points, same transaction. The one write
+  a cancel makes to its operation is the operations' repository's (`markAbandoned`, through
+  `ProviderOperationsService.abandonRequested`), the same guarded statement on the row the task's transaction has
+  locked. The stored sentences and the eSIM code's storage helpers are the platform's (`stored-text.ts`,
+  `esim-code.ts`): tasks, providers, access and sales all write or read them.

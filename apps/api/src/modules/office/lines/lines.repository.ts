@@ -1,4 +1,4 @@
-import { assertStoredSealed } from './esim-code';
+import { assertStoredSealed } from '../../platform/esim-code';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
 import { UnitOfWork, type Db } from '../../platform/unit-of-work';

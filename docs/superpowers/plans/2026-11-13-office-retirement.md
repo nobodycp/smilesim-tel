@@ -42,8 +42,14 @@ goes down; the backend map updated in the same commit.
   files keep every function's body as it was. New guard `catch-all-module` (no `kernel` by name; a Nest module
   exports only what its module owns). `module-layering` 28 → 19, `module-mutual` 10 → 8 (catalog ↔ pricing is
   new: `packages.service.ts` still prices, R.8), `root-domain-code` 5 → 4. Commit: see `git log --grep 'R.3'`.
-- [ ] **R.4** Tasks and sales untangled (`tasks` imports nothing of `sales`). May change how services are composed
-  (a port, a provider moved to another module); changes no business rule and no transaction.
+- [x] **R.4** Tasks and sales untangled (`tasks` imports nothing of `sales`). The task-facing rules moved to
+  `tasks/task-operation.rules.ts` (text unchanged); the line and claim locks reach `openTask` as the `OpeningLocks`
+  port sales hands in (same functions, same points); the cancel's one operation write is the operations'
+  repository's (`markAbandoned`, through `ProviderOperationsService.abandonRequested`; `TasksService` injects the
+  service, `TasksModule` imports `ProvidersModule`); `stored-text.ts` and `esim-code.ts` are the platform's;
+  `DEPENDS_ON` gains `tasks → providers` (ADR 0020, amended). `module-layering` 19 → 11, `module-mutual` 8 → 6,
+  `operation-writes` 1 → 0. Lines, tasks, providers, wallets, worker and HTTP contract specs on PostgreSQL and
+  Redis: 74 files, 1210 tests. Commit: see `git log --grep 'R.4'`.
 - [ ] **R.5** One composition for the worker. May change how the worker is built (a shared factory, or a Nest
   application context); changes no business rule, no transaction, no queue, no job payload.
 - [ ] **R.6** Sales (`lines`, settlement, decisions).
@@ -63,10 +69,10 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 
 | Guard | Count | What it is | Closed by |
 |---|---|---|---|
-| `module-layering` | 19 (was 32; R.2 closed 4, R.3 9) | imports the target graph does not allow | R.3–R.8 |
-| `module-mutual` | 8 (was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales; R.3 closed identity ↔ platform, access ↔ pricing, access ↔ sales and opened catalog ↔ pricing, closed by R.8) | pairs of modules that import each other | R.3–R.8 |
+| `module-layering` | 11 (was 32; R.2 closed 4, R.3 9, R.4 8) | imports the target graph does not allow | R.3–R.8 |
+| `module-mutual` | 6 (R.4 closed sales ↔ tasks, providers ↔ tasks; was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales; R.3 closed identity ↔ platform, access ↔ pricing, access ↔ sales and opened catalog ↔ pricing, closed by R.8) | pairs of modules that import each other | R.3–R.8 |
 | `root-domain-code` | 4 (R.3: `doors.ts` no longer reads sign-in) | domain code at `src/` root | R.3, R.5 |
-| `operation-writes` | 1 | `tasks/task-operation.ts` writes a provider operation | R.4 |
+| `operation-writes` | 0 (R.4) | `tasks/task-operation.ts` wrote a provider operation | done |
 | `transaction-outside-unit-of-work` | 5 | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
 | `write-without-activity` | 7 | sign-in routes that record nothing | R.A |
 | `module-surface` | not in force | no module has a public surface | R.9, module by module |

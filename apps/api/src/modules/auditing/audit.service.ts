@@ -8,8 +8,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { activityActorFilter, clampActivityRange } from './activity-log';
 import type { Actor } from '../access/types';
-import { after, cursorPosition, page } from '../platform/paging';
-import { FEED_PAGE } from '../platform/paging';
+import { after, cursorPosition, page, FEED_PAGE } from '../platform/paging';
 import { visibleAccountIds } from '../access/account-visibility';
 import { csvDocument } from '../platform/csv';
 

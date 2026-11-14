@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { fail } from '../platform/api-failure';
 import { visibleAccountIds } from './account-visibility';
-import type { PathNode } from './types';
-import type { Account, Actor } from './types';
+import type { PathNode, Account, Actor } from './types';
 import { UnitOfWork, type Db } from '../platform/unit-of-work';
 
 /** An account as one step of a path. */

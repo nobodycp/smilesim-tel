@@ -1,6 +1,6 @@
 import { ApiFailure } from '../../../platform/api-failure';
 import { tree } from '../../testing/tree.fixture';
-import { BRANCH_TASK_NOTE, PROVIDER_FAILED_NOTE } from '../../stored-text';
+import { BRANCH_TASK_NOTE, PROVIDER_FAILED_NOTE } from '../../../platform/stored-text';
 import { NOT_CONNECTED, type ProviderRequest } from './provider-gateway';
 import { SimulatedProviderGateway } from './simulated-gateway';
 
