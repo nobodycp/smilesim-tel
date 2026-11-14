@@ -14,7 +14,7 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
-| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10 |
+| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449 |
 | P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started | — |
 | P2 Fold graphite.css into its owners, remove dead rules | P2.1a–P2.11 | not started | — |
 | P3 Core components | P3.1–P3.14 | not started | — |
@@ -529,7 +529,7 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
 - **Done:** no textarea computes a monospace family.
 - **Commit:** `fix(web): textareas use the interface font (UI maintenance P0.2; closes 3.7-01)`
 
-### P0.3 Visible focus in the filter chip list
+### P0.3 Visible focus in the filter chip list — 827e449
 
 - **Goal:** `.filter-pop` options show focus.
 - **Files:** graphite `.filter-pop button:hover, .filter-pop button:focus-visible { … outline: none; }` (:892).
