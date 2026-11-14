@@ -14,7 +14,7 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
-| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449 |
+| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48 |
 | P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started | — |
 | P2 Fold graphite.css into its owners, remove dead rules | P2.1a–P2.11 | not started | — |
 | P3 Core components | P3.1–P3.14 | not started | — |
@@ -546,7 +546,7 @@ says "(defined in P0.9)" until P0.9 lands, and P0.9 removes the parenthesis.
 - **Done:** focus ring visible on every option in both themes.
 - **Commit:** `fix(web): the filter list shows keyboard focus (UI maintenance P0.3; closes 3.10-02)`
 
-### P0.4 Visible focus on number-card operations
+### P0.4 Visible focus on number-card operations — 9b26b48
 
 - **Goal:** `.line-op` (cut corner via `clip-path`) shows focus inside its shape.
 - **Files:** graphite `.line-op:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 2px; }` (:680),
