@@ -29,6 +29,72 @@ for (const locale of ['ar', 'en']) {
   }
 }
 
+// On phones (under 768px) the search and the notices open as one sheet under the topbar, 8px from each screen edge
+// (UI maintenance P0.6, 3.2-01): anchored to their button, they ran off the screen.
+for (const locale of ['ar', 'en']) {
+  test(`the search and notice menus stay on the screen on phones (${locale})`, async ({ page }) => {
+    const origin = 'http://pos.localhost:3910';
+    await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: origin }]);
+    await serveApi(page, 'pos');
+    for (const width of [320, 375, 767]) {
+      await page.setViewportSize({ width, height: 760 });
+      await page.goto(`${origin}/`);
+      await page.locator('.topbar .shell-search-toggle').click();
+      const search = page.locator('.shell-search.is-open .shell-search-desk');
+      await expect(search).toBeVisible();
+      const searchBox = await search.boundingBox();
+      await page.locator('.topbar .notice-btn').click();
+      const notices = page.locator('.notice-wrap .shell-panel');
+      await expect(notices).toBeVisible();
+      const noticeBox = await notices.boundingBox();
+      for (const [name, box] of [['search', searchBox], ['notices', noticeBox]] as const) {
+        expect(box, `${name} at ${width}px`).not.toBeNull();
+        expect(Math.abs(box!.x - 8), `${name} start edge at ${width}px`).toBeLessThanOrEqual(1);
+        expect(Math.abs(width - (box!.x + box!.width) - 8), `${name} end edge at ${width}px`).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+}
+
+// On a short or landscape phone screen both sheets end at least 8px above the bottom edge and scroll inside: the
+// topbar is sticky, so a sheet that ran past the edge could not be scrolled into view (UI maintenance P0.6, fix round 1).
+for (const locale of ['ar', 'en']) {
+  test(`the search and notice menus end above the bottom edge on a short screen (${locale})`, async ({ page }) => {
+    const origin = 'http://pos.localhost:3910';
+    const at = '2026-10-02T10:30:00.000Z';
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      id: `n${i}`, kind: 'transfer.in', payload: { kind: 'line', subject: `05210000${10 + i}`, fromLoginName: 'pos1', actorName: 'الإدارة' },
+      actorName: 'الإدارة', href: '/numbers', read: false, createdAt: at,
+    }));
+    const lines = Array.from({ length: 8 }, (_, i) => ({
+      id: `ln${i}`, msisdn: `05500000${10 + i}`, status: 'active', companyName: 'Cellcom', packageName: '400 جيجا', posLoginName: 'pos1', endsAt: '2026-12-01T00:00:00.000Z',
+    }));
+    await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: origin }]);
+    await serveApi(page, 'pos', {
+      'GET /notices': () => ({ body: { unread: items.length, nextCursor: null, items } }),
+      'GET /lines': () => ({ body: { items: lines, poses: [], nextCursor: null, total: lines.length } }),
+    });
+    for (const [width, height] of [[667, 320], [320, 480]]) {
+      await page.setViewportSize({ width, height });
+      await page.goto(`${origin}/`);
+      await page.locator('.topbar .shell-search-toggle').click();
+      await page.locator('.shell-search-desk input').fill('05');
+      await expect(page.locator('.shell-search-item')).toHaveCount(8);
+      const searchBox = await page.locator('.shell-search.is-open .shell-search-desk').boundingBox();
+      await expect(page.locator('.shell-search-field')).toBeInViewport({ ratio: 1 });
+      await page.locator('.topbar .notice-btn').click();
+      await expect(page.locator('.notice-wrap .shell-item')).toHaveCount(items.length);
+      const noticeBox = await page.locator('.notice-wrap .shell-panel').boundingBox();
+      for (const [name, box] of [['search', searchBox], ['notices', noticeBox]] as const) {
+        expect(box, `${name} at ${width}x${height}`).not.toBeNull();
+        // At least --rd-space-2 above the bottom edge. At 667x320 neither sheet fits uncapped (they start under a
+        // two-row bar), so this fails if either cap is removed.
+        expect(box!.y + box!.height, `${name} bottom edge at ${width}x${height}`).toBeLessThanOrEqual(height - 8 + 1);
+      }
+    }
+  });
+}
+
 test('the topbar language is the login page\'s menu: the current language, a menu of the others', async ({ page }) => {
   await serveApi(page, 'branch');
   await page.setViewportSize({ width: 1280, height: 800 });

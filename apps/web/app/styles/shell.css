@@ -714,12 +714,9 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
   .shell-search-toggle { display: inline-flex; }
   .shell-search-desk { display: none; }
   .shell-search.is-open .shell-search-desk {
-    display: block;
     position: absolute;
     z-index: var(--rd-z-overlay);
     top: calc(100% + 6px);
-    inset-inline-end: 0;
-    width: min(18rem, 72vw);
     padding: var(--rd-space-2);
     border: 1px solid var(--rd-line);
     border-radius: var(--rd-radius-md);
@@ -759,4 +756,34 @@ html.dark .topbar .shell-icon .shell-sun { display: block; }
     border: 0;
     box-shadow: none;
   }
+}
+/* Phones: the search and the notices open as one sheet under the whole topbar (UI maintenance P0.6, 3.2-01), not
+   hanging from their button, which ran them off the screen. Their wrappers stop being positioned, so .topbar
+   (sticky, an inline-size container and a backdrop filter: each makes it the containing block) holds them. This
+   block sits after the topbar container block, which repeats the search popup at the same specificity and would win
+   over the 767px block above. The container block alone still fires on desktop widths with the sidebar open, where
+   the button-anchored popups fit. */
+@media (max-width: 767px) {
+  .shell-search,
+  .notice-wrap { position: static; }
+  .shell-search.is-open .shell-search-desk,
+  .notice-wrap .shell-panel {
+    inset-inline: var(--rd-space-2);
+    width: auto;
+    max-width: none;
+  }
+  /* Under the two- or three-row phone topbar a 480px list, or the search field with its results, runs past a short
+     or landscape screen: 100% is the topbar's height here (an absolute box's percentage height resolves against its
+     containing block), so each sheet ends --rd-space-2 above the screen's bottom edge. The notice list scrolls
+     inside; the search sheet keeps its field and scrolls its results (gap: 0 because the desk is a form, and
+     forms.css gives every form a gap that a flex box would apply). */
+  .notice-wrap .shell-panel { max-height: min(480px, calc(100dvh - 100% - 0.6rem - var(--rd-space-2))); }
+  .shell-search.is-open .shell-search-desk {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: calc(100dvh - 100% - 6px - var(--rd-space-2));
+  }
+  .shell-search.is-open .shell-search-field { flex: none; }
+  .shell-search.is-open .shell-search-results { min-height: 0; }
 }
