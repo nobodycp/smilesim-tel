@@ -54,7 +54,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
     const call = request(on.getHttpServer()).post('/office/lines').set('Cookie', typeof who === 'string' ? cookie[who] : who.cookie);
     return (requestKey === undefined ? call : call.set('Idempotency-Key', requestKey)).send(sent);
   };
-  const tasks = () => prisma.officeTask.findMany({ where: { posId: { in: [u.posA, u.posB] } }, orderBy: { createdAt: 'asc' } });
+  const tasks = () => prisma.task.findMany({ where: { posId: { in: [u.posA, u.posB] } }, orderBy: { createdAt: 'asc' } });
   const wallet = (id = u.posA) => prisma.wallet.findUniqueOrThrow({ where: { userId: id } });
   const holds = () => prisma.walletEntry.count({ where: { userId: u.posA, kind: 'hold' } });
   const entries = () => prisma.walletEntry.count({ where: { userId: { in: Object.values(u) } } });
@@ -105,7 +105,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
   afterEach(async () => {
     // Each test starts from no tasks, no lines, nothing held and full wallets.
     await prisma.walletEntry.deleteMany({ where: { userId: { in: Object.values(u) } } });
-    await prisma.officeTask.deleteMany({ where: { posId: { in: [u.posA, u.posB] } } });
+    await prisma.task.deleteMany({ where: { posId: { in: [u.posA, u.posB] } } });
     await prisma.line.deleteMany({ where: { posId: { in: [u.posA, u.posB] } } });
     await prisma.wallet.updateMany({ where: { userId: { in: Object.values(u) } }, data: { balance: 1_000_000, held: 0, ceiling: 0 } });
   });
@@ -305,7 +305,7 @@ suite('one activation task per request key (PostgreSQL)', () => {
         expect(result.statuses).toEqual(Array.from({ length: 10 }, () => '201'));
         expect(result.taskIds).toHaveLength(1);
         expect(new Set(responses.map((response) => JSON.stringify(response.body))).size).toBe(1);
-        expect(await prisma.officeTask.count({ where: { id: result.taskIds[0] } })).toBe(1);
+        expect(await prisma.task.count({ where: { id: result.taskIds[0] } })).toBe(1);
         // Afterwards the guard answers it, and so does the database for a session the guard has never seen.
         const fromGuard = await post('posA', sent, requestKey, guarded);
         const fromDatabase = await post({ cookie: otherSession }, sent, requestKey, guarded);

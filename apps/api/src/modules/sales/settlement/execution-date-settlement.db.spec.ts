@@ -50,7 +50,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
   const setWallet = (data: { balance?: number; held?: number; ceiling?: number }) => prisma.wallet.update({ where: { userId: ids.pos }, data });
   const entries = () => prisma.walletEntry.findMany({ where: { userId: ids.pos } });
   const lineOf = (id: string) => prisma.line.findUniqueOrThrow({ where: { id } });
-  const taskOf = (id: string) => prisma.officeTask.findUniqueOrThrow({ where: { id } });
+  const taskOf = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
   /** A new line on the base package, sold at once, with the wallet and the ledger then cleared of that sale. */
   const newLine = async () => {
     const made = (await service.activate(pos, { packageCode: code.base, posLoginName: `sw-${tag}-pos`, iccid: serial(), outcome: 'success' })) as { line: { id: string } };
@@ -87,7 +87,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
   const expectWalletAddsUp = async () => {
     const [state, open, moved] = await Promise.all([
       wallet(),
-      prisma.officeTask.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
+      prisma.task.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
       prisma.walletEntry.aggregate({ where: { userId: ids.pos }, _sum: { amount: true, held: true } }),
     ]);
     expect(state.held).toBe(open._sum.held ?? 0);
@@ -139,7 +139,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
 
   afterEach(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await setWallet({ balance: START, held: 0, ceiling: 0 });
     await priceOf(ids.dearer, 6000);
@@ -257,7 +257,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     expect(await wallet()).toMatchObject({ balance: START, held: 0 });
     expect((await switchEntry()).map((row) => row.amount)).toEqual([0]);
     await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
 
     // The target became cheaper than the line's package: the hold goes back and the difference is credited.
     await priceOf(ids.dearer, 6000);
@@ -315,7 +315,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     // Completed and cancelled at the same moment: either it was switched and charged, or the hold went back.
     for (let round = 0; round < 6; round += 1) {
       await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-      await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+      await prisma.task.deleteMany({ where: { posId: ids.pos } });
       const other = await newLine();
       const raced = await openSwitch(other, code.dearer);
       const pair = await outcomes([complete(raced.taskId), service.cancelTask(pos, raced.taskId)]);
@@ -363,7 +363,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
       // Ten days late, on time, twenty days late to a cheaper package (money back); one switch still open.
       expect(state).toMatchObject({ balance: START - owed(6000, 10) - owed(6000) - owed(1500, 20), held: QUOTED });
       await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-      await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+      await prisma.task.deleteMany({ where: { posId: ids.pos } });
       await prisma.line.deleteMany({ where: { posId: ids.pos } });
       await setWallet({ balance: START, held: 0 });
     }
@@ -465,7 +465,7 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     // The task is completed while the same line is disconnected at once: one refund, whoever got there first.
     for (let round = 0; round < 6; round += 1) {
       await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-      await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+      await prisma.task.deleteMany({ where: { posId: ids.pos } });
       const other = await newLine();
       const raced = await openDisconnect(other);
       const pair = await outcomes([complete(raced.taskId), disconnectNow(other)]);

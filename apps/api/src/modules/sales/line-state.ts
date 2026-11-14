@@ -118,9 +118,9 @@ export async function assertClaimFree(tx: Prisma.TransactionClient, claim: Claim
   const openActivation = { action: 'activate', status: 'working' };
   const [serialLine, serialTask, numberLine, numberTask] = await Promise.all([
     claim.iccid ? tx.line.findFirst({ where: { iccid: claim.iccid, status: { not: 'disconnected' }, ...notThisLine }, select: { id: true } }) : null,
-    claim.iccid ? tx.officeTask.findFirst({ where: { ...openActivation, iccid: claim.iccid }, select: { id: true } }) : null,
+    claim.iccid ? tx.task.findFirst({ where: { ...openActivation, iccid: claim.iccid }, select: { id: true } }) : null,
     claim.msisdn ? tx.line.findUnique({ where: { msisdn: claim.msisdn }, select: { id: true } }) : null,
-    claim.msisdn ? tx.officeTask.findFirst({ where: { ...openActivation, msisdn: claim.msisdn }, select: { id: true } }) : null,
+    claim.msisdn ? tx.task.findFirst({ where: { ...openActivation, msisdn: claim.msisdn }, select: { id: true } }) : null,
   ]);
   const numberOnLine = Boolean(numberLine) && numberLine?.id !== exceptLineId;
   const refusal = refusalOf({ serialOnLine: Boolean(serialLine), serialOnTask: Boolean(serialTask), numberOnLine, numberOnTask: Boolean(numberTask) });

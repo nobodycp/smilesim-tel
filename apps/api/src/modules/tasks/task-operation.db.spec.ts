@@ -42,7 +42,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
   const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
   const openTask = async () => ((await service.activate(pos, { packageCode: `top-${tag}`, posLoginName: `top-${tag}-pos`, outcome: 'fail', iccid: serial() })) as { taskId: string }).taskId;
   const wallet = () => prisma.wallet.findUniqueOrThrow({ where: { userId: ids.pos } });
-  const task = (id: string) => prisma.officeTask.findUniqueOrThrow({ where: { id } });
+  const task = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
   const operationOf = (taskId: string) => prisma.providerOperation.findUniqueOrThrow({ where: { taskId } });
   const kinds = async () => (await prisma.walletEntry.findMany({ where: { userId: ids.pos } })).map((row) => row.kind).sort();
   const lines = () => prisma.line.count({ where: { posId: ids.pos } });
@@ -73,7 +73,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
   const expectWalletAddsUp = async () => {
     const [state, open, moved] = await Promise.all([
       wallet(),
-      prisma.officeTask.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
+      prisma.task.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
       prisma.walletEntry.aggregate({ where: { userId: ids.pos }, _sum: { amount: true, held: true } }),
     ]);
     expect(state.held).toBe(open._sum.held ?? 0);
@@ -121,7 +121,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
     await prisma.outboxMessage.deleteMany({ where: { aggregateId: { in: rows.map((row) => row.id) } } });
     await prisma.providerOperation.deleteMany({ where: { providerId: ids.provider } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0, ceiling: 0 } });
   });
@@ -321,7 +321,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
       // The next round starts clean.
       await prisma.providerOperation.deleteMany({ where: { id: operationId } });
       await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-      await prisma.officeTask.deleteMany({ where: { id: taskId } });
+      await prisma.task.deleteMany({ where: { id: taskId } });
       await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0 } });
     }
     expect(tally.cancelled + tally.claimed).toBe(60);
@@ -373,7 +373,7 @@ suite('what a task\'s provider operation allows on the manual path (PostgreSQL)'
     await expectWalletAddsUp();
     // Every task ended in one state, and its money with it: a closed task holds nothing, a task left open still
     // holds its price, and a task left open by an operation in flight was touched by nobody.
-    const rows = await prisma.officeTask.findMany({ where: { posId: ids.pos }, include: { providerOperation: true } });
+    const rows = await prisma.task.findMany({ where: { posId: ids.pos }, include: { providerOperation: true } });
     for (const row of rows) {
       if (row.status === 'working') expect(row).toMatchObject({ held: PRICE, assigneeId: null });
       const operation = row.providerOperation;

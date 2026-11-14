@@ -80,8 +80,8 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
   };
 
   const wallet = (userId: string = ids.pos) => prisma.wallet.findUniqueOrThrow({ where: { userId } });
-  const tasks = () => prisma.officeTask.findMany({ where: { posId: { in: people } }, orderBy: { createdAt: 'asc' } });
-  const task = (id: string) => prisma.officeTask.findUniqueOrThrow({ where: { id } });
+  const tasks = () => prisma.task.findMany({ where: { posId: { in: people } }, orderBy: { createdAt: 'asc' } });
+  const task = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
   const operations = () => prisma.providerOperation.findMany({ where: { providerId: { in: [ids.provider, ids.plain] } } });
   const operation = (id: string) => prisma.providerOperation.findUniqueOrThrow({ where: { id } });
   const outbox = async (topic?: string) => prisma.outboxMessage.findMany({ where: { aggregateId: { in: (await operations()).map((row) => row.id) }, ...(topic ? { topic } : {}) } });
@@ -178,7 +178,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     await prisma.providerOperation.deleteMany({ where: { id: { in: rows } } });
     await prisma.notice.deleteMany({ where: { userId: { in: people } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: people } } });
-    await prisma.officeTask.deleteMany({ where: { posId: { in: people } } });
+    await prisma.task.deleteMany({ where: { posId: { in: people } } });
     await prisma.line.deleteMany({ where: { posId: { in: people } } });
     for (const id of [ids.pos, ids.other]) await prisma.wallet.update({ where: { userId: id }, data: { balance: START, held: 0, ceiling: 0 } });
     await prisma.wallet.update({ where: { userId: ids.poor }, data: { balance: 100, held: 0, ceiling: 0 } });
@@ -405,7 +405,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
 
   describe('a failure anywhere in T1 leaves nothing', () => {
     const faults: [string, () => void][] = [
-      ['the task\'s insert', () => { fault = { model: 'OfficeTask', operation: 'createMany' }; }],
+      ['the task\'s insert', () => { fault = { model: 'Task', operation: 'createMany' }; }],
       ['the operation\'s insert', () => { fault = { model: 'ProviderOperation', operation: 'createMany' }; }],
       ['the outbox message', () => { fault = { model: 'OutboxMessage', operation: 'create' }; }],
       ['the hold on the wallet', () => { fault = { model: 'Wallet', operation: 'update' }; }],
@@ -453,7 +453,7 @@ suite('opening an activation on the dispatch route (PostgreSQL, HTTP)', () => {
     it('a wallet that cannot cover the price refuses, and the task and the operation go with the hold', async () => {
       const got = await activate('poor', sale({ posLoginName: name('poor') }), key());
       expect(said(got)).toBe('400 BALANCE_CEILING');
-      expect(await prisma.officeTask.count({ where: { posId: ids.poor } })).toBe(0);
+      expect(await prisma.task.count({ where: { posId: ids.poor } })).toBe(0);
       expect(await operations()).toEqual([]);
       expect(await outbox()).toEqual([]);
       expect(await wallet(ids.poor)).toMatchObject({ balance: 100, held: 0 });

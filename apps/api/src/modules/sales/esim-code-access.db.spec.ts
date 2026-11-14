@@ -84,7 +84,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     const lineRow = (id: string, esimQr: string | null) => ({ id, msisdn: number(), iccid: serial(), esim: true, esimQr, status: 'active', packageId: ids.pkg, posId: u.posA, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} });
     await prisma.line.createMany({ data: [lineRow(line.sealed, sealedCode), lineRow(line.clear, CODE.clear), lineRow(line.none, null), lineRow(line.damaged, damaged)] });
     const taskRow = (id: string, over: Record<string, unknown>) => ({ id, action: 'activate', status: 'working', posId: u.posA, packageId: ids.pkg, submitterId: u.posA, posDelta: 0, esim: true, ...over });
-    await prisma.officeTask.createMany({
+    await prisma.task.createMany({
       data: [
         taskRow(task.own, { esimQr: seal(CODE.task), msisdn: number() }),
         taskRow(task.onLine, { action: 'freeze', lineId: line.sealed }),
@@ -104,7 +104,7 @@ suite('who is handed an eSIM code, and the record of it (PostgreSQL)', () => {
     await app.close();
     await prisma.activityEvent.deleteMany({ where: { actorLoginName: { startsWith: `acc-${tag}-` } } });
     await prisma.session.deleteMany({ where: { userId: { in: Object.values(u) } } });
-    await prisma.officeTask.deleteMany({ where: { posId: { in: Object.values(u) } } });
+    await prisma.task.deleteMany({ where: { posId: { in: Object.values(u) } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: Object.values(u) } } });
     await prisma.line.deleteMany({ where: { posId: { in: Object.values(u) } } });
     await prisma.package.deleteMany({ where: { id: ids.pkg } });

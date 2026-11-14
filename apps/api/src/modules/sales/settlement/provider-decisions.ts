@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { OfficeTask, Prisma, ProviderOperation } from '../../../generated/prisma/client';
+import type { Task, Prisma, ProviderOperation } from '../../../generated/prisma/client';
 import type { ErrorCode } from '../../../errors';
 import { parseInput } from '../../platform/input';
 import { cursorPosition, page, type Page } from '../../platform/paging';
@@ -245,14 +245,14 @@ export class ProviderDecisions {
     requireGrant(actor, DECISION_GRANT);
   }
 
-  private async subject(taskId: string): Promise<{ task: OfficeTask; operation: ProviderOperation | null }> {
+  private async subject(taskId: string): Promise<{ task: Task; operation: ProviderOperation | null }> {
     const task = await this.lines.task(taskId);
     if (!task) fail(404, 'NOT_FOUND');
     return { task, operation: await this.operations.ofTask(task.id) };
   }
 
   /** The rules' answer, or the refusal as the route answers it. */
-  private stepOrFail(events: readonly { sequence: number; type: string; decision: string; accountId: string }[], actor: Actor, asked: Asked, operation: TaskOperation | { status: string; appliedAt: Date | null; applyError: string | null }, task: OfficeTask): Allowed {
+  private stepOrFail(events: readonly { sequence: number; type: string; decision: string; accountId: string }[], actor: Actor, asked: Asked, operation: TaskOperation | { status: string; appliedAt: Date | null; applyError: string | null }, task: Task): Allowed {
     const request = { ...asked, operation: operation as TaskOperation, submitterId: task.submitterId } as DecisionRequest;
     const step = decisionStep(events as DecisionEvent[], actor, request);
     if (!step.ok) fail(...REFUSALS[step.refusal]);
@@ -260,7 +260,7 @@ export class ProviderDecisions {
   }
 
   /** The rules asked again where the answer counts: under the operation's row lock, on the events as they stand. */
-  private async lockedStep(tx: Prisma.TransactionClient, actor: Actor, asked: Asked, task: OfficeTask) {
+  private async lockedStep(tx: Prisma.TransactionClient, actor: Actor, asked: Asked, task: Task) {
     const { operation: locked } = await lockedTaskOperation(tx, task.id);
     if (!locked) fail(409, 'DECISION_NOT_APPLICABLE');
     const step = this.stepOrFail(await this.operations.decisionEvents(tx, locked.id), actor, asked, locked, task);
@@ -286,7 +286,7 @@ export class ProviderDecisions {
   // ── T10, a proposal ─────────────────────────────────────────────────────────────────────────────────────
 
   /** Only the event is written, under the operation's lock: the operation, the task and the hold stay as they are. */
-  private async propose(actor: Actor, task: OfficeTask, asked: Asked, evidence: DecisionEvidence): Promise<DecisionOutcome> {
+  private async propose(actor: Actor, task: Task, asked: Asked, evidence: DecisionEvidence): Promise<DecisionOutcome> {
     await this.uow.runTx(async (tx) => {
       const { step, locked } = await this.lockedStep(tx, actor, asked, task);
       await this.operations.recordDecision(tx, this.eventOf(step, locked.id, actor, evidence, false));
@@ -296,7 +296,7 @@ export class ProviderDecisions {
 
   // ── T10, a decision by one account ──────────────────────────────────────────────────────────────────────
 
-  private async applyNow(actor: Actor, task: OfficeTask, operation: ProviderOperation, decision: Decision, asked: Asked, evidence: DecisionEvidence, given: Given): Promise<DecisionOutcome> {
+  private async applyNow(actor: Actor, task: Task, operation: ProviderOperation, decision: Decision, asked: Asked, evidence: DecisionEvidence, given: Given): Promise<DecisionOutcome> {
     await this.assertSerial(task, given.iccid);
     // A code that is given must be an activation code: anything else is refused before it is sealed or stored.
     if (given.esimCode && !isActivationCode(given.esimCode)) fail(400, 'ESIM_CODE_REQUIRED');
@@ -353,7 +353,7 @@ export class ProviderDecisions {
    * handed back, and the reason, in one transaction. The task stays `working` with its hold and its reservation;
    * *apply corrected* or the approved release closes it.
    */
-  private async confirmAsException(actor: Actor, submitter: Actor, task: OfficeTask, asked: Asked, evidence: DecisionEvidence, columns: ReturnType<ProviderOperationsService['storableResult']>, suppliedEsimCode: boolean, reason: ApplyError): Promise<DecisionOutcome> {
+  private async confirmAsException(actor: Actor, submitter: Actor, task: Task, asked: Asked, evidence: DecisionEvidence, columns: ReturnType<ProviderOperationsService['storableResult']>, suppliedEsimCode: boolean, reason: ApplyError): Promise<DecisionOutcome> {
     const written = await this.uow.runTx(async (tx) => {
       const { step, locked } = await this.lockedStep(tx, actor, asked, task);
       await this.operations.recordDecision(tx, this.eventOf(step, locked.id, actor, evidence, suppliedEsimCode));
@@ -368,7 +368,7 @@ export class ProviderDecisions {
   }
 
   /** A serial the person gave is held to the company's rules, as one the branch hands back with a completion. */
-  private async assertSerial(task: OfficeTask, iccid: string | null): Promise<void> {
+  private async assertSerial(task: Task, iccid: string | null): Promise<void> {
     if (!iccid) return;
     const pkg = await this.lines.packageWithCompany(task.packageId);
     const refusal = simRefusal(simRulesOf(pkg?.company ?? null), iccid);
@@ -379,7 +379,7 @@ export class ProviderDecisions {
    * The eSIM code the line will carry, sealed: the code the person gave, else the provider's, each as a QR
    * picture; else the one the task has carried. Null for a line that is not an eSIM. Nothing of it is logged.
    */
-  private async lineCode(task: OfficeTask, operation: ProviderOperation, given: string | null): Promise<string | null> {
+  private async lineCode(task: Task, operation: ProviderOperation, given: string | null): Promise<string | null> {
     if (!task.esim) return null;
     const code = given ?? esimCodeOrFail(operation.resultEsimCode, `operation ${operation.id}`);
     if (code) return storableEsimCode(await renderActivationCode(code), `task ${task.id}`);

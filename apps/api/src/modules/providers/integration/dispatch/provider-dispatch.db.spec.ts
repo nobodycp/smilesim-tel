@@ -236,7 +236,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
     await prisma.providerWorkerAttestation.deleteMany({ where: { providerId: { in: [ids.provider, ids.other] } } });
     await prisma.notice.deleteMany({ where: { userId: { in: people } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: people } } });
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0, ceiling: 0 } });
   });
@@ -479,7 +479,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       await readiness.stop();
       for (let sale = 0; sale < 3; sale += 1) expect((await sell()).route).toBe('manual');
       expect(await prisma.providerOperation.count({ where: { providerId: ids.provider } })).toBe(0);
-      expect((await prisma.officeTask.findMany({ where: { posId: ids.pos } })).map((task) => task.note)).not.toContain(PROVIDER_DISPATCH_NOTE);
+      expect((await prisma.task.findMany({ where: { posId: ids.pos } })).map((task) => task.note)).not.toContain(PROVIDER_DISPATCH_NOTE);
       expect(calls).toEqual([]);
     });
 
@@ -585,7 +585,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await bare.dispatch.dispatcher.handle(operationId)).toBe('skipped');
       expect(calls).toEqual([]);
       expect(await operation(operationId)).toMatchObject({ status: 'requested', attempts: 0 });
-      expect(await prisma.officeTask.findUniqueOrThrow({ where: { id: taskId } })).toMatchObject({ status: 'working', held: PRICE });
+      expect(await prisma.task.findUniqueOrThrow({ where: { id: taskId } })).toMatchObject({ status: 'working', held: PRICE });
       expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
     });
 
@@ -666,7 +666,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await worker.dispatch.operations.settle(silent.operationId, attempts.silent, { kind: 'confirmed', providerRef: 'R-2', result: null })).toBe('succeeded');
       expect(await settled(worker, silent.operationId)).toBe('applied');
       // 3. Confirmed, and its serial went to a line meanwhile: the exception is recorded, the hold kept.
-      const row = await prisma.officeTask.findUniqueOrThrow({ where: { id: taken.taskId } });
+      const row = await prisma.task.findUniqueOrThrow({ where: { id: taken.taskId } });
       await prisma.line.create({ data: { msisdn: '0599999999', iccid: row.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       expect(await worker.dispatch.operations.settle(taken.operationId, attempts.taken, { kind: 'confirmed', providerRef: 'R-3', result: null })).toBe('succeeded');
       expect(await settled(worker, taken.operationId)).toBe('exception');
@@ -846,7 +846,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(new Set(calls.map((sent) => sent.idempotencyKey)).size).toBe(calls.length);
       // The money: held is the open tasks' holds, the balance moved by the entries alone, one debit a line.
       const [state, open_, moved, lines, debits] = await Promise.all([
-        wallet(), prisma.officeTask.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
+        wallet(), prisma.task.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
         prisma.walletEntry.aggregate({ where: { userId: ids.pos }, _sum: { amount: true, held: true } }), prisma.line.count({ where: { posId: ids.pos } }), prisma.walletEntry.count({ where: { userId: ids.pos, kind: 'activate' } }),
       ]);
       expect(state.held).toBe(open_._sum.held ?? 0);
@@ -1081,7 +1081,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       await untaken();
       expect(calls).toEqual([]);
       // Nothing was released by any of it.
-      expect(await prisma.officeTask.findUniqueOrThrow({ where: { id: taskId } })).toMatchObject({ status: 'working', held: PRICE });
+      expect(await prisma.task.findUniqueOrThrow({ where: { id: taskId } })).toMatchObject({ status: 'working', held: PRICE });
       // The worker that built its adapter from what is stored sends it, with the new credential, once.
       expect(await rebuilt.dispatch.dispatcher.handle(operationId)).toBe('succeeded');
       expect([calls.map((sent) => sent.attempt), usedCredentials]).toEqual([[1], [NEW_CREDENTIAL]]);
@@ -1101,7 +1101,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await operations.beginSend(operationId, 1, new Date(), gate)).toBeNull();
       expect(await operation(operationId)).toMatchObject({ status: 'requested', attempts: 1, waivedAttempts: 1, sentAt: null });
       expect(calls).toEqual([]);
-      expect(await prisma.officeTask.findUniqueOrThrow({ where: { id: taskId } })).toMatchObject({ status: 'working', held: PRICE });
+      expect(await prisma.task.findUniqueOrThrow({ where: { id: taskId } })).toMatchObject({ status: 'working', held: PRICE });
       expect(await wallet()).toMatchObject({ balance: START, held: PRICE });
       // Approved again, this worker still on the old credential: refused at the claim, nothing counted.
       await call('owner', 'post', at('/approve'));
@@ -1143,7 +1143,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect(await operations.settle(silent.operationId, attempts.silent, { kind: 'confirmed', providerRef: 'R-OLD-2', result: null })).toBe('succeeded');
       expect(await settled(worker, silent.operationId)).toBe('applied');
       // 3. Confirmed, and its serial went to a line meanwhile: the exception is recorded and the hold kept.
-      const row = await prisma.officeTask.findUniqueOrThrow({ where: { id: exception.taskId } });
+      const row = await prisma.task.findUniqueOrThrow({ where: { id: exception.taskId } });
       await prisma.line.create({ data: { msisdn: '0599999998', iccid: row.iccid, esim: false, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 86_400_000), terms: {} } });
       expect(await operations.settle(exception.operationId, attempts.exception, { kind: 'confirmed', providerRef: 'R-OLD-3', result: null })).toBe('succeeded');
       expect(await settled(worker, exception.operationId)).toBe('exception');
@@ -1427,7 +1427,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect((await sell()).route).toBe('manual');
       // The sale opened in the window: recorded, held, sent by nobody, and its submitter's to cancel (D7).
       expect(await operation(inWindow.operationId)).toMatchObject({ status: 'requested', attempts: 0 });
-      expect(await prisma.officeTask.findUniqueOrThrow({ where: { id: inWindow.taskId } })).toMatchObject({ status: 'working', held: PRICE });
+      expect(await prisma.task.findUniqueOrThrow({ where: { id: inWindow.taskId } })).toMatchObject({ status: 'working', held: PRICE });
       const other = await (async () => { await aged(1_000); const sold = await sell(); await aged(READY_TTL_MS + 1_000); return sold; })();
       expect(said(await call('pos', 'post', `/office/tasks/${other.taskId}/cancel`))).toBe('ok');
       expect(calls).toEqual([]);
@@ -1824,7 +1824,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       const esim = await sellEsim();
       const plain = await sell();
       // What the eSIM sale holds (the package's price and the eSIM's own).
-      const esimHeld = (await prisma.officeTask.findUniqueOrThrow({ where: { id: esim.taskId } })).held;
+      const esimHeld = (await prisma.task.findUniqueOrThrow({ where: { id: esim.taskId } })).held;
       expect(esimHeld).toBeGreaterThanOrEqual(PRICE);
       // Both were sent while the provider was on; their answers come back after sending was switched off.
       const { operations, gate } = worker.dispatch;
@@ -1841,7 +1841,7 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       expect([stored.resultEsimCode?.startsWith('v1:'), stored.resultEsimCode?.includes('S12A-ESIM')]).toEqual([true, false]);
       const untouched = async () => {
         expect(await operation(esim.operationId)).toMatchObject({ status: 'succeeded', appliedAt: null, applyError: null, resultEsimCode: stored.resultEsimCode });
-        expect(await prisma.officeTask.findUniqueOrThrow({ where: { id: esim.taskId } })).toMatchObject({ status: 'working', held: esimHeld });
+        expect(await prisma.task.findUniqueOrThrow({ where: { id: esim.taskId } })).toMatchObject({ status: 'working', held: esimHeld });
         expect(await prisma.line.count({ where: { posId: ids.pos, esim: true } })).toBe(0);
       };
       // No key, a key that is not one, another deployment's key: the settlement fails by a code and writes nothing.

@@ -6,7 +6,7 @@ import { UnitOfWork } from '../../platform/unit-of-work';
 import { assertBranch } from '../../access/policy';
 import { Injectable } from '@nestjs/common';
 import type { z } from 'zod';
-import type { OfficeTask, Prisma } from '../../../generated/prisma/client';
+import type { Task, Prisma } from '../../../generated/prisma/client';
 import { parseInput } from '../../platform/input';
 import { fail } from '../../platform/api-failure';
 import { lineTermsOf } from '../../pricing/line-terms';
@@ -31,7 +31,7 @@ type TaskLine = Awaited<ReturnType<typeof lockedTaskLine>>;
 /** What a handler is given: the claimed task, its locked line, and what the branch handed back with it. */
 export type Completion = {
   tx: Prisma.TransactionClient;
-  task: OfficeTask;
+  task: Task;
   actor: Actor;
   note: string;
   line: TaskLine | null;
@@ -139,7 +139,7 @@ export class TaskCompletion {
   }
 
   /** Checks what the branch attached to the completion: the new number of a rename, the serial and QR of an eSIM. */
-  private async handedBack(task: OfficeTask, given: z.output<typeof CompleteTaskBody>) {
+  private async handedBack(task: Task, given: z.output<typeof CompleteTaskBody>) {
     const { iccid: givenIccid, msisdn: givenMsisdn } = given;
     const givenQr = readQr(given.qr) ?? null;
     const handed: { iccid?: string; msisdn?: string } = {};

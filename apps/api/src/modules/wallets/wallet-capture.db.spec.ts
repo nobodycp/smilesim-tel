@@ -44,7 +44,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
   const setWallet = (data: { balance?: number; held?: number; ceiling?: number }) => prisma.wallet.update({ where: { userId: ids.pos }, data });
   const entryRows = () => prisma.walletEntry.findMany({ where: { userId: ids.pos } });
   const kinds = async () => (await entryRows()).map((row) => row.kind).sort();
-  const task = (id: string) => prisma.officeTask.findUniqueOrThrow({ where: { id } });
+  const task = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
 
   const outcomes = async (runs: Promise<unknown>[]) => {
     const settled = await Promise.allSettled(runs);
@@ -60,7 +60,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
   const expectWalletAddsUp = async () => {
     const [state, open, moved] = await Promise.all([
       wallet(),
-      prisma.officeTask.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
+      prisma.task.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
       prisma.walletEntry.aggregate({ where: { userId: ids.pos }, _sum: { amount: true, held: true } }),
     ]);
     expect(state.held).toBe(open._sum.held ?? 0);
@@ -107,7 +107,7 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
 
   afterEach(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await setWallet({ balance: START, held: 0, ceiling: 0 });
     notices = [];
@@ -349,12 +349,12 @@ suite('capturing a task\'s hold (PostgreSQL)', () => {
       expect(result.refused.every((refusal) => refusal === '400 INVALID')).toBe(true);
       expect(result.refused.length).toBe(2);
       await expectWalletAddsUp();
-      const done = await prisma.officeTask.count({ where: { posId: ids.pos, status: 'done' } });
+      const done = await prisma.task.count({ where: { posId: ids.pos, status: 'done' } });
       const charged = (await entryRows()).filter((row) => row.amount < 0 && (row.kind === 'activate' || row.kind === 'extend')).length;
       // One charge per completed task, plus the two lines sold at once.
       expect(charged).toBe(done + 2);
       await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-      await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+      await prisma.task.deleteMany({ where: { posId: ids.pos } });
       await prisma.line.deleteMany({ where: { posId: ids.pos } });
       await setWallet({ balance: START, held: 0 });
     }

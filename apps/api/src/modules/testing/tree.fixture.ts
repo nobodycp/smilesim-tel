@@ -235,7 +235,7 @@ export async function tree() {
     // An account delete runs whole inside the transaction: its sessions and its wallet go with it.
     session: { deleteMany: async () => ({ count: 0 }) },
     line: lineModel,
-    officeTask: taskModel,
+    task: taskModel,
     package: packageModel,
     packageRenewal,
     packageAddon: { findMany: async () => [], findUnique: async () => null },
@@ -252,7 +252,7 @@ export async function tree() {
   (service as unknown as { prismaClient: unknown }).prismaClient = {
     user: userModel,
     line: lineModel,
-    officeTask: taskModel,
+    task: taskModel,
     package: packageModel,
     packageRenewal,
     packageAddon: { findMany: async () => [], findUnique: async () => null },

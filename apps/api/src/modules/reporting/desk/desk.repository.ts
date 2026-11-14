@@ -16,8 +16,8 @@ export class DeskRepository {
     return this.uow.prisma.wallet.findUnique({ where: { userId } });
   }
 
-  taskCount(where: Prisma.OfficeTaskWhereInput) {
-    return this.uow.prisma.officeTask.count({ where });
+  taskCount(where: Prisma.TaskWhereInput) {
+    return this.uow.prisma.task.count({ where });
   }
 
   /** How many lines of these points of sale are stored with this status. */
@@ -89,12 +89,12 @@ export class DeskRepository {
   }
 
   /** How many of the tasks under `where` are in this status. */
-  taskCountInStatus(where: Prisma.OfficeTaskWhereInput, status: string) {
-    return this.uow.prisma.officeTask.count({ where: { AND: [where, { status }] } });
+  taskCountInStatus(where: Prisma.TaskWhereInput, status: string) {
+    return this.uow.prisma.task.count({ where: { AND: [where, { status }] } });
   }
 
   /** When the oldest pending or working task under `where` was created. */
-  oldestOpenTask(where: Prisma.OfficeTaskWhereInput) {
-    return this.uow.prisma.officeTask.findFirst({ where: { AND: [where, { status: { in: ['pending', 'working'] } }] }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } });
+  oldestOpenTask(where: Prisma.TaskWhereInput) {
+    return this.uow.prisma.task.findFirst({ where: { AND: [where, { status: { in: ['pending', 'working'] } }] }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } });
   }
 }

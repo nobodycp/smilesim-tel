@@ -117,7 +117,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
   };
 
   const wallet = () => prisma.wallet.findUniqueOrThrow({ where: { userId: ids.pos } });
-  const task = (id: string) => prisma.officeTask.findUniqueOrThrow({ where: { id } });
+  const task = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
   const operation = (id: string) => prisma.providerOperation.findUniqueOrThrow({ where: { id } });
   const events = (operationId: string) => prisma.providerDecisionEvent.findMany({ where: { operationId }, orderBy: { sequence: 'asc' } });
   const steps = async (operationId: string) => (await events(operationId)).map((row) => `${row.sequence} ${row.type} ${row.decision} ${row.accountLoginName.replace(`s9-${tag}-`, '')}`);
@@ -134,7 +134,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
   const expectWalletAddsUp = async () => {
     const [state, openTasks, moved] = await Promise.all([
       wallet(),
-      prisma.officeTask.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
+      prisma.task.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
       prisma.walletEntry.aggregate({ where: { userId: ids.pos }, _sum: { amount: true, held: true } }),
     ]);
     expect(state.held).toBe(openTasks._sum.held ?? 0);
@@ -207,7 +207,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
     await prisma.providerOperation.deleteMany({ where: { providerId: ids.provider } });
     await prisma.notice.deleteMany({ where: { userId: { in: people } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: people } } });
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: { in: [ids.pos, ids.other] } } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0, ceiling: 0 } });
   });
@@ -334,7 +334,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
 
     it('with no number anywhere names none: refused, and nothing is made up', async () => {
       const { taskId, operationId } = await waiting('unknown');
-      await prisma.officeTask.update({ where: { id: taskId }, data: { msisdn: null } });
+      await prisma.task.update({ where: { id: taskId }, data: { msisdn: null } });
       const before = await snapshot(taskId, operationId);
       expect(said(await decide('owner', taskId, 'confirm-success'))).toBe('400 DECISION_NUMBER_REQUIRED');
       expect(await snapshot(taskId, operationId)).toEqual(before);
@@ -878,7 +878,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       const missing = await waiting('exception', { applyError: 'esim-code-missing', resultMsisdn: number() }, { esim: true });
       expect((await view('owner', missing.taskId)).body).toMatchObject({ phase: 'exception', reason: 'esim-code-missing', decisions: ['apply-corrected', 'release-after-success'], needs: { number: false, esimCode: true } });
       const nameless = await waiting('unknown');
-      await prisma.officeTask.update({ where: { id: nameless.taskId }, data: { msisdn: null } });
+      await prisma.task.update({ where: { id: nameless.taskId }, data: { msisdn: null } });
       expect((await view('owner', nameless.taskId)).body).toMatchObject({ needs: { number: true, esimCode: false } });
       // A code given with a confirmation, and the provider's own sealed one: in no read of the decisions.
       const coded = await waiting('unknown', {}, { esim: true });
@@ -951,7 +951,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       };
       const started = Date.now() - 600_000;
       const made = Array.from({ length: 230 }, (_, index) => ({ taskId: randomUUID(), operationId: randomUUID(), index }));
-      await prisma.officeTask.createMany({ data: made.map((row) => ({ id: row.taskId, action: 'activate', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: -PRICE, held: 0, msisdn: null, iccid: null })) });
+      await prisma.task.createMany({ data: made.map((row) => ({ id: row.taskId, action: 'activate', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: -PRICE, held: 0, msisdn: null, iccid: null })) });
       await prisma.providerOperation.createMany({
         data: made.map((row) => ({
           id: row.operationId, idempotencyKey: operationKey(row.taskId), requestHash: 'h', action: 'activate', providerId: ids.provider, packageCode: name('pkg'), taskId: row.taskId, attempts: 1,
@@ -1162,7 +1162,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       const release = await waiting('exception');
       expect(said(await decide('acc1', release.taskId, 'release-after-success'))).toBe('ok proposed');
       // Written past the product: the tasks are closed and their holds given back by hand.
-      await prisma.officeTask.updateMany({ where: { id: { in: [confirm.taskId, correct.taskId, release.taskId] } }, data: { status: 'cancelled' } });
+      await prisma.task.updateMany({ where: { id: { in: [confirm.taskId, correct.taskId, release.taskId] } }, data: { status: 'cancelled' } });
       await prisma.wallet.update({ where: { userId: ids.pos }, data: { held: 0 } });
       const before = [await snapshot(confirm.taskId, confirm.operationId), await snapshot(correct.taskId, correct.operationId), await snapshot(release.taskId, release.operationId)];
       expect(said(await decide('owner', confirm.taskId, 'confirm-success'))).toBe('409 DECISION_NOT_APPLICABLE');
@@ -1312,7 +1312,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       const sequences = (await events(operationId)).map((event) => event.sequence);
       expect(sequences).toEqual(sequences.map((_, index) => index + 1));
     }
-    const done = await prisma.officeTask.count({ where: { posId: ids.pos, status: 'done' } });
+    const done = await prisma.task.count({ where: { posId: ids.pos, status: 'done' } });
     expect(await lines()).toHaveLength(done);
     expect((await kinds()).filter((kind) => kind === 'activate')).toHaveLength(done);
     await expectWalletAddsUp();

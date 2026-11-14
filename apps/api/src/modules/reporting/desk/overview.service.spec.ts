@@ -47,7 +47,7 @@ function service(snapshots: { userId: string; day: string; active: number; expir
         snapshots.filter((row) => row.userId === where.userId && row.day < where.day.lt).sort((a, b) => (a.day < b.day ? 1 : -1))[0] ?? null,
     },
     wallet: { findMany: async () => [{ userId: 'pos', balance: -2000, ceiling: 5000 }, { userId: 'pos2', balance: 700, ceiling: 1000 }, { userId: 'agent', balance: -500, ceiling: 300 }] },
-    officeTask: {
+    task: {
       count: async ({ where }: { where: { AND: { status?: string }[] } }) => (where.AND[1]?.status === 'pending' ? 4 : 1),
       findFirst: async () => ({ createdAt: new Date(Date.now() - 90 * 60_000) }),
     },

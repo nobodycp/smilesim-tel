@@ -31,7 +31,7 @@ describe('provider health', () => {
           return { count: 1 };
         },
       },
-      officeTask: {
+      task: {
         findMany: async ({ where }: { where: { note: string } }) => (where.note === PROVIDER_FAILED_NOTE ? Array.from({ length: failures }, () => ({ packageId: 'p1' })) : []),
       },
       user: {

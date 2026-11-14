@@ -91,7 +91,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
   const openTask = async (over: Record<string, unknown> = {}) =>
     ((await service.activate(pos, { packageCode: `s8-${tag}`, posLoginName: `s8-${tag}-pos`, outcome: 'fail', ...(over.esim ? {} : { iccid: serial() }), ...over })) as { taskId: string }).taskId;
   const wallet = () => prisma.wallet.findUniqueOrThrow({ where: { userId: ids.pos } });
-  const task = (id: string) => prisma.officeTask.findUniqueOrThrow({ where: { id } });
+  const task = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
   const operation = (id: string) => prisma.providerOperation.findUniqueOrThrow({ where: { id } });
   const entries = () => prisma.walletEntry.findMany({ where: { userId: ids.pos }, orderBy: { createdAt: 'asc' } });
   const kinds = async () => (await entries()).map((row) => row.kind).sort();
@@ -125,7 +125,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
   const expectWalletAddsUp = async () => {
     const [state, openTasks, moved] = await Promise.all([
       wallet(),
-      prisma.officeTask.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
+      prisma.task.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }),
       prisma.walletEntry.aggregate({ where: { userId: ids.pos }, _sum: { amount: true, held: true } }),
     ]);
     expect(state.held).toBe(openTasks._sum.held ?? 0);
@@ -187,7 +187,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     await prisma.providerOperation.deleteMany({ where: { providerId: ids.provider } });
     await prisma.notice.deleteMany({ where: { userId: { in: [ids.owner, ids.accountant, ids.clerk, ids.pos] } } });
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: START, held: 0, ceiling: 0 } });
   });
@@ -369,7 +369,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
         const { taskId, operationId } = await succeeded();
         const [stale, opened] = [await operation(operationId), await task(taskId)];
         // Closed by another hand, with the operation left as it was (which the guards of S.7 do not allow: by hand).
-        await prisma.officeTask.update({ where: { id: taskId }, data: { status: 'cancelled' } });
+        await prisma.task.update({ where: { id: taskId }, data: { status: 'cancelled' } });
         const before = await snapshot(taskId, operationId);
         expect(await applyAsRead(stale, opened)).toBe('skipped');
         expect(await snapshot(taskId, operationId)).toEqual(before);
@@ -643,7 +643,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
       // No code from the provider, and the task carries one (sealed, as a task stores it).
       const carried = await openTask({ esim: true });
       const picture = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-      await prisma.officeTask.update({ where: { id: carried }, data: { esimQr: seal(picture) } });
+      await prisma.task.update({ where: { id: carried }, data: { esimQr: seal(picture) } });
       const operationId = await sent(carried);
       await dispatch.operations.settle(operationId, 1, confirmed({ iccid: serial() }));
       expect(await settlement.apply(operationId)).toBe('applied');
@@ -696,7 +696,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     it('hands the task to the branch once: noted as a provider failure, the hold kept, nothing refunded, never sent again (spec 9)', async () => {
       const taskId = await openTask();
       // As a sale on the dispatch route will open it: with a note of its own, not the failure's.
-      await prisma.officeTask.update({ where: { id: taskId }, data: { note: 'sent to the provider' } });
+      await prisma.task.update({ where: { id: taskId }, data: { note: 'sent to the provider' } });
       const operationId = await sent(taskId);
       await dispatch.operations.settle(operationId, 1, { kind: 'refused', error: 'refused' });
       notices = [];
@@ -722,7 +722,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
 
     it('only stamps the operation when the submitter had cancelled meanwhile: no note, no notice, the release stays one', async () => {
       const taskId = await openTask();
-      await prisma.officeTask.update({ where: { id: taskId }, data: { note: 'sent to the provider' } });
+      await prisma.task.update({ where: { id: taskId }, data: { note: 'sent to the provider' } });
       const operationId = await sent(taskId);
       await dispatch.operations.settle(operationId, 1, { kind: 'refused', error: 'refused' });
       expect(await refusal(service.cancelTask(pos, taskId))).toBe('done');
@@ -774,7 +774,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     it('a late refusal hands the task to the branch; an operation with no task is nobody\'s to settle', async () => {
       const taskId = await openTask();
       const operationId = await sent(taskId);
-      await prisma.officeTask.update({ where: { id: taskId }, data: { note: 'sent to the provider' } });
+      await prisma.task.update({ where: { id: taskId }, data: { note: 'sent to the provider' } });
       await dispatch.operations.settle(operationId, 1, { kind: 'no-answer', error: 'timeout' });
       expect(await dispatch.operations.settle(operationId, 1, { kind: 'refused', error: 'refused' })).toBe('failed');
       expect(await settlement.apply(operationId)).toBe('handed-to-branch');
@@ -873,7 +873,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     }
     expect(crashed).toEqual([]);
     await expectWalletAddsUp();
-    const rows = await prisma.officeTask.findMany({ where: { posId: ids.pos }, include: { providerOperation: true } });
+    const rows = await prisma.task.findMany({ where: { posId: ids.pos }, include: { providerOperation: true } });
     const done = rows.filter((row) => row.status === 'done');
     const closed = rows.filter((row) => row.status === 'cancelled');
     const all = await kinds();
@@ -1106,7 +1106,7 @@ suite('settling a provider\'s verdict on an activation task (PostgreSQL)', () =>
     const untouched = async (rows: { id: string; taskId: string }[], sealed: string) => {
       const operations = await prisma.providerOperation.findMany({ where: { id: { in: rows.map((row) => row.id) } } });
       expect(operations.filter((row) => row.status === 'succeeded' && row.appliedAt === null && row.applyError === null && row.applyFailedAt === null && row.resultEsimCode === sealed)).toHaveLength(rows.length);
-      const tasks = await prisma.officeTask.findMany({ where: { id: { in: rows.map((row) => row.taskId) } } });
+      const tasks = await prisma.task.findMany({ where: { id: { in: rows.map((row) => row.taskId) } } });
       expect(tasks.filter((row) => row.status === 'working' && row.held > 0)).toHaveLength(rows.length);
     };
 

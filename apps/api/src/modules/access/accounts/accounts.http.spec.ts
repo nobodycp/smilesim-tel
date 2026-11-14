@@ -66,7 +66,7 @@ function world() {
       update: async (args: unknown) => void written.push({ op: 'role.update', args }),
     },
     userRole: { findMany: async () => [] },
-    officeTask: {
+    task: {
       findMany: async () => tasks.filter((task) => task.status === 'working'),
       // The guarded write of a freeze: only a task this account still handles.
       updateMany: async (args: { where: { id: string; assigneeId: string; status: string }; data: Record<string, unknown> }) => {

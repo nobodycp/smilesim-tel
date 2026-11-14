@@ -128,7 +128,7 @@ describe('office response shapes', () => {
 
   it('answers /office/home with the keys of HomePayload and of its rows', async () => {
     const { service, gate } = await serviceWith({
-      officeTask: { count: async () => 2 },
+      task: { count: async () => 2 },
       line: { count: async () => 3 },
       walletEntry: {
         findMany: async () => [{ id: 'e1', createdAt: at, kind: 'activate', amount: -5, note: null, user: { loginName: 'pos1' } }],

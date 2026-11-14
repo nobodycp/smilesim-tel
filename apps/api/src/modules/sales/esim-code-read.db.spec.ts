@@ -41,7 +41,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
   /** Every stored code, exactly as the database holds it. */
   const stored = async () => ({
     lines: await prisma.line.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true }, orderBy: { id: 'asc' } }),
-    tasks: await prisma.officeTask.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true, updatedAt: true }, orderBy: { id: 'asc' } }),
+    tasks: await prisma.task.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true, updatedAt: true }, orderBy: { id: 'asc' } }),
   });
   /** What a list row carries of the code: nothing, ever (S.5c). `null` here means the row has no `esimQr` key at all. */
   const listed = async () => Object.fromEntries((await service.lines(pos)).items.map((row) => [row.id, 'esimQr' in row ? 'A-CODE-IN-A-LIST' : null]));
@@ -105,7 +105,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
     const lineRow = (id: string, esimQr: string | null) => ({ id, msisdn: number(), iccid: `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`, esim: true, esimQr, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} });
     await prisma.line.createMany({ data: [lineRow(line.clear, QR.clear), lineRow(line.sealed, sealedQr), lineRow(line.damaged, damagedQr), lineRow(line.none, null)] });
     const taskRow = (id: string, over: Record<string, unknown>) => ({ id, action: 'sim', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: 0, esim: true, ...over });
-    await prisma.officeTask.createMany({
+    await prisma.task.createMany({
       data: [
         // Two tasks that carry a code of their own (no line yet), one clear and one sealed.
         taskRow(task.clear, { action: 'activate', esimQr: QR.clear, msisdn: number() }),
@@ -122,7 +122,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
   });
 
   afterAll(async () => {
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await prisma.package.deleteMany({ where: { id: ids.pkg } });
@@ -381,14 +381,14 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       const onDamaged = await open(lineId);
       const onHealthy = await open(healthyLine);
       // As a sealed code that does not open would sit on the task once codes are sealed on write.
-      await prisma.officeTask.updateMany({ where: { id: { in: [onDamaged, onHealthy] } }, data: { esimQr: damagedQr } });
+      await prisma.task.updateMany({ where: { id: { in: [onDamaged, onHealthy] } }, data: { esimQr: damagedQr } });
       const before = { damaged: await money(lineId), healthy: await money(healthyLine) };
 
       const output = await capturedOutput(async () => {
         for (const taskId of [onDamaged, onHealthy]) {
           expect(await taskAs(owner, taskId)).toBe(REFUSED);
           expect(await refusalOf(service.completeTask(owner, taskId, {}))).toBe(REFUSED);
-          expect((await prisma.officeTask.findUniqueOrThrow({ where: { id: taskId } })).status).toBe('working');
+          expect((await prisma.task.findUniqueOrThrow({ where: { id: taskId } })).status).toBe('working');
         }
       });
       expect(output).toContain(`task ${onDamaged}: its eSIM code is stored sealed and could not be opened (unreadable); the request is refused`);
@@ -480,7 +480,7 @@ suite('reading eSIM codes stored clear or sealed (PostgreSQL)', () => {
       const lineId = await damagedLine();
       const row = (action: string, status: string) => ({ id: randomUUID(), action, status, posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: 0, esim: true, lineId, esimQr: null });
       const rows = { freeze: row('freeze', 'working'), rename: row('rename', 'working'), simDone: row('sim', 'done'), simRejected: row('sim', 'rejected'), esimClosed: row('esim', 'cancelled') };
-      await prisma.officeTask.createMany({ data: Object.values(rows) });
+      await prisma.task.createMany({ data: Object.values(rows) });
       const output = await capturedOutput(async () => {
         for (const task of Object.values(rows)) expect([task.action, task.status, await taskAs(owner, task.id)]).toEqual([task.action, task.status, REFUSED]);
         expect(await detailOf(lineId)).toBe(REFUSED);

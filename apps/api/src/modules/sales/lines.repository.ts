@@ -44,7 +44,7 @@ export class LinesRepository {
 
   /** The last 40 tasks opened on a number, with who sent and who handled each. */
   tasksOfLine(lineId: string) {
-    return this.uow.prisma.officeTask.findMany({
+    return this.uow.prisma.task.findMany({
       where: { lineId },
       orderBy: { createdAt: 'desc' },
       take: 40,
@@ -109,7 +109,7 @@ export class LinesRepository {
 
   /** The open activation task that has reserved this number, if there is one. */
   numberReservedByTask(msisdn: string, db: Db = this.uow.prisma) {
-    return db.officeTask.findFirst({ where: { action: 'activate', status: 'working', msisdn }, select: { id: true } });
+    return db.task.findFirst({ where: { action: 'activate', status: 'working', msisdn }, select: { id: true } });
   }
 
   /** A package by its code with company and provider, and each renewal target with its own. */
@@ -136,7 +136,7 @@ export class LinesRepository {
 
   /** The task as it stands before its completion; the claim below decides. */
   task(id: string) {
-    return this.uow.prisma.officeTask.findUnique({ where: { id } });
+    return this.uow.prisma.task.findUnique({ where: { id } });
   }
 
   /** A package by its id with its company: the SIM rules a handed-back serial is checked against. */
@@ -157,7 +157,7 @@ export class LinesRepository {
 
   /** Marks an open task done by this handler (null: by the system, at settlement); the caller checks `count`. */
   claimTask(db: Db, id: string, assigneeId: string | null) {
-    return db.officeTask.updateMany({ where: { id, status: 'working' }, data: { status: 'done', assigneeId } });
+    return db.task.updateMany({ where: { id, status: 'working' }, data: { status: 'done', assigneeId } });
   }
 
   // What the settlement of a provider's verdict reads and writes besides the completion's own (ADR 0019, S.8).
@@ -173,7 +173,7 @@ export class LinesRepository {
 
   /** Writes the note an open task is read by: a provider failure makes it an ordinary branch task. */
   noteTask(db: Db, id: string, note: string) {
-    return db.officeTask.updateMany({ where: { id, status: 'working' }, data: { note } });
+    return db.task.updateMany({ where: { id, status: 'working' }, data: { note } });
   }
 
   /** Whether a note with these fixed words was already sent about the task, to anybody. */
@@ -186,9 +186,9 @@ export class LinesRepository {
   }
 
   /** Writes on a claimed task what its completion handed back. */
-  recordTaskResult(db: Db, id: string, data: Prisma.OfficeTaskUncheckedUpdateInput) {
+  recordTaskResult(db: Db, id: string, data: Prisma.TaskUncheckedUpdateInput) {
     assertStoredSealed(data.esimQr);
-    return db.officeTask.update({ where: { id }, data });
+    return db.task.update({ where: { id }, data });
   }
 
   /** A number with its package and company, as it stands inside the transaction. */

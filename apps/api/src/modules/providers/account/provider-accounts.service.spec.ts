@@ -30,7 +30,7 @@ function service() {
         ],
         create: async (args: unknown) => void created.push(args),
       },
-      officeTask: { findMany: async () => [{ action: 'activate', packageId: 'k1' }, { action: 'sim', packageId: 'k1' }] },
+      task: { findMany: async () => [{ action: 'activate', packageId: 'k1' }, { action: 'sim', packageId: 'k1' }] },
       package: { findMany: async () => [{ id: 'k1', branchCost: 3500, renewalBranchCost: 3000, provider: { code: 'sky' } }] },
     },
   } as never;

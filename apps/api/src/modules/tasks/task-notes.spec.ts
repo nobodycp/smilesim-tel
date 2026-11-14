@@ -26,7 +26,7 @@ function setup() {
         ? [{ id: 'owner', isBranchOwner: true, liveGrants: '', role: null, extraRoles: [] }]
         : accounts),
     },
-    officeTask: {
+    task: {
       findUnique: async () => ({ ...task }),
       updateMany: async ({ where, data }: { where: { status?: string; assigneeId?: string | null }; data: Record<string, unknown> }) => {
         if (where.status && task.status !== where.status) return { count: 0 };
@@ -35,7 +35,7 @@ function setup() {
         return { count: 1 };
       },
     },
-    officeTaskNote: { create: async ({ data }: { data: { body: string; internal: boolean } }) => { notes.push({ body: data.body, internal: data.internal }); return data; } },
+    taskNote: { create: async ({ data }: { data: { body: string; internal: boolean } }) => { notes.push({ body: data.body, internal: data.internal }); return data; } },
     // No task here has a provider operation: the lock on it finds no row (the manual route).
     $queryRaw: async () => [],
     $transaction: async (run: (tx: unknown) => Promise<unknown>) => run(kernel.prismaClient),

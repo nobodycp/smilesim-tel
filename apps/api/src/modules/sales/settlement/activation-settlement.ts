@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { OfficeTask, Prisma, ProviderOperation } from '../../../generated/prisma/client';
+import type { Task, Prisma, ProviderOperation } from '../../../generated/prisma/client';
 import { errorCode, logger } from '../../platform/log';
 import { ApiFailure } from '../../platform/api-failure';
 import { open } from '../../platform/secret-box';
@@ -37,7 +37,7 @@ export type Settled = 'applied' | 'exception' | 'handed-to-branch' | 'awaiting-d
 /** Raised inside T5 when the task or the operation is no longer what the settlement read: roll back, do nothing. */
 class NothingToApply extends Error {}
 
-type TaskRow = OfficeTask;
+type TaskRow = Task;
 type OperationRow = ProviderOperation;
 
 /**
@@ -268,7 +268,7 @@ export class ActivationSettlement {
  * words: never a serial or a code. Written by the settlement in the submitter's name (D12, `tellActor`), and by a
  * person's decision in that person's name, who is then not told what they did themselves.
  */
-export async function tellDeciders(uow: UnitOfWork, tasks: TasksService, tx: Prisma.TransactionClient, task: OfficeTask, actor: Actor, text: string, tellActor: boolean): Promise<WrittenNotice[]> {
+export async function tellDeciders(uow: UnitOfWork, tasks: TasksService, tx: Prisma.TransactionClient, task: Task, actor: Actor, text: string, tellActor: boolean): Promise<WrittenNotice[]> {
   const audience = await tasks.branchAccountsWith(tx, DECISION_GRANT);
   const payload: TaskNoticePayload = { taskId: task.id, action: task.action, msisdn: task.msisdn, authorName: SYSTEM_SENDER_NAME, handlerName: SYSTEM_SENDER_NAME, excerpt: text };
   return uow.notice.write(tx, audience, actor, { kind: 'task.note', payload }, tellActor ? { tellActor: true } : {});
@@ -278,7 +278,7 @@ export async function tellDeciders(uow: UnitOfWork, tasks: TasksService, tx: Pri
  * The task's submitter as the actor of everything a settlement writes (D12): the sale is the submitter's, whoever
  * or whatever settled it. A submitter that is gone is a target that is missing.
  */
-export async function submitterOf(lines: LinesRepository, task: OfficeTask): Promise<Actor> {
+export async function submitterOf(lines: LinesRepository, task: Task): Promise<Actor> {
   const user = await lines.userById(task.submitterId);
   if (!user) throw new ApiFailure(404, 'NOT_FOUND');
   return { id: user.id, loginName: user.loginName, nickname: user.nickname, layer: user.layer, isBranchOwner: user.isBranchOwner, grants: [], operatorId: user.id, impersonating: false };
@@ -291,7 +291,7 @@ export async function submitterOf(lines: LinesRepository, task: OfficeTask): Pro
  * written: the settlement of a provider's verdict runs it, and so does a person's decision that confirms or
  * corrects one (`provider-decisions.ts`), so a decision never moves the sale to the account that decided.
  */
-export async function applyAsSettlement(completion: TaskCompletion, tasks: TasksService, tx: Prisma.TransactionClient, task: OfficeTask, submitter: Actor, put: { handed: { iccid?: string; msisdn?: string }; handedQr: string | null; claim: Claim }): Promise<WrittenNotice[]> {
+export async function applyAsSettlement(completion: TaskCompletion, tasks: TasksService, tx: Prisma.TransactionClient, task: Task, submitter: Actor, put: { handed: { iccid?: string; msisdn?: string }; handedQr: string | null; claim: Claim }): Promise<WrittenNotice[]> {
   const { sale, amount } = await completion.applyClaimed({ tx, task, actor: submitter, note: '', line: null, handed: put.handed, handedQr: put.handedQr, claim: put.claim });
   return tasks.taskNotice(tx, 'done', task, submitter, { packageName: sale?.packageName ?? '', amount, handlerName: SYSTEM_SENDER_NAME }, false, true);
 }

@@ -104,7 +104,7 @@ export class ProvidersRepository {
 
   /** The action and package of every task in these statuses: what open tasks are about to cost. */
   tasksInStatuses(statuses: string[]) {
-    return this.uow.prisma.officeTask.findMany({ where: { status: { in: statuses } }, select: { action: true, packageId: true } });
+    return this.uow.prisma.task.findMany({ where: { status: { in: statuses } }, select: { action: true, packageId: true } });
   }
 
   packagesWithProvider() {
@@ -176,7 +176,7 @@ export class ProvidersRepository {
 
   /** The package of every task that carries this note and was created since the instant. */
   tasksNotedSince(note: string, since: Date) {
-    return this.uow.prisma.officeTask.findMany({
+    return this.uow.prisma.task.findMany({
       where: { note, createdAt: { gte: since } },
       select: { packageId: true },
     });

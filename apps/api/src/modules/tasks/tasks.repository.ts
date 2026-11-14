@@ -18,8 +18,8 @@ export class TasksRepository {
   constructor(private readonly uow: UnitOfWork) {}
 
   /** One page of the inbox (and one row more), each task with its people and the last note `notes` lets through. */
-  tasksPage(where: Prisma.OfficeTaskWhereInput, notes: Prisma.OfficeTaskNoteWhereInput) {
-    return this.uow.prisma.officeTask.findMany({
+  tasksPage(where: Prisma.TaskWhereInput, notes: Prisma.TaskNoteWhereInput) {
+    return this.uow.prisma.task.findMany({
       where,
       include: {
         submitter: true,
@@ -32,8 +32,8 @@ export class TasksRepository {
     });
   }
 
-  countTasks(where: Prisma.OfficeTaskWhereInput) {
-    return this.uow.prisma.officeTask.count({ where });
+  countTasks(where: Prisma.TaskWhereInput) {
+    return this.uow.prisma.task.count({ where });
   }
 
   /** Every package with its company and its provider. */
@@ -47,8 +47,8 @@ export class TasksRepository {
   }
 
   /** One task as its page shows it: its people, the notes `notes` lets through, and its number with the package. */
-  taskDetail(id: string, notes: Prisma.OfficeTaskNoteWhereInput) {
-    return this.uow.prisma.officeTask.findUnique({
+  taskDetail(id: string, notes: Prisma.TaskNoteWhereInput) {
+    return this.uow.prisma.task.findUnique({
       where: { id },
       include: {
         submitter: true,
@@ -70,16 +70,16 @@ export class TasksRepository {
 
   /** The task as it stands before a transaction; the guarded writes below decide. */
   task(id: string) {
-    return this.uow.prisma.officeTask.findUnique({ where: { id } });
+    return this.uow.prisma.task.findUnique({ where: { id } });
   }
 
-  addNote(db: Db, data: Prisma.OfficeTaskNoteUncheckedCreateInput) {
-    return db.officeTaskNote.create({ data });
+  addNote(db: Db, data: Prisma.TaskNoteUncheckedCreateInput) {
+    return db.taskNote.create({ data });
   }
 
   /** Names the handler of an open task nobody took; the caller checks `count`. */
   takeTask(db: Db, id: string, assigneeId: string, log: string) {
-    return db.officeTask.updateMany({
+    return db.task.updateMany({
       where: { id, status: 'working', assigneeId: null },
       data: { assigneeId, log },
     });
@@ -87,7 +87,7 @@ export class TasksRepository {
 
   /** Gives an open task back, only by the one who took it; the caller checks `count`. */
   releaseTask(db: Db, id: string, assigneeId: string, log: string) {
-    return db.officeTask.updateMany({
+    return db.task.updateMany({
       where: { id, status: 'working', assigneeId },
       data: { assigneeId: null, log },
     });
@@ -95,7 +95,7 @@ export class TasksRepository {
 
   /** Closes an open task as refused, with the reason; the caller checks `count`. */
   rejectTask(db: Db, id: string, reason: string, assigneeId: string) {
-    return db.officeTask.updateMany({
+    return db.task.updateMany({
       where: { id, status: 'working' },
       data: { status: 'cancelled', resultNote: reason, assigneeId },
     });
@@ -103,7 +103,7 @@ export class TasksRepository {
 
   /** Closes a task its own submitter withdraws while it is open; the caller checks `count`. */
   cancelTask(db: Db, id: string, submitterId: string) {
-    return db.officeTask.updateMany({
+    return db.task.updateMany({
       where: { id, submitterId, status: { in: ['pending', 'working'] } },
       data: { status: 'cancelled', resultNote: null, assigneeId: null },
     });
@@ -111,7 +111,7 @@ export class TasksRepository {
 
   /** The open task for this number and operation, if there is one (rule 2.3). */
   openTaskOn(db: Db, lineId: string, action: string) {
-    return db.officeTask.findFirst({ where: { lineId, action, status: 'working' }, select: { id: true } });
+    return db.task.findFirst({ where: { lineId, action, status: 'working' }, select: { id: true } });
   }
 
   /**
@@ -120,16 +120,16 @@ export class TasksRepository {
    * request key (D14). An insert that meets a row another transaction has not committed yet waits for it, so the
    * answer is final. Answers the new row, or null when the database refused it.
    */
-  async insertTask(db: Db, data: Omit<Prisma.OfficeTaskCreateManyInput, 'id'>) {
+  async insertTask(db: Db, data: Omit<Prisma.TaskCreateManyInput, 'id'>) {
     assertStoredSealed(data.esimQr);
     const id = randomUUID();
-    const made = await db.officeTask.createMany({ data: [{ id, ...data }], skipDuplicates: true });
-    return made.count === 1 ? db.officeTask.findUnique({ where: { id } }) : null;
+    const made = await db.task.createMany({ data: [{ id, ...data }], skipDuplicates: true });
+    return made.count === 1 ? db.task.findUnique({ where: { id } }) : null;
   }
 
   /** The task a request key opened (ADR 0019, D14), if there is one: its id and the fingerprint it was sent with. */
   taskByRequestKey(db: Db, requestKey: string) {
-    return db.officeTask.findUnique({ where: { requestKey }, select: { id: true, requestHash: true } });
+    return db.task.findUnique({ where: { requestKey }, select: { id: true, requestHash: true } });
   }
 
   packageName(db: Db, id: string) {
@@ -147,6 +147,6 @@ export class TasksRepository {
   // A frozen account's tasks (slice R.8: from `AccountsRepository`, unchanged).
   /** The tasks this account is working on now. */
   openTasksHandledBy(assigneeId: string) {
-    return this.uow.prisma.officeTask.findMany({ where: { assigneeId, status: 'working' }, select: { id: true, log: true } });
+    return this.uow.prisma.task.findMany({ where: { assigneeId, status: 'working' }, select: { id: true, log: true } });
   }
 }

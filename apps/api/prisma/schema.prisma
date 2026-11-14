@@ -49,10 +49,10 @@ model User {
   walletEntries          WalletEntry[]    @relation("WalletOwner")
   actedEntries           WalletEntry[]    @relation("WalletActor")
   posLines               Line[]           @relation("LinePos")
-  posTasks               OfficeTask[]     @relation("TaskPos")
-  submittedTasks         OfficeTask[]     @relation("TaskSubmitter")
-  assignedTasks          OfficeTask[]     @relation("TaskAssignee")
-  taskNotes              OfficeTaskNote[]
+  posTasks               Task[]     @relation("TaskPos")
+  submittedTasks         Task[]     @relation("TaskSubmitter")
+  assignedTasks          Task[]     @relation("TaskAssignee")
+  taskNotes              TaskNote[]
   notices                Notice[]
   accessLogs             AccessLog[]
   packageTerms           UserPackage[]
@@ -236,7 +236,7 @@ model ProviderOperation {
   sentAt         DateTime?
   /// The activation task this operation settles (ADR 0019, D3): at most one operation per task, for ever.
   taskId         String?   @unique
-  task           OfficeTask? @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  task           Task? @relation(fields: [taskId], references: [id], onDelete: Restrict)
   /// When the verdict was applied to the task and the money (the line and the capture, or the task left to the
   /// branch). Empty on a settled operation means the settlement still has to run.
   appliedAt      DateTime?
@@ -425,8 +425,8 @@ model Package {
   providerProductCode    String?
   esimPrice              Int?
   lines                  Line[]
-  tasks                  OfficeTask[]     @relation("TaskPackage")
-  nextTasks              OfficeTask[]     @relation("TaskNextPackage")
+  tasks                  Task[]     @relation("TaskPackage")
+  nextTasks              Task[]     @relation("TaskNextPackage")
   userTerms              UserPackage[]
   sellPrices             SellPrice[]
   renewals               PackageRenewal[]
@@ -506,7 +506,7 @@ model Line {
   pos           User         @relation("LinePos", fields: [posId], references: [id])
   terms         Json
   createdAt     DateTime     @default(now())
-  tasks         OfficeTask[]
+  tasks         Task[]
   entries       WalletEntry[]
   providerOperations ProviderOperation[]
 
@@ -516,7 +516,9 @@ model Line {
   @@index([iccid])
 }
 
-model OfficeTask {
+/// A branch task. Slice R.10 (ADR 0020): the model is `Task`; the table keeps its name, `OfficeTask`, with its
+/// constraints and indexes, so nothing in the database changes and no migration is made.
+model Task {
   id            String           @id @default(uuid())
   action        String
   status        String
@@ -550,19 +552,21 @@ model OfficeTask {
   requestHash   String?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
-  notes         OfficeTaskNote[]
+  notes         TaskNote[]
   providerOperation ProviderOperation?
 
   @@index([status, createdAt])
   @@index([submitterId, createdAt])
   // Tasks an account holds (freezing returns them).
   @@index([assigneeId, status])
+  @@map("OfficeTask")
 }
 
-model OfficeTaskNote {
+/// A note on a task. Slice R.10: the model is `TaskNote`; the table keeps its name, `OfficeTaskNote`.
+model TaskNote {
   id        String     @id @default(uuid())
   taskId    String
-  task      OfficeTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task      Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   authorId  String
   author    User       @relation(fields: [authorId], references: [id])
   body      String
@@ -571,6 +575,7 @@ model OfficeTaskNote {
   createdAt DateTime   @default(now())
 
   @@index([taskId, createdAt])
+  @@map("OfficeTaskNote")
 }
 
 model ActivityEvent {

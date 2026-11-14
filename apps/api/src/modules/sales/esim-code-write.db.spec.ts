@@ -32,7 +32,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
   const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
   const number = () => `05${Math.floor(Math.random() * 1e8).toString().padStart(8, '0')}`;
   const lineOf = (id: string) => prisma.line.findUniqueOrThrow({ where: { id } });
-  const taskOf = (id: string) => prisma.officeTask.findUniqueOrThrow({ where: { id } });
+  const taskOf = (id: string) => prisma.task.findUniqueOrThrow({ where: { id } });
   /** A line as it stands, with the code it holds. */
   const newLine = async (over: { esim?: boolean; esimQr?: string | null } = {}) => {
     const id = randomUUID();
@@ -46,7 +46,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
       balance: wallet.balance,
       held: wallet.held,
       lines: await prisma.line.findMany({ where: { posId: ids.pos }, orderBy: { id: 'asc' } }),
-      tasks: await prisma.officeTask.findMany({ where: { posId: ids.pos }, orderBy: { id: 'asc' } }),
+      tasks: await prisma.task.findMany({ where: { posId: ids.pos }, orderBy: { id: 'asc' } }),
       entries: await prisma.walletEntry.count({ where: { userId: ids.pos } }),
     };
   };
@@ -94,7 +94,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
   });
 
   afterAll(async () => {
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await prisma.package.deleteMany({ where: { id: ids.pkg } });
@@ -156,7 +156,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
     const lineId = await newLine();
     const taskId = randomUUID();
     const iccid = serial();
-    await prisma.officeTask.create({ data: { id: taskId, action: 'sim', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: 0, esim: true, lineId, iccid, esimQr: QR_OLD } });
+    await prisma.task.create({ data: { id: taskId, action: 'sim', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: 0, esim: true, lineId, iccid, esimQr: QR_OLD } });
     expect(await service.completeTask(owner, taskId, {})).toEqual({ ok: true });
     expectSealed((await lineOf(lineId)).esimQr, QR_OLD);
     expect((await lineOf(lineId)).iccid).toBe(iccid);

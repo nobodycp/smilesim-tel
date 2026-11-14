@@ -28,17 +28,17 @@ suite('sealing stored eSIM codes (PostgreSQL)', () => {
   const serial = () => `89${Math.floor(Math.random() * 1e17).toString().padStart(17, '0')}`;
   type Row = { id: string; esimQr: string | null; updatedAt?: Date };
   const lines = (): Promise<Row[]> => prisma.line.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true }, orderBy: { id: 'asc' } });
-  const tasks = (): Promise<Row[]> => prisma.officeTask.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true, updatedAt: true }, orderBy: { id: 'asc' } });
+  const tasks = (): Promise<Row[]> => prisma.task.findMany({ where: { posId: ids.pos }, select: { id: true, esimQr: true, updatedAt: true }, orderBy: { id: 'asc' } });
   const clearOf = (rows: Row[]) => rows.filter((row) => row.esimQr && !row.esimQr.startsWith('v1:'));
   const mine = { posId: ids.pos };
   /** Puts the rows back: 7 clear lines, one sealed, one sealed that does not open, one with no code; 5 clear tasks and a sealed one. */
   const reset = async () => {
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     const line = (esimQr: string | null) => ({ id: randomUUID(), msisdn: number(), iccid: serial(), esim: true, esimQr, status: 'active', packageId: ids.pkg, posId: ids.pos, endsAt: new Date(Date.now() + 20 * 86_400_000), terms: {} });
     await prisma.line.createMany({ data: [...Array.from({ length: 7 }, (_, n) => line(code(n))), line(sealedBefore), line(damaged), line(null)] });
     const task = (esimQr: string | null) => ({ id: randomUUID(), action: 'activate', status: 'done', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: 0, esim: true, esimQr });
-    await prisma.officeTask.createMany({ data: [...Array.from({ length: 5 }, (_, n) => task(code(100 + n))), task(sealedBefore)] });
+    await prisma.task.createMany({ data: [...Array.from({ length: 5 }, (_, n) => task(code(100 + n))), task(sealedBefore)] });
   };
   /** Each stored value opens to the code it held before, whatever its id. */
   const opened = (rows: Row[]) => rows.map((row) => (row.esimQr && row.esimQr !== damaged ? open(row.esimQr) : row.esimQr)).sort();
@@ -72,7 +72,7 @@ suite('sealing stored eSIM codes (PostgreSQL)', () => {
   });
 
   afterAll(async () => {
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await prisma.package.deleteMany({ where: { id: ids.pkg } });
     await prisma.company.deleteMany({ where: { id: ids.company } });

@@ -27,8 +27,8 @@ pushed; the owner approves before one push and one CI run.
 | R.6 Sales | DONE | `6eeea2f` |
 | R.7 Providers | DONE | `9ec5b65` |
 | R.8 Remaining domains | DONE | `dc59623` |
-| R.9 Umbrella removal | DONE | see its section |
-| R.10 Prisma model names | pending | |
+| R.9 Umbrella removal | DONE | `71f38aa` |
+| R.10 Prisma model names | DONE | see its section |
 | R.A Authentication | pending | |
 | W.1, W.2 Web names | pending | |
 | R.11a HTTP security | pending | |
@@ -227,7 +227,7 @@ pushed; the owner approves before one push and one CI run.
   recorded in the open items, not attributed to load.
 - **Counts:** layering 7 → **0**, mutual 3 → **0**.
 
-## R.9 Umbrella removal — DONE
+## R.9 Umbrella removal — DONE (`71f38aa`)
 
 - **Umbrella gone:** `modules/office/office.module.ts` deleted; `modules/registry.ts` lists the sixteen domain
   modules in the order the umbrella imported them, and `DuplicateGuardModule` (`modules/platform/`) registers the
@@ -248,3 +248,18 @@ pushed; the owner approves before one push and one CI run.
   above, fixed after the run), 10 failed in `platform/ports.db.spec.ts` (its `beforeAll`, six inserts, over 5 s,
   as in the R.8 run; alone and beside the heavy database specs it passes; recorded in the open items with what is
   and is not known). Architecture 64/64 (rules), lint, typecheck, check:copy 0.
+
+## R.10 Prisma model names — DONE
+
+- `schema.prisma`: `model OfficeTask` → `model Task` + `@@map("OfficeTask")`, `model OfficeTaskNote` → `model TaskNote`
+  + `@@map("OfficeTaskNote")`; relation types follow; relation field names were already neutral (`task`, `tasks`).
+- **No schema drift, proved:** `DATABASE_URL=<test db> npx prisma migrate diff --from-config-datasource --to-schema
+  prisma/schema.prisma --script` answered "This is an empty migration." before and after the rename. No migration
+  created; no table, column, constraint or index renamed.
+- **Code:** delegates `officeTask` → `task`, `officeTaskNote` → `taskNote` (including the in-memory test tables);
+  `Prisma.OfficeTask*` → `Prisma.Task*`; the generated type `OfficeTask` → `Task` in the three settlement files. Kept:
+  raw SQL `"OfficeTask"`, constraint names (`OfficeTask_requestKey_key`), the sealing script's table list and its
+  report keys (table names). The fault-injection spec's model name is `Task`.
+- **Results:** typecheck 0; tasks, sales, sealing, settlement schema, architecture, worker, HTTP contract and access
+  specs on PostgreSQL and Redis: 45 files, 1005 tests passed.
+- **Rollback:** a revert; the database is untouched, so the previous image runs against it as before.

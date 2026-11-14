@@ -130,7 +130,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   });
 
   it('2.1 unguarded-status-write: a status changes only through a guarded write', () => {
-    check('unguarded-status-write', hits(production, /\.(line|officeTask)\.update\(/, (match, text) => {
+    check('unguarded-status-write', hits(production, /\.(line|task)\.update\(/, (match, text) => {
       const call = text.slice(match.index, text.indexOf('});', match.index) + 3);
       return /\bstatus\s*:/.test(call);
     }));

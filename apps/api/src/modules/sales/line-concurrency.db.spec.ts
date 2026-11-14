@@ -59,7 +59,7 @@ suite('operations on one number at the same moment (PostgreSQL)', () => {
 
   afterAll(async () => {
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { id: ids.line } });
     await prisma.package.deleteMany({ where: { id: ids.pkg } });
     await prisma.company.deleteMany({ where: { id: ids.company } });

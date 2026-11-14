@@ -93,7 +93,7 @@ async function office() {
       },
     },
     // No open activation task has reserved the serial a SIM swap asks for.
-    officeTask: { findFirst: async () => null },
+    task: { findFirst: async () => null },
     line: {
       findUnique: async () => line,
       findFirst: async () => null,
@@ -117,7 +117,7 @@ async function office() {
       count: async () => 1,
       update: tx.line.update,
     },
-    officeTask: { findMany: async () => [] },
+    task: { findMany: async () => [] },
     package: { findMany: async () => [pkg] },
     packageAddon: { findMany: async () => [] },
     packageSwitch: { findMany: async () => [] },

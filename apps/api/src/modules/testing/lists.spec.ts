@@ -418,7 +418,7 @@ describe('time-ordered lists', () => {
       assignee: null,
       notes: [],
     }));
-    const { service, gate } = await serviceWith({ officeTask: table(tasks), package: { findMany: async () => [{ id: 'pa', name: '400' }] } });
+    const { service, gate } = await serviceWith({ task: table(tasks), package: { findMany: async () => [{ id: 'pa', name: '400' }] } });
     const ids: string[] = [];
     const sizes: number[] = [];
     let cursor: string | undefined;
@@ -485,7 +485,7 @@ describe('task reading follows the number', () => {
     const service = new ApiFacade(auth);
     (service as unknown as { prismaClient: unknown }).prismaClient = {
       user: { findUnique: async () => ({ liveGrants: grants, isBranchOwner: owner }), findMany: async () => chain },
-      officeTask: table(rows),
+      task: table(rows),
       package: { findMany: async () => [{ id: 'pa', name: '400' }] },
     };
     return { service, gate: { sessionId } };

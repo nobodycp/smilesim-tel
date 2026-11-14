@@ -135,7 +135,7 @@ export class AccountsRepository {
 
   /** Tasks the account sent, was the point of sale of, or handled. */
   taskCount(db: Db, id: string) {
-    return db.officeTask.count({ where: { OR: [{ submitterId: id }, { posId: id }, { assigneeId: id }] } });
+    return db.task.count({ where: { OR: [{ submitterId: id }, { posId: id }, { assigneeId: id }] } });
   }
 
   /** Wallet entries on the account's wallet or made by it. */

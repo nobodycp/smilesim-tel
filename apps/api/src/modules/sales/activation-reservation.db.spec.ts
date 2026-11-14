@@ -37,7 +37,7 @@ suite('activation reservations (PostgreSQL)', () => {
   /** Creates the line at once. */
   const activateNow = (over: Record<string, unknown>) => service.activate(pos, body({ outcome: 'success', ...over }));
   const wallet = () => prisma.wallet.findUniqueOrThrow({ where: { userId: ids.pos } });
-  const openTasks = () => prisma.officeTask.findMany({ where: { posId: ids.pos, action: 'activate', status: 'working' } });
+  const openTasks = () => prisma.task.findMany({ where: { posId: ids.pos, action: 'activate', status: 'working' } });
   const entries = (kind: string) => prisma.walletEntry.count({ where: { userId: ids.pos, kind } });
 
   const outcomes = async (runs: Promise<unknown>[]) => {
@@ -89,7 +89,7 @@ suite('activation reservations (PostgreSQL)', () => {
   afterEach(async () => {
     // Each test starts from no tasks, no lines, nothing held and a full wallet.
     await prisma.walletEntry.deleteMany({ where: { userId: { in: [ids.owner, ids.pos] } } });
-    await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+    await prisma.task.deleteMany({ where: { posId: ids.pos } });
     await prisma.line.deleteMany({ where: { posId: ids.pos } });
     await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: 1_000_000, held: 0, ceiling: 0 } });
   });
@@ -110,22 +110,22 @@ suite('activation reservations (PostgreSQL)', () => {
     const row = (over: Record<string, unknown>) => ({ action: 'activate', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: -PRICE, held: 0, ...over });
     const iccid = serial();
     const msisdn = number();
-    const first = await prisma.officeTask.create({ data: row({ iccid, msisdn }) });
+    const first = await prisma.task.create({ data: row({ iccid, msisdn }) });
     // Straight to the table, past every lock and check of the service.
-    await expect(prisma.officeTask.create({ data: row({ iccid, msisdn: number() }) })).rejects.toMatchObject({ code: 'P2002' });
-    await expect(prisma.officeTask.create({ data: row({ iccid: serial(), msisdn }) })).rejects.toMatchObject({ code: 'P2002' });
+    await expect(prisma.task.create({ data: row({ iccid, msisdn: number() }) })).rejects.toMatchObject({ code: 'P2002' });
+    await expect(prisma.task.create({ data: row({ iccid: serial(), msisdn }) })).rejects.toMatchObject({ code: 'P2002' });
     // Changing an open task onto a reserved serial is refused the same way.
-    const other = await prisma.officeTask.create({ data: row({ iccid: serial(), msisdn: number() }) });
-    await expect(prisma.officeTask.update({ where: { id: other.id }, data: { iccid } })).rejects.toMatchObject({ code: 'P2002' });
+    const other = await prisma.task.create({ data: row({ iccid: serial(), msisdn: number() }) });
+    await expect(prisma.task.update({ where: { id: other.id }, data: { iccid } })).rejects.toMatchObject({ code: 'P2002' });
     // Only an open activation reserves: a SIM-swap task, a closed activation, and tasks with no serial or number do not.
-    await prisma.officeTask.create({ data: row({ action: 'sim', iccid, msisdn }) });
-    await prisma.officeTask.create({ data: row({ status: 'done', iccid, msisdn }) });
-    await prisma.officeTask.create({ data: row({ status: 'cancelled', iccid, msisdn }) });
-    await prisma.officeTask.create({ data: row({ iccid: null, msisdn: null }) });
-    await prisma.officeTask.create({ data: row({ iccid: null, msisdn: null }) });
+    await prisma.task.create({ data: row({ action: 'sim', iccid, msisdn }) });
+    await prisma.task.create({ data: row({ status: 'done', iccid, msisdn }) });
+    await prisma.task.create({ data: row({ status: 'cancelled', iccid, msisdn }) });
+    await prisma.task.create({ data: row({ iccid: null, msisdn: null }) });
+    await prisma.task.create({ data: row({ iccid: null, msisdn: null }) });
     // The reservation ends when the task leaves `working`, with no other write.
-    await prisma.officeTask.update({ where: { id: first.id }, data: { status: 'cancelled' } });
-    await prisma.officeTask.create({ data: row({ iccid, msisdn }) });
+    await prisma.task.update({ where: { id: first.id }, data: { status: 'cancelled' } });
+    await prisma.task.create({ data: row({ iccid, msisdn }) });
   });
 
   it('opens one task and holds once when ten activations name one serial at the same moment', async () => {
@@ -168,7 +168,7 @@ suite('activation reservations (PostgreSQL)', () => {
     expect(await outcomes([service.completeTask(owner, rename.taskId, { msisdn })])).toMatchObject({ done: 0, refused: ['409 NUMBER_TAKEN'], crashed: [] });
     // The line is as it was, and both tasks are still open for the branch to reject.
     expect(await prisma.line.findUniqueOrThrow({ where: { id: made.line.id } })).toMatchObject({ iccid: lineBefore.iccid, msisdn: lineBefore.msisdn });
-    expect((await prisma.officeTask.findMany({ where: { id: { in: [swap.taskId, rename.taskId] } } })).map((task) => task.status)).toEqual(['working', 'working']);
+    expect((await prisma.task.findMany({ where: { id: { in: [swap.taskId, rename.taskId] } } })).map((task) => task.status)).toEqual(['working', 'working']);
     // With a free card and a free number the same completions go through: the line's own serial and number do not
     // stand in its way.
     await service.rejectTask(owner, swap.taskId, { reason: 'reserved by another sale' });
@@ -218,7 +218,7 @@ suite('activation reservations (PostgreSQL)', () => {
       const iccid = serial();
       const result = await outcomes([openTask({ iccid }), activateNow({ iccid })]);
       expect(result).toEqual({ done: 1, refused: ['409 SIM_TAKEN'], crashed: [] });
-      const [tasks, lines] = await Promise.all([prisma.officeTask.count({ where: { iccid, status: 'working' } }), prisma.line.count({ where: { iccid } })]);
+      const [tasks, lines] = await Promise.all([prisma.task.count({ where: { iccid, status: 'working' } }), prisma.line.count({ where: { iccid } })]);
       expect(tasks + lines).toBe(1);
     }
   });
@@ -247,8 +247,8 @@ suite('activation reservations (PostgreSQL)', () => {
     expect(await wallet()).toMatchObject({ balance: 1_000_000 - PRICE, held: 0 });
     expect(await openTasks()).toHaveLength(0);
     // The reservation is over in the table (a raw row is accepted again); the line is what refuses now.
-    const raw = await prisma.officeTask.create({ data: { action: 'activate', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: 0, iccid, msisdn } });
-    await prisma.officeTask.delete({ where: { id: raw.id } });
+    const raw = await prisma.task.create({ data: { action: 'activate', status: 'working', posId: ids.pos, packageId: ids.pkg, submitterId: ids.pos, posDelta: 0, iccid, msisdn } });
+    await prisma.task.delete({ where: { id: raw.id } });
     expect(await outcomes([openTask({ iccid })])).toMatchObject({ refused: ['409 SIM_TAKEN'] });
     expect(await outcomes([openTask({ iccid: serial(), msisdn })])).toMatchObject({ refused: ['409 NUMBER_TAKEN'] });
   });
@@ -260,9 +260,9 @@ suite('activation reservations (PostgreSQL)', () => {
     await openTask({ iccid });
     expect(await outcomes([service.completeTask(owner, waiting.taskId, { iccid })])).toMatchObject({ done: 0, refused: ['409 SIM_TAKEN'], crashed: [] });
     // Nothing of the completion stayed: the task is open, its hold is held, no line was made.
-    expect(await prisma.officeTask.findUniqueOrThrow({ where: { id: waiting.taskId } })).toMatchObject({ status: 'working' });
+    expect(await prisma.task.findUniqueOrThrow({ where: { id: waiting.taskId } })).toMatchObject({ status: 'working' });
     expect(await prisma.line.count({ where: { posId: ids.pos } })).toBe(0);
-    expect(await wallet()).toMatchObject({ balance: 1_000_000, held: 2 * PRICE + (await prisma.officeTask.findUniqueOrThrow({ where: { id: waiting.taskId } })).held - PRICE });
+    expect(await wallet()).toMatchObject({ balance: 1_000_000, held: 2 * PRICE + (await prisma.task.findUniqueOrThrow({ where: { id: waiting.taskId } })).held - PRICE });
   });
 
   it('holds nothing and leaves no task when the wallet cannot cover the price', async () => {
@@ -270,7 +270,7 @@ suite('activation reservations (PostgreSQL)', () => {
     const iccid = serial();
     expect(await outcomes([openTask({ iccid })])).toEqual({ done: 0, refused: ['400 BALANCE_CEILING'], crashed: [] });
     // The task was written before the hold was refused: the transaction took it back.
-    expect(await prisma.officeTask.count({ where: { posId: ids.pos } })).toBe(0);
+    expect(await prisma.task.count({ where: { posId: ids.pos } })).toBe(0);
     expect(await wallet()).toMatchObject({ balance: PRICE - 1, held: 0 });
     expect(await entries('hold')).toBe(0);
     // And the serial is not reserved by a task that never existed.
@@ -286,7 +286,7 @@ suite('activation reservations (PostgreSQL)', () => {
     const result = await outcomes([openTask({ iccid, msisdn })]);
     expect(result.done).toBe(0);
     expect(result.crashed.join()).toContain('notices are down');
-    expect(await prisma.officeTask.count({ where: { posId: ids.pos } })).toBe(0);
+    expect(await prisma.task.count({ where: { posId: ids.pos } })).toBe(0);
     expect(await wallet()).toMatchObject({ balance: 1_000_000, held: 0 });
     expect(await entries('hold')).toBe(0);
     // Neither the serial nor the number stayed reserved.
@@ -320,17 +320,17 @@ suite('activation reservations (PostgreSQL)', () => {
       expect(result.refused.every((refusal) => refusal === '409 SIM_TAKEN' || refusal === '409 NUMBER_TAKEN')).toBe(true);
       // One holder each, whoever won.
       for (const iccid of [shared, handed]) {
-        const [tasks, lines] = await Promise.all([prisma.officeTask.count({ where: { iccid, action: 'activate', status: 'working' } }), prisma.line.count({ where: { iccid, status: { not: 'disconnected' } } })]);
+        const [tasks, lines] = await Promise.all([prisma.task.count({ where: { iccid, action: 'activate', status: 'working' } }), prisma.line.count({ where: { iccid, status: { not: 'disconnected' } } })]);
         expect(tasks + lines).toBe(1);
       }
-      const [numberTasks, numberLines] = await Promise.all([prisma.officeTask.count({ where: { msisdn: sharedNumber, action: 'activate', status: 'working' } }), prisma.line.count({ where: { msisdn: sharedNumber } })]);
+      const [numberTasks, numberLines] = await Promise.all([prisma.task.count({ where: { msisdn: sharedNumber, action: 'activate', status: 'working' } }), prisma.line.count({ where: { msisdn: sharedNumber } })]);
       expect(numberTasks + numberLines).toBe(1);
       // The wallet adds up: what is held is the open tasks' holds, and the balance fell by the lines sold.
-      const [state, open, sold] = await Promise.all([wallet(), prisma.officeTask.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }), prisma.walletEntry.aggregate({ where: { userId: ids.pos, kind: 'activate' }, _sum: { amount: true } })]);
+      const [state, open, sold] = await Promise.all([wallet(), prisma.task.aggregate({ where: { posId: ids.pos, status: 'working' }, _sum: { held: true } }), prisma.walletEntry.aggregate({ where: { userId: ids.pos, kind: 'activate' }, _sum: { amount: true } })]);
       expect(state.held).toBe(open._sum.held ?? 0);
       expect(state.balance).toBe(1_000_000 + (sold._sum.amount ?? 0));
       await prisma.walletEntry.deleteMany({ where: { userId: ids.pos } });
-      await prisma.officeTask.deleteMany({ where: { posId: ids.pos } });
+      await prisma.task.deleteMany({ where: { posId: ids.pos } });
       await prisma.line.deleteMany({ where: { posId: ids.pos } });
       await prisma.wallet.update({ where: { userId: ids.pos }, data: { balance: 1_000_000, held: 0 } });
     }

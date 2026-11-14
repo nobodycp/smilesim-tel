@@ -94,7 +94,12 @@ goes down; the backend map updated in the same commit.
   Swagger tag a module; `recordOffice`/`recordOfficeOrFail` → `record`/`recordOrFail`, the request's `officeActor` →
   `actor`. Found and fixed: the move made two web cross-check suites skip silently (17 tests, wrong relative path);
   each now has a test that fails if it cannot find the web. Commit: see `git log --grep 'R.9'`.
-- [ ] **R.10** Prisma models `Task`, `TaskNote` with `@@map`; no migration.
+- [x] **R.10** Prisma models `Task`, `TaskNote` with `@@map("OfficeTask")`, `@@map("OfficeTaskNote")`; no migration.
+  `prisma migrate diff --from-config-datasource --to-schema` against the migrated test database: empty before the
+  change and empty after it (constraint and index names follow the table, so they did not move). Code: the client's
+  delegates `officeTask`/`officeTaskNote` → `task`/`taskNote`, the types `Prisma.OfficeTask*` → `Prisma.Task*`; raw
+  SQL, constraint names and the sealing script's table list keep `OfficeTask` (database names). The fault-injection
+  spec names the model `Task` (Prisma's query hooks are given the model's name). Commit: see `git log --grep 'R.10'`.
 - [ ] **R.A** `auth.controller.ts` thinned; the seven unrecorded writes judged.
 - [ ] **W.1, W.2** Web names.
 - [ ] **R.11a** The duplicate guard and the path-named middleware rules separated from the prefix.
