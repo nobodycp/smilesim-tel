@@ -30,6 +30,8 @@ jobs:
         working-directory: apps/web
       - run: npm run lint
       - run: npm run check:copy
+      # Logical utilities, token colours, no new stylesheet (ADR 0022); --self-test runs first.
+      - run: npm run check:styles
       - run: npm run typecheck
       - run: npm run test:api
       - run: npm run build
