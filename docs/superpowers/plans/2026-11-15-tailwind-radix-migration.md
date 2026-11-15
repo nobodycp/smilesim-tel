@@ -15,7 +15,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 |---|---|---|
 | T0 Decision docs | T0.1 | done — T0.1 4478666 |
 | T1 Foundation | T1.1–T1.4 | in progress — T1.1 d4ed139, T1.2 bd4b1d8; T1.3a d35dd74, T1.3b 67fb314; T1.3c ebca557; T1.4 9f6efc8 |
-| T2 Primitives (`components/ui`) | T2.1–T2.9 | in progress — T2.1 67e9a7f |
+| T2 Primitives (`components/ui`) | T2.1–T2.9 | in progress — T2.1 67e9a7f, T2.2 8683ea4 |
 | T3 Shell and frames | T3.1–T3.3 | not started |
 | T4 Screens | T4.1–T4.10 | not started |
 | T5 Delete legacy CSS | T5.1–T5.2 | not started |
@@ -131,7 +131,7 @@ caller in the same commit.
 - Variants: primary (crimson fill, `--rd-accent-fill`), secondary, ghost, danger (outline), link; sizes sm/md;
   `asChild` via Radix `Slot`; pressed (`aria-pressed`), loading, disabled. D2/D8/D13/D14/D19 hold.
 
-### T2.2 Fields
+### T2.2 Fields — 8683ea4
 
 - Files: `components/ui/input.tsx`, `components/ui/textarea.tsx`, `components/ui/label.tsx`, `components/ui/field.tsx`
   (label + control + help + error, ids wired), `components/price-field.tsx`, `components/name-field.tsx`,
