@@ -14,7 +14,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 | Phase | Slices | State |
 |---|---|---|
 | T0 Decision docs | T0.1 | done — T0.1 4478666 |
-| T1 Foundation | T1.1–T1.4 | in progress — T1.1 d4ed139, T1.2 bd4b1d8; T1.3a d35dd74, T1.3b 67fb314 |
+| T1 Foundation | T1.1–T1.4 | in progress — T1.1 d4ed139, T1.2 bd4b1d8; T1.3a d35dd74, T1.3b 67fb314; T1.3c ebca557 |
 | T2 Primitives (`components/ui`) | T2.1–T2.9 | not started |
 | T3 Shell and frames | T3.1–T3.3 | not started |
 | T4 Screens | T4.1–T4.10 | not started |
@@ -102,7 +102,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 ### T1.3 Tests select by role, label or test id (three slices)
 
 - T1.3a — d35dd74 specs `account-head` … `finance-head` (alphabetical, 18 files); T1.3b — 67fb314 `home-overview` … `profits` (18 files);
-  T1.3c `provider-accounts` … `users-desk` (rest), plus `tests/desk.ts`.
+  T1.3c — ebca557 `provider-accounts` … `users-desk` (rest), plus `tests/desk.ts`.
 - Files: those `apps/web/tests/*.spec.ts` files, and the components that gain a `data-testid` (each named in the slice
   notes).
 - Steps: every `locator('.<class>…')` / `locator('<tag>.<class>')` that targets a styling class becomes `getByRole`,
