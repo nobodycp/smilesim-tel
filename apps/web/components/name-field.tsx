@@ -3,6 +3,7 @@
 import { X } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { cn } from '../lib/cn';
 import { markOf, rankNames, type NameOption } from '../lib/name-match';
 import { usePrefs } from '../lib/prefs';
 
@@ -19,6 +20,17 @@ const LIMIT = 8;
  *
  * `allLabel`: a filter's «الكل» — the field's placeholder while nothing is picked; clearing goes back to it.
  * The list is drawn in a portal with a fixed position, so a filter chip's clipping or a dialog does not cut it.
+ *
+ * Look (Tailwind migration T2.2), ported from graphite.css's NameField block: the wrapper is a flex row the «×» sits
+ * in at the inline end (24px, 32px under 768px, 4px corners, `--rd-muted`, `--rd-surface-2` and ink on hover, the 2px
+ * crimson focus outline); the list is the raised `--rd-surface-2` card (an 11% ink hairline and the pop shadow, 4px
+ * padding, 6px corners, at most 360px / 92vw wide and 320px / 50vh tall, a thin scrollbar, the filter list's 140ms
+ * entrance), each option 34px (44px under 768px), 13px medium `--rd-ink-2`, the active one on `--rd-surface` in ink, the
+ * picked one crimson and bold, the matched part 800 ink, the hint 11px medium `--rd-muted`.
+ * The text field itself takes the look of the place it sits in (the filter chip, the pane, the dialog: their legacy
+ * rules, until those slices move them); it only grows to fill the row here. `data-slot="name-field"` is the handle those
+ * rules read. Two legacy rules of the block never reached the field and are not carried: the 30px end padding beside
+ * the «×» and the red border of `invalid` (both lost to the field rules by specificity); `invalid` is `aria-invalid`.
  */
 export function NameField({
   value,
@@ -46,6 +58,7 @@ export function NameField({
 }) {
   const { t } = usePrefs();
   const listId = useId();
+  const root = useRef<HTMLSpanElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState<string | null>(null);
@@ -57,7 +70,7 @@ export function NameField({
 
   // Under the field, or over it when the space below is short; anchored at the field's start edge.
   const reposition = useCallback(() => {
-    const box = input.current?.closest('.name-field')?.getBoundingClientRect();
+    const box = root.current?.getBoundingClientRect();
     if (!box) return;
     const rtl = getComputedStyle(input.current as Element).direction === 'rtl';
     const below = window.innerHeight - box.bottom;
@@ -132,9 +145,10 @@ export function NameField({
   const activeId = open && shown[active] ? `${listId}-${active}` : undefined;
 
   return (
-    <span className={['name-field', invalid ? 'invalid' : '', className ?? ''].filter(Boolean).join(' ')}>
+    <span ref={root} data-slot="name-field" className={cn('relative flex min-w-0 items-center', className)}>
       <input
         ref={input}
+        className="min-w-0 flex-1"
         id={id}
         type="text"
         role="combobox"
@@ -165,7 +179,7 @@ export function NameField({
       {picked && !disabled ? (
         <button
           type="button"
-          className="name-field-clear"
+          className="absolute end-1 grid size-6 cursor-pointer place-items-center rounded-xs border-0 bg-transparent p-0 text-muted hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent max-md:size-8"
           aria-label={allLabel ? `${t.clearName} · ${allLabel}` : t.clearName}
           title={t.clearName}
           onMouseDown={(event) => event.preventDefault()}
@@ -188,7 +202,9 @@ export function NameField({
               id={listId}
               role="listbox"
               aria-label={place.name || undefined}
-              className={place.up ? 'name-pop up' : 'name-pop'}
+              data-slot="name-pop"
+              data-side={place.up ? 'top' : 'bottom'}
+              className="fixed z-[calc(var(--rd-z-dialog)+2)] grid max-h-[min(320px,50vh)] max-w-[min(360px,92vw)] gap-px overflow-y-auto rounded-sm bg-surface-2 p-1 shadow-pop inset-ring inset-ring-ink/11 [scrollbar-width:thin] motion-safe:animate-[filter-pop-in_140ms_ease-out]"
               style={{ ...(place.up ? { bottom: place.block } : { top: place.block }), insetInlineStart: place.start, minWidth: place.width }}
               onMouseDown={(event) => event.preventDefault()}
             >
@@ -200,23 +216,27 @@ export function NameField({
                     id={`${listId}-${index}`}
                     role="option"
                     aria-selected={index === active}
-                    className={[index === active ? 'on' : '', option.value === value ? 'sel' : ''].filter(Boolean).join(' ') || undefined}
+                    className={cn(
+                      'grid min-h-8.5 cursor-pointer gap-px rounded-xs px-2.5 py-1.5 text-start text-md font-medium text-ink-2 max-md:min-h-11 max-md:content-center',
+                      index === active && 'bg-surface text-ink',
+                      option.value === value && 'font-bold text-accent',
+                    )}
                     onMouseEnter={() => setActive(index)}
                     onClick={() => pick(option)}
                   >
-                    <bdi className="name-pop-label">
+                    <bdi>
                       {mark ? (
                         <>
                           {option.label.slice(0, mark[0])}
-                          <b>{option.label.slice(mark[0], mark[1])}</b>
+                          <b className={cn('font-extrabold', option.value === value ? 'text-inherit' : 'text-ink')}>{option.label.slice(mark[0], mark[1])}</b>
                           {option.label.slice(mark[1])}
                         </>
                       ) : option.label}
                     </bdi>
-                    {option.hint ? <small>{option.hint}</small> : null}
+                    {option.hint ? <small className="text-xs font-medium text-muted">{option.hint}</small> : null}
                   </div>
                 );
-              }) : <p className="name-pop-none">{t.noNameMatch}</p>}
+              }) : <p className="m-0 px-2.5 py-2 text-sm text-muted">{t.noNameMatch}</p>}
             </div>,
             document.body,
           )
