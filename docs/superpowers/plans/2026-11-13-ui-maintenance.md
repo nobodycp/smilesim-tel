@@ -880,13 +880,15 @@ positioned descendants; the evidence note states these three facts with their me
   1. `check-css.mjs` (Node, no new dependency; parse with a small tokenizer or `postcss`, already a dev dependency) over
      `app/styles/**/*.css`, counting: (a) duplicates, keyed by **(at-rule chain, normalised selector, property)** — the
      at-rule chain is the full list of enclosing `@media` / `@container` / `@supports` preludes, normalised for
-     whitespace — counted when one key is declared in more than one file, or twice in one file. A mobile-first base
+     whitespace — counted when one key is declared in more than one file, or twice in one file (twice inside one
+     declaration block included; selectors are normalised for whitespace and attribute quoting, and a nested rule or at-rule fails
+     the run loudly, since its key would need the parent selector; amended in P1.1). A mobile-first base
      rule plus a `@media (min-width: …)` override of the same property is two different keys and is **not** a
      duplicate (P2.8 and P5 rely on that pattern); (b) `var(--rd-x)` where `--rd-x` is not defined in `tokens.css`;
      (c) `var(--rd-x, fallback)` where `--rd-x` is defined; (d) hex / `rgb(` / `rgba(` / `hsl(` outside `tokens.css`;
      (e) `outline: none` / `outline: 0` with no `box-shadow` or `outline` replacement in the same rule;
      (f) `font-size` with a `.5px` value or a `rem` value; (g) `font-weight: 800|900`; (h) `@media` widths not in
-     {640, 767, 768, 899, 900, 1099, 1100} (counted, not failing until P5; P5.1 adds a named-exception allowlist per
+     {640, 641, 767, 768, 899, 900, 1099, 1100} (counted, not failing until P5; P5.1 adds a named-exception allowlist per
      D26); (i) physical properties (`margin-left|right`, `padding-left|right`, `left:|right:` without inset-inline,
      `border-left|right`, `text-align: left|right`, and block-axis `margin-top|bottom`, `padding-top|bottom`,
      `border-top|bottom`); (j) `line-height` with a literal number, length or percentage (anything but `var(--rd-…)`,
@@ -917,36 +919,66 @@ positioned descendants; the evidence note states these three facts with their me
        `shimmer`, `trend-breathe` never end): before hashing the rest state, and again after each forced state and each
        click step, run in the page
        `document.getAnimations().forEach((a) => { try { a.finish(); } catch { a.cancel(); } })` (an infinite animation
-       throws on `finish()` and is cancelled), then wait two animation frames. Reduced motion is **not** emulated: the
+       throws on `finish()` and is cancelled), then wait two animation frames (after a forced state the settle is
+       synchronous — finish until none runs, no frame wait — since forcing a state fires no event; amended in P1.1, where
+       the twice-run check proves it deterministic; and before the first hash the case waits until the page has
+       asked `/api` for nothing for 300ms, then settles again, since a list pager reads its next chunk after the
+       first renders and a row landing mid-hash is read mid-entrance — amended in P1.1 fix round 2, where the
+       twice-run check caught it on `numbers` at 390). Reduced motion is **not** emulated: the
        stagger and motion rules that P2.4, P2.7, P2.9 and P6.1 move must stay visible to the hash. The hash therefore
        covers the computed `animation-*` / `transition-*` longhands and the settled end values, not in-flight values;
      - **stable row keys:** each `.styles.tsv` / `.states.tsv` row is keyed by the element's id if it has one, else the
        parent's key plus `tag.class.chain:nth-of-type(n)` counted among siblings with the same tag and class chain (the
-       DOM-index path stays as an extra column for reading). A slice that removes a dead element (P2.1b `.wallet-word`)
+       DOM-index path is written beside it, in `<case>.paths.tsv`, for reading — not as a column of the diffed
+       files, where a removed sibling would shift every later sibling's path; amended in P1.1). A slice that removes a dead element (P2.1b `.wallet-word`)
        or adds one (P3.x markup) then shows only that row as missing / added, not a shift of every later sibling;
        rows are sorted by key so `diff` aligns them;
      - the `main.` and `agent.` layers: the case layer field accepts `main` and `agent` (host `main.localhost` /
        `agent.localhost`, fixture session of that layer), so cascade moves that show only on those doors are seen;
      - hash `getComputedStyle(el, '::before')` and `getComputedStyle(el, '::after')` for every element whose pseudo
        has `content` other than `none`, as extra columns of the same `.styles.tsv` row;
-     - `STATES=1`: a forced-state pass using CDP `CSS.forcePseudoState` (`hover`, `focus-visible`, `active`) on every
+     - `STATES=1`: a forced-state pass using CDP `CSS.forcePseudoState` (`hover`, `focus` — forced as `focus` and
+       `focus-visible` together, as a keyboard focus sets both, so rules written with plain `:focus` are seen —
+       and `active`) on every
        `button`, `a`, `input`, `select`, `textarea`, `[role=tab]`, `[role=menuitem]`, `.line-op`, `.co-card`,
-       `.pick-card`, `.pack-pick`, `.filter-pop button`, row-menu items — one state at a time, settling motion (above)
+       `.pick-card`, `.pack-pick`, `.filter-pop button`, row-menu items; `focus` also on `[tabindex]`, `summary` and
+       `[contenteditable]`; and every other element a state rule of the loaded sheets styles through that state on
+       its own compound (the selector up to that compound, states and pseudo-elements taken off, matches it:
+       `.stat:hover::after`, `.fact-grid > div:hover`, `.figure-tile:hover`, `.users-layer:focus-visible`,
+       `.data tbody tr:hover td`) gets the states those rules name (amended in P1.1) — one state at a time, settling motion (above)
        after forcing it, then hashing **the forced element's whole subtree** and the pseudos of each node (so rules of
        the form `.x:hover .child`, e.g. `.line-op:hover .line-op-go` that P2.7 moves, are seen), and releasing the
        state before the next — written to `<case>.states.tsv`; plus a `disabled` / `aria-*` pass that hashes elements already in
        those states;
-     - a per-case wait selector (`[name, path, layer, empty, { wait, click }]`; default `.canvas-inner`, sign-in cases
-       `.gauth`), and an optional `click` list of steps run before hashing (open states below);
+     - a per-case wait selector (`[name, path, layer, empty, { wait, dump, width, steps }]`; default `.canvas-inner`,
+       sign-in cases `.gauth`), and an optional `steps` list (`{ click | mousedown: selector, wait? }`) run before
+       hashing (open states below); an unknown option or step key stops the run, so a misspelt list cannot hash the
+       closed state (amended in P1.1, which named the list `click`);
      - `WIDTH` accepts any value (CHK-ZERO uses 390/700/768/1024/1280, plus 860/861/899/900/1200 when a slice needs
        them).
   4. Extend `tests/dom-snapshot.mjs` cases with fixtures for: `/login`, `/password`, `/two-factor`, `/companies`,
      `/companies/cell`, `/companies/new`, `/companies/cell/packages/new`, `/companies/cell/packages/cell-400`,
      `/users/main1`, `/tasks/t1`, `/tasks/decisions`, `/notices`, `/profits`, `/wallet` (pos), `/offers`, `/branding`,
      `/provider-accounts`, `/provider-accounts/cell`, `/reports/balances`, `/reports/supply`, and open states the
-     script can reach by a click step (`[name, path, layer, empty, click?]`): one `Dialog` (users → new account),
+     script can reach by a click step (`[name, path, layer, empty, { steps }?]`): one `Dialog` (users → new account),
      the filter drawer at 390, a RowMenu, the date picker; and layer cases `packages-main`, `packages-agent`,
-     `users-main`, `wallet-main`, `wallet-agent` (sell cells and wallet heads render only there). Keep existing cases.
+     `users-main`, `wallet-main`, `wallet-agent` (sell cells and wallet heads render only there), and `/enter` (the
+     entered-account door, `AuthFrame`, in its failed state with its back-to-sign-in button; added in P1.1). Keep
+     existing cases.
+     (Added in P1.1 so the forced-state targets `.pick-card`, `.pack-pick` and `.filter-pop button` exist in some case:
+     `company-new-picked` (the provider queried), `number-card-switch` (the switch dialog), `numbers-filter-pop` (a
+     filter list open), `company-package-offers` (the package sheet's offers tab, so `.price-pair` is drawn); and
+     `companies-empty`, `task-decisions-empty`, `notices-empty`. Added in P1.1 fix round 3, so CHK-ZERO compares
+     what P1.5, P2.9 and P5.1 rely on: `doors` (the bare host, layer `bare`: no door, so the layout draws the door
+     chooser, `components/doors.tsx`, the only user of `doors.css`), `home-main` (`/` on the main door: the head
+     actions and `.home-top-row` with last operations and waiting tasks), and `number-card-sim` (the SIM swap
+     dialog, whose `Facts` draws `.detail-rows`). Groups still drawn by no case — the role dialog `.role-*`, the
+     provider-operation panel `.po-*`, line details `.ld-*`, user settings, the transfer dialog, the topbar popovers
+     and the rest the P1.1 evidence note lists — are checked by a P2 slice with the CHK-LOOK fallback its rules give.) The main and agent package fixtures carry the
+     `editableField` the API gives those doors (`agent`, `pos`), so `packages-main` / `packages-agent` draw the
+     `.sell-cell` editors. A forced state also puts the
+     element's ancestors in the matching state — `hover`, `active`, or `focus-within` for `focus` — as a real
+     pointer or focus would, so `:focus-within` and state `:has()` rules are seen.)
 - **Closes:** none (guards for س1, س2, س6, س7, س9).
 - **Risks:** a new failing lint blocks CI — baseline makes it pass on day one; parse errors must fail loudly.
 - **Verify:** CHK-LOCAL passes; deliberately add a duplicate selector in a scratch copy and see the guard fail (then
