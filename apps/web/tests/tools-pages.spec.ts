@@ -1,9 +1,15 @@
 // The shared page tools (useLoad, usePaged, useAction, useRequireLayer, DataTable, EmptyState, lineActions)
 // have no React harness of their own, so they are exercised through the real pages that use them.
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
+
+/**
+ * How many of the cells hold a class. DataTable writes its column kinds (`num`, `row-actions`, a column's `cell`) as
+ * classes, and these tests are about exactly that, so they read the class; the cells themselves are found by test id.
+ */
+const withClass = (cells: Locator, name: string) => cells.evaluateAll((all, wanted) => all.filter((cell) => cell.classList.contains(wanted)).length, name);
 
 const line = (id: string, status = 'active', extra = {}) => ({
   id, msisdn: `055${id.replace(/\D/g, '').padStart(7, '0')}`, iccid: null, esim: false, status,
@@ -52,17 +58,18 @@ test.describe('DataTable and EmptyState', () => {
   test('the tasks table writes num and row-actions on header and cells, shows a skeleton while loading, and a RowMenu on every row', async ({ page }) => {
     await serveApi(page, 'branch', { 'GET /tasks': () => ({ body: { items: [task('1', { canTake: true }), task('2')], nextCursor: null }, delay: 700 }) });
     await page.goto(`${admin}/tasks`);
-    await expect(page.locator('.sheet .table-skeleton')).toBeVisible();
-    await expect(page.locator('table.data tbody tr')).toHaveCount(2);
-    await expect(page.locator('.table-skeleton')).toHaveCount(0);
-    await expect(page.locator('table.data thead th')).toHaveCount(3);
-    await expect(page.locator('table.data th.num')).toHaveCount(1);
-    await expect(page.locator('table.data td.num')).toHaveCount(2);
-    await expect(page.locator('table.data th.row-actions')).toHaveCount(1);
-    await expect(page.locator('table.data td.row-actions')).toHaveCount(2);
-    await expect(page.locator('table.data td.msisdn')).toHaveCount(2);
+    await expect(page.getByTestId('table-sheet').getByTestId('table-skeleton')).toBeVisible();
+    const table = page.getByTestId('data-table');
+    await expect(table.locator('tbody tr')).toHaveCount(2);
+    await expect(page.getByTestId('table-skeleton')).toHaveCount(0);
+    await expect(table.locator('thead th')).toHaveCount(3);
+    await expect.poll(() => withClass(table.locator('th'), 'num')).toBe(1);
+    await expect.poll(() => withClass(table.locator('td'), 'num')).toBe(2);
+    await expect.poll(() => withClass(table.locator('th'), 'row-actions')).toBe(1);
+    await expect.poll(() => withClass(table.locator('td'), 'row-actions')).toBe(2);
+    await expect.poll(() => withClass(table.locator('td'), 'msisdn')).toBe(2);
     // Every task row opens from its menu; take and cancel are added where the row allows them.
-    await expect(page.locator('table.data td.row-actions .row-menu')).toHaveCount(2);
+    await expect.poll(() => withClass(table.locator('td').filter({ has: page.getByTestId('row-menu') }), 'row-actions')).toBe(2);
     await expect(page.getByRole('button', { name: /إجراءات 0550000001/ })).toBeVisible();
   });
 
@@ -73,16 +80,17 @@ test.describe('DataTable and EmptyState', () => {
       'GET /finance': () => ({ body: { items: [], nextCursor: null } }),
     });
     await page.goto(`${admin}/numbers`);
-    const empty = page.locator('.pane > .empty');
+    const empty = page.locator('#lines > [data-testid="empty-state"]');
     await expect(empty).toHaveText('لا أرقام بعد.');
     await expect(empty).not.toHaveAttribute('style', /./);
-    await expect(page.locator('.pane table.data')).toHaveCount(0);
+    await expect(page.locator('#lines').getByTestId('data-table')).toHaveCount(0);
 
     await page.goto(`${admin}/finance`);
-    await expect(page.locator('.sheet > .empty')).toHaveText('لا حركات بعد.');
+    await expect(page.getByTestId('table-sheet').getByTestId('empty-state')).toHaveText('لا حركات بعد.');
     // The design's ledger (Graphite): time, reason, details, amount, my margin, balance after; three are amounts.
-    await expect(page.locator('.sheet > table.data thead th')).toHaveCount(6);
-    await expect(page.locator('.sheet > table.data thead th.num')).toHaveCount(3);
+    const ledgerHead = page.getByTestId('table-sheet').getByTestId('data-table').locator('thead th');
+    await expect(ledgerHead).toHaveCount(6);
+    await expect.poll(() => withClass(ledgerHead, 'num')).toBe(3);
   });
 });
 
@@ -106,9 +114,9 @@ test.describe('usePaged', () => {
       });
       await page.goto(`${admin}/${path}`);
       await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
-      const rows = page.locator('table.data tbody tr');
+      const rows = page.getByTestId('data-table').locator('tbody tr');
       await expect(rows).toHaveCount(10);
-      await expect(page.locator('.table-pager')).toContainText('11');
+      await expect(page.getByTestId('table-pager')).toContainText('11');
       expect(calls.filter((call) => call.includes('cursor=c2'))).toHaveLength(0);
       await page.getByRole('button', { name: '2', exact: true }).click();
       await expect(rows).toHaveCount(1);
@@ -131,11 +139,11 @@ test.describe('usePaged', () => {
     await search.fill('111');
     await page.waitForTimeout(450);
     await search.fill('222');
-    await expect(page.locator('table.data tbody tr')).toHaveCount(1);
-    await expect(page.locator('table.data tbody')).toContainText('0552220000');
+    await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
+    await expect(page.getByTestId('data-table').locator('tbody')).toContainText('0552220000');
     await page.waitForTimeout(1800);
-    await expect(page.locator('table.data tbody')).toContainText('0552220000');
-    await expect(page.locator('table.data tbody')).not.toContainText('0551110000');
+    await expect(page.getByTestId('data-table').locator('tbody')).toContainText('0552220000');
+    await expect(page.getByTestId('data-table').locator('tbody')).not.toContainText('0551110000');
   });
 
   test('a failed load shows the failed state with its error and a retry inside the pane, then recovers on the next filter', async ({ page }) => {
@@ -146,14 +154,14 @@ test.describe('usePaged', () => {
     });
     await page.goto(`${admin}/audit`);
     // The failure lives in the pane, not in a page banner, and offers one retry.
-    const failed = page.locator('.pane .load-failed');
+    const failed = page.getByTestId('audit-pane').getByTestId('load-failed');
     await expect(failed).toContainText('بيانات غير صالحة');
     await expect(failed.getByRole('button', { name: 'إعادة المحاولة' })).toBeVisible();
-    await expect(page.locator('p.error')).toHaveCount(0);
-    await expect(page.locator('.table-skeleton')).toHaveCount(0);
+    await expect(page.getByTestId(/^(error|banner)$/)).toHaveCount(0);
+    await expect(page.getByTestId('table-skeleton')).toHaveCount(0);
     await page.getByLabel('الحدث').selectOption('extend');
-    await expect(page.locator('.load-failed')).toHaveCount(0);
-    await expect(page.locator('.empty')).toHaveText('لا حركات بعد.');
+    await expect(page.getByTestId('load-failed')).toHaveCount(0);
+    await expect(page.getByTestId('empty-state')).toHaveText('لا حركات بعد.');
   });
 });
 
@@ -169,7 +177,7 @@ test.describe('useAction and lineActions', () => {
       'POST /lines/ln1/extend': () => ({ body: { applied: true, debited: true }, delay: 400 }),
     });
     await page.goto(`${admin}/numbers/ln1`);
-    const extend = page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true });
+    const extend = page.getByTestId('line-op-grid').getByRole('button', { name: 'تمديد', exact: true });
     await expect(extend).toBeVisible();
     // The card reads once per load (the session answer can re-run the load once); the action adds exactly one reload.
     const before = reads;
@@ -189,10 +197,10 @@ test.describe('useAction and lineActions', () => {
       'POST /lines/ln1/extend': () => ({ body: { applied: true, debited: true } }),
     });
     await page.goto(`${admin}/numbers/ln1`);
-    await expect(page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
+    await expect(page.getByTestId('line-op-grid').getByRole('button', { name: 'تمديد', exact: true })).toBeVisible();
     const count = (prefix: string) => calls.filter((call) => call === prefix).length;
     const before = { line: count('GET /lines/ln1'), packages: count('GET /packages'), users: count('GET /directory?mine=1') };
-    await page.locator('.line-op-grid').getByRole('button', { name: 'تمديد', exact: true }).click();
+    await page.getByTestId('line-op-grid').getByRole('button', { name: 'تمديد', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('تم التنفيذ وخصم الرصيد.');
     await expect.poll(() => count('GET /lines/ln1')).toBe(before.line + 1);
     await page.waitForTimeout(300);
@@ -211,14 +219,14 @@ test.describe('useAction and lineActions', () => {
     });
     await page.goto(`${admin}/numbers/ln1`);
     const disconnect = async () => {
-      await page.locator('.line-op-grid').getByRole('button', { name: 'فصل', exact: true }).click();
+      await page.getByTestId('line-op-grid').getByRole('button', { name: 'فصل', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'فصل الرقم' });
-      await expect(dialog.locator('.money')).toHaveText('28.50 ₪');
+      await expect(dialog.getByTestId('money')).toHaveText('28.50 ₪');
       await dialog.getByRole('button', { name: 'فصل', exact: true }).click();
       await expect(dialog).toHaveCount(0);
     };
     await disconnect();
-    await expect(page.locator('p.error')).toHaveText('بيانات غير صالحة');
+    await expect(page.getByTestId(/^(error|banner)$/)).toHaveText('بيانات غير صالحة');
     await disconnect();
     await expect.poll(() => tries).toBe(2);
   });
@@ -235,15 +243,15 @@ test.describe('useAction and lineActions', () => {
     });
     const listItems = async (n: number) => {
       await page.goto(`${admin}/numbers`);
-      await expect(page.locator('table.data tbody tr')).toHaveCount(4);
-      await page.locator('table.data tbody tr').nth(n).getByRole('button', { name: /إجراءات/ }).click();
+      await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(4);
+      await page.getByTestId('data-table').locator('tbody tr').nth(n).getByRole('button', { name: /إجراءات/ }).click();
       await expect(page.getByRole('menu')).toBeVisible();
       return page.getByRole('menuitem').allTextContents();
     };
     const cardItems = async (id: string) => {
       await page.goto(`${admin}/numbers/${id}`);
-      await expect(page.locator('.line-number')).toBeVisible();
-      return page.locator('.line-op[data-now] b').allTextContents();
+      await expect(page.getByTestId('line-number')).toBeVisible();
+      return page.getByTestId('line-op').and(page.locator('[data-now]')).locator('b').allTextContents();
     };
     expect((await listItems(0)).map((text) => text.trim())).toEqual(['تمديد', 'تحديث الرقم', 'فصل']);
     expect((await cardItems('ln1')).map((text) => text.trim())).toEqual(['تمديد', 'تحديث الرقم', 'تجميد', 'فصل']);
@@ -254,9 +262,9 @@ test.describe('useAction and lineActions', () => {
     expect((await cardItems('ln3')).map((text) => text.trim())).toEqual(['شحن']);
     // A number locked for a package switch has no immediate action on either screen.
     await page.goto(`${admin}/numbers`);
-    await expect(page.locator('table.data tbody tr').nth(3).getByRole('button', { name: /إجراءات/ })).toHaveCount(0);
+    await expect(page.getByTestId('data-table').locator('tbody tr').nth(3).getByRole('button', { name: /إجراءات/ })).toHaveCount(0);
     expect(await cardItems('ln4')).toEqual([]);
-    await expect(page.locator('.line-op[data-now]')).toHaveCount(0);
+    await expect(page.getByTestId('line-op').and(page.locator('[data-now]'))).toHaveCount(0);
   });
 });
 
@@ -273,17 +281,17 @@ test.describe('reports', () => {
       // The tasks and numbers reports read the lists themselves; the other two have their own routes.
       Object.entries(kinds).map(([kind, body]) => [kind === 'tasks' ? 'GET /tasks' : kind === 'numbers' ? 'GET /lines' : `GET /reports/${kind}`, () => ({ body })]),
     ));
-    const head = (selector: string) => page.locator(`table.data ${selector}`);
+    const head = (selector: string) => page.getByTestId('data-table').locator(selector);
     await page.goto(`${admin}/reports/providers`);
     await expect(head('thead th')).toHaveCount(5);
-    await expect(head('thead th.num')).toHaveCount(2);
-    await expect(head('tbody td.num')).toHaveCount(2);
+    await expect.poll(() => withClass(head('thead th'), 'num')).toBe(2);
+    await expect.poll(() => withClass(head('tbody td'), 'num')).toBe(2);
     await page.goto(`${admin}/reports/tasks`);
     await expect(head('thead th')).toHaveCount(5);
-    await expect(head('thead th.num')).toHaveCount(0);
+    await expect.poll(() => withClass(head('thead th'), 'num')).toBe(0);
     await page.goto(`${admin}/reports/numbers`);
     await expect(head('thead th')).toHaveCount(4);
-    await expect(head('tbody td.msisdn')).toHaveCount(1);
+    await expect.poll(() => withClass(head('tbody td'), 'msisdn')).toBe(1);
   });
 
   test('a report pages by cursor and keeps the table while it loads more', async ({ page }) => {
@@ -295,9 +303,9 @@ test.describe('reports', () => {
         : { body: { items: first, nextCursor: 'c2', total: 11 } }),
     });
     await page.goto(`${admin}/reports/operations`);
-    await expect(page.locator('table.data tbody tr')).toHaveCount(10);
+    await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(10);
     await page.getByRole('button', { name: '2', exact: true }).click();
-    await expect(page.locator('table.data tbody tr')).toHaveCount(1);
+    await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
     await expect(page.getByRole('button', { name: '3', exact: true })).toHaveCount(0);
   });
 });
@@ -310,8 +318,8 @@ test.describe('shell', () => {
       'GET /lines': () => ({ body: { items: [line('ln1'), line('ln2')], poses: [], nextCursor: 'c9' } }),
     });
     await page.goto(`${admin}/`);
-    await page.locator('.shell-search-field input').fill('055');
-    await expect(page.locator('.shell-search-item')).toHaveCount(2);
+    await page.getByTestId('search-field').getByRole('searchbox').fill('055');
+    await expect(page.getByTestId('search-item')).toHaveCount(2);
     expect(calls.filter((call) => call.startsWith('GET /lines')).every((call) => !call.includes('cursor'))).toBe(true);
   });
 
@@ -324,11 +332,11 @@ test.describe('shell', () => {
       'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
     });
     await page.goto(`${admin}/`);
-    const field = page.locator('.shell-search-field input');
+    const field = page.getByTestId('search-field').getByRole('searchbox');
     await field.pressSequentially('sam', { delay: 250 });
-    await expect(page.locator('.shell-search-item')).toHaveCount(1);
+    await expect(page.getByTestId('search-item')).toHaveCount(1);
     await field.pressSequentially('ir', { delay: 250 });
-    await expect(page.locator('.shell-search-item')).toHaveText(/samir1/);
+    await expect(page.getByTestId('search-item')).toHaveText(/samir1/);
     expect(calls.filter((call) => call === 'GET /directory?mine=1')).toHaveLength(1);
   });
 
@@ -348,8 +356,8 @@ test.describe('shell', () => {
     });
     await page.goto(`${admin}/`);
     await page.getByRole('button', { name: 'الإشعارات' }).click();
-    await expect(page.locator('.shell-item strong').first()).toHaveText('تمّت المهمة');
-    await expect(page.locator('.shell-item .notice-detail').first()).toHaveText('تبديل الشريحة · 0550000001 · بواسطة الفرع');
-    await expect(page.locator('.shell-item .notice-detail').nth(1)).toHaveText('شحن · بواسطة نقطة');
+    await expect(page.getByTestId('notice-item').locator('strong').first()).toHaveText('تمّت المهمة');
+    await expect(page.getByTestId('notice-item').getByTestId('notice-detail').first()).toHaveText('تبديل الشريحة · 0550000001 · بواسطة الفرع');
+    await expect(page.getByTestId('notice-item').getByTestId('notice-detail').nth(1)).toHaveText('شحن · بواسطة نقطة');
   });
 });

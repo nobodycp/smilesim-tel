@@ -36,11 +36,11 @@ test('users follow a new ?q= while already on the page, and the typed search goe
   });
   await serveApi(page, 'branch', { 'GET /users': () => ({ body: { users: [user('alpha'), user('beta'), user('gamma')] } }) });
   await page.goto(`${admin}/users`);
-  const rows = page.locator('.data tbody tr');
+  const rows = page.getByTestId('data-table').locator('tbody tr');
   await expect(rows).toHaveCount(3);
   await page.evaluate(() => (window as unknown as { next: { router: { push: (href: string) => void } } }).next.router.push('/users?q=beta'));
   await expect(rows).toHaveCount(1);
-  const search = page.locator('.filter-panel input').first();
+  const search = page.getByTestId('filter-panel').locator('input').first();
   await expect(search).toHaveValue('beta');
   await search.fill('gam');
   await expect(rows).toHaveCount(1);

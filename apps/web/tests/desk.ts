@@ -23,15 +23,17 @@ export async function asBranch(page: Page) {
 /**
  * A desk page shows one h1, no repeated pane heading, no filter toggle, and one pane. A workbench
  * pane fills the canvas; a paged card (`.pane.fit`, users and roles) sizes to its rows instead.
+ * The pane is the first `<section>` inside `Desk` (`data-testid="desk"`); the filter toggle is the phone-only
+ * «كل الفلاتر» button, hidden at this width.
  */
 export async function expectFullTable(page: Page, title: string, { fit = false } = {}) {
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
   // The title is not repeated as a pane heading; an optional lede under the h1 is allowed.
   await expect(page.getByRole('heading', { level: 2, name: title, exact: true })).toHaveCount(0);
-  await expect(page.locator('.filter-toggle')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'كل الفلاتر' })).toHaveCount(0);
   // Graphite: a list's card ends with its content (no empty block down to the page's bottom), and the page scrolls.
-  const box = await page.locator('.desk .pane').first().boundingBox();
+  const box = await page.getByTestId('desk').locator('section').first().boundingBox();
   expect(box).not.toBeNull();
   void fit;
 }

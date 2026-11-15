@@ -100,9 +100,9 @@ test('branch moves an agent: destination, preview, five choices, request body', 
   await pickName(destination, 'ma2');
   await expect(dialog.getByText('37 رقماً')).toBeVisible();
   expect(calls).toContain('GET /users/ag1/transfer-preview?parentLoginName=ma2');
-  await expect(dialog.locator('.ui-badge-warning')).toHaveText('1 سعراً خاصاً أقل من تكلفة الأب الجديد');
-  await expect(dialog.locator('.detail-rows > div', { hasText: 'الرصيد المنقول' })).toContainText('12.00 ₪');
-  await expect(dialog.locator('.detail-rows > div', { hasText: 'رصيد ما تحته' })).toContainText('50.00 ₪');
+  await expect(dialog.getByTestId('transfer-floor')).toHaveText('1 سعراً خاصاً أقل من تكلفة الأب الجديد');
+  await expect(dialog.getByTestId('fact').filter({ hasText: 'الرصيد المنقول' })).toContainText('12.00 ₪');
+  await expect(dialog.getByTestId('fact').filter({ hasText: 'رصيد ما تحته' })).toContainText('50.00 ₪');
 
   // Five rows of two radios, and none of them chosen for the person: the button waits for every one.
   await expect(dialog.getByRole('radio')).toHaveCount(10);
@@ -144,9 +144,9 @@ test('a point of sale asks three choices, shows no terms for what is below it, a
   await expectNames(destination, ['ag2 (وكيل ٢)']);
   await pickName(destination, 'ag2');
   await expect(dialog.getByText('4 رقماً')).toBeVisible();
-  await expect(dialog.locator('.detail-rows > div', { hasText: 'الرصيد المنقول' })).toContainText('3.00 ₪');
+  await expect(dialog.getByTestId('fact').filter({ hasText: 'الرصيد المنقول' })).toContainText('3.00 ₪');
   await expect(dialog.getByText('رصيد ما تحته')).toHaveCount(0);
-  await expect(dialog.locator('.ui-badge-warning')).toHaveCount(0);
+  await expect(dialog.getByTestId('transfer-floor')).toHaveCount(0);
   await expect(below).toHaveCount(0);
   await expect(dialog.getByRole('radio')).toHaveCount(6);
 
@@ -187,12 +187,12 @@ test('changing the destination reads its own preview and keeps the choices alrea
   const destination = dialog.getByLabel('الوكيل الرئيسي الجديد');
   await pickName(destination, 'ma2');
   await expect(dialog.getByText('37 رقماً')).toBeVisible();
-  await expect(dialog.locator('.ui-badge-warning')).toHaveCount(1);
+  await expect(dialog.getByTestId('transfer-floor')).toHaveCount(1);
   await radio(accountGroups(dialog).own, KEEP, 'الأسعار والإخفاء').check();
 
   await pickName(destination, 'ma4');
   await expect(dialog.getByText('5 رقماً')).toBeVisible();
-  await expect(dialog.locator('.ui-badge-warning')).toHaveCount(0);
+  await expect(dialog.getByTestId('transfer-floor')).toHaveCount(0);
   expect(calls).toContain('GET /users/ag1/transfer-preview?parentLoginName=ma4');
   await expect(radio(accountGroups(dialog).own, KEEP, 'الأسعار والإخفاء')).toBeChecked();
   await expect(dialog.getByRole('radio', { checked: true })).toHaveCount(1);
@@ -322,7 +322,7 @@ test('the term groups sit side by side on a wide screen and stack on a narrow on
       expect(box?.x ?? 0).toBeGreaterThanOrEqual(panel.x);
       expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(panel.x + panel.width + 0.5);
     }
-    for (const label of await dialog.locator('label.check').all()) {
+    for (const label of await dialog.getByTestId('radio-row').all()) {
       expect((await label.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
     }
   }
@@ -376,9 +376,9 @@ for (const locale of ['ar', 'en', 'he'] as const) {
     await expect(lines.getByRole('radio', { name: w.keep })).toHaveCount(1);
     await expect(lines.getByRole('radio', { name: w.recapture })).toHaveCount(1);
     await expect(lines).toContainText(w.count);
-    await expect(dialog.locator('.ui-badge-warning')).toHaveText(w.floor);
-    await expect(dialog.locator('.detail-rows > div', { hasText: w.balance })).toContainText('12.00 ₪');
-    await expect(dialog.locator('.detail-rows > div', { hasText: w.subtree })).toContainText('50.00 ₪');
+    await expect(dialog.getByTestId('transfer-floor')).toHaveText(w.floor);
+    await expect(dialog.getByTestId('fact').filter({ hasText: w.balance })).toContainText('12.00 ₪');
+    await expect(dialog.getByTestId('fact').filter({ hasText: w.subtree })).toContainText('50.00 ₪');
 
     const [a, b] = await Promise.all([own.boundingBox(), below.boundingBox()]);
     if (!a || !b) throw new Error('a group has no box');
@@ -432,7 +432,7 @@ for (const [label, wire] of [[KEEP, 'keep'], [RECAPTURE, 'recapture']] as const)
 test('the number card has no «نقل» tile when transfer is stopped on the actor path', async ({ page }) => {
   await serveNumber(page, { stops: ['transfer'] });
   await page.goto(`${agent}/numbers/ln1`);
-  await expect(page.locator('.line-number')).toHaveText('0550246962');
-  await expect(page.locator('.line-ops')).toBeVisible();
+  await expect(page.getByTestId('line-number')).toHaveText('0550246962');
+  await expect(page.getByTestId('line-ops')).toBeVisible();
   await expect(page.getByRole('button', { name: 'نقل', exact: true })).toHaveCount(0);
 });

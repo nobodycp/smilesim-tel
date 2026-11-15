@@ -173,7 +173,7 @@ export function UsersScreen() {
       </FilterBar>
       <section className="pane fit">
         <header className="pane-head">
-          <h2>{t.usersList}{list.ready ? <span className="count">{list.total ?? list.all.length}</span> : null}</h2>
+          <h2>{t.usersList}{list.ready ? <span className="count" data-testid="list-count">{list.total ?? list.all.length}</span> : null}</h2>
         </header>
         <Dialog
           open={creating}

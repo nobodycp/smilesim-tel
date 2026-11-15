@@ -31,5 +31,5 @@ export function Fact({ label, icon, tone, children }: { label: ReactNode; icon?:
       </div>
     );
   }
-  return <div><dt>{label}</dt><dd>{children}</dd></div>;
+  return <div data-testid="fact"><dt>{label}</dt><dd>{children}</dd></div>;
 }

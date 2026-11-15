@@ -142,7 +142,7 @@ export function DecisionDialog({
         <label>
           {t.decNote}
           <textarea value={note} rows={3} required maxLength={2000} aria-describedby="decision-note-hint" onChange={(event) => setNote(event.target.value)} />
-          <span className="hint decision-count" id="decision-note-hint">
+          <span className="hint decision-count" data-testid="decision-count" id="decision-note-hint">
             <span>{t.decNoteHint}</span>
             <bdi dir="ltr" className={noteLength >= MIN_DECISION_NOTE ? 'ok' : ''}>{noteLength}/{MIN_DECISION_NOTE}</bdi>
           </span>

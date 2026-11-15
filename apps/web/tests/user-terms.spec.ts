@@ -45,7 +45,7 @@ test('the packages tab folds each company, keeps one line per package, and edits
 
   await alloha.click();
   await expect(alloha).toHaveAttribute('aria-expanded', 'true');
-  const rows = page.locator('.terms-rows tbody tr');
+  const rows = page.getByTestId('terms-rows').locator('tbody tr');
   await expect(rows).toHaveCount(2);
   // One line: buy and sell pairs, the margin, and a state only when there is one ("inherited" is gone).
   const open = rows.filter({ hasText: '150 جيجا' });
@@ -62,7 +62,7 @@ test('the packages tab folds each company, keeps one line per package, and edits
   expect((await toggle).postDataJSON()).toEqual({ hidden: true });
 
   await page.getByRole('button', { name: /^سلكوم/ }).click();
-  await expect(page.locator('.terms-rows tbody tr').filter({ hasText: '100 جيجا' }).getByText('سعر خاص')).toBeVisible();
+  await expect(page.getByTestId('terms-rows').locator('tbody tr').filter({ hasText: '100 جيجا' }).getByText('سعر خاص')).toBeVisible();
 
   // The price is edited from the menu: an empty renewal field goes back to the default.
   await open.getByRole('button', { name: 'إجراءات 150 جيجا' }).click();
@@ -83,7 +83,7 @@ test('a search opens the companies it finds', async ({ page }) => {
   await page.goto('http://admin.localhost:3910/users/pos1#packages');
   await page.getByLabel('الرزمة').fill('100');
   await expect(page.getByRole('button', { name: /^سلكوم/ })).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.locator('.terms-rows tbody tr')).toHaveCount(1);
+  await expect(page.getByTestId('terms-rows').locator('tbody tr')).toHaveCount(1);
 });
 
 test('a main agent opening a grandchild sees only the access tab, and a hash to a hidden tab falls back', async ({ page }) => {
@@ -107,7 +107,7 @@ test('the number operations section shows ten cards and marks an inherited stop'
   });
   await page.goto('http://admin.localhost:3910/users/pos1#ops');
   await expect(page.getByRole('tab', { name: /عمليات الأرقام/ })).toHaveAttribute('aria-selected', 'true');
-  const cards = page.locator('.op-card');
+  const cards = page.getByTestId('op-card');
   await expect(cards).toHaveCount(10);
   const charge = cards.filter({ hasText: 'شحن' }).first();
   await expect(charge.getByRole('switch')).toBeDisabled();

@@ -11,7 +11,7 @@ export function EmptyState({
   icon?: IconName;
 }) {
   return (
-    <div className="empty empty-state">
+    <div className="empty empty-state" data-testid="empty-state">
       <span className="empty-icon" aria-hidden="true">
         <Icon name={icon} />
       </span>

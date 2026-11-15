@@ -123,7 +123,7 @@ export function RolesScreen() {
         if (!grantUsable(code, layer)) return <span className="grant-none" aria-label={t.grantUnusable}>—</span>;
         const on = codesOf(row).includes(code);
         return on
-          ? <span className="grant on" role="img" aria-label={`${grantLabel(t, code, layer)}: ${t.grantAllowed}`}><Check size={14} strokeWidth={2.4} /></span>
+          ? <span className="grant on" data-testid="grant-on" role="img" aria-label={`${grantLabel(t, code, layer)}: ${t.grantAllowed}`}><Check size={14} strokeWidth={2.4} /></span>
           : <span className="grant" role="img" aria-label={`${grantLabel(t, code, layer)}: ${t.grantDenied}`} />;
       },
     })),

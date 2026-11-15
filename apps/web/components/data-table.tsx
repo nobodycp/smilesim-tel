@@ -113,7 +113,7 @@ export function DataTable<Row>({
   if (failed && rows.length === 0) return <LoadFailed message={failed} onRetry={onRetry} busy={loading} />;
   if (loading) {
     return (
-      <div className="sheet">
+      <div className="sheet" data-testid="table-sheet">
         <TableSkeleton rows={skeleton?.rows ?? 5} columns={skeleton?.columns ?? columns.length} />
       </div>
     );
@@ -197,7 +197,7 @@ export function DataTable<Row>({
   if (bare) return hollow ? (<>{table}<EmptyState>{empty}</EmptyState></>) : table;
   return (
     <>
-      <div className="sheet">
+      <div className="sheet" data-testid="table-sheet">
         {table}
         {hollow ? <EmptyState>{empty}</EmptyState> : null}
       </div>

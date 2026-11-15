@@ -191,7 +191,7 @@ export function UserPackagesTab({
                     <ChevronDown className="terms-chevron" aria-hidden="true" />
                   </button>
                   {open ? (
-                    <div id={body} className="terms-rows">
+                    <div id={body} className="terms-rows" data-testid="terms-rows">
                       <DataTable
                         bare
                         sortable={false}

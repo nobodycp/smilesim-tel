@@ -104,7 +104,7 @@ export function TasksScreen() {
       header: t.tasksTitle,
       cell: 'msisdn task-cell',
       render: (row) => (
-        <Link className="task-card" href={`/tasks/${row.id}`}>
+        <Link className="task-card" data-testid="task-card" href={`/tasks/${row.id}`}>
           <span className="task-mark" aria-hidden="true"><Zap size={18} strokeWidth={1.9} /></span>
           <span className="task-main">
             <span className="task-title">

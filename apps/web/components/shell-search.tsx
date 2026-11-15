@@ -121,10 +121,11 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
   const showResults = open && needle.length >= 1 && (pageHits.length > 0 || needle.length >= 2);
 
   return (
-    <div className={open ? 'shell-search is-open' : 'shell-search'} ref={box}>
+    <div className={open ? 'shell-search is-open' : 'shell-search'} data-testid="shell-search" ref={box}>
       <button
         type="button"
         className="shell-search-toggle"
+        data-testid="search-toggle"
         aria-expanded={open}
         aria-label={t.searchPlaceholder}
         onClick={() => setOpen((value) => !value)}
@@ -132,7 +133,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
         <SearchIcon />
       </button>
       <form className="shell-search-desk" role="search" onSubmit={(event) => event.preventDefault()}>
-        <div className="shell-search-field">
+        <div className="shell-search-field" data-testid="search-field">
           <SearchIcon />
           <input
             ref={field}
@@ -172,7 +173,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
               <div key={group}>
                 <p className="shell-search-label">{group}</p>
                 {shown.filter((hit) => hit.group === group).map((hit) => (
-                  <Link key={hit.key} href={hit.href} className="shell-search-item" onClick={() => setOpen(false)}>
+                  <Link key={hit.key} href={hit.href} className="shell-search-item" data-testid="search-item" onClick={() => setOpen(false)}>
                     <strong>{hit.label}</strong>
                     {hit.sub && <small>{hit.sub}</small>}
                   </Link>

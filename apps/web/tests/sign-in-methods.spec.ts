@@ -109,7 +109,7 @@ for (const [allowed, name] of [[['app'], 'تطبيق المصادقة'], [['sms'
     await page.addInitScript(() => sessionStorage.setItem('twoFactorStep', 'enroll'));
     await page.goto('/two-factor');
     await expect(page.locator('form')).toBeVisible();
-    await expect(page.locator('p.hint', { hasText: name })).toBeVisible();
+    await expect(page.getByTestId('method-only').filter({ hasText: name })).toBeVisible();
     await page.waitForTimeout(500);
     // The app's secret is asked for only when the app is what the API allows: no call the API would refuse.
     expect(asked.filter((call) => call === 'setup')).toHaveLength(allowed[0] === 'app' ? 1 : 0);

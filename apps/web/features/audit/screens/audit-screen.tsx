@@ -135,7 +135,7 @@ export function AuditScreen() {
         <Stat tone="danger" label={t.failedLogins} value={failed.data ? <span className={failed.data.total ? 'tone-danger' : undefined}>{failed.data.total}</span> : '—'} meta={failed.data?.addresses !== undefined ? (failed.data.addresses === 1 ? t.fromOneAddressMeta : t.fromAddressesMeta.replace('{n}', String(failed.data.addresses))) : t.lastDaysMeta.replace('{n}', String(days))} />
         <Stat label={t.priceEdits} value={prices.data ? prices.data.total : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
       </StatRow>
-      <section className="pane">
+      <section className="pane" data-testid="audit-pane">
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 6 }} />
       </section>
     </Desk>

@@ -86,7 +86,7 @@ export function TaskTicketScreen() {
   // The ticket's actions sit beside the title, as in the approved design; complete and reject open their form in the
   // details column.
   const toolbar = task ? (
-      <div className="task-toolbar">
+      <div className="task-toolbar" data-testid="task-toolbar">
         {task.canTake ? (
           <Button type="button" onClick={() => run(() => api.takeTask(task.id), { note: t.take })}>
             <Hand {...glyph} />
@@ -154,7 +154,7 @@ export function TaskTicketScreen() {
       ) : task ? (
         <section className="pane task-ticket">
           <div className="task-board">
-            <aside className="task-rail">
+            <aside className="task-rail" data-testid="task-rail">
               {/* A task that went to a provider says where that stands, above its details; a manual task has none. */}
               <ProviderOperationPanel key={task.id} task={task} onChanged={card.reload} say={({ error: failed = '', note: said = '' }) => { setError(failed); setNote(said); }} />
               <Facts variant="list">
@@ -273,7 +273,7 @@ export function TaskTicketScreen() {
                       event.kind === 'note' || event.kind === 'result' ? (
                         <li key={event.id} className={`task-tree-node task-tree-${event.kind}`}>
                           <span className="task-tree-dot" aria-hidden="true" />
-                          <div className={event.internal ? 'task-tree-card internal' : 'task-tree-card'}>
+                          <div className={event.internal ? 'task-tree-card internal' : 'task-tree-card'} data-testid={event.internal ? 'task-note-internal' : 'task-note'}>
                             <div className="task-tree-meta">
                               <strong>{event.authorName ? <bdi>{event.authorName}</bdi> : t.taskSystem}</strong>
                               {event.internal ? <Badge variant="warning" dot>{t.internalNote}</Badge> : null}
@@ -296,7 +296,7 @@ export function TaskTicketScreen() {
                 )}
               </div>
               {task.canNote ? (
-                <div className="task-tree-compose">
+                <div className="task-tree-compose" data-testid="task-compose">
                   <textarea
                     value={draft}
                     rows={3}

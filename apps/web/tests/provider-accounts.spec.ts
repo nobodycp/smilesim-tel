@@ -15,13 +15,13 @@ test('the branch reads its provider accounts, opens one, and records a payment a
     'POST /provider-accounts/sky/entries': () => ({ body: { ok: true } }),
   });
   await page.goto('http://admin.localhost:3910/provider-accounts');
-  await expect(page.locator('table.data tbody tr')).toHaveCount(2);
-  await expect(page.locator('.stat-row .stat').nth(1)).toContainText('20.00 ₪');
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(2);
+  await expect(page.getByTestId('stat-row').getByTestId('stat').nth(1)).toContainText('20.00 ₪');
   await page.getByRole('link', { name: 'سكاي' }).click();
   await expect(page).toHaveURL(/\/provider-accounts\/sky$/);
-  await expect(page.locator('.stat-row .stat').nth(3)).toContainText('595.00 ₪');
-  await expect(page.locator('table.data tbody tr')).toHaveCount(2);
-  await expect(page.locator('table.data tbody tr').first()).toContainText('دفعة');
+  await expect(page.getByTestId('stat-row').getByTestId('stat').nth(3)).toContainText('595.00 ₪');
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(2);
+  await expect(page.getByTestId('data-table').locator('tbody tr').first()).toContainText('دفعة');
 
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
   const dialog = page.getByRole('dialog');

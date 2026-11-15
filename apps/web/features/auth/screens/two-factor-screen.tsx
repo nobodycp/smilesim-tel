@@ -117,7 +117,7 @@ export function TwoFactorScreen() {
           </Select>
         </label>
       )}
-      {enrolling && allowed && allowed.length === 1 && fixedOne && <p className="hint"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>}
+      {enrolling && allowed && allowed.length === 1 && fixedOne && <p className="hint" data-testid="method-only"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>}
       {enrolling && !byCode && otpauth && <p className="code" dir="ltr">{otpauth}</p>}
       {byCode && sentTo && <p className="hint">{t.codeSentTo} <bdi dir="ltr">{sentTo}</bdi></p>}
       <form onSubmit={submit}>

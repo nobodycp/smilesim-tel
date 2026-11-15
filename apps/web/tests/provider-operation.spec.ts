@@ -73,16 +73,16 @@ for (const [phase, label, hint, money] of phases) {
     await page.goto(`${admin}/tasks/t1`);
     await expect(panel(page)).toBeVisible();
     await expect(panel(page)).toHaveAttribute('data-phase', phase);
-    await expect(panel(page).locator('.po-head .ui-badge')).toHaveText(label);
-    await expect(panel(page).locator('.po-hint')).toContainText(hint);
-    await expect(panel(page).locator('.po-money')).toContainText('35.00');
-    await expect(panel(page).locator('.po-money .ui-badge')).toHaveText(money);
+    await expect(panel(page).getByTestId('po-head').getByTestId('badge')).toHaveText(label);
+    await expect(panel(page).getByTestId('po-hint')).toContainText(hint);
+    await expect(panel(page).getByTestId('po-money')).toContainText('35.00');
+    await expect(panel(page).getByTestId('po-money').getByTestId('badge')).toHaveText(money);
     if (phase === 'exception') await expect(panel(page)).toContainText('الرقم مأخوذ');
     // D6: complete and reject only for a failed operation; nothing by hand for the others.
     const byHand = phase === 'failed' ? 1 : 0;
-    await expect(page.locator('.task-toolbar').getByRole('button', { name: 'إتمام', exact: true })).toHaveCount(byHand);
-    await expect(page.locator('.task-toolbar').getByRole('button', { name: 'رفض', exact: true })).toHaveCount(byHand);
-    await expect(page.locator('.task-toolbar').getByRole('button', { name: 'إلغاء', exact: true })).toHaveCount(0);
+    await expect(page.getByTestId('task-toolbar').getByRole('button', { name: 'إتمام', exact: true })).toHaveCount(byHand);
+    await expect(page.getByTestId('task-toolbar').getByRole('button', { name: 'رفض', exact: true })).toHaveCount(byHand);
+    await expect(page.getByTestId('task-toolbar').getByRole('button', { name: 'إلغاء', exact: true })).toHaveCount(0);
   });
 }
 
@@ -91,10 +91,10 @@ test('a requested operation leaves its submitter the cancel button, and nothing 
     'GET /tasks/t1': () => ({ body: { task: taskIn('requested', { canCancel: true, canNoteInternal: false, providerName: '', operation: { phase: 'requested', reason: null, decisions: false } }), events: [] } }),
   });
   await page.goto(`${admin.replace('admin', 'pos')}/tasks/t1`);
-  await expect(panel(page).locator('.po-head .ui-badge')).toHaveText('بانتظار إرسال الطلب');
-  await expect(page.locator('.task-toolbar').getByRole('button', { name: 'إلغاء', exact: true })).toBeVisible();
+  await expect(panel(page).getByTestId('po-head').getByTestId('badge')).toHaveText('بانتظار إرسال الطلب');
+  await expect(page.getByTestId('task-toolbar').getByRole('button', { name: 'إلغاء', exact: true })).toBeVisible();
   // Not an account that decides: no decision section, and the decision view is never asked for.
-  await expect(panel(page).locator('.po-decisions')).toHaveCount(0);
+  await expect(panel(page).getByTestId('po-decisions')).toHaveCount(0);
   expect(calls.filter((call) => call.includes('provider-decision'))).toEqual([]);
 });
 
@@ -103,10 +103,10 @@ test('a manual task has no provider panel and keeps its buttons', async ({ page 
     'GET /tasks/t1': () => ({ body: { task: { ...baseTask, canWork: true, canTake: true, note: 'مهمة فرع' }, events: [] } }),
   });
   await page.goto(`${admin}/tasks/t1`);
-  await expect(page.locator('.task-rail')).toBeVisible();
+  await expect(page.getByTestId('task-rail')).toBeVisible();
   await expect(panel(page)).toHaveCount(0);
-  await expect(page.locator('.task-toolbar').getByRole('button', { name: 'إتمام', exact: true })).toBeVisible();
-  await expect(page.locator('.task-toolbar').getByRole('button', { name: 'رفض', exact: true })).toBeVisible();
+  await expect(page.getByTestId('task-toolbar').getByRole('button', { name: 'إتمام', exact: true })).toBeVisible();
+  await expect(page.getByTestId('task-toolbar').getByRole('button', { name: 'رفض', exact: true })).toBeVisible();
   expect(calls.filter((call) => call.includes('provider-decision'))).toEqual([]);
 });
 
@@ -115,7 +115,7 @@ test('an older API answer with no operation field reads as a manual task', async
   void _operation; void _hold;
   await serveApi(page, 'branch', { 'GET /tasks/t1': () => ({ body: { task: { ...old, canWork: true }, events: [] } }) });
   await page.goto(`${admin}/tasks/t1`);
-  await expect(page.locator('.task-rail')).toBeVisible();
+  await expect(page.getByTestId('task-rail')).toBeVisible();
   await expect(panel(page)).toHaveCount(0);
 });
 
@@ -126,8 +126,8 @@ test('a point of sale reads where its activation stands and the amount, not the 
     'GET /tasks/t1': () => ({ body: { task: taskIn('exception', { providerName: '', canNoteInternal: false, operation: { phase: 'exception', reason: null, decisions: false } }), events: [] } }),
   });
   await page.goto(`${admin.replace('admin', 'pos')}/tasks/t1`);
-  await expect(panel(page).locator('.po-head .ui-badge')).toHaveText('نجح عند المزوّد وتعذّرت التسوية');
-  await expect(panel(page).locator('.po-money .ui-badge')).toHaveText('محجوز');
+  await expect(panel(page).getByTestId('po-head').getByTestId('badge')).toHaveText('نجح عند المزوّد وتعذّرت التسوية');
+  await expect(panel(page).getByTestId('po-money').getByTestId('badge')).toHaveText('محجوز');
   await expect(panel(page)).not.toContainText('السبب');
   await expect(panel(page).getByRole('button')).toHaveCount(0);
 });
@@ -176,7 +176,7 @@ test('confirm success: the form checks what the API will, sends it once, and the
   await expect(submit).toBeDisabled();
   await fillEvidence(page, { note: 'too short' });
   await expect(submit).toBeDisabled();
-  await expect(dialog(page).locator('.decision-count')).toContainText('9/20');
+  await expect(dialog(page).getByTestId('decision-count')).toContainText('9/20');
   await dialog(page).getByLabel('ملاحظة القرار').fill(`   ${NOTE}   `);
   // The reference is required to confirm a success.
   await expect(submit).toBeDisabled();
@@ -193,11 +193,11 @@ test('confirm success: the form checks what the API will, sends it once, and the
   expect(sent).toEqual([{ decision: 'confirm-success', evidenceKind: 'provider-portal', note: NOTE, providerRef: 'REF-77', msisdn: '0550000009' }]);
   await expect(page.getByText('نُفّذ القرار')).toBeVisible();
   // The ticket and its decisions were asked again: no decision is offered any more, and the record shows the step.
-  await expect(panel(page).locator('.po-head .ui-badge')).toHaveText('تم التفعيل');
-  await expect(panel(page).locator('.po-money .ui-badge')).toHaveText('سُوّي');
+  await expect(panel(page).getByTestId('po-head').getByTestId('badge')).toHaveText('تم التفعيل');
+  await expect(panel(page).getByTestId('po-money').getByTestId('badge')).toHaveText('سُوّي');
   await expect(panel(page).getByRole('button')).toHaveCount(0);
-  await expect(panel(page).locator('.po-history')).toContainText('تأكيد النجاح');
-  await expect(panel(page).locator('.po-history')).toContainText('REF-77');
+  await expect(panel(page).getByTestId('po-history')).toContainText('تأكيد النجاح');
+  await expect(panel(page).getByTestId('po-history')).toContainText('REF-77');
   expect(calls.filter((call) => call === 'GET /tasks/t1').length).toBeGreaterThanOrEqual(2);
   expect(calls.filter((call) => call === 'POST /tasks/t1/provider-decision')).toHaveLength(1);
 });
@@ -214,7 +214,7 @@ test('a confirmation whose line could not be made says so, and the ticket shows 
   await fillEvidence(page, { reference: 'REF-1' });
   await dialog(page).getByRole('button', { name: 'تنفيذ القرار' }).click();
   await expect(page.getByText('سُجّل نجاح المزوّد وتعذّر إنشاء الخط. المهمة بانتظار قرار.')).toBeVisible();
-  await expect(panel(page).locator('.po-head .ui-badge')).toHaveText('نجح عند المزوّد وتعذّرت التسوية');
+  await expect(panel(page).getByTestId('po-head').getByTestId('badge')).toHaveText('نجح عند المزوّد وتعذّرت التسوية');
   await expect(panel(page).getByRole('button', { name: 'تطبيق ببيانات مصحَّحة' })).toBeVisible();
 });
 
@@ -239,9 +239,9 @@ test('declare failure is sent as a proposal; its proposer is then told another a
   expect(sent).toEqual([{ decision: 'declare-failure', evidenceKind: 'provider-portal', note: NOTE }]);
   await expect(page.getByText('أُرسل الاقتراح، بانتظار حساب ثانٍ')).toBeVisible();
   // The amount is still held, the proposal is shown, and its proposer gets no approve or refuse.
-  await expect(panel(page).locator('.po-money .ui-badge')).toHaveText('محجوز');
-  await expect(panel(page).locator('.po-proposal')).toContainText('إعلان الفشل');
-  await expect(panel(page).locator('.po-proposal')).toContainText('هذا اقتراحك. يجيب عليه حساب مخوَّل آخر.');
+  await expect(panel(page).getByTestId('po-money').getByTestId('badge')).toHaveText('محجوز');
+  await expect(panel(page).getByTestId('po-proposal')).toContainText('إعلان الفشل');
+  await expect(panel(page).getByTestId('po-proposal')).toContainText('هذا اقتراحك. يجيب عليه حساب مخوَّل آخر.');
   await expect(panel(page).getByRole('button', { name: 'موافقة' })).toHaveCount(0);
   await expect(panel(page).getByRole('button', { name: 'رفض الاقتراح' })).toHaveCount(0);
   await expect(panel(page).getByRole('button', { name: 'تأكيد النجاح' })).toHaveCount(0);
@@ -308,7 +308,7 @@ test('esim-code-missing: the form asks for the code, sends it in the request onl
   await dialog(page).getByRole('button', { name: 'تنفيذ القرار' }).click();
   await expect(dialog(page)).toHaveCount(0);
   expect(sent).toEqual([{ decision: 'apply-corrected', evidenceKind: 'provider-portal', note: NOTE, esimCode: CODE }]);
-  await expect(panel(page).locator('.po-history')).toContainText('أُرفق رمز eSIM');
+  await expect(panel(page).getByTestId('po-history')).toContainText('أُرفق رمز eSIM');
   // After the decision the code is in no part of the page, the address, the storage, the cache or the console.
   const kept = await page.evaluate(() => JSON.stringify({ html: document.documentElement.outerHTML, url: location.href, local: { ...localStorage }, session: { ...sessionStorage }, cookie: document.cookie }));
   expect(kept).not.toContain('S10-SECRET');
@@ -329,26 +329,26 @@ test('the queue and the decision view are given no eSIM code, and moving from on
     'GET /tasks/tb/provider-decision': () => ({ body: viewOf() }),
   });
   await page.goto(`${admin}/tasks/decisions?waiting=decision`);
-  await expect(page.locator('.po-row')).toHaveCount(2);
+  await expect(page.getByTestId('po-row')).toHaveCount(2);
   expect(await page.content()).not.toContain('data:image');
   // Task A: its code is on its ticket, for the account the API gave it to.
-  await page.locator('.po-row').filter({ hasText: '0550000001' }).getByRole('link', { name: 'فتح التذكرة' }).click();
+  await page.getByTestId('po-row').filter({ hasText: '0550000001' }).getByRole('link', { name: 'فتح التذكرة' }).click();
   await expect(page.locator(`img[src="${QR_A}"]`)).toHaveCount(1);
   // Back to the queue, then task B while its answer is still on the way: nothing of A is on screen at any moment.
   await page.goBack();
-  await expect(page.locator('.po-row')).toHaveCount(2);
+  await expect(page.getByTestId('po-row')).toHaveCount(2);
   expect(await page.content()).not.toContain(QR_A);
-  await page.locator('.po-row').filter({ hasText: '0550000002' }).getByRole('link', { name: 'فتح التذكرة' }).click();
+  await page.getByTestId('po-row').filter({ hasText: '0550000002' }).getByRole('link', { name: 'فتح التذكرة' }).click();
   await expect(page).toHaveURL(/\/tasks\/tb$/);
   expect(await page.content()).not.toContain(QR_A);
-  await expect(panel(page).locator('.po-head .ui-badge')).toHaveText('النتيجة غير مؤكدة');
+  await expect(panel(page).getByTestId('po-head').getByTestId('badge')).toHaveText('النتيجة غير مؤكدة');
   expect(await page.content()).not.toContain(QR_A);
   await expect(page.locator('img[src^="data:image"]')).toHaveCount(0);
   // And going back to A asks for it again: it was not kept in the cache.
   await page.goBack();
-  await expect(page.locator('.po-row')).toHaveCount(2);
+  await expect(page.getByTestId('po-row')).toHaveCount(2);
   const before = calls.filter((call) => call === 'GET /tasks/ta').length;
-  await page.locator('.po-row').filter({ hasText: '0550000001' }).getByRole('link', { name: 'فتح التذكرة' }).click();
+  await page.getByTestId('po-row').filter({ hasText: '0550000001' }).getByRole('link', { name: 'فتح التذكرة' }).click();
   await expect(page.locator(`img[src="${QR_A}"]`)).toHaveCount(1);
   expect(calls.filter((call) => call === 'GET /tasks/ta').length).toBe(before + 1);
 });
@@ -367,7 +367,7 @@ test('a second account approves a proposed release after reading what it does to
   });
   const sent = sentTo(page, '/v1/tasks/t1/provider-decision/approval');
   await page.goto(`${admin}/tasks/t1`);
-  const proposal = panel(page).locator('.po-proposal');
+  const proposal = panel(page).getByTestId('po-proposal');
   await expect(proposal).toContainText('تحرير بعد نجاح المزوّد');
   await expect(proposal).toContainText('acc1');
   await expect(proposal).toContainText('بوابة المزوّد');
@@ -384,8 +384,8 @@ test('a second account approves a proposed release after reading what it does to
   await expect(dialog(page)).toHaveCount(0);
   expect(sent).toEqual([{ approve: true }]);
   await expect(page.getByText('تمت الموافقة على الاقتراح')).toBeVisible();
-  await expect(panel(page).locator('.po-money .ui-badge')).toHaveText('أُعيد إلى الرصيد');
-  await expect(panel(page).locator('.po-proposal')).toHaveCount(0);
+  await expect(panel(page).getByTestId('po-money').getByTestId('badge')).toHaveText('أُعيد إلى الرصيد');
+  await expect(panel(page).getByTestId('po-proposal')).toHaveCount(0);
   await expect(panel(page).getByRole('button')).toHaveCount(0);
 });
 
@@ -399,13 +399,13 @@ test('a second account refuses a proposal: nothing changes, and a decision can b
   });
   const sent = sentTo(page, '/v1/tasks/t1/provider-decision/approval');
   await page.goto(`${admin}/tasks/t1`);
-  await expect(panel(page).locator('.po-proposal')).toContainText('بالموافقة تصبح العملية فاشلة وتنتقل المهمة إلى الفرع. المبلغ يبقى محجوزاً.');
+  await expect(panel(page).getByTestId('po-proposal')).toContainText('بالموافقة تصبح العملية فاشلة وتنتقل المهمة إلى الفرع. المبلغ يبقى محجوزاً.');
   await panel(page).getByRole('button', { name: 'رفض الاقتراح' }).click();
   await expect(dialog(page)).toContainText('يُغلق الاقتراح ولا يتغيّر شيء في العملية أو المبلغ');
   await dialog(page).getByRole('button', { name: 'تأكيد الرفض' }).click();
   expect(sent).toEqual([{ approve: false }]);
   await expect(page.getByText('رُفض الاقتراح', { exact: true })).toBeVisible();
-  await expect(panel(page).locator('.po-proposal')).toHaveCount(0);
+  await expect(panel(page).getByTestId('po-proposal')).toHaveCount(0);
   await expect(panel(page).getByRole('button', { name: 'إعلان الفشل' })).toBeVisible();
 });
 
@@ -416,7 +416,7 @@ test('a proposal that went stale is offered for refusal only, and says why', asy
     'GET /tasks/t1/provider-decision': () => ({ body: viewOf({ phase: 'applied', decisions: [], canApprove: false, canRefuse: true, proposal: record() }) }),
   });
   await page.goto(`${admin}/tasks/t1`);
-  await expect(panel(page).locator('.po-proposal')).toContainText('تغيّرت حالة العملية بعد هذا الاقتراح. يمكن رفضه فقط.');
+  await expect(panel(page).getByTestId('po-proposal')).toContainText('تغيّرت حالة العملية بعد هذا الاقتراح. يمكن رفضه فقط.');
   await expect(panel(page).getByRole('button', { name: 'موافقة' })).toHaveCount(0);
   await expect(panel(page).getByRole('button', { name: 'رفض الاقتراح' })).toBeVisible();
 });
@@ -438,7 +438,7 @@ test('a 409 says the operation changed, closes the form and reads the ticket aga
   await expect(dialog(page)).toHaveCount(0);
   await expect(page.getByRole('alert').filter({ hasText: 'القرار لا ينطبق على حالة العملية الآن' })).toContainText('تغيّرت حالة العملية. حُدّثت البيانات.');
   await expect(page.getByText('نُفّذ القرار')).toHaveCount(0);
-  await expect(panel(page).locator('.po-head .ui-badge')).toHaveText('تم التفعيل');
+  await expect(panel(page).getByTestId('po-head').getByTestId('badge')).toHaveText('تم التفعيل');
   await expect(panel(page).getByRole('button')).toHaveCount(0);
   expect(calls.filter((call) => call === 'POST /tasks/t1/provider-decision')).toHaveLength(1);
 });
@@ -514,7 +514,7 @@ test('the queue keeps what waits for a second approval and what waits for a deci
   await expect(tab(page, 'بانتظار موافقة ثانية')).toHaveAttribute('aria-selected', 'true');
   await expect(tab(page, 'بانتظار موافقة ثانية')).toContainText('1');
   await expect(tab(page, 'بانتظار قرار')).toContainText('1');
-  const row = page.locator('.po-row');
+  const row = page.getByTestId('po-row');
   await expect(row).toHaveCount(1);
   for (const text of ['تفعيل', 'النتيجة غير مؤكدة', '0550000011', '400 جيجا', 'pos', 'agent1', '35.00', 'إعلان الفشل', 'acc1', 'بوابة المزوّد', 'REF-5', NOTE, 'المبلغ يبقى محجوزاً']) await expect(row).toContainText(text);
   await expect(row.getByRole('link', { name: 'فتح التذكرة' })).toHaveAttribute('href', '/tasks/q1');
@@ -551,8 +551,8 @@ test('the queue pages by the API\'s total and cursor: more than two hundred oper
     },
   });
   await page.goto(`${admin}/tasks/decisions?waiting=decision`);
-  const rows = page.locator('.po-row');
-  const pager = page.locator('.table-pager');
+  const rows = page.getByTestId('po-row');
+  const pager = page.getByTestId('table-pager');
   await expect(rows).toHaveCount(10);
   // The counts are the queue's, not the page's.
   await expect(tab(page, 'بانتظار قرار')).toContainText('230');
@@ -583,11 +583,11 @@ test('the queue shows the proposer and the submitter why they may not answer, an
     ]),
   });
   await page.goto(`${admin}/tasks/decisions`);
-  await expect(page.locator('.po-row')).toContainText('هذا اقتراحك. يجيب عليه حساب مخوَّل آخر.');
-  await expect(page.locator('.po-row').getByRole('button')).toHaveCount(0);
+  await expect(page.getByTestId('po-row')).toContainText('هذا اقتراحك. يجيب عليه حساب مخوَّل آخر.');
+  await expect(page.getByTestId('po-row').getByRole('button')).toHaveCount(0);
   await tab(page, 'بانتظار قرار').click();
-  await expect(page.locator('.po-row')).toContainText('أنت مُرسِل هذه المهمة، فلا تتخذ قراراً عليها.');
-  await expect(page.locator('.po-row').getByRole('button')).toHaveCount(0);
+  await expect(page.getByTestId('po-row')).toContainText('أنت مُرسِل هذه المهمة، فلا تتخذ قراراً عليها.');
+  await expect(page.getByTestId('po-row').getByRole('button')).toHaveCount(0);
 });
 
 test('the queue is empty, is refused, or fails: each is said, and none shows a row', async ({ page }) => {
@@ -600,12 +600,12 @@ test('the queue is empty, is refused, or fails: each is said, and none shows a r
   mode = 'refused';
   await page.reload();
   await expect(page.getByText('غير مسموح').first()).toBeVisible();
-  await expect(page.locator('.po-row')).toHaveCount(0);
+  await expect(page.getByTestId('po-row')).toHaveCount(0);
   await expect(page.getByText('لا توجد عمليات بانتظار قرار')).toHaveCount(0);
   mode = 'down';
   await page.reload();
   await expect(page.getByText('حدث خطأ في الخادم').first()).toBeVisible();
-  await expect(page.locator('.po-row')).toHaveCount(0);
+  await expect(page.getByTestId('po-row')).toHaveCount(0);
 });
 
 test('the tasks page links to the queue for an account that may decide, with the queue\'s total, and marks an open task\'s operation', async ({ page }) => {
@@ -622,12 +622,12 @@ test('the tasks page links to the queue for an account that may decide, with the
   await page.goto(`${admin}/tasks`);
   const link = page.getByRole('link', { name: /قرارات المزوّد/ });
   await expect(link).toHaveAttribute('href', '/tasks/decisions');
-  await expect(link.locator('.ui-badge')).toHaveText('237');
-  await expect(page.locator('.task-card').nth(0)).toContainText('النتيجة غير مؤكدة');
-  await expect(page.locator('.task-card').nth(1)).toContainText('نجح عند المزوّد وتعذّرت التسوية');
+  await expect(link.getByTestId('badge')).toHaveText('237');
+  await expect(page.getByTestId('task-card').nth(0)).toContainText('النتيجة غير مؤكدة');
+  await expect(page.getByTestId('task-card').nth(1)).toContainText('نجح عند المزوّد وتعذّرت التسوية');
   // A manual task and a closed one carry no operation mark.
-  await expect(page.locator('.task-card').nth(2).locator('.ui-badge')).toHaveCount(1);
-  await expect(page.locator('.task-card').nth(3).locator('.ui-badge')).toHaveCount(1);
+  await expect(page.getByTestId('task-card').nth(2).getByTestId('badge')).toHaveCount(1);
+  await expect(page.getByTestId('task-card').nth(3).getByTestId('badge')).toHaveCount(1);
 });
 
 for (const [who, me] of [
@@ -684,8 +684,8 @@ for (const [device, width, height] of widths) {
       await expect(html).toHaveAttribute('dir', ar ? 'rtl' : 'ltr');
       await expect(html).not.toHaveClass(/(^| )dark( |$)/);
       const region = page.getByRole('region', { name: ar ? 'عملية المزوّد' : 'Provider operation' });
-      await expect(region.locator('.po-head .ui-badge')).toHaveText(ar ? 'نجح عند المزوّد وتعذّرت التسوية' : 'Confirmed by the provider, could not be settled');
-      await expect(region.locator('.po-history li')).toHaveCount(2);
+      await expect(region.getByTestId('po-head').getByTestId('badge')).toHaveText(ar ? 'نجح عند المزوّد وتعذّرت التسوية' : 'Confirmed by the provider, could not be settled');
+      await expect(region.getByTestId('po-history').locator('li')).toHaveCount(2);
       // The panel sits inside the page's width, in both themes.
       await fits();
       await inside(await region.boundingBox());
@@ -721,11 +721,11 @@ for (const [device, width, height] of widths) {
       await page.keyboard.press('Escape');
 
       await page.goto(`${admin}/tasks/decisions`);
-      await expect(page.locator('.po-row')).toHaveCount(2);
+      await expect(page.getByTestId('po-row')).toHaveCount(2);
       for (const dark of [false, true]) {
         if (dark) await toDark(true);
         await fits();
-        for (const row of await page.locator('.po-row').all()) await inside(await row.boundingBox());
+        for (const row of await page.getByTestId('po-row').all()) await inside(await row.boundingBox());
         await shot('queue');
       }
     });
@@ -740,7 +740,7 @@ test('the Hebrew copy is complete on the ticket: no key shows through', async ({
   });
   await page.goto(`${admin}/tasks/t1`);
   const region = page.getByRole('region', { name: 'פעולת ספק' });
-  await expect(region.locator('.po-head .ui-badge')).toHaveText('התוצאה אינה ודאית');
+  await expect(region.getByTestId('po-head').getByTestId('badge')).toHaveText('התוצאה אינה ודאית');
   await expect(region.getByRole('button', { name: 'אישור', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });

@@ -40,8 +40,8 @@ for (const locale of ['ar', 'en', 'he'] as const) {
     });
     await page.goto(`${admin}/`);
     await page.getByRole('button', { name: { ar: 'الإشعارات', en: 'Notices', he: 'התראות' }[locale], exact: true }).click();
-    const titles = page.locator('.shell-item strong');
-    const details = page.locator('.shell-item .notice-detail');
+    const titles = page.getByTestId('notice-item').locator('strong');
+    const details = page.getByTestId('notice-item').getByTestId('notice-detail');
     await expect(titles).toHaveText([words[locale].out, words[locale].in, words[locale].out]);
     await expect(details).toHaveText([...words[locale].details]);
   });
@@ -61,8 +61,8 @@ test('the activity log names an account transfer and offers it as a filter', asy
     }),
   });
   await page.goto(`${admin}/audit`);
-  await expect(page.locator('.data tbody tr')).toHaveCount(1);
-  await expect(page.locator('.data tbody tr').first()).toContainText('نقل حساب');
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
+  await expect(page.getByTestId('data-table').locator('tbody tr').first()).toContainText('نقل حساب');
   const filter = page.getByLabel('الحدث');
   await expect(filter.getByRole('option', { name: 'نقل حساب', exact: true })).toHaveCount(1);
   await filter.selectOption('user_transfer');

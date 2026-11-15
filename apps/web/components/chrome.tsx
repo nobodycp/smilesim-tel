@@ -44,6 +44,7 @@ export function LanguageSwitch({ shell = false, topbar = false }: { shell?: bool
       <button
         type="button"
         className="shell-icon shell-lang"
+        data-testid="shell-lang"
         onClick={() => setLocale(next)}
         aria-label={`${code} — ${langName[next]}`}
         title={langName[next]}
@@ -54,11 +55,12 @@ export function LanguageSwitch({ shell = false, topbar = false }: { shell?: bool
   }
 
   return (
-    <div className={topbar ? 'lang topbar-lang' : 'lang'} ref={root}>
+    <div className={topbar ? 'lang topbar-lang' : 'lang'} data-testid="lang-switch" ref={root}>
       <button
         ref={trigger}
         type="button"
         className={topbar ? 'shell-icon shell-lang' : undefined}
+        data-testid={topbar ? 'shell-lang' : undefined}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t.language}

@@ -12,7 +12,7 @@ export function LoadFailed({ message, onRetry, busy = false }: { message: string
   const { t } = usePrefs();
   const network = message === t.errors.NETWORK;
   return (
-    <div className="empty empty-state load-failed" role="alert">
+    <div className="empty empty-state load-failed" data-testid="load-failed" role="alert">
       <span className="empty-icon" aria-hidden="true">
         <Icon name={network ? 'offline' : 'tasks'} />
       </span>

@@ -62,7 +62,7 @@ export function UserOpsTab({
             const stoppedBy = above.get(key);
             const allowed = !denied.has(key) && !stoppedBy;
             return (
-              <article key={key} className={allowed ? 'op-card' : 'op-card off'} data-op={key}>
+              <article key={key} className={allowed ? 'op-card' : 'op-card off'} data-testid="op-card" data-op={key}>
                 <span className="op-mark" aria-hidden="true"><Icon /></span>
                 <div className="op-text">
                   <h3>{opLabel(t, key)}</h3>

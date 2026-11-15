@@ -19,7 +19,7 @@ test('an account is named by its login with the full name in parentheses, in the
     'GET /users': () => ({ body: { users: [user('agent1', 'وكيل', 'agent', 'main1'), user('pos', 'الكاشير', 'pos', 'agent1')] } }),
   });
   await page.goto('http://admin.localhost:3910/users');
-  const rows = page.locator('.data tbody tr');
+  const rows = page.getByTestId('data-table').locator('tbody tr');
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0).getByRole('link', { name: 'agent1 (وكيل)' })).toBeVisible();
   // The parent column holds only a login; the name comes from the session directory.
@@ -45,18 +45,18 @@ test('the users table is paged by the server: filters go in the request, the nex
   });
   await page.context().addCookies([{ name: 'smilesim-page-size', value: '20', url: 'http://admin.localhost:3910' }]);
   await page.goto('http://admin.localhost:3910/users');
-  await expect(page.locator('.pane-head .count')).toHaveText('60');
-  await expect(page.locator('.data tbody tr')).toHaveCount(20);
+  await expect(page.getByTestId('list-count')).toHaveText('60');
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(20);
   expect(calls).not.toContain('GET /users?cursor=c50');
 
   // Page 3 (rows 41–60) runs past the first answer of fifty: the next cursor is read.
-  await page.locator('.table-pager').getByRole('button', { name: '3', exact: true }).click();
-  await expect(page.locator('.data tbody tr')).toHaveCount(20);
-  await expect(page.locator('.data tbody tr').last()).toContainText('p59');
+  await page.getByTestId('table-pager').getByRole('button', { name: '3', exact: true }).click();
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(20);
+  await expect(page.getByTestId('data-table').locator('tbody tr').last()).toContainText('p59');
   expect(calls).toContain('GET /users?cursor=c50');
 
   await page.getByRole('combobox', { name: 'الطبقة' }).selectOption('agent');
-  await expect(page.locator('.data tbody tr')).toHaveCount(1);
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
   expect(calls).toContain('GET /users?layer=agent');
 
   // Opening an account asks for the whole tree, for the parent choice.
@@ -75,11 +75,11 @@ test('the users table and the roles table both sort from their headers', async (
     'GET /roles': () => ({ body: { roles: [{ id: 'r2', name: 'ب', kind: 'job', layer: null, grants: 'read' }, { id: 'r1', name: 'أ', kind: 'job', layer: null, grants: 'read' }] } }),
   });
   await page.goto('http://admin.localhost:3910/users');
-  await expect(page.locator('.data tbody tr')).toHaveCount(2);
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(2);
   // The users list sorts on the server (cursor lists), so its headers sort too.
-  await expect(page.locator('.data thead .col-sort').first()).toBeVisible();
+  await expect(page.getByTestId('data-table').locator('thead').getByRole('button').first()).toBeVisible();
 
   await page.goto('http://admin.localhost:3910/roles');
-  await expect(page.locator('.data tbody tr')).toHaveCount(2);
-  await expect(page.locator('.data thead .col-sort').first()).toBeVisible();
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(2);
+  await expect(page.getByTestId('data-table').locator('thead').getByRole('button').first()).toBeVisible();
 });

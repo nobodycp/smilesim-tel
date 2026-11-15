@@ -20,7 +20,7 @@ test('the topbar balance follows a fund without a reload', async ({ page }) => {
     },
   });
   await page.goto('http://main.localhost:3910/users');
-  const wallet = page.locator('.wallet-chip .money');
+  const wallet = page.getByTestId('wallet-chip').getByTestId('wallet-balance');
   await expect(wallet).toHaveText('1000.00 ₪');
   // Funding sits in the row's «المحفظة» menu (spec 2026-11-08-overview-and-reports-nav, H).
   await page.getByRole('button', { name: /^المحفظة ag1/ }).click();
@@ -35,8 +35,8 @@ test('the topbar balance follows a fund without a reload', async ({ page }) => {
 test('the branch has no wallet: no chip in the topbar, and /wallet goes home', async ({ page }) => {
   await serveApi(page, 'branch', { 'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] } }) });
   await page.goto('http://admin.localhost:3910/');
-  await expect(page.locator('.topbar .notice-btn')).toBeVisible();
-  await expect(page.locator('.wallet-chip')).toHaveCount(0);
+  await expect(page.getByTestId('topbar').getByTestId('notice-btn')).toBeVisible();
+  await expect(page.getByTestId('wallet-chip')).toHaveCount(0);
   await page.goto('http://admin.localhost:3910/wallet');
   await expect(page).toHaveURL('http://admin.localhost:3910/');
 });
@@ -47,9 +47,9 @@ test('the branch has no wallet: no chip in the topbar, and /wallet goes home', a
 test('the topbar ends with notices, theme and language, and the sidebar has neither preference', async ({ page }) => {
   await serveApi(page, 'branch', { 'GET /home': () => ({ body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, expiringLines: 0, operations: [] } }) });
   await page.goto('http://admin.localhost:3910/');
-  const order = await page.locator('.topbar-tools').evaluate((tools) =>
-    [...tools.querySelectorAll('.lang > button, .shell-icon')].map((el) =>
-      el.closest('.lang') ? 'lang' : el.classList.contains('notice-btn') ? 'notices' : el.getAttribute('aria-label')?.includes('الوضع') ? 'theme' : 'other'));
+  const order = await page.getByTestId('topbar-tools').evaluate((tools) =>
+    [...tools.querySelectorAll('[data-testid="lang-switch"] > button, [data-testid="notice-btn"], button[aria-label*="الوضع"]')].map((el) =>
+      el.closest('[data-testid="lang-switch"]') ? 'lang' : el.getAttribute('data-testid') === 'notice-btn' ? 'notices' : el.getAttribute('aria-label')?.includes('الوضع') ? 'theme' : 'other'));
   expect(order.filter((name) => name !== 'other')).toEqual(['notices', 'theme', 'lang']);
-  await expect(page.locator('.sidebar .shell-lang, .sidebar .lang, .drawer-prefs')).toHaveCount(0);
+  await expect(page.getByTestId('sidebar').getByTestId(/^(shell-lang|lang-switch)$/)).toHaveCount(0);
 });

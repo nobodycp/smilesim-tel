@@ -72,11 +72,11 @@ for (const locale of ['ar', 'en', 'he'] as const) {
     await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: admin }]);
     await serveApi(page, 'branch', { 'GET /roles': () => ({ body: { roles: cases.map((item) => item.row) } }) });
     await page.goto(`${admin}/roles`);
-    const rows = page.locator('.data tbody tr');
+    const rows = page.getByTestId('data-table').locator('tbody tr');
     await expect(rows).toHaveCount(cases.length);
     for (const [index, item] of cases.entries()) {
       // The matrix names each grant a row holds, in its layer's words, on its tick.
-      const held = await rows.nth(index).locator('.grant.on').evaluateAll((ticks) => ticks.map((tick) => (tick.getAttribute('aria-label') ?? '').split(': ')[0]));
+      const held = await rows.nth(index).getByTestId('grant-on').evaluateAll((ticks) => ticks.map((tick) => (tick.getAttribute('aria-label') ?? '').split(': ')[0]));
       expect(held.join(' · ')).toBe(item.cell[locale]);
     }
   });

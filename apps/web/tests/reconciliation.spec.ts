@@ -33,10 +33,10 @@ test('the branch uploads a statement, compares it and handles a difference', asy
   expect(body.map).toEqual({ msisdn: 0, date: 1, amount: 2, reference: null });
   expect(Buffer.from(body.content, 'base64').toString('utf8')).toContain('0521000001');
 
-  await expect(page.locator('table.data tbody tr')).toHaveCount(2);
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(2);
   // The provider's own cards come first, then the counts, then the totals.
-  await expect(page.locator('.stat-row').nth(2)).toContainText('+45.00 ₪');
-  await page.locator('table.data tbody tr').first().getByRole('button', { name: 'معالجة' }).click();
+  await expect(page.getByTestId('stat-row').nth(2)).toContainText('+45.00 ₪');
+  await page.getByTestId('data-table').locator('tbody tr').first().getByRole('button', { name: 'معالجة' }).click();
   await page.getByRole('dialog').getByLabel('ملاحظة').fill('المزود صحّح السعر');
   const handled = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/reconciliation-items/i1'));
   await page.getByRole('dialog').getByRole('button', { name: 'حفظ' }).click();

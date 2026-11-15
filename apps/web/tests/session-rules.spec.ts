@@ -31,7 +31,7 @@ test('the owner sets a layer’s sessions and idle time on that layer\'s role', 
   // The layer's defaults live on its role (spec 2026-11-09-admin-review, 6.1); «قواعد الدخول» is gone.
   await page.goto('http://admin.localhost:3910/settings/access');
   await expect(page).toHaveURL(/\/roles$/);
-  await expect(page.locator('.sidebar').getByRole('link', { name: 'قواعد الدخول' })).toHaveCount(0);
+  await expect(page.getByTestId('sidebar').getByRole('link', { name: 'قواعد الدخول' })).toHaveCount(0);
   await page.getByRole('button', { name: /إجراءات نقطة بيع/ }).click();
   await page.getByRole('menuitem').first().click();
   const dialog = page.getByRole('dialog');
@@ -104,7 +104,7 @@ test('the owner edits one account from its page\'s «إعدادات الحساب
   await pane.getByRole('button', { name: 'حفظ' }).click();
   await expect(page.getByText('حُفظت إعدادات الحساب')).toBeVisible();
   // The permissions sit folded under the settings.
-  await expect(page.locator('details.access-fold')).not.toHaveAttribute('open', '');
+  await expect(page.getByTestId('access-fold')).not.toHaveAttribute('open', '');
   expect(contact).toEqual([{ phone: '0501234567' }]);
   expect(modes).toEqual([{ mode: 'required', method: null }]);
   expect(saved).toEqual([{ maxSessions: 2, sessionMinutes: null }]);

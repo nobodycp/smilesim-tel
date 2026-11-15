@@ -33,7 +33,7 @@ export function Desk({
   if (!ready) return <PageSkeleton />;
 
   return (
-    <div className="desk">
+    <div className="desk" data-testid="desk">
       <header className="page-head" data-testid="page-head">
         <h1>{title}</h1>
         {action}

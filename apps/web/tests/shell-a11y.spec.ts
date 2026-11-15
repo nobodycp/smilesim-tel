@@ -8,9 +8,9 @@ const home = { body: { pendingTasks: 0, activeLines: 0, inactiveLines: 0, operat
 test('the sidebar foot holds the account, which opens the profile, and signing out', async ({ page }) => {
   await serveApi(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
-  const sidebar = page.locator('aside.sidebar');
-  await expect(page.locator('.topbar .avatar-btn')).toHaveCount(0);
-  await expect(sidebar.locator('.side-user')).toHaveAttribute('href', '/settings');
+  const sidebar = page.getByTestId('sidebar');
+  await expect(page.getByTestId('topbar').locator('a[href="/settings"]')).toHaveCount(0);
+  await expect(sidebar.getByTestId('side-user')).toHaveAttribute('href', '/settings');
   await expect(sidebar.getByRole('button', { name: 'تسجيل الخروج' })).toBeVisible();
 });
 
@@ -29,14 +29,14 @@ test('the wallet chip opens the wallet page, and Escape on the notices gives the
   await chip.click();
   await expect(page).toHaveURL(/\/wallet$/);
   await expect(page.getByRole('heading', { name: 'المحفظة', level: 1 })).toBeVisible();
-  await expect(page.locator('table.data tbody tr')).toHaveCount(1);
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
   await page.getByRole('button', { name: 'شحن الرصيد' }).click();
   await expect(page.getByText('طلبات الشحن قريباً', { exact: false })).toBeVisible();
   const bell = page.getByRole('button', { name: 'الإشعارات' });
   await bell.click();
-  await expect(page.locator('.notice-panel')).toBeVisible();
+  await expect(page.getByTestId('notice-panel')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.locator('.notice-panel')).toHaveCount(0);
+  await expect(page.getByTestId('notice-panel')).toHaveCount(0);
   await expect(bell).toBeFocused();
 });
 
@@ -45,7 +45,7 @@ test('the closed drawer is inert, and the open one is not', async ({ page }) => 
   await page.setViewportSize({ width: 390, height: 844 });
   await serveApi(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
-  const drawer = page.locator('aside.drawer');
+  const drawer = page.getByTestId('drawer');
   await expect(drawer).toHaveAttribute('inert', '');
   await page.getByRole('button', { name: 'فتح القائمة' }).click();
   await expect(drawer).toHaveClass(/open/);
@@ -56,7 +56,7 @@ test('the closed drawer is inert, and the open one is not', async ({ page }) => 
 test('a collapsed sidebar stays collapsed after a reload', async ({ page }) => {
   await serveApi(page, 'branch', { 'GET /home': () => home });
   await page.goto(`${admin}/`);
-  const sidebar = page.locator('aside.sidebar');
+  const sidebar = page.getByTestId('sidebar');
   await expect(sidebar).not.toHaveClass(/collapsed/);
   await sidebar.getByRole('button', { name: 'طي القائمة' }).click();
   await expect(sidebar).toHaveClass(/collapsed/);

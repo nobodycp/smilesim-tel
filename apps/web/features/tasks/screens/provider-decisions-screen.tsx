@@ -56,7 +56,7 @@ export function ProviderDecisionsScreen() {
       header: t.poTitle,
       cell: 'po-cell',
       render: (item) => (
-        <div className="po-row" data-phase={item.phase ?? ''}>
+        <div className="po-row" data-testid="po-row" data-phase={item.phase ?? ''}>
           <div className="po-row-head">
             <b>{actionName(t, item.action)}</b>
             {item.phase ? <Badge variant={operationTone(item.phase)} dot>{phaseName(t, item.phase)}</Badge> : null}

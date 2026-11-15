@@ -57,7 +57,7 @@ function tileIcon(item: RowAction) {
 function LineOp({ icon, title, text, danger, now, onClick }: { icon: ReactNode; title: string; text: string; danger?: boolean; now?: boolean; onClick: () => void }) {
   // `now`: an immediate operation (lineActions), as opposed to one that opens a form.
   return (
-    <button type="button" className={danger ? 'line-op danger' : 'line-op'} data-now={now ? '' : undefined} aria-label={title} onClick={onClick}>
+    <button type="button" className={danger ? 'line-op danger' : 'line-op'} data-testid="line-op" data-now={now ? '' : undefined} aria-label={title} onClick={onClick}>
       <span className="line-op-mark">{icon}</span>
       <b>{title}</b>
       <span className="line-op-text">{text}</span>
@@ -167,7 +167,7 @@ export function LineCardScreen() {
     <Desk
       title={line ? (
         <span className="line-hero-title">
-          <bdi dir="ltr" className="line-number">{line.msisdn}</bdi>
+          <bdi dir="ltr" className="line-number" data-testid="line-number">{line.msisdn}</bdi>
           <Badge variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge>
           {line.status === 'active' ? <LeftDays endsAt={line.endsAt} /> : null}
         </span>
@@ -194,7 +194,7 @@ export function LineCardScreen() {
           <Tabs items={tabs.map((item) => ({ key: item, label: names[item], count: item === 'log' && history.length ? history.length : undefined }))} value={tab} onChange={setTab} />
           <section className="pane line-pane" data-testid="line-pane">
             {tab === 'ops' && (
-              <div className="pane-body line-ops">
+              <div className="pane-body line-ops" data-testid="line-ops">
                 {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
                 <div className="line-op-grid" data-testid="line-op-grid">
                   {items.map((item) => (

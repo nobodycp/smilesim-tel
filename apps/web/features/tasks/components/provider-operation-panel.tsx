@@ -48,11 +48,11 @@ export function ProviderOperationPanel({ task, onChanged, say }: { task: TaskDet
 
   return (
     <section className="po-panel" aria-label={t.poTitle} data-phase={operation.phase}>
-      <header className="po-head">
+      <header className="po-head" data-testid="po-head">
         <h2>{t.poTitle}</h2>
         <Badge variant={operationTone(operation.phase)} dot>{phaseName(t, operation.phase)}</Badge>
       </header>
-      <p className="po-hint">{phaseHint(t, operation.phase)}</p>
+      <p className="po-hint" data-testid="po-hint">{phaseHint(t, operation.phase)}</p>
       <dl className="po-facts">
         {operation.reason ? (
           <div><dt>{t.poReason}</dt><dd>{reasonName(t, operation.reason)}</dd></div>
@@ -60,13 +60,13 @@ export function ProviderOperationPanel({ task, onChanged, say }: { task: TaskDet
         {task.hold && task.hold !== 'none' ? (
           <div>
             <dt>{t.poHold}</dt>
-            <dd className="po-money"><Money value={Math.abs(task.posDelta)} /><Badge variant={holdTone(task.hold)}>{holdName(t, task.hold)}</Badge></dd>
+            <dd className="po-money" data-testid="po-money"><Money value={Math.abs(task.posDelta)} /><Badge variant={holdTone(task.hold)}>{holdName(t, task.hold)}</Badge></dd>
           </div>
         ) : null}
       </dl>
 
       {operation.decisions ? (
-        <div className="po-decisions">
+        <div className="po-decisions" data-testid="po-decisions">
           {view.error ? <p className="error" role="alert">{view.error}</p> : null}
           {!view.loaded ? <p className="hint" aria-busy="true">…</p> : null}
           {standing ? (
@@ -98,7 +98,7 @@ export function ProviderOperationPanel({ task, onChanged, say }: { task: TaskDet
                 </>
               ) : null}
               {!standing.proposal && standing.blocked === 'own-task' ? <p className="hint">{t.propOwnTask}</p> : null}
-              <details className="po-history" open={standing.history.length > 0 && standing.history.length <= 3}>
+              <details className="po-history" data-testid="po-history" open={standing.history.length > 0 && standing.history.length <= 3}>
                 <summary>{t.decHistory} <bdi dir="ltr">({standing.history.length})</bdi></summary>
                 {standing.history.length === 0 ? <p className="hint">{t.decNoHistory}</p> : (
                   <ol>

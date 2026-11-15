@@ -76,7 +76,7 @@ function Radios<T extends string>({
   return (
     <div className="choice-options">
       {options.map((option) => (
-        <label key={option.value} className="check">
+        <label key={option.value} className="check" data-testid="radio-row">
           <input type="radio" name={name} value={option.value} checked={value === option.value} onChange={() => onPick(option.value)} />
           {option.label}
         </label>
@@ -287,7 +287,7 @@ function TransferForm({ row, destinations, onClose, onDone }: Omit<Props, 'open'
             </Facts>
             {preview.own.belowNewFloor > 0 ? (
               <div>
-                <Badge variant="warning" dot>{t.transferBelowFloor.replace('{n}', String(preview.own.belowNewFloor))}</Badge>
+                <Badge variant="warning" dot data-testid="transfer-floor">{t.transferBelowFloor.replace('{n}', String(preview.own.belowNewFloor))}</Badge>
               </div>
             ) : null}
           </>

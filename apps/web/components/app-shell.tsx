@@ -434,6 +434,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link
             href="/settings"
             className="side-user"
+            data-testid="side-user"
             onClick={() => setMobileOpen(false)}
             onMouseEnter={mobile ? undefined : (event) => hint(event, `${shown} · ${t.accountSettings}`)}
             onBlur={() => setFlyout(null)}
@@ -490,24 +491,24 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
       {/* Closed, the drawer is off screen but still in the page: `inert` keeps it out of the tab order and the
           accessibility tree until it opens. */}
-      <aside className={mobileOpen ? 'drawer open' : 'drawer'} inert={!mobileOpen}>{sidebar(true)}</aside>
+      <aside className={mobileOpen ? 'drawer open' : 'drawer'} data-testid="drawer" inert={!mobileOpen}>{sidebar(true)}</aside>
       <div className="app-main">
         <header className="topbar" data-testid="topbar">
-          <div className="topbar-start">
-            <button type="button" className="shell-icon menu-btn" onClick={() => setMobileOpen(true)} aria-label={t.openMenu}>
+          <div className="topbar-start" data-testid="topbar-start">
+            <button type="button" className="shell-icon menu-btn" data-testid="menu-btn" onClick={() => setMobileOpen(true)} aria-label={t.openMenu}>
               <Menu {...glyph} />
             </button>
             <ShellPath pathname={pathname} sections={sections} />
           </div>
-          <div className="topbar-tools">
+          <div className="topbar-tools" data-testid="topbar-tools">
             <ShellSearch pages={sections.map((item) => ({ href: item.href, label: item.label }))} />
             {/* «المحفظة» (spec 2026-11-09, 4): the balance chip opens the wallet page, where top-up will live. The branch
                 has no wallet: its balance is unlimited (spec 2026-11-09-admin-review, 7). */}
-            {layer === 'branch' ? null : <div className="wallet-chip">
+            {layer === 'branch' ? null : <div className="wallet-chip" data-testid="wallet-chip">
               <Link href="/wallet" className="wallet-btn" aria-label={t.walletPage}>
                 <Wallet {...glyph} />
                 {shownBalance !== null && (
-                  <span className={shownBalance < 0 ? 'money neg' : shownBalance > 0 ? 'money pos' : 'money'} dir="ltr">
+                  <span className={shownBalance < 0 ? 'money neg' : shownBalance > 0 ? 'money pos' : 'money'} data-testid="wallet-balance" dir="ltr">
                     {formatShekel(shownBalance)}
                   </span>
                 )}
@@ -521,6 +522,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ref={noticeTrigger}
                 type="button"
                 className={unread > 0 ? 'shell-icon notice-btn is-active' : 'shell-icon notice-btn'}
+                data-testid="notice-btn"
                 aria-label={t.notices}
                 aria-expanded={noticeOpen}
                 onClick={toggleNotices}
@@ -529,7 +531,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {unread > 0 && <span className="notice-count">{unread > 9 ? '9+' : unread}</span>}
               </button>
               {noticeOpen && (
-                <div className="shell-panel notice-panel" role="menu">
+                <div className="shell-panel notice-panel" data-testid="notice-panel" role="menu">
                   <div className="notice-panel-head">
                     <p className="shell-panel-title">{t.notices}</p>
                     {unread > 0 && (
@@ -545,11 +547,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                       key={row.id}
                       type="button"
                       className={row.read ? 'shell-item' : 'shell-item unread'}
+                      data-testid="notice-item"
                       onClick={() => void openNotice(row)}
                     >
                       <strong>{noticeTitle(t, row)}</strong>
                       <small className="notice-age">{noticeAge(t, row.createdAt)}</small>
-                      <small className="notice-detail">{noticeDetail(t, row)}</small>
+                      <small className="notice-detail" data-testid="notice-detail">{noticeDetail(t, row)}</small>
                     </button>
                   ))}
                   <span className="shell-rule" />
@@ -571,7 +574,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           )}
           {ready && !reachable && <OutageBar />}
-          <div className="canvas-inner wide">
+          <div className="canvas-inner wide" data-testid="canvas-inner">
             {/* The page mounts at once so its loads run beside `/v1/me`; `Desk` draws the
                 skeleton until the session answers. Only an API that is down replaces it. */}
             {failed ? <OutagePanel onRetry={retry} busy={retrying} /> : children}

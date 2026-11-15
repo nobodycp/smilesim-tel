@@ -27,13 +27,13 @@ test('the branch writes an internal note, sees it marked, and the task reads in 
   await page.goto('http://admin.localhost:3910/tasks/t1');
   await expect(page.getByText('قيد المعالجة').first()).toBeVisible();
   await expect(page.getByText('بانتظار الاستلام')).toHaveCount(0);
-  const internal = page.locator('.task-tree-card.internal');
+  const internal = page.getByTestId('task-note-internal');
   await expect(internal).toHaveCount(1);
   await expect(internal).toContainText('داخلية');
   // The toggle starts on for the branch: a note it writes is internal unless it says otherwise.
   const toggle = page.getByLabel('ملاحظة داخلية (للفرع فقط)');
   await expect(toggle).toBeChecked();
   await page.getByRole('textbox', { name: 'ملاحظة' }).fill('تم التحقق من الشريحة');
-  await page.locator('.task-tree-compose').getByRole('button', { name: 'إضافة ملاحظة' }).click();
+  await page.getByTestId('task-compose').getByRole('button', { name: 'إضافة ملاحظة' }).click();
   await expect.poll(() => sent).toEqual([{ text: 'تم التحقق من الشريحة', internal: true }]);
 });

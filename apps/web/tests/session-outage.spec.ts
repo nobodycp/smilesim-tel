@@ -45,5 +45,5 @@ test('a failed background refresh of /me keeps the page on screen', async ({ pag
   await dialog.getByRole('button', { name: 'تمويل' }).click();
   await page.waitForTimeout(1000);
   await expect(page.getByText('تعذّر الاتصال بالخادم')).toHaveCount(0);
-  await expect(page.locator('.data tbody tr')).toHaveCount(1);
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
 });

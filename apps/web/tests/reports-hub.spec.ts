@@ -17,10 +17,10 @@ test('an agent reads its balances on their own page, and exports them with their
   });
   await page.goto('http://agent.localhost:3910/reports');
   await expect(page).toHaveURL(/\/finance$/);
-  const nav = page.locator('.sidebar .side-nav');
+  const nav = page.getByTestId('sidebar').getByRole('navigation', { name: 'أقسام المكتب' });
   await nav.getByRole('link', { name: 'الأرصدة' }).click();
   await expect(page).toHaveURL(/\/reports\/balances$/);
-  await expect(page.locator('table.data tbody tr').first()).toContainText('30.00 ₪');
+  await expect(page.getByTestId('data-table').locator('tbody tr').first()).toContainText('30.00 ₪');
   await page.getByLabel('السالب فقط').check();
   await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', '/api/v1/reports/balances/export?negative=1');
 });
@@ -28,7 +28,7 @@ test('an agent reads its balances on their own page, and exports them with their
 test('the sidebar folds five reports in one group that starts closed and opens on a report page', async ({ page }) => {
   await serveApi(page, 'agent', { 'GET /reports/balances': () => ({ body: balances }) });
   await page.goto('http://agent.localhost:3910/numbers');
-  const nav = page.locator('.sidebar .side-nav');
+  const nav = page.getByTestId('sidebar').getByRole('navigation', { name: 'أقسام المكتب' });
   const head = nav.getByRole('button', { name: 'التقارير' });
   await expect(head).toHaveAttribute('aria-expanded', 'false');
   await head.click();

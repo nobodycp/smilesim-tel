@@ -84,7 +84,7 @@ export function RowMenu({ label, items, boxed = false, trigger }: { label: strin
   if (items.length === 0) return null;
   const firstDanger = items.findIndex((item) => item.danger);
   return (
-    <div className={boxed ? 'row-menu boxed' : 'row-menu'} ref={root}>
+    <div className={boxed ? 'row-menu boxed' : 'row-menu'} data-testid="row-menu" ref={root}>
       <button
         ref={button}
         type="button"

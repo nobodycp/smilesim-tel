@@ -198,7 +198,7 @@ export function AccountScreen() {
           <section className="pane">
             <div className="pane-body access-tab">
               {ownerSettings ? <UserSettingsPane loginName={row.loginName} layer={row.layer as LayerKey} onSaved={(text) => { setError(''); setNote(text); }} /> : null}
-              <details className="inherit-fold access-fold">
+              <details className="inherit-fold access-fold" data-testid="access-fold">
                 <summary>
                   <b>{t.accountAccess}</b>
                   <span>{t.grantsSummary.replace('{n}', String(allowedCount)).replace('{total}', String(GRANT_CODES.length))}</span>

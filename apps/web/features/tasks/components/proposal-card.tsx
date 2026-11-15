@@ -77,7 +77,7 @@ export function ProposalCard({
   const hint = standing.blocked === 'own-proposal' ? t.propOwn : standing.blocked === 'own-task' ? t.propOwnTask : !standing.canApprove && standing.canRefuse ? t.propStale : '';
 
   return (
-    <div className="po-proposal">
+    <div className="po-proposal" data-testid="po-proposal">
       <p className="po-proposal-head">
         <b>{decisionName(t, proposal.decision)}</b>
         <span>{t.propBy}: <AccountName login={proposal.accountLoginName} /></span>
