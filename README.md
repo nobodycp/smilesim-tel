@@ -32,7 +32,7 @@ docker compose up --build
 
 | الأمر | ما يفعله |
 |---|---|
-| `npm run lint` | eslint للحزمتين |
+| `npm run lint` | eslint للحزمتين، ثم في الواجهة حارس CSS (`apps/web/scripts/check-css.mjs`): يفشل إذا ارتفع أيّ عدد فوق خط الأساس `apps/web/scripts/css-baseline.json` ويطبع الإصابات الجديدة |
 | `npm run typecheck` | `tsc --noEmit` للـ api وللـ web |
 | `npm test` | اختبارات jest للـ api (بلا قاعدة بيانات) |
 | `npm run test:e2e` | اختبارات Playwright للـ web على api وهمي (`npx playwright install chromium` أولاً) |
