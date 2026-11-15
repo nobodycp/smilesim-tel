@@ -1,5 +1,5 @@
 {
-  "note": "Written by `node scripts/check-css.mjs --write-baseline`. A count may only go down.",
+  "note": "Written by `node scripts/check-css.mjs --write-baseline`. A count may only go down; the script refuses a rise.",
   "counts": {
     "a-duplicate": 258,
     "b-undefined-token": 0,
@@ -12,7 +12,32 @@
     "i-physical-property": 80,
     "j-literal-line-height": 46,
     "k-literal-spacing-radius": 362,
-    "l-disabled-opacity": 15
+    "l-disabled-opacity": 15,
+    "m-legacy-declarations": 6681
+  },
+  "declarations": {
+    "auth.css": 307,
+    "base.css": 103,
+    "controls.css": 43,
+    "desk/branding.css": 177,
+    "desk/components.css": 352,
+    "desk/filters.css": 98,
+    "desk/frame.css": 113,
+    "desk/home.css": 509,
+    "desk/numbers.css": 334,
+    "desk/packages.css": 197,
+    "desk/pane.css": 175,
+    "desk/settings.css": 93,
+    "desk/table.css": 127,
+    "desk/tasks.css": 180,
+    "desk/users.css": 232,
+    "dialog.css": 283,
+    "doors.css": 29,
+    "forms.css": 47,
+    "graphite.css": 2272,
+    "responsive.css": 36,
+    "shell.css": 782,
+    "ui.css": 192
   },
   "hits": {
     "a-duplicate": [

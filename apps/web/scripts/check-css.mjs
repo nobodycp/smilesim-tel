@@ -1,7 +1,14 @@
-// The CSS guard (UI maintenance P1.1): fails (exit 1) when a cascade count rises above its ratchet baseline.
+// The CSS guard (UI maintenance P1.1; frozen by Tailwind migration T1.4, ADR 0022): fails (exit 1) when a count
+// over the legacy sheets rises above its ratchet baseline, and accepts every drop.
+//
+// Frozen: the legacy sheets only shrink until T5.1 deletes them, and this guard and its baseline with them. No slice
+// adds a count, a ONE_OFFS or MEDIA_EXCEPTIONS entry, or a zero gate (the 2026-11-13 plan's P1.4, P3 and P5 gates are
+// superseded); a deleted rule, declaration or sheet lowers counts and passes; the baseline is rewritten on a drop only
+// (`--write-baseline` refuses a count above the baseline). Removing a token that a sheet still reads from tokens.css
+// raises (b) and fails: that is a broken read, not a shrink.
 //
 // It parses every sheet under app/styles/ (recursively; app/globals.css holds only imports) with postcss — already
-// a dev dependency, no new one — and counts twelve kinds of hit:
+// a dev dependency, no new one — and counts thirteen kinds of hit:
 //   (a) duplicates — keyed by (at-rule chain, selector, property). The at-rule chain is the list of enclosing
 //       @media / @container / @supports / @keyframes preludes, whitespace-normalised, so a mobile-first base rule
 //       plus a `@media (min-width: …)` override of the same property is two keys and not a duplicate, and the
@@ -27,8 +34,7 @@
 //   (g) `font-weight: 800` or `900`;
 //   (h) an `@media` width feature outside the scale, direction checked: `max-width` ∈ {640, 767, 899, 1099}px,
 //       `min-width` ∈ {641, 768, 900, 1100}px (each width feature of a compound query on its own; height, motion
-//       and other features are not read; `@container` queries are not counted). Counted from today; it fails at
-//       zero from P5, where P5.1 fills MEDIA_EXCEPTIONS (D26) below;
+//       and other features are not read; `@container` queries are not counted). MEDIA_EXCEPTIONS is frozen empty;
 //   (i) physical properties: `margin-left|right|top|bottom`, `padding-left|right|top|bottom`, `left`, `right`,
 //       `border-left|right|top|bottom` and their longhands (`border-top-left-radius` included), and
 //       `text-align: left|right`;
@@ -39,24 +45,38 @@
 //       `var(--rd-…)` or a function (`calc()`, `max()`, `env()` …) built only from tokens and unitless numbers
 //       (a `var()` of any other custom property, `var(--pad)`, counts: it can carry any literal);
 //       any other number with a unit counts — every length unit and every percentage (`10%`, `100%`, `-50%`, a
-//       `100%` inside `calc()`), negative or not — once per declaration. Exceptions are in ONE_OFFS;
+//       `100%` inside `calc()`), negative or not — once per declaration. Exceptions are in ONE_OFFS (frozen empty);
 //   (l) `opacity` with a literal number in a rule any of whose selectors carries `:disabled` or `[aria-disabled`
-//       (outside a `:not(…)`), counted once per such selector member (anything but `var(--rd-disabled-opacity)`).
-//       Counted from today; it fails at zero from the P3 gate (P3.1 step 4).
+//       (outside a `:not(…)`), counted once per such selector member (anything but `var(--rd-disabled-opacity)`);
+//   (m) every declaration outside tokens.css (Tailwind migration T1.4): the size of the legacy CSS. New styling goes
+//       into utilities and components/ui, so a sheet that gains a declaration fails; the baseline keeps a count per
+//       sheet (`declarations`) and each sheet is held to its own entry (a sheet the baseline does not list is held to
+//       0), so one sheet cannot grow while another shrinks; a failure names the sheets that grew. tokens.css is not
+//       counted: a token the @theme mapping needs may still be added there until T5.2.
 // Every count reads inside @keyframes too; (a) keys a keyframe step (`from`, `50%`) under its keyframes name.
 //
 // Ratchet: scripts/css-baseline.json holds each count and the hits behind it, keyed without line numbers
-// (file | at-rule chain | selector | property | value). The run fails if a count is above its baseline and prints
-// the hits that are not in the baseline; when a count drops it prints "ratchet: lower <key> to N" (the slice that
-// lowers it rewrites the baseline with --write-baseline). A parse error fails loudly with file:line:col.
+// (file | at-rule chain | selector | property | value; for (m) the declaration count of each sheet). The run fails if
+// a count is above its baseline and prints the hits that are not in the baseline; when a count drops it prints
+// "ratchet: lower <key> to N" and passes (the slice that lowers it rewrites the baseline with --write-baseline, which
+// exits 1 and writes nothing while any count, or any sheet's declaration count, is above the baseline). A parse error
+// fails loudly with file:line:col. Slack: until the baseline is rewritten, a count (or a sheet) may regain up to what
+// it dropped, so every slice that shrinks the sheets rewrites the baseline in its own commit.
 //
-// Run: node scripts/check-css.mjs                     (inside `npm run lint` in apps/web)
+// Run: node scripts/check-css.mjs                     (inside `npm run lint` in apps/web, after --self-test)
+//      node scripts/check-css.mjs --self-test         (on a scratch copy of the sheets: a deleted rule and a deleted
+//                                                      sheet pass, a re-baseline after a drop passes, a new
+//                                                      declaration fails, a rule deleted in one sheet plus a
+//                                                      declaration added in another fails, a re-baseline over
+//                                                      growth is refused)
 //      node scripts/check-css.mjs --list <key>        (print every hit of one count, with file:line)
-//      node scripts/check-css.mjs --write-baseline    (rewrite the baseline from the current sheets)
+//      node scripts/check-css.mjs --write-baseline    (rewrite the baseline from the current sheets; drops only)
 //      node scripts/check-css.mjs --dir <styles> --baseline <file>   (a scratch copy, for canaries)
 
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -66,11 +86,10 @@ const postcss = require('postcss');
 const web = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // Named one-off exceptions for (j) and (k): file (relative to the styles folder), selector, property, reason.
-// Each entry is mirrored in DESIGN.md "Stylesheets" → "CSS guard". P1.4 adds the four fixed-box centring
-// line-heights.
+// Frozen empty (Tailwind migration T1.4): the legacy sheets are not tuned any more, only shrunk.
 const ONE_OFFS = [];
 
-// Named @media width exceptions for (h) (ADR 0021 D26): file, prelude, reason. Written by P5.1.
+// Named @media width exceptions for (h) (ADR 0021 D26): file, prelude, reason. Frozen empty (Tailwind migration T1.4).
 const MEDIA_EXCEPTIONS = [];
 
 const KEYS = {
@@ -88,17 +107,30 @@ const KEYS = {
   l: 'l-disabled-opacity',
 };
 
+// (m) is a size, not a list of hits: its baseline is the declaration count of each sheet.
+const DECLARATIONS = 'm-legacy-declarations';
+
+// The sheets whose declaration count is above their own baseline entry (a sheet the baseline does not list: 0).
+// Empty when the baseline holds no per-sheet map yet (that is how the map enters).
+function grownSheets(declarations, baselineDeclarations) {
+  if (!baselineDeclarations) return [];
+  return Object.entries(declarations)
+    .map(([file, n]) => ({ file, n, before: baselineDeclarations[file] ?? 0 }))
+    .filter(({ n, before }) => n > before);
+}
+
 const MAX_WIDTHS = new Set([640, 767, 899, 1099]);
 const MIN_WIDTHS = new Set([641, 768, 900, 1100]);
 
 function parseArgs(argv) {
-  const args = { dir: join(web, 'app', 'styles'), baseline: join(web, 'scripts', 'css-baseline.json'), list: null, write: false };
+  const args = { dir: join(web, 'app', 'styles'), baseline: join(web, 'scripts', 'css-baseline.json'), list: null, write: false, selfTest: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--dir') args.dir = argv[(i += 1)];
     else if (arg === '--baseline') args.baseline = argv[(i += 1)];
     else if (arg === '--list') args.list = argv[(i += 1)];
     else if (arg === '--write-baseline') args.write = true;
+    else if (arg === '--self-test') args.selfTest = true;
     else throw new Error(`check-css: unknown argument ${arg}`);
   }
   return args;
@@ -230,7 +262,7 @@ function stripVars(value) {
 }
 
 function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const args = cliArgs;
   const files = sheets(args.dir);
   const roots = [];
   for (const file of files) {
@@ -274,9 +306,11 @@ function main() {
   const hit = (key, file, node, parts) => hits[KEYS[key]].push({ id: [file, ...parts].join(' | '), at: `${file}:${node.source?.start?.line ?? 0}` });
   const oneOff = (file, selector, prop) => ONE_OFFS.some((entry) => entry.file === file && normaliseSelector(entry.selector) === selector && entry.prop === prop);
   const duplicates = new Map();
+  const declarations = {};
 
   for (const { file, root } of roots) {
     const isTokens = file === 'tokens.css';
+    if (!isTokens) declarations[file] = 0;
 
     root.walkAtRules('media', (rule) => {
       const prelude = normalisePrelude(rule.params);
@@ -297,6 +331,8 @@ function main() {
       const selector = inRule ? normaliseSelector(rule.selector) : `@${rule?.name ?? ''}`;
       const chain = chainOf(inRule ? rule : decl);
       const where = [chain, selector, prop, squash(value)];
+
+      if (!isTokens) declarations[file] += 1;
 
       for (const match of value.matchAll(/var\(\s*(--rd-[a-z0-9-]+)\s*(,)?/gi)) {
         if (!defined.has(match[1])) hit('b', file, decl, [...where, match[1]]);
@@ -386,17 +422,46 @@ function main() {
   }
 
   const counts = Object.fromEntries(Object.entries(hits).map(([key, list]) => [key, list.length]));
+  counts[DECLARATIONS] = Object.values(declarations).reduce((sum, n) => sum + n, 0);
 
   if (args.list) {
-    const key = Object.values(KEYS).find((name) => name === args.list || name.startsWith(`${args.list}-`));
+    const key = [...Object.values(KEYS), DECLARATIONS].find((name) => name === args.list || name.startsWith(`${args.list}-`));
     if (!key) throw new Error(`check-css: unknown key ${args.list}`);
-    for (const entry of hits[key]) console.log(`${entry.at}\t${entry.id}`);
-    console.log(`${key}: ${hits[key].length}`);
+    if (key === DECLARATIONS) for (const [file, n] of Object.entries(declarations)) console.log(`${file}\t${n}`);
+    else for (const entry of hits[key]) console.log(`${entry.at}\t${entry.id}`);
+    console.log(`${key}: ${counts[key]}`);
     return;
   }
 
+  const readBaseline = () => JSON.parse(readFileSync(args.baseline, 'utf8'));
+
   if (args.write) {
-    const baseline = { note: 'Written by `node scripts/check-css.mjs --write-baseline`. A count may only go down.', counts, hits: {} };
+    // Re-baseline on a drop only: a count above the current baseline is refused and nothing is written. A count the
+    // baseline does not hold yet is taken as it is (that is how a new count enters).
+    if (existsSync(args.baseline)) {
+      let current;
+      try {
+        current = readBaseline();
+      } catch (error) {
+        console.error(`check-css: cannot read the baseline ${args.baseline}: ${error.message}`);
+        process.exit(1);
+      }
+      const risen = Object.entries(counts).filter(([key, n]) => current.counts?.[key] !== undefined && n > current.counts[key])
+        .map(([key, n]) => `${key} ${n} (baseline ${current.counts[key]})`);
+      for (const { file, n, before } of grownSheets(declarations, current.declarations)) {
+        risen.push(`${file} ${n} declarations (baseline ${before})`);
+      }
+      if (risen.length) {
+        console.error(`check-css: --write-baseline refused; the baseline only goes down. Above it: ${risen.join(', ')}`);
+        process.exit(1);
+      }
+    }
+    const baseline = {
+      note: 'Written by `node scripts/check-css.mjs --write-baseline`. A count may only go down; the script refuses a rise.',
+      counts,
+      declarations,
+      hits: {},
+    };
     for (const [key, list] of Object.entries(hits)) baseline.hits[key] = list.map((entry) => entry.id).sort();
     writeFileSync(args.baseline, `${JSON.stringify(baseline, null, 2)}\n`);
     console.log(`check-css: baseline written (${Object.entries(counts).map(([key, n]) => `${key}=${n}`).join(', ')})`);
@@ -405,7 +470,7 @@ function main() {
 
   let baseline;
   try {
-    baseline = JSON.parse(readFileSync(args.baseline, 'utf8'));
+    baseline = readBaseline();
   } catch (error) {
     console.error(`check-css: cannot read the baseline ${args.baseline}: ${error.message}`);
     process.exit(1);
@@ -417,6 +482,18 @@ function main() {
     if (allowed === undefined) {
       console.error(`check-css: ${key} has no baseline entry`);
       failed = true;
+      continue;
+    }
+    if (key === DECLARATIONS) {
+      // Held per sheet: a sheet above its own entry fails even when the total is at or below the baseline.
+      const grown = grownSheets(declarations, baseline.declarations);
+      if (count > allowed || grown.length) {
+        failed = true;
+        console.error(`check-css: ${key} rose above the baseline (total ${count}, baseline total ${allowed}); new styling goes into utilities and components/ui. Sheets that grew:`);
+        for (const { file, n, before } of grown) console.error(`  ${file}\t${n} declarations (baseline ${before})`);
+      } else if (count < allowed) {
+        console.log(`ratchet: lower ${key} to ${count}`);
+      }
       continue;
     }
     if (count > allowed) {
@@ -437,4 +514,85 @@ function main() {
   console.log(`check-css: ${files.length} sheets, no count above its baseline`);
 }
 
-main();
+// ---------- --self-test ----------
+
+// Runs this script on a scratch copy of the sheets and proves the frozen ratchet: shrinking passes, growth fails,
+// and the baseline cannot be rewritten over growth.
+function selfTest(args) {
+  const scratch = mkdtempSync(join(tmpdir(), 'check-css-self-test-'));
+  const dir = join(scratch, 'styles');
+  const baselineFile = join(scratch, 'baseline.json');
+  const failures = [];
+  const run = (...extra) => spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--dir', dir, '--baseline', baselineFile, ...extra], { encoding: 'utf8' });
+  const expect = (name, result, code, text) => {
+    const output = `${result.stdout}${result.stderr}`;
+    if (result.status !== code) failures.push(`${name}: exit ${result.status}, expected ${code}\n${output}`);
+    else if (text && !output.includes(text)) failures.push(`${name}: output lacks "${text}"\n${output}`);
+  };
+  try {
+    cpSync(args.dir, dir, { recursive: true });
+    const legacy = sheets(dir).map((path) => relative(dir, path)).filter((file) => file !== 'tokens.css');
+    if (legacy.length < 3) throw new Error('check-css self-test: needs at least three legacy sheets besides tokens.css');
+    const [first, second] = legacy;
+
+    expect('first baseline', run('--write-baseline'), 0, 'baseline written');
+    expect('unchanged sheets', run(), 0, 'no count above its baseline');
+
+    // A deleted rule: the first top-level rule of the first legacy sheet.
+    const firstPath = join(dir, first);
+    const root = postcss.parse(readFileSync(firstPath, 'utf8'), { from: firstPath });
+    const rule = root.nodes.find((node) => node.type === 'rule' && node.nodes.some((child) => child.type === 'decl'));
+    if (!rule) throw new Error(`check-css self-test: ${first} has no top-level rule to delete`);
+    rule.remove();
+    writeFileSync(firstPath, root.toString());
+    expect('deleted rule', run(), 0, `ratchet: lower ${DECLARATIONS}`);
+
+    // A deleted sheet.
+    unlinkSync(join(dir, second));
+    expect('deleted sheet', run(), 0, `ratchet: lower ${DECLARATIONS}`);
+
+    // A re-baseline after the drop is allowed, and the lowered baseline holds.
+    expect('re-baseline after a drop', run('--write-baseline'), 0, 'baseline written');
+    expect('lowered baseline', run(), 0, 'no count above its baseline');
+
+    // A swap: one sheet shrinks (a deleted rule) while another gains a clean declaration. The total does not rise,
+    // but the sheet that grew fails, and a re-baseline over it is refused.
+    const written = readFileSync(baselineFile, 'utf8');
+    const swapPath = join(dir, first);
+    const otherPath = join(dir, legacy.find((file) => file !== first && file !== second) ?? first);
+    if (otherPath === swapPath) throw new Error('check-css self-test: needs a third legacy sheet besides tokens.css for the swap case');
+    const before = { swap: readFileSync(swapPath, 'utf8'), other: readFileSync(otherPath, 'utf8') };
+    const otherRoot = postcss.parse(before.other, { from: otherPath });
+    const otherRule = otherRoot.nodes.find((node) => node.type === 'rule' && node.nodes.some((child) => child.type === 'decl'));
+    if (!otherRule) throw new Error(`check-css self-test: ${relative(dir, otherPath)} has no top-level rule to delete`);
+    otherRule.remove();
+    writeFileSync(otherPath, otherRoot.toString());
+    writeFileSync(swapPath, `${before.swap}\n.check-css-self-test-swap { display: block; }\n`);
+    expect('swap between sheets', run(), 1, `${first}\t`);
+    expect('re-baseline over a swap', run('--write-baseline'), 1, '--write-baseline refused');
+    if (readFileSync(baselineFile, 'utf8') !== written) failures.push('re-baseline over a swap: the baseline file changed');
+    writeFileSync(swapPath, before.swap);
+    writeFileSync(otherPath, before.other);
+    expect('swap undone', run(), 0, 'no count above its baseline');
+
+    // Growth: one new declaration with a raw colour fails (m) and (d); a re-baseline over it is refused.
+    writeFileSync(firstPath, `${readFileSync(firstPath, 'utf8')}\n.check-css-self-test { color: #123456; }\n`);
+    expect('new declaration', run(), 1, `${DECLARATIONS} rose`);
+    expect('new raw colour', run(), 1, 'd-raw-colour rose');
+    expect('re-baseline over growth', run('--write-baseline'), 1, '--write-baseline refused');
+    if (readFileSync(baselineFile, 'utf8') !== written) failures.push('re-baseline over growth: the baseline file changed');
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
+  if (failures.length) {
+    console.error(`check-css self-test: ${failures.length} failure(s)\n  ${failures.join('\n  ')}`);
+    process.exit(1);
+  }
+  console.log('check-css self-test: a drop passes, growth fails, the baseline only goes down');
+}
+
+const cliArgs = parseArgs(process.argv.slice(2));
+if (cliArgs.selfTest) selfTest(cliArgs);
+else main();
