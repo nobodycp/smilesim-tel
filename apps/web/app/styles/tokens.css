@@ -14,6 +14,8 @@
   --rd-layer-pos: #5c46b8;
   --rd-line: rgba(0, 0, 0, 0.08);
   --rd-line-soft: rgba(0, 0, 0, 0.05);
+  /* A stronger hairline: ink at 11%, one definition that follows the theme's ink (.dark sits on the same <html>). */
+  --rd-line-strong: color-mix(in srgb, var(--rd-ink) 11%, transparent);
   --rd-qr-tile: #ffffff;
   --rd-field: #8a8a8a;
   --rd-ink: #161616;
@@ -59,7 +61,7 @@
   /* Chart slices with no status colour of their own (spec 2026-11-08-overview-and-reports-nav, F). */
   --rd-chart-frozen: #6d5bd0;
   --rd-chart-suspended: #8a6d3b;
-  --rd-warning-soft: rgba(196, 122, 20, 0.12);
+  --rd-warning-soft: color-mix(in srgb, var(--rd-warning) 12%, transparent);
   --rd-danger: #c8291b;
   --rd-danger-soft: rgba(200, 41, 27, 0.09);
   --rd-focus: rgba(217, 48, 73, 0.18);

@@ -2,11 +2,11 @@
   "note": "Written by `node scripts/check-css.mjs --write-baseline`. A count may only go down.",
   "counts": {
     "a-duplicate": 258,
-    "b-undefined-token": 5,
-    "c-fallback-on-defined-token": 5,
+    "b-undefined-token": 0,
+    "c-fallback-on-defined-token": 0,
     "d-raw-colour": 2,
     "e-outline-removed": 3,
-    "f-font-size-half-px-or-rem": 73,
+    "f-font-size-half-px-or-rem": 72,
     "g-font-weight-800-900": 21,
     "h-media-width": 34,
     "i-physical-property": 80,
@@ -275,20 +275,8 @@
       "ui.css |  | .ui-select-field:focus | box-shadow | also in graphite.css",
       "ui.css |  | .ui-select-field:focus | outline | also in graphite.css"
     ],
-    "b-undefined-token": [
-      "graphite.css |  | .grant | box-shadow | inset 0 0 0 1px var(--rd-line-strong, var(--rd-line)) | --rd-line-strong",
-      "graphite.css |  | .period button.on | color | var(--rd-text) | --rd-text",
-      "graphite.css |  | .period button:hover | color | var(--rd-text) | --rd-text",
-      "graphite.css |  | .task-ref | color | var(--rd-text) | --rd-text",
-      "graphite.css |  | .trend-tip | color | var(--rd-text) | --rd-text"
-    ],
-    "c-fallback-on-defined-token": [
-      "desk/home.css |  | .users-flags li.warn .users-flag-count | background | var(--rd-warning-soft, var(--rd-surface-2)) | --rd-warning-soft",
-      "desk/home.css |  | .users-layer | border-radius | var(--rd-radius-md, 12px) | --rd-radius-md",
-      "desk/home.css |  | .users-layer | padding | var(--rd-space-2-5, 10px) var(--rd-space-3) | --rd-space-2-5",
-      "desk/home.css |  | .users-layer-count | font-size | var(--rd-text-xl, 1.25rem) | --rd-text-xl",
-      "graphite.css |  | .trend-tip | background | var(--rd-surface-3, var(--rd-surface-2)) | --rd-surface-3"
-    ],
+    "b-undefined-token": [],
+    "c-fallback-on-defined-token": [],
     "d-raw-colour": [
       "graphite.css |  | .trend-tip | box-shadow | 0 0 0 1px var(--rd-line), 0 6px 16px rgb(0 0 0 / 0.25)",
       "ui.css |  | .ui-btn | --ui-btn-shadow | 0 0 #0000"
@@ -304,7 +292,6 @@
       "desk/frame.css |  | .canvas .page-head h1 | font-size | 1.25rem",
       "desk/home.css |  | .figure-tile-value | font-size | 1.45rem",
       "desk/home.css |  | .figure-tile.lead .figure-tile-value | font-size | 1.9rem",
-      "desk/home.css |  | .users-layer-count | font-size | var(--rd-text-xl, 1.25rem)",
       "desk/home.css | @media (max-width:639px) | .figure-tile-value | font-size | 1.2rem",
       "desk/home.css | @media (max-width:639px) | .figure-tile.lead .figure-tile-value | font-size | 1.6rem",
       "desk/numbers.css |  | .detail-rows dd | font-size | 13.5px",

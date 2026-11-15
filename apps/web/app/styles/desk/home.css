@@ -354,8 +354,8 @@
   grid-template-areas: "mark count" "label label";
   align-items: center;
   gap: var(--rd-space-1-5) var(--rd-space-2);
-  padding: var(--rd-space-2-5, 10px) var(--rd-space-3);
-  border-radius: var(--rd-radius-md, 12px);
+  padding: var(--rd-space-2-5) var(--rd-space-3);
+  border-radius: var(--rd-radius-md);
   background: color-mix(in srgb, var(--tone) 8%, var(--rd-surface));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent);
   color: var(--rd-ink);
@@ -374,7 +374,7 @@
   background: color-mix(in srgb, var(--tone) 16%, transparent);
   color: var(--tone);
 }
-.users-layer-count { grid-area: count; justify-self: end; font-size: var(--rd-text-xl, 1.25rem); font-weight: 800; line-height: 1; }
+.users-layer-count { grid-area: count; justify-self: end; font-size: var(--rd-text-xl); font-weight: 800; line-height: 1; }
 .users-layer-label { grid-area: label; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; line-height: 1.35; }
 .users-credit { display: grid; gap: var(--rd-space-1-5); margin-block-start: var(--rd-space-4); }
 .users-credit-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--rd-space-2); font-size: var(--rd-text-sm); color: var(--rd-muted); }
@@ -395,7 +395,7 @@
 .users-flag-label { display: inline-flex; align-items: center; gap: var(--rd-space-1-5); color: var(--rd-muted); }
 .users-flag-count { display: inline-grid; place-items: center; min-inline-size: 20px; block-size: 20px; padding-inline: 5px; border-radius: var(--rd-radius-pill); background: var(--rd-surface-2); color: var(--rd-ink); font-size: var(--rd-text-xs); font-weight: 700; }
 .users-flag-value { font-weight: 700; }
-.users-flags li.warn .users-flag-count { background: var(--rd-warning-soft, var(--rd-surface-2)); color: var(--rd-warning); }
+.users-flags li.warn .users-flag-count { background: var(--rd-warning-soft); color: var(--rd-warning); }
 .users-flags li.warn .users-flag-value { color: var(--rd-warning); }
 @media (prefers-reduced-motion: no-preference) {
   .users-meter i { animation: users-fill 700ms var(--rd-ease-out) both; }

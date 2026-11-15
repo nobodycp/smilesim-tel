@@ -1046,8 +1046,8 @@ input[readonly] { background-color: transparent; }
 .period { display: inline-flex; flex: none; border-radius: var(--rd-radius-xs); box-shadow: inset 0 0 0 1px var(--rd-line); overflow: hidden; }
 .period button { height: 34px; padding-inline: 12px; border: 0; background: transparent; color: var(--rd-muted); font: inherit; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
 .period button + button { border-inline-start: 1px solid var(--rd-line); }
-.period button:hover { color: var(--rd-text); }
-.period button.on { background: var(--rd-surface-2); color: var(--rd-text); box-shadow: inset 0 -2px 0 var(--rd-accent); }
+.period button:hover { color: var(--rd-ink); }
+.period button.on { background: var(--rd-surface-2); color: var(--rd-ink); box-shadow: inset 0 -2px 0 var(--rd-accent); }
 .period button:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: -2px; }
 .report-filters + .stat-row { margin-block-start: 0; }
 .stat .tone-success { color: var(--rd-success); }
@@ -1081,7 +1081,7 @@ input[readonly] { background-color: transparent; }
 
 /* Roles as the design's matrix: a tick tile per grant held, an empty tile per grant not held, a dash where it never applies. */
 .roles-matrix .data th:not(:first-child):not(.row-actions), .roles-matrix .data td.grant-cell { text-align: center; }
-.grant { display: inline-grid; place-items: center; inline-size: 22px; block-size: 22px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--rd-line-strong, var(--rd-line)); vertical-align: middle; }
+.grant { display: inline-grid; place-items: center; inline-size: 22px; block-size: 22px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--rd-line-strong); vertical-align: middle; }
 .grant.on { background: var(--rd-success-soft); color: var(--rd-success); box-shadow: inset 0 0 0 1px var(--rd-success); }
 .grant-none { color: var(--rd-muted); opacity: 0.5; }
 
@@ -1146,7 +1146,7 @@ input[readonly] { background-color: transparent; }
 .trend-line .trend-cursor { stroke: var(--rd-muted); stroke-width: 1; stroke-dasharray: 2 3; }
 .trend-dot { position: absolute; inline-size: 8px; block-size: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--rd-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rd-accent) 25%, transparent), 0 0 12px var(--rd-accent); pointer-events: none; }
 .trend-line.success .trend-dot { background: var(--rd-success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rd-success) 25%, transparent), 0 0 12px var(--rd-success); }
-.trend-tip { position: absolute; inset-block-end: calc(100% + 4px); transform: translateX(-50%); padding: 3px 7px; border-radius: var(--rd-radius-xs); background: var(--rd-surface-3, var(--rd-surface-2)); box-shadow: 0 0 0 1px var(--rd-line), 0 6px 16px rgb(0 0 0 / 0.25); color: var(--rd-text); font-size: 11px; white-space: nowrap; pointer-events: none; z-index: 2; }
+.trend-tip { position: absolute; inset-block-end: calc(100% + 4px); transform: translateX(-50%); padding: 3px 7px; border-radius: var(--rd-radius-xs); background: var(--rd-surface-3); box-shadow: 0 0 0 1px var(--rd-line), 0 6px 16px rgb(0 0 0 / 0.25); color: var(--rd-ink); font-size: 11px; white-space: nowrap; pointer-events: none; z-index: 2; }
 @media (prefers-reduced-motion: no-preference) {
   /* Drawn in by a left-to-right reveal: dashes measured with pathLength break under non-scaling strokes and left
      the line cut short after its first rise. */
@@ -1159,7 +1159,7 @@ input[readonly] { background-color: transparent; }
 @keyframes trend-pop { from { transform: scale(0); } to { transform: scale(1); } }
 @keyframes trend-breathe { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent), 0 0 18px var(--rd-accent); } }
 .waiting-age { flex: none; }
-.task-ref { display: inline-flex; align-items: center; height: 22px; padding-inline: 7px; border-radius: var(--rd-radius-xs); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); color: var(--rd-text); font-size: 11.5px; font-weight: 700; text-decoration: none; }
+.task-ref { display: inline-flex; align-items: center; height: 22px; padding-inline: 7px; border-radius: var(--rd-radius-xs); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); color: var(--rd-ink); font-size: 11.5px; font-weight: 700; text-decoration: none; }
 .task-ref:hover { box-shadow: inset 0 0 0 1px var(--rd-accent); }
 
 /* Wallet head (finance and wallet pages): the balance chart is the large TrendLine; reason tags in every ledger. */
