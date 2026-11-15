@@ -45,11 +45,11 @@ test('the user page groups existing numbers and saves two new prices', async ({ 
   const calls = await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
 
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(3);
   await expect(dialog.locator('tbody tr').nth(2).locator('td').nth(1)).toHaveText('100');
   // The table fills the dialog body: nothing is pinned to a strip.
-  const table = await dialog.locator('table.data').boundingBox();
-  const body = await dialog.locator('.dialog-body').boundingBox();
+  const table = await dialog.getByTestId('line-prices-table').boundingBox();
+  const body = await dialog.getByTestId('dialog-body').boundingBox();
   expect(table?.width ?? 0).toBeGreaterThan((body?.width ?? 0) - 40);
 
   const put = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/line-prices'));
@@ -67,7 +67,7 @@ test('the user page groups existing numbers and saves two new prices', async ({ 
 test('one click on save sends a price typed without Enter', async ({ page }) => {
   await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(3);
 
   const put = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/line-prices'));
   // The field is never committed by Enter or by a click elsewhere: the press on save is what takes the focus off it.
@@ -82,7 +82,7 @@ test('follow the current price fills every row', async ({ page }) => {
   await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
 
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(3);
   await expect(dialog.getByText('الحالي', { exact: true })).toHaveCount(0);
   await dialog.getByRole('button', { name: 'اتباع السعر الحالي (35.00 ₪)' }).click();
   await expect(dialog.getByText('الحالي', { exact: true })).toHaveCount(3);
@@ -99,7 +99,7 @@ test('follow the current price fills every row', async ({ page }) => {
 test('a bad price is refused in the dialog and a cleared one leaves the group alone', async ({ page }) => {
   const calls = await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(3);
 
   const field = dialog.locator('tbody tr').nth(1).getByRole('textbox');
   await field.fill('abc');
@@ -122,7 +122,7 @@ test('a bad price is refused in the dialog and a cleared one leaves the group al
 test('a refused price keeps the dialog open when save is pressed', async ({ page }) => {
   const calls = await serveApi(page, 'agent', userRoutes());
   const dialog = await openFromUserPage(page);
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(3);
 
   // Enter first, so the refusal is on screen and the layout has settled before save is pressed: the message
   // pushes the footer down, which would otherwise swallow the click and hide whether save closes the dialog.
@@ -196,12 +196,12 @@ test('the package sheet opens the table for the whole system and then for one ac
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
   await page.getByRole('tab', { name: 'الأسعار' }).click();
 
-  const block = page.locator('.account-fund').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
+  const block = page.getByTestId('reprice').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
   // «كل النظام» is the field's empty state: nothing picked is the whole system.
   await expect(block.getByRole('combobox')).toHaveAttribute('placeholder', 'كل النظام');
   await block.getByRole('button', { name: 'عرض الأرقام' }).click();
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(2);
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(2);
   await expect(dialog.getByRole('button', { name: 'اتباع تسعيرة السلسلة' })).toBeVisible();
   expect(calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=all');
 
@@ -210,7 +210,7 @@ test('the package sheet opens the table for the whole system and then for one ac
   await expect(dialog).toHaveCount(0);
   await pickName(block.getByRole('combobox'), 'pos1', /pos1 \(نقطة بيع\)/);
   await block.getByRole('button', { name: 'عرض الأرقام' }).click();
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(1);
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(1);
   await expect(dialog.getByRole('button', { name: 'اتباع السعر الحالي (32.00 ₪)' })).toBeVisible();
   expect(calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=pos1');
 });
@@ -225,10 +225,10 @@ test('on a phone the line prices dialog keeps its price fields at their width', 
   });
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
   await page.getByRole('tab', { name: 'الأسعار' }).click();
-  await page.locator('.account-fund').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' }).getByRole('button', { name: 'عرض الأرقام' }).click();
+  await page.getByTestId('reprice').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' }).getByRole('button', { name: 'عرض الأرقام' }).click();
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(2);
-  const widths = await dialog.locator('.terms-price input').evaluateAll((inputs) => inputs.map((input) => input.getBoundingClientRect().width));
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(2);
+  const widths = await dialog.getByTestId('line-prices-table').getByRole('textbox').evaluateAll((inputs) => inputs.map((input) => input.getBoundingClientRect().width));
   expect(widths).toEqual([104, 104]);
 });
 
@@ -244,7 +244,7 @@ test('a custom price row opens the table for its account', async ({ page }) => {
   await page.getByRole('button', { name: /إجراءات pos1/ }).click();
   await page.getByRole('menuitem', { name: 'أسعار الأرقام القائمة' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(1);
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(1);
   expect(calls).toContain('GET /packages/lian-wecom-500/line-prices?scope=pos1');
 
   const put = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/line-prices'));
@@ -267,7 +267,7 @@ test('opening the table again after a save waits for the new table instead of sh
     },
   });
   const dialog = await openFromUserPage(page);
-  await expect(dialog.locator('table.data tbody tr')).toHaveCount(3);
+  await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(3);
   await dialog.locator('tbody tr').nth(0).getByRole('textbox').fill('37');
   await dialog.locator('tbody tr').nth(0).getByRole('textbox').press('Enter');
   await dialog.getByRole('button', { name: 'حفظ' }).click();
@@ -277,6 +277,6 @@ test('opening the table again after a save waits for the new table instead of sh
   await page.getByRole('menuitem', { name: 'أسعار الأرقام القائمة' }).click();
   // While the new table is on its way the dialog shows its skeleton, not the three groups it had before the save.
   // (A cached copy would draw the old groups at once and never show the skeleton.)
-  await expect(page.getByRole('dialog').locator('.table-skeleton')).toBeVisible();
-  await expect(page.getByRole('dialog').locator('table.data tbody tr')).toHaveCount(1);
+  await expect(page.getByRole('dialog').getByTestId('table-skeleton')).toBeVisible();
+  await expect(page.getByRole('dialog').getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(1);
 });

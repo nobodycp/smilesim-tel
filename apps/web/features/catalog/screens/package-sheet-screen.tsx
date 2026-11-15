@@ -273,7 +273,7 @@ export function PackageSheetScreen() {
       num: true,
       sortValue: (offer) => offer.price ?? offer.defaultPrice,
       render: (offer) => (
-        <span className="price-pair">
+        <span className="price-pair" data-testid="price-pair">
           <Money value={offer.defaultPrice} muted />
           <PriceField
             label={`${accountLabel(offer.loginName, offer.nickname)} ${t.subscriptionShort}`}
@@ -290,7 +290,7 @@ export function PackageSheetScreen() {
       num: true,
       sortValue: (offer) => offer.renewalPrice ?? offer.defaultRenewalPrice,
       render: (offer) => (
-        <span className="price-pair">
+        <span className="price-pair" data-testid="price-pair">
           <Money value={offer.defaultRenewalPrice} muted />
           <PriceField
             label={`${accountLabel(offer.loginName, offer.nickname)} ${t.renewalShort}`}
@@ -308,7 +308,7 @@ export function PackageSheetScreen() {
       // By the subscription difference; a row without its own subscription price falls back to the renewal one.
       sortValue: (offer) => (offer.price !== null ? offer.price - offer.defaultPrice : offer.renewalPrice !== null ? offer.renewalPrice - offer.defaultRenewalPrice : null),
       render: (offer) => (
-        <span className="price-pair">
+        <span className="price-pair" data-testid="price-pair">
           {offer.price === null ? <span className="hint">—</span> : <Money value={offer.price - offer.defaultPrice} signed />}
           {offer.renewalPrice === null ? <span className="hint">—</span> : <Money value={offer.renewalPrice - offer.defaultRenewalPrice} signed />}
         </span>

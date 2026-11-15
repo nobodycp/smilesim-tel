@@ -136,7 +136,7 @@ export function Dialog({
           <button type="button" className="icon-btn" onClick={onClose} aria-label={closeLabel}><X size={18} aria-hidden="true" /></button>
         </header>
         <Alert>{error}</Alert>
-        <div className="dialog-body">{children}</div>
+        <div className="dialog-body" data-testid="dialog-body">{children}</div>
         {footer ? <footer className="dialog-foot">{footer}</footer> : null}
       </div>
     </div>,

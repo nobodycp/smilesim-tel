@@ -190,7 +190,7 @@ export function DataTable<Row>({
     </table>
   );
   const pager = paging && shouldShowPagination({ count: rows.length, pageSize, onPageSizeChange: setPageSize }) ? (
-    <div className="table-pager">
+    <div className="table-pager" data-testid="table-pager">
       <Pagination page={current} pageSize={pageSize} count={rows.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
     </div>
   ) : null;
@@ -276,7 +276,7 @@ export function PagedTable<Row>({
     setPage(1);
   };
   const pager = list.ready && shouldShowPagination({ count, pageSize, onPageSizeChange: choose }) ? (
-    <div className="table-pager">
+    <div className="table-pager" data-testid="table-pager">
       <Pagination page={current} pageSize={pageSize} count={count} onPageChange={setPage} onPageSizeChange={choose} />
     </div>
   ) : null;

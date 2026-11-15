@@ -9,7 +9,7 @@ test('an unknown address shows the not-found screen inside the shell, with a way
   const response = await page.goto('http://admin.localhost:3910/no-such-page');
   expect(response?.status()).toBe(404);
   await expect(page.getByText('الصفحة غير موجودة')).toBeVisible();
-  await expect(page.locator('.sidebar')).toBeVisible();
+  await expect(page.getByTestId('sidebar')).toBeVisible();
   await page.getByRole('link', { name: 'العودة إلى الرئيسية' }).click();
   await expect(page).toHaveURL('http://admin.localhost:3910/');
 });

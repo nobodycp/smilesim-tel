@@ -182,7 +182,7 @@ export function NumbersScreen() {
       header: t.number,
       cell: 'msisdn',
       render: (line) => (
-        <span className="line-cell">
+        <span className="line-cell" data-testid="line-cell">
           <Link className="num-link" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
           <SimBadge line={{ esim: line.esim }} label={`${t.showQr} ${line.msisdn}`} busy={qr !== null && 'asking' in qr && qr.asking === line.id} onOpen={() => void openQr(line)} />
         </span>

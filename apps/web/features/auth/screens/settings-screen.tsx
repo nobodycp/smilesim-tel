@@ -133,7 +133,7 @@ export function SettingsScreen() {
               <div className="identity-mark" aria-hidden="true">{initial}</div>
               <div>
                 <strong><bdi>{shownName}</bdi></strong>
-                <small className="identity-login" dir="ltr">{loginName}</small>
+                <small className="identity-login" data-testid="identity-login" dir="ltr">{loginName}</small>
               </div>
             </div>
             <form className="account-form" onSubmit={saveAccount}>

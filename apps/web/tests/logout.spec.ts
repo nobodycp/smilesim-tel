@@ -22,7 +22,7 @@ test('signing out revokes this session and lands on the sign-in page', async ({ 
   const revoked = await serveAuth(page, { status: 200, body: { ok: true } });
   await page.goto('http://admin.localhost:3910/users');
   // Graphite: signing out sits at the sidebar's foot, under the account.
-  await page.locator('aside.sidebar').getByRole('button', { name: 'تسجيل الخروج' }).click();
+  await page.getByTestId('sidebar').getByRole('button', { name: 'تسجيل الخروج' }).click();
   await expect(page).toHaveURL(/\/login$/);
   expect(revoked).toEqual(['/api/auth/sessions/s1']);
 });
@@ -32,7 +32,7 @@ test('a failed sign-out keeps the account signed in where it was', async ({ page
   await serveAuth(page, { status: 500, body: { message: 'boom' } });
   await page.goto('http://admin.localhost:3910/users');
   // Graphite: signing out sits at the sidebar's foot, under the account.
-  await page.locator('aside.sidebar').getByRole('button', { name: 'تسجيل الخروج' }).click();
+  await page.getByTestId('sidebar').getByRole('button', { name: 'تسجيل الخروج' }).click();
   await page.waitForTimeout(500);
   await expect(page).toHaveURL(/\/users$/);
 });

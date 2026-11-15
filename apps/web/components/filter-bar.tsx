@@ -137,6 +137,7 @@ export function FilterBar({
       {open ? <div className="filter-scrim" aria-hidden="true" onClick={() => setOpen(false)} /> : null}
       <div
         className="filter-panel"
+        data-testid="filter-panel"
         role={open ? 'dialog' : undefined}
         aria-modal={open ? true : undefined}
         aria-label={open ? t.allFilters : undefined}

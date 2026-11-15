@@ -2,7 +2,7 @@
 
 export function TableSearch({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
-    <div className="table-search">
+    <div className="table-search" data-testid="table-search">
       <label>
         <SearchIcon />
         <span>{label}</span>

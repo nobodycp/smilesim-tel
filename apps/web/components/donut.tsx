@@ -72,11 +72,11 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
         })}
         {shown ? (
           <>
-            <text className="donut-total share" x="50%" y="46%" textAnchor="middle" dominantBaseline="central">{`${shareOf(shown)}%`}</text>
-            <text className="donut-caption" x="50%" y="62%" textAnchor="middle" dominantBaseline="central">{shown.label}</text>
+            <text className="donut-total share" data-testid="donut-total" x="50%" y="46%" textAnchor="middle" dominantBaseline="central">{`${shareOf(shown)}%`}</text>
+            <text className="donut-caption" data-testid="donut-caption" x="50%" y="62%" textAnchor="middle" dominantBaseline="central">{shown.label}</text>
           </>
         ) : (
-          <text className="donut-total" x="50%" y="50%" textAnchor="middle" dominantBaseline="central">{total}</text>
+          <text className="donut-total" data-testid="donut-total" x="50%" y="50%" textAnchor="middle" dominantBaseline="central">{total}</text>
         )}
       </svg>
       <ul className="donut-legend" data-testid="donut-legend">
@@ -89,6 +89,7 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
               {change !== 0 ? (
                 <span
                   className={change > 0 ? 'donut-change up' : 'donut-change down'}
+                  data-testid={change > 0 ? 'donut-change-up' : 'donut-change-down'}
                   aria-label={(change > 0 ? t.changeMore : t.changeFewer).replace('{n}', String(Math.abs(change)))}
                 >
                   {change > 0 ? <ArrowUp size={12} strokeWidth={2.4} aria-hidden="true" /> : <ArrowDown size={12} strokeWidth={2.4} aria-hidden="true" />}

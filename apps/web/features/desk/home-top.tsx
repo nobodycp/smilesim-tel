@@ -21,12 +21,12 @@ function Change({ now, before, period }: { now: number; before: number | null | 
   const { t } = usePrefs();
   if (period === 'all' || before === null || before === undefined) return null;
   const versus = period === 'day' ? t.vsYesterday : t.vsLastMonth;
-  if (before === 0 && now === 0) return <span className="change flat" title={versus}>0%</span>;
-  if (before === 0) return <span className="change up" title={versus}><ArrowUpRight size={13} aria-hidden="true" />{t.changeNew}</span>;
+  if (before === 0 && now === 0) return <span className="change flat" data-testid="pulse-change" title={versus}>0%</span>;
+  if (before === 0) return <span className="change up" data-testid="pulse-change" title={versus}><ArrowUpRight size={13} aria-hidden="true" />{t.changeNew}</span>;
   const pct = Math.round(((now - before) / Math.abs(before)) * 100);
   const up = pct >= 0;
   return (
-    <span className={`change ${pct === 0 ? 'flat' : up ? 'up' : 'down'}`} title={versus} aria-label={`${up ? '+' : ''}${pct}% ${versus}`}>
+    <span className={`change ${pct === 0 ? 'flat' : up ? 'up' : 'down'}`} data-testid="pulse-change" title={versus} aria-label={`${up ? '+' : ''}${pct}% ${versus}`}>
       {pct === 0 ? null : up ? <ArrowUpRight size={13} aria-hidden="true" /> : <ArrowDownRight size={13} aria-hidden="true" />}
       <bdi dir="ltr">{Math.abs(pct)}%</bdi>
     </span>
@@ -67,10 +67,10 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
     />
   ) : null);
   return (
-    <section className={branch ? 'figure-band account-band branch' : 'figure-band account-band'} aria-label={t.homeTitle}>
+    <section className={branch ? 'figure-band account-band branch' : 'figure-band account-band'} aria-label={t.homeTitle} data-testid="account-band">
       {/* The branch's band is the period's three figures: no available balance, no active numbers (spec
           2026-11-09-admin-review, 6.3; the numbers are in the donut below). */}
-      {branch ? null : <div className="figure-tile lead">
+      {branch ? null : <div className="figure-tile lead" data-testid="figure-tile">
         <span className="figure-tile-label">{t.homeAvailable}</span>
         <div className="figure-tile-value">{summary ? <Money value={available} /> : '—'}</div>
         {summary && !summary.unlimited && summary.ceiling > 0 ? (
@@ -80,28 +80,28 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
         ) : null}
         <div className="figure-tile-meta">{summary ? ceilingMeta : null}</div>
       </div>}
-      <div className="figure-tile pulse-tile">
+      <div className="figure-tile pulse-tile" data-testid="pulse-tile">
         <span className="figure-tile-label">{t.homeSales}</span>
         {now ? <Change now={now.amount} before={before?.amount} period={period} /> : null}
         <div className="figure-tile-value"><span className="num">{now ? now.count : '—'}</span><small className="pulse-unit">{t.operationsUnit}</small></div>
         <div className="figure-tile-meta">{now ? <>{t.volumeWord} <Money value={now.amount} /></> : null}</div>
         {trend((point) => point.amount, true, t.homeSales)}
       </div>
-      <div className="figure-tile pulse-tile">
+      <div className="figure-tile pulse-tile" data-testid="pulse-tile">
         <span className="figure-tile-label">{t.homeNewSubscriptions}</span>
         {now ? <Change now={now.activations} before={before?.activations} period={period} /> : null}
         <div className="figure-tile-value"><span className="num">{now ? now.activations : '—'}</span></div>
         <div className="figure-tile-meta">{periodName}</div>
         {trend((point) => point.activations, false, t.homeNewSubscriptions, 'success')}
       </div>
-      <div className="figure-tile pulse-tile">
+      <div className="figure-tile pulse-tile" data-testid="pulse-tile">
         <span className="figure-tile-label">{t.homeProfit}</span>
         {now ? <Change now={now.profit} before={before?.profit} period={period} /> : null}
         <div className="figure-tile-value">{now ? <Money value={now.profit} signed /> : '—'}</div>
         <div className="figure-tile-meta">{periodName}</div>
         {trend((point) => point.profit, true, t.homeProfit, 'success')}
       </div>
-      {branch ? null : <div className="figure-tile">
+      {branch ? null : <div className="figure-tile" data-testid="figure-tile">
         <span className="figure-tile-label">{t.homeActiveLines}</span>
         <div className="figure-tile-value"><span className="num">{home ? home.activeLines : '—'}</span></div>
         <div className="figure-tile-meta">

@@ -29,14 +29,14 @@ test('the run tab shows which modes follow the provider and sends «inherit» to
   });
   await page.goto('http://admin.localhost:3910/companies/wecom/packages/lian-wecom-500');
   await page.getByRole('tab', { name: 'إجراءات الحزمة' }).click();
-  const fold = page.locator('.inherit-fold');
+  const fold = page.getByTestId('inherit-fold');
   await expect(fold.locator('summary')).toContainText('8 موروثة من المزود · 1 مخصصة');
   // One mode of its own: the fold opens by itself.
   await expect(fold).toHaveAttribute('open', '');
-  const activate = page.locator('.mode-card', { has: page.getByRole('radiogroup', { name: 'التشغيل تفعيل' }) });
-  await expect(activate.locator('.mode-source')).toHaveText('موروث من المزود');
-  const charge = page.locator('.mode-card', { has: page.getByRole('radiogroup', { name: 'التشغيل شحن' }) });
-  await expect(charge.locator('.mode-source')).toContainText('مخصص');
+  const activate = page.getByTestId('mode-card').filter({ has: page.getByRole('radiogroup', { name: 'التشغيل تفعيل' }) });
+  await expect(activate.getByTestId('mode-source')).toHaveText('موروث من المزود');
+  const charge = page.getByTestId('mode-card').filter({ has: page.getByRole('radiogroup', { name: 'التشغيل شحن' }) });
+  await expect(charge.getByTestId('mode-source')).toContainText('مخصص');
   await charge.getByRole('button', { name: 'رجوع للموروث' }).click();
   await expect.poll(() => sent).toEqual([{ action: 'charge', mode: 'inherit' }]);
 });

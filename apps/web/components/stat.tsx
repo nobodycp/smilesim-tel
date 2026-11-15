@@ -47,5 +47,5 @@ export function Stat({
 }
 
 export function StatRow({ children }: { children: ReactNode }) {
-  return <div className="stat-row">{children}</div>;
+  return <div className="stat-row" data-testid="stat-row">{children}</div>;
 }

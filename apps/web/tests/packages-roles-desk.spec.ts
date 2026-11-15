@@ -16,5 +16,5 @@ test('package steps stay on the point-of-sale door', async ({ page }) => {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ packages: [], companies: [] }) }),
   );
   await page.goto('/packages');
-  await expect(page.locator('.steps')).toBeVisible();
+  await expect(page.getByRole('tablist')).toBeVisible();
 });

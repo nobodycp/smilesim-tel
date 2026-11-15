@@ -15,13 +15,13 @@ test('a filter change keeps the previous rows until the new list arrives', async
         : { body: { total: 2, items: [event('o1', 'ok'), event('o2', 'ok')], nextCursor: null } },
   });
   await page.goto(`${admin}/audit`);
-  const rows = page.locator('table.data tbody tr');
+  const rows = page.getByTestId('data-table').locator('tbody tr');
   await expect(rows).toHaveCount(2);
   await page.getByLabel('النتيجة').selectOption('fail');
   // While the answer is on its way, the old rows stay and no skeleton replaces them.
   await page.waitForTimeout(400);
   expect(await rows.count()).toBe(2);
-  expect(await page.locator('.table-skeleton').count()).toBe(0);
+  expect(await page.getByTestId('table-skeleton').count()).toBe(0);
   await expect(rows).toHaveCount(1);
 });
 
@@ -48,7 +48,7 @@ test('taking a task on page 3 keeps the reader on page 3, with rows on screen wh
   });
   await page.goto('http://admin.localhost:3910/tasks');
   await page.getByRole('button', { name: '3', exact: true }).click();
-  const rows = page.locator('table.data tbody tr');
+  const rows = page.getByTestId('data-table').locator('tbody tr');
   await expect(rows).toHaveCount(5);
   await rows.nth(1).getByRole('button').last().click();
   await page.getByRole('menuitem', { name: 'استلام' }).click();
@@ -57,7 +57,7 @@ test('taking a task on page 3 keeps the reader on page 3, with rows on screen wh
   // rows are still there with no skeleton: the list did not drop back to its first chunk.
   // A snapshot, not a retrying assertion: the question is what is on screen at this moment.
   await page.waitForTimeout(1300);
-  expect(await page.locator('.table-skeleton').count()).toBe(0);
+  expect(await page.getByTestId('table-skeleton').count()).toBe(0);
   expect(await rows.count()).toBe(5);
   await expect(page.getByRole('button', { name: '3', exact: true })).toHaveAttribute('aria-current', 'page');
 });

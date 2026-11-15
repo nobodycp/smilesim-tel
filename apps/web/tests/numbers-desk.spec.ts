@@ -36,9 +36,9 @@ test('numbers row actions live in the menu', async ({ page }) => {
   await expect(page.getByLabel('الرقم')).toBeVisible();
   await page.getByRole('button', { name: /إجراءات/ }).click();
   await expect(page.getByRole('menuitem', { name: 'تمديد' })).toBeVisible();
-  await expect(page.locator('table.data button.secondary')).toHaveCount(0);
+  await expect(page.getByTestId('data-table').getByRole('button', { name: 'تمديد' })).toHaveCount(0);
   // Graphite: one line under the title says what the list holds.
-  await expect(page.locator('.lede')).toHaveText('كل أرقام نقاط البيع تحتك، مع مدتها وحالاتها.');
+  await expect(page.getByTestId('page-lede')).toHaveText('كل أرقام نقاط البيع تحتك، مع مدتها وحالاتها.');
 });
 
 test('a row menu opens on its first item, walks with the arrows, and Escape gives the focus back', async ({ page }) => {

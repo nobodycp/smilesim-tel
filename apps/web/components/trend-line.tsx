@@ -49,7 +49,7 @@ export function TrendLine({ values, labels, format, label, tone = 'accent', size
   }
 
   return (
-    <div className={`trend-line ${tone} ${size}`}>
+    <div className={`trend-line ${tone} ${size}`} data-testid="trend-line">
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={label} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
         <defs>
           <linearGradient id={`trend-fill-${id}`} x1="0" y1="0" x2="0" y2="1">

@@ -145,7 +145,7 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
           </div>
           <section className="pane">
             <div className="sheet">
-              <table className="data">
+              <table className="data" data-testid="line-prices-table">
                 <thead>
                   <tr>
                     <th className="num">{t.linePricesCurrent}</th>

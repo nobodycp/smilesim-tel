@@ -25,7 +25,7 @@ test('an agent sees its own buy price and writes a sell price', async ({ page })
   });
   await page.goto('http://agent.localhost:3910/packages');
 
-  const table = page.locator('table.data');
+  const table = page.getByTestId('data-table');
   await expect(table.locator('thead th').first()).toHaveText('الرزمة');
   await expect(table.locator('thead th').nth(1)).toHaveText('سعرك');
   await expect(table.locator('thead')).not.toContainText('تكلفة الفرع');
@@ -68,9 +68,9 @@ test('on a phone the sell cell takes the card row and keeps its fields inside', 
   });
   await page.goto('http://agent.localhost:3910/packages');
 
-  const row = page.locator('table.data tbody tr', { hasText: '150 جيجا' });
+  const row = page.getByTestId('data-table').locator('tbody tr', { hasText: '150 جيجا' });
   await expect(row.getByRole('textbox', { name: /اشتراك/ })).toHaveValue('1234.56');
-  const cell = await row.locator('td:has(.sell-cell)').evaluate((td) => {
+  const cell = await row.locator('td').filter({ has: page.getByTestId('sell-cell') }).evaluate((td) => {
     const box = td.getBoundingClientRect();
     const card = td.parentElement!.getBoundingClientRect();
     const parts = [...td.querySelectorAll('input, button')].map((part) => part.getBoundingClientRect());
@@ -101,9 +101,9 @@ test('the point of sale sees its effective price and a stopped activation', asyn
   });
   await page.goto('http://pos.localhost:3910/packages');
   await page.getByRole('button', { name: 'ويكوم' }).click();
-  await expect(page.locator('.pack-card .money')).toHaveText('37.00 ₪');
-  await page.locator('.pack-card').click();
-  await expect(page.locator('form .pack-price .money')).toHaveText('37.00 ₪');
+  await expect(page.getByTestId('pack-card').getByTestId('money')).toHaveText('37.00 ₪');
+  await page.getByTestId('pack-card').click();
+  await expect(page.getByTestId('subscribe-form').getByTestId('pack-price').getByTestId('money')).toHaveText('37.00 ₪');
   await expect(page.getByText('التفعيل موقوف على هذا الحساب.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'تفعيل', exact: true })).toHaveCount(0);
 });

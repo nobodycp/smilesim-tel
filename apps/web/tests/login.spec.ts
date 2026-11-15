@@ -54,7 +54,7 @@ test('settings starts authenticator enrollment and confirms it', async ({ page }
 test('settings reads the login name and details from the profile, not from sessionStorage', async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('loginName', 'stale-name'));
   await page.goto('/settings');
-  await expect(page.locator('.identity-login')).toHaveText('pos');
+  await expect(page.getByTestId('identity-login')).toHaveText('pos');
   await expect(page.getByLabel('الاسم الكامل')).toHaveValue('الكاشير');
   await expect(page.getByLabel('المدينة')).toHaveValue('ramallah');
   await expect(page.getByLabel('العنوان')).toHaveValue('شارع الإرسال');

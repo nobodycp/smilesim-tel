@@ -39,7 +39,7 @@ export function SimBadge({ line, onOpen, label, busy = false }: { line: SimLike;
 /** The eSIM picture as a 44px tile. Clicking opens it large. */
 export function EsimMark({ src, label, onOpen }: { src: string; label: string; onOpen: () => void }) {
   return (
-    <button type="button" className="esim-mark" aria-label={label} title={label} onClick={onOpen}>
+    <button type="button" className="esim-mark" data-testid="esim-mark" aria-label={label} title={label} onClick={onOpen}>
       <DataImage src={src} alt="" />
     </button>
   );
@@ -49,7 +49,7 @@ export function EsimMark({ src, label, onOpen }: { src: string; label: string; o
 export function EsimDialog({ line, onClose }: { line: LineLike | null; onClose: () => void }) {
   const { t } = usePrefs();
   return (
-    <Dialog open={Boolean(line?.esimQr)} title={t.esimQr} lede={t.esimQrLede} closeLabel={t.closeMenu} onClose={onClose} size="confirm" className="dialog-qr" footer={<Button type="button" variant="secondary" onClick={onClose}>{t.closeMenu}</Button>}>
+    <Dialog open={Boolean(line?.esimQr)} title={t.esimQr} lede={t.esimQrLede} closeLabel={t.closeMenu} onClose={onClose} size="confirm" className="dialog-qr" testId="esim-dialog" footer={<Button type="button" variant="secondary" onClick={onClose}>{t.closeMenu}</Button>}>
       {line?.esimQr ? (
         <div className="qr-sheet">
           <QrTile src={line.esimQr} />

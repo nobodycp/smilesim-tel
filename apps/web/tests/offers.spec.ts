@@ -16,7 +16,7 @@ test('the home hero shows the live offers, moves by dot and key, and moves on by
     'GET /offers/live': () => ({ body: { offers: [offer('o1', 'عرض الشتاء', 3), offer('o2', 'عرض الربيع', 3)] } }),
   });
   await page.goto('http://agent.localhost:3910/');
-  const hero = page.locator('.offer-hero');
+  const hero = page.getByTestId('offer-hero');
   await expect(hero.getByRole('heading', { name: 'عرض الشتاء' })).toBeVisible();
   await expect(hero.getByRole('link', { name: 'اطلب الآن' })).toHaveAttribute('href', '/packages');
   const dots = hero.getByRole('tab');
@@ -41,9 +41,9 @@ test('an offer without a picture is text only and takes the whole width', async 
     'GET /offers/live': () => ({ body: { offers: [{ ...offer('o3', 'تنبيه: صيانة الليلة'), image: null, actionHref: null, actionLabel: null }] } }),
   });
   await page.goto('http://agent.localhost:3910/');
-  const hero = page.locator('.offer-hero');
+  const hero = page.getByTestId('offer-hero');
   await expect(hero.getByRole('heading', { name: 'تنبيه: صيانة الليلة' })).toBeVisible();
-  await expect(hero.locator('.offer-slide')).toHaveClass(/text-only/);
+  await expect(hero.getByTestId('offer-slide')).toHaveClass(/text-only/);
   await expect(hero.locator('img')).toHaveCount(0);
   // One offer: no dots and no timer.
   await expect(hero.getByRole('tab')).toHaveCount(0);
@@ -52,8 +52,8 @@ test('an offer without a picture is text only and takes the whole width', async 
 test('a home without live offers has no hero', async ({ page }) => {
   await serveApi(page, 'agent', { 'GET /home': () => ({ body: home }), 'GET /offers/live': () => ({ body: { offers: [] } }) });
   await page.goto('http://agent.localhost:3910/');
-  await expect(page.locator('.page-head h1')).toBeVisible();
-  await expect(page.locator('.offer-hero')).toHaveCount(0);
+  await expect(page.getByTestId('page-head').getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByTestId('offer-hero')).toHaveCount(0);
 });
 
 test('the owner adds an offer with its seconds and audience, and switches one off', async ({ page }) => {
@@ -70,8 +70,8 @@ test('the owner adds an offer with its seconds and audience, and switches one of
     if (request.method() === 'PATCH' && request.url().endsWith('/v1/offers/o1')) patched.push(request.postDataJSON());
   });
   await page.goto('http://admin.localhost:3910/offers');
-  await expect(page.locator('.offer-hero')).toBeVisible();
-  await expect(page.locator('table.data tbody tr')).toHaveCount(1);
+  await expect(page.getByTestId('offer-hero')).toBeVisible();
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
 
   await page.getByRole('button', { name: 'إعلان جديد' }).click();
   const dialog = page.getByRole('dialog', { name: 'إعلان جديد' });

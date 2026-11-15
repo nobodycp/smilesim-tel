@@ -30,9 +30,9 @@ test('the custom prices tab lists priced accounts and edits them inline', async 
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
 
-  const row = page.locator('.data tbody tr', { hasText: 'pos1' });
+  const row = page.getByTestId('data-table').locator('tbody tr', { hasText: 'pos1' });
   await expect(row).toHaveCount(1);
-  await expect(row.locator('.money.muted').first()).toHaveText('35.00 ₪');
+  await expect(row.getByTestId('price-pair').first().getByTestId('money')).toHaveText('35.00 ₪');
   const field = row.getByRole('textbox', { name: /اشتراك/ });
   await expect(field).toHaveValue('29');
 
@@ -64,7 +64,7 @@ test('the custom prices table sorts by each account own price and by a signed di
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
 
-  const table = page.locator('.data');
+  const table = page.getByTestId('data-table');
   const order = () => table.locator('tbody tr').evaluateAll((trs) => trs.map((tr) => /pos\d/.exec(tr.textContent ?? '')?.[0]));
   await expect.poll(order).toEqual(['pos1', 'pos2', 'pos3']);
 
@@ -95,9 +95,9 @@ test('on a phone the custom price cells take the card row and keep their fields 
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'تخصيص سعر' }).click();
 
-  const row = page.locator('.data tbody tr', { hasText: 'pos1' });
+  const row = page.getByTestId('data-table').locator('tbody tr', { hasText: 'pos1' });
   await expect(row.getByRole('textbox', { name: /اشتراك/ })).toBeVisible();
-  const cells = await row.locator('td:has(.price-pair)').evaluateAll((tds) => tds.map((td) => {
+  const cells = await row.locator('td').filter({ has: page.getByTestId('price-pair') }).evaluateAll((tds) => tds.map((td) => {
     const cell = td.getBoundingClientRect();
     const card = td.parentElement!.getBoundingClientRect();
     const inside = [...td.querySelectorAll('*')].every((child) => {

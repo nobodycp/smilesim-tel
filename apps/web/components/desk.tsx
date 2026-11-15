@@ -37,7 +37,7 @@ export function Desk({
       <header className="page-head" data-testid="page-head">
         <h1>{title}</h1>
         {action}
-        {lede ? <p className="lede">{lede}</p> : null}
+        {lede ? <p className="lede" data-testid="page-lede">{lede}</p> : null}
       </header>
       <PageAlert error={error} note={note}>
         {children}
@@ -52,7 +52,7 @@ export function Money({ value, muted, signed }: { value: number; muted?: boolean
   const tone = value < 0 ? ' neg' : signed && value > 0 ? ' pos' : '';
   return (
     // Graphite: the shekel sign small and quiet after the figure; the text reads the same («12.50 ₪»).
-    <span className={`money${tone}${muted ? ' muted' : ''}`} dir="ltr">
+    <span className={`money${tone}${muted ? ' muted' : ''}`} data-testid="money" dir="ltr">
       {signed && value > 0 ? '+' : ''}{formatShekel(value).replace(/ ₪$/, '')}<small className="cur"> ₪</small>
     </span>
   );

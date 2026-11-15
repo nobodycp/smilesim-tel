@@ -27,16 +27,16 @@ async function serve(page: Page, onDetail: (id: string, route: Route) => Promise
   });
   await page.route('**/v1/packages', (route) => route.fulfill(json({ packages: [], companies: [] })));
   await page.goto('/numbers');
-  await expect(page.locator('table.data tbody tr')).toHaveCount(3);
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(3);
   return asked;
 }
 const openButton = (page: Page, msisdn: string) => page.getByRole('button', { name: `عرض رمز QR ${msisdn}` });
-const dialog = (page: Page) => page.locator('.dialog-qr');
-const picture = (page: Page) => page.locator('.dialog-qr .qr-tile img');
+const dialog = (page: Page) => page.getByTestId('esim-dialog');
+const picture = (page: Page) => page.getByTestId('esim-dialog').getByTestId('qr-tile').locator('img');
 
 test('the list works without the code: SIM and eSIM by name, and the detail is asked for only when the QR is opened', async ({ page }) => {
   const asked = await serve(page, (id, route) => route.fulfill(json(detail(id, id === 'ln1' ? QR_A : QR_B))));
-  const cells = page.locator('table.data tbody tr .line-cell');
+  const cells = page.getByTestId('data-table').locator('tbody tr').getByTestId('line-cell');
   await expect(cells.nth(0)).toContainText('eSIM');
   await expect(cells.nth(2)).toContainText('SIM');
   await expect(openButton(page, '0550000001')).toBeVisible();
@@ -184,7 +184,7 @@ test('the line page shows the code from its own detail, and asks again after it 
   const first = asked;
   // Left and opened again: the answer was not kept in the shared cache, so the page waits for a new one.
   await page.goto('/settings');
-  await expect(page.locator('.settings-grid')).toBeVisible();
+  await expect(page.getByTestId('settings-grid')).toBeVisible();
   await page.goto('/numbers/ln1');
   await page.getByRole('tab', { name: 'التفاصيل' }).click();
   await expect(page.getByRole('button', { name: /رمز QR/ }).first()).toBeVisible();
@@ -201,7 +201,7 @@ test('a task page shows the code its detail carries, large when opened', async (
   };
   await page.route('**/v1/tasks/t1', (route) => route.fulfill(json({ task, events: [] })));
   await page.goto('/tasks/t1');
-  await page.locator('.esim-mark').click();
+  await page.getByTestId('esim-mark').click();
   await expect(picture(page)).toHaveAttribute('src', QR_B);
   await expect(dialog(page)).toContainText('8997202000000000009');
 });
@@ -243,7 +243,7 @@ for (const [name, path, first, second] of [
         await page.getByRole('tab', { name: 'التفاصيل' }).click();
         await page.getByRole('button', { name: /رمز QR/ }).first().click();
       } else {
-        await page.locator('.esim-mark').click();
+        await page.getByTestId('esim-mark').click();
       }
     };
     await page.goto(path);
@@ -253,10 +253,10 @@ for (const [name, path, first, second] of [
     await mark(page);
 
     // Away inside the app, then back: no full load in between.
-    await page.locator('aside.sidebar').getByRole('link', { name: 'الأرقام' }).click();
+    await page.getByTestId('sidebar').getByRole('link', { name: 'الأرقام' }).click();
     // The dev server builds this page the first time a worker asks for it; under a full parallel run that alone
     // has taken longer than the default five seconds. What is waited for is only "we are on another page".
-    await expect(page.locator('table.data tbody tr')).toHaveCount(3, { timeout: 30_000 });
+    await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(3, { timeout: 30_000 });
     await page.goBack();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     expect(await sameLoad(page)).toBe(true);
@@ -264,7 +264,7 @@ for (const [name, path, first, second] of [
     await expect.poll(() => asked).toBe(2);
     await page.waitForTimeout(400);
     expect(await page.content()).not.toContain(QR_A.slice(30));
-    await expect(page.locator('.esim-mark')).toHaveCount(0);
+    await expect(page.getByTestId('esim-mark')).toHaveCount(0);
     release();
     await open();
     await expect(picture(page)).toHaveAttribute('src', QR_B);
@@ -303,7 +303,7 @@ test('signing out with a code on screen leaves nothing of it for whoever signs i
   await expect(picture(page)).toHaveAttribute('src', QR_A);
   await mark(page);
   await page.keyboard.press('Escape');
-  await page.locator('aside.sidebar').getByRole('button', { name: 'تسجيل الخروج' }).click();
+  await page.getByTestId('sidebar').getByRole('button', { name: 'تسجيل الخروج' }).click();
   await expect(page).toHaveURL(/\/login$/);
   // Signing out is a full load: the page's memory, with every answer it held, is gone.
   expect(await sameLoad(page)).toBe(false);
@@ -315,7 +315,7 @@ test('signing out with a code on screen leaves nothing of it for whoever signs i
   for (const text of Object.values(kept)) expect(text).not.toContain(QR_A.slice(30));
   // The next account opens the numbers page: no code is there until it asks for one itself.
   await page.goto('/numbers');
-  await expect(page.locator('table.data tbody tr')).toHaveCount(3);
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(3);
   await page.waitForTimeout(400);
   expect(await page.content()).not.toContain(QR_A.slice(30));
   expect(asked).toEqual(['ln1']);

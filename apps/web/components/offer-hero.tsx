@@ -60,6 +60,7 @@ export function OfferHero({ offers }: { offers: Offer[] }) {
   return (
     <section
       className="offer-hero"
+      data-testid="offer-hero"
       aria-roledescription={t.offersCarousel}
       aria-label={t.offersTitle}
       tabIndex={0}
@@ -72,7 +73,7 @@ export function OfferHero({ offers }: { offers: Offer[] }) {
       onPointerUp={onPointerUp}
     >
       {/* The picture is optional: without one the offer is text only and takes the whole width. */}
-      <div className={current.image ? 'offer-slide' : 'offer-slide text-only'} key={current.id} aria-live={paused ? 'polite' : 'off'}>
+      <div className={current.image ? 'offer-slide' : 'offer-slide text-only'} data-testid="offer-slide" key={current.id} aria-live={paused ? 'polite' : 'off'}>
         <div className="offer-copy">
           <h2>{current.title}</h2>
           {current.body ? <p>{current.body}</p> : null}

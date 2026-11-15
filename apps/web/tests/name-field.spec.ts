@@ -17,7 +17,7 @@ test('a filter is typed: closest names first, keys move, Enter picks, × clears'
     'GET /tasks': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://admin.localhost:3910/tasks');
-  const company = page.locator('.filter-panel').getByRole('combobox', { name: 'الشركة' });
+  const company = page.getByTestId('filter-panel').getByRole('combobox', { name: 'الشركة' });
   await expect(company).toHaveAttribute('placeholder', 'الكل');
 
   // Focused and empty, it lists the names so a short list can be browsed.
@@ -49,7 +49,7 @@ test('a filter is typed: closest names first, keys move, Enter picks, × clears'
   await expect(company).toHaveValue('ويكوم');
 
   // The «×» clears it back to «الكل».
-  await page.locator('.filter-panel').getByRole('button', { name: /امسح الاختيار/ }).click();
+  await page.getByTestId('filter-panel').getByRole('button', { name: /امسح الاختيار/ }).click();
   await expect(company).toHaveValue('');
   await expect(company).toHaveAttribute('placeholder', 'الكل');
 });

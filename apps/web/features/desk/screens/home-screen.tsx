@@ -53,7 +53,7 @@ export function HomeScreen() {
 
   return (
     <div className="home">
-      <header className="page-head home-head">
+      <header className="page-head home-head" data-testid="page-head">
         <div>
           <h1><bdi>{title}</bdi></h1>
           {lede && <p className="lede">{lede}</p>}
@@ -82,7 +82,7 @@ export function HomeScreen() {
       ) : null}
       <AccountBand summary={summary.data} home={home} overview={data} period={period} branch={branch} />
       {branch ? null : (
-        <div className="home-top-row">
+        <div className="home-top-row" data-testid="home-top-row">
           <LastOperations home={home} failed={broken ? board.error : ''} onRetry={() => void board.reload()} showAccount={layer !== 'pos'} />
           <WaitingTasks tasks={waiting.data?.items ?? []} open={home?.openTasks ?? waiting.data?.total ?? 0} loading={!waiting.data && !waiting.error} />
         </div>
@@ -92,7 +92,7 @@ export function HomeScreen() {
       {overview.error && !data ? <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section> : null}
       <div className="home-columns">
         <div className="home-side">
-          {data ? <LinesCard data={data} /> : loadingOverview ? <section className="pane overview-card"><TableSkeleton rows={5} columns={2} /></section> : null}
+          {data ? <LinesCard data={data} /> : loadingOverview ? <section className="pane overview-card" data-testid="overview-card"><TableSkeleton rows={5} columns={2} /></section> : null}
           {data ? <TasksCard data={data} /> : null}
           {data && layer !== 'pos' ? <UsersCard data={data} layer={layer} /> : null}
         </div>

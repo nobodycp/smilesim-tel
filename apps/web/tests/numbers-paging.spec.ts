@@ -13,8 +13,8 @@ test('numbers list pages by the total, reads the next cursor on demand, and filt
   const log = async () => (await (await request.get(`${mock}/__lines/log`)).json()) as Record<string, string>[];
 
   await page.goto(`${desk}/numbers`);
-  const rows = page.locator('table.data tbody tr');
-  const pager = page.locator('.table-pager');
+  const rows = page.getByTestId('data-table').locator('tbody tr');
+  const pager = page.getByTestId('table-pager');
   await expect(rows).toHaveCount(10);
   await expect(pager).toContainText('36');
   await expect(page.getByRole('button', { name: '4', exact: true })).toBeVisible();
@@ -39,12 +39,12 @@ test('numbers list pages by the total, reads the next cursor on demand, and filt
 
   // The package options come from the catalog, not from the loaded rows.
   // The package filter is a NameField (spec 2026-11-09-admin-review, 2a): typed, then picked.
-  await pickName(page.locator('.filter-panel').getByLabel('الرزمة'), 'cell-400', /./);
+  await pickName(page.getByTestId('filter-panel').getByLabel('الرزمة'), 'cell-400', /./);
   await expect(async () => expect((await log()).at(-1)).toEqual({ status: 'frozen', packageCode: 'cell-400' })).toPass();
 
   // Search sits in the filter and waits for a pause, then sends the text as typed.
-  await expect(page.locator('.table-search')).toHaveCount(0);
-  await page.locator('.filter-panel').getByLabel('الرقم أو السيريال').fill('055 0000');
+  await expect(page.getByTestId('table-search')).toHaveCount(0);
+  await page.getByTestId('filter-panel').getByLabel('الرقم أو السيريال').fill('055 0000');
   await expect(async () => expect((await log()).at(-1)).toEqual({ q: '055 0000', status: 'frozen', packageCode: 'cell-400' })).toPass();
   const beforeClear = (await log()).length;
   await page.getByRole('button', { name: 'مسح', exact: true }).click();

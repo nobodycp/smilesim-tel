@@ -13,7 +13,7 @@ export function Spinner({ size = 22 }: { size?: number }) {
 
 export function TableSkeleton({ rows = 6, columns = 5 }: { rows?: number; columns?: number }) {
   return (
-    <div className="table-skeleton" aria-hidden="true">
+    <div className="table-skeleton" data-testid="table-skeleton" aria-hidden="true">
       {Array.from({ length: rows }).map((_, row) => (
         <div className="table-skeleton-row" key={row}>
           {Array.from({ length: columns }).map((__, column) => (

@@ -133,7 +133,7 @@ function PosCatalog({
               <button className="pack-card" data-testid="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
                 <strong>{row.name}</strong>
                 <PackageFacts facts={row} withDetails={false} />
-                <p className="pack-price"><Money value={row.price} /></p>
+                <p className="pack-price" data-testid="pack-price"><Money value={row.price} /></p>
               </button>
             ))}
           </div>
@@ -142,7 +142,7 @@ function PosCatalog({
           <form className="pane pane-body stack" data-testid="subscribe-form" onSubmit={join}>
             <h2>{picked.companyName} · {picked.name}</h2>
             <PackageFacts facts={picked} />
-            <p className="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
+            <p className="pack-price" data-testid="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
             {!picked.canActivate && <Badge variant="danger" dot>{t.activationStopped}</Badge>}
             {picked.canActivate && offersEsim && (
               <label className="check">
@@ -325,7 +325,7 @@ export function PackagesScreen() {
       // The cell holds the edit fields; the header sorts by the price in force (own, else the default).
       sortValue: (row) => (row.editableField ? row.sellPrice ?? row.sellDefault : null),
       render: (row) => row.editableField && (
-        <div className="sell-cell">
+        <div className="sell-cell" data-testid="sell-cell">
           <label className="terms-price">
             <span>{t.subscriptionShort}</span>
             <input

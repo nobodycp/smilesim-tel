@@ -41,14 +41,14 @@ export function ModeCards<K extends string>({
       {actions.map((action) => {
         const mode = (modes[action] ?? 'manual') as RunMode;
         return (
-          <section key={action} className={mode === 'off' ? 'mode-card off' : 'mode-card'}>
+          <section key={action} className={mode === 'off' ? 'mode-card off' : 'mode-card'} data-testid="mode-card">
             <span className="mode-mark" aria-hidden="true"><Zap size={18} strokeWidth={1.9} /></span>
             <b>{names[action]}</b>
             {inherited ? (
               inherited.includes(action) ? (
-                <span className="mode-source inherited">{t.inheritedFromProvider}</span>
+                <span className="mode-source inherited" data-testid="mode-source">{t.inheritedFromProvider}</span>
               ) : (
-                <span className="mode-source own">
+                <span className="mode-source own" data-testid="mode-source">
                   {t.ownMode}
                   {onInherit ? (
                     <button type="button" className="link-btn" disabled={disabled} onClick={() => onInherit(action)}>{t.backToInherited}</button>

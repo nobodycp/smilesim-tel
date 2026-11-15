@@ -17,13 +17,13 @@ test('profits show the totals and each package, follow the dates, and export the
   });
   await page.goto('http://agent.localhost:3910/profits');
   await expect(page.getByRole('heading', { name: 'الأرباح', level: 1 })).toBeVisible();
-  const cards = page.locator('.stat-row .stat');
+  const cards = page.getByTestId('stat-row').getByTestId('stat');
   await expect(cards.nth(0)).toContainText('+16.50 ₪');
   await expect(cards.nth(1)).toContainText('5');
   await expect(cards.nth(1)).toContainText('1');
   // The best package and its profit per sale.
   await expect(cards.nth(2)).toContainText('سلكوم 400 جيجا');
-  const rows = page.locator('table.data tbody tr');
+  const rows = page.getByTestId('data-table').locator('tbody tr');
   await expect(rows).toHaveCount(2);
   await expect(rows.first()).toContainText('+10.50 ₪');
   // The page opens on the last 30 days, and the sidebar names it.

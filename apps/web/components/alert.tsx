@@ -19,7 +19,7 @@ export function Alert({
   if (children === null || children === undefined || children === false || children === '') return null;
   const base = tone === 'error' ? 'error' : 'note';
   return (
-    <p className={banner ? `${base} banner` : base} id={id} role={tone === 'error' ? 'alert' : 'status'}>
+    <p className={banner ? `${base} banner` : base} data-testid={banner ? 'banner' : undefined} id={id} role={tone === 'error' ? 'alert' : 'status'}>
       {children}
     </p>
   );

@@ -66,7 +66,7 @@ test('the numbers tab reads every page of lines', async ({ page }) => {
   });
   await page.goto('http://admin.localhost:3910/providers/lian/lian-wecom-500');
   await page.getByRole('tab', { name: 'الأرقام' }).click();
-  await expect(page.locator('.data tbody tr')).toHaveCount(3);
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(3);
 });
 
 // An action on the sheet asks again for what belongs to this package, not the shared shelf and accounts.

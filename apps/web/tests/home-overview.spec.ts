@@ -44,72 +44,74 @@ test('the branch reads the full overview, switches the period, and sees its prov
   await page.goto('http://admin.localhost:3910/');
   await expect(page.getByRole('tab', { name: 'شهر', exact: true })).toHaveAttribute('aria-selected', 'true');
   // The period cards: sales with their volume, new subscriptions and profit, each with its change and its trend.
-  const band = page.locator('.account-band');
-  const cards = band.locator('.pulse-tile');
+  const band = page.getByTestId('account-band');
+  const cards = band.getByTestId('pulse-tile');
   await expect(cards).toHaveCount(3);
   await expect(cards.nth(0)).toContainText('12');
   await expect(cards.nth(0)).toContainText('540.00');
-  await expect(cards.nth(0).locator('.change')).toHaveText('50%');
-  await expect(cards.nth(0).locator('.change')).toHaveClass(/up/);
-  await expect(cards.nth(1).locator('.change')).toHaveText('0%');
+  await expect(cards.nth(0).getByTestId('pulse-change')).toHaveText('50%');
+  await expect(cards.nth(0).getByTestId('pulse-change')).toHaveClass(/up/);
+  await expect(cards.nth(1).getByTestId('pulse-change')).toHaveText('0%');
   await expect(cards.nth(2)).toContainText('+36.00 ₪');
-  await expect(cards.nth(2).locator('.change')).toHaveClass(/down/);
-  await expect(cards.nth(2).locator('.change')).toHaveText('10%');
-  await expect(band.locator('.trend-line')).toHaveCount(3);
+  await expect(cards.nth(2).getByTestId('pulse-change')).toHaveClass(/down/);
+  await expect(cards.nth(2).getByTestId('pulse-change')).toHaveText('10%');
+  await expect(band.getByTestId('trend-line')).toHaveCount(3);
   // The branch's home, trimmed (spec 2026-11-09-admin-review, 6.3): the three period cards alone in the band, no
   // «آخر العمليات» or «مهام بانتظارك», no «تمويل حساب» or «تفعيل رقم» in the head.
-  await expect(band.locator('.figure-tile')).toHaveCount(3);
-  await expect(page.locator('.home-top-row')).toHaveCount(0);
-  await expect(page.locator('.home-head').getByRole('link', { name: 'تمويل حساب' })).toHaveCount(0);
-  await expect(page.locator('.home-head').getByRole('link', { name: 'تفعيل رقم' })).toHaveCount(0);
+  await expect(band.getByTestId(/^(figure|pulse)-tile$/)).toHaveCount(3);
+  await expect(page.getByTestId('home-top-row')).toHaveCount(0);
+  await expect(page.getByTestId('page-head').getByRole('link', { name: 'تمويل حساب' })).toHaveCount(0);
+  await expect(page.getByTestId('page-head').getByRole('link', { name: 'تفعيل رقم' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'لوحة الإعلانات' })).toHaveCount(0);
 
-  const legend = page.locator('.donut-legend li');
+  const legend = page.getByTestId('donut-legend').locator('li');
   await expect(legend).toHaveCount(5);
-  await expect(page.locator('.donut-total')).toHaveText('13');
-  await expect(page.locator('.donut-legend a[href="/numbers?status=suspended"]')).toContainText('معلق');
+  await expect(page.getByTestId('donut-total')).toHaveText('13');
+  await expect(page.getByTestId('donut-legend').locator('a[href="/numbers?status=suspended"]')).toContainText('معلق');
   // Each slice's change over the period (spec 2026-11-09-admin-review, 6.4): green ↑3, red ↓2, nothing for 0.
-  await expect(legend.nth(0).locator('.donut-change.up')).toHaveText('3');
-  await expect(page.locator('.donut-legend a[href="/numbers?status=frozen"] .donut-change.down')).toHaveText('2');
-  await expect(legend.nth(1).locator('.donut-change.up, .donut-change.down')).toHaveCount(0);
+  await expect(legend.nth(0).getByTestId('donut-change-up')).toHaveText('3');
+  await expect(page.getByTestId('donut-legend').locator('a[href="/numbers?status=frozen"]').getByTestId('donut-change-down')).toHaveText('2');
+  await expect(legend.nth(1).getByTestId(/^donut-change-(up|down)$/)).toHaveCount(0);
   // The count closes the line, the change before it (spec 2026-11-09-admin-review, 8.2).
   await expect(legend.nth(0).locator('a > *').last()).toHaveClass(/donut-value/);
   // The period switch is short (8.5); the cards keep the long name.
-  await expect(page.locator('.home-head').getByRole('tab')).toHaveText(['يوم', 'شهر', 'الكل']);
+  await expect(page.getByTestId('page-head').getByRole('tab')).toHaveText(['يوم', 'شهر', 'الكل']);
   await expect(cards.nth(1)).toContainText('هذا الشهر');
   // «المستخدمون» (8.3): a tile per layer linking to its list, the ceilings bar, debtors and frozen.
-  const users = page.locator('.users-card');
-  await expect(users.locator('.users-layer')).toHaveCount(3);
-  await expect(users.locator('.users-layer').first()).toHaveAttribute('href', '/users?layer=main_agent');
-  await expect(users.locator('.users-layer').first()).toContainText('وكلاء رئيسيون');
-  await expect(users.locator('.users-meter i')).toHaveAttribute('style', /14%/);
-  await expect(users.locator('.users-flags li.warn')).toContainText('70.00');
+  const users = page.getByTestId('users-card');
+  await expect(users.getByTestId('users-layer')).toHaveCount(3);
+  await expect(users.getByTestId('users-layer').first()).toHaveAttribute('href', '/users?layer=main_agent');
+  await expect(users.getByTestId('users-layer').first()).toContainText('وكلاء رئيسيون');
+  await expect(users.getByTestId('users-meter').locator('i')).toHaveAttribute('style', /14%/);
+  const debtors = users.getByTestId('users-debtors');
+  await expect(debtors).toHaveClass(/warn/);
+  await expect(debtors).toContainText('70.00');
   // Pointing at a slice puts its share in the ring's middle; leaving brings the total back.
   await legend.nth(0).hover();
-  await expect(page.locator('.donut-total')).toHaveText('46%');
-  await expect(page.locator('.donut-caption')).toHaveText('فعال');
-  await page.locator('.home-head h1').hover();
-  await expect(page.locator('.donut-total')).toHaveText('13');
+  await expect(page.getByTestId('donut-total')).toHaveText('46%');
+  await expect(page.getByTestId('donut-caption')).toHaveText('فعال');
+  await page.getByTestId('page-head').getByRole('heading', { level: 1 }).hover();
+  await expect(page.getByTestId('donut-total')).toHaveText('13');
 
-  const providers = page.locator('.overview-card', { hasText: 'المزودون' }).first();
+  const providers = page.getByTestId('overview-card').filter({ hasText: 'المزودون' }).first();
   await expect(providers.locator('tbody tr')).toHaveCount(2);
   await expect(providers.locator('tbody tr').nth(1)).toContainText('فيه مشكلة');
   // Provider alerts (spec G): a banner names the providers with a problem while it holds.
-  await expect(page.locator('.banner', { hasText: 'مزوّدون فيهم مشكلة الآن' })).toContainText('ليان');
+  await expect(page.getByTestId('banner').filter({ hasText: 'مزوّدون فيهم مشكلة الآن' })).toContainText('ليان');
 
-  const top = page.locator('.overview-card', { hasText: 'الأكثر' }).filter({ has: page.getByRole('tab', { name: 'أكثر الرزم مبيعاً' }) });
+  const top = page.getByTestId('overview-card').filter({ hasText: 'الأكثر' }).filter({ has: page.getByRole('tab', { name: 'أكثر الرزم مبيعاً' }) });
   await expect(top.getByRole('tab')).toHaveText(['أكثر الرزم مبيعاً', 'أعلى الشركات ربحاً', 'أعلى المزودين ربحاً']);
   await top.getByRole('tab', { name: 'أعلى المزودين ربحاً' }).click();
-  await expect(top.locator('.overview-rank li').first()).toContainText('سكاي');
+  await expect(top.getByTestId('overview-rank').locator('li').first()).toContainText('سكاي');
 
-  const active = page.locator('.overview-card', { hasText: 'الأنشط' });
+  const active = page.getByTestId('overview-card').filter({ hasText: 'الأنشط' });
   await expect(active.getByRole('tab')).toHaveText(['وكلاء رئيسيون', 'وكلاء', 'نقاط بيع']);
 
   await page.getByRole('tab', { name: 'يوم', exact: true }).click();
   await expect.poll(() => calls.some((call) => call.startsWith('GET /overview?') && call.includes('period=day'))).toBe(true);
   // Over all time there is nothing to compare with: no arrow.
   await page.getByRole('tab', { name: 'الكل', exact: true }).click();
-  await expect(cards.nth(0).locator('.change')).toHaveCount(0);
+  await expect(cards.nth(0).getByTestId('pulse-change')).toHaveCount(0);
 });
 
 test('an agent sees no providers card and no main-agent tab', async ({ page }) => {
@@ -118,17 +120,17 @@ test('an agent sees no providers card and no main-agent tab', async ({ page }) =
     'GET /overview': () => ({ body: overview('month', false) }),
   });
   await page.goto('http://agent.localhost:3910/');
-  await expect(page.locator('.account-band .pulse-tile')).toHaveCount(3);
+  await expect(page.getByTestId('account-band').getByTestId('pulse-tile')).toHaveCount(3);
   // The other layers keep their home: the balance, the active numbers, the two panes and the head buttons.
-  await expect(page.locator('.account-band .figure-tile')).toHaveCount(5);
-  await expect(page.locator('.home-top-row')).toHaveCount(1);
-  await expect(page.locator('.home-head').getByRole('link', { name: 'تفعيل رقم' })).toHaveCount(1);
-  await expect(page.locator('.overview-card table.data')).toHaveCount(0);
-  await expect(page.locator('.banner', { hasText: 'مزوّدون فيهم مشكلة الآن' })).toHaveCount(0);
-  const top = page.locator('.overview-card').filter({ has: page.getByRole('tab', { name: 'أكثر الرزم مبيعاً' }) });
+  await expect(page.getByTestId('account-band').getByTestId(/^(figure|pulse)-tile$/)).toHaveCount(5);
+  await expect(page.getByTestId('home-top-row')).toHaveCount(1);
+  await expect(page.getByTestId('page-head').getByRole('link', { name: 'تفعيل رقم' })).toHaveCount(1);
+  await expect(page.getByTestId('overview-card').getByTestId('data-table')).toHaveCount(0);
+  await expect(page.getByTestId('banner').filter({ hasText: 'مزوّدون فيهم مشكلة الآن' })).toHaveCount(0);
+  const top = page.getByTestId('overview-card').filter({ has: page.getByRole('tab', { name: 'أكثر الرزم مبيعاً' }) });
   await expect(top.getByRole('tab')).toHaveCount(2);
-  const active = page.locator('.overview-card', { hasText: 'الأنشط' });
-  await expect(active.locator('.overview-rank li').first()).toContainText('pos');
+  const active = page.getByTestId('overview-card').filter({ hasText: 'الأنشط' });
+  await expect(active.getByTestId('overview-rank').locator('li').first()).toContainText('pos');
   await expect(active.getByRole('tab')).toHaveCount(0);
-  await expect(page.locator('.users-card .users-layer')).toHaveCount(1);
+  await expect(page.getByTestId('users-card').getByTestId('users-layer')).toHaveCount(1);
 });

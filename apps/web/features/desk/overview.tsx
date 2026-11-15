@@ -16,9 +16,9 @@ import { usePrefs } from '../../lib/prefs';
 // The home page's overview cards (spec 2026-11-08-overview-and-reports-nav, F). Each card draws only what the
 // overview answered for this viewer: a layer without providers or main agents simply gets no such card or tab.
 
-function Card({ title, hint, action, wide, children, className = '' }: { title: string; hint?: string; action?: ReactNode; wide?: boolean; children: ReactNode; className?: string }) {
+function Card({ title, hint, action, wide, children, className = '', testId = 'overview-card' }: { title: string; hint?: string; action?: ReactNode; wide?: boolean; children: ReactNode; className?: string; testId?: string }) {
   return (
-    <section className={`pane overview-card${wide ? ' wide' : ''}${className ? ` ${className}` : ''}`}>
+    <section className={`pane overview-card${wide ? ' wide' : ''}${className ? ` ${className}` : ''}`} data-testid={testId}>
       <header className="pane-head">
         <div>
           <h2>{title}</h2>
@@ -122,7 +122,7 @@ function RankedList({ rows, by }: { rows: OverviewRanked[]; by: 'count' | 'profi
   if (rows.length === 0) return <EmptyState>{t.overviewEmpty}</EmptyState>;
   const high = Math.max(1, ...rows.map((row) => Math.abs(row[by])));
   return (
-    <ol className="overview-rank">
+    <ol className="overview-rank" data-testid="overview-rank">
       {rows.map((row, index) => (
         <li key={row.key || index}>
           <span className="overview-rank-n num">{index + 1}</span>
@@ -165,10 +165,10 @@ export function UsersCard({ data, layer }: { data: OverviewPayload; layer: strin
   ];
   const usedShare = users.ceilings > 0 ? Math.min(100, Math.round((users.used / users.ceilings) * 100)) : 0;
   return (
-    <Card title={t.overviewUsers} className="users-card">
+    <Card title={t.overviewUsers} className="users-card" testId="users-card">
       <div className="users-layers">
         {layers.map((item) => (
-          <Link key={item.key} className="users-layer" href={`/users?layer=${item.key}`} style={{ ['--tone' as string]: `var(${item.tone})` }}>
+          <Link key={item.key} className="users-layer" data-testid="users-layer" href={`/users?layer=${item.key}`} style={{ ['--tone' as string]: `var(${item.tone})` }}>
             <span className="users-layer-mark" aria-hidden="true">{item.icon}</span>
             <span className="users-layer-count num">{item.value}</span>
             <span className="users-layer-label">{item.label}</span>
@@ -180,11 +180,11 @@ export function UsersCard({ data, layer }: { data: OverviewPayload; layer: strin
           <span>{t.usedCeiling}</span>
           <span className="users-credit-figures"><Money value={users.used} /></span>
         </div>
-        <div className="users-meter" role="img" aria-label={`${t.usedCeiling}: ${usedShare}%`}><i style={{ inlineSize: `${usedShare}%` }} /></div>
+        <div className="users-meter" data-testid="users-meter" role="img" aria-label={`${t.usedCeiling}: ${usedShare}%`}><i style={{ inlineSize: `${usedShare}%` }} /></div>
         <p className="users-credit-caption"><span>{t.usersCeilings} <Money value={users.ceilings} /></span><span className="num">{usedShare}%</span></p>
       </div>
       <ul className="users-flags">
-        <li className={users.debtors ? 'warn' : undefined}>
+        <li className={users.debtors ? 'warn' : undefined} data-testid="users-debtors">
           <span className="users-flag-label">{t.usersDebtors} <span className="users-flag-count num">{users.debtors}</span></span>
           <span className="users-flag-value" title={t.usersDebt}><Money value={users.debt} /></span>
         </li>
