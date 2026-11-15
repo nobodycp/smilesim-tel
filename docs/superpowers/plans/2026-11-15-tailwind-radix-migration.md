@@ -14,7 +14,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 | Phase | Slices | State |
 |---|---|---|
 | T0 Decision docs | T0.1 | done — T0.1 4478666 |
-| T1 Foundation | T1.1–T1.4 | in progress — T1.1 d4ed139, T1.2 bd4b1d8 |
+| T1 Foundation | T1.1–T1.4 | in progress — T1.1 d4ed139, T1.2 bd4b1d8; T1.3a parked — reviewer agent failed |
 | T2 Primitives (`components/ui`) | T2.1–T2.9 | not started |
 | T3 Shell and frames | T3.1–T3.3 | not started |
 | T4 Screens | T4.1–T4.10 | not started |
