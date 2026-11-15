@@ -27,7 +27,6 @@
   --rd-glow: rgba(217, 48, 73, 0.1);
   --rd-login-room: #111213;
   --rd-login-ink: #f5f5f2;
-  --rd-login-shut: rgba(245, 245, 242, 0.72);
   --rd-login-line: rgba(245, 245, 242, 0.38);
   --rd-login-line-light: rgba(245, 245, 242, 0.28);
   --rd-login-tool: rgba(245, 245, 242, 0.08);
@@ -45,6 +44,9 @@
   --rd-login-focus: rgba(10, 10, 10, 0.16);
   --rd-login-danger: #b91c1c;
   --rd-login-danger-soft: #fdecec;
+  /* A crimson fill that carries content, and what is drawn on it (ADR 0021 D1): white passes 4.5:1 in both themes. */
+  --rd-accent-fill: var(--rd-accent);
+  --rd-accent-fill-hover: color-mix(in srgb, var(--rd-accent-fill) 88%, #000);
   --rd-on-accent: #fff;
   --rd-on-mark: #fff;
   --rd-primary-bg: #161616;
@@ -135,7 +137,6 @@
   --rd-glow: rgba(255, 77, 99, 0.14);
   --rd-login-room: #111213;
   --rd-login-ink: #f5f5f2;
-  --rd-login-shut: rgba(245, 245, 242, 0.72);
   --rd-login-line: rgba(245, 245, 242, 0.38);
   --rd-login-line-light: rgba(245, 245, 242, 0.28);
   --rd-login-tool: rgba(245, 245, 242, 0.08);
@@ -153,7 +154,10 @@
   --rd-login-focus: rgba(10, 10, 10, 0.16);
   --rd-login-danger: #b91c1c;
   --rd-login-danger-soft: #fdecec;
-  --rd-on-accent: #111213;
+  /* The fill stays the light crimson in dark (darker than the thread #ff4d63), so white text still passes. */
+  --rd-accent-fill: #d93049;
+  --rd-accent-fill-hover: color-mix(in srgb, var(--rd-accent-fill) 88%, #000);
+  --rd-on-accent: #fff;
   --rd-on-mark: #fff;
   --rd-primary-bg: #ececec;
   --rd-primary-hover: #ffffff;

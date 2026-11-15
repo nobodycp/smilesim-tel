@@ -322,7 +322,7 @@ input[readonly] { background-color: transparent; }
   width: 44px;
   height: 44px;
   border-radius: var(--rd-radius-sm);
-  background: var(--rd-accent);
+  background: var(--rd-accent-fill);
   color: var(--rd-on-accent);
   clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 0 100%);
 }
@@ -393,8 +393,8 @@ input[readonly] { background-color: transparent; }
   font-weight: 700;
   transition: background-color var(--rd-dur-fast) var(--rd-ease-standard), transform 110ms ease;
 }
-.gauth-go { background: var(--rd-accent); color: var(--rd-on-mark); }
-.gauth-go:hover { background: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
+.gauth-go { background: var(--rd-accent-fill); color: var(--rd-on-accent); }
+.gauth-go:hover { background: var(--rd-accent-fill-hover); }
 .gauth-passkey { background: var(--rd-surface-2); color: var(--rd-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); }
 .gauth-passkey:hover { background: var(--rd-surface-3); }
 .gauth-go:active:not(:disabled), .gauth-passkey:active:not(:disabled) { transform: scale(0.98); }
@@ -420,13 +420,13 @@ input[readonly] { background-color: transparent; }
   inset-inline-start: -40px;
   width: 380px;
   height: 380px;
-  background: var(--rd-accent);
+  background: var(--rd-accent-fill);
   opacity: 0.88;
   transform: rotate(-14deg);
   clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 0 100%);
 }
 .gauth-art h2 { position: relative; max-width: 12em; margin: 0 0 8px; font-size: 30px; font-weight: 700; line-height: 1.4; }
-.gauth-art p { position: relative; max-width: 26em; margin: 0; color: var(--rd-login-shut); }
+.gauth-art p { position: relative; max-width: 26em; margin: 0; }
 @media (max-width: 860px) {
   .gauth { grid-template-columns: minmax(0, 1fr); }
   .gauth-form { padding: 72px 20px 32px; }
@@ -518,12 +518,13 @@ input[readonly] { background-color: transparent; }
 .ui-pager-nav .ui-btn-outline:hover { background: var(--rd-surface-2); }
 
 /* ── The design's special action, crimson («btn-accent»): «تفعيل رقم», «تمديد». Every other page action stays ink. ── */
-.ui-btn.ui-btn-accent { background-color: var(--rd-accent); color: var(--rd-on-mark); box-shadow: none; }
-.ui-btn.ui-btn-accent:hover { background-color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
+.ui-btn.ui-btn-accent { background-color: var(--rd-accent-fill); color: var(--rd-on-accent); box-shadow: none; }
+.ui-btn.ui-btn-accent:hover { background-color: var(--rd-accent-fill-hover); }
 /* Every primary button is crimson (owner 2026-11-11): a page's main action, a dialog's «حفظ» / «تفعيل», a form's submit.
-   Ink is for secondary controls only. Disabled keeps the shape and drops to half strength. */
-.ui-btn.ui-btn-primary { background-color: var(--rd-accent); color: var(--rd-on-mark); box-shadow: none; }
-.ui-btn.ui-btn-primary:hover:not(:disabled) { background-color: color-mix(in srgb, var(--rd-accent) 88%, var(--rd-ink)); }
+   Ink is for secondary controls only. Disabled keeps the shape and drops to half strength. The fill and its hover are
+   --rd-accent-fill(-hover), white on both (ADR 0021 D1); hover darkens toward black. */
+.ui-btn.ui-btn-primary { background-color: var(--rd-accent-fill); color: var(--rd-on-accent); box-shadow: none; }
+.ui-btn.ui-btn-primary:hover:not(:disabled) { background-color: var(--rd-accent-fill-hover); }
 /* A choice made of segments (the provider outcome) sits in the chip row with its name beside it. */
 .filter-panel > .stack { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
 .filter-panel > .stack > .hint { color: var(--rd-muted); font-size: 12px; font-weight: 600; }
@@ -572,7 +573,7 @@ input[readonly] { background-color: transparent; }
   margin-inline-start: auto;
   padding-inline: 6px;
   border-radius: var(--rd-radius-xs);
-  background: var(--rd-accent);
+  background: var(--rd-accent-fill);
   color: var(--rd-on-accent);
   font-size: 11px;
   font-weight: 700;
@@ -633,8 +634,8 @@ input[readonly] { background-color: transparent; }
 .task-act { display: inline-flex; align-items: center; gap: 6px; }
 .task-card:hover .task-title b { color: var(--rd-accent); }
 .desk > .steps { align-self: flex-start; }
-/* White figures on crimson, as in the design: the sidebar count and the page's own action. */
-.nav-count, .notice-count { color: var(--rd-on-mark); }
+/* The bell's count is an 8px dot (font-size 0): this colour paints nothing; the sidebar count takes --rd-on-accent above. */
+.notice-count { color: var(--rd-on-mark); }
 
 /* ── Number card (Graphite, as in the design): the number as the title with its status and what is left, one line on
    where it lives, four cut-corner facts, then the tabs; operations are cards with a crimson mark, a name, one line on
@@ -702,8 +703,8 @@ input[readonly] { background-color: transparent; }
   width: 48px;
   height: 48px;
   border-radius: var(--rd-radius-sm);
-  background: var(--rd-accent);
-  color: var(--rd-on-mark);
+  background: var(--rd-accent-fill);
+  color: var(--rd-on-accent);
   font-size: 20px;
   font-weight: 700;
   clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 0 100%);
@@ -1085,7 +1086,7 @@ input[readonly] { background-color: transparent; }
 .grant-none { color: var(--rd-muted); opacity: 0.5; }
 
 /* Settings (Graphite): the account's crimson square mark, the sign-in methods three across. */
-.settings-page .identity-mark { inline-size: 44px; block-size: 44px; border-radius: var(--rd-radius-sm); background: var(--rd-accent); color: #fff; font-size: 18px; font-weight: 700; box-shadow: none; }
+.settings-page .identity-mark { inline-size: 44px; block-size: 44px; border-radius: var(--rd-radius-sm); background: var(--rd-accent-fill); color: var(--rd-on-accent); font-size: 18px; font-weight: 700; box-shadow: none; }
 .settings-page .identity-login { color: var(--rd-muted); font-size: 12.5px; }
 .settings-page .method-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 520px) { .settings-page .method-cards { grid-template-columns: 1fr; } }
@@ -1424,7 +1425,8 @@ input[readonly] { background-color: transparent; }
 .date-pop-day { height: 34px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-ink); font-size: var(--rd-text-sm); font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; }
 .date-pop-day:hover { background: var(--rd-surface-2); }
 .date-pop-day.today { box-shadow: inset 0 0 0 1px var(--rd-accent); }
-.date-pop-day.on { background: var(--rd-accent); color: var(--rd-on-mark); }
+.date-pop-day.on { background: var(--rd-accent-fill); color: var(--rd-on-accent); }
+.date-pop-day.today.on { box-shadow: inset 0 0 0 1px var(--rd-accent-fill); }
 .date-pop-foot { display: flex; justify-content: space-between; margin-block-start: 8px; padding-block-start: 8px; border-block-start: 1px solid var(--rd-line); }
 .date-pop-link { height: 30px; padding-inline: 10px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-accent); font-weight: 600; cursor: pointer; }
 .date-pop-link:hover { background: var(--rd-accent-soft); }

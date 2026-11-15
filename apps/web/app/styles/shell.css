@@ -66,7 +66,7 @@
   width: 34px;
   height: 34px;
   border-radius: var(--rd-radius-sm);
-  background: var(--rd-accent);
+  background: var(--rd-accent-fill);
   clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
 }
 [dir='rtl'] .sidebar .brand-mark, [dir='rtl'] .drawer .brand-mark { clip-path: polygon(9px 0, 100% 0, 100% 100%, 0 100%, 0 9px); }
@@ -180,7 +180,7 @@
   text-align: start;
 }
 .side-user:hover { background: var(--rd-surface-2); }
-.side-user .avatar { flex: none; width: 36px; height: 36px; border-radius: var(--rd-radius-sm); background: var(--rd-accent); color: var(--rd-on-accent); font-size: var(--rd-text-base); }
+.side-user .avatar { flex: none; width: 36px; height: 36px; border-radius: var(--rd-radius-sm); background: var(--rd-accent-fill); color: var(--rd-on-accent); font-size: var(--rd-text-base); }
 .side-user b { display: block; overflow: hidden; color: var(--rd-ink); font-size: var(--rd-text-md); text-overflow: ellipsis; }
 .side-user small { display: block; color: var(--rd-muted); font-size: var(--rd-text-xs); }
 .side-user .label { min-width: 0; }

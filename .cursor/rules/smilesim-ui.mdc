@@ -8,7 +8,7 @@ alwaysApply: true
 Source of truth: `DESIGN.md`. One identity for the whole office. Do not invent a second look.
 
 - Colours are `--rd-*` tokens in `apps/web/app/styles/tokens.css` (imported through `apps/web/app/globals.css`), both light and dark. No raw hex or `rgba()` in components or in any other CSS file. A new colour is a new token in both themes, listed in `DESIGN.md`.
-- Primary action is crimson (`--rd-accent-fill` (defined in P0.9), one per view, precedence in `DESIGN.md`); logo red marks one accent; ink fills are not actions. Logo red (`--rd-accent`) is never an error. Errors use `--rd-danger`.
+- Primary action is crimson (`--rd-accent-fill`, one per view, precedence in `DESIGN.md`); logo red marks one accent; ink fills are not actions. Logo red (`--rd-accent`) is never an error. Errors use `--rd-danger`.
 - Status is a badge with a label: paid / pending / danger / neutral. Do not signal status by colour alone.
 - Type: Noto Kufi Arabic for Arabic and Latin text, IBM Plex Sans Hebrew for Hebrew, both loaded in `layout.tsx` with `next/font`. Numbers, money, and dates are Latin digits in the same font with `font-variant-numeric: tabular-nums`. No new font, no Google Font link.
 - Reuse the shell, page header, card, table, and button classes in `DESIGN.md`. Do not add a new card, button, or table style for one page.

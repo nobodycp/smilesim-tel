@@ -107,8 +107,8 @@
   padding: 0 var(--rd-space-3-5);
   border: 0;
   border-radius: var(--rd-radius-sm);
-  background: var(--rd-accent);
-  color: var(--rd-on-mark);
+  background: var(--rd-accent-fill);
+  color: var(--rd-on-accent);
   font-size: var(--rd-text-sm);
   font-weight: 700;
 }

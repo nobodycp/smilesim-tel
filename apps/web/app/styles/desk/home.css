@@ -126,11 +126,11 @@
   padding-inline: var(--rd-space-3-5);
   font-size: var(--rd-text-md);
   border-radius: var(--rd-radius-pill);
-  background: var(--rd-accent);
-  color: var(--rd-on-mark);
+  background: var(--rd-accent-fill);
+  color: var(--rd-on-accent);
   font-weight: 700;
 }
-.offer-action:hover { background: var(--rd-primary-hover); }
+.offer-action:hover { background: var(--rd-accent-fill-hover); }
 /* A small picture at the end on desktop, so the hero stays a strip and not half the page. */
 .offer-image { inline-size: 240px; aspect-ratio: 2 / 1; object-fit: cover; border-radius: var(--rd-radius-card); }
 .offer-arrow {

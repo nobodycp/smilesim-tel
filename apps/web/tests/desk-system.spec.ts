@@ -20,6 +20,7 @@ async function probe(page: import('@playwright/test').Page) {
     return {
       primaryHeight: primaryStyle.height,
       primaryBg: primaryStyle.backgroundColor,
+      primaryFg: primaryStyle.color,
       secondaryHeight: secondaryStyle.height,
       secondaryBg: secondaryStyle.backgroundColor,
       secondaryBorder: secondaryStyle.borderTopWidth,
@@ -35,7 +36,9 @@ test('desk buttons are crimson and 34px on a desktop width', async ({ page }) =>
   await page.goto('/login');
   const style = await probe(page);
   expect(style.primaryHeight).toBe('34px');
-  expect(style.primaryBg).toBe('rgb(255, 77, 99)');
+  // The crimson fill, not the thread: --rd-accent-fill, #d93049 in dark too (ADR 0021 D1, UI maintenance P0.9).
+  expect(style.primaryBg).toBe('rgb(217, 48, 73)');
+  expect(style.primaryFg).toBe('rgb(255, 255, 255)');
   expect(style.secondaryHeight).toBe('34px');
   expect(style.secondaryBg).toBe('rgb(31, 32, 35)');
   expect(style.secondaryBorder).toBe('1px');
