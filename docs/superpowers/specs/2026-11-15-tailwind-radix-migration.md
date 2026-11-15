@@ -6,8 +6,8 @@ Date: 2026-11-15 · Owner instruction (chat, 2026-11-15) · Decision: ADR 0022 �
 ## Goal
 
 One unified design system for the whole web app, expressed as design tokens plus a small set of owned components, with
-no hand-maintained stylesheet left. Then that system takes the new visual identity
-(`docs/design/identity-2026-11-15/`) by changing token values and component variants, not screens.
+no hand-maintained stylesheet left, carrying the **current** visual identity: ported faithfully, cleaned of one-off
+values, and completed where a control or state is missing, in the same style (owner, 2026-11-15).
 
 ## Owner decisions (2026-11-15)
 
@@ -17,8 +17,9 @@ no hand-maintained stylesheet left. Then that system takes the new visual identi
    visual review per slice.
 3. Unify the design system.
 4. Replace hand-written CSS: Tailwind CSS v4 + Radix primitives in owned components (ADR 0022).
-5. A complete new visual identity, nothing missing (tables, text fields, every control), made in parallel in its own
-   session and approved by the owner before it is applied.
+5. ~~A new visual identity~~ — cancelled by the owner later on 2026-11-15: "the current visual identity is excellent; it
+   needs ordering, completing what is missing and cleaning out the random things". The current identity stays as the
+   system's main identity; missing parts are added in its own style; nothing of the new-identity work is used.
 
 ## What changes
 
@@ -28,7 +29,8 @@ no hand-maintained stylesheet left. Then that system takes the new visual identi
 - e2e specs locate elements by role, label or `data-testid`.
 - All 24 files in `apps/web/app/styles/` and `app/globals.css` are deleted by the end; `app/tailwind.css` remains.
 - `DESIGN.md`, the frontend map and the UI rule files describe the token + component system.
-- After the identity is approved: new token values, fonts and component anatomy per the identity README.
+- After the port: a gap inventory of the current identity, the missing components and states built in its style,
+  one-off values folded into tokens and variants, and `DESIGN.md` completed as the system's one identity (plan T6).
 
 ## What does not change
 
@@ -40,10 +42,10 @@ no hand-maintained stylesheet left. Then that system takes the new visual identi
 ## Non-goals
 
 - New features or new screens.
-- Per-slice visual sign-off (owner decision 2). Visual drift between the legacy look and the identity is accepted until
-  the identity phase.
+- Per-slice visual sign-off (owner decision 2). The port aims at the current look; a visible difference is a defect,
+  found by code review against the legacy rules, not by screenshots.
 - The remaining slices of the 2026-11-13 maintenance plan (P1.3–P8). Its audit findings stay as a reference; the
-  identity phase and the migration close most of them by construction, and the final report lists the rest.
+  migration and the T6 clean-up close most of them by construction, and the final report lists the rest.
 
 ## Checks per slice
 

@@ -1,8 +1,7 @@
 # 0022 — Tailwind CSS v4 and owned Radix components replace hand-written stylesheets
 
 - Status: accepted (owner, 2026-11-15)
-- Supersedes: the styling parts of ADR 0021's plan from P1.3 on (the decisions D1–D28 themselves stay in force unless the
-  new identity changes one; each change is listed in the identity README and in DESIGN.md)
+- Supersedes: the styling parts of ADR 0021's plan from P1.3 on (the decisions D1–D28 themselves stay in force )
 - Plan: `docs/superpowers/plans/2026-11-15-tailwind-radix-migration.md`
 
 ## Context
@@ -12,8 +11,8 @@
 files override earlier ones, and the UI audit of 2026-11-13 (277 findings) traced most defects to that cascade. The
 maintenance plan of 2026-11-13 tried to repair the cascade in place with per-slice visual verification; on 2026-11-15 the
 owner stopped it as too slow and asked for: code maintenance without visual verification, one unified design system,
-no more hand-maintained CSS if a better alternative exists, and a complete new visual identity
-(`docs/design/identity-2026-11-15/`, made in a separate session).
+no more hand-maintained CSS if a better alternative exists. A new visual identity was started the same day and then
+cancelled by the owner: the current identity stays, completed and cleaned (plan T6).
 
 ## Options
 
@@ -46,8 +45,8 @@ Option 1, chosen by the owner on 2026-11-15.
 - Every component's markup changes; e2e specs that locate elements by CSS class (47 spec files) move to roles/test ids
   first, so the suite keeps proving behaviour while the classes go away.
 - By the owner's instruction there is no per-slice visual verification. Slices are checked by lint, typecheck,
-  check:copy, check:styles and a code review; e2e and the build run on GitHub Actions when the owner pushes. Visual drift
-  is expected until the identity phase sets the final look.
+  check:copy, check:styles and a code review; e2e and the build run on GitHub Actions when the owner pushes. The port aims
+  at the current look; a visible difference is a defect found by code review against the legacy rules.
 - `DESIGN.md`, `docs/architecture/frontend.md` and the UI rule files (`smilesim-ui.mdc`, `content-ui.mdc`,
   `direction-theme.mdc`, `screen-size.mdc`) are rewritten for utilities and components instead of stylesheets.
 - New dependencies: `tailwindcss`, `@tailwindcss/postcss`, `radix-ui`, `class-variance-authority`, `clsx`,

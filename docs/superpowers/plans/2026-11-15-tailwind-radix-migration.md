@@ -1,7 +1,13 @@
 # Plan — Tailwind CSS v4 + owned Radix components (code maintenance, no visual verification)
 
-Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decision: ADR 0022 · Branch: `ui-maintenance`
-(continues from `4053432`/`a74cf51`; the 2026-11-13 plan is superseded from P1.3 on).
+Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decision: ADR 0022 · Branch: `design-system`
+(cut from `ui-maintenance` at `596bfa7` on 2026-11-15, owner: "a new branch until we agree, then merge"; the
+2026-11-13 plan is superseded from P1.3 on).
+
+> **Owner, 2026-11-15 (later):** the current visual identity stays; it is the system's main identity. There is no
+> new identity (the separate identity session and `docs/design/identity-2026-11-15/` are cancelled and not used). The
+> work is: port the current look faithfully, clean the random one-offs out of it, and complete what is missing in
+> the same style (T6).
 
 ## Status
 
@@ -13,12 +19,12 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 | T3 Shell and frames | T3.1–T3.3 | not started |
 | T4 Screens | T4.1–T4.10 | not started |
 | T5 Delete legacy CSS | T5.1–T5.2 | not started |
-| T6 New identity (after owner approval) | T6.1–T6.3 | blocked on the identity approval |
+| T6 Complete and clean the current identity | T6.1–T6.4 | not started |
 | T7 Docs final | T7.1 | not started |
 
 ## Protocol (binding)
 
-1. One slice at a time, in order, on `ui-maintenance`. A slice touches only the files it names (plus its tests and the
+1. One slice at a time, in order, on `design-system`. A slice touches only the files it names (plus its tests and the
    docs it must update). If it needs another file, it names it in its notes and the reviewer checks why.
 2. Executor: re-read the slice, the files and their callers; make the change; keep behaviour, routes, copy keys, data
    flow and accessible names; run **CHK**: `npm run lint`, `npm run typecheck`, `npm run check:copy` and, from T1.2 on,
@@ -41,6 +47,9 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 
 ## Conventions every slice follows
 
+- The current look is the target (owner, 2026-11-15). Port each element faithfully: read the legacy rules that apply to it
+  (all sheets, in cascade order, including `graphite.css` overrides) and reproduce the same values with tokens and
+  utilities. No redesign; a visible difference is a defect unless the slice text names it.
 - Utilities: logical only (`ms/me/ps/pe/start/end/text-start/text-end`, `border-s/e`, `rounded-s/e`). Colours, radii,
   font sizes and spacing come from `@theme` tokens (`bg-surface`, `text-ink-2`, `rounded-control`…), not arbitrary
   values. Dark mode uses the `dark:` variant bound to the same selector the current tokens use.
@@ -224,18 +233,49 @@ Each slice ports the named screens to components + layout utilities and removes 
   allowed), `.cursor/rules/smilesim-ui.mdc`, `.cursor/rules/direction-theme.mdc`, `.cursor/rules/screen-size.mdc`,
   `.cursor/rules/content-ui.mdc`, `DESIGN.md` (interim: tokens + components, no stylesheet ownership table).
 
-## T6 New identity (after the owner approves `docs/design/identity-2026-11-15/`)
+## T6 Complete and clean the current identity (owner, 2026-11-15)
 
-- **T6.1 Tokens and fonts:** `app/tailwind.css` takes the identity's `tokens.css` values (both themes), `app/layout.tsx`
-  fonts; contrast pairs listed in the identity README hold.
-- **T6.2 Component anatomy:** `components/ui/*` variants and sizes per the identity's component inventory.
-- **T6.3 Shell and templates:** `components/app-shell.tsx`, `desk.tsx`, auth frame and page templates per the identity.
+The current identity (`DESIGN.md`, the `--rd-*` tokens, ADR 0021 D1–D28) is the target. Nothing is redesigned; gaps
+are filled in the same style, and one-offs are folded into the system.
+
+### T6.1 Gap inventory
+
+- Files: `docs/design/current-identity-gaps.md` (new).
+- Steps: list every control, surface and state the app renders or needs (buttons, icon buttons, fields, textarea,
+  number/price, search, select, combobox, date picker, checkbox, radio, switch, segmented, tabs, pagination, table and
+  its states and phone layout, filters, badges, stat tiles, cards/panes, donut, alerts, toasts, dialog, sheet, popover,
+  menu, tooltip, sidebar, topbar, crumbs, empty, loading skeleton, avatar/marks, file drop, QR, auth screens, return
+  bar, offer hero) and, for each, whether `DESIGN.md` defines it and which states (hover, pressed, focus-visible,
+  disabled, loading, error, selected, empty) are missing. Also list the one-offs: sizes, paddings, radii, colours or
+  shadows used by one screen only (`rg` over `components/ui` and the screens), and the open audit findings of
+  `docs/reviews/2026-11-13-ui-audit.md` that still apply after T5.
+
+### T6.2 Fill the gaps in the same style
+
+- Files: `components/ui/*` (the components the inventory names), `app/tailwind.css` (only tokens the inventory proves
+  are missing, in both themes), `DESIGN.md`.
+- Steps: each missing component or state is built from the existing tokens and the existing components' anatomy
+  (same radii, heights, borders, focus ring, motion, density); no new colour unless a state has none, then one token in
+  both themes with its contrast pair. Text on fills keeps 4.5:1.
+
+### T6.3 Fold the one-offs into the system
+
+- Files: the screens and components the inventory lists, `components/ui/*`.
+- Steps: every one-off value becomes the nearest token or an existing variant; a value used by two or more screens
+  that no token covers becomes a token or a variant (named in `DESIGN.md`).
+
+### T6.4 Fix it as the main identity
+
+- Files: `DESIGN.md` (complete: foundations, every component with its states, page templates), `.cursor/rules/smilesim-ui.mdc`,
+  `docs/design/current-identity-gaps.md` (closed).
+- Steps: `DESIGN.md` states that this identity is the system's one identity (owner, 2026-11-15), lists every component
+  in `components/ui` with variants and states, and the rule file points to it.
 
 ## T7 Docs final
 
 ### T7.1 DESIGN.md, maps, rules, handover
 
-- Files: `DESIGN.md` (rewritten from the identity README + the component API), `docs/architecture/frontend.md`,
+- Files: `DESIGN.md` (final pass after T6.4: the component API and the completed current identity), `docs/architecture/frontend.md`,
   `.cursor/rules/*.mdc` that mention stylesheets, `.cursor/rules/verify-before-reply.mdc` (owner's 2026-11-15
   no-visual-verification rule for this migration), `docs/handover/` pages that mention the UI, the Excalidraw boards
   (`node docs/architecture/generate.mjs`), ADR 0021 (note: styling plan superseded by 0022).
