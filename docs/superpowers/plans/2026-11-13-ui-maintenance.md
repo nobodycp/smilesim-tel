@@ -15,7 +15,7 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
 | P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48, P0.5 b8bcb4d, P0.6 a20f50c, P0.7 bd9326c, P0.8 f4f136d, P0.9 f291a01; ready (A+B); CI not run (autonomous run) |
-| P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started | — |
+| P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started (P1.1 9cfefbf) | — |
 | P2 Fold graphite.css into its owners, remove dead rules | P2.1a–P2.11 | not started | — |
 | P3 Core components | P3.1–P3.14 | not started | — |
 | P4 Page templates and screens | P4.1–P4.10 | not started | — |
@@ -870,7 +870,7 @@ positioned descendants; the evidence note states these three facts with their me
 
 ## P1 — Tokens, role tokens, cascade guard (zero-diff except where named)
 
-### P1.1 CSS guard and snapshot coverage
+### P1.1 CSS guard and snapshot coverage — 9cfefbf
 
 - **Goal:** a guard that stops the cascade from drifting, with a ratchet baseline; snapshots that cover every screen.
 - **Files:** `scripts/check-css.mjs` (new, in `apps/web/scripts/`), `scripts/css-baseline.json` (new),
