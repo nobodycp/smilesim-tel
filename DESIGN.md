@@ -37,13 +37,15 @@ All CSS reads `--rd-*` tokens. Do not add another accent colour.
   button. Then, at the end: «ابحث أو انتقل» (`ShellSearch`: pages by name, then accounts and numbers; `/`, Ctrl K or
   ⌘K) on an inset field, the wallet chip (raised, balance only, crimson mark), notices and the theme as bare icons.
   The account and the language are not in the topbar: they sit at the sidebar's foot (the drawer's foot on a phone).
-  Under 900px the path takes its own full-width row under the icons. Under 768px the search and the notices do not
-  hang from their button: each opens as one sheet under the whole topbar, `--rd-space-2` from each screen edge (the
-  topbar is their containing block; `shell.css`, the 767px block after the topbar container block); on a short or
-  landscape screen each sheet stops `--rd-space-2` above the bottom edge: the notice list scrolls inside, and the
-  search keeps its field and scrolls its results. From 768px the
-  notices open under the bell, `min(22rem, 80vw)` wide, and the search results under the field — or, where the
-  topbar is too narrow for the field (720px of content or less), the field opens under the search icon, 18rem wide.
+  Under 900px the path takes its own full-width row under the icons. The topbar's sides are the page gutter on a
+  phone: 16px (`--rd-space-4`) under 768px, so its first and last controls line up with the page content; 28px from
+  768px, where the canvas keeps `clamp(16px, 2vw, 28px)` until both share one gutter token (ADR 0021 D9). Under
+  768px the search and the notices do not hang from their button: each opens as one sheet under the whole topbar,
+  `--rd-space-2` from each screen edge (the topbar is their containing block; `shell.css`, the 767px block after the
+  topbar container block); on a short or landscape screen each sheet stops `--rd-space-2` above the bottom edge: the
+  notice list scrolls inside, and the search keeps its field and scrolls its results. From 768px the notices open
+  under the bell, `min(22rem, 80vw)` wide, and the search results under the field — or, where the topbar is too
+  narrow for the field (720px of content or less), the field opens under the search icon, 18rem wide.
 - Sign-in, password and two-step pages: `.gauth` — the form on the reading side (brand row, title, the door as a
   crimson outlined tag, inset fields with an icon, crimson «دخول» (the view's primary), raised passkey button), and a
   dark art panel beside it (`components/auth-art.tsx`: the crimson tag rising from its corner, one line about the

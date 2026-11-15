@@ -444,10 +444,12 @@ input[readonly] { background-color: transparent; }
 
 /* ── Topbar (Graphite, from design/night-desk-family): the path, then «ابحث أو انتقل» (Ctrl K), the wallet chip with
    its crimson mark, notices and the theme as bare icons. The account and the language live in the sidebar. ── */
-.topbar { min-height: 64px; padding-inline: 28px; }
+.topbar { min-height: 64px; }
 .topbar .shell-icon { border: 0; border-radius: var(--rd-radius-sm); background: transparent; color: var(--rd-ink-2); }
 .topbar .shell-icon:hover, .topbar .shell-icon[aria-expanded='true'] { background: var(--rd-surface-2); color: var(--rd-ink); }
 @media (min-width: 768px) {
+  /* The phone gutter (16px, shell.css's 767px block) under 768px, this one from 768px (ADR 0021 D9). */
+  .topbar { padding-inline: 28px; }
   .topbar .shell-icon, .topbar .shell-search-toggle { width: 36px; min-width: 36px; height: 36px; }
   .topbar .wallet-btn { height: 36px; }
   /* The search keeps a steady size (owner 2026-11-09, spec 2026-11-09-admin-review 6.5): two widths, not one that

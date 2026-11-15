@@ -95,6 +95,32 @@ for (const locale of ['ar', 'en']) {
   });
 }
 
+// On phones (under 768px) the topbar uses the page's gutter, 16px (ADR 0021 D9), so its content edges line up with
+// the canvas content edges on both sides (UI maintenance P0.8, 3.4-01 and 3.2-05): a 28px rule meant for 768px and
+// up used to reach phones and set the topbar 12px deeper than the page.
+for (const locale of ['ar', 'en']) {
+  test(`the topbar edge matches the page edge on phones (${locale})`, async ({ page }) => {
+    const origin = 'http://pos.localhost:3910';
+    await page.context().addCookies([{ name: 'smilesim-locale', value: locale, url: origin }]);
+    await serveApi(page, 'pos');
+    for (const width of [320, 360, 375, 390, 767]) {
+      await page.setViewportSize({ width, height: 760 });
+      await page.goto(`${origin}/`);
+      await expect(page.locator('.topbar .menu-btn')).toBeVisible();
+      const edges = await page.evaluate(() => {
+        const content = (el: Element) => {
+          const r = el.getBoundingClientRect();
+          const s = getComputedStyle(el);
+          return { left: r.left + parseFloat(s.paddingLeft), right: r.right - parseFloat(s.paddingRight) };
+        };
+        return { bar: content(document.querySelector('.topbar')!), page: content(document.querySelector('.canvas-inner')!) };
+      });
+      expect(Math.abs(edges.bar.left - edges.page.left), `left edge at ${width}px`).toBeLessThanOrEqual(0.5);
+      expect(Math.abs(edges.bar.right - edges.page.right), `right edge at ${width}px`).toBeLessThanOrEqual(0.5);
+    }
+  });
+}
+
 test('the topbar language is the login page\'s menu: the current language, a menu of the others', async ({ page }) => {
   await serveApi(page, 'branch');
   await page.setViewportSize({ width: 1280, height: 800 });
