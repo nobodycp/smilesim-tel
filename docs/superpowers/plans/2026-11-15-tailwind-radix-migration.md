@@ -7,7 +7,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 
 | Phase | Slices | State |
 |---|---|---|
-| T0 Decision docs | T0.1 | in progress |
+| T0 Decision docs | T0.1 | done — T0.1 4478666 |
 | T1 Foundation | T1.1–T1.4 | not started |
 | T2 Primitives (`components/ui`) | T2.1–T2.9 | not started |
 | T3 Shell and frames | T3.1–T3.3 | not started |
@@ -53,7 +53,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 
 ## T0 Decision docs
 
-### T0.1 ADR 0022, this spec and plan, old plan superseded
+### T0.1 ADR 0022, this spec and plan, old plan superseded — 4478666
 
 - Files: `docs/architecture/decisions/0022-tailwind-v4-and-radix-components.md` (new), this plan and its spec (new),
   `docs/superpowers/plans/2026-11-13-ui-maintenance.md` (Status: superseded from P1.3, pointer to this plan).
