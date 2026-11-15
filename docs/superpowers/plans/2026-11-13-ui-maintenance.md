@@ -14,7 +14,7 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
-| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48, P0.5 b8bcb4d, P0.6 a20f50c, P0.7 bd9326c |
+| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48, P0.5 b8bcb4d, P0.6 a20f50c, P0.7 bd9326c, P0.8 f4f136d |
 | P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started | — |
 | P2 Fold graphite.css into its owners, remove dead rules | P2.1a–P2.11 | not started | — |
 | P3 Core components | P3.1–P3.14 | not started | — |
@@ -762,7 +762,7 @@ positioned descendants; the evidence note states these three facts with their me
   pair layout before and after; equal numbers.
 - **Commit:** `fix(web): price editors wrap inside their phone card (UI maintenance P0.7; closes 3.2-02)`
 
-### P0.8 Topbar edge matches the page edge on phones
+### P0.8 Topbar edge matches the page edge on phones — f4f136d
 
 - **Goal:** `.topbar { padding-inline: 28px }` applies from 768px only; phones use the phone gutter (D9: 16px).
 - **Files:** graphite `.topbar { min-height: 64px; padding-inline: 28px; }` (:447) and its `@media (min-width: 768px)`
