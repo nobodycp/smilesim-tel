@@ -1,16 +1,18 @@
 import { expect, test } from '@playwright/test';
+import { buttonClass } from '../components/ui/button-variants';
 
 async function probe(page: import('@playwright/test').Page) {
-  return page.evaluate(() => {
-    // The markup <Button> and <Button variant="secondary"> render, inside a desk on the canvas as on every page.
+  const classes = { primary: buttonClass(), secondary: buttonClass({ variant: 'secondary' }) };
+  return page.evaluate((classes) => {
+    // The classes <Button> and <Button variant="secondary"> render, inside a desk on the canvas as on every page.
     const canvas = document.createElement('main');
     canvas.className = 'canvas';
     const root = document.createElement('div');
     root.className = 'desk';
     const primary = document.createElement('button');
-    primary.className = 'ui-btn ui-btn-primary ui-btn-md';
+    primary.className = classes.primary;
     const secondary = document.createElement('button');
-    secondary.className = 'ui-btn ui-btn-secondary ui-btn-md';
+    secondary.className = classes.secondary;
     const field = document.createElement('input');
     root.append(primary, secondary, field);
     canvas.append(root);
@@ -27,7 +29,7 @@ async function probe(page: import('@playwright/test').Page) {
       primaryRadius: primaryStyle.borderTopLeftRadius,
       fieldHeight: getComputedStyle(field).height,
     };
-  });
+  }, classes);
 }
 
 // Graphite (spec 2026-11-09-graphite-identity): dark by default, so ink is the light graphite ink on the dark surface.

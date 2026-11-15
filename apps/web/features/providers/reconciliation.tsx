@@ -7,7 +7,7 @@ import { Money, latinWhen } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
 import { Stat, StatRow } from '../../components/stat';
 import { Badge } from '../../components/ui/badge';
-import { Button, buttonClass } from '../../components/ui/button';
+import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
 import { api, type ReconItem, type StatementMap, type StatementPreview } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
@@ -92,7 +92,7 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
       actions: true,
       render: (row) => (canWrite ? (
         row.status === 'open'
-          ? <Button type="button" size="sm" variant="outline" onClick={() => { setText(''); setHandling(row); }}>{t.reconHandle}</Button>
+          ? <Button type="button" size="sm" variant="secondary" onClick={() => { setText(''); setHandling(row); }}>{t.reconHandle}</Button>
           : <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void send(() => api.updateReconItem(row.id, { status: 'open', note: '' }))}>{t.reconReopen}</Button>
       ) : null),
     },
@@ -117,11 +117,14 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
             <p className="hint">{t.reconUploadHint}</p>
             {/* The system's button over a hidden file input — never the browser's «Choose File» (owner 2026-11-11). */}
             <div className="file-pick">
-              <label className={buttonClass({ variant: 'secondary' })}>
-                <FileUp size={16} aria-hidden="true" />
-                {t.chooseFile}
-                <input type="file" className="sr-only" accept=".xlsx,.csv" onChange={(event) => void pick(event)} />
-              </label>
+              {/* The pane's field captions (`.pane label`) dim it: muted, 11px, a 4px gap; ink on hover. */}
+              <Button asChild variant="secondary" className="gap-1 text-xs leading-5 text-muted hover:text-ink">
+                <label>
+                  <FileUp size={16} aria-hidden="true" />
+                  {t.chooseFile}
+                  <input type="file" className="sr-only" accept=".xlsx,.csv" onChange={(event) => void pick(event)} />
+                </label>
+              </Button>
               <span className="hint">{loaded ? loaded.fileName : t.noFileChosen}</span>
             </div>
             {loaded ? (

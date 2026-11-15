@@ -76,7 +76,7 @@ export function PackageAddons({ code, canEdit, setError, setNote }: { code: stri
       header: '',
       actions: true,
       render: (row: PackageAddon) => (
-        <Button type="button" variant="outline" size="sm" disabled={busy} aria-label={`${t.deleteAccount} ${row.name}`} onClick={() => run(() => api.removePackageAddon(code, row.id), { note: t.saved })}>
+        <Button type="button" variant="secondary" size="sm" disabled={busy} aria-label={`${t.deleteAccount} ${row.name}`} onClick={() => run(() => api.removePackageAddon(code, row.id), { note: t.saved })}>
           <Trash2 size={15} aria-hidden="true" />
         </Button>
       ),

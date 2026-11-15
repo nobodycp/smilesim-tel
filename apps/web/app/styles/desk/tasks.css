@@ -82,7 +82,7 @@
   min-width: 0;
   height: 32px;
 }
-.task-close-row > .ui-btn {
+.task-close-row > [data-slot='button'] {
   justify-self: start;
 }
 .task-thread {

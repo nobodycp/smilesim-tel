@@ -5,6 +5,7 @@ import { Children, cloneElement, isValidElement, useEffect, useRef, useState, ty
 import { Select } from './ui/select';
 import { usePrefs } from '../lib/prefs';
 import { Button } from './ui/button';
+import { IconButton } from './ui/icon-button';
 
 type Pop = { select: HTMLSelectElement; top: number; start: number; minWidth: number; value: string; options: { value: string; label: string }[] };
 
@@ -145,13 +146,14 @@ export function FilterBar({
       >
         <div className="filter-drawer-head">
           <b>{t.allFilters}</b>
-          <button type="button" className="icon-btn" aria-label={t.closeMenu} onClick={() => setOpen(false)}>
+          <IconButton aria-label={t.closeMenu} onClick={() => setOpen(false)}>
             <X size={18} strokeWidth={1.9} aria-hidden="true" />
-          </button>
+          </IconButton>
         </div>
         {chips}
         {onClear ? (
-          <Button type="button" variant="ghost" size="sm" className="filter-clear" onClick={onClear}>
+          // The filter bar's clear: 8px sides, 11px, crimson text at rest and on hover (`.filter-clear` places and hides it).
+          <Button type="button" variant="ghost" size="sm" className="filter-clear px-2 text-xs text-accent hover:text-accent" onClick={onClear}>
             {clearLabel}
           </Button>
         ) : null}

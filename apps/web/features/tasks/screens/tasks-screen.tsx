@@ -10,7 +10,7 @@ import { FilterBar } from '../../../components/filter-bar';
 import { RowMenu } from '../../../components/row-menu';
 import { TableSearch } from '../../../components/table-search';
 import { Badge } from '../../../components/ui/badge';
-import { Button, buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { Tabs } from '../../../components/tabs';
 import { Zap } from 'lucide-react';
 import { Select } from '../../../components/ui/select';
@@ -155,11 +155,13 @@ export function TasksScreen() {
       note={note}
       action={mayDecide ? (
         // The queue of provider decisions, for the accounts the API lets read it (it refuses everyone else).
-        <Link className={buttonClass({ variant: 'secondary' })} href="/tasks/decisions">
-          {t.decQueueLink}
-          {/* The count is the API's total of the whole queue, not the size of the page it answered. */}
-          {waiting.data && waiting.data.total > 0 ? <Badge variant="warning">{waiting.data.total}</Badge> : null}
-        </Link>
+        <Button asChild variant="secondary">
+          <Link href="/tasks/decisions">
+            {t.decQueueLink}
+            {/* The count is the API's total of the whole queue, not the size of the page it answered. */}
+            {waiting.data && waiting.data.total > 0 ? <Badge variant="warning">{waiting.data.total}</Badge> : null}
+          </Link>
+        </Button>
       ) : undefined}
     >
       <Tabs label={t.status} items={tabs} value={status} onChange={(next) => setFilters({ status: next })} />

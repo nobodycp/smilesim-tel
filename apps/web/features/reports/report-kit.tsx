@@ -2,7 +2,7 @@
 
 import { Download } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { buttonClass } from '../../components/ui/button';
+import { Button } from '../../components/ui/button';
 import { usePrefs } from '../../lib/prefs';
 
 /** The windows a report page offers, in days; 30 is where each opens. */
@@ -33,10 +33,12 @@ export function Period({ days, onPick }: { days: number; onPick: (days: PeriodDa
 export function CsvLink({ href }: { href: string }) {
   const { t } = usePrefs();
   return (
-    <a className={buttonClass({ variant: 'outline' })} href={href} download aria-label={t.exportCsv}>
-      <Download size={15} aria-hidden="true" />
-      CSV
-    </a>
+    <Button asChild variant="secondary">
+      <a href={href} download aria-label={t.exportCsv}>
+        <Download size={15} aria-hidden="true" />
+        CSV
+      </a>
+    </Button>
   );
 }
 

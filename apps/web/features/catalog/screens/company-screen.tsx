@@ -17,7 +17,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { OPEN_SIM, hasSimRules, simShape } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
-import { Button, buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { ImageUp, Plus, Trash2 } from 'lucide-react';
 import { LiveSwitch } from '../../../components/live-switch';
 import { Tabs } from '../../../components/tabs';
@@ -150,7 +150,7 @@ export function CompanyScreen() {
       lede={company ? [t.coPackages.replace('{n}', String(packageCount)), t.coProviders.replace('{n}', String(company.providers.length)), company.sim?.esim ? t.esimSupported : ''].filter(Boolean).join(' · ') : ''}
       // A package from one of the providers' products (spec 2026-11-09-admin-review, 3): owner or the edit grant.
       action={canEdit ? (
-        <Link className={buttonClass({})} href={`/companies/${encodeURIComponent(params.code)}/packages/new`}><Plus size={16} aria-hidden="true" />{t.addPackage}</Link>
+        <Button asChild><Link href={`/companies/${encodeURIComponent(params.code)}/packages/new`}><Plus size={16} aria-hidden="true" />{t.addPackage}</Link></Button>
       ) : undefined}
       error={error}
       note={note}

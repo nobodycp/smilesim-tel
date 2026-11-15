@@ -116,8 +116,6 @@
 .ld-kind { display: inline-flex; align-items: center; height: 24px; padding-inline: 10px; border-radius: var(--rd-radius-xs); background: var(--rd-accent-soft); color: var(--rd-accent); font-size: var(--rd-text-sm); font-weight: 700; }
 .ld-copy { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .ld-copy bdi { letter-spacing: 0.02em; overflow-wrap: anywhere; }
-.ld-copy .icon-btn { display: inline-grid; flex: none; place-items: center; width: 28px; height: 28px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-faint); cursor: pointer; }
-.ld-copy .icon-btn:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
 @media (max-width: 900px) {
   .ld-groups { grid-template-columns: minmax(0, 1fr); gap: var(--rd-space-4); }
 }
@@ -126,7 +124,6 @@
   .ld-item { padding: 8px 4px; }
   .ld-item:has(.ld-copy) { grid-column: 1 / -1; }
   .ld-meters { grid-template-columns: minmax(0, 1fr); gap: var(--rd-space-3); }
-  .ld-copy .icon-btn { width: 40px; height: 40px; }
 }
 /* The eSIM badge as a button: the badge is the visible part, the padding gives the 44px target. */
 .esim-open {

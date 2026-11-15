@@ -108,14 +108,6 @@
 .dialog-lede { margin: var(--rd-space-1) 0 0; color: var(--rd-muted); font-size: var(--rd-text-md); font-weight: 500; line-height: 1.45; }
 /* A confirmation has the same head and foot as every other dialog (spec 2026-11-11-ui-consistency-pass, D5): the mark
    beside the title, the buttons at the end of the foot. It is only narrower. */
-.dialog > header .icon-btn {
-  width: 36px;
-  height: 36px;
-  flex: none;
-  border-radius: var(--rd-radius-sm);
-  color: var(--rd-faint);
-}
-.dialog > header .icon-btn:hover { background: var(--rd-surface-2); }
 .dialog h2 { margin: 0; font-size: var(--rd-text-xl); font-weight: 700; text-align: start; }
 .dialog > .error { flex: none; margin: var(--rd-space-3) var(--rd-space-4) 0; }
 .dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--rd-space-4); }
@@ -168,7 +160,6 @@
   .perm-grid, .op-fields { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
-  .dialog .ui-btn,
   .dialog input:not([type='checkbox']):not([type='radio']):not([type='file']),
   .dialog select,
   .dialog textarea { height: 44px; }

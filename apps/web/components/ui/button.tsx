@@ -1,38 +1,38 @@
 import * as React from "react";
+import { Slot } from "radix-ui";
 import { Spinner } from "../loading";
+import { buttonClass, type ButtonSize, type ButtonVariant } from "./button-variants";
 
-type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger";
-type ButtonSize = "sm" | "default" | "lg" | "icon" | "iconSm";
-
-// Styles live in app/styles/ui.css (.ui-btn*).
-const sizeClasses: Record<ButtonSize, string> = {
-  sm: "ui-btn-sm",
-  default: "ui-btn-md",
-  lg: "ui-btn-lg",
-  icon: "ui-btn-icon",
-  iconSm: "ui-btn-icon-sm",
-};
-
-/** The classes of a Button, for an element that must look like one but is not a <button> (a Link). */
-export function buttonClass({ variant = "primary", size = "default" }: { variant?: ButtonVariant; size?: ButtonSize } = {}) {
-  return `ui-btn ui-btn-${variant} ${sizeClasses[size]}`;
-}
+export { buttonClass, buttonVariants, type ButtonSize, type ButtonVariant } from "./button-variants";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
+  /**
+   * Draw the one child element (a `Link`, an `<a>`, a file `<label>`) as the button, through Radix `Slot`: it takes
+   * the classes and `data-slot`, keeps its own tag and props. `disabled` and `loading` are not passed to it.
+   */
+  asChild?: boolean;
 }
 
+/**
+ * The action button (Tailwind migration T2.1; look in `button-variants.ts`). `data-slot="button"` is the handle the
+ * legacy layout rules still read (`form > [data-slot='button']`, the dialog's touch height) until their screens move.
+ * A pressed state is `aria-pressed`, passed through as given.
+ */
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "default", loading = false, disabled, children, ...props }, ref) => {
+  ({ className, variant = "primary", size = "md", loading = false, asChild = false, disabled, children, ...props }, ref) => {
+    const classes = buttonClass({ variant, size, className });
+    if (asChild) {
+      return (
+        <Slot.Root ref={ref} data-slot="button" className={classes} {...props}>
+          {children}
+        </Slot.Root>
+      );
+    }
     return (
-      <button
-        ref={ref}
-        disabled={disabled || loading}
-        className={className ? `${buttonClass({ variant, size })} ${className}` : buttonClass({ variant, size })}
-        {...props}
-      >
+      <button ref={ref} data-slot="button" disabled={disabled || loading} className={classes} {...props}>
         {loading && <Spinner size={16} />}
         {children}
       </button>

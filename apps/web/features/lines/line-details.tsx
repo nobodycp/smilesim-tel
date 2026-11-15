@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
 import { Money, latinWhen } from '../../components/desk';
 import { Button } from '../../components/ui/button';
+import { IconButton } from '../../components/ui/icon-button';
 import type { LineDetail } from '../../lib/api';
 import { daysLeft } from '../../lib/days-left';
 import { usePrefs } from '../../lib/prefs';
@@ -122,9 +123,10 @@ function CopyValue({ value }: { value: string }) {
   return (
     <span className="ld-copy">
       <bdi dir="ltr" className="num">{value}</bdi>
-      <button
-        type="button"
-        className="icon-btn"
+      <IconButton
+        size="sm"
+        tone="faint-to-ink"
+        className="flex-none"
         aria-label={`${t.copy} ${value}`}
         onClick={() => {
           void navigator.clipboard?.writeText(value).then(() => {
@@ -134,7 +136,7 @@ function CopyValue({ value }: { value: string }) {
         }}
       >
         {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
-      </button>
+      </IconButton>
     </span>
   );
 }

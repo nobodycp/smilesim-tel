@@ -58,7 +58,7 @@ export function MatchingPane({ summary, canWrite, run, busy }: {
               {t.save}
             </Button>
             {summary.matchSource === 'statement' ? (
-              <Button type="button" variant="outline" disabled={busy} onClick={() => void run(() => api.simulateProviderStatement(summary.code), { note: t.matchRunDone })}>
+              <Button type="button" variant="secondary" disabled={busy} onClick={() => void run(() => api.simulateProviderStatement(summary.code), { note: t.matchRunDone })}>
                 {t.matchRunStatement}
               </Button>
             ) : null}

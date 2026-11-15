@@ -36,10 +36,10 @@
 @media (max-width: 720px) {
   .auth input:not([type='checkbox']):not([type='radio']):not([type='file']),
   .auth select,
-  .auth .ui-btn,
   .canvas input:not([type='checkbox']):not([type='radio']):not([type='file']),
   .canvas select { height: 44px; }
   .canvas button,
+  .dialog [data-slot='button'],
   .canvas .check,
   .canvas .shortcut,
   .dialog .check,

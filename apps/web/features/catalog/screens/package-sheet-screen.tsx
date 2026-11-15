@@ -539,7 +539,7 @@ export function PackageSheetScreen() {
                       {t.renewalPrice}
                       <input inputMode="decimal" value={offerRenewal} placeholder={shekelField(layerDefault('renewal'))} onChange={(event) => setOfferRenewal(event.target.value)} />
                     </label>
-                    <Button type="button" disabled={!loginName || (offerPrice === '' && offerRenewal === '')} onClick={() => void saveOffer()}>{t.save}</Button>
+                    <Button type="button" className="px-3.5 text-sm leading-5 font-bold" disabled={!loginName || (offerPrice === '' && offerRenewal === '')} onClick={() => void saveOffer()}>{t.save}</Button>
                   </div>
                   <p className="hint">{t.customPricesHint}</p>
                   <div className="sheet">

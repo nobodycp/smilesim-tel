@@ -7,6 +7,7 @@ import { useConnection } from '../lib/connection';
 import { usePrefs } from '../lib/prefs';
 import { Alert } from './alert';
 import { useToasts } from './toast';
+import { IconButton } from './ui/icon-button';
 
 export type DialogMark = 'plus' | 'shield' | 'wallet' | 'transfer' | 'key' | 'freeze' | 'enter' | 'trash' | 'alert' | 'check';
 export type DialogTone = 'neutral' | 'danger' | 'success';
@@ -133,7 +134,7 @@ export function Dialog({
             <h2>{title}</h2>
             {lede ? <p className="dialog-lede">{lede}</p> : null}
           </div>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label={closeLabel}><X size={18} aria-hidden="true" /></button>
+          <IconButton size="lg" tone="faint" className="flex-none" onClick={onClose} aria-label={closeLabel}><X size={18} aria-hidden="true" /></IconButton>
         </header>
         <Alert>{error}</Alert>
         <div className="dialog-body" data-testid="dialog-body">{children}</div>

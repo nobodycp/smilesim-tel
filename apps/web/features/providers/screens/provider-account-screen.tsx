@@ -106,7 +106,7 @@ export function ProviderAccountScreen() {
         // As in the design: edit the credit, then record a payment (the page's action); the CSV beside them.
         <div className="page-actions">
           <CsvLink href={api.providerAccountExportHref(params.code, query)} />
-          {canWrite ? <Button type="button" variant="outline" onClick={() => open('credit')}>{t.editCredit}</Button> : null}
+          {canWrite ? <Button type="button" variant="secondary" onClick={() => open('credit')}>{t.editCredit}</Button> : null}
           {canWrite ? <Button type="button" onClick={() => open('entry')}><Coins size={16} aria-hidden="true" />{t.recordPayment}</Button> : null}
         </div>
       ) : null}

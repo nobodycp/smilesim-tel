@@ -8,6 +8,7 @@ import { NameField } from '../../../components/name-field';
 import { useFactLine } from '../../../components/package-facts';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
+import { IconButton } from '../../../components/ui/icon-button';
 import { api, type ProviderCatalogProduct } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
 import { useDesk } from '../../../lib/desk-session';
@@ -212,9 +213,9 @@ export function AddPackageScreen() {
                   </label>
                   <input aria-label={t.addonName} value={addon.name} onChange={(event) => setAddons((list) => list.map((row, at) => (at === index ? { ...row, name: event.target.value } : row)))} />
                   <input aria-label={t.amount} className="num" inputMode="decimal" dir="ltr" value={addon.price} onChange={(event) => setAddons((list) => list.map((row, at) => (at === index ? { ...row, price: event.target.value } : row)))} />
-                  <button type="button" className="icon-btn" aria-label={`${t.deleteAccount} ${addon.name}`} onClick={() => setAddons((list) => list.filter((_, at) => at !== index))}>
+                  <IconButton aria-label={`${t.deleteAccount} ${addon.name}`} onClick={() => setAddons((list) => list.filter((_, at) => at !== index))}>
                     <X size={16} aria-hidden="true" />
-                  </button>
+                  </IconButton>
                 </div>
               ))}
               <div>

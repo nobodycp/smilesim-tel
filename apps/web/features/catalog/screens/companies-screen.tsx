@@ -14,7 +14,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { DataImage } from '../../../components/data-image';
 import { Plus } from 'lucide-react';
-import { buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { useDesk } from '../../../lib/desk-session';
 
 const BRANCH = ['branch'];
@@ -79,7 +79,7 @@ export function CompaniesScreen() {
       title={allowed ? t.companiesTitle : ''}
       lede={t.companiesLede}
       // A company the provider sells (spec 2026-11-09-admin-review, 3): owner or the edit grant.
-      action={canAdd ? <Link className={buttonClass({})} href="/companies/new"><Plus size={16} aria-hidden="true" />{t.addCompany}</Link> : undefined}
+      action={canAdd ? <Button asChild><Link href="/companies/new"><Plus size={16} aria-hidden="true" />{t.addCompany}</Link></Button> : undefined}
       error=""
       note=""
     >

@@ -4,7 +4,7 @@ import { DateField } from '../../../components/date-field';
 import { Receipt, Search } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
-import { buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { Desk, Money, actionName, latinWhen, layerName } from '../../../components/desk';
@@ -142,7 +142,7 @@ export function FinanceScreen() {
       action={(
         <div className="page-actions">
           <CsvLink href={api.financeExportHref({ kind, layer, q, from, to, scope })} />
-          {me && me.layer !== 'pos' ? <Link className={buttonClass()} href="/users"><Receipt size={16} aria-hidden="true" />{t.fundAccount}</Link> : null}
+          {me && me.layer !== 'pos' ? <Button asChild><Link href="/users"><Receipt size={16} aria-hidden="true" />{t.fundAccount}</Link></Button> : null}
         </div>
       )}
       error=""

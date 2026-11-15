@@ -133,7 +133,7 @@ export function UserSettingsPane({ loginName, layer, onSaved }: { loginName: str
                 <Badge variant={view.twoFactorEnabled ? 'success' : 'muted'} dot>
                   {view.twoFactorEnabled ? `${t.twoFactorOn} · ${methodName(t, view.twoFactorMethod as TwoFactorMethod)}` : t.twoFactorOff}
                 </Badge>
-                {view.twoFactorEnabled ? <Button type="button" variant="outline" size="sm" disabled={busy} onClick={resetTwoFactor}>{t.twoFactorReset}</Button> : null}
+                {view.twoFactorEnabled ? <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={resetTwoFactor}>{t.twoFactorReset}</Button> : null}
               </p>
               <p className="hint">{`${t.effectiveNow}: ${view.effective.required ? `${t.twoFactorModeRequired}${view.effective.method ? ` · ${methodName(t, view.effective.method)}` : ''}` : t.twoFactorOptional}`}</p>
             </div>

@@ -163,7 +163,7 @@ export function UserPackagesTab({
                 .replace('{custom}', String(summary.custom))}
             </span>
           ) : null}
-          <Button type="button" variant="secondary" size="sm" className="filter-clear" onClick={() => { setNeedle(''); setCompany(''); }}>
+          <Button type="button" variant="secondary" size="sm" className="filter-clear px-2 text-xs text-accent hover:text-accent" onClick={() => { setNeedle(''); setCompany(''); }}>
             {t.clearFilters}
           </Button>
         </div>

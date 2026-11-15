@@ -16,14 +16,7 @@
 .pane-head .count { border-radius: var(--rd-radius-xs); background: var(--rd-accent-soft); color: var(--rd-accent); }
 .pane-body { padding: 14px 18px 18px; }
 
-/* ── Buttons ── */
-.ui-btn { border-radius: var(--rd-radius-sm); }
-.ui-btn:active:not(:disabled) { transform: scale(0.97); }
-.ui-btn-primary { --ui-btn-shadow: none; }
-.ui-btn-secondary, .ui-btn-outline { --ui-btn-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); border-color: transparent; background-color: var(--rd-surface-2); color: var(--rd-ink); }
-.ui-btn-secondary:hover, .ui-btn-outline:hover { background-color: var(--rd-surface-3); }
-.ui-btn-danger { border-color: color-mix(in srgb, var(--rd-danger) 45%, transparent); }
-.ui-btn:focus-visible { box-shadow: 0 0 0 2px var(--rd-bg), 0 0 0 4px var(--rd-accent); }
+/* ── Buttons: components/ui/button-variants.ts (Tailwind migration T2.1) ── */
 
 /* ── Tabs: square segments, the current one lit underneath ── */
 .steps { gap: 0; padding: 0; border: 0; border-radius: var(--rd-radius-sm); background: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); }
@@ -514,17 +507,8 @@ input[readonly] { background-color: transparent; }
 .ui-pager-page { height: 30px; min-width: 30px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-ink-2); font-weight: 700; }
 .ui-pager-page:hover { background: var(--rd-surface-2); }
 .ui-pager-page[aria-current='page'] { background: var(--rd-ink); color: var(--rd-bg); }
-.ui-pager-nav .ui-btn-outline { height: 30px; background: transparent; box-shadow: none; color: var(--rd-ink-2); }
-.ui-pager-nav .ui-btn-outline:hover { background: var(--rd-surface-2); }
-
-/* ── The design's special action, crimson («btn-accent»): «تفعيل رقم», «تمديد». Every other page action stays ink. ── */
-.ui-btn.ui-btn-accent { background-color: var(--rd-accent-fill); color: var(--rd-on-accent); box-shadow: none; }
-.ui-btn.ui-btn-accent:hover { background-color: var(--rd-accent-fill-hover); }
-/* Every primary button is crimson (owner 2026-11-11): a page's main action, a dialog's «حفظ» / «تفعيل», a form's submit.
-   Ink is for secondary controls only. Disabled keeps the shape and drops to half strength. The fill and its hover are
-   --rd-accent-fill(-hover), white on both (ADR 0021 D1); hover darkens toward black. */
-.ui-btn.ui-btn-primary { background-color: var(--rd-accent-fill); color: var(--rd-on-accent); box-shadow: none; }
-.ui-btn.ui-btn-primary:hover:not(:disabled) { background-color: var(--rd-accent-fill-hover); }
+/* The pager's previous / next and every primary button (crimson, owner 2026-11-11) are drawn by components/ui since
+   Tailwind migration T2.1. */
 /* A choice made of segments (the provider outcome) sits in the chip row with its name beside it. */
 .filter-panel > .stack { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
 .filter-panel > .stack > .hint { color: var(--rd-muted); font-size: 12px; font-weight: 600; }
@@ -850,7 +834,7 @@ input[readonly] { background-color: transparent; }
 .chain-cell input { inline-size: 7rem; height: 34px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
 .chain-cell .step-note { min-inline-size: 4.5rem; font-size: var(--rd-text-sm); font-weight: 700; }
 .chain-cell .step-note .money { font-size: inherit; }
-.price-board > .ui-btn { grid-column: 1 / -1; justify-self: start; }
+.price-board > [data-slot='button'] { grid-column: 1 / -1; justify-self: start; }
 .package-sheet .price-board > .account-fund:last-child { grid-column: auto; }
 @media (max-width: 720px) {
   .package-sheet .price-board, .price-board { grid-template-columns: minmax(0, 1fr); }
@@ -956,8 +940,9 @@ input[readonly] { background-color: transparent; }
 .chip-x:hover { background: var(--rd-accent-soft); color: var(--rd-accent); }
 .filter-panel > label:has(.chip-x) .ui-select-chevron { display: none; }
 .filter-panel > label:has(.chip-x) select { padding-inline-end: 10px; }
-/* «مسح» shows only once something is filtered. */
-.filter-panel:not(:has(> label :is(.chip-x, input:not([type='checkbox']):not([value=''])), > label input[type='checkbox']:checked)) .filter-clear { display: none; }
+/* «مسح» shows only once something is filtered. `!important`: the clear is a Button, whose `inline-flex` utility sits in a
+   layer above this sheet (Tailwind migration T2.1); an important declaration in a lower layer still wins. */
+.filter-panel:not(:has(> label :is(.chip-x, input:not([type='checkbox']):not([value=''])), > label input[type='checkbox']:checked)) .filter-clear { display: none !important; }
 /* A company's group head: its mark, the name over the count, the chevron at the far end. */
 .terms-group-head { gap: 12px; min-height: 58px; padding-inline: 18px; }
 .terms-group-head .group-name { display: grid; gap: 1px; text-align: start; }
@@ -1114,7 +1099,7 @@ input[readonly] { background-color: transparent; }
 .waiting-list a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); color: inherit; text-decoration: none; }
 .waiting-list a:hover { box-shadow: inset 0 0 0 1px var(--rd-line); }
 .waiting-main { display: grid; gap: 2px; flex: 1; min-inline-size: 0; }
-.home-waiting .pane-head .hint, .home-ops .pane-head .ui-btn { margin-inline-start: auto; }
+.home-waiting .pane-head .hint, .home-ops .pane-head [data-slot='button'] { margin-inline-start: auto; }
 .home-overview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-block-start: var(--rd-space-2); }
 @media (max-width: 640px) { .op-list li { grid-template-columns: minmax(0, 1fr) auto; } .op-list-detail { display: none; } }
 
@@ -1297,7 +1282,7 @@ input[readonly] { background-color: transparent; }
 .add-actions { display: flex; justify-content: flex-end; gap: var(--rd-space-2); margin-block-start: var(--rd-space-3); }
 @media (max-width: 767px) {
   .add-query > label { flex: 1 1 100%; }
-  .add-query > .ui-btn { flex: 1; min-height: 44px; }
+  .add-query > [data-slot='button'] { flex: 1; min-height: 44px; }
   .addon-row { grid-template-columns: auto minmax(0, 1fr) 6rem auto; }
   .add-actions > * { flex: 1; min-height: 44px; }
 }

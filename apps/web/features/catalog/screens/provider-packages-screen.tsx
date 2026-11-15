@@ -16,7 +16,7 @@ import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
-import { Button, buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { Tabs } from '../../../components/tabs';
 
 const BRANCH = ['branch'];
@@ -156,10 +156,12 @@ export function ProviderPackagesScreen() {
         account ? t.yourBalanceThere.replace('{amount}', formatShekel(account.balance)) : '',
       ].filter(Boolean).join(' · ')}
       action={canAccount ? (
-        <Link className={buttonClass({ variant: 'secondary' })} href={`/provider-accounts/${params.code}`}>
-          <Link2 size={16} strokeWidth={1.9} aria-hidden="true" />
-          {t.providerAccountLink}
-        </Link>
+        <Button asChild variant="secondary">
+          <Link href={`/provider-accounts/${params.code}`}>
+            <Link2 size={16} strokeWidth={1.9} aria-hidden="true" />
+            {t.providerAccountLink}
+          </Link>
+        </Button>
       ) : undefined}
       error={error}
       note={note}

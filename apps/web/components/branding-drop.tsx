@@ -76,7 +76,7 @@ export function BrandingDrop({
         <input ref={input} type="file" accept="image/png,image/webp" aria-labelledby={`${id}-label`} onChange={onChange} />
       </label>
       {value && (
-        <Button type="button" variant="secondary" size="sm" className="drop-clear" onClick={onClear}>
+        <Button type="button" variant="secondary" size="sm" className="drop-clear h-7.5 text-sm" onClick={onClear}>
           {t.brandingRemove}
         </Button>
       )}

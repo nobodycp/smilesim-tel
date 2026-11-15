@@ -10,6 +10,9 @@ function formatInteger(value: number) {
 
 export const PAGE_SIZE_OPTIONS: PageSize[] = [...PAGE_SIZES, "all"];
 
+/* The pager's previous / next: a quiet secondary, 30px, no fill and no inset line until hovered, ink-2 text. */
+const NAV_BUTTON = "h-7.5 bg-transparent text-ink-2 inset-ring-0 hover:bg-surface-2";
+
 export type PaginationProps = {
   page: number;
   pageSize: PageSize;
@@ -98,8 +101,9 @@ export function Pagination({
       {totalPages > 1 && (
         <div className="ui-pager-nav">
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
+            className={NAV_BUTTON}
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
             aria-label={t.pagePrev}
@@ -130,8 +134,9 @@ export function Pagination({
           </div>
 
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
+            className={NAV_BUTTON}
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
             aria-label={t.pageNext}

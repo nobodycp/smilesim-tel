@@ -8,7 +8,7 @@ import { Desk, Money, actionName, latinWhen } from '../../../components/desk';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { Tabs } from '../../../components/tabs';
 import { Badge } from '../../../components/ui/badge';
-import { buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/api';
 import type { WaitingDecision } from '../../../lib/api-types';
 import { useCrumbs } from '../../../lib/crumbs';
@@ -61,7 +61,7 @@ export function ProviderDecisionsScreen() {
             <b>{actionName(t, item.action)}</b>
             {item.phase ? <Badge variant={operationTone(item.phase)} dot>{phaseName(t, item.phase)}</Badge> : null}
             {item.reason ? <span className="po-row-reason">{reasonName(t, item.reason)}</span> : null}
-            <Link className={`${buttonClass({ variant: 'secondary', size: 'sm' })} po-row-open`} href={`/tasks/${encodeURIComponent(item.taskId)}`}>{t.openTask}</Link>
+            <Button asChild variant="secondary" size="sm" className="po-row-open"><Link href={`/tasks/${encodeURIComponent(item.taskId)}`}>{t.openTask}</Link></Button>
           </div>
           <p className="po-row-meta">
             {item.msisdn ? <bdi dir="ltr">{item.msisdn}</bdi> : null}

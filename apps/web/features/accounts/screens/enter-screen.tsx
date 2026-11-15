@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AuthFrame } from '../../../components/auth-frame';
-import { buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { reloadAt } from '../../../lib/reload-at';
@@ -31,7 +31,7 @@ export function EnterScreen() {
 
   return (
     <AuthFrame kicker={t.enterAccount} title={failed ? t.enterFailed : t.enterOpening} lede="">
-      {failed ? <a className={buttonClass({})} href="/login">{t.enterBackToLogin}</a> : null}
+      {failed ? <Button asChild><a href="/login">{t.enterBackToLogin}</a></Button> : null}
     </AuthFrame>
   );
 }

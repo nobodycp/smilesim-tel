@@ -4,6 +4,7 @@ import { Moon, Sun } from 'lucide-react';
 import { langLabel, langName, locales } from '../lib/copy';
 import { usePrefs } from '../lib/prefs';
 import { usePopover } from '../lib/use-popover';
+import { IconButton } from './ui/icon-button';
 
 export function ThemeToggle({ shell = false }: { shell?: boolean }) {
   const { theme, toggleTheme, t } = usePrefs();
@@ -17,13 +18,13 @@ export function ThemeToggle({ shell = false }: { shell?: boolean }) {
     );
   }
   return (
-    <button type="button" className="icon-btn" onClick={toggleTheme} aria-label={label} title={label}>
+    <IconButton onClick={toggleTheme} aria-label={label} title={label}>
       {theme === 'light' ? (
         <Moon size={18} strokeWidth={1.9} aria-hidden="true" />
       ) : (
         <Sun size={18} strokeWidth={1.9} aria-hidden="true" />
       )}
-    </button>
+    </IconButton>
   );
 }
 

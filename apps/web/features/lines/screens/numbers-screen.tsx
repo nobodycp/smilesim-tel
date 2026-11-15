@@ -248,7 +248,7 @@ export function NumbersScreen() {
       title={t.numbersTitle}
       lede={t.numbersLede}
       action={ready && me && me.layer !== 'pos' && sellable.length > 0 ? (
-        <Button type="button" className="ui-btn-accent" onClick={openActivate}><Plus size={16} aria-hidden="true" />{t.activateLine}</Button>
+        <Button type="button" onClick={openActivate}><Plus size={16} aria-hidden="true" />{t.activateLine}</Button>
       ) : undefined}
       error={failure}
       note={note}

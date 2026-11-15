@@ -39,6 +39,7 @@ import { formatShekel } from '../lib/money';
 import { usePrefs } from '../lib/prefs';
 import { usePopover } from '../lib/use-popover';
 import { BrandLogo } from './brand-logo';
+import { IconButton } from './ui/icon-button';
 import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
 import { ShellPath, type PathSection } from './crumbs';
@@ -359,9 +360,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             <p className="brand-sub">{role ? `${t[door.label]} · ${role}` : t[door.label]}</p>
           </div>
           {mobile && (
-            <button type="button" className="icon-btn drawer-close" onClick={() => setMobileOpen(false)} aria-label={t.closeMenu}>
+            <IconButton className="drawer-close" onClick={() => setMobileOpen(false)} aria-label={t.closeMenu}>
               <X {...glyph} />
-            </button>
+            </IconButton>
           )}
         </div>
         {!mobile && (

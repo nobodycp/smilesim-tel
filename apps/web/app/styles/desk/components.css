@@ -75,10 +75,10 @@
 .outage-panel .outage-mark svg { width: 1.6rem; height: 1.6rem; stroke-width: 1.8; }
 .outage-panel h1 { margin: 0; font-size: 20px; }
 .outage-panel p { margin: 0 0 var(--rd-space-2); color: var(--rd-muted); font-size: var(--rd-text-base); line-height: 1.6; }
-.outage-panel .ui-btn { justify-self: center; }
+.outage-panel [data-slot='button'] { justify-self: center; }
 /* A pane whose load failed: the empty-state shape with a retry under it. */
 .empty.load-failed .empty-icon { background: var(--rd-danger-soft); color: var(--rd-danger); }
-.empty.load-failed .ui-btn { margin-top: var(--rd-space-1-5); justify-self: center; }
+.empty.load-failed [data-slot='button'] { margin-top: var(--rd-space-1-5); justify-self: center; }
 /* The error and not-found screens: the way out under the text, one row, centered (app/error.tsx, app/not-found.tsx). */
 .empty .empty-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--rd-space-2); margin-top: var(--rd-space-1-5); }
 .result-ok,

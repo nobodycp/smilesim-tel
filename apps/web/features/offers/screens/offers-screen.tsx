@@ -10,7 +10,7 @@ import { Dialog } from '../../../components/dialog';
 import { EmptyState } from '../../../components/empty-state';
 import { LiveSwitch } from '../../../components/live-switch';
 import { OfferHero } from '../../../components/offer-hero';
-import { Button, buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { RowMenu } from '../../../components/row-menu';
 import { api, type Offer, type OfferInput } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
@@ -154,11 +154,14 @@ export function OffersScreen() {
             <div className="offer-image-field">
               {draft.image ? <DataImage className="offer-thumb large" src={draft.image} alt="" /> : <span className="offer-thumb large" aria-hidden="true" />}
               <div className="stack">
-                <label className={`${buttonClass({ variant: 'outline', size: 'sm' })} offer-file`}>
-                  {t.offerImage}
-                  <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={pickImage} />
-                </label>
-                {draft.image ? <Button type="button" variant="outline" size="sm" onClick={() => setDraft({ ...draft, image: null })}>{t.offerImageRemove}</Button> : null}
+                {/* The dialog's field captions (`.dialog-form label`) set its text: a grid, muted, 11px bold, a 4px gap. */}
+                <Button asChild variant="secondary" size="sm" className="offer-file grid gap-1 text-start text-xs font-bold text-muted">
+                  <label>
+                    {t.offerImage}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={pickImage} />
+                  </label>
+                </Button>
+                {draft.image ? <Button type="button" variant="secondary" size="sm" onClick={() => setDraft({ ...draft, image: null })}>{t.offerImageRemove}</Button> : null}
                 <p className="hint">{t.offerImageHint}</p>
               </div>
             </div>

@@ -18,7 +18,7 @@ import { useGreeting } from '../../../lib/greeting';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { Alert } from '../../../components/alert';
-import { buttonClass } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 
 export function HomeScreen() {
   const { t, locale } = usePrefs();
@@ -68,9 +68,9 @@ export function HomeScreen() {
           />
           {/* The branch's head carries the period alone (spec 2026-11-09-admin-review, 6.3). */}
           {layer && layer !== 'pos' && !branch ? (
-            <Link className={buttonClass({ variant: 'outline' })} href="/users"><Receipt size={16} aria-hidden="true" />{t.fundAccount}</Link>
+            <Button asChild variant="secondary"><Link href="/users"><Receipt size={16} aria-hidden="true" />{t.fundAccount}</Link></Button>
           ) : null}
-          {layer && !branch ? <Link className={`${buttonClass()} ui-btn-accent`} href="/numbers"><Plus size={16} aria-hidden="true" />{t.activateLine}</Link> : null}
+          {layer && !branch ? <Button asChild><Link href="/numbers"><Plus size={16} aria-hidden="true" />{t.activateLine}</Link></Button> : null}
         </div>
       </header>
       {offers.length > 0 ? <OfferHero offers={offers} /> : null}
