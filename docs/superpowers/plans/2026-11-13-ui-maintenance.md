@@ -12,6 +12,11 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 
 ## Status
 
+> **Superseded from P1.3 on (owner, 2026-11-15).** The owner stopped this run and moved the work to
+> `docs/superpowers/plans/2026-11-15-tailwind-radix-migration.md` (ADR 0022): code maintenance without visual
+> verification, Tailwind CSS v4 + owned Radix components, and a new visual identity. P0.1–P0.9, P1.1 and P1.2 stay
+> committed; P1.3's unfinished diff is kept only as `apps/web/audit-output/maintenance/P1.3-interrupted/partial.patch`.
+
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
 | P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48, P0.5 b8bcb4d, P0.6 a20f50c, P0.7 bd9326c, P0.8 f4f136d, P0.9 f291a01; ready (A+B); CI not run (autonomous run) |
