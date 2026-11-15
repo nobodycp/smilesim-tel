@@ -14,7 +14,7 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
-| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48, P0.5 b8bcb4d, P0.6 a20f50c, P0.7 bd9326c, P0.8 f4f136d |
+| P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48, P0.5 b8bcb4d, P0.6 a20f50c, P0.7 bd9326c, P0.8 f4f136d, P0.9 f291a01 |
 | P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started | — |
 | P2 Fold graphite.css into its owners, remove dead rules | P2.1a–P2.11 | not started | — |
 | P3 Core components | P3.1–P3.14 | not started | — |
@@ -783,7 +783,7 @@ positioned descendants; the evidence note states these three facts with their me
   en-light, identical to *before* (not CHK-ZERO: it is not deterministic before P1.1).
 - **Commit:** `fix(web): the topbar uses the phone gutter under 768px (UI maintenance P0.8; closes 3.4-01, 3.2-05)`
 
-### P0.9 Legible text on crimson fills
+### P0.9 Legible text on crimson fills — f291a01
 
 - **Goal:** one token pair for content on a crimson fill that passes 4.5:1 in both themes (D1).
 - **Files:** `app/styles/tokens.css` (`--rd-on-accent` :48 / :156, `--rd-on-mark` :49 / :157, add `--rd-accent-fill`,
