@@ -15,7 +15,7 @@ which were all line-for-line); they move as slices land, so **find by selector, 
 | Phase | Slices | State | Gate (two agents) |
 |---|---|---|---|
 | P0 Owner decisions + isolated high-severity fixes | P0.1–P0.9 | in progress | P0.1 7517db0, P0.2 983ea10, P0.3 827e449, P0.4 9b26b48, P0.5 b8bcb4d, P0.6 a20f50c, P0.7 bd9326c, P0.8 f4f136d, P0.9 f291a01; ready (A+B); CI not run (autonomous run) |
-| P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started (P1.1 9cfefbf) | — |
+| P1 Tokens, role tokens, cascade guard (zero-diff) | P1.1–P1.8 | not started (P1.1 9cfefbf, P1.2 92f9618) | — |
 | P2 Fold graphite.css into its owners, remove dead rules | P2.1a–P2.11 | not started | — |
 | P3 Core components | P3.1–P3.14 | not started | — |
 | P4 Page templates and screens | P4.1–P4.10 | not started | — |
@@ -993,27 +993,33 @@ positioned descendants; the evidence note states these three facts with their me
 - **Done:** guard in lint, baseline committed, snapshot covers the listed cases, pseudo-elements and forced states.
 - **Commit:** `feat(web): CSS guard with a ratchet baseline, and snapshot cases for every screen (UI maintenance P1.1)`
 
-### P1.2 Undefined and contradicting tokens
+### P1.2 Undefined and contradicting tokens — 92f9618
 
 - **Goal:** every referenced token exists; no fallback contradicts its token; warning tint derives from warning.
-- **Files:** `app/styles/tokens.css`; graphite :1043, :1044, :1143, :1156 (`var(--rd-text)`), :1078
-  (`var(--rd-line-strong, var(--rd-line))`); `desk/home.css` :357, :358, :377, :398 (fallbacks).
-- **Steps:** replace `var(--rd-text)` with `var(--rd-ink)` (4 lines; **visible**: period chip / chart tip / task ref
-  now ink as designed). Define `--rd-line-strong` = `color-mix(in srgb, var(--rd-ink) 11%, transparent)` in `:root`
+- **Files:** `app/styles/tokens.css`; graphite :1049, :1050, :1149, :1162 (`var(--rd-text)`), :1084
+  (`var(--rd-line-strong, var(--rd-line))`); `desk/home.css` :357, :358, :377, :398 (fallbacks). (Lines amended
+  2026-11-15 from :1043/:1044/:1143/:1156/:1078.)
+- **Steps:** replace `var(--rd-text)` with `var(--rd-ink)` (4 lines; **not visible**, amended 2026-11-15: the
+  invalid `var()` made `color` inherit and every parent of the period chip and the chart tip is already ink, so they
+  measure the same; no markup renders `.task-ref`). Define `--rd-line-strong` = `color-mix(in srgb, var(--rd-ink) 11%, transparent)` in `:root`
   (the value the 22 literal mixes use) — application in P1.8/P2. Remove fallbacks from `home.css` 357/358/377/398
   (the token values apply; **visible**: they already apply, so zero-diff — confirm with CHK-ZERO). Also remove the
-  two graphite fallbacks so guard (c) reaches 0: `.grant`'s `var(--rd-line-strong, var(--rd-line))` (:1078) becomes
+  two graphite fallbacks so guard (c) reaches 0: `.grant`'s `var(--rd-line-strong, var(--rd-line))` (:1084) becomes
   `var(--rd-line-strong)` once the token is defined (the darkening is the named `.grant` change), and `.trend-tip`'s
-  `var(--rd-surface-3, var(--rd-surface-2))` (:1143, the same line as its `--rd-text` fix) becomes
-  `var(--rd-surface-3)` (defined in both themes, tokens.css:7 / :119, so the fallback is dead — zero-diff). Set light
+  `var(--rd-surface-3, var(--rd-surface-2))` (:1149, the same line as its `--rd-text` fix) becomes
+  `var(--rd-surface-3)` (defined in both themes, so the fallback is dead — zero-diff). Set light
   `--rd-warning-soft: color-mix(in srgb, var(--rd-warning) 12%, transparent)` (**visible, slight**).
 - **Closes:** 3.1-07, 3.1-20, 3.1-27, 3.4-22. (3.7-23's fallback part; its weight part is P2.11.)
-- **Risks:** `.grant` tiles (graphite :1078) darken when `--rd-line-strong` becomes defined — intended (T13 note), check
+- **Risks:** `.grant` tiles (graphite :1084) darken when `--rd-line-strong` becomes defined — intended (T13 note), check
   `/roles`.
 - **Verify:** CHK-LOCAL (guard count (b) and (c) drop — lower the baseline); CHK-ZERO except the named visible changes
-  (the reviewers check that every `.styles.tsv` difference belongs to one of the four named elements and nothing
-  else); CHK-LOOK `/`, `/finance` (period chip), `/wallet` (trend tip), `/tasks/[id]` (task ref), `/roles`, any
-  warning badge, light and dark; CHK-AUDIT on those routes. These visible changes are listed in the spec's "What
+  (the reviewers check that every `.styles.tsv` difference belongs to one of the two visible changes — the `.grant`
+  off tiles, and in light the readers of `--rd-warning-soft`: `.ui-badge-warning` without a dot, `.reason.r-amber`,
+  `.task-tree-card.internal`, `.users-flags li.warn .users-flag-count`, `.fact-card.warn .fact-mark` — and nothing
+  else); CHK-LOOK `/`, the period chip where it is drawn (`/profits`, `/provider-operations`, `/audit`,
+  `/reports/supply`, `/wallet` on main / agent / pos; `/finance` has none), `/wallet` (trend tip), `/tasks/[id]`,
+  `/roles`, a filled warning badge (the `/tasks` decisions count, by a `page.route` answer), light and dark; CHK-AUDIT
+  on those routes, and on `/` for main, agent and pos (the door's full run). (Amended 2026-11-15.) These visible changes are listed in the spec's "What
   changes for users".
 - **Done:** guard (b) = 0 and (c) = 0.
 - **Commit:** `fix(web): define the tokens the sheets use and drop contradicting fallbacks (UI maintenance P1.2; closes 3.1-07, 3.1-20, 3.1-27, 3.4-22)`
