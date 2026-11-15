@@ -11,7 +11,7 @@ export function Badge({
   ...props
 }: React.HTMLAttributes<HTMLSpanElement> & { variant?: BadgeVariant; dot?: boolean }) {
   return (
-    <span className={["ui-badge", `ui-badge-${variant}`, className].filter(Boolean).join(" ")} {...props}>
+    <span data-testid="badge" className={["ui-badge", `ui-badge-${variant}`, className].filter(Boolean).join(" ")} {...props}>
       {dot && <span className="ui-badge-dot" aria-hidden="true" />}
       {children}
     </span>

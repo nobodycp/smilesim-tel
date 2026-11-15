@@ -39,7 +39,7 @@ test('the branch opens the company shelf', async ({ page }) => {
   await expect(page.locator('html')).toHaveClass(/dark/);
   await page.getByRole('button', { name: 'تفعيل الوضع الفاتح' }).click();
   // The language is the topbar's menu (spec 2026-11-09-admin-review, 2b).
-  await page.locator('.topbar').getByRole('button', { name: 'اللغة' }).click();
+  await page.getByTestId('topbar').getByRole('button', { name: 'اللغة' }).click();
   await page.getByRole('menuitem', { name: 'English' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Companies');
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
@@ -133,9 +133,9 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
   await expect(page.getByText('عدد الأرقام', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'الأسعار' }).click();
   // One compact table: a row per layer, the subscription and the renewal side by side (spec 2026-11-11, D6).
-  await expect(page.locator('.chain-grid tbody tr')).toHaveCount(5);
-  await expect(page.locator('.chain-grid tbody input')).toHaveCount(10);
-  const reprice = page.locator('.account-fund').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
+  await expect(page.getByTestId('chain-grid').locator('tbody tr')).toHaveCount(5);
+  await expect(page.getByTestId('chain-grid').locator('tbody input')).toHaveCount(10);
+  const reprice = page.getByTestId('reprice').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
   await reprice.getByRole('button', { name: 'عرض الأرقام' }).click();
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
   await dialog.getByRole('textbox').fill('40');

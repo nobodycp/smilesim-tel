@@ -21,11 +21,11 @@ test('finance opens on the statement, without the wallet head, and exports the f
     'GET /finance': () => ({ body: { items: [entry], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://agent.localhost:3910/finance');
-  const row = page.locator('table.data tbody tr').first();
-  await expect(row.locator('.reason.r-leaf')).toBeVisible();
+  const row = page.getByTestId('data-table').locator('tbody tr').first();
+  await expect(row.getByTestId('reason-leaf')).toBeVisible();
   await expect(row).toContainText('+3.00 ₪');
-  await expect(page.locator('.wallet-band')).toHaveCount(0);
-  await expect(page.locator('.wallet-chart')).toHaveCount(0);
+  await expect(page.getByTestId('wallet-band')).toHaveCount(0);
+  await expect(page.getByTestId('wallet-chart')).toHaveCount(0);
   expect(calls.some((call) => call.startsWith('GET /finance/summary'))).toBe(false);
 
   await page.getByLabel('من', { exact: true }).fill('2026-11-01');
@@ -37,7 +37,7 @@ test('finance opened with ?scope=operations lists the operations only', async ({
     'GET /finance': () => ({ body: { items: [entry], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://admin.localhost:3910/finance?scope=operations');
-  await expect(page.locator('table.data tbody tr').first()).toContainText('0550000001');
+  await expect(page.getByTestId('data-table').locator('tbody tr').first()).toContainText('0550000001');
   await expect.poll(() => calls.some((call) => call.startsWith('GET /finance?') && call.includes('scope=operations'))).toBe(true);
   await expect(page.getByRole('link', { name: 'تصدير CSV' })).toHaveAttribute('href', /scope=operations/);
 });
@@ -50,13 +50,13 @@ test('the wallet page shows the head and its window switch', async ({ page }) =>
     'GET /ledger': () => ({ body: { items: [], nextCursor: null, total: 0 } }),
   });
   await page.goto('http://agent.localhost:3910/wallet');
-  const band = page.locator('.wallet-band');
-  await expect(band.locator('.figure-tile.lead')).toContainText('248.06 ₪');
+  const band = page.getByTestId('wallet-band');
+  await expect(band.getByTestId('balance-tile')).toContainText('248.06 ₪');
   await expect(band).toContainText('300.00 ₪');
   await expect(band).toContainText('-51.94 ₪');
   await expect(band).toContainText('منها 1 يدوية');
   await expect(page.getByRole('img', { name: 'الرصيد عبر الوقت' })).toBeVisible();
-  await expect(page.locator('.wallet-chart .pane-head')).toContainText('+248.06 ₪');
+  await expect(page.getByTestId('wallet-chart').locator('header')).toContainText('+248.06 ₪');
   await page.getByRole('button', { name: '7 أيام' }).click();
   await expect.poll(() => calls.some((call) => call.startsWith('GET /finance/summary?') && call.includes('days=7'))).toBe(true);
 });

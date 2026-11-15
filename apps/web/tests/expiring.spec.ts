@@ -24,19 +24,19 @@ test('numbers show the days left and filter the lines ending soon; the home coun
     'GET /overview': () => ({ body: overview }),
   });
   await page.goto('http://admin.localhost:3910/numbers');
-  const rows = page.locator('table.data tbody tr');
+  const rows = page.getByTestId('data-table').locator('tbody tr');
   await expect(rows).toHaveCount(3);
   // Graphite: what is left turns crimson and says so when the number ends soon.
-  await expect(rows.nth(0).locator('td.days-col .days.soon')).toHaveText('ينتهي قريباً · 2 يوم');
-  await expect(rows.nth(1).locator('td.days-col')).toHaveText('20 يوم');
-  await expect(rows.nth(2).locator('td.days-col')).toHaveText('—');
+  await expect(rows.nth(0).getByTestId('days-soon')).toHaveText('ينتهي قريباً · 2 يوم');
+  await expect(rows.nth(1).getByTestId(/^days-/)).toHaveText('20 يوم');
+  await expect(rows.nth(2).getByTestId(/^days-/)).toHaveText('—');
 
   await page.getByRole('combobox', { name: 'الحالة' }).selectOption('expiring');
   await expect.poll(() => calls.some((call) => call.startsWith('GET /lines?') && call.includes('status=expiring'))).toBe(true);
 
   // The home's numbers donut carries «ينتهي قريباً» as a slice that links to the filter.
   await page.goto('http://admin.localhost:3910/');
-  const slice = page.locator('.donut-legend a[href="/numbers?status=expiring"]');
+  const slice = page.getByTestId('donut-legend').locator('a[href="/numbers?status=expiring"]');
   await expect(slice).toContainText('ينتهي قريباً');
-  await expect(slice.locator('.donut-value')).toHaveText('1');
+  await expect(slice.getByTestId('donut-value')).toHaveText('1');
 });

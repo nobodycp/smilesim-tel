@@ -65,7 +65,7 @@ export function EsimDialog({ line, onClose }: { line: LineLike | null; onClose: 
 
 export function QrTile({ src }: { src: string }) {
   return (
-    <div className="qr-tile">
+    <div className="qr-tile" data-testid="qr-tile">
       <DataImage src={src} alt="" />
     </div>
   );

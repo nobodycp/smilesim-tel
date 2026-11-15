@@ -137,7 +137,7 @@ export function DataTable<Row>({
   const visible = paging ? ordered.slice((current - 1) * size, current * size) : ordered;
   const table = (
     // Explicit roles: a phone draws the rows as cards (display: block), which drops the implicit table roles.
-    <table className="data" role="table">
+    <table className="data" role="table" data-testid="data-table">
       <thead role="rowgroup">
         <tr role="row">
           {columns.map((item) => {

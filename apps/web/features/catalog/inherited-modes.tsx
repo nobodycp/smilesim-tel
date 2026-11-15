@@ -38,7 +38,7 @@ export function InheritedModes({ modes, inherited, disabled, onChange }: {
   const following = PACKAGE_ACTIONS.filter((action) => inherited.includes(action)).length;
   const own = PACKAGE_ACTIONS.length - following;
   return (
-    <details className="inherit-fold" open={own > 0 ? true : undefined}>
+    <details className="inherit-fold" data-testid="inherit-fold" open={own > 0 ? true : undefined}>
       <summary>
         <b>{t.howItRuns}</b>
         <span>{t.modesSummary.replace('{inherited}', String(following)).replace('{own}', String(own))}</span>

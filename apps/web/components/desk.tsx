@@ -34,7 +34,7 @@ export function Desk({
 
   return (
     <div className="desk">
-      <header className="page-head">
+      <header className="page-head" data-testid="page-head">
         <h1>{title}</h1>
         {action}
         {lede ? <p className="lede">{lede}</p> : null}

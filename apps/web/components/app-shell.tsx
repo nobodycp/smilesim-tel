@@ -464,7 +464,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <title>{tabTitle(pageTitle, branding.name, unread)}</title>
     <div className="app-shell">
       {mobileOpen && <div className="backdrop" onClick={() => setMobileOpen(false)} />}
-      <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'} onMouseLeave={() => setFlyout(null)}>{sidebar(false)}</aside>
+      <aside className={collapsed ? 'sidebar collapsed' : 'sidebar'} data-testid="sidebar" onMouseLeave={() => setFlyout(null)}>{sidebar(false)}</aside>
       {flyout && collapsed ? (
         <div
           className={flyout.items ? 'side-flyout is-menu' : 'side-flyout'}
@@ -492,7 +492,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           accessibility tree until it opens. */}
       <aside className={mobileOpen ? 'drawer open' : 'drawer'} inert={!mobileOpen}>{sidebar(true)}</aside>
       <div className="app-main">
-        <header className="topbar">
+        <header className="topbar" data-testid="topbar">
           <div className="topbar-start">
             <button type="button" className="shell-icon menu-btn" onClick={() => setMobileOpen(true)} aria-label={t.openMenu}>
               <Menu {...glyph} />

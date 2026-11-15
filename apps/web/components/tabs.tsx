@@ -55,7 +55,7 @@ export function Tabs<K extends string>({
             onClick={() => onChange(item.key)}
           >
             {item.label}
-            {item.count ? <span className="step-count">{item.count}</span> : null}
+            {item.count ? <span className="step-count" data-testid="tab-count">{item.count}</span> : null}
           </button>
         );
       })}

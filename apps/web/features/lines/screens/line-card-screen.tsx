@@ -192,11 +192,11 @@ export function LineCardScreen() {
               </p>
             </header>
           <Tabs items={tabs.map((item) => ({ key: item, label: names[item], count: item === 'log' && history.length ? history.length : undefined }))} value={tab} onChange={setTab} />
-          <section className="pane line-pane">
+          <section className="pane line-pane" data-testid="line-pane">
             {tab === 'ops' && (
               <div className="pane-body line-ops">
                 {!isPos && <OutcomePick value={outcome} onChange={setOutcome} />}
-                <div className="line-op-grid">
+                <div className="line-op-grid" data-testid="line-op-grid">
                   {items.map((item) => (
                     <LineOp key={item.label} icon={tileIcon(item)} title={item.label} text={opText(item.label)} danger={item.danger} now onClick={item.onClick} />
                   ))}

@@ -36,8 +36,8 @@ test('the branch reaches packages through their company: one table, provider, pr
   await serveApi(page, 'branch', { 'GET /companies': () => ({ body: twoProviders }) });
   await page.goto(`${admin}/packages`);
   await expect(page).toHaveURL(`${admin}/companies`);
-  await expect(page.locator('.sidebar').getByRole('link', { name: 'الرزم', exact: true })).toHaveCount(0);
-  await page.locator('.sidebar').getByRole('link', { name: 'الشركات والرزم' }).click();
+  await expect(page.getByTestId('sidebar').getByRole('link', { name: 'الرزم', exact: true })).toHaveCount(0);
+  await page.getByTestId('sidebar').getByRole('link', { name: 'الشركات والرزم' }).click();
   await page.getByRole('link', { name: 'ويكوم' }).first().click();
   await expect(page.getByRole('tab', { name: /الرزم/ })).toHaveAttribute('aria-selected', 'true');
   const row = page.locator('tr', { hasText: '500 جيجا' });
@@ -104,7 +104,7 @@ test('the package page edits its details', async ({ page }) => {
   // eSIM per package (spec 2026-11-09, 5): on by default; turned off here.
   await page.getByLabel('الرزمة متاحة كـ eSIM').uncheck();
   const sent = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/details'));
-  await page.locator('.package-details-form').getByRole('button', { name: 'حفظ' }).click();
+  await page.getByTestId('package-details-form').getByRole('button', { name: 'حفظ' }).click();
   expect((await sent).postDataJSON()).toEqual({ dataGb: 500, smsCount: 200, minutes: -1, details: 'تجوال في الأردن', suspendAfterDays: 60, esimAvailable: false });
 });
 
@@ -119,11 +119,11 @@ test('the point of sale sees the details on the package card and the subscribe s
   await serveApi(page, 'pos', { 'GET /packages': () => ({ body: { packages: [row], companies: [{ name: 'ويكوم', image: '' }] } }) });
   await page.goto('/packages');
   await page.getByRole('button', { name: /ويكوم/ }).click();
-  const card = page.locator('.pack-card');
+  const card = page.getByTestId('pack-card');
   await expect(card).toContainText('500 جيجا · 1000 دقيقة · رسائل غير محدودة · 3 أشهر');
   await expect(card).not.toContainText('تجوال');
   await card.click();
-  await expect(page.locator('.package-facts-details')).toHaveText('تجوال في الأردن');
+  await expect(page.getByTestId('package-facts-details')).toHaveText('تجوال في الأردن');
 });
 
 test('the company list turns a package on and off, and the package page only shows its state', async ({ page }) => {

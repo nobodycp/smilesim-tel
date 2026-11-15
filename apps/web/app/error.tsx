@@ -26,7 +26,7 @@ export default function PageError({ error, retry }: { error: unknown; retry: () 
           <p className="empty-text">{t.pageErrorText}</p>
           <div className="empty-actions">
             <Button type="button" onClick={() => retry()}>{t.retry}</Button>
-            <Link className="back-link" href="/">{t.goHome}</Link>
+            <Link className="back-link" data-testid="back-link" href="/">{t.goHome}</Link>
           </div>
         </div>
       </section>

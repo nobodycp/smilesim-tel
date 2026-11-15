@@ -83,7 +83,7 @@ export function FinanceScreen() {
       header: t.reasonColumn,
       render: (row) => (
         <span className="kind-cell">
-          <span className={`reason ${reasonTone(row.kind)}`}>{movementName(t, row.kind)}</span>
+          <span className={`reason ${reasonTone(row.kind)}`} data-testid={`reason-${reasonTone(row.kind).replace(/^r-/, '')}`}>{movementName(t, row.kind)}</span>
           {row.reason && row.reason !== 'deposit' ? <Badge variant="muted">{reasonName(t, row.reason)}</Badge> : null}
           {row.held ? <Badge variant="warning" dot>{t.held} <Money value={Math.abs(row.held)} /></Badge> : null}
           {/* An eSIM sale pays the package price plus this fee in one entry; the tag explains the amount. */}

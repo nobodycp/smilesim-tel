@@ -119,7 +119,7 @@ function PosCatalog({
             {names.map((name) => {
               const image = imageOf.get(name) ?? '';
               return (
-                <button className="company-card" key={name} type="button" onClick={() => openCompany(name)}>
+                <button className="company-card" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
                   {image ? <DataImage className="company-logo" src={image} alt="" /> : <span className="company-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
                   <strong>{name}</strong>
                 </button>
@@ -130,7 +130,7 @@ function PosCatalog({
         {step === 'packages' && (
           <div className="pack-grid">
             {packs.map((row) => (
-              <button className="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
+              <button className="pack-card" data-testid="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
                 <strong>{row.name}</strong>
                 <PackageFacts facts={row} withDetails={false} />
                 <p className="pack-price"><Money value={row.price} /></p>
@@ -139,7 +139,7 @@ function PosCatalog({
           </div>
         )}
         {step === 'details' && picked && (
-          <form className="pane pane-body stack" onSubmit={join}>
+          <form className="pane pane-body stack" data-testid="subscribe-form" onSubmit={join}>
             <h2>{picked.companyName} · {picked.name}</h2>
             <PackageFacts facts={picked} />
             <p className="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>

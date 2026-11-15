@@ -120,11 +120,11 @@ export function SettingsScreen() {
     <div className="settings-page desk">
     <header className="page-head">
       <h1>{t.settingsTitle}</h1>
-      <p className="lede">{t.settingsLede}</p>
+      <p className="lede" data-testid="page-lede">{t.settingsLede}</p>
     </header>
     <Alert banner>{error || profile.error || sessionList.error || methods.error}</Alert>
 
-    <div className="settings-grid">
+    <div className="settings-grid" data-testid="settings-grid">
       <div className="settings-col">
         <section className="pane">
           <header className="pane-head"><h2>{t.account}</h2></header>

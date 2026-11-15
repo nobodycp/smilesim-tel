@@ -225,11 +225,11 @@ export function NumbersScreen() {
       cell: 'days-col',
       render: (line) => {
         const ends = new Date(line.endsAt).toLocaleDateString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar-u-nu-latn');
-        if (line.status !== 'active') return <span className="days off" title={ends}>—</span>;
+        if (line.status !== 'active') return <span className="days off" data-testid="days-off" title={ends}>—</span>;
         const days = daysLeft(line.endsAt);
-        if (days <= 0) return <span className="days out" title={ends}>{t.lineEndedShort}</span>;
-        if (days <= EXPIRING_DAYS) return <span className="days soon" title={ends}>{t.expiringSoon} · <span className="num">{days}</span> {t.dayUnit}</span>;
-        return <span className="days" title={ends}><span className="num">{days}</span> {t.dayUnit}</span>;
+        if (days <= 0) return <span className="days out" data-testid="days-out" title={ends}>{t.lineEndedShort}</span>;
+        if (days <= EXPIRING_DAYS) return <span className="days soon" data-testid="days-soon" title={ends}>{t.expiringSoon} · <span className="num">{days}</span> {t.dayUnit}</span>;
+        return <span className="days" data-testid="days-left" title={ends}><span className="num">{days}</span> {t.dayUnit}</span>;
       },
     },
     { key: 'price', header: t.price, num: true, render: (line) => <Money value={line.posPrice} /> },

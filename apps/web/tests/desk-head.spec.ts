@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test('settings keeps its lede and does not gain a second copy of the title', async ({ page }) => {
   await page.goto('/settings');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.locator('.lede')).toBeVisible();
+  await expect(page.getByTestId('page-lede')).toBeVisible();
 });
 
 test('Desk accepts an action slot and skips an empty lede', () => {

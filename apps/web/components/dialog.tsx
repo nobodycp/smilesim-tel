@@ -55,6 +55,7 @@ export function Dialog({
   mark,
   tone = 'neutral',
   className = '',
+  testId,
 }: {
   open: boolean;
   title: string;
@@ -69,6 +70,8 @@ export function Dialog({
   tone?: DialogTone;
   /** Extra class on the panel for a dialog family that needs its own spacing, such as the activation result. */
   className?: string;
+  /** `data-testid` on the panel, for an e2e spec that needs one dialog family (the activation result). */
+  testId?: string;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const holdAlert = useContext(DialogAlert);
@@ -123,7 +126,7 @@ export function Dialog({
   if (!open || typeof document === 'undefined') return null;
   return createPortal(
     <div className="dialog-scrim" onClick={onClose}>
-      <div ref={panel} className={className ? `dialog ${className}` : 'dialog'} data-size={size} role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
+      <div ref={panel} className={className ? `dialog ${className}` : 'dialog'} data-size={size} data-testid={testId} role="dialog" aria-modal="true" aria-label={title} onClick={(event) => event.stopPropagation()}>
         <header>
           {mark ? <span className={tone === 'neutral' ? 'dialog-mark' : `dialog-mark ${tone}`}><DialogGlyph name={mark} /></span> : null}
           <div className="dialog-heading">

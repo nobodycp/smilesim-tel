@@ -28,7 +28,7 @@ export function Stat({
 }) {
   const share = progress == null ? null : Math.min(1, Math.max(0, progress));
   return (
-    <article className={highlight ? `stat ${tone} highlight` : `stat ${tone}`}>
+    <article className={highlight ? `stat ${tone} highlight` : `stat ${tone}`} data-testid="stat">
       <span className="stat-label">{label}</span>
       {icon ? (
         <span className="stat-icon" aria-hidden="true">

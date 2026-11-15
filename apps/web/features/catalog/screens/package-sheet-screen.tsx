@@ -489,7 +489,7 @@ export function PackageSheetScreen() {
                       </span>
                     </label>
                   </div>
-                  <div className="account-fund">
+                  <div className="account-fund" data-testid="reprice">
                     <h3>{t.repriceTitle}</h3>
                     <label>
                       {t.linePricesScope}

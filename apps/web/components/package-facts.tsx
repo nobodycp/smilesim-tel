@@ -30,7 +30,7 @@ export function PackageFacts({ facts, withDetails = true }: { facts: Facts; with
   return (
     <div className="package-facts">
       {line ? <span className="package-facts-line">{line}</span> : null}
-      {details ? <p className="package-facts-details">{details}</p> : null}
+      {details ? <p className="package-facts-details" data-testid="package-facts-details">{details}</p> : null}
     </div>
   );
 }

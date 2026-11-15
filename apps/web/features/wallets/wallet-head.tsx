@@ -38,8 +38,8 @@ export function WalletHead() {
   const windowName = days === 7 ? t.period7 : days === 30 ? t.period30 : t.period3m;
   return (
     <>
-      <section className="figure-band wallet-band" aria-label={t.balance}>
-        <div className="figure-tile lead">
+      <section className="figure-band wallet-band" aria-label={t.balance} data-testid="wallet-band">
+        <div className="figure-tile lead" data-testid="balance-tile">
           <span className="figure-tile-label">{t.yourBalance}</span>
           <div className="figure-tile-value"><Money value={summary.balance} /></div>
           {limited ? (
@@ -68,7 +68,7 @@ export function WalletHead() {
           <div className="figure-tile-meta">{t.manualMeta.replace('{n}', String(summary.manual ?? 0))}</div>
         </div>
       </section>
-      <section className="pane wallet-chart">
+      <section className="pane wallet-chart" data-testid="wallet-chart">
         <header className="pane-head">
           <div>
             <h2>{t.balanceOverTime}</h2>

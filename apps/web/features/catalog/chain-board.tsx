@@ -51,7 +51,7 @@ export function ChainBoard({ prices, onChange, children }: {
   return (
     <div className="pane-body price-board" aria-label={t.chainTab}>
       <div className="chain-wrap">
-        <table className="chain-grid">
+        <table className="chain-grid" data-testid="chain-grid">
           <thead>
             <tr>
               <th scope="col">{t.layer}</th>

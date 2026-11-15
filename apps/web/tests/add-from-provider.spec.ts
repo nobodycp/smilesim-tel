@@ -41,7 +41,7 @@ test('a package is added from a provider product: details, add-ons, inherited mo
   await expect(page.getByLabel('الرزمة', { exact: true })).toHaveValue('250 جيجا');
   await expect(page.getByLabel('الإنترنت (جيجا)')).toHaveValue('250');
   await expect(page.getByLabel('اسم العملية')).toHaveValue('10 جيجا إضافية');
-  const fold = page.locator('.inherit-fold');
+  const fold = page.getByTestId('inherit-fold');
   await expect(fold.locator('summary')).toContainText('9 موروثة من المزود · 0 مخصصة');
   await fold.locator('summary').click();
   await page.getByRole('radiogroup', { name: 'التشغيل شحن' }).getByRole('radio', { name: 'مباشر' }).click();

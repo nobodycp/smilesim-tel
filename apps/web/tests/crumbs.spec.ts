@@ -17,7 +17,7 @@ test('the topbar path: the list links back, the page names itself, a list page e
   await expect(trail.getByRole('link', { name: 'الصفحة الرئيسية' })).toHaveAttribute('href', '/');
   await expect(trail).toContainText('المكتب');
   await expect(trail.locator('[aria-current="page"]')).toHaveText('pos1 (نقطة بيع)');
-  await expect(page.locator('.back-link')).toHaveCount(0);
+  await expect(page.getByTestId('back-link')).toHaveCount(0);
   await trail.getByRole('link', { name: 'المستخدمون' }).click();
   await expect(page).toHaveURL(/\/users$/);
   // On a list page the path ends with the list itself.

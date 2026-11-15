@@ -17,7 +17,7 @@ export function LoadFailed({ message, onRetry, busy = false }: { message: string
         <Icon name={network ? 'offline' : 'tasks'} />
       </span>
       <p className="empty-title">{network ? t.outageTitle : t.loadFailed}</p>
-      {!network && message ? <p className="empty-text">{message}</p> : null}
+      {!network && message ? <p className="empty-text" data-testid="load-failed-message">{message}</p> : null}
       {onRetry ? (
         <Button type="button" onClick={onRetry} disabled={busy}>
           {busy ? t.retrying : t.retry}

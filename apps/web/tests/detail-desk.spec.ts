@@ -17,13 +17,13 @@ test('line card keeps its tabs and stretches the pane', async ({ page }) => {
     }),
   );
   await page.goto('/numbers/ln1');
-  await expect(page.locator('.steps')).toBeVisible();
-  const box = await page.locator('.desk .pane').first().boundingBox();
+  await expect(page.getByRole('tablist')).toBeVisible();
+  const box = await page.getByTestId('line-pane').boundingBox();
   expect(box?.width ?? 0).toBeGreaterThan(700);
 });
 
 test('settings lede stays and the grid has no trailing spacer', async ({ page }) => {
   await page.goto('/settings');
-  await expect(page.locator('.lede')).toBeVisible();
-  await expect(page.locator('.settings-grid')).toBeVisible();
+  await expect(page.getByTestId('page-lede')).toBeVisible();
+  await expect(page.getByTestId('settings-grid')).toBeVisible();
 });

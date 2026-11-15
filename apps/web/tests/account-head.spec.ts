@@ -23,8 +23,8 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
     'GET /lines': () => ({ body: { items: [{ id: 'ln1', msisdn: '0550000001', status: 'active', packageName: '400 جيجا', posLoginName: 'pos1', endsAt: '2026-12-01T00:00:00.000Z' }], poses: [], nextCursor: null, total: 1 } }),
   });
   await page.goto('http://admin.localhost:3910/users/pos1');
-  const head = page.locator('.page-head');
-  await expect(head.locator('.ui-badge')).toHaveText('يعمل');
+  const head = page.getByTestId('page-head');
+  await expect(head.getByTestId('badge')).toHaveText('يعمل');
   await expect(head).toContainText('نقطة بيع · يتبع: admin');
   const wallet = head.getByRole('button', { name: 'المحفظة' });
   await wallet.click();
@@ -36,7 +36,7 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   await expect(page.getByRole('menuitem', { name: 'تمويل' })).toHaveCount(0);
   await page.keyboard.press('Escape');
 
-  const cards = page.locator('.stat');
+  const cards = page.getByTestId('stat');
   await expect(cards).toHaveCount(5);
   await expect(cards.nth(0)).toContainText('-50.00 ₪');
   await expect(cards.nth(1)).toContainText('200.00 ₪');
@@ -47,12 +47,12 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   await expect(cards.nth(4)).toHaveClass(/highlight/);
   // Graphite: every part of the account is a tab, packages and prices first (as in the approved design).
   await expect(page.getByRole('tab')).toHaveText([/الرزم والأسعار/, /عمليات الأرقام/, 'أرقام الحساب', 'الإعدادات والصلاحيات']);
-  await expect(page.getByRole('tab', { name: /الرزم والأسعار/ }).locator('.step-count')).toHaveText('2');
-  await expect(page.getByRole('tab', { name: /عمليات الأرقام/ }).locator('.step-count')).toHaveText('1');
+  await expect(page.getByRole('tab', { name: /الرزم والأسعار/ }).getByTestId('tab-count')).toHaveText('2');
+  await expect(page.getByRole('tab', { name: /عمليات الأرقام/ }).getByTestId('tab-count')).toHaveText('1');
   // The numbers are read only once their tab opens, narrowed to this account.
   expect(calls.some((call) => call.startsWith('GET /lines'))).toBe(false);
   await page.getByRole('tab', { name: 'أرقام الحساب' }).click();
-  await expect(page.locator('table.data tbody tr')).toHaveCount(1);
+  await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
   expect(calls.some((call) => call.startsWith('GET /lines?') && call.includes('loginName=pos1'))).toBe(true);
 
   await wallet.click();

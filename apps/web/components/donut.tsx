@@ -79,7 +79,7 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
           <text className="donut-total" x="50%" y="50%" textAnchor="middle" dominantBaseline="central">{total}</text>
         )}
       </svg>
-      <ul className="donut-legend">
+      <ul className="donut-legend" data-testid="donut-legend">
         {slices.map((slice) => {
           const change = slice.change ?? 0;
           const body = (
@@ -95,7 +95,7 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
                   <bdi className="num" dir="ltr">{Math.abs(change)}</bdi>
                 </span>
               ) : <span className="donut-change none" aria-hidden="true" />}
-              <span className="donut-value num">{slice.value}</span>
+              <span className="donut-value num" data-testid="donut-value">{slice.value}</span>
             </>
           );
           return (

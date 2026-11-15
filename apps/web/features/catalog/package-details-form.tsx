@@ -122,7 +122,7 @@ export function PackageDetailsForm({
   }
 
   return (
-    <form className="pane-body stack package-details-form" onSubmit={save}>
+    <form className="pane-body stack package-details-form" data-testid="package-details-form" onSubmit={save}>
       <p className="hint">{t.packageDetailsHint}</p>
       <DetailsFields draft={draft} onChange={setDraft} />
       <div>
