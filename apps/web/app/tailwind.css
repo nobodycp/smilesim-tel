@@ -1,0 +1,165 @@
+/*
+ * Tailwind CSS v4 (ADR 0022, Tailwind migration T1.1). Imported first by app/globals.css.
+ *
+ * Cascade layers, low to high: Tailwind's theme, base (empty: preflight is not loaded, see below), the legacy sheets
+ * (app/styles/*, imported by globals.css into `legacy`), components, utilities. A utility on a migrated element wins
+ * over any leftover legacy rule; unlayered CSS (next/font) sits above all of them.
+ *
+ * Preflight is not imported: it resets headings, lists, buttons, borders and images that the legacy base
+ * (styles/base.css) leaves to the browser, so loading it would change every screen. Only the theme and the utilities
+ * are loaded. T5.1 moves the few global rules the app still needs into `@layer base` here.
+ */
+@layer theme, base, legacy, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+
+/* Utilities are built only from the code that renders markup, not from tests, scripts, audits or docs. */
+@source '../app';
+@source '../components';
+@source '../features';
+@source '../lib';
+/* `.sr-only` is a legacy rule (styles/desk/frame.css) used by many screens. While that rule lives, Tailwind does not
+   build its own, so the legacy one stays the only definition (the utilities layer would otherwise win over it).
+   T5.1 removes this line together with the legacy rule. */
+@source not inline('sr-only');
+
+/*
+ * The design tokens live in styles/tokens.css (both themes) until T5/T6 move their values here. This block gives each
+ * `--rd-*` token its Tailwind name (`--rd-ink-2` → `text-ink-2`, `--rd-radius-card` → `rounded-card`,
+ * `--rd-text-sm` → `text-sm`, `--rd-shadow-pop` → `shadow-pop`, `--rd-z-dialog` → `z-dialog`). `inline` makes each
+ * utility read the `--rd-*` variable itself, so the dark values are the `.dark` block of tokens.css (on <html>, the
+ * same selector as the `dark:` variant below) and a theme switch needs no second mapping here.
+ *
+ * Tailwind's default palette, radii, type scale, shadows, easings, fonts and breakpoints are cleared: screens use the
+ * tokens or nothing. Not mapped, because Tailwind has no namespace for them: `--rd-cut` (a clip-path length, read
+ * with `var()`).
+ */
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--rd-bg);
+  --color-surface: var(--rd-surface);
+  --color-surface-2: var(--rd-surface-2);
+  --color-surface-3: var(--rd-surface-3);
+  --color-sunken: var(--rd-sunken);
+  --color-layer-branch: var(--rd-layer-branch);
+  --color-layer-main: var(--rd-layer-main);
+  --color-layer-agent: var(--rd-layer-agent);
+  --color-layer-pos: var(--rd-layer-pos);
+  --color-line: var(--rd-line);
+  --color-line-soft: var(--rd-line-soft);
+  --color-line-strong: var(--rd-line-strong);
+  --color-qr-tile: var(--rd-qr-tile);
+  --color-field: var(--rd-field);
+  --color-ink: var(--rd-ink);
+  --color-ink-2: var(--rd-ink-2);
+  --color-muted: var(--rd-muted);
+  --color-faint: var(--rd-faint);
+  --color-accent: var(--rd-accent);
+  --color-accent-soft: var(--rd-accent-soft);
+  --color-glow: var(--rd-glow);
+  --color-login-room: var(--rd-login-room);
+  --color-login-ink: var(--rd-login-ink);
+  --color-login-line: var(--rd-login-line);
+  --color-login-line-light: var(--rd-login-line-light);
+  --color-login-tool: var(--rd-login-tool);
+  --color-login-tool-line: var(--rd-login-tool-line);
+  --color-login-paper: var(--rd-login-paper);
+  --color-login-paper-ink: var(--rd-login-paper-ink);
+  --color-login-paper-muted: var(--rd-login-paper-muted);
+  --color-login-paper-tool: var(--rd-login-paper-tool);
+  --color-login-paper-tool-line: var(--rd-login-paper-tool-line);
+  --color-login-field: var(--rd-login-field);
+  --color-login-field-bg: var(--rd-login-field-bg);
+  --color-login-go: var(--rd-login-go);
+  --color-login-go-hover: var(--rd-login-go-hover);
+  --color-login-go-fg: var(--rd-login-go-fg);
+  --color-login-focus: var(--rd-login-focus);
+  --color-login-danger: var(--rd-login-danger);
+  --color-login-danger-soft: var(--rd-login-danger-soft);
+  --color-accent-fill: var(--rd-accent-fill);
+  --color-accent-fill-hover: var(--rd-accent-fill-hover);
+  --color-on-accent: var(--rd-on-accent);
+  --color-on-mark: var(--rd-on-mark);
+  --color-primary-bg: var(--rd-primary-bg);
+  --color-primary-hover: var(--rd-primary-hover);
+  --color-primary-fg: var(--rd-primary-fg);
+  --color-primary-soft: var(--rd-primary-soft);
+  --color-success: var(--rd-success);
+  --color-success-soft: var(--rd-success-soft);
+  --color-warning: var(--rd-warning);
+  --color-warning-soft: var(--rd-warning-soft);
+  --color-chart-frozen: var(--rd-chart-frozen);
+  --color-chart-suspended: var(--rd-chart-suspended);
+  --color-danger: var(--rd-danger);
+  --color-danger-soft: var(--rd-danger-soft);
+  --color-focus: var(--rd-focus);
+  --color-scrim: var(--rd-scrim);
+  --color-scrim-strong: var(--rd-scrim-strong);
+
+  --radius-*: initial;
+  --radius-2xs: var(--rd-radius-2xs);
+  --radius-xs: var(--rd-radius-xs);
+  --radius-sm: var(--rd-radius-sm);
+  --radius-md: var(--rd-radius-md);
+  --radius-lg: var(--rd-radius-lg);
+  --radius-card: var(--rd-radius-card);
+  --radius-tile: var(--rd-radius-tile);
+  --radius-panel: var(--rd-radius-panel);
+  --radius-pill: var(--rd-radius-pill);
+
+  --text-*: initial;
+  --text-2xs: var(--rd-text-2xs);
+  --text-xs: var(--rd-text-xs);
+  --text-sm: var(--rd-text-sm);
+  --text-md: var(--rd-text-md);
+  --text-base: var(--rd-text-base);
+  --text-lg: var(--rd-text-lg);
+  --text-xl: var(--rd-text-xl);
+  --text-2xl: var(--rd-text-2xl);
+
+  /* The 4px step: `p-1` = --rd-space-1, `gap-2.5` = --rd-space-2-5, `m-0.5` = --rd-space-0-5, `p-6` = --rd-space-6. */
+  --spacing: var(--rd-space-1);
+
+  --z-index-raised: var(--rd-z-raised);
+  --z-index-topbar: var(--rd-z-topbar);
+  --z-index-popover: var(--rd-z-popover);
+  --z-index-overlay: var(--rd-z-overlay);
+  --z-index-drawer: var(--rd-z-drawer);
+  --z-index-shell-toast: var(--rd-z-shell-toast);
+  --z-index-dialog: var(--rd-z-dialog);
+  --z-index-top: var(--rd-z-top);
+
+  --transition-duration-fast: var(--rd-dur-fast);
+  --transition-duration-base: var(--rd-dur-base);
+  /* What a bare `transition` uses (Tailwind's own defaults, 150ms and this curve, are these two tokens). */
+  --default-transition-duration: var(--rd-dur-fast);
+  --default-transition-timing-function: var(--rd-ease-standard);
+
+  --ease-*: initial;
+  --ease-standard: var(--rd-ease-standard);
+  --ease-out: var(--rd-ease-out);
+
+  --shadow-*: initial;
+  --shadow-card: var(--rd-shadow-card);
+  --shadow-frame: var(--rd-shadow-frame);
+  --shadow-sm: var(--rd-shadow-sm);
+  --shadow-pop: var(--rd-shadow-pop);
+
+  /* next/font sets --font-sans (Noto Kufi Arabic) and --font-he (IBM Plex Sans Hebrew) on <html> (app/layout.tsx);
+     the default `--font-sans` is cleared so Tailwind never declares a variable of that name. `font-body` is the
+     legacy body stack (styles/base.css). */
+  --font-*: initial;
+  --font-body: var(--font-sans), var(--font-he), Tahoma, sans-serif;
+
+  /* The legacy sheets' width scale (DESIGN.md, check-css (h)): max 640 / 767 / 899 / 1099, min 641 / 768 / 900 / 1100.
+     `sm:` = min-width 641px, `max-sm:` = under 641px (max 640), and so on. */
+  --breakpoint-*: initial;
+  --breakpoint-sm: 641px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 900px;
+  --breakpoint-xl: 1100px;
+}
+
+/* Dark is a class on <html>, set by the server from the cookie and by lib/prefs.tsx (tokens.css `.dark`). */
+@custom-variant dark (&:where(.dark, .dark *));

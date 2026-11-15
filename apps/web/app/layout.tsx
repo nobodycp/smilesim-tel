@@ -7,6 +7,7 @@ import { Toasts } from '../components/toast';
 import { Doors } from '../components/doors';
 import { AppFrame } from '../components/app-frame';
 import { Preferences } from '../components/preferences';
+import { DirectionProvider } from '../components/ui/direction';
 import { BrandingProvider } from '../lib/branding';
 import { brandingImageUrl, loadBranding } from '../lib/branding-load';
 import { copy } from '../lib/copy';
@@ -66,6 +67,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     >
       <body>
         <Bootstrap nonce={nonce} />
+        <DirectionProvider dir={dirFor(locale)}>
         <Preferences locale={locale} theme={theme} pageSize={parsePageSize(jar.get(PAGE_SIZE_KEY)?.value)}>
           <BrandingProvider seed={branding}>
           <Toasts>
@@ -86,6 +88,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           </Toasts>
           </BrandingProvider>
         </Preferences>
+        </DirectionProvider>
       </body>
     </html>
   );
