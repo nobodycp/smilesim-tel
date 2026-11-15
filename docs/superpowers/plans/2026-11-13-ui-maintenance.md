@@ -807,7 +807,8 @@ positioned descendants; the evidence note states these three facts with their me
   | `.notice-count` | graphite :492, :595, :635 | `--rd-accent` | none visible (:595 makes it an 8px dot, `font-size: 0`) | stays `--rd-accent` (decorative dot) |
   | `.account-hero-mark` | graphite :695–702 | `--rd-accent` | `--rd-on-mark` | fill, `--rd-on-accent` |
   | `.settings-page .identity-mark` | graphite :1083 | `--rd-accent` | `#fff` | fill, `--rd-on-accent` |
-  | `.date-pop-day.on` | graphite :1415 | `--rd-accent` | `--rd-on-mark` | fill, `--rd-on-accent` |
+  | `.date-pop-day.on` | graphite :1415 | `--rd-accent` | `--rd-on-mark` | fill, `--rd-on-accent`; a new `.date-pop-day.today.on` keeps today's 1px inset ring in `--rd-accent-fill` (amended in fix round 1: `.today`'s ring is `--rd-accent`, so on the darker dark fill it would show a lighter ring; before the slice ring and fill were one colour) |
+  | `.gauth-art-tag` (sign-in art; `components/auth-art.tsx` paints the art's `h2` and `p` over it) | graphite :417–427 | `--rd-accent` at opacity 0.88 over `--rd-login-room` | `h2` `--rd-login-ink` (inherited), `p` `--rd-login-shut` (72%) | fill (opacity kept); `p` loses its colour and inherits `--rd-login-ink`; `--rd-login-shut` (no other reader) deleted from `tokens.css` (amended in fix round 1: listed as decoration before, but the heading and line overlay it — dark heading 3.6:1, line 2.5:1 dark / 3.3:1 light; after ≈5.0:1 both) |
   | `.sidebar .brand-mark, .drawer .brand-mark` + its `svg` stroke | shell.css:62–70, :73 | `--rd-accent` | stroke `--rd-on-accent` | fill, stroke `--rd-on-accent` |
   | `.side-user .avatar` | shell.css:183 | `--rd-accent` | `--rd-on-accent` | fill, `--rd-on-accent` |
   | `.offer-action` (+ `:hover`) | desk/home.css:123–131 | `--rd-accent` (hover `--rd-primary-hover`) | `--rd-on-mark` | fill / `-hover`, `--rd-on-accent` |
@@ -817,8 +818,7 @@ positioned descendants; the evidence note states these three facts with their me
   | `input[type='checkbox'/'radio']:checked` + `::before` mark | controls.css:24–25 (`::before`, mark `background`), :28–29 (`:checked`) — find by selector, lines drift | `--rd-accent` | mark `--rd-on-mark` | fill **and** `border-color` (`controls.css:29`, so dark shows no lighter 1px ring), mark `--rd-on-accent` (glyph: ≥3:1 suffices, 4.5 preferred); the hover rule `input[type=checkbox\|radio]:hover:not(:disabled) { border-color: var(--rd-accent) }` (controls.css:32–33 on 2026-11-13, specificity (0,3,1), beats `:checked` (0,2,1)) becomes `:hover:not(:disabled):not(:checked)`, so a hovered checked box keeps the fill-coloured border |
   | `.pack-card > button`, `.login-room … .login-go` | desk/packages.css:68, auth.css:206/214 | — | — | **skip**: dead, deleted in P2.1c / P2.1a |
 
-  **Stay on `--rd-accent` (decoration, no content):** `.dialog::before` thread (graphite :92), `.gauth-art-tag`
-  (:417–427), `.topbar::after` (:587), `.cap-bar i` (:1051), `.unread-dot` (:1073), `.hero-bar i.on` (:1095),
+  **Stay on `--rd-accent` (decoration, no content):** `.dialog::before` thread (graphite :92), `.topbar::after` (:587), `.cap-bar i` (:1051), `.unread-dot` (:1073), `.hero-bar i.on` (:1095),
   `.trend-dot` (:1141), shell.css:139–144 (active rail bar), :167 (`.nav-bullet`), :195 (`.holds::before`), :442
   (unread dot), `.figure-tile.lead::before` (home.css:261), `.users-meter i` (home.css:383), `.brand-rule`
   (base.css:76), `.notice-dot` (shell.css:657, dead — P2.1b), `.login-seam` (auth.css:115, dead — P2.1a).
@@ -840,7 +840,11 @@ positioned descendants; the evidence note states these three facts with their me
      graphite :524 — each becomes `--rd-accent-fill-hover` in step 3) and that set `color`, `stroke` or a `::before` background,
      prints the ratio per theme (text pairs ≥4.5:1; glyph-only pairs — `.gauth-mark`, brand-mark svg, checkbox mark —
      ≥3:1), and **exits non-zero** if any pair fails or if a `var(--rd-accent)` fill rule sets a content colour (so a
-     missed rule fails the slice). The script carries the table's "stay" list as an explicit **allowlist** (selector +
+     missed rule fails the slice). A fill is read from the colour component of the value (a shorthand such as
+     `var(--rd-accent) no-repeat` or a layered value counts; a crimson glow inside a gradient does not), a state rule
+     that changes only `color` on a fill is measured, translucent text is composited over the fill, and an `OVERLAY`
+     table checks text that other elements paint over a fill (`.gauth-art-tag` under the art's `h2` and `p`, at the
+     tag's opacity on the art's backdrops) (amended in fix round 1). A variant of a fill rule (an attribute selector, an extra class, a pseudo-class or an ancestor added, e.g. a pressed primary) takes its content from the fill selector it extends, and a crimson fill off the allowlist whose content cannot be found **fails** (amended in fix round 2). The script carries the table's "stay" list as an explicit **allowlist** (selector +
      reason); `.notice-count` is on it — its `color` declarations (graphite :492, :635) paint nothing because :595 sets
      `font-size: 0`, and P2.1b reduces it to one rule without `color`, after which the allowlist entry is removed.
      Keep the script for P6.4.
@@ -1192,8 +1196,8 @@ cannot reach (a JS-driven open state) is checked in CHK-LOOK with a screenshot b
 - **Steps:** for each selector `grep -rn "<class>" components features app lib` including template strings
   (`` `login-${…}` ``); delete the unused. Keep `.auth-card` (:18–30), `.login-enter` and `@keyframes login-in`
   (:330–336). Delete the 17 `--rd-login-*` tokens no rule uses (`grep -rn "var(--rd-login-" app components features`);
-  **keep `--rd-login-room`, `--rd-login-ink` and `--rd-login-shut`** — the live `.gauth-art` rules use them (graphite
-  :414–415, :429); P2.10 renames them with the `.gauth` move.
+  **keep `--rd-login-room` and `--rd-login-ink`** — the live `.gauth-art` rules use them (graphite :414–415;
+  `--rd-login-shut` went in P0.9, whose art line now inherits `--rd-login-ink`); P2.10 renames them with the `.gauth` move.
 - **Closes:** 3.1-19, 3.3-26, 3.4-10, 3.8-08, 3.2-24 (auth part; the `.gauth` redirect closes in P6.5).
 - **Verify:** CHK-LOCAL; CHK-ZERO including `/login`, `/password`, `/two-factor` cases.
 - **Commit:** `refactor(web): delete the unused legacy sign-in frame and its tokens (UI maintenance P2.1a; closes 3.1-19, 3.3-26, 3.4-10, 3.8-08)`

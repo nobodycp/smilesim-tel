@@ -99,8 +99,10 @@ Adopt the audit's §6 ("Fixed rules", `docs/reviews/2026-11-13-ui-audit.md`) wit
 These classes of change, each in a named slice of the plan; a visible change outside these classes is a regression.
 Reviewers read the slice text for the exact items:
 
-- Crimson buttons and every other crimson fill with content (marks, avatar, counts, chosen day, checked boxes) in dark
-  mode get legible white text on a deeper crimson (D1); hover darkens instead of lightening.
+- Crimson buttons and every other crimson fill with content (marks, avatar, counts, chosen day, checked boxes, the
+  sign-in art's tag under its heading and line) in dark mode get legible white text on a deeper crimson (D1); hover
+  darkens instead of lightening. The sign-in art's line, drawn over the tag, turns from 72% to the art's full ink in
+  both themes (the art is dark in both, and the line is under 4.5:1 on the tag in light too).
 - Token fixes in P1.2: the period chip, chart tip and task ref turn ink (they used an undefined token); `/roles` grant
   tiles get their intended stronger hairline; light warning tint derives from the warning colour (slight). Under
   D6 b / D23 b only: 1px label gaps become 2px and one zebra recipe (P1.8).
