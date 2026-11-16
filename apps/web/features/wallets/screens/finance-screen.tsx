@@ -7,7 +7,7 @@ import { useState, type ReactNode } from 'react';
 import { Button } from '../../../components/ui/button';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
-import { Desk, Money, actionName, latinWhen, layerName } from '../../../components/desk';
+import { Desk, Money, Pane, actionName, latinWhen, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { api, type FinanceRow } from '../../../lib/api';
 import type { Copy } from '../../../lib/copy';
@@ -20,6 +20,7 @@ import { Dialog } from '../../../components/dialog';
 import { useDesk } from '../../../lib/desk-session';
 import { CsvLink } from '../../reports/report-kit';
 import { Fact, Facts } from '../../../components/facts';
+import { PageActions, ReasonTag, SectionHead, kindCellClass, type ReasonTone } from '../ledger-parts';
 
 const KINDS = [
   'fund', 'self_fund', 'deduct', 'deduct_in', 'hold', 'release',
@@ -39,12 +40,12 @@ export function movementName(t: Copy, kind: string): string {
 }
 
 /** The reason tag's colour: a sale is green, money held amber, money given back red, funding violet, the rest muted. */
-export function reasonTone(kind: string): string {
-  if (['activate', 'charge', 'extend', 'reactivate', 'esim'].includes(kind)) return 'r-leaf';
-  if (kind === 'hold') return 'r-amber';
-  if (['disconnect', 'deduct', 'deduct_in'].includes(kind)) return 'r-alarm';
-  if (['fund', 'self_fund'].includes(kind)) return 'r-plum';
-  return 'r-mute';
+export function reasonTone(kind: string): ReasonTone {
+  if (['activate', 'charge', 'extend', 'reactivate', 'esim'].includes(kind)) return 'leaf';
+  if (kind === 'hold') return 'amber';
+  if (['disconnect', 'deduct', 'deduct_in'].includes(kind)) return 'alarm';
+  if (['fund', 'self_fund'].includes(kind)) return 'plum';
+  return 'mute';
 }
 
 function reasonName(t: Copy, reason: string): string {
@@ -82,8 +83,8 @@ export function FinanceScreen() {
       key: 'kind',
       header: t.reasonColumn,
       render: (row) => (
-        <span className="kind-cell">
-          <span className={`reason ${reasonTone(row.kind)}`} data-testid={`reason-${reasonTone(row.kind).replace(/^r-/, '')}`}>{movementName(t, row.kind)}</span>
+        <span className={kindCellClass}>
+          <ReasonTag tone={reasonTone(row.kind)} data-testid={`reason-${reasonTone(row.kind)}`}>{movementName(t, row.kind)}</ReasonTag>
           {row.reason && row.reason !== 'deposit' ? <Badge variant="muted">{reasonName(t, row.reason)}</Badge> : null}
           {row.held ? <Badge variant="warning" dot>{t.held} <Money value={Math.abs(row.held)} /></Badge> : null}
           {/* An eSIM sale pays the package price plus this fee in one entry; the tag explains the amount. */}
@@ -101,14 +102,14 @@ export function FinanceScreen() {
       header: t.detailsColumn,
       kind: 'wrap',
       render: (row) => (
-        <span className="ledger-detail">
+        <span className="grid min-w-55 gap-0.5">
           <span>
             {[row.msisdn ? <bdi key="n" dir="ltr">{row.msisdn}</bdi> : null, row.packageName || null, row.companyName || null, row.note || null]
               .filter(Boolean)
               .reduce<ReactNode[]>((all, part, index) => (index ? [...all, ' · ', part] : [part]), [])}
             {!row.msisdn && !row.packageName && !row.note ? '—' : null}
           </span>
-          <span className="sub">
+          <span className="block text-sm leading-[1.3] font-normal text-muted">
             <AccountName login={row.loginName} />
             {row.layer ? <> · {layerName(t, row.layer)}</> : null}
             {row.actorLoginName && row.actorLoginName !== row.loginName ? <> · {t.actedBy}: <AccountName login={row.actorLoginName} /></> : null}
@@ -117,7 +118,7 @@ export function FinanceScreen() {
       ),
     },
     // Money in reads «+», money out «−»: the sign carries the direction, the colour only repeats it.
-    { key: 'amount', header: t.amount, num: true, render: (row) => (row.amount === 0 ? <span className="muted">—</span> : <Money value={row.amount} signed />) },
+    { key: 'amount', header: t.amount, num: true, render: (row) => (row.amount === 0 ? '—' : <Money value={row.amount} signed />) },
     {
       key: 'margin',
       header: t.myMargin,
@@ -126,9 +127,9 @@ export function FinanceScreen() {
         if (row.margin == null) return '—';
         if (!row.shares) return <Money value={row.margin} signed />;
         return (
-          <button type="button" className="link-btn" onClick={() => setChainOf(row)} title={t.sharesOpen} aria-label={`${t.sharesOpen}: ${row.msisdn}`}>
+          <Button type="button" variant="link" onClick={() => setChainOf(row)} title={t.sharesOpen} aria-label={`${t.sharesOpen}: ${row.msisdn}`}>
             <Money value={row.margin} signed />
-          </button>
+          </Button>
         );
       },
     },
@@ -140,15 +141,15 @@ export function FinanceScreen() {
       title={t.navFinance}
       lede={t.financeLede}
       action={(
-        <div className="page-actions">
+        <PageActions>
           <CsvLink href={api.financeExportHref({ kind, layer, q, from, to, scope })} />
           {me && me.layer !== 'pos' ? <Button asChild><Link href="/users"><Receipt size={16} aria-hidden="true" />{t.fundAccount}</Link></Button> : null}
-        </div>
+        </PageActions>
       )}
       error=""
       note=""
     >
-      <div className="section-head"><h2>{t.movementsTitle}</h2></div>
+      <SectionHead title={t.movementsTitle} />
       <FilterBar loose onClear={() => { setKind(''); setLayer(''); setQ(''); setFrom(''); setTo(''); setScope(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.financeScope}
@@ -190,9 +191,9 @@ export function FinanceScreen() {
           <DateField value={to} onChange={(next) => setTo(next)} />
         </label>
       </FilterBar>
-      <section className="pane">
+      <Pane>
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 6 }} />
-      </section>
+      </Pane>
       <Dialog open={chainOf !== null} title={t.sharesTitle} lede={t.sharesHint} closeLabel={t.closeMenu} size="confirm" onClose={() => setChainOf(null)}>
         {chainOf?.shares ? (
           <Facts variant="list">

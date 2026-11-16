@@ -3,10 +3,11 @@
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { PagedTable, type Column } from '../../../components/data-table';
-import { Desk, Money, actionName, latinWhen } from '../../../components/desk';
+import { Desk, Money, Pane, actionName, latinWhen } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
 import { Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
+import { ReasonTag, cellSubClass, kindCellClass } from '../ledger-parts';
 import { reasonTone } from './finance-screen';
 import { api, type ProviderOpRow, type ProviderOpStats } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
@@ -45,8 +46,8 @@ export function ProviderOperationsScreen() {
       key: 'kind',
       header: t.operationColumn,
       render: (row) => (
-        <span className="kind-cell">
-          <span className={`reason ${reasonTone(row.kind)}`}>{actionName(t, row.kind)}</span>
+        <span className={kindCellClass}>
+          <ReasonTag tone={reasonTone(row.kind)}>{actionName(t, row.kind)}</ReasonTag>
           {/* Same tag as the finance page: the eSIM fee folded into this operation's cost. */}
           {row.esimPrice != null && row.kind !== 'esim' && (
             <Badge variant="muted" dot title={t.esimSaleTagTitle}>
@@ -59,7 +60,7 @@ export function ProviderOperationsScreen() {
     },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
     { key: 'provider', header: t.provider, render: (row) => <strong>{row.providerName || '—'}</strong> },
-    { key: 'package', header: t.packageName, render: (row) => <><bdi>{row.packageName || '—'}</bdi>{row.companyName ? <span className="sub">{row.companyName}</span> : null}</> },
+    { key: 'package', header: t.packageName, render: (row) => <><bdi>{row.packageName || '—'}</bdi>{row.companyName ? <span className={cellSubClass}>{row.companyName}</span> : null}</> },
     { key: 'cost', header: t.providerCost, num: true, render: (row) => <Money value={row.cost ?? 0} /> },
     // Matching, simulated until real providers are connected (spec E): the source, what the provider charged, the gap.
     { key: 'source', header: t.matchSource, render: (row) => (row.matchSource === 'api' ? t.matchSourceApi : t.matchSourceStatement) },
@@ -112,12 +113,12 @@ export function ProviderOperationsScreen() {
       <StatRow>
         <Stat label={t.opsCount} value={stats.count} meta={t.lastDaysMeta.replace('{n}', String(days))} />
         <Stat label={t.providerCost} value={<Money value={stats.cost} />} meta={<>{t.providerMonth}: <Money value={stats.monthCost} /></>} />
-        <Stat tone="success" label={t.matchMatched} value={<span className="tone-success">{stats.matched ?? 0}</span>} meta={t.pendingMeta.replace('{n}', String(stats.pending ?? 0))} />
-        <Stat tone="danger" label={t.matchDifference} value={<span className={stats.differences ? 'tone-danger' : undefined}>{stats.differences ?? 0}</span>} meta={<Money value={stats.differenceAmount ?? 0} signed />} />
+        <Stat tone="success" label={t.matchMatched} value={<span className="text-success">{stats.matched ?? 0}</span>} meta={t.pendingMeta.replace('{n}', String(stats.pending ?? 0))} />
+        <Stat tone="danger" label={t.matchDifference} value={<span className={stats.differences ? 'text-danger' : undefined}>{stats.differences ?? 0}</span>} meta={<Money value={stats.differenceAmount ?? 0} signed />} />
       </StatRow>
-      <section className="pane">
+      <Pane>
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noProviderOps} keepHead skeleton={{ rows: 6, columns: 9 }} />
-      </section>
+      </Pane>
     </Desk>
   );
 }

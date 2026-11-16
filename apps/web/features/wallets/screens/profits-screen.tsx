@@ -3,13 +3,14 @@
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
-import { Desk, Money } from '../../../components/desk';
+import { Desk, Money, Pane } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
 import { api, type ProfitRow } from '../../../lib/api';
 import { formatShekel } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useApiQuery } from '../../../lib/use-api-query';
+import { cellSubClass } from '../ledger-parts';
 import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
 
 const perSale = (row: ProfitRow) => (row.sales ? Math.round(row.profit / row.sales) : 0);
@@ -30,7 +31,7 @@ export function ProfitsScreen() {
   const best = rows.reduce<ProfitRow | null>((top, row) => (!top || row.profit > top.profit ? row : top), null);
 
   const columns: Column<ProfitRow>[] = [
-    { key: 'package', header: t.packageName, render: (row) => <><strong><bdi>{row.packageName || '—'}</bdi></strong>{row.companyName ? <span className="sub">{row.companyName}</span> : null}</> },
+    { key: 'package', header: t.packageName, render: (row) => <><strong><bdi>{row.packageName || '—'}</bdi></strong>{row.companyName ? <span className={cellSubClass}>{row.companyName}</span> : null}</> },
     { key: 'sales', header: t.salesTitle, num: true, sortValue: (row) => row.sales, render: (row) => row.sales },
     { key: 'refunds', header: t.refundsTitle, num: true, sortValue: (row) => row.refunds, render: (row) => row.refunds },
     { key: 'margin', header: t.marginPerOp, num: true, sortValue: perSale, render: (row) => <Money value={perSale(row)} signed /> },
@@ -52,9 +53,9 @@ export function ProfitsScreen() {
       <StatRow>
         <Stat label={t.yourProfit} value={data ? <Money value={data.totals.profit} signed /> : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} highlight />
         <Stat label={t.salesTitle} value={data ? data.totals.sales : '—'} meta={t.refundsMeta.replace('{n}', String(data?.totals.refunds ?? 0))} />
-        <Stat label={t.topPackage} value={best ? <bdi className="stat-name">{[best.companyName, best.packageName].filter(Boolean).join(' ')}</bdi> : '—'} meta={best ? t.perOperationMeta.replace('{amount}', `${formatShekel(perSale(best))} ₪`) : '—'} />
+        <Stat label={t.topPackage} value={best ? <bdi className="inline-block max-w-full text-[1.15rem] leading-[1.35]">{[best.companyName, best.packageName].filter(Boolean).join(' ')}</bdi> : '—'} meta={best ? t.perOperationMeta.replace('{amount}', `${formatShekel(perSale(best))} ₪`) : '—'} />
       </StatRow>
-      <section className="pane">
+      <Pane>
         <DataTable
           columns={columns}
           rows={rows}
@@ -66,7 +67,7 @@ export function ProfitsScreen() {
           keepHead
           skeleton={{ rows: 5, columns: 5 }}
         />
-      </section>
+      </Pane>
     </Desk>
   );
 }
