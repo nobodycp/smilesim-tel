@@ -17,7 +17,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 | T1 Foundation | T1.1–T1.4 | in progress — T1.1 d4ed139, T1.2 bd4b1d8; T1.3a d35dd74, T1.3b 67fb314; T1.3c ebca557; T1.4 9f6efc8 |
 | T2 Primitives (`components/ui`) | T2.1–T2.9 | in progress — T2.1 67e9a7f, T2.2 8683ea4, T2.3 b142d69, T2.4 8f22e47, T2.5 c8da893, T2.6 50bab52, T2.7 46dd706, T2.8 45b3fdd, T2.9 84ac38e |
 | T3 Shell and frames | T3.1–T3.3 | in progress — T3.1 8cfb31b, T3.2 2c40547, T3.3 f4dc3ff |
-| T4 Screens | T4.1–T4.10 | in progress — T4.3 57adebc |
+| T4 Screens | T4.1–T4.10 | in progress — T4.3 57adebc, T4.2 7f0b82d |
 | T5 Delete legacy CSS | T5.1–T5.2 | not started |
 | T6 Complete and clean the current identity | T6.1–T6.4 | not started |
 | T7 Docs final | T7.1 | not started |
@@ -200,7 +200,7 @@ Each slice ports the named screens to components + layout utilities and removes 
 
 - **T4.1 Home:** `features/desk/home-top.tsx`, `features/desk/overview.tsx`, `features/desk/screens/home-screen.tsx`,
   `components/offer-hero.tsx`.
-- **T4.2 Users and accounts:** `features/accounts/**/*.tsx`.
+- **T4.2 Users and accounts — 7f0b82d:** `features/accounts/**/*.tsx`.
 - **T4.3 Companies — 57adebc:** `features/catalog/screens/companies-screen.tsx`, `company-screen.tsx`, `add-company-screen.tsx`,
   `features/catalog/chain-board.tsx`, `inherited-modes.tsx`, `company-packages.tsx`.
 - **T4.4 Packages and providers catalogue:** `features/catalog/screens/packages-screen.tsx`, `package-sheet-screen.tsx`,
