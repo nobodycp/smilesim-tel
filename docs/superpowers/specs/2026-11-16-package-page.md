@@ -38,7 +38,8 @@ will bring a package's durations from the provider):
 
 - «نظرة عامة» shows the package's details: data, minutes, messages, the extra text, the duration, and the days before
   a number counts as suspended, beside the counts and the provider.
-- Open: whether the details are also **edited** there (the «التفاصيل» tab then goes) or only shown.
+- Owner, 2026-11-16: the details are **edited** there and the «التفاصيل» tab goes. The facts line above the form is
+  how a point of sale reads them.
 
 ### P.3 «أرقام الحسابات» tab
 

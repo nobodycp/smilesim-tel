@@ -487,7 +487,6 @@ export const en: Copy = {
   factGbUnlimited: 'Unlimited data',
   factMinutesUnlimited: 'Unlimited minutes',
   factSmsUnlimited: 'Unlimited messages',
-  detailsTab: 'Details',
   packageDetailsHint: 'Shown to the point of sale when choosing the package, and to whoever activates a number. Leave a field empty if it does not apply.',
   dataGbLabel: 'Data (GB)',
   minutesLabel: 'Call minutes',

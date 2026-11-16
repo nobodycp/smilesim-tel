@@ -487,7 +487,6 @@ export const he: Copy = {
   factGbUnlimited: 'גלישה ללא הגבלה',
   factMinutesUnlimited: 'דקות ללא הגבלה',
   factSmsUnlimited: 'הודעות ללא הגבלה',
-  detailsTab: 'פרטים',
   packageDetailsHint: 'מוצג לנקודת המכירה בבחירת החבילה, ולמי שמפעיל מספר. השאירו ריק אם לא רלוונטי.',
   dataGbLabel: 'גלישה (GB)',
   minutesLabel: 'דקות שיחה',

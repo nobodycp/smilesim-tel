@@ -45,7 +45,7 @@ import { paneHintClass } from '../sim-fields';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
-type Tab = 'overview' | 'details' | 'addons' | 'run' | 'prices' | 'durations' | 'renewals' | 'switches' | 'numbers' | 'accounts' | 'offers';
+type Tab = 'overview' | 'addons' | 'run' | 'prices' | 'durations' | 'renewals' | 'switches' | 'numbers' | 'accounts' | 'offers';
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
 const EMPTY_PRICES: Record<PriceKey, string> = {
   branchCost: '',
@@ -413,7 +413,6 @@ export function PackageSheetScreen() {
     { key: 'overview', label: t.overviewTab },
     { key: 'prices', label: t.priceChainTab },
     { key: 'durations', label: t.durationsTab },
-    { key: 'details', label: t.detailsTab },
     { key: 'addons', label: t.lineAddons },
     { key: 'run', label: t.packageActions },
     { key: 'renewals', label: t.renewalsTab },
@@ -491,6 +490,8 @@ export function PackageSheetScreen() {
                   </div>
                   <Badge className="justify-self-start" variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
                   <PackageFacts facts={sheet} />
+                  {/* The details are edited here, on the start tab; the line above is how a point of sale reads them. */}
+                  <PackageDetailsForm key={sheet.code} sheet={sheet} run={run} busy={busy} onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }} />
                   <PackageEsim
                     key={`${sheet.code}:${sheet.esimPrice ?? ''}`}
                     sheet={sheet}
@@ -500,9 +501,6 @@ export function PackageSheetScreen() {
                     onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }}
                   />
                 </div>
-              )}
-              {tab === 'details' && (
-                <PackageDetailsForm key={sheet.code} sheet={sheet} run={run} busy={busy} onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }} />
               )}
               {tab === 'durations' && (
                 <PackageDurations

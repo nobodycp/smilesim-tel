@@ -101,8 +101,9 @@ test('the package page edits its details', async ({ page }) => {
   const switched = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/details'));
   await esim.getByRole('switch', { name: 'الرزمة متاحة كـ eSIM' }).click();
   expect((await switched).postDataJSON()).toMatchObject({ dataGb: 500, smsCount: null, minutes: -1, details: '', esimAvailable: false });
-  await page.getByRole('tab', { name: 'التفاصيل' }).click();
-  await expect(page.getByLabel('الرزمة متاحة كـ eSIM')).toHaveCount(0);
+  // The details are edited on the same tab (spec 2026-11-16-package-page, P.2); eSIM is not one of their fields.
+  await expect(page.getByRole('tab', { name: 'التفاصيل' })).toHaveCount(0);
+  await expect(page.getByTestId('package-details-form').getByLabel('الرزمة متاحة كـ eSIM')).toHaveCount(0);
   await expect(page.getByLabel('الإنترنت (جيجا)')).toHaveValue('500');
   await expect(page.getByLabel('دقائق الاتصال')).toBeDisabled();
   await page.getByLabel('الرسائل').fill('200');

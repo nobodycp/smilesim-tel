@@ -148,7 +148,8 @@ export function PackageDetailsForm({
   }
 
   return (
-    <form className="pane-body min-w-0 max-w-full content-start gap-2" data-testid="package-details-form" onSubmit={save}>
+    // On the package page's start tab, inside its pane body (spec 2026-11-16-package-page, P.2).
+    <form className="grid min-w-0 max-w-full content-start gap-2" data-testid="package-details-form" onSubmit={save}>
       <p className={paneHintClass}>{t.packageDetailsHint}</p>
       <DetailsFields draft={draft} onChange={setDraft} esim={false} />
       <div>

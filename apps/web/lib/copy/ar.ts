@@ -487,7 +487,6 @@ export const ar = {
   factGbUnlimited: 'إنترنت غير محدود',
   factMinutesUnlimited: 'دقائق غير محدودة',
   factSmsUnlimited: 'رسائل غير محدودة',
-  detailsTab: 'التفاصيل',
   packageDetailsHint: 'تظهر لنقطة البيع عند اختيار الرزمة، ولمن يفعّل رقماً. اترك الحقل فارغاً إذا لا ينطبق.',
   dataGbLabel: 'الإنترنت (جيجا)',
   minutesLabel: 'دقائق الاتصال',
