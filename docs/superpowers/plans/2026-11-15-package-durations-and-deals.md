@@ -17,7 +17,7 @@ its hash. Per slice: `npm run lint`, `npm run typecheck`, `npm run check:copy`, 
   dialog shows the refusal and loses its "taken from the wallet" label.
   Specs: `pricing/rules/prices-and-periods.spec.ts` (5- and 15-day, mixed, own cost, the floor),
   `sales/settlement/execution-date-settlement.db.spec.ts` (refusals, the late task, `periodCost` on the row).
-- [ ] **D.2 Duration rows.** `PackageDuration` model and migration, one row backfilled per package (its months at
+- [x] **D.2 Duration rows** (`5ad3491`). `PackageDuration` model and migration, one row backfilled per package (its months at
   its renewal prices); `catalog/rules/package-prices.ts` `mirroredDuration`, `durationDays`; the row is written
   in the same statement as the package's columns by the seed (`catalog/shipped/catalog-seed.ts`), the provider
   import (`providers/directory/provider-catalog.service.ts`) and `setChain`
