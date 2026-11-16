@@ -72,8 +72,8 @@ const CARD = cn(
   'transition-colors duration-fast ease-standard hover:bg-surface-2',
   'focus-visible:inset-ring-2 focus-visible:inset-ring-accent focus-visible:outline-none',
 );
-/** A company's picture plate: the whole picture centred, 72px high across the card. */
-const PLATE = 'flex h-18 w-full items-center justify-center overflow-hidden rounded-sm bg-surface-2 p-2 max-sm:h-16';
+/** A company's picture: the whole picture centred, 72px high across the card, straight on the card with no plate behind it. */
+const PLATE = 'flex h-18 w-full items-center justify-center overflow-hidden p-2 max-sm:h-16';
 /** The line under a card's rule: the counts, 12px muted with the figure in bold ink. */
 const CARD_FOOT = 'mt-1 w-full border-t border-line pt-2 text-sm text-muted';
 const LOGO = 'size-16 rounded-panel bg-surface-2 object-contain';
@@ -210,7 +210,7 @@ function PosCatalog({
                 const image = imageOf.get(name) ?? '';
                 return (
                   <button className={cn(CARD, 'justify-items-center text-center')} data-slot="pos-company" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
-                    {/* The whole picture, centred on its plate; a company without one shows its letters there. */}
+                    {/* The whole picture, centred; a company without one shows its letters there. */}
                     <span className={PLATE}>
                       {image ? <DataImage className="block max-h-full max-w-full object-contain" src={image} alt="" /> : <span className="grid size-16 place-items-center rounded-card text-2xl font-bold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
                     </span>
