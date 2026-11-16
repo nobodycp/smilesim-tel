@@ -98,3 +98,16 @@ enforced, and the word `office` gone from the internal structure, the web and, i
   start timers (provider health, line snapshots, the catalog seed) that must run once, in the API. A collaborator
   added to a constructor reaches the worker from the same declaration, or the worker refuses to start naming it.
   `worker-wiring.spec.ts` holds the description to the API's providers.
+
+## Amended by slice R.12 (2026-11-16): every module has a surface
+
+`module-surface` is in force for all twelve modules (five since R.9). A module is imported by another through its
+`index.ts` only; the composition roots and the specs may reach inside. Three surfaces are not at `modules/<name>/`:
+the platform's also hands the platform's root files (`errors.ts`, `config.ts`, `db.ts`, `doors.ts`, `cors.ts`),
+identity's is `modules/auth/index.ts`, and catalog's hands `modules/branding`. A surface holds what is imported
+today and nothing more: a new name is added to it by the change that first needs it from outside.
+
+What a surface costs: a value import from it loads every file it re-exports. The module graph has no cycle
+(`module-layering`, `module-mutual` at 0), so a surface cannot make one; a file never imports its own module's
+surface.
+

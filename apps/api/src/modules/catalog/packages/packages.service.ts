@@ -1,11 +1,9 @@
 import { PackagesRepository } from './packages.repository';
-import { UnitOfWork } from '../../platform/unit-of-work';
-import { requireGrant } from '../../access/policy';
+import { UnitOfWork, fail, parseInput } from '../../platform';
+import { requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../platform/api-failure';
-import type { Actor } from '../../access/types';
+import type { Actor } from '../../access';
 import type { Prisma } from '../../../generated/prisma/client';
-import { parseInput } from '../../platform/input';
 import { chainHolds, esimPriceOf } from '../rules/package-prices';
 import { ACTION_KEYS, normalizeActionModes, packageModeData, resolvePackageMode, type ActionMode } from '../rules/run-modes';
 import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody } from './packages.schemas';

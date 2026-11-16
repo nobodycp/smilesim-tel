@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '../../../../generated/prisma/client';
-import { errorCode, logger } from '../../../platform/log';
-import { open } from '../../../platform/secret-box';
-import type { UnitOfWork } from '../../../platform/unit-of-work';
+import { errorCode, logger, open } from '../../../platform';
+import type { UnitOfWork } from '../../../platform';
 import { READY_EVERY_MS, READY_TTL_MS, type DispatchSettings, type ProviderTarget } from './dispatch-policy';
 import type { BuiltAdapters, OpenedCredential } from './provider-adapters';
 import type { RoutingProviderGateway } from './routing-gateway';

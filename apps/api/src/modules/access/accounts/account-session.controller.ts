@@ -1,15 +1,10 @@
-import { NoActivity, Activity } from '../../platform/activity.decorator';
+import { NoActivity, Activity, ApiZodBody, ApiErrorResponse, ActivityInterceptor, cookieBase, gateOf, readCookie, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
 import { Body, Controller, Post, Req, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { SESSION_COOKIE_SECONDS } from '../../auth/sessions';
-import { ApiZodBody } from '../../../openapi/body';
-import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../../platform/activity.interceptor';
-import { cookieBase, gateOf, readCookie } from '../../platform/cookies';
+import { SESSION_COOKIE_SECONDS } from '../../auth';
 import { AccountSessionService } from './account-session.service';
 import { HandoffBody } from './accounts.schemas';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 /**
  * Leaving an entered account. It reads the impersonation session itself (any scope, any layer), so it has no

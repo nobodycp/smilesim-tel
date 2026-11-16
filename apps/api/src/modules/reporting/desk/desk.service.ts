@@ -1,11 +1,9 @@
 import { DeskRepository } from './desk.repository';
-import { AccountTree } from '../../access/account-tree';
-import { isOwner } from '../../access/policy';
+import { AccountTree, isOwner, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
-import type { Actor } from '../../access/types';
-import { visibleAccountIds } from '../../access/account-visibility';
+import type { Actor } from '../../access';
 import { taskWhereFor } from '../../tasks';
-import { deniedOpsFor, parseOps, serializeOps } from '../../pricing/rules/user-terms';
+import { deniedOpsFor, parseOps, serializeOps } from '../../pricing';
 import { expiringWhere } from '../../sales';
 
 /** The signed-in account's desk: who it is (identity, balance, grants, stops), and the home board. */

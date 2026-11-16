@@ -1,8 +1,8 @@
 import { TasksRepository } from './tasks.repository';
-import { AccessModule } from '../access/access.module';
-import { PlatformModule } from '../platform/platform.module';
-import { WalletsModule } from '../wallets/wallets.module';
-import { ProvidersModule } from '../providers/providers.module';
+import { AccessModule } from '../access';
+import { PlatformModule } from '../platform';
+import { WalletsModule } from '../wallets';
+import { ProvidersModule } from '../providers';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
 import { Module } from '@nestjs/common';

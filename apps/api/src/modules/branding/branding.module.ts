@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '../auth';
 import { BrandingController } from './branding.controller';
 import { BrandingService } from './branding.service';
 import { BRANDING_STORE } from './branding.store';

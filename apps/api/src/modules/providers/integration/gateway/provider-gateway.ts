@@ -1,4 +1,4 @@
-import type { Action } from '../../../catalog/rules/actions';
+import type { Action } from '../../../catalog';
 import type { OutgoingOperation, SendEvidence } from '../operations/provider-operation.rules';
 
 // The port every line operation goes through to reach the provider (backend-engineering.mdc 4.5). The office

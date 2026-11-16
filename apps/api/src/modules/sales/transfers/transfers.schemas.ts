@@ -1,4 +1,4 @@
-import { queryText } from '../../platform/schemas';
+import { queryText } from '../../platform';
 import { z } from 'zod';
 
 // The bodies of a move (backend-engineering.mdc 4.1). No choice has a default: a move that leaves one out, or

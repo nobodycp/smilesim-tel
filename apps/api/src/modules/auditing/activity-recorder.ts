@@ -1,13 +1,9 @@
-import { hashSessionToken } from '../auth/session-token';
-import { logger, reason as why } from '../platform/log';
-import { env } from '../../config';
+import { hashSessionToken } from '../auth';
+import { logger, reason as why, env, createPrismaClient, PrismaService, ActivityRecorder, type ActivityDraft } from '../platform';
 import { Injectable, Optional } from '@nestjs/common';
-import { createPrismaClient } from '../../db';
 import { PrismaClient } from '../../generated/prisma/client';
-import { PrismaService } from '../platform/prisma.service';
 
-import type { Gate } from '../platform/cookies';
-import { ActivityRecorder, type ActivityDraft } from '../platform/activity';
+import type { Gate } from '../platform';
 
 const log = logger('ActivityLog');
 

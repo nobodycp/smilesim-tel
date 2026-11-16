@@ -1,14 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { publicPackageCode } from '../../catalog/rules/package-code';
+import { publicPackageCode, chainHolds, ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../../catalog';
 import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from '../providers.schemas';
 import { ProvidersRepository } from '../providers.repository';
-import { refuseEntered, requireGrant } from '../../access/policy';
+import { refuseEntered, requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../platform/api-failure';
-import type { Actor } from '../../access/types';
-import { parseInput } from '../../platform/input';
-import { chainHolds } from '../../catalog/rules/package-prices';
-import { ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../../catalog/rules/run-modes';
+import { fail, parseInput } from '../../platform';
+import type { Actor } from '../../access';
 import { adapterFor } from './adapters/simulated-adapter';
 
 const MODE_COLUMNS: Record<Exclude<ActionKey, 'companySwitch'>, [string, string]> = {

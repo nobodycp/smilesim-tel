@@ -89,6 +89,11 @@ or replaced by a later design. They stay in git history.
   reproduced beside the heavy database specs (seven files, 39 tests green). It began after R.8, which moved many
   files: Jest orders files by the durations it cached under their old paths, so the order of the run changed;
   whether that is the cause is not proved.
+- **Seen 2026-11-16 (slice R.12), cause not settled:** in a local batch of 42 spec files,
+  `provider-dispatch.db.spec.ts` › "forty rounds of a pause against a dispatch, at once: the request went before the
+  pause was committed, or it never went" failed once (the file 185.6 s; 35.5 s alone). The assertion's text was not
+  kept. The file passed alone and the same batch passed whole on the next run (936 tests). R.12 changes import paths
+  only. To settle: keep the full output of the next failure and read which of the two outcomes the round broke.
 - Related, also open: some spec files run a pass over every operation in the shared database
   (`settlement.applyPending`, `recoverExpired`), which can act on another file's rows. `provider-dispatch.db.spec.ts`
   no longer does, and judges a settlement by the row.

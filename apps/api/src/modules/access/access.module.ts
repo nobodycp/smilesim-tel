@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
-import { PlatformModule } from '../platform/platform.module';
+import { AuthModule } from '../auth';
+import { PlatformModule } from '../platform';
 import { AccountTree } from './account-tree';
 import { ActorResolver } from './actor-resolver';
 

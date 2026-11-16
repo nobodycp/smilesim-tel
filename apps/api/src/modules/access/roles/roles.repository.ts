@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork } from '../../platform/unit-of-work';
+import { UnitOfWork } from '../../platform';
 
 /**
  * The database as this domain reads and writes it: the roles. One method per query, named for what it returns or

@@ -1,4 +1,4 @@
-import { Layer } from '../../doors';
+import { Layer } from '../platform';
 
 export const TRIAL_PASSWORD = '123456';
 

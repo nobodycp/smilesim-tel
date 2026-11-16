@@ -1,13 +1,13 @@
 import { insertNotices } from './notice-insert.repository';
-import { env } from '../../config';
+import { env } from '../platform';
 import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import IORedis, { Redis } from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import type { Prisma } from '../../generated/prisma/client';
 import { hrefFor } from './notice-kinds';
-import type { NoticeActor, NoticeDraft, NoticeWriter, WrittenNotice } from '../platform/notices';
+import type { NoticeActor, NoticeDraft, NoticeWriter, WrittenNotice } from '../platform';
 
-export type { NoticeView, WrittenNotice } from '../platform/notices';
+export type { NoticeView, WrittenNotice } from '../platform';
 
 /** Pub/sub behind the live channel. Redis in the app, memory in tests. */
 export type NoticeBus = {

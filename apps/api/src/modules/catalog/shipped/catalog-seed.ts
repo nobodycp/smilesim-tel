@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { publicPackageCode } from '../rules/package-code';
-import { LayerRoles } from '../../access/roles/layer-roles';
-import { UnitOfWork } from '../../platform/unit-of-work';
-import { env, isTest } from '../../../config';
+import { LayerRoles } from '../../access';
+import { UnitOfWork, env, isTest } from '../../platform';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { catalog, companies, packageCode, packageName } from './shipped-catalog';
 import { AGOROT } from '../rules/package-prices';

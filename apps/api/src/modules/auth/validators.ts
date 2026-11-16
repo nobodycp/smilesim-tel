@@ -1,4 +1,4 @@
-import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
+import { ERROR_MESSAGES, type ErrorCode } from '../platform';
 import { isPalestineCity } from './cities';
 
 export const LOGIN_FAIL_LIMIT = 10;

@@ -1,11 +1,8 @@
-import { LIST_CAP, capList } from '../../platform/paging';
+import { LIST_CAP, capList, parseInput, fail, LAYER_ORDER } from '../../platform';
 import { RolesRepository } from './roles.repository';
 import { isOwner, requireOwner } from '../policy';
 import { Injectable } from '@nestjs/common';
-import { parseInput } from '../../platform/input';
-import { fail } from '../../platform/api-failure';
 import type { Actor } from '../types';
-import { LAYER_ORDER } from '../../platform/values';
 import { FLAG_CODES, flagsFor, roleGrantCodes, splitGrants } from '../grants';
 import { RoleBody } from './roles.schemas';
 

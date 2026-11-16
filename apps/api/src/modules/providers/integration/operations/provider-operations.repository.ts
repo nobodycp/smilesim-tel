@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../../../generated/prisma/client';
-import type { Db } from '../../../platform/unit-of-work';
+import type { Db } from '../../../platform';
 import type { OperationError, OperationRequest, OperationStatus } from './provider-operation.rules';
 
 /** The outbox topic of an operation that waits to be sent. */

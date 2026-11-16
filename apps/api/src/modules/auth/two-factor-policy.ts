@@ -1,5 +1,5 @@
 import { mustEnrol } from './decide-login';
-import { Layer } from '../../doors';
+import { Layer } from '../platform';
 import { TWO_FACTOR_METHODS, type AuthStore, type StoredUser, type TwoFactorMethod } from './auth.store';
 import type { MessageSender } from './message-sender';
 

@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { queryCursor, queryFlag, queryOneOf, queryText } from '../../platform/schemas';
-import { LAYER_ORDER } from '../../platform/values';
+import { queryCursor, queryFlag, queryOneOf, queryText, LAYER_ORDER } from '../../platform';
 
 // The queries of the report routes (backend-engineering.mdc 4.1).
 

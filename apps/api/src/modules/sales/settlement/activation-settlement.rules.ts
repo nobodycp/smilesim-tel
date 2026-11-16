@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { validKey } from '../../providers/integration/operations/provider-operation.rules';
+import { validKey } from '../../providers';
 import { mayDecide, phaseOf, type OperationPhase, type TaskOperation } from '../../tasks';
 
 // How a provider operation and its activation task stand to each other (ADR 0019). Pure: no Nest, no Prisma, no

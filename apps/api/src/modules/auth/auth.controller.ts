@@ -8,15 +8,9 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { ActivityRecorder, type ActivityDraft } from '../platform/activity';
-import { NoActivity } from '../platform/activity.decorator';
-import { cookieBase, readCookie } from '../platform/cookies';
+import { ActivityRecorder, type ActivityDraft, NoActivity, cookieBase, readCookie, expectedLayer, errorBody, ApiZodBody, ApiErrorResponse, NotDuplicateGuarded } from '../platform';
 import { AuthService, Failure, type Outcome } from './auth.service';
 import { SESSION_COOKIE_SECONDS } from './sessions';
-import { expectedLayer } from '../../doors';
-import { errorBody } from '../../errors';
-import { ApiZodBody } from '../../openapi/body';
-import { ApiErrorResponse } from '../../openapi/responses';
 import { NextAppDto, OkDto, OtpauthDto, ProfileDto, SessionsListDto, TwoFactorExemptDto } from './auth.dto';
 import {
   ChangePasswordBody,
@@ -38,7 +32,6 @@ import {
 } from './auth.schemas';
 import { PasskeyService } from './passkeys';
 import { TwoFactorPolicyService } from './two-factor-policy.service';
-import { NotDuplicateGuarded } from '../platform/duplicate-guard.interceptor';
 
 function setSessionCookie(res: Response, sessionId: string): void {
   res.cookie('sid', sessionId, { ...cookieBase(), maxAge: SESSION_COOKIE_SECONDS * 1000 });

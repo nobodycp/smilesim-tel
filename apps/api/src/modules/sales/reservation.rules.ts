@@ -1,4 +1,4 @@
-import type { Action } from '../catalog/rules/actions';
+import type { Action } from '../catalog';
 
 // Who holds a SIM serial and a number (ADR 0019, D5). Pure: no Nest, no Prisma.
 //

@@ -1,6 +1,6 @@
 import { OffersRepository } from './offers.repository';
-import { AccessModule } from '../../access/access.module';
-import { PlatformModule } from '../../platform/platform.module';
+import { AccessModule } from '../../access';
+import { PlatformModule } from '../../platform';
 import { OffersController } from './offers.controller';
 import { OffersService } from './offers.service';
 import { Module } from '@nestjs/common';

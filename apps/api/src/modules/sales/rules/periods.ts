@@ -1,4 +1,4 @@
-import { DISCONNECT_FEE, type LineTerms, type PackageTerms, captureTerms } from '../../pricing/rules/prices';
+import { DISCONNECT_FEE, type LineTerms, type PackageTerms, captureTerms } from '../../pricing';
 
 // Paid periods of a line: when one ends, what is still open, what a disconnect gives back, and how a renewal or
 // a switch moves them. Pure: no Nest, no Prisma.

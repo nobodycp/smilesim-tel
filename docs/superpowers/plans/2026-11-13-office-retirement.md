@@ -134,6 +134,13 @@ goes down; the backend map updated in the same commit.
   permission for every route under `/v1` (516 tests), the contract asserts both prefixes one for one and the
   two-path write, `legacy-paths.spec.ts` the counter; checked on port 3000 (`/api/v1/…` answers, the stream
   included). Handover (Arabic) says what the log line means. Commit: see `git log --grep 'R.11b'`.
+- [x] **R.12** A public surface for the other seven modules (2026-11-16): `platform`, `identity`
+  (`modules/auth/index.ts`), `access`, `catalog` (hands `modules/branding` too), `pricing`, `wallets`, `providers`.
+  Each `index.ts` re-exports exactly what other modules imported; the importing files (283 file-and-module pairs) point at the surfaces; no
+  other statement changed. `module-surface` is in force for all twelve, and its list is typed by the modules, so a new
+  one cannot be added without a surface. `access` hands the `@Actor()` decorator and the actor's shape under the
+  one name `Actor` (declared together in `actor.interceptor.ts`): one name cannot be re-exported from two files.
+  Commit: see `git log --grep 'R.12'`.
 - [ ] **R.11c** `/office/*` removed. **BLOCKED_EXTERNAL_VALIDATION** (2026-11-14). It needs what no local test can
   give: a deployed release that serves both paths (R.11b) and whose logs show no `[LegacyPaths] old paths used:` line
   for the whole release, and no web image older than R.11b left as a rollback target. Then: `RESOURCE_PREFIXES =
@@ -153,7 +160,7 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 | `operation-writes` | 0 (R.4) | `tasks/task-operation.ts` wrote a provider operation | done |
 | `transaction-outside-unit-of-work` | 2 (R.5: the attestation; R.7: the reconciliation and the run modes; left: the auth store's boot seeder and the eSIM sealing script, both stated) | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
 | `write-without-activity` | 0 (R.A) | sign-in routes that recorded nothing | done |
-| `module-surface` | in force for 5 of 12 (R.9: reporting, auditing, notifications, tasks, sales) | the others still import each other's files | later, module by module |
+| `module-surface` | in force for all twelve (R.9: five; R.12: the other seven) | — | done |
 | unguarded writes | 27 | `auth` and `branding` writes have no duplicate guard: 1 needs protection, 16 have an equivalent, 10 are authentication steps that are never replayed (below) | R.11a, R.A |
 | lock order | no guard | written in `financial-invariants.md`, held by the PostgreSQL specs | stays a review rule |
 | unused exports | not scanned | no tool for it is installed; none was added in R.0 | a later slice, with the owner's word on the tool |

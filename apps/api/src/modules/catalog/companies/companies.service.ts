@@ -1,10 +1,8 @@
-import { capList } from '../../platform/paging';
+import { capList, fail, parseInput } from '../../platform';
 import { CompaniesRepository } from './companies.repository';
-import { requireGrant } from '../../access/policy';
+import { requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../platform/api-failure';
-import type { Actor } from '../../access/types';
-import { parseInput } from '../../platform/input';
+import type { Actor } from '../../access';
 import { companies } from '../shipped/shipped-catalog';
 import { ESIM_PRICE_DEFAULT } from '../rules/package-prices';
 import { readSimRules, simRulesOf } from '../rules/sim-rules';

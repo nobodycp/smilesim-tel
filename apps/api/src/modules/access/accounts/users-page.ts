@@ -1,4 +1,4 @@
-import { encodeKeyCursor, keyCursor } from '../../platform/paging';
+import { encodeKeyCursor, keyCursor } from '../../platform';
 
 // The users list and the directory, paged by the server. The list is ordered by layer (branch, main agent, agent, point of sale)
 // and then by login name, the order the desk always drew; `q` matches the login or the full name as typed, and

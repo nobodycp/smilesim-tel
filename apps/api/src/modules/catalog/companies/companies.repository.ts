@@ -1,7 +1,6 @@
-import { LIST_CAP } from '../../platform/paging';
+import { LIST_CAP, UnitOfWork } from '../../platform';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork } from '../../platform/unit-of-work';
 
 /**
  * The database as this domain reads and writes it: companies and the packages on their shelf. One method per query, named for what it

@@ -1,18 +1,11 @@
 import { NoticesQuery, NoticeReadBody } from './notices.schemas';
-import { ApiZodQuery } from '../../openapi/query';
-import { readCookie } from '../platform/cookies';
-import { NoActivity } from '../platform/activity.decorator';
+import { ApiZodQuery, readCookie, NoActivity, ApiZodBody, ApiErrorResponse, parseInput, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../platform';
 import { Body, Controller, Get, Post, Query, Req, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { ApiZodBody } from '../../openapi/body';
-import { ApiErrorResponse } from '../../openapi/responses';
-import { parseInput } from '../platform/input';
-import { ActivityInterceptor } from '../platform/activity.interceptor';
-import { Actor, ActorInterceptor } from '../access/actor.interceptor';
-import type { Actor as ActorShape } from '../access/types';
+import { Actor, ActorInterceptor } from '../access';
+import type { Actor as ActorShape } from '../access';
 import { NoticeInboxService } from './notice-inbox.service';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 /** How often an open notices stream is pinged and its session checked again. */
 const STREAM_BEAT_MS = 25_000;

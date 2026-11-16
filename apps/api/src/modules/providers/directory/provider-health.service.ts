@@ -1,10 +1,7 @@
 import { ProvidersRepository } from '../providers.repository';
-import { UnitOfWork } from '../../platform/unit-of-work';
-import { logger, reason } from '../../platform/log';
-import { env, isTest } from '../../../config';
+import { UnitOfWork, logger, reason, env, isTest, PROVIDER_FAILED_NOTE, SYSTEM_SENDER_NAME } from '../../platform';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import type { Actor } from '../../access/types';
-import { PROVIDER_FAILED_NOTE, SYSTEM_SENDER_NAME } from '../../platform/stored-text';
+import type { Actor } from '../../access';
 import { FAILURE_WINDOW_MINUTES, HEALTH_CHECK_SECONDS, healthOf, type Health } from './provider-health';
 import { ProviderAccountsService } from '../account/provider-accounts.service';
 import { matchOverdue } from '../account/match-simulator';

@@ -1,6 +1,6 @@
 import { RolesRepository } from './roles.repository';
 import { AccessModule } from '../access.module';
-import { PlatformModule } from '../../platform/platform.module';
+import { PlatformModule } from '../../platform';
 import { LayerRoles } from './layer-roles';
 import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';

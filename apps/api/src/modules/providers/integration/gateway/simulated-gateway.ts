@@ -1,6 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { env, isProduction } from '../../../../config';
-import { fail } from '../../../platform/api-failure';
+import { env, isProduction, fail } from '../../../platform';
 import type { SendEvidence } from '../operations/provider-operation.rules';
 import { ProviderDispatchService } from '../dispatch/provider-dispatch.service';
 import { NOT_CONNECTED, type ProviderGateway, type ProviderRequest, type ProviderResult } from './provider-gateway';

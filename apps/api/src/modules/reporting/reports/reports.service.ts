@@ -1,12 +1,9 @@
-import { CursorQuery } from '../../wallets/wallets.schemas';
-import { parseInput } from '../../platform/input';
+import { CursorQuery, PROVIDER_OPERATION_KINDS } from '../../wallets';
+import { parseInput, fail, after, capList, cursorPosition, page, FEED_PAGE } from '../../platform';
 import { ReportsRepository } from './reports.repository';
-import { requireGrant } from '../../access/policy';
+import { requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../platform/api-failure';
-import type { Actor } from '../../access/types';
-import { after, capList, cursorPosition, page, FEED_PAGE } from '../../platform/paging';
-import { PROVIDER_OPERATION_KINDS } from '../../wallets/provider-cost';
+import type { Actor } from '../../access';
 
 /** Branch reports: providers and packages, and the provider-operations ledger. */
 @Injectable()

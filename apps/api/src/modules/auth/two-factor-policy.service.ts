@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Layer } from '../../doors';
+import { Layer } from '../platform';
 import { ExemptionBody, PolicyBody, TwoFactorModeBody, parseBody } from './auth.schemas';
 import { AUTH_STORE, AuthStore, TwoFactorMethod } from './auth.store';
 import { AuthService, fail, type Outcome } from './auth.service';

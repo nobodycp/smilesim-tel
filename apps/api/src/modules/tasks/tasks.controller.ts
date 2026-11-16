@@ -1,18 +1,11 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiZodBody } from '../../openapi/body';
-import { ApiZodQuery } from '../../openapi/query';
-import { ApiErrorResponse } from '../../openapi/responses';
-import { Activity, param } from '../platform/activity.decorator';
-import { ActivityInterceptor } from '../platform/activity.interceptor';
-import { ActivityRecorder } from '../platform/activity';
-import { gateOf } from '../platform/cookies';
-import { Actor, ActorInterceptor } from '../access/actor.interceptor';
-import type { Actor as ActorShape } from '../access/types';
+import { ApiZodBody, ApiZodQuery, ApiErrorResponse, Activity, param, ActivityInterceptor, ActivityRecorder, gateOf, RESOURCE_CONTROLLER_PREFIXES } from '../platform';
+import { Actor, ActorInterceptor } from '../access';
+import type { Actor as ActorShape } from '../access';
 import { TaskNoteBody, TaskRejectBody, TasksQuery } from './tasks.schemas';
 import { TasksService } from './tasks.service';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 // POST /office/tasks/:id/complete is served by LinesController: closing a task applies a line operation
 // (lines/task-completion.ts).

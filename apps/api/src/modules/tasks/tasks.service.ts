@@ -1,29 +1,22 @@
 import { TasksQuery, TaskNoteBody, TaskRejectBody } from './tasks.schemas';
 import { TasksRepository } from './tasks.repository';
-import { WalletLedger } from '../wallets/wallet-ledger';
-import { ActorResolver } from '../access/actor-resolver';
-import { AccountTree } from '../access/account-tree';
-import { UnitOfWork } from '../platform/unit-of-work';
-import { assertBranch } from '../access/policy';
+import { WalletLedger } from '../wallets';
+import { ActorResolver, AccountTree, assertBranch } from '../access';
+import { UnitOfWork, esimCodeOrFail, parseInput, fail, after, cursorPosition, page, TASKS_PAGE, HANDLER_FROZEN_NOTE } from '../platform';
 import { taskEvents } from './task-events';
-import { esimCodeOrFail } from '../platform/esim-code';
 import { holdOf, mayDecide, sameRequest, shownPhase, taskActions, type TaskOperation, type TaskRequest } from './task-operation.rules';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
-import { parseInput } from '../platform/input';
-import { fail } from '../platform/api-failure';
-import type { Actor } from '../access/types';
-import type { Action } from '../catalog/rules/actions';
+import type { Actor } from '../access';
+import type { Action } from '../catalog';
 import type { WrittenNotice } from '../notifications';
 import { excerpt, type TaskNoticePayload } from '../notifications';
-import { after, cursorPosition, page, TASKS_PAGE } from '../platform/paging';
 import { taskStatusOf } from './task-status';
-import { simRulesOf } from '../catalog/rules/sim-rules';
+import { simRulesOf } from '../catalog';
 import { canHandleTasks, esimCodeReaders, taskAudience, taskReaders, taskWhereFor, type TaskEvent } from './task-access';
 import { stampTaskLog } from './task-log';
-import { HANDLER_FROZEN_NOTE } from '../platform/stored-text';
 import { assertOperationAllows, withdrawOperation } from './task-operation';
-import { ProviderOperationsService } from '../providers/integration/operations/provider-operations.service';
+import { ProviderOperationsService } from '../providers';
 
 /**
  * What opening a task locks and checks on what it names, provided by sales (slice R.4: tasks knows no line, no

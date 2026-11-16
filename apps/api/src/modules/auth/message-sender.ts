@@ -1,4 +1,4 @@
-import { isProduction } from '../../config';
+import { isProduction } from '../platform';
 import { Injectable, Logger } from '@nestjs/common';
 
 // One way out for sign-in codes, by SMS or by email (spec 2026-11-08-signin-methods). The owner picks the gateways

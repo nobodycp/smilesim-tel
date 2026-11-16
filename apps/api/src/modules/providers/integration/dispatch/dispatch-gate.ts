@@ -1,4 +1,4 @@
-import type { Db } from '../../../platform/unit-of-work';
+import type { Db } from '../../../platform';
 import type { OutgoingOperation, SendEvidence } from '../operations/provider-operation.rules';
 import { maySend, type DispatchSettings, type ProviderDispatchState } from './dispatch-policy';
 

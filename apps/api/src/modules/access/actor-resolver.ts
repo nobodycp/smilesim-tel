@@ -1,10 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AUTH_STORE, type AuthStore } from '../auth/auth.store';
-import type { Gate } from '../platform/cookies';
-import { fail } from '../platform/api-failure';
+import { AUTH_STORE, type AuthStore } from '../auth';
+import type { Gate } from '../platform';
+import { fail, UnitOfWork, type Db } from '../platform';
 import { GRANT_CODES, effectiveGrantCodes } from './grants';
 import type { Actor } from './types';
-import { UnitOfWork, type Db } from '../platform/unit-of-work';
 
 type RoleFlags = { grants: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean };
 

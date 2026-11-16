@@ -1,14 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiZodBody } from '../../../openapi/body';
-import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, param } from '../../platform/activity.decorator';
-import { ActivityInterceptor } from '../../platform/activity.interceptor';
-import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
-import type { Actor as ActorShape } from '../../access/types';
+import { ApiZodBody, ApiErrorResponse, Activity, param, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
+import { Actor, ActorInterceptor } from '../../access';
+import type { Actor as ActorShape } from '../../access';
 import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody } from './packages.schemas';
 import { PackagesService } from './packages.service';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('catalog')
 @ApiCookieAuth('sid')

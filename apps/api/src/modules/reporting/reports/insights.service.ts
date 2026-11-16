@@ -1,20 +1,12 @@
-import { PeriodQuery, isOn } from '../../platform/schemas';
+import { PeriodQuery, isOn, parseInput, dayRange, keyPage, BALANCES_PAGE, fail } from '../../platform';
 import { BalancesQuery, type BalancesFilter } from './reports.schemas';
-import { parseInput } from '../../platform/input';
 import { ReportsRepository } from './reports.repository';
-import { AccountTree } from '../../access/account-tree';
-import { dayRange } from '../../platform/dates';
-import { keyPage, BALANCES_PAGE } from '../../platform/paging';
-import { requireGrant } from '../../access/policy';
+import { AccountTree, requireGrant, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { fail } from '../../platform/api-failure';
-import type { Actor } from '../../access/types';
-import { visibleAccountIds } from '../../access/account-visibility';
-import { REFUND_KINDS, SALE_KINDS } from '../../pricing/rules/profit-ladder';
-import { PROVIDER_OPERATION_KINDS } from '../../wallets/provider-cost';
-import { WalletsService } from '../../wallets/wallets.service';
-import { csvOf } from '../../wallets/report-csv';
+import type { Actor } from '../../access';
+import { REFUND_KINDS, SALE_KINDS } from '../../pricing';
+import { PROVIDER_OPERATION_KINDS, WalletsService, csvOf } from '../../wallets';
 
 // The «التقارير» page (spec 2026-11-08-reports, roadmap N5): balances and providers, each scoped to the signed-in
 // account's chain like the ledger, with totals and a CSV of the same filters. Sales and orders left by spec

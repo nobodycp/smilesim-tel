@@ -1,6 +1,6 @@
-import type { Action } from '../catalog/rules/actions';
+import type { Action } from '../catalog';
 import { TASK_STATUSES } from './task-status';
-import { queryCursor, queryOneOf, queryText } from '../platform/schemas';
+import { queryCursor, queryOneOf, queryText } from '../platform';
 import { z } from 'zod';
 
 /** The longest note or refusal reason written on a task. */

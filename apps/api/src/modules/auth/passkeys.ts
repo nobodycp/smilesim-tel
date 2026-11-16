@@ -1,4 +1,4 @@
-import { wholeEnv } from '../../config';
+import { wholeEnv, allowedOrigins, ERROR_MESSAGES, type ErrorCode, Layer } from '../platform';
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import {
@@ -9,12 +9,9 @@ import {
   type AuthenticationResponseJSON,
   type RegistrationResponseJSON,
 } from '@simplewebauthn/server';
-import { allowedOrigins } from '../../cors';
-import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
 import { PasskeyBody, PasskeyLoginBody, parseBody } from './auth.schemas';
 import { AUTH_STORE, AuthStore, PasskeyRow } from './auth.store';
 import { AuthService, type Failure, type Outcome } from './auth.service';
-import { Layer } from '../../doors';
 
 // Passkeys (spec 2026-11-08-signin-methods): added from settings with a full session, and a sign-in of their own
 // that stands for the password and the second step together. Challenges live CHALLENGE_SECONDS and are spent once.

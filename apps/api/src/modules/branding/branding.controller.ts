@@ -1,13 +1,8 @@
-import { gateOf } from '../platform/cookies';
+import { gateOf, errorBody, ApiErrorResponse, ActivityRecorder, ApiFailure, NotDuplicateGuarded } from '../platform';
 import { Body, Controller, Get, Param, Put, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiCookieAuth, ApiOperation, ApiParam, ApiTags, ApiPropertyOptional } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { errorBody } from '../../errors';
-import { ApiErrorResponse } from '../../openapi/responses';
-import { ActivityRecorder } from '../platform/activity';
-import { ApiFailure } from '../platform/api-failure';
 import { BrandingService, type ImageKind } from './branding.service';
-import { NotDuplicateGuarded } from '../platform/duplicate-guard.interceptor';
 
 @NotDuplicateGuarded('one write, PUT /branding, replaces the identity with a stated one: a repeat changes nothing')
 export class BrandingBodyDto {

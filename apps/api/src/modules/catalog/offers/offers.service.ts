@@ -1,12 +1,9 @@
-import { capList } from '../../platform/paging';
+import { capList, UnitOfWork, parseInput, fail } from '../../platform';
 import { OffersRepository } from './offers.repository';
-import { UnitOfWork } from '../../platform/unit-of-work';
-import { refuseEntered, requireGrant } from '../../access/policy';
+import { refuseEntered, requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Offer } from '../../../generated/prisma/client';
-import { parseInput } from '../../platform/input';
-import { fail } from '../../platform/api-failure';
-import type { Actor } from '../../access/types';
+import type { Actor } from '../../access';
 import { OFFER_IMAGE_LIMIT, OfferBody, OfferMoveBody, OfferUpdateBody } from './offers.schemas';
 
 // Offers (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1): picture-and-text announcements on the home hero,

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AUTH_STORE, AuthStore } from '../auth/auth.store';
-import { ApiFailure } from '../platform/api-failure';
+import { AUTH_STORE, AuthStore } from '../auth';
+import { ApiFailure } from '../platform';
 import {
   brandingSummary,
   decodeImage,
@@ -10,7 +10,7 @@ import {
 } from './branding-rules';
 import { BRANDING_STORE, BrandingStore } from './branding.store';
 
-import type { Gate } from '../platform/cookies';
+import type { Gate } from '../platform';
 export type ImageKind = 'logo' | 'logo-dark' | 'favicon';
 
 @Injectable()

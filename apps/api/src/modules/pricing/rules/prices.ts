@@ -2,7 +2,7 @@
 // which price a layer may edit. Pure: no Nest, no Prisma. The money unit and a package's own prices are the
 // catalog's (`catalog/rules/package-prices.ts`); the credit ceiling is the wallets' (`wallets/ceiling.ts`). Slice R.3.
 
-import { AGOROT, type PriceField, type Prices } from '../../catalog/rules/package-prices';
+import { AGOROT, type PriceField, type Prices } from '../../catalog';
 
 /**
  * What the branch pays the provider for an activation: the subscription branch cost, plus the eSIM fee when

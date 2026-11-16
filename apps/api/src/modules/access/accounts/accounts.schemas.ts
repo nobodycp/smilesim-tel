@@ -1,4 +1,4 @@
-import { queryCursor, queryFlag, queryOneOf, queryText, loginName, optionalText } from '../../platform/schemas';
+import { queryCursor, queryFlag, queryOneOf, queryText, loginName, optionalText } from '../../platform';
 import { USER_LAYERS } from './users-page';
 import { z } from 'zod';
 

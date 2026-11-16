@@ -4,7 +4,7 @@
 // (or the package's subscriber price) minus what it paid. Pure: the callers load the rows.
 
 import { buyPriceFor, layerPrice, type LayerPrices, type PriceKind, type SellRow, type TermRow } from './user-terms';
-import type { PathNode } from '../../access/types';
+import type { PathNode } from '../../access';
 
 /** The wallet entries that sell something, and which price they use. A switch moves a difference, not a sale. */
 export const SALE_KINDS: Readonly<Record<string, PriceKind>> = {

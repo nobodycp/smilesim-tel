@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import { queryCursor, queryDay, queryFlag, queryOneOf, queryText } from '../platform/schemas';
+import { queryCursor, queryDay, queryFlag, queryOneOf, queryText, LAYER_ORDER } from '../platform';
 import { ACTIVITY_ACTIONS } from './activity-log';
-import { LAYER_ORDER } from '../platform/values';
 
 // The query of the activity log routes (backend-engineering.mdc 4.1).
 

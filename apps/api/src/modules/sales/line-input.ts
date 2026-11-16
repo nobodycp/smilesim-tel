@@ -1,4 +1,4 @@
-import { fail } from '../platform/api-failure';
+import { fail } from '../platform';
 import { PERIOD_DAYS } from './rules/periods';
 
 /** A mobile number as the office writes it. */

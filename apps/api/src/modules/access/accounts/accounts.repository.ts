@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork, type Db } from '../../platform/unit-of-work';
+import { UnitOfWork, type Db } from '../../platform';
 
 /**
  * The database as this domain reads and writes it: accounts, their roles and what must be empty before one is removed. One method per query, named for what it

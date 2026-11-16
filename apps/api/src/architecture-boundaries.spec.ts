@@ -117,15 +117,24 @@ describe('module boundaries, on the source as it is', () => {
   });
 
   it('module-surface: a module with a public surface is imported through it', () => {
-    // IN FORCE, module by module (slice R.9): a module listed here is imported by other modules through its
-    // `index.ts` only. The five below were given theirs in R.9; the others keep reaching inside until the slice that
-    // gives them one. A composition root (`app`) may reach inside any module.
-    const surfaces: Partial<Record<ModuleName, string>> = {
-      reporting: 'modules/reporting/index.ts',
+    // IN FORCE for every module: a module is imported by other modules through its `index.ts` only. Five were
+    // given theirs in R.9 and the other seven in R.12; the type holds the list to the modules, so a new module
+    // cannot be added without its surface. The platform's surface also hands the platform's files at the root
+    // (`errors.ts`, `config.ts`, `db.ts`, `doors.ts`); identity's is in `modules/auth`, and catalog's hands
+    // `modules/branding` too. A composition root (`app`) may reach inside any module.
+    const surfaces: Record<ModuleName, string> = {
+      platform: 'modules/platform/index.ts',
+      identity: 'modules/auth/index.ts',
+      access: 'modules/access/index.ts',
       auditing: 'modules/auditing/index.ts',
       notifications: 'modules/notifications/index.ts',
+      catalog: 'modules/catalog/index.ts',
+      pricing: 'modules/pricing/index.ts',
+      wallets: 'modules/wallets/index.ts',
+      providers: 'modules/providers/index.ts',
       tasks: 'modules/tasks/index.ts',
       sales: 'modules/sales/index.ts',
+      reporting: 'modules/reporting/index.ts',
     };
     check('module-surface', surfaceViolations(edges, surfaces));
     for (const surface of Object.values(surfaces)) expect({ surface, exists: production.some(({ file }) => file === surface) }).toEqual({ surface, exists: true });

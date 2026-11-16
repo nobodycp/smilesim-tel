@@ -1,21 +1,13 @@
 import { Body, Controller, Get, Headers, Param, Post, Query, Req, Res, UseInterceptors } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ApiCookieAuth, ApiHeader, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiZodBody } from '../../openapi/body';
-import { ApiZodQuery } from '../../openapi/query';
-import { ApiErrorResponse } from '../../openapi/responses';
-import { Activity, bodyField, param } from '../platform/activity.decorator';
-import { ActivityInterceptor } from '../platform/activity.interceptor';
-import { ActivityRecorder } from '../platform/activity';
-import { gateOf } from '../platform/cookies';
-import { AwaitsFirstAnswer, REPLAY_HEADER, SecretAnswer } from '../platform/duplicate-guard.interceptor';
-import { Actor, ActorInterceptor } from '../access/actor.interceptor';
-import type { Actor as ActorShape } from '../access/types';
+import { ApiZodBody, ApiZodQuery, ApiErrorResponse, Activity, bodyField, param, ActivityInterceptor, ActivityRecorder, gateOf, AwaitsFirstAnswer, REPLAY_HEADER, SecretAnswer, RESOURCE_CONTROLLER_PREFIXES } from '../platform';
+import { Actor, ActorInterceptor } from '../access';
+import type { Actor as ActorShape } from '../access';
 import { LineReads } from './line-reads';
 import { ActivateBody, AddonBody, CompleteTaskBody, ExtendBody, OutcomeBody, LinesQuery, ProviderDecisionApprovalBody, ProviderDecisionBody, ProviderDecisionsQuery, RenameLineBody, SwapSimBody, SwitchPackageBody } from './lines.schemas';
 import { LinesService } from './lines.service';
 import { ProviderDecisions } from './settlement/provider-decisions';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 /** Whether an activation's answer carries an eSIM code: only then is the duplicate guard's copy of it a secret. */
 const carriesEsimCode = (answer: unknown) => Boolean((answer as { line?: { esimQr?: unknown } } | null)?.line?.esimQr);

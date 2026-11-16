@@ -1,19 +1,12 @@
-import { PeriodQuery } from '../../platform/schemas';
+import { PeriodQuery, UnitOfWork, dayRange, fail, parseInput, cursorPosition, page, FEED_PAGE } from '../../platform';
 import { ProvidersRepository } from '../providers.repository';
-import { UnitOfWork } from '../../platform/unit-of-work';
-import { dayRange } from '../../platform/dates';
-import { requireAnyGrant, requireGrant } from '../../access/policy';
+import { requireAnyGrant, requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../platform/api-failure';
-import { parseInput } from '../../platform/input';
 import { matchOf, matchOverdue } from './match-simulator';
-import type { Actor } from '../../access/types';
-import { providerBranchCost } from '../../pricing/rules/prices';
-import { csvOf } from '../../wallets/report-csv';
-import { WalletsService } from '../../wallets/wallets.service';
+import type { Actor } from '../../access';
+import { providerBranchCost } from '../../pricing';
+import { csvOf, WalletsService, PROVIDER_OPERATION_KINDS } from '../../wallets';
 import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ProviderOperationsQuery, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from '../providers.schemas';
-import { PROVIDER_OPERATION_KINDS } from '../../wallets/provider-cost';
-import { cursorPosition, page, FEED_PAGE } from '../../platform/paging';
 import { linesOf, readSheet, reconcile, suggestMap, type StatementMap } from './statement';
 
 // Our account with each provider (spec 2026-11-08-provider-accounts, roadmap N7): what we bought through our operations,

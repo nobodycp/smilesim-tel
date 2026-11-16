@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { decideLogin, mustEnrol } from './decide-login';
-import { Layer } from '../../doors';
+import { Layer, isProduction, ERROR_MESSAGES, type ErrorCode, secretsKey } from '../platform';
 import { availableMethods, endUnenrolledSessions, enrolmentChoices, fixedMethod, settingsView, type UserSettingsView } from './two-factor-policy';
 import {
   ChangePasswordBody,
@@ -20,9 +20,6 @@ import { hashPassword, passwordMatches } from './password';
 import { SessionRuleValues, effectiveRules, idsToRevoke, isListedAccountSession } from './sessions';
 import { createTotpSecret, totpKeyUri, totpMatches } from './totp';
 import { addressProblem, cityProblem, fullNameProblem, loginBlocked, newPasswordProblem } from './validators';
-import { isProduction } from '../../config';
-import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
-import { secretsKey } from '../platform/secret-box';
 
 export type LoginResult =
   | { kind: 'error'; status: number; message: string; code: ErrorCode }

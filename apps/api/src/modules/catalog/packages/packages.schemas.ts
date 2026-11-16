@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { agorot, optionalAgorot, text } from '../../platform/schemas';
+import { agorot, optionalAgorot, text } from '../../platform';
 import { ACTION_KEYS } from '../rules/run-modes';
 
 // The bodies of the package routes (backend-engineering.mdc 4.1). The service parses them with `parseInput`

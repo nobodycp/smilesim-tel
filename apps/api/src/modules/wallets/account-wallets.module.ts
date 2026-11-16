@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { AccountWallets } from '../access/account-ports';
+import { AccountWallets } from '../access';
 import { WalletLedger } from './wallet-ledger';
 import { WalletsModule } from './wallets.module';
 

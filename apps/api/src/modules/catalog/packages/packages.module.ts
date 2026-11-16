@@ -1,6 +1,6 @@
 import { PackagesRepository } from './packages.repository';
-import { AccessModule } from '../../access/access.module';
-import { PlatformModule } from '../../platform/platform.module';
+import { AccessModule } from '../../access';
+import { PlatformModule } from '../../platform';
 import { PackagesController } from './packages.controller';
 import { PackagesService } from './packages.service';
 import { Module } from '@nestjs/common';

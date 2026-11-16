@@ -1,5 +1,5 @@
-import type { Layer } from '../../doors';
-import { ERROR_MESSAGES, type ErrorCode } from '../../errors';
+import type { Layer } from '../platform';
+import { ERROR_MESSAGES, type ErrorCode } from '../platform';
 
 export type LoginUser = {
   id: string;

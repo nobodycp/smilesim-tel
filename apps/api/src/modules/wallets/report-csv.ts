@@ -1,4 +1,4 @@
-import { csvDocument } from '../platform/csv';
+import { csvDocument } from '../platform';
 import { shekels } from './finance-summary';
 
 // A report's CSV with its money in shekels: the wallets' (who write money as text, `shekels`) since slice R.7, so

@@ -1,18 +1,15 @@
 import { OverviewQuery } from './desk.schemas';
-import { parseInput } from '../../platform/input';
+import { parseInput } from '../../platform';
 import { DeskRepository } from './desk.repository';
-import { AccountTree } from '../../access/account-tree';
-import { holdsAny } from '../../access/policy';
+import { AccountTree, holdsAny, visibleAccountIds } from '../../access';
 import { Injectable } from '@nestjs/common';
-import type { Actor } from '../../access/types';
-import { visibleAccountIds } from '../../access/account-visibility';
+import type { Actor } from '../../access';
 import { expiringWhere, suspendedWhere } from '../../sales';
-import { REFUND_KINDS, SALE_KINDS, marginOf } from '../../pricing/rules/profit-ladder';
-import { ProviderAccountsService } from '../../providers/account/provider-accounts.service';
-import { ProviderHealthService } from '../../providers/directory/provider-health.service';
+import { REFUND_KINDS, SALE_KINDS, marginOf } from '../../pricing';
+import { ProviderAccountsService, ProviderHealthService } from '../../providers';
 import { InsightsService } from '../reports/insights.service';
 import { taskWhereFor } from '../../tasks';
-import { WalletsService } from '../../wallets/wallets.service';
+import { WalletsService } from '../../wallets';
 import { addEntry, axis, bucketOf, emptyTotals, stepOf, previousWindow, type PulsePoint, type PulseTotals } from './pulse';
 
 // The home page's full picture (spec 2026-11-08-overview-and-reports-nav, F): every card of one viewer in one read,

@@ -1,10 +1,10 @@
 /** What the browser needs to word a notice. The API stores no sentence. */
 
-import type { NoticeDraft, NoticeKind, ProviderNoticePayload, TaskNoticePayload } from '../platform/notices';
+import type { NoticeDraft, NoticeKind, ProviderNoticePayload, TaskNoticePayload } from '../platform';
 
 // The kinds and their payloads are the platform's contract (`platform/notices.ts`); re-exported for the code that
 // read them here.
-export type { FundNoticePayload, MatchOverduePayload, NoticeDraft, NoticeKind, ProviderNoticePayload, TaskNoticePayload, TransferNoticePayload, WalletNoticePayload } from '../platform/notices';
+export type { FundNoticePayload, MatchOverduePayload, NoticeDraft, NoticeKind, ProviderNoticePayload, TaskNoticePayload, TransferNoticePayload, WalletNoticePayload } from '../platform';
 
 export const NOTICE_GROUPS = {
   tasks: ['task.opened', 'task.taken', 'task.released', 'task.note', 'task.done', 'task.rejected', 'task.cancelled'],

@@ -1,14 +1,10 @@
-import { Activity, bodyField, param } from '../../platform/activity.decorator';
+import { Activity, bodyField, param, ApiZodBody, ApiErrorResponse, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
 import { Body, Controller, Get, Param, Post, Put, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiZodBody } from '../../../openapi/body';
-import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../../platform/activity.interceptor';
 import { Actor, ActorInterceptor } from '../actor.interceptor';
 import type { Actor as ActorShape } from '../types';
 import { RoleBody } from './roles.schemas';
 import { RolesService } from './roles.service';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('access')
 @ApiCookieAuth('sid')

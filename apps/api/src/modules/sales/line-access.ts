@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { fail } from '../platform/api-failure';
-import { AccountTree } from '../access/account-tree';
-import type { Actor } from '../access/types';
-import { UnitOfWork } from '../platform/unit-of-work';
-import { visibleAccountIds } from '../access/account-visibility';
-import { deniedOpsFor } from '../pricing/rules/user-terms';
+import { fail, UnitOfWork } from '../platform';
+import { AccountTree, visibleAccountIds } from '../access';
+import type { Actor } from '../access';
+import { deniedOpsFor } from '../pricing';
 
 /** A number as the actor may reach it. */
 @Injectable()

@@ -1,10 +1,6 @@
-import { open, seal } from '../platform/secret-box';
+import { open, seal, logger, env as readEnv, wholeEnv, createPrismaClient, PrismaService, Layer } from '../platform';
 import { hashSessionToken, newSessionToken } from './session-token';
-import { logger } from '../platform/log';
-import { env as readEnv, wholeEnv } from '../../config';
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
-import { createPrismaClient } from '../../db';
-import { PrismaService } from '../platform/prisma.service';
 import { PrismaClient } from '../../generated/prisma/client';
 import IORedis, { Redis } from 'ioredis';
 import {
@@ -21,7 +17,6 @@ import {
   UserPatch,
 } from './auth.store';
 import { LoginUser } from './decide-login';
-import { Layer } from '../../doors';
 import { hashPassword } from './password';
 import { SessionRuleValues, SessionRules, effectiveRules } from './sessions';
 import { TRIAL_PASSWORD, buildTrialSeed, trialSeedDecision } from './trial-seed';

@@ -1,7 +1,7 @@
 import { ProvidersRepository } from './providers.repository';
-import { AccessModule } from '../access/access.module';
-import { PlatformModule } from '../platform/platform.module';
-import { WalletsModule } from '../wallets/wallets.module';
+import { AccessModule } from '../access';
+import { PlatformModule } from '../platform';
+import { WalletsModule } from '../wallets';
 import { PROVIDER_GATEWAY } from './integration/gateway/provider-gateway';
 import { SimulatedProviderGateway } from './integration/gateway/simulated-gateway';
 import { ProviderDispatchRepository } from './integration/dispatch/provider-dispatch.repository';

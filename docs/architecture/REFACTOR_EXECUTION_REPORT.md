@@ -34,6 +34,7 @@ below were pushed by the owner on 2026-11-16 with the UI work that followed them
 | R.11a HTTP security | DONE | `518f039` |
 | R.11b Route migration | DONE | `5cc9f2f` |
 | R.11c Legacy route removal | BLOCKED_EXTERNAL_VALIDATION | `808f49f` (documentation) |
+| R.12 Surfaces for the other seven modules | DONE | see `git log --grep 'R.12'` |
 
 ## Guard counts
 
@@ -392,4 +393,25 @@ below were pushed by the owner on 2026-11-16 with the UI work that followed them
   name removed by W.1 and W.2 is back in `apps/web`, and the web still calls `/v1`.
 - **Not known from here:** whether any deployment runs this code. The release order of R.11b (API, then worker,
   then web; rollback in the reverse order) applies to the first one that does, and R.11c stays blocked until then.
+
+## R.12 Surfaces for the other seven modules — DONE (2026-11-16)
+
+- **What:** `index.ts` for `platform`, `identity` (`modules/auth/`), `access`, `catalog`, `pricing`, `wallets`,
+  `providers`: each re-exports exactly the names other modules imported (platform 110 names from 30 files, access
+  25, pricing 32, catalog 28, providers 10, wallets 9, identity 8). 283 file-and-module pairs now name a surface; three
+  re-exports (`auditing/activity-log.ts`, `notifications/notice-kinds.ts`, `notifications/notice.service.ts`) were
+  pointed by hand. No statement other than an import or a re-export changed, but one: `access/actor.interceptor.ts`
+  declares `type Actor` beside the `Actor` decorator, because a surface cannot re-export one name from two files
+  (`types.ts` and the interceptor); importers keep their text (`Actor`, `Actor as ActorShape`).
+- **Guard:** `module-surface` lists all twelve modules, typed `Record<ModuleName, string>`. Counts unchanged
+  elsewhere.
+- **Checked:** api typecheck 0, lint 0; `architecture*.spec.ts` 64/64. A batch of 42 files (routes, permissions,
+  response shape, worker wiring, registry, the HTTP security specs, the activation settlement, the dispatch and
+  ports database specs, every spec of catalog, pricing, wallets and access) on PostgreSQL and Redis.
+- **One failure, not explained:** in the first run of that batch (load 5.7 at the start) one test of 936 failed:
+  `provider-dispatch.db.spec.ts` › "forty rounds of a pause against a dispatch, at once", the file at 185.6 s. I had
+  filtered the output, so the assertion's text was not kept. The file alone passed (52 tests, 35.5 s), and the same
+  batch run again with its output kept passed whole (936/936, 109 s, load 6.5 to 9.0). Not attributed to load or to
+  this slice: neither is proved. Recorded in `docs/superpowers/plans/2026-11-10-open-items.md`. The full suite is
+  for GitHub CI.
 

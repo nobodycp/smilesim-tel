@@ -1,7 +1,7 @@
 import { NoticesRepository } from './notices.repository';
-import { AccessModule } from '../access/access.module';
-import { PlatformModule } from '../platform/platform.module';
-import { AuthModule } from '../auth/auth.module';
+import { AccessModule } from '../access';
+import { PlatformModule } from '../platform';
+import { AuthModule } from '../auth';
 import { NoticeInboxService } from './notice-inbox.service';
 import { NoticesController } from './notices.controller';
 import { Module } from '@nestjs/common';

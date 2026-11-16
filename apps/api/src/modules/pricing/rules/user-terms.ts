@@ -5,7 +5,7 @@
 // service loads once per request and asks here. See
 // docs/superpowers/specs/2026-11-05-user-packages-and-operations-design.md.
 
-import type { PathNode } from '../../access/types';
+import type { PathNode } from '../../access';
 
 // The first nine are line operations, judged on the path of the selling account that owns the line.
 // `transfer` is the exception: it is judged on the path of the actor who moves (see transfer-rules.ts).

@@ -1,13 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { wholeEnv } from '../../../../config';
+import { wholeEnv, parseInput, fail, isSealed, seal, secretsKey, UnitOfWork } from '../../../platform';
 import type { Prisma } from '../../../../generated/prisma/client';
-import type { ErrorCode } from '../../../../errors';
-import { parseInput } from '../../../platform/input';
-import { fail } from '../../../platform/api-failure';
-import { isSealed, seal, secretsKey } from '../../../platform/secret-box';
-import type { Actor } from '../../../access/types';
-import { UnitOfWork } from '../../../platform/unit-of-work';
-import { requireOwner } from '../../../access/policy';
+import type { ErrorCode } from '../../../platform';
+import type { Actor } from '../../../access';
+import { requireOwner } from '../../../access';
 import { ProviderDispatchRepository } from './provider-dispatch.repository';
 import { ProviderCredentialBody } from '../../providers.schemas';
 import { dispatchSettings, eligibility, mayOpenDispatch, workerReady, type DispatchRefusal, type DispatchSettings, type ProviderDispatchState, type ProviderTarget } from './dispatch-policy';

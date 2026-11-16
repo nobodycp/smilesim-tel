@@ -1,17 +1,11 @@
 import { DirectoryQuery, UsersQuery, AccessBody, CreateUserBody, SetAccountPasswordBody } from './accounts.schemas';
-import { ApiZodQuery } from '../../../openapi/query';
+import { ApiZodQuery, ApiZodBody, ApiErrorResponse, Activity, bodyField, param, ActivityInterceptor, readCookie, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { ApiZodBody } from '../../../openapi/body';
-import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, bodyField, param } from '../../platform/activity.decorator';
-import { ActivityInterceptor } from '../../platform/activity.interceptor';
-import { readCookie } from '../../platform/cookies';
 import { Actor, ActorInterceptor } from '../actor.interceptor';
 import type { Actor as ActorShape } from '../types';
 import { AccountsService } from './accounts.service';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('access')
 @ApiCookieAuth('sid')

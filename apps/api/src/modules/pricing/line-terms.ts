@@ -2,7 +2,7 @@
 // line operations and the terms module.
 
 import { captureTerms, type LineTerms } from './rules/prices';
-import type { Prices } from '../catalog/rules/package-prices';
+import type { Prices } from '../catalog';
 import { packageTermsOf, type PackagePriceRow } from './rules/package-terms';
 export function lineTermsOf(value: unknown, pkg: PackagePriceRow): LineTerms {
   if (value === null) return captureTerms(packageTermsOf(pkg), []);

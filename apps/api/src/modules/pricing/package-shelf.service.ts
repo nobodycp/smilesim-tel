@@ -1,17 +1,11 @@
-import { capList } from '../platform/paging';
+import { capList, fail, parseInput } from '../platform';
 import { PriceLadder } from './price-ladder';
-import { AccountTree } from '../access/account-tree';
-import { seesLayer } from '../access/policy';
+import { AccountTree, seesLayer } from '../access';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../platform/api-failure';
-import type { Actor } from '../access/types';
-import { parseInput } from '../platform/input';
+import type { Actor } from '../access';
 import { editableField } from './rules/prices';
-import { esimPriceOf } from '../catalog/rules/package-prices';
-import { activateInputs, resolvePackageMode } from '../catalog/rules/run-modes';
-import { simRulesOf } from '../catalog/rules/sim-rules';
+import { esimPriceOf, activateInputs, resolvePackageMode, simRulesOf, SellPriceBody } from '../catalog';
 import { buyPriceFor, deniedOpsFor, layerPrice, visibleTo } from './rules/user-terms';
-import { SellPriceBody } from '../catalog/packages/packages.schemas';
 import { TermsRepository } from './terms.repository';
 
 /**

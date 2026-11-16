@@ -1,15 +1,10 @@
 import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from '../providers.schemas';
-import { ApiZodQuery } from '../../../openapi/query';
+import { ApiZodQuery, ApiZodBody, ApiErrorResponse, Activity, bodyField, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
 import { Body, Controller, Get, Param, Post, Query, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiZodBody } from '../../../openapi/body';
-import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, bodyField } from '../../platform/activity.decorator';
-import { ActivityInterceptor } from '../../platform/activity.interceptor';
-import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
-import type { Actor as ActorShape } from '../../access/types';
+import { Actor, ActorInterceptor } from '../../access';
+import type { Actor as ActorShape } from '../../access';
 import { ProviderCatalogService } from './provider-catalog.service';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 /** Adding to the catalog from the provider (spec 2026-11-09-admin-review, 3): query, then add a company or a package. */
 @ApiTags('providers')

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork, type Db } from '../../platform/unit-of-work';
-import { RENEWABLE_STATUSES } from '../../pricing/rules/line-prices';
-import { PRICE_COLUMNS } from '../../pricing/price-ladder';
+import { UnitOfWork, type Db } from '../../platform';
+import { RENEWABLE_STATUSES, PRICE_COLUMNS } from '../../pricing';
 
 /**
  * The database as this domain reads and writes it: what a move of an account or a number changes, and what its preview counts. One method per query, named for what it

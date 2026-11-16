@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { AccountTasks } from '../access/account-ports';
+import { AccountTasks } from '../access';
 import { TasksModule } from './tasks.module';
 import { TasksService } from './tasks.service';
 

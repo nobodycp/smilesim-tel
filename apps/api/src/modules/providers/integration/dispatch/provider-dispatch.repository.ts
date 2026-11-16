@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Db } from '../../../platform/unit-of-work';
+import type { Db } from '../../../platform';
 import type { ProviderTarget, WorkerAttestation } from './dispatch-policy';
 
 /** What the dispatch switch reads of a provider: the approval and the pause. */

@@ -1,8 +1,6 @@
-import { assertStoredSealed } from '../platform/esim-code';
+import { assertStoredSealed, fail, isUniqueViolation } from '../platform';
 import type { Prisma } from '../../generated/prisma/client';
-import { fail } from '../platform/api-failure';
-import { isUniqueViolation } from '../platform/prisma-errors';
-import type { Action } from '../catalog/rules/actions';
+import type { Action } from '../catalog';
 import { claimKeys, refusalOf, type Claim } from './reservation.rules';
 
 // The state of a line inside a transaction (backend-engineering.mdc, 2). What was read before the transaction is

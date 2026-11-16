@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { UnitOfWork, type Db } from '../../platform/unit-of-work';
+import { UnitOfWork, type Db } from '../../platform';
 
 /**
  * The database as this domain reads and writes it: packages, their add-ons, renewal and switch targets, and sell prices. One method per query, named for what it

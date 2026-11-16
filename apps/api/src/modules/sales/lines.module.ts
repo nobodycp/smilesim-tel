@@ -1,10 +1,10 @@
 import { LinesRepository } from './lines.repository';
-import { AccessModule } from '../access/access.module';
-import { PlatformModule } from '../platform/platform.module';
-import { ProvidersModule } from '../providers/providers.module';
+import { AccessModule } from '../access';
+import { PlatformModule } from '../platform';
+import { ProvidersModule } from '../providers';
 import { TasksModule } from '../tasks';
-import { TermsModule } from '../pricing/terms.module';
-import { WalletsModule } from '../wallets/wallets.module';
+import { TermsModule } from '../pricing';
+import { WalletsModule } from '../wallets';
 import { LineAccess } from './line-access';
 import { LinePricing } from './line-pricing';
 import { LineReads } from './line-reads';

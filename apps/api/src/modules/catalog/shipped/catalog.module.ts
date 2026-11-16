@@ -1,6 +1,5 @@
-import { AccessModule } from '../../access/access.module';
-import { PlatformModule } from '../../platform/platform.module';
-import { RolesModule } from '../../access/roles/roles.module';
+import { AccessModule, RolesModule } from '../../access';
+import { PlatformModule } from '../../platform';
 import { CatalogSeed } from './catalog-seed';
 import { Module } from '@nestjs/common';
 

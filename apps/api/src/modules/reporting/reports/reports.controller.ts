@@ -1,17 +1,13 @@
-import { PeriodQuery } from '../../platform/schemas';
-import { CursorQuery } from '../../wallets/wallets.schemas';
+import { PeriodQuery, ApiZodQuery, ApiErrorResponse, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
+import { CursorQuery } from '../../wallets';
 import { BalancesQuery } from './reports.schemas';
-import { ApiZodQuery } from '../../../openapi/query';
 import { Controller, Get, Query, Res, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../../platform/activity.interceptor';
-import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
-import type { Actor as ActorShape } from '../../access/types';
+import { Actor, ActorInterceptor } from '../../access';
+import type { Actor as ActorShape } from '../../access';
 import { InsightsService } from './insights.service';
 import { ReportsService } from './reports.service';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('reporting')
 @ApiCookieAuth('sid')

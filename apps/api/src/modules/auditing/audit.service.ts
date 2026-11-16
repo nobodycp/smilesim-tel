@@ -1,16 +1,11 @@
-import { isOn } from '../platform/schemas';
+import { isOn, parseInput, dayRange, after, cursorPosition, page, FEED_PAGE, csvDocument } from '../platform';
 import { AuditQuery, type AuditFilter } from './audit.schemas';
-import { parseInput } from '../platform/input';
-import { AccountTree } from '../access/account-tree';
+import { AccountTree, visibleAccountIds } from '../access';
 import { AuditRepository } from './audit.repository';
-import { dayRange } from '../platform/dates';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
 import { activityActorFilter, clampActivityRange } from './activity-log';
-import type { Actor } from '../access/types';
-import { after, cursorPosition, page, FEED_PAGE } from '../platform/paging';
-import { visibleAccountIds } from '../access/account-visibility';
-import { csvDocument } from '../platform/csv';
+import type { Actor } from '../access';
 
 /** The most events one CSV holds. */
 export const AUDIT_EXPORT_LIMIT = 5_000;

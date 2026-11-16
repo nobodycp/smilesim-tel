@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { fail } from '../../../platform/api-failure';
-import { isSealed, seal } from '../../../platform/secret-box';
-import { UnitOfWork, type Db } from '../../../platform/unit-of-work';
+import { fail, isSealed, seal, UnitOfWork, type Db } from '../../../platform';
 import type { SendGate, SendPermit } from '../dispatch/dispatch-gate';
-import type { Action } from '../../../catalog/rules/actions';
+import type { Action } from '../../../catalog';
 import { ATTEMPT_LEASE_MS, afterAttempt, attemptAfter, canMove, closesUnknown, maySend, recoveryOutcome, requestHash, settledSequence, spentAttempts, storedRef, storedResult, validKey, type ActivationResult, type AttemptOutcome, type OperationError, type OperationRequest, type OperationStatus, type OutgoingOperation, type StoredResult, type Verdict } from './provider-operation.rules';
 import { OPERATION_REQUESTED, OPERATION_SETTLED, ProviderOperationsRepository, type NewDecisionEvent, type ResultColumns, type WaitingFor } from './provider-operations.repository';
 

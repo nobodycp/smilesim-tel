@@ -1,7 +1,7 @@
 import { AccountsRepository } from './accounts.repository';
 import { AccessModule } from '../access.module';
-import { PlatformModule } from '../../platform/platform.module';
-import { AuthModule } from '../../auth/auth.module';
+import { PlatformModule } from '../../platform';
+import { AuthModule } from '../../auth';
 import { AccountSessionController } from './account-session.controller';
 import { AccountSessionService } from './account-session.service';
 import { AccountsController } from './accounts.controller';

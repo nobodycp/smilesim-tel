@@ -1,7 +1,6 @@
-import { fail } from '../platform/api-failure';
-import type { ErrorCode } from '../../errors';
+import { fail, LAYER_ORDER } from '../platform';
+import type { ErrorCode } from '../platform';
 import type { Actor } from './types';
-import { LAYER_ORDER } from '../platform/values';
 import type { GrantCode } from './grants';
 
 // Who may do what in the office (backend-engineering.mdc 3.1). Services ask these functions; they do not read

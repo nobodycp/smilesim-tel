@@ -1,9 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import type { Prisma } from '../../../generated/prisma/client';
-import { env, isTest } from '../../../config';
-import { logger, reason } from '../../platform/log';
-import { AccountTree } from '../../access/account-tree';
-import { visibleAccountIds } from '../../access/account-visibility';
+import { env, isTest, logger, reason } from '../../platform';
+import { AccountTree, visibleAccountIds } from '../../access';
 import { expiringWhere, suspendedWhere } from '../../sales';
 import { DeskRepository } from './desk.repository';
 

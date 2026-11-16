@@ -1,20 +1,13 @@
 import { TransfersRepository } from './transfers.repository';
 import { LineAccess } from '../line-access';
-import { WalletLedger } from '../../wallets/wallet-ledger';
-import { AccountTree, nodeOf } from '../../access/account-tree';
-import { UnitOfWork } from '../../platform/unit-of-work';
-import { granted } from '../../access/policy';
+import { WalletLedger, saleOf } from '../../wallets';
+import { AccountTree, nodeOf, granted, visibleAccountIds } from '../../access';
+import { UnitOfWork, parseInput, fail } from '../../platform';
 import { Injectable } from '@nestjs/common';
-import { parseInput } from '../../platform/input';
-import { fail } from '../../platform/api-failure';
-import type { Actor, Account } from '../../access/types';
-import { TermsService } from '../../pricing/terms.service';
+import type { Actor, Account } from '../../access';
+import { TermsService, RENEWABLE_STATUSES, deniedOpsFor } from '../../pricing';
 import type { Prisma } from '../../../generated/prisma/client';
-import { RENEWABLE_STATUSES } from '../../pricing/rules/line-prices';
-import { visibleAccountIds } from '../../access/account-visibility';
 import { TRANSFER_GRANT, canTransfer, previewOf, transferKind, type TransferKind } from './transfer-rules';
-import { deniedOpsFor } from '../../pricing/rules/user-terms';
-import { saleOf } from '../../wallets/sale';
 import type { z } from 'zod';
 import { TransferAccountBody as AccountMove, TransferLineBody } from './transfers.schemas';
 

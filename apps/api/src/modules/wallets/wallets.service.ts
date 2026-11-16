@@ -1,20 +1,14 @@
 import { WalletsRepository } from './wallets.repository';
-import { PriceLadder } from '../pricing/price-ladder';
+import { PriceLadder, REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../pricing';
 import { WalletLedger } from './wallet-ledger';
-import { AccountTree } from '../access/account-tree';
-import { UnitOfWork } from '../platform/unit-of-work';
-import { dayRange } from '../platform/dates';
+import { AccountTree, visibleAccountIds } from '../access';
+import { UnitOfWork, dayRange, fail, parseInput, after, cursorPosition, keyPage, page, BALANCES_PAGE, FEED_PAGE } from '../platform';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
-import { fail } from '../platform/api-failure';
-import { parseInput } from '../platform/input';
-import type { Actor, Account } from '../access/types';
-import { after, cursorPosition, keyPage, page, BALANCES_PAGE, FEED_PAGE } from '../platform/paging';
-import { visibleAccountIds } from '../access/account-visibility';
+import type { Actor, Account } from '../access';
 import { CeilingBody, CursorQuery, DeductBody, FinanceQuery, FinanceSummaryQuery, FundBody, LedgerQuery, ProfitsQuery, type FinanceFilter } from './wallets.schemas';
 import { PROVIDER_OPERATION_KINDS, pricedOp } from './provider-cost';
 import { SUMMARY_DAYS, ledgerCsv, profitCsv, walletSummary, windowStart } from './finance-summary';
-import { REFUND_KINDS, SALE_KINDS, ladderOf, marginOf, refundLadder, type Ladder } from '../pricing/rules/profit-ladder';
 
 const FINANCE_CSV_LIMIT = 10_000;
 const PROFIT_REPORT_LIMIT = 50_000;

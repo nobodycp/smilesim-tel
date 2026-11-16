@@ -1,9 +1,7 @@
-import { assertStoredSealed } from '../platform/esim-code';
+import { assertStoredSealed, UnitOfWork, type Db, NEWEST_FIRST, TASKS_PAGE } from '../platform';
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
-import { UnitOfWork, type Db } from '../platform/unit-of-work';
-import { NEWEST_FIRST, TASKS_PAGE } from '../platform/paging';
 
 /**
  * The database as this domain reads and writes it: tasks and their notes. One method per query, named for what it

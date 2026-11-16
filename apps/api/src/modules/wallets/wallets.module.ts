@@ -1,7 +1,7 @@
 import { WalletsRepository } from './wallets.repository';
-import { AccessModule } from '../access/access.module';
-import { PlatformModule } from '../platform/platform.module';
-import { TermsModule } from '../pricing/terms.module';
+import { AccessModule } from '../access';
+import { PlatformModule } from '../platform';
+import { TermsModule } from '../pricing';
 import { WalletLedger } from './wallet-ledger';
 import { WalletsController } from './wallets.controller';
 import { WalletsService } from './wallets.service';

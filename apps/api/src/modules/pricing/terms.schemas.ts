@@ -1,4 +1,4 @@
-import { queryText, agorot } from '../platform/schemas';
+import { queryText, agorot } from '../platform';
 import { z } from 'zod';
 import { OP_KEYS } from './rules/user-terms';
 

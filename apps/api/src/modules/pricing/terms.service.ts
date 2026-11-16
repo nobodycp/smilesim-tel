@@ -1,15 +1,11 @@
 import { TermsRepository } from './terms.repository';
 import { PriceLadder } from './price-ladder';
-import { AccountTree } from '../access/account-tree';
-import { UnitOfWork } from '../platform/unit-of-work';
-import { holds, requireGrant, assertBranch } from '../access/policy';
+import { AccountTree, holds, requireGrant, assertBranch, visibleAccountIds } from '../access';
+import { UnitOfWork, parseInput, fail } from '../platform';
 import { Injectable } from '@nestjs/common';
-import { parseInput } from '../platform/input';
-import { fail } from '../platform/api-failure';
-import type { Actor, Account, PathNode } from '../access/types';
+import type { Actor, Account, PathNode } from '../access';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client';
 import { RENEWABLE_STATUSES, groupLinePrices, repriceLine, type PriceGroup } from './rules/line-prices';
-import { visibleAccountIds } from '../access/account-visibility';
 import { captureTerms, type LineTerms, type PackageTerms } from './rules/prices';
 import { packageTermsOf } from './rules/package-terms';
 import { buyPriceFor, deniedAbove, floorFor, hiddenAbove, parseOps, priceSource, serializeOps, type LayerPrices, type SellRow, type TermRow } from './rules/user-terms';

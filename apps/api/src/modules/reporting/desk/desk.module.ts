@@ -1,9 +1,9 @@
 import { DeskRepository } from './desk.repository';
-import { AccessModule } from '../../access/access.module';
-import { PlatformModule } from '../../platform/platform.module';
-import { ProvidersModule } from '../../providers/providers.module';
+import { AccessModule } from '../../access';
+import { PlatformModule } from '../../platform';
+import { ProvidersModule } from '../../providers';
 import { ReportsModule } from '../reports/reports.module';
-import { WalletsModule } from '../../wallets/wallets.module';
+import { WalletsModule } from '../../wallets';
 import { DeskController } from './desk.controller';
 import { DeskService } from './desk.service';
 import { LineSnapshotsService } from './line-snapshots.service';

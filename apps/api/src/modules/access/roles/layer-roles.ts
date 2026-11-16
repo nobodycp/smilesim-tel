@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { UnitOfWork } from '../../platform/unit-of-work';
-import { LAYER_ORDER } from '../../platform/values';
+import { UnitOfWork, LAYER_ORDER } from '../../platform';
 import { LAYER_GRANTS, flagsFor } from '../grants';
 
 /** The role every layer has by default. */

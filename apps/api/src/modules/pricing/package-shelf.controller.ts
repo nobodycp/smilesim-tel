@@ -1,14 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Put, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiZodBody } from '../../openapi/body';
-import { ApiErrorResponse } from '../../openapi/responses';
-import { Activity, param } from '../platform/activity.decorator';
-import { ActivityInterceptor } from '../platform/activity.interceptor';
-import { Actor, ActorInterceptor } from '../access/actor.interceptor';
-import type { Actor as ActorShape } from '../access/types';
-import { SellPriceBody } from '../catalog/packages/packages.schemas';
+import { ApiZodBody, ApiErrorResponse, Activity, param, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../platform';
+import { Actor, ActorInterceptor } from '../access';
+import type { Actor as ActorShape } from '../access';
+import { SellPriceBody } from '../catalog';
 import { PackageShelfService } from './package-shelf.service';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../platform/route-prefixes';
 
 @ApiTags('pricing')
 @ApiCookieAuth('sid')

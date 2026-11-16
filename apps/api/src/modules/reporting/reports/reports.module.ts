@@ -1,7 +1,7 @@
 import { ReportsRepository } from './reports.repository';
-import { AccessModule } from '../../access/access.module';
-import { PlatformModule } from '../../platform/platform.module';
-import { WalletsModule } from '../../wallets/wallets.module';
+import { AccessModule } from '../../access';
+import { PlatformModule } from '../../platform';
+import { WalletsModule } from '../../wallets';
 import { InsightsService } from './insights.service';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';

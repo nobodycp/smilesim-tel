@@ -1,5 +1,5 @@
 import { type PackageTerms } from './prices';
-import type { Prices } from '../../catalog/rules/package-prices';
+import type { Prices } from '../../catalog';
 
 export type PackagePriceRow = Prices & {
   code: string;

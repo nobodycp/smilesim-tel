@@ -1,14 +1,11 @@
 import { OverviewQuery } from './desk.schemas';
-import { ApiZodQuery } from '../../../openapi/query';
+import { ApiZodQuery, ApiErrorResponse, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
 import { Controller, Get, Query, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiErrorResponse } from '../../../openapi/responses';
-import { ActivityInterceptor } from '../../platform/activity.interceptor';
-import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
-import type { Actor as ActorShape } from '../../access/types';
+import { Actor, ActorInterceptor } from '../../access';
+import type { Actor as ActorShape } from '../../access';
 import { DeskService } from './desk.service';
 import { OverviewService } from './overview.service';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 @ApiTags('reporting')
 @ApiCookieAuth('sid')

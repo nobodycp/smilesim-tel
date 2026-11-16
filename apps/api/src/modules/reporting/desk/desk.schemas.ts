@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { queryOneOf } from '../../platform/schemas';
+import { queryOneOf } from '../../platform';
 
 // The query of the home routes (backend-engineering.mdc 4.1).
 

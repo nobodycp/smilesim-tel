@@ -1,19 +1,13 @@
-import { parseInput } from '../platform/input';
-import { esimCodeOrFail } from '../platform/esim-code';
+import { parseInput, esimCodeOrFail, fail, after, cursorPosition, page, LINES_PAGE } from '../platform';
 import { esimCodeReaders } from '../tasks';
 import { LinesQuery } from './lines.schemas';
 import { LinesRepository } from './lines.repository';
-import { AccountTree } from '../access/account-tree';
+import { AccountTree, visibleAccountIds } from '../access';
 import { Injectable } from '@nestjs/common';
-import { fail } from '../platform/api-failure';
-import type { Actor, PathNode } from '../access/types';
-import { after, cursorPosition, page, LINES_PAGE } from '../platform/paging';
+import type { Actor, PathNode } from '../access';
 import { isSuspended, linesWhere } from './rules/line-filters';
-import { visibleAccountIds } from '../access/account-visibility';
-import { esimPriceOf } from '../catalog/rules/package-prices';
-import { offeredOperations, refreshMode, resolvePackageMode } from '../catalog/rules/run-modes';
-import { simRulesOf } from '../catalog/rules/sim-rules';
-import { deniedOpsFor, visibleTo, type OpKey } from '../pricing/rules/user-terms';
+import { esimPriceOf, offeredOperations, refreshMode, resolvePackageMode, simRulesOf } from '../catalog';
+import { deniedOpsFor, visibleTo, type OpKey } from '../pricing';
 import { lineHistory } from './line-history';
 import { canActivateFor, opKeyOf, type RunnablePackage } from './line-ops';
 

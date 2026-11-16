@@ -1,17 +1,11 @@
-import { PeriodQuery } from '../../platform/schemas';
-import { ApiZodQuery } from '../../../openapi/query';
+import { PeriodQuery, ApiZodQuery, ApiZodBody, ApiErrorResponse, Activity, NoActivity, param, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
 import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseInterceptors } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
-import { ApiZodBody } from '../../../openapi/body';
-import { ApiErrorResponse } from '../../../openapi/responses';
-import { Activity, NoActivity, param } from '../../platform/activity.decorator';
-import { ActivityInterceptor } from '../../platform/activity.interceptor';
-import { Actor, ActorInterceptor } from '../../access/actor.interceptor';
-import type { Actor as ActorShape } from '../../access/types';
+import { Actor, ActorInterceptor } from '../../access';
+import type { Actor as ActorShape } from '../../access';
 import { ProviderAccountsService } from './provider-accounts.service';
 import { ProviderCreditBody, ProviderEntryBody, ProviderMatchingBody, ProviderOperationsQuery, ReconciliationBody, ReconciliationItemBody, StatementFileBody } from '../providers.schemas';
-import { RESOURCE_CONTROLLER_PREFIXES } from '../../platform/route-prefixes';
 
 /** Our account with each provider (spec 2026-11-08-provider-accounts). */
 @ApiTags('providers')

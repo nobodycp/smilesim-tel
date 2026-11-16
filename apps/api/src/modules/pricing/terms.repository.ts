@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../../generated/prisma/client';
-import { UnitOfWork, type Db } from '../platform/unit-of-work';
-import { LIST_CAP } from '../platform/paging';
+import { UnitOfWork, type Db, LIST_CAP } from '../platform';
 import { RENEWABLE_STATUSES } from './rules/line-prices';
 
 /**

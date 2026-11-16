@@ -1,9 +1,9 @@
 import { TransfersRepository } from './transfers.repository';
-import { AccessModule } from '../../access/access.module';
-import { PlatformModule } from '../../platform/platform.module';
+import { AccessModule } from '../../access';
+import { PlatformModule } from '../../platform';
 import { LinesModule } from '../lines.module';
-import { TermsModule } from '../../pricing/terms.module';
-import { WalletsModule } from '../../wallets/wallets.module';
+import { TermsModule } from '../../pricing';
+import { WalletsModule } from '../../wallets';
 import { TransfersController } from './transfers.controller';
 import { TransfersService } from './transfers.service';
 import { Module } from '@nestjs/common';

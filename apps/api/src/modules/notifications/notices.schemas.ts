@@ -1,4 +1,4 @@
-import { queryCursor, queryFlag, queryOneOf } from '../platform/schemas';
+import { queryCursor, queryFlag, queryOneOf } from '../platform';
 import { NOTICE_GROUPS } from './notice-kinds';
 import { z } from 'zod';
 
