@@ -21,9 +21,7 @@
 .page-head h1 { font-size: 22px; }
 .page-head .lede { margin: var(--rd-space-1) 0 0; max-width: 36rem; font-size: var(--rd-text-md); }
 .desk { display: flex; flex: 1; flex-direction: column; gap: var(--rd-space-3-5); width: 100%; min-height: 0; }
-.desk > .page-head,
-.desk > .error.banner,
-.desk > .note.banner { margin-bottom: 0; }
+.desk > .page-head { margin-bottom: 0; }
 .desk > .stack { display: flex; flex-direction: column; gap: var(--rd-space-3); }
 .desk > .page-head {
   display: flex;

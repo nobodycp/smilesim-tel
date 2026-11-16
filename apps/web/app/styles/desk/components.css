@@ -1,5 +1,7 @@
-/* Shared pieces: EmptyState and load-failed, skeletons and spinner, Stat, operation cards, outage and return bars.
-   LiveSwitch is components/ui/switch.tsx (Tailwind migration T2.3). */
+/* Shared pieces: the plain `.empty` line, Stat, operation cards, outage and return bars, and the spinner's and
+   skeleton's keyframes. LiveSwitch is components/ui/switch.tsx (Tailwind migration T2.3); EmptyState and LoadFailed
+   (components/empty-state.tsx), the spinner and skeletons (components/loading.tsx, components/ui/skeleton.tsx) are
+   on Tailwind since migration T2.7. */
 .return-bar {
   display: flex;
   align-items: center;
@@ -77,11 +79,6 @@
 .outage-panel h1 { margin: 0; font-size: 20px; }
 .outage-panel p { margin: 0 0 var(--rd-space-2); color: var(--rd-muted); font-size: var(--rd-text-base); line-height: 1.6; }
 .outage-panel [data-slot='button'] { justify-self: center; }
-/* A pane whose load failed: the empty-state shape with a retry under it. */
-.empty.load-failed .empty-icon { background: var(--rd-danger-soft); color: var(--rd-danger); }
-.empty.load-failed [data-slot='button'] { margin-top: var(--rd-space-1-5); justify-self: center; }
-/* The error and not-found screens: the way out under the text, one row, centered (app/error.tsx, app/not-found.tsx). */
-.empty .empty-actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--rd-space-2); margin-top: var(--rd-space-1-5); }
 .result-ok,
 .result-fail { font-weight: 700; }
 .result-ok { color: var(--rd-success); }
@@ -126,35 +123,6 @@
 .stat-link:hover .stat { border-color: var(--rd-ink); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes shimmer { to { transform: translateX(100%); } }
-.spinner { display: block; color: var(--rd-ink); }
-.skeleton {
-  display: block;
-  position: relative;
-  overflow: hidden;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-3);
-}
-.skeleton::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rd-surface) 55%, transparent), transparent);
-  animation: shimmer 1.6s infinite;
-}
-.sk-title { width: 168px; height: 22px; }
-.sk-lede { width: min(440px, 72%); height: 14px; margin-top: var(--rd-space-2-5); }
-.sk-stat { height: 92px; border-radius: var(--rd-radius-card); }
-.sk-num { width: 36px; height: 22px; }
-.loading-well { display: grid; gap: var(--rd-space-4); }
-.table-skeleton-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  gap: var(--rd-space-3);
-  padding: 13px var(--rd-space-3-5);
-  border-bottom: 1px solid var(--rd-line);
-}
-.table-skeleton-row .skeleton { height: 12px; }
 .op-card {
   min-height: 44px;
   padding: 0 var(--rd-space-3-5);
@@ -169,32 +137,6 @@
 .op-card:hover { background: var(--rd-surface-2); }
 .op-card.danger { color: var(--rd-danger); }
 .empty { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-md); }
-.empty.empty-state {
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: var(--rd-space-1-5);
-  min-height: 100%;
-  padding: var(--rd-space-3-5);
-  text-align: center;
-}
-.empty .empty-icon {
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-surface-2);
-  color: var(--rd-muted);
-}
-.empty .empty-icon svg { width: 1rem; height: 1rem; }
-.empty .empty-title {
-  margin: 0;
-  color: var(--rd-ink);
-  font-size: 0.92rem;
-  font-weight: 700;
-}
-.empty .empty-text { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-md); }
 /* Line operation stops: cards fill the pane, the switch means "allowed". */
 .op-grid {
   display: grid;
@@ -227,7 +169,7 @@
 .op-text h3 { margin: 0; font-size: var(--rd-text-base); font-weight: 800; color: var(--rd-ink); }
 .op-card.off .op-text h3 { color: var(--rd-muted); }
 .op-text .hint { margin: 0; font-size: var(--rd-text-sm); line-height: 1.4; color: var(--rd-muted); }
-.op-text .ui-badge { justify-self: start; margin-top: var(--rd-space-0-5); }
+.op-text [data-slot='badge'] { justify-self: start; margin-top: var(--rd-space-0-5); }
 .canvas .empty:not(.empty-state),
 .pane .empty:not(.empty-state),
 .sheet .empty:not(.empty-state) { display: block; padding: var(--rd-space-3-5); }

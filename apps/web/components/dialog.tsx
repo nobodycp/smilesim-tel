@@ -172,7 +172,8 @@ export function Dialog({
           </DialogHeading>
           <IconButton size="lg" tone="faint" className="flex-none" onClick={onClose} aria-label={closeLabel}><X size={18} aria-hidden="true" /></IconButton>
         </DialogHeader>
-        <Alert>{error}</Alert>
+        {/* The error line between the head and the body (the legacy `[data-slot='dialog'] > .error` rule). */}
+        <Alert className="mx-4 mt-3 flex-none">{error}</Alert>
         <DialogBody data-testid="dialog-body">{children}</DialogBody>
         {footer ? <DialogFooter>{footer}</DialogFooter> : null}
       </DialogContent>

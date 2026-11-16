@@ -135,7 +135,7 @@
 .terms-pair { display: inline-flex; align-items: baseline; gap: var(--rd-space-1-5); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .terms-pair.custom { font-weight: 800; color: var(--rd-success); }
 .terms-pair-sep { color: var(--rd-faint); }
-.terms-rows .ui-badge svg { width: 12px; height: 12px; }
+.terms-rows [data-slot='badge'] svg { width: 12px; height: 12px; }
 .terms-price-form .terms-price-buy { display: flex; justify-content: space-between; align-items: baseline; gap: var(--rd-space-3); margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); }
 .terms-price-form .terms-price-buy .terms-pair,
 .terms-price-form .terms-price-buy .money { color: var(--rd-ink); font-weight: 700; }

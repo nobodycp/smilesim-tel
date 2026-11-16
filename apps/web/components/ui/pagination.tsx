@@ -3,6 +3,7 @@ import { Button } from "./button";
 import { Select, SelectItem } from "./select";
 import { usePrefs } from "../../lib/prefs";
 import { PAGE_SIZES, type PageSize } from "../../lib/document-prefs";
+import { cn } from "../../lib/cn";
 
 function formatInteger(value: number) {
   return value.toLocaleString("en-US");
@@ -10,8 +11,21 @@ function formatInteger(value: number) {
 
 export const PAGE_SIZE_OPTIONS: PageSize[] = [...PAGE_SIZES, "all"];
 
-/* The pager's previous / next: a quiet secondary, 30px, no fill and no inset line until hovered, ink-2 text. */
+/*
+ * The pager (Tailwind migration T2.7, ADR 0022), ported from the legacy `.ui-pager*` rules of ui.css and the
+ * graphite.css overrides over them (and its phone block), in their cascade order:
+ * - the row: wrapping, items centred, the facts at the start and the page buttons at the end, 16px / 8px between
+ *   them, 12px / 16px padding under a 1px `--rd-line` hairline, 12px `--rd-muted`;
+ * - the facts: the status line, then the per-page field (its 11.5px label 6px before an 88px `Select place="pager"`);
+ * - previous / next: a quiet secondary, 30px, no fill and no inset line until hovered, ink-2 text, 14px chevrons that
+ *   face the reading direction;
+ * - a page: 30px square at least, 8px sides, no border, 4px corners, no fill, 12.5px bold `--rd-ink-2`, the colour
+ *   transition; hovered `--rd-surface-2`; the current one ink on the page colour; 40px under 641px (at 720px and
+ *   under the legacy `.canvas button` rule still makes it 44px high);
+ * - the gap: an ellipsis with 4px sides in `--rd-faint`.
+ */
 const NAV_BUTTON = "h-7.5 bg-transparent text-ink-2 inset-ring-0 hover:bg-surface-2";
+const ARROW = "size-3.5";
 
 export type PaginationProps = {
   page: number;
@@ -72,15 +86,15 @@ export function Pagination({
 
   return (
     <nav
-      className="ui-pager"
+      className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-line px-4 py-3 text-sm text-muted"
       aria-label={t.pages}
     >
-      <div className="ui-pager-info">
-        <span className="num-tab">{status}</span>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span>{status}</span>
         {showSizeSelector && (
-          <label className="ui-pager-size">
-            <span className="ui-pager-size-label">{t.perPage}</span>
-            <span className="ui-pager-size-field">
+          <label className="inline-flex items-center gap-1.5">
+            <span className="text-[11.5px]">{t.perPage}</span>
+            <span className="inline-block w-22">
             <Select
               value={String(pageSize)}
               onValueChange={(next) => onPageSizeChange?.(next === "all" ? "all" : Number(next) as PageSize)}
@@ -99,7 +113,7 @@ export function Pagination({
       </div>
 
       {totalPages > 1 && (
-        <div className="ui-pager-nav">
+        <div className="flex items-center gap-1">
           <Button
             variant="secondary"
             size="sm"
@@ -108,15 +122,15 @@ export function Pagination({
             onClick={() => onPageChange(page - 1)}
             aria-label={t.pagePrev}
           >
-            <ChevronRight className="ui-pager-arrow only-rtl" aria-hidden="true" />
-            <ChevronLeft className="ui-pager-arrow only-ltr" aria-hidden="true" />
+            <ChevronRight className={cn(ARROW, "ltr:hidden")} aria-hidden="true" />
+            <ChevronLeft className={cn(ARROW, "rtl:hidden")} aria-hidden="true" />
             {t.pagerPrev}
           </Button>
 
-          <div className="ui-pager-pages" role="group" aria-label={t.pages}>
+          <div className="flex items-center gap-1" role="group" aria-label={t.pages}>
             {pageWindow(page, totalPages).map((item, index) =>
               item === "gap" ? (
-                <span key={`gap-${index}`} className="ui-pager-gap" aria-hidden="true">
+                <span key={`gap-${index}`} className="px-1 text-faint" aria-hidden="true">
                   …
                 </span>
               ) : (
@@ -125,7 +139,12 @@ export function Pagination({
                   type="button"
                   onClick={() => onPageChange(item)}
                   aria-current={item === page ? "page" : undefined}
-                  className="num-tab ui-pager-page"
+                  className={cn(
+                    "h-7.5 min-w-7.5 rounded-xs border-0 bg-transparent px-2 text-[12.5px] font-bold text-ink-2",
+                    "transition-[color,background-color,border-color,text-decoration-color,fill,stroke] duration-fast ease-standard",
+                    "hover:bg-surface-2 aria-[current=page]:bg-ink aria-[current=page]:text-bg",
+                    "max-sm:h-10 max-sm:min-w-10",
+                  )}
                 >
                   {item}
                 </button>
@@ -142,8 +161,8 @@ export function Pagination({
             aria-label={t.pageNext}
           >
             {t.pagerNext}
-            <ChevronLeft className="ui-pager-arrow only-rtl" aria-hidden="true" />
-            <ChevronRight className="ui-pager-arrow only-ltr" aria-hidden="true" />
+            <ChevronLeft className={cn(ARROW, "ltr:hidden")} aria-hidden="true" />
+            <ChevronRight className={cn(ARROW, "rtl:hidden")} aria-hidden="true" />
           </Button>
         </div>
       )}

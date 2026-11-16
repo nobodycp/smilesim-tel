@@ -195,7 +195,7 @@
   outline: 2px solid var(--rd-ink);
   outline-offset: 2px;
 }
-.login-room .error { overflow-wrap: anywhere; }
+.login-room [data-slot='alert'][data-tone='error'] { overflow-wrap: anywhere; }
 .login-room form > button.login-go {
   width: 100%;
   height: 56px;
@@ -334,7 +334,7 @@
   .login-enter.b { animation-delay: 70ms; }
   .login-enter.c { animation-delay: 140ms; }
   .login-enter.d { animation-delay: 210ms; }
-  .login-room .error { animation: login-note var(--rd-dur-base) ease both; }
+  .login-room [data-slot='alert'][data-tone='error'] { animation: login-note var(--rd-dur-base) ease both; }
   .login-plate .heavy rect,
   .login-plate .light rect,
   .login-plate .light path {

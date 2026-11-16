@@ -4,9 +4,7 @@
 .settings-page .pane { width: 100%; }
 .settings-page.desk > .settings-grid { align-content: start; grid-template-rows: none; }
 .settings-page.desk .settings-col { grid-template-rows: none; align-content: start; }
-.settings-page > .page-head,
-.settings-page > .error.banner,
-.settings-page > .note.banner { margin-bottom: 0; }
+.settings-page > .page-head { margin-bottom: 0; }
 .settings-grid { display: grid; flex: 1; gap: var(--rd-space-3); align-content: start; }
 .settings-col { display: grid; gap: var(--rd-space-3); align-content: start; }
 .identity {
@@ -71,7 +69,7 @@
   flex-wrap: wrap;
   gap: var(--rd-space-2);
 }
-.pane-head .ui-badge { margin-inline-start: auto; }
+.pane-head [data-slot='badge'] { margin-inline-start: auto; }
 
 /* Session rules by layer: the layer's name, then its two choices and save on one row; they stack on a narrow screen. */
 .session-rules {

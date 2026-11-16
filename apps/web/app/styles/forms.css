@@ -33,17 +33,6 @@ input:focus {
   box-shadow: 0 0 0 3px var(--rd-focus);
 }
 input[readonly] { color: var(--rd-muted); border-style: dashed; background: transparent; }
-.error, .note {
-  margin: 0;
-  padding: var(--rd-space-2-5) var(--rd-space-3);
-  border-radius: var(--rd-radius-sm);
-  font-size: var(--rd-text-md);
-  font-weight: 600;
-  text-align: start;
-}
-.error { color: var(--rd-danger); background: var(--rd-danger-soft); }
-.note { color: var(--rd-success); background: var(--rd-success-soft); }
-.error.banner, .note.banner { margin-bottom: var(--rd-space-4); }
 .code {
   margin: 0;
   padding: var(--rd-space-2-5) var(--rd-space-3);

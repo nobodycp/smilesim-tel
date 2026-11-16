@@ -168,7 +168,8 @@ export function LineCardScreen() {
       title={line ? (
         <span className="line-hero-title">
           <bdi dir="ltr" className="line-number" data-testid="line-number">{line.msisdn}</bdi>
-          <Badge variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge>
+          {/* 13px beside the number (the legacy `.line-hero-title .ui-badge` rule). */}
+          <Badge className="text-md" variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge>
           {line.status === 'active' ? <LeftDays endsAt={line.endsAt} /> : null}
         </span>
       ) : t.lineCard}

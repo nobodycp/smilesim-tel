@@ -8,7 +8,6 @@
    `bdi` here split them across four lines. */
 .dialog-who { margin: 0; font-size: var(--rd-text-base); font-weight: 700; }
 [data-slot='dialog'] h2 { margin: 0; font-size: var(--rd-text-xl); font-weight: 700; text-align: start; }
-[data-slot='dialog'] > .error { flex: none; margin: var(--rd-space-3) var(--rd-space-4) 0; }
 [data-slot='dialog'] input:not([type='checkbox']):not([type='radio']):not([type='file']),
 [data-slot='dialog'] select,
 [data-slot='dialog'] textarea {

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Icon } from '../components/icon';
+import { EmptyState } from '../components/empty-state';
 import { usePrefs } from '../lib/prefs';
 import { Button } from '../components/ui/button';
 
@@ -11,16 +11,14 @@ export default function NotFound() {
   return (
     <div className="desk">
       <section className="pane">
-        <div className="empty empty-state" role="status">
-          <span className="empty-icon" aria-hidden="true">
-            <Icon name="tasks" />
-          </span>
-          <p className="empty-title">{t.notFoundTitle}</p>
-          <p className="empty-text">{t.notFoundText}</p>
-          <div className="empty-actions">
-            <Button asChild><Link href="/">{t.goHome}</Link></Button>
-          </div>
-        </div>
+        <EmptyState
+          role="status"
+          testId={null}
+          text={t.notFoundText}
+          actions={<Button asChild><Link href="/">{t.goHome}</Link></Button>}
+        >
+          {t.notFoundTitle}
+        </EmptyState>
       </section>
     </div>
   );

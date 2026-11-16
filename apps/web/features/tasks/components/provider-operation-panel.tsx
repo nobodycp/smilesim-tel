@@ -3,6 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AccountName } from '../../../components/account-name';
+import { Alert } from '../../../components/alert';
 import { Money, latinWhen } from '../../../components/desk';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -67,7 +68,7 @@ export function ProviderOperationPanel({ task, onChanged, say }: { task: TaskDet
 
       {operation.decisions ? (
         <div className="po-decisions" data-testid="po-decisions">
-          {view.error ? <p className="error" role="alert">{view.error}</p> : null}
+          <Alert>{view.error}</Alert>
           {!view.loaded ? <p className="hint" aria-busy="true">…</p> : null}
           {standing ? (
             <>

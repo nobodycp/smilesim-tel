@@ -1,28 +1,32 @@
 'use client';
 
 import { usePrefs } from '../lib/prefs';
-import { Icon } from './icon';
+import { EmptyState } from './empty-state';
 import { Button } from './ui/button';
 
 /**
  * A pane whose load failed. Sits where the table or skeleton would, inside the pane, and offers
- * one retry for that pane alone. `message` is the translated failure the hook holds.
+ * one retry for that pane alone. `message` is the translated failure the hook holds. It is the empty state in its
+ * `danger` tone (Tailwind migration T2.7).
  */
 export function LoadFailed({ message, onRetry, busy = false }: { message: string; onRetry?: () => void; busy?: boolean }) {
   const { t } = usePrefs();
   const network = message === t.errors.NETWORK;
   return (
-    <div className="empty empty-state load-failed" data-testid="load-failed" role="alert">
-      <span className="empty-icon" aria-hidden="true">
-        <Icon name={network ? 'offline' : 'tasks'} />
-      </span>
-      <p className="empty-title">{network ? t.outageTitle : t.loadFailed}</p>
-      {!network && message ? <p className="empty-text" data-testid="load-failed-message">{message}</p> : null}
-      {onRetry ? (
+    <EmptyState
+      tone="danger"
+      icon={network ? 'offline' : 'tasks'}
+      role="alert"
+      testId="load-failed"
+      text={!network && message ? message : undefined}
+      textTestId="load-failed-message"
+      footer={onRetry ? (
         <Button type="button" onClick={onRetry} disabled={busy}>
           {busy ? t.retrying : t.retry}
         </Button>
       ) : null}
-    </div>
+    >
+      {network ? t.outageTitle : t.loadFailed}
+    </EmptyState>
   );
 }

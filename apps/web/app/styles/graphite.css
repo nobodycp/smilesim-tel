@@ -38,11 +38,8 @@ input:not([type='checkbox']):not([type='radio']):not([type='file']):focus, selec
 }
 input[readonly] { background-color: transparent; }
 
-/* ── Status: a small glowing diamond beside the word, no pill ── */
-.ui-badge { border-radius: var(--rd-radius-xs); }
-.ui-badge:has(> .ui-badge-dot) { gap: 7px; padding-inline: 0; background-color: transparent; box-shadow: none; font-size: 12.5px; }
-.ui-badge-dot { width: 7px; height: 7px; border-radius: 1px; transform: rotate(45deg); box-shadow: 0 0 8px currentColor; }
-.ui-badge-muted:has(> .ui-badge-dot) .ui-badge-dot { box-shadow: none; }
+/* ── Status: the small glowing diamond beside the word is components/ui/badge.tsx (`dot`) since Tailwind migration
+   T2.7 ── */
 
 /* ── Figure cards (StatRow) and fact cards: the tag's cut corner, a light under the pointer ── */
 .stat, .fact-grid > div {
@@ -126,9 +123,8 @@ input[readonly] { background-color: transparent; }
    empty block under short lists) and never squeezes its rows; the page scrolls when the content is longer. */
 .desk > .pane, .desk > section.pane, .desk > .stack > .pane { flex: none; }
 .desk .sheet { flex: none; min-height: 0; overflow-x: auto; }
-/* Under a kept table head the empty block takes its own height: «100%» of a sheet sized by its content is circular
-   and cut the last line off by the head's height. */
-.sheet > .empty.empty-state { min-height: auto; }
+/* Under a kept table head the empty block takes its own height (components/empty-state.tsx, `[.sheet>&]`, since
+   Tailwind migration T2.7). */
 
 /* ── Filters (Graphite, from design/night-desk-family): chips in one wrapping row — the field's name on a raised
    segment, the field beside it, an accent edge once it holds a value — on the top edge of the table card below.
@@ -485,11 +481,7 @@ input[readonly] { background-color: transparent; }
 .data td { height: 46px; border-bottom-color: transparent; }
 .data tbody tr:hover td { background: var(--rd-accent-soft); }
 .data td.msisdn, .data .line-number, .data td a.msisdn { font-weight: 600; letter-spacing: 0.03em; }
-.ui-pager { padding: 12px 16px; border-top: 1px solid var(--rd-line); }
-.pane .ui-pager, .data-frame .ui-pager { margin: 0; }
-.ui-pager-page { height: 30px; min-width: 30px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-ink-2); font-weight: 700; }
-.ui-pager-page:hover { background: var(--rd-surface-2); }
-.ui-pager-page[aria-current='page'] { background: var(--rd-ink); color: var(--rd-bg); }
+/* The pager is components/ui/pagination.tsx since Tailwind migration T2.7. */
 /* The pager's previous / next and every primary button (crimson, owner 2026-11-11) are drawn by components/ui since
    Tailwind migration T2.1. */
 /* A choice made of segments (the provider outcome) sits in the chip row with its name beside it. */
@@ -603,7 +595,7 @@ input[readonly] { background-color: transparent; }
    what each does, and a chevron that slides on hover. ── */
 .line-hero-title { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 12px; }
 .line-hero-title .line-number { font-size: 26px; font-weight: 700; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
-.line-hero-title .ui-badge, .line-hero-title .days { font-size: 13px; }
+.line-hero-title .days { font-size: 13px; }
 .line-hero { margin-block-start: calc(-1 * var(--rd-space-2)); }
 .line-hero .lede { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-md); }
 .line-pos { color: var(--rd-accent); font-weight: 600; text-decoration: none; }
@@ -1195,7 +1187,6 @@ input[readonly] { background-color: transparent; }
    card's mark beside its name. Every tab in view (the strip as a grid of equal cells) is components/ui/tabs.tsx since
    Tailwind migration T2.6. */
 @media (max-width: 640px) {
-  .ui-pager-page { min-width: 40px; height: 40px; }
   .line-pos { display: inline-flex; align-items: center; min-height: 40px; }
   .fact-grid, .desk .fact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .line-op-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

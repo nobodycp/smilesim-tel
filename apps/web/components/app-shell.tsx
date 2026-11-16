@@ -39,6 +39,7 @@ import { formatShekel } from '../lib/money';
 import { usePrefs } from '../lib/prefs';
 import { usePopover } from '../lib/use-popover';
 import { BrandLogo } from './brand-logo';
+import { Avatar } from './ui/avatar';
 import { IconButton } from './ui/icon-button';
 import { LanguageSwitch, ThemeToggle } from './chrome';
 import { ShellSearch } from './shell-search';
@@ -440,7 +441,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             onMouseEnter={mobile ? undefined : (event) => hint(event, `${shown} · ${t.accountSettings}`)}
             onBlur={() => setFlyout(null)}
           >
-            <span className="avatar" aria-hidden="true">{initial}</span>
+            <Avatar>{initial}</Avatar>
             <span className="label">
               <b><bdi>{shown}</bdi></b>
               <small>{role || ' '}</small>

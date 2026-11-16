@@ -112,7 +112,7 @@
   font-size: var(--rd-text-sm);
   font-weight: 700;
 }
-.package-sheet .pane-body > .ui-badge { justify-self: start; }
+.package-sheet .pane-body > [data-slot='badge'] { justify-self: start; }
 .sheet-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rd-space-3); }
 .sheet-stats > div {
   display: grid;
