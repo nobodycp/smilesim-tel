@@ -18,7 +18,7 @@ Spec: `docs/superpowers/specs/2026-11-15-tailwind-radix-migration.md` · Decisio
 | T2 Primitives (`components/ui`) | T2.1–T2.9 | in progress — T2.1 67e9a7f, T2.2 8683ea4, T2.3 b142d69, T2.4 8f22e47, T2.5 c8da893, T2.6 50bab52, T2.7 46dd706, T2.8 45b3fdd, T2.9 84ac38e |
 | T3 Shell and frames | T3.1–T3.3 | in progress — T3.1 8cfb31b, T3.2 2c40547, T3.3 f4dc3ff |
 | T4 Screens | T4.1–T4.10 | in progress — T4.10 c1d34f7, T4.9 202ad2f, T4.8 10478e1, T4.7 8421d51, T4.4 9f34510, T4.6 eb26248, T4.5 dfbcf6f, T4.3 57adebc, T4.2 7f0b82d, T4.1 7b541ca |
-| T5 Delete legacy CSS | T5.1–T5.2 | in progress — T5.1 3a8b34b |
+| T5 Delete legacy CSS | T5.1–T5.2 | in progress — T5.1 3a8b34b, T5.2 c08f920 |
 | T6 Complete and clean the current identity | T6.1–T6.4 | not started |
 | T7 Docs final | T7.1 | not started |
 
@@ -227,7 +227,7 @@ Each slice ports the named screens to components + layout utilities and removes 
   `app/tailwind.css` `@layer base`; delete empty sheets. End state: `app/styles/` gone, `globals.css` gone or a single
   import of `tailwind.css`.
 
-### T5.2 Tokens file is the only style source
+### T5.2 Tokens file is the only style source — c08f920
 
 - Files: `apps/web/app/tailwind.css`, `apps/web/scripts/check-styles.mjs` (no `.css` file other than `tailwind.css`
   allowed), `.cursor/rules/smilesim-ui.mdc`, `.cursor/rules/direction-theme.mdc`, `.cursor/rules/screen-size.mdc`,
