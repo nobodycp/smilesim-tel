@@ -7,11 +7,20 @@ import { NOTICE_WRITER, type NoticeWriter, type WrittenNotice } from './notices'
 
 const log = logger('UnitOfWork');
 
+/**
+ * How long a transaction may wait and run, stated here for every transaction of the application. Prisma's own
+ * defaults are 2 s to be given a connection and 5 s to finish: under load a settlement that waited longer than 2 s
+ * for a connection was refused (`P2028`) though nothing was wrong with it, and a write over many rows (a provider's
+ * run modes with all its packages) could pass 5 s. Waiting is the right answer for a queue of money writes; the
+ * upper limit still ends a transaction that hangs, so its row locks are let go.
+ */
+export const TRANSACTION_LIMITS = { maxWait: 10_000, timeout: 15_000 } as const;
+
 /** A client to read or write with: the process's own, or the one a transaction handed out (rule 1.3). */
 export type Db = Prisma.TransactionClient | PrismaClient;
 
 /**
- * The database as the office uses it: one client per process, and transactions that publish the notices they
+ * The database as the application uses it: one client per process, and transactions that publish the notices they
  * wrote only once they have committed.
  */
 @Injectable()
@@ -46,7 +55,7 @@ export class UnitOfWork {
     const result = await this.prisma.$transaction(async (tx) => {
       inner = tx;
       return fn(tx);
-    });
+    }, TRANSACTION_LIMITS);
     const rows = inner ? this.queued.get(inner) ?? [] : [];
     if (inner) this.queued.delete(inner);
     if (rows.length > 0) await this.publishQuietly(rows);

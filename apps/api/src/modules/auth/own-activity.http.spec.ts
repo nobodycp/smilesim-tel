@@ -60,6 +60,16 @@ describe('an account’s own writes in /auth are recorded, and the record holds 
     expect(JSON.stringify(recorded)).not.toMatch(/Wrong-Current-9|Next-Secret-Pass-7/);
   });
 
+  it('a refused passkey removal is recorded like every other refusal, and a wrong current password on a hand-made hash is a refusal, not a crash', async () => {
+    const removal = await request(app.getHttpServer()).delete('/auth/passkeys/no-such-passkey').set('Cookie', seller);
+    expect(removal.status).toBeGreaterThanOrEqual(400);
+    expect(recorded.map(({ event, result, reason }) => ({ event, result, reason }))).toEqual([{ event: { action: 'passkey_remove' }, result: 'fail', reason: removal.body.code }]);
+    store.addUser(user({ loginName: 'handmade', passwordHash: 'x' }));
+    const handmade = `sid=${await store.saveSession({ userId: 'handmade', scope: 'full', userAgent: '', ip: '' })}`;
+    const change = await request(app.getHttpServer()).patch('/auth/profile').set('Cookie', handmade).send({ currentPassword: 'anything-1234', nextPassword: 'Next-Secret-Pass-7' });
+    expect([change.status, change.body.code]).toEqual([401, 'WRONG_CURRENT_PASSWORD']);
+  });
+
   it('turning the account’s own second step off is recorded under two_factor; a request with no session is refused and records nothing', async () => {
     await request(app.getHttpServer()).delete('/auth/two-factor').set('Cookie', seller);
     const anonymous = await request(app.getHttpServer()).delete('/auth/two-factor');

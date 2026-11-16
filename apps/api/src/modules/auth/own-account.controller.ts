@@ -201,8 +201,7 @@ export class OwnAccountController {
   @ApiErrorResponse(401, 403, 404)
   async removePasskey(@Param('id') id: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.passkeys.remove(sessionIdOf(req), id);
-    // As before slice R.A: a removal is recorded when it is done; a refused one is not.
-    if (result.kind === 'ok') await this.records.own(req, 'passkey_remove', result);
+    await this.records.own(req, 'passkey_remove', result);
     return answer(res, result, () => ({ ok: true }));
   }
 }
