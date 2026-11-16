@@ -7,7 +7,7 @@ its hash. Per slice: `npm run lint`, `npm run typecheck`, `npm run check:copy`, 
 `testing/response-shape.spec.ts` and `apps/web/lib/api-types.ts` when a shape changes. Paths are under
 `apps/api/src/modules/` unless they start with `apps/` or `prisma/`.
 
-- [ ] **D.1 Money fixes on today's model.** `prisma/schema.prisma` `WalletEntry.periodCost Int?` (nullable, no
+- [x] **D.1 Money fixes on today's model** (`4be05aa`). `prisma/schema.prisma` `WalletEntry.periodCost Int?` (nullable, no
   backfill), written on every prepaid row; `sales/line-pricing.ts` and `settleDisconnect` read the running
   row's `periodCost`, falling back to terms for old rows. Disconnect with a refund at or below the fee is
   refused (`NOTHING_TO_REFUND`) in `sales/lines.service.ts` (direct, quote, and before its task opens); a task
