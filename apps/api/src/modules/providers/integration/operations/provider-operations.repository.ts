@@ -239,7 +239,7 @@ export class ProviderOperationsRepository {
    */
   async awaitingDecisionIds(db: Db, waiting: WaitingFor | undefined, position: { at: Date; id: string } | undefined, take: number): Promise<string[]> {
     const rows = await db.$queryRaw<{ id: string }[]>`
-      SELECT o."id" FROM "ProviderOperation" o JOIN "OfficeTask" t ON t."id" = o."taskId"
+      SELECT o."id" FROM "ProviderOperation" o JOIN "Task" t ON t."id" = o."taskId"
       WHERE ${AWAITS_PERSON} ${narrowed(waiting)}
         ${position ? Prisma.sql`AND (o."createdAt" < ${position.at} OR (o."createdAt" = ${position.at} AND o."id" < ${position.id}))` : Prisma.empty}
       ORDER BY o."createdAt" DESC, o."id" DESC LIMIT ${take}`;
@@ -250,7 +250,7 @@ export class ProviderOperationsRepository {
   async awaitingDecisionCounts(db: Db): Promise<{ approval: number; decision: number }> {
     const rows = await db.$queryRaw<{ approval: bigint; decision: bigint }[]>`
       SELECT count(*) FILTER (WHERE ${OPEN_PROPOSAL}) AS "approval", count(*) FILTER (WHERE NOT ${OPEN_PROPOSAL}) AS "decision"
-      FROM "ProviderOperation" o JOIN "OfficeTask" t ON t."id" = o."taskId" WHERE ${AWAITS_PERSON}`;
+      FROM "ProviderOperation" o JOIN "Task" t ON t."id" = o."taskId" WHERE ${AWAITS_PERSON}`;
     return { approval: Number(rows[0]?.approval ?? 0), decision: Number(rows[0]?.decision ?? 0) };
   }
 

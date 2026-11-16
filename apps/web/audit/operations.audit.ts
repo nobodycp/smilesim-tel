@@ -165,7 +165,7 @@ const transferTo = (nickname: string) => async (page: Page) => {
 
 async function newestTask(where: { lineId?: string; msisdn?: string }) {
   const rows = await sql<{ id: string; status: string; action: string }>(
-    `SELECT id, status, action FROM "OfficeTask" WHERE ${where.lineId ? '"lineId" = $1' : 'msisdn = $1'} ORDER BY "createdAt" DESC LIMIT 1`,
+    `SELECT id, status, action FROM "Task" WHERE ${where.lineId ? '"lineId" = $1' : 'msisdn = $1'} ORDER BY "createdAt" DESC LIMIT 1`,
     [where.lineId ?? where.msisdn],
   );
   if (!rows[0]) throw new Error('no task was opened');
@@ -180,7 +180,7 @@ async function completeOnScreen(taskId: string) {
   await admin.getByTestId('task-toolbar').getByRole('button', { name: 'إتمام', exact: true }).click();
   await admin.getByLabel('ملاحظة الإغلاق').fill('تم عند المزود');
   await admin.getByTestId('task-close-row').getByRole('button', { name: 'إتمام', exact: true }).click();
-  await expect.poll(async () => (await sql<{ status: string }>(`SELECT status FROM "OfficeTask" WHERE id = $1`, [taskId]))[0]?.status).toBe('done');
+  await expect.poll(async () => (await sql<{ status: string }>(`SELECT status FROM "Task" WHERE id = $1`, [taskId]))[0]?.status).toBe('done');
 }
 
 async function newestLine(owner: string): Promise<Line> {
@@ -370,7 +370,7 @@ test('the point of sale activates a manual package as a task the branch complete
   expect.soft(await balance('pos'), 'no money while the task is open').toBe(startBalance);
   expect.soft(await lineCount('pos'), 'no line while the task is open').toBe(lines);
   const task = await sql<{ id: string; msisdn: string }>(
-    `SELECT t.id, t.msisdn FROM "OfficeTask" t WHERE t.action = 'activate' AND t.status = 'pending' ORDER BY t."createdAt" DESC LIMIT 1`,
+    `SELECT t.id, t.msisdn FROM "Task" t WHERE t.action = 'activate' AND t.status = 'pending' ORDER BY t."createdAt" DESC LIMIT 1`,
   );
   expect(task[0], 'an activation task is open').toBeTruthy();
   await completeOnScreen(task[0].id);
@@ -456,7 +456,7 @@ test('a failed branch activation opens a task and the line appears only when it 
   expect.soft(await balance('pos'), 'no money while the task is open').toBe(startBalance);
   expect.soft(await lineCount('pos'), 'no line while the task is open').toBe(lines);
   const task = await sql<{ id: string }>(
-    `SELECT id FROM "OfficeTask" WHERE action = 'activate' AND status = 'pending' ORDER BY "createdAt" DESC LIMIT 1`,
+    `SELECT id FROM "Task" WHERE action = 'activate' AND status = 'pending' ORDER BY "createdAt" DESC LIMIT 1`,
   );
   await completeOnScreen(task[0].id);
   expect.soft(await balance('pos') - startBalance, 'the task debits once').toBe(-P.posPrice);

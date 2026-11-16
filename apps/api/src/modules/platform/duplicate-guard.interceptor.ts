@@ -16,7 +16,7 @@ import { isSealed, open, seal } from './secret-box';
 // with another body is refused (400), never answered with the first request's result. A handler that writes its own response (cookies: enter, leave) is only locked while it runs.
 //
 // This guard is a convenience in front of the database, never the protection: it expires and it fails open. What
-// must not happen twice is refused by the database itself (row locks, unique indexes, `OfficeTask.requestKey`).
+// must not happen twice is refused by the database itself (row locks, unique indexes, `Task.requestKey`).
 //
 // An answer that carries a secret (`@SecretAnswer(isSecret)`: an activation's eSIM code) is kept sealed
 // (secret-box), so the store never holds it in the clear. Where it cannot be sealed it is not kept at all: the

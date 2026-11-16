@@ -79,8 +79,8 @@ suite('activation settlement schema (PostgreSQL)', () => {
 
   it('has the indexes, constraints and triggers of the migration', async () => {
     const names = async (sql: string) => (await prisma.$queryRawUnsafe<{ name: string }[]>(sql)).map((row) => row.name).sort();
-    expect(await names(`SELECT indexname AS name FROM pg_indexes WHERE indexname IN ('ProviderOperation_taskId_key', 'OfficeTask_requestKey_key', 'ProviderDecisionEvent_operationId_sequence_key', 'ProviderCredential_providerId_target_key') AND indexdef LIKE 'CREATE UNIQUE INDEX%'`))
-      .toEqual(['OfficeTask_requestKey_key', 'ProviderCredential_providerId_target_key', 'ProviderDecisionEvent_operationId_sequence_key', 'ProviderOperation_taskId_key']);
+    expect(await names(`SELECT indexname AS name FROM pg_indexes WHERE indexname IN ('ProviderOperation_taskId_key', 'Task_requestKey_key', 'ProviderDecisionEvent_operationId_sequence_key', 'ProviderCredential_providerId_target_key') AND indexdef LIKE 'CREATE UNIQUE INDEX%'`))
+      .toEqual(['ProviderCredential_providerId_target_key', 'ProviderDecisionEvent_operationId_sequence_key', 'ProviderOperation_taskId_key', 'Task_requestKey_key']);
     expect(await names(`SELECT conname AS name FROM pg_constraint WHERE contype = 'f' AND conname IN ('ProviderOperation_taskId_fkey', 'ProviderDecisionEvent_operationId_fkey', 'ProviderCredential_providerId_fkey') AND confdeltype = 'r'`))
       .toEqual(['ProviderCredential_providerId_fkey', 'ProviderDecisionEvent_operationId_fkey', 'ProviderOperation_taskId_fkey']);
     expect(await names(`SELECT conname AS name FROM pg_constraint WHERE contype = 'c' AND conrelid IN ('"ProviderOperation"'::regclass, '"Provider"'::regclass, '"ProviderDecisionEvent"'::regclass, '"ProviderCredential"'::regclass, '"ProviderWorkerAttestation"'::regclass) AND convalidated`))

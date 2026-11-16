@@ -516,8 +516,7 @@ model Line {
   @@index([iccid])
 }
 
-/// A branch task. Slice R.10 (ADR 0020): the model is `Task`; the table keeps its name, `OfficeTask`, with its
-/// constraints and indexes, so nothing in the database changes and no migration is made.
+/// A branch task. The table was `OfficeTask` until migration `20261116100000_task_table_names`.
 model Task {
   id            String           @id @default(uuid())
   action        String
@@ -559,10 +558,9 @@ model Task {
   @@index([submitterId, createdAt])
   // Tasks an account holds (freezing returns them).
   @@index([assigneeId, status])
-  @@map("OfficeTask")
 }
 
-/// A note on a task. Slice R.10: the model is `TaskNote`; the table keeps its name, `OfficeTaskNote`.
+/// A note on a task.
 model TaskNote {
   id        String     @id @default(uuid())
   taskId    String
@@ -575,7 +573,6 @@ model TaskNote {
   createdAt DateTime   @default(now())
 
   @@index([taskId, createdAt])
-  @@map("OfficeTaskNote")
 }
 
 model ActivityEvent {

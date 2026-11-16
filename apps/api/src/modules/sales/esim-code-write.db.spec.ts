@@ -254,7 +254,7 @@ suite('storing eSIM codes sealed (PostgreSQL)', () => {
     const { taskId } = (await service.swapSim(pos, lineId, { iccid: serial(), esim: true, qr: QR_A, outcome: 'fail' })) as { taskId: string };
     const carried = (await taskOf(taskId)).esimQr ?? '';
     const damaged = `${carried.slice(0, -4)}AAAA`;
-    await prisma.$executeRaw`UPDATE "OfficeTask" SET "esimQr" = ${damaged} WHERE "id" = ${taskId}`;
+    await prisma.$executeRaw`UPDATE "Task" SET "esimQr" = ${damaged} WHERE "id" = ${taskId}`;
     const start = await state();
     const output = await capturedOutput(async () => {
       expect(await refusalOf(service.completeTask(owner, taskId, {}))).toBe('500 ESIM_CODE_UNREADABLE');

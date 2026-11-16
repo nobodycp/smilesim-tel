@@ -25,7 +25,7 @@ export async function lockedTaskOperation(tx: Prisma.TransactionClient, taskId: 
 
 /** Holds a task's row until the transaction ends, and answers it as it stands; null when there is none. */
 export async function lockedTask(tx: Prisma.TransactionClient, id: string): Promise<{ id: string; status: string } | null> {
-  const rows = await tx.$queryRaw<{ id: string; status: string }[]>`SELECT "id", "status" FROM "OfficeTask" WHERE "id" = ${id} FOR UPDATE`;
+  const rows = await tx.$queryRaw<{ id: string; status: string }[]>`SELECT "id", "status" FROM "Task" WHERE "id" = ${id} FOR UPDATE`;
   return rows[0] ?? null;
 }
 

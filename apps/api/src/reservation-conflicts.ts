@@ -23,11 +23,11 @@ export async function openConflicts(): Promise<ReservationConflict[]> {
   try {
     return await prisma.$queryRaw<ReservationConflict[]>`
       SELECT 'serial' AS kind, "iccid" AS value, array_agg("id" ORDER BY "createdAt", "id") AS "taskIds"
-      FROM "OfficeTask" WHERE "action" = 'activate' AND "status" = 'working' AND "iccid" IS NOT NULL
+      FROM "Task" WHERE "action" = 'activate' AND "status" = 'working' AND "iccid" IS NOT NULL
       GROUP BY "iccid" HAVING count(*) > 1
       UNION ALL
       SELECT 'number', "msisdn", array_agg("id" ORDER BY "createdAt", "id")
-      FROM "OfficeTask" WHERE "action" = 'activate' AND "status" = 'working' AND "msisdn" IS NOT NULL
+      FROM "Task" WHERE "action" = 'activate' AND "status" = 'working' AND "msisdn" IS NOT NULL
       GROUP BY "msisdn" HAVING count(*) > 1
       ORDER BY 1, 3`;
   } finally {

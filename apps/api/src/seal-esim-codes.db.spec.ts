@@ -90,7 +90,7 @@ suite('sealing stored eSIM codes (PostgreSQL)', () => {
     const first = await sealEsimCodes(prisma, { ...mine, batchSize: 3 });
     expect(first.tables).toEqual({
       Line: { sealed: 7, skipped: 0, clearLeft: 0, sealedNow: 9 },
-      OfficeTask: { sealed: 5, skipped: 0, clearLeft: 0, sealedNow: 6 },
+      Task: { sealed: 5, skipped: 0, clearLeft: 0, sealedNow: 6 },
     });
     const after = { lines: await lines(), tasks: await tasks() };
     expect(clearOf(after.lines)).toEqual([]);
@@ -105,18 +105,18 @@ suite('sealing stored eSIM codes (PostgreSQL)', () => {
 
     const second = await sealEsimCodes(prisma, { ...mine, batchSize: 3 });
     expect(second.tables.Line).toEqual({ sealed: 0, skipped: 0, clearLeft: 0, sealedNow: 9 });
-    expect(second.tables.OfficeTask).toEqual({ sealed: 0, skipped: 0, clearLeft: 0, sealedNow: 6 });
+    expect(second.tables.Task).toEqual({ sealed: 0, skipped: 0, clearLeft: 0, sealedNow: 6 });
     expect({ lines: await lines(), tasks: await tasks() }).toEqual(after);
   });
 
   it('a dry run counts and writes nothing', async () => {
     const start = { lines: await lines(), tasks: await tasks() };
     const dry = await sealEsimCodes(prisma, { ...mine, dryRun: true });
-    expect(dry).toEqual({ dryRun: true, tables: { Line: { sealed: 0, skipped: 0, clearLeft: 7, sealedNow: 2 }, OfficeTask: { sealed: 0, skipped: 0, clearLeft: 5, sealedNow: 1 } } });
+    expect(dry).toEqual({ dryRun: true, tables: { Line: { sealed: 0, skipped: 0, clearLeft: 7, sealedNow: 2 }, Task: { sealed: 0, skipped: 0, clearLeft: 5, sealedNow: 1 } } });
     expect({ lines: await lines(), tasks: await tasks() }).toEqual(start);
     expect(sealRunLines(dry)).toEqual([
       'Line.esimQr: 7 stored clear, 2 sealed (dry run: nothing was changed)',
-      'OfficeTask.esimQr: 5 stored clear, 1 sealed (dry run: nothing was changed)',
+      'Task.esimQr: 5 stored clear, 1 sealed (dry run: nothing was changed)',
     ]);
   });
 
@@ -134,7 +134,7 @@ suite('sealing stored eSIM codes (PostgreSQL)', () => {
 
     const rest = await sealEsimCodes(prisma, { ...mine, batchSize: 2 });
     expect(rest.tables.Line).toEqual({ sealed: 5, skipped: 0, clearLeft: 0, sealedNow: 9 });
-    expect(rest.tables.OfficeTask).toEqual({ sealed: 5, skipped: 0, clearLeft: 0, sealedNow: 6 });
+    expect(rest.tables.Task).toEqual({ sealed: 5, skipped: 0, clearLeft: 0, sealedNow: 6 });
     const end = { lines: await lines(), tasks: await tasks() };
     expect(opened(end.lines)).toEqual(opened(start.lines));
     expect(opened(end.tasks)).toEqual(opened(start.tasks));

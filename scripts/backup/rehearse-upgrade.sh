@@ -73,7 +73,7 @@ check "lines whose package code is not a package" "select count(*) from \"Line\"
 check "lines whose package code is not their own package's" "select count(*) from \"Line\" l join \"Package\" p on p.id = l.\"packageId\" where p.code <> l.terms ->> 'packageCode'" 0
 check "packages without a provider product code" 'select count(*) from "Package" where "providerProductCode" is null' 0
 check "duplicate package codes" 'select count(*) from (select code from "Package" group by code having count(*) > 1) x' 0
-check "reservation indexes" "select count(*) from pg_indexes where indexname in ('OfficeTask_open_activation_iccid', 'OfficeTask_open_activation_msisdn')" 2
+check "reservation indexes" "select count(*) from pg_indexes where indexname in ('Task_open_activation_iccid', 'Task_open_activation_msisdn')" 2
 say "data: $(wc -l < "$work/before" | tr -d ' ') tables kept their rows; sessions, notices, package codes and reservation indexes as expected"
 
 # 3. The new API on the copy. A key and a Redis that exist for this run only.
@@ -109,9 +109,9 @@ grep -Eq "ESIM_CODE_UNSEALABLE|Refusing to start" "$work/api.log" && die "the AP
     node dist/seal-secrets.js --dry-run > "$work/seal.log" 2>&1
 ) || die "seal-secrets --dry-run failed on the copy"
 clear_lines=$(sql "select count(*) from \"Line\" where \"esimQr\" is not null and \"esimQr\" not like 'v1:%'")
-clear_tasks=$(sql "select count(*) from \"OfficeTask\" where \"esimQr\" is not null and \"esimQr\" not like 'v1:%'")
+clear_tasks=$(sql "select count(*) from \"Task\" where \"esimQr\" is not null and \"esimQr\" not like 'v1:%'")
 grep -q "Line.esimQr: $clear_lines stored clear" "$work/seal.log" || die "the dry run's count of line codes is not what the copy holds"
-grep -q "OfficeTask.esimQr: $clear_tasks stored clear" "$work/seal.log" || die "the dry run's count of task codes is not what the copy holds"
+grep -q "Task.esimQr: $clear_tasks stored clear" "$work/seal.log" || die "the dry run's count of task codes is not what the copy holds"
 say "seal-secrets --dry-run: $clear_lines line code(s) and $clear_tasks task code(s) stored clear; nothing was sealed"
 
 echo "REHEARSED $id"

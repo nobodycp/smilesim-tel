@@ -33,7 +33,7 @@ Each rule names where it lives and what proves it. "Guard" is a rule of `archite
 The code states two chains. Together they are one order; a transaction takes the locks it needs **in this order
 and skips the ones it does not need**:
 
-1. **the task** — `lockedTask` (`tasks/task-operation.ts`, `"OfficeTask" … FOR UPDATE`)
+1. **the task** — `lockedTask` (`tasks/task-operation.ts`, `"Task" … FOR UPDATE`)
 2. **the claim keys** (the serial and the number) — `lockClaim` / `lockKey` (`lines/line-state.ts`,
    `pg_advisory_xact_lock`)
 3. **the provider operation of the task** — `lockedTaskOperation` (`tasks/task-operation.ts`)
@@ -59,7 +59,7 @@ No guard checks the order across files today. It is held by the specs above and 
 | Rule | Where | Proof |
 |---|---|---|
 | One operation per idempotency key (`ProviderOperation.idempotencyKey` unique); the same key with another request is refused (`requestHash`). One operation per task (`taskId` unique). | `provider-operations.service.ts`, schema | `provider-operations.db.spec.ts` |
-| One task per request key (`OfficeTask.requestKey` unique): a sale sent twice opens one task and takes one hold. | `tasks.service.ts` | `activation-settlement.db.spec.ts` |
+| One task per request key (`Task.requestKey` unique): a sale sent twice opens one task and takes one hold. | `tasks.service.ts` | `activation-settlement.db.spec.ts` |
 | Only a `requested` operation may be sent (`maySend`). `pending` and `unknown` may have reached the provider and are never sent again. | `provider-operation.rules.ts` | rules spec; mutation specs of S.11–S.12b.0 |
 | An attempt is named by its number, which only grows. A result is accepted only for the attempt the operation is on. `waivedAttempts` reduces the budget spent, never the number. | `attemptAfter`, `spentAttempts`, `moveStatus` guarded on `attempts` | `provider-dispatch.db.spec.ts` |
 | An attempt belongs to its worker for its lease (`ATTEMPT_LEASE_MS`); the send mark (`sentAt`) is written under the lease and through the gate's permit; recovery acts only after the lease: unsent → `requested` again, possibly sent → `unknown`. | `beginSend`, `recover` | `operation-dispatcher.db.spec.ts` |
