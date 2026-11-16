@@ -66,7 +66,7 @@ describe('ActivityInterceptor and ApiExceptionFilter', () => {
   it('turns a refusal into its status and { message, code }, and logs it as fail with the code', async () => {
     const response = await request(app.getHttpServer()).post('/t/refused');
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ message: 'غير مسموح', code: 'FORBIDDEN' });
+    expect(response.body).toEqual({ message: 'ليست لديك صلاحية لهذا الإجراء', code: 'FORBIDDEN' });
     expect(events()).toEqual([[{ action: 'fund', subjectKind: 'account', subjectRef: '' }, 'fail', 'FORBIDDEN']]);
   });
 

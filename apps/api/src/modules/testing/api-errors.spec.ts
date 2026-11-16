@@ -70,7 +70,7 @@ describe('office refusals', () => {
       .set('Cookie', `sid=${posSession}`)
       .send({ providerCode: 'sky', companyCode: 'golan' });
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ message: 'غير مسموح', code: 'FORBIDDEN' });
+    expect(response.body).toEqual({ message: 'ليست لديك صلاحية لهذا الإجراء', code: 'FORBIDDEN' });
   });
 
   it('answers 404 NOT_FOUND for a report kind it does not have', async () => {
@@ -92,13 +92,13 @@ describe('office refusals', () => {
     };
     const response = await request(app.getHttpServer()).get('/v1/reports/nothing').set('Cookie', `sid=${admin}`);
     expect(response.status).toBe(404);
-    expect(response.body).toEqual({ message: 'غير موجود', code: 'NOT_FOUND' });
+    expect(response.body).toEqual({ message: 'العنصر المطلوب غير موجود', code: 'NOT_FOUND' });
   });
 
   it('builds the failure message from the code', () => {
     const failure = new ApiFailure(400, 'BALANCE_CEILING');
     expect(failure.status).toBe(400);
     expect(failure.code).toBe('BALANCE_CEILING');
-    expect(failure.message).toBe('الرصيد لا يكفي ضمن السقف');
+    expect(failure.message).toBe('الرصيد المتاح لا يكفي لهذه العملية');
   });
 });

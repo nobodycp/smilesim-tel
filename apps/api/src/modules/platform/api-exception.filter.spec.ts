@@ -51,12 +51,12 @@ describe('ApiExceptionFilter and EmptyBodyPipe', () => {
 
   it('answers a refusal with its status and code', async () => {
     const response = await get('/probe/refusal');
-    expect([response.status, response.body]).toEqual([403, { message: 'غير مسموح', code: 'FORBIDDEN' }]);
+    expect([response.status, response.body]).toEqual([403, { message: 'ليست لديك صلاحية لهذا الإجراء', code: 'FORBIDDEN' }]);
   });
 
   it('answers an unknown route as NOT_FOUND', async () => {
     const response = await get('/nowhere');
-    expect([response.status, response.body]).toEqual([404, { message: 'غير موجود', code: 'NOT_FOUND' }]);
+    expect([response.status, response.body]).toEqual([404, { message: 'العنصر المطلوب غير موجود', code: 'NOT_FOUND' }]);
   });
 
   it('answers malformed JSON as INVALID', async () => {

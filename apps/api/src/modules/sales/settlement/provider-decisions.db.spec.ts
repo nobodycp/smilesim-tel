@@ -1030,7 +1030,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
         // The decision reads refuse, with nothing in the refusal but its code.
         for (const path of [`/v1/tasks/${taskId}/provider-decision`, '/v1/provider-decisions', '/v1/provider-decisions?waiting=approval']) {
           const refused = await get(who, path);
-          expect([refused.status, refused.body]).toEqual([403, { message: 'غير مسموح', code: 'FORBIDDEN' }]);
+          expect([refused.status, refused.body]).toEqual([403, { message: 'ليست لديك صلاحية لهذا الإجراء', code: 'FORBIDDEN' }]);
         }
         if (who === 'other') {
           // Another point of sale does not read the task at all.

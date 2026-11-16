@@ -8,6 +8,10 @@ import { fullNameProblem, newPasswordProblem, validateFullName, validateNewPassw
 // NICKNAME_INVALID was retired on 2026-11-05 when the field became the full name
 // (FULL_NAME_INVALID), and the zero-wallet transfer code on 2026-11-07 when a transfer began to carry
 // the wallet with its balance; they are the two deliberate exceptions.
+// On 2026-11-17 the owner had the wording reviewed before launch (no older web build is in use, and the API and the
+// web are released together): eight vague sentences were rewritten so each says what happened and what to do —
+// FORBIDDEN, NOT_FOUND, BALANCE_CEILING, PRICE_BELOW_FLOOR, NUMBER_TAKEN, OPERATION_DISABLED, SWITCH_PACKAGE_FIRST
+// (below) and DUPLICATE_REQUEST. From here on the rule above holds again for the sentences as they now read.
 const LEGACY_MESSAGES: Record<string, string> = {
   LOGIN_REQUIRED: 'يلزم تسجيل الدخول',
   DOOR_MISMATCH: 'هذا الحساب ليس لهذا المدخل',
@@ -20,19 +24,19 @@ const LEGACY_MESSAGES: Record<string, string> = {
   EMAIL_INVALID: 'البريد الإلكتروني غير صحيح',
   PHONE_INVALID: 'رقم الهاتف غير صحيح',
   INVALID: 'بيانات غير صالحة',
-  FORBIDDEN: 'غير مسموح',
-  NOT_FOUND: 'غير موجود',
-  BALANCE_CEILING: 'الرصيد لا يكفي ضمن السقف',
-  PRICE_BELOW_FLOOR: 'سعر البيع أقل من المسموح',
+  FORBIDDEN: 'ليست لديك صلاحية لهذا الإجراء',
+  NOT_FOUND: 'العنصر المطلوب غير موجود',
+  BALANCE_CEILING: 'الرصيد المتاح لا يكفي لهذه العملية',
+  PRICE_BELOW_FLOOR: 'السعر أقل من سعر الشراء. اختر سعراً أعلى',
   REPORTS_BRANCH_ONLY: 'التقارير للفرع فقط',
   NOTE_REQUIRED: 'أضف ملاحظة للتمويل',
   HAS_HISTORY: 'لا يُحذف حساب فيه سجل. جمّده.',
-  NUMBER_TAKEN: 'الرقم مستخدم',
+  NUMBER_TAKEN: 'هذا الرقم مسجّل من قبل',
   LOGIN_TAKEN: 'اسم الدخول مستخدم',
   PACKAGE_DISABLED: 'الرزمة متوقفة',
   PACKAGE_HIDDEN: 'الرزمة غير معروضة للبيع',
-  OPERATION_DISABLED: 'متوقف على هذه الرزمة',
-  SWITCH_PACKAGE_FIRST: 'بدّل الرزمة أولاً',
+  OPERATION_DISABLED: 'هذه العملية متوقفة على هذه الرزمة',
+  SWITCH_PACKAGE_FIRST: 'رزمة هذا الرقم غير متاحة عند حسابه. بدّل الرزمة أولاً',
 };
 
 describe('error contract', () => {
@@ -51,7 +55,7 @@ describe('error contract', () => {
   });
 
   it('builds a body with the message and the code', () => {
-    expect(errorBody('BALANCE_CEILING')).toEqual({ message: 'الرصيد لا يكفي ضمن السقف', code: 'BALANCE_CEILING' });
+    expect(errorBody('BALANCE_CEILING')).toEqual({ message: 'الرصيد المتاح لا يكفي لهذه العملية', code: 'BALANCE_CEILING' });
   });
 
   it('gives the validators a code that matches the message they always returned', () => {
