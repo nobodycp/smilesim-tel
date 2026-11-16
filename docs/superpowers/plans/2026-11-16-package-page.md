@@ -8,7 +8,7 @@ specs; checked on the running copy (port 3000) per `.cursor/rules/verify-before-
   save); `package-sheet-screen.tsx` puts it on «نظرة عامة» and drops the price card from «سلسلة الأسعار»;
   `package-details-form.tsx` loses the checkbox (the details route still takes `esimAvailable`). Web tests that
   reach the checkbox or the price card follow.
-- [ ] **P.2 The start tab shows the package.** After the owner's answer (shown, or edited there).
+- [x] **P.2 The start tab shows the package** (`52b0d5c7`). The details form sits on «نظرة عامة»; the «التفاصيل» tab is gone.
 - [x] **P.3 «أرقام الحسابات» tab** (`6c98c6e`). API `GET /v1/packages/:code/line-accounts` (`pricing/terms.service.ts`,
   repository count by point of sale, `testing/routes.ts`, permissions, `response-shape.spec.ts`); web tab with
   «تعديل السعر» per account; the re-pricing card leaves «سلسلة الأسعار».
