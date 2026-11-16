@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { DataTable, type Column } from '../../../components/data-table';
 import { Check, Plus } from 'lucide-react';
 import { Desk, Pane, layerName } from '../../../components/desk';
@@ -20,6 +21,8 @@ import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
+import { useDesk } from '../../../lib/desk-session';
+import { useRequireLayer } from '../../../lib/use-require-layer';
 
 type RoleDraft = { id: string; name: string; kind: 'layer' | 'job'; layer: string; grants: string[] };
 
@@ -64,7 +67,24 @@ const GRANT = 'inline-grid size-5.5 place-items-center rounded-xs align-middle i
 
 const GROUP_TITLE = { view: 'grantGroupView', work: 'grantGroupWork', accounts: 'grantGroupAccounts' } as const satisfies Record<GrantGroupKey, string>;
 
+/**
+ * Roles are the branch owner's page (the menu shows it to the branch owner only). Any other door or account is sent
+ * home through `useRequireLayer`, as branding and offers are, instead of drawing the page and failing on its 403.
+ */
 export function RolesScreen() {
+  const router = useRouter();
+  const { me } = useDesk();
+  const allowed = useRequireLayer(['branch']);
+  const owner = allowed && Boolean(me?.isBranchOwner);
+
+  useEffect(() => {
+    if (me && !me.isBranchOwner) router.replace('/');
+  }, [me, router]);
+
+  return owner ? <RolesDesk /> : null;
+}
+
+function RolesDesk() {
   const { t } = usePrefs();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<RoleDraft>(emptyDraft);
