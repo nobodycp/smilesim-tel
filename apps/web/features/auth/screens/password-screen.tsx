@@ -2,11 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { AuthFrame } from '../../../components/auth-frame';
+import { AuthFrame, authClass, authInputClass } from '../../../components/auth-frame';
 import { api, routeFor } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { Alert } from '../../../components/alert';
 import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 
 export function PasswordScreen() {
   const router = useRouter();
@@ -31,15 +33,15 @@ export function PasswordScreen() {
 
   return (
     <AuthFrame kicker={t.passwordKicker} title={t.passwordTitle} lede={t.passwordLede}>
-      <form onSubmit={submit}>
-        <label>
+      <form className={authClass.form} onSubmit={submit}>
+        <Label>
           {t.currentPassword}
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
-        </label>
-        <label>
+          <Input size="lg" className={authInputClass} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+        </Label>
+        <Label>
           {t.newPassword}
-          <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" required />
-        </label>
+          <Input size="lg" className={authInputClass} type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" required />
+        </Label>
         <Alert>{message}</Alert>
         <Button type="submit" size="lg" disabled={busy}>{t.save}</Button>
       </form>

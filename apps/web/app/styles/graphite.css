@@ -199,7 +199,7 @@ input[readonly] { background-color: transparent; }
 @keyframes filter-slide { from { opacity: 0; transform: translateX(-24px); } }
 
 /* A card's body and stacks keep their rows at their own height when the card is stretched by a neighbour. */
-.pane-body, .stack, .settings-col, form { align-content: start; }
+.pane-body, .stack, form { align-content: start; }
 /* Five figure cards (the user page) sit in one row on a wide canvas, three and two on a middle one — never four and one
    left alone (owner 2026-11-11). */
 @media (min-width: 1100px) {
@@ -226,151 +226,8 @@ input[readonly] { background-color: transparent; }
 
 /* The dialog's mark (a crimson tile with the tag's cut corner) is components/ui/dialog.tsx since Tailwind migration T2.5. */
 
-/* ── Sign-in, password and two-step pages (Graphite, from design/night-desk-family): the form on the reading side,
-   a dark art panel with the crimson tag beside it; stacked under 860px with the art below. ── */
-.gauth { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); background: var(--rd-bg); }
-.gauth-form { position: relative; display: grid; place-items: center; padding: 72px 40px 40px; }
-.gauth-tools { position: absolute; top: 16px; inset-inline-end: 16px; display: flex; gap: var(--rd-space-2); }
-.gauth-card, .gauth .auth-card {
-  display: grid;
-  gap: 14px;
-  width: min(380px, 100%);
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  text-align: start;
-}
-.gauth-brand { display: flex; align-items: center; gap: 12px; }
-.gauth-brand b { display: block; color: var(--rd-ink); font-size: 20px; font-weight: 700; line-height: 1.3; }
-.gauth-brand small { display: block; color: var(--rd-muted); font-size: var(--rd-text-sm); }
-.gauth-mark {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-accent-fill);
-  color: var(--rd-on-accent);
-  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 11px, 100% 100%, 0 100%);
-}
-[dir='rtl'] .gauth-mark { clip-path: polygon(11px 0, 100% 0, 100% 100%, 0 100%, 0 11px); }
-.gauth-head { display: grid; gap: 8px; justify-items: start; margin-block-start: 18px; }
-.gauth-head h1 { margin: 0; color: var(--rd-ink); font-size: 26px; font-weight: 700; }
-.gauth-head .lede, .gauth-head .eyebrow { margin: 0; }
-.gauth-door {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding-inline: 8px;
-  border-radius: var(--rd-radius-xs);
-  color: var(--rd-accent);
-  font-size: 11.5px;
-  font-weight: 700;
-  box-shadow: inset 0 0 0 1px currentColor;
-}
-.gauth form { display: grid; gap: 14px; }
-.gauth-field { display: grid; gap: 6px; }
-.gauth-field label { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 600; }
-.gauth-box {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 44px;
-  padding-inline: 12px;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-sunken);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-field) 70%, transparent);
-  color: var(--rd-muted);
-}
-.gauth-box:focus-within { box-shadow: inset 0 0 0 1px var(--rd-accent), 0 0 0 3px var(--rd-focus); }
-.gauth-box > svg { flex: none; width: 18px; height: 18px; }
-.gauth .gauth-box input:not([type='checkbox']):not([type='radio']):not([type='file']) {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  color: var(--rd-ink);
-  font-size: var(--rd-text-base);
-}
-.gauth .gauth-box input:focus { box-shadow: none; }
-.gauth-reveal { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-muted); }
-.gauth-reveal svg { width: 18px; height: 18px; }
-/* A saved login fills the fields: the browser's own autofill colour would paint a pale block inside the field, so the
-   field keeps its own surface and ink (owner 2026-11-09). */
-.gauth .gauth-box input:not([type='checkbox']):not([type='radio']):not([type='file']):is(:autofill, :-webkit-autofill),
-.gauth .gauth-box input:not([type='checkbox']):not([type='radio']):not([type='file']):is(:autofill, :-webkit-autofill):is(:hover, :focus) {
-  -webkit-text-fill-color: var(--rd-ink);
-  caret-color: var(--rd-ink);
-  -webkit-box-shadow: 0 0 0 1000px var(--rd-sunken) inset;
-  box-shadow: 0 0 0 1000px var(--rd-sunken) inset;
-  transition: background-color 600000s 0s, color 600000s 0s;
-}
-.gauth-reveal:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
-.gauth-go, .gauth-passkey {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 44px;
-  border: 0;
-  border-radius: var(--rd-radius-sm);
-  font-weight: 700;
-  transition: background-color var(--rd-dur-fast) var(--rd-ease-standard), transform 110ms ease;
-}
-.gauth-go { background: var(--rd-accent-fill); color: var(--rd-on-accent); }
-.gauth-go:hover { background: var(--rd-accent-fill-hover); }
-.gauth-passkey { background: var(--rd-surface-2); color: var(--rd-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); }
-.gauth-passkey:hover { background: var(--rd-surface-3); }
-.gauth-go:active:not(:disabled), .gauth-passkey:active:not(:disabled) { transform: scale(0.98); }
-.gauth-go:disabled, .gauth-passkey:disabled { opacity: 0.5; cursor: not-allowed; }
-.gauth-go:focus-visible, .gauth-passkey:focus-visible, .gauth-reveal:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
-.gauth-help { margin: 0; color: var(--rd-muted); font-size: 12.5px; }
-
-/* The art: always dark, whatever the theme. */
-.gauth-art {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  min-height: 100%;
-  padding: 44px;
-  overflow: hidden;
-  background: radial-gradient(90% 70% at 30% 70%, color-mix(in srgb, var(--rd-accent) 22%, transparent), transparent 70%), var(--rd-login-room);
-  color: var(--rd-login-ink);
-}
-.gauth-art-tag {
-  position: absolute;
-  inset-block-end: -60px;
-  inset-inline-start: -40px;
-  width: 380px;
-  height: 380px;
-  background: var(--rd-accent-fill);
-  opacity: 0.88;
-  transform: rotate(-14deg);
-  clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 0 100%);
-}
-.gauth-art h2 { position: relative; max-width: 12em; margin: 0 0 8px; font-size: 30px; font-weight: 700; line-height: 1.4; }
-.gauth-art p { position: relative; max-width: 26em; margin: 0; }
-@media (max-width: 860px) {
-  .gauth { grid-template-columns: minmax(0, 1fr); }
-  .gauth-form { padding: 72px 20px 32px; }
-  .gauth-art { min-height: 220px; padding: 28px 24px; }
-  .gauth-art h2 { font-size: 22px; }
-  .gauth-art-tag { width: 220px; height: 220px; inset-block-end: -50px; }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .gauth-art-tag { animation: gauth-tag 900ms var(--rd-ease-out) both; }
-  .gauth-art h2, .gauth-art p { animation: rd-rise 600ms 200ms var(--rd-ease-out) both; }
-}
-@keyframes gauth-tag { from { opacity: 0; transform: rotate(-4deg) translateY(40px); } }
-.gauth-art-mark { position: absolute; top: 40px; inset-inline-start: 44px; }
-@media (max-width: 860px) { .gauth-art-mark { top: 24px; inset-inline-start: 24px; } }
+/* ── Sign-in, password and two-step pages: components/auth-frame.tsx, components/auth-art.tsx and
+   features/auth/screens/login-screen.tsx since Tailwind migration T3.2 (the `gauth-tag` keyframes are app/tailwind.css). ── */
 
 /* ── Topbar (Graphite): the path, «ابحث أو انتقل», the wallet chip, the notices, the theme and the language are
    utilities in components/app-shell.tsx, crumbs.tsx, shell-search.tsx and chrome.tsx since Tailwind migration T3.1. ── */
@@ -576,7 +433,8 @@ input[readonly] { background-color: transparent; }
 .po-row-reason, .po-row-next { margin: 0; color: var(--rd-ink-2); font-size: var(--rd-text-sm); }
 .po-row-meta { display: flex; flex-wrap: wrap; column-gap: var(--rd-space-3-5); row-gap: 2px; margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); }
 
-/* A chosen segment of a legacy `.seg` radio group (the account's grants, the two-step rule). The «طريقة التنفيذ» cards
+/* A chosen segment of a legacy `.seg` radio group (the account's grants; the two-step rule is components/ui/segmented.tsx
+   since Tailwind migration T3.2). The «طريقة التنفيذ» cards
    are components/mode-cards.tsx on components/ui/segmented.tsx (Tailwind migration T2.3). */
 .seg button[aria-checked='true'] { background: var(--rd-surface-2); color: var(--rd-ink); box-shadow: inset 0 -2px 0 var(--rd-accent); }
 .co-mark.big { width: 46px; height: 46px; font-size: 18px; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
@@ -585,30 +443,9 @@ input[readonly] { background-color: transparent; }
 /* The ticket's actions in its head: system buttons (take and complete primary, reject and cancel danger, release secondary). */
 .page-head .task-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; }
 
-/* ── Settings (Graphite): the two-step methods as cards to choose (the chosen one outlined in crimson); sessions and
-   passkeys as cards with a crimson device mark. ── */
-.method-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
-.method-card {
-  display: grid;
-  gap: 2px;
-  padding: 12px;
-  border: 0;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-  box-shadow: inset 0 0 0 1px var(--rd-line);
-  color: var(--rd-ink);
-  text-align: start;
-}
-.method-card b { font-size: var(--rd-text-md); font-weight: 700; }
-.method-card small { color: var(--rd-muted); font-size: 11.5px; }
-.method-card:hover { background: var(--rd-surface-3); }
-.method-card.on { background: var(--rd-accent-soft); box-shadow: inset 0 0 0 1px var(--rd-accent); }
-.method-card:focus-visible { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
-.sessions { gap: 8px; }
-.sessions li { padding: 12px; border: 0; border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); }
-.sessions li:first-child, .sessions li:last-child { padding: 12px; }
-.sessions .device { border-radius: var(--rd-radius-sm); background: var(--rd-accent-soft); color: var(--rd-accent); }
-.sessions .device { display: grid; place-items: center; width: 32px; height: 32px; } .sessions li { grid-template-columns: 32px minmax(0, 1fr) auto; }
+/* ── Settings (Graphite): the two-step method cards, and sessions and passkeys as cards with a crimson device mark, are
+   utilities in features/auth/sign-in-methods.tsx and features/auth/screens/settings-screen.tsx since Tailwind migration
+   T3.2. ── */
 
 /* ── Finance and wallet (Graphite): the figure band, the ceiling's cards, the chart with its 7 / 30 days switch. ── */
 .figure-tile.bad .figure-tile-value { color: var(--rd-danger); }
@@ -808,13 +645,8 @@ input[readonly] { background-color: transparent; }
 .grant.on { background: var(--rd-success-soft); color: var(--rd-success); box-shadow: inset 0 0 0 1px var(--rd-success); }
 .grant-none { color: var(--rd-muted); opacity: 0.5; }
 
-/* Settings (Graphite): the account's crimson square mark, the sign-in methods three across. */
-.settings-page .identity-mark { inline-size: 44px; block-size: 44px; border-radius: var(--rd-radius-sm); background: var(--rd-accent-fill); color: var(--rd-on-accent); font-size: 18px; font-weight: 700; box-shadow: none; }
-.settings-page .identity-login { color: var(--rd-muted); font-size: 12.5px; }
-.settings-page .method-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 520px) { .settings-page .method-cards { grid-template-columns: 1fr; } }
-.settings-page .pane-head .hint { margin-inline-start: auto; color: var(--rd-muted); font-size: 12px; }
-.account-form { display: grid; gap: 12px; }
+/* Settings (Graphite): the account's mark, the method cards three across and the sessions count are utilities in
+   features/auth/screens/settings-screen.tsx and sign-in-methods.tsx since Tailwind migration T3.2. */
 
 /* Home top (the approved design): the account band, then the last operations beside the tasks waiting. */
 .home-head .page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1018,7 +850,7 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
    state never rests on colour alone. The session fields are two labelled sunken fields side by side. ── */
 .role-block { display: grid; gap: 0; }
 .role-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
-.role-sec-head h3, .role-sessions > h3, .role-twofactor > h3 { margin: 0; color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }
+.role-sec-head h3, .role-sessions > h3 { margin: 0; color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }
 .role-sum { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 500; font-variant-numeric: tabular-nums; }
 .role-group { display: grid; grid-template-columns: 148px minmax(0, 1fr); column-gap: 16px; padding-block: 4px; border-block-start: 1px solid var(--rd-line); }
 .role-rail { padding-block-start: 9px; }
@@ -1031,19 +863,7 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
 .role-row[data-on='true'] .role-name { color: var(--rd-ink); font-weight: 700; }
 .dialog-form > .role-sessions { margin-block-start: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--rd-line); }
 .role-hint { margin: 4px 0 12px; color: var(--rd-muted); font-size: var(--rd-text-sm); line-height: 1.5; }
-.role-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
-.role-field { display: grid; gap: 4px; align-content: start; }
-.role-field .role-field-name { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 700; }
-.role-input { display: flex; align-items: center; gap: 8px; height: 34px; padding-inline: 12px; border: 1px solid color-mix(in srgb, var(--rd-field) 70%, transparent); border-radius: var(--rd-radius-sm); background: var(--rd-surface); }
-.role-input:focus-within { border-color: var(--rd-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--rd-accent) 18%, transparent); }
-[data-slot='dialog'] .role-input input:not([type='checkbox']):not([type='radio']):not([type='file']),
-.pane .role-input input:not([type='checkbox']):not([type='radio']):not([type='file']) { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: 0; color: var(--rd-ink); font-size: 13px; font-weight: 600; text-align: start; font-variant-numeric: tabular-nums; }
-.role-input input::placeholder { color: var(--rd-muted); font-weight: 600; opacity: 1; }
-.role-range { flex: none; color: var(--rd-faint); font-size: var(--rd-text-sm); font-weight: 600; }
-.role-input[data-invalid] { border-color: var(--rd-danger); }
-.role-input[data-invalid]:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--rd-danger) 18%, transparent); }
-.role-input[data-invalid] .role-range { color: var(--rd-danger); font-weight: 700; }
-.role-error { color: var(--rd-danger); font-size: var(--rd-text-sm); font-weight: 700; }
+/* The two session fields are features/auth/session-rules.tsx since Tailwind migration T3.2. */
 /* The account settings' session block: the same fields, its title and hint tight. */
 .user-settings > .hint { margin: -8px 0 0; color: var(--rd-muted); font-size: 12.5px; font-weight: 500; line-height: 1.55; }
 .user-settings .session-rules-block { gap: 12px; }
@@ -1053,17 +873,12 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
   .role-count { display: inline; margin: 0; }
   .role-rows { padding-block-start: 4px; }
   .role-row { min-height: 44px; }
-  .role-fields { grid-template-columns: minmax(0, 1fr); }
-  .role-input { height: 44px; }
 }
 
-/* Two-step rule (spec 2026-11-11-two-factor-policy): the layer block in the role dialog and the account's block. */
-.seg.role-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); inline-size: 100%; }
-.seg.role-seg button { padding-inline: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.role-twofactor { gap: 0; }
-.role-twofactor [data-slot='filter-bar'][data-bare] { margin-block-start: 12px; }
-.role-hint.role-note { margin: 10px 0 0; }
-.dialog-form > .role-twofactor { margin-block-start: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--rd-line); }
+/* Two-step rule (spec 2026-11-11-two-factor-policy): the layer block in the role dialog and the account's block. The
+   block's own look and its segmented choice are features/auth/two-factor-policy.tsx since Tailwind migration T3.2; its
+   place in the role dialog stays here, through its handle. */
+.dialog-form > [data-slot='layer-two-factor'] { margin-block-start: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--rd-line); }
 .two-factor-block { gap: 12px; }
 .two-factor-block > .tf-lede { margin: -8px 0 0; color: var(--rd-muted); font-size: 12.5px; font-weight: 500; line-height: 1.55; }
 .tf-status { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0; }

@@ -10,7 +10,6 @@
 @import './styles/tokens.css' layer(legacy);
 @import './styles/base.css' layer(legacy);
 @import './styles/doors.css' layer(legacy);
-@import './styles/auth.css' layer(legacy);
 @import './styles/forms.css' layer(legacy);
 @import './styles/shell.css' layer(legacy);
 @import './styles/desk/frame.css' layer(legacy);

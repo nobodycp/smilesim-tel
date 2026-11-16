@@ -14,7 +14,9 @@ import { useToasts } from '../../../components/toast';
 import { Badge } from '../../../components/ui/badge';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
-import { PasskeysPane, TwoFactorPane, useSignInMethods } from '../sign-in-methods';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { PasskeysPane, TwoFactorPane, deviceClass, sessionClass, useSignInMethods } from '../sign-in-methods';
 
 export function SettingsScreen() {
   const { t, apiText, locale } = usePrefs();
@@ -116,43 +118,45 @@ export function SettingsScreen() {
 
   if (!ready) return <PageSkeleton />;
 
+  // The desk frame (`.desk`, `.page-head`) and the panes (`.pane`, `.pane-head`, `.pane-body`) stay legacy classes until
+  // Tailwind migration T3.3; the profile page's own parts are utilities (T3.2).
   return (
-    <div className="settings-page desk">
+    <div className="desk">
     <header className="page-head">
       <h1>{t.settingsTitle}</h1>
       <p className="lede" data-testid="page-lede">{t.settingsLede}</p>
     </header>
     <Alert banner>{error || profile.error || sessionList.error || methods.error}</Alert>
 
-    <div className="settings-grid" data-testid="settings-grid">
-      <div className="settings-col">
-        <section className="pane">
+    <div className={settingsClass.grid} data-testid="settings-grid">
+      <div className={settingsClass.col}>
+        <section className="pane w-full">
           <header className="pane-head"><h2>{t.account}</h2></header>
           <div className="pane-body">
-            <div className="identity">
-              <div className="identity-mark" aria-hidden="true">{initial}</div>
+            <div className="flex items-center gap-3 border-b border-line-soft pb-3">
+              <div className="grid size-11 flex-none place-items-center rounded-sm bg-accent-fill text-2xl font-bold text-on-accent shadow-none" aria-hidden="true">{initial}</div>
               <div>
-                <strong><bdi>{shownName}</bdi></strong>
-                <small className="identity-login" data-testid="identity-login" dir="ltr">{loginName}</small>
+                <strong className="block text-lg leading-[1.2]"><bdi>{shownName}</bdi></strong>
+                <small className="text-[12.5px] text-muted" data-testid="identity-login" dir="ltr">{loginName}</small>
               </div>
             </div>
-            <form className="account-form" onSubmit={saveAccount}>
-              <label>
+            <form className={paneForm} onSubmit={saveAccount}>
+              <Label tone="pane">
                 {t.fullName}
-                <input value={nickname} onChange={(e) => setNickname(e.target.value)} autoComplete="name" />
-              </label>
-              <div className="pair">
-                <label>
+                <Input surface="surface" className="text-md" value={nickname} onChange={(e) => setNickname(e.target.value)} autoComplete="name" />
+              </Label>
+              <div className={settingsClass.pair}>
+                <Label tone="pane">
                   {t.email}
-                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" />
-                </label>
-                <label>
+                  <Input surface="surface" className="text-md" type="email" value={email} onChange={(e) => setEmail(e.target.value)} dir="ltr" />
+                </Label>
+                <Label tone="pane">
                   {t.phone}
-                  <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" placeholder="05x xxx xxxx" />
-                </label>
+                  <Input surface="surface" className="text-md" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" placeholder="05x xxx xxxx" />
+                </Label>
               </div>
-              <div className="pair">
-                <label>
+              <div className={settingsClass.pair}>
+                <Label tone="pane">
                   {t.city}
                   <Select place="pane" value={city} onValueChange={setCity} autoComplete="address-level2">
                     <SelectItem value="">{t.cityNone}</SelectItem>
@@ -160,52 +164,56 @@ export function SettingsScreen() {
                       <SelectItem key={row.key} value={row.key}>{row[locale]}</SelectItem>
                     ))}
                   </Select>
-                </label>
-                <label>
+                </Label>
+                <Label tone="pane">
                   {t.address}
-                  <input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={120} autoComplete="street-address" />
-                </label>
+                  <Input surface="surface" className="text-md" value={address} onChange={(e) => setAddress(e.target.value)} maxLength={120} autoComplete="street-address" />
+                </Label>
               </div>
               <div><Button type="submit">{t.save}</Button></div>
             </form>
           </div>
         </section>
 
-        <section className="pane">
+        <section className="pane w-full">
           <header className="pane-head"><h2>{t.passwordSection}</h2></header>
-          <form className="pane-body" onSubmit={savePassword}>
-            <div className="pair">
-              <label>
+          {/* `.pane form`'s 8px gap outranked `.pane-body`'s 12px. */}
+          <form className="pane-body gap-2" onSubmit={savePassword}>
+            <div className={settingsClass.pair}>
+              <Label tone="pane">
                 {t.currentPassword}
-                <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" dir="ltr" />
-              </label>
-              <label>
+                <Input surface="surface" className="text-md" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" dir="ltr" />
+              </Label>
+              <Label tone="pane">
                 {t.newPassword}
-                <input type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" dir="ltr" />
-              </label>
+                <Input surface="surface" className="text-md" type="password" value={nextPassword} onChange={(e) => setNextPassword(e.target.value)} autoComplete="new-password" dir="ltr" />
+              </Label>
             </div>
             <div><Button type="submit">{t.changePassword}</Button></div>
           </form>
         </section>
       </div>
 
-      <div className="settings-col">
+      <div className={settingsClass.col}>
         <TwoFactorPane methods={methods.data} reload={methods.reload} setError={setError} setNote={setNote} />
         <PasskeysPane methods={methods.data} reload={methods.reload} setError={setError} setNote={setNote} when={when} />
 
-        <section className="pane">
-          <header className="pane-head"><h2>{t.sessions}</h2>{sessions.length ? <span className="hint">{t.sessionsOpenMeta.replace('{n}', String(sessions.length))}</span> : null}</header>
+        <section className="pane w-full">
+          <header className="pane-head">
+            <h2>{t.sessions}</h2>
+            {sessions.length ? <span className="m-0 ms-auto text-sm text-muted">{t.sessionsOpenMeta.replace('{n}', String(sessions.length))}</span> : null}
+          </header>
           <div className="pane-body">
-            <ul className="sessions">
+            <ul className={sessionClass.list}>
               {sessions.map((session) => (
-                <li key={session.id}>
-                  <span className="device" aria-hidden="true"><DeviceIcon /></span>
-                  <span className="session-copy">
-                    <strong title={session.userAgent}>
+                <li key={session.id} className={sessionClass.row}>
+                  <span className={deviceClass} aria-hidden="true"><DeviceIcon /></span>
+                  <span className={sessionClass.copy}>
+                    <strong className={sessionClass.name} title={session.userAgent}>
                       <bdi dir="ltr">{deviceLabel(session.userAgent)}</bdi>
                       {session.current && <Badge variant="success" dot>{t.currentSession}</Badge>}
                     </strong>
-                    <small className="session-meta" dir="ltr">{session.ip} · {when(session.lastSeenAt)}</small>
+                    <small className={sessionClass.meta} dir="ltr">{session.ip} · {when(session.lastSeenAt)}</small>
                   </span>
                   <Button type="button" variant="ghost" size="sm" aria-label={`${t.endSession} ${deviceLabel(session.userAgent)}`} onClick={() => void revoke(session.id)}>
                     {t.endSession}
@@ -221,6 +229,19 @@ export function SettingsScreen() {
   );
 }
 
+/*
+ * The profile page's layout (Tailwind migration T3.2), ported from settings.css, responsive.css and graphite.css:
+ * the two columns (1.2fr and at least 280px) from 960px, each a 12px stack sized to its panes; the field pairs one
+ * column under 768px. The identity row: a 44px crimson square with the initial, the name 15px over the login 12.5px.
+ */
+const settingsClass = {
+  grid: 'grid flex-1 grid-rows-none content-start gap-3 min-[960px]:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)] min-[960px]:items-stretch',
+  col: 'grid grid-rows-none content-start gap-3',
+  pair: 'grid grid-cols-2 gap-2 max-md:grid-cols-1',
+} as const;
+/** A form in a pane: forms.css's grid, `.pane form`'s 8px gap, graphite's `align-content: start`. */
+const paneForm = 'grid content-start gap-2';
+
 function deviceLabel(agent: string) {
   if (/curl/i.test(agent)) return 'curl';
   if (/Cursor/i.test(agent)) return 'Cursor';
@@ -233,7 +254,7 @@ function deviceLabel(agent: string) {
 
 function DeviceIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="size-3.75" viewBox="0 0 24 24" aria-hidden="true">
       <rect x="3.5" y="4.5" width="17" height="12" rx="1.5" />
       <path d="M8 19.5h8M12 16.5v3" />
     </svg>

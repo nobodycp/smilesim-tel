@@ -1,14 +1,5 @@
-/* Site identity (app/branding): the form, the logo drops and the live preview. */
-.device {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-  color: var(--rd-muted);
-}
-.device svg { width: 15px; height: 15px; }
+/* Site identity (app/branding): the form, the logo drops and the live preview. (The sessions' device mark is
+   features/auth/sign-in-methods.tsx since Tailwind migration T3.2.) */
 /* Site identity (/branding): the form fills the width and the live preview keeps a fixed column
    beside it; under 960px the preview sits below. The preview is the one loud element here. */
 .brand-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--rd-space-3); align-items: start; }

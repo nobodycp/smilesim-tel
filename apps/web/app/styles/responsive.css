@@ -13,15 +13,10 @@
 }
 /* The shell's breakpoints (the sidebar becomes the drawer under 900px) are utilities in components/app-shell.tsx since
    Tailwind migration T3.1. */
-@media (min-width: 960px) {
-  .settings-page > .settings-grid { grid-template-rows: minmax(0, 1fr); align-content: stretch; }
-  .settings-grid { grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr); align-items: stretch; }
-  .settings-col { grid-template-rows: auto minmax(180px, 1fr); align-content: stretch; }
-}
+/* The profile page's two columns from 960px are utilities in features/auth/screens/settings-screen.tsx since Tailwind
+   migration T3.2. */
 /* Touch targets: 44px under 720px. The topbar, sidebar and drawer are frozen and stay outside this block. */
 @media (max-width: 720px) {
-  .auth input:not([type='checkbox']):not([type='radio']):not([type='file']),
-  .auth select,
   .canvas input:not([type='checkbox']):not([type='radio']):not([type='file']),
   .canvas select { height: 44px; }
   .canvas button,

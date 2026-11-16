@@ -216,7 +216,6 @@ const CATALOGUE = [
   { zone: 'styles', file: 'app/styles/forms.css', role: 'حقول النماذج والتسميات' },
   { zone: 'styles', file: 'app/styles/controls.css', role: 'عناصر تحكم مشتركة' },
   { zone: 'styles', file: 'app/styles/dialog.css', role: 'طبقة وحسم الحوار' },
-  { zone: 'styles', file: 'app/styles/auth.css', role: 'غرفة تسجيل الدخول' },
   { zone: 'styles', file: 'app/styles/doors.css', role: 'صفحة اختيار الباب' },
   { zone: 'styles', file: 'app/styles/responsive.css', role: 'نقاط التوقف والتخطيطات الكثيفة' },
   { zone: 'styles', file: 'app/styles/ui.css', role: 'أنماط مكونات components/ui ومساعدات الاتجاه' },

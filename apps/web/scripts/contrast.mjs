@@ -20,10 +20,10 @@
 // A crimson fill whose content still cannot be found fails unless it is on the ALLOWLIST. It then checks
 // the WCAG ratio in both themes: text ≥ 4.5:1, glyph-only content (an svg stroke, a ::before mark, the selectors in
 // GLYPH) ≥ 3:1. A translucent content colour is composited over the fill before the ratio is taken. Text drawn by
-// other elements over a fill (OVERLAY: the sign-in art's heading and line over its tag) is checked the same way, over
-// the fill composited at the rule's `opacity` on each backdrop listed. It also fails on a bare `var(--rd-accent)` fill
-// (the thread colour, not the fill token) that is not on the ALLOWLIST below: content on crimson uses
-// `--rd-accent-fill`, and decoration (a crimson fill with nothing drawn on it) is listed with its reason.
+// other elements over a fill (OVERLAY; the sign-in art's tag until T3.2, now only in the self-test) is checked the
+// same way, over the fill composited at the rule's `opacity` on each backdrop listed. It also fails on a bare
+// `var(--rd-accent)` fill (the thread colour, not the fill token) that is not on the ALLOWLIST below: content on
+// crimson uses `--rd-accent-fill`, and decoration (a crimson fill with nothing drawn on it) is listed with its reason.
 //
 // Run: node scripts/contrast.mjs            (CHK-LOCAL from P0.9; P6.4 puts it inside npm run lint)
 //      node scripts/contrast.mjs --self-test (eighteen must-fail / must-pass cases)
@@ -35,15 +35,22 @@ import { fileURLToPath } from 'node:url';
 const web = join(dirname(fileURLToPath(import.meta.url)), '..');
 const styles = join(web, 'app', 'styles');
 
-// Glyph-only content drawn with `color` (the svg uses currentColor): ≥ 3:1 suffices.
-const GLYPH = new Set(['.gauth-mark']);
+// Glyph-only content drawn with `color` (the svg uses currentColor): ≥ 3:1 suffices. Empty since T3.2: the sign-in
+// mark it named (.gauth-mark) is a utility class list (markClass) in components/auth-art.tsx, which this sheet reader
+// cannot see.
+const GLYPH = new Set();
 
 // Fills whose content is drawn by other elements on top of them (siblings painted above, not the rule's own color).
 // Each lists the backdrops the fill is composited on at its `opacity` (the lightest one decides) and the content
-// selectors, each with the selectors its `color` falls back to (inheritance), in order.
-const OVERLAY = new Map([
+// selectors, each with the selectors its `color` falls back to (inheritance), in order. Empty since T3.2: the sign-in
+// art tag it named (.gauth-art-tag under .gauth-art h2 / p) is a utility class list in components/auth-art.tsx
+// (bg-accent-fill at opacity-88 under text-login-ink). The self-test keeps that legacy shape as ART_OVERLAY.
+const OVERLAY = new Map();
+
+// The legacy sign-in art overlay, kept for the self-test cases that exercise the OVERLAY path.
+const ART_OVERLAY = new Map([
   ['.gauth-art-tag', {
-    why: 'components/auth-art.tsx draws the art heading and line over the tag (h2, p: position relative, same corner)',
+    why: 'self-test: the art heading and line drawn over the tag (h2, p: position relative, same corner)',
     backdrops: ['var(--rd-login-room)', 'color-mix(in srgb, var(--rd-accent) 22%, var(--rd-login-room))'],
     content: [['.gauth-art h2', '.gauth-art'], ['.gauth-art p', '.gauth-art']],
   }],
@@ -275,7 +282,7 @@ function extended(selector) {
 // Keyword values that name no colour of their own (the content comes from elsewhere): looked past.
 const KEYWORD = /^(?:inherit|initial|unset|revert|revert-layer|currentcolor)$/i;
 
-function check(sheets, themes, { requireOverlays = false } = {}) {
+function check(sheets, themes, { requireOverlays = false, overlay = OVERLAY, glyph = GLYPH } = {}) {
   const rules = sheets.flatMap(({ file, text }) => readRules(file, text));
   const last = (selector, prop) => {
     let hit = null;
@@ -342,7 +349,7 @@ function check(sheets, themes, { requireOverlays = false } = {}) {
       if (!ok) failures.push(`${sel} ${theme}: ${c.what} ${hexOf(worst.top)} on ${hexOf(worst.bg)} is ${worst.r.toFixed(2)}:1, needs ${min}:1`);
     }
   };
-  for (const [sel, spec] of OVERLAY) {
+  for (const [sel, spec] of overlay) {
     const fill = fills.get(sel);
     if (!fill) {
       if (requireOverlays) failures.push(`overlay ${sel} is not a crimson fill in any sheet: update OVERLAY (${spec.why})`);
@@ -357,7 +364,7 @@ function check(sheets, themes, { requireOverlays = false } = {}) {
     }
   }
   for (const [sel, fill] of fills) {
-    if (OVERLAY.has(sel)) continue;
+    if (overlay.has(sel)) continue;
     if (ALLOWLIST.has(sel)) { lines.push(`allow ${sel} (${fill.at}): ${ALLOWLIST.get(sel)}`); continue; }
     if (fill.inherited && ALLOWLIST.has(fill.hoverOf)) { lines.push(`allow ${sel} (${fill.at}): a state of ${fill.hoverOf} — ${ALLOWLIST.get(fill.hoverOf)}`); continue; }
     if (/:disabled/.test(sel.replace(/:not\([^()]*\)/g, ''))) { lines.push(`skip  ${sel} (${fill.at}): disabled state, drawn at half strength`); continue; }
@@ -365,7 +372,7 @@ function check(sheets, themes, { requireOverlays = false } = {}) {
     const lookup = (chain) => {
       const found = [];
       const color = chain.map((s) => last(s, 'color')).find(Boolean);
-      if (color) found.push({ kind: chain.some((s) => GLYPH.has(s)) ? 'glyph' : 'text', what: 'color', ...color });
+      if (color) found.push({ kind: chain.some((s) => glyph.has(s)) ? 'glyph' : 'text', what: 'color', ...color });
       const stroke = chain.map((s) => last(`${s} svg`, 'stroke')).find(Boolean);
       if (stroke) found.push({ kind: 'glyph', what: 'svg stroke', ...stroke });
       const mark = chain.map((s) => last(`${s}::before`, 'background') ?? last(`${s}::before`, 'background-color')).find(Boolean);
@@ -428,7 +435,7 @@ if (process.argv.includes('--self-test')) {
   ];
   let wrong = 0;
   for (const [name, mustFail, text] of cases) {
-    const { failures } = check([{ file: 'self-test.css', text }], themes);
+    const { failures } = check([{ file: 'self-test.css', text }], themes, { overlay: ART_OVERLAY });
     const ok = mustFail ? failures.length > 0 : failures.length === 0;
     if (!ok) wrong += 1;
     console.log(`${ok ? 'ok   ' : 'WRONG'} ${name}: ${failures.length ? `fails — ${failures[0]}` : 'passes'} (${mustFail ? 'must fail' : 'must pass'})`);

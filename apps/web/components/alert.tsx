@@ -38,7 +38,7 @@ export function Alert({
       className={cn(
         'm-0 rounded-sm px-3 py-2.5 text-start text-md font-semibold',
         TONE[tone],
-        banner && 'mb-4 [.desk>&]:mb-0 [.settings-page>&]:mb-0',
+        banner && 'mb-4 [.desk>&]:mb-0',
         className,
       )}
       data-slot="alert"

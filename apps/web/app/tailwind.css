@@ -171,3 +171,9 @@
    transform; the sheet is mounted only while open, so it enters and leaves with these. */
 @keyframes rd-sheet-in { from { translate: var(--sheet-off) 0; } }
 @keyframes rd-sheet-out { to { translate: var(--sheet-off) 0; } }
+
+/* The sign-in pages' entrance (Tailwind migration T3.2): the head, the fields and the actions rise 8px into place
+   (features/auth/screens/login-screen.tsx); the art's crimson tag turns and rises in (components/auth-art.tsx). Both
+   animate `transform`, as the legacy rules did; the utilities that name them sit under `motion-safe:`. */
+@keyframes login-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes gauth-tag { from { opacity: 0; transform: rotate(-4deg) translateY(40px); } }

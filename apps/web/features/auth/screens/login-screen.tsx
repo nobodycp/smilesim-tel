@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState, type FormEvent } from 'react';
 import { Eye, EyeOff, KeyRound } from 'lucide-react';
 import { AuthArt, AuthBrand } from '../../../components/auth-art';
+import { authClass } from '../../../components/auth-frame';
+import { Label } from '../../../components/ui/label';
+import { cn } from '../../../lib/cn';
 import { LanguageSwitch, ThemeToggle } from '../../../components/chrome';
 import { api, routeFor } from '../../../lib/api';
 import { useDoor } from '../../../lib/door-context';
@@ -57,25 +60,28 @@ export function LoginScreen() {
 
   // Graphite sign-in (spec 2026-11-09-graphite-identity): the form on the reading side, the art beside it.
   return (
-    <main className="gauth">
-      <section className="gauth-form">
-        <div className="gauth-tools">
+    <main data-slot="auth" className={authClass.frame}>
+      <section className={authClass.side}>
+        <div className={authClass.tools}>
           <LanguageSwitch />
           <ThemeToggle />
         </div>
-        <div className="gauth-card">
+        <div className={authClass.card}>
           <AuthBrand />
-          <div className="gauth-head login-enter a">
-            <h1>{t.loginTitle}</h1>
-            <span className="gauth-door">{t[door.label]}</span>
+          <div className={cn(authClass.head, enter)}>
+            <h1 className={authClass.title}>{t.loginTitle}</h1>
+            <span className="inline-flex h-5.5 items-center rounded-xs px-2 text-[11.5px] font-bold text-accent inset-ring inset-ring-current">
+              {t[door.label]}
+            </span>
           </div>
-          <form onSubmit={submit}>
-            <div className="gauth-field login-enter b">
-              <label htmlFor="login-name">{t.loginName}</label>
-              <div className="gauth-box">
+          <form className={authClass.form} onSubmit={submit}>
+            <div className={cn(fieldClass, enterAfter70)}>
+              <Label htmlFor="login-name" className={labelClass}>{t.loginName}</Label>
+              <div className={boxClass}>
                 <UserMark />
                 <input
                   id="login-name"
+                  className={inputClass}
                   value={loginName}
                   onChange={(event) => setLoginName(event.target.value)}
                   autoComplete="username"
@@ -85,12 +91,13 @@ export function LoginScreen() {
                 />
               </div>
             </div>
-            <div className="gauth-field login-enter c">
-              <label htmlFor="login-password">{t.password}</label>
-              <div className="gauth-box">
+            <div className={cn(fieldClass, enterAfter140)}>
+              <Label htmlFor="login-password" className={labelClass}>{t.password}</Label>
+              <div className={boxClass}>
                 <LockMark />
                 <input
                   id="login-password"
+                  className={inputClass}
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -101,29 +108,43 @@ export function LoginScreen() {
                 />
                 <button
                   type="button"
-                  className="gauth-reveal"
+                  className={cn(
+                    'grid size-8 flex-none place-items-center rounded-xs border-0 bg-transparent p-0 text-muted',
+                    'hover:bg-surface-2 hover:text-ink',
+                    focusRing,
+                  )}
                   aria-pressed={showPassword}
                   aria-label={showPassword ? t.hidePassword : t.showPassword}
                   title={showPassword ? t.hidePassword : t.showPassword}
                   onClick={() => setShowPassword((value) => !value)}
                 >
                   {/* An eye, as sign-in fields show it (owner 2026-11-09); the words stay its name. */}
-                  {showPassword ? <EyeOff size={18} strokeWidth={1.9} aria-hidden="true" /> : <Eye size={18} strokeWidth={1.9} aria-hidden="true" />}
+                  {showPassword ? <EyeOff className="size-4.5" size={18} strokeWidth={1.9} aria-hidden="true" /> : <Eye className="size-4.5" size={18} strokeWidth={1.9} aria-hidden="true" />}
                 </button>
               </div>
             </div>
             <Alert id="login-error">{message}</Alert>
-            <button className="gauth-go login-enter d" type="submit" disabled={busy} aria-busy={busy}>
+            <button
+              className={cn(actionClass, 'bg-accent-fill text-on-accent hover:bg-accent-fill-hover', enterAfter210)}
+              type="submit"
+              disabled={busy}
+              aria-busy={busy}
+            >
               <span>{t.signIn}</span>
             </button>
             {passkeys ? (
-              <button className="gauth-passkey login-enter d" type="button" disabled={busy} onClick={withPasskey}>
+              <button
+                className={cn(actionClass, 'bg-surface-2 text-ink inset-ring inset-ring-ink/11 hover:bg-surface-3', enterAfter210)}
+                type="button"
+                disabled={busy}
+                onClick={withPasskey}
+              >
                 <KeyRound size={16} strokeWidth={1.9} aria-hidden="true" />
                 {t.passkeySignIn}
               </button>
             ) : null}
           </form>
-          <p className="gauth-help">{t.loginHelp}</p>
+          <p className="m-0 text-[12.5px] text-muted">{t.loginHelp}</p>
         </div>
       </section>
       <AuthArt />
@@ -131,9 +152,40 @@ export function LoginScreen() {
   );
 }
 
+/*
+ * The sign-in page's own parts (Tailwind migration T3.2), ported from graphite.css's sign-in block and auth.css's
+ * entrance: each field a 6px grid, its label 12px semibold muted; the field a 44px sunken box with an inset hairline
+ * at 70% of `--rd-field` and a muted 18px mark, crimson hairline and the focus ring while its input has focus; the
+ * input bare inside it, keeping the box's fill when the browser autofills it (owner 2026-11-09); the two actions 44px,
+ * bold, pressed to 98%, half-faded while busy. The head, the fields and the actions rise in 70ms apart.
+ */
+const enter = 'motion-safe:animate-[login-in_400ms_var(--rd-ease-out)_both]';
+const enterAfter70 = 'motion-safe:animate-[login-in_400ms_var(--rd-ease-out)_70ms_both]';
+const enterAfter140 = 'motion-safe:animate-[login-in_400ms_var(--rd-ease-out)_140ms_both]';
+const enterAfter210 = 'motion-safe:animate-[login-in_400ms_var(--rd-ease-out)_210ms_both]';
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent';
+const fieldClass = 'grid gap-1.5';
+const labelClass = 'text-sm text-muted';
+const boxClass = cn(
+  'flex h-11 items-center gap-2.5 rounded-sm bg-sunken px-3 text-muted inset-ring inset-ring-field/70',
+  'focus-within:ring-3 focus-within:ring-focus focus-within:inset-ring-accent',
+);
+const inputClass = cn(
+  'h-full w-full min-w-0 flex-1 rounded-sm border-0 bg-transparent p-0 text-base text-ink shadow-none focus:outline-none',
+  '[&:is(:autofill,:-webkit-autofill)]:[-webkit-text-fill-color:var(--rd-ink)] [&:is(:autofill,:-webkit-autofill)]:caret-ink',
+  '[&:is(:autofill,:-webkit-autofill)]:shadow-[inset_0_0_0_1000px_var(--rd-sunken)]',
+  '[&:is(:autofill,:-webkit-autofill)]:[transition:background-color_600000s_0s,color_600000s_0s]',
+);
+const actionClass = cn(
+  'inline-flex h-11 items-center justify-center gap-2 rounded-sm border-0 font-bold',
+  '[transition:background-color_var(--rd-dur-fast)_var(--rd-ease-standard),transform_110ms_ease]',
+  'enabled:active:[transform:scale(0.98)] disabled:cursor-not-allowed disabled:opacity-50',
+  focusRing,
+);
+
 function UserMark() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <svg className="size-4.5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <circle cx="12" cy="8" r="3.2" />
       <path d="M5.5 19.2c1.2-3 3.5-4.4 6.5-4.4s5.3 1.4 6.5 4.4" />
     </svg>
@@ -142,7 +194,7 @@ function UserMark() {
 
 function LockMark() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <svg className="size-4.5 flex-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <rect x="6" y="10.5" width="12" height="9" rx="2" />
       <path d="M8.5 10.5V8.2a3.5 3.5 0 0 1 7 0v2.3" />
     </svg>

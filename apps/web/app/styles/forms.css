@@ -33,13 +33,5 @@ input:focus {
   box-shadow: 0 0 0 3px var(--rd-focus);
 }
 input[readonly] { color: var(--rd-muted); border-style: dashed; background: transparent; }
-.code {
-  margin: 0;
-  padding: var(--rd-space-2-5) var(--rd-space-3);
-  overflow-x: auto;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-  color: var(--rd-ink-2);
-  font-size: var(--rd-text-sm);
-  text-align: start;
-}
+/* The enrolment link (`.code`) is utilities in features/auth/sign-in-methods.tsx and two-factor-screen.tsx since Tailwind
+   migration T3.2. */

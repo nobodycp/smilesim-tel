@@ -2,15 +2,20 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore, type FormEvent } from 'react';
-import { AuthFrame } from '../../../components/auth-frame';
+import { AuthFrame, authClass, authInputClass } from '../../../components/auth-frame';
 import { api, routeFor, TWO_FACTOR_STEP_KEY } from '../../../lib/api';
 import type { TwoFactorMethod } from '../../../lib/api-types';
 import { usePrefs } from '../../../lib/prefs';
 import { Alert } from '../../../components/alert';
 import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { methodName } from '../sign-in-methods';
 import { TWO_FACTOR_METHODS, shownAmong } from '../two-factor-policy';
+
+/** The enrolment link (forms.css `.code`): a scrolling 12px line on `--rd-surface-2`, 10px 12px, 6px corners. */
+const codeClass = 'm-0 overflow-x-auto rounded-sm bg-surface-2 px-3 py-2.5 text-start text-sm text-ink-2';
 
 // The sign-in step left in sessionStorage says whether this visit enrolls a new code or checks one. Read through
 // useSyncExternalStore: the server render (no storage) says "check", the browser answers on hydration.
@@ -110,22 +115,24 @@ export function TwoFactorScreen() {
   return (
     <AuthFrame kicker={t.verifyKicker} title={enrolling ? t.enrollTitle : t.codeTitle} lede={lede}>
       {enrolling && allowed && allowed.length > 1 && (
-        <label>
+        <Label>
           {t.twoFactorMethod}
           <Select value={method} onValueChange={(next) => { setMethod(next as TwoFactorMethod); setSentTo(''); setMessage(''); }}>
             {allowed.map((key) => <SelectItem key={key} value={key}>{methodName(t, key)}</SelectItem>)}
           </Select>
-        </label>
+        </Label>
       )}
-      {enrolling && allowed && allowed.length === 1 && fixedOne && <p className="hint" data-testid="method-only"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>}
-      {enrolling && !byCode && otpauth && <p className="code" dir="ltr">{otpauth}</p>}
-      {byCode && sentTo && <p className="hint">{t.codeSentTo} <bdi dir="ltr">{sentTo}</bdi></p>}
-      <form onSubmit={submit}>
+      {/* The two notes are plain paragraphs: no legacy rule reached a `.hint` on these pages, so they keep the
+          browser's own paragraph margins. */}
+      {enrolling && allowed && allowed.length === 1 && fixedOne && <p data-testid="method-only"><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p>}
+      {enrolling && !byCode && otpauth && <p className={codeClass} dir="ltr">{otpauth}</p>}
+      {byCode && sentTo && <p>{t.codeSentTo} <bdi dir="ltr">{sentTo}</bdi></p>}
+      <form className={authClass.form} onSubmit={submit}>
         {(!byCode || sentTo) && (
-          <label>
+          <Label>
             {t.code}
-            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required />
-          </label>
+            <Input size="lg" className={authInputClass} value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" required />
+          </Label>
         )}
         <Alert>{message}</Alert>
         {(!byCode || sentTo) && <Button type="submit" size="lg" disabled={busy}>{t.confirm}</Button>}

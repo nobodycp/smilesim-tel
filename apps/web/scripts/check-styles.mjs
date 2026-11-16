@@ -44,7 +44,6 @@ const TAILWIND_SHEET = 'app/tailwind.css';
 // Frozen on 2026-11-15 (T1.2): the legacy sheets that T5 deletes. Never add to this list.
 const LEGACY_SHEETS = [
   'app/globals.css',
-  'app/styles/auth.css',
   'app/styles/base.css',
   'app/styles/controls.css',
   'app/styles/desk/branding.css',

@@ -53,7 +53,7 @@
 // A case is [name, path, layer, empty, options]: layer `branch` | `main` | `agent` | `pos` (the door and the
 // fixture session), or `bare` (the bare host with no door, where the layout draws the door chooser; no fixture
 // answers there); `empty` swaps the lists for empty ones; options { wait, dump, width, steps } — `wait` the
-// selector that means "drawn" (default .canvas-inner; .gauth for sign-in), `dump` the node whose markup goes to
+// selector that means "drawn" (default .canvas-inner; [data-slot="auth"] for sign-in), `dump` the node whose markup goes to
 // <case>.html (default `wait`), `steps` an open state reached before hashing: [{ click | mousedown: selector,
 // wait?: selector }], dispatched as DOM events so no pointer stays over the page. An unknown option, step key or
 // layer stops the run.
@@ -319,7 +319,7 @@ function answer(path, layer, empty) {
   return null;
 }
 
-const SIGN_IN = { wait: '.gauth' };
+const SIGN_IN = { wait: '[data-slot="auth"]' };
 const cases = [
   ['home', '/', 'branch'],
   ['finance', '/finance', 'branch'],
@@ -398,7 +398,7 @@ const cases = [
   // The package sheet's offers tab: the custom-price rows with their `.price-pair` cells.
   ['company-package-offers', '/companies/cell/packages/cell-400', 'branch', false, { steps: [{ click: '[role=tab][data-tab="offers"]', wait: '.price-pair' }] }],
   // The entered-account door with no code in the fragment: its failed state and the back-to-sign-in button.
-  ['enter', '/enter', 'branch', false, { wait: '.gauth a[href="/login"]', dump: '.gauth' }],
+  ['enter', '/enter', 'branch', false, { wait: '[data-slot="auth"] a[href="/login"]', dump: '[data-slot="auth"]' }],
 ];
 const only = process.env.ONLY?.split(',');
 const width = Number(process.env.WIDTH ?? 1280);

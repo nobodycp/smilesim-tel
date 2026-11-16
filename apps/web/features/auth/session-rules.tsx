@@ -7,6 +7,7 @@ import { api } from '../../lib/api';
 import type { LayerKey, SessionRuleResult, SessionRuleValues } from '../../lib/api-types';
 import { usePrefs } from '../../lib/prefs';
 import { useApiQuery } from '../../lib/use-api-query';
+import { cn } from '../../lib/cn';
 
 // Session rules (spec 2026-11-08-session-rules): sessions allowed and idle time, per layer (settings) and per account
 // (the user page's «الجلسات»). An empty choice follows the next level: account → layer → default.
@@ -60,11 +61,12 @@ export function RuleSelects({
   // placeholder and the range inside it at the end; out of range the frame, the range and a sentence turn red.
   const rangeError = (min: string, max: string) => t.rangeError.replace('{min}', min).replace('{max}', max);
   return (
-    <div className="role-fields">
-      <label className="role-field">
-        <span className="role-field-name">{t.maxSessionsLabel}</span>
-        <span className="role-input" data-invalid={countBad || undefined}>
+    <div className={rule.fields}>
+      <label className={rule.field}>
+        <span className={rule.name}>{t.maxSessionsLabel}</span>
+        <span className={ruleBox(countBad)} data-invalid={countBad || undefined}>
           <input
+            className={rule.input}
             type="number"
             inputMode="numeric"
             min={SESSION_COUNT.min}
@@ -75,14 +77,15 @@ export function RuleSelects({
             aria-invalid={countBad || undefined}
             onChange={(event) => onChange({ ...values, maxSessions: event.target.value === '' ? null : Number(event.target.value) })}
           />
-          <small className="role-range"><bdi dir="ltr">{t.sessionsRange}</bdi></small>
+          <small className={ruleRange(countBad)}><bdi dir="ltr">{t.sessionsRange}</bdi></small>
         </span>
-        {countBad ? <span className="role-error" role="alert">{rangeError('1', '10')}</span> : null}
+        {countBad ? <span className={rule.error} role="alert">{rangeError('1', '10')}</span> : null}
       </label>
-      <label className="role-field">
-        <span className="role-field-name">{t.idleHoursLabel}</span>
-        <span className="role-input" data-invalid={hoursBad || undefined}>
+      <label className={rule.field}>
+        <span className={rule.name}>{t.idleHoursLabel}</span>
+        <span className={ruleBox(hoursBad)} data-invalid={hoursBad || undefined}>
           <input
+            className={rule.input}
             type="number"
             inputMode="decimal"
             min={0.25}
@@ -97,13 +100,38 @@ export function RuleSelects({
               onChange({ ...values, sessionMinutes: text === '' ? null : Math.round(Number(text) * 60) });
             }}
           />
-          <small className="role-range"><bdi dir="ltr">{t.hoursRange}</bdi></small>
+          <small className={ruleRange(hoursBad)}><bdi dir="ltr">{t.hoursRange}</bdi></small>
         </span>
-        {hoursBad ? <span className="role-error" role="alert">{rangeError('0.25', '720')}</span> : null}
+        {hoursBad ? <span className={rule.error} role="alert">{rangeError('0.25', '720')}</span> : null}
       </label>
     </div>
   );
 }
+
+/*
+ * The two session fields (Tailwind migration T3.2), ported from graphite.css's role dialog block; the same in the
+ * role dialog, on the account page and in the layer pane. Two columns 16px apart (one under 641px); each a 4px grid:
+ * the name 12px bold muted, then a 34px field on `--rd-surface` (44px under 641px) inside a hairline at 70% of
+ * `--rd-field`, its input bare (13px semibold, tabular, the placeholder muted) and the range 12px in `--rd-faint` at
+ * the end; focus draws the crimson hairline and an 18% crimson ring. Out of range the hairline, the ring and the range
+ * turn red, and a 12px bold red sentence follows. The label keeps its context's look (pane, dialog) for its own text.
+ */
+const rule = {
+  fields: 'grid grid-cols-2 gap-x-4 gap-y-3 max-sm:grid-cols-1',
+  field: 'grid min-w-0 content-start gap-1 text-start',
+  name: 'text-sm font-bold text-muted',
+  input: cn(
+    'h-full w-full min-w-0 flex-1 rounded-none border-0 bg-transparent p-0 text-start text-md font-semibold text-ink tabular-nums shadow-none outline-0',
+    'placeholder:font-semibold placeholder:text-muted placeholder:opacity-100',
+  ),
+  error: 'text-sm font-bold text-danger',
+} as const;
+const ruleBox = (bad: boolean) =>
+  cn(
+    'flex h-8.5 items-center gap-2 rounded-sm border bg-surface px-3 focus-within:ring-3 max-sm:h-11',
+    bad ? 'border-danger focus-within:ring-danger/18' : 'border-field/70 focus-within:border-accent focus-within:ring-accent/18',
+  );
+const ruleRange = (bad: boolean) => cn('flex-none text-sm', bad ? 'font-bold text-danger' : 'font-semibold text-faint');
 
 /** Whether both values are empty (follow the next level) or inside the server's ranges: «حفظ» waits for it. */
 export function sessionRulesValid(values: SessionRuleValues) {
@@ -135,15 +163,21 @@ export function LayerSessionRulesPane({ setError, setNote }: { setError: (text: 
   }
 
   return (
+    // The pane (`.pane`, `.pane-head`, `.pane-body`) stays legacy classes until Tailwind migration T3.3. One row per
+    // layer (settings.css `.session-rules`): the name over its two fields and «حفظ», a hairline under each but the
+    // last; stacked under 641px.
     <section className="pane">
       <header className="pane-head"><h2>{t.sessionRulesTitle}</h2></header>
       <div className="pane-body">
-        <p className="hint">{t.sessionRulesHint}</p>
+        <p className="m-0 text-sm text-muted">{t.sessionRulesHint}</p>
         {view ? (
-          <ul className="session-rules">
+          <ul className="m-0 grid list-none gap-3 p-0">
             {LAYERS.map((layer) => (
-              <li key={layer}>
-                <strong>{layerName(t, layer)}</strong>
+              <li
+                key={layer}
+                className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] items-end gap-2 border-b border-line pb-3 last:border-b-0 last:pb-0 max-sm:grid-cols-1"
+              >
+                <strong className="col-span-full">{layerName(t, layer)}</strong>
                 <RuleSelects
                   values={drafts[layer] ?? view.layers[layer]}
                   fallback={view.defaults}
