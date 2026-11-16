@@ -35,7 +35,7 @@ export const Activity = (action: ActivityAction, subjectKind: string, subject: (
 export const NO_ACTIVITY_KEY = 'audit:no-activity';
 
 /**
- * Says on purpose that a write is not logged, and why (backend-engineering.mdc 4.4): every office write carries
+ * Says on purpose that a write is not logged, and why (backend-engineering.mdc 4.4): every resource write carries
  * `@Activity` or this. For writes that only change what the caller itself sees, where a log row per call is noise.
  */
 export const NoActivity = (why: string) => SetMetadata(NO_ACTIVITY_KEY, why);

@@ -6,7 +6,7 @@ import { MemoryAuthStore } from '../../auth/testing/memory-auth.store';
 import { apiTestApp } from '../../testing/api-test-app';
 
 // Accounts and roles over HTTP: who may list, create, reset, freeze, delete, enter and leave accounts, and edit
-// roles and access. Written before these routes left office.controller.ts, so the move is checked against the
+// roles and access. Written before these routes moved to their own controller, so the move is checked against the
 // refusals and writes they had.
 
 type Role = { id: string; name: string; kind: string; layer: string | null; grants: string; read: boolean; edit: boolean; accounting: boolean; tasks: boolean; reports: boolean; staff: boolean; enter: boolean };

@@ -6,7 +6,7 @@ import { DEPENDS_ON, MODULES, OWNERS, allowedFor, catchAllModules, crossModuleCy
 // lives. Slice R.0 of the plan `2026-11-13-office-retirement`: it moves nothing; it counts.
 //
 // The same ratchet as `architecture.spec.ts`: each rule's count is in `architecture.baseline.json`, and may only
-// go down. A rule here never names the folder `office`: who owns a file is `architecture-map.fixture.ts`, and
+// go down. A rule here never names a folder: who owns a file is `architecture-map.fixture.ts`, and
 // which file may write what is said by the file's own name, so a file that moves keeps its rule.
 //
 // Every rule is proved twice: on a made-up case that breaks it (so the rule can fail), and by a count of what it

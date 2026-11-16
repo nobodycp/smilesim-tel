@@ -8,7 +8,7 @@ import { API_PROVIDERS } from './api-providers';
 import { ApiFailure, fail } from './api-failure';
 import { errorCode } from './log';
 
-// The API's refusal (slice R.1, ADR 0020: `OfficeFailure` renamed `ApiFailure`, nothing else). What a refusal
+// The API's refusal. What a refusal
 // is must not change with its name: the status and code it carries, the message from the catalog, the body the
 // filter answers, the code the worker logs, and how the settlement and the dispatcher tell a refusal of ours
 // from a technical failure (both ask `instanceof ApiFailure`).

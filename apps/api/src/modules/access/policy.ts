@@ -6,7 +6,7 @@ import type { GrantCode } from './grants';
 // Who may do what in the office (backend-engineering.mdc 3.1). Services ask these functions; they do not read
 // `actor.grants` or `actor.isBranchOwner` themselves, so `permissions.http.spec.ts` and the code say one thing.
 
-/** A grant code (office-grants.ts). `read` and `accounting` are not enforced everywhere yet (ADR 0006). */
+/** A grant code (`grants.ts`). `read` and `accounting` are not enforced everywhere yet (ADR 0006). */
 export type Grant = GrantCode;
 
 /** What a permission question needs to know about whoever asks. */

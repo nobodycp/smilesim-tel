@@ -6,7 +6,7 @@ import { apiTestApp } from './api-test-app';
 import { GRANT_CODES } from '../access/grants';
 import { ROUTES } from './routes';
 
-// Who gets past the gate of each office route (improvement 2, spec 2026-11-08-sorting-permissions-api-guards.md).
+// Who gets past the gate of each resource route (improvement 2, spec 2026-11-08-sorting-permissions-api-guards.md).
 // Six accounts call every route over tables that hold only the caller: `y` = the route lets this account through
 // its permission check (any answer but 401/403/500; with no data it is usually 400 or 404), `n` = 403 before it
 // reads anything. Columns: branch owner, branch staff with no grant, branch staff with every grant, main agent,

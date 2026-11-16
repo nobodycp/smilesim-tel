@@ -121,7 +121,7 @@ async function posServiceWith(tables: Record<string, unknown>) {
 const at = new Date(Date.UTC(2026, 9, 1));
 
 describe('office response shapes', () => {
-  it('answers /v1/me with the keys of DeskMe (the web\'s type, `OfficeMe` before slice W.1)', async () => {
+  it('answers /v1/me with the keys of DeskMe (the web\'s type)', async () => {
     const { service, gate } = await serviceWith({ wallet: { findUnique: async () => ({ balance: 10, ceiling: 100 }) } });
     expect(keysOf(await service.me(gate))).toEqual(sorted(ME_KEYS));
   });
@@ -378,7 +378,7 @@ describe('office response shapes', () => {
 
 // The same lists against the web declarations. Skipped where the web app is not checked out beside the API.
 const webApi = join(__dirname, '../../../../web/lib/api-types.ts');
-// The lines envelope (the web's `lines` call, `officeLines` before slice W.2) is declared with its call (phase 4.3 split the web client by domain).
+// The lines envelope (the web's `lines` call) is declared with its call (phase 4.3 split the web client by domain).
 const webLines = join(__dirname, '../../../../web/features/lines/api.ts');
 const describeWeb = existsSync(webApi) ? describe : describe.skip;
 

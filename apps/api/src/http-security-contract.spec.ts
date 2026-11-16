@@ -222,12 +222,12 @@ describe('the duplicate guard and the idempotency key', () => {
 
 describe('authorization and activity follow the controller, not the path', () => {
   it('every resource controller resolves the actor, but the one that starts and ends an entered session', () => {
-    const office = controllers.filter((controller) => controller.prefix === 'v1');
-    expect(office).toHaveLength(19);
-    const without = office.filter((controller) => !/ActivityInterceptor,\s*ActorInterceptor/.test(controller.interceptors)).map((controller) => controller.file);
+    const resources = controllers.filter((controller) => controller.prefix === 'v1');
+    expect(resources).toHaveLength(19);
+    const without = resources.filter((controller) => !/ActivityInterceptor,\s*ActorInterceptor/.test(controller.interceptors)).map((controller) => controller.file);
     // `handoff` has no session yet and `leave` ends one: the service checks the session itself.
     expect(without).toEqual(['modules/access/accounts/account-session.controller.ts']);
-    expect(office.find((controller) => controller.file.endsWith('account-session.controller.ts'))?.interceptors).toBe('ActivityInterceptor');
+    expect(resources.find((controller) => controller.file.endsWith('account-session.controller.ts'))?.interceptors).toBe('ActivityInterceptor');
   });
 
   it('the controllers outside the resource prefix have no interceptor: they check the session and record by hand', () => {
@@ -352,7 +352,7 @@ describe('what the controller decides (the guard over HTTP)', () => {
     // the two paths of a route were one write. With one prefix there is nothing to rewrite.
     const guard = readFileSync(join(SRC, 'modules/platform/duplicate-guard.interceptor.ts'), 'utf8');
     expect(guard).toContain('const request = hash(`${req.method} ${req.originalUrl}\\n${JSON.stringify(req.body ?? null)}`);');
-    expect(readFileSync(join(SRC, 'modules/platform/route-prefixes.ts'), 'utf8')).not.toMatch(/office'|canonicalPath/);
+    expect(readFileSync(join(SRC, 'modules/platform/route-prefixes.ts'), 'utf8')).not.toMatch(/office|canonicalPath/);
   });
 
   it('a controller that says it is not guarded runs every repeat: nothing is kept or replayed for it', async () => {

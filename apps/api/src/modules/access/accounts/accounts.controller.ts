@@ -66,7 +66,7 @@ export class AccountsController {
   }
 
   @Post('users/:loginName/password')
-  @ApiOperation({ summary: 'Set account password (office)' })
+  @ApiOperation({ summary: 'Set an account password' })
   @ApiParam({ name: 'loginName' })
   @ApiZodBody(SetAccountPasswordBody)
   @ApiErrorResponse(401, 403, 400, 404)

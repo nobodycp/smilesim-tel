@@ -67,8 +67,7 @@ function check(rule: string, found: Hit[]) {
   }
 }
 
-// The rules below look at every module, not at one folder: since slice R.0 (ADR 0020) a file that leaves
-// `modules/v1/` stays under the same rules. `domains` is all the application code under `modules/`.
+// The rules below look at every module, not at one folder (ADR 0020). `domains` is all the application code under `modules/`.
 const domains = production.filter(({ file }) => file.startsWith('modules/'));
 const controllers = domains.filter(({ file }) => file.endsWith('.controller.ts'));
 
@@ -198,9 +197,9 @@ describe('engineering rules (backend-engineering.mdc)', () => {
   });
 
   it('5.1 kernel-use: a domain names what it depends on, not a catch-all', () => {
-    // OfficeKernel was taken apart on 2026-11-10 (plan office-kernel-split). No class comes back in its place:
-    // a provider that most domains inject and that reaches into several of them is the same thing renamed.
-    check('kernel-use', hits(production, /\bOfficeKernel\b|class \w*Kernel\b/));
+    // The kernel was taken apart on 2026-11-10. No class comes back in its place: a provider that most domains
+    // inject and that reaches into several of them is the same thing renamed.
+    check('kernel-use', hits(production, /class \w*Kernel\b/));
   });
 
   it('5.1 prisma-in-service: queries live in a repository, not in a service', () => {

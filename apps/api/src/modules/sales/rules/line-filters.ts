@@ -2,7 +2,7 @@ import type { Prisma } from '../../../generated/prisma/client';
 
 // The filters of the numbers list and the line windows the reports count (expiring, suspended). Everything here is
 // pure: the service hands the result to Prisma, so filters run in the database and never over loaded rows. Slice
-// R.3: from `rules/office-paging.ts`; the page sizes are the platform's (`platform/paging.ts`), the task statuses
+// R.3; the page sizes are the platform's (`platform/paging.ts`), the task statuses
 // the tasks' (`tasks/task-status.ts`).
 
 export const LINE_STATUSES = ['active', 'frozen', 'disconnected', 'suspended'] as const;

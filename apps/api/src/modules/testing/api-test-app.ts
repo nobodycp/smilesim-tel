@@ -9,7 +9,7 @@ import { PROVIDER_GATEWAY, type ProviderGateway } from '../providers/integration
 import { DOMAIN_CONTROLLERS, DOMAIN_PROVIDERS } from './domain-lists';
 
 /**
- * For HTTP specs: every office route, as the app serves it, over the given auth store and in-memory tables.
+ * For HTTP specs: every resource route, as the app serves it, over the given auth store and in-memory tables.
  * Activity events land in `recorded`; notices are written and published through `notice` when given. `global`
  * interceptors run in front of every route, as the platform's `DuplicateGuardModule` registers the duplicate guard. `gateway` replaces the
  * provider gateway for the spec.

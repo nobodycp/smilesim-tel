@@ -892,7 +892,7 @@ describe('the transfer routes under /v1', () => {
   });
 
   async function appFor(service: ApiFacade) {
-    // Every office route, whichever controller holds it, over this service's own collaborators (its in-memory tables).
+    // Every resource route, whichever controller holds it, over this service's own collaborators (its in-memory tables).
     const graph = (service as unknown as { graph: ServiceGraph }).graph;
     const moduleRef = await Test.createTestingModule({
       controllers: DOMAIN_CONTROLLERS,

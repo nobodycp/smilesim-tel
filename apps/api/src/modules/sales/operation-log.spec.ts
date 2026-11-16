@@ -63,7 +63,7 @@ const line = {
   pos: { loginName: 'pos1' },
 };
 
-async function office() {
+async function stage() {
   const auth = new MemoryAuthStore();
   auth.addUser({
     id: 'admin',
@@ -148,7 +148,7 @@ describe('refresh is an operation on an active number only', () => {
 
   for (const status of ['disconnected', 'frozen', 'suspended'] as const) {
     it(`is not offered and is refused on a ${status} number`, async () => {
-      const { service, gate, entries } = await office();
+      const { service, gate, entries } = await stage();
       line.status = status;
       const listed = await service.lines(gate);
       expect(listed.items[0].operations).not.toContain('refresh');
@@ -160,7 +160,7 @@ describe('refresh is an operation on an active number only', () => {
   }
 
   it('is offered on an active number', async () => {
-    const { service, gate } = await office();
+    const { service, gate } = await stage();
     const card = await service.line(gate, 'ln1');
     expect(card.line.operations).toContain('refresh');
   });
@@ -168,7 +168,7 @@ describe('refresh is an operation on an active number only', () => {
 
 describe('an applied operation with no charge', () => {
   it('records a refresh in the provider report and the line log without touching the wallet', async () => {
-    const { service, gate, wallet, entries } = await office();
+    const { service, gate, wallet, entries } = await stage();
     const answer = await service.refreshLine(gate, 'ln1', { outcome: 'success' });
     expect(answer).toEqual({ applied: true, debited: false });
     expect(wallet.balance).toBe(10000);
@@ -189,7 +189,7 @@ describe('an applied operation with no charge', () => {
   });
 
   it('records a SIM swap the same way', async () => {
-    const { service, gate, wallet, entries } = await office();
+    const { service, gate, wallet, entries } = await stage();
     const answer = await service.swapSim(gate, 'ln1', { iccid: '8997000000000000002', outcome: 'success' });
     expect(answer).toEqual({ applied: true, debited: false });
     expect(wallet.balance).toBe(10000);

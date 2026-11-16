@@ -18,11 +18,11 @@ describe('PrismaService', () => {
     const db = { client: shared, available: true } as unknown as PrismaService;
     const notice = { write: async () => [], publish: async () => undefined } as unknown as NoticeService;
 
-    const office = new UnitOfWork(notice, db);
+    const unit = new UnitOfWork(notice, db);
     const activity = new PrismaActivityRecorder(db) as unknown as { client: () => unknown };
     const branding = new PrismaBrandingStore(db) as unknown as { prisma: unknown };
 
-    expect(office.prisma).toBe(shared);
+    expect(unit.prisma).toBe(shared);
     expect(activity.client()).toBe(shared);
     expect(branding.prisma).toBe(shared);
   });

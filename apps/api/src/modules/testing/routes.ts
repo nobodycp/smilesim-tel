@@ -1,4 +1,4 @@
-// Every office route as the app serves it: method, path (sample params), and the activity event it writes.
+// Every resource route as the app serves it: method, path (sample params), and the activity event it writes.
 // Shared by the route table (routes.http.spec.ts) and the permission matrix (permissions.http.spec.ts).
 // Generated from the controllers on 2026-11-08 before the domain split moved routes; a route that moves must
 // keep its row.

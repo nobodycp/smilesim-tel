@@ -7,7 +7,7 @@ import { fail } from './api-failure';
 /** No list serves more rows than this in one answer. */
 export const PAGE_MAX = 100;
 
-// The page size of each list (slice R.3: from `rules/office-paging.ts`).
+// The page size of each list.
 export const LINES_PAGE = 30;
 export const TASKS_PAGE = 50;
 export const FEED_PAGE = 80;

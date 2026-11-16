@@ -12,7 +12,7 @@ import { hashOnce } from './test-hash';
 import { DOMAIN_CONTROLLERS, DOMAIN_PROVIDERS } from './domain-lists';
 import { ApiFailure } from '../platform/api-failure';
 
-// A refusal from any office route carries `{ message, code }`. The Arabic message is the one the
+// A refusal from any resource route carries `{ message, code }`. The Arabic message is the one the
 // web app has always shown; the code is what it now routes and translates on.
 
 describe('office refusals', () => {
@@ -39,7 +39,7 @@ describe('office refusals', () => {
     posSession = await store.saveSession({ userId: 'pos1', scope: 'full', userAgent: '', ip: '' });
     const moduleRef = await Test.createTestingModule({
       imports: [ActivityModule, AuthModule],
-      // Every office route, whichever controller holds it.
+      // Every resource route, whichever controller holds it.
       controllers: DOMAIN_CONTROLLERS,
       providers: [...DOMAIN_PROVIDERS, ...API_PROVIDERS],
     })

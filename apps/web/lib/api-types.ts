@@ -512,7 +512,7 @@ export type DisconnectQuote = {
   runsNow: boolean;
 };
 /**
- * POST office/tasks/:id/provider-decision (ADR 0019, D15): applied at once, left as a proposal for a second
+ * POST /v1/tasks/:id/provider-decision (ADR 0019, D15): applied at once, left as a proposal for a second
  * account, or on record with the line still to be made (`exception`, which alone carries `reason`).
  */
 export type ProviderDecisionAnswer = {
@@ -520,7 +520,7 @@ export type ProviderDecisionAnswer = {
   outcome: 'applied' | 'proposed' | 'exception';
   reason?: 'number-taken' | 'sim-taken' | 'target-missing' | 'esim-code-missing';
 };
-/** POST office/tasks/:id/provider-decision/approval: what the second account's answer came to. */
+/** POST /v1/tasks/:id/provider-decision/approval: what the second account's answer came to. */
 export type ProviderDecisionApprovalAnswer = {
   ok: true;
   outcome: 'approved' | 'refused';
@@ -630,12 +630,12 @@ export type DecisionStanding = {
   canRefuse: boolean;
   blocked: string | null;
 };
-/** GET office/tasks/:id/provider-decision. */
+/** GET /v1/tasks/:id/provider-decision. */
 export type DecisionView = DecisionStanding & {
   needs: { number: boolean; esimCode: boolean };
   history: DecisionRecord[];
 };
-/** One row of GET office/provider-decisions. */
+/** One row of GET /v1/provider-decisions. */
 export type WaitingDecision = DecisionStanding & {
   taskId: string;
   action: string;

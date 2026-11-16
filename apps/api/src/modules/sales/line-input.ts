@@ -1,7 +1,7 @@
 import { fail } from '../platform';
 import { PERIOD_DAYS } from './rules/periods';
 
-/** A mobile number as the office writes it. */
+/** A mobile number as the resource writes it. */
 export const MSISDN = /^05\d{8}$/;
 
 /** The largest QR data URL stored on a line. The client shrinks to about 300 KB first. */

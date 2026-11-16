@@ -5,7 +5,7 @@ import { MemoryAuthStore } from '../auth/testing/memory-auth.store';
 import { apiTestApp } from './api-test-app';
 import { ROUTES, type RouteRow } from './routes';
 
-// Every office route as the app serves it, whichever controller holds it: the method and path, and the activity
+// Every resource route as the app serves it, whichever controller holds it: the method and path, and the activity
 // event it writes. Called without a session, each one refuses with 401 and logs the refusal under its own event.
 // The table lives in testing/routes.ts.
 
@@ -18,7 +18,7 @@ const BEFORE_SESSION: Record<string, number> = {
   'POST /v1/leave': 400,
 };
 
-describe('office routes without a session', () => {
+describe('resource routes without a session', () => {
   let app: INestApplication;
   let recorded: unknown[][];
 

@@ -2,7 +2,7 @@ import { dirname, join, normalize } from 'node:path';
 
 // The target modules of the modular monolith (ADR 0020) and which of them owns each production file TODAY,
 // wherever the file lives. The boundary rules (`architecture-boundaries.spec.ts`) measure the present code
-// against the target with this map, so a rule does not depend on a folder named `office`: a file that moves
+// against the target with this map, so a rule does not depend on a folder's name: a file that moves
 // keeps its owner by changing one line here, and a file no line here covers fails `unmapped-file`.
 //
 // Test-only (`*.fixture.ts`): the build leaves it out.

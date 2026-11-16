@@ -10,7 +10,7 @@ import { DECISIONS } from './settlement/activation-settlement.rules';
 /** The simulated provider's answer. A bare `z.unknown()` key must be present in zod 4, and a body may leave this out. */
 const outcome = providerHint;
 
-/** A mobile number that may be left out: empty, or a number as the office writes it. */
+/** A mobile number that may be left out: empty, or a number as the resource writes it. */
 const optionalMsisdn = z.string().trim().regex(/^(05\d{8})?$/).optional().default('');
 
 /** A SIM serial as typed, or nothing. The company's rules answer `SIM_DIGITS`, `SIM_LENGTH`, `SIM_PREFIX`. */

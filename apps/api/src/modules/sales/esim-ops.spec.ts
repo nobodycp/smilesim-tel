@@ -42,7 +42,7 @@ function fixtures() {
   return { company, provider, pkg, line };
 }
 
-async function office() {
+async function stage() {
   const raced = new Set<string>();
   const { company, provider, pkg, line } = fixtures();
   const auth = new MemoryAuthStore();
@@ -178,7 +178,7 @@ const opened = (stored: unknown) => (typeof stored === 'string' ? open(stored) :
 
 describe('eSIM request', () => {
   it('opens a task priced from the company when neither provider nor package say otherwise', async () => {
-    const { service, gate, tasks, wallet } = await office();
+    const { service, gate, tasks, wallet } = await stage();
     const answer = await service.requestEsim(gate, 'ln1');
     expect(answer).toEqual({ applied: false, taskId: 't1' });
     expect(tasks[0]).toMatchObject({ action: 'esim', posDelta: -400, esim: true, iccid: null, msisdn: '0521000001' });
@@ -186,7 +186,7 @@ describe('eSIM request', () => {
   });
 
   it('prices from the provider over the company, and from the package over both', async () => {
-    const { service, gate, tasks, provider, pkg } = await office();
+    const { service, gate, tasks, provider, pkg } = await stage();
     provider.esimPrice = 600;
     await service.requestEsim(gate, 'ln1');
     expect(tasks[0].posDelta).toBe(-600);
@@ -198,21 +198,21 @@ describe('eSIM request', () => {
   });
 
   it('refuses when the company does not take eSIM', async () => {
-    const { service, gate, tasks, company } = await office();
+    const { service, gate, tasks, company } = await stage();
     company.esim = false;
     await expect(service.requestEsim(gate, 'ln1')).rejects.toMatchObject({ code: 'ESIM_UNSUPPORTED' });
     expect(tasks).toEqual([]);
   });
 
   it('is offered on the line card only while the company takes eSIM', async () => {
-    const { service, gate, company } = await office();
+    const { service, gate, company } = await stage();
     expect((await service.line(gate, 'ln1')).line.operations).toContain('esim');
     company.esim = false;
     expect((await service.line(gate, 'ln1')).line.operations).not.toContain('esim');
   });
 
   it('closes with the serial and the QR: both land on the line and the point of sale pays', async () => {
-    const { service, gate, wallet, entries, line, work } = await office();
+    const { service, gate, wallet, entries, line, work } = await stage();
     await service.requestEsim(gate, 'ln1');
     const task = await work();
     await expect(service.completeTask(gate, String(task.id), { note: '' })).rejects.toMatchObject({ code: 'INVALID' });
@@ -235,7 +235,7 @@ describe('eSIM request', () => {
 
 describe('SIM swap', () => {
   it('writes a physical serial for free and clears any QR', async () => {
-    const { service, gate, wallet, line } = await office();
+    const { service, gate, wallet, line } = await stage();
     line.esim = true;
     line.esimQr = QR;
     const answer = await service.swapSim(gate, 'ln1', { iccid: '8997202000000000003', outcome: 'success' });
@@ -245,7 +245,7 @@ describe('SIM swap', () => {
   });
 
   it('marks an eSIM the branch already holds, with its QR, for free', async () => {
-    const { service, gate, wallet, line } = await office();
+    const { service, gate, wallet, line } = await stage();
     await service.swapSim(gate, 'ln1', { iccid: '8997202000000000004', esim: true, qr: QR, outcome: 'success' });
     expect(line).toMatchObject({ iccid: '8997202000000000004', esim: true });
     expect([String(line.esimQr).startsWith('v1:'), opened(line.esimQr)]).toEqual([true, QR]);
@@ -253,7 +253,7 @@ describe('SIM swap', () => {
   });
 
   it('refuses an eSIM on a company that does not take it', async () => {
-    const { service, gate, company } = await office();
+    const { service, gate, company } = await stage();
     company.esim = false;
     await expect(service.swapSim(gate, 'ln1', { iccid: '8997202000000000004', esim: true, outcome: 'success' })).rejects.toMatchObject({ code: 'ESIM_UNSUPPORTED' });
   });
@@ -261,7 +261,7 @@ describe('SIM swap', () => {
 
 describe('number change through a task', () => {
   it('may be requested without a number and takes it when the employee closes the task', async () => {
-    const { service, gate, line, otherLines, work } = await office();
+    const { service, gate, line, otherLines, work } = await stage();
     const answer = await service.renameLine(gate, 'ln1', { outcome: 'fail' });
     expect(answer).toEqual({ applied: false, taskId: 't1' });
     const task = await work();
@@ -276,7 +276,7 @@ describe('number change through a task', () => {
   });
 
   it('answers 409, not a server error, when the number is taken between the check and the write', async () => {
-    const { service, gate, line, work, raced, entries } = await office();
+    const { service, gate, line, work, raced, entries } = await stage();
     await service.renameLine(gate, 'ln1', { outcome: 'fail' });
     const task = await work();
     const before = { msisdn: line.msisdn, entries: entries.length };
@@ -289,14 +289,14 @@ describe('number change through a task', () => {
   });
 
   it('still needs the number when the provider applies it at once', async () => {
-    const { service, gate } = await office();
+    const { service, gate } = await stage();
     await expect(service.renameLine(gate, 'ln1', { outcome: 'success' })).rejects.toMatchObject({ code: 'INVALID' });
   });
 });
 
 describe('line card', () => {
   it('reports the last recharge from activate, charge, extend, or reactivate entries only', async () => {
-    const { service, gate, entries } = await office();
+    const { service, gate, entries } = await stage();
     expect((await service.line(gate, 'ln1')).line.lastRechargeAt).toBeNull();
     entries.push({ id: 'e1', kind: 'activate', amount: -3000, createdAt: new Date('2026-11-04T23:00:00.000Z'), lineId: 'ln1', msisdn: '0521000001' });
     entries.push({ id: 'e2', kind: 'sim', amount: 0, createdAt: new Date('2026-11-06T10:00:00.000Z'), lineId: 'ln1', msisdn: '0521000001' });
@@ -310,7 +310,7 @@ describe('line card', () => {
 
 describe('immediate eSIM activation', () => {
   it('issues the serial and the QR from the provider and stores them on the new line', async () => {
-    const { service, gate, otherLines, entries, wallet } = await office();
+    const { service, gate, otherLines, entries, wallet } = await stage();
     const answer = await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '', outcome: 'success' });
     expect(answer.applied).toBe(true);
     expect(answer.debited).toBe(true);
@@ -331,7 +331,7 @@ describe('immediate eSIM activation', () => {
   }); // Renders a real PNG; slow when the whole suite runs in parallel: the file-wide limit above covers it.
 
   it('keeps the typed serial for a physical SIM and issues no QR', async () => {
-    const { service, gate, otherLines, entries } = await office();
+    const { service, gate, otherLines, entries } = await stage();
     const answer = await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: false, iccid: '8997202000000000777', outcome: 'success' });
     expect(answer.line).toMatchObject({ esim: false, iccid: '8997202000000000777', esimQr: null });
     expect(otherLines[0]).toMatchObject({ esim: false, esimQr: null });
@@ -340,7 +340,7 @@ describe('immediate eSIM activation', () => {
   });
 
   it('carries the eSIM fee into the provider cost when the branch closes the activation task', async () => {
-    const { service, gate, entries, work } = await office();
+    const { service, gate, entries, work } = await stage();
     await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '', outcome: 'fail' });
     const task = await work();
     await service.completeTask(gate, String(task.id), { iccid: '8997202000000000003', qr: QR });
@@ -349,7 +349,7 @@ describe('immediate eSIM activation', () => {
   });
 
   it('shows package plus eSIM fee, and the eSIM request fee, in provider operations', async () => {
-    const { service, gate, work } = await office();
+    const { service, gate, work } = await stage();
     await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '', outcome: 'success' });
     await service.requestEsim(gate, 'ln1');
     const task = await work();
@@ -363,7 +363,7 @@ describe('immediate eSIM activation', () => {
   });
 
   it('keeps the typed serial and the eSIM flag when the provider takes the number and serial from the seller', async () => {
-    const { service, gate, otherLines, entries, provider } = await office();
+    const { service, gate, otherLines, entries, provider } = await stage();
     provider.code = 'tokman';
     const answer = await service.activate(gate, {
       packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '8997202000000000555', msisdn: '0521000777', outcome: 'success',
@@ -374,7 +374,7 @@ describe('immediate eSIM activation', () => {
   });
 
   it('opens a task without a serial or QR when the provider fails', async () => {
-    const { service, gate, tasks } = await office();
+    const { service, gate, tasks } = await stage();
     const answer = await service.activate(gate, { packageCode: 'alloha-150', posLoginName: 'pos1', esim: true, iccid: '', outcome: 'fail' });
     expect(answer).toEqual({ applied: false, taskId: 't1' });
     expect(tasks[0]).toMatchObject({ action: 'activate', esim: true, iccid: null });
@@ -384,7 +384,7 @@ describe('immediate eSIM activation', () => {
 // The full wallet (roadmap N6): a task that will charge holds its price while it is open.
 describe('automatic hold', () => {
   it('holds the price when the task opens and gives it back when the task is cancelled', async () => {
-    const { service, gate, entries, wallet, work } = await office();
+    const { service, gate, entries, wallet, work } = await stage();
     await service.requestEsim(gate, 'ln1');
     expect(wallet).toMatchObject({ balance: 10000, held: 400 });
     expect(entries.map((row) => [row.kind, row.amount, row.held])).toEqual([['hold', 0, 400]]);
@@ -395,7 +395,7 @@ describe('automatic hold', () => {
   });
 
   it('refuses a task whose price the wallet cannot cover, counting what is already held', async () => {
-    const { service, gate, wallet, entries } = await office();
+    const { service, gate, wallet, entries } = await stage();
     Object.assign(wallet, { balance: 600, held: 300 });
     await expect(service.requestEsim(gate, 'ln1')).rejects.toMatchObject({ status: 400, code: 'BALANCE_CEILING' });
     // The task is written before the hold and both are one transaction: the refusal rolls the task back. These

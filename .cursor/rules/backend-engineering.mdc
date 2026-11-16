@@ -55,7 +55,7 @@ about money is `docs/architecture/financial-invariants.md`. A write route whose 
 
 ## 3. Permissions and sessions
 
-1. Every office route states its permission in the policy table (`access/policy.ts`) and the service asks the
+1. Every resource route states its permission in the policy table (`access/policy.ts`) and the service asks the
    policy (`can.…(actor)` / `require…(actor)`). No new inline `actor.grants.includes(...)` or `isBranchOwner`
    checks in services. *(architecture.spec: `inline-grant-checks`)*
 2. `permissions.http.spec.ts` has a row for every write route. A new route without a row fails.
@@ -111,7 +111,7 @@ about money is `docs/architecture/financial-invariants.md`. A write route whose 
    `LineAccess`, …), never a catch-all kernel; its queries live in `<domain>.repository.ts`; its providers are
    registered by its own `<domain>.module.ts`, which exports only what its module owns (no kernel module either:
    slice R.3 replaced it by `PlatformModule` and `AccessModule`). *(architecture.spec: `kernel-use`,
-   `prisma-in-service`, `flat-office-module`; architecture-boundaries.spec: `catch-all-module`)*
+   `prisma-in-service`; architecture-boundaries.spec: `catch-all-module`)*
 2. A domain imports `platform/`, `access/`, and another domain's **service or rules** (as `DEPENDS_ON` allows), never its controller.
    *(architecture.spec: `cross-domain-controller-import`)*
 3. A function is at most 80 lines; a file at most 600. *(ESLint `max-lines-per-function`, `max-lines`; there is
