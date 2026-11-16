@@ -106,6 +106,17 @@ Owner, 2026-11-16:
   and its package count; no numbering anywhere, and no digit keys.
 - The eSIM box was stretched to 44px on a phone: the checkbox keeps its square in any row.
 
+### P.8 An offer's card stands out
+
+Owner, 2026-11-16: «لما تكون الرزمة عرض اعمل تأثيرات بصرية وغيّر لونها إلى لون أجمل مع تحريك وألعاب نارية على الرزمة
+نفسها».
+
+- A package marked as an offer has a gold card at the point of sale: a gold edge, a wash from gold to the accent,
+  a gold data ring.
+- It moves: the edge breathes, a sheen crosses the card, and four small bursts of sparks go off in turn, behind
+  the card's content so nothing covers the text or takes a click.
+- With less motion asked for by the system, the card is gold and still.
+
 ## Non-goals
 
 - No change to prices, to the line-prices dialog's rules, or to what an eSIM costs.

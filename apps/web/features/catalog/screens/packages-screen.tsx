@@ -72,6 +72,26 @@ const CARD = cn(
   'transition-colors duration-fast ease-standard hover:bg-surface-2',
   'focus-visible:inset-ring-2 focus-visible:inset-ring-accent focus-visible:outline-none',
 );
+/*
+ * An offer's card (spec 2026-11-16-package-page, P.8): the gold of `--rd-warning` instead of the plain card — a
+ * 2px gold edge that breathes (drawn by `OfferShow`), a wash from gold at the top start to the accent at the bottom end — with a sheen
+ * that crosses it and four bursts of sparks, gold and accent (`OfferShow`). Under the pointer it keeps its wash. With less
+ * motion asked for it is the gold card at rest, with no sheen and no sparks.
+ */
+const OFFER_CARD = cn(
+  'inset-ring-2 inset-ring-warning',
+  'bg-[linear-gradient(135deg,var(--rd-warning-soft),var(--rd-surface)_55%,var(--rd-accent-soft))]',
+  'hover:bg-[linear-gradient(135deg,var(--rd-warning-soft),var(--rd-surface-2)_55%,var(--rd-accent-soft))]',
+);
+/** Where each burst sits on the card (from the reading start and the top), and when it goes off. */
+const BURSTS = [
+  { at: 'start-[18%] top-[22%]', delay: 0 },
+  { at: 'start-[80%] top-[40%]', delay: 0.7 },
+  { at: 'start-[54%] top-[14%]', delay: 1.4 },
+  { at: 'start-[30%] top-[68%]', delay: 2.0 },
+];
+const SPARKS = [0, 45, 90, 135, 180, 225, 270, 315];
+
 /** A company's picture: the whole picture centred, 72px high across the card, straight on the card with no plate behind it. */
 const PLATE = 'flex h-18 w-full items-center justify-center overflow-hidden p-2 max-sm:h-16';
 /** The line under a card's rule: the counts, 12px muted with the figure in bold ink. */
@@ -227,9 +247,10 @@ function PosCatalog({
             <h2 className={ASK}>{t.posAskPackage}</h2>
             <div className={CARD_GRID}>
               {packs.map((row) => (
-                <button className={cn(CARD, 'justify-items-stretch text-start')} data-slot="pack-card" data-testid="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
+                <button className={cn(CARD, 'justify-items-stretch text-start', row.offer && OFFER_CARD)} data-slot="pack-card" data-testid="pack-card" data-offer={row.offer ? '' : undefined} key={row.code} type="button" onClick={() => openPackage(row)}>
+                  {row.offer ? <OfferShow /> : null}
                   <span className="flex items-center gap-2.5">
-                    <GbRing gb={row.dataGb} max={maxGb} unlimited={t.unlimited} />
+                    <GbRing gb={row.dataGb} max={maxGb} unlimited={t.unlimited} gold={row.offer} />
                     <span className="grid min-w-0">
                       <strong>{row.name} {row.offer ? <Badge variant="warning">{t.offerBadge}</Badge> : null}</strong>
                       <span className="text-sm text-muted">{durationOf(row.months)}</span>
@@ -315,6 +336,28 @@ function PosCatalog({
   );
 }
 
+/** The show on an offer's card: a breathing gold edge, a sheen that crosses it and four bursts of sparks, behind its content. Decoration only. */
+function OfferShow() {
+  return (
+    <span className="pointer-events-none absolute inset-0 -z-1 overflow-hidden motion-reduce:hidden" aria-hidden="true" data-slot="offer-show">
+      {/* The gold edge breathes here, not on the card: the card's own animation is its entrance. */}
+      <span className="absolute inset-0 rounded-sm motion-safe:animate-[offer-breathe_2.8s_ease-in-out_infinite]" />
+      <span className="absolute inset-0 bg-[linear-gradient(110deg,transparent_42%,var(--rd-warning-soft)_50%,transparent_58%)] bg-size-[260%_100%] motion-safe:animate-[offer-sheen_3.4s_linear_infinite]" />
+      {BURSTS.map((burst) => (
+        <span key={burst.at} className={cn('absolute size-0', burst.at)}>
+          {SPARKS.map((turn, index) => (
+            <i
+              key={turn}
+              className={cn('absolute size-1.5 rounded-pill opacity-0 motion-safe:animate-[offer-spark_2.7s_ease-out_infinite]', index % 2 ? 'bg-accent' : 'bg-warning')}
+              style={{ '--spark-turn': `${turn}deg`, '--spark-reach': index % 2 ? '22px' : '36px', animationDelay: `${burst.delay}s` } as React.CSSProperties}
+            />
+          ))}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /** An answer already given, as a line: what was asked, what was picked, and «تغيير» to go back to it. */
 function Answer({ label, value, change, onChange }: { label: string; value: string; change: string; onChange: () => void }) {
   return (
@@ -329,11 +372,16 @@ function Answer({ label, value, change, onChange }: { label: string; value: stri
  * A package's data as a ring: the share of the company's largest package drawn around the figure. Unlimited is a
  * full ring; a package that states no data has an empty one.
  */
-function GbRing({ gb, max, unlimited }: { gb: number | null; max: number; unlimited: string }) {
+function GbRing({ gb, max, unlimited, gold = false }: { gb: number | null; max: number; unlimited: string; gold?: boolean }) {
   const share = gb === null ? 0 : gb === -1 ? 100 : Math.round((gb / max) * 100);
   return (
     <span
-      className="grid size-16 shrink-0 place-items-center rounded-pill bg-[conic-gradient(var(--rd-ink-2)_calc(var(--share)*1%),var(--rd-surface-3)_0)]"
+      className={cn(
+        'grid size-16 shrink-0 place-items-center rounded-pill',
+        gold
+          ? 'bg-[conic-gradient(var(--rd-warning)_calc(var(--share)*1%),var(--rd-surface-3)_0)]'
+          : 'bg-[conic-gradient(var(--rd-ink-2)_calc(var(--share)*1%),var(--rd-surface-3)_0)]',
+      )}
       style={{ '--share': share } as React.CSSProperties}
       data-slot="gb-ring"
     >

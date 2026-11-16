@@ -29,3 +29,5 @@ specs; checked on the running copy (port 3000) per `.cursor/rules/verify-before-
   `PackageDetailsBody`, the sheet, `pricing/package-shelf.service.ts` (`offer`, `offerNote`, `noDisconnect`),
   `response-shape.spec.ts`. Web: `features/catalog/package-offer.tsx`, `packages-screen.tsx` (card shell, marks,
   customer field, no numbering), `components/ui/checkbox.tsx`.
+- [ ] **P.8 An offer's card stands out.** `apps/web/features/catalog/screens/packages-screen.tsx` (`OFFER_CARD`,
+  `OfferShow`, `GbRing` gold), keyframes in `apps/web/app/tailwind.css`.
