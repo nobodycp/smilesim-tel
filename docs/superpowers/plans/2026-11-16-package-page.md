@@ -22,6 +22,6 @@ specs; checked on the running copy (port 3000) per `.cursor/rules/verify-before-
   `testing/response-shape.spec.ts`.
 - [x] **P.5b Porting and card-to-bill (web)** (`4c92a2d4`). The two switches with their mode on «نظرة عامة»; the kind choice
   in the activation form when the package offers one; the task's name in the tasks list and its page.
-- [ ] **P.6 The point of sale's flow: one question at a time.** `apps/web/features/catalog/screens/packages-screen.tsx`
+- [x] **P.6 The point of sale's flow: one question at a time** (`efe9190c`). `apps/web/features/catalog/screens/packages-screen.tsx`
   (`PosCatalog`, `Answer`, `GbRing`), copy in ar, en, he; web tests `activation-request-key`, `packages-terms`,
   `branch-packages` follow. Prototype: `docs/prototypes/2026-11-16-activation-variants.html`.
