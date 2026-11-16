@@ -5,8 +5,8 @@ const typescript = nextCoreWebVitals.find((entry) => entry.plugins?.['@typescrip
 
 const config = [
   {
-    // Generated output: the default build, every NEXT_DIST_DIR variant (.next-e2e, .next-audit, .next-infra ...), and test artefacts.
-    ignores: ['.next/**', '.next-*/**', '.next-e2e/**', '.next-audit/**', 'node_modules/**', 'test-results/**', 'playwright-report/**', 'next-env.d.ts'],
+    // Generated output: the default build, every NEXT_DIST_DIR variant (.next-e2e, .next-audit, .next-infra ...), test artefacts and audit-output (git-ignored run notes and helper scripts).
+    ignores: ['.next/**', '.next-*/**', '.next-e2e/**', '.next-audit/**', 'node_modules/**', 'test-results/**', 'playwright-report/**', 'next-env.d.ts', 'audit-output/**'],
   },
   ...nextCoreWebVitals,
   {
