@@ -14,7 +14,7 @@ specs; checked on the running copy (port 3000) per `.cursor/rules/verify-before-
   «تعديل السعر» per account; the re-pricing card leaves «سلسلة الأسعار».
 - [ ] **P.4 What the point of sale sees.** The package card's facts. The «لا تُفصل» and «عرض» marks wait for the
   lock and deals.
-- [ ] **P.5a Porting and card-to-bill (API).** `prisma/schema.prisma` `Package.portMode`, `convertMode`,
+- [x] **P.5a Porting and card-to-bill (API)** (`0fa78e5a`). `prisma/schema.prisma` `Package.portMode`, `convertMode`,
   `Task.activationKind` and the migration; `catalog/packages/packages.schemas.ts` `PackageModeBody`; the sheet;
   `pricing/package-shelf.service.ts` `canPort`, `canConvert`; `sales/lines.schemas.ts` `kind`;
   `sales/lines.service.ts` `openKindTask`; `tasks/tasks.service.ts`. Specs: `sales/activation-kind.db.spec.ts`,
