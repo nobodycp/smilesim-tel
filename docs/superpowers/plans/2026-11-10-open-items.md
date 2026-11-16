@@ -35,6 +35,24 @@ or replaced by a later design. They stay in git history.
   postponed.
 - [ ] **Message management; WhatsApp and email notices.**
 
+## After the business logic: the security and whole-system pass (owner, 2026-11-16)
+
+The owner's order of work: first every feature the client asked for, then one full check of the system. Not to be
+started, piece by piece, before that; each part gets its own spec then.
+
+- [ ] **Rate limits almost everywhere.** Today (`rate-limit.middleware.ts`): a signed-in session has 600 requests
+  and 60 writes a minute, and the three sign-in routes 30 attempts a minute an address. A request with no session
+  has no limit on any other route. Known consequence, left on purpose until this pass: every refused write is
+  recorded with the caller's address (`ActivityEvent`), an anonymous one included, so a caller with no session can
+  add rows to the log as fast as it sends (purged after 90 days).
+- [ ] **A lock on the account under attack.** Today (`auth/validators.ts`): ten failed sign-ins for one login name
+  inside 15 minutes refuse the next ones with `RATE_LIMITED` until the window ends; nothing is stored on the
+  account, nobody is told, and the owner cannot see or lift it. Wanted: a timed lock of the account when a
+  cracking attempt is under way, by its own design (how long, what the account's owner and the branch see, who may
+  unlock, what a locked account's open sessions do).
+- [ ] **The full check of the system** after the client's features: security, limits, and whatever the business
+  logic left open.
+
 ## Open: an intermittent test failure, cause not settled (recorded 2026-11-13)
 
 - In one full local run of `npm run test:api` (all spec files in parallel on one PostgreSQL database), one request
