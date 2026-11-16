@@ -19,9 +19,9 @@
 //       `${}` (a conditional or `??` / `||` of literals counts). A computed value (`markColor(name)`,
 //       `` `var(${tone})` ``) is data, not a literal, and passes;
 //   (d) a stylesheet (.css .scss .sass .less) anywhere under apps/web (dot folders, node_modules and the git-ignored
-//       outputs audit-output, test-results, playwright-report are not read) other than app/tailwind.css and the
-//       frozen legacy list below (empty since T5.1). A listed sheet that no longer exists is reported as a note: the
-//       slice that deletes it removes it from LEGACY_SHEETS.
+//       outputs audit-output, test-results, playwright-report are not read) other than app/tailwind.css, the app's
+//       one stylesheet: it holds the tokens, and every other style is a utility in the markup or a variant in
+//       components/ui (ADR 0022; Tailwind migration T5.2 removed the frozen legacy list that T5.1 emptied).
 //
 // Run: node scripts/check-styles.mjs              (npm run check:styles, in apps/web and at the root)
 //      node scripts/check-styles.mjs --self-test  (proves every rule on fixtures; exit 1 if one is wrong)
@@ -39,11 +39,8 @@ const SOURCE_DIRS = ['app', 'components', 'features', 'lib'];
 const STYLESHEET = /\.(css|scss|sass|less)$/;
 const SKIP_DIRS = new Set(['node_modules', 'audit-output', 'test-results', 'playwright-report']);
 
-// The only stylesheet that stays (ADR 0022).
+// The only stylesheet (ADR 0022): the tokens file. No other stylesheet is allowed, and there is no exception list.
 const TAILWIND_SHEET = 'app/tailwind.css';
-// Frozen on 2026-11-15 (T1.2): the legacy sheets that T5 deletes. Never add to this list. Empty since Tailwind
-// migration T5.1 deleted app/styles/ and app/globals.css: app/tailwind.css is the only stylesheet.
-const LEGACY_SHEETS = [];
 
 // ---------- (a) and (b): class tokens ----------
 
@@ -185,14 +182,9 @@ function checkSource(name, text) {
 
 // ---------- (d): stylesheets ----------
 
-function checkSheets(paths, legacy = LEGACY_SHEETS) {
-  const allowed = new Set([TAILWIND_SHEET, ...legacy]);
-  const problems = paths.filter((path) => !allowed.has(path))
-    .map((path) => `${path}:1:1 stylesheet: a new stylesheet → utilities in the markup, variants in components/ui (ADR 0022)`);
-  const present = new Set(paths);
-  const notes = legacy.filter((path) => !present.has(path))
-    .map((path) => `note: ${path} is gone; remove it from LEGACY_SHEETS in scripts/check-styles.mjs`);
-  return { problems, notes };
+function checkSheets(paths) {
+  return paths.filter((path) => path !== TAILWIND_SHEET)
+    .map((path) => `${path}:1:1 stylesheet: only app/tailwind.css → utilities in the markup, variants in components/ui (ADR 0022)`);
 }
 
 // ---------- the tree ----------
@@ -214,7 +206,7 @@ function checkTree() {
     .flatMap((dir) => walk(join(web, dir), (name) => /\.tsx?$/.test(name) && !name.endsWith('.d.ts')));
   const problems = sources.flatMap((path) => checkSource(path, readFileSync(join(web, path), 'utf8')));
   const sheets = checkSheets(walk(web, (name) => STYLESHEET.test(name)));
-  return { problems: [...problems, ...sheets.problems], notes: sheets.notes, files: sources.length };
+  return { problems: [...problems, ...sheets], files: sources.length };
 }
 
 // ---------- --self-test ----------
@@ -265,15 +257,12 @@ function selfTest() {
   expect('(c) non-colour property passes', tsx("<i style={{ inlineSize: '50%', colorScheme: 'dark', top: 4 }} />"), 0);
   expect('(c) a variable style passes', tsx('<i style={s} />'), 0);
 
-  // (d) a new stylesheet fails; the Tailwind sheet and the legacy list pass; a gone legacy sheet is a note. The list is
-  // empty since T5.1, so the list cases run on a fixture list.
-  const FIXTURE_LEGACY = ['app/globals.css', 'app/styles/base.css'];
-  const sheets = checkSheets([TAILWIND_SHEET, ...FIXTURE_LEGACY.slice(1), 'components/x.module.css', 'app/new.scss'], FIXTURE_LEGACY);
-  expect('(d) new stylesheets', sheets.problems, 2);
-  expect('(d) a deleted legacy sheet is a note', sheets.notes, 1);
-  expect('(d) the frozen list passes', checkSheets([TAILWIND_SHEET, ...FIXTURE_LEGACY], FIXTURE_LEGACY).problems, 0);
-  expect('(d) the Tailwind sheet alone passes', checkSheets([TAILWIND_SHEET]).problems, 0);
-  expect('(d) a deleted sheet fails once it is off the list', checkSheets([TAILWIND_SHEET, 'app/styles/base.css']).problems, 1);
+  // (d) app/tailwind.css is the only stylesheet: every other one fails, a former legacy sheet included.
+  expect('(d) the Tailwind sheet alone passes', checkSheets([TAILWIND_SHEET]), 0);
+  expect('(d) no stylesheet passes', checkSheets([]), 0);
+  expect('(d) every other stylesheet fails', checkSheets([TAILWIND_SHEET, 'components/x.module.css', 'app/new.scss',
+    'app/x.sass', 'features/y.less', 'app/globals.css', 'app/styles/tokens.css']), 6);
+  expect('(d) a second tailwind.css elsewhere fails', checkSheets(['components/tailwind.css']), 1);
 
   if (failures.length > 0) {
     console.error(`check-styles self-test: ${failures.length} failure(s)\n  ${failures.join('\n  ')}`);
@@ -285,11 +274,10 @@ function selfTest() {
 if (process.argv.includes('--self-test')) {
   selfTest();
 } else {
-  const { problems, notes, files } = checkTree();
-  for (const note of notes) console.log(note);
+  const { problems, files } = checkTree();
   if (problems.length > 0) {
     console.error(`check-styles: ${problems.length} problem(s)\n${problems.join('\n')}`);
     process.exit(1);
   }
-  console.log(`check-styles: ${files} source files, no physical utilities, raw colours or new stylesheets`);
+  console.log(`check-styles: ${files} source files, no physical utilities, raw colours or stylesheet but app/tailwind.css`);
 }

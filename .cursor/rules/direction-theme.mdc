@@ -7,8 +7,9 @@ alwaysApply: true
 
 A screen is unfinished until Arabic, English, and both themes have been checked. A new visual that ignores either one is a break, not a design.
 
-- `html` carries `dir`. Icons and the password reveal are items in a flex row, icon first and reveal last, so they move when the language changes. Do not pin them with absolute offsets.
+- `html` carries `dir`, and `DirectionProvider` (`components/ui/direction.tsx`) passes it to every Radix primitive. Icons and the password reveal are items in a flex row, icon first and reveal last, so they move when the language changes. Do not pin them with absolute offsets.
 - Do not set `dir` or `unicode-bidi` on a field that has an icon beside it.
-- Language and theme controls stay in the corner (`inset-inline-end`). Their menu uses `inset-inline-end: 0`.
-- Colours come from tokens that change under `.dark`. A panel that keeps the same fill in both themes is unfinished.
-- Corner marks and borders use logical sides (`border-inline-start`, `border-block-start`), not physical `border-width` lists.
+- Language and theme controls stay in the corner (`end-*`, `inset-inline-end`). Their menu opens at `end-0`.
+- Spacing, insets, alignment, borders and corners are logical utilities: `ms-*` / `me-*`, `ps-*` / `pe-*`, `start-*` / `end-*`, `text-start` / `text-end`, `border-s` / `border-e`, `rounded-s` / `rounded-e` / `rounded-ss` … Physical ones (`ml-*`, `pl-*`, `left-*`, `text-left`, `border-l`, `rounded-l` …) fail `npm run check:styles`. Where only the direction differs (a slide, a chevron, a transform), use the `rtl:` / `ltr:` variants.
+- Colours come from tokens that change under `.dark` (the `.dark` block in `app/tailwind.css`); the `dark:` variant is bound to the same class on `<html>`. A panel that keeps the same fill in both themes is unfinished. Use `dark:` only where a token cannot carry the difference (two copies of a logo, for example).
+- Corner marks and borders use logical sides (`border-s`, `border-e`, `border-t`, `border-b`), not a physical width list.

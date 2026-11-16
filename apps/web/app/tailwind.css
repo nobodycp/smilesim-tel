@@ -1,5 +1,11 @@
 /*
- * The app's one stylesheet (ADR 0022). app/layout.tsx imports it.
+ * The app's one stylesheet and its only style source (ADR 0022). app/layout.tsx imports it.
+ *
+ * It holds the design tokens (the `--rd-*` variables, both themes), their Tailwind names (`@theme`), the dark
+ * variant, the global rules below and the keyframes the utilities name. Every other style is a utility in the markup
+ * or a variant in components/ui (cva). No other stylesheet exists: `npm run check:styles` fails on any .css, .scss,
+ * .sass or .less file under apps/web but this one (Tailwind migration T5.2). A new colour, radius, size, layer or
+ * timing is a token here (both themes when it differs) and in DESIGN.md.
  *
  * Cascade layers, low to high: Tailwind's theme, base (the tokens and the global rules below; preflight is not
  * loaded), components, utilities. A utility always wins over a base rule; unlayered CSS (next/font) sits above all.
@@ -168,7 +174,9 @@
 /* Dark is a class on <html>, set by the server from the cookie and by lib/prefs.tsx (the `.dark` tokens below). */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* The design tokens, both themes (Tailwind migration T5.1, from styles/tokens.css, unchanged). */
+/* The design tokens, both themes: where every colour the styles use is written, and the radius, type, spacing,
+   layer, motion and shadow scales (moved here unchanged by Tailwind migration T5.1; the `@theme` block above names
+   them for the utilities). */
 @layer base {
   /* Design tokens — Graphite (spec 2026-11-09-graphite-identity). Both themes live here and nowhere else. Documented in
      DESIGN.md. Dark is the default theme; light is the same system on cool paper. */
