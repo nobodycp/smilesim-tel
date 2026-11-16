@@ -15,6 +15,13 @@ import { Input } from './ui/input';
 // (`.pane input`), 13px bold ink (`.pane input` sets the size over users.css's 14px), tabular, left to right, the
 // placeholder `--rd-muted` medium, the crimson focus thread, `--rd-surface-2` and `--rd-muted` when disabled.
 // `data-slot="price-field"` is the handle graphite.css's phone-card cap (`max-inline-size: 100%`) reads.
+// `priceFieldClass` is the same look for a price field the caller keeps in its own draft (the sell cell on /packages).
+export const priceFieldClass = {
+  label: 'inline-flex flex-col gap-1 text-start text-xs font-semibold text-muted',
+  hint: 'text-2xs font-semibold text-muted',
+  input: 'w-26 min-w-0 rounded-xs px-2 text-md font-bold tabular-nums text-start placeholder:font-medium placeholder:text-muted disabled:bg-surface-2 disabled:text-muted',
+} as const;
+
 export function PriceField({
   label,
   hint,
@@ -38,12 +45,12 @@ export function PriceField({
     setDraft(null);
   }
   return (
-    <label data-slot="price-field" className="inline-flex flex-col gap-1 text-start text-xs font-semibold text-muted">
-      {hint ? <span className="text-2xs font-semibold text-muted">{hint}</span> : null}
+    <label data-slot="price-field" className={priceFieldClass.label}>
+      {hint ? <span className={priceFieldClass.hint}>{hint}</span> : null}
       <Input
         surface="surface"
         dir="ltr"
-        className="w-26 min-w-0 rounded-xs px-2 text-md font-bold tabular-nums text-start placeholder:font-medium placeholder:text-muted disabled:bg-surface-2 disabled:text-muted"
+        className={priceFieldClass.input}
         inputMode="decimal"
         aria-label={label}
         value={shown}

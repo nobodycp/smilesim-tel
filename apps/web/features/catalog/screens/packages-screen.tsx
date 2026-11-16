@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { ActivationResult } from '../../../components/activation-result';
-import { Desk, Money } from '../../../components/desk';
+import { Desk, Money, Pane } from '../../../components/desk';
 import { EmptyState } from '../../../components/empty-state';
 import { FilterBar } from '../../../components/filter-bar';
 import { RowMenu } from '../../../components/row-menu';
@@ -26,6 +26,53 @@ import { NameField } from '../../../components/name-field';
 import { DataImage } from '../../../components/data-image';
 import { Tabs } from '../../../components/tabs';
 import { PackageFacts } from '../../../components/package-facts';
+import { priceFieldClass } from '../../../components/price-field';
+import { Checkbox } from '../../../components/ui/checkbox';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { cn } from '../../../lib/cn';
+import { paneHintClass } from '../sim-fields';
+
+/*
+ * The look (Tailwind migration T4.4, ADR 0022), ported from desk/packages.css, frame.css, pane.css, graphite.css and
+ * responsive.css in their cascade order:
+ * - the page column (`COLUMN`): a flex column 12px apart that keeps its content's height (the legacy `.desk > .stack`);
+ *   it keeps the `stack` class as the handle the desk column, the canvas and `Pane` size by;
+ * - the point of sale's cards (`CARD_GRID`, `CARD`): 180px columns at the start, 12px apart, each rising in when
+ *   motion is allowed; a card is a grid 10px apart, at least 148px high, 16px inside, a 1px `--rd-line` border with 8px
+ *   corners on `--rd-surface`, ink, its border ink under the pointer, with the soft `--rd-glow` light under the pointer
+ *   (the shell sets `--mx` / `--my` on a card it finds by `data-slot="pos-company"` / `"pack-card"`) and a 2px lift
+ *   when motion is allowed. A company card centres its picture (64px, 10px corners, contained on `--rd-surface-2`)
+ *   or its letters (a 64px tile, 8px corners, 18px extra-bold `--rd-on-mark`) over its name; a package card lines its
+ *   rows at the start; its price 22px extra-bold;
+ * - the subscribe step: a pane whose body is the form, laid out as a block with no row gap (the legacy form was the
+ *   pane itself, a child of `.desk > .stack`, so `.desk > .stack > .pane` made it a block and neither `.pane-body`'s
+ *   12px nor `.pane form`'s 8px reached it); fields are pane labels and fields, the eSIM box a pane label laid out as
+ *   a row (at least 36px, 44px under 721px); the button inline at the start;
+ * - a company's title (`CompanyTitle`): a row 12px apart, the picture 64px as above or the letters on a 48px tile
+ *   (8px corners, 14px extra-bold); the eyebrow 11px bold `--rd-muted`, tracked 0.02em;
+ * - the sell cell: its two price fields (`PriceField`'s look) and the save at the inline end and the foot, 8px apart;
+ *   on a phone's card the cell takes the card's whole row and its parts wrap from the start.
+ */
+const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';
+const CARD_GRID = 'grid grid-cols-[repeat(auto-fill,180px)] justify-start gap-3 motion-safe:*:animate-[rd-rise_420ms_var(--rd-ease-out)_both]';
+const CARD = cn(
+  'relative isolate grid min-h-37 gap-2.5 rounded-lg border border-line bg-surface p-4 text-ink hover:border-ink',
+  "after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:rounded-[inherit] after:content-['']",
+  'after:bg-radial-[180px_circle_at_var(--mx,50%)_var(--my,0%)] after:from-glow after:to-transparent after:to-70%',
+  'after:opacity-0 after:transition-opacity after:duration-base after:ease-standard hover:after:opacity-100',
+  'motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out motion-safe:hover:[transform:translateY(-2px)]',
+);
+const LOGO = 'size-16 rounded-panel bg-surface-2 object-contain';
+const PRICE = 'm-0 text-[22px] font-extrabold';
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-[721px]:min-h-11';
+const EYEBROW = 'm-0 text-xs font-bold tracking-[0.02em] text-muted';
+/** A phone's card (a table with `data-cards` whose cells carry their names): graphite.css's price editors rules. */
+const IN_CARD_ROW = 'max-sm:[[data-cards]:has(td[data-label])_&]:col-span-full';
+const SELL_CELL = cn(
+  'inline-flex items-end justify-end gap-2',
+  'max-sm:[[data-cards]:has(td[data-label])_&]:flex-wrap max-sm:[[data-cards]:has(td[data-label])_&]:justify-start',
+);
 
 function PosCatalog({
   rows,
@@ -104,7 +151,7 @@ function PosCatalog({
 
   return (
     <Desk title={t.plansTitle} lede={t.plansPosLede} error={loadError || error} note={note}>
-      <div className="stack">
+      <div className={COLUMN}>
         <Tabs
           items={[
             { key: 'companies', label: t.tabCompanies },
@@ -115,12 +162,12 @@ function PosCatalog({
           onChange={setStep}
         />
         {step === 'companies' && (
-          <div className="company-grid">
+          <div className={CARD_GRID}>
             {names.map((name) => {
               const image = imageOf.get(name) ?? '';
               return (
-                <button className="company-card" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
-                  {image ? <DataImage className="company-logo" src={image} alt="" /> : <span className="company-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
+                <button className={cn(CARD, 'cursor-pointer justify-items-center text-center')} data-slot="pos-company" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
+                  {image ? <DataImage className={LOGO} src={image} alt="" /> : <span className="grid size-16 place-items-center rounded-lg text-2xl font-extrabold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
                   <strong>{name}</strong>
                 </button>
               );
@@ -128,49 +175,51 @@ function PosCatalog({
           </div>
         )}
         {step === 'packages' && (
-          <div className="pack-grid">
+          <div className={CARD_GRID}>
             {packs.map((row) => (
-              <button className="pack-card" data-testid="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
+              <button className={cn(CARD, 'justify-items-stretch text-start')} data-slot="pack-card" data-testid="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
                 <strong>{row.name}</strong>
                 <PackageFacts facts={row} withDetails={false} />
-                <p className="pack-price" data-testid="pack-price"><Money value={row.price} /></p>
+                <p className={PRICE} data-testid="pack-price"><Money value={row.price} /></p>
               </button>
             ))}
           </div>
         )}
         {step === 'details' && picked && (
-          <form className="pane pane-body stack" data-testid="subscribe-form" onSubmit={join}>
-            <h2>{picked.companyName} · {picked.name}</h2>
-            <PackageFacts facts={picked} />
-            <p className="pack-price" data-testid="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
-            {!picked.canActivate && <Badge variant="danger" dot>{t.activationStopped}</Badge>}
-            {picked.canActivate && offersEsim && (
-              <label className="check">
-                <input type="checkbox" checked={esim} onChange={(event) => setEsim(event.target.checked)} />
-                <span>{t.esim}</span>
-              </label>
-            )}
-            {picked.canActivate && activation === 'details' && (
-              <label>
-                {t.currentNumberDetails}
-                <input value={currentDetails} onChange={(event) => setCurrentDetails(event.target.value)} required />
-              </label>
-            )}
-            {picked.canActivate && activation === 'number' && (
-              <label>
-                {t.number}
-                <input value={givenNumber} inputMode="numeric" dir="ltr" onChange={(event) => setGivenNumber(event.target.value)} required />
-              </label>
-            )}
-            {picked.canActivate && !withEsim && (
-              <label>
-                {t.iccid}
-                <input value={iccid} onChange={(event) => setIccid(event.target.value)} inputMode="numeric" dir="ltr" required />
-                {hasSimRules(rules) && <span className="hint">{simHint(t, rules)}</span>}
-              </label>
-            )}
-            {picked.canActivate && <Button type="submit" disabled={!canActivate}>{t.actActivate}</Button>}
-          </form>
+          <Pane>
+            <form className="pane-body block" data-testid="subscribe-form" onSubmit={join}>
+              <h2>{picked.companyName} · {picked.name}</h2>
+              <PackageFacts facts={picked} />
+              <p className={PRICE} data-testid="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
+              {!picked.canActivate && <Badge variant="danger" dot>{t.activationStopped}</Badge>}
+              {picked.canActivate && offersEsim && (
+                <Label tone="pane" className={CHECK_ROW}>
+                  <Checkbox checked={esim} onCheckedChange={(next) => setEsim(next === true)} />
+                  <span>{t.esim}</span>
+                </Label>
+              )}
+              {picked.canActivate && activation === 'details' && (
+                <Label tone="pane">
+                  {t.currentNumberDetails}
+                  <Input surface="surface" className="text-md" value={currentDetails} onChange={(event) => setCurrentDetails(event.target.value)} required />
+                </Label>
+              )}
+              {picked.canActivate && activation === 'number' && (
+                <Label tone="pane">
+                  {t.number}
+                  <Input surface="surface" className="text-md" value={givenNumber} inputMode="numeric" dir="ltr" onChange={(event) => setGivenNumber(event.target.value)} required />
+                </Label>
+              )}
+              {picked.canActivate && !withEsim && (
+                <Label tone="pane">
+                  {t.iccid}
+                  <Input surface="surface" className="text-md" value={iccid} onChange={(event) => setIccid(event.target.value)} inputMode="numeric" dir="ltr" required />
+                  {hasSimRules(rules) && <span className={paneHintClass}>{simHint(t, rules)}</span>}
+                </Label>
+              )}
+              {picked.canActivate && <Button type="submit" disabled={!canActivate}>{t.actActivate}</Button>}
+            </form>
+          </Pane>
         )}
       </div>
       <ActivationResult result={result} onClose={() => setResult(null)} />
@@ -180,14 +229,14 @@ function PosCatalog({
 
 function CompanyTitle({ name, image, label, heading = false }: { name: string; image: string; label: string; heading?: boolean }) {
   return (
-    <div className="company-head">
+    <div className="flex items-center gap-3">
       {image ? (
-        <DataImage className="company-logo" src={image} alt="" />
+        <DataImage className={LOGO} src={image} alt="" />
       ) : (
-        <span className="company-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>
+        <span className="grid size-12 place-items-center rounded-tile text-base font-extrabold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>
       )}
       <div>
-        <p className="eyebrow">{label}</p>
+        <p className={EYEBROW}>{label}</p>
         {heading ? <h2>{name}</h2> : <strong>{name}</strong>}
       </div>
     </div>
@@ -324,11 +373,15 @@ export function PackagesScreen() {
       num: true,
       // The cell holds the edit fields; the header sorts by the price in force (own, else the default).
       sortValue: (row) => (row.editableField ? row.sellPrice ?? row.sellDefault : null),
+      cell: IN_CARD_ROW,
       render: (row) => row.editableField && (
-        <div className="sell-cell" data-testid="sell-cell">
-          <label className="terms-price">
-            <span>{t.subscriptionShort}</span>
-            <input
+        <div className={SELL_CELL} data-testid="sell-cell">
+          <label className={priceFieldClass.label}>
+            <span className={priceFieldClass.hint}>{t.subscriptionShort}</span>
+            <Input
+              surface="surface"
+              dir="ltr"
+              className={cn(priceFieldClass.input, 'max-sm:[[data-cards]:has(td[data-label])_&]:max-w-full')}
               aria-label={`${row.name} ${t.subscriptionShort}`}
               value={drafts[row.code]?.price ?? ''}
               placeholder={row.sellDefault === null ? '' : shekelField(row.sellDefault)}
@@ -336,9 +389,12 @@ export function PackagesScreen() {
               onChange={(event) => setDraft(row.code, { price: event.target.value })}
             />
           </label>
-          <label className="terms-price">
-            <span>{t.renewalShort}</span>
-            <input
+          <label className={priceFieldClass.label}>
+            <span className={priceFieldClass.hint}>{t.renewalShort}</span>
+            <Input
+              surface="surface"
+              dir="ltr"
+              className={cn(priceFieldClass.input, 'max-sm:[[data-cards]:has(td[data-label])_&]:max-w-full')}
               aria-label={`${row.name} ${t.renewalShort}`}
               value={drafts[row.code]?.renewal ?? ''}
               placeholder={row.sellRenewalDefault === null ? '' : shekelField(row.sellRenewalDefault)}
@@ -362,10 +418,10 @@ export function PackagesScreen() {
   if (!catalog.loaded) {
     return (
       <Desk title={t.plansTitle} lede="" error={failure} note={note}>
-        <section className="pane">
+        <Pane>
           <header className="pane-head"><Spinner /></header>
           <TableSkeleton />
-        </section>
+        </Pane>
       </Desk>
     );
   }
@@ -378,10 +434,10 @@ export function PackagesScreen() {
   if (!me) {
     return (
       <Desk title={t.plansTitle} lede="" error={failure} note={note}>
-        <section className="pane">
+        <Pane>
           <header className="pane-head"><Spinner /></header>
           <TableSkeleton />
-        </section>
+        </Pane>
       </Desk>
     );
   }
@@ -395,17 +451,17 @@ export function PackagesScreen() {
         </label>
       </FilterBar>
       {listed.length === 0 ? (
-        <section className="pane">
+        <Pane>
           <EmptyState>{t.noLines}</EmptyState>
-        </section>
+        </Pane>
       ) : (
-        <div className="stack">
+        <div className={COLUMN}>
           {showProvider
             ? sections.map((section) => (
-                <section className="pane" key={section.key}>
+                <Pane key={section.key}>
                   <header className="pane-head">
                     <div>
-                      <p className="eyebrow">{t.provider}</p>
+                      <p className={EYEBROW}>{t.provider}</p>
                       <h2>{section.provider}</h2>
                     </div>
                   </header>
@@ -415,15 +471,15 @@ export function PackagesScreen() {
                       {priceTable(company.rows)}
                     </div>
                   ))}
-                </section>
+                </Pane>
               ))
             : sections[0]?.companies.map((company) => (
-                <section className="pane" key={company.name}>
+                <Pane key={company.name}>
                   <header className="pane-head">
                     <CompanyTitle name={company.name} image={marks.find((mark) => mark.name === company.name)?.image ?? ''} label={t.company} heading />
                   </header>
                   <div className="pane-body">{priceTable(company.rows)}</div>
-                </section>
+                </Pane>
               ))}
         </div>
       )}

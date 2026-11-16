@@ -4,9 +4,8 @@ import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
-import { Desk, Money, layerName, lineStatus } from '../../../components/desk';
+import { Desk, Money, Pane, layerName, lineStatus } from '../../../components/desk';
 import { LinePricesDialog } from '../../../components/line-prices-dialog';
-import { markColor, markOf } from '../../../lib/company-mark';
 import { usePageTitle } from '../../../lib/page-title';
 import { TableSkeleton } from '../../../components/loading';
 import { PriceField } from '../../../components/price-field';
@@ -34,6 +33,12 @@ import { Tabs } from '../../../components/tabs';
 import { PackageAddons } from '../package-addons';
 import { PackageFacts } from '../../../components/package-facts';
 import { PackageDetailsForm } from '../package-details-form';
+import { CompanyMark } from '../../../components/company-mark';
+import { Checkbox } from '../../../components/ui/checkbox';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { cn } from '../../../lib/cn';
+import { paneHintClass } from '../sim-fields';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
@@ -75,6 +80,47 @@ async function packageLines(packageCode: string): Promise<Fetched<LineRow[]>> {
 }
 
 const MAX_LINE_PAGES = 100;
+
+/*
+ * The look (Tailwind migration T4.4, ADR 0022), ported from desk/packages.css, frame.css, pane.css, components.css,
+ * table.css and graphite.css in their cascade order:
+ * - the title: the company's cut-corner mark (`CompanyMark` lg) and the package's name in one wrapping row 12px apart;
+ *   the states beside it in a row 10px apart;
+ * - the page column (`COLUMN`): a flex column 12px apart that keeps its content's height; it keeps the `stack` class
+ *   as the handle the desk column, the canvas and `Pane` size by;
+ * - «نظرة عامة»: the two figures side by side 12px apart (one column under 721px), each a grid 4px apart, 14px inside,
+ *   8px corners on `--rd-surface-2`, its name 12px bold `--rd-muted` and its figure 1.5rem extra-bold, tabular, 1.1
+ *   high; the facts as rows at least 44px high over a 1px `--rd-line-soft` rule, 12px apart, the name 13px bold
+ *   `--rd-muted` and the value 14px bold ink; the sale state at the start;
+ * - the cards under the price chain (`FUND`): a one-column grid 10px apart at the foot, its heading 0.95rem bold ink,
+ *   its fields pane labels in bold; the re-pricing card, the board's last, shares the board's row with the eSIM price
+ *   card (graphite.css's `grid-column: auto` overrode packages.css's `1 / -1`) and lays out its field and its button
+ *   side by side from 721px with its heading across both;
+ * - «التجديد» / «التبديل»: each package a pane label laid out as a row (the box, its name, its sale state) at least
+ *   44px high over a 1px `--rd-line-soft` rule, 10px apart; the empty line 13px `--rd-muted`, 14px inside;
+ * - the numbers' boxes: a pane label at least 36px high (44px under 721px) around a `Checkbox`;
+ * - «تخصيص سعر»: the account, the two prices and the save in one row (12rem / 8rem / 8rem / the button), under 1100px
+ *   two columns with the account and the save across; a price cell's default figure (12px) beside its field, 10px
+ *   apart at the inline end; on a phone's card the cell takes the card's whole row and wraps from the start; an empty
+ *   difference is a table note (12px `--rd-muted` 500).
+ */
+const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';
+const STAT = 'grid min-w-0 gap-1 rounded-card bg-surface-2 p-3.5';
+const STAT_NAME = 'text-sm font-bold text-muted';
+const STAT_VALUE = 'text-[1.5rem] leading-[1.1] font-extrabold tabular-nums';
+const FUND = 'grid min-w-0 grid-cols-1 items-end gap-2.5';
+const FUND_TITLE = 'm-0 text-[0.95rem] font-bold text-ink';
+const FUND_LABEL = 'min-w-0 font-bold';
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-[721px]:min-h-11';
+/** A phone's card (a table with `data-cards` whose cells carry their names): graphite.css's price editors rules. */
+const IN_CARD_ROW = 'max-sm:[[data-cards]:has(td[data-label])_&]:col-span-full';
+const PRICE_PAIR = cn(
+  'inline-flex items-center justify-end gap-2.5',
+  'max-sm:[[data-cards]:has(td[data-label])_&]:flex-wrap max-sm:[[data-cards]:has(td[data-label])_&]:justify-start',
+);
+/** The default figure beside a price field is 12px (Money reads `.price-pair` for that in the line prices dialog). */
+const PRICE_PAIR_DEFAULT = cn(PRICE_PAIR, '[&>[data-slot=money]]:text-sm');
+const TABLE_NOTE = 'm-0 text-sm font-medium text-muted';
 
 export function PackageSheetScreen() {
   const { t, apiText } = usePrefs();
@@ -273,8 +319,9 @@ export function PackageSheetScreen() {
       header: t.subscriptionPrice,
       num: true,
       sortValue: (offer) => offer.price ?? offer.defaultPrice,
+      cell: IN_CARD_ROW,
       render: (offer) => (
-        <span className="price-pair" data-testid="price-pair">
+        <span className={PRICE_PAIR_DEFAULT} data-testid="price-pair">
           <Money value={offer.defaultPrice} muted />
           <PriceField
             label={`${accountLabel(offer.loginName, offer.nickname)} ${t.subscriptionShort}`}
@@ -290,8 +337,9 @@ export function PackageSheetScreen() {
       header: t.renewalPrice,
       num: true,
       sortValue: (offer) => offer.renewalPrice ?? offer.defaultRenewalPrice,
+      cell: IN_CARD_ROW,
       render: (offer) => (
-        <span className="price-pair" data-testid="price-pair">
+        <span className={PRICE_PAIR_DEFAULT} data-testid="price-pair">
           <Money value={offer.defaultRenewalPrice} muted />
           <PriceField
             label={`${accountLabel(offer.loginName, offer.nickname)} ${t.renewalShort}`}
@@ -308,10 +356,11 @@ export function PackageSheetScreen() {
       num: true,
       // By the subscription difference; a row without its own subscription price falls back to the renewal one.
       sortValue: (offer) => (offer.price !== null ? offer.price - offer.defaultPrice : offer.renewalPrice !== null ? offer.renewalPrice - offer.defaultRenewalPrice : null),
+      cell: IN_CARD_ROW,
       render: (offer) => (
-        <span className="price-pair" data-testid="price-pair">
-          {offer.price === null ? <span className="hint">—</span> : <Money value={offer.price - offer.defaultPrice} signed />}
-          {offer.renewalPrice === null ? <span className="hint">—</span> : <Money value={offer.renewalPrice - offer.defaultRenewalPrice} signed />}
+        <span className={PRICE_PAIR} data-testid="price-pair">
+          {offer.price === null ? <span className={TABLE_NOTE}>—</span> : <Money value={offer.price - offer.defaultPrice} signed />}
+          {offer.renewalPrice === null ? <span className={TABLE_NOTE}>—</span> : <Money value={offer.renewalPrice - offer.defaultRenewalPrice} signed />}
         </span>
       ),
     },
@@ -343,26 +392,24 @@ export function PackageSheetScreen() {
       key: 'select',
       fit: true,
       header: (
-        <label className="check">
-          <input
-            type="checkbox"
+        <Label tone="pane" className={CHECK_ROW}>
+          <Checkbox
             aria-label={t.selectAll}
             checked={allLinesSelected}
-            onChange={(event) => setSelectedLines(event.target.checked ? lines.map((line) => line.id) : [])}
+            onCheckedChange={(next) => setSelectedLines(next === true ? lines.map((line) => line.id) : [])}
           />
-        </label>
+        </Label>
       ),
       render: (line) => (
-        <label className="check">
-          <input
-            type="checkbox"
+        <Label tone="pane" className={CHECK_ROW}>
+          <Checkbox
             aria-label={`${t.selectLine} ${line.msisdn}`}
             checked={selectedLines.includes(line.id)}
-            onChange={(event) => setSelectedLines((current) => (
-              event.target.checked ? [...current, line.id] : current.filter((id) => id !== line.id)
+            onCheckedChange={(next) => setSelectedLines((current) => (
+              next === true ? [...current, line.id] : current.filter((id) => id !== line.id)
             ))}
           />
-        </label>
+        </Label>
       ),
     },
     { key: 'number', header: t.number, kind: 'msisdn', render: (line) => <bdi dir="ltr">{line.msisdn}</bdi> },
@@ -388,17 +435,20 @@ export function PackageSheetScreen() {
   function targetList(kind: 'renewals' | 'switches', packages: ShelfPackage[]) {
     const selected = kind === 'renewals' ? renewals : switches;
     return (
-      <div className="pane-body target-list">
-        {packages.length === 0 ? <p className="empty">{t.noTargetPackages}</p> : packages.map((pkg) => (
-          <label className="check" key={pkg.code}>
-            <input
-              type="checkbox"
+      <div className="pane-body">
+        {packages.length === 0 ? <p className="m-0 block p-3.5 text-md text-muted">{t.noTargetPackages}</p> : packages.map((pkg) => (
+          <Label
+            tone="pane"
+            className="m-0 grid min-h-11 cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-line-soft"
+            key={pkg.code}
+          >
+            <Checkbox
               checked={selected.includes(pkg.code)}
-              onChange={(event) => toggleTarget(kind, pkg.code, event.target.checked)}
+              onCheckedChange={(next) => toggleTarget(kind, pkg.code, next === true)}
             />
             <span>{pkg.name} · {pkg.months} {t.months}</span>
             <Badge variant={onOffTone(pkg.forSale)} dot>{pkg.forSale ? t.forSale : t.notForSale}</Badge>
-          </label>
+          </Label>
         ))}
         <Button type="button" onClick={() => void saveTargets(kind)}>{t.save}</Button>
       </div>
@@ -410,13 +460,13 @@ export function PackageSheetScreen() {
       title={sheet ? (
         // Graphite: the company's cut-corner mark, the package's name; its provider and live numbers under it; whether
         // it is for sale beside it.
-        <span className="ticket-title">
-          <span className="co-mark big" style={{ background: markColor(sheet.companyName || '?') }} aria-hidden="true">{markOf(sheet.companyName || '?')}</span>
+        <span className="inline-flex flex-wrap items-center gap-3">
+          <CompanyMark name={sheet.companyName || '?'} size="lg" />
           <span>{`${sheet.companyName} · ${sheet.name}`}</span>
         </span>
       ) : ''}
       action={sheet ? (
-        <div className="page-actions sheet-head-actions">
+        <div className="inline-flex flex-wrap items-center gap-2.5">
           {/* On/off is switched from the company's packages list (spec 2026-11-11-ui-consistency-pass, D2). */}
           <Badge variant={onOffTone(sheet.enabled)} dot>{sheet.enabled ? t.lineActive : t.stopped}</Badge>
           <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
@@ -426,30 +476,30 @@ export function PackageSheetScreen() {
       error={error || card.error}
       note={note}
     >
-      <div className="stack">
+      <div className={COLUMN}>
         {card.loaded && sheet ? <Tabs items={tabs} value={tab} onChange={setTab} /> : null}
-        <section className="pane package-sheet">
+        <Pane>
           {!card.loaded || !sheet ? <TableSkeleton rows={6} columns={2} /> : (
             <>
               {tab === 'overview' && (
                 <div className="pane-body">
-                  <div className="sheet-stats">
-                    <div>
-                      <span>{t.linesTotal}</span>
-                      <strong className="num">{sheet.lines}</strong>
+                  <div className="grid grid-cols-2 gap-3 max-[721px]:grid-cols-1">
+                    <div className={STAT}>
+                      <span className={STAT_NAME}>{t.linesTotal}</span>
+                      <strong className={STAT_VALUE}>{sheet.lines}</strong>
                     </div>
-                    <div>
-                      <span>{t.activeLines}</span>
-                      <strong className="num">{sheet.activeLines}</strong>
-                    </div>
-                  </div>
-                  <div className="sheet-meta">
-                    <div>
-                      <span>{t.provider}</span>
-                      <strong>{sheet.providerName}</strong>
+                    <div className={STAT}>
+                      <span className={STAT_NAME}>{t.activeLines}</span>
+                      <strong className={STAT_VALUE}>{sheet.activeLines}</strong>
                     </div>
                   </div>
-                  <Badge variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
+                  <div className="grid">
+                    <div className="flex min-h-11 items-center justify-start gap-3 border-b border-line-soft">
+                      <span className="text-md font-bold text-muted">{t.provider}</span>
+                      <strong className="text-base font-bold text-ink">{sheet.providerName}</strong>
+                    </div>
+                  </div>
+                  <Badge className="justify-self-start" variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
                   <PackageFacts facts={sheet} />
                 </div>
               )}
@@ -474,25 +524,27 @@ export function PackageSheetScreen() {
                 <ChainBoard prices={prices} onChange={(key, value) => setPrices((current) => ({ ...current, [key]: value }))}>
                   {/* «حفظ» saves the chain and the eSIM price beside it; re-pricing the live numbers has its own button. */}
                   <Button type="button" onClick={() => void saveChain()}>{t.save}</Button>
-                  <div className="account-fund">
-                    <h3>{t.esimPrice}</h3>
-                    <label>
+                  <div className={FUND}>
+                    <h3 className={FUND_TITLE}>{t.esimPrice}</h3>
+                    <Label tone="pane" className={FUND_LABEL}>
                       {t.esimPrice}
-                      <input
-                        className="num"
+                      <Input
+                        surface="surface"
+                        className="text-md"
                         inputMode="decimal"
                         value={esimPrice}
                         placeholder={t.useInheritedPrice}
                         onChange={(event) => setEsimPrice(event.target.value)}
                       />
-                      <span className="hint">
+                      <span className={paneHintClass}>
                         {t.esimPriceFrom.replace('{price}', formatShekel(sheet.esimPriceEffective)).replace('{source}', esimSourceName)}
                       </span>
-                    </label>
+                    </Label>
                   </div>
-                  <div className="account-fund" data-testid="reprice">
-                    <h3>{t.repriceTitle}</h3>
-                    <label>
+                  {/* The board's last card: its field and its button side by side from 721px, the heading across. */}
+                  <div className={cn(FUND, 'min-[721px]:grid-cols-[minmax(0,1fr)_auto]')} data-testid="reprice">
+                    <h3 className={cn(FUND_TITLE, 'col-span-full')}>{t.repriceTitle}</h3>
+                    <Label tone="pane" className={FUND_LABEL}>
                       {t.linePricesScope}
                       <NameField
                         value={priceScope === 'all' ? '' : priceScope}
@@ -500,7 +552,7 @@ export function PackageSheetScreen() {
                         onChange={(next) => setPriceScope(next || 'all')}
                         options={users.map((row) => ({ value: row.loginName, label: accountLabel(row.loginName, row.nickname), hint: layerName(t, row.layer), keys: [row.loginName] }))}
                       />
-                    </label>
+                    </Label>
                     <div>
                       <Button type="button" variant="secondary" onClick={() => setPricing({ scope: priceScope })}>{t.linePricesOpen}</Button>
                     </div>
@@ -523,26 +575,32 @@ export function PackageSheetScreen() {
               )}
               {tab === 'offers' && (
                 <div className="pane-body">
-                  <div className="account-fund custom-price-add">
-                    <label>
+                  <div
+                    className={cn(
+                      FUND,
+                      'grid-cols-[minmax(12rem,2fr)_minmax(8rem,1fr)_minmax(8rem,1fr)_auto]',
+                      'max-xl:grid-cols-2 max-xl:[&>[data-slot=button]]:col-span-full max-xl:[&>[data-slot=label]:first-child]:col-span-full',
+                    )}
+                  >
+                    <Label tone="pane" className={FUND_LABEL}>
                       {t.accountName}
                       <NameField
                         value={loginName}
                         onChange={setLoginName}
                         options={users.map((row) => ({ value: row.loginName, label: accountLabel(row.loginName, row.nickname), hint: layerName(t, row.layer), keys: [row.loginName] }))}
                       />
-                    </label>
-                    <label>
+                    </Label>
+                    <Label tone="pane" className={FUND_LABEL}>
                       {t.subscriptionPrice}
-                      <input inputMode="decimal" value={offerPrice} placeholder={shekelField(layerDefault('subscription'))} onChange={(event) => setOfferPrice(event.target.value)} />
-                    </label>
-                    <label>
+                      <Input surface="surface" className="text-md" inputMode="decimal" value={offerPrice} placeholder={shekelField(layerDefault('subscription'))} onChange={(event) => setOfferPrice(event.target.value)} />
+                    </Label>
+                    <Label tone="pane" className={FUND_LABEL}>
                       {t.renewalPrice}
-                      <input inputMode="decimal" value={offerRenewal} placeholder={shekelField(layerDefault('renewal'))} onChange={(event) => setOfferRenewal(event.target.value)} />
-                    </label>
-                    <Button type="button" className="px-3.5 text-sm leading-5 font-bold" disabled={!loginName || (offerPrice === '' && offerRenewal === '')} onClick={() => void saveOffer()}>{t.save}</Button>
+                      <Input surface="surface" className="text-md" inputMode="decimal" value={offerRenewal} placeholder={shekelField(layerDefault('renewal'))} onChange={(event) => setOfferRenewal(event.target.value)} />
+                    </Label>
+                    <Button type="button" className="self-end px-3.5 text-sm leading-5 font-bold" disabled={!loginName || (offerPrice === '' && offerRenewal === '')} onClick={() => void saveOffer()}>{t.save}</Button>
                   </div>
-                  <p className="hint">{t.customPricesHint}</p>
+                  <p className={paneHintClass}>{t.customPricesHint}</p>
                   <TableSheet>
                     <DataTable bare columns={offerColumns} rows={sortedCustomPrices} rowKey={(offer) => offer.loginName} empty={t.noOffers} />
                   </TableSheet>
@@ -550,7 +608,7 @@ export function PackageSheetScreen() {
               )}
             </>
           )}
-        </section>
+        </Pane>
       </div>
       <LinePricesDialog
         open={pricing !== null && sheet !== null}

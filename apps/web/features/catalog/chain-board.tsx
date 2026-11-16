@@ -24,9 +24,8 @@ export const RENEWAL_KEYS = ['renewalBranchCost', 'renewalMainPrice', 'renewalAg
  * The board's look (Tailwind migration T4.3, ADR 0022), ported from desk/packages.css and graphite.css:
  * - the board: a pane body laid out as two columns (one under 721px), 16px between rows and 24px between columns, its
  *   cells at the top. The chain's table takes the whole row and scrolls sideways when it does not fit; a Button the
- *   caller puts in takes a whole row at the start. On the package page (`.package-sheet`) the last card the caller
- *   puts in (the re-pricing card, legacy `.account-fund`) lays out its field and its button side by side at their foot
- *   (from 721px; under it the card's own single column), with its heading across both;
+ *   caller puts in takes a whole row at the start. The cards the package page puts in lay themselves out
+ *   (features/catalog/screens/package-sheet-screen.tsx, Tailwind migration T4.4);
  * - the table: full width up to 720px, collapsed borders; every cell 6px by 10px (6px by 4px under 641px) over a 1px
  *   `--rd-line` rule, at the reading start; the column heads 11px bold `--rd-muted`, the layer names 13px bold ink on
  *   one line; the branch's cost row on `--rd-accent-soft`;
@@ -39,9 +38,6 @@ export const RENEWAL_KEYS = ['renewalBranchCost', 'renewalMainPrice', 'renewalAg
 const BOARD = cn(
   'pane-body grid-cols-2 items-start gap-x-6 gap-y-4 max-[721px]:grid-cols-1',
   '[&>[data-slot=button]]:col-span-full [&>[data-slot=button]]:justify-self-start',
-  // From 721px only: under it the card keeps its own one column (`.package-sheet .account-fund`).
-  'min-[721px]:[.package-sheet_&>.account-fund:last-child]:grid-cols-[minmax(0,1fr)_auto]',
-  '[.package-sheet_&>.account-fund:last-child]:items-end [.package-sheet_&>.account-fund:last-child_h3]:col-span-full',
 );
 const CELL_RULE = 'border-b border-line px-2.5 py-1.5 text-start max-sm:px-1';
 const HEAD = 'text-xs font-bold text-muted';

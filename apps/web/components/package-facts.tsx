@@ -23,14 +23,19 @@ export function useFactLine() {
   };
 }
 
+/*
+ * The look (Tailwind migration T4.4, ADR 0022), ported from desk/components.css: a grid 4px apart; the line 12px
+ * `--rd-muted` 600; the extra text 12px ink with no margin, its line breaks kept. `data-slot="package-facts"` is its
+ * handle.
+ */
 export function PackageFacts({ facts, withDetails = true }: { facts: Facts; withDetails?: boolean }) {
   const line = useFactLine()(facts);
   const details = withDetails ? facts.details?.trim() : '';
   if (!line && !details) return null;
   return (
-    <div className="package-facts">
-      {line ? <span className="package-facts-line">{line}</span> : null}
-      {details ? <p className="package-facts-details" data-testid="package-facts-details">{details}</p> : null}
+    <div className="grid gap-1" data-slot="package-facts">
+      {line ? <span className="text-sm font-semibold text-muted">{line}</span> : null}
+      {details ? <p className="m-0 text-sm whitespace-pre-line text-ink" data-testid="package-facts-details">{details}</p> : null}
     </div>
   );
 }

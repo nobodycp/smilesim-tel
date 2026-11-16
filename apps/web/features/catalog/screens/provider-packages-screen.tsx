@@ -6,7 +6,7 @@ import { useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
 import { ModeCards } from '../../../components/mode-cards';
 import { LoadFailed } from '../../../components/load-failed';
-import { Desk } from '../../../components/desk';
+import { Desk, Pane } from '../../../components/desk';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api } from '../../../lib/api';
@@ -18,6 +18,10 @@ import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Button } from '../../../components/ui/button';
 import { Tabs } from '../../../components/tabs';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { cn } from '../../../lib/cn';
+import { paneHintClass } from '../sim-fields';
 
 const BRANCH = ['branch'];
 const actions = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
@@ -34,6 +38,22 @@ type PackageLine = {
 };
 /** A company this provider serves, with its packages here and their numbers. */
 type CompanyLine = { code: string; name: string; packages: number; active: number; stopped: number };
+
+/*
+ * The look (Tailwind migration T4.4, ADR 0022), ported from pane.css, frame.css and graphite.css in their cascade
+ * order:
+ * - the run-mode tab drops the pane's card (graphite `.line-pane`): no fill, no edge, nothing clipped; its body has no
+ *   padding and is never wider than its column; the cards and the eSIM price sit on the page;
+ * - the eSIM price (`PRICE_FORM`, graphite `.line-pane form.switch-row`): a card of its own 14px under the cards
+ *   (14px by 18px inside, 6px corners, `--rd-surface` with a 1px inset `--rd-line` edge), one wrapping row at the foot
+ *   of its parts 8px apart (`.pane form`'s gap); the field a pane label growing from 16rem up to 22rem (across the
+ *   card under 768px); under 721px a column, its parts across it;
+ * - a company's name in the list is a bold link.
+ */
+const PRICE_FORM = cn(
+  'mt-3.5 flex flex-wrap content-start items-end justify-start gap-2 rounded-sm bg-surface px-4.5 py-3.5 inset-ring inset-ring-line',
+  'max-[721px]:flex-col max-[721px]:items-stretch',
+);
 
 export function ProviderPackagesScreen() {
   const { t } = usePrefs();
@@ -134,7 +154,7 @@ export function ProviderPackagesScreen() {
       key: 'company',
       header: t.company,
       render: (row) => (row.code
-        ? <Link className="row-link" href={`/companies/${encodeURIComponent(row.code)}?provider=${encodeURIComponent(params.code)}`}>{row.name}</Link>
+        ? <Link className="font-bold" href={`/companies/${encodeURIComponent(row.code)}?provider=${encodeURIComponent(params.code)}`}>{row.name}</Link>
         : row.name),
     },
     { key: 'packages', header: t.navPlans, num: true, render: (row) => row.packages },
@@ -167,9 +187,9 @@ export function ProviderPackagesScreen() {
       note={note}
     >
       <Tabs items={tabs} value={tab} onChange={setTab} />
-      <section className={tab === 'settings' ? 'pane line-pane' : 'pane'}>
+      <Pane className={tab === 'settings' ? 'overflow-visible bg-transparent shadow-none inset-ring-0' : undefined}>
         {tab === 'settings' && (
-          <div className="pane-body stack">
+          <div className="pane-body min-w-0 max-w-full p-0">
             {settings.error ? (
               <LoadFailed message={settings.error} onRetry={() => void settings.reload()} />
             ) : (
@@ -181,10 +201,12 @@ export function ProviderPackagesScreen() {
                 onChange={(action, mode) => void saveMode(action, mode)}
               />
             )}
-            <form className="switch-row" onSubmit={savePrice}>
-              <label>
+            <form className={PRICE_FORM} onSubmit={savePrice}>
+              <Label tone="pane" className="min-w-0 max-w-88 flex-[1_1_16rem] max-md:w-full max-md:max-w-none max-md:flex-none">
                 {t.esimPrice}
-                <input
+                <Input
+                  surface="surface"
+                  className="text-md"
                   value={priceField}
                   inputMode="decimal"
                   dir="ltr"
@@ -192,8 +214,8 @@ export function ProviderPackagesScreen() {
                   disabled={!settings.loaded}
                   onChange={(event) => setPriceDraft(event.target.value)}
                 />
-                <span className="hint">{t.esimPriceProviderHint}</span>
-              </label>
+                <span className={paneHintClass}>{t.esimPriceProviderHint}</span>
+              </Label>
               <Button type="submit" disabled={!settings.loaded}>{t.save}</Button>
             </form>
           </div>
@@ -210,7 +232,7 @@ export function ProviderPackagesScreen() {
             empty={t.noLines}
           />
         )}
-      </section>
+      </Pane>
     </Desk>
   );
 }

@@ -200,9 +200,9 @@ async function lineCount(owner: string) {
 /** The point of sale activates from its catalog: company, package, then the SIM. */
 async function posActivate(pack: Pack, sim: { esim: true } | { iccid: string }) {
   await pos.goto(`${DOORS.pos}/packages`);
-  await pos.locator('.company-card', { hasText: pack.company }).click();
+  await pos.getByTestId('company-card').filter({ hasText: pack.company }).click();
   const price = `${Math.floor(pack.posPrice / 100)}.${String(pack.posPrice % 100).padStart(2, '0')} ₪`;
-  await pos.locator('.pack-card', { hasText: pack.name }).filter({ hasText: price }).first().click();
+  await pos.getByTestId('pack-card').filter({ hasText: pack.name }).filter({ hasText: price }).first().click();
   const form = pos.locator('form');
   await expect(form.getByLabel('رقم الخط'), 'the office generates the number; the point of sale does not type it').toHaveCount(0);
   await expect(form.getByRole('group', { name: 'نتيجة المزود' }), 'the point of sale never picks a provider outcome').toHaveCount(0);
@@ -491,9 +491,9 @@ test('a company SIM rule set on the company page holds on activation and SIM swa
     expect.soft(await balance('pos'), 'a refused SIM moves no money').toBe(startBalance);
 
     await pos.goto(`${DOORS.pos}/packages`);
-    await pos.locator('.company-card', { hasText: P.company }).click();
+    await pos.getByTestId('company-card').filter({ hasText: P.company }).click();
     const price = `${Math.floor(P.posPrice / 100)}.${String(P.posPrice % 100).padStart(2, '0')} ₪`;
-    await pos.locator('.pack-card', { hasText: P.name }).filter({ hasText: price }).first().click();
+    await pos.getByTestId('pack-card').filter({ hasText: P.name }).filter({ hasText: price }).first().click();
     const form = pos.locator('form');
     const field = form.getByLabel('رقم الشريحة');
     const submit = form.getByRole('button', { name: 'تفعيل', exact: true });

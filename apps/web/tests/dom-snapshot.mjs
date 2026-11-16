@@ -97,7 +97,7 @@ const pack = (code, name, extra = {}) => ({
 const packages = [pack('cell-400', '400 جيجا', { editableField: 'pos' }), pack('cell-1000', '1000 جيجا')];
 // The main and agent doors are told their own sell price (the sell cells render only there): `editableField` is the
 // field the door sets for the layer below it, as the API gives it (pricing/rules/prices.ts: main → 'agent',
-// agent → 'pos'); without it the screen draws no `.sell-cell`.
+// agent → 'pos'); without it the screen draws no sell cell (`[data-testid="sell-cell"]`).
 const sellPack = (code, name, editableField) => pack(code, name, {
   editableField, branchCost: null, price: 22, renewalPrice: 22, canActivate: true, sellPrice: 25, sellRenewalPrice: 25, sellDefault: 24, sellRenewalDefault: 24,
 });
@@ -395,8 +395,8 @@ const cases = [
   ['number-card-switch', '/numbers/ln1', 'branch', false, { steps: [{ click: '[data-slot="line-op"]:has(.lucide-layers)', wait: '[data-slot="pack-pick"]' }] }],
   // A number-card operation dialog that holds `Facts` (the SIM swap): its `data-slot="facts"` tiles.
   ['number-card-sim', '/numbers/ln1', 'branch', false, { steps: [{ click: '[data-slot="line-op"]:has(.lucide-smartphone)', wait: '[data-slot="dialog"] [data-slot="facts"]' }] }],
-  // The package sheet's offers tab: the custom-price rows with their `.price-pair` cells.
-  ['company-package-offers', '/companies/cell/packages/cell-400', 'branch', false, { steps: [{ click: '[role=tab][data-tab="offers"]', wait: '.price-pair' }] }],
+  // The package sheet's offers tab: the custom-price rows with their price pair cells (`[data-testid="price-pair"]`).
+  ['company-package-offers', '/companies/cell/packages/cell-400', 'branch', false, { steps: [{ click: '[role=tab][data-tab="offers"]', wait: '[data-testid="price-pair"]' }] }],
   // The entered-account door with no code in the fragment: its failed state and the back-to-sign-in button.
   ['enter', '/enter', 'branch', false, { wait: '[data-slot="auth"] a[href="/login"]', dump: '[data-slot="auth"]' }],
 ];

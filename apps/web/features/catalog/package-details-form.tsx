@@ -2,9 +2,14 @@
 
 import { useState, type FormEvent } from 'react';
 import { Button } from '../../components/ui/button';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Textarea } from '../../components/ui/textarea';
 import { api } from '../../lib/api';
 import type { PackageSheet } from '../../lib/api-types';
 import { usePrefs } from '../../lib/prefs';
+import { paneHintClass } from './sim-fields';
 
 // The package page's «التفاصيل» tab (spec 2026-11-08-branch-packages-and-details): GB, minutes and messages — each a
 // number, «غير محدود» (-1), or empty (not stated) — and up to 300 characters of extra details. The fields are shared
@@ -21,6 +26,19 @@ function valueOf(amount: Amount): number | null | undefined {
 }
 
 const DETAILS_LIMIT = 300;
+
+/*
+ * The look (Tailwind migration T4.4, ADR 0022), ported from desk/components.css, pane.css, forms.css and graphite.css.
+ * The fields sit in a pane body (the package page's tab, «إضافة رزمة»'s step 2):
+ * - GB, minutes and messages: as many 12rem-or-wider columns as fit, 12px apart; each a grid 4px apart at the top
+ *   holding its pane field and its «غير محدود» box;
+ * - a box: a pane label laid out as a row, at least 36px high (44px under 721px);
+ * - the extra details: the pane body's text area, its 42px height (forms.css) under its 72px minimum, so it opens at
+ *   72px whatever its rows; its count a pane note;
+ * - the tab's form (`PackageDetailsForm`): the pane body with `.pane form`'s 8px between rows, never wider than its
+ *   column; its save at the start.
+ */
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-[721px]:min-h-11';
 
 export type DetailsDraft = { dataGb: Amount; minutes: Amount; smsCount: Amount; details: string; suspendAfter: string; esimAvailable: boolean };
 export type DetailsValues = { dataGb: number | null; smsCount: number | null; minutes: number | null; details: string; suspendAfterDays: number; esimAvailable: boolean };
@@ -52,47 +70,48 @@ export function DetailsFields({ draft, onChange }: { draft: DetailsDraft; onChan
   const field = (label: string, key: 'dataGb' | 'minutes' | 'smsCount') => {
     const amount = draft[key];
     return (
-      <div className="package-amount">
-        <label>
+      <div className="grid content-start gap-1">
+        <Label tone="pane">
           {label}
-          <input
-            className="num"
+          <Input
+            surface="surface"
+            className="text-md"
             inputMode="numeric"
             dir="ltr"
             value={amount.text}
             disabled={amount.unlimited}
             onChange={(event) => set({ [key]: { ...amount, text: event.target.value } })}
           />
-        </label>
-        <label className="check">
-          <input type="checkbox" checked={amount.unlimited} onChange={(event) => set({ [key]: { ...amount, unlimited: event.target.checked } })} />
+        </Label>
+        <Label tone="pane" className={CHECK_ROW}>
+          <Checkbox checked={amount.unlimited} onCheckedChange={(next) => set({ [key]: { ...amount, unlimited: next === true } })} />
           <span>{t.unlimited}</span>
-        </label>
+        </Label>
       </div>
     );
   };
   return (
     <>
-      <div className="package-amounts">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3">
         {field(t.dataGbLabel, 'dataGb')}
         {field(t.minutesLabel, 'minutes')}
         {field(t.smsLabel, 'smsCount')}
       </div>
-      <label className="package-amount">
+      <Label tone="pane" className="content-start">
         {t.suspendAfterDays}
-        <input className="num" inputMode="numeric" dir="ltr" value={draft.suspendAfter} onChange={(event) => set({ suspendAfter: event.target.value })} />
-        <span className="hint">{t.suspendAfterHint}</span>
-      </label>
-      <label className="check">
-        <input type="checkbox" checked={draft.esimAvailable} onChange={(event) => set({ esimAvailable: event.target.checked })} />
+        <Input surface="surface" className="text-md" inputMode="numeric" dir="ltr" value={draft.suspendAfter} onChange={(event) => set({ suspendAfter: event.target.value })} />
+        <span className={paneHintClass}>{t.suspendAfterHint}</span>
+      </Label>
+      <Label tone="pane" className={CHECK_ROW}>
+        <Checkbox checked={draft.esimAvailable} onCheckedChange={(next) => set({ esimAvailable: next === true })} />
         <span>{t.packageEsimAvailable}</span>
-      </label>
-      <p className="hint">{t.packageEsimHint}</p>
-      <label>
+      </Label>
+      <p className={paneHintClass}>{t.packageEsimHint}</p>
+      <Label tone="pane">
         {t.extraDetails}
-        <textarea rows={3} maxLength={DETAILS_LIMIT} value={draft.details} onChange={(event) => set({ details: event.target.value })} />
-        <span className="hint" dir="ltr">{draft.details.trim().length} / {DETAILS_LIMIT}</span>
-      </label>
+        <Textarea className="h-10.5" rows={3} maxLength={DETAILS_LIMIT} value={draft.details} onChange={(event) => set({ details: event.target.value })} />
+        <span className={paneHintClass} dir="ltr">{draft.details.trim().length} / {DETAILS_LIMIT}</span>
+      </Label>
     </>
   );
 }
@@ -122,8 +141,8 @@ export function PackageDetailsForm({
   }
 
   return (
-    <form className="pane-body stack package-details-form" data-testid="package-details-form" onSubmit={save}>
-      <p className="hint">{t.packageDetailsHint}</p>
+    <form className="pane-body min-w-0 max-w-full content-start gap-2" data-testid="package-details-form" onSubmit={save}>
+      <p className={paneHintClass}>{t.packageDetailsHint}</p>
       <DetailsFields draft={draft} onChange={setDraft} />
       <div>
         <Button type="submit" disabled={busy}>{t.save}</Button>

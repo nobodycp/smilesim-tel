@@ -8,11 +8,23 @@ import { EmptyState } from '../../components/empty-state';
 import { LiveSwitch } from '../../components/live-switch';
 import { PriceField } from '../../components/price-field';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import { api, type PackageAddon } from '../../lib/api';
 import { parseShekel } from '../../lib/money';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
 import { useApiQuery } from '../../lib/use-api-query';
+import { paneHintClass } from './sim-fields';
+
+/*
+ * The look (Tailwind migration T4.4, ADR 0022), ported from pane.css, responsive.css and graphite.css: the tab's body
+ * is a pane body never wider than its column; the add form one wrapping row at the foot of its fields, 8px apart
+ * (`.pane form`'s gap), each field a pane label growing from 16rem up to 22rem; under 768px a column, the fields across
+ * it at their own height and the button at the start.
+ */
+const ADD_FORM = 'flex flex-wrap content-start items-end justify-start gap-2 max-md:flex-col max-md:items-stretch';
+const ADD_FIELD = 'min-w-0 max-w-88 flex-[1_1_16rem] max-md:w-full max-md:max-w-none max-md:flex-none';
 
 /**
  * The package page's «العمليات الإضافية» (spec 2026-11-09-offers-tasks-addons-wallet-esim, 3): extra operations named
@@ -84,20 +96,20 @@ export function PackageAddons({ code, canEdit, setError, setNote }: { code: stri
   ];
 
   return (
-    <div className="pane-body stack">
-      <p className="hint">{t.addonsHint}</p>
+    <div className="pane-body min-w-0 max-w-full">
+      <p className={paneHintClass}>{t.addonsHint}</p>
       {rows.length === 0 && read.loaded ? <EmptyState>{t.noAddons}</EmptyState> : <DataTable bare columns={columns} rows={rows} rowKey={(row) => row.id} />}
       {canEdit ? (
-        <form className="field-row" onSubmit={add}>
-          <label>
+        <form className={ADD_FORM} onSubmit={add}>
+          <Label tone="pane" className={ADD_FIELD}>
             {t.addonName}
-            <input value={name} maxLength={60} onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label>
+            <Input surface="surface" className="text-md" value={name} maxLength={60} onChange={(event) => setName(event.target.value)} />
+          </Label>
+          <Label tone="pane" className={ADD_FIELD}>
             {t.price}
-            <input className="num" inputMode="decimal" dir="ltr" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="0" />
-          </label>
-          <Button type="submit" disabled={busy || !name.trim()}>{t.addAddon}</Button>
+            <Input surface="surface" className="text-md" inputMode="decimal" dir="ltr" value={price} onChange={(event) => setPrice(event.target.value)} placeholder="0" />
+          </Label>
+          <Button type="submit" className="max-md:self-start" disabled={busy || !name.trim()}>{t.addAddon}</Button>
         </form>
       ) : null}
     </div>
