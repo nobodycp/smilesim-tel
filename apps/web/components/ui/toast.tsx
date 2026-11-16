@@ -17,16 +17,17 @@ import { cn } from '../../lib/cn';
  *   layer (`--rd-z-top`), a column of toasts 8px apart, letting presses through between them; under 641px the column
  *   is centred, 12px from each side. While the bell's live card is on screen (`data-slot="notice-toast"`,
  *   components/app-shell.tsx) the column starts under that card;
- * - a toast: a compact row as wide as its words — the tone's icon, the message, the close button — 40px high (44px on
- *   a touch screen, the close button's height), at most min(340px, window less 24px) wide, 6px corners, a 3px start
+ * - a toast: a compact row as wide as its words — the tone's icon, the message, the close button — 32px high with one
+ *   line of words (4px above and below a 20px line; owner 2026-11-17: no air over and under the words), at most
+ *   min(340px, window less 24px) wide, 6px corners, a 3px start
  *   edge in the tone's colour over the tone's soft wash laid on the opaque surface (two layers of one background: the
  *   merge of class names would drop a separate surface fill), an inset 1px `--rd-line` under `--rd-shadow-pop`, ink;
  *   it drops in from above over 240ms (`notice-toast-in`) when motion is allowed;
  * - the icon: 18px, in the tone's colour;
  * - the message: no margin, 13px semibold, wrapping;
  * - the life bar (`ToastLife`): 2px along the foot, in the tone's colour, running out over the toast's life;
- * - the close button: a 28px square (44px at 720px and under), no border or fill, 4px corners, `--rd-muted` 16px, ink
- *   on `--rd-surface-2` under the pointer.
+ * - the close button: a 24px square, no border or fill, 4px corners, `--rd-muted` 15px, ink on `--rd-surface-2` under
+ *   the pointer; on a touch screen its press area reaches 10px past each side (44px) without making the toast taller.
  * Handles: `data-slot="toast"` (with `data-tone`).
  */
 
@@ -52,7 +53,7 @@ ToastViewport.displayName = 'ToastViewport';
 
 const toastVariants = cva(
   [
-    'pointer-events-auto relative flex min-h-10 w-fit max-w-[min(340px,calc(100vw_-_24px))] items-center gap-2 overflow-hidden py-1 ps-3 pe-1.5 max-touch:py-0',
+    'pointer-events-auto relative flex min-h-8 w-fit max-w-[min(340px,calc(100vw_-_24px))] items-center gap-2 overflow-hidden py-1 ps-2.5 pe-1',
     'rounded-sm border-0 border-s-3 border-solid text-ink shadow-pop inset-ring inset-ring-line',
     'motion-safe:animate-[notice-toast-in_240ms_var(--rd-ease-out)]',
   ],
@@ -111,7 +112,7 @@ export function ToastIcon({ className, ...props }: React.HTMLAttributes<HTMLSpan
 
 /** The message. */
 export function ToastText({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('m-0 min-w-0 flex-1 text-md font-semibold wrap-break-word', className)} {...props} />;
+  return <p className={cn('m-0 min-w-0 flex-1 text-md leading-5 font-semibold wrap-break-word', className)} {...props} />;
 }
 
 export const ToastClose = React.forwardRef<
@@ -121,8 +122,10 @@ export const ToastClose = React.forwardRef<
   <ToastPrimitive.Close
     ref={ref}
     className={cn(
-      'grid size-7 flex-none cursor-pointer place-items-center rounded-xs border-0 bg-transparent text-xl text-muted',
-      'hover:bg-surface-2 hover:text-ink max-touch:min-h-11 max-touch:min-w-11',
+      'relative grid size-6 flex-none cursor-pointer place-items-center rounded-xs border-0 bg-transparent text-lg leading-none text-muted',
+      'hover:bg-surface-2 hover:text-ink',
+      // The square stays small so the toast stays low; a finger still gets 44px around it.
+      "max-touch:after:absolute max-touch:after:-inset-2.5 max-touch:after:content-['']",
       className,
     )}
     {...props}
