@@ -63,15 +63,18 @@ Two operations a package may offer: **number porting** («نيود») and **conv
 made from a provider whose mode is on), and when on, a choice of where the request goes: a branch task, or
 directly to the provider.
 
-Open, before anything is built:
+Owner's answers, 2026-11-16:
 
-- **A.** What does the point of sale enter for a porting: the number to bring, the company it leaves, the
-  subscriber's identity number, a document? And for card-to-bill?
-- **B.** Is a porting a way to **activate** a new number on the package (the number arrives from another company),
-  or an operation on a number that is already ours?
-- **C.** Does each have a price for the point of sale, and a cost at the provider?
-- **D.** «مباشر» needs a provider that carries the operation. Until the first provider is connected, does choosing
-  it open a branch task as every other operation does when the provider cannot run it?
+- **Both are ways to activate a new number on the package**: the number is not one of ours yet. The request is an
+  activation with a kind (`port` or `convert`).
+- **The point of sale enters the number and the serial, nothing else.** No eSIM. Later (not now): the sale price,
+  the customer's name and whether the customer paid, so a point of sale can manage its customers.
+- **No cost of their own**: the task holds and charges the package's activation price, as any activation does.
+- **«مباشر» opens a branch task** until a provider that carries the operation is connected.
+
+So: `Package.portMode` and `convertMode` (`off`, `manual`, `auto`), `off` for every package; `POST lines` takes
+`kind`; a kind is refused while its mode is off, and opens a branch activation task marked with
+`Task.activationKind`, whichever mode is set. The task's completion is the ordinary activation's.
 
 ## Non-goals
 

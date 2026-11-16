@@ -65,6 +65,22 @@ export class LinesService {
     return { now: false, note: answer.reason === NOT_CONNECTED ? BRANCH_TASK_NOTE : PROVIDER_FAILED_NOTE };
   }
 
+  /**
+   * The task of a porting or a card-to-bill conversion (spec 2026-11-16-package-page, P.5). It is the branch's to
+   * carry out, whichever mode the package names: no provider is connected for them yet, so `auto` opens the same
+   * task `manual` does (owner, 2026-11-16). The task holds the package's activation price, as any activation task
+   * does; the operation itself costs nothing more.
+   */
+  private async openKindTask(
+    opening: { actor: Actor; posId: string; packageId: string; posDelta: number; msisdn: string; iccid: string | null; unitPrice: number; activationKind: 'port' | 'convert'; note: string },
+    request: ReturnType<LinesService['requestOf']>,
+    replayed?: () => void,
+  ) {
+    const task = await this.tasks.openTask({ action: 'activate', esim: false, ...opening, ...(request ? { request } : {}), locks: OPENING_LOCKS });
+    if (task.replayed) replayed?.();
+    return task.id;
+  }
+
   private async defer(actor: Actor, line: VisibleLine, task: Omit<OpenTask, 'actor' | 'posId' | 'packageId' | 'lineId'>) {
     const opened = await this.tasks.openTask({ actor, posId: line.posId, packageId: line.packageId, lineId: line.id, ...task, locks: OPENING_LOCKS });
     return { applied: false as const, taskId: opened.id };
@@ -87,6 +103,8 @@ export class LinesService {
       return { applied: false, taskId: first.id };
     }
     const { esim, iccid, packageCode, posLoginName, msisdn: requested, currentDetails } = input;
+    // A porting or a card-to-bill conversion (spec 2026-11-16-package-page, P.5); null for an ordinary activation.
+    const special = input.kind === 'new' ? null : input.kind;
     const accounts = await this.tree.accounts();
     const pos = accounts.find((account) => account.loginName === posLoginName && account.layer === 'pos');
     if (!pos || !canActivateFor(actor, pos, accounts)) fail(403, 'FORBIDDEN');
@@ -95,7 +113,10 @@ export class LinesService {
     // Visibility first, then the user's stop, then the package mode.
     if (!visibleTo(posPath, (await this.ladder.termsFor(pkg.id)).terms, pkg)) fail(400, 'PACKAGE_HIDDEN');
     assertRunnable(pkg, 'activate', deniedOpsFor(posPath));
-    const inputs = activateInputs(pkg.provider.code);
+    // The package offers it only when the branch turned it on, and it takes the number and the serial, no eSIM.
+    if (special && (special === 'port' ? pkg.portMode : pkg.convertMode) === 'off') fail(400, 'OPERATION_DISABLED');
+    if (special && esim) fail(400, 'INVALID');
+    const inputs = special ? 'number-and-sim' : activateInputs(pkg.provider.code);
     const sim = this.checkedSim(pkg, inputs, { esim, iccid, requested, currentDetails });
     const unit = await this.pricing.resolveBuyPrice(pos.id, pkg, 'subscription', posPath);
     const esimFee = esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price;
@@ -109,6 +130,10 @@ export class LinesService {
     // The eSIM's code exists only after the provider has answered, so the ability to seal it is checked first:
     // a sale is never sent to the provider when its code could not be stored (ADR 0019, D17; S.5b).
     if (generatesEsim) assertCanSealEsimCode();
+    if (special) {
+      const taskId = await this.openKindTask({ actor, posId: pos.id, packageId: pkg.id, posDelta, msisdn, iccid: storedIccid, unitPrice: unit, activationKind: special, note: currentDetails || BRANCH_TASK_NOTE }, request, sent.replayed);
+      return { applied: false, taskId };
+    }
     // The dispatch route (ADR 0019, D13): the package runs activations automatically and the gateway takes this
     // provider's on record for the dispatcher. Nothing of the request chooses it, and no gateway built today
     // answers true (D18, slice S.12a). The provider is not called here, now or later: the worker's dispatcher is.

@@ -33,7 +33,7 @@ export class PackagesService {
     const pkg = await this.repo.packageByCode(code);
     if (!pkg) fail(404, 'NOT_FOUND');
     const { action, mode, ...flags } = parseInput(PackageModeBody, body);
-    const data: Record<string, boolean | Prisma.InputJsonValue> = {};
+    const data: Record<string, boolean | string | Prisma.InputJsonValue> = {};
     for (const [key, value] of Object.entries(flags)) if (value !== undefined) data[key] = value;
     if (action && mode) {
       // `inherit` follows the provider again (spec 2026-11-09-admin-review, 3): its mode now, and every change it
@@ -86,6 +86,9 @@ export class PackagesService {
       renewalAgentPrice: pkg.renewalAgentPrice,
       renewalPosPrice: pkg.renewalPosPrice,
       renewalSubscriberPrice: pkg.renewalSubscriberPrice,
+      // Porting and card-to-bill as ways to activate: off, manual (a branch task) or auto (spec 2026-11-16-package-page, P.5).
+      portMode: pkg.portMode,
+      convertMode: pkg.convertMode,
       esimPrice: pkg.esimPrice,
       esimPriceEffective: esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price,
       esimPriceSource: esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).source,

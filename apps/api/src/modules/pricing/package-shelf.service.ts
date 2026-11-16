@@ -65,6 +65,9 @@ export class PackageShelfService {
         activateMode: branch ? resolvePackageMode(row.actionModes, row, 'activate') : null,
         sellable: resolvePackageMode(row.actionModes, row, 'activate') !== 'off',
         activateInput: activateInputs(row.provider.code),
+        // Whether a number may be activated on it by porting, or by turning a prepaid card into a bill.
+        canPort: row.portMode !== 'off',
+        canConvert: row.convertMode !== 'off',
         companyName: row.company?.name ?? '',
         sim: simRulesOf(row.company, row),
         esimPrice: esimPriceOf({ pkg: row, provider: row.provider, company: row.company }).price,

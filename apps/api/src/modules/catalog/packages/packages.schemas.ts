@@ -26,6 +26,9 @@ export type SellPriceBody = z.input<typeof SellPriceBody>;
 
 const flag = z.boolean().optional();
 
+/** How a package offers porting or card-to-bill: not at all, as a branch task, or directly to the provider. */
+export const ACTIVATION_KIND_MODES = ['off', 'manual', 'auto'] as const;
+
 /** PATCH packages/:code/mode — any of the run flags, or one action with its mode (`inherit` follows the provider). */
 export const PackageModeBody = z.object({
   autoActivate: flag,
@@ -45,6 +48,9 @@ export const PackageModeBody = z.object({
   allowRename: flag,
   allowSim: flag,
   enabled: flag,
+  // Porting and card-to-bill as ways to activate (spec 2026-11-16-package-page, P.5): off, a branch task, or direct.
+  portMode: z.enum(ACTIVATION_KIND_MODES).optional(),
+  convertMode: z.enum(ACTIVATION_KIND_MODES).optional(),
   action: z.enum(ACTION_KEYS).optional(),
   mode: z.enum(['auto', 'manual', 'off', 'inherit']).optional(),
 });

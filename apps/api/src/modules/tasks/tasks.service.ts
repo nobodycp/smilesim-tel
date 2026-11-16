@@ -78,6 +78,8 @@ export class TasksService {
         return {
           id: row.id,
           action: row.action,
+          // `port` or `convert` for an activation that is one; null otherwise.
+          activationKind: row.activationKind,
           status: row.status,
           operationPhase: shownPhase(operation),
           posLoginName: byId.get(row.posId)?.loginName ?? '',
@@ -158,6 +160,7 @@ export class TasksService {
       task: {
         id: row.id,
         action: row.action,
+        activationKind: row.activationKind,
         status: row.status,
         // The task's provider operation as a screen shows it (ADR 0019, O6); null for a task that never went to
         // a provider. Why an exception could not be applied is the branch's business, as the provider is.
@@ -301,6 +304,8 @@ export class TasksService {
     iccid?: string | null;
     esim?: boolean;
     esimQr?: string | null;
+    /** For an activation that is a porting or a card-to-bill conversion (spec 2026-11-16-package-page, P.5). */
+    activationKind?: 'port' | 'convert';
     note: string;
     /** The price of what the task sells, fixed now so completion charges and records the same number (rule 1.5). */
     unitPrice?: number;
@@ -359,6 +364,7 @@ export class TasksService {
         iccid: input.iccid,
         esim: input.esim ?? false,
         esimQr: input.esimQr ?? null,
+        activationKind: input.activationKind ?? null,
         note: input.note,
         held: price,
         unitPrice: input.unitPrice ?? null,

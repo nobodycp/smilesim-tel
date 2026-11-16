@@ -25,6 +25,9 @@ export const TASK_TEXT_MAX = 2000;
 /** A QR picture. `readQr` (line-input.ts) checks its type and size and answers `QR_INVALID`. */
 const qr = z.unknown().optional().describe('QR picture as a data URL (png, jpeg, webp), or null');
 
+/** The ways a number is activated on a package. */
+export const ACTIVATION_KINDS = ['new', 'port', 'convert'] as const;
+
 export const ActivateBody = z.object({
   packageCode: stored,
   posLoginName: stored,
@@ -32,6 +35,9 @@ export const ActivateBody = z.object({
   iccid: simSerial,
   msisdn: optionalMsisdn,
   currentDetails: optionalText(TASK_TEXT_MAX),
+  // How the number arrives (spec 2026-11-16-package-page, P.5): a new one, ported from another company, or a
+  // prepaid card turned into a bill. The last two take the number and the serial, and open a branch task.
+  kind: z.enum(ACTIVATION_KINDS).optional().default('new'),
   outcome,
 });
 export type ActivateBody = z.input<typeof ActivateBody>;

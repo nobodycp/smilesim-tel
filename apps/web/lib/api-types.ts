@@ -135,6 +135,9 @@ export type PackageRow = {
   sellable: boolean;
   /** What the activation form asks for: a number the office makes up, the subscriber's current details, or a number and a SIM. */
   activateInput: 'generated' | 'current-details' | 'number-and-sim';
+  /** Whether a number may be activated on it by porting, or by turning a prepaid card into a bill. */
+  canPort: boolean;
+  canConvert: boolean;
   companyName: string;
   sim: SimRules;
   esimPrice: number;
@@ -288,6 +291,9 @@ export type PackageSheet = {
   esimPrice: number | null;
   esimPriceEffective: number;
   esimPriceSource: 'package' | 'provider' | 'company';
+  /** Porting and card-to-bill as ways to activate: off, a branch task, or directly to the provider. */
+  portMode: ActivationKindMode;
+  convertMode: ActivationKindMode;
   lines: number;
   activeLines: number;
   renewals: string[];
@@ -598,9 +604,16 @@ export type NoticeRow = {
   read: boolean;
   createdAt: string;
 };
+/** How a package offers porting or card-to-bill. */
+export type ActivationKindMode = 'off' | 'manual' | 'auto';
+/** An activation that is a porting or a card-to-bill conversion. */
+export type ActivationKind = 'port' | 'convert';
+
 export type TaskRow = {
   id: string;
   action: string;
+  /** For an activation that is a porting or a conversion; null otherwise. */
+  activationKind: ActivationKind | null;
   status: string;
   posLoginName: string;
   submitterLoginName: string;

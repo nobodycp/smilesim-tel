@@ -423,6 +423,11 @@ model Package {
   /// The actions whose run mode follows the provider (spec 2026-11-09-admin-review, 3): the stored mode is the
   /// provider's, written again whenever the provider changes it. Empty = every mode is the package's own.
   inheritedModes         String[]         @default([])
+  /// Number porting («نيود») and converting a prepaid card to a bill, as ways to activate a number on this package
+  /// (spec 2026-11-16-package-page, P.5): `off` (the default for every package), `manual` (a branch task) or `auto`
+  /// (to the provider; a branch task until a provider carries it). A CHECK in the database.
+  portMode               String           @default("off")
+  convertMode            String           @default("off")
   /// The provider's own product this package was added from; one package per product and provider.
   providerProductCode    String?
   esimPrice              Int?
@@ -571,6 +576,9 @@ model Task {
   unitPrice     Int?
   msisdn        String?
   iccid         String?
+  /// For an activation: `port` (the number comes from another company) or `convert` (a prepaid card becomes a
+  /// bill). Empty for an ordinary activation and for every other action.
+  activationKind String?
   esim          Boolean          @default(false)
   esimQr        String?
   nextPackageId String?
