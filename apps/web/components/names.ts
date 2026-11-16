@@ -16,6 +16,12 @@ export function applyNote(t: Copy, data: { applied: boolean; debited?: boolean }
   return data.debited ? t.appliedNow : t.appliedDone;
 }
 
+/** A task's name: its action, and for an activation that is a porting or a card-to-bill conversion, which one. */
+export function taskName(t: Copy, task: { action: string; activationKind?: string | null }): string {
+  const kind = task.activationKind === 'port' ? t.activationPort : task.activationKind === 'convert' ? t.activationConvert : '';
+  return kind ? `${actionName(t, task.action)} · ${kind}` : actionName(t, task.action);
+}
+
 export function actionName(t: Copy, action: string): string {
   if (action === 'activate') return t.actActivate;
   if (action === 'charge') return t.actCharge;

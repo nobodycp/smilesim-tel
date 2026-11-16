@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
-import { Desk, Money, Pane, actionName, taskStatus } from '../../../components/desk';
+import { Desk, Money, Pane, actionName, taskName, taskStatus } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { RowMenu } from '../../../components/row-menu';
 import { TableSearch } from '../../../components/table-search';
@@ -132,7 +132,7 @@ export function TasksScreen() {
           <span className={TASK_MARK} aria-hidden="true"><Zap size={18} strokeWidth={1.9} /></span>
           <span className="grid min-w-0 gap-0.75">
             <span className="flex flex-wrap items-center gap-2.5">
-              <b className="text-base font-bold text-ink group-hover/task:text-accent">{actionName(t, row.action)}</b>
+              <b className="text-base font-bold text-ink group-hover/task:text-accent">{taskName(t, row)}</b>
               <Badge variant={taskTone(row.status)} dot>{taskStatus(t, row.status)}</Badge>
               {/* Where its provider operation stands, while the task is open: waiting, unconfirmed, an exception. */}
               {row.operationPhase && row.status === 'working' ? <Badge variant={operationTone(row.operationPhase)}>{phaseName(t, row.operationPhase)}</Badge> : null}

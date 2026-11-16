@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
+import { ActivationKindChoice, offeredKind, type ActivationChoice } from '../../../components/activation-kind';
 import { ActivationResult } from '../../../components/activation-result';
 import { Desk, Money, OutcomePick, Pane, applyNote, lineStatus } from '../../../components/desk';
 import { CompanyMark } from '../../../components/company-mark';
@@ -65,6 +66,7 @@ export function NumbersScreen() {
   const [iccid, setIccid] = useState('');
   const [currentDetails, setCurrentDetails] = useState('');
   const [givenNumber, setGivenNumber] = useState('');
+  const [kind, setKind] = useState<ActivationChoice>('new');
   const [outcome, setOutcome] = useState<Outcome>('success');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -137,7 +139,9 @@ export function NumbersScreen() {
 
   const sellable = packages.filter((row) => row.sellable);
   const chosen = sellable.find((row) => row.code === packageCode) ?? sellable[0];
-  const activation = chosen?.activateInput === 'current-details' ? 'details' : chosen?.activateInput === 'number-and-sim' ? 'number' : 'generated';
+  // A porting or a conversion takes the number and the serial, whatever the provider asks for a new number.
+  const special = offeredKind(kind, chosen);
+  const activation = special ? 'number' : chosen?.activateInput === 'current-details' ? 'details' : chosen?.activateInput === 'number-and-sim' ? 'number' : 'generated';
   const rules = chosen?.sim ?? OPEN_SIM;
   const offersEsim = activation === 'generated' && rules.esim;
   const withEsim = offersEsim && esim;
@@ -162,6 +166,7 @@ export function NumbersScreen() {
       iccid: withEsim ? '' : iccid.trim(),
       msisdn: activation === 'number' ? givenNumber : '',
       currentDetails: activation === 'details' ? currentDetails : '',
+      ...(special ? { kind: special } : {}),
       outcome: verdict,
     };
     // The same activation sent again keeps its key; once answered, the next one is another (ADR 0019, D14).
@@ -354,6 +359,7 @@ export function NumbersScreen() {
                 </Label>
               </div>
               {chosen ? <PackageFacts facts={chosen} /> : null}
+              {chosen ? <ActivationKindChoice value={kind} onChange={setKind} pkg={chosen} /> : null}
               {offersEsim && (
                 <Label className={CHECK_ROW}>
                   <Checkbox checked={esim} onCheckedChange={(next) => setEsim(next === true)} />

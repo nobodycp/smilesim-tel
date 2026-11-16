@@ -30,6 +30,7 @@ import { InheritedModes } from '../inherited-modes';
 import { ChainBoard, type PriceKey } from '../chain-board';
 import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
+import { PackageActivationKinds } from '../package-activation-kinds';
 import { PackageAddons } from '../package-addons';
 import { PackageDurations } from '../package-durations';
 import { PackageEsim } from '../package-esim';
@@ -500,6 +501,7 @@ export function PackageSheetScreen() {
                     run={run}
                     onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }}
                   />
+                  <PackageActivationKinds sheet={sheet} canEdit={canEditAddons} busy={busy} run={run} />
                 </div>
               )}
               {tab === 'durations' && (

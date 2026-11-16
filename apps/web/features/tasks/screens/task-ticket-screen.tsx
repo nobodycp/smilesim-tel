@@ -4,7 +4,7 @@ import { Ban, Check, Hand, Undo2, X } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { AccountName } from '../../../components/account-name';
-import { Desk, Money, Pane, actionName, latinWhen, taskStatus } from '../../../components/desk';
+import { Desk, Money, Pane, latinWhen, taskName, taskStatus } from '../../../components/desk';
 import { EsimDialog, EsimMark, QrPicker } from '../../../components/esim-qr';
 import { TableSkeleton } from '../../../components/loading';
 import { Badge } from '../../../components/ui/badge';
@@ -117,8 +117,8 @@ export function TaskTicketScreen() {
   // `fresh`: the answer may carry an eSIM code, so it is not kept in the shared cache once this page closes.
   const card = useApiQuery(sharedKeys.task(params.id), () => api.task(params.id), { fresh: true });
   const task = card.data?.task ?? null;
-  usePageTitle(task ? actionName(t, task.action) : t.taskTicket);
-  useCrumbs({ [`/tasks/${encodeURIComponent(params.id)}`]: task ? `${actionName(t, task.action)}${task.msisdn ? ` · ${task.msisdn}` : ''}` : null });
+  usePageTitle(task ? taskName(t, task) : t.taskTicket);
+  useCrumbs({ [`/tasks/${encodeURIComponent(params.id)}`]: task ? `${taskName(t, task)}${task.msisdn ? ` · ${task.msisdn}` : ''}` : null });
   const events = card.data?.events ?? [];
   // What closing this task hands back: an eSIM request needs the serial and the QR, a number change needs the number.
   const simRules = task?.sim ?? OPEN_SIM;
@@ -203,7 +203,7 @@ export function TaskTicketScreen() {
       title={task ? (
         // Graphite: the operation is the title, with the task's state beside it; the number and package under it.
         <span className="inline-flex flex-wrap items-center gap-3">
-          <span>{actionName(t, task.action)}</span>
+          <span>{taskName(t, task)}</span>
           <Badge variant={taskTone(task.status)} dot>{taskStatus(t, task.status)}</Badge>
         </span>
       ) : t.taskTicket}
@@ -250,7 +250,7 @@ export function TaskTicketScreen() {
                 <Fact label={t.amount}>
                   <Money value={task.posDelta} />
                 </Fact>
-                <Fact label={t.movement}>{actionName(t, task.action)}</Fact>
+                <Fact label={t.movement}>{taskName(t, task)}</Fact>
                 <Fact label={t.taskSubmitter}>
                   <AccountName login={task.submitterLoginName} />
                 </Fact>

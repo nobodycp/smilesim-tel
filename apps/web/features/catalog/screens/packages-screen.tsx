@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
+import { ActivationKindChoice, offeredKind, type ActivationChoice } from '../../../components/activation-kind';
 import { ActivationResult } from '../../../components/activation-result';
 import { Desk, Money, Pane } from '../../../components/desk';
 import { EmptyState } from '../../../components/empty-state';
@@ -88,6 +89,7 @@ function PosCatalog({
   const [company, setCompany] = useState('');
   const [picked, setPicked] = useState<PackageRow | null>(null);
   const [givenNumber, setGivenNumber] = useState('');
+  const [kind, setKind] = useState<ActivationChoice>('new');
   const [currentDetails, setCurrentDetails] = useState('');
   const [iccid, setIccid] = useState('');
   const [esim, setEsim] = useState(false);
@@ -112,7 +114,9 @@ function PosCatalog({
     setStep('details');
   }
 
-  const activation = picked?.activateInput === 'current-details' ? 'details' : picked?.activateInput === 'number-and-sim' ? 'number' : 'generated';
+  // A porting or a conversion takes the number and the serial, whatever the provider asks for a new number.
+  const special = offeredKind(kind, picked);
+  const activation = special ? 'number' : picked?.activateInput === 'current-details' ? 'details' : picked?.activateInput === 'number-and-sim' ? 'number' : 'generated';
   const rules = picked?.sim ?? OPEN_SIM;
   const offersEsim = activation === 'generated' && rules.esim;
   const withEsim = offersEsim && esim;
@@ -136,6 +140,7 @@ function PosCatalog({
       iccid: withEsim ? '' : iccid.trim(),
       msisdn: activation === 'number' ? givenNumber.trim() : '',
       currentDetails: activation === 'details' ? currentDetails.trim() : '',
+      ...(special ? { kind: special } : {}),
       outcome: 'success' as const,
     };
     // The same activation sent again keeps its key; once answered, the next one is another (ADR 0019, D14).
@@ -190,6 +195,7 @@ function PosCatalog({
               <PackageFacts facts={picked} />
               <p className={PRICE} data-testid="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
               {!picked.canActivate && <Badge variant="danger" dot>{t.activationStopped}</Badge>}
+              {picked.canActivate ? <ActivationKindChoice value={kind} onChange={setKind} pkg={picked} /> : null}
               {picked.canActivate && offersEsim && (
                 <Label tone="pane" className={CHECK_ROW}>
                   <Checkbox checked={esim} onCheckedChange={(next) => setEsim(next === true)} />

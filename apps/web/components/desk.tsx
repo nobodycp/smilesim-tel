@@ -11,7 +11,7 @@ import { PageAlert } from './dialog';
 import { PageSkeleton } from './loading';
 import { Segmented, SegmentedItem } from './ui/segmented';
 
-export { actionName, applyNote, layerName, lineStatus, taskStatus } from './names';
+export { actionName, applyNote, layerName, lineStatus, taskName, taskStatus } from './names';
 
 /*
  * The desk frame (Tailwind migration T3.3, ADR 0022), ported from desk/frame.css, desk/pane.css, forms.css and

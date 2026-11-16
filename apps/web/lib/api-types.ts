@@ -458,7 +458,7 @@ export type LineHistory = {
   actorName: string;
 };
 export type PosChoice = { loginName: string; nickname: string };
-export type ActivateBody = { packageCode: string; posLoginName: string; esim: boolean; iccid: string; msisdn: string; currentDetails?: string; outcome: Outcome };
+export type ActivateBody = { packageCode: string; posLoginName: string; esim: boolean; iccid: string; msisdn: string; currentDetails?: string; kind?: 'new' | 'port' | 'convert'; outcome: Outcome };
 export type LedgerRow = {
   id: string;
   at: string;

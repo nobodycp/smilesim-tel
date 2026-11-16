@@ -87,6 +87,7 @@ test('the package page edits its details', async ({ page }) => {
     'GET /companies': () => ({ body: shelf }),
     'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null, total: 0 } }),
     'PATCH /packages/lian-wecom-500/details': () => ({ body: { ok: true } }),
+    'PATCH /packages/lian-wecom-500/mode': () => ({ body: { ok: true } }),
   });
   // The package page's old address moves to its company's (spec 2026-11-09-admin-review, 4).
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
@@ -101,6 +102,15 @@ test('the package page edits its details', async ({ page }) => {
   const switched = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/details'));
   await esim.getByRole('switch', { name: 'الرزمة متاحة كـ eSIM' }).click();
   expect((await switched).postDataJSON()).toMatchObject({ dataGb: 500, smsCount: null, minutes: -1, details: '', esimAvailable: false });
+  // Porting and card-to-bill (spec 2026-11-16-package-page, P.5): both off, with no mode to choose; turning one on
+  // saves it as a branch task.
+  const kinds = page.getByTestId('package-activation-kinds');
+  await expect(kinds.getByRole('switch', { name: 'نيود' })).toHaveAttribute('aria-checked', 'false');
+  await expect(kinds.getByRole('switch', { name: 'تحويل من كرت لفاتورة' })).toHaveAttribute('aria-checked', 'false');
+  await expect(kinds.getByRole('radiogroup')).toHaveCount(0);
+  const ported = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/mode'));
+  await kinds.getByRole('switch', { name: 'نيود' }).click();
+  expect((await ported).postDataJSON()).toEqual({ portMode: 'manual' });
   // The details are edited on the same tab (spec 2026-11-16-package-page, P.2); eSIM is not one of their fields.
   await expect(page.getByRole('tab', { name: 'التفاصيل' })).toHaveCount(0);
   await expect(page.getByTestId('package-details-form').getByLabel('الرزمة متاحة كـ eSIM')).toHaveCount(0);
