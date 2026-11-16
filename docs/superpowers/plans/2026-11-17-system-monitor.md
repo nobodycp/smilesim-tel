@@ -1,7 +1,7 @@
 # System monitor — plan
 
-Spec: `docs/superpowers/specs/2026-11-17-system-monitor.md`. **Not started: the spec waits for the owner's word on
-D1–D8.** One slice = one commit, ticked with its hash. Per slice: `npm run lint`, `npm run typecheck`,
+Spec: `docs/superpowers/specs/2026-11-17-system-monitor.md`. Approved by the owner on 2026-11-17 (D1–D8 as
+proposed). One slice = one commit, ticked with its hash. Per slice: `npm run lint`, `npm run typecheck`,
 `npm run check:copy`, the touched spec files, `architecture*.spec.ts`; web slices are checked on the running copy
 (port 3000), ar and en, light and dark, every width, per `.cursor/rules/verify-before-reply.mdc`. Each slice
 updates `docs/architecture/backend.md` / `frontend.md`, `testing/response-shape.spec.ts`, `testing/routes.ts`,

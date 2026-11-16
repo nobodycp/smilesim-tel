@@ -5,7 +5,7 @@ health of the system and its services, is warned early of a break-in attempt, a 
 being hit, with the details, and reads a log of every request the system served, with a button that clears it.
 The log is there to find slow and failing operations later.
 
-Status: **draft, waiting for the owner's word on D1–D8.** Nothing is built.
+Status: **approved by the owner on 2026-11-17: D1–D8 as proposed, the slices in the plan's order.**
 
 ## What this is, and what it is not
 
