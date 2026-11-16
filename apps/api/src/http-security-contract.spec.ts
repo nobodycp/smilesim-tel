@@ -14,6 +14,7 @@ import { RESOURCE_PREFIXES, resourcePaths } from './modules/platform/route-prefi
 //
 //   protection        where                               keyed on
 //   ───────────────   ─────────────────────────────────   ─────────────────────────────────────────────
+//   (request log      RequestLogMiddleware, every route   first of all; records, refuses nothing)
 //   CSRF              OriginMiddleware, every route       the method (a write) and the Origin header
 //   rate limit        RateLimitMiddleware, every route    the session; three sign-in paths; two exempt paths
 //   door              DoorMiddleware, every route         the x-door header; four paths that start a session
@@ -170,7 +171,9 @@ describe('the write routes, as the source has them', () => {
     expect(routes.filter((route) => route.path.startsWith('/office'))).toEqual([]);
     const count = (prefix: string) => writes.filter((route) => route.controller === prefix).length;
     // Between R.11b and R.11c every resource write was served twice (also under `/office/`): 179 then, 103 now.
-    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 76, auth: 26, branding: 1, all: 103 });
+    // 78 since package plan D.3a (`PUT packages/:code/durations`, `DELETE packages/:code/durations/:id`; the pin
+    // was left at 76 then and is corrected here).
+    expect({ v1: count('v1'), auth: count('auth'), branding: count('branding'), all: writes.length }).toEqual({ v1: 78, auth: 26, branding: 1, all: 105 });
   });
 
   it('agrees with the route table (testing/routes.ts): the same write routes, by method and shape', () => {
@@ -212,11 +215,11 @@ describe('the duplicate guard and the idempotency key', () => {
 
   it('a write route that moves keeps its guard: the guarded routes are the same whatever their paths', () => {
     // A move made on the real routes: every `/v1/` route given another path. The guard is decided by the
-    // controller, so the same 76 are guarded and nothing new is unguarded.
+    // controller, so the same 78 are guarded and nothing new is unguarded.
     const before = writes.filter(guarded).map((route) => `${route.file} ${route.method}`).sort();
     const moved = writes.map((route) => ({ ...route, path: route.path.replace(/^\/v1\//, '/elsewhere/') }));
     expect(moved.filter(guarded).map((route) => `${route.file} ${route.method}`).sort()).toEqual(before);
-    expect(moved.filter(guarded)).toHaveLength(76);
+    expect(moved.filter(guarded)).toHaveLength(78);
   });
 });
 
@@ -252,9 +255,11 @@ describe('authorization and activity follow the controller, not the path', () =>
 });
 
 describe('the protections that are on every route', () => {
-  it('origin, rate limit and door are applied to every route, in that order', () => {
+  it('origin, rate limit and door are applied to every route, in that order, after the request log', () => {
+    // The request log is first (system monitor M.1): a request the other three refuse is written too. It refuses
+    // nothing itself.
     const app = readFileSync(join(SRC, 'app.module.ts'), 'utf8');
-    expect(app).toContain("consumer.apply(OriginMiddleware, RateLimitMiddleware, DoorMiddleware).forRoutes('*')");
+    expect(app).toContain("consumer.apply(RequestLogMiddleware, OriginMiddleware, RateLimitMiddleware, DoorMiddleware).forRoutes('*')");
   });
 
   it('the paths the middleware names are routes that exist', () => {
@@ -271,6 +276,9 @@ describe('the protections that are on every route', () => {
     const door = readFileSync(join(SRC, 'door.middleware.ts'), 'utf8');
     expect(door).toContain("const STARTS_SESSION = new Set(['/auth/login', '/auth/passkey-login/options', '/auth/passkey-login', ...resourcePaths('handoff')]);");
     expect(resourcePaths('handoff')).toEqual(['/v1/handoff']);
+    // The request log leaves out the health probe and the stream, by the same list of prefixes.
+    const requestLog = readFileSync(join(SRC, 'request-log.middleware.ts'), 'utf8');
+    expect(requestLog).toContain("const UNLOGGED = [/^\\/health$/, ...resourcePaths('notices/stream').map((path) => new RegExp(`^${path}$`))];");
   });
 });
 

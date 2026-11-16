@@ -48,7 +48,7 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   // The start-up check (slice R.7): run by `main.ts` and `worker.ts` before anything opens; it reads the platform's
   // settings and the providers' dispatch settings, so it is part of the bootstrap, not of the platform.
   [/^production-config\.ts$/, 'app'],
-  [/^(door|origin|rate-limit)\.middleware\.ts$/, 'app'],
+  [/^(door|origin|rate-limit|request-log)\.middleware\.ts$/, 'app'],
   [/^openapi\/setup\.ts$/, 'app'],
   [/^modules\/registry\.ts$/, 'app'],
   // The worker's composition root (slice R.5): its one description of the money path, its timers and its stop.

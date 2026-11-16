@@ -23,6 +23,8 @@ async function bootstrap() {
   const hops = trustedProxyHops(env('TRUST_PROXY'));
   if (hops !== null && hops > 0) app.set('trust proxy', hops);
   enableWebCors(app);
+  // On SIGTERM the modules are closed in order, so the request log writes the rows still waiting in memory.
+  app.enableShutdownHooks();
   setupOpenApi(app);
   await app.listen(env('PORT') ?? 3001);
 }

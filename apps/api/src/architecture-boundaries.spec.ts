@@ -208,7 +208,7 @@ describe('module boundaries, on the source as it is', () => {
 
   it('root-domain-code: the source root holds bootstrap and middleware, not domain code', () => {
     // `production-config.ts` is the start-up check `main.ts` and `worker.ts` run first (slice R.7): bootstrap.
-    const bootstrap = /^(main|app\.module|worker|health\.controller|production-config|(door|origin|rate-limit)\.middleware)\.ts$/;
+    const bootstrap = /^(main|app\.module|worker|health\.controller|production-config|(door|origin|rate-limit|request-log)\.middleware)\.ts$/;
     const rootFiles = production.filter(({ file }) => !file.includes('/') && !bootstrap.test(file));
     const reaching = rootFiles.filter(({ file }) => edges.some((edge) => edge.from === file && edge.to.startsWith('modules/') && ownerOf(edge.to) !== 'platform'));
     check('root-domain-code', reaching.map(({ file }) => ({ file, line: 1, text: 'imports a module that is not the platform' })));

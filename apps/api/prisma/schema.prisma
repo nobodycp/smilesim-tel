@@ -638,6 +638,45 @@ model ActivityEvent {
   @@index([action, at])
 }
 
+/**
+ * One HTTP request the API received (spec 2026-11-17-system-monitor, section 2): technical, read by the branch
+ * owner only, kept 14 days. Never a body, a cookie, a query string or a header value other than the user agent.
+ * No relation to `User`: a row outlives its account and is written in batches without a join.
+ */
+model RequestLog {
+  id             String   @id @default(uuid())
+  /** When the request arrived. */
+  at             DateTime
+  durationMs     Int
+  method         String
+  /** The route pattern (`/v1/lines/:id`); empty when no route matched (an unknown path, a refusal before routing). */
+  route          String   @default("")
+  /** The path as sent, without its query. */
+  path           String
+  status         Int
+  /** The API's refusal code (`LOGIN_REQUIRED`, `RATE_LIMITED`, …); empty for an answer that is not an error. */
+  code           String   @default("")
+  /** The signed-in account (for an entered session: the entered one). */
+  actorId        String?
+  actorLoginName String   @default("")
+  /** Who entered, for an entered (impersonation) session; null otherwise. */
+  operatorId     String?
+  layer          String   @default("")
+  ip             String   @default("")
+  /** The first 200 characters of the caller's user agent. */
+  userAgent      String   @default("")
+  /** Also sent back as `X-Request-Id`. */
+  requestId      String
+  bytesIn        Int      @default(0)
+  bytesOut       Int      @default(0)
+
+  @@index([at])
+  @@index([status, at])
+  @@index([route, at])
+  @@index([actorId, at])
+  @@index([ip, at])
+}
+
 model AccessLog {
   id          String   @id @default(uuid())
   actorId     String
