@@ -4,7 +4,7 @@ Spec: `docs/superpowers/specs/2026-11-16-package-page.md`. One slice = one commi
 hash. Per slice: `npm run lint`, `npm run typecheck`, `npm run check:copy`, `npm run check:styles`, the touched
 specs; checked on the running copy (port 3000) per `.cursor/rules/verify-before-reply.mdc`.
 
-- [ ] **P.1 eSIM on the start tab.** `apps/web/features/catalog/package-esim.tsx` (switch, price, source line,
+- [x] **P.1 eSIM on the start tab** (`ec1b9cd`). `apps/web/features/catalog/package-esim.tsx` (switch, price, source line,
   save); `package-sheet-screen.tsx` puts it on «نظرة عامة» and drops the price card from «سلسلة الأسعار»;
   `package-details-form.tsx` loses the checkbox (the details route still takes `esimAvailable`). Web tests that
   reach the checkbox or the price card follow.
