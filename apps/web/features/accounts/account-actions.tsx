@@ -7,6 +7,8 @@ import { Dialog } from '../../components/dialog';
 import type { RowAction } from '../../components/row-menu';
 import { TransferDialog } from '../../components/transfer-dialog';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import { Select, SelectItem } from '../../components/ui/select';
 import { api, type UserRow } from '../../lib/api';
 import { everyAccount } from '../../lib/directory';
@@ -193,11 +195,13 @@ export function useAccountActions({
             </>
           )}
         >
-          <div className="dialog-form">
-            <p className="dialog-who"><AccountName login={active.loginName} name={active.nickname} /></p>
+          {/* The form: a column 12px apart; the account it acts on 14px bold on one line (dialog.css `.dialog-form`,
+              `.dialog-who`; Tailwind migration T4.2). */}
+          <div className="grid gap-3">
+            <p className="m-0 text-base font-bold"><AccountName login={active.loginName} name={active.nickname} /></p>
             {op.kind === 'fund' || op.kind === 'deduct' ? (
               <>
-                <label>
+                <Label tone="dialog">
                   {t.reason}
                   {op.kind === 'fund' ? (
                     <Select place="dialog" value={fundReason} onValueChange={(next) => setFundReason(next as FundReason)}>
@@ -212,28 +216,28 @@ export function useAccountActions({
                       <SelectItem value="settlement">{t.reasonSettlement}</SelectItem>
                     </Select>
                   )}
-                </label>
-                <label>
+                </Label>
+                <Label tone="dialog">
                   {t.amount}
-                  <input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value)} />
-                </label>
-                <label>
+                  <Input inputMode="numeric" value={amount} onChange={(event) => setAmount(event.target.value)} />
+                </Label>
+                <Label tone="dialog">
                   {t.note}
-                  <input value={fundNote} onChange={(event) => setFundNote(event.target.value)} />
-                </label>
+                  <Input value={fundNote} onChange={(event) => setFundNote(event.target.value)} />
+                </Label>
               </>
             ) : null}
             {op.kind === 'ceiling' ? (
-              <label>
+              <Label tone="dialog">
                 {t.ceiling}
-                <input inputMode="numeric" value={ceiling} onChange={(event) => setCeiling(event.target.value)} />
-              </label>
+                <Input inputMode="numeric" value={ceiling} onChange={(event) => setCeiling(event.target.value)} />
+              </Label>
             ) : null}
             {op.kind === 'password' ? (
-              <label>
+              <Label tone="dialog">
                 {t.newPassword}
-                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-              </label>
+                <Input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+              </Label>
             ) : null}
           </div>
         </Dialog>

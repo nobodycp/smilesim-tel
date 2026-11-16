@@ -4,7 +4,7 @@ import { ChevronDown, Wallet } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useSyncExternalStore } from 'react';
 import { AccountName } from '../../../components/account-name';
-import { Desk, Money, layerName } from '../../../components/desk';
+import { Desk, Money, Pane, layerName } from '../../../components/desk';
 import { lineStatus } from '../../../components/names';
 import { TableSkeleton } from '../../../components/loading';
 import { Button, buttonClass } from '../../../components/ui/button';
@@ -26,6 +26,10 @@ import { UserPackagesTab } from './packages-terms';
 import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
 import { Select, SelectItem } from '../../../components/ui/select';
+import { Label } from '../../../components/ui/label';
+import { Segmented, SegmentedItem } from '../../../components/ui/segmented';
+import { cn } from '../../../lib/cn';
+import { LayerTag } from '../layer-tag';
 import type { LayerKey } from '../../../lib/api-types';
 import { UserSettingsPane } from '../user-settings';
 import { RowMenu } from '../../../components/row-menu';
@@ -44,6 +48,48 @@ type Choice = 'role' | 'allow' | 'deny';
 // the number operations, the account's numbers, and its access. An old `#ops` link opens the operations.
 type Tab = 'packages' | 'ops' | 'numbers' | 'access';
 const TABS: readonly Tab[] = ['packages', 'ops', 'numbers', 'access'];
+
+/*
+ * The user page's own parts (Tailwind migration T4.2, ADR 0022), ported from desk/frame.css, desk/pane.css,
+ * desk/users.css and graphite.css in their cascade order:
+ * - the title: one wrapping row 12px apart — a 48px crimson mark (6px corners, a 20px bold `--rd-on-accent` letter on
+ *   `--rd-accent-fill`, an 11px cut at the top inline end), the name, the layer tag and the state;
+ * - the head's actions: one wrapping row 8px apart;
+ * - the page column (legacy `.desk > .stack`): a column 12px apart at its own height that never widens the canvas, its
+ *   children never wider than it. It keeps the `stack` class as a handle only: the desk column (`has-[>.stack]`,
+ *   components/desk.tsx), the canvas (`:has(.stack)`, frame.css) and Pane (`[.desk>.stack>&]`) size to their content
+ *   by it;
+ * - the access tab's body: a column 12px apart, 14px / 18px / 18px padding, scrolling inside its pane;
+ * - the permissions fold: a 1px `--rd-line` box on `--rd-surface` with 6px corners; its summary a wrapping row
+ *   (6px / 12px apart, 12px / 14px padding) of the name (13px ink bold) and the count (12px `--rd-muted`), with an 8px
+ *   chevron drawn by two 2px `--rd-muted` edges at the end, turned over while open; its body a column 12px apart, 14px
+ *   at the sides and the bottom;
+ * - the grants: two columns 28px apart (one up to 1100px wide), each grant a row at least 52px high over a 1px
+ *   `--rd-line` rule: its name (14px ink bold), its state and the three-way choice, 10px apart (on a phone the choice
+ *   takes its own line, full width, and the row 8px of padding above and below); the choice's segments each at least
+ *   4.6rem, 8px at the sides, on one line;
+ * - the extra roles: a column 8px apart, 8px under the grants, its title 13px bold; the role pick at most 24rem wide at
+ *   the reading start; the role chips one wrapping row 8px apart, each 34px high (40px on a phone, at least 44px up to
+ *   720px), 14px at the sides, 6px corners, a 1px ink-at-11% border, 12px `--rd-muted` 600 on `--rd-surface-2`;
+ *   chosen, `--rd-accent` on `--rd-accent-soft` with a crimson border at 55%; a 2px crimson focus outline 2px out;
+ * - the save: at the reading start over a 1px `--rd-line` rule, 4px and 12px above it.
+ */
+const HERO_MARK = cn(
+  'grid size-12 flex-none place-items-center rounded-sm bg-accent-fill text-[20px] font-bold text-on-accent',
+  '[clip-path:polygon(0_0,calc(100%_-_11px)_0,100%_11px,100%_100%,0_100%)] rtl:[clip-path:polygon(11px_0,100%_0,100%_100%,0_100%,0_11px)]',
+);
+const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';
+const FOLD_SUMMARY = cn(
+  'flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1.5 px-3.5 py-3 [&::-webkit-details-marker]:hidden',
+  "after:ms-auto after:size-2 after:self-center after:rotate-45 after:border-e-2 after:border-b-2 after:border-muted after:content-['']",
+  'group-open:after:rotate-[225deg]',
+);
+const ROLE_CHIP = cn(
+  'h-8.5 cursor-pointer rounded-sm border border-ink/11 bg-surface-2 px-3.5 text-sm font-semibold text-muted max-sm:h-10 max-[721px]:min-h-11',
+  'aria-pressed:border-accent/55 aria-pressed:bg-accent-soft aria-pressed:text-accent',
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+);
+const SAVE_ROW = 'mt-1 flex justify-start border-t border-line pt-3';
 
 function subscribeHash(onChange: () => void) {
   window.addEventListener('hashchange', onChange);
@@ -131,10 +177,10 @@ export function AccountScreen() {
   const listed = row?.listed ?? null;
   const title = row ? (
     // Graphite: the account's cut-corner mark, the name, its layer as a tag, then its state.
-    <span className="account-title">
-      <span className="account-hero-mark" aria-hidden="true">{(row.nickname.trim() || row.loginName).charAt(0)}</span>
+    <span className="inline-flex flex-wrap items-center gap-3">
+      <span className={HERO_MARK} aria-hidden="true">{(row.nickname.trim() || row.loginName).charAt(0)}</span>
       <AccountName login={row.loginName} name={row.nickname} />
-      <span className={`layer-tag l-${row.layer}`}>{layerName(t, row.layer)}</span>
+      <LayerTag layer={row.layer} />
       <Badge variant={accountTone(row.frozen)} dot>{row.frozen ? t.frozen : t.accountOpen}</Badge>
     </span>
   ) : t.accountName;
@@ -146,7 +192,7 @@ export function AccountScreen() {
   const { wallet: walletItems, more } = listed ? accountActions.groupedFor(listed) : { wallet: [], more: [] };
   const actions = [...walletItems, ...more];
   const head = actions.length > 0 || walletItems.length > 0 ? (
-    <div className="page-actions">
+    <div className="inline-flex flex-wrap items-center gap-2">
       {walletItems.length > 0 ? (
         <RowMenu
           boxed
@@ -186,74 +232,76 @@ export function AccountScreen() {
       note={note}
     >
       {!account.loaded ? (
-        <section className="pane">
+        <Pane>
           <TableSkeleton rows={4} columns={3} />
-        </section>
+        </Pane>
       ) : row && (
-        <div className="stack flow">
+        <div className={COLUMN}>
           {listed ? <MoneyCards row={listed} /> : null}
           <Tabs items={tabs} value={openTab} onChange={setTab} />
           {openTab === 'access' && (
           // Settings open on top, permissions folded under them (spec 2026-11-11-ui-consistency-pass, D3).
-          <section className="pane">
-            <div className="pane-body access-tab">
+          <Pane>
+            <div className="grid min-h-0 content-start gap-3 overflow-auto px-4.5 pt-3.5 pb-4.5 *:min-w-0">
               {ownerSettings ? <UserSettingsPane loginName={row.loginName} layer={row.layer as LayerKey} onSaved={(text) => { setError(''); setNote(text); }} /> : null}
-              <details className="inherit-fold access-fold" data-testid="access-fold">
-                <summary>
-                  <b>{t.accountAccess}</b>
-                  <span>{t.grantsSummary.replace('{n}', String(allowedCount)).replace('{total}', String(GRANT_CODES.length))}</span>
+              <details className="group rounded-sm border border-line bg-surface" data-testid="access-fold">
+                <summary className={FOLD_SUMMARY}>
+                  <b className="text-md text-ink">{t.accountAccess}</b>
+                  <span className="text-sm text-muted">{t.grantsSummary.replace('{n}', String(allowedCount)).replace('{total}', String(GRANT_CODES.length))}</span>
                 </summary>
-                <div className="inherit-body">
-                  <ul className="grant-list">
+                <div className="grid gap-3 px-3.5 pb-3.5">
+                  <ul className="m-0 grid list-none grid-cols-2 gap-x-7 p-0 max-[1101px]:grid-cols-[1fr]">
                     {GRANT_CODES.map((code) => {
                       const fromRole = row.isBranchOwner || roleHas.has(code);
                       const mode = (picked[code] ?? 'role') as Choice;
                       const on = row.isBranchOwner || (mode === 'deny' ? false : mode === 'allow' ? true : fromRole);
                       const name = grantLabel(t, code, row.layer);
                       return (
-                        <li key={code} className="grant-row">
-                          <span className="grant-name">{name}</span>
+                        <li
+                          key={code}
+                          className="grid min-h-13 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5 border-b border-line max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:py-2"
+                        >
+                          <span className="text-base font-bold text-ink">{name}</span>
                           <Badge variant={onOffTone(on)} dot>{on ? t.grantAllow : t.grantDeny}</Badge>
                           {row.canEdit ? (
-                            // The same three-way switch as the run modes (`.seg`): the role decides, or allow, or deny.
-                            <div className="seg" role="radiogroup" aria-label={name}>
+                            // The same three-way switch as the run modes (Segmented): the role decides, or allow, or deny.
+                            <Segmented
+                              className="inline-grid auto-cols-[minmax(4.6rem,1fr)] grid-flow-col max-sm:col-span-full max-sm:w-full"
+                              aria-label={name}
+                              value={mode}
+                              disabled={busy}
+                              onValueChange={(choice) => setChoices({ ...picked, [code]: choice as Choice })}
+                            >
                               {(['role', 'allow', 'deny'] as const).map((choice) => (
-                                <button
-                                  key={choice}
-                                  type="button"
-                                  role="radio"
-                                  aria-checked={mode === choice}
-                                  disabled={busy}
-                                  onClick={() => setChoices({ ...picked, [code]: choice })}
-                                >
+                                <SegmentedItem key={choice} value={choice} className="px-2 whitespace-nowrap">
                                   {choice === 'role' ? t.followRole : choice === 'allow' ? t.grantAllow : t.grantDeny}
-                                </button>
+                                </SegmentedItem>
                               ))}
-                            </div>
+                            </Segmented>
                           ) : null}
                         </li>
                       );
                     })}
                   </ul>
                   {showExtras && (
-                    <div className="access-block">
-                      <h3>{t.extraRoles}</h3>
+                    <div className="grid gap-2 pt-2">
+                      <h3 className="m-0 text-md font-bold">{t.extraRoles}</h3>
                       {row.staff && (
-                        <label className="role-primary">
+                        <Label tone="pane" className="max-w-96 justify-items-start">
                           {t.role}
                           <Select place="pane" value={primary} onValueChange={setRoleId}>
                             {row.roles.map((role) => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
                           </Select>
-                        </label>
+                        </Label>
                       )}
-                      <div className="role-chips">
+                      <div className="flex flex-wrap gap-2">
                         {jobRoles.map((role) => {
                           const held = extras.includes(role.id);
                           return (
                             <button
                               key={role.id}
                               type="button"
-                              className="role-chip"
+                              className={ROLE_CHIP}
                               aria-pressed={held}
                               disabled={busy}
                               onClick={() => setExtraRoleIds(held ? extras.filter((id) => id !== role.id) : [...extras, role.id])}
@@ -266,24 +314,24 @@ export function AccountScreen() {
                     </div>
                   )}
                   {row.canEdit && (
-                    <div className="form-save">
+                    <div className={SAVE_ROW}>
                       <Button type="button" disabled={busy} onClick={save}>{t.save}</Button>
                     </div>
                   )}
                 </div>
               </details>
             </div>
-          </section>
+          </Pane>
           )}
           {openTab === 'ops' && withTerms ? (
-            <section className="pane">
+            <Pane>
               <UserOpsTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />
-            </section>
+            </Pane>
           ) : null}
           {openTab === 'numbers' ? (
-            <section className="pane">
+            <Pane>
               <AccountLines login={row.loginName} />
-            </section>
+            </Pane>
           ) : null}
           {openTab === 'packages' && !row.staff && <UserPackagesTab login={row.loginName} canEdit={canEditTerms} setError={setError} setNote={setNote} />}
         </div>

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import { Alert } from '../../components/alert';
 import { api, type SessionRuleValues } from '../../lib/api';
 import type { LayerKey, TwoFactorMethod, TwoFactorMode } from '../../lib/api-types';
@@ -19,6 +21,24 @@ import { MethodField, ModeSeg, savableMethod } from '../auth/two-factor-policy';
  * Two-step (spec 2026-11-11-two-factor-policy): follow the layer's rule, required of this account (with its own method
  * or the layer's), or optional; «إعادة تعيين» clears the account's enrolment so it enrols again.
  */
+/*
+ * The look (Tailwind migration T4.2, ADR 0022), ported from graphite.css `.settings-block` / `.user-settings` /
+ * `.two-factor-block` / `.tf-status`, desk/users.css `.access-tab > .settings-block` / `.access-tab .field-title` and
+ * desk/pane.css `.pair` / `.form-save` / the pane's labels, fields and hints, in their cascade order. The block is the top
+ * of the user page's access tab: a column 12px apart, ruled off from the permissions under it (12px, a 1px `--rd-line`
+ * rule) with no other padding; its title 13.5px ink bold; its lede tucked 8px up under it, 12.5px `--rd-muted` 500 at
+ * 1.55 line height (so is the two-step block's); every other hint 12px `--rd-muted`; the field pairs two equal columns
+ * 8px apart (one under 768px); the two-step and session blocks columns 12px apart under a 12px ink-2 bold title; the
+ * two-step state and its reset one wrapping row 10px apart; the save at the reading start over a 1px `--rd-line` rule,
+ * 4px and 12px above it. The labels and fields are the pane's (`Label tone="pane"`, `Input surface="surface"` at 13px).
+ */
+const PAIR = 'grid grid-cols-[1fr_1fr] gap-2 max-md:grid-cols-[1fr]';
+const HINT = 'm-0 text-sm text-muted';
+const LEDE = '-mt-2 mb-0 text-[12.5px] leading-[1.55] font-medium text-muted';
+const BLOCK = 'grid gap-3';
+const BLOCK_TITLE = 'text-sm font-bold text-ink-2';
+const FIELD = 'text-md';
+
 export function UserSettingsPane({ loginName, layer, onSaved }: { loginName: string; layer: LayerKey; onSaved: (note: string) => void }) {
   const { t, apiText, locale } = usePrefs();
   const settings = useApiQuery(['auth', 'user-settings', loginName], () => api.userSettings(loginName), { fresh: true });
@@ -88,33 +108,33 @@ export function UserSettingsPane({ loginName, layer, onSaved }: { loginName: str
   }
 
   return (
-    <section className="settings-block user-settings" aria-label={t.userSettings}>
-      <h3>{t.userSettings}</h3>
-      <p className="hint">{t.userSettingsHint}</p>
+    <section className="grid gap-3 border-b border-line pb-3" aria-label={t.userSettings}>
+      <h3 className="m-0 text-[13.5px] font-bold text-ink">{t.userSettings}</h3>
+      <p className={LEDE}>{t.userSettingsHint}</p>
       <Alert banner>{error || settings.error || rules.error}</Alert>
       {view ? (
         <>
-          <div className="pair">
-            <label>
+          <div className={PAIR}>
+            <Label tone="pane">
               {t.email}
-              <input type="email" dir="ltr" value={email ?? view.email} onChange={(event) => setEmail(event.target.value)} autoComplete="off" />
-            </label>
-            <label>
+              <Input surface="surface" className={FIELD} type="email" dir="ltr" value={email ?? view.email} onChange={(event) => setEmail(event.target.value)} autoComplete="off" />
+            </Label>
+            <Label tone="pane">
               {t.phone}
-              <input type="tel" dir="ltr" value={phone ?? view.phone} onChange={(event) => setPhone(event.target.value)} autoComplete="off" />
-            </label>
+              <Input surface="surface" className={FIELD} type="tel" dir="ltr" value={phone ?? view.phone} onChange={(event) => setPhone(event.target.value)} autoComplete="off" />
+            </Label>
           </div>
-          <div className="pair">
-            <label>
+          <div className={PAIR}>
+            <Label tone="pane">
               {t.newPassword}
-              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
-              <span className="hint">{t.passwordKeep}</span>
-            </label>
+              <Input surface="surface" className={FIELD} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
+              <span className={HINT}>{t.passwordKeep}</span>
+            </Label>
           </div>
           {ruleNow ? (
-            <div className="session-rules-block two-factor-block">
-              <span className="field-title">{t.twoFactor}</span>
-              <p className="hint tf-lede">{t.accountTwoFactorHint}</p>
+            <div className={BLOCK}>
+              <span className={BLOCK_TITLE}>{t.twoFactor}</span>
+              <p className={LEDE}>{t.accountTwoFactorHint}</p>
               <ModeSeg
                 value={ruleNow.mode}
                 label={t.twoFactor}
@@ -129,23 +149,23 @@ export function UserSettingsPane({ loginName, layer, onSaved }: { loginName: str
                   onChange={(method) => setRule({ ...ruleNow, method })}
                 />
               ) : null}
-              <p className="tf-status">
+              <p className="m-0 flex flex-wrap items-center gap-2.5">
                 <Badge variant={view.twoFactorEnabled ? 'success' : 'muted'} dot>
                   {view.twoFactorEnabled ? `${t.twoFactorOn} · ${methodName(t, view.twoFactorMethod as TwoFactorMethod)}` : t.twoFactorOff}
                 </Badge>
                 {view.twoFactorEnabled ? <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={resetTwoFactor}>{t.twoFactorReset}</Button> : null}
               </p>
-              <p className="hint">{`${t.effectiveNow}: ${view.effective.required ? `${t.twoFactorModeRequired}${view.effective.method ? ` · ${methodName(t, view.effective.method)}` : ''}` : t.twoFactorOptional}`}</p>
+              <p className={HINT}>{`${t.effectiveNow}: ${view.effective.required ? `${t.twoFactorModeRequired}${view.effective.method ? ` · ${methodName(t, view.effective.method)}` : ''}` : t.twoFactorOptional}`}</p>
             </div>
           ) : null}
           {ruleView ? (
-            <div className="session-rules-block">
-              <span className="field-title">{t.sessions}</span>
+            <div className={BLOCK}>
+              <span className={BLOCK_TITLE}>{t.sessions}</span>
               <RuleSelects values={ruleValues} fallback={ruleView.layer} fallbackLabel={t.followLayer} onChange={setDraft} />
-              <p className="hint">{`${t.effectiveNow}: ${t.maxSessionsLabel} ${ruleView.effective.maxSessions} · ${durationLabel(locale, ruleView.effective.sessionMinutes)}`}</p>
+              <p className={HINT}>{`${t.effectiveNow}: ${t.maxSessionsLabel} ${ruleView.effective.maxSessions} · ${durationLabel(locale, ruleView.effective.sessionMinutes)}`}</p>
             </div>
           ) : null}
-          <div className="form-save"><Button type="button" disabled={busy || !sessionRulesValid(ruleValues)} onClick={save}>{t.save}</Button></div>
+          <div className="mt-1 flex justify-start border-t border-line pt-3"><Button type="button" disabled={busy || !sessionRulesValid(ruleValues)} onClick={save}>{t.save}</Button></div>
         </>
       ) : null}
     </section>

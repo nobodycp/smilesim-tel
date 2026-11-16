@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
-import { Desk, Money, layerName } from '../../../components/desk';
+import { Desk, Money, Pane, layerName } from '../../../components/desk';
 import { Dialog } from '../../../components/dialog';
 import { FilterBar } from '../../../components/filter-bar';
 import { RowMenu } from '../../../components/row-menu';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
 import { useApiQuery } from '../../../lib/use-api-query';
@@ -26,12 +28,29 @@ import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { accountTone } from '../../../lib/status-tone';
 import { useAccountActions } from '../account-actions';
+import { LayerTag } from '../layer-tag';
 
 const layerOrder = ['branch', 'main_agent', 'agent', 'pos'];
 // Everyone but a point of sale; a staff account opens the desk through the branch door.
 const ACCOUNT_LAYERS = ['branch', 'main_agent', 'agent', 'staff'];
 
 const FILTER_KEYS = ['q', 'layer'] as const;
+
+/*
+ * The users list's own parts (Tailwind migration T4.2, ADR 0022), ported from desk/pane.css, desk/table.css, dialog.css
+ * and graphite.css in their cascade order:
+ * - the list card's head: a row at least 52px high, 14px / 18px padding, its parts at both ends 8px apart, a 1px
+ *   `--rd-line` rule under it; its title 14px ink bold with the count beside it, 8px apart; the count a 20px-wide pill
+ *   of 6px sides on 4px corners, 11px `--rd-accent` 600 tabular on `--rd-accent-soft`;
+ * - an account cell: a link in the text colour at 500, its parts 10px apart (the name over the login beside a 32px
+ *   square mark: 6px corners, a 13px bold `--rd-accent` letter on `--rd-surface-2` with a 1px inset `--rd-line` edge);
+ *   the name bold, the login under it 11.5px `--rd-muted` at 400 and 1.3 line height;
+ * - the two row menus side by side, 4px apart;
+ * - the new account form: a column 12px apart.
+ */
+const PANE_HEAD = 'flex min-h-13 items-center justify-between gap-2 border-b border-line bg-transparent px-4.5 py-3.5';
+const PANE_TITLE = 'm-0 inline-flex items-center gap-2 text-base font-bold text-ink';
+const COUNT = 'inline-flex min-w-5 items-center rounded-xs bg-accent-soft px-1.5 text-xs font-semibold text-accent tabular-nums';
 
 export function UsersScreen() {
   const { t } = usePrefs();
@@ -100,16 +119,20 @@ export function UsersScreen() {
       header: t.accountName,
       render: (row) => (
         // Graphite: the name over the login, beside a square mark.
-        <Link className="row-link account-cell" href={`/users/${row.loginName}`} aria-label={accountLabel(row.loginName, row.nickname)}>
-          <span className="account-mark" aria-hidden="true">{(row.nickname.trim() || row.loginName).charAt(0)}</span>
-          <span className="account-id">
-            <strong><bdi>{row.nickname.trim() || row.loginName}</bdi></strong>
-            {row.nickname.trim() && row.nickname.trim() !== row.loginName ? <span className="sub" dir="ltr">{row.loginName}</span> : null}
+        <Link className="flex min-w-0 items-center gap-2.5 font-medium text-inherit no-underline" href={`/users/${row.loginName}`} aria-label={accountLabel(row.loginName, row.nickname)}>
+          <span className="inline-flex size-8 flex-none items-center justify-center rounded-sm bg-surface-2 text-md font-bold text-accent inset-ring inset-ring-line" aria-hidden="true">
+            {(row.nickname.trim() || row.loginName).charAt(0)}
+          </span>
+          <span className="flex min-w-0 flex-col text-start">
+            <strong className="font-bold"><bdi>{row.nickname.trim() || row.loginName}</bdi></strong>
+            {row.nickname.trim() && row.nickname.trim() !== row.loginName ? (
+              <span className="block text-[11.5px] leading-[1.3] font-normal text-muted" dir="ltr">{row.loginName}</span>
+            ) : null}
           </span>
         </Link>
       ),
     },
-    { key: 'layer', header: t.layer, fit: true, render: (row) => <span className={`layer-tag l-${row.layer}`}>{layerName(t, row.layer)}</span> },
+    { key: 'layer', header: t.layer, fit: true, render: (row) => <LayerTag layer={row.layer} /> },
     { key: 'parent', header: t.parent, fit: true, render: (row) => <AccountName login={row.parentLoginName} /> },
     { key: 'balance', header: t.balance, num: true, render: (row) => <Money value={row.balance} /> },
     { key: 'ceiling', header: t.ceiling, num: true, render: (row) => (row.layer === 'branch' ? '—' : <Money value={row.ceiling} />) },
@@ -132,7 +155,7 @@ export function UsersScreen() {
         const { wallet, more } = accountActions.groupedFor(row);
         const who = accountLabel(row.loginName, row.nickname);
         return (
-          <span className="row-menus">
+          <span className="inline-flex items-center gap-1">
             <RowMenu label={`${t.walletActions} ${who}`} items={wallet} trigger={{ content: <Wallet size={16} aria-hidden="true" />, iconOnly: true }} />
             <RowMenu label={`${t.rowActions} ${who}`} items={more} />
           </span>
@@ -171,9 +194,9 @@ export function UsersScreen() {
           </Select>
         </label>
       </FilterBar>
-      <section className="pane fit">
-        <header className="pane-head">
-          <h2>{t.usersList}{list.ready ? <span className="count" data-testid="list-count">{list.total ?? list.all.length}</span> : null}</h2>
+      <Pane>
+        <header className={PANE_HEAD}>
+          <h2 className={PANE_TITLE}>{t.usersList}{list.ready ? <span className={COUNT} data-testid="list-count">{list.total ?? list.all.length}</span> : null}</h2>
         </header>
         <Dialog
           open={creating}
@@ -190,38 +213,38 @@ export function UsersScreen() {
             </>
           )}
         >
-          <div className="dialog-form">
-            <label>
+          <div className="grid gap-3">
+            <Label tone="dialog">
               {t.loginName}
-              <input value={draft.loginName} dir="ltr" onChange={(event) => setDraft((current) => ({ ...current, loginName: event.target.value }))} />
-            </label>
-            <label>
+              <Input value={draft.loginName} dir="ltr" onChange={(event) => setDraft((current) => ({ ...current, loginName: event.target.value }))} />
+            </Label>
+            <Label tone="dialog">
               {t.fullName}
-              <input value={draft.nickname} autoComplete="off" onChange={(event) => setDraft((current) => ({ ...current, nickname: event.target.value }))} />
-            </label>
-            <label>
+              <Input value={draft.nickname} autoComplete="off" onChange={(event) => setDraft((current) => ({ ...current, nickname: event.target.value }))} />
+            </Label>
+            <Label tone="dialog">
               {t.newPassword}
-              <input type="password" value={draft.password} onChange={(event) => setDraft((current) => ({ ...current, password: event.target.value }))} />
-            </label>
-            <label>
+              <Input type="password" value={draft.password} onChange={(event) => setDraft((current) => ({ ...current, password: event.target.value }))} />
+            </Label>
+            <Label tone="dialog">
               {t.layer}
               <Select place="dialog" value={draft.layer || creatable[0]} onValueChange={(next) => setDraft((current) => ({ ...current, layer: next, parentLoginName: '' }))}>
                 {creatable.map((value) => (
                   <SelectItem key={value} value={value}>{layerName(t, value)}</SelectItem>
                 ))}
               </Select>
-            </label>
+            </Label>
             {(draft.layer || creatable[0]) === 'staff' && (
-              <label>
+              <Label tone="dialog">
                 {t.role}
                 <Select place="dialog" value={draft.roleId} onValueChange={(next) => setDraft((current) => ({ ...current, roleId: next }))}>
                   <SelectItem value="">—</SelectItem>
                   {roles.map((role) => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
                 </Select>
-              </label>
+              </Label>
             )}
             {(draft.layer || creatable[0]) !== directLayer && (draft.layer || creatable[0]) !== 'staff' && (
-              <label>
+              <Label tone="dialog">
                 {t.parent}
                 <NameField
                   value={draft.parentLoginName}
@@ -230,7 +253,7 @@ export function UsersScreen() {
                     value: row.loginName, label: accountLabel(row.loginName, row.nickname), keys: [row.loginName],
                   }))}
                 />
-              </label>
+              </Label>
             )}
           </div>
         </Dialog>
@@ -242,7 +265,7 @@ export function UsersScreen() {
           empty={needle || layerFilter ? t.noMatches : undefined}
         />
         {accountActions.dialogs}
-      </section>
+      </Pane>
     </Desk>
   );
 }
