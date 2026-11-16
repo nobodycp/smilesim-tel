@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { DataTable, type Column } from '../../components/data-table';
 import { FilterBar } from '../../components/filter-bar';
-import { Money } from '../../components/desk';
+import { Money, Pane } from '../../components/desk';
 import { NameField } from '../../components/name-field';
 import { useFactLine } from '../../components/package-facts';
 import { LiveSwitch } from '../../components/live-switch';
@@ -42,23 +42,26 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
     {
       key: 'package',
       header: t.packageName,
+      // The name over its facts (legacy `.terms-name`): a grid 1px apart that does not wrap; the name 14px bold ink,
+      // the facts 11.5px `--rd-muted` 500, tabular.
       render: (row) => (
-        <span className="terms-name">
-          <Link className="row-link" href={open(row)}><strong>{row.name}</strong></Link>
-          {factLine(row) ? <span className="hint">{factLine(row)}</span> : null}
+        <span className="grid items-baseline gap-px whitespace-nowrap">
+          <Link className="font-bold" href={open(row)}><strong className="text-base font-bold text-ink">{row.name}</strong></Link>
+          {factLine(row) ? <span className="m-0 text-[11.5px] font-medium text-muted tabular-nums">{factLine(row)}</span> : null}
         </span>
       ),
     },
-    { key: 'provider', header: t.provider, render: (row) => <Link className="row-link" href={`/providers/${encodeURIComponent(row.providerCode)}`}>{row.providerName}</Link> },
+    { key: 'provider', header: t.provider, render: (row) => <Link className="font-bold" href={`/providers/${encodeURIComponent(row.providerCode)}`}>{row.providerName}</Link> },
     {
       key: 'child',
       header: t.mainSellPair,
       num: true,
       sortValue: (row) => row.mainPrice,
+      // The price and the renewal on one line (legacy `.terms-pair`), 6px apart, tabular, the slash `--rd-faint`.
       render: (row) => (
-        <span className="terms-pair">
+        <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap tabular-nums">
           <Money value={row.mainPrice} />
-          <span className="terms-pair-sep" aria-hidden="true">/</span>
+          <span className="text-faint" aria-hidden="true">/</span>
           <Money value={row.renewalMainPrice} />
         </span>
       ),
@@ -95,7 +98,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
           </label>
         </FilterBar>
       ) : null}
-      <section className="pane">
+      <Pane>
       <DataTable
         columns={columns}
         rows={rows}
@@ -104,7 +107,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
         skeleton={{ rows: 5, columns: 7 }}
         empty={provider ? t.noMatches : t.noPackages}
       />
-      </section>
+      </Pane>
     </>
   );
 }

@@ -5,14 +5,14 @@ import { TableSkeleton } from '../../../components/loading';
 import { LoadFailed } from '../../../components/load-failed';
 import { EmptyState } from '../../../components/empty-state';
 import { hasSimRules } from '../../../lib/sim-rules';
-import { Desk } from '../../../components/desk';
+import { Desk, Pane } from '../../../components/desk';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type Shelf } from '../../../lib/api';
-import { markColor, markOf } from '../../../lib/company-mark';
+import { cn } from '../../../lib/cn';
 import { usePrefs } from '../../../lib/prefs';
 import { useRequireLayer } from '../../../lib/use-require-layer';
-import { DataImage } from '../../../components/data-image';
+import { CompanyMark } from '../../../components/company-mark';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useDesk } from '../../../lib/desk-session';
@@ -20,11 +20,44 @@ import { useDesk } from '../../../lib/desk-session';
 const BRANCH = ['branch'];
 type Company = Shelf['companies'][number];
 
-/** A count's words with the figure in bold, as in the design («**6** رزمة»). */
+/** A count's words with the figure in bold ink, as in the design («**6** رزمة»). */
 function counted(template: string, n: number) {
   const [before, after] = template.split('{n}');
-  return <>{before}<b className="num">{n}</b>{after}</>;
+  return <>{before}<b className="font-bold text-ink">{n}</b>{after}</>;
 }
+
+/*
+ * The company cards (Tailwind migration T4.3, ADR 0022), ported from graphite.css's company shelf:
+ * - the grid: as many 220px-or-wider columns as fit, 12px apart; two columns 10px apart under 641px; when motion is
+ *   allowed each card rises in (8px, 420ms), the second 40ms, the third 80ms and the rest 120ms after the first;
+ * - the card: a grid of rows 6px apart with 18px padding (14px under 641px), 6px corners on `--rd-surface` with a 1px
+ *   inset `--rd-line` edge and the tag's cut corner (`--rd-cut`) at the top inline end; `--rd-surface-2` under the
+ *   pointer (140ms); the edge becomes a 2px `--rd-accent` ring while its link has keyboard focus;
+ * - the top row (the mark) at the start, 6px over the name; the mark 38px with 15px letters under 641px;
+ * - the name: the card's link, 15px bold ink, stretched over the whole card (its `::after`), no focus outline of its
+ *   own (the card's ring shows it);
+ * - the SIM rules: 12.5px `--rd-muted`;
+ * - the counts: one wrapping row 14px apart (4px by 10px and 11.5px under 641px), 8px over and 10px inside a 1px
+ *   `--rd-line` rule, 12px `--rd-muted` with the figures in bold ink.
+ * `data-slot="company-card"` is the card's handle.
+ */
+const GRID = cn(
+  'grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3 max-sm:grid-cols-2 max-sm:gap-2.5',
+  'motion-safe:*:animate-[rd-rise_420ms_var(--rd-ease-out)_both]',
+  'motion-safe:[&>:nth-child(2)]:[animation-delay:40ms] motion-safe:[&>:nth-child(3)]:[animation-delay:80ms]',
+  'motion-safe:[&>:nth-child(n+4)]:[animation-delay:120ms]',
+);
+const CARD = cn(
+  'relative isolate grid gap-1.5 rounded-sm bg-surface p-4.5 text-start inset-ring inset-ring-line max-sm:p-3.5',
+  '[clip-path:polygon(0_0,calc(100%_-_var(--rd-cut))_0,100%_var(--rd-cut),100%_100%,0_100%)]',
+  'rtl:[clip-path:polygon(var(--rd-cut)_0,100%_0,100%_100%,0_100%,0_var(--rd-cut))]',
+  'transition-[background-color] duration-[140ms] ease-[ease] hover:bg-surface-2',
+  'has-[a:focus-visible]:inset-ring-2 has-[a:focus-visible]:inset-ring-accent',
+);
+const CARD_LINK = cn(
+  'text-lg font-bold text-ink no-underline focus-visible:outline-none',
+  "after:absolute after:inset-0 after:z-1 after:content-['']",
+);
 
 function totals(company: Company) {
   const packages = company.providers.flatMap((provider) => provider.packages);
@@ -47,16 +80,12 @@ export function CompaniesScreen() {
   const card = (company: Company) => {
     const sums = totals(company);
     return (
-      <article key={company.code} className="co-card">
-        <div className="co-top">
-          {company.image ? (
-            <DataImage className="co-mark big" src={company.image} alt="" />
-          ) : (
-            <span className="co-mark big" style={{ background: markColor(company.name) }} aria-hidden="true">{markOf(company.name)}</span>
-          )}
+      <article key={company.code} className={CARD} data-slot="company-card">
+        <div className="mb-1.5 flex items-start justify-between">
+          <CompanyMark name={company.name} image={company.image} size="lg" className="max-sm:size-9.5 max-sm:text-lg" />
         </div>
-        <Link className="co-link" href={`/companies/${company.code}`}>{company.name}</Link>
-        <span className="co-sim">
+        <Link className={CARD_LINK} href={`/companies/${company.code}`}>{company.name}</Link>
+        <span className="text-[12.5px] text-muted">
           {company.sim && hasSimRules(company.sim)
             ? [
                 company.sim.length !== null ? t.simDigits.replace('{n}', String(company.sim.length)) : '',
@@ -64,7 +93,7 @@ export function CompaniesScreen() {
               ].filter(Boolean).join(' · ')
             : t.simFree}
         </span>
-        <div className="co-nums">
+        <div className="mt-2 flex flex-wrap gap-3.5 border-t border-line pt-2.5 text-sm text-muted max-sm:gap-x-2.5 max-sm:gap-y-1 max-sm:text-[11.5px]">
           <span>{counted(t.coPackages, sums.packages)}</span>
           <span>{counted(t.coProviders, company.providers.length)}</span>
           <span>{counted(t.coActive, sums.active)}</span>
@@ -84,13 +113,13 @@ export function CompaniesScreen() {
       note=""
     >
       {!shelf.loaded ? (
-        <section className="pane"><TableSkeleton rows={4} columns={3} /></section>
+        <Pane><TableSkeleton rows={4} columns={3} /></Pane>
       ) : shelf.error ? (
-        <section className="pane"><LoadFailed message={shelf.error} onRetry={() => void shelf.reload()} /></section>
+        <Pane><LoadFailed message={shelf.error} onRetry={() => void shelf.reload()} /></Pane>
       ) : companies.length === 0 ? (
-        <section className="pane"><EmptyState icon="providers">{t.noCompanies}</EmptyState></section>
+        <Pane><EmptyState icon="providers">{t.noCompanies}</EmptyState></Pane>
       ) : (
-        <div className="co-grid">{companies.map(card)}</div>
+        <div className={GRID}>{companies.map(card)}</div>
       )}
     </Desk>
   );

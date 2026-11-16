@@ -474,7 +474,7 @@ test('a company SIM rule set on the company page holds on activation and SIM swa
     await admin.getByLabel('عدد خانات الشريحة').fill(String(LENGTH));
     await admin.getByLabel('مقدّمة الشريحة').fill(PREFIX);
     await admin.getByLabel('تقبل الشريحة الإلكترونية').uncheck();
-    await expect(admin.locator('.sim-sample bdi')).toHaveText(`${PREFIX}${'•'.repeat(LENGTH - PREFIX.length)}`);
+    await expect(admin.getByTestId('sim-sample').locator('bdi')).toHaveText(`${PREFIX}${'•'.repeat(LENGTH - PREFIX.length)}`);
     await admin.getByRole('button', { name: 'حفظ', exact: true }).click();
     expect.soft(await outcomeText(admin), 'the company page confirms the save').toBe('حُفظت إعدادات الشركة.');
     const stored = await sql<{ iccidLength: number | null; iccidPrefix: string | null; esim: boolean }>(

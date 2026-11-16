@@ -1,6 +1,7 @@
 'use client';
 
 import { ModeCards, type RunMode } from '../../components/mode-cards';
+import { cn } from '../../lib/cn';
 import { usePrefs } from '../../lib/prefs';
 
 export const PACKAGE_ACTIONS = ['activate', 'charge', 'extend', 'disconnect', 'freeze', 'switch', 'rename', 'sim', 'companySwitch'] as const;
@@ -22,6 +23,19 @@ export function useActionNames(): Record<PackageAction, string> {
   };
 }
 
+/*
+ * The fold's look (Tailwind migration T4.3, ADR 0022), ported from graphite.css `.inherit-fold`: a 1px `--rd-line` box
+ * with 6px corners on `--rd-surface`. Its summary is one wrapping row, 6px by 12px apart, 12px by 14px inside, with no
+ * browser marker: the title 13px ink, the count 12px `--rd-muted`, and at the end an 8px chevron drawn by two 2px
+ * `--rd-muted` sides, pointing down while closed and up while open. The body is a grid 12px apart, 14px inside at the
+ * sides and foot; its note (in a pane on every caller) is 12px `--rd-muted` with no margin.
+ */
+const SUMMARY = cn(
+  'flex cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1.5 px-3.5 py-3 [&::-webkit-details-marker]:hidden',
+  "after:ms-auto after:size-2 after:self-center after:rotate-45 after:border-e-2 after:border-b-2 after:border-muted after:content-['']",
+  '[[open]>&]:after:rotate-225',
+);
+
 /**
  * A package's run modes, folded (spec 2026-11-09-admin-review, 3): the summary says how many follow the provider and
  * how many are the package's own; opened, one card per operation with its source and «رجوع للموروث». Closed until
@@ -38,13 +52,13 @@ export function InheritedModes({ modes, inherited, disabled, onChange }: {
   const following = PACKAGE_ACTIONS.filter((action) => inherited.includes(action)).length;
   const own = PACKAGE_ACTIONS.length - following;
   return (
-    <details className="inherit-fold" data-testid="inherit-fold" open={own > 0 ? true : undefined}>
-      <summary>
-        <b>{t.howItRuns}</b>
-        <span>{t.modesSummary.replace('{inherited}', String(following)).replace('{own}', String(own))}</span>
+    <details className="rounded-sm border border-line bg-surface" data-testid="inherit-fold" open={own > 0 ? true : undefined}>
+      <summary className={SUMMARY}>
+        <b className="text-md text-ink">{t.howItRuns}</b>
+        <span className="text-sm text-muted">{t.modesSummary.replace('{inherited}', String(following)).replace('{own}', String(own))}</span>
       </summary>
-      <div className="inherit-body">
-        <p className="hint">{t.modesInheritHint}</p>
+      <div className="grid gap-3 px-3.5 pb-3.5">
+        <p className="m-0 text-sm text-muted">{t.modesInheritHint}</p>
         <ModeCards
           actions={PACKAGE_ACTIONS}
           names={names}

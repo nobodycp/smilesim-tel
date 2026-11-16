@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
-import { Desk } from '../../../components/desk';
-import { DataImage } from '../../../components/data-image';
-import { compactImage, markColor, markOf } from '../../../lib/company-mark';
+import { CompanyMark } from '../../../components/company-mark';
+import { Desk, Pane } from '../../../components/desk';
+import { compactImage } from '../../../lib/company-mark';
 import { usePageTitle } from '../../../lib/page-title';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -14,15 +14,19 @@ import { api, type Shelf, type SimRules } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
 import { useDesk } from '../../../lib/desk-session';
 import { usePrefs } from '../../../lib/prefs';
-import { OPEN_SIM, hasSimRules, simShape } from '../../../lib/sim-rules';
+import { OPEN_SIM } from '../../../lib/sim-rules';
 import { useAction } from '../../../lib/use-action';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { ImageUp, Plus, Trash2 } from 'lucide-react';
 import { LiveSwitch } from '../../../components/live-switch';
 import { Tabs } from '../../../components/tabs';
 import { useUrlFilters } from '../../../lib/url-state';
+import { cn } from '../../../lib/cn';
 import { CompanyPackages } from '../company-packages';
+import { SimFields, SimSample, paneHintClass, simToggleClass } from '../sim-fields';
 
 const BRANCH = ['branch'];
 type Provider = Shelf['companies'][number]['providers'][number];
@@ -30,6 +34,16 @@ type Tab = 'packages' | 'providers' | 'settings';
 const TABS: readonly Tab[] = ['packages', 'providers', 'settings'];
 const URL_KEYS = ['tab', 'provider'] as const;
 type Draft = { code: string; length: string; prefix: string; esim: boolean; esimPrice: string };
+
+/*
+ * The settings tab (Tailwind migration T4.3, ADR 0022), ported from graphite.css and pane.css: two blocks in a pane
+ * body with no padding or gap of its own, each a grid with 16px padding, the second under a 1px `--rd-line` rule; the
+ * picture block's rows 12px apart, the SIM form's 8px (`.pane form` outranked the block's 12px). A block's heading is
+ * 13.5px bold ink with no margin; a later heading inside a block sits 8px lower over a dashed `--rd-line` rule, 12px
+ * inside it.
+ */
+const BLOCK_TITLE = 'm-0 text-[13.5px] font-bold text-ink';
+const BLOCK_SUBTITLE = cn(BLOCK_TITLE, 'mt-2 border-t border-dashed border-line pt-3');
 
 function draftOf(code: string, sim: SimRules, esimPrice: number): Draft {
   return { code, length: sim.length === null ? '' : String(sim.length), prefix: sim.prefix, esim: sim.esim, esimPrice: shekelField(esimPrice) };
@@ -101,7 +115,7 @@ export function CompanyScreen() {
       key: 'provider',
       header: t.provider,
       render: (provider) => (
-        <Link className="row-link" href={`/providers/${encodeURIComponent(provider.code)}`}>{provider.name}</Link>
+        <Link className="font-bold" href={`/providers/${encodeURIComponent(provider.code)}`}>{provider.name}</Link>
       ),
     },
     {
@@ -110,9 +124,9 @@ export function CompanyScreen() {
       num: true,
       // Its packages for this company: the «الرزم» tab filtered by it.
       render: (provider) => (
-        <button type="button" className="link-btn" onClick={() => setFilters({ tab: '', provider: provider.code })}>
+        <Button type="button" variant="link" onClick={() => setFilters({ tab: '', provider: provider.code })}>
           {provider.packages.length}
-        </button>
+        </Button>
       ),
     },
     {
@@ -141,9 +155,9 @@ export function CompanyScreen() {
   return (
     <Desk
       title={company ? (
-        // Graphite: the company's cut-corner mark beside its name.
-        <span className="ticket-title">
-          {company.image ? <DataImage className="co-mark big" src={company.image} alt="" /> : <span className="co-mark big" style={{ background: markColor(company.name) }} aria-hidden="true">{markOf(company.name)}</span>}
+        // Graphite: the company's cut-corner mark beside its name, 12px apart, wrapping (legacy `.ticket-title`).
+        <span className="inline-flex flex-wrap items-center gap-3">
+          <CompanyMark name={company.name} image={company.image} size="lg" />
           <span>{company.name}</span>
         </span>
       ) : ''}
@@ -159,58 +173,58 @@ export function CompanyScreen() {
       <Tabs items={tabs} value={tab} onChange={setTab} />
       {/* Settings: three blocks (spec 2026-11-11-ui-consistency-pass, D2): the picture, the SIM rules, eSIM. */}
       {tab === 'settings' && (
-        <section className="pane fit">
-          <div className="pane-body company-settings">
-            <section className="settings-block">
-              <h3>{t.companyImage}</h3>
-              <div className="company-image-row">
-                {company?.image ? <DataImage className="co-mark big" src={company.image} alt="" /> : <span className="co-mark big" style={{ background: markColor(company?.name ?? '?') }} aria-hidden="true">{markOf(company?.name ?? '?')}</span>}
+        <Pane>
+          <div className="pane-body gap-0 p-0">
+            <section className="grid gap-3 p-4">
+              <h3 className={BLOCK_TITLE}>{t.companyImage}</h3>
+              <div className="flex flex-wrap items-center gap-3">
+                {/* The picture shown whole on `--rd-surface-2`, 64px with 22px letters (legacy `.company-image-row`). */}
+                <CompanyMark name={company?.name ?? '?'} image={company?.image} size="lg" className="size-16 bg-surface-2 object-contain text-[22px]" />
                 {canEdit ? (
-                  <div className="company-image-actions">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button type="button" variant="secondary" disabled={busy || !company} onClick={() => file.current?.click()}><ImageUp size={16} aria-hidden="true" />{t.uploadImage}</Button>
                     {company?.image ? <Button type="button" variant="ghost" disabled={busy} onClick={() => void run(() => api.setCompanyImage(params.code, null), { note: t.saved })}><Trash2 size={16} aria-hidden="true" />{t.removeImage}</Button> : null}
-                    <span className="hint">{t.companyImageHint}</span>
+                    <span className={cn(paneHintClass, 'basis-full')}>{t.companyImageHint}</span>
                     <input ref={file} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" aria-label={t.companyImage} tabIndex={-1} onChange={(event) => void onImage(event)} />
                   </div>
                 ) : null}
               </div>
             </section>
-            <form className="settings-block company-sim" onSubmit={save}>
-              <h3>{t.simRulesTitle}</h3>
-              <fieldset className="sim-fields" disabled={!shelf.loaded || !canEdit}>
-                <label>
+            <form className="grid content-start gap-2 border-t border-line p-4" onSubmit={save}>
+              <h3 className={BLOCK_TITLE}>{t.simRulesTitle}</h3>
+              <SimFields disabled={!shelf.loaded || !canEdit}>
+                <Label tone="pane">
                   {t.simLength}
-                  <input value={draft.length} inputMode="numeric" dir="ltr" onChange={(event) => change({ length: event.target.value })} />
-                  <span className="hint">{t.simLengthHint}</span>
-                </label>
-                <label>
+                  <Input surface="surface" className="text-md" value={draft.length} inputMode="numeric" dir="ltr" onChange={(event) => change({ length: event.target.value })} />
+                  <span className={paneHintClass}>{t.simLengthHint}</span>
+                </Label>
+                <Label tone="pane">
                   {t.simPrefix}
-                  <input value={draft.prefix} inputMode="numeric" dir="ltr" onChange={(event) => change({ prefix: event.target.value })} />
-                  <span className="hint">{t.simPrefixHint}</span>
-                </label>
-              </fieldset>
-              <p className="sim-sample">
-                <span>{t.simShape}</span>
-                {hasSimRules(shown) ? <bdi dir="ltr">{simShape(shown)}</bdi> : <span className="hint">{t.simAny}</span>}
-              </p>
-              <h3>eSIM</h3>
-              <fieldset className="sim-fields" disabled={!shelf.loaded || !canEdit}>
-                <div className="sim-toggle">
+                  <Input surface="surface" className="text-md" value={draft.prefix} inputMode="numeric" dir="ltr" onChange={(event) => change({ prefix: event.target.value })} />
+                  <span className={paneHintClass}>{t.simPrefixHint}</span>
+                </Label>
+              </SimFields>
+              <SimSample rules={shown} />
+              <h3 className={BLOCK_SUBTITLE}>eSIM</h3>
+              <SimFields disabled={!shelf.loaded || !canEdit}>
+                {/* In a settings block the switch and its note sit in the middle of their cell. */}
+                <div className={cn(simToggleClass, 'content-center')}>
                   <LiveSwitch className="justify-start" label={t.simEsim} checked={draft.esim} disabled={!shelf.loaded || !canEdit} onChange={(next) => change({ esim: next })}>
                     <b>{t.simEsim}</b>
                   </LiveSwitch>
-                  <span className="hint">{t.simEsimHint}</span>
+                  <span className={paneHintClass}>{t.simEsimHint}</span>
                 </div>
-                <label>
+                <Label tone="pane">
                   {t.esimPriceCompany}
-                  <input value={draft.esimPrice} inputMode="decimal" dir="ltr" disabled={!draft.esim} onChange={(event) => change({ esimPrice: event.target.value })} />
-                  <span className="hint">{t.esimPriceCompanyHint}</span>
-                </label>
-              </fieldset>
-              {canEdit && <div className="form-save"><Button type="submit" disabled={busy || !shelf.loaded}>{t.save}</Button></div>}
+                  <Input surface="surface" className="text-md" value={draft.esimPrice} inputMode="decimal" dir="ltr" disabled={!draft.esim} onChange={(event) => change({ esimPrice: event.target.value })} />
+                  <span className={paneHintClass}>{t.esimPriceCompanyHint}</span>
+                </Label>
+              </SimFields>
+              {/* The save row (legacy `.form-save`): at the start, 4px lower, 12px inside a 1px `--rd-line` rule. */}
+              {canEdit && <div className="mt-1 flex justify-start border-t border-line pt-3"><Button type="submit" disabled={busy || !shelf.loaded}>{t.save}</Button></div>}
             </form>
           </div>
-      </section>
+        </Pane>
         )}
         {tab === 'packages' && (
           <CompanyPackages
@@ -223,7 +237,7 @@ export function CompanyScreen() {
           />
         )}
         {tab === 'providers' && (
-          <section className="pane">
+          <Pane>
           <DataTable
             columns={columns}
             rows={company?.providers ?? []}
@@ -234,7 +248,7 @@ export function CompanyScreen() {
             skeleton={{ rows: 5, columns: 4 }}
             empty={t.noProviders}
           />
-          </section>
+          </Pane>
         )}
     </Desk>
   );
