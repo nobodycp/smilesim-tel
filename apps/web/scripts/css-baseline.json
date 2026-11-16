@@ -11,9 +11,9 @@
     "h-media-width": 32,
     "i-physical-property": 57,
     "j-literal-line-height": 40,
-    "k-literal-spacing-radius": 303,
+    "k-literal-spacing-radius": 295,
     "l-disabled-opacity": 11,
-    "m-legacy-declarations": 5722
+    "m-legacy-declarations": 5632
   },
   "declarations": {
     "auth.css": 307,
@@ -34,7 +34,7 @@
     "dialog.css": 57,
     "doors.css": 29,
     "forms.css": 36,
-    "graphite.css": 1977,
+    "graphite.css": 1887,
     "responsive.css": 35,
     "shell.css": 763,
     "ui.css": 2
@@ -533,14 +533,6 @@
       "graphite.css |  | .co-nums | padding-top | 10px",
       "graphite.css |  | .co-top | margin-bottom | 6px",
       "graphite.css |  | .data th,.data td | padding-inline | 14px",
-      "graphite.css |  | .date-field | gap | 6px",
-      "graphite.css |  | .date-pop | padding | 10px",
-      "graphite.css |  | .date-pop-foot | margin-block-start | 8px",
-      "graphite.css |  | .date-pop-foot | padding-block-start | 8px",
-      "graphite.css |  | .date-pop-grid | gap | 2px",
-      "graphite.css |  | .date-pop-head | gap | 8px",
-      "graphite.css |  | .date-pop-head | margin-block-end | 8px",
-      "graphite.css |  | .date-pop-link | padding-inline | 10px",
       "graphite.css |  | .days | gap | 5px",
       "graphite.css |  | .desk .filter-panel>label :is(input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"file\"]),select),.filter-panel>label :is(input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"file\"]),select) | margin-inline-start | 10px",
       "graphite.css |  | .desk .filter-panel>label :is(input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"file\"]),select),.filter-panel>label :is(input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"file\"]),select) | padding-inline | 10px",

@@ -1201,46 +1201,6 @@ input[readonly] { background-color: transparent; }
 .file-pick > label { cursor: pointer; }
 .file-pick > label:focus-within { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
 
-/* ── DateField (components/date-field.tsx; owner 2026-11-11): the system's date, never the browser's — a field that
-   takes YYYY-MM-DD and a calendar button; in a filter chip it is the chip's value part, in a form a field with the
-   button beside it. The month opens on the raised surface: weekday names, Latin digits, today ringed, the chosen day
-   crimson. ── */
-.date-field { display: inline-flex; align-items: stretch; gap: 6px; min-width: 0; }
-.date-field > input { inline-size: 8rem; min-width: 0; font-variant-numeric: tabular-nums; }
-.date-field-open { display: grid; flex: none; place-items: center; inline-size: 34px; border: 1px solid var(--rd-line); border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); color: var(--rd-ink-2); cursor: pointer; }
-.date-field-open:hover, .date-field-open[aria-expanded='true'] { color: var(--rd-accent); }
-.filter-panel > label .date-field { gap: 0; }
-.desk .filter-panel > label .date-field > input, .filter-panel > label .date-field > input { inline-size: 7.5rem; }
-.filter-panel > label .date-field-open { inline-size: 30px; height: 30px; border: 0; border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent); border-radius: 0; background: var(--rd-surface); }
-[data-slot='dialog'] .date-field > input { flex: 1; }
-[data-slot='dialog'] .date-field-open { height: 34px; }
-.date-pop {
-  position: fixed;
-  z-index: calc(var(--rd-z-dialog) + 3);
-  inline-size: 280px;
-  padding: 10px;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface);
-  box-shadow: inset 0 0 0 1px var(--rd-line), var(--rd-shadow-pop);
-}
-.date-pop-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-block-end: 8px; }
-.date-pop-head b { color: var(--rd-ink); font-size: var(--rd-text-md); }
-.date-pop-step { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-ink-2); cursor: pointer; }
-.date-pop-step:hover { background: var(--rd-surface-2); }
-.date-pop-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
-.date-pop-weekday { display: grid; place-items: center; height: 26px; color: var(--rd-muted); font-size: 11px; font-weight: 600; }
-.date-pop-day { height: 34px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-ink); font-size: var(--rd-text-sm); font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; }
-.date-pop-day:hover { background: var(--rd-surface-2); }
-.date-pop-day.today { box-shadow: inset 0 0 0 1px var(--rd-accent); }
-.date-pop-day.on { background: var(--rd-accent-fill); color: var(--rd-on-accent); }
-.date-pop-day.today.on { box-shadow: inset 0 0 0 1px var(--rd-accent-fill); }
-.date-pop-foot { display: flex; justify-content: space-between; margin-block-start: 8px; padding-block-start: 8px; border-block-start: 1px solid var(--rd-line); }
-.date-pop-link { height: 30px; padding-inline: 10px; border: 0; border-radius: var(--rd-radius-xs); background: transparent; color: var(--rd-accent); font-weight: 600; cursor: pointer; }
-.date-pop-link:hover { background: var(--rd-accent-soft); }
-@media (max-width: 640px) {
-  .date-pop-day { height: 40px; }
-  .date-field-open { inline-size: 40px; }
-}
 /* A field's range hint turns red while its value is out of it. */
 .hint.field-error { color: var(--rd-danger); }
 input[aria-invalid='true'], [data-slot='dialog'] input[aria-invalid='true'], .pane input[aria-invalid='true'] { border-color: var(--rd-danger); box-shadow: inset 0 0 0 1px var(--rd-danger); }
