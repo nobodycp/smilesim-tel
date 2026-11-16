@@ -809,6 +809,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           role="status"
           aria-live="polite"
+          data-slot="notice-toast"
         >
           <button
             type="button"

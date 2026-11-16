@@ -40,16 +40,23 @@ export function PageAlert({
   const { reachable } = useConnection();
   // A saved action's message floats as a toast (components/toast.tsx), so the page under it does not move
   // (owner 2026-11-11). Each new message shows once; an empty one between two saves lets the same words show again.
-  const { push } = useToasts();
+  const { push, hold } = useToasts();
   useEffect(() => {
     if (note) push(note, 'success');
   }, [note, push]);
   const { t } = usePrefs();
   // While the API is unreachable the shell's outage bar says so once; the page does not repeat it.
   const repeated = !reachable && error === t.errors.NETWORK;
+  // A page's error floats with the other messages, under the top bar (owner 2026-11-17): it was a strip at the top
+  // of the page, out of view for a seller who had scrolled down to the button. An open dialog shows it itself.
+  // It is held there for as long as the page reports it, as the strip was, so the same words reported twice are
+  // still on screen the second time.
+  useEffect(() => {
+    hold(error && !held && !repeated ? error : '');
+    return () => hold('');
+  }, [error, held, repeated, hold]);
   return (
     <DialogAlert.Provider value={setHeld}>
-      {!held && !repeated ? <Alert>{error}</Alert> : null}
       {children}
     </DialogAlert.Provider>
   );
