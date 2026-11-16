@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column, type PagedView } from '../../../components/data-table';
-import { Desk, Money, actionName, latinWhen, lineStatus, taskStatus } from '../../../components/desk';
+import { Desk, Money, Pane, actionName, latinWhen, lineStatus, taskStatus } from '../../../components/desk';
 import { api, type LineRow, type ProviderReportRow, type ReportRow, type TaskRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { pick, type Fetched } from '../../../lib/fetched';
@@ -73,7 +73,7 @@ export function ReportScreen() {
       render: (row) => (
         <>
           <AccountName login={row.loginName} />
-          <div className="hint"><AccountName login={row.actorLoginName} /></div>
+          <div className="m-0 text-sm font-medium text-muted"><AccountName login={row.actorLoginName} /></div>
         </>
       ),
     },
@@ -86,7 +86,7 @@ export function ReportScreen() {
   const title = t[kind ? kinds[kind] : 'navReports'];
   return (
     <Desk title={allowed ? title : ''} lede="" error={list.error} note="">
-      <section className="pane">
+      <Pane>
         {!kind || list.error ? null : kind === 'providers' ? (
           <PagedTable list={viewOf<ProviderLine>(list)} columns={providerColumns} rowKey={(row) => `${row.providerName}-${row.companyName}-${row.packageName}`} />
         ) : kind === 'numbers' ? (
@@ -96,7 +96,7 @@ export function ReportScreen() {
         ) : (
           <PagedTable list={viewOf<MoneyLine>(list)} columns={entryColumns} rowKey={(row) => row.id} empty={t.noMovements} />
         )}
-      </section>
+      </Pane>
     </Desk>
   );
 }

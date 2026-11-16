@@ -1,10 +1,9 @@
 'use client';
 
-import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { DataTable, type Column } from '../../../components/data-table';
-import { Desk, Money, layerName } from '../../../components/desk';
+import { Desk, Money, Pane, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
 import { Badge } from '../../../components/ui/badge';
@@ -15,7 +14,8 @@ import { usePrefs } from '../../../lib/prefs';
 import { accountTone } from '../../../lib/status-tone';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
-import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../report-kit';
+import { LayerTag } from '../../accounts/layer-tag';
+import { CsvLink, Period, ReportFilters, SearchChip, periodFrom, type PeriodDays } from '../report-kit';
 
 /**
  * The reports (spec 2026-11-08-reports; one page each since spec 2026-11-08-overview-and-reports-nav, C), in the
@@ -23,6 +23,16 @@ import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../
  * 2026-11-09-admin-review, 1 (their rows are in «المالية» and «المهام»).
  */
 const exportHref = (kind: string, query: Record<string, string>) => `/api/v1/reports/${kind}/export${queryString(query)}`;
+
+/*
+ * The «السالب فقط» toggle chip (Tailwind migration T4.9): the filter panel's chip rules (graphite.css
+ * `[data-slot='filter-panel'] > label:has(input[type='checkbox'])`) draw it; of the legacy `.check` it sat under only the
+ * no-margin and the 36px minimum height (44px at 720px and under, responsive.css `.canvas .check`) won over them.
+ */
+const TOGGLE_CHIP = 'm-0 min-h-9 max-[721px]:min-h-11';
+
+/* The top provider's name in its figure card (graphite.css `[data-slot='stat'] .stat-name`): smaller than a figure, wrapping. */
+const STAT_NAME = 'inline-block max-w-full text-[1.15rem] leading-[1.35]';
 
 /** Main agent, agent and the branch: the wallets under the account, now (no period). */
 export function BalancesReportScreen() {
@@ -39,7 +49,7 @@ export function BalancesReportScreen() {
   const near = rows.filter((row) => row.ceiling > 0 && row.used / row.ceiling >= 0.85);
   const columns: Column<BalanceReportRow>[] = [
     { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.loginName} name={row.nickname} /> },
-    { key: 'layer', header: t.layer, fit: true, render: (row) => <span className={`layer-tag l-${row.layer}`}>{layerName(t, row.layer)}</span> },
+    { key: 'layer', header: t.layer, fit: true, render: (row) => <LayerTag layer={row.layer} /> },
     { key: 'parent', header: t.parent, render: (row) => <AccountName login={row.parentLoginName} /> },
     { key: 'balance', header: t.balance, num: true, sortValue: (row) => row.balance, render: (row) => <Money value={row.balance} /> },
     { key: 'ceiling', header: t.ceiling, num: true, sortValue: (row) => row.ceiling, render: (row) => <Money value={row.ceiling} /> },
@@ -53,11 +63,7 @@ export function BalancesReportScreen() {
         <>
           <ReportFilters>
             <FilterBar loose onClear={() => { setQ(''); setLayer(''); setNegative(false); }} clearLabel={t.clearFilters}>
-              <label className="filter-search">
-                <Search size={16} strokeWidth={1.9} aria-hidden="true" />
-                <span className="sr-only">{t.accountName}</span>
-                <input value={q} placeholder={t.accountName} onChange={(event) => setQ(event.target.value)} />
-              </label>
+              <SearchChip label={t.accountName} value={q} onChange={setQ} />
               <label>
                 {t.layer}
                 <Select value={layer} onValueChange={setLayer}>
@@ -65,7 +71,7 @@ export function BalancesReportScreen() {
                   {['main_agent', 'agent', 'pos'].map((value) => <SelectItem key={value} value={value}>{layerName(t, value)}</SelectItem>)}
                 </Select>
               </label>
-              <label className="check">
+              <label className={TOGGLE_CHIP}>
                 <input type="checkbox" checked={negative} onChange={(event) => setNegative(event.target.checked)} />
                 <span>{t.negativeOnly}</span>
               </label>
@@ -74,11 +80,11 @@ export function BalancesReportScreen() {
           <StatRow>
             <Stat label={t.balancesTotal} value={data ? <Money value={data.totals.balance} /> : '—'} meta={t.accountsMeta.replace('{n}', String(data?.totals.count ?? 0))} />
             <Stat label={t.heldForTasks} value={data ? <Money value={held} /> : '—'} meta={t.openTasksMeta} />
-            <Stat tone="danger" label={t.nearCeiling} value={data ? <span className={near.length ? 'tone-danger' : undefined}>{near.length}</span> : '—'} meta={near.length ? near.slice(0, 2).map((row) => row.nickname || row.loginName).join('، ') : '—'} />
+            <Stat tone="danger" label={t.nearCeiling} value={data ? <span className={near.length ? 'text-danger' : undefined}>{near.length}</span> : '—'} meta={near.length ? near.slice(0, 2).map((row) => row.nickname || row.loginName).join('، ') : '—'} />
           </StatRow>
-          <section className="pane">
+          <Pane>
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.loginName} loading={!report.loaded} failed={report.error} onRetry={() => void report.reload()} empty={t.noRows} keepHead skeleton={{ rows: 5, columns: 8 }} />
-          </section>
+          </Pane>
         </>
       ) : null}
     </Desk>
@@ -107,8 +113,8 @@ export function SupplyReportScreen() {
       header: t.shareColumn,
       sortValue: (row) => row.cost,
       render: (row) => (
-        <span className="cap">
-          <span className="cap-bar"><i style={{ inlineSize: `${shareOf(row.cost)}%` }} /></span>
+        <span className="flex min-w-40 items-center gap-2 text-[11.5px] text-muted">
+          <span className="h-1.5 min-w-20 flex-1 overflow-hidden rounded-[1px] bg-surface-2"><i className="block h-full bg-accent" style={{ inlineSize: `${shareOf(row.cost)}%` }} /></span>
           <bdi dir="ltr">{shareOf(row.cost)}%</bdi>
         </span>
       ),
@@ -124,11 +130,11 @@ export function SupplyReportScreen() {
           <StatRow>
             <Stat label={t.providerCost} value={data ? <Money value={total} /> : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
             <Stat label={t.operationsWord} value={data ? data.totals.operations : '—'} meta={t.atProvidersMeta.replace('{n}', String(rows.length))} />
-            <Stat label={t.topProvider} value={top ? <bdi className="stat-name">{top.providerName}</bdi> : '—'} meta={top ? t.shareOfCostMeta.replace('{n}', String(shareOf(top.cost))) : '—'} />
+            <Stat label={t.topProvider} value={top ? <bdi className={STAT_NAME}>{top.providerName}</bdi> : '—'} meta={top ? t.shareOfCostMeta.replace('{n}', String(shareOf(top.cost))) : '—'} />
           </StatRow>
-          <section className="pane">
+          <Pane>
             <DataTable columns={columns} rows={rows} rowKey={(row) => row.providerCode} loading={!report.loaded} failed={report.error} onRetry={() => void report.reload()} empty={t.noRows} keepHead skeleton={{ rows: 4, columns: 5 }} />
-          </section>
+          </Pane>
         </>
       ) : null}
     </Desk>
