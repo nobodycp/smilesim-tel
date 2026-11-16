@@ -1,12 +1,36 @@
 'use client';
 
 import { useId, useState, type PointerEvent } from 'react';
+import { cn } from '../lib/cn';
 
 /**
  * The trend inside a home period card (owner 2026-11-09): a smooth line over a soft gradient area that draws in, a
  * glowing dot that breathes at the latest point, and the value of the nearest step on hover. SVG, no library; time
  * runs left to right in every language. Motion only under `prefers-reduced-motion: no-preference` (CSS).
+ *
+ * Look (Tailwind migration T3.3, ADR 0022), ported from graphite.css: a left-to-right box 52px high that sits at the
+ * bottom of its card and reaches 4px past its sides (`large`: 200px, flush); inside a home period card
+ * (`.pulse-tile`) it lies along the card's lower 55%, under the words. The SVG fills it, not clipped, with a
+ * crosshair; it is revealed left to right over 1100ms after 120ms. The area is a gradient of the tone (34% to 0),
+ * fading in over 700ms after 500ms; the stroke 2 wide in the tone over a 6-wide blurred glow at 18%; the hover cursor a
+ * dashed 1-wide `--rd-muted` line; the `large` guides 1-wide `--rd-line`. The dot is 8px round in the tone with a 3px
+ * halo at 25% and a 12px glow; it pops in at 1100ms, then breathes (from 1500ms, every 2.4s). The tip sits 4px over
+ * the box, centred on the step: 3px / 7px padding, 4px corners on `--rd-surface-3` with a 1px `--rd-line` ring and a
+ * soft drop shadow, 11px ink on one line. Tones: `--rd-accent` (default) or `--rd-success`.
  */
+const TONE = {
+  accent: {
+    stop: '[stop-color:var(--rd-accent)]',
+    stroke: 'stroke-accent',
+    dot: 'bg-accent [box-shadow:0_0_0_3px_--alpha(var(--color-accent)/25%),0_0_12px_var(--rd-accent)]',
+  },
+  success: {
+    stop: '[stop-color:var(--rd-success)]',
+    stroke: 'stroke-success',
+    dot: 'bg-success [box-shadow:0_0_0_3px_--alpha(var(--color-success)/25%),0_0_12px_var(--rd-success)]',
+  },
+} as const;
+
 export function TrendLine({ values, labels, format, label, tone = 'accent', size = 'small' }: {
   values: number[];
   labels: string[];
@@ -49,23 +73,41 @@ export function TrendLine({ values, labels, format, label, tone = 'accent', size
   }
 
   return (
-    <div className={`trend-line ${tone} ${size}`} data-testid="trend-line">
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={label} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
+    <div
+      className={cn(
+        'relative mt-auto [direction:ltr]',
+        size === 'large' ? 'mx-0 h-50' : '-mx-1 h-13',
+        '[.pulse-tile>&]:absolute [.pulse-tile>&]:inset-x-0 [.pulse-tile>&]:bottom-0 [.pulse-tile>&]:z-0 [.pulse-tile>&]:m-0 [.pulse-tile>&]:h-[55%]',
+      )}
+      data-slot="trend-line"
+      data-testid="trend-line"
+    >
+      <svg
+        className="block size-full cursor-crosshair overflow-visible motion-safe:animate-[trend-draw_1100ms_cubic-bezier(0.23,1,0.32,1)_120ms_both]"
+        viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={label} onPointerMove={onMove} onPointerLeave={() => setHover(null)}>
         <defs>
           <linearGradient id={`trend-fill-${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" className="trend-stop-top" />
-            <stop offset="100%" className="trend-stop-bottom" />
+            <stop offset="0%" className={cn(TONE[tone].stop, '[stop-opacity:0.34]')} />
+            <stop offset="100%" className={cn(TONE[tone].stop, '[stop-opacity:0]')} />
           </linearGradient>
         </defs>
-        {size === 'large' ? [0.25, 0.5, 0.75].map((at) => <line key={at} className="trend-guide" x1={0} x2={width} y1={height * at} y2={height * at} vectorEffect="non-scaling-stroke" />) : null}
-        <path className="trend-area" d={area} fill={`url(#trend-fill-${id})`} />
-        <path className="trend-glow" d={line} vectorEffect="non-scaling-stroke" />
-        <path className="trend-stroke" d={line} vectorEffect="non-scaling-stroke" />
-        {shown !== null ? <line className="trend-cursor" x1={points[shown][0]} x2={points[shown][0]} y1={0} y2={height} vectorEffect="non-scaling-stroke" /> : null}
+        {size === 'large' ? [0.25, 0.5, 0.75].map((at) => <line key={at} className="stroke-line stroke-1" x1={0} x2={width} y1={height * at} y2={height * at} vectorEffect="non-scaling-stroke" />) : null}
+        <path className="stroke-none motion-safe:animate-[trend-fade_700ms_ease-out_500ms_forwards] motion-safe:opacity-0" d={area} fill={`url(#trend-fill-${id})`} />
+        <path className={cn('fill-none stroke-6 opacity-18 blur-[3px] [stroke-linecap:round]', TONE[tone].stroke)} d={line} vectorEffect="non-scaling-stroke" />
+        <path className={cn('fill-none stroke-2 [stroke-linecap:round] [stroke-linejoin:round]', TONE[tone].stroke)} d={line} vectorEffect="non-scaling-stroke" />
+        {shown !== null ? <line className="stroke-muted stroke-1 [stroke-dasharray:2_3]" x1={points[shown][0]} x2={points[shown][0]} y1={0} y2={height} vectorEffect="non-scaling-stroke" /> : null}
       </svg>
-      <span className="trend-dot" style={{ left: `${(lastX / width) * 100}%`, top: `${(lastY / height) * 100}%` }} aria-hidden="true" />
+      <span
+        className={cn(
+          'pointer-events-none absolute -ms-1 -mt-1 size-2 rounded-pill',
+          'motion-safe:animate-[trend-pop_400ms_ease-out_1100ms_both,trend-breathe_2.4s_ease-in-out_1500ms_infinite]',
+          TONE[tone].dot,
+        )}
+        style={{ left: `${(lastX / width) * 100}%`, top: `${(lastY / height) * 100}%` }} aria-hidden="true" />
       {shown !== null ? (
-        <span className="trend-tip" style={{ left: `${(points[shown][0] / width) * 100}%` }} aria-hidden="true">
+        <span
+          className="pointer-events-none absolute bottom-[calc(100%+4px)] z-2 -translate-x-1/2 rounded-xs bg-surface-3 px-1.75 py-0.75 text-xs whitespace-nowrap text-ink shadow-[0_6px_16px] shadow-scrim-strong/50 ring-1 ring-line"
+          style={{ left: `${(points[shown][0] / width) * 100}%` }} aria-hidden="true">
           <bdi dir="ltr">{labels[shown]}</bdi> · <bdi dir="ltr">{format(values[shown])}</bdi>
         </span>
       ) : null}

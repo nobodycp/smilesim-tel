@@ -1,104 +1,13 @@
-/* Shared pieces: the plain `.empty` line, Stat, operation cards, the outage bar, and the spinner's and
+/* Shared pieces: the plain `.empty` line, the figure row of the page skeleton, operation cards, and the spinner's and
    skeleton's keyframes. LiveSwitch is components/ui/switch.tsx (Tailwind migration T2.3); EmptyState and LoadFailed
    (components/empty-state.tsx), the spinner and skeletons (components/loading.tsx, components/ui/skeleton.tsx) are
-   on Tailwind since migration T2.7. */
-/* The API stopped answering after the session loaded: one line above the page, the same shape as the return bar
-   (components/app-shell.tsx, utilities since Tailwind migration T3.1). */
-.outage-bar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--rd-space-3);
-  padding: var(--rd-space-2) var(--rd-space-4);
-  background: var(--rd-danger-soft);
-  color: var(--rd-danger);
-  font-size: var(--rd-text-md);
-  font-weight: 700;
-}
-.outage-bar-text { display: inline-flex; align-items: center; gap: var(--rd-space-2); min-width: 0; }
-.outage-bar-text svg { flex: none; width: 1rem; height: 1rem; }
-.outage-bar button {
-  flex: none;
-  height: 30px;
-  padding: 0 var(--rd-space-3);
-  border: 1px solid var(--rd-danger);
-  border-radius: var(--rd-radius-sm);
-  background: transparent;
-  color: var(--rd-danger);
-  font-size: var(--rd-text-sm);
-  font-weight: 700;
-}
-.outage-bar button:hover { background: var(--rd-surface); }
-.outage-bar button:disabled { opacity: 0.6; cursor: default; }
-/* The session cannot be read: the canvas holds this instead of a page. */
-.outage-panel {
-  display: grid;
-  flex: 1;
-  justify-items: center;
-  align-content: center;
-  gap: var(--rd-space-2);
-  margin: auto;
-  padding: 48px var(--rd-space-4);
-  max-width: 28rem;
-  text-align: center;
-}
-.outage-panel .outage-mark {
-  display: grid;
-  place-items: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  margin-bottom: var(--rd-space-2);
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-danger-soft);
-  color: var(--rd-danger);
-}
-.outage-panel .outage-mark svg { width: 1.6rem; height: 1.6rem; stroke-width: 1.8; }
-.outage-panel h1 { margin: 0; font-size: 20px; }
-.outage-panel p { margin: 0 0 var(--rd-space-2); color: var(--rd-muted); font-size: var(--rd-text-base); line-height: 1.6; }
-.outage-panel [data-slot='button'] { justify-self: center; }
+   on Tailwind since migration T2.7; Stat and StatRow (components/stat.tsx) and the outage panel and bar
+   (components/outage.tsx) since T3.3. */
 .result-ok,
 .result-fail { font-weight: 700; }
 .result-ok { color: var(--rd-success); }
 .result-fail { color: var(--rd-danger); }
 .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: var(--rd-space-3); }
-/* Figure card (components/stat.tsx): label and icon on the first line, the value under them, a caption last. */
-.stat {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-content: start;
-  row-gap: var(--rd-space-1-5);
-  column-gap: var(--rd-space-3);
-  min-height: 92px;
-  padding: var(--rd-space-3-5) var(--rd-space-4);
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-card);
-  background: var(--rd-surface);
-}
-.stat-label { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 600; line-height: 1.3; }
-.stat-icon { display: grid; place-items: center; color: var(--rd-faint); }
-.stat-icon svg { width: 17px; height: 17px; }
-.stat-value {
-  grid-column: 1 / -1;
-  color: var(--rd-ink);
-  font-size: 1.45rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-  line-height: 1.15;
-}
-.stat-bar { grid-column: 1 / -1; display: block; height: 4px; overflow: hidden; border-radius: var(--rd-radius-pill); background: var(--rd-surface-3); }
-.stat-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--rd-ink); }
-.stat-meta { grid-column: 1 / -1; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 500; }
-.stat.success .stat-icon { color: var(--rd-success); }
-.stat.warning .stat-icon { color: var(--rd-warning); }
-.stat.danger .stat-icon { color: var(--rd-danger); }
-/* The one figure that matters most on a screen. */
-.stat.highlight { border-color: color-mix(in srgb, var(--rd-success) 40%, var(--rd-line)); background: var(--rd-success-soft); }
-.stat.highlight .stat-value { color: var(--rd-success); }
-.stat.highlight .stat-icon { color: var(--rd-success); }
-.stat-link { display: block; border-radius: var(--rd-radius-card); color: inherit; }
-.stat-link:hover .stat { border-color: var(--rd-ink); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes shimmer { to { transform: translateX(100%); } }
 .op-card {
@@ -149,7 +58,7 @@
 .op-text .hint { margin: 0; font-size: var(--rd-text-sm); line-height: 1.4; color: var(--rd-muted); }
 .op-text [data-slot='badge'] { justify-self: start; margin-top: var(--rd-space-0-5); }
 .canvas .empty:not(.empty-state),
-.pane .empty:not(.empty-state),
+:is(.pane, [data-slot='pane']) .empty:not(.empty-state),
 [data-slot='table-sheet'] .empty:not(.empty-state) { display: block; padding: var(--rd-space-3-5); }
 /* The finance page's head (features/wallets/screens/finance-screen.tsx): the 30-day chart beside three figures. */
 .wallet-board { display: grid; grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr); gap: var(--rd-space-3); align-items: stretch; }
@@ -158,7 +67,6 @@
 .wallet-chart .pane-head h2 { margin: 0; }
 .wallet-chart .pane-head .hint { margin: var(--rd-space-0-5) 0 0; }
 .wallet-chart-figures { display: flex; flex-wrap: wrap; gap: var(--rd-space-4); margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 600; }
-.wallet-chart-figures .money { color: var(--rd-ink); font-weight: 800; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--rd-space-2); }
 .section-head h2 { margin: 0; font-size: var(--rd-text-lg); font-weight: 800; }
 @media (max-width: 1099px) { .wallet-board { grid-template-columns: 1fr; } .wallet-figures { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

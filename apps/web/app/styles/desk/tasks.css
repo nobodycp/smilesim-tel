@@ -1,4 +1,5 @@
-/* Tasks (app/tasks, app/tasks/[id]): task facts, operations, the ticket and the inspection tree. */
+/* Tasks (app/tasks, app/tasks/[id]): operations, the ticket and the inspection tree (the task facts are
+   components/facts.tsx `variant="list"` since Tailwind migration T3.3). */
 /* Ticket fills the canvas; only the inspection tree scrolls (on a ticket 36rem or narrower the board scrolls instead,
    see the container block below). */
 .desk > .pane.task-ticket {
@@ -36,34 +37,6 @@
   border-inline-end: 1px solid var(--rd-line);
   overflow: auto;
 }
-.task-facts {
-  display: grid;
-  gap: 0;
-  margin: 0;
-}
-.task-facts > div {
-  display: grid;
-  grid-template-columns: minmax(4.5rem, 42%) minmax(0, 1fr);
-  column-gap: var(--rd-space-2);
-  align-items: baseline;
-  padding-block: 5px;
-  border-block-end: 1px solid var(--rd-line-soft);
-}
-.task-facts > div:last-child { border-block-end: 0; }
-.task-facts dt {
-  color: var(--rd-muted);
-  font-size: var(--rd-text-xs);
-  font-weight: 700;
-}
-.task-facts dd {
-  margin: 0;
-  color: var(--rd-ink);
-  font-size: var(--rd-text-md);
-  font-weight: 700;
-  text-align: start;
-  overflow-wrap: anywhere;
-}
-.task-facts dd bdi { font-variant-numeric: tabular-nums; }
 .task-toolbar {
   display: flex;
   flex-wrap: wrap;

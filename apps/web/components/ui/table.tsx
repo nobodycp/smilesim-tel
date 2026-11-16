@@ -201,7 +201,7 @@ export function TCell({
       data-kind={kind}
       className={cn(
         'h-11.5 border-b border-transparent bg-transparent px-3.5 py-2 text-center align-middle whitespace-nowrap first:text-start',
-        '[tbody>tr:last-child>&]:border-b-0 has-[.money]:tabular-nums',
+        '[tbody>tr:last-child>&]:border-b-0 has-[.money,[data-slot=money]]:tabular-nums',
         kind !== 'block' && (cards ? NARROW_ABOVE_CARDS : NARROW),
         // The tints sit on the cells; a phone's card takes them on the whole row instead.
         striped && (cards ? 'sm:[tr:nth-child(even)>&]:bg-surface-2/55' : '[tr:nth-child(even)>&]:bg-surface-2/55'),

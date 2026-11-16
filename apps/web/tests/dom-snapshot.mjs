@@ -393,8 +393,8 @@ const cases = [
     { click: '.add-query .ui-btn:not(:disabled)', wait: '.pick-card' },
   ] }],
   ['number-card-switch', '/numbers/ln1', 'branch', false, { steps: [{ click: '.line-op:has(.lucide-layers)', wait: '.pack-pick' }] }],
-  // A number-card operation dialog that holds `Facts` (the SIM swap): the `.detail-rows` tiles.
-  ['number-card-sim', '/numbers/ln1', 'branch', false, { steps: [{ click: '.line-op:has(.lucide-smartphone)', wait: '.dialog .detail-rows' }] }],
+  // A number-card operation dialog that holds `Facts` (the SIM swap): its `data-slot="facts"` tiles.
+  ['number-card-sim', '/numbers/ln1', 'branch', false, { steps: [{ click: '.line-op:has(.lucide-smartphone)', wait: '[data-slot="dialog"] [data-slot="facts"]' }] }],
   // The package sheet's offers tab: the custom-price rows with their `.price-pair` cells.
   ['company-package-offers', '/companies/cell/packages/cell-400', 'branch', false, { steps: [{ click: '[role=tab][data-tab="offers"]', wait: '.price-pair' }] }],
   // The entered-account door with no code in the fragment: its failed state and the back-to-sign-in button.

@@ -177,3 +177,14 @@
    animate `transform`, as the legacy rules did; the utilities that name them sit under `motion-safe:`. */
 @keyframes login-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes gauth-tag { from { opacity: 0; transform: rotate(-4deg) translateY(40px); } }
+
+/* The data visuals' motion (Tailwind migration T3.3), moved from desk/home.css and graphite.css with the rules that
+   named them; the utilities that name them sit under `motion-safe:`. The donut's slices draw in and its middle fades
+   in (components/donut.tsx); the trend is revealed left to right, its area fades in, its dot pops in and then
+   breathes (components/trend-line.tsx). The dot keeps two shadows at rest, as the breath does. */
+@keyframes donut-draw { from { stroke-dasharray: 0 999; } }
+@keyframes donut-fade { from { opacity: 0; } }
+@keyframes trend-draw { from { clip-path: inset(-20% 100% -20% 0); } to { clip-path: inset(-20% 0 -20% 0); } }
+@keyframes trend-fade { to { opacity: 1; } }
+@keyframes trend-pop { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes trend-breathe { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent), 0 0 18px var(--rd-accent); } }

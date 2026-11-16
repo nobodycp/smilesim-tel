@@ -1,4 +1,7 @@
-/* The page frame inside the shell: canvas, desk layout and scroll model, page head, back link, stacks, banners. */
+/* The page frame inside the shell: canvas, desk layout and scroll model, page head, stacks, banners. The Desk frame's
+   own column, head, title and lede, Pane, and the error page's back link are utilities in components/desk.tsx and
+   app/error.tsx since Tailwind migration T3.3; these rules stay for the screens that still carry the classes (the
+   home and profile pages, the page skeleton) and for the rules that read `.desk` as their context. */
 .canvas { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; }
 .eyebrow {
   margin: 0;
@@ -38,8 +41,10 @@
   margin: var(--rd-space-1) 0 0;
   text-align: start;
 }
+/* The outcome pick (components/desk.tsx) was a `.stack`; its handle keeps the canvas sized to its content. */
 .canvas-inner.wide:has(.stack),
-.canvas-inner.wide:has(.stack.flow) { flex: none; min-height: auto; }
+.canvas-inner.wide:has(.stack.flow),
+.canvas-inner.wide:has([data-slot='outcome-pick']) { flex: none; min-height: auto; }
 .desk:has(> .stack),
 .desk:has(> .stack.flow) { flex: none; min-height: auto; overflow: visible; }
 .desk > .stack,
@@ -47,7 +52,6 @@
 .desk input:not([type='checkbox']):not([type='file']),
 .desk select { height: 34px; }
 @media (max-width: 720px) {
-  .back-link,
   .desk input:not([type='checkbox']):not([type='file']),
   .desk select { height: 44px; }
 }
@@ -57,24 +61,6 @@
 .notices li { display: grid; gap: var(--rd-space-1); }
 .notices p { margin: 0; color: var(--rd-ink); font-weight: 600; }
 .notices small { color: var(--rd-muted); font-size: var(--rd-text-sm); }
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--rd-space-1-5);
-  width: fit-content;
-  height: 32px;
-  padding: 0 var(--rd-space-2-5);
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface);
-  color: var(--rd-ink-2);
-  font-size: var(--rd-text-md);
-  font-weight: 600;
-  text-decoration: none;
-  box-shadow: var(--rd-shadow-sm);
-}
-.back-link:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
-.back-link svg { width: 16px; height: 16px; flex: none; }
 .sr-only {
   position: absolute;
   width: 1px;

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { DeskColumn, Pane } from '../components/desk';
 import { EmptyState } from '../components/empty-state';
 import { usePrefs } from '../lib/prefs';
 import { Button } from '../components/ui/button';
@@ -9,8 +10,8 @@ import { Button } from '../components/ui/button';
 export default function NotFound() {
   const { t } = usePrefs();
   return (
-    <div className="desk">
-      <section className="pane">
+    <DeskColumn>
+      <Pane>
         <EmptyState
           role="status"
           testId={null}
@@ -19,7 +20,7 @@ export default function NotFound() {
         >
           {t.notFoundTitle}
         </EmptyState>
-      </section>
-    </div>
+      </Pane>
+    </DeskColumn>
   );
 }

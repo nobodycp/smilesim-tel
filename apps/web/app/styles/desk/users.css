@@ -1,4 +1,5 @@
-/* The user page (app/users/[login]): fact cards, grants and roles, package terms. */
+/* The user page (app/users/[login]): grants and roles, package terms (the fact cards are components/facts.tsx since
+   Tailwind migration T3.3). */
 /* «الإعدادات والصلاحيات» (spec 2026-11-11-ui-consistency-pass, D3): «إعدادات الحساب» open on top, then «صلاحيات
    الحساب» folded — one row per grant: its name, its effective state, and the three-way `.seg` (حسب الدور / مسموح /
    ممنوع); the extra roles are toggle chips. */
@@ -56,42 +57,6 @@
   .grant-row .seg { grid-column: 1 / -1; width: 100%; }
   .role-chip { height: 40px; }
 }
-.fact-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--rd-space-3);
-  margin: 0;
-}
-.fact-card {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--rd-space-3);
-  min-width: 0;
-  padding: var(--rd-space-4);
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-card);
-  background: var(--rd-surface);
-  box-shadow: var(--rd-shadow-frame);
-}
-.fact-card dt { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 500; }
-.fact-card dd { margin: var(--rd-space-1) 0 0; color: var(--rd-ink); font-size: var(--rd-text-2xl); font-weight: 600; line-height: 1.25; }
-.fact-mark {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-  color: var(--rd-ink-2);
-}
-.fact-mark svg { width: 17px; height: 17px; }
-.fact-card.good .fact-mark { background: var(--rd-success-soft); color: var(--rd-success); }
-.fact-card.good dd { color: var(--rd-success); }
-.fact-card.warn .fact-mark { background: var(--rd-warning-soft); color: var(--rd-warning); }
-.fact-card.warn dd { color: var(--rd-warning); }
 
 /* User terms: one folding section per company, one table line per package (spec 2026-11-08-user-packages-tab-redesign). */
 .terms-sheet { display: grid; grid-template-columns: minmax(0, 1fr); }
@@ -139,7 +104,7 @@
 .terms-price { display: inline-flex; flex-direction: column; gap: var(--rd-space-0-5); }
 .terms-price > span { color: var(--rd-muted); font-size: var(--rd-text-2xs); font-weight: 600; }
 /* On the canvas, and in a dialog body (the line prices table): a dialog is portaled out of `.desk`. */
-:is(.desk .pane, [data-slot='dialog-body']) .terms-price input {
+:is(.desk :is(.pane, [data-slot='pane']), [data-slot='dialog-body']) .terms-price input {
   width: 6.5rem;
   min-width: 0;
   height: 32px;
@@ -154,9 +119,9 @@
   text-align: start;
   direction: ltr;
 }
-:is(.desk .pane, [data-slot='dialog-body']) .terms-price input::placeholder { color: var(--rd-muted); font-weight: 500; }
-:is(.desk .pane, [data-slot='dialog-body']) .terms-price input:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 3px var(--rd-focus); }
-:is(.desk .pane, [data-slot='dialog-body']) .terms-price input:disabled { background: var(--rd-surface-2); color: var(--rd-muted); }
+:is(.desk :is(.pane, [data-slot='pane']), [data-slot='dialog-body']) .terms-price input::placeholder { color: var(--rd-muted); font-weight: 500; }
+:is(.desk :is(.pane, [data-slot='pane']), [data-slot='dialog-body']) .terms-price input:focus { outline: none; border-color: var(--rd-ink); box-shadow: 0 0 0 3px var(--rd-focus); }
+:is(.desk :is(.pane, [data-slot='pane']), [data-slot='dialog-body']) .terms-price input:disabled { background: var(--rd-surface-2); color: var(--rd-muted); }
 .terms-summary { white-space: nowrap; }
 .terms-filter .filter-panel { flex-wrap: wrap; overflow: visible; }
 .terms-filter .filter-panel label { flex: 1 1 9rem; }

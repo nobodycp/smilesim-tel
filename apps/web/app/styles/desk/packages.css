@@ -192,7 +192,6 @@
 
 /* Custom prices tab on the package sheet: default figure beside the editable field. */
 .price-pair { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--rd-space-2-5); }
-.price-pair > .money.muted { font-size: var(--rd-text-sm); }
 
 /* Sell price cell on /packages: two short fields and their save control, aligned to the figure column. */
 .sell-cell { display: inline-flex; align-items: flex-end; justify-content: flex-end; gap: var(--rd-space-2); }

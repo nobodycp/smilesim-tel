@@ -7,7 +7,7 @@
 .brand-drops { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--rd-space-3); }
 .drop-field { display: grid; gap: var(--rd-space-2); align-content: start; }
 .drop-title { color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
-.pane label.drop {
+:is(.pane, [data-slot='pane']) label.drop {
   position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -23,9 +23,9 @@
   font-weight: 500;
   cursor: pointer;
 }
-.pane label.drop:hover,
-.pane label.drop.over,
-.pane label.drop:focus-within { border-color: var(--rd-ink); border-style: solid; }
+:is(.pane, [data-slot='pane']) label.drop:hover,
+:is(.pane, [data-slot='pane']) label.drop.over,
+:is(.pane, [data-slot='pane']) label.drop:focus-within { border-color: var(--rd-ink); border-style: solid; }
 .drop-thumb {
   display: grid;
   place-items: center;

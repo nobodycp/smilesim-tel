@@ -73,7 +73,7 @@ test('the branch reads the full overview, switches the period, and sees its prov
   await expect(page.getByTestId('donut-legend').locator('a[href="/numbers?status=frozen"]').getByTestId('donut-change-down')).toHaveText('2');
   await expect(legend.nth(1).getByTestId(/^donut-change-(up|down)$/)).toHaveCount(0);
   // The count closes the line, the change before it (spec 2026-11-09-admin-review, 8.2).
-  await expect(legend.nth(0).locator('a > *').last()).toHaveClass(/donut-value/);
+  await expect(legend.nth(0).locator('a > *').last()).toHaveAttribute('data-testid', 'donut-value');
   // The period switch is short (8.5); the cards keep the long name.
   await expect(page.getByTestId('page-head').getByRole('tab')).toHaveText(['يوم', 'شهر', 'الكل']);
   await expect(cards.nth(1)).toContainText('هذا الشهر');

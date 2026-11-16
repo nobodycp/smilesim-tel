@@ -20,47 +20,7 @@
 .overview-card .pane-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--rd-space-2); }
 .overview-card .pane-head .hint { margin: 0; }
 .overview-card .pane-body { position: relative; }
-
-/* Donut with its legend beside it; stacked on a narrow card. */
-.donut { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-4); }
-.donut-ring { inline-size: 168px; block-size: 168px; flex: none; stroke-linecap: butt; }
-/* The global icon rule strokes every SVG; the ring's words are plain fills (spec 2026-11-09-admin-review, 8.1). */
-.donut-ring text { stroke: none; }
-.donut-track { fill: none; stroke: var(--rd-surface-2); }
-.donut-total { fill: var(--rd-ink); font-size: calc(var(--rd-text-2xl) * 1.5); font-weight: 800; font-variant-numeric: tabular-nums; }
-.donut-legend { flex: 1; min-inline-size: 180px; display: grid; gap: var(--rd-space-1); margin: 0; padding: 0; list-style: none; }
-.donut-legend li > a, .donut-legend li > span {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: var(--rd-space-2);
-  padding-block: var(--rd-space-1-5);
-  padding-inline: var(--rd-space-2);
-  border-radius: var(--rd-radius-sm);
-  color: var(--rd-ink);
-}
-.donut-legend li > a:hover { background: var(--rd-surface-2); }
-.donut-dot { inline-size: 10px; block-size: 10px; border-radius: var(--rd-radius-pill); }
-.donut-value { min-inline-size: 2ch; font-weight: 700; text-align: end; }
-/* The donut's change and pointing (spec 2026-11-09-admin-review, 6.4): beside each count a green ↑ or a red ↓ with
-   the number; the slice pointed at thickens, the others dim, and its share takes the middle. */
-.donut-change { display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px; min-inline-size: 3.5ch; font-size: var(--rd-text-xs); font-weight: 700; }
-.donut-change.up { color: var(--rd-success); }
-.donut-change.down { color: var(--rd-danger); }
-.donut-slice { cursor: pointer; transition: stroke-width 180ms var(--rd-ease-out), opacity 180ms var(--rd-ease-out); }
-.donut.pointing .donut-slice:not(.on) { opacity: 0.35; }
-.donut-slice.on { stroke-width: 28px; }
-.donut-legend li { transition: opacity 180ms var(--rd-ease-out); }
-.donut.pointing .donut-legend li:not(.on) { opacity: 0.55; }
-.donut-legend li.on > a, .donut-legend li.on > span { background: var(--rd-surface-2); }
-.donut-total.share { font-size: calc(var(--rd-text-2xl) * 1.25); }
-.donut-caption { fill: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
-@media (prefers-reduced-motion: no-preference) {
-  .donut-slice { animation: donut-draw 700ms var(--rd-ease-out) both; }
-  .donut-total, .donut-caption { animation: donut-fade 220ms ease-out; }
-}
-@keyframes donut-draw { from { stroke-dasharray: 0 999; } }
-@keyframes donut-fade { from { opacity: 0; } }
+/* The donut (status ring and legend) is components/donut.tsx since Tailwind migration T3.3. */
 
 /* Meters: tasks by status and the ranked lists share one bar. */
 .overview-meters, .overview-rank { display: grid; gap: var(--rd-space-1); margin: 0; padding: 0; list-style: none; }
@@ -254,16 +214,12 @@
 .figure-tile-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); color: var(--rd-muted); }
 .figure-tile-icon svg { width: 15px; height: 15px; }
 .figure-tile-value { font-size: 1.45rem; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-.figure-tile-value .money { font-size: inherit; }
 .figure-tile-meta { margin-block-start: auto; color: var(--rd-muted); font-size: var(--rd-text-sm); }
 .figure-tile.good .figure-tile-value, .figure-tile.good .figure-tile-icon { color: var(--rd-success); }
 .figure-tile.lead { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-accent) 35%, var(--rd-line)); }
 .figure-tile.lead::before { content: ''; position: absolute; inset-block-start: 0; inset-inline: 0 var(--rd-cut); height: 2px; background: var(--rd-accent); }
 .figure-tile.lead .figure-tile-value { font-size: 1.9rem; }
 .figure-tile.lead .figure-tile-icon { background: var(--rd-accent-soft); color: var(--rd-accent); }
-.sparkline { display: block; width: 100%; height: 36px; overflow: visible; }
-.sparkline-line { fill: none; stroke: var(--rd-accent); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
-.sparkline-area { fill: var(--rd-accent-soft); stroke: none; }
 
 /* ── Two columns that stack their own cards (Graphite home): the wide one at the reading start (last operations,
    rankings, providers, board), the narrow one at the end (status, tasks, shortcuts, accounts). One column on a
@@ -279,17 +235,9 @@
   .home-main { grid-column: 1; grid-row: 1; }
   .home-side { grid-column: 2; grid-row: 1; }
 }
-/* In the narrow column the donut is smaller and keeps its legend beside it; in a card under 340px the legend goes
-   under the ring. */
+/* In the narrow column the donut (components/donut.tsx, utilities since Tailwind migration T3.3) is smaller and keeps
+   its legend beside it; in a card under 340px the legend goes under the ring: the card is the container it asks. */
 .home-side .overview-card { container-type: inline-size; }
-.home-side .donut { flex-wrap: nowrap; gap: var(--rd-space-3); }
-@container (max-width: 340px) {
-  .home-side .donut { flex-wrap: wrap; justify-content: center; }
-  .home-side .donut-legend { flex-basis: 100%; }
-}
-.home-side .donut-ring { inline-size: 112px; block-size: 112px; }
-.home-side .donut-legend { min-inline-size: 0; }
-.home-side .donut-legend li > a, .home-side .donut-legend li > span { padding-block: 3px; }
 .home-ops .table-wrap, .home-ops .data-table { border: 0; }
 /* Phone: the lead figure takes the whole row, so its amount never breaks. */
 @media (max-width: 639px) {
@@ -324,7 +272,7 @@
 .shortcut-tile-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: var(--rd-radius-sm); background: var(--rd-surface); color: var(--rd-accent); box-shadow: inset 0 0 0 1px var(--rd-line); }
 .shortcut-tile-icon svg { width: 16px; height: 16px; }
 
-/* ── Motion: cards rise in, tiles lift, the sparkline draws ──────────────────────────── */
+/* ── Motion: cards rise in, tiles lift (the sparkline's draw is components/sparkline.tsx since T3.3) ── */
 @media (prefers-reduced-motion: no-preference) {
   .home > *, .figure-band > *, .home-main > *, .home-side > *, .shortcut-grid > * { animation: rd-rise 420ms var(--rd-ease-out) both; }
   .home > :nth-child(2), .figure-band > :nth-child(2), .home-main > :nth-child(2), .home-side > :nth-child(2), .shortcut-grid > :nth-child(2) { animation-delay: 40ms; }
@@ -333,8 +281,6 @@
   .home > :nth-child(n + 5), .home-side > :nth-child(n + 5), .shortcut-grid > :nth-child(n + 5) { animation-delay: 160ms; }
   .figure-tile { transition: transform var(--rd-dur-base) var(--rd-ease-out); }
   .figure-tile:hover, .shortcut-tile:hover { transform: translateY(-2px); }
-  .sparkline-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: rd-draw 900ms 200ms var(--rd-ease-out) forwards; }
-  .sparkline-area { animation: rd-fade 600ms 500ms both; }
   .overview-meter .fill { animation: rd-grow 700ms 150ms var(--rd-ease-out) both; transform-origin: left; }
   [dir='rtl'] .overview-meter .fill { transform-origin: right; }
 }

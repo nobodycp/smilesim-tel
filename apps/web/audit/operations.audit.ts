@@ -147,7 +147,7 @@ let quoted: { amount: number; asTask: boolean } | null = null;
 async function confirmDisconnect(page: Page) {
   quoted = null;
   const dialog = page.getByRole('dialog', { name: 'فصل الرقم' });
-  const money = dialog.locator('.detail-rows .money');
+  const money = dialog.locator('[data-slot="facts"] [data-slot="money"]');
   await expect(money).toBeVisible();
   const takes = (await dialog.getByText('يُخصم من رصيد نقطة البيع').count()) > 0;
   const agorot = Math.round(Number((await money.innerText()).replace(/[^\d.]/g, '')) * 100);

@@ -1,4 +1,6 @@
-/* Panes and what sits in them: pane head and body, step tabs, segmented pick, field rows, switch rows, checks. */
+/* Panes and what sits in them: pane head and body, step tabs, segmented pick, field rows, switch rows, checks. The
+   pane card itself is also components/desk.tsx `Pane` (Tailwind migration T3.3); the rules for what sits in a pane read
+   `:is(.pane, [data-slot='pane'])` so they reach both. */
 /*
  * Scroll model (office shell is height:100dvh; overflow:hidden):
  * - Workbench lists: .desk > .pane (+ the table's sheet, components/ui/table.tsx) fill the canvas; the sheet scrolls.
@@ -62,10 +64,10 @@
   font-variant-numeric: tabular-nums;
 }
 .pane-body { display: grid; gap: var(--rd-space-3); padding: var(--rd-space-3) var(--rd-space-3-5) var(--rd-space-3-5); }
-.pane form { gap: var(--rd-space-2); }
-.pane label { gap: var(--rd-space-1); color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
-.pane input:not([type='checkbox']):not([type='radio']):not([type='file']) { height: 34px; background: var(--rd-surface); font-size: var(--rd-text-md); }
-.pane .hint { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); }
+:is(.pane, [data-slot='pane']) form { gap: var(--rd-space-2); }
+:is(.pane, [data-slot='pane']) label { gap: var(--rd-space-1); color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
+:is(.pane, [data-slot='pane']) input:not([type='checkbox']):not([type='radio']):not([type='file']) { height: 34px; background: var(--rd-surface); font-size: var(--rd-text-md); }
+:is(.pane, [data-slot='pane']) .hint { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); }
 .field-row {
   display: flex;
   flex-wrap: wrap;
@@ -114,7 +116,7 @@
   font-weight: 600;
   cursor: pointer;
 }
-.desk .pane > .pane-body { min-height: 0; overflow: auto; }
+.desk :is(.pane, [data-slot='pane']) > .pane-body { min-height: 0; overflow: auto; }
 /* Inner pages only. The shell (sidebar, topbar) is outside .canvas. */
 .canvas .stack,
 .canvas .pane { min-width: 0; max-width: 100%; }
