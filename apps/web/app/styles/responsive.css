@@ -43,7 +43,5 @@
   .canvas .check,
   .canvas .shortcut,
   [data-slot='dialog'] .check,
-  [data-slot='dialog'] .seg button,
-  .toast button { min-height: 44px; }
-  .toast button { min-width: 44px; }
+  [data-slot='dialog'] .seg button { min-height: 44px; }
 }

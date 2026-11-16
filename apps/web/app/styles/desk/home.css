@@ -342,8 +342,8 @@
 }
 /* Lists and tiles start at the top of a stretched card instead of spreading over it. */
 .shortcut-grid, .overview-meters, .overview-rank { align-content: start; }
-/* A card's tabs scroll inside the card when they do not fit beside the title. */
-.overview-card .pane-head > [role='tablist'] { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+/* A card's tabs scroll inside the card when they do not fit beside the title: components/ui/tabs.tsx and the
+   overview's CARD_TABS (features/desk/overview.tsx) since Tailwind migration T2.6. */
 
 /* «المستخدمون» (spec 2026-11-09-admin-review, 8.3): a tile per layer in its colour, the ceilings in use as a bar,
    then the debtors (with the debt) and the frozen accounts as two quiet rows. */

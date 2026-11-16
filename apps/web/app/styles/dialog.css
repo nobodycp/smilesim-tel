@@ -1,55 +1,6 @@
-/* Overlays: toast, the content of dialogs, perm grid, op blocks, the row menus' row. */
-.toast-host {
-  /* Toasts (owner 2026-11-11): stacked in the reading-end bottom corner, over the page — nothing under them moves. */
-  position: fixed;
-  z-index: var(--rd-z-top);
-  inset-block-end: 20px;
-  inset-inline-end: 20px;
-  display: grid;
-  justify-items: end;
-  gap: var(--rd-space-2);
-  pointer-events: none;
-}
-.toast {
-  display: flex;
-  align-items: center;
-  gap: var(--rd-space-2-5);
-  max-inline-size: min(420px, calc(100vw - 32px));
-  padding-block: 11px;
-  padding-inline: 14px 8px;
-  border: 0;
-  border-inline-start: 3px solid var(--rd-success);
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface);
-  box-shadow: inset 0 0 0 1px var(--rd-line), var(--rd-shadow-pop);
-  color: var(--rd-ink);
-  pointer-events: auto;
-}
-.toast.error { border-inline-start-color: var(--rd-danger); }
-.toast.success { border-inline-start-color: var(--rd-success); }
-.toast p { margin: 0; font-size: var(--rd-text-md); font-weight: 600; }
-.toast button {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: var(--rd-radius-xs);
-  background: transparent;
-  color: var(--rd-faint);
-  font-size: 16px;
-  cursor: pointer;
-}
-.toast button:hover { background: var(--rd-surface-2); color: var(--rd-ink); }
-@media (prefers-reduced-motion: no-preference) {
-  .toast { animation: rd-toast-in 220ms var(--rd-ease-out); }
-}
+/* Overlays: the content of dialogs, perm grid, op blocks, the row menus' row. The toasts are components/ui/toast.tsx
+   since Tailwind migration T2.6; their entrance below stays here until T5 moves the keyframes. */
 @keyframes rd-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@media (max-width: 640px) {
-  .toast-host { inset-inline: 12px; inset-block-end: 12px; justify-items: stretch; }
-  .toast { max-inline-size: none; }
-}
 /* The dialog's frame (scrim, panel, head, mark, body, foot) is components/ui/dialog.tsx since Tailwind migration T2.5.
    The rules below style the content of dialogs whose screens are not ported yet; they reach it through the panel's
    and the body's handles (`[data-slot='dialog']`, `[data-slot='dialog-body']`, same specificity as the old classes). */

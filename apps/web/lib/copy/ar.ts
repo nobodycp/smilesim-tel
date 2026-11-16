@@ -8,6 +8,8 @@ export const ar = {
   themeToLight: 'تفعيل الوضع الفاتح',
   openMenu: 'فتح القائمة',
   closeMenu: 'إغلاق',
+  // The region the toasts float in (components/toast.tsx), named for screen readers.
+  toasts: 'رسائل النظام',
   notices: 'الإشعارات',
   noNotices: 'لا إشعارات',
   goodMorning: 'صباح الخير',

@@ -16,6 +16,10 @@ import { usePrefs } from '../../lib/prefs';
 // The home page's overview cards (spec 2026-11-08-overview-and-reports-nav, F). Each card draws only what the
 // overview answered for this viewer: a layer without providers or main agents simply gets no such card or tab.
 
+// A card's tab strip in its head stays inside the card and scrolls sideways on phones too (the legacy
+// `.overview-card .pane-head > [role='tablist']` rule of desk/home.css, Tailwind migration T2.6).
+const CARD_TABS = 'max-sm:max-w-full max-sm:overflow-x-auto';
+
 function Card({ title, hint, action, wide, children, className = '', testId = 'overview-card' }: { title: string; hint?: string; action?: ReactNode; wide?: boolean; children: ReactNode; className?: string; testId?: string }) {
   return (
     <section className={`pane overview-card${wide ? ' wide' : ''}${className ? ` ${className}` : ''}`} data-testid={testId}>
@@ -146,7 +150,7 @@ export function TopCard({ data }: { data: OverviewPayload }) {
   ];
   const [tab, setTab] = useState('packages');
   return (
-    <Card title={t.overviewTop} action={<Tabs items={tabs} value={tab} onChange={setTab} />}>
+    <Card title={t.overviewTop} action={<Tabs items={tabs} value={tab} onChange={setTab} className={CARD_TABS} />}>
       {tab === 'packages' && <RankedList rows={data.top.packages} by="count" />}
       {tab === 'companies' && <RankedList rows={data.top.companies} by="profit" />}
       {tab === 'providers' && <RankedList rows={data.top.providers} by="profit" />}
@@ -208,7 +212,7 @@ export function ActiveCard({ data, layer }: { data: OverviewPayload; layer: stri
   if (tabs.length === 0) return null;
   const rows = data.active[tab as keyof OverviewPayload['active']] ?? [];
   return (
-    <Card title={t.overviewActive} action={tabs.length > 1 ? <Tabs items={tabs} value={tab} onChange={setTab} /> : undefined}>
+    <Card title={t.overviewActive} action={tabs.length > 1 ? <Tabs items={tabs} value={tab} onChange={setTab} className={CARD_TABS} /> : undefined}>
       <RankedList rows={rows} by="count" />
     </Card>
   );

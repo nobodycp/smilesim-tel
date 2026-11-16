@@ -8,6 +8,8 @@ export const en: Copy = {
   themeToLight: 'Switch to light',
   openMenu: 'Open menu',
   closeMenu: 'Close',
+  // The region the toasts float in (components/toast.tsx), named for screen readers.
+  toasts: 'System messages',
   notices: 'Notices',
   noNotices: 'No notices',
   goodMorning: 'Good morning',
