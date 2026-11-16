@@ -1,22 +1,25 @@
 import { isValidElement, useEffect, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { EmptyState } from './empty-state';
 import { LoadFailed } from './load-failed';
 import { TableSkeleton } from './loading';
 import { Pagination, shouldShowPagination } from './ui/pagination';
+import { SortButton, TBody, TCell, THead, THeadCell, TRow, Table, TableSheet, type CellKind } from './ui/table';
 import { usePrefs } from '../lib/prefs';
 
 export type Column<Row> = {
   key: string;
   header: ReactNode;
   render: (row: Row) => ReactNode;
-  // A number or an amount: `num` on the header and on every cell.
+  // A number or an amount: tabular figures (`data-num` on the header and on every cell).
   num?: boolean;
-  // The operations column that holds a RowMenu: `row-actions` on the header and on every cell.
+  // The operations column that holds a RowMenu (`data-actions` on the header and on every cell).
   actions?: boolean;
-  // A column that stays as narrow as its content: `fit` on the header and on every cell.
+  // A column that stays as narrow as its content (`data-fit` on the header and on every cell).
   fit?: boolean;
-  // An extra class for the cells only, for example `when` or `msisdn`.
+  // What the cells hold, for their look (components/ui/table.tsx): a line number (`msisdn`), a time (`when`), a long
+  // text that wraps (`wrap`), or a block that draws its own card (`block`). `data-kind` on every cell.
+  kind?: CellKind;
+  // Extra utilities for the cells only.
   cell?: string;
   // A plain value used when the header is clicked. The rendered cell is used when this is absent.
   sortValue?: (row: Row) => string | number | null | undefined;
@@ -53,13 +56,12 @@ function compareValues(left: string, right: string, numeric: boolean, locale: st
   return left.localeCompare(right, locale, { numeric: true, sensitivity: 'base' });
 }
 
-function classes(...names: (string | false | undefined)[]): string | undefined {
-  const list = names.filter(Boolean).join(' ');
-  return list || undefined;
-}
+/** The pager row under a table: a hairline above it, 4px / 12px / 8px padding. */
+const PAGER = 'border-t border-line px-3 pt-1 pb-2';
 
 /**
- * A thin wrapper over `.sheet` and `.data`. It writes the table markup content-ui.mdc defines and nothing else.
+ * A thin wrapper over `TableSheet` and `Table` (components/ui/table.tsx). It writes the table markup content-ui.mdc
+ * defines and nothing else.
  *
  * `loading` shows the skeleton. When `rows` is empty and `empty` is given, the empty message replaces
  * the table, unless `keepHead` is set: then the header stays and the message sits under it, inside the sheet.
@@ -67,6 +69,9 @@ function classes(...names: (string | false | undefined)[]): string | undefined {
  * A full list pages itself from the saved page size. A cursor list (`PagedTable`) passes `paginate={false}`.
  * A header sorts the rows it is given when clicked; `sortable={false}` keeps the headers plain, for a table that holds
  * only one page of a list the server orders (sorting those rows would say nothing about the rest).
+ * A phone draws the rows as cards (`cards`, on by default); the lists already drawn as cards (tasks, notices) and the
+ * roles matrix pass `cards={false}`. `striped={false}` drops the zebra (the notices). `cellClassName` and
+ * `headClassName` add utilities to every body cell and every header cell (a list's own row height, a static head).
  */
 export function DataTable<Row>({
   columns,
@@ -82,6 +87,10 @@ export function DataTable<Row>({
   failed,
   onRetry,
   onSortStart,
+  cards = true,
+  striped = true,
+  cellClassName,
+  headClassName,
 }: {
   columns: Column<Row>[];
   rows: Row[];
@@ -98,6 +107,10 @@ export function DataTable<Row>({
   onRetry?: () => void;
   /** Told when a header is first clicked: a cursor list (`PagedTable`) then reads every page so the sort is whole. */
   onSortStart?: () => void;
+  cards?: boolean;
+  striped?: boolean;
+  cellClassName?: string;
+  headClassName?: string;
 }) {
   const { pageSize, setPageSize, locale } = usePrefs();
   const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(null);
@@ -113,9 +126,9 @@ export function DataTable<Row>({
   if (failed && rows.length === 0) return <LoadFailed message={failed} onRetry={onRetry} busy={loading} />;
   if (loading) {
     return (
-      <div className="sheet" data-testid="table-sheet">
+      <TableSheet data-testid="table-sheet">
         <TableSkeleton rows={skeleton?.rows ?? 5} columns={skeleton?.columns ?? columns.length} />
-      </div>
+      </TableSheet>
     );
   }
   const hollow = rows.length === 0 && empty !== undefined;
@@ -135,27 +148,31 @@ export function DataTable<Row>({
   const pageCount = Math.max(1, Math.ceil(ordered.length / size));
   const current = Math.min(stamp !== seen ? 1 : page, pageCount);
   const visible = paging ? ordered.slice((current - 1) * size, current * size) : ordered;
+  // `data-label` names the value when a phone draws the row as a card (spec 2026-11-11-ui-consistency-pass, D7); the
+  // cards apply only while at least one row holds a named value (the legacy `:has(td[data-label])`).
+  const labelOf = (item: Column<Row>) => (item.actions ? undefined : nodeText(item.header) || undefined);
+  const carded = cards && visible.length > 0 && columns.some((item) => labelOf(item) !== undefined);
   const table = (
-    // Explicit roles: a phone draws the rows as cards (display: block), which drops the implicit table roles.
-    <table className="data" role="table" data-testid="data-table">
-      <thead role="rowgroup">
-        <tr role="row">
+    <Table cards={carded} striped={striped} data-testid="data-table">
+      <THead>
+        <TRow>
           {columns.map((item) => {
             const active = sort?.key === item.key;
             const dir = active ? sort.dir : null;
             return (
-              <th
+              <THeadCell
                 key={item.key}
-                role="columnheader"
-                className={classes(item.fit && 'fit', item.num && 'num', item.actions && 'row-actions')}
+                num={item.num}
+                actions={item.actions}
+                fit={item.fit}
+                className={headClassName}
                 aria-sort={item.actions || !sortable || !nodeText(item.header).trim() ? undefined : dir === 'asc' ? 'ascending' : dir === 'desc' ? 'descending' : 'none'}
               >
                 {/* The actions column names itself to readers only, on every table; a column with no words in its
                     head (a picture, a tick box) does not sort (owner 2026-11-11). */}
                 {item.actions ? <span className="sr-only">{nodeText(item.header) || item.header}</span> : !sortable || !nodeText(item.header).trim() ? item.header : (
-                  <button
-                    type="button"
-                    className="col-sort"
+                  <SortButton
+                    order={dir}
                     onClick={() => {
                       onSortStart?.();
                       setSort((current) => (
@@ -166,41 +183,47 @@ export function DataTable<Row>({
                       setPage(1);
                     }}
                   >
-                    <span>{item.header}</span>
-                    {dir === 'asc' ? <ChevronUp size={14} aria-hidden="true" /> : dir === 'desc' ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronsUpDown size={14} aria-hidden="true" />}
-                  </button>
+                    {item.header}
+                  </SortButton>
                 )}
-              </th>
+              </THeadCell>
             );
           })}
-        </tr>
-      </thead>
-      <tbody role="rowgroup">
+        </TRow>
+      </THead>
+      <TBody>
         {visible.map((row) => (
-          <tr key={rowKey(row)} role="row">
+          <TRow key={rowKey(row)}>
             {columns.map((column) => (
-              // `data-label` names the value when a phone draws the row as a card (spec 2026-11-11-ui-consistency-pass, D7).
-              <td key={column.key} role="cell" data-label={column.actions ? undefined : nodeText(column.header) || undefined} className={classes(column.fit && 'fit', column.num && 'num', column.actions && 'row-actions', column.cell)}>
+              <TCell
+                key={column.key}
+                label={labelOf(column)}
+                num={column.num}
+                actions={column.actions}
+                fit={column.fit}
+                kind={column.kind}
+                className={[cellClassName, column.cell].filter(Boolean).join(' ') || undefined}
+              >
                 {column.render(row)}
-              </td>
+              </TCell>
             ))}
-          </tr>
+          </TRow>
         ))}
-      </tbody>
-    </table>
+      </TBody>
+    </Table>
   );
   const pager = paging && shouldShowPagination({ count: rows.length, pageSize, onPageSizeChange: setPageSize }) ? (
-    <div className="table-pager" data-testid="table-pager">
+    <div className={PAGER} data-testid="table-pager">
       <Pagination page={current} pageSize={pageSize} count={rows.length} onPageChange={setPage} onPageSizeChange={setPageSize} />
     </div>
   ) : null;
   if (bare) return hollow ? (<>{table}<EmptyState>{empty}</EmptyState></>) : table;
   return (
     <>
-      <div className="sheet" data-testid="table-sheet">
+      <TableSheet data-testid="table-sheet">
         {table}
         {hollow ? <EmptyState>{empty}</EmptyState> : null}
-      </div>
+      </TableSheet>
       {pager}
     </>
   );
@@ -242,6 +265,10 @@ export function PagedTable<Row>({
   empty?: ReactNode;
   keepHead?: boolean;
   skeleton?: { rows?: number; columns?: number };
+  cards?: boolean;
+  striped?: boolean;
+  cellClassName?: string;
+  headClassName?: string;
 }) {
   const { pageSize, setPageSize } = usePrefs();
   const [page, setPage] = useState(1);
@@ -276,7 +303,7 @@ export function PagedTable<Row>({
     setPage(1);
   };
   const pager = list.ready && shouldShowPagination({ count, pageSize, onPageSizeChange: choose }) ? (
-    <div className="table-pager" data-testid="table-pager">
+    <div className={PAGER} data-testid="table-pager">
       <Pagination page={current} pageSize={pageSize} count={count} onPageChange={setPage} onPageSizeChange={choose} />
     </div>
   ) : null;

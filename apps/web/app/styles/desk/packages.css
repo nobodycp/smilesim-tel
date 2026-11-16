@@ -32,8 +32,8 @@
 .company-logo { width: 64px; height: 64px; object-fit: contain; border-radius: var(--rd-radius-panel); background: var(--rd-surface-2); }
 .company-head { display: flex; align-items: center; gap: var(--rd-space-3); }
 .company-head .company-mark { width: 48px; height: 48px; border-radius: var(--rd-radius-tile); font-size: var(--rd-text-base); }
-.data .company-head .company-logo,
-.data .company-head .company-mark { width: 36px; height: 36px; border-radius: var(--rd-radius-md); font-size: var(--rd-text-md); }
+[data-slot='table'] .company-head .company-logo,
+[data-slot='table'] .company-head .company-mark { width: 36px; height: 36px; border-radius: var(--rd-radius-md); font-size: var(--rd-text-md); }
 .company-grid, .pack-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, 180px);

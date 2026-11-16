@@ -77,7 +77,7 @@ export function FinanceScreen() {
   // The design's ledger: the time, the reason as a coloured tag, what it was about, the amount, my margin, the balance
   // after. The account, its layer, who did it, the number and the package sit together in «التفاصيل».
   const columns: Column<FinanceRow>[] = [
-    { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    { key: 'when', header: t.when, kind: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     {
       key: 'kind',
       header: t.reasonColumn,
@@ -99,7 +99,7 @@ export function FinanceScreen() {
     {
       key: 'detail',
       header: t.detailsColumn,
-      cell: 'wrap',
+      kind: 'wrap',
       render: (row) => (
         <span className="ledger-detail">
           <span>

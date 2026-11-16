@@ -54,7 +54,7 @@ export function ProviderDecisionsScreen() {
     {
       key: 'operation',
       header: t.poTitle,
-      cell: 'po-cell',
+      kind: 'block',
       render: (item) => (
         <div className="po-row" data-testid="po-row" data-phase={item.phase ?? ''}>
           <div className="po-row-head">

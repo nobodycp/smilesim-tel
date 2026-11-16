@@ -7,14 +7,14 @@ import { Icon, type IconName } from './icon';
  * The empty state (Tailwind migration T2.7, ADR 0022), ported from the legacy desk/components.css `.empty`,
  * `.empty.empty-state`, `.empty-*` and `.empty.load-failed` rules and graphite.css's `.sheet >` rule, in their cascade
  * order: a grid centred on both axes, its items centred, 6px apart, at least as tall as its parent (not inside a
- * `.sheet`, where it takes its own height), 14px padding, centred 13px `--rd-muted` text; the mark a 32px round tile
- * on `--rd-surface-2` with a 16px `--rd-muted` glyph; the title 0.92rem bold ink; the line under it 13px
- * `--rd-muted`; `actions` one wrapping row, centred, 8px apart, 6px below. `tone="danger"` (a load or a page that
- * failed) draws the mark on `--rd-danger-soft` in `--rd-danger` and sets every button inside 6px lower, centred in
- * its column.
+ * table's sheet, `[data-slot=table-sheet]` since T2.9, where it takes its own height), 14px padding, centred 13px
+ * `--rd-muted` text; the mark a 32px round tile on `--rd-surface-2` with a 16px `--rd-muted` glyph; the title 0.92rem
+ * bold ink; the line under it 13px `--rd-muted`; `actions` one wrapping row, centred, 8px apart, 6px below.
+ * `tone="danger"` (a load or a page that failed) draws the mark on `--rd-danger-soft` in `--rd-danger` and sets every
+ * button inside 6px lower, centred in its column.
  */
 const emptyStateVariants = cva(
-  'm-0 grid min-h-full content-center justify-items-center gap-1.5 p-3.5 text-center text-md text-muted [.sheet>&]:min-h-auto',
+  'm-0 grid min-h-full content-center justify-items-center gap-1.5 p-3.5 text-center text-md text-muted [[data-slot=table-sheet]>&]:min-h-auto',
   {
     variants: {
       tone: {

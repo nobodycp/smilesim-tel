@@ -30,7 +30,7 @@ export function WalletScreen() {
     pick(await api.ledger({ cursor }), pageRows),
   );
   const columns: Column<LedgerRow>[] = [
-    { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    { key: 'when', header: t.when, kind: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     { key: 'kind', header: t.reasonColumn, render: (row) => <span className={`reason ${reasonTone(row.kind)}`}>{movementName(t, row.kind)}</span> },
     { key: 'detail', header: t.detailsColumn, render: (row) => [row.msisdn, row.packageName, row.note].filter(Boolean).join(' · ') || '—' },
     { key: 'amount', header: t.amount, num: true, render: (row) => <Money value={row.amount} signed /> },

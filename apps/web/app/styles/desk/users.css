@@ -123,11 +123,8 @@
 .terms-group.open .terms-chevron { transform: none; }
 /* Positioned, so the screen-reader-only header labels stay inside the scroll box instead of widening the page. */
 .terms-rows { position: relative; overflow-x: auto; }
-.terms-rows .data { width: 100%; }
-.terms-rows .data td { padding-block: var(--rd-space-1-5); }
-.terms-rows .data th { position: static; }
 /* A stopped or locked package reads muted; its name is struck through. */
-.terms-rows tr:has(button[role='switch'][aria-checked='false']) td:not(.row-actions) { color: var(--rd-muted); }
+.terms-rows tr:has(button[role='switch'][aria-checked='false']) td:not([data-actions]) { color: var(--rd-muted); }
 .terms-rows tr:has(button[role='switch'][aria-checked='false']) .terms-name strong { color: var(--rd-muted); text-decoration: line-through; text-decoration-color: var(--rd-line); }
 .terms-name { display: inline-flex; align-items: baseline; gap: var(--rd-space-2); white-space: nowrap; }
 .terms-name strong { color: var(--rd-ink); font-size: var(--rd-text-base); font-weight: 700; }

@@ -180,7 +180,7 @@ export function NumbersScreen() {
     {
       key: 'number',
       header: t.number,
-      cell: 'msisdn',
+      kind: 'msisdn',
       render: (line) => (
         <span className="line-cell" data-testid="line-cell">
           <Link className="num-link" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
@@ -222,7 +222,6 @@ export function NumbersScreen() {
     {
       key: 'days',
       header: t.remainingDays,
-      cell: 'days-col',
       render: (line) => {
         const ends = new Date(line.endsAt).toLocaleDateString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar-u-nu-latn');
         if (line.status !== 'active') return <span className="days off" data-testid="days-off" title={ends}>—</span>;

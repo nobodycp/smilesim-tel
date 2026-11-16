@@ -1,16 +1,6 @@
-/* The filter bar (FilterBar) and the period chips (the table search is components/table-search.tsx, Tailwind migration T2.2). */
-button.quiet {
-  height: 28px;
-  padding: 0 var(--rd-space-2);
-  border: 0;
-  border-radius: var(--rd-radius-sm);
-  background: transparent;
-  color: var(--rd-muted);
-  font-size: var(--rd-text-sm);
-  font-weight: 700;
-}
-button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger); }
-.pane select, .filter-bar select, .filter-bar input, .filters select, .filters input {
+/* The filter bar's fields: FilterBar's chips and the user terms tab's hand-written card (the bar itself is
+   components/filter-bar.tsx since Tailwind migration T2.9; the table search is components/table-search.tsx, T2.2). */
+[data-slot='filter-bar'] input {
   height: 34px;
   border: 1px solid var(--rd-field);
   border-radius: var(--rd-radius-sm);
@@ -18,7 +8,7 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   padding: 0 var(--rd-space-2);
   font-size: var(--rd-text-md);
 }
-.filter-bar, .filters {
+.filter-bar {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -29,7 +19,6 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   background: var(--rd-surface);
   box-shadow: var(--rd-shadow-card);
 }
-.filters { display: flex; flex-wrap: wrap; align-items: end; }
 .filter-panel {
   display: flex;
   flex-wrap: nowrap;
@@ -41,7 +30,7 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   border: 0;
   background: transparent;
 }
-.filter-panel label {
+[data-slot='filter-panel'] label {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
@@ -53,13 +42,11 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
   font-weight: 600;
   white-space: nowrap;
 }
-.filter-panel label:has(input[type='date']) {
+[data-slot='filter-panel'] label:has(input[type='date']) {
   flex: none;
   min-width: max-content;
 }
-.desk .filter-panel input:not([type='checkbox']):not([type='file']),
-.desk .filter-panel select,
-.filter-panel .quiet {
+.desk [data-slot='filter-panel'] input:not([type='checkbox']):not([type='file']) {
   height: 28px;
   padding: 0 var(--rd-space-2);
   border-radius: var(--rd-radius-xs);
@@ -67,5 +54,3 @@ button.quiet:hover { background: var(--rd-danger-soft); color: var(--rd-danger);
 }
 .filter-panel .filter-clear { margin-inline-start: auto; }
 .filter-panel .filter-clear { height: 28px; padding: 0 var(--rd-space-2); font-size: var(--rd-text-xs); }
-.filters label { display: grid; gap: var(--rd-space-1); color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
-.filters select, .filters input { height: 34px; }

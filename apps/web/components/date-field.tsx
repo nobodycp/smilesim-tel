@@ -22,7 +22,7 @@ function iso(date: Date) {
 
 /*
  * The look (Tailwind migration T2.8) is graphite.css's DateField block, ported value for value:
- * - the row: inline flex, stretched, 6px apart, no minimum width; in a filter chip (`.filter-panel > label`) no gap,
+ * - the row: inline flex, stretched, 6px apart, no minimum width; in a filter chip (`[data-slot=filter-panel] > label`) no gap,
  *   the button being the chip's value end.
  * - the text field takes the look of the place it sits in (the global field rule, the desk, the filter chip, the
  *   dialog: their legacy rules, until those slices move them); here only what the block itself set and reached:
@@ -43,13 +43,13 @@ function iso(date: Date) {
  *   «اليوم» and «مسح» at its two ends as 30px crimson semibold links with 10px sides, `--rd-accent-soft` under the
  *   pointer.
  */
-const ROW = 'inline-flex min-w-0 items-stretch gap-1.5 [.filter-panel>label_&]:gap-0';
-const FIELD = 'min-w-0 tabular-nums [.desk_.filter-panel>label_&]:w-30 [[data-slot=dialog]_&]:flex-1';
+const ROW = 'inline-flex min-w-0 items-stretch gap-1.5 [[data-slot=filter-panel]>label_&]:gap-0';
+const FIELD = 'min-w-0 tabular-nums [.desk_[data-slot=filter-panel]>label_&]:w-30 [[data-slot=dialog]_&]:flex-1';
 const OPEN = cn(
   'grid w-8.5 flex-none cursor-pointer place-items-center rounded-sm border border-solid border-line bg-surface-2 text-ink-2',
   'hover:text-accent aria-expanded:text-accent max-sm:w-10',
-  '[.filter-panel>label_&]:h-7.5 [.filter-panel>label_&]:w-7.5 [.filter-panel>label_&]:rounded-none [.filter-panel>label_&]:border-0',
-  '[.filter-panel>label_&]:border-s [.filter-panel>label_&]:border-s-ink/11 [.filter-panel>label_&]:bg-surface',
+  '[[data-slot=filter-panel]>label_&]:h-7.5 [[data-slot=filter-panel]>label_&]:w-7.5 [[data-slot=filter-panel]>label_&]:rounded-none [[data-slot=filter-panel]>label_&]:border-0',
+  '[[data-slot=filter-panel]>label_&]:border-s [[data-slot=filter-panel]>label_&]:border-s-ink/11 [[data-slot=filter-panel]>label_&]:bg-surface',
   '[[data-slot=dialog]_&]:h-8.5 max-[721px]:[.canvas_&]:min-h-11',
 );
 const STEP = 'grid size-7.5 cursor-pointer place-items-center rounded-xs border-0 bg-transparent text-ink-2 hover:bg-surface-2';

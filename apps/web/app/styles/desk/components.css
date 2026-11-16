@@ -172,7 +172,7 @@
 .op-text [data-slot='badge'] { justify-self: start; margin-top: var(--rd-space-0-5); }
 .canvas .empty:not(.empty-state),
 .pane .empty:not(.empty-state),
-.sheet .empty:not(.empty-state) { display: block; padding: var(--rd-space-3-5); }
+[data-slot='table-sheet'] .empty:not(.empty-state) { display: block; padding: var(--rd-space-3-5); }
 /* The finance page's head (features/wallets/screens/finance-screen.tsx): the 30-day chart beside three figures. */
 .wallet-board { display: grid; grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr); gap: var(--rd-space-3); align-items: stretch; }
 .wallet-figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rd-space-3); align-content: start; }

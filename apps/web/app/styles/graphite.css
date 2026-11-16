@@ -69,12 +69,11 @@ input[readonly] { background-color: transparent; }
 
 /* ── Dialog: the crimson thread on top — components/ui/dialog.tsx since Tailwind migration T2.5 ── */
 
-/* ── Tables: a quiet dense head ── */
-.data th { height: 38px; color: var(--rd-muted); font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; }
-.data td { height: 44px; }
+/* ── Tables: a quiet dense head — components/ui/table.tsx since Tailwind migration T2.9 ── */
 
-/* ── Filter bar: a card, fields inset ── */
-.filter-bar, .filters { border-radius: var(--rd-radius-sm); }
+/* ── Filter bar: a card, fields inset (components/filter-bar.tsx since Tailwind migration T2.9; this card is the
+   hand-written one of the user terms tab) ── */
+.filter-bar { border-radius: var(--rd-radius-sm); }
 
 /* ── Motion on inner pages: cards rise in with a stagger, lift under the pointer ── */
 @media (prefers-reduced-motion: no-preference) {
@@ -122,13 +121,14 @@ input[readonly] { background-color: transparent; }
 /* As in the design, a list's card ends with its content: it never stretches to the bottom of the page (which left an
    empty block under short lists) and never squeezes its rows; the page scrolls when the content is longer. */
 .desk > .pane, .desk > section.pane, .desk > .stack > .pane { flex: none; }
-.desk .sheet { flex: none; min-height: 0; overflow-x: auto; }
-/* Under a kept table head the empty block takes its own height (components/empty-state.tsx, `[.sheet>&]`, since
-   Tailwind migration T2.7). */
+/* The table's sheet keeps its own height in a desk (components/ui/table.tsx since Tailwind migration T2.9); under a
+   kept table head the empty block takes its own height (components/empty-state.tsx since Tailwind migration T2.7). */
 
 /* ── Filters (Graphite, from design/night-desk-family): chips in one wrapping row — the field's name on a raised
    segment, the field beside it, an accent edge once it holds a value — on the top edge of the table card below.
-   On a phone they move into the «كل الفلاتر» drawer (components/filter-bar.tsx). ── */
+   On a phone they move into the «كل الفلاتر» drawer (components/filter-bar.tsx). The bar, its panel, «كل الفلاتر», the
+   drawer, the clear and a chip's «×» are utilities there since Tailwind migration T2.9; the `.filter-bar` /
+   `.filter-panel` rules below are the user terms tab's hand-written card, the chip rules read the slots of both. ── */
 .filter-bar {
   position: relative;
   padding: 12px 16px;
@@ -138,10 +138,10 @@ input[readonly] { background-color: transparent; }
   box-shadow: inset 0 0 0 1px var(--rd-line);
 }
 .filter-bar:has(+ .pane), .filter-bar:has(+ .data-frame), .filter-bar:has(+ section) { border-end-start-radius: 0; border-end-end-radius: 0; }
-.filter-bar + .pane, .filter-bar + .data-frame, .filter-bar + section.pane { margin-block-start: calc(-1 * var(--rd-space-3-5) - 1px); border-start-start-radius: 0; border-start-end-radius: 0; }
+[data-slot='filter-bar'] + .pane, [data-slot='filter-bar'] + section.pane { margin-block-start: calc(-1 * var(--rd-space-3-5) - 1px); border-start-start-radius: 0; border-start-end-radius: 0; }
 .filter-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; overflow: visible; }
-.filter-panel > label,
-.filter-panel > label:has(input[type='date']) {
+[data-slot='filter-panel'] > label,
+[data-slot='filter-panel'] > label:has(input[type='date']) {
   display: inline-flex;
   flex-direction: row;
   align-items: stretch;
@@ -160,15 +160,15 @@ input[readonly] { background-color: transparent; }
   line-height: 30px;
   white-space: nowrap;
 }
-.filter-panel > label:has(input:not([type='checkbox']):not([value=''])),
-.filter-panel > label:has([data-slot='select-trigger']:not([data-value=''])),
-.filter-panel > label:has(input[type='checkbox']:checked) {
+[data-slot='filter-panel'] > label:has(input:not([type='checkbox']):not([value=''])),
+[data-slot='filter-panel'] > label:has([data-slot='select-trigger']:not([data-value=''])),
+[data-slot='filter-panel'] > label:has(input[type='checkbox']:checked) {
   border-color: color-mix(in srgb, var(--rd-accent) 55%, transparent);
   background: var(--rd-accent-soft);
   color: var(--rd-accent);
 }
-.desk .filter-panel > label :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select),
-.filter-panel > label :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select) {
+.desk [data-slot='filter-panel'] > label :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select),
+[data-slot='filter-panel'] > label :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select) {
   height: 30px;
   margin-inline-start: 10px;
   padding-inline: 10px;
@@ -181,63 +181,22 @@ input[readonly] { background-color: transparent; }
   font-size: 12.5px;
   font-weight: 600;
 }
-.filter-panel > label input:not([type='date']):not([type='checkbox']) { width: 12rem; }
+[data-slot='filter-panel'] > label input:not([type='date']):not([type='checkbox']) { width: 12rem; }
 /* A yes/no filter is a toggle chip: the chip lights when it is on, the box itself stays for keyboards and readers. */
-.filter-panel > label:has(input[type='checkbox']) { position: relative; align-items: center; gap: 8px; padding-inline: 12px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
-.filter-panel > label > input[type='checkbox'] { position: absolute; inset: 0; width: 100%; max-width: none; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
-.filter-panel > label:has(input[type='checkbox']:focus-visible) { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
-.filter-panel > label :is(input, select):focus { outline: none; box-shadow: inset 0 -2px 0 var(--rd-accent); }
-.filter-panel > .seg, .filter-panel > [data-slot='tabs'] { height: 32px; }
+[data-slot='filter-panel'] > label:has(input[type='checkbox']) { position: relative; align-items: center; gap: 8px; padding-inline: 12px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
+[data-slot='filter-panel'] > label > input[type='checkbox'] { position: absolute; inset: 0; width: 100%; max-width: none; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+[data-slot='filter-panel'] > label:has(input[type='checkbox']:focus-visible) { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
+[data-slot='filter-panel'] > label :is(input, select):focus { outline: none; box-shadow: inset 0 -2px 0 var(--rd-accent); }
+[data-slot='filter-panel'] > .seg, [data-slot='filter-panel'] > [data-slot='tabs'] { height: 32px; }
 .filter-panel .filter-clear { height: 32px; margin-inline-start: auto; color: var(--rd-accent); }
-.filter-all, .filter-drawer-head, .filter-drawer-foot, .filter-scrim { display: none; }
 @media (max-width: 767px) {
   .filter-bar { display: flex; align-items: center; gap: 8px; }
-  .filter-all {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 36px;
-    padding-inline: 12px;
-    border: 0;
-    border-radius: var(--rd-radius-sm);
-    background: var(--rd-surface-2);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent);
-    color: var(--rd-ink-2);
-    font-weight: 600;
-  }
   .filter-bar:not(.drawer-open) .filter-panel { display: none; }
-  .filter-bar.drawer-open .filter-scrim { display: block; position: fixed; inset: 0; z-index: var(--rd-z-dialog); background: var(--rd-scrim); }
-  .filter-bar.drawer-open .filter-panel {
-    position: fixed;
-    z-index: calc(var(--rd-z-dialog) + 1);
-    inset-block: 0;
-    inset-inline-end: 0;
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    gap: 12px;
-    width: min(380px, 92vw);
-    padding: 0 18px 18px;
-    overflow-y: auto;
-    background: var(--rd-surface);
-    box-shadow: var(--rd-shadow-pop);
-  }
-  .filter-bar.drawer-open .filter-drawer-head { display: flex; align-items: center; justify-content: space-between; height: 60px; margin-inline: -18px; padding-inline: 18px; border-bottom: 1px solid var(--rd-line); }
-  .filter-bar.drawer-open .filter-drawer-foot { display: grid; margin-block-start: auto; padding-block-start: 12px; border-top: 1px solid var(--rd-line); }
-  .filter-bar.drawer-open .filter-panel > label { height: 44px; line-height: 42px; }
-  .filter-bar.drawer-open .filter-panel > label :is(input, select) { flex: 1; height: 42px; width: auto; }
-  .filter-bar.drawer-open .filter-clear { margin-inline-start: 0; align-self: flex-start; }
+  [data-slot='filter-bar'][data-open] [data-slot='filter-panel'] > label { height: 44px; line-height: 42px; }
+  [data-slot='filter-bar'][data-open] [data-slot='filter-panel'] > label :is(input, select) { flex: 1; height: 42px; width: auto; }
 }
-@media (prefers-reduced-motion: no-preference) and (max-width: 767px) {
-  .filter-bar.drawer-open .filter-panel { animation: filter-slide 220ms var(--rd-ease-out); }
-}
+/* The drawer's slide (components/filter-bar.tsx and components/ui/sheet.tsx read it). */
 @keyframes filter-slide { from { opacity: 0; transform: translateX(-24px); } }
-
-/* Table cells keep one line, as in the design; a table wider than its card scrolls inside it. A long text column
-   (a role's permissions, a notice) marks its cells `wrap`. */
-.data td, .data th { white-space: nowrap; }
-.data td.wrap { min-width: 16rem; white-space: normal; }
 
 /* A card's body and stacks keep their rows at their own height when the card is stretched by a neighbour. */
 .pane-body, .stack, .settings-col, form { align-content: start; }
@@ -467,31 +426,19 @@ input[readonly] { background-color: transparent; }
 /* The language at the sidebar's foot, beside the account. */
 
 /* ── Tables (Graphite): no band behind the head — small bold muted names over a stronger rule; 46px rows on
-   zebra; the number in each row bold and spaced; a quiet pager under a hairline. ── */
-.data th {
-  background: var(--rd-surface);
-  color: var(--rd-muted);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  border-bottom: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent);
-  box-shadow: none;
-}
-.data th, .data td { padding-inline: 14px; }
-.data td { height: 46px; border-bottom-color: transparent; }
-.data tbody tr:hover td { background: var(--rd-accent-soft); }
-.data td.msisdn, .data .line-number, .data td a.msisdn { font-weight: 600; letter-spacing: 0.03em; }
+   zebra; the number in each row bold and spaced; a quiet pager under a hairline.
+   The head, the rows and the cells are components/ui/table.tsx since Tailwind migration T2.9. */
+[data-slot='table'] .line-number, [data-slot='table'] td a.msisdn { font-weight: 600; letter-spacing: 0.03em; }
 /* The pager is components/ui/pagination.tsx since Tailwind migration T2.7. */
 /* The pager's previous / next and every primary button (crimson, owner 2026-11-11) are drawn by components/ui since
    Tailwind migration T2.1. */
 /* A choice made of segments (the provider outcome) sits in the chip row with its name beside it. */
-.filter-panel > .stack { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
-.filter-panel > .stack > .hint { color: var(--rd-muted); font-size: 12px; font-weight: 600; }
-@media (max-width: 767px) { .filter-bar.drawer-open .filter-panel > .stack { justify-content: space-between; } }
+[data-slot='filter-panel'] > .stack { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
+[data-slot='filter-panel'] > .stack > .hint { color: var(--rd-muted); font-size: 12px; font-weight: 600; }
+@media (max-width: 767px) { [data-slot='filter-bar'][data-open] [data-slot='filter-panel'] > .stack { justify-content: space-between; } }
 /* Chips are as wide as their value. */
-.filter-panel > label input:not([type='date']):not([type='checkbox']) { width: 10rem; }
+[data-slot='filter-panel'] > label input:not([type='date']):not([type='checkbox']) { width: 10rem; }
 /* The drawer's foot always holds theme and language: the topbar no longer has the language. */
-.canvas .data td.when, .canvas .data td.when bdi { white-space: nowrap; max-width: none; }
 /* Period chips (operations, reports): one segmented control, the chosen period lit underneath. */
 
 /* ── Numbers table cells (Graphite): the number with its SIM mark, the package beside its company's cut-corner mark,
@@ -499,7 +446,7 @@ input[readonly] { background-color: transparent; }
 .line-cell { display: inline-flex; align-items: center; gap: 10px; }
 .pack-cell { display: inline-flex; align-items: center; gap: 10px; text-align: start; }
 .pack-cell b { display: block; font-weight: 600; }
-.data .sub, .pack-cell .sub { display: block; color: var(--rd-muted); font-size: 11.5px; font-weight: 400; line-height: 1.3; }
+[data-slot='table'] .sub, .pack-cell .sub { display: block; color: var(--rd-muted); font-size: 11.5px; font-weight: 400; line-height: 1.3; }
 .co-mark {
   display: grid;
   place-items: center;
@@ -563,9 +510,8 @@ input[readonly] { background-color: transparent; }
 
 /* ── Tasks as card rows (Graphite): the operation's mark, its name and status, the number with its company, package
    and point of sale; the amount; take or open. The head is kept for screen readers only. ── */
-.task-list .data thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.task-list .data td { height: 64px; }
-.task-list .data td.task-cell { width: 100%; font-weight: 400; letter-spacing: 0; }
+.task-list [data-slot='table'] thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* Its row height and the task cell's width, weight and spacing are the screen's (features/tasks/screens/tasks-screen.tsx). */
 .task-card { display: flex; align-items: center; gap: 14px; color: inherit; text-decoration: none; }
 .task-mark {
   display: grid;
@@ -604,7 +550,7 @@ input[readonly] { background-color: transparent; }
 .line-pane { overflow: visible; border: 0; background: transparent; box-shadow: none; }
 .line-pane > [data-slot='tabs'] { margin: 0 0 14px; }
 .line-pane .pane-body { padding: 0; }
-.line-pane .table-wrap, .line-pane .sheet, .line-pane .line-details { border-radius: var(--rd-radius-sm); background: var(--rd-surface); box-shadow: inset 0 0 0 1px var(--rd-line); }
+.line-pane .table-wrap, .line-pane [data-slot='table-sheet'], .line-pane .line-details { border-radius: var(--rd-radius-sm); background: var(--rd-surface); box-shadow: inset 0 0 0 1px var(--rd-line); }
 .line-pane .line-details { padding: 14px 18px 18px; }
 .line-op-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 .line-op {
@@ -707,8 +653,7 @@ input[readonly] { background-color: transparent; }
 .po-step > span { font-weight: 600; }
 /* The decision form is features/tasks/components/decision-dialog.tsx since Tailwind migration T2.5. */
 /* The queue: one row of the paged table per waiting operation, the row a block of its own. */
-.po-queue table.data thead { display: none; }
-.po-queue td.po-cell { padding: 0; white-space: normal; }
+.po-queue table[data-slot='table'] thead { display: none; }
 .po-row { display: grid; gap: var(--rd-space-2); padding: var(--rd-space-3-5); text-align: start; }
 .po-row-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2); }
 .po-row-open { margin-inline-start: auto; }
@@ -791,20 +736,16 @@ input[readonly] { background-color: transparent; }
    list, stays here until T5. */
 @keyframes filter-pop-in { from { opacity: 0; translate: 0 -4px; } }
 /* The chip itself reads like the design: the value in ink, a pointer on the whole chip. */
-.filter-panel > label:has([data-slot='select-trigger']) { cursor: pointer; }
-.filter-panel > label select { cursor: pointer; }
-/* A chip is as wide as its value (the list shows the rest). */
-.filter-panel > label select { field-sizing: content; min-width: 4.5rem; max-width: 16rem; }
+[data-slot='filter-panel'] > label:has([data-slot='select-trigger']) { cursor: pointer; }
 
 /* ── Packages page, exactly as the design ── */
 /* The shekel sign small and quiet after every figure. */
 .money .cur { margin-inline-start: 1px; color: var(--rd-muted); font-size: 0.8em; font-weight: 400; }
 .money.pos .cur, .money.neg .cur { color: inherit; opacity: 0.75; }
-/* Chips that stand on the page (no card), above the list. */
-.filter-bar.loose { padding: 0; background: transparent; box-shadow: none; }
-.filter-bar.loose + .pane, .filter-bar.loose + section.pane { margin-block-start: 0; border-start-start-radius: var(--rd-radius-sm); border-start-end-radius: var(--rd-radius-sm); }
+/* Chips that stand on the page (no card), above the list (`FilterBar loose`). */
+[data-slot='filter-bar'][data-loose] + .pane, [data-slot='filter-bar'][data-loose] + section.pane { margin-block-start: 0; border-start-start-radius: var(--rd-radius-sm); border-start-end-radius: var(--rd-radius-sm); }
 /* The search box: an icon, the field, a placeholder that says what it finds. */
-.filter-panel > label.filter-search {
+[data-slot='filter-panel'] > label.filter-search {
   gap: 8px;
   width: 280px;
   max-width: 100%;
@@ -816,9 +757,9 @@ input[readonly] { background-color: transparent; }
   color: var(--rd-muted);
   line-height: 36px;
 }
-.filter-panel > label.filter-search:focus-within { box-shadow: inset 0 0 0 1px var(--rd-accent); }
-.filter-panel > label.filter-search svg { flex: none; align-self: center; }
-.desk .filter-panel > label.filter-search input:not([type='checkbox']), .filter-panel > label.filter-search input:not([type='checkbox']) {
+[data-slot='filter-panel'] > label.filter-search:focus-within { box-shadow: inset 0 0 0 1px var(--rd-accent); }
+[data-slot='filter-panel'] > label.filter-search svg { flex: none; align-self: center; }
+.desk [data-slot='filter-panel'] > label.filter-search input:not([type='checkbox']), [data-slot='filter-panel'] > label.filter-search input:not([type='checkbox']) {
   flex: 1;
   width: auto;
   height: 34px;
@@ -828,24 +769,12 @@ input[readonly] { background-color: transparent; }
   background: transparent;
   color: var(--rd-ink);
 }
-.filter-panel > label.filter-search:has(input:not([value=''])) { border: 0; background: var(--rd-sunken); box-shadow: inset 0 0 0 1px var(--rd-accent); color: var(--rd-muted); }
-/* The «×» of a chip that holds a value, in place of its chevron. */
-.chip-x {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 26px;
-  padding: 0;
-  border: 0;
-  border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent);
-  background: transparent;
-  color: var(--rd-muted);
-}
-.chip-x:hover { background: var(--rd-accent-soft); color: var(--rd-accent); }
-.filter-panel > label:has(.chip-x) select { padding-inline-end: 10px; }
-/* «مسح» shows only once something is filtered. `!important`: the clear is a Button, whose `inline-flex` utility sits in a
-   layer above this sheet (Tailwind migration T2.1); an important declaration in a lower layer still wins. */
-.filter-panel:not(:has(> label :is(.chip-x, input:not([type='checkbox']):not([value=''])), > label input[type='checkbox']:checked)) .filter-clear { display: none !important; }
+[data-slot='filter-panel'] > label.filter-search:has(input:not([value=''])) { border: 0; background: var(--rd-sunken); box-shadow: inset 0 0 0 1px var(--rd-accent); color: var(--rd-muted); }
+/* The «×» of a chip that holds a value is components/filter-bar.tsx since Tailwind migration T2.9. */
+/* «مسح» of the user terms tab's card shows only once something is filtered (FilterBar's own clear does it with a
+   utility). `!important`: the clear is a Button, whose `inline-flex` utility sits in a layer above this sheet
+   (Tailwind migration T2.1); an important declaration in a lower layer still wins. */
+.filter-panel:not(:has(> label :is([data-slot='chip-clear'], input:not([type='checkbox']):not([value=''])), > label input[type='checkbox']:checked)) .filter-clear { display: none !important; }
 /* A company's group head: its mark, the name over the count, the chevron at the far end. */
 .terms-group-head { gap: 12px; min-height: 58px; padding-inline: 18px; }
 .terms-group-head .group-name { display: grid; gap: 1px; text-align: start; }
@@ -853,11 +782,10 @@ input[readonly] { background-color: transparent; }
 .terms-group-head .terms-chevron { margin-inline-start: auto; color: var(--rd-muted); transform: rotate(0deg); transition: transform 180ms ease; }
 .terms-group.open .terms-group-head .terms-chevron { transform: rotate(180deg); }
 /* A stopped package's row reads dim. */
-.terms-rows tr:has([role='switch'][aria-checked='false']) td:not(.row-actions):not(:has([role='switch'])) { color: var(--rd-muted); opacity: 0.7; }
+.terms-rows tr:has([role='switch'][aria-checked='false']) td:not([data-actions]):not(:has([role='switch'])) { color: var(--rd-muted); opacity: 0.7; }
 /* The package's name over its facts, and the design's 56px rows. */
 .terms-name { display: grid; gap: 1px; }
 .terms-name .hint { font-size: 11.5px; }
-.terms-rows .data td { height: 56px; }
 /* Package page: its on/off and whether it is for sale beside the title. */
 .sheet-head-actions { display: inline-flex; align-items: center; gap: 10px; }
 
@@ -924,7 +852,7 @@ input[readonly] { background-color: transparent; }
 
 /* Report pages (Graphite report layout): the period switch and the chips on one row above three figures. */
 .report-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-block-end: 14px; }
-.report-filters > .filter-bar.loose { flex: 1 1 auto; margin: 0; }
+.report-filters > [data-slot='filter-bar'][data-loose] { flex: 1 1 auto; margin: 0; }
 .period { display: inline-flex; flex: none; border-radius: var(--rd-radius-xs); box-shadow: inset 0 0 0 1px var(--rd-line); overflow: hidden; }
 .period button { height: 34px; padding-inline: 12px; border: 0; background: transparent; color: var(--rd-muted); font: inherit; font-weight: 600; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
 .period button + button { border-inline-start: 1px solid var(--rd-line); }
@@ -945,9 +873,8 @@ input[readonly] { background-color: transparent; }
 .stat .stat-name { display: inline-block; max-inline-size: 100%; font-size: 1.15rem; line-height: 1.35; }
 
 /* Notices as card rows (Graphite): the group's mark, the title over its detail, the age, a crimson diamond while unread. */
-.notice-list .data thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.notice-list .data td.notice-cell { width: 100%; padding: 0; white-space: normal; }
-.notice-list .data tbody tr:nth-child(even) td { background: transparent; }
+.notice-list [data-slot='table'] thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* The notice cell's width and the list without zebra are the screen's (features/notices/screens/notices-screen.tsx). */
 .notice-card { display: flex; align-items: center; gap: 14px; inline-size: 100%; padding: 12px 18px; border: 0; background: transparent; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 .notice-card:hover { background: var(--rd-surface-2); }
 .notice-card.unread { background: var(--rd-accent-soft); }
@@ -962,7 +889,6 @@ input[readonly] { background-color: transparent; }
 .report-filters > .tabs, .report-filters > [role='tablist'] { flex: none; }
 
 /* Roles as the design's matrix: a tick tile per grant held, an empty tile per grant not held, a dash where it never applies. */
-.roles-matrix .data th:not(:first-child):not(.row-actions), .roles-matrix .data td.grant-cell { text-align: center; }
 .grant { display: inline-grid; place-items: center; inline-size: 22px; block-size: 22px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--rd-line-strong); vertical-align: middle; }
 .grant.on { background: var(--rd-success-soft); color: var(--rd-success); box-shadow: inset 0 0 0 1px var(--rd-success); }
 .grant-none { color: var(--rd-muted); opacity: 0.5; }
@@ -1058,11 +984,12 @@ input[readonly] { background-color: transparent; }
 .wallet-band .figure-tile-meta, .account-band .figure-tile-meta { display: block; line-height: 1.6; }
 
 /* NameField (components/name-field.tsx): its own look is Tailwind utilities since migration T2.2. What stays are the
-   rules of the places it sits in, which read its `data-slot` (they move with the filter bar, T2.9). */
-.filter-panel > label [data-slot='name-field'] > input { width: 11rem; }
+   rules of the places it sits in, which read its `data-slot` (the filter chip's: they stay with the chip rules, which
+   read the filter panel's slot since Tailwind migration T2.9, until the screens move, T4). */
+[data-slot='filter-panel'] > label [data-slot='name-field'] > input { width: 11rem; }
 @media (max-width: 767px) {
-  .filter-bar.drawer-open .filter-panel > label [data-slot='name-field'] { flex: 1; }
-  .filter-bar.drawer-open .filter-panel > label [data-slot='name-field'] > input { width: 100%; }
+  [data-slot='filter-bar'][data-open] [data-slot='filter-panel'] > label [data-slot='name-field'] { flex: 1; }
+  [data-slot='filter-bar'][data-open] [data-slot='filter-panel'] > label [data-slot='name-field'] > input { width: 100%; }
 }
 
 /* A pane's own tools above its table (the company's «الرزم»: the provider filter; spec 2026-11-09-admin-review, 4). */
@@ -1132,55 +1059,17 @@ input[readonly] { background-color: transparent; }
    its column's name (`data-label`, set by DataTable) two to a row, and the row's ⋯ stays in the card's corner. The
    lists already drawn as cards (tasks, notices) and the roles matrix keep their own layout. */
 @media (max-width: 640px) {
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) { display: block; width: 100%; min-width: 0; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody { display: block; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody tr {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 14px;
-    padding: 14px 16px;
-    border-block-end: 1px solid var(--rd-line);
-  }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td {
-    display: grid;
-    align-content: start;
-    justify-items: start;
-    gap: 3px;
-    min-width: 0;
-    height: auto;
-    padding: 0;
-    border: 0;
-    text-align: start;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td[data-label]::before { content: attr(data-label); color: var(--rd-muted); font-size: 11.5px; font-weight: 600; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td:first-child { grid-column: 1 / -1; padding-inline-end: 44px; font-size: var(--rd-text-md); }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td:first-child::before { display: none; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.row-actions { position: absolute; inset-block-start: 8px; inset-inline-end: 8px; width: auto; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.row-actions::before { display: none; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td:empty { display: none; }
-  /* The zebra and hover tints paint the whole card, not each value inside it. */
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td,
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody tr:nth-child(even) td,
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody tr:hover td { background: transparent; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) tbody tr:nth-child(even) { background: color-mix(in srgb, var(--rd-ink) 3%, transparent); }
-  /* A narrow picture first (offers) sits beside the title instead of being it. */
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.fit:first-child { grid-column: auto; padding-inline-end: 0; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.fit:first-child + td { grid-column: 1 / -1; padding-inline-end: 44px; font-size: var(--rd-text-md); }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td.fit:first-child + td::before { display: none; }
-  .sheet:has(> table.data td[data-label]) { overflow-x: visible; }
+  /* The card itself (rows, cells, names, title, corner ⋯, tints) is components/ui/table.tsx since Tailwind migration
+     T2.9 (`Table cards`, which carries `data-cards`); what the cells hold is fitted here. */
   /* Inside a card a cell's content fits the card: no desktop minimum width. */
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td > * { min-inline-size: 0; max-inline-size: 100%; }
+  table[data-slot='table'][data-cards]:has(td[data-label]) td > * { min-inline-size: 0; max-inline-size: 100%; }
   /* A cell that holds price editors (a sell cell's two fields and save, a default beside its own price field) takes
      the card's whole row and wraps there; a price field keeps users.css's 6.5rem and is never wider than its cell.
      A cap, not `inline-size: min(6.5rem, 100%)`: a percentage width counts as auto when the shrink-to-fit
      `.terms-price` sizes itself, so the label grew to the input's default width (187px) (UI maintenance P0.7). */
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) td:has(.sell-cell, .price-pair) { grid-column: 1 / -1; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) :is(.sell-cell, .price-pair) { flex-wrap: wrap; justify-content: flex-start; }
-  table.data:has(td[data-label]):not(:is(.notice-list, .task-list, .roles-matrix) *) :is(.terms-price, [data-slot='price-field']) input { max-inline-size: 100%; }
+  table[data-slot='table'][data-cards]:has(td[data-label]) td:has(.sell-cell, .price-pair) { grid-column: 1 / -1; }
+  table[data-slot='table'][data-cards]:has(td[data-label]) :is(.sell-cell, .price-pair) { flex-wrap: wrap; justify-content: flex-start; }
+  table[data-slot='table'][data-cards]:has(td[data-label]) :is(.terms-price, [data-slot='price-field']) input { max-inline-size: 100%; }
 }
 
 /* Phones, continued: 40px pager and page-size controls, two cards a row where the card is short, and the run-mode
@@ -1257,9 +1146,7 @@ input[type='number']::-webkit-inner-spin-button, input[type='number']::-webkit-o
 .seg.role-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); inline-size: 100%; }
 .seg.role-seg button { padding-inline: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .role-twofactor { gap: 0; }
-.role-twofactor .filter-bar.bare { margin-block-start: 12px; }
-.filter-bar.bare .filter-all, .filter-bar.bare .filter-drawer-head, .filter-bar.bare .filter-drawer-foot { display: none; }
-@media (max-width: 767px) { .filter-bar.bare.loose .filter-panel { display: flex; } }
+.role-twofactor [data-slot='filter-bar'][data-bare] { margin-block-start: 12px; }
 .role-hint.role-note { margin: 10px 0 0; }
 .dialog-form > .role-twofactor { margin-block-start: 8px; padding-block-start: 14px; border-block-start: 1px solid var(--rd-line); }
 .two-factor-block { gap: 12px; }

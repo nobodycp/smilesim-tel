@@ -154,7 +154,7 @@ export function LineCardScreen() {
   const switchChoices = packages.filter((row) => targets.has(row.code));
   const logColumns: Column<LineHistory>[] = [
     { key: 'kind', header: t.kind, render: (row) => actionName(t, row.action) },
-    { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    { key: 'when', header: t.when, kind: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
     { key: 'company', header: t.company, render: (row) => row.companyName || '—' },
     { key: 'package', header: t.packageName, render: (row) => row.packageName || '—' },

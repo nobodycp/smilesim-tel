@@ -13,7 +13,7 @@ body {
 h1, h2, h3, .brand-name {
   font-family: var(--font-sans), var(--font-he), Tahoma, sans-serif;
 }
-.money, .line-number, .data td.msisdn, .tabular {
+.money, .line-number, .tabular {
   font-variant-numeric: tabular-nums;
 }
 button, input, select, textarea { font: inherit; color: inherit; }

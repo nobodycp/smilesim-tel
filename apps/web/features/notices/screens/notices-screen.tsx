@@ -74,7 +74,8 @@ export function NoticesScreen() {
     {
       key: 'notice',
       header: t.notices,
-      cell: 'notice-cell',
+      kind: 'block',
+      cell: 'w-full',
       render: (row) => {
         const Mark = markOf(row);
         return (
@@ -122,7 +123,7 @@ export function NoticesScreen() {
         </FilterBar>
       </div>
       <section className="pane notice-list">
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noNotices} skeleton={{ rows: 6, columns: 1 }} />
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noNotices} skeleton={{ rows: 6, columns: 1 }} cards={false} striped={false} />
       </section>
     </Desk>
   );

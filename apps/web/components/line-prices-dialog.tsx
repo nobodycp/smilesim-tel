@@ -14,6 +14,7 @@ import { LoadFailed } from './load-failed';
 import { TableSkeleton } from './loading';
 import { PriceField } from './price-field';
 import { Button } from './ui/button';
+import { TBody, TCell, THead, THeadCell, TRow, Table, TableSheet } from './ui/table';
 
 type Props = {
   open: boolean;
@@ -137,8 +138,8 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
       ) : groups.length === 0 ? (
         <EmptyState icon="numbers">{t.linePricesEmpty}</EmptyState>
       ) : (
-        // The legacy `.dialog-form`: a grid 12px apart. The table keeps its legacy pane, sheet and table classes
-        // until the table moves onto components/ui (T2.9).
+        // The legacy `.dialog-form`: a grid 12px apart. The table is components/ui/table.tsx (Tailwind migration T2.9);
+        // its pane keeps the legacy frame class until T3.3.
         <div className="grid gap-3">
           <div>
             <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={follow}>
@@ -146,23 +147,23 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
             </Button>
           </div>
           <section className="pane">
-            <div className="sheet">
-              <table className="data" data-testid="line-prices-table">
-                <thead>
-                  <tr>
-                    <th className="num">{t.linePricesCurrent}</th>
-                    <th className="num">{t.linePricesCount}</th>
-                    <th className="num">{t.linePricesNew}</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <TableSheet>
+              <Table data-testid="line-prices-table">
+                <THead>
+                  <TRow>
+                    <THeadCell num>{t.linePricesCurrent}</THeadCell>
+                    <THeadCell num>{t.linePricesCount}</THeadCell>
+                    <THeadCell num>{t.linePricesNew}</THeadCell>
+                  </TRow>
+                </THead>
+                <TBody>
                   {groups.map((group) => {
                     const draft = drafts[group.price];
                     return (
-                      <tr key={group.price}>
-                        <td className="num"><Money value={group.price} /></td>
-                        <td className="num">{group.count}</td>
-                        <td className="num">
+                      <TRow key={group.price}>
+                        <TCell num><Money value={group.price} /></TCell>
+                        <TCell num>{group.count}</TCell>
+                        <TCell num>
                           <span className="price-pair">
                             <PriceField
                               label={`${formatShekel(group.price)} ${t.linePricesNew}`}
@@ -173,13 +174,13 @@ function LinePricesTable({ code, packageName, scope, onClose, onSaved }: Props) 
                             />
                             {draft === 'current' ? <span className="hint">{t.linePricesFollowShort}</span> : null}
                           </span>
-                        </td>
-                      </tr>
+                        </TCell>
+                      </TRow>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
+                </TBody>
+              </Table>
+            </TableSheet>
           </section>
         </div>
       )}

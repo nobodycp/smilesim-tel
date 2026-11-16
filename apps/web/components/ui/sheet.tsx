@@ -10,12 +10,13 @@ import { cn } from '../../lib/cn';
  * page behind it is hidden from assistive technology and does not scroll, the focus stays inside it, Escape and a
  * press outside close it (through `onOpenChange`), and the focus goes back where it was. The panel is
  * `role="dialog"`, named by a `SheetTitle` (or `aria-label`). Two sides, each the look of the legacy panel it
- * replaces (T3.1 moves the shell drawer onto it; the filter bar's drawer may follow in T2.9):
+ * replaces (T3.1 moves the shell drawer onto it; the filter bar keeps its own panel, which becomes the same drawer in
+ * place on a phone, components/filter-bar.tsx since T2.9):
  * - start: the shell drawer (shell.css `.drawer` and `.backdrop`): the full height at the reading start,
  *   min(300px, 86vw) wide, the page colour (`--rd-bg`), a 1px `--rd-line` rule at its inline end,
  *   `--rd-shadow-pop`, 14px on top and 12px at the sides and bottom, a column; the overlay is `--rd-scrim-strong`
  *   with a 2px backdrop blur; drawer layer (`--rd-z-drawer`) over the overlay layer (`--rd-z-overlay`);
- * - end: the filter bar's phone drawer (graphite.css `.filter-bar.drawer-open .filter-panel` and `.filter-scrim`):
+ * - end: the look of the filter bar's phone drawer (components/filter-bar.tsx, the former graphite.css drawer rules):
  *   the full height at the reading end, min(380px, 92vw) wide, the surface fill, `--rd-shadow-pop`, 18px at the
  *   sides and bottom and none on top, a column 12px apart, scrolling; it slides in over 220ms (`filter-slide`,
  *   graphite.css) when motion is allowed; the overlay is `--rd-scrim`; one step over the dialog layer.

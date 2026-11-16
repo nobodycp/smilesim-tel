@@ -83,7 +83,7 @@ export function ProviderAccountScreen() {
 
   const kindName = (value: string) => (value === 'payment' ? t.providerPayment : value === 'settlement' ? t.reasonSettlement : actionName(t, value));
   const columns: Column<ProviderLedgerRow>[] = [
-    { key: 'at', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    { key: 'at', header: t.when, kind: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     {
       key: 'kind',
       header: t.movement,

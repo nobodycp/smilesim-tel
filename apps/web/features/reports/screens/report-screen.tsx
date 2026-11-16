@@ -53,7 +53,7 @@ export function ReportScreen() {
     { key: 'lines', header: t.linesCount, num: true, render: (row) => row.lines },
   ];
   const lineColumns: Column<LineRow>[] = [
-    { key: 'number', header: t.number, cell: 'msisdn', render: (line) => <bdi dir="ltr">{line.msisdn}</bdi> },
+    { key: 'number', header: t.number, kind: 'msisdn', render: (line) => <bdi dir="ltr">{line.msisdn}</bdi> },
     { key: 'package', header: t.packageName, render: (line) => line.packageName },
     { key: 'pos', header: t.pointOfSale, render: (line) => <AccountName login={line.posLoginName} /> },
     { key: 'status', header: t.status, render: (line) => lineStatus(t, line.status) },
@@ -66,7 +66,7 @@ export function ReportScreen() {
     { key: 'account', header: t.accountName, render: (row) => <AccountName login={row.assigneeLoginName ?? row.submitterLoginName} /> },
   ];
   const entryColumns: Column<MoneyLine>[] = [
-    { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    { key: 'when', header: t.when, kind: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     {
       key: 'account',
       header: t.accountName,

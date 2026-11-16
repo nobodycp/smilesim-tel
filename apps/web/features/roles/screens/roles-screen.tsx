@@ -117,7 +117,6 @@ export function RolesScreen() {
     ...GRANT_CODES.map((code): Column<RoleRow> => ({
       key: code,
       header: shortLabel(code),
-      cell: 'grant-cell',
       render: (row) => {
         const layer = layerOf(row);
         if (!grantUsable(code, layer)) return <span className="grant-none" aria-label={t.grantUnusable}>—</span>;
@@ -211,7 +210,7 @@ export function RolesScreen() {
             {layerKey && policyValue ? <LayerTwoFactor value={policyValue} onChange={setPolicyDraft} /> : null}
           </div>
         </Dialog>
-        <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} loading={!roles.loaded} failed={roles.error} onRetry={() => void roles.reload()} empty={t.noMatches} skeleton={{ rows: 4, columns: 4 }} />
+        <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} loading={!roles.loaded} failed={roles.error} onRetry={() => void roles.reload()} empty={t.noMatches} skeleton={{ rows: 4, columns: 4 }} cards={false} />
       </section>
     </Desk>
   );

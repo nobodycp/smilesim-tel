@@ -40,7 +40,7 @@ export function ProviderOperationsScreen() {
   const providers = list.extra?.providers ?? [];
 
   const columns: Column<ProviderOpRow>[] = [
-    { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    { key: 'when', header: t.when, kind: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     {
       key: 'kind',
       header: t.operationColumn,

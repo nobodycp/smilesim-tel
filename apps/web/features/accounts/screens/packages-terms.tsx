@@ -3,6 +3,7 @@
 import { ChevronDown, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
+import { TableSheet } from '../../../components/ui/table';
 import { Dialog } from '../../../components/dialog';
 import { Money } from '../../../components/desk';
 import { EmptyState } from '../../../components/empty-state';
@@ -145,8 +146,10 @@ export function UserPackagesTab({
 
   return (
     <>
-      <div className="filter-bar terms-filter">
-        <div className="filter-panel">
+      {/* A hand-written filter card (legacy `.filter-bar` / `.filter-panel` until T4.2); the slots let the chip rules,
+          which read FilterBar's `data-slot`s since Tailwind migration T2.9, reach its fields. */}
+      <div className="filter-bar terms-filter" data-slot="filter-bar">
+        <div className="filter-panel" data-slot="filter-panel">
           <label>
             {t.packageName}
             <input value={needle} onChange={(event) => setNeedle(event.target.value)} />
@@ -176,7 +179,7 @@ export function UserPackagesTab({
         ) : companies.length === 0 ? (
           <EmptyState icon="plans">{t.noPackagesForUser}</EmptyState>
         ) : (
-          <div className="sheet terms-sheet">
+          <TableSheet className="terms-sheet">
             {companies.map((group) => {
               const open = isOpen(group.code);
               const body = `terms-${group.code}`;
@@ -198,13 +201,15 @@ export function UserPackagesTab({
                         columns={columns}
                         rows={group.packages}
                         rowKey={(row) => row.code}
+                        cellClassName="h-14 py-1.5"
+                        headClassName="static"
                       />
                     </div>
                   ) : null}
                 </section>
               );
             })}
-          </div>
+          </TableSheet>
         )}
       </section>
       {editing ? (

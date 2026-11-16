@@ -12,6 +12,7 @@ import { TableSkeleton } from '../../../components/loading';
 import { PriceField } from '../../../components/price-field';
 import { RowMenu } from '../../../components/row-menu';
 import { Button } from '../../../components/ui/button';
+import { TableSheet } from '../../../components/ui/table';
 import { api, type CustomPriceRow, type LineRow, type Shelf } from '../../../lib/api';
 import { everyAccount } from '../../../lib/directory';
 import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
@@ -364,7 +365,7 @@ export function PackageSheetScreen() {
         </label>
       ),
     },
-    { key: 'number', header: t.number, cell: 'msisdn', render: (line) => <bdi dir="ltr">{line.msisdn}</bdi> },
+    { key: 'number', header: t.number, kind: 'msisdn', render: (line) => <bdi dir="ltr">{line.msisdn}</bdi> },
     {
       key: 'status',
       header: t.status,
@@ -509,7 +510,7 @@ export function PackageSheetScreen() {
               {tab === 'renewals' && targetList('renewals', targetPackages)}
               {tab === 'switches' && targetList('switches', targetPackages)}
               {tab === 'numbers' && (
-                <div className="sheet">
+                <TableSheet>
                   <DataTable
                     bare
                     columns={lineColumns}
@@ -518,7 +519,7 @@ export function PackageSheetScreen() {
                     empty={t.noLines}
                     keepHead
                   />
-                </div>
+                </TableSheet>
               )}
               {tab === 'offers' && (
                 <div className="pane-body">
@@ -542,9 +543,9 @@ export function PackageSheetScreen() {
                     <Button type="button" className="px-3.5 text-sm leading-5 font-bold" disabled={!loginName || (offerPrice === '' && offerRenewal === '')} onClick={() => void saveOffer()}>{t.save}</Button>
                   </div>
                   <p className="hint">{t.customPricesHint}</p>
-                  <div className="sheet">
+                  <TableSheet>
                     <DataTable bare columns={offerColumns} rows={sortedCustomPrices} rowKey={(offer) => offer.loginName} empty={t.noOffers} />
-                  </div>
+                  </TableSheet>
                 </div>
               )}
             </>

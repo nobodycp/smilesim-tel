@@ -51,7 +51,7 @@ export function AuditScreen() {
   );
 
   const columns: Column<ActivityRow>[] = [
-    { key: 'when', header: t.when, cell: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
+    { key: 'when', header: t.when, kind: 'when', render: (row) => <bdi dir="ltr">{latinWhen(row.at)}</bdi> },
     {
       key: 'account',
       header: t.auditWho,

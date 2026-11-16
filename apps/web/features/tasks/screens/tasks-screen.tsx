@@ -102,7 +102,9 @@ export function TasksScreen() {
     {
       key: 'task',
       header: t.tasksTitle,
-      cell: 'msisdn task-cell',
+      // A line number cell that reads as a card: the whole width, regular weight, no letter spacing.
+      kind: 'msisdn',
+      cell: 'w-full font-normal tracking-normal',
       render: (row) => (
         <Link className="task-card" data-testid="task-card" href={`/tasks/${row.id}`}>
           <span className="task-mark" aria-hidden="true"><Zap size={18} strokeWidth={1.9} /></span>
@@ -195,7 +197,7 @@ export function TasksScreen() {
         </label>
       </FilterBar>
       <section className="pane task-list">
-        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noTasks} skeleton={{ rows: 5, columns: 3 }} />
+        <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noTasks} skeleton={{ rows: 5, columns: 3 }} cards={false} cellClassName="h-16" />
       </section>
     </Desk>
   );

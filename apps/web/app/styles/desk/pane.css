@@ -1,7 +1,7 @@
-/* Panes and what sits in them: pane head and body, sheet, step tabs, segmented pick, field rows, switch rows, checks. */
+/* Panes and what sits in them: pane head and body, step tabs, segmented pick, field rows, switch rows, checks. */
 /*
  * Scroll model (office shell is height:100dvh; overflow:hidden):
- * - Workbench lists: .desk > .pane (+ .sheet) fill the canvas; .sheet scrolls.
+ * - Workbench lists: .desk > .pane (+ the table's sheet, components/ui/table.tsx) fill the canvas; the sheet scrolls.
  * - Multi-block desks: .desk > .stack sizes to content; .canvas scrolls.
  *   Never flex-crush the last pane — that left a ~0px scrollport and a locked canvas.
  * - .stack.flow stays as an alias of the stack scroll behaviour.
@@ -23,7 +23,6 @@
   padding-block-start: var(--rd-space-3);
   border-block-start: 1px solid var(--rd-line);
 }
-.desk .sheet { flex: 1; min-height: 0; overflow: auto; }
 .pane {
   overflow: hidden;
   border: 1px solid var(--rd-line);
@@ -76,7 +75,6 @@
 }
 .field-row > label { flex: 1 1 16rem; max-width: 22rem; min-width: 0; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--rd-space-2); }
-.sheet { overflow-x: auto; }
 .pane-body textarea {
   width: 100%;
   min-height: 72px;
@@ -119,6 +117,4 @@
 .desk .pane > .pane-body { min-height: 0; overflow: auto; }
 /* Inner pages only. The shell (sidebar, topbar) is outside .canvas. */
 .canvas .stack,
-.canvas .pane,
-.canvas .sheet { min-width: 0; max-width: 100%; }
-.canvas .sheet { overflow-x: auto; }
+.canvas .pane { min-width: 0; max-width: 100%; }

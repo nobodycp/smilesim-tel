@@ -291,8 +291,6 @@
 .home-side .donut-legend { min-inline-size: 0; }
 .home-side .donut-legend li > a, .home-side .donut-legend li > span { padding-block: 3px; }
 .home-ops .table-wrap, .home-ops .data-table { border: 0; }
-/* The last operations keep each cell on one line; on a phone the table scrolls inside its card. */
-.canvas .home-ops .data td, .canvas .home-ops .data td.when bdi { white-space: nowrap; max-width: none; }
 /* Phone: the lead figure takes the whole row, so its amount never breaks. */
 @media (max-width: 639px) {
   .figure-band > .figure-tile.lead, .figure-band > .figure-tile:nth-child(4) { grid-column: 1 / -1; }

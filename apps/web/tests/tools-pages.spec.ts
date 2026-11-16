@@ -6,10 +6,11 @@ import { chooseOption, serveApi } from './desk';
 const admin = 'http://admin.localhost:3910';
 
 /**
- * How many of the cells hold a class. DataTable writes its column kinds (`num`, `row-actions`, a column's `cell`) as
- * classes, and these tests are about exactly that, so they read the class; the cells themselves are found by test id.
+ * How many of the cells match a column mark. DataTable writes its column kinds as data attributes (`data-num`,
+ * `data-actions`, `data-kind="msisdn"`; components/ui/table.tsx since Tailwind migration T2.9), and these tests are
+ * about exactly that, so they read the attribute; the cells themselves are found by test id.
  */
-const withClass = (cells: Locator, name: string) => cells.evaluateAll((all, wanted) => all.filter((cell) => cell.classList.contains(wanted)).length, name);
+const withMark = (cells: Locator, selector: string) => cells.evaluateAll((all, wanted) => all.filter((cell) => cell.matches(wanted)).length, selector);
 
 const line = (id: string, status = 'active', extra = {}) => ({
   id, msisdn: `055${id.replace(/\D/g, '').padStart(7, '0')}`, iccid: null, esim: false, status,
@@ -63,13 +64,13 @@ test.describe('DataTable and EmptyState', () => {
     await expect(table.locator('tbody tr')).toHaveCount(2);
     await expect(page.getByTestId('table-skeleton')).toHaveCount(0);
     await expect(table.locator('thead th')).toHaveCount(3);
-    await expect.poll(() => withClass(table.locator('th'), 'num')).toBe(1);
-    await expect.poll(() => withClass(table.locator('td'), 'num')).toBe(2);
-    await expect.poll(() => withClass(table.locator('th'), 'row-actions')).toBe(1);
-    await expect.poll(() => withClass(table.locator('td'), 'row-actions')).toBe(2);
-    await expect.poll(() => withClass(table.locator('td'), 'msisdn')).toBe(2);
+    await expect.poll(() => withMark(table.locator('th'), '[data-num]')).toBe(1);
+    await expect.poll(() => withMark(table.locator('td'), '[data-num]')).toBe(2);
+    await expect.poll(() => withMark(table.locator('th'), '[data-actions]')).toBe(1);
+    await expect.poll(() => withMark(table.locator('td'), '[data-actions]')).toBe(2);
+    await expect.poll(() => withMark(table.locator('td'), '[data-kind="msisdn"]')).toBe(2);
     // Every task row opens from its menu; take and cancel are added where the row allows them.
-    await expect.poll(() => withClass(table.locator('td').filter({ has: page.getByTestId('row-menu') }), 'row-actions')).toBe(2);
+    await expect.poll(() => withMark(table.locator('td').filter({ has: page.getByTestId('row-menu') }), '[data-actions]')).toBe(2);
     await expect(page.getByRole('button', { name: /إجراءات 0550000001/ })).toBeVisible();
   });
 
@@ -90,7 +91,7 @@ test.describe('DataTable and EmptyState', () => {
     // The design's ledger (Graphite): time, reason, details, amount, my margin, balance after; three are amounts.
     const ledgerHead = page.getByTestId('table-sheet').getByTestId('data-table').locator('thead th');
     await expect(ledgerHead).toHaveCount(6);
-    await expect.poll(() => withClass(ledgerHead, 'num')).toBe(3);
+    await expect.poll(() => withMark(ledgerHead, '[data-num]')).toBe(3);
   });
 });
 
@@ -284,14 +285,14 @@ test.describe('reports', () => {
     const head = (selector: string) => page.getByTestId('data-table').locator(selector);
     await page.goto(`${admin}/reports/providers`);
     await expect(head('thead th')).toHaveCount(5);
-    await expect.poll(() => withClass(head('thead th'), 'num')).toBe(2);
-    await expect.poll(() => withClass(head('tbody td'), 'num')).toBe(2);
+    await expect.poll(() => withMark(head('thead th'), '[data-num]')).toBe(2);
+    await expect.poll(() => withMark(head('tbody td'), '[data-num]')).toBe(2);
     await page.goto(`${admin}/reports/tasks`);
     await expect(head('thead th')).toHaveCount(5);
-    await expect.poll(() => withClass(head('thead th'), 'num')).toBe(0);
+    await expect.poll(() => withMark(head('thead th'), '[data-num]')).toBe(0);
     await page.goto(`${admin}/reports/numbers`);
     await expect(head('thead th')).toHaveCount(4);
-    await expect.poll(() => withClass(head('tbody td'), 'msisdn')).toBe(1);
+    await expect.poll(() => withMark(head('tbody td'), '[data-kind="msisdn"]')).toBe(1);
   });
 
   test('a report pages by cursor and keeps the table while it loads more', async ({ page }) => {

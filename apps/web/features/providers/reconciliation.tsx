@@ -9,6 +9,7 @@ import { Stat, StatRow } from '../../components/stat';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Select, SelectItem } from '../../components/ui/select';
+import { TBody, TCell, THead, THeadCell, TRow, Table } from '../../components/ui/table';
 import { api, type ReconItem, type StatementMap, type StatementPreview } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
@@ -75,7 +76,7 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
   const columns: Column<ReconItem>[] = [
     { key: 'kind', header: t.kind, render: (row) => <Badge variant={row.kind === 'different' ? 'warning' : 'danger'} dot>{kindName(row.kind)}</Badge> },
     { key: 'number', header: t.number, render: (row) => <bdi dir="ltr">{row.msisdn}</bdi> },
-    { key: 'at', header: t.when, cell: 'when', render: (row) => (row.at ? <bdi dir="ltr">{latinWhen(row.at)}</bdi> : '—') },
+    { key: 'at', header: t.when, kind: 'when', render: (row) => (row.at ? <bdi dir="ltr">{latinWhen(row.at)}</bdi> : '—') },
     { key: 'theirs', header: t.reconTheirs, num: true, render: (row) => (row.theirAmount == null ? '—' : <Money value={row.theirAmount} />) },
     { key: 'ours', header: t.reconOurs, num: true, render: (row) => (row.ourAmount == null ? '—' : <Money value={row.ourAmount} />) },
     { key: 'ref', header: t.reconReference, render: (row) => row.reference || '—' },
@@ -137,10 +138,10 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
                   {column(t.reconReference, 'reference', true)}
                 </div>
                 <div className="recon-sample">
-                  <table className="data">
-                    <thead><tr>{loaded.preview.columns.map((name, index) => <th key={`${index}-${name}`}>{name}</th>)}</tr></thead>
-                    <tbody>{loaded.preview.sample.map((row, index) => <tr key={index}>{row.map((cell, at) => <td key={at}>{cell}</td>)}</tr>)}</tbody>
-                  </table>
+                  <Table>
+                    <THead><TRow>{loaded.preview.columns.map((name, index) => <THeadCell key={`${index}-${name}`}>{name}</THeadCell>)}</TRow></THead>
+                    <TBody>{loaded.preview.sample.map((row, index) => <TRow key={index}>{row.map((cell, at) => <TCell key={at}>{cell}</TCell>)}</TRow>)}</TBody>
+                  </Table>
                 </div>
                 <Button type="button" disabled={busy} onClick={() => void compare()}>{t.reconCompare}</Button>
               </>
