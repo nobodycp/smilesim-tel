@@ -5,14 +5,17 @@ import { Coins } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
-import { Desk, Money, actionName, latinWhen } from '../../../components/desk';
+import { Desk, Money, Pane, actionName, latinWhen } from '../../../components/desk';
 import { Dialog } from '../../../components/dialog';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
 import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { CsvLink } from '../../reports/report-kit';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { api, type ProviderLedgerRow } from '../../../lib/api';
+import { cn } from '../../../lib/cn';
 import { useCrumbs } from '../../../lib/crumbs';
 import { parseShekel, shekelField } from '../../../lib/money';
 import { useDesk } from '../../../lib/desk-session';
@@ -25,6 +28,21 @@ import { Reconciliation } from '../reconciliation';
 import { MatchingPane } from '../matching-pane';
 
 const BRANCH = ['branch'];
+
+/*
+ * The look (Tailwind migration T4.8, ADR 0022), ported from desk/frame.css, desk/pane.css, dialog.css and graphite.css
+ * in their cascade order:
+ * - the page's actions: a wrapping inline row 8px apart, items centred;
+ * - a movement's tag: an inline 22px row, 8px sides, 4px corners, 11.5px bold on one line; a payment
+ *   `--rd-success` on `--rd-success-soft`, a settlement `--rd-muted` on `--rd-surface-2`, any other movement
+ *   `--rd-warning` on `--rd-warning-soft` (graphite `.reason.r-leaf / r-mute / r-amber`);
+ * - the ledger is `Pane`, tucked under the filter bar;
+ * - the dialog: a column 12px apart; fields are dialog labels and fields; its hints plain paragraphs (no legacy rule
+ *   reached a `.hint` paragraph in a dialog's body).
+ */
+const PAGE_ACTIONS = 'inline-flex flex-wrap items-center gap-2';
+const TAG = 'inline-flex h-5.5 items-center whitespace-nowrap rounded-xs px-2 text-[11.5px] font-bold';
+const TAG_TONE = { payment: 'bg-success-soft text-success', settlement: 'bg-surface-2 text-muted', other: 'bg-warning-soft text-warning' };
 
 /** One provider's account (roadmap N7): four cards, payments and the credit limit, and the ledger with its balance. */
 export function ProviderAccountScreen() {
@@ -88,7 +106,7 @@ export function ProviderAccountScreen() {
       key: 'kind',
       header: t.movement,
       render: (row) => (
-        <span className={`reason ${row.kind === 'payment' ? 'r-leaf' : row.kind === 'settlement' ? 'r-mute' : 'r-amber'}`}>{kindName(row.kind)}</span>
+        <span className={cn(TAG, row.kind === 'payment' ? TAG_TONE.payment : row.kind === 'settlement' ? TAG_TONE.settlement : TAG_TONE.other)}>{kindName(row.kind)}</span>
       ),
     },
     { key: 'number', header: t.number, render: (row) => (row.msisdn ? <bdi dir="ltr">{row.msisdn}</bdi> : '—') },
@@ -104,7 +122,7 @@ export function ProviderAccountScreen() {
       lede={summary ? t.providerAccountLede.replace('{name}', summary.name) : ''}
       action={summary ? (
         // As in the design: edit the credit, then record a payment (the page's action); the CSV beside them.
-        <div className="page-actions">
+        <div className={PAGE_ACTIONS}>
           <CsvLink href={api.providerAccountExportHref(params.code, query)} />
           {canWrite ? <Button type="button" variant="secondary" onClick={() => open('credit')}>{t.editCredit}</Button> : null}
           {canWrite ? <Button type="button" onClick={() => open('entry')}><Coins size={16} aria-hidden="true" />{t.recordPayment}</Button> : null}
@@ -138,9 +156,9 @@ export function ProviderAccountScreen() {
           <DateField value={to} onChange={(next) => setTo(next)} />
         </label>
       </FilterBar>
-      <section className="pane">
+      <Pane>
         <DataTable columns={columns} rows={read.data?.ledger ?? []} rowKey={(row) => row.id} loading={!read.loaded} failed={read.error} onRetry={() => void read.reload()} empty={t.noRows} keepHead skeleton={{ rows: 5, columns: 7 }} />
-      </section>
+      </Pane>
         </>
       )}
       <Dialog
@@ -159,37 +177,37 @@ export function ProviderAccountScreen() {
           </>
         )}
       >
-        <div className="dialog-form">
+        <div className="grid gap-3">
           {dialog === 'credit' ? (
             <>
-              <label>
+              <Label tone="dialog">
                 {t.creditLimit}
-                <input inputMode="decimal" dir="ltr" value={credit} onChange={(event) => setCredit(event.target.value)} />
-              </label>
-              <label>
+                <Input inputMode="decimal" dir="ltr" value={credit} onChange={(event) => setCredit(event.target.value)} />
+              </Label>
+              <Label tone="dialog">
                 {t.alertFloor}
-                <input inputMode="decimal" dir="ltr" value={floor} onChange={(event) => setFloor(event.target.value)} />
-              </label>
-              <p className="hint">{t.alertFloorHint}</p>
+                <Input inputMode="decimal" dir="ltr" value={floor} onChange={(event) => setFloor(event.target.value)} />
+              </Label>
+              <p>{t.alertFloorHint}</p>
             </>
           ) : (
             <>
-              <label>
+              <Label tone="dialog">
                 {t.kind}
                 <Select place="dialog" value={kind} onValueChange={(next) => setKind(next as 'payment' | 'settlement')}>
                   <SelectItem value="payment">{t.providerPayment}</SelectItem>
                   <SelectItem value="settlement">{t.reasonSettlement}</SelectItem>
                 </Select>
-              </label>
-              <label>
+              </Label>
+              <Label tone="dialog">
                 {t.amount}
-                <input inputMode="decimal" dir="ltr" value={amount} onChange={(event) => setAmount(event.target.value)} />
-              </label>
-              {kind === 'settlement' ? <p className="hint">{t.settlementSignHint}</p> : null}
-              <label>
+                <Input inputMode="decimal" dir="ltr" value={amount} onChange={(event) => setAmount(event.target.value)} />
+              </Label>
+              {kind === 'settlement' ? <p>{t.settlementSignHint}</p> : null}
+              <Label tone="dialog">
                 {t.note}
-                <input value={text} onChange={(event) => setText(event.target.value)} />
-              </label>
+                <Input value={text} onChange={(event) => setText(event.target.value)} />
+              </Label>
             </>
           )}
         </div>

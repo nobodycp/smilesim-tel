@@ -3,11 +3,13 @@
 import { FileUp } from 'lucide-react';
 import { useState, type ChangeEvent } from 'react';
 import { DataTable, type Column } from '../../components/data-table';
-import { Money, latinWhen } from '../../components/desk';
+import { Money, Pane, latinWhen } from '../../components/desk';
 import { Dialog } from '../../components/dialog';
 import { Stat, StatRow } from '../../components/stat';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import { Select, SelectItem } from '../../components/ui/select';
 import { TBody, TCell, THead, THeadCell, TRow, Table } from '../../components/ui/table';
 import { api, type ReconItem, type StatementMap, type StatementPreview } from '../../lib/api';
@@ -16,6 +18,30 @@ import { useAction } from '../../lib/use-action';
 import { useApiQuery } from '../../lib/use-api-query';
 
 type Loaded = { fileName: string; content: string; preview: StatementPreview };
+
+/*
+ * The look (Tailwind migration T4.8, ADR 0022), ported from desk/frame.css, desk/pane.css, desk/components.css,
+ * dialog.css, graphite.css and ui.css in their cascade order:
+ * - the column: the desk's stack, a column 12px apart at its own height, never wider than the canvas; it keeps the
+ *   `stack` class as the handle the desk column (`has-[>.stack]`), the canvas (`:has(.stack)`) and `Pane`
+ *   (`[.desk>.stack>&]`) size by;
+ * - the upload pane: its head a row at least 52px high, 14px / 18px padding, a 1px `--rd-line` rule under it, its
+ *   title 14px bold ink; its body a grid 12px apart, 14px / 18px / 18px padding, that scrolls inside the pane in the
+ *   desk, its children never wider than it, a button in it at the reading start; a hint 12px `--rd-muted`, no margin;
+ * - the file pick: a wrapping row 10px apart, items centred; the button over the hidden input has a pointer cursor and
+ *   a 2px `--rd-accent` outline 2px off while the input has focus;
+ * - the column choice: as many 10rem-or-wider columns as fit, 12px apart; each caption 12px `--rd-muted` 600, 4px
+ *   above its pick (`.recon-map label` outranked `.pane label` by order);
+ * - the sample: scrolls sideways inside a 1px `--rd-line` border with the card corners (8px);
+ * - the earlier runs: a caption 12px `--rd-muted` 600, 4px above its pick, at most 32rem wide;
+ * - «no run yet» outside a pane: a plain paragraph (no legacy rule reached a `.hint` there);
+ * - the dialog: a column 12px apart; the note is a dialog label and field.
+ */
+const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';
+const PANE_HEAD = 'flex min-h-13 items-center justify-between gap-2 border-b border-line bg-transparent px-4.5 py-3.5';
+const PANE_TITLE = 'm-0 inline-flex items-center gap-2 text-base font-bold text-ink';
+const PANE_BODY = 'grid min-h-0 min-w-0 max-w-full content-start gap-3 overflow-auto px-4.5 pt-3.5 pb-4.5 *:min-w-0';
+const HINT = 'm-0 text-sm text-muted';
 
 /** A file as base64 for the API (the 1 MB body allows a statement of about 700 KB). */
 function readBase64(file: File): Promise<string> {
@@ -100,62 +126,66 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
   ];
   const data = run.data;
   const column = (label: string, key: keyof StatementMap, optional = false) => (
-    <label>
+    <Label tone="pane" className="text-sm">
       {label}
       <Select place="pane" value={map[key] == null ? '' : String(map[key])} onValueChange={(next) => setMap((current) => ({ ...current, [key]: next === '' ? (optional ? null : undefined) : Number(next) }))}>
         <SelectItem value="">{optional ? t.none : '—'}</SelectItem>
         {loaded?.preview.columns.map((name, index) => <SelectItem key={`${index}-${name}`} value={String(index)}>{name}</SelectItem>)}
       </Select>
-    </label>
+    </Label>
   );
 
   return (
-    <div className="stack">
+    <div className={COLUMN}>
       {canWrite ? (
-        <section className="pane">
-          <header className="pane-head"><h2>{t.reconUpload}</h2></header>
-          <div className="pane-body stack">
-            <p className="hint">{t.reconUploadHint}</p>
+        <Pane>
+          <header className={PANE_HEAD}><h2 className={PANE_TITLE}>{t.reconUpload}</h2></header>
+          <div className={PANE_BODY}>
+            <p className={HINT}>{t.reconUploadHint}</p>
             {/* The system's button over a hidden file input — never the browser's «Choose File» (owner 2026-11-11). */}
-            <div className="file-pick">
+            <div className="flex flex-wrap items-center gap-2.5">
               {/* The pane's field captions (`.pane label`) dim it: muted, 11px, a 4px gap; ink on hover. */}
-              <Button asChild variant="secondary" className="gap-1 text-xs leading-5 text-muted hover:text-ink">
+              <Button
+                asChild
+                variant="secondary"
+                className="cursor-pointer gap-1 text-xs leading-5 text-muted hover:text-ink focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent"
+              >
                 <label>
                   <FileUp size={16} aria-hidden="true" />
                   {t.chooseFile}
                   <input type="file" className="sr-only" accept=".xlsx,.csv" onChange={(event) => void pick(event)} />
                 </label>
               </Button>
-              <span className="hint">{loaded ? loaded.fileName : t.noFileChosen}</span>
+              <span className={HINT}>{loaded ? loaded.fileName : t.noFileChosen}</span>
             </div>
             {loaded ? (
               <>
-                <p className="hint">{t.reconRows.replace('{file}', loaded.fileName).replace('{n}', String(loaded.preview.rows))}</p>
-                <div className="recon-map">
+                <p className={HINT}>{t.reconRows.replace('{file}', loaded.fileName).replace('{n}', String(loaded.preview.rows))}</p>
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
                   {column(t.number, 'msisdn')}
                   {column(t.when, 'date')}
                   {column(t.amount, 'amount')}
                   {column(t.reconReference, 'reference', true)}
                 </div>
-                <div className="recon-sample">
+                <div className="overflow-x-auto rounded-card border border-line">
                   <Table>
                     <THead><TRow>{loaded.preview.columns.map((name, index) => <THeadCell key={`${index}-${name}`}>{name}</THeadCell>)}</TRow></THead>
                     <TBody>{loaded.preview.sample.map((row, index) => <TRow key={index}>{row.map((cell, at) => <TCell key={at}>{cell}</TCell>)}</TRow>)}</TBody>
                   </Table>
                 </div>
-                <Button type="button" disabled={busy} onClick={() => void compare()}>{t.reconCompare}</Button>
+                <Button type="button" className="justify-self-start" disabled={busy} onClick={() => void compare()}>{t.reconCompare}</Button>
               </>
             ) : null}
           </div>
-        </section>
+        </Pane>
       ) : null}
       {runs.data && runs.data.runs.length > 1 ? (
-        <label className="recon-pick">
+        <Label tone="pane" className="max-w-[32rem] text-sm">
           {t.reconEarlier}
           <Select place="desk" value={chosen} onValueChange={setRunId}>
             {runs.data.runs.map((item) => <SelectItem key={item.id} value={item.id}>{`${latinWhen(item.at)} · ${item.fileName} · ${item.open} ${t.orderOpen}`}</SelectItem>)}
           </Select>
-        </label>
+        </Label>
       ) : null}
       {data ? (
         <>
@@ -171,11 +201,11 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
             <Stat icon="wallet" label={t.reconOursTotal} value={<Money value={data.ourTotal} />} />
             <Stat icon="plans" label={t.reconGap} value={<Money value={data.statementTotal - data.ourTotal} signed />} highlight={data.statementTotal === data.ourTotal} />
           </StatRow>
-          <section className="pane">
+          <Pane>
             <DataTable columns={columns} rows={data.items} rowKey={(row) => row.id} empty={t.reconAllMatched} keepHead skeleton={{ rows: 4, columns: 8 }} />
-          </section>
+          </Pane>
         </>
-      ) : runs.loaded && !chosen ? <p className="hint">{t.reconNone}</p> : null}
+      ) : runs.loaded && !chosen ? <p>{t.reconNone}</p> : null}
       <Dialog
         open={handling !== null}
         size="form"
@@ -191,11 +221,11 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
           </>
         )}
       >
-        <div className="dialog-form">
-          <label>
+        <div className="grid gap-3">
+          <Label tone="dialog">
             {t.note}
-            <input value={text} onChange={(event) => setText(event.target.value)} />
-          </label>
+            <Input value={text} onChange={(event) => setText(event.target.value)} />
+          </Label>
         </div>
       </Dialog>
     </div>
