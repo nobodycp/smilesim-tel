@@ -31,6 +31,7 @@ SmileSim مكتب جملة لشرائح الاتصال بأربع طبقات («
 المستودع واحد (npm workspaces):
 
 - `apps/web` — واجهة Next.js. المتصفح يكلّم الواجهة فقط؛ كل طلب إلى `/api/...` تعيد الواجهة توجيهه داخلياً إلى الـAPI.
+  أنماطها Tailwind CSS v4 في ملف واحد هو `apps/web/app/tailwind.css` (الألوان والمقاسات رموز `--rd-*` للمظهرين الفاتح والداكن)، وعناصر التحكم مكوّنات في `apps/web/components/ui/` مبنية على Radix (القرار 0022). هذا على فرع `design-system` ولم يُدمج في `main` بعد: `main` والنسخة المنشورة منه ما زالا على ملفات الأنماط القديمة (`app/globals.css` و`app/styles/`). المرجع البصري `DESIGN.md` في جذر المستودع.
 - `apps/api` — خدمة NestJS مع Prisma. منها تُبنى صورة واحدة تعمل بدورين: **API** و**Worker**.
 - قاعدة البيانات PostgreSQL 16، وRedis 7.
 
@@ -40,7 +41,7 @@ SmileSim مكتب جملة لشرائح الاتصال بأربع طبقات («
                                                              worker ──┘ (الصورة نفسها، APP_ROLE=worker)
 ```
 
-مراجع البنية التفصيلية: `docs/architecture/backend.md` و`docs/architecture/frontend.md` والقرارات في `docs/architecture/decisions/`.
+مراجع البنية التفصيلية: `docs/architecture/backend.md` و`docs/architecture/frontend.md` و`DESIGN.md` (الهوية البصرية ومكوّنات الواجهة) والقرارات في `docs/architecture/decisions/`.
 
 ## 2. الخدمات
 

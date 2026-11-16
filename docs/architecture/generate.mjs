@@ -164,9 +164,8 @@ function document(elements) {
 /** @type {{ zone: string, file: string, role: string }[]} */
 const CATALOGUE = [
   // Root
-  { zone: 'root', file: 'app/layout.tsx', role: 'الجذر: خطوط، الباب من المضيف، تهيئة Prefs / Toasts / Door / OfficeSession' },
+  { zone: 'root', file: 'app/layout.tsx', role: 'الجذر: خطوط، tailwind.css، الباب من المضيف، Direction / Query / Prefs / Toasts / Door / DeskSession / AppFrame' },
   { zone: 'root', file: 'features/desk/screens/home-screen.tsx', role: 'صفحة الهوم عند وجود باب (إحصاءات / اختصارات / لوحات)' },
-  { zone: 'root', file: 'app/globals.css', role: 'يستورد فقط ملفات app/styles/*' },
   { zone: 'root', file: 'app/icon.svg', role: 'أيقونة التطبيق / المفضلة' },
   { zone: 'root', file: 'proxy.ts', role: 'CSP وnonce لكل طلب وسلوك حافة مرتبط بالباب' },
 
@@ -185,51 +184,35 @@ const CATALOGUE = [
   { zone: 'app', file: 'features/catalog/screens/package-sheet-screen.tsx', role: 'باقة تحت مزود' },
   { zone: 'app', file: 'features/catalog/screens/companies-screen.tsx', role: 'قائمة الشركات' },
   { zone: 'app', file: 'features/catalog/screens/company-screen.tsx', role: 'تفاصيل شركة' },
-  { zone: 'app', file: 'features/catalog/screens/company-packages-screen.tsx', role: 'شريحة شركة × مزود' },
+  { zone: 'app', file: 'features/catalog/company-packages.tsx', role: 'رزم الشركة عند كل مزود (داخل صفحة الشركة)' },
   { zone: 'app', file: 'features/catalog/screens/packages-screen.tsx', role: 'مكتب الباقات' },
   { zone: 'app', file: 'features/lines/screens/numbers-screen.tsx', role: 'قائمة الأرقام / الشرائح' },
   { zone: 'app', file: 'features/lines/screens/line-card-screen.tsx', role: 'عمليات رقم واحد' },
   { zone: 'app', file: 'features/tasks/screens/tasks-screen.tsx', role: 'مكتب المهام' },
-  { zone: 'app', file: 'features/wallets/screens/operations-screen.tsx', role: 'مكتب العمليات' },
+  { zone: 'app', file: 'features/wallets/screens/wallet-screen.tsx', role: 'المحفظة وحركاتها (/operations يحوّل إلى المالية)' },
   { zone: 'app', file: 'features/wallets/screens/finance-screen.tsx', role: 'التقرير المالي' },
   { zone: 'app', file: 'features/wallets/screens/provider-operations-screen.tsx', role: 'عمليات المزودين وتكلفتها' },
   { zone: 'app', file: 'app/reports/page.tsx', role: 'فهرس التقارير' },
   { zone: 'app', file: 'features/reports/screens/report-screen.tsx', role: 'تقرير من نوع واحد' },
   { zone: 'app', file: 'features/audit/screens/audit-screen.tsx', role: 'سجل التدقيق' },
 
-  // Styles (shown in styles palette, still app/)
-  { zone: 'styles', file: 'app/styles/tokens.css', role: 'توكنز --rd-* للفاتح والغامق' },
-  { zone: 'styles', file: 'app/styles/base.css', role: 'أساس المستند والطباعة والإعادة' },
-  { zone: 'styles', file: 'app/styles/shell.css', role: 'توب بار وسايدبار ودرج الشل' },
-  { zone: 'styles', file: 'app/styles/desk/frame.css', role: 'إطار الصفحة: الكانفس ورأس الصفحة والتمرير' },
-  { zone: 'styles', file: 'app/styles/desk/pane.css', role: 'اللوحات والتبويبات وصفوف الحقول' },
-  { zone: 'styles', file: 'app/styles/desk/table.css', role: 'جدول البيانات وخلاياه والترقيم' },
-  { zone: 'styles', file: 'app/styles/desk/filters.css', role: 'شريط الفلاتر والبحث وشرائح الفترة' },
-  { zone: 'styles', file: 'app/styles/desk/components.css', role: 'الحالة الفارغة والهياكل والإحصاء والمفتاح وبطاقات العمليات' },
-  { zone: 'styles', file: 'app/styles/desk/numbers.css', role: 'بطاقة الرقم' },
-  { zone: 'styles', file: 'app/styles/desk/tasks.css', role: 'المهام والتذكرة وشجرة الفحص' },
-  { zone: 'styles', file: 'app/styles/desk/users.css', role: 'صفحة المستخدم: الصلاحيات وشروط الرزم' },
-  { zone: 'styles', file: 'app/styles/desk/packages.css', role: 'الرزم والشركات وورقة الرزمة' },
-  { zone: 'styles', file: 'app/styles/desk/home.css', role: 'الصفحة الرئيسية' },
-  { zone: 'styles', file: 'app/styles/desk/settings.css', role: 'الملف الشخصي' },
-  { zone: 'styles', file: 'app/styles/desk/branding.css', role: 'هوية الموقع' },
-  { zone: 'styles', file: 'app/styles/forms.css', role: 'حقول النماذج والتسميات' },
-  { zone: 'styles', file: 'app/styles/controls.css', role: 'عناصر تحكم مشتركة' },
-  { zone: 'styles', file: 'app/styles/dialog.css', role: 'طبقة وحسم الحوار' },
-  { zone: 'styles', file: 'app/styles/doors.css', role: 'صفحة اختيار الباب' },
-  { zone: 'styles', file: 'app/styles/responsive.css', role: 'نقاط التوقف والتخطيطات الكثيفة' },
-  { zone: 'styles', file: 'app/styles/ui.css', role: 'أنماط مكونات components/ui ومساعدات الاتجاه' },
+  // Styles (Tailwind CSS v4, ADR 0022): one stylesheet, the class helper and the checks
+  { zone: 'styles', file: 'app/tailwind.css', role: 'ملف الأنماط الوحيد: توكنز --rd-* للمظهرين، أسماء @theme، القواعد الأساسية والحركات' },
+  { zone: 'styles', file: 'postcss.config.js', role: 'يحمّل @tailwindcss/postcss ثم Autoprefixer' },
+  { zone: 'styles', file: 'lib/cn.ts', role: 'cn(): دمج الأصناف (clsx + tailwind-merge) يفوز فيه صنف المستدعي' },
+  { zone: 'styles', file: 'scripts/check-styles.mjs', role: 'npm run check:styles: يمنع الاتجاه الفيزيائي واللون الخام وملف CSS جديد' },
+  { zone: 'styles', file: 'scripts/contrast.mjs', role: 'يحسب تباين التوكنز في المظهرين' },
 
   // Components shell
   { zone: 'components', file: 'components/bootstrap.tsx', role: 'سكربت أول رسم: مزامنة لغة/ثيم/هوية' },
   { zone: 'components', file: 'components/preferences.tsx', role: 'بذرة التفضيلات وتطبيقها على html' },
   { zone: 'components', file: 'components/doors.tsx', role: 'لا باب على المضيف: منتقي الأبواب الأربعة' },
-  { zone: 'components', file: 'components/office-shell.tsx', role: 'شل المكتب: تنقل، محفظة، إشعارات، حساب' },
+  { zone: 'components', file: 'components/app-frame.tsx', role: 'شل واحد لكل تبويب: يبقى والصفحة وحدها تتبدّل' },
+  { zone: 'components', file: 'components/app-shell.tsx', role: 'شل المكتب: تنقل، محفظة، إشعارات، حساب، درج الهاتف' },
   { zone: 'components', file: 'components/desk.tsx', role: 'غلاف الصفحة: شل + هوية + مساعدات المكتب' },
   { zone: 'components', file: 'components/chrome.tsx', role: 'تبديل الثيم واللغة' },
   { zone: 'components', file: 'components/shell-search.tsx', role: 'بحث عام في الشريط العلوي' },
   { zone: 'components', file: 'components/auth-frame.tsx', role: 'إطار صفحات الدخول وكلمة المرور و2FA' },
-  { zone: 'components', file: 'components/back-link.tsx', role: 'رجوع يراعي اتجاه الكتابة' },
   { zone: 'components', file: 'components/icon.tsx', role: 'أيقونات SVG مسماة للشل والتنقل' },
   { zone: 'components', file: 'components/stat.tsx', role: 'بلاطة مؤشر في الهوم' },
   { zone: 'components', file: 'components/toast.tsx', role: 'مزوّد التوست والتكديس' },
@@ -246,16 +229,40 @@ const CATALOGUE = [
   { zone: 'components', file: 'components/data-image.tsx', role: 'صورة data:/blob: من الواجهة' },
   { zone: 'components', file: 'components/facts.tsx', role: 'قائمة تسمية/قيمة بثلاث كثافات' },
   { zone: 'components', file: 'components/alert.tsx', role: 'سطر الخطأ أو النجاح الموحد' },
-  { zone: 'components', file: 'components/ui/button.tsx', role: 'أزرار بأحجام وأنماط' },
-  { zone: 'components', file: 'components/ui/badge.tsx', role: 'شارة حالة / نغمة' },
-  { zone: 'components', file: 'components/ui/select.tsx', role: 'قائمة اختيار' },
-  { zone: 'components', file: 'components/ui/pagination.tsx', role: 'تحكم الصفحات وحجم الصفحة' },
+
+  // Primitives (components/ui: Tailwind + cva, Radix only here; DESIGN.md → Controls and primitives)
+  { zone: 'ui', file: 'components/ui/button.tsx', role: 'Button: أزرار بأنماط وأحجام (button-variants.ts)' },
+  { zone: 'ui', file: 'components/ui/icon-button.tsx', role: 'IconButton: زر أيقونة باسم إلزامي' },
+  { zone: 'ui', file: 'components/ui/input.tsx', role: 'Input: حقل نص سطر واحد' },
+  { zone: 'ui', file: 'components/ui/textarea.tsx', role: 'Textarea: حقل نص متعدد الأسطر' },
+  { zone: 'ui', file: 'components/ui/label.tsx', role: 'Label: تسمية الحقل بثلاث نغمات' },
+  { zone: 'ui', file: 'components/ui/field.tsx', role: 'Field: تسمية + عنصر واحد + مساعدة وخطأ' },
+  { zone: 'ui', file: 'components/ui/switch.tsx', role: 'Switch: مفتاح تشغيل/إيقاف (Radix)' },
+  { zone: 'ui', file: 'components/ui/checkbox.tsx', role: 'Checkbox: مربع الاختيار (Radix)' },
+  { zone: 'ui', file: 'components/ui/radio-group.tsx', role: 'RadioGroup: اختيار واحد من قائمة (Radix)' },
+  { zone: 'ui', file: 'components/ui/radio-card.tsx', role: 'RadioCard: اختيار على شكل بطاقة (Radix)' },
+  { zone: 'ui', file: 'components/ui/segmented.tsx', role: 'Segmented / SegmentedToggle: الاختيار المقطّع' },
+  { zone: 'ui', file: 'components/ui/select.tsx', role: 'Select: قائمة اختيار (Radix)' },
+  { zone: 'ui', file: 'components/ui/dialog.tsx', role: 'Dialog: الحوار وأجزاؤه (Radix)' },
+  { zone: 'ui', file: 'components/ui/sheet.tsx', role: 'Sheet: لوحة جانبية أو سفلية (Radix)' },
+  { zone: 'ui', file: 'components/ui/tabs.tsx', role: 'Tabs: شريط التبويبات (Radix)' },
+  { zone: 'ui', file: 'components/ui/dropdown-menu.tsx', role: 'DropdownMenu: قائمة الإجراءات (Radix)' },
+  { zone: 'ui', file: 'components/ui/popover.tsx', role: 'Popover: نافذة منبثقة (Radix)' },
+  { zone: 'ui', file: 'components/ui/tooltip.tsx', role: 'Tooltip: تلميح (Radix)' },
+  { zone: 'ui', file: 'components/ui/toast.tsx', role: 'Toast: رسالة عابرة (Radix)' },
+  { zone: 'ui', file: 'components/ui/badge.tsx', role: 'Badge: شارة حالة بنغمة' },
+  { zone: 'ui', file: 'components/ui/pagination.tsx', role: 'Pagination: الصفحات وحجم الصفحة' },
+  { zone: 'ui', file: 'components/ui/table.tsx', role: 'Table: الجدول وخلاياه والفرز وبطاقات الهاتف' },
+  { zone: 'ui', file: 'components/ui/skeleton.tsx', role: 'Skeleton: هيكل التحميل' },
+  { zone: 'ui', file: 'components/ui/avatar.tsx', role: 'Avatar: صورة الحساب أو حروفه' },
+  { zone: 'ui', file: 'components/ui/direction.tsx', role: 'DirectionProvider: اتجاه المستند لكل Radix' },
 
   // Lib
-  { zone: 'lib', file: 'lib/api.ts', role: 'عميل fetch: كوكي الجلسة وx-door ورمز الخطأ' },
+  { zone: 'lib', file: 'lib/http.ts', role: 'request(): كوكي الجلسة وx-door ورمز الخطأ' },
+  { zone: 'lib', file: 'lib/api.ts', role: 'نداءات الـAPI وأنواع أجوبتها' },
   { zone: 'lib', file: 'lib/doors.ts', role: 'كتالوج مضيف الباب ↔ الطبقة' },
   { zone: 'lib', file: 'lib/door-context.tsx', role: 'سياق React للباب النشط' },
-  { zone: 'lib', file: 'lib/office-session.tsx', role: 'يجلب /office/me ويعرض me/الجاهزية' },
+  { zone: 'lib', file: 'lib/desk-session.tsx', role: 'DeskSession: يقرأ me مرة ويعرض الجلسة والجاهزية' },
   { zone: 'lib', file: 'lib/prefs.tsx', role: 'لغة وثيم وحجم صفحة وt وapiText' },
   { zone: 'lib', file: 'lib/document-prefs.ts', role: 'مفاتيح وكوكيز التفضيلات ومحلّلاتها' },
   { zone: 'lib', file: 'lib/identity.ts', role: 'اسم الحساب والرصيد الظاهران في الشل' },
@@ -278,15 +285,16 @@ const CATALOGUE = [
 const ZONE_META = {
   root: { title: '1 · الجذر / Root', palette: COLORS.root, x: 40 },
   app: { title: '2 · الشاشات features/*/screens (الصفحة في app/ تعيد تصديرها)', palette: COLORS.app, x: 360 },
-  styles: { title: '2ب · الأنماط styles/', palette: COLORS.styles, x: 680 },
+  styles: { title: '2ب · الأنماط app/tailwind.css', palette: COLORS.styles, x: 680 },
   components: { title: '3 · المكوّنات components/', palette: COLORS.components, x: 1000 },
-  lib: { title: '4 · المكتبة lib/', palette: COLORS.lib, x: 1320 },
+  ui: { title: '3ب · العناصر components/ui/', palette: COLORS.components, x: 1320 },
+  lib: { title: '4 · المكتبة lib/', palette: COLORS.lib, x: 1640 },
 };
 
 function buildTreeBoard() {
   const elements = [];
   elements.push(
-    ...sectionHeader(40, 20, 1600, 'سمايل سيم — شجرة مكوّنات الفرونت (كل ملف + دوره)', {
+    ...sectionHeader(40, 20, 1900, 'سمايل سيم — شجرة مكوّنات الفرونت (كل ملف + دوره)', {
       bg: '#212529',
       stroke: '#212529',
     }),
@@ -296,7 +304,7 @@ function buildTreeBoard() {
       40,
       70,
       'افتح في إضافة Excalidraw في Cursor · المسارات بالإنجليزية · الأدوار بالعربية · المصدر: docs/superpowers/specs/2026-11-02-web-architecture-excalidraw-design.md',
-      { fontSize: 12, align: 'left', width: 1600, stroke: '#868e96' },
+      { fontSize: 12, align: 'left', width: 1900, stroke: '#868e96' },
     ),
   );
 
@@ -392,7 +400,7 @@ function buildFlowBoard() {
   const host = flowBox(40, bandY[0], 180, 100, 'Host', 'اسم المضيف\n*.localhost', COLORS.flow);
   const doorFrom = flowBox(260, bandY[0], 200, 100, 'doorFromHost', 'lib/doors.ts\nاستخراج الباب', COLORS.flow);
   const branch = flowBox(500, bandY[0], 220, 100, 'باب موجود؟', 'نعم → مزوّدات\nلا → Doors', COLORS.flow);
-  const providers = flowBox(760, bandY[0], 280, 100, 'DoorProvider + OfficeSession', 'door-context + office-session\nيلفّ الصفحات', COLORS.context);
+  const providers = flowBox(760, bandY[0], 280, 100, 'DoorProvider + DeskSession', 'door-context + desk-session\nثم AppFrame يلفّ الصفحات', COLORS.context);
   const doorsPage = flowBox(1080, bandY[0], 220, 100, 'Doors', 'components/doors.tsx\nاختيار الباب', COLORS.app);
   const boot = flowBox(40, bandY[0] + 120, 320, 70, 'Bootstrap + Preferences', 'مزامنة كوكي/localStorage → prefs', COLORS.side);
   elements.push(
@@ -415,14 +423,14 @@ function buildFlowBoard() {
   // Band 2 contexts
   const prefs = flowBox(40, bandY[1], 240, 120, 'Prefs', 'لغة · ثيم · حجم صفحة\nt / apiText\nlib/prefs.tsx', COLORS.context);
   const doorCtx = flowBox(320, bandY[1], 240, 120, 'Door', 'الطبقة الحالية\nصلاحيات ظاهرة\nlib/door-context.tsx', COLORS.context);
-  const office = flowBox(600, bandY[1], 260, 120, 'OfficeSession', 'me / رصيد / ready\nيتخطّى مسارات auth\nlib/office-session.tsx', COLORS.context);
+  const office = flowBox(600, bandY[1], 260, 120, 'DeskSession', 'me / رصيد / ready\nيتخطّى مسارات auth\nlib/desk-session.tsx', COLORS.context);
   const toasts = flowBox(900, bandY[1], 240, 120, 'Toasts', 'رسائل عابرة\ncomponents/toast.tsx', COLORS.context);
   elements.push(...prefs.elements, ...doorCtx.elements, ...office.elements, ...toasts.elements);
 
   // Band 3 page I/O
   const page = flowBox(40, bandY[2], 180, 120, 'Page', 'أي page.tsx\nفي المكتب', COLORS.app);
   const hooks = flowBox(260, bandY[2], 280, 120, 'Hooks', 'useApiQuery · usePaged · useAction\nuse-require-layer', COLORS.action);
-  const api = flowBox(580, bandY[2], 260, 120, 'api.ts', 'credentials + x-door\nنتيجة ok أو code', COLORS.action);
+  const api = flowBox(580, bandY[2], 260, 120, 'http.ts', 'request(): credentials + x-door\nنتيجة ok أو code', COLORS.action);
   const backend = flowBox(880, bandY[2], 240, 120, '/api → Nest', 'جلسة الكوكي\nالخادم يقرّر', COLORS.flow);
   elements.push(...page.elements, ...hooks.elements, ...api.elements, ...backend.elements);
   elements.push(
@@ -445,9 +453,9 @@ function buildFlowBoard() {
   );
 
   // Band 5 identity
-  const sess = flowBox(40, bandY[4], 260, 120, 'OfficeSession', 'بعد officeMe الناجح\nrememberIdentity/Balance', COLORS.identity);
+  const sess = flowBox(40, bandY[4], 260, 120, 'DeskSession', 'بعد قراءة me الناجحة\nrememberIdentity/Balance', COLORS.identity);
   const ident = flowBox(340, bandY[4], 280, 120, 'identity.ts', 'sessionStorage\n+ كوكي الاسم/الرصيد', COLORS.identity);
-  const shell = flowBox(660, bandY[4], 280, 120, 'OfficeShell', 'يعرض الاسم والرصيد\nالمحفظة والإشعارات', COLORS.identity);
+  const shell = flowBox(660, bandY[4], 280, 120, 'AppShell', 'يعرض الاسم والرصيد\nالمحفظة والإشعارات', COLORS.identity);
   const side = flowBox(1000, bandY[4], 260, 120, 'مساندة', 'grants · copy\nutils · document-prefs', COLORS.side);
   elements.push(...sess.elements, ...ident.elements, ...shell.elements, ...side.elements);
   elements.push(

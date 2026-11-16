@@ -14,10 +14,13 @@ graphite surfaces, one crimson thread, sharp tag-cut corners, dense rows, Latin 
 The gap inventory that completed it (`docs/design/current-identity-gaps.md`, Tailwind migration T6.1) is closed; what
 is still open is under [Known gaps](#known-gaps).
 
+Last verified: 2026-11-16 (Tailwind migration T7.1, the migration's final docs pass, against `components/ui` and
+`app/tailwind.css`).
+
 Contents: [Foundations](#foundations) (identity, stylesheet, tokens, scales, breakpoints, shadows, type, motion and
 access) · [Controls and primitives](#controls-and-primitives) (every `components/ui` component with its variants and
-states) · [Components](#components) (the shared ones in `components/`) · [Page templates](#page-templates) ·
-[Screens](#screens) · [Known gaps](#known-gaps).
+states, and the [Component API](#component-api) they share) · [Components](#components) (the shared ones in
+`components/`) · [Page templates](#page-templates) · [Screens](#screens) · [Known gaps](#known-gaps).
 
 ## Foundations
 
@@ -47,9 +50,10 @@ states) · [Components](#components) (the shared ones in `components/`) · [Page
 - The brand is data, not a drawing. A saved site identity (`/branding`, owner only) replaces the brand tile in the
   sidebar, the drawer, and the sign-in lockup with `BrandLogo`, and sets the tab title and icon. Without one, the
   crimson tile with the signal glyph and the name stay. The logo keeps a browser-derived dark copy
-  (`.brand-logo-light` / `.brand-logo-dark`).
+  (`components/brand-logo.tsx`: the two copies swap by `dark:` utilities, the other way round on an ink panel).
 - Copy: every Arabic string uses Latin digits (no ٠–٩).
-- Money: the shekel sign small and quiet after the figure (`.money .cur`); the text still reads «12.50 ₪».
+- Money: the shekel sign small and quiet after the figure (`Money`'s `<small>` ₪ at 0.8em, `components/desk.tsx`);
+  the text still reads «12.50 ₪».
 
 ### Stylesheet
 
@@ -105,7 +109,7 @@ Both themes are defined in `apps/web/app/tailwind.css` (`:root` and `.dark` in `
 | `--rd-on-accent` | `#ffffff` | `#ffffff` | text and marks on `--rd-accent-fill` |
 | `--rd-on-mark` | `#ffffff` | `#ffffff` | text over a coloured company mark (an inline hue); the switch knob |
 | `--rd-primary-bg` | `#161616` | `#ececec` | ink fill: the offer timer's fill, the branding preview's mark and tab icon, the default badge's text; not a button colour — every primary is crimson (ADR 0021 D2). The sidebar and drawer tile does not read it: it is crimson (`bg-accent-fill` in `components/app-shell.tsx`, Tailwind migration T3.1). Its name still says "primary" (audit 3.1-14, open: the rename of the `primary-*` family is not done) |
-| `--rd-primary-fg` | `#ffffff` | `#111213` | text on an ink fill: the branding preview's mark (`.bp-mark`). Also the text colour of the sidebar and drawer tile (`text-primary-fg` in `components/app-shell.tsx`, Tailwind migration T3.1), which does not render it: the tile has no text and strokes its icon with `--rd-on-accent` |
+| `--rd-primary-fg` | `#ffffff` | `#111213` | text on an ink fill: the branding preview's mark (the name's first letter on its `--rd-primary-bg` tile, `text-primary-fg` in `components/branding-preview.tsx`). Also the text colour of the sidebar and drawer tile (`text-primary-fg` in `components/app-shell.tsx`, Tailwind migration T3.1), which does not render it: the tile has no text and strokes its icon with `--rd-on-accent` |
 | `--rd-primary-soft` | ink fill at 10% | the same | the default badge's fill; one `:root` definition (`color-mix` of `--rd-primary-bg`) |
 | `--rd-success` / `--rd-success-soft` | `#0f8a59` / 10% | `#3ddc97` / 12% | active, paid, profit |
 | `--rd-warning` / `--rd-warning-soft` | `#a9670a` / 12% (the tint is `color-mix` of `--rd-warning`, UI maintenance P1.2) | `#ffb547` / 12% | pending |
@@ -208,7 +212,7 @@ Fonts come from `next/font` in `apps/web/app/layout.tsx`. No Google stylesheet l
 - Stack: `var(--font-sans), var(--font-he), Tahoma, sans-serif`. Headings use the same stack at weight 700, the
   heaviest weight (800 is gone, ADR 0021 D7 a).
 - Numbers, money, dates, phone numbers: **Latin digits only** (dates use `ar-u-nu-latn`), in that same face with
-  `font-variant-numeric: tabular-nums` (`tabular-nums`; `.money`, `.num`, `.when`, `.line-number`, `td.msisdn`).
+  `font-variant-numeric: tabular-nums` (`tabular-nums`: `Money`, a table's numeric columns, dates, line numbers).
   Identifiers that are Latin digits stay in `<bdi dir="ltr">`.
 - Icons: `lucide-react` at stroke 1.9.
 
@@ -248,7 +252,8 @@ Fonts come from `next/font` in `apps/web/app/layout.tsx`. No Google stylesheet l
   - the `Switch` — the 3px `--rd-focus` ring on a pill;
   - an item in a strip or a list (a tab, a segment, a period, a page number, a `Select` row) — a 2px `--rd-accent`
     outline inside its edge;
-  - a clickable card (`.line-op`) — a 2px crimson ring inside its edge (see [Screens](#screens), number card).
+  - a clickable card (`data-slot="line-op"`) — a 2px crimson ring inside its edge (see [Screens](#screens), number
+    card).
 - One disabled look: `opacity-disabled` (45%) and a not-allowed pointer (none on a button, which takes no pointer
   events), on every control.
 - Check light and dark (dark is the default), and ar + en.
@@ -294,6 +299,51 @@ draw a control of its own. A look two screens need is a variant here.
 Callers today: `Tooltip`, `Sheet end` and `Sheet bottom` are built and have no caller (the rail flyout and the filter
 drawer still draw their own; see [Known gaps](#known-gaps)).
 
+### Component API
+
+How every part in `components/ui` is written, so a caller knows what it may pass (Tailwind migration T7.1, read from
+the code):
+
+- **Props:** a part takes the props of the element it renders (`React.ButtonHTMLAttributes`, `InputHTMLAttributes`, …)
+  or of the Radix part it wraps (`React.ComponentPropsWithoutRef<typeof …Primitive.Root>`), plus its own variant props,
+  and spreads the rest onto that element. Radix behaviour props pass through unchanged (`open` / `onOpenChange`,
+  `checked` / `onCheckedChange`, `defaultValue`, `side`, `align`). The exceptions are written out: `Select` and
+  `Segmented` take a controlled `value: string` and `onValueChange(value)` and nothing uncontrolled;
+  `SegmentedToggleItem` takes `pressed` (it sets `aria-pressed`); `Field` takes `label`, `hint`, `error`, `tone`, `id`
+  and exactly one control as its child; `Pagination` takes `page`, `pageSize`, `count`, `onPageChange` and, for the
+  size choice, `onPageSizeChange` / `pageSizeOptions`.
+- **Variants:** the props named in the [Catalogue](#catalogue) (`variant`, `size`, `tone`, `surface`, `place`, `side`,
+  `fill`, `danger`, `dot`, the table's `cards` / `striped` / `num` / `actions` / `fit` / `kind`), each from a `cva`
+  table with a default. The table is exported where another element needs the same look without the component:
+  `buttonVariants` / `buttonClass` (a prop that takes a class name), `iconButtonVariants` (the shell's `topbarIcon`),
+  `inputVariants`, `textareaVariants`, `labelVariants`, `choiceBoxClass` / `choiceMarkClass`. The variant types are
+  exported for callers that pass them on: `ButtonVariant`, `ButtonSize`, `BadgeVariant`, `LabelTone`, `DialogSize`,
+  `DialogMarkTone`, `DialogMarkSize`, `SheetSide`, `ToastTone`, `CellKind`, `SelectChip`.
+- **`className`:** joined last through `cn()`, so a caller's utility wins over the part's own for the same property.
+  A caller passes layout (width, grid place, outer margin) this way, never a second look; a look two screens need is a
+  variant here. `Select`'s `className` lands on the trigger; `SheetContent` also takes `overlayClassName` for its
+  overlay, and `DialogContent` takes `onScrimClick` (a click on the scrim, outside the panel).
+- **Refs:** the controls and every Radix part forward their ref (`React.forwardRef`). These are plain functions and
+  take no ref: `Field`, `Badge`, `Avatar`, `Skeleton`, `Pagination`, the `Table` parts (`SortButton` included),
+  `DialogHeader` / `DialogHeading` / `DialogMark` / `DialogBody` / `DialogFooter`, `TabsCount`, `SelectEmpty`,
+  `ToastText`, `SegmentedToggle`, `Tooltip` / `TooltipProvider` and `DirectionProvider`.
+- **`asChild`:** `Button asChild` draws its one child (a `Link`, an `<a>`, a file `<label>`) as the button through
+  Radix `Slot`, without `disabled` / `loading`; `Tabs` draws its Root onto `TabsList`'s strip, and `DropdownMenuItem`
+  renders a `<button>`, both through `asChild` inside the part.
+- **States:** read from ARIA and Radix data attributes, never from a class: `aria-invalid`, `aria-pressed`,
+  `aria-expanded`, `aria-selected`, `aria-busy` (`Button loading`, `Switch pending`), `disabled`, and Radix's
+  `data-state` / `data-disabled` / `data-side`; the utilities name them (`aria-invalid:`, `data-[state=checked]:`).
+- **Handles:** each part sets `data-slot="<part>"` (`button`, `icon-button`, `input`, `textarea`, `label`, `field`,
+  `switch`, `checkbox`, `radio-group`, `radio`, `radio-cards`, `radio-card`, `segmented`, `segmented-item`,
+  `segmented-toggle`, `segmented-toggle-item`, `select-trigger`, `select-item`, `select-empty`, `dialog-scrim`,
+  `dialog`, `dialog-mark`, `dialog-body`, `sheet`, `sheet-overlay`, `tabs`, `tab`, `dropdown-menu`,
+  `dropdown-menu-item`, `popover`, `tooltip`, `toast`, `badge`, `table-sheet`, `table`, `table-head`, `table-body`,
+  `table-row`, `table-head-cell`, `table-cell`, `table-sort`, `skeleton`, `avatar`); `Badge` also sets
+  `data-testid="badge"` (a caller's own wins). The base rules of `app/tailwind.css` and the e2e specs read these
+  handles; a styling class is never a handle.
+- **Radix:** imported only in these files (`radix-ui`), each primitive wrapped once; screens and shared components
+  import the wrapper. `DirectionProvider` gives every primitive the document's `dir`.
+
 ### Button
 
 Every action is `Button` (5.4b-4d): no `.btn`, `.btn-sm`, `button.primary` / `.secondary` / `.danger`, and no context
@@ -321,11 +371,12 @@ Tailwind migration T2.1).
 - A group of buttons reads cancel then the action (D8); in a dialog's foot (and a multi-step create page's last
   step) the cluster sits at the inline end, so the action is at the far end; an in-pane edit form's own buttons sit
   at the reading start.
-- Controls with their own look stay plain `<button>`s with their own class: the legacy segmented pick (`.seg`: the
-  account's grants and the two-step rule, until their screens move onto `Segmented`), tiles and cards (`.op-tile`,
-  `.op-card`, `.pack-card`, `.company-card`, `.pack-pick`, `.task-op`), menu items, the sort header, and the outage
-  and return bars. The catalog's offer and company picks and the two-step method cards are `RadioCard`s since
-  Tailwind migration T6.3; the report period switch and the wallet chart's window are `SegmentedToggle`.
+- Controls with their own look stay plain `<button>`s (or cards), drawn in place with utilities and found by a
+  `data-slot` handle, not a class: the operation cards (`op-card`), the point of sale's company and package cards
+  (`pos-company`, `pack-card`), the line's package pick (`pack-pick`), menu items, the sort header, and the outage and
+  return bars. The account's grants and the two-step rule are `Segmented` (Tailwind migration T4.2, T3.2); the
+  catalog's offer and company picks and the two-step method cards are `RadioCard`s since Tailwind migration T6.3; the
+  report period switch and the wallet chart's window are `SegmentedToggle`.
 - Which button is primary: [Primary button](#primary-button).
 
 ### IconButton
@@ -565,7 +616,7 @@ not an action: it stays ink (D3).
 - Card / pane (`Pane`, `components/desk.tsx`): the surface, no border, a 1px inset `--rd-line` edge, 6px corners
   (`rounded-sm`); a pane that holds a table takes 8px corners and `--rd-shadow-frame` instead of the edge. Its head
   and body are still `.pane-head` (52px, 14px / 18px) / `.pane-body` (14px, 18px at the sides and foot;
-  `--rd-space-pane`). `.empty` inside a pane or
+  `--rd-space-pane`). `EmptyState` inside a pane or
   sheet already carries 14px padding, so a page never sets it inline.
 - Table (`DataTable`, `components/data-table.tsx` on `components/ui/table.tsx`; `PagedTable` for cursor lists): quiet
   header, hairline rows, text and status at the reading start, numbers tabular and aligned to the reading end (the
@@ -584,29 +635,29 @@ not an action: it stays ink (D3).
 - Tabs (`components/tabs.tsx`): the `Tabs` look above; an optional crimson count; arrow keys. Tab strips wrap so every
   tab is in view.
 - Facts: label/value pairs are `<Facts>` + `<Fact label>` (`components/facts.tsx`), never a hand-written `<dl>`. One
-  primitive, three densities: `tiles` (default, `.detail-rows`: each fact one framed row drawn like a filter chip —
-  its name on the soft track, a hairline, the value on the surface; rows stack and pair up in a wide dialog (owner
-  2026-11-11); every dialog's summary: QR, swap SIM, request eSIM, change number, transfer, disconnect, activation
-  result, transfer dialog), `cards` (`.fact-grid`: a summary card per fact with an `icon` and a `tone` of
-  `good`/`warn`; the head of the user page), `list` (`.task-facts`: a compact ruled list for a narrow rail; the task
-  ticket). Latin identifiers inside a value stay in `<bdi dir="ltr">`.
-- Package facts: `PackageFacts` (`components/package-facts.tsx`, `.package-facts`) — GB, minutes, messages and months
-  on one muted line («500 جيجا · دقائق غير محدودة · 3 أشهر»), the package's extra text under it. Wherever a package is
-  chosen or listed; the line alone (`withDetails={false}`) on small cards.
+  primitive, three densities (`variant`, read back as `data-variant` on `data-slot="facts"`): `tiles` (default: each
+  fact one framed row drawn like a filter chip — its name on the soft track, a hairline, the value on the surface;
+  rows stack and pair up in a wide dialog (owner 2026-11-11); every dialog's summary: QR, swap SIM, request eSIM,
+  change number, transfer, disconnect, activation result, transfer dialog), `cards` (a summary card per fact,
+  `data-slot="fact-card"`, with an `icon` and a `tone` of `good`/`warn`; the head of the user page), `list` (a compact
+  ruled list for a narrow rail; the task ticket). Latin identifiers inside a value stay in `<bdi dir="ltr">`.
+- Package facts: `PackageFacts` (`components/package-facts.tsx`, `data-slot="package-facts"`) — GB, minutes, messages
+  and months on one muted line («500 جيجا · دقائق غير محدودة · 3 أشهر»), the package's extra text under it. Wherever a
+  package is chosen or listed; the line alone (`withDetails={false}`) on small cards.
 - Money (`Money`, `components/desk.tsx`): bold tabular figures; a negative one in `--rd-danger`, a signed positive
   one in `--rd-success` with its plus, `muted` (a reference figure) in `--rd-muted`; the shekel sign after it at 0.8em,
   normal weight, `--rd-muted`.
-- Company mark (`CompanyMark`, `components/company-mark.tsx`, `.co-mark`): the company picture or its letters on
-  `markColor(name)` (`lib/company-mark.ts`, `hsl(h 42% 33%)`, at least 4.67:1 against white on every hue) with the cut
-  corner, wherever packages are grouped (the packages list, a user's «الرزم والأسعار» tab, the numbers table) and
-  beside a company's name.
+- Company mark (`CompanyMark`, `components/company-mark.tsx`, `data-slot="company-mark"`): the company picture or its
+  letters on `markColor(name)` (`lib/company-mark.ts`, `hsl(h 42% 33%)`, at least 4.67:1 against white on every hue)
+  with the cut corner, wherever packages are grouped (the packages list, a user's «الرزم والأسعار» tab, the numbers
+  table) and beside a company's name.
 - Image: an image whose source is a `data:` or `blob:` URL (logos, company marks, the eSIM QR) is `DataImage`
   (`components/data-image.tsx`); there is no bare `<img>`.
 
 ### Filters
 
 `FilterBar` (`components/filter-bar.tsx`, `data-slot` `filter-bar` / `filter-panel`) is the only filter pattern; do
-not write a bare `.filter-line` or inline filter markup on a new page.
+not write hand-made filter markup on a new page.
 
 - Chips in one wrapping row in a bar of its own (12px / 16px padding, 6px corners, the surface and a 1px inset
   `--rd-line` ring) on the top edge of the table card below (its bottom corners square when a pane follows it) — the
@@ -670,7 +721,7 @@ not write a bare `.filter-line` or inline filter markup on a new page.
   4.6s; nothing on the page moves. Errors stay in the page.
 - Empty: `EmptyState` (`components/empty-state.tsx`, Tailwind since migration T2.7) — muted icon in a 32px circle on
   `--rd-surface-2`, title (`children`), optional secondary `text`, optional `actions`, centered (both axes) in the
-  available `.pane`/`.sheet` space, not pinned to the start edge; `tone="danger"` for `LoadFailed` and the error
+  available `Pane` / `TableSheet` space, not pinned to the start edge; `tone="danger"` for `LoadFailed` and the error
   screen. Not a lone italic line.
 - Loading: `components/loading.tsx` — `Spinner`, and `TableSkeleton` rows of `Skeleton` bars.
 - The account's name: `AccountName` (`components/account-name.tsx`) draws its own look (the name, the full name at
@@ -683,11 +734,12 @@ not write a bare `.filter-line` or inline filter markup on a new page.
   start and a small `icon` (`IconName`) at the end on the first line, then a large tabular `value`, then optional
   `meta`. `tone` colours the icon; `highlight` draws the value and the icon in `--rd-success` for the one figure that
   matters most on a screen (the card stays on the surface, as graphite drew it); `progress` (0–1) draws a thin bar
-  under the value. This is the only KPI pattern; do not use ad-hoc `.stat-card` markup. `pointerGlowClass` (T6.3) is
+  under the value. This is the only KPI pattern; do not hand-write a KPI card. `pointerGlowClass` (T6.3) is
   the figure tiles' soft `--rd-glow` light under the pointer (the shell sets `--mx` / `--my`) and their 2px lift; the
   home and wallet bands, the line operations and the package cards compose it.
 - Figure cards (`.stat-row`): four cards sit in one row when they fit and two by two from 768 to 1100px, never three
-  and one; under 768px an odd last card spans the row. A name as a figure (`.stat-name`) starts at the reading start.
+  and one; under 768px an odd last card spans the row. A name as a figure (a `<bdi>` with `STAT_NAME`,
+  `features/reports/screens/report-pages.tsx`) starts at the reading start.
 - Account band (home): `AccountBand` (`features/desk/home-top.tsx`) — the lead card (available balance, the ceiling as
   twenty ticks, its edge `--rd-accent` at 35% over `--rd-line` with a 2px crimson thread along its top up to the cut,
   the figure 1.9rem; wider from 1100px, the whole row under it), three period cards (`data-slot="pulse-tile"`: sales,
@@ -703,14 +755,14 @@ not write a bare `.filter-line` or inline filter markup on a new page.
   This file said the figure band's lead tile drew it until Tailwind migration T6.4 (audit 3.6-26).
 - Donut (`components/donut.tsx`): slices with square ends and a thin gap between them, its middle words unstroked (the
   global `svg` icon rule is overridden); a legend whose row reads dot, label, change, count — the count closes the
-  line, the change (`.donut-change` green ↑ / red ↓ with the number) just before it; pointing at a slice (ring or
-  legend, or focus) puts its share and name in the middle, thickens it and dims the rest; the ring draws in (reduced
-  motion: none).
+  line, the change (green ↑ / red ↓ with the number; `data-testid` `donut-change-up` / `donut-change-down`) just
+  before it; pointing at a slice (ring or legend, or focus) puts its share and name in the middle, thickens it and
+  dims the rest; the ring draws in (reduced motion: none).
 - Users card (`UsersCard`, `features/desk/overview.tsx`, utilities since Tailwind migration T4.1): a tile per managed
   layer in its `--rd-layer-*` colour (mark, count, label, a link to the list), the ceilings in use as a bar, then
   debtors (count pill, debt; `--rd-warning` while there are debtors, `data-warn`) and frozen as ruled rows.
-- Shortcut tiles (home): `ShortcutsCard`, `.shortcut-grid` of square `.shortcut-tile`s (icon tile in crimson, label
-  under it) on `--rd-surface-2`.
+- Shortcut tiles: none. The home has had no shortcuts card since spec 2026-11-09-admin-review (7)
+  (`features/desk/screens/home-screen.tsx`); this file still named one until Tailwind migration T7.1.
 - Offers hero (home, spec 2026-11-09-offers-tasks-addons-wallet-esim): `OfferHero` (`components/offer-hero.tsx`,
   utilities since Tailwind migration T4.1) — a compact strip — text at the reading start and a small 240px 2:1 picture
   at the end, stacked picture-first under 760px; the picture is optional, and without one the offer is text only on
@@ -721,23 +773,24 @@ not write a bare `.filter-line` or inline filter markup on a new page.
 
 ### Cards and dialogs of the catalog
 
-- Operation cards: `.op-grid` of `.op-card` (hairline by `box-shadow`, `--rd-surface-2` when `.off`): a round
-  `.op-mark` glyph, title and one-line description, an inherited-stop badge, and a `LiveSwitch` with the state word
-  under it.
+- Operation cards (`features/accounts/screens/line-ops.tsx`, each `data-slot="op-card"`): a grid of cards (a 1px
+  inset hairline ring, `--rd-surface-2` while stopped): a 40px glyph tile, title and one-line description, an
+  inherited-stop badge, and a `LiveSwitch` with the state word under it.
 - Run-mode cards: `ModeCards` (`components/mode-cards.tsx`) — one cut-corner card per operation with a three-way
   `Segmented fill` (مباشر / مهمة فرع / متوقف) that spans the card in three equal parts, so longer languages never
   spill past its edge (a long label ends in an ellipsis); a stopped one dims. Cards are at least 250px wide; on a phone
   a run-mode card puts its mark beside its name.
-- Terms list (user page → «الرزم والأسعار», spec 2026-11-08-user-packages-tab-redesign): `TableSheet` `.terms-sheet`
-  → one folding `.terms-group` per company (a `.terms-group-head` button with a chevron, `aria-expanded`, folded until
+- Terms list (user page → «الرزم والأسعار», spec 2026-11-08-user-packages-tab-redesign): `TableSheet`
+  (`features/accounts/screens/packages-terms.tsx`) → one folding section per company (a sticky head button with the
+  company's mark and a chevron, `aria-expanded`, folded until
   pressed or matched by the filter) → a bare `DataTable` with plain headers, one line per package: name and GB ·
   «سعرك (اشتراك / تجديد)» · «سعر البيع (اشتراك / تجديد)» (green and bold when custom) · margin · a badge only when
   special (`سعر خاص`, `متوقف`, `موقوف من فوق`) · the switch · `RowMenu` («تعديل السعر» dialog, «إرجاع للافتراضي»,
   «أسعار الأرقام القائمة»). A row whose switch is off reads muted and struck through. No company switch, no bulk on/off,
   no «موروث».
-- The package price chain (`ChainBoard`, `.chain-grid`): one table row per layer — the branch's cost first, tinted —,
-  the subscription and the renewal side by side, each price with its margin over the layer above; the eSIM price and
-  the re-pricing sit as two cards under it (D6).
+- The package price chain (`ChainBoard`, `features/catalog/chain-board.tsx`, its table `data-testid="chain-grid"`):
+  one table row per layer — the branch's cost first, tinted —, the subscription and the renewal side by side, each
+  price with its margin over the layer above; the eSIM price and the re-pricing sit as two cards under it (D6).
 - **Line prices dialog** (`components/line-prices-dialog.tsx`): Dialog `size="form"` that groups a package's renewable
   numbers by the renewal price they carry and lets the operator set a new flat price per group or «follow current»; a
   `Table` (`components/ui/table.tsx`) with `num` columns, `PriceField` for the new price, secondary follow button,
@@ -812,31 +865,35 @@ pane or filter is 34px.
 ### Report pages
 
 The report pages (sales, profits, orders, balances, provider costs, activity log) share one layout from
-`features/reports/report-kit.tsx`: the title and lede with «CSV» in the head (`CsvLink`), then `.report-filters` —
-the `Period` switch (`SegmentedToggle`, `data-slot="period"`: today / 7 days / 30 days / 3 months, the chosen one
-raised with a crimson underline; full width under 768px) beside the loose filter chips —, three figure tiles with a
-meta line and no icon (`Stat` without `icon`; a red or green figure through `.tone-danger` / `.tone-success`, a name
-as `.stat-name`), and the table. A package cell is the package over its company (`.sub`); a share is a `.cap` bar.
-Balances have no period (they are a snapshot). Operations and provider operations take the report layout.
+`features/reports/report-kit.tsx`: the title and lede with «CSV» in the head (`CsvLink`), then
+`data-slot="report-filters"` — the `Period` switch (`SegmentedToggle`, `data-slot="period"`: today / 7 days / 30 days
+/ 3 months, the chosen one raised with a crimson underline; full width under 768px) beside the loose filter chips —,
+three figure tiles with a meta line and no icon (`Stat` without `icon`; a red or green figure through `text-danger` /
+`text-success`, a name as `STAT_NAME`), and the table. A package cell is the package over its company (muted, under
+it); a share is a thin crimson bar beside its percentage. Balances have no period (they are a snapshot). Operations
+and provider operations take the report layout.
 
 ### Finance and wallet pages
 
 The finance and wallet pages share the design's wallet head (`WalletHead`): the balance tile leads (held, left to
 sell, the ceiling as twenty ticks), money in (green) and out (red) over the chosen window, the movements with how many
 were made by hand, then «الرصيد عبر الوقت» (a large `TrendLine`) with the 7 days / 30 days / 3 months switch
-(`SegmentedToggle`) that every tile follows. Every ledger reads the reason as a tag (`.reason`: sale `r-leaf`, held
-`r-amber`, money back `r-alarm`, funding `r-plum`, payment `r-leaf`, settlement and the rest `r-mute`, a line
-operation `r-amber`).
+(`SegmentedToggle`) that every tile follows. Every ledger reads the reason as a tag (`data-slot="reason-tag"`,
+`features/wallets/ledger-parts.tsx`, its `ReasonTone`: sale `leaf`, held `amber`, money back `alarm`, funding `plum`,
+payment `leaf`, settlement and the rest `mute`, a line operation `amber`).
 
 ### Home layout
 
 The home opens with the design's top: the head (the greeting is the title; date and layer the lede; the head's
-«تمويل حساب» and crimson «تفعيل رقم»; the period switch at the end), the `AccountBand` (see Figures), then two columns
-that stack their own cards (`features/desk/screens/home-screen.tsx`, utilities since Tailwind migration T4.1), so
-nothing is stretched to a neighbour: the wide one (reading start) holds the last operations (`.op-list`), top sellers,
-most active, providers and the board; the narrow one (reading end, first in the page so a phone reads it first) holds
-numbers by status (a 112px `Donut`, legend beside it, under it in a card below 340px), tasks («مهام بانتظارك»,
-`.waiting-list`), shortcuts (3 per row) and the accounts summary. The period's overview («نظرة عامة») follows. Each
+«تمويل حساب» and crimson «تفعيل رقم»; the period switch at the end), the `AccountBand` (see Figures), then (not for
+the branch) the last operations (`LastOperations`, the wider, at the reading start) beside the tasks waiting
+(«مهام بانتظارك», `WaitingTasks`), side by side from 1000px (`features/desk/home-top.tsx`). The period's overview
+follows with no heading, in two columns that stack their own cards (`features/desk/screens/home-screen.tsx`,
+utilities since Tailwind migration T4.1), so nothing is stretched to a neighbour: the wide one (reading start) holds
+top sellers (`TopCard`), most active (`ActiveCard`) and providers (`ProvidersCard`); the narrow one (reading end,
+first in the page so a phone reads it first, `data-slot="home-side"`) holds numbers by status (`LinesCard`: a 112px
+`Donut`, legend beside it, under it in a card below 340px), tasks (`TasksCard`) and the accounts summary
+(`UsersCard`). There is no shortcuts card (spec 2026-11-09-admin-review, 7). Each
 period card's change chip sits in its corner — up green, down red, against yesterday by this time or the same span of
 last month, none over all time. Between 640 and 1099px the narrow column's cards pair up; one column under 640px,
 where the lead figure and the fourth tile take full rows.
@@ -864,33 +921,37 @@ second.
 Graphite page details, matched to the prototype page by page (2026-11-09).
 
 - Numbers table (as in the design): the number with its SIM mark; the package beside its company's cut-corner mark
-  (`.co-mark`) with the company under it; the point of sale; the status; «الأيام المتبقية» (`.days` — crimson «ينتهي
-  قريباً · N يوم» within the expiring window, «انتهى» past its end, the end date as the cell's title); the price.
+  (`CompanyMark`) with the company under it; the point of sale; the status; «الأيام المتبقية» (`data-slot="days"` —
+  crimson «ينتهي قريباً · N يوم» within the expiring window, «انتهى» past its end, the end date as the cell's title);
+  the price.
 - Page ledes: numbers and tasks have one line under the title, as in the design.
 - Number card: the number is the title, with its status and what is left (crimson when it ends soon); under it the
   company · package · point of sale (a crimson link); no action buttons in the head (every operation is a card of
   «العمليات»); four cut-corner facts (package, ends on, price, last recharge); tabs العمليات / السجل (count) /
-  التفاصيل; every operation a `.line-op` card — crimson mark, name, one line on what it does, a chevron that slides on
-  hover; disconnect in danger. A card with keyboard focus draws a 2px crimson ring inside its edge, on its `::before`
-  above the hover glow (an outline outside the card would be cut away by its `clip-path`); the ring follows the
-  rounded corners and stops where the cut corner begins.
+  التفاصيل; every operation a card (`data-slot="line-op"`, `features/lines/screens/line-card-screen.tsx`) — crimson
+  mark, name, one line on what it does, a chevron that slides on hover; disconnect in danger. A card with keyboard
+  focus draws a 2px crimson ring inside its edge, on its `::before` above the hover glow (an outline outside the card
+  would be cut away by its `clip-path`); the ring follows the rounded corners and stops where the cut corner begins.
 - Users list: the account's square mark with a crimson letter, the name over the login; the layer as an outlined tag
   in its own hue (`--rd-layer-*`).
 - User page: four tabs — packages and prices, number operations, the account's numbers, access. Its head: a 48px
   cut-corner crimson mark, the name, the layer tag, the state; wallet actions are secondary; the facts as `Facts
-  cards`. «الإعدادات والصلاحيات»: «إعدادات الحساب» open on top, «صلاحيات الحساب» folded (`.inherit-fold`) under it;
-  each grant a three-way `.seg` (حسب الدور / مسموح / ممنوع), extra roles as `.role-chip` toggles (`aria-pressed`, D3).
+  cards`. «الإعدادات والصلاحيات»: «إعدادات الحساب» open on top, «صلاحيات الحساب» folded under it (a `<details>`,
+  `data-testid="access-fold"`); each grant a three-way `Segmented` (حسب الدور / مسموح / ممنوع), extra roles as toggle
+  buttons (`ROLE_CHIP`, `aria-pressed`, D3; `features/accounts/screens/account-screen.tsx`).
 - Tasks: status tabs above the filters (all, in progress, done, closed — counts from the overview of all time); each
-  task a card row (`.task-list`): a crimson cut-corner mark, the operation and its status, the number · company ·
-  package · point of sale under it, the amount, «استلام» or «فتح التذكرة», and ⋯.
+  task a card row (`data-testid="task-card"`, `features/tasks/screens/tasks-screen.tsx`): a crimson cut-corner mark,
+  the operation and its status, the number · company · package · point of sale under it, the amount, «استلام» or
+  «فتح التذكرة», and ⋯.
 - Task ticket: the operation and its state are the title, number · company · package the lede; the log is the wide
   side at the reading start, the details the narrow side, each its own card. On a ticket 36rem wide or narrower
   (`@container task-ticket`) the details sit above the log, at most 40% of the board high and scrolling inside it;
   the board then scrolls as one column, the log at its full length with the compose bar at its end (a message wider
   than the ticket scrolls sideways in the log). A task that went to a provider opens its details with the operation's
-  block (`.po-panel`): a title and the phase as a `Badge` (see [Status tones](#status-tones)), one sentence, the amount
-  with what became of it, then the decisions. The queue (`/tasks/decisions`) reuses the proposal card and one ruled
-  row per operation (`.po-row`).
+  block (`ProviderOperationPanel`, `features/tasks/components/provider-operation-panel.tsx`): a title and the phase
+  as a `Badge` (see [Status tones](#status-tones)), one sentence, the amount with what became of it, then the
+  decisions. The queue (`/tasks/decisions`) reuses the proposal card and one ruled
+  row per operation (`data-testid="po-row"`, `features/tasks/screens/provider-decisions-screen.tsx`).
 - Task ticket actions sit in the page head: «إكمال» is primary and shows its open form by a pressed state
   (`aria-pressed`), not by changing variant (ADR 0021 D13); take is primary too, so an unassigned task's head shows
   both, and the ticket's in-page forms keep their primary submits beside them (a named exception: see
@@ -899,30 +960,37 @@ Graphite page details, matched to the prototype page by page (2026-11-09).
 - Provider «طريقة التنفيذ»: `ModeCards` (see Cards and dialogs of the catalog). The provider account page is the
   ledger and the matching as two tabs under the figure row, with CSV, edit credit and record payment in the head
   (record payment the primary; the matching tab's «مقارنة» stays primary beside it, a named exception).
-- Companies list: a grid of cut-corner `.co-card`s — the company's mark and an «eSIM» tag, the name (the whole card
+- Companies list: a grid of cut-corner cards (`data-slot="company-card"`,
+  `features/catalog/screens/companies-screen.tsx`) — the company's mark and an «eSIM» tag, the name (the whole card
   opens it), its SIM rules («19 خانة · تبدأ 8997202» or «بلا قيود»), then bold counts under a hairline; ⋯ in the
   corner. Short cards (company, fact, operation) sit two a row on a phone.
-- Company page opens on «الرزم» (no card around it): the company's packages as `.line-op` cards that open each
-  package; the company's cut-corner mark beside its name; the lede reads «N رزمة · N مزود · eSIM مدعوم»; tabs الرزم /
-  قواعد الشريحة / المزودون. The company «الإعدادات» tab: `.settings-block`s — picture, SIM rules, eSIM (a `LiveSwitch`)
-  (D2). Its «حفظ» stays primary beside the head's «إضافة رزمة» (a named exception).
+- Company page opens on «الرزم» (no card around it): the company's packages in one table (`CompanyPackages`,
+  `features/catalog/company-packages.tsx`: facts, provider, prices, margin, the on/off switch; a provider filter; the
+  name opens the package); the company's cut-corner mark beside its name; the lede reads «N رزمة · N مزود · eSIM
+  مدعوم»; tabs الرزم / المزودون / الإعدادات. The company «الإعدادات» tab
+  (`features/catalog/screens/company-screen.tsx`): blocks in one pane, each under a hairline — picture, SIM rules,
+  eSIM (a `LiveSwitch`) (D2). Its «حفظ» stays primary beside the head's «إضافة رزمة» (a named exception).
 - Packages list: the lede, a search box with its icon and placeholder, the provider and status chips standing above
   the list (`FilterBar loose`); companies fold as groups — mark, name over «N رزمة · M متوقفة», chevron at the far
   end — and the first opens with the page; rows 56px with the name over its facts, a square switch, a stopped
   package's row dim.
-- Package page: the company's mark, «company · package» and whether it is for sale as the title, the switch beside
-  it; provider and live numbers the lede; it opens on «سلسلة الأسعار»: five steps across per group (`.chain-step`), the
-  price edited in place, each layer's margin under it, the branch's cost first in crimson.
-- Notices are card rows (`.notice-list`: the group's mark, the title over its detail, the age, a crimson `.unread-dot`
-  while unread, the unread row tinted) under «الكل / غير مقروءة» tabs.
-- Roles are the design's matrix (`.roles-matrix`: a green `.grant.on` tick per grant held, an empty `.grant` tile
-  otherwise, a dash where the layer can never use it).
+- Package page: the company's mark, «company · package» and whether it is for sale as the title, the switch beside it;
+  provider and live numbers the lede; it opens on «سلسلة الأسعار»
+  (`features/catalog/screens/package-sheet-screen.tsx`): the `ChainBoard` (see Cards and dialogs of the catalog) — one
+  row per layer, the price edited in place, each layer's margin beside it, the branch's cost row first and tinted —
+  with the eSIM price and the re-pricing as cards under it.
+- Notices are card rows (`data-slot="notice-card"`, `features/notices/screens/notices-screen.tsx`: the group's mark,
+  the title over its detail, the age, a small crimson diamond while unread, the unread row tinted) under «الكل / غير
+  مقروءة» tabs.
+- Roles are the design's matrix (`features/roles/screens/roles-screen.tsx`: a green tick tile per grant held,
+  `data-testid="grant-on"`, an empty tile otherwise, a muted dash where the layer can never use it).
 - The role dialog (`features/roles/screens/roles-screen.tsx`; the grouped design chosen from three, owner
   2026-11-11): the grants in three groups (`GRANT_GROUPS` in `lib/grants.ts`: viewing and accounting, daily work,
   accounts and transfers; a group with nothing the layer can use is left out), each with a leading rail — its name
   and how many are on, `2/3` — beside hairline rows; a row is a name and a `LiveSwitch` at its end, the whole row the
   target; an «on» name is ink 700, an «off» one muted, so state never rests on colour alone; the head carries the
-  total («4 من 8 مفعّلة»). Under them the layer's session rules: two labelled fields side by side (`.role-fields`)
+  total («4 من 8 مفعّلة»). Under them the layer's session rules: two labelled fields side by side (`RuleSelects`,
+  `features/auth/session-rules.tsx`)
   drawn exactly as every ordinary field — surface fill, 1px field border, 6px corners, 34px (44px on a phone),
   13px/600, a crimson edge and soft ring on focus — the text following the page's direction (no forced `dir`), the
   inherited value as the placeholder, the range inside at the end, red with a sentence when out of range, and «حفظ»
@@ -939,7 +1007,7 @@ Graphite page details, matched to the prototype page by page (2026-11-09).
   `RadioCard`s (the chosen one outlined in crimson); sessions and passkeys are cards with a crimson device mark, the
   sign-in methods three across (utilities in `features/auth/sign-in-methods.tsx` and
   `features/auth/screens/settings-screen.tsx` since Tailwind migration T3.2).
-- Ledgers: a ledger's movement type is a `.reason` tag (see Finance and wallet pages).
+- Ledgers: a ledger's movement type is a reason tag (`data-slot="reason-tag"`, see Finance and wallet pages).
 
 ## Known gaps
 
@@ -972,6 +1040,20 @@ the owner's choice).
 - Smaller: callers still resize `Button` by class (the pager arrows' `h-7.5`; 3.5-20); direction-aware icons are
   `ltr:hidden` / `rtl:hidden` pairs and the flyout has two keyframes (3.6-27); the calendar days are 34px (40px under
   641px) (3.10-13); a badge tone may still be picked inline somewhere (3.6-16, not re-checked).
+- Code comments: many components and screens still say which deleted sheet a value was ported from
+  (`graphite.css`, `desk/frame.css`, `styles/ui.css` …) and a few say "the legacy rules still read" a handle. They
+  record provenance; the rules they name now live in `app/tailwind.css` or in the utilities, and this file is the
+  reference (Tailwind migration T7.1 left the code untouched). The shell's pointer-glow lookup
+  (`components/app-shell.tsx`) still lists the deleted classes `.figure-tile`, `.shortcut-tile`, `.op-card` and
+  `.op-tile` beside the live `data-slot` handles; they match nothing.
+- Class names in this file: until T7.1 its controls, figures and Screens sections named deleted legacy classes as
+  live markup (`.seg`, `.role-chip`, `.task-list`, `.po-panel`, `.co-card`, `.chain-step`, `.notice-list`,
+  `.roles-matrix`, `.role-fields`, `.terms-group`, `.shortcut-grid`, `.stat-card`, `.donut-change`, `.filter-line`,
+  `.bp-mark` and more). T7.1 replaced each with the component, file, `data-slot` or `data-testid` that draws it (checked
+  by `rg` against `apps/web`); a class this file still names (`.pane`, `.pane-head`, `.pane-body`, `.desk`, `.stack`,
+  `.stat-row`, `.price-pair`, `.hint`, `.dark`) is a live rule in `app/tailwind.css`, and `.btn`, `.badge` and the
+  button context rules are named only to say they are gone. The descriptions were re-read against the code only where
+  a name changed; the rest of Screens was not re-checked line by line.
 - Not re-checked since the 2026-11-13 audit, treated as open: the per-screen type sets (section titles, menu items,
   counters, legends), the spacing rhythms, small crimson / success / warning text contrast, and the accessible names
   and live regions it listed. The finding ids are in the inventory's §8.4.

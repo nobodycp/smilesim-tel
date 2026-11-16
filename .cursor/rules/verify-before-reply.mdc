@@ -23,3 +23,22 @@ done, do all of this, and say in the reply what you checked and what you did not
 5. **Every state:** empty, loading, error, one row, many rows, long names, unlimited/none values.
 6. **Report honestly:** what was checked, at which widths and themes, what was found and fixed, and anything not
    checked. Never write "all consistent" unless step 1 was done for that element on every page.
+
+## Exception: the Tailwind migration runs without visual verification (owner 2026-11-15)
+
+For the Tailwind CSS v4 + Radix migration (ADR 0022; spec and plan
+`docs/superpowers/{specs,plans}/2026-11-15-tailwind-radix-migration.md`, branch `design-system`) the owner turned the
+visual checks off: the work is code maintenance without visual verification. While a slice of that plan is being done:
+
+- Steps 2–5 above do not run: no browser, no screenshots, no computed-style measurement against port 3000, no
+  `apps/web/tests/dom-snapshot.mjs`, no `apps/web/visual-audit/` run, no clicking through. The app on port 3000 is not needed,
+  and the browser step of `work-plan.mdc` and `machine-limits.mdc` («checked on it in the browser») is waived for
+  these slices only.
+- In their place a slice is checked by `npm run lint`, `npm run typecheck`, `npm run check:copy`,
+  `npm run check:styles`, and a code review of the staged diff against the legacy rules it ports (the plan's
+  "Protocol (binding)"). The current look is the target; a visible difference is a defect found by that review. e2e
+  and the build run on GitHub Actions when the owner pushes.
+- Step 1 still applies as a code check (the same component and variant for the same kind of element on every page),
+  and step 6 applies in full: the reply says that no visual check was made.
+
+The exception covers only the slices of that plan. Any other UI change follows steps 1–6.
