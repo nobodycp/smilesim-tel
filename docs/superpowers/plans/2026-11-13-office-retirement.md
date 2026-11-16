@@ -158,6 +158,22 @@ goes down; the backend map updated in the same commit.
   word (no deployment holds keys worth keeping). What the missing observation costs is in the
   handover (section 14): a web older than R.11b does not work with this API, and a jump from a release older than
   R.11b has no order without an interruption. Commit: see `git log --grep 'R.11c'`.
+- [x] **Clean-up before the package plan (2026-11-16, the owner's word: nothing in an old form stays; the system
+  runs on trial data until launch).** (1) The tables are `Task` and `TaskNote`, with their constraints and indexes
+  (migration `20261116100000_task_table_names`; `prisma migrate diff` empty), raw SQL, the sealing script's table
+  list and the backup rehearsal follow. (2) The duplicate guard hashes the path as sent; `canonicalPath` is gone.
+  (3) Comments, test names and API summaries no longer name files and classes that are gone. (4) The sign-in limit
+  and the session-start rule read the path as the router matches it (`routePath`): `/auth/login/` and
+  `/AUTH/LOGIN` were served and never counted. (5) `UnitOfWork` states the transaction limits (10 s to be given a
+  connection, 15 s to run; Prisma's 2 s and 5 s before). (6) A stored hash that is not argon2 matches nothing
+  instead of throwing. (7) A refused passkey removal is recorded. (8) The command-line scripts are `src/cli/`
+  (`node dist/cli/<name>.js`), and `transaction()` in `unit-of-work.ts` is the one place a transaction is opened:
+  `root-domain-code` and `transaction-outside-unit-of-work` 2 → 0, so every guard count is 0. (9)
+  `operation-dispatcher.db.spec.ts` recovers its own provider's attempts only (it ran `recoverExpired` over every
+  expired attempt in the shared database), and the forty-rounds test of `provider-dispatch.db.spec.ts` attests
+  each round: its one attestation ran out after 60 s when the file ran beside others (open items, 2026-11-16). (10) Every task log line carries its
+  time (migration `20261116110000_task_log_lines_stamped` gives the lines written before 2026-11-03 their task's
+  creation time); the reader's fallback is gone. Commits: `git log f3adb08^..` on 2026-11-16.
 
 Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 
@@ -167,9 +183,9 @@ Before S.12b: R.0, R.1, R.2, R.3, R.4, R.5, R.7.
 |---|---|---|---|
 | `module-layering` | **0** (was 32; R.2 closed 4, R.3 9, R.4 8, R.7 4, R.8 7) | imports the target graph does not allow | R.3–R.8 |
 | `module-mutual` | **0** (R.8 closed access ↔ tasks, access ↔ wallets, catalog ↔ pricing; R.7 closed providers ↔ wallets, providers ↔ reporting, platform ↔ providers; R.4 closed sales ↔ tasks, providers ↔ tasks; was 14; R.2 closed access ↔ notifications, auditing ↔ identity, platform ↔ notifications, notifications ↔ sales; R.3 closed identity ↔ platform, access ↔ pricing, access ↔ sales and opened catalog ↔ pricing, closed by R.8) | pairs of modules that import each other | R.3–R.8 |
-| `root-domain-code` | 2 (R.3: `doors.ts`; R.5: the worker's wiring; R.7: the start-up check is bootstrap; left: two command-line scripts that reach a module, whose `dist/` path operators run) | domain code at `src/` root | R.3, R.5 |
+| `root-domain-code` | 0 (2026-11-16: the command-line scripts are `src/cli/`, run as `node dist/cli/<name>.js`) | — | done |
 | `operation-writes` | 0 (R.4) | `tasks/task-operation.ts` wrote a provider operation | done |
-| `transaction-outside-unit-of-work` | 2 (R.5: the attestation; R.7: the reconciliation and the run modes; left: the auth store's boot seeder and the eSIM sealing script, both stated) | `$transaction` beside `UnitOfWork` | R.3, R.5, R.A |
+| `transaction-outside-unit-of-work` | 0 (2026-11-16: the boot seeder and the sealing script open theirs through `transaction()` in `unit-of-work.ts`) | — | done |
 | `write-without-activity` | 0 (R.A) | sign-in routes that recorded nothing | done |
 | `module-surface` | in force for all twelve (R.9: five; R.12: the other seven) | — | done |
 | unguarded writes | 27 | `auth` and `branding` writes have no duplicate guard: 1 needs protection, 16 have an equivalent, 10 are authentication steps that are never replayed (below) | R.11a, R.A |

@@ -467,3 +467,32 @@ below were pushed by the owner on 2026-11-16 with the UI work that followed them
   `Idempotency-Key`): accepted by the owner. The contract spec pins the new line. The "did not change, on purpose"
   point above no longer holds.
 
+## Clean-up before the package plan — DONE (2026-11-16, the owner's word)
+
+The owner: the system runs on trial data until launch; nothing is kept in an old form for compatibility. The ten
+points are in the plan (`office-retirement`, "Clean-up before the package plan"). What is worth knowing beyond it:
+
+- **Two migrations**, both applied to the test database and to this machine's own: `20261116100000_task_table_names`
+  (renames only; `prisma migrate diff` against the schema is empty after it) and `20261116110000_task_log_lines_stamped`
+  (text of `Task.log` only: 8 unstamped lines of 2026-11-03 on this machine's data, 0 after it). An API image older
+  than this code does not run on a database that has them: the three services are released together (handover,
+  section 13).
+- **A real gap closed:** `/auth/login/` and `/AUTH/LOGIN` answered as the sign-in route (checked on the running
+  copy) and the per-address sign-in limit never counted them. The new test failed on the old middleware and passes
+  on the new one. The per-login failed counter was never affected.
+- **Guards:** every count in `architecture.baseline.json` is 0.
+- **Tests, as run:** each point's spec files on PostgreSQL and Redis, green: the rename (16 files, 252 tests, after
+  one expectation's order was corrected: the index exists, the list is sorted), the comment clean-up (9 files, 399),
+  the middleware (3 files), the unit of work and the stand-ins that take its transactions (6 files), the
+  command-line scripts and the guards (11 files, 118), the dispatcher specs (3 files, 92), the tasks (6 files, 63).
+  The auth specs failed once on time limits and passed on the measured rerun (open items, 2026-11-16).
+- **Seen and left, a design question for the owner:** every refused write is recorded with the caller's address,
+  an anonymous one included, and an anonymous caller has no rate limit outside the three sign-in routes. So a
+  caller with no session can add activity rows as fast as it can send requests. The log is purged after 90 days.
+- **Not run locally:** the full API suite and Playwright (machine limits). GitHub CI decides after the push.
+- **The intermittent "forty rounds" failure is explained.** A last batch of 80 files (1372 tests; load 3 before, 15
+  during, 14 after) failed that one test again, this time with its text kept: the sale of a round took the manual
+  route because the spec's single worker attestation (60 s) had run out, the file being at 264 s. The test now
+  attests each round. With that: the six heavy database spec files together, 211 passed. The other 1371 tests of
+  the batch passed. Details in the open items.
+

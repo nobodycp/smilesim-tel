@@ -793,9 +793,16 @@ suite('switching a provider\'s dispatch on, pausing it, and what follows (Postgr
       const { worker, stop } = await switchedOn();
       const outcomes = { sent: 0, held: 0 };
       for (let round = 0; round < 40; round += 1) {
+        // A worker attests every `READY_EVERY_MS` and an attestation lasts `READY_TTL_MS` (60 s). This spec's
+        // worker has no timer, so the one attestation of `switchedOn` ran out when the forty rounds took longer
+        // than that (beside other spec files they do), and the sale then took the manual route: no operation, and
+        // this test failed on a round that had nothing to do with the pause. The worker attests each round, as a
+        // live one does through its timer.
+        await stop.round();
         await call('owner', 'post', at('/resume'));
-        const { operationId } = await sell();
-        expect(operationId).not.toBe('');
+        const { operationId, route } = await sell();
+        // Says which round and which way the sale went, should it not be dispatched.
+        expect({ round, route }).toEqual({ round, route: 'dispatch' });
         const before = calls.length;
         const [paused, handled] = await Promise.all([call('owner', 'post', at('/pause')), worker.dispatch.dispatcher.handle(operationId)]);
         expect(said(paused)).toBe('ok');

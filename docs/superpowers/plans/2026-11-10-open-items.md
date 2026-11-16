@@ -94,6 +94,24 @@ or replaced by a later design. They stay in git history.
   pause was committed, or it never went" failed once (the file 185.6 s; 35.5 s alone). The assertion's text was not
   kept. The file passed alone and the same batch passed whole on the next run (936 tests). R.12 changes import paths
   only. To settle: keep the full output of the next failure and read which of the two outcomes the round broke.
+- **Settled 2026-11-16: "forty rounds of a pause against a dispatch" (`provider-dispatch.db.spec.ts`).** A third
+  failure, in a batch of 80 files with its output kept, gave the text: `expect(operationId).not.toBe('')` at the
+  start of a round, the file at 264 s. `sell()` answers an empty operation id when the sale took the manual route.
+  The spec's worker has no timer and attested once; an attestation lasts `READY_TTL_MS` (60 s); alone the forty
+  rounds fit in it (the file runs in 35 s), beside other files they do not, and a sale made after it ran out is not
+  dispatched. The test now attests each round, as the thirty-rounds test beside it already did, and its assertion
+  names the round and the route. Not a product defect: a worker in production attests every 20 s.
+- **Also removed that day, a second way one file changed another's rows:** `operation-dispatcher.db.spec.ts` ran
+  `recoverExpired` over every expired attempt in the shared database, with no gate; `provider-dispatch.db.spec.ts`
+  claims attempts in the past on purpose. The dispatcher spec now recovers its own provider's attempts only, and the
+  pass itself is tested on a stand-in. Whether this ever caused a failure is not known ("the pass is fair",
+  `[100, 49, 1]`, is still unexplained). `UnitOfWork` now states its limits (10 s to start, 15 s to run), so
+  mechanism 2 of the first note (`P2028` after 2 s of waiting) needs five times the wait to happen.
+- **Seen 2026-11-16, cause not settled:** one run of the 19 spec files of `modules/auth` failed 15 tests in 7
+  files: 14 passed Jest's 5 s limit and one TOTP code had left its window before the slow sign-in that used it;
+  the files took 61 to 119 s. The load was 34 right after the run and was not measured before it. The same run
+  again, with the load measured (17 before, 22 during, 27 after): 172 passed in 66 s. Not attributed to load: the
+  first run's load was not recorded. No limit was raised.
 - Related, also open: some spec files run a pass over every operation in the shared database
   (`settlement.applyPending`, `recoverExpired`), which can act on another file's rows. `provider-dispatch.db.spec.ts`
   no longer does, and judges a settlement by the row.
