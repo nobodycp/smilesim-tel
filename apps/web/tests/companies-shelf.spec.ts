@@ -11,8 +11,8 @@ const shelf = {
         code: 'lian',
         name: 'ليان',
         packages: [
-          { code: 'lian-wecom-500', name: '500 جيجا', months: 1, forSale: false, lines: 2, activeLines: 1 },
-          { code: 'lian-wecom-500-3m', name: '500 جيجا · 3 أشهر', months: 3, forSale: false, lines: 0, activeLines: 0 },
+          { code: 'lian-wecom-500', name: '500 جيجا', months: 1, forSale: false, lines: 2, activeLines: 1, stoppedLines: 1 },
+          { code: 'lian-wecom-500-3m', name: '500 جيجا · 3 أشهر', months: 3, forSale: false, lines: 0, activeLines: 0, stoppedLines: 0 },
         ],
       }],
     },
