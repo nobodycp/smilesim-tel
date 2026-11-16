@@ -12,7 +12,8 @@ specs; checked on the running copy (port 3000) per `.cursor/rules/verify-before-
 - [x] **P.3 «أرقام الحسابات» tab** (`6c98c6e`). API `GET /v1/packages/:code/line-accounts` (`pricing/terms.service.ts`,
   repository count by point of sale, `testing/routes.ts`, permissions, `response-shape.spec.ts`); web tab with
   «تعديل السعر» per account; the re-pricing card leaves «سلسلة الأسعار».
-- [ ] **P.4 What the point of sale sees.** The package card's facts. The «لا تُفصل» and «عرض» marks wait for the
+- [ ] **P.4 What the point of sale sees (the marks).** The details as tiles on the subscribe step are done
+  (`components/package-facts.tsx` `PackageFactTiles`). Open: The package card's facts. The «لا تُفصل» and «عرض» marks wait for the
   lock and deals.
 - [x] **P.5a Porting and card-to-bill (API)** (`0fa78e5a`). `prisma/schema.prisma` `Package.portMode`, `convertMode`,
   `Task.activationKind` and the migration; `catalog/packages/packages.schemas.ts` `PackageModeBody`; the sheet;

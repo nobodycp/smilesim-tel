@@ -27,7 +27,7 @@ import { NameField } from '../../../components/name-field';
 import { DataImage } from '../../../components/data-image';
 import { pointerGlowClass } from '../../../components/stat';
 import { Tabs } from '../../../components/tabs';
-import { PackageFacts } from '../../../components/package-facts';
+import { PackageFactTiles, PackageFacts } from '../../../components/package-facts';
 import { priceFieldClass } from '../../../components/price-field';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
@@ -192,7 +192,7 @@ function PosCatalog({
           <Pane>
             <form className="pane-body block" data-testid="subscribe-form" onSubmit={join}>
               <h2>{picked.companyName} · {picked.name}</h2>
-              <PackageFacts facts={picked} />
+              <PackageFactTiles facts={picked} />
               <p className={PRICE} data-testid="pack-price"><Money value={picked.price + (withEsim ? picked.esimPrice : 0)} /></p>
               {!picked.canActivate && <Badge variant="danger" dot>{t.activationStopped}</Badge>}
               {picked.canActivate ? <ActivationKindChoice value={kind} onChange={setKind} pkg={picked} /> : null}
