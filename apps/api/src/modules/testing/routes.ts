@@ -60,6 +60,8 @@ export const ROUTES: RouteRow[] = [
   ['PATCH', '/v1/packages/CODE1/addons/ID1', ['package_addon', 'package', 'CODE1']],
   ['DELETE', '/v1/packages/CODE1/addons/ID1', ['package_addon', 'package', 'CODE1']],
   ['PATCH', '/v1/packages/CODE1/details', ['package_details', 'package', 'CODE1']],
+  ['PUT', '/v1/packages/CODE1/durations', ['package_chain', 'package', 'CODE1']],
+  ['DELETE', '/v1/packages/CODE1/durations/ID1', ['package_chain', 'package', 'CODE1']],
   ['GET', '/v1/packages/CODE1/custom-prices', null],
   ['DELETE', '/v1/packages/CODE1/custom-prices/LOGIN1', ['user_package', 'user', 'LOGIN1:CODE1']],
   ['PUT', '/v1/packages/CODE1/custom-prices/LOGIN1', ['user_package', 'user', 'LOGIN1:CODE1']],

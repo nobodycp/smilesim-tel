@@ -69,6 +69,8 @@ const EXPECTED: [route: string, access: string][] = [
   ['POST /v1/packages', 'ynynnn'],
   ['PATCH /v1/packages/CODE1/chain', 'ynynnn'],
   ['PATCH /v1/packages/CODE1/details', 'ynynnn'],
+  ['PUT /v1/packages/CODE1/durations', 'ynynnn'],
+  ['DELETE /v1/packages/CODE1/durations/ID1', 'ynynnn'],
   ['GET /v1/packages/CODE1/addons', 'yyynnn'],
   ['POST /v1/packages/CODE1/addons', 'ynynnn'],
   ['PATCH /v1/packages/CODE1/addons/ID1', 'ynynnn'],

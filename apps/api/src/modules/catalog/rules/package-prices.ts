@@ -59,3 +59,8 @@ export function mirroredDuration(months: number, renewal: Prices): { unit: Durat
     subscriberPrice: renewal.subscriberPrice,
   };
 }
+
+/** Whether a duration is the one that mirrors the package's own months (plan D.2 to D.10). */
+export function isMirroredDuration(months: number, duration: { unit: string; count: number }): boolean {
+  return duration.unit === 'month' && duration.count === Math.max(1, months);
+}

@@ -91,6 +91,42 @@ suite('a package and its mirrored duration row (PostgreSQL)', () => {
     expect(await columns()).toMatchObject({ agentPrice: 7000 });
   });
 
+  // Package plan D.3: the branch adds, reprices and removes durations.
+  it('adds a duration, replaces its prices when the same unit and count come again, and removes it', async () => {
+    const month = { unit: 'month', count: 1, branchCost: 2500, mainPrice: 2700, agentPrice: 2900, posPrice: 3000, subscriberPrice: 3500 };
+    await service.saveDuration(owner, code, month);
+    await service.saveDuration(owner, code, { unit: 'day', count: 5, branchCost: 400, mainPrice: 450, agentPrice: 480, posPrice: 500, subscriberPrice: 600, forSale: false });
+    await service.saveDuration(owner, code, { ...month, posPrice: 3100 });
+    const sheet = (await service.packageSheet(owner, code)) as { durations: { id: string; unit: string; count: number; days: number; posPrice: number; forSale: boolean }[] };
+    expect(sheet.durations.map((row) => [row.unit, row.count, row.days, row.posPrice, row.forSale])).toEqual([
+      ['day', 5, 5, 500, false],
+      ['month', 1, 30, 3100, true],
+      ['month', 3, 90, 8200, true],
+    ]);
+    // The package's own renewal columns are those of its own months only.
+    expect(await columns()).toMatchObject({ posPrice: 8200 });
+    for (const row of sheet.durations.filter((item) => item.count !== 3)) await service.removeDuration(owner, code, row.id);
+    expect(await rows()).toHaveLength(1);
+  });
+
+  it('writes the package\'s own duration and its renewal columns together, and never turns it off or removes it', async () => {
+    await service.saveDuration(owner, code, { unit: 'month', count: 3, ...renewal, posPrice: 8300 });
+    expect(await columns()).toMatchObject({ posPrice: 8300 });
+    expect(await rows()).toMatchObject([{ ...(await columns()) }]);
+    const [own] = await rows();
+    await expect(service.saveDuration(owner, code, { unit: 'month', count: 3, ...renewal, enabled: false })).rejects.toMatchObject({ status: 400, code: 'INVALID' });
+    await expect(service.removeDuration(owner, code, own.id)).rejects.toMatchObject({ status: 400, code: 'INVALID' });
+    await service.setChain(owner, code, { renewalPosPrice: 8200 });
+  });
+
+  it('refuses a ladder that breaks the chain, a month count past ten years, and a duration of another package', async () => {
+    await expect(service.saveDuration(owner, code, { unit: 'month', count: 2, ...renewal, agentPrice: 9999 })).rejects.toMatchObject({ status: 400, code: 'PRICE_BELOW_FLOOR' });
+    await expect(service.saveDuration(owner, code, { unit: 'month', count: 121, ...renewal })).rejects.toMatchObject({ status: 400 });
+    await expect(service.saveDuration(owner, code, { unit: 'week', count: 1, ...renewal })).rejects.toMatchObject({ status: 400 });
+    await expect(service.removeDuration(owner, code, randomUUID())).rejects.toMatchObject({ status: 404 });
+    expect(await rows()).toHaveLength(1);
+  });
+
   it('refuses a second row of the same length, a unit it does not know, and a count below one', async () => {
     const row = { packageId: ids.pkg, ...renewal };
     await expect(prisma.packageDuration.create({ data: { ...row, unit: 'month', count: 3 } })).rejects.toThrow();

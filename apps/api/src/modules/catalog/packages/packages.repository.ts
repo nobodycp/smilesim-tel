@@ -44,6 +44,14 @@ export class PackagesRepository {
     return this.uow.prisma.package.update({ where: { id }, data });
   }
 
+  durationById(id: string) {
+    return this.uow.prisma.packageDuration.findUnique({ where: { id } });
+  }
+
+  removeDuration(id: string) {
+    return this.uow.prisma.packageDuration.delete({ where: { id } });
+  }
+
   /** A package with its extra operations in their order. */
   packageWithAddons(code: string) {
     return this.uow.prisma.package.findUnique({ where: { code }, include: { addons: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } } });

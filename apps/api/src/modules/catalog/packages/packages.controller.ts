@@ -3,7 +3,7 @@ import { ApiCookieAuth, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@ne
 import { ApiZodBody, ApiErrorResponse, Activity, param, ActivityInterceptor, RESOURCE_CONTROLLER_PREFIXES } from '../../platform';
 import { Actor, ActorInterceptor } from '../../access';
 import type { Actor as ActorShape } from '../../access';
-import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody } from './packages.schemas';
+import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageDurationBody, PackageModeBody, PackageTargetsBody } from './packages.schemas';
 import { PackagesService } from './packages.service';
 
 @ApiTags('catalog')
@@ -83,6 +83,26 @@ export class PackagesController {
     @Body() body: PackageChainBody,
   ) {
     return this.packageDesk.setChain(actor, code, body);
+  }
+
+  @Put('packages/:code/durations')
+  @ApiOperation({ summary: 'Add a duration to a package, or replace the prices of the one with the same unit and count' })
+  @ApiParam({ name: 'code' })
+  @ApiZodBody(PackageDurationBody)
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('package_chain', 'package', param('code'))
+  packageDuration(@Actor() actor: ActorShape, @Param('code') code: string, @Body() body: PackageDurationBody) {
+    return this.packageDesk.saveDuration(actor, code, body);
+  }
+
+  @Delete('packages/:code/durations/:id')
+  @ApiOperation({ summary: "Delete a package's duration (not the one that mirrors its own months)" })
+  @ApiParam({ name: 'code' })
+  @ApiParam({ name: 'id' })
+  @ApiErrorResponse(401, 403, 400, 404)
+  @Activity('package_chain', 'package', param('code'))
+  removePackageDuration(@Actor() actor: ActorShape, @Param('code') code: string, @Param('id') id: string) {
+    return this.packageDesk.removeDuration(actor, code, id);
   }
 
   @Put('packages/:code/renewals')

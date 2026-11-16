@@ -25,11 +25,21 @@ its hash. Per slice: `npm run lint`, `npm run typecheck`, `npm run check:copy`, 
   columns: they move to the rows in D.3, where a renewal first has more than one duration to choose from, and a
   package that has no row (the database specs create packages bare) reads as one duration from its columns until
   D.10. Specs: `catalog/packages/package-durations.db.spec.ts`, `testing/response-shape.spec.ts`.
-- [ ] **D.3 Renewal picks a duration.** Price reads go through the duration rows (`pricing/rules/package-terms.ts`,
-  `pricing/price-ladder.ts`; the package list returns `durations` masked by layer). `pricing/rules/prices.ts` `LineTerms` v2 and `pricing/line-terms.ts`
-  (reads v1); `sales/line-pricing.ts` `stampFor` captures `options` from the durations; renew takes a duration;
+- [ ] **D.3a The branch edits durations (API).** `PUT /v1/packages/:code/durations` (unit, count and the whole
+  ladder; the same pair again replaces the prices), `DELETE /v1/packages/:code/durations/:id`;
+  `catalog/packages/packages.schemas.ts` `PackageDurationBody`, `packages.service.ts` `saveDuration`,
+  `removeDuration`; the mirrored duration writes the renewal columns with it and is never turned off or removed.
+  `testing/routes.ts`, `testing/permissions.http.spec.ts`, `package-durations.db.spec.ts`.
+- [ ] **D.3b The «المدد» tab (web).** On the package sheet (`features/catalog/screens/package-sheet-screen.tsx`):
+  the durations with their ladders, add, edit, remove; copy in ar, en, he. Checked on port 3000 per
+  `verify-before-reply.mdc`.
+- [ ] **D.3c Renewal picks a duration.** Price reads go through the duration rows (`pricing/rules/package-terms.ts`,
+  `pricing/price-ladder.ts`; the package list returns `durations` masked by layer). `pricing/rules/prices.ts`
+  `LineTerms` gains `options` (terms without them read as one option of `months`); `sales/line-pricing.ts`
+  `stampFor` captures `options` from the durations; renew takes a duration and the number stays on its package;
   `GET /v1/lines/:id/renewal-quote`; `Task.periodDays`, `durationUnit`, `durationCount`. `PackageRenewal` stays
-  as a fallback. Web: the renewal dialog lists durations (`apps/web/features/…` numbers).
+  as a fallback. Until D.5 a duration other than the package's own is priced by its layer columns (no per-user
+  rows exist for it yet). Web: the renewal dialog lists durations (`apps/web/features/…` numbers).
 - [ ] **D.4 The lock.** `Line.lockedUntil`; `PackageDuration.noDisconnect`; written at purchase;
   `LINE_LOCKED` on disconnect, disconnect quote, switch, and `sales/rules/line-state.ts` `assertTaskFits`;
   branch override. Web: the warning before paying, the lock on the number's card.

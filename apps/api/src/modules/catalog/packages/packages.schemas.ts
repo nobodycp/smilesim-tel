@@ -78,6 +78,29 @@ export type PackageAddonUpdateBody = z.input<typeof PackageAddonUpdateBody>;
 export const PackageAddonBody = PackageAddonUpdateBody.extend({ name: addonName });
 export type PackageAddonBody = z.input<typeof PackageAddonBody>;
 
+/** The longest duration: ten years of days, or ten years of months. */
+export const DURATION_DAYS_MAX = 3650;
+export const DURATION_MONTHS_MAX = 120;
+
+/**
+ * PUT packages/:code/durations — one duration of a package with its whole price ladder (package plan D.3). The
+ * unit and the count name the row: the same pair again replaces its prices.
+ */
+export const PackageDurationBody = z
+  .object({
+    unit: z.enum(['day', 'month']),
+    count: z.number().int().min(1).max(DURATION_DAYS_MAX),
+    branchCost: agorot,
+    mainPrice: agorot,
+    agentPrice: agorot,
+    posPrice: agorot,
+    subscriberPrice: agorot,
+    forSale: z.boolean().optional(),
+    enabled: z.boolean().optional(),
+  })
+  .refine((body) => body.unit === 'day' || body.count <= DURATION_MONTHS_MAX, { path: ['count'] });
+export type PackageDurationBody = z.input<typeof PackageDurationBody>;
+
 /** PATCH packages/:code/chain — any of the subscription and renewal prices; the eSIM price may be cleared with null. */
 export const PackageChainBody = z.object({
   branchCost: agorot.optional(),

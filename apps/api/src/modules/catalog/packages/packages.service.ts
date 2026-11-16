@@ -4,9 +4,9 @@ import { requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access';
 import type { Prisma } from '../../../generated/prisma/client';
-import { chainHolds, durationDays, esimPriceOf } from '../rules/package-prices';
+import { chainHolds, durationDays, esimPriceOf, isMirroredDuration } from '../rules/package-prices';
 import { ACTION_KEYS, normalizeActionModes, packageModeData, resolvePackageMode, type ActionMode } from '../rules/run-modes';
-import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody } from './packages.schemas';
+import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageDurationBody, PackageModeBody, PackageTargetsBody } from './packages.schemas';
 import type { Prices } from '../rules/package-prices';
 
 // Which package flags a provider mode sets.
@@ -168,6 +168,54 @@ export class PackagesService {
     if (!pkg || !row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
     await this.repo.removeAddon(id);
     return this.addons(actor, code);
+  }
+
+  /**
+   * Adds a duration to a package, or replaces the prices of the one with the same unit and count (package plan
+   * D.3). The duration that mirrors the package's own months is the renewal ladder itself: its prices are written
+   * to the package's renewal columns in the same statement, and it is always on.
+   */
+  async saveDuration(actor: Actor, code: string, body: unknown) {
+    requireGrant(actor, 'edit');
+    const pkg = await this.repo.packageByCode(code);
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const input = parseInput(PackageDurationBody, body);
+    const prices = { branchCost: input.branchCost, mainPrice: input.mainPrice, agentPrice: input.agentPrice, posPrice: input.posPrice, subscriberPrice: input.subscriberPrice };
+    if (!chainHolds(prices)) fail(400, 'PRICE_BELOW_FLOOR');
+    const mirrored = isMirroredDuration(pkg.months, input);
+    // The package's own duration renews every number it has: it cannot be turned off here.
+    if (mirrored && (input.forSale === false || input.enabled === false)) fail(400, 'INVALID');
+    const flags = { ...(input.forSale === undefined ? {} : { forSale: input.forSale }), ...(input.enabled === undefined ? {} : { enabled: input.enabled }) };
+    await this.repo.savePackage(pkg.id, {
+      ...(mirrored
+        ? {
+            renewalBranchCost: prices.branchCost,
+            renewalMainPrice: prices.mainPrice,
+            renewalAgentPrice: prices.agentPrice,
+            renewalPosPrice: prices.posPrice,
+            renewalSubscriberPrice: prices.subscriberPrice,
+          }
+        : {}),
+      durations: {
+        upsert: {
+          where: { packageId_unit_count: { packageId: pkg.id, unit: input.unit, count: input.count } },
+          create: { unit: input.unit, count: input.count, ...prices, ...flags },
+          update: { ...prices, ...flags },
+        },
+      },
+    });
+    return { ok: true as const };
+  }
+
+  /** Removes a duration. The one that mirrors the package's own months stays as long as the package has them. */
+  async removeDuration(actor: Actor, code: string, id: string) {
+    requireGrant(actor, 'edit');
+    const pkg = await this.repo.packageByCode(code);
+    const row = await this.repo.durationById(id);
+    if (!pkg || !row || row.packageId !== pkg.id) fail(404, 'NOT_FOUND');
+    if (isMirroredDuration(pkg.months, row)) fail(400, 'INVALID');
+    await this.repo.removeDuration(id);
+    return { ok: true as const };
   }
 
   async setChain(actor: Actor, code: string, body: unknown) {

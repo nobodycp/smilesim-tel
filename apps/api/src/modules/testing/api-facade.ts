@@ -251,6 +251,14 @@ export class ApiFacade {
     return this.packageDesk.sheet(await this.actor(gate), code);
   }
 
+  async saveDuration(gate: Gate, code: string, body: Record<string, unknown>) {
+    return this.packageDesk.saveDuration(await this.actor(gate), code, body);
+  }
+
+  async removeDuration(gate: Gate, code: string, id: string) {
+    return this.packageDesk.removeDuration(await this.actor(gate), code, id);
+  }
+
   async setChain(gate: Gate, code: string, body: Record<string, unknown>) {
     return this.packageDesk.setChain(await this.actor(gate), code, body);
   }
