@@ -2,8 +2,8 @@
 
 The running log of the autonomous execution started on 2026-11-14 from base `d7259ef`. One section a slice.
 A new session resumes from the first slice that is not `DONE`: read this file, `git log --oneline d7259ef..`, the
-plan (`docs/superpowers/plans/2026-11-13-office-retirement.md`) and the backend map, then continue. Nothing here is
-pushed; the owner approves before one push and one CI run.
+plan (`docs/superpowers/plans/2026-11-13-office-retirement.md`) and the backend map, then continue. The slices
+below were pushed by the owner on 2026-11-16 with the UI work that followed them; see "After the push" at the end.
 
 ## How to resume (tools used, all local)
 
@@ -377,3 +377,19 @@ pushed; the owner approves before one push and one CI run.
   regexes miss a trailing slash or upper case (as before this project), `canonicalPath` is case-sensitive (only
   weakens a repeat's detection for `/V1/…`); medium operational: new web against an old API (rollback order
   documented).
+
+## After the push (2026-11-16)
+
+- **Pushed.** The owner pushed `main` on 2026-11-16: the fifteen commits above (`000e411`..`a84484f`) and, on top of
+  them, the UI maintenance and the Tailwind and Radix migration (ADR 0021, 0022; 110 commits). `main` equals
+  `origin/main` at `bbdde78`.
+- **GitHub CI is green on that code.** The first run that holds every slice of this report is `43886154244` (head
+  `4e71b27`), then `43891079296` and `43901270605` (head `bbdde78`): lint, check:copy, check:styles, typecheck, the
+  full `test:api`, the `.db.spec.ts` files on PostgreSQL, the build and Playwright, all passed. This settles the
+  line above that no fully green full run was obtained locally after R.11b.
+- **The UI work changed nothing this report covers.** `git diff a84484f..bbdde78` holds no file under `apps/api`;
+  outside `apps/web` it holds the `check:styles` step in CI, one script in the root `package.json` and docs. No
+  name removed by W.1 and W.2 is back in `apps/web`, and the web still calls `/v1`.
+- **Not known from here:** whether any deployment runs this code. The release order of R.11b (API, then worker,
+  then web; rollback in the reverse order) applies to the first one that does, and R.11c stays blocked until then.
+
