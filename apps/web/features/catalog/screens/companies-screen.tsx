@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { TableSkeleton } from '../../../components/loading';
 import { LoadFailed } from '../../../components/load-failed';
 import { EmptyState } from '../../../components/empty-state';
-import { hasSimRules } from '../../../lib/sim-rules';
 import { Desk, Pane } from '../../../components/desk';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -34,10 +33,9 @@ function counted(template: string, n: number) {
  *   inset `--rd-line` edge and the tag's cut corner (`--rd-cut`) at the top inline end; `--rd-surface-2` under the
  *   pointer (140ms); the edge becomes a 2px `--rd-accent` ring while its link has keyboard focus;
  * - the top row: the company's whole picture centred (`CompanyPicture`), 6px over the name;
- * - the name: the card's link, 15px bold ink, stretched over the whole card (its `::after`), no focus outline of its
+ * - the name: the card's link, centred, 15px bold ink, stretched over the whole card (its `::after`), no focus outline of its
  *   own (the card's ring shows it);
- * - the SIM rules: 12.5px `--rd-muted`;
- * - the counts: one wrapping row 14px apart (4px by 10px and 11.5px under 641px), 8px over and 10px inside a 1px
+ * - the counts: one wrapping row, centred, 14px apart (4px by 10px and 11.5px under 641px), 8px over and 10px inside a 1px
  *   `--rd-line` rule, 12px `--rd-muted` with the figures in bold ink.
  * `data-slot="company-card"` is the card's handle.
  */
@@ -83,16 +81,8 @@ export function CompaniesScreen() {
       <article key={company.code} className={CARD} data-slot="company-card">
         {/* The whole picture, centred, as on the point of sale's company card (owner, 2026-11-16). */}
         <CompanyPicture name={company.name} image={company.image} className="mb-1.5" />
-        <Link className={CARD_LINK} href={`/companies/${company.code}`}>{company.name}</Link>
-        <span className="text-chip text-muted">
-          {company.sim && hasSimRules(company.sim)
-            ? [
-                company.sim.length !== null ? t.simDigits.replace('{n}', String(company.sim.length)) : '',
-                company.sim.prefix ? t.simStarts.replace('{p}', company.sim.prefix) : '',
-              ].filter(Boolean).join(' · ')
-            : t.simFree}
-        </span>
-        <div className="mt-2 flex flex-wrap gap-3.5 border-t border-line pt-2.5 text-sm text-muted max-sm:gap-x-2.5 max-sm:gap-y-1 max-sm:text-caption">
+        <Link className={cn(CARD_LINK, 'text-center')} href={`/companies/${company.code}`}>{company.name}</Link>
+        <div className="mt-2 flex flex-wrap justify-center gap-3.5 border-t border-line pt-2.5 text-sm text-muted max-sm:gap-x-2.5 max-sm:gap-y-1 max-sm:text-caption">
           <span>{counted(t.coPackages, sums.packages)}</span>
           <span>{counted(t.coProviders, company.providers.length)}</span>
           <span>{counted(t.coActive, sums.active)}</span>
