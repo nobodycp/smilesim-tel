@@ -109,7 +109,7 @@ export function FinanceScreen() {
               .reduce<ReactNode[]>((all, part, index) => (index ? [...all, ' · ', part] : [part]), [])}
             {!row.msisdn && !row.packageName && !row.note ? '—' : null}
           </span>
-          <span className="block text-sm leading-[1.3] font-normal text-muted">
+          <span className="block text-sm leading-1-3 font-normal text-muted">
             <AccountName login={row.loginName} />
             {row.layer ? <> · {layerName(t, row.layer)}</> : null}
             {row.actorLoginName && row.actorLoginName !== row.loginName ? <> · {t.actedBy}: <AccountName login={row.actorLoginName} /></> : null}

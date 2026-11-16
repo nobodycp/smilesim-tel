@@ -57,11 +57,11 @@ export function Desk({
   return (
     <DeskColumn data-testid="desk">
       <header
-        className="flex flex-wrap items-center justify-between gap-2 motion-safe:[.canvas-inner>*>&]:animate-[rd-rise_420ms_var(--rd-ease-out)_both]"
+        className="flex flex-wrap items-center justify-between gap-2 motion-safe:[.canvas-inner>*>&]:animate-rise"
         data-slot="page-head"
         data-testid="page-head"
       >
-        <h1 className="m-0 text-[1.25rem] tracking-normal">{title}</h1>
+        <h1 className="m-0 text-page tracking-normal">{title}</h1>
         {action}
         {lede ? <p className="mx-0 mt-1 mb-0 min-w-full basis-full text-start text-md text-muted" data-testid="page-lede">{lede}</p> : null}
       </header>

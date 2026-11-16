@@ -27,7 +27,7 @@ const PANE_HEAD = 'flex min-h-13 items-center justify-between gap-2 border-b bor
 const PANE_TITLE = 'm-0 inline-flex items-center gap-2 text-base font-bold text-ink';
 const PANE_BODY = 'grid min-h-0 min-w-0 max-w-full content-start gap-3 overflow-auto px-4.5 pt-3.5 pb-4.5 *:min-w-0';
 const FIELD_ROW = 'flex flex-wrap items-end justify-start gap-2 max-md:flex-col max-md:items-stretch max-md:[&>button]:self-start';
-const FIELD = 'min-w-0 max-w-[22rem] flex-[1_1_16rem] max-md:w-full max-md:max-w-none max-md:flex-none';
+const FIELD = 'min-w-0 max-w-88 grow basis-64 max-md:w-full max-md:max-w-none max-md:flex-none';
 const HINT = 'm-0 text-sm text-muted';
 
 /**

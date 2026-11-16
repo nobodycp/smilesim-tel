@@ -75,7 +75,7 @@ export function ShellPath({ pathname, sections }: { pathname: string; sections: 
   const level = 'overflow-hidden text-ellipsis rounded-xs px-1.5 py-0.75 text-md';
   return (
     <nav className="min-w-0 flex-[0_1_auto] max-lg:order-10 max-lg:flex-[1_0_100%]" aria-label={t.breadcrumb}>
-      <ol className="m-0 flex h-8.5 list-none items-center gap-0.5 overflow-hidden whitespace-nowrap rounded-md bg-sunken py-0 ps-1 pe-2.5 inset-ring inset-ring-line">
+      <ol className="m-0 flex h-8.5 list-none items-center gap-0.5 overflow-hidden whitespace-nowrap rounded-sm bg-sunken py-0 ps-1 pe-2.5 inset-ring inset-ring-line">
         <li className="inline-flex min-w-0 items-center gap-0.5">
           {pathname === '/' ? (
             <span className="grid size-7.5 place-items-center rounded-sm text-muted [&_svg]:size-4" aria-hidden="true"><Home size={16} strokeWidth={1.9} /></span>

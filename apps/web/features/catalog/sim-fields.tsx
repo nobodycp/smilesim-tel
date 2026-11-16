@@ -44,7 +44,7 @@ export function SimSample({ rules }: { rules: SimRules }) {
     >
       <span>{t.simShape}</span>
       {hasSimRules(rules) ? (
-        <bdi className="text-xl tracking-[0.12em] text-ink tabular-nums" dir="ltr">{simShape(rules)}</bdi>
+        <bdi className="text-xl tracking-caps text-ink tabular-nums" dir="ltr">{simShape(rules)}</bdi>
       ) : (
         <span className={paneHintClass}>{t.simAny}</span>
       )}

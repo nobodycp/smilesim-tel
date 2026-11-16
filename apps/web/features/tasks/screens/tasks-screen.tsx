@@ -138,7 +138,7 @@ export function TasksScreen() {
               {row.operationPhase && row.status === 'working' ? <Badge variant={operationTone(row.operationPhase)}>{phaseName(t, row.operationPhase)}</Badge> : null}
             </span>
             <span className="flex flex-wrap gap-1.5 text-sm text-muted">
-              {row.msisdn ? <bdi dir="ltr" className="font-semibold tracking-[0.03em] text-ink-2">{row.msisdn}</bdi> : null}
+              {row.msisdn ? <bdi dir="ltr" className="font-semibold tracking-number text-ink-2">{row.msisdn}</bdi> : null}
               {[row.companyName, row.packageName].filter(Boolean).map((part) => <span key={part}>· {part}</span>)}
               <span>· <AccountName login={row.posLoginName} /></span>
               {row.lastNote ? <span className="max-w-96 overflow-hidden text-ellipsis">· {row.lastNote}</span> : null}

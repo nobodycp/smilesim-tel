@@ -36,12 +36,12 @@ export const RENEWAL_KEYS = ['renewalBranchCost', 'renewalMainPrice', 'renewalAg
  * higher specificity), so the field is as wide as its own default size in the cell.
  */
 const BOARD = cn(
-  'pane-body grid-cols-2 items-start gap-x-6 gap-y-4 max-[721px]:grid-cols-1',
+  'pane-body grid-cols-2 items-start gap-x-6 gap-y-4 max-touch:grid-cols-1',
   '[&>[data-slot=button]]:col-span-full [&>[data-slot=button]]:justify-self-start',
 );
 const CELL_RULE = 'border-b border-line px-2.5 py-1.5 text-start max-sm:px-1';
 const HEAD = 'text-xs font-bold text-muted';
-const NOTE = 'min-w-18 text-sm font-bold max-sm:min-w-0 max-sm:text-[11.5px]';
+const NOTE = 'min-w-18 text-sm font-bold max-sm:min-w-0 max-sm:text-caption';
 
 /**
  * The price chain as shekel fields (the package page's «الأسعار», shared with «إضافة رزمة»; spec
@@ -79,7 +79,7 @@ export function ChainBoard({ prices, onChange, children }: {
   return (
     <div className={BOARD} aria-label={t.chainTab} data-slot="chain-board">
       <div className="col-span-full overflow-x-auto">
-        <table className="w-full max-w-[720px] border-collapse" data-testid="chain-grid">
+        <table className="w-full max-w-180 border-collapse" data-testid="chain-grid">
           <thead>
             <tr>
               <th scope="col" className={cn(CELL_RULE, HEAD)}>{t.layer}</th>

@@ -8,20 +8,30 @@ type StatTone = 'success' | 'warning' | 'danger' | 'muted';
  * The figure cards (Tailwind migration T3.3, ADR 0022), ported from desk/components.css, graphite.css and
  * responsive.css in their cascade order.
  *
+ * `pointerGlowClass` is the figure tile's light (Tailwind migration T6.3: one variant for the five copies — Stat, the
+ * fact cards, the wallet and home tiles, the line operation cards, the package cards): a soft `--rd-glow` light 180px
+ * round under the pointer that fades in over 180ms (the shell sets `--mx` / `--my` on a card it finds by
+ * `data-slot="stat"` / `"fact-card"`), on an `::after` layer under the content with the card's corners. When motion is
+ * allowed the card lifts 2px under the pointer; the lift is a `transform`, so a card that rose in with its row keeps
+ * the rise's end state, as the legacy cards did. The card sets its own position-free look (corners, edge, fill).
+ *
  * `figureCardClass` is the card both Stat and a `Facts variant="cards"` fact draw (graphite's figure and fact cards):
- * 6px corners, no border, a 1px inset `--rd-line` edge, the tag's cut corner (`--rd-cut`) at the top inline end, and a
- * soft `--rd-glow` light under the pointer that fades in over 180ms (the shell sets `--mx` / `--my` on a card it finds
- * by `data-slot="stat"` / `"fact-card"`). When motion is allowed it lifts 2px under the pointer; the lift is a
- * `transform`, so a card that rose in with its row keeps the rise's end state, as the legacy cards did.
+ * that light, 6px corners, no border, a 1px inset `--rd-line` edge, and the tag's cut corner (`--rd-cut`) at the top
+ * inline end.
  */
-export const figureCardClass = cn(
-  'relative isolate rounded-sm border-0 inset-ring inset-ring-line',
-  '[clip-path:polygon(0_0,calc(100%_-_var(--rd-cut))_0,100%_var(--rd-cut),100%_100%,0_100%)]',
-  'rtl:[clip-path:polygon(var(--rd-cut)_0,100%_0,100%_100%,0_100%,0_var(--rd-cut))]',
+export const pointerGlowClass = cn(
+  'relative isolate',
   "after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:rounded-[inherit] after:content-['']",
   'after:bg-radial-[180px_circle_at_var(--mx,50%)_var(--my,0%)] after:from-glow after:to-transparent after:to-70%',
   'after:opacity-0 after:transition-opacity after:duration-base after:ease-standard hover:after:opacity-100',
   'motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out motion-safe:hover:[transform:translateY(-2px)]',
+);
+
+export const figureCardClass = cn(
+  pointerGlowClass,
+  'rounded-sm border-0 inset-ring inset-ring-line',
+  '[clip-path:polygon(0_0,calc(100%_-_var(--rd-cut))_0,100%_var(--rd-cut),100%_100%,0_100%)]',
+  'rtl:[clip-path:polygon(var(--rd-cut)_0,100%_0,100%_100%,0_100%,0_var(--rd-cut))]',
 );
 
 /*
@@ -29,7 +39,7 @@ export const figureCardClass = cn(
  * before (StatRow and `Facts variant="cards"`), when motion is allowed.
  */
 export const riseInClass = cn(
-  'motion-safe:*:animate-[rd-rise_420ms_var(--rd-ease-out)_both]',
+  'motion-safe:*:animate-rise',
   'motion-safe:[&>:nth-child(2)]:[animation-delay:40ms] motion-safe:[&>:nth-child(3)]:[animation-delay:80ms]',
   'motion-safe:[&>:nth-child(4)]:[animation-delay:120ms] motion-safe:[&>:nth-child(n+5)]:[animation-delay:160ms]',
 );
@@ -76,12 +86,12 @@ export function Stat({
     <article
       className={cn(
         figureCardClass,
-        'grid min-h-23 grid-cols-[minmax(0,1fr)_auto] content-start gap-x-3 gap-y-1.5 bg-surface px-4 py-3.5 max-md:min-h-0 max-md:p-3',
+        'grid min-h-23 grid-cols-title-end content-start gap-x-3 gap-y-1.5 bg-surface px-4 py-3.5 max-md:min-h-0 max-md:p-3',
       )}
       data-slot="stat"
       data-testid="stat"
     >
-      <span className="text-sm leading-[1.3] font-semibold text-muted">{label}</span>
+      <span className="text-sm leading-1-3 font-semibold text-muted">{label}</span>
       {icon ? (
         <span className={cn('grid place-items-center [&_svg]:size-4.25', highlight ? 'text-success' : ICON_TONE[tone])} aria-hidden="true">
           <Icon name={icon} />
@@ -89,7 +99,7 @@ export function Stat({
       ) : null}
       <strong
         className={cn(
-          'col-span-full text-[1.45rem] leading-[1.15] font-bold tracking-[-0.01em] tabular-nums max-md:text-[1.2rem]',
+          'col-span-full text-figure leading-1-15 font-bold tracking-figure tabular-nums max-md:text-figure-sm',
           highlight ? 'text-success' : 'text-ink',
         )}
       >
@@ -115,7 +125,7 @@ const STAT_ROW = cn(
   'grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-3 max-md:grid-cols-2 max-md:gap-2',
   'max-md:[&>:last-child:nth-child(odd)]:col-span-full',
   'xl:has-[>:nth-child(5):last-child]:grid-cols-5 md:max-xl:has-[>:nth-child(5):last-child]:grid-cols-3',
-  'md:max-[1101px]:has-[>:nth-child(4):last-child]:grid-cols-2',
+  'md:max-xl:has-[>:nth-child(4):last-child]:grid-cols-2',
   '[.desk_&]:flex-none',
   riseInClass,
 );

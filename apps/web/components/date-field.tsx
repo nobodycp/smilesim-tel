@@ -49,8 +49,8 @@ const OPEN = cn(
   'grid w-8.5 flex-none cursor-pointer place-items-center rounded-sm border border-solid border-line bg-surface-2 text-ink-2',
   'hover:text-accent aria-expanded:text-accent max-sm:w-10',
   '[[data-slot=filter-panel]>label_&]:h-7.5 [[data-slot=filter-panel]>label_&]:w-7.5 [[data-slot=filter-panel]>label_&]:rounded-none [[data-slot=filter-panel]>label_&]:border-0',
-  '[[data-slot=filter-panel]>label_&]:border-s [[data-slot=filter-panel]>label_&]:border-s-ink/11 [[data-slot=filter-panel]>label_&]:bg-surface',
-  '[[data-slot=dialog]_&]:h-8.5 max-[721px]:[.canvas_&]:min-h-11',
+  '[[data-slot=filter-panel]>label_&]:border-s [[data-slot=filter-panel]>label_&]:border-s-line-strong [[data-slot=filter-panel]>label_&]:bg-surface',
+  '[[data-slot=dialog]_&]:h-8.5 max-touch:[.canvas_&]:min-h-11',
 );
 const STEP = 'grid size-7.5 cursor-pointer place-items-center rounded-xs border-0 bg-transparent text-ink-2 hover:bg-surface-2';
 const DAY = 'h-8.5 cursor-pointer rounded-xs border-0 text-sm font-semibold tabular-nums max-sm:h-10';

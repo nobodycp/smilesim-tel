@@ -15,6 +15,10 @@ import { cn } from "../../lib/cn";
  * pointer; pressed (`aria-pressed="true"`) holds the hover fill in ink (`danger`: its soft fill). The faint tones
  * draw their icon in `--rd-muted`, not `--rd-faint`: an icon that acts is a control and needs 3:1 (audit 3.10-05;
  * `--rd-faint` is for decoration and what cannot be used).
+ * The topbar's control (Tailwind migration T6.3: the shell's `topbarIcon` recipe folded in, audit 3.5-16): size
+ * `topbar` is 44px under 768px and 36px from 768px with no padding and an 18px icon; tone `topbar` is `--rd-ink-2`,
+ * the raised fill and ink under the pointer or while its panel is open (`aria-expanded`). The menu button, the
+ * notices, the theme and the language draw it (components/chrome.tsx `topbarIcon`).
  */
 export const iconButtonVariants = cva(
   [
@@ -28,12 +32,14 @@ export const iconButtonVariants = cva(
         sm: "size-7 rounded-xs",
         md: "size-8.5",
         lg: "size-9",
+        topbar: "size-11 min-w-11 p-0 md:size-9 md:min-w-9 [&_svg]:size-4.5",
       },
       tone: {
         muted: "text-muted hover:bg-surface-3 aria-pressed:bg-surface-3 aria-pressed:text-ink",
         faint: "text-muted hover:bg-surface-2 aria-pressed:bg-surface-2 aria-pressed:text-ink",
         "faint-to-ink": "text-muted hover:bg-surface-2 hover:text-ink aria-pressed:bg-surface-2 aria-pressed:text-ink",
         danger: "text-danger hover:bg-danger-soft aria-pressed:bg-danger-soft",
+        topbar: "text-ink-2 hover:bg-surface-2 hover:text-ink aria-expanded:bg-surface-2 aria-expanded:text-ink",
       },
     },
     defaultVariants: { size: "md", tone: "muted" },

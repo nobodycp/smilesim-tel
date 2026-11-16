@@ -63,7 +63,7 @@ export function BrandingDrop({
       <span className="text-xs font-semibold text-muted" id={`${id}-label`}>{title}</span>
       <label
         className={cn(
-          'relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-3 min-h-24 rounded-lg border border-dashed border-field',
+          'relative grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-center gap-3 min-h-24 rounded-card border border-dashed border-field',
           'bg-surface-2 p-3 text-md font-medium text-ink hover:border-solid hover:border-ink focus-within:border-solid focus-within:border-ink',
           over && 'border-solid border-ink',
         )}
@@ -77,7 +77,7 @@ export function BrandingDrop({
         onDrop={onDrop}
       >
         <span
-          className={cn('grid h-18 place-items-center overflow-hidden rounded-md border border-line bg-surface', square ? 'w-18' : 'w-30')}
+          className={cn('grid h-18 place-items-center overflow-hidden rounded-sm border border-line bg-surface', square ? 'w-18' : 'w-30')}
           aria-hidden="true"
         >
           {value ? (

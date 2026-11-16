@@ -204,7 +204,7 @@ export function NameField({
               aria-label={place.name || undefined}
               data-slot="name-pop"
               data-side={place.up ? 'top' : 'bottom'}
-              className="fixed z-[calc(var(--rd-z-dialog)+2)] grid max-h-[min(320px,50vh)] max-w-[min(360px,92vw)] gap-px overflow-y-auto rounded-sm bg-surface-2 p-1 shadow-pop inset-ring inset-ring-ink/11 [scrollbar-width:thin] motion-safe:animate-[filter-pop-in_140ms_ease-out]"
+              className="fixed z-dialog-list grid max-h-[min(320px,50vh)] max-w-[min(360px,92vw)] gap-px overflow-y-auto rounded-sm bg-surface-2 p-1 shadow-pop inset-ring inset-ring-line-strong [scrollbar-width:thin] motion-safe:animate-pop-in"
               style={{ ...(place.up ? { bottom: place.block } : { top: place.block }), insetInlineStart: place.start, minWidth: place.width }}
               onMouseDown={(event) => event.preventDefault()}
             >
@@ -228,7 +228,7 @@ export function NameField({
                       {mark ? (
                         <>
                           {option.label.slice(0, mark[0])}
-                          <b className={cn('font-extrabold', option.value === value ? 'text-inherit' : 'text-ink')}>{option.label.slice(mark[0], mark[1])}</b>
+                          <b className={cn('font-bold', option.value === value ? 'text-inherit' : 'text-ink')}>{option.label.slice(mark[0], mark[1])}</b>
                           {option.label.slice(mark[1])}
                         </>
                       ) : option.label}

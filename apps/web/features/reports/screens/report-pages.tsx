@@ -29,10 +29,10 @@ const exportHref = (kind: string, query: Record<string, string>) => `/api/v1/rep
  * `[data-slot='filter-panel'] > label:has(input[type='checkbox'])`) draw it; of the legacy `.check` it sat under only the
  * no-margin and the 36px minimum height (44px at 720px and under, responsive.css `.canvas .check`) won over them.
  */
-const TOGGLE_CHIP = 'm-0 min-h-9 max-[721px]:min-h-11';
+const TOGGLE_CHIP = 'm-0 min-h-9 max-touch:min-h-11';
 
 /* The top provider's name in its figure card (graphite.css `[data-slot='stat'] .stat-name`): smaller than a figure, wrapping. */
-const STAT_NAME = 'inline-block max-w-full text-[1.15rem] leading-[1.35]';
+const STAT_NAME = 'inline-block max-w-full text-2xl leading-1-35';
 
 /** Main agent, agent and the branch: the wallets under the account, now (no period). */
 export function BalancesReportScreen() {
@@ -113,8 +113,8 @@ export function SupplyReportScreen() {
       header: t.shareColumn,
       sortValue: (row) => row.cost,
       render: (row) => (
-        <span className="flex min-w-40 items-center gap-2 text-[11.5px] text-muted">
-          <span className="h-1.5 min-w-20 flex-1 overflow-hidden rounded-[1px] bg-surface-2"><i className="block h-full bg-accent" style={{ inlineSize: `${shareOf(row.cost)}%` }} /></span>
+        <span className="flex min-w-40 items-center gap-2 text-caption text-muted">
+          <span className="h-1.5 min-w-20 flex-1 overflow-hidden rounded-4xs bg-surface-2"><i className="block h-full bg-accent" style={{ inlineSize: `${shareOf(row.cost)}%` }} /></span>
           <bdi dir="ltr">{shareOf(row.cost)}%</bdi>
         </span>
       ),

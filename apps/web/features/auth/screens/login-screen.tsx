@@ -70,7 +70,7 @@ export function LoginScreen() {
           <AuthBrand />
           <div className={cn(authClass.head, enter)}>
             <h1 className={authClass.title}>{t.loginTitle}</h1>
-            <span className="inline-flex h-5.5 items-center rounded-xs px-2 text-[11.5px] font-bold text-accent inset-ring inset-ring-current">
+            <span className="inline-flex h-5.5 items-center rounded-xs px-2 text-caption font-bold text-accent inset-ring inset-ring-current">
               {t[door.label]}
             </span>
           </div>
@@ -134,7 +134,7 @@ export function LoginScreen() {
             </button>
             {passkeys ? (
               <button
-                className={cn(actionClass, 'bg-surface-2 text-ink inset-ring inset-ring-ink/11 hover:bg-surface-3', enterAfter210)}
+                className={cn(actionClass, 'bg-surface-2 text-ink inset-ring inset-ring-line-strong hover:bg-surface-3', enterAfter210)}
                 type="button"
                 disabled={busy}
                 onClick={withPasskey}
@@ -144,7 +144,7 @@ export function LoginScreen() {
               </button>
             ) : null}
           </form>
-          <p className="m-0 text-[12.5px] text-muted">{t.loginHelp}</p>
+          <p className="m-0 text-chip text-muted">{t.loginHelp}</p>
         </div>
       </section>
       <AuthArt />
@@ -178,7 +178,7 @@ const inputClass = cn(
 );
 const actionClass = cn(
   'inline-flex h-11 items-center justify-center gap-2 rounded-sm border-0 font-bold',
-  '[transition:background-color_var(--rd-dur-fast)_var(--rd-ease-standard),transform_110ms_ease]',
+  '[transition:background-color_var(--rd-dur-fast)_var(--rd-ease-standard),transform_110ms_var(--rd-ease-standard)]',
   'enabled:active:[transform:scale(0.98)] disabled:cursor-not-allowed disabled:opacity-50',
   focusRing,
 );

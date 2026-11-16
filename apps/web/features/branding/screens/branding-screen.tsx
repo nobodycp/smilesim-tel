@@ -141,12 +141,12 @@ function BrandingEditor({
   }
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_360px] items-start gap-3 max-[961px]:grid-cols-[1fr]">
+    <div className="grid grid-cols-[minmax(0,1fr)_360px] items-start gap-3 max-[961px]:grid-cols-1">
       <form className="grid content-start gap-3" onSubmit={save} aria-busy={busy}>
         <Pane>
           <header className={PANE_HEAD}><h2 className={PANE_TITLE}>{t.brandingNames}</h2></header>
           <div className={PANE_BODY}>
-            <div className="grid grid-cols-[1fr_1fr] gap-2 max-md:grid-cols-[1fr]">
+            <div className="grid grid-cols-2 gap-2 max-md:grid-cols-1">
               <Label tone="pane">
                 {t.brandingSiteName}
                 <Input

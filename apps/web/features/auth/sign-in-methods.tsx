@@ -7,7 +7,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { cn } from '../../lib/cn';
+import { RadioCard, RadioCardGroup } from '../../components/ui/radio-card';
 import { api } from '../../lib/api';
 import type { SignInMethods, TwoFactorMethod } from '../../lib/api-types';
 import { usePrefs } from '../../lib/prefs';
@@ -38,7 +38,7 @@ export const sessionClass = {
   list: 'm-0 grid list-none gap-2 p-0',
   row: 'grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-sm bg-surface-2 p-3 inset-ring inset-ring-line',
   copy: 'grid min-w-0 gap-px',
-  name: 'flex min-w-0 items-center gap-1.5 text-[12.5px] font-semibold',
+  name: 'flex min-w-0 items-center gap-1.5 text-chip font-semibold',
   meta: 'truncate text-start text-xs text-muted rtl:text-end',
 } as const;
 /** The card's mark: a 32px crimson-soft tile with a 15px crimson device or key. */
@@ -141,25 +141,19 @@ export function TwoFactorPane({ methods, reload, setError, setNote }: Notify & {
             {allowed.length === 1 ? (
               fixedOne ? <p className={hintClass}><b>{t.methodOnly}:</b> {methodName(t, allowed[0])}</p> : null
             ) : (
-            <div className="grid grid-cols-3 gap-2 max-[521px]:grid-cols-1" role="radiogroup" aria-label={t.twoFactorMethod}>
+            <RadioCardGroup
+              className="grid grid-cols-3 gap-2 max-[521px]:grid-cols-1"
+              aria-label={t.twoFactorMethod}
+              value={method}
+              onValueChange={(key) => setMethod(key as TwoFactorMethod)}
+            >
               {allowed.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="radio"
-                  aria-checked={method === key}
-                  className={cn(
-                    'grid gap-0.5 rounded-sm border-0 p-3 text-start text-ink max-[721px]:min-h-11',
-                    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-                    method === key ? 'bg-accent-soft inset-ring inset-ring-accent' : 'bg-surface-2 inset-ring inset-ring-line hover:bg-surface-3',
-                  )}
-                  onClick={() => setMethod(key)}
-                >
+                <RadioCard key={key} value={key}>
                   <b className="text-md font-bold">{methodName(t, key)}</b>
-                  <small className="text-[11.5px] text-muted" dir={key === 'app' ? undefined : 'ltr'}>{key === 'app' ? t.methodAppHint : contact(key) || '—'}</small>
-                </button>
+                  <small className="text-caption text-muted" dir={key === 'app' ? undefined : 'ltr'}>{key === 'app' ? t.methodAppHint : contact(key) || '—'}</small>
+                </RadioCard>
               ))}
-            </div>
+            </RadioCardGroup>
             )}
             {method !== 'app' && !reachable ? <p className={hintClass}>{t.contactNeeded}</p> : null}
             {method !== 'app' && reachable ? <p className={hintClass}>{t.codeSentTo} <bdi dir="ltr">{contact(method)}</bdi></p> : null}

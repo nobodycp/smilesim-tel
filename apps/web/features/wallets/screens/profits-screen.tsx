@@ -53,7 +53,7 @@ export function ProfitsScreen() {
       <StatRow>
         <Stat label={t.yourProfit} value={data ? <Money value={data.totals.profit} signed /> : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} highlight />
         <Stat label={t.salesTitle} value={data ? data.totals.sales : '—'} meta={t.refundsMeta.replace('{n}', String(data?.totals.refunds ?? 0))} />
-        <Stat label={t.topPackage} value={best ? <bdi className="inline-block max-w-full text-[1.15rem] leading-[1.35]">{[best.companyName, best.packageName].filter(Boolean).join(' ')}</bdi> : '—'} meta={best ? t.perOperationMeta.replace('{amount}', `${formatShekel(perSale(best))} ₪`) : '—'} />
+        <Stat label={t.topPackage} value={best ? <bdi className="inline-block max-w-full text-2xl leading-1-35">{[best.companyName, best.packageName].filter(Boolean).join(' ')}</bdi> : '—'} meta={best ? t.perOperationMeta.replace('{amount}', `${formatShekel(perSale(best))} ₪`) : '—'} />
       </StatRow>
       <Pane>
         <DataTable

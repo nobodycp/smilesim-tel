@@ -25,14 +25,14 @@ import { cn } from '../../lib/cn';
  *
  * `SegmentedToggle` / `SegmentedToggleItem` are the toggle form (Tailwind migration T6.2), the look of the period
  * switch (graphite.css `.period`, drawn by hand in features/reports/report-kit.tsx and features/wallets/wallet-head.tsx
- * until T6.3): a `role="group"` row of plain buttons, each `aria-pressed`, every one in the Tab order (no roving),
+ * until T6.3, which moved both onto it): a `role="group"` row of plain buttons, each `aria-pressed`, every one in the Tab order (no roving),
  * the caller keeping the choice. The row keeps its width, 4px corners, a 1px inset `--rd-line` edge, clipped; the
  * whole row under 768px, its buttons sharing it with 6px sides. A button: 34px (44px at 720px and under), 12px
  * sides, no border or fill, `--rd-muted` 12.5px semibold on one line, ink under the pointer; each after the first
  * draws a 1px `--rd-line` on its start edge; the pressed one sits on `--rd-surface-2` in ink over the crimson thread;
  * the focus mark is the strip's (2px `--rd-accent` inside).
  */
-const segmentedVariants = cva('gap-0 overflow-hidden rounded-sm border-0 bg-transparent p-0 inset-ring inset-ring-ink/11', {
+const segmentedVariants = cva('gap-0 overflow-hidden rounded-sm border-0 bg-transparent p-0 inset-ring inset-ring-line-strong', {
   variants: {
     fill: {
       false: 'inline-flex',
@@ -45,7 +45,7 @@ const segmentedVariants = cva('gap-0 overflow-hidden rounded-sm border-0 bg-tran
 const segmentVariants = cva(
   [
     'h-8 rounded-none border-0 bg-transparent px-2.5 py-0 text-sm font-bold text-muted max-touch:min-h-11',
-    'not-first:border-s not-first:border-s-ink/11',
+    'not-first:border-s not-first:border-s-line-strong',
     'not-disabled:data-[state=off]:hover:bg-surface-2 not-disabled:data-[state=off]:hover:text-ink',
     'data-[state=on]:bg-surface-2 data-[state=on]:text-ink data-[state=on]:shadow-thread',
     'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent',

@@ -54,7 +54,7 @@ const LINE_STATUSES = ['active', 'expiring', 'frozen', 'disconnected', 'suspende
  * - the activation form: a column 12px apart; the point of sale and the package side by side 8px apart (one column
  *   under 768px); the eSIM box in a row 8px from its name, at least 36px high (44px at 720px and under), 13px ink 600.
  */
-const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center gap-2 text-ink max-[721px]:min-h-11';
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center gap-2 text-ink max-touch:min-h-11';
 const FIELD_HINT = 'text-sm font-medium';
 
 export function NumbersScreen() {
@@ -198,7 +198,7 @@ export function NumbersScreen() {
       kind: 'msisdn',
       render: (line) => (
         <span className="inline-flex items-center gap-2.5" data-testid="line-cell">
-          <Link className="text-start font-extrabold text-ink no-underline" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
+          <Link className="text-start font-bold text-ink no-underline" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
           <SimBadge line={{ esim: line.esim }} label={`${t.showQr} ${line.msisdn}`} busy={qr !== null && 'asking' in qr && qr.asking === line.id} onOpen={() => void openQr(line)} />
         </span>
       ),
@@ -211,7 +211,7 @@ export function NumbersScreen() {
           <CompanyMark name={line.companyName || '?'} image={line.companyImage} />
           <span>
             <b className="block font-semibold">{line.packageName}</b>
-            <span className="block text-[11.5px] leading-[1.3] font-normal text-muted">{line.companyName || '—'}</span>
+            <span className="block text-caption leading-1-3 font-normal text-muted">{line.companyName || '—'}</span>
           </span>
         </span>
       ),
@@ -330,7 +330,7 @@ export function NumbersScreen() {
             )}
           >
             <form id="activate-line" className="grid content-start gap-3" onSubmit={activate}>
-              <div className="grid grid-cols-[1fr_1fr] gap-2 max-md:grid-cols-[1fr]">
+              <div className="grid grid-cols-2 gap-2 max-md:grid-cols-1">
                 <Label tone="dialog">
                   {t.pointOfSale}
                   <NameField

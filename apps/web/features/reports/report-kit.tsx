@@ -3,6 +3,7 @@
 import { Download, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '../../components/ui/button';
+import { SegmentedToggle, SegmentedToggleItem } from '../../components/ui/segmented';
 import { cn } from '../../lib/cn';
 import { usePrefs } from '../../lib/prefs';
 
@@ -16,35 +17,22 @@ export function periodFrom(days: number): string {
 }
 
 /*
- * The period switch (Tailwind migration T4.9), ported from graphite.css `.period`: one row clipped to 4px corners with
- * a 1px inset `--rd-line` edge, never shrinking; the full width under 768px. A period is 34px high, 12px at the sides
- * (6px and an equal share of the row under 768px), no border or fill, 12.5px semibold `--rd-muted` on one line, ink
- * under the pointer; each after the first draws a 1px `--rd-line` on its start edge; the chosen one (`aria-pressed`)
- * sits on `--rd-surface-2` in ink with the 2px crimson thread underneath; the keyboard focus is a 2px crimson outline
- * drawn inside. At 720px and under it keeps the 44px touch height of responsive.css (`.canvas button`).
- * `data-slot="period"` is its handle. features/wallets/wallet-head.tsx still draws the legacy class until T4.7.
+ * The period switch (Tailwind migration T4.9; on `SegmentedToggle` since T6.3, the look it was ported from graphite.css
+ * `.period`): a row of `aria-pressed` buttons, the chosen one over the crimson thread (components/ui/segmented.tsx).
+ * `data-slot="period"` is its handle.
  */
-const PERIOD = 'inline-flex flex-none overflow-hidden rounded-xs inset-ring inset-ring-line max-md:w-full';
-const PERIOD_BUTTON = cn(
-  'h-8.5 cursor-pointer whitespace-nowrap border-0 bg-transparent px-3 text-[12.5px] font-semibold text-muted hover:text-ink',
-  'not-first:border-s not-first:border-s-line',
-  'aria-pressed:bg-surface-2 aria-pressed:text-ink aria-pressed:shadow-[inset_0_-2px_0_var(--rd-accent)]',
-  'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent',
-  'max-md:flex-1 max-md:px-1.5 max-[721px]:min-h-11',
-);
-
 /** The period switch of the Graphite report pages: today, 7 days, 30 days, 3 months. */
 export function Period({ days, onPick }: { days: number; onPick: (days: PeriodDays) => void }) {
   const { t } = usePrefs();
   const label = (value: PeriodDays) => (value === 1 ? t.periodToday : value === 7 ? t.period7 : value === 30 ? t.period30 : t.period3m);
   return (
-    <div data-slot="period" className={PERIOD} role="group" aria-label={t.period}>
+    <SegmentedToggle data-slot="period" aria-label={t.period}>
       {PERIODS.map((value) => (
-        <button key={value} type="button" className={PERIOD_BUTTON} aria-pressed={days === value} onClick={() => onPick(value)}>
+        <SegmentedToggleItem key={value} pressed={days === value} onClick={() => onPick(value)}>
           {label(value)}
-        </button>
+        </SegmentedToggleItem>
       ))}
-    </div>
+    </SegmentedToggle>
   );
 }
 
@@ -75,7 +63,7 @@ export function CsvLink({ href }: { href: string }) {
 const SEARCH_CHIP = cn(
   'h-9 w-70 max-w-full gap-2 border-0 bg-sunken px-3 leading-9 text-muted inset-ring inset-ring-line',
   "focus-within:inset-ring-accent has-[input:not([value=''])]:inset-ring-accent",
-  'max-md:[[data-slot=filter-bar][data-open]_&]:h-11 max-md:[[data-slot=filter-bar][data-open]_&]:leading-[42px]',
+  'max-md:[[data-slot=filter-bar][data-open]_&]:h-11 max-md:[[data-slot=filter-bar][data-open]_&]:leading-10.5',
   '[&>svg]:flex-none [&>svg]:self-center',
 );
 

@@ -25,8 +25,8 @@ export const RadioGroupItem = React.forwardRef<
   React.ComponentRef<typeof RadioGroupPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>
 >(({ className, ...props }, ref) => (
-  <RadioGroupPrimitive.Item ref={ref} data-slot="radio" className={cn(choiceBoxClass, 'rounded-[50%]', className)} {...props}>
-    <RadioGroupPrimitive.Indicator forceMount className={cn(choiceMarkClass, 'size-2 rounded-[50%]')} />
+  <RadioGroupPrimitive.Item ref={ref} data-slot="radio" className={cn(choiceBoxClass, 'rounded-pill', className)} {...props}>
+    <RadioGroupPrimitive.Indicator forceMount className={cn(choiceMarkClass, 'size-2 rounded-pill')} />
   </RadioGroupPrimitive.Item>
 ));
 RadioGroupItem.displayName = 'RadioGroupItem';

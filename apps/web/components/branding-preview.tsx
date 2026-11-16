@@ -23,7 +23,7 @@ import { DataImage } from './data-image';
  *   (1px `--rd-field` edge, 6px corners, `--rd-surface`) and a 32px crimson button (`--rd-accent-fill`,
  *   `--rd-on-accent`, 12px bold), each the card's width up to 220px.
  */
-const CARD = 'border border-line rounded-lg bg-surface shadow-card';
+const CARD = 'border border-line rounded-card bg-surface shadow-card';
 const LINE = 'h-2 rounded-pill bg-surface-3';
 const FIELD = 'h-7.5 w-full max-w-55 rounded-sm border border-field bg-surface';
 export function BrandingPreview({

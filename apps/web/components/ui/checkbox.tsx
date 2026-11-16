@@ -20,7 +20,7 @@ import { cn } from '../../lib/cn';
 export const choiceBoxClass = cn(
   'inline-grid size-4.5 min-w-4.5 max-w-4.5 flex-none cursor-pointer place-content-center align-middle',
   'm-0 border-[1.5px] border-solid border-field bg-surface p-0',
-  'transition-[background-color,border-color] duration-fast ease-[ease]',
+  'transition-[background-color,border-color] duration-fast ease-standard',
   'data-[state=checked]:border-accent-fill data-[state=checked]:bg-accent-fill',
   'data-[state=indeterminate]:border-accent-fill data-[state=indeterminate]:bg-accent-fill',
   'aria-invalid:data-[state=unchecked]:border-danger',
@@ -31,7 +31,7 @@ export const choiceBoxClass = cn(
 
 /** The mark inside the box: it is always there, scaled to nothing while unticked, so it grows in. */
 export const choiceMarkClass =
-  'bg-on-accent scale-0 transition-transform duration-fast ease-[ease] data-[state=checked]:scale-100 data-[state=indeterminate]:scale-100';
+  'bg-on-accent scale-0 transition-transform duration-fast ease-standard data-[state=checked]:scale-100 data-[state=indeterminate]:scale-100';
 
 /**
  * A checkbox on Radix Checkbox: a `role="checkbox"` button with `aria-checked` (`"mixed"` when indeterminate) and

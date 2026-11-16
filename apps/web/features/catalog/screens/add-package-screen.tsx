@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Plus, Search, X } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Desk, Money, Pane } from '../../../components/desk';
@@ -12,6 +12,7 @@ import { Checkbox } from '../../../components/ui/checkbox';
 import { IconButton } from '../../../components/ui/icon-button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
+import { RadioCard, RadioCardGroup } from '../../../components/ui/radio-card';
 import { api, type ProviderCatalogProduct } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
 import { useDesk } from '../../../lib/desk-session';
@@ -28,10 +29,8 @@ import { DetailsFields, detailsDraft, readDetails, type DetailsDraft } from '../
 import { cn } from '../../../lib/cn';
 import {
   addActionsClass,
-  pickCardClass,
   pickGridClass,
   pickNameClass,
-  pickTickClass,
   queryButtonClass,
   queryLabelClass,
   queryRowClass,
@@ -188,26 +187,24 @@ export function AddPackageScreen() {
           <div className="pane-body">
             {simulated ? <p className={paneHintClass}>{t.simulatedProvider}</p> : null}
             {products.length === 0 ? <p className={paneHintClass}>{t.noProviderProducts}</p> : (
-              <div className={pickGridClass} role="radiogroup" aria-label={t.providerProducts}>
+              <RadioCardGroup
+                className={pickGridClass}
+                aria-label={t.providerProducts}
+                value={product?.code ?? ''}
+                onValueChange={(code) => {
+                  const next = products.find((row) => row.code === code);
+                  if (next) pick(next);
+                }}
+              >
                 {products.map((row) => (
-                  <button
-                    key={row.code}
-                    type="button"
-                    role="radio"
-                    aria-checked={product?.code === row.code}
-                    className={pickCardClass}
-                    data-slot="pick-card"
-                    disabled={row.added}
-                    onClick={() => pick(row)}
-                  >
+                  <RadioCard key={row.code} value={row.code} data-slot="pick-card" disabled={row.added}>
                     <b className={pickNameClass}>{row.name}</b>
                     <span className={paneHintClass}>{factLine(row)}</span>
                     <span className="text-sm text-ink-2">{t.providerCost}: <Money value={row.cost} /></span>
                     {row.added ? <Badge variant="muted">{t.alreadyAdded}</Badge> : null}
-                    {product?.code === row.code ? <Check className={pickTickClass} size={16} aria-hidden="true" /> : null}
-                  </button>
+                  </RadioCard>
                 ))}
-              </div>
+              </RadioCardGroup>
             )}
           </div>
         ) : null}
@@ -238,7 +235,7 @@ export function AddPackageScreen() {
               <p className={paneHintClass}>{t.addonsHint}</p>
               {addons.map((addon, index) => (
                 <div key={index} className="grid grid-cols-[auto_minmax(0,1fr)_8rem_auto] items-center gap-2 max-md:grid-cols-[auto_minmax(0,1fr)_6rem_auto]">
-                  <Label tone="pane" className="m-0 flex min-h-9 cursor-pointer items-center max-[721px]:min-h-11">
+                  <Label tone="pane" className="m-0 flex min-h-9 cursor-pointer items-center max-touch:min-h-11">
                     <Checkbox checked={addon.on} onCheckedChange={(next) => setAddons((list) => list.map((row, at) => (at === index ? { ...row, on: next === true } : row)))} />
                     <span className="sr-only">{addon.name}</span>
                   </Label>

@@ -89,7 +89,7 @@ const MAX_LINE_PAGES = 100;
  * - the page column (`COLUMN`): a flex column 12px apart that keeps its content's height; it keeps the `stack` class
  *   as the handle the desk column, the canvas and `Pane` size by;
  * - «نظرة عامة»: the two figures side by side 12px apart (one column under 721px), each a grid 4px apart, 14px inside,
- *   8px corners on `--rd-surface-2`, its name 12px bold `--rd-muted` and its figure 1.5rem extra-bold, tabular, 1.1
+ *   8px corners on `--rd-surface-2`, its name 12px bold `--rd-muted` and its figure 1.5rem bold (800 until T6.3, ADR 0021 D7), tabular, 1.1
  *   high; the facts as rows at least 44px high over a 1px `--rd-line-soft` rule, 12px apart, the name 13px bold
  *   `--rd-muted` and the value 14px bold ink; the sale state at the start;
  * - the cards under the price chain (`FUND`): a one-column grid 10px apart at the foot, its heading 0.95rem bold ink,
@@ -107,11 +107,11 @@ const MAX_LINE_PAGES = 100;
 const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';
 const STAT = 'grid min-w-0 gap-1 rounded-card bg-surface-2 p-3.5';
 const STAT_NAME = 'text-sm font-bold text-muted';
-const STAT_VALUE = 'text-[1.5rem] leading-[1.1] font-extrabold tabular-nums';
+const STAT_VALUE = 'text-5xl leading-1-1 font-bold tabular-nums';
 const FUND = 'grid min-w-0 grid-cols-1 items-end gap-2.5';
-const FUND_TITLE = 'm-0 text-[0.95rem] font-bold text-ink';
+const FUND_TITLE = 'm-0 text-lg font-bold text-ink';
 const FUND_LABEL = 'min-w-0 font-bold';
-const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-[721px]:min-h-11';
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-touch:min-h-11';
 /** A phone's card (a table with `data-cards` whose cells carry their names): graphite.css's price editors rules. */
 const IN_CARD_ROW = 'max-sm:[[data-cards]:has(td[data-label])_&]:col-span-full';
 const PRICE_PAIR = cn(
@@ -483,7 +483,7 @@ export function PackageSheetScreen() {
             <>
               {tab === 'overview' && (
                 <div className="pane-body">
-                  <div className="grid grid-cols-2 gap-3 max-[721px]:grid-cols-1">
+                  <div className="grid grid-cols-2 gap-3 max-touch:grid-cols-1">
                     <div className={STAT}>
                       <span className={STAT_NAME}>{t.linesTotal}</span>
                       <strong className={STAT_VALUE}>{sheet.lines}</strong>
@@ -542,7 +542,7 @@ export function PackageSheetScreen() {
                     </Label>
                   </div>
                   {/* The board's last card: its field and its button side by side from 721px, the heading across. */}
-                  <div className={cn(FUND, 'min-[721px]:grid-cols-[minmax(0,1fr)_auto]')} data-testid="reprice">
+                  <div className={cn(FUND, 'min-[721px]:grid-cols-title-end')} data-testid="reprice">
                     <h3 className={cn(FUND_TITLE, 'col-span-full')}>{t.repriceTitle}</h3>
                     <Label tone="pane" className={FUND_LABEL}>
                       {t.linePricesScope}

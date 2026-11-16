@@ -24,6 +24,7 @@ import { useAction } from '../../../lib/use-action';
 import { Badge } from '../../../components/ui/badge';
 import { NameField } from '../../../components/name-field';
 import { DataImage } from '../../../components/data-image';
+import { pointerGlowClass } from '../../../components/stat';
 import { Tabs } from '../../../components/tabs';
 import { PackageFacts } from '../../../components/package-facts';
 import { priceFieldClass } from '../../../components/price-field';
@@ -43,30 +44,27 @@ import { paneHintClass } from '../sim-fields';
  *   corners on `--rd-surface`, ink, its border ink under the pointer, with the soft `--rd-glow` light under the pointer
  *   (the shell sets `--mx` / `--my` on a card it finds by `data-slot="pos-company"` / `"pack-card"`) and a 2px lift
  *   when motion is allowed. A company card centres its picture (64px, 10px corners, contained on `--rd-surface-2`)
- *   or its letters (a 64px tile, 8px corners, 18px extra-bold `--rd-on-mark`) over its name; a package card lines its
- *   rows at the start; its price 22px extra-bold;
+ *   or its letters (a 64px tile, 8px corners, 18px bold `--rd-on-mark`) over its name; a package card lines its
+ *   rows at the start; its price 22px bold (weights capped at 700 since T6.3, ADR 0021 D7);
  * - the subscribe step: a pane whose body is the form, laid out as a block with no row gap (the legacy form was the
  *   pane itself, a child of `.desk > .stack`, so `.desk > .stack > .pane` made it a block and neither `.pane-body`'s
  *   12px nor `.pane form`'s 8px reached it); fields are pane labels and fields, the eSIM box a pane label laid out as
  *   a row (at least 36px, 44px under 721px); the button inline at the start;
  * - a company's title (`CompanyTitle`): a row 12px apart, the picture 64px as above or the letters on a 48px tile
- *   (8px corners, 14px extra-bold); the eyebrow 11px bold `--rd-muted`, tracked 0.02em;
+ *   (8px corners, 14px bold); the eyebrow 11px bold `--rd-muted`, tracked 0.02em;
  * - the sell cell: its two price fields (`PriceField`'s look) and the save at the inline end and the foot, 8px apart;
  *   on a phone's card the cell takes the card's whole row and its parts wrap from the start.
  */
 const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';
-const CARD_GRID = 'grid grid-cols-[repeat(auto-fill,180px)] justify-start gap-3 motion-safe:*:animate-[rd-rise_420ms_var(--rd-ease-out)_both]';
+const CARD_GRID = 'grid grid-cols-[repeat(auto-fill,180px)] justify-start gap-3 motion-safe:*:animate-rise';
 const CARD = cn(
-  'relative isolate grid min-h-37 gap-2.5 rounded-lg border border-line bg-surface p-4 text-ink hover:border-ink',
-  "after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:rounded-[inherit] after:content-['']",
-  'after:bg-radial-[180px_circle_at_var(--mx,50%)_var(--my,0%)] after:from-glow after:to-transparent after:to-70%',
-  'after:opacity-0 after:transition-opacity after:duration-base after:ease-standard hover:after:opacity-100',
-  'motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out motion-safe:hover:[transform:translateY(-2px)]',
+  'relative isolate grid min-h-37 gap-2.5 rounded-card border border-line bg-surface p-4 text-ink hover:border-ink',
+  pointerGlowClass,
 );
 const LOGO = 'size-16 rounded-panel bg-surface-2 object-contain';
-const PRICE = 'm-0 text-[22px] font-extrabold';
-const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-[721px]:min-h-11';
-const EYEBROW = 'm-0 text-xs font-bold tracking-[0.02em] text-muted';
+const PRICE = 'm-0 text-4xl font-bold';
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-touch:min-h-11';
+const EYEBROW = 'm-0 text-xs font-bold tracking-head text-muted';
 /** A phone's card (a table with `data-cards` whose cells carry their names): graphite.css's price editors rules. */
 const IN_CARD_ROW = 'max-sm:[[data-cards]:has(td[data-label])_&]:col-span-full';
 const SELL_CELL = cn(
@@ -167,7 +165,7 @@ function PosCatalog({
               const image = imageOf.get(name) ?? '';
               return (
                 <button className={cn(CARD, 'cursor-pointer justify-items-center text-center')} data-slot="pos-company" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
-                  {image ? <DataImage className={LOGO} src={image} alt="" /> : <span className="grid size-16 place-items-center rounded-lg text-2xl font-extrabold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
+                  {image ? <DataImage className={LOGO} src={image} alt="" /> : <span className="grid size-16 place-items-center rounded-card text-2xl font-bold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
                   <strong>{name}</strong>
                 </button>
               );
@@ -233,7 +231,7 @@ function CompanyTitle({ name, image, label, heading = false }: { name: string; i
       {image ? (
         <DataImage className={LOGO} src={image} alt="" />
       ) : (
-        <span className="grid size-12 place-items-center rounded-tile text-base font-extrabold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>
+        <span className="grid size-12 place-items-center rounded-card text-base font-bold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>
       )}
       <div>
         <p className={EYEBROW}>{label}</p>

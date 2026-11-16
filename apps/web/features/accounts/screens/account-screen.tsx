@@ -75,7 +75,7 @@ const TABS: readonly Tab[] = ['packages', 'ops', 'numbers', 'access'];
  * - the save: at the reading start over a 1px `--rd-line` rule, 4px and 12px above it.
  */
 const HERO_MARK = cn(
-  'grid size-12 flex-none place-items-center rounded-sm bg-accent-fill text-[20px] font-bold text-on-accent',
+  'grid size-12 flex-none place-items-center rounded-sm bg-accent-fill text-3xl font-bold text-on-accent',
   '[clip-path:polygon(0_0,calc(100%_-_11px)_0,100%_11px,100%_100%,0_100%)] rtl:[clip-path:polygon(11px_0,100%_0,100%_100%,0_100%,0_11px)]',
 );
 const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';
@@ -85,7 +85,7 @@ const FOLD_SUMMARY = cn(
   'group-open:after:rotate-[225deg]',
 );
 const ROLE_CHIP = cn(
-  'h-8.5 cursor-pointer rounded-sm border border-ink/11 bg-surface-2 px-3.5 text-sm font-semibold text-muted max-sm:h-10 max-[721px]:min-h-11',
+  'h-8.5 cursor-pointer rounded-sm border border-line-strong bg-surface-2 px-3.5 text-sm font-semibold text-muted max-sm:h-10 max-touch:min-h-11',
   'aria-pressed:border-accent/55 aria-pressed:bg-accent-soft aria-pressed:text-accent',
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
 );
@@ -250,7 +250,7 @@ export function AccountScreen() {
                   <span className="text-sm text-muted">{t.grantsSummary.replace('{n}', String(allowedCount)).replace('{total}', String(GRANT_CODES.length))}</span>
                 </summary>
                 <div className="grid gap-3 px-3.5 pb-3.5">
-                  <ul className="m-0 grid list-none grid-cols-2 gap-x-7 p-0 max-[1101px]:grid-cols-[1fr]">
+                  <ul className="m-0 grid list-none grid-cols-2 gap-x-7 p-0 max-xl:grid-cols-1">
                     {GRANT_CODES.map((code) => {
                       const fromRole = row.isBranchOwner || roleHas.has(code);
                       const mode = (picked[code] ?? 'role') as Choice;
@@ -259,7 +259,7 @@ export function AccountScreen() {
                       return (
                         <li
                           key={code}
-                          className="grid min-h-13 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5 border-b border-line max-sm:grid-cols-[minmax(0,1fr)_auto] max-sm:py-2"
+                          className="grid min-h-13 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5 border-b border-line max-sm:grid-cols-title-end max-sm:py-2"
                         >
                           <span className="text-base font-bold text-ink">{name}</span>
                           <Badge variant={onOffTone(on)} dot>{on ? t.grantAllow : t.grantDeny}</Badge>

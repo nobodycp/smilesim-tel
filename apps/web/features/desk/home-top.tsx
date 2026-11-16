@@ -8,6 +8,7 @@ import { EmptyState } from '../../components/empty-state';
 import { Button } from '../../components/ui/button';
 import { LoadFailed } from '../../components/load-failed';
 import { Spinner, TableSkeleton } from '../../components/loading';
+import { pointerGlowClass } from '../../components/stat';
 import { TrendLine } from '../../components/trend-line';
 import { cn } from '../../lib/cn';
 import type { FinanceSummary, HomePayload, OverviewPayload, PulseTotals, TaskRow } from '../../lib/api';
@@ -24,7 +25,7 @@ type Period = OverviewPayload['period'];
  * `--rd-success` on its soft fill, down `--rd-danger` on its soft fill, no change `--rd-muted` on `--rd-surface-2`.
  * `data-trend` names the direction.
  */
-const CHANGE = 'absolute top-3 end-3.5 z-1 inline-flex h-5.5 items-center gap-0.5 rounded-pill px-1.75 text-[11.5px] font-bold';
+const CHANGE = 'absolute top-3 end-3.5 z-1 inline-flex h-5.5 items-center gap-0.5 rounded-pill px-1.75 text-caption font-bold';
 const CHANGE_TONE = {
   up: 'bg-success-soft text-success',
   down: 'bg-danger-soft text-danger',
@@ -71,33 +72,30 @@ const stepLabel = (period: Period, at: string) => (at.length === 13 ? (period ==
  *   inset `--rd-line` edge, the used ones `--rd-accent` with no edge.
  */
 const BAND_RISE = cn(
-  'motion-safe:*:animate-[rd-rise_420ms_var(--rd-ease-out)_both]',
+  'motion-safe:*:animate-rise',
   'motion-safe:[&>:nth-child(2)]:[animation-delay:40ms] motion-safe:[&>:nth-child(3)]:[animation-delay:80ms] motion-safe:[&>:nth-child(4)]:[animation-delay:120ms]',
 );
-const BAND = cn('grid grid-cols-2 gap-3 xl:grid-cols-[1.35fr_repeat(4,minmax(0,1fr))] max-[640px]:[&>:nth-child(4)]:col-span-full', BAND_RISE);
+const BAND = cn('grid grid-cols-2 gap-3 xl:grid-cols-[1.35fr_repeat(4,minmax(0,1fr))] max-sm:[&>:nth-child(4)]:col-span-full', BAND_RISE);
 const BRANCH_BAND = cn('grid grid-cols-3 gap-3 max-md:grid-cols-1', BAND_RISE);
 const TILE = cn(
-  'relative isolate flex min-w-0 flex-col gap-1.5 overflow-hidden rounded-card bg-surface px-4 py-3.5 inset-ring inset-ring-line max-[640px]:p-3',
+  'relative isolate flex min-w-0 flex-col gap-1.5 overflow-hidden rounded-card bg-surface px-4 py-3.5 inset-ring inset-ring-line max-sm:p-3',
   '[clip-path:polygon(0_0,calc(100%_-_var(--rd-cut))_0,100%_var(--rd-cut),100%_100%,0_100%)]',
   'rtl:[clip-path:polygon(var(--rd-cut)_0,100%_0,100%_100%,0_100%,0_var(--rd-cut))]',
-  "after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:content-['']",
-  'after:bg-radial-[180px_circle_at_var(--mx,50%)_var(--my,0%)] after:from-glow after:to-transparent after:to-70%',
-  'after:opacity-0 after:transition-opacity after:duration-base after:ease-standard hover:after:opacity-100',
-  'motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out motion-safe:hover:[transform:translateY(-2px)]',
+  pointerGlowClass,
 );
-const FIGURE_TILE = cn(TILE, 'min-h-28 max-[640px]:min-h-0');
+const FIGURE_TILE = cn(TILE, 'min-h-28 max-sm:min-h-0');
 const LEAD_TILE = cn(
   FIGURE_TILE,
-  'inset-ring-accent/35 shadow-[inset_0_0_0_1px_var(--rd-line)] max-xl:col-span-full',
+  'inset-ring-accent/35 shadow-edge max-xl:col-span-full',
   "before:absolute before:start-0 before:end-(--rd-cut) before:top-0 before:h-0.5 before:bg-accent before:content-['']",
 );
 const PULSE_TILE = cn(TILE, 'min-h-32');
 // In a period card the words sit above the trend and let the pointer through to it.
 const OVER_TREND = 'relative z-1 pointer-events-none';
 const TILE_LABEL = 'text-sm font-medium text-muted';
-const TILE_VALUE = 'text-[1.45rem] leading-[1.25] font-bold tracking-[-0.01em] tabular-nums max-[640px]:text-[1.2rem]';
-const LEAD_VALUE = 'text-[1.9rem] leading-[1.25] font-bold tracking-[-0.01em] tabular-nums max-[640px]:text-[1.6rem]';
-const TILE_META = 'mt-auto block text-sm leading-[1.6] text-muted';
+const TILE_VALUE = 'text-figure leading-1-25 font-bold tracking-figure tabular-nums max-sm:text-figure-sm';
+const LEAD_VALUE = 'text-figure-lead leading-1-25 font-bold tracking-figure tabular-nums max-sm:text-figure-lead-sm';
+const TILE_META = 'mt-auto block text-sm leading-1-6 text-muted';
 
 /**
  * The top of the home page (approved Graphite design, owner 2026-11-09): the available balance with its ceiling as
@@ -138,7 +136,7 @@ export function AccountBand({ summary, home, overview, period, branch = false }:
         <div className={LEAD_VALUE}>{summary ? <Money value={available} /> : '—'}</div>
         {summary && !summary.unlimited && summary.ceiling > 0 ? (
           <div className="mt-1 flex gap-0.75" role="img" aria-label={ceilingMeta}>
-            {Array.from({ length: 20 }, (_, index) => <i key={index} className={cn('h-1.5 flex-1 rounded-[1px]', index < ticks ? 'bg-accent' : 'bg-surface-2 inset-ring inset-ring-line')} />)}
+            {Array.from({ length: 20 }, (_, index) => <i key={index} className={cn('h-1.5 flex-1 rounded-4xs', index < ticks ? 'bg-accent' : 'bg-surface-2 inset-ring inset-ring-line')} />)}
           </div>
         ) : null}
         <div className={TILE_META}>{summary ? ceilingMeta : null}</div>
@@ -183,7 +181,7 @@ type Movement = HomePayload['operations'][number];
  * `--rd-surface-2` at 45%; the detail 12.5px `--rd-muted`, gone under 641px with its column. A row's account and time
  * are 12px `--rd-muted`, 2px under the line above them.
  */
-const OP_ROW = 'grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-3 border-t border-line px-4.5 py-2.5 first:border-t-0 even:bg-surface-2/45 max-sm:grid-cols-[minmax(0,1fr)_auto]';
+const OP_ROW = 'grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] items-center gap-3 border-t border-line px-4.5 py-2.5 first:border-t-0 even:bg-surface-2/45 max-sm:grid-cols-title-end';
 const SUB = 'text-sm text-muted';
 
 export function LastOperations({ home, failed, onRetry, showAccount }: { home: HomePayload | null | undefined; failed: string; onRetry: () => void; showAccount: boolean }) {
@@ -215,7 +213,7 @@ export function LastOperations({ home, failed, onRetry, showAccount }: { home: H
                 <strong>{actionName(t, row.kind)}</strong>
                 {showAccount ? <span className={SUB}><AccountName login={row.loginName} /></span> : null}
               </span>
-              <span className="text-[12.5px] text-muted max-sm:hidden">{row.packageName || row.note || '—'}</span>
+              <span className="text-chip text-muted max-sm:hidden">{row.packageName || row.note || '—'}</span>
               <span className="grid gap-0.5 text-end">
                 <Money value={row.amount} />
                 <span className={SUB} dir="ltr">{latinWhen(row.at).slice(11)}</span>

@@ -30,7 +30,7 @@ type Tone = 'good' | 'warn';
  *   the value 13px ink bold at the reading start, breaking anywhere, its `bdi` figures tabular.
  */
 const LIST: Record<Variant, string> = {
-  tiles: 'm-0 grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-2',
+  tiles: 'm-0 grid grid-cols-fit-card gap-2',
   cards: cn(
     'm-0 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 sm:[.desk_&]:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]',
     'max-sm:grid-cols-2 max-sm:gap-2.5',
@@ -51,8 +51,8 @@ const NAME = {
 
 const VALUE = {
   tiles: cn(
-    'm-0 flex min-w-0 flex-1 items-center border-s border-line-strong bg-surface px-3 py-1.5 text-[13.5px] font-bold text-ink wrap-anywhere',
-    '[&_bdi]:tracking-[0.02em] [&_bdi]:tabular-nums',
+    'm-0 flex min-w-0 flex-1 items-center border-s border-line-strong bg-surface px-3 py-1.5 text-block font-bold text-ink wrap-anywhere',
+    '[&_bdi]:tracking-head [&_bdi]:tabular-nums',
   ),
   list: 'm-0 text-start text-md font-bold text-ink wrap-anywhere [&_bdi]:tabular-nums',
 } as const;
@@ -82,7 +82,7 @@ export function Fact({ label, icon, tone, children }: { label: ReactNode; icon?:
       >
         <div>
           <dt className="m-0 text-sm font-medium text-muted">{label}</dt>
-          <dd className={cn('mx-0 mt-1 mb-0 text-2xl leading-[1.25] font-semibold', tone ? CARD_TONE[tone].value : 'text-ink')}>{children}</dd>
+          <dd className={cn('mx-0 mt-1 mb-0 text-2xl leading-1-25 font-semibold', tone ? CARD_TONE[tone].value : 'text-ink')}>{children}</dd>
         </div>
         {icon ? (
           <span

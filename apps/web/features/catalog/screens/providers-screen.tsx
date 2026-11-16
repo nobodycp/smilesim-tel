@@ -26,7 +26,7 @@ const RUNS_TONE = {
   amber: 'bg-warning-soft text-warning',
   mute: 'bg-surface-2 text-muted',
 } as const;
-const RUNS_TAG = 'inline-flex h-5.5 items-center whitespace-nowrap rounded-xs px-2 text-[11.5px] font-bold';
+const RUNS_TAG = 'inline-flex h-5.5 items-center whitespace-nowrap rounded-xs px-2 text-caption font-bold';
 
 export function ProvidersScreen() {
   const { t } = usePrefs();

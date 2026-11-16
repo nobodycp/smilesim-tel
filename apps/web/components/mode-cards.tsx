@@ -53,7 +53,7 @@ export function ModeCards<K extends string>({
               '[clip-path:polygon(0_0,calc(100%_-_var(--rd-cut))_0,100%_var(--rd-cut),100%_100%,0_100%)]',
               'rtl:[clip-path:polygon(var(--rd-cut)_0,100%_0,100%_100%,0_100%,0_var(--rd-cut))]',
               'max-sm:grid-cols-[auto_minmax(0,1fr)] max-sm:items-center max-sm:gap-x-2.5 max-sm:p-3.5',
-              'motion-safe:animate-[rd-rise_420ms_var(--rd-ease-out)_both] motion-safe:nth-2:[animation-delay:40ms]',
+              'motion-safe:animate-rise motion-safe:nth-2:[animation-delay:40ms]',
               'motion-safe:nth-3:[animation-delay:80ms] motion-safe:nth-[n+4]:[animation-delay:120ms]',
               mode === 'off' && 'opacity-55',
             )}
@@ -62,7 +62,7 @@ export function ModeCards<K extends string>({
             <span className="grid size-9 place-items-center rounded-sm bg-accent-soft text-accent max-sm:size-7.5" aria-hidden="true">
               <Zap size={18} strokeWidth={1.9} />
             </span>
-            <b className="text-[14.5px] font-bold">{names[action]}</b>
+            <b className="text-item font-bold">{names[action]}</b>
             {inherited ? (
               inherited.includes(action) ? (
                 <span className={sourceClass} data-testid="mode-source">{t.inheritedFromProvider}</span>

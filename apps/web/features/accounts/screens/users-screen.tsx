@@ -126,7 +126,7 @@ export function UsersScreen() {
           <span className="flex min-w-0 flex-col text-start">
             <strong className="font-bold"><bdi>{row.nickname.trim() || row.loginName}</bdi></strong>
             {row.nickname.trim() && row.nickname.trim() !== row.loginName ? (
-              <span className="block text-[11.5px] leading-[1.3] font-normal text-muted" dir="ltr">{row.loginName}</span>
+              <span className="block text-caption leading-1-3 font-normal text-muted" dir="ltr">{row.loginName}</span>
             ) : null}
           </span>
         </Link>

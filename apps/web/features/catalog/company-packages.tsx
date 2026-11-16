@@ -47,7 +47,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
       render: (row) => (
         <span className="grid items-baseline gap-px whitespace-nowrap">
           <Link className="font-bold" href={open(row)}><strong className="text-base font-bold text-ink">{row.name}</strong></Link>
-          {factLine(row) ? <span className="m-0 text-[11.5px] font-medium text-muted tabular-nums">{factLine(row)}</span> : null}
+          {factLine(row) ? <span className="m-0 text-caption font-medium text-muted tabular-nums">{factLine(row)}</span> : null}
         </span>
       ),
     },

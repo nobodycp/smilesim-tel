@@ -43,7 +43,7 @@ function counted(template: string, n: number) {
  */
 const GRID = cn(
   'grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3 max-sm:grid-cols-2 max-sm:gap-2.5',
-  'motion-safe:*:animate-[rd-rise_420ms_var(--rd-ease-out)_both]',
+  'motion-safe:*:animate-rise',
   'motion-safe:[&>:nth-child(2)]:[animation-delay:40ms] motion-safe:[&>:nth-child(3)]:[animation-delay:80ms]',
   'motion-safe:[&>:nth-child(n+4)]:[animation-delay:120ms]',
 );
@@ -51,7 +51,7 @@ const CARD = cn(
   'relative isolate grid gap-1.5 rounded-sm bg-surface p-4.5 text-start inset-ring inset-ring-line max-sm:p-3.5',
   '[clip-path:polygon(0_0,calc(100%_-_var(--rd-cut))_0,100%_var(--rd-cut),100%_100%,0_100%)]',
   'rtl:[clip-path:polygon(var(--rd-cut)_0,100%_0,100%_100%,0_100%,0_var(--rd-cut))]',
-  'transition-[background-color] duration-[140ms] ease-[ease] hover:bg-surface-2',
+  'transition-colors duration-fast ease-standard hover:bg-surface-2',
   'has-[a:focus-visible]:inset-ring-2 has-[a:focus-visible]:inset-ring-accent',
 );
 const CARD_LINK = cn(
@@ -85,7 +85,7 @@ export function CompaniesScreen() {
           <CompanyMark name={company.name} image={company.image} size="lg" className="max-sm:size-9.5 max-sm:text-lg" />
         </div>
         <Link className={CARD_LINK} href={`/companies/${company.code}`}>{company.name}</Link>
-        <span className="text-[12.5px] text-muted">
+        <span className="text-chip text-muted">
           {company.sim && hasSimRules(company.sim)
             ? [
                 company.sim.length !== null ? t.simDigits.replace('{n}', String(company.sim.length)) : '',
@@ -93,7 +93,7 @@ export function CompaniesScreen() {
               ].filter(Boolean).join(' · ')
             : t.simFree}
         </span>
-        <div className="mt-2 flex flex-wrap gap-3.5 border-t border-line pt-2.5 text-sm text-muted max-sm:gap-x-2.5 max-sm:gap-y-1 max-sm:text-[11.5px]">
+        <div className="mt-2 flex flex-wrap gap-3.5 border-t border-line pt-2.5 text-sm text-muted max-sm:gap-x-2.5 max-sm:gap-y-1 max-sm:text-caption">
           <span>{counted(t.coPackages, sums.packages)}</span>
           <span>{counted(t.coProviders, company.providers.length)}</span>
           <span>{counted(t.coActive, sums.active)}</span>

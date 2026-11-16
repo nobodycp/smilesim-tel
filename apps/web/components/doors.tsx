@@ -12,7 +12,7 @@ export function Doors({ host, name }: { host: string; name?: string }) {
     <main className="grid min-h-screen content-center justify-items-center gap-5.5 px-5 py-8">
       <div className="grid w-[min(520px,100%)] gap-1.5 text-center">
         <p className="m-0 text-base font-bold text-ink">{name || t.brand}</p>
-        <h1 className="m-0 text-[28px]">{t.doorsTitle}</h1>
+        <h1 className="m-0 text-7xl">{t.doorsTitle}</h1>
         <p className="mx-0 mt-1.5 mb-4.5 text-muted">{t.doorsLede}</p>
       </div>
       <div className="grid w-[min(520px,100%)] grid-cols-2 gap-3 max-[561px]:grid-cols-1">

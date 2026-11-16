@@ -35,13 +35,13 @@ import { Fact, Facts } from './facts';
  */
 const ESIM_OPEN = cn(
   'inline-flex min-h-11 cursor-pointer items-center -my-2.5 border-0 bg-transparent p-0',
-  'transition-transform duration-fast ease-[ease] hover:not-aria-busy:[transform:translateY(-1px)]',
+  'transition-transform duration-fast ease-standard hover:not-aria-busy:[transform:translateY(-1px)]',
   'aria-busy:cursor-progress aria-busy:opacity-55',
   'focus-visible:rounded-pill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
 );
 const ESIM_MARK = cn(
   'inline-grid size-11 flex-none cursor-pointer place-items-center rounded-sm border border-line bg-qr-tile p-1',
-  'transition-[transform,box-shadow] duration-fast ease-[ease] hover:shadow-sm hover:[transform:translateY(-1px)]',
+  'transition-[transform,box-shadow] duration-fast ease-standard hover:shadow-sm hover:[transform:translateY(-1px)]',
 );
 type QrTileLook = 'plain' | 'scan' | 'thumb';
 const QR_TILE: Record<QrTileLook, string> = {

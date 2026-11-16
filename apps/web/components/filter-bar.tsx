@@ -78,7 +78,7 @@ export function FilterBar({
         key="clear"
         type="button"
         data-slot="chip-clear"
-        className="grid w-6.5 flex-none place-items-center border-0 border-s border-s-ink/11 bg-transparent p-0 text-muted hover:bg-accent-soft hover:text-accent"
+        className="grid w-6.5 flex-none place-items-center border-0 border-s border-s-line-strong bg-transparent p-0 text-muted hover:bg-accent-soft hover:text-accent"
         // A pointer shortcut: the field's own «الكل» does the same from the keyboard, and the «×» stays out of the
         // field's name.
         aria-hidden="true"
@@ -110,7 +110,7 @@ export function FilterBar({
       <button
         type="button"
         className={cn(
-          'hidden h-9 items-center gap-1.5 rounded-sm border-0 bg-surface-2 px-3 font-semibold text-ink-2 inset-ring inset-ring-ink/11',
+          'hidden h-9 items-center gap-1.5 rounded-sm border-0 bg-surface-2 px-3 font-semibold text-ink-2 inset-ring inset-ring-line-strong',
           !bare && 'max-md:inline-flex',
         )}
         aria-expanded={open}
@@ -126,10 +126,10 @@ export function FilterBar({
           'flex w-full flex-wrap items-center gap-2 overflow-visible border-0 bg-transparent p-0',
           open
             ? [
-              'max-md:fixed max-md:inset-y-0 max-md:end-0 max-md:z-[calc(var(--rd-z-dialog)+1)] max-md:w-[min(380px,92vw)]',
+              'max-md:fixed max-md:inset-y-0 max-md:end-0 max-md:z-dialog-drawer max-md:w-drawer',
               'max-md:flex-col max-md:flex-nowrap max-md:items-stretch max-md:gap-3 max-md:overflow-y-auto',
               'max-md:bg-surface max-md:px-4.5 max-md:pt-0 max-md:pb-4.5 max-md:shadow-pop',
-              'max-md:motion-safe:animate-[filter-slide_220ms_var(--rd-ease-out)]',
+              'max-md:motion-safe:animate-drawer',
             ]
             : !(bare && loose) && 'max-md:hidden',
         )}

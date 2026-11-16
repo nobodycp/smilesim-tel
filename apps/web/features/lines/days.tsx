@@ -9,7 +9,7 @@ export type DaysTone = 'left' | 'soon' | 'out' | 'off';
  * `off` (not active) `--rd-muted`. Beside the number on its card it is 13px (`.line-hero-title .days`): the caller's
  * `className` comes last (`cn`). `data-slot="days"` is its handle.
  */
-const DAYS = 'inline-flex items-center gap-1.25 text-[12.5px]';
+const DAYS = 'inline-flex items-center gap-1.25 text-chip';
 
 const TONE: Record<DaysTone, string> = {
   left: 'text-ink-2',

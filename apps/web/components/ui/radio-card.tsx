@@ -13,8 +13,8 @@ import { cn } from '../../lib/cn';
  * skipping a disabled one (audit 3.6-10, 3.10-31). The group sets no layout of its own: the caller lays the cards out
  * (a grid of them). Inside a `<form>` Radix adds a hidden radio input per card, so `name` and `required` reach it.
  *
- * The look is the hand-built pick cards' (features/catalog/add-steps.ts `pickCardClass`, the two-step method cards
- * of features/auth/sign-in-methods.tsx, which move onto it in T6.3), with the system's states:
+ * The look is the hand-built pick cards' (features/catalog/add-steps.ts `pickCardClass` until T6.3, the two-step method cards
+ * of features/auth/sign-in-methods.tsx; both draw this since T6.3), with the system's states:
  * - a card: a grid of rows 4px apart at the start, 12px by 14px inside, a 1px `--rd-line` border with 6px corners on
  *   `--rd-surface-2`, ink text; under the pointer (usable, not chosen) the border is `--rd-accent` at 45%;
  * - chosen: an `--rd-accent` border on `--rd-accent-soft`, and the 16px crimson tick 10px in from the top inline-end

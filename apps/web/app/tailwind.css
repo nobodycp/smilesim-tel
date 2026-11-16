@@ -70,29 +70,11 @@
   --color-glow: var(--rd-glow);
   --color-login-room: var(--rd-login-room);
   --color-login-ink: var(--rd-login-ink);
-  --color-login-line: var(--rd-login-line);
-  --color-login-line-light: var(--rd-login-line-light);
-  --color-login-tool: var(--rd-login-tool);
-  --color-login-tool-line: var(--rd-login-tool-line);
-  --color-login-paper: var(--rd-login-paper);
-  --color-login-paper-ink: var(--rd-login-paper-ink);
-  --color-login-paper-muted: var(--rd-login-paper-muted);
-  --color-login-paper-tool: var(--rd-login-paper-tool);
-  --color-login-paper-tool-line: var(--rd-login-paper-tool-line);
-  --color-login-field: var(--rd-login-field);
-  --color-login-field-bg: var(--rd-login-field-bg);
-  --color-login-go: var(--rd-login-go);
-  --color-login-go-hover: var(--rd-login-go-hover);
-  --color-login-go-fg: var(--rd-login-go-fg);
-  --color-login-focus: var(--rd-login-focus);
-  --color-login-danger: var(--rd-login-danger);
-  --color-login-danger-soft: var(--rd-login-danger-soft);
   --color-accent-fill: var(--rd-accent-fill);
   --color-accent-fill-hover: var(--rd-accent-fill-hover);
   --color-on-accent: var(--rd-on-accent);
   --color-on-mark: var(--rd-on-mark);
   --color-primary-bg: var(--rd-primary-bg);
-  --color-primary-hover: var(--rd-primary-hover);
   --color-primary-fg: var(--rd-primary-fg);
   --color-primary-soft: var(--rd-primary-soft);
   --color-success: var(--rd-success);
@@ -113,13 +95,12 @@
   --color-scrim-strong: var(--rd-scrim-strong);
 
   --radius-*: initial;
+  --radius-4xs: var(--rd-radius-4xs);
+  --radius-3xs: var(--rd-radius-3xs);
   --radius-2xs: var(--rd-radius-2xs);
   --radius-xs: var(--rd-radius-xs);
   --radius-sm: var(--rd-radius-sm);
-  --radius-md: var(--rd-radius-md);
-  --radius-lg: var(--rd-radius-lg);
   --radius-card: var(--rd-radius-card);
-  --radius-tile: var(--rd-radius-tile);
   --radius-panel: var(--rd-radius-panel);
   --radius-pill: var(--rd-radius-pill);
 
@@ -140,6 +121,8 @@
   --text-4xl: var(--rd-text-4xl);
   --text-5xl: var(--rd-text-5xl);
   --text-6xl: var(--rd-text-6xl);
+  --text-7xl: var(--rd-text-7xl);
+  --text-8xl: var(--rd-text-8xl);
   --text-page: var(--rd-text-page);
   --text-figure-sm: var(--rd-text-figure-sm);
   --text-figure: var(--rd-text-figure);
@@ -151,10 +134,12 @@
   --leading-1-1: var(--rd-leading-1-1);
   --leading-1-15: var(--rd-leading-1-15);
   --leading-1-2: var(--rd-leading-1-2);
+  --leading-1-25: var(--rd-leading-1-25);
   --leading-1-3: var(--rd-leading-1-3);
   --leading-1-35: var(--rd-leading-1-35);
   --leading-1-4: var(--rd-leading-1-4);
   --leading-1-45: var(--rd-leading-1-45);
+  --leading-1-5: var(--rd-leading-1-5);
   --leading-1-55: var(--rd-leading-1-55);
   --leading-1-6: var(--rd-leading-1-6);
   --tracking-title: var(--rd-tracking-title);
@@ -192,6 +177,15 @@
   --ease-*: initial;
   --ease-standard: var(--rd-ease-standard);
   --ease-out: var(--rd-ease-out);
+  --ease-sheet: var(--rd-ease-sheet);
+
+  /* Entrances more than one component plays (Tailwind migration T6.3): a row of cards rising in, the sidebar's flyout
+     and the tooltip sliding in, a side drawer sliding in, a list dropping open. The keyframes are at the end of this
+     file; one-component entrances stay written where they play. */
+  --animate-rise: var(--rd-animate-rise);
+  --animate-flyin: var(--rd-animate-flyin);
+  --animate-drawer: var(--rd-animate-drawer);
+  --animate-pop-in: var(--rd-animate-pop-in);
 
   --shadow-*: initial;
   --shadow-card: var(--rd-shadow-card);
@@ -201,6 +195,15 @@
   --shadow-thread: var(--rd-shadow-thread);
   --shadow-glow: var(--rd-shadow-glow);
   --shadow-glow-accent: var(--rd-shadow-glow-accent);
+  --shadow-edge: var(--rd-shadow-edge);
+
+  /* Layout values more than one screen uses (Tailwind migration T6.3): a row of a title that shrinks and an end slot
+     (`grid-cols-title-end`); cards at least 16rem wide, as many as fit (`grid-cols-fit-card`); a panel that opens under
+     its trigger (`top-pop`: 6px below it); a side drawer's width (`w-drawer`). */
+  --grid-template-columns-title-end: var(--rd-cols-title-end);
+  --grid-template-columns-fit-card: var(--rd-cols-fit-card);
+  --inset-pop: calc(100% + var(--rd-pop-gap));
+  --container-drawer: var(--rd-drawer-width);
 
   /* next/font sets --font-sans (Noto Kufi Arabic) and --font-he (IBM Plex Sans Hebrew) on <html> (app/layout.tsx);
      the default `--font-sans` is cleared so Tailwind never declares a variable of that name. `font-body` is the
@@ -210,11 +213,14 @@
 
   /* The width scale (DESIGN.md): max 640 / 720 / 767 / 899 / 1099, min 641 / 721 / 768 / 900 / 1100.
      `sm:` = min-width 641px, `max-sm:` = under 641px (max 640), and so on. `max-touch:` = 720px and under, where every
-     control is at least 44px high (the touch rule; Tailwind migration T6.2 named the `max-[721px]:` literal). */
+     control is at least 44px high (the touch rule; Tailwind migration T6.2 named the `max-[721px]:` literal).
+     `max-auth:` = under 861px, where the sign-in frame and its art stack (components/auth-frame.tsx, auth-art.tsx;
+     named by T6.3). */
   --breakpoint-*: initial;
   --breakpoint-sm: 641px;
   --breakpoint-touch: 721px;
   --breakpoint-md: 768px;
+  --breakpoint-auth: 861px;
   --breakpoint-lg: 900px;
   --breakpoint-xl: 1100px;
 }
@@ -262,32 +268,15 @@
     /* The tag's cut corner on figure tiles and fact cards; the hover glow behind a lifted tile. */
     --rd-cut: 12px;
     --rd-glow: rgba(217, 48, 73, 0.1);
+    /* The sign-in art's room and its text (components/auth-art.tsx): one value in both themes. */
     --rd-login-room: #111213;
     --rd-login-ink: #f5f5f2;
-    --rd-login-line: rgba(245, 245, 242, 0.38);
-    --rd-login-line-light: rgba(245, 245, 242, 0.28);
-    --rd-login-tool: rgba(245, 245, 242, 0.08);
-    --rd-login-tool-line: rgba(245, 245, 242, 0.22);
-    --rd-login-paper: #fafaf8;
-    --rd-login-paper-ink: #0a0a0a;
-    --rd-login-paper-muted: #6b6b68;
-    --rd-login-paper-tool: #ffffff;
-    --rd-login-paper-tool-line: #e6e6e1;
-    --rd-login-field: #c4c4be;
-    --rd-login-field-bg: #ffffff;
-    --rd-login-go: #0a0a0a;
-    --rd-login-go-hover: #242422;
-    --rd-login-go-fg: #ffffff;
-    --rd-login-focus: rgba(10, 10, 10, 0.16);
-    --rd-login-danger: #b91c1c;
-    --rd-login-danger-soft: #fdecec;
     /* A crimson fill that carries content, and what is drawn on it (ADR 0021 D1): white passes 4.5:1 in both themes. */
     --rd-accent-fill: var(--rd-accent);
     --rd-accent-fill-hover: color-mix(in srgb, var(--rd-accent-fill) 88%, #000);
     --rd-on-accent: #fff;
     --rd-on-mark: #fff;
     --rd-primary-bg: #161616;
-    --rd-primary-hover: #2b2b2b;
     --rd-primary-fg: #fff;
     --rd-primary-soft: color-mix(in srgb, var(--rd-primary-bg) 10%, transparent);
     --rd-success: #0f8a59;
@@ -309,14 +298,16 @@
     --rd-focus: rgba(217, 48, 73, 0.18);
     --rd-scrim: rgba(10, 10, 10, 0.48);
     --rd-scrim-strong: rgba(0, 0, 0, 0.5);
-    --rd-radius-lg: 8px;
     /* Scales (Phase 5.3): the values the stylesheets already used, named. Theme-independent. */
+    /* Hairline corners below the scale's 3px (Tailwind migration T6.3): 1px on a badge's diamond, a meter's ticks and
+       bars, the unread mark; 2px on the switch knob, the sidebar's open mark and the ticket's dots. */
+    --rd-radius-4xs: 1px;
+    --rd-radius-3xs: 2px;
     --rd-radius-2xs: 3px;
     --rd-radius-xs: 4px;
     --rd-radius-sm: 6px;
-    --rd-radius-md: 6px;
+    /* One name per size (Tailwind migration T6.3): `md` (6px) was `sm`, `lg` and `tile` (8px) were `card`. */
     --rd-radius-card: 8px;
-    --rd-radius-tile: 8px;
     --rd-radius-panel: 10px;
     --rd-radius-pill: 999px;
     --rd-text-2xs: 10px;
@@ -341,20 +332,25 @@
     --rd-text-4xl: 22px;
     --rd-text-5xl: 24px;
     --rd-text-6xl: 26px;
+    /* The door picker's title (28px) and the sign-in art's headline (30px), named at today's size (T6.3, D6 a). */
+    --rd-text-7xl: 28px;
+    --rd-text-8xl: 30px;
     --rd-text-page: 1.25rem;
     --rd-text-figure-sm: 1.2rem;
     --rd-text-figure: 1.45rem;
     --rd-text-figure-lead-sm: 1.6rem;
     --rd-text-figure-lead: 1.9rem;
-    /* Line heights the screens use besides 1, 1.25 and 1.5, and letter spacing: a title and a figure close up, a
+    /* Line heights the screens use besides 1 (1.25 and 1.5 named too since T6.3), and letter spacing: a title and a figure close up, a
        table head, a line number, a language code and small capitals open up. */
     --rd-leading-1-1: 1.1;
     --rd-leading-1-15: 1.15;
     --rd-leading-1-2: 1.2;
+    --rd-leading-1-25: 1.25;
     --rd-leading-1-3: 1.3;
     --rd-leading-1-35: 1.35;
     --rd-leading-1-4: 1.4;
     --rd-leading-1-45: 1.45;
+    --rd-leading-1-5: 1.5;
     --rd-leading-1-55: 1.55;
     --rd-leading-1-6: 1.6;
     --rd-tracking-title: -0.015em;
@@ -376,6 +372,21 @@
     --rd-space-4: 16px;
     --rd-space-5: 20px;
     --rd-space-6: 24px;
+    /* Off-step frame spacing, named at today's value (ADR 0021 D6 a; Tailwind migration T6.3): the pane's inline
+       padding and foot, the lede's foot and a pane's tabs' sides (18px); the canvas's inline gutter (28px) and, from
+       768px, its top (22px) and foot (56px); its foot under 768px (48px). */
+    --rd-space-pane: 18px;
+    --rd-space-gutter: 28px;
+    --rd-space-canvas-top: 22px;
+    --rd-space-canvas-end: 56px;
+    --rd-space-canvas-end-sm: 48px;
+    /* Layout values more than one screen uses (T6.3; the `@theme` block names them): a title column that shrinks
+       beside an end slot; cards at least 16rem wide, as many as fit; the 6px a panel opens under its trigger; a side
+       drawer's width. */
+    --rd-cols-title-end: minmax(0, 1fr) auto;
+    --rd-cols-fit-card: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    --rd-pop-gap: 6px;
+    --rd-drawer-width: min(380px, 92vw);
     /* Layers (5.3d), low to high. The sign-in frame keeps its own local 3 and 5. */
     --rd-z-raised: 1;
     --rd-z-topbar: 20;
@@ -396,6 +407,13 @@
     --rd-dur-base: 180ms;
     --rd-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
     --rd-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    /* The sheet's curve (T6.3): the sidebar's width and flyout, the start sheet's slide, the folds' chevrons. */
+    --rd-ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+    /* Entrances more than one component plays (T6.3). */
+    --rd-animate-rise: rd-rise 420ms var(--rd-ease-out) both;
+    --rd-animate-flyin: side-flyin 160ms var(--rd-ease-sheet);
+    --rd-animate-drawer: filter-slide 220ms var(--rd-ease-out);
+    --rd-animate-pop-in: filter-pop-in 140ms ease-out;
     --rd-shadow-card: 0 1px 0 rgba(0, 0, 0, 0.03);
     --rd-shadow-frame: 0 1px 0 rgba(0, 0, 0, 0.03);
     --rd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -405,8 +423,11 @@
     --rd-shadow-thread: inset 0 -2px 0 var(--rd-accent);
     --rd-shadow-glow: 0 0 8px currentColor;
     --rd-shadow-glow-accent: 0 0 8px var(--rd-accent);
+    /* A second 1px inset `--rd-line` edge under a lead tile's crimson ring (home and wallet, T6.3). */
+    --rd-shadow-edge: inset 0 0 0 1px var(--rd-line);
     color-scheme: light;
   }
+  /* Dark: only the values that differ from `:root` (Tailwind migration T6.3 removed the ones repeated unchanged). */
   .dark {
     --rd-bg: #111213;
     --rd-surface: #18191b;
@@ -419,7 +440,6 @@
     --rd-layer-pos: #9a86f0;
     --rd-line: rgba(255, 255, 255, 0.07);
     --rd-line-soft: rgba(255, 255, 255, 0.045);
-    --rd-qr-tile: #ffffff;
     --rd-field: #6e6e72;
     --rd-ink: #ececec;
     --rd-ink-2: #b9b9b9;
@@ -428,34 +448,10 @@
     --rd-accent: #ff4d63;
     --rd-accent-soft: rgba(255, 77, 99, 0.12);
     --rd-glow: rgba(255, 77, 99, 0.14);
-    --rd-login-room: #111213;
-    --rd-login-ink: #f5f5f2;
-    --rd-login-line: rgba(245, 245, 242, 0.38);
-    --rd-login-line-light: rgba(245, 245, 242, 0.28);
-    --rd-login-tool: rgba(245, 245, 242, 0.08);
-    --rd-login-tool-line: rgba(245, 245, 242, 0.22);
-    --rd-login-paper: #fafaf8;
-    --rd-login-paper-ink: #0a0a0a;
-    --rd-login-paper-muted: #6b6b68;
-    --rd-login-paper-tool: #ffffff;
-    --rd-login-paper-tool-line: #e6e6e1;
-    --rd-login-field: #c4c4be;
-    --rd-login-field-bg: #ffffff;
-    --rd-login-go: #0a0a0a;
-    --rd-login-go-hover: #242422;
-    --rd-login-go-fg: #ffffff;
-    --rd-login-focus: rgba(10, 10, 10, 0.16);
-    --rd-login-danger: #b91c1c;
-    --rd-login-danger-soft: #fdecec;
     /* The fill stays the light crimson in dark (darker than the thread #ff4d63), so white text still passes. */
     --rd-accent-fill: #d93049;
-    --rd-accent-fill-hover: color-mix(in srgb, var(--rd-accent-fill) 88%, #000);
-    --rd-on-accent: #fff;
-    --rd-on-mark: #fff;
     --rd-primary-bg: #ececec;
-    --rd-primary-hover: #ffffff;
     --rd-primary-fg: #111213;
-    --rd-primary-soft: color-mix(in srgb, var(--rd-primary-bg) 10%, transparent);
     --rd-success: #3ddc97;
     --rd-success-soft: rgba(61, 220, 151, 0.12);
     --rd-warning: #ffb547;
@@ -470,11 +466,8 @@
     --rd-violet-soft: color-mix(in srgb, var(--rd-violet) 12%, transparent);
     --rd-focus: rgba(255, 77, 99, 0.22);
     --rd-scrim: rgba(0, 0, 0, 0.7);
-    --rd-scrim-strong: rgba(0, 0, 0, 0.5);
-    --rd-radius-lg: 8px;
     --rd-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
     --rd-shadow-frame: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
-    --rd-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --rd-shadow-pop: 0 24px 60px -20px rgba(0, 0, 0, 0.7);
     color-scheme: dark;
   }
@@ -491,7 +484,7 @@
     color: var(--rd-ink);
     font-family: var(--font-sans), var(--font-he), Tahoma, sans-serif;
     font-size: var(--rd-text-base);
-    line-height: 1.5;
+    line-height: var(--rd-leading-1-5);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -507,12 +500,12 @@
      do not size themselves. */
   h1 {
     margin: 0;
-    font-size: 22px;
+    font-size: var(--rd-text-4xl);
     font-weight: 700;
-    letter-spacing: -0.015em;
-    line-height: 1.25;
+    letter-spacing: var(--rd-tracking-title);
+    line-height: var(--rd-leading-1-25);
   }
-  .lede { margin: var(--rd-space-1-5) 0 18px; color: var(--rd-muted); }
+  .lede { margin: var(--rd-space-1-5) 0 var(--rd-space-pane); color: var(--rd-muted); }
   form { display: grid; gap: var(--rd-space-3-5); }
   label {
     display: grid;
@@ -545,7 +538,7 @@
      page (features/auth/screens/settings-screen.tsx), and the `.desk` / `.stack` hooks the desk frame and the stacked
      screens keep (components/desk.tsx, the screens' `COLUMN`). `.sr-only` is Tailwind's utility since T5.1. */
   .canvas { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: auto; }
-  .canvas-inner { width: min(1080px, 100%); padding: var(--rd-space-5) var(--rd-space-4) 48px; }
+  .canvas-inner { width: min(1080px, 100%); padding: var(--rd-space-5) var(--rd-space-4) var(--rd-space-canvas-end-sm); }
   .canvas-inner.wide {
     display: flex;
     flex: 1;
@@ -553,10 +546,9 @@
     width: 100%;
     max-width: none;
     min-height: 0;
-    padding-inline: clamp(var(--rd-space-4), 2vw, 28px);
+    padding-inline: clamp(var(--rd-space-4), 2vw, var(--rd-space-gutter));
   }
   .page-head { margin-bottom: var(--rd-space-3-5); }
-  .page-head h1 { font-size: 22px; }
   .page-head .lede { margin: var(--rd-space-1) 0 0; max-width: 36rem; font-size: var(--rd-text-md); }
   .desk { display: flex; flex: 1; flex-direction: column; gap: var(--rd-space-3-5); width: 100%; min-height: 0; }
   .desk > .page-head { margin-bottom: 0; }
@@ -587,33 +579,38 @@
     .desk select { height: 44px; }
   }
   .stack { display: grid; gap: var(--rd-space-3); }
-  .canvas .page-head h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: 0; }
+  /* The page title (ADR 0021 D4: 20px; Tailwind migration T6.3 removed the 22px and 24px `.page-head h1` rules this
+     one always outranked: a page head is only drawn on the canvas). */
+  .canvas .page-head h1 { margin: 0; font-size: var(--rd-text-page); font-weight: 700; letter-spacing: 0; }
 
   /* The legacy pane, its head and body (was styles/desk/pane.css), for the screens that still write `.pane` /
      `.pane-head` / `.pane-body`, and what sits in any pane (`:is(.pane, [data-slot='pane'])`: forms, labels, fields,
      hints). Scroll model: a list's pane fills the desk and its table sheet scrolls; a `.stack` sizes to its content and
      the canvas scrolls. */
-  .desk > .pane { display: flex; flex-direction: column; width: 100%; min-height: 0; flex: 1; }
+  .desk > .pane { display: flex; flex-direction: column; width: 100%; min-height: 0; }
   .desk > .stack > .pane,
   .desk > .stack > .pane:last-child {
     flex: none;
     display: block;
     min-height: auto;
   }
+  /* The pane with graphite's values folded in (Tailwind migration T6.3: the earlier declarations they overrode are
+     gone): no border, 6px corners, a 1px inset `--rd-line` edge; the head 52px, 14px by 18px; the body 14px, 18px at
+     the sides and foot. */
   .pane {
     overflow: hidden;
-    border: 1px solid var(--rd-line);
-    border-radius: var(--rd-radius-md);
+    border: 0;
+    border-radius: var(--rd-radius-sm);
     background: var(--rd-surface);
-    box-shadow: var(--rd-shadow-card);
+    box-shadow: var(--rd-shadow-edge);
   }
   .pane-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--rd-space-2);
-    min-height: 48px;
-    padding: 0.9rem 0.85rem;
+    min-height: 52px;
+    padding: var(--rd-space-3-5) var(--rd-space-pane);
     border-bottom: 1px solid var(--rd-line);
     background: transparent;
   }
@@ -623,10 +620,10 @@
     gap: var(--rd-space-2);
     margin: 0;
     color: var(--rd-ink);
-    font-size: 0.95rem;
-    font-weight: 600;
+    font-size: var(--rd-text-base);
+    font-weight: 700;
   }
-  .pane-body { display: grid; gap: var(--rd-space-3); padding: var(--rd-space-3) var(--rd-space-3-5) var(--rd-space-3-5); }
+  .pane-body { display: grid; gap: var(--rd-space-3); padding: var(--rd-space-3-5) var(--rd-space-pane) var(--rd-space-pane); }
   :is(.pane, [data-slot='pane']) form { gap: var(--rd-space-2); }
   :is(.pane, [data-slot='pane']) label { gap: var(--rd-space-1); color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
   :is(.pane, [data-slot='pane']) input:not([type='checkbox']):not([type='radio']):not([type='file']) { height: 34px; background: var(--rd-surface); font-size: var(--rd-text-md); }
@@ -742,11 +739,11 @@
     background: var(--rd-surface);
     cursor: pointer;
     vertical-align: middle;
-    transition: background-color var(--rd-dur-fast) ease, border-color var(--rd-dur-fast) ease;
+    transition: background-color var(--rd-dur-fast) var(--rd-ease-standard), border-color var(--rd-dur-fast) var(--rd-ease-standard);
   }
   input[type='radio'] { border-radius: 50%; }
   input[type='checkbox']::before,
-  input[type='radio']::before { content: ''; width: 10px; height: 10px; transform: scale(0); transition: transform var(--rd-dur-fast) ease; background: var(--rd-on-accent); }
+  input[type='radio']::before { content: ''; width: 10px; height: 10px; transform: scale(0); transition: transform var(--rd-dur-fast) var(--rd-ease-standard); background: var(--rd-on-accent); }
   input[type='checkbox']::before { clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%); }
   input[type='radio']::before { width: 8px; height: 8px; border-radius: 50%; }
   input[type='checkbox']:checked,
@@ -765,7 +762,7 @@
     .stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--rd-space-2); }
   }
   @media (min-width: 768px) {
-    .canvas-inner { padding: 22px 28px 56px; }
+    .canvas-inner { padding: var(--rd-space-canvas-top) var(--rd-space-gutter) var(--rd-space-canvas-end); }
   }
   @media (max-width: 720px) {
     .canvas input:not([type='checkbox']):not([type='radio']):not([type='file']),
@@ -781,12 +778,6 @@
   /* The Graphite overrides (was styles/graphite.css, last in the cascade, so each wins at equal specificity):
      inset fields, the pane's edge, head and body, the rise of page heads and figure rows, a pane's tabs, a pane under
      the filter bar, the filter chips and search, the figure row's columns, table cards, invalid and number fields. */
-  .page-head h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
-  .page-head .lede { color: var(--rd-muted); font-size: var(--rd-text-md); }
-  .pane { border: 0; border-radius: var(--rd-radius-sm); box-shadow: inset 0 0 0 1px var(--rd-line); }
-  .pane-head { min-height: 52px; padding: 14px 18px; border-bottom-color: var(--rd-line); }
-  .pane-head h2 { font-size: var(--rd-text-base); font-weight: 700; }
-  .pane-body { padding: 14px 18px 18px; }
   input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea,
   .pane-body textarea {
     background-color: var(--rd-sunken);
@@ -801,14 +792,14 @@
   input[readonly] { background-color: transparent; }
   @media (prefers-reduced-motion: no-preference) {
     .canvas-inner > * > .page-head, .stat-row > * {
-      animation: rd-rise 420ms var(--rd-ease-out) both;
+      animation: var(--rd-animate-rise);
     }
     .stat-row > :nth-child(2) { animation-delay: 40ms; }
     .stat-row > :nth-child(3) { animation-delay: 80ms; }
     .stat-row > :nth-child(4) { animation-delay: 120ms; }
     .stat-row > :nth-child(n + 5) { animation-delay: 160ms; }
   }
-  :is(.pane, [data-slot='pane']) > [data-slot='tabs'] { margin-inline: 18px; margin-block: 6px 2px; }
+  :is(.pane, [data-slot='pane']) > [data-slot='tabs'] { margin-inline: var(--rd-space-pane); margin-block: var(--rd-space-1-5) var(--rd-space-0-5); }
   .desk > .pane, .desk > section.pane, .desk > .stack > .pane { flex: none; }
   [data-slot='filter-bar'] + .pane, [data-slot='filter-bar'] + section.pane { margin-block-start: calc(-1 * var(--rd-space-3-5) - 1px); border-start-start-radius: 0; border-start-end-radius: 0; }
   [data-slot='filter-panel'] > label,
@@ -819,14 +810,14 @@
     gap: 0;
     height: 32px;
     min-width: 0;
-    padding-inline-start: 10px;
+    padding-inline-start: var(--rd-space-2-5);
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent);
+    border: 1px solid var(--rd-line-strong);
     border-radius: var(--rd-radius-sm);
     background: var(--rd-surface-2);
     box-shadow: none;
     color: var(--rd-muted);
-    font-size: 12px;
+    font-size: var(--rd-text-sm);
     font-weight: 600;
     line-height: 30px;
     white-space: nowrap;
@@ -841,22 +832,21 @@
   .desk [data-slot='filter-panel'] > label :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select),
   [data-slot='filter-panel'] > label :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select) {
     height: 30px;
-    margin-inline-start: 10px;
-    padding-inline: 10px;
+    margin-inline-start: var(--rd-space-2-5);
+    padding-inline: var(--rd-space-2-5);
     border: 0;
-    border-inline-start: 1px solid color-mix(in srgb, var(--rd-ink) 11%, transparent);
+    border-inline-start: 1px solid var(--rd-line-strong);
     border-radius: 0;
     background: var(--rd-surface);
     box-shadow: none;
     color: var(--rd-ink);
-    font-size: 12.5px;
+    font-size: var(--rd-text-chip);
     font-weight: 600;
   }
-  [data-slot='filter-panel'] > label input:not([type='date']):not([type='checkbox']) { width: 12rem; }
-  [data-slot='filter-panel'] > label:has(input[type='checkbox']) { position: relative; align-items: center; gap: 8px; padding-inline: 12px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
+  [data-slot='filter-panel'] > label:has(input[type='checkbox']) { position: relative; align-items: center; gap: var(--rd-space-2); padding-inline: var(--rd-space-3); cursor: pointer; font-size: var(--rd-text-chip); font-weight: 600; }
   [data-slot='filter-panel'] > label > input[type='checkbox'] { position: absolute; inset: 0; width: 100%; max-width: none; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
   [data-slot='filter-panel'] > label:has(input[type='checkbox']:focus-visible) { outline: 2px solid var(--rd-accent); outline-offset: 2px; }
-  [data-slot='filter-panel'] > label :is(input, select):focus { outline: none; box-shadow: inset 0 -2px 0 var(--rd-accent); }
+  [data-slot='filter-panel'] > label :is(input, select):focus { outline: none; box-shadow: var(--rd-shadow-thread); }
   [data-slot='filter-panel'] > [data-slot='tabs'] { height: 32px; }
   @media (max-width: 767px) {
     [data-slot='filter-bar'][data-open] [data-slot='filter-panel'] > label { height: 44px; line-height: 42px; }
@@ -876,22 +866,22 @@
     .stat-row > :last-child:nth-child(odd) { grid-column: 1 / -1; }
   }
   .pane-body > *, .stack > * { min-width: 0; }
-  [data-slot='filter-panel'] > .stack { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; }
-  [data-slot='filter-panel'] > .stack > .hint { color: var(--rd-muted); font-size: 12px; font-weight: 600; }
+  [data-slot='filter-panel'] > .stack { display: inline-flex; flex-direction: row; align-items: center; gap: var(--rd-space-2); }
+  [data-slot='filter-panel'] > .stack > .hint { color: var(--rd-muted); font-size: var(--rd-text-sm); font-weight: 600; }
   @media (max-width: 767px) { [data-slot='filter-bar'][data-open] [data-slot='filter-panel'] > .stack { justify-content: space-between; } }
   [data-slot='filter-panel'] > label input:not([type='date']):not([type='checkbox']) { width: 10rem; }
   .desk > .stat-row, .desk .stat-row { flex: none; }
   [data-slot='filter-panel'] > label:has([data-slot='select-trigger']) { cursor: pointer; }
   [data-slot='filter-bar'][data-loose] + .pane, [data-slot='filter-bar'][data-loose] + section.pane { margin-block-start: 0; border-start-start-radius: var(--rd-radius-sm); border-start-end-radius: var(--rd-radius-sm); }
   [data-slot='filter-panel'] > label.filter-search {
-    gap: 8px;
+    gap: var(--rd-space-2);
     width: 280px;
     max-width: 100%;
     height: 36px;
-    padding-inline: 12px;
+    padding-inline: var(--rd-space-3);
     border: 0;
     background: var(--rd-sunken);
-    box-shadow: inset 0 0 0 1px var(--rd-line);
+    box-shadow: var(--rd-shadow-edge);
     color: var(--rd-muted);
     line-height: 36px;
   }

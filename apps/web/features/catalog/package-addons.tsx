@@ -24,7 +24,7 @@ import { paneHintClass } from './sim-fields';
  * it at their own height and the button at the start.
  */
 const ADD_FORM = 'flex flex-wrap content-start items-end justify-start gap-2 max-md:flex-col max-md:items-stretch';
-const ADD_FIELD = 'min-w-0 max-w-88 flex-[1_1_16rem] max-md:w-full max-md:max-w-none max-md:flex-none';
+const ADD_FIELD = 'min-w-0 max-w-88 grow basis-64 max-md:w-full max-md:max-w-none max-md:flex-none';
 
 /**
  * The package page's «العمليات الإضافية» (spec 2026-11-09-offers-tasks-addons-wallet-esim, 3): extra operations named

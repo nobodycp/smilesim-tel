@@ -55,12 +55,12 @@ const sheetVariants = cva('fixed flex flex-col shadow-pop', {
       start: [
         'inset-y-0 start-0 z-drawer w-[min(300px,86vw)] border-e border-line bg-bg px-3 pt-3.5 pb-3',
         '[--sheet-off:-105%] rtl:[--sheet-off:105%]',
-        'motion-safe:data-[state=open]:animate-[rd-sheet-in_340ms_cubic-bezier(0.32,0.72,0,1)]',
-        'motion-safe:data-[state=closed]:animate-[rd-sheet-out_340ms_cubic-bezier(0.32,0.72,0,1)_forwards]',
+        'motion-safe:data-[state=open]:animate-[rd-sheet-in_340ms_var(--rd-ease-sheet)]',
+        'motion-safe:data-[state=closed]:animate-[rd-sheet-out_340ms_var(--rd-ease-sheet)_forwards]',
       ],
       end: [
-        'inset-y-0 end-0 z-dialog-drawer w-[min(380px,92vw)] flex-nowrap items-stretch gap-3 overflow-y-auto',
-        'bg-surface px-4.5 pt-0 pb-4.5 motion-safe:animate-[filter-slide_220ms_var(--rd-ease-out)]',
+        'inset-y-0 end-0 z-dialog-drawer w-drawer flex-nowrap items-stretch gap-3 overflow-y-auto',
+        'bg-surface px-4.5 pt-0 pb-4.5 motion-safe:animate-drawer',
       ],
       bottom: [
         'inset-x-0 bottom-0 z-dialog-drawer max-h-[85dvh] flex-nowrap items-stretch gap-3 overflow-y-auto',

@@ -72,7 +72,7 @@ export function EmptyState({
       <span className={markVariants({ tone })} aria-hidden="true">
         <Icon name={icon} />
       </span>
-      <p className="m-0 text-[0.92rem] font-bold text-ink">{children}</p>
+      <p className="m-0 text-item font-bold text-ink">{children}</p>
       {text ? <p className="m-0 text-md text-muted" data-testid={textTestId}>{text}</p> : null}
       {footer}
       {actions ? <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2">{actions}</div> : null}

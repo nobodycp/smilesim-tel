@@ -46,7 +46,7 @@ const GAP = 2.5;
  * the row wraps, centred, and the legend takes a line of its own.
  */
 const FADE = 'motion-safe:animate-[donut-fade_220ms_ease-out]';
-const TOTAL = cn(FADE, 'fill-ink font-extrabold tabular-nums');
+const TOTAL = cn(FADE, 'fill-ink font-bold tabular-nums');
 const LINE = cn(
   'grid grid-cols-[auto_1fr_auto_auto] items-center gap-2 rounded-sm px-2 py-1.5 text-ink',
   '[[data-slot=home-side]_&]:py-0.75',

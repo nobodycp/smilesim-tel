@@ -147,14 +147,14 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
           'relative grid w-full gap-3.5',
           !open && 'max-md:hidden @max-[721px]/topbar:hidden',
           open && [
-            'md:@max-[721px]/topbar:absolute md:@max-[721px]/topbar:end-0 md:@max-[721px]/topbar:top-[calc(100%_+_6px)]',
+            'md:@max-[721px]/topbar:absolute md:@max-[721px]/topbar:end-0 md:@max-[721px]/topbar:top-pop',
             'md:@max-[721px]/topbar:z-overlay md:@max-[721px]/topbar:block md:@max-[721px]/topbar:w-[min(18rem,72vw)]',
-            'md:@max-[721px]/topbar:rounded-md md:@max-[721px]/topbar:border md:@max-[721px]/topbar:border-solid',
+            'md:@max-[721px]/topbar:rounded-sm md:@max-[721px]/topbar:border md:@max-[721px]/topbar:border-solid',
             'md:@max-[721px]/topbar:border-line md:@max-[721px]/topbar:bg-surface md:@max-[721px]/topbar:p-2',
             'md:@max-[721px]/topbar:shadow-pop',
-            'max-md:absolute max-md:inset-x-2 max-md:top-[calc(100%_+_6px)] max-md:z-overlay max-md:flex max-md:w-auto',
+            'max-md:absolute max-md:inset-x-2 max-md:top-pop max-md:z-overlay max-md:flex max-md:w-auto',
             'max-md:max-h-[calc(100dvh_-_100%_-_6px_-_var(--rd-space-2))] max-md:max-w-none max-md:flex-col max-md:gap-0',
-            'max-md:rounded-md max-md:border max-md:border-solid max-md:border-line max-md:bg-surface max-md:p-2 max-md:shadow-pop',
+            'max-md:rounded-sm max-md:border max-md:border-solid max-md:border-line max-md:bg-surface max-md:p-2 max-md:shadow-pop',
           ],
         )}
         role="search"
@@ -163,7 +163,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
         <div
           className={cn(
             'flex h-10 min-w-0 items-center gap-2 overflow-hidden rounded-sm border-0 bg-sunken ps-3 pe-2 inset-ring inset-ring-line',
-            'hover:not-focus-within:inset-ring-ink/11 focus-within:inset-ring-accent max-md:flex-none md:h-9',
+            'hover:not-focus-within:inset-ring-line-strong focus-within:inset-ring-accent max-md:flex-none md:h-9',
             '[&_svg]:size-4 [&_svg]:flex-none [&_svg]:text-muted',
           )}
           data-testid="search-field"
@@ -204,7 +204,7 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
           ) : (
             // The keyboard hint shows on the wide search only (1200px and up).
             <kbd
-              className="hidden min-w-[1.45rem] flex-none whitespace-nowrap rounded-xs border-0 bg-transparent px-[0.4rem] py-[0.12rem] text-xs font-bold leading-[1.2] text-muted [font-family:inherit] inset-ring inset-ring-ink/11 min-[1200px]:inline-block"
+              className="hidden min-w-5.75 flex-none whitespace-nowrap rounded-xs border-0 bg-transparent px-1.5 py-0.5 text-xs font-bold leading-1-2 text-muted [font-family:inherit] inset-ring inset-ring-line-strong min-[1200px]:inline-block"
               dir="ltr"
             >
               Ctrl K
@@ -214,22 +214,22 @@ export function ShellSearch({ pages = [] }: { pages?: { href: string; label: str
         {showResults && (
           <div
             className={cn(
-              'absolute end-0 top-[calc(100%_+_6px)] z-overlay grid max-h-[min(420px,60vh)] w-[max(100%,16rem)] gap-0.5 overflow-auto',
-              'rounded-md border border-solid border-line bg-surface p-[0.35rem] shadow-pop',
+              'absolute end-0 top-pop z-overlay grid max-h-[min(420px,60vh)] w-[max(100%,16rem)] gap-0.5 overflow-auto',
+              'rounded-sm border border-solid border-line bg-surface p-1.5 shadow-pop',
               'max-md:static max-md:mt-1.5 max-md:min-h-0 max-md:w-full max-md:border-0 max-md:shadow-none',
               '@max-[721px]/topbar:static @max-[721px]/topbar:mt-1.5 @max-[721px]/topbar:w-full @max-[721px]/topbar:border-0',
               '@max-[721px]/topbar:shadow-none',
             )}
             id={resultsId}
           >
-            {shown.length === 0 ? <p className="m-0 p-[0.8rem] text-center text-[0.85rem] text-muted">{t.searchEmpty}</p> : groups.map((group) => (
+            {shown.length === 0 ? <p className="m-0 p-3.25 text-center text-block text-muted">{t.searchEmpty}</p> : groups.map((group) => (
               <div key={group}>
-                <p className="m-0 px-2 pt-[0.35rem] pb-[0.15rem] text-[0.7rem] font-bold text-muted">{group}</p>
+                <p className="m-0 px-2 pt-1.5 pb-0.5 text-xs font-bold text-muted">{group}</p>
                 {shown.filter((hit) => hit.group === group).map((hit) => (
                   <Link
                     key={hit.key}
                     href={hit.href}
-                    className="grid gap-px rounded-md px-2 py-[0.4rem] hover:bg-surface-hover"
+                    className="grid gap-px rounded-sm px-2 py-1.5 hover:bg-surface-hover"
                     data-testid="search-item"
                     onClick={() => setOpen(false)}
                   >

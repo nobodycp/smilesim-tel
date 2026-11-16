@@ -23,9 +23,9 @@ import { approveEffect, decisionName, evidenceName, isStale } from '../provider-
  *   at 1.55 (medium inside the queue's table, as the table's hint rule gave it); the actions a wrapping row 8px apart.
  */
 export const stepLineClass = 'm-0 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 text-sm';
-export const decisionHintClass = 'm-0 text-sm leading-[1.55] text-muted';
+export const decisionHintClass = 'm-0 text-sm leading-1-55 text-muted';
 export const decisionActionsClass = 'flex flex-wrap gap-2';
-const EFFECT = 'm-0 text-sm leading-[1.6] text-ink-2';
+const EFFECT = 'm-0 text-sm leading-1-6 text-ink-2';
 
 /** The evidence of one step: its kind, the provider's reference, the note. Shared by the proposal and the record. */
 export function Evidence({ record }: { record: DecisionRecord }) {
@@ -39,7 +39,7 @@ export function Evidence({ record }: { record: DecisionRecord }) {
           {record.suppliedEsimCode ? <span>{t.decCodeSupplied}</span> : null}
         </p>
       ) : null}
-      {record.note ? <p className="m-0 text-sm leading-[1.6] wrap-anywhere whitespace-pre-wrap">{record.note}</p> : null}
+      {record.note ? <p className="m-0 text-sm leading-1-6 wrap-anywhere whitespace-pre-wrap">{record.note}</p> : null}
     </>
   );
 }

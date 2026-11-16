@@ -42,7 +42,7 @@ type Draft = { code: string; length: string; prefix: string; esim: boolean; esim
  * 13.5px bold ink with no margin; a later heading inside a block sits 8px lower over a dashed `--rd-line` rule, 12px
  * inside it.
  */
-const BLOCK_TITLE = 'm-0 text-[13.5px] font-bold text-ink';
+const BLOCK_TITLE = 'm-0 text-block font-bold text-ink';
 const BLOCK_SUBTITLE = cn(BLOCK_TITLE, 'mt-2 border-t border-dashed border-line pt-3');
 
 function draftOf(code: string, sim: SimRules, esimPrice: number): Draft {
@@ -179,7 +179,7 @@ export function CompanyScreen() {
               <h3 className={BLOCK_TITLE}>{t.companyImage}</h3>
               <div className="flex flex-wrap items-center gap-3">
                 {/* The picture shown whole on `--rd-surface-2`, 64px with 22px letters (legacy `.company-image-row`). */}
-                <CompanyMark name={company?.name ?? '?'} image={company?.image} size="lg" className="size-16 bg-surface-2 object-contain text-[22px]" />
+                <CompanyMark name={company?.name ?? '?'} image={company?.image} size="lg" className="size-16 bg-surface-2 object-contain text-4xl" />
                 {canEdit ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <Button type="button" variant="secondary" disabled={busy || !company} onClick={() => file.current?.click()}><ImageUp size={16} aria-hidden="true" />{t.uploadImage}</Button>

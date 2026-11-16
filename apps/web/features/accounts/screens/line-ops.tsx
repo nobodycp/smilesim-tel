@@ -13,7 +13,7 @@ import { OP_KEYS, opDescription, opLabel, type OpKey } from '../../../lib/ops';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { Badge } from '../../../components/ui/badge';
-import { riseInClass } from '../../../components/stat';
+import { pointerGlowClass, riseInClass } from '../../../components/stat';
 import { cn } from '../../../lib/cn';
 
 const ICONS: Record<OpKey, ComponentType<{ 'aria-hidden'?: boolean | 'true' }>> = {
@@ -44,10 +44,7 @@ const ICONS: Record<OpKey, ComponentType<{ 'aria-hidden'?: boolean | 'true' }>> 
 const OP_CARD = cn(
   'relative isolate grid min-h-24 grid-cols-[auto_1fr_auto] items-start gap-3 rounded-none border-0 border-b border-line p-3.5',
   'text-start font-bold text-ink ring ring-line-soft hover:bg-surface-2',
-  "after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:rounded-[inherit] after:content-['']",
-  'after:bg-radial-[180px_circle_at_var(--mx,50%)_var(--my,0%)] after:from-glow after:to-transparent after:to-70%',
-  'after:opacity-0 after:transition-opacity after:duration-base after:ease-standard hover:after:opacity-100',
-  'motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out motion-safe:hover:[transform:translateY(-2px)]',
+  pointerGlowClass,
 );
 
 /** The line operations `login` may run. A switch off is a stop that also binds everyone below. */
@@ -94,8 +91,8 @@ export function UserOpsTab({
                   <Icon />
                 </span>
                 <div className="grid min-w-0 gap-1">
-                  <h3 className={cn('m-0 text-base font-extrabold', allowed ? 'text-ink' : 'text-muted')}>{opLabel(t, key)}</h3>
-                  <p className="m-0 text-sm leading-[1.4] text-muted">{opDescription(t, key)}</p>
+                  <h3 className={cn('m-0 text-base font-bold', allowed ? 'text-ink' : 'text-muted')}>{opLabel(t, key)}</h3>
+                  <p className="m-0 text-sm leading-1-4 text-muted">{opDescription(t, key)}</p>
                   {stoppedBy ? <Badge variant="danger" dot className="mt-0.5 justify-self-start">{t.stoppedBy.replace('{login}', stoppedBy)}</Badge> : null}
                 </div>
                 <LiveSwitch

@@ -47,8 +47,8 @@ export type CellKind = 'msisdn' | 'when' | 'wrap' | 'block';
 
 // The canvas narrows every cell's sides to 8px up to 1100px wide (desk/table.css `@media (max-width: 1100px)`); a
 // phone's card has no cell padding at all, so in a card table the narrow sides start at 641px.
-const NARROW = 'max-[1101px]:[.canvas_&]:px-2';
-const NARROW_ABOVE_CARDS = 'sm:max-[1101px]:[.canvas_&]:px-2';
+const NARROW = 'max-xl:[.canvas_&]:px-2';
+const NARROW_ABOVE_CARDS = 'sm:max-xl:[.canvas_&]:px-2';
 
 export function TableSheet({ className, ...props }: React.ComponentProps<'div'>) {
   return (
@@ -149,8 +149,8 @@ export function THeadCell({ num = false, actions = false, fit = false, className
       data-actions={actions ? '' : undefined}
       data-fit={fit ? '' : undefined}
       className={cn(
-        'sticky top-0 z-raised h-9.5 border-b border-ink/11 bg-surface px-3.5 py-2 text-center align-middle',
-        'text-[11.5px] font-bold tracking-[0.02em] whitespace-nowrap text-muted shadow-none first:text-start',
+        'sticky top-0 z-raised h-9.5 border-b border-line-strong bg-surface px-3.5 py-2 text-center align-middle',
+        'text-caption font-bold tracking-head whitespace-nowrap text-muted shadow-none first:text-start',
         '[.canvas_&]:leading-tight',
         NARROW,
         num && 'tabular-nums',
@@ -163,7 +163,7 @@ export function THeadCell({ num = false, actions = false, fit = false, className
 }
 
 const KIND: Record<CellKind, string> = {
-  msisdn: 'text-start font-semibold tracking-[0.03em] tabular-nums',
+  msisdn: 'text-start font-semibold tracking-number tabular-nums',
   when: 'tabular-nums',
   wrap: 'min-w-64 whitespace-normal',
   block: 'p-0 whitespace-normal',
@@ -219,7 +219,7 @@ export function TCell({
         cards && CARD,
         cards && fit && 'max-sm:first:col-auto max-sm:first:pe-0',
         cards && actions && 'max-sm:absolute max-sm:top-2 max-sm:end-2 max-sm:w-auto',
-        cards && label && 'max-sm:before:text-[11.5px] max-sm:before:font-semibold max-sm:before:text-muted max-sm:before:content-[attr(data-label)]',
+        cards && label && 'max-sm:before:text-caption max-sm:before:font-semibold max-sm:before:text-muted max-sm:before:content-[attr(data-label)]',
         className,
       )}
       {...props}

@@ -58,7 +58,7 @@ export function Badge({
       {dot && (
         <span
           className={cn(
-            "size-1.75 shrink-0 rotate-45 rounded-[1px] bg-current",
+            "size-1.75 shrink-0 rotate-45 rounded-4xs bg-current",
             variant === "muted" ? "shadow-none" : "shadow-glow",
           )}
           aria-hidden="true"

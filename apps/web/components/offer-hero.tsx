@@ -86,7 +86,7 @@ export function OfferHero({ offers }: { offers: Offer[] }) {
   const external = current.actionHref?.startsWith('https://');
   return (
     <section
-      className="group/hero relative overflow-hidden rounded-lg border border-line bg-surface shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
+      className="group/hero relative overflow-hidden rounded-card border border-line bg-surface shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
       data-testid="offer-hero"
       aria-roledescription={t.offersCarousel}
       aria-label={t.offersTitle}
@@ -104,7 +104,7 @@ export function OfferHero({ offers }: { offers: Offer[] }) {
         className={cn(
           'grid items-center gap-4 px-5 pt-4 pb-7 motion-safe:animate-[offer-in_var(--rd-dur-base)_var(--rd-ease-out)]',
           'max-[761px]:grid-cols-1 max-[761px]:gap-2.5 max-[761px]:p-3.5 max-[761px]:pb-7.5',
-          current.image ? 'grid-cols-[minmax(0,1fr)_auto]' : 'grid-cols-1',
+          current.image ? 'grid-cols-title-end' : 'grid-cols-1',
         )}
         data-testid="offer-slide"
         data-text-only={current.image ? undefined : ''}
@@ -112,8 +112,8 @@ export function OfferHero({ offers }: { offers: Offer[] }) {
         aria-live={paused ? 'polite' : 'off'}
       >
         <div className="grid content-center justify-items-start gap-1">
-          <h2 className="m-0 text-2xl leading-[1.3] max-[761px]:text-xl">{current.title}</h2>
-          {current.body ? <p className="m-0 text-md leading-[1.6] text-muted">{current.body}</p> : null}
+          <h2 className="m-0 text-2xl leading-1-3 max-[761px]:text-xl">{current.title}</h2>
+          {current.body ? <p className="m-0 text-md leading-1-6 text-muted">{current.body}</p> : null}
           {current.actionHref && current.actionLabel ? (
             external
               ? <a className={ACTION} href={current.actionHref} target="_blank" rel="noopener noreferrer">{current.actionLabel}</a>
@@ -138,7 +138,7 @@ export function OfferHero({ offers }: { offers: Offer[] }) {
                 role="tab"
                 aria-selected={at === index}
                 aria-label={`${at + 1} / ${count} · ${offer.title}`}
-                className="inline-flex min-h-6 min-w-5 items-center justify-center border-0 bg-transparent px-0.5 py-0 max-[721px]:min-h-11"
+                className="inline-flex min-h-6 min-w-5 items-center justify-center border-0 bg-transparent px-0.5 py-0 max-touch:min-h-11"
                 onClick={() => go(at)}
               >
                 {/* The button is the touch target; the bar inside is the dot people see. */}

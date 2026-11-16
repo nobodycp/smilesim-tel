@@ -44,9 +44,9 @@ export const TooltipContent = React.forwardRef<
       data-slot="tooltip"
       sideOffset={sideOffset}
       className={cn(
-        'pointer-events-none z-dialog w-max max-w-[280px] whitespace-nowrap rounded-sm bg-surface-2 px-3 py-1.75',
-        'text-[12.5px] font-semibold text-ink shadow-pop inset-ring inset-ring-line',
-        'motion-safe:animate-[side-flyin_160ms_cubic-bezier(0.32,0.72,0,1)] motion-safe:rtl:[animation-name:side-flyin-rtl]',
+        'pointer-events-none z-dialog w-max max-w-70 whitespace-nowrap rounded-sm bg-surface-2 px-3 py-1.75',
+        'text-chip font-semibold text-ink shadow-pop inset-ring inset-ring-line',
+        'motion-safe:animate-flyin motion-safe:rtl:[animation-name:side-flyin-rtl]',
         className,
       )}
       {...props}

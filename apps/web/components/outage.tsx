@@ -26,16 +26,16 @@ export function OutagePanel({ onRetry, busy }: { onRetry: () => void; busy: bool
   const { t } = usePrefs();
   return (
     <div
-      className="m-auto grid max-w-[28rem] flex-1 content-center justify-items-center gap-2 px-4 py-12 text-center"
+      className="m-auto grid max-w-112 flex-1 content-center justify-items-center gap-2 px-4 py-12 text-center"
       data-slot="outage-panel"
       role="alert"
       aria-busy={busy}
     >
-      <span className="mb-2 grid size-14 place-items-center rounded-pill bg-danger-soft text-danger [&_svg]:size-[1.6rem] [&_svg]:stroke-[1.8]" aria-hidden="true">
+      <span className="mb-2 grid size-14 place-items-center rounded-pill bg-danger-soft text-danger [&_svg]:size-6.5 [&_svg]:stroke-[1.8]" aria-hidden="true">
         <Icon name="offline" />
       </span>
-      <h1 className="m-0 text-[20px]">{t.outageTitle}</h1>
-      <p className="mx-0 mt-0 mb-2 text-base leading-[1.6] text-muted">{t.outageText}</p>
+      <h1 className="m-0 text-3xl">{t.outageTitle}</h1>
+      <p className="mx-0 mt-0 mb-2 text-base leading-1-6 text-muted">{t.outageText}</p>
       <Button className="justify-self-center" type="button" onClick={onRetry} disabled={busy}>
         {busy ? t.retrying : t.retry}
       </Button>

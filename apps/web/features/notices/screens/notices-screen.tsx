@@ -104,10 +104,10 @@ export function NoticesScreen() {
             <span className="grid size-9 flex-none place-items-center rounded-sm bg-accent-soft text-accent" aria-hidden="true"><Mark size={17} strokeWidth={1.9} /></span>
             <span className="grid min-w-0 flex-1 gap-0.5">
               <strong className="font-bold">{noticeTitle(t, row)}</strong>
-              <span className="text-[12.5px] text-muted">{noticeDetail(t, row) || groupLabel(noticeGroup(row.kind))}</span>
+              <span className="text-chip text-muted">{noticeDetail(t, row) || groupLabel(noticeGroup(row.kind))}</span>
             </span>
-            <span className="flex-none text-[11.5px] whitespace-nowrap text-muted" title={latinWhen(row.createdAt)}>{noticeAge(t, row.createdAt)}</span>
-            {row.read ? null : <i className="size-2 flex-none rotate-45 rounded-[1px] bg-accent text-accent shadow-[0_0_8px_currentColor]" aria-label={t.unreadOnly} />}
+            <span className="flex-none text-caption whitespace-nowrap text-muted" title={latinWhen(row.createdAt)}>{noticeAge(t, row.createdAt)}</span>
+            {row.read ? null : <i className="size-2 flex-none rotate-45 rounded-4xs bg-accent text-accent shadow-glow" aria-label={t.unreadOnly} />}
           </button>
         );
       },

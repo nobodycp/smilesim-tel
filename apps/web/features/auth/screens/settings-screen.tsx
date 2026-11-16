@@ -136,8 +136,8 @@ export function SettingsScreen() {
             <div className="flex items-center gap-3 border-b border-line-soft pb-3">
               <div className="grid size-11 flex-none place-items-center rounded-sm bg-accent-fill text-2xl font-bold text-on-accent shadow-none" aria-hidden="true">{initial}</div>
               <div>
-                <strong className="block text-lg leading-[1.2]"><bdi>{shownName}</bdi></strong>
-                <small className="text-[12.5px] text-muted" data-testid="identity-login" dir="ltr">{loginName}</small>
+                <strong className="block text-lg leading-1-2"><bdi>{shownName}</bdi></strong>
+                <small className="text-chip text-muted" data-testid="identity-login" dir="ltr">{loginName}</small>
               </div>
             </div>
             <form className={paneForm} onSubmit={saveAccount}>

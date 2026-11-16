@@ -16,7 +16,7 @@ import { Button } from '../components/ui/button';
  * under the pointer `--rd-surface-2` and ink.
  */
 const BACK_LINK =
-  'inline-flex h-8 w-fit items-center gap-1.5 rounded-sm border border-line bg-surface px-2.5 py-0 text-md font-semibold text-ink-2 no-underline shadow-sm hover:bg-surface-2 hover:text-ink max-[721px]:h-11 [&_svg]:size-4 [&_svg]:flex-none';
+  'inline-flex h-8 w-fit items-center gap-1.5 rounded-sm border border-line bg-surface px-2.5 py-0 text-md font-semibold text-ink-2 no-underline shadow-sm hover:bg-surface-2 hover:text-ink max-touch:h-11 [&_svg]:size-4 [&_svg]:flex-none';
 export default function PageError({ error, retry }: { error: unknown; retry: () => void }) {
   const { t } = usePrefs();
   useEffect(() => {

@@ -40,7 +40,7 @@ export const buttonVariants = cva('', {
       ],
       secondary: [
         box,
-        'border border-transparent bg-surface-2 text-ink inset-ring inset-ring-ink/11 hover:bg-surface-3 aria-pressed:bg-surface-3',
+        'border border-transparent bg-surface-2 text-ink inset-ring inset-ring-line-strong hover:bg-surface-3 aria-pressed:bg-surface-3',
         'focus-visible:inset-ring-0',
       ],
       ghost: [box, 'bg-transparent text-ink-2 hover:bg-surface-3 hover:text-ink aria-pressed:bg-surface-3 aria-pressed:text-ink'],

@@ -59,11 +59,11 @@ type CloseMode = null | 'complete' | 'reject';
  *   `--rd-line` rule on `--rd-surface`; the field 68px high with no top or bottom padding; the internal toggle the
  *   pane's check row (at least 36px, 44px at 720px and under; 11px semibold `--rd-muted`, 4px apart) at the top; in a
  *   ticket 28rem or narrower one column, the button at the reading start.
- * Container widths are given as `px` + 1 (`@max-[577px]` = 36rem and under), as the viewport's `max-[721px]` is.
+ * Container widths are given as `px` + 1 (`@max-[577px]` = 36rem and under), as the viewport's touch width (`max-touch:`, under 721px) is.
  */
 const TICKET = '@container/task-ticket bg-transparent inset-ring-0 [.desk>&]:flex-1';
 const BOARD = cn(
-  'grid min-h-0 w-full flex-1 grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-3.5',
+  'grid min-h-0 w-full flex-1 grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)] grid-rows-1 gap-3.5',
   'lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]',
   '@max-[577px]/task-ticket:flex @max-[577px]/task-ticket:flex-col @max-[577px]/task-ticket:overflow-y-auto',
 );
@@ -84,9 +84,9 @@ const TREE_SCROLL = cn(
 );
 const NODE = cn(
   'relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 pb-3.5 last:pb-0',
-  "not-last:before:absolute not-last:before:start-2 not-last:before:top-[0.95rem] not-last:before:bottom-0 not-last:before:w-0.5 not-last:before:bg-line not-last:before:content-['']",
+  "not-last:before:absolute not-last:before:start-2 not-last:before:top-3.75 not-last:before:bottom-0 not-last:before:w-0.5 not-last:before:bg-line not-last:before:content-['']",
 );
-const DOT = 'relative z-raised mx-auto rotate-45 rounded-[2px] ring-3 ring-surface';
+const DOT = 'relative z-raised mx-auto rotate-45 rounded-3xs ring-3 ring-surface';
 const HINT = 'm-0 text-sm text-muted';
 const FIELD = 'min-w-0 text-md';
 const CLOSE_ROW = 'grid gap-2';
@@ -275,7 +275,7 @@ export function TaskTicketScreen() {
                     </Label>
                   ) : null}
                   {takesSim ? (
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] items-start gap-3">
+                    <div className="grid grid-cols-fit-card items-start gap-3">
                       <Label tone="pane">
                         {t.simSerial}
                         <Input surface="surface" className={FIELD} value={closeIccid} inputMode="numeric" dir="ltr" onChange={(event) => setCloseIccid(event.target.value)} />
@@ -336,7 +336,7 @@ export function TaskTicketScreen() {
 
             <div className={THREAD}>
               <header className="flex-none px-4 pt-3 pb-0">
-                <h2 className="m-0 text-[0.95rem] font-bold text-ink">{t.taskTimeline}</h2>
+                <h2 className="m-0 text-lg font-bold text-ink">{t.taskTimeline}</h2>
               </header>
               <div className={TREE_SCROLL}>
                 {events.length === 0 ? (
@@ -346,7 +346,7 @@ export function TaskTicketScreen() {
                     {events.map((event) =>
                       event.kind === 'note' || event.kind === 'result' ? (
                         <li key={event.id} className={NODE}>
-                          <span className={cn(DOT, 'mt-[0.4rem] size-2.25 bg-muted')} aria-hidden="true" />
+                          <span className={cn(DOT, 'mt-1.5 size-2.25 bg-muted')} aria-hidden="true" />
                           <div
                             className={cn(
                               'min-w-0 rounded-sm border border-line bg-surface-2 px-3.5 py-3 inset-ring inset-ring-line',
@@ -359,13 +359,13 @@ export function TaskTicketScreen() {
                               {event.internal ? <Badge variant="warning" dot>{t.internalNote}</Badge> : null}
                               <bdi dir="ltr">{latinWhen(event.at, true)}</bdi>
                             </div>
-                            <p className="m-0 text-lg leading-[1.55] whitespace-pre-wrap text-ink">{event.body}</p>
+                            <p className="m-0 text-lg leading-1-55 whitespace-pre-wrap text-ink">{event.body}</p>
                           </div>
                         </li>
                       ) : (
                         <li key={event.id} className={NODE}>
-                          <span className={cn(DOT, 'mt-2 size-[0.45rem] bg-faint')} aria-hidden="true" />
-                          <p className="m-0 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 py-0.5 text-md leading-[1.5] font-semibold text-ink-2 [&_bdi]:text-sm [&_bdi]:text-muted [&_bdi]:tabular-nums">
+                          <span className={cn(DOT, 'mt-2 size-1.75 bg-faint')} aria-hidden="true" />
+                          <p className="m-0 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 py-0.5 text-md leading-1-5 font-semibold text-ink-2 [&_bdi]:text-sm [&_bdi]:text-muted [&_bdi]:tabular-nums">
                             <span>{isolateLatin(event.body)}</span>
                             <bdi dir="ltr">{latinWhen(event.at, true)}</bdi>
                           </p>
@@ -377,7 +377,7 @@ export function TaskTicketScreen() {
               </div>
               {task.canNote ? (
                 <div
-                  className="grid flex-none grid-cols-[minmax(0,1fr)_auto] items-end gap-2 border-t border-line bg-surface px-4 pt-2.5 pb-3.5 @max-[449px]/task-ticket:grid-cols-1"
+                  className="grid flex-none grid-cols-title-end items-end gap-2 border-t border-line bg-surface px-4 pt-2.5 pb-3.5 @max-[449px]/task-ticket:grid-cols-1"
                   data-testid="task-compose"
                 >
                   <Textarea
@@ -389,7 +389,7 @@ export function TaskTicketScreen() {
                     aria-label={t.note}
                   />
                   {task.canNoteInternal ? (
-                    <Label tone="pane" className="m-0 flex min-h-9 cursor-pointer items-center self-start max-[721px]:min-h-11">
+                    <Label tone="pane" className="m-0 flex min-h-9 cursor-pointer items-center self-start max-touch:min-h-11">
                       <Checkbox checked={internalNote} onCheckedChange={(next) => setInternalNote(next === true)} />
                       <span>{t.internalNoteToggle}</span>
                     </Label>

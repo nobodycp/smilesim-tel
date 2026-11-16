@@ -75,8 +75,8 @@ export function HomeScreen() {
     <div className={HOME}>
       <header className="flex flex-wrap items-center justify-between gap-2" data-slot="page-head" data-testid="page-head">
         <div>
-          <h1 className="m-0 text-[1.25rem] tracking-normal"><bdi>{title}</bdi></h1>
-          {lede && <p className="m-0 max-w-[36rem] text-md text-muted">{lede}</p>}
+          <h1 className="m-0 text-page tracking-normal"><bdi>{title}</bdi></h1>
+          {lede && <p className="m-0 max-w-144 text-md text-muted">{lede}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* The period every card of the page follows (owner 2026-11-09). */}
@@ -111,7 +111,7 @@ export function HomeScreen() {
           no heading and no shortcuts card (spec 2026-11-09-admin-review, 7). */}
       {overview.error && !data ? <Pane><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></Pane> : null}
       <div className="grid grid-cols-1 items-start gap-3.5 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)]">
-        <div className={cn(COLUMN, '*:@container min-[640px]:max-xl:grid-cols-2 min-[640px]:max-xl:items-stretch xl:col-start-2 xl:row-start-1')} data-slot="home-side">
+        <div className={cn(COLUMN, '*:@container sm:max-xl:grid-cols-2 sm:max-xl:items-stretch xl:col-start-2 xl:row-start-1')} data-slot="home-side">
           {data ? <LinesCard data={data} /> : loadingOverview ? <Pane className="relative" data-testid="overview-card"><TableSkeleton rows={5} columns={2} /></Pane> : null}
           {data ? <TasksCard data={data} /> : null}
           {data && layer !== 'pos' ? <UsersCard data={data} layer={layer} /> : null}

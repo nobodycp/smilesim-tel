@@ -29,7 +29,7 @@ import { Evidence, ProposalCard, decisionActionsClass, decisionHintClass, stepLi
  * 2px `--rd-line` edge at the reading start, 10px in; a step's verb semibold, its time `--rd-muted`.
  */
 const SECTION_TITLE = 'm-0 text-xs font-bold text-muted';
-const HINT = 'm-0 text-sm leading-[1.6] text-ink-2';
+const HINT = 'm-0 text-sm leading-1-6 text-ink-2';
 const FACT = 'flex flex-wrap items-center justify-between gap-2';
 const FACT_NAME = 'text-xs font-bold text-muted';
 const FACT_VALUE = 'm-0 text-sm font-semibold';

@@ -78,7 +78,7 @@ const triggerVariants = cva(
         pager: [field, 'h-7 border-field bg-surface ps-2 text-md max-touch:h-11'],
         chip: [
           'ms-2.5 h-7.5 w-auto min-w-18 max-w-64 flex-none cursor-pointer rounded-none px-2.5',
-          'border-0 border-s border-solid border-s-ink/11 bg-surface text-chip font-semibold leading-5 shadow-none',
+          'border-0 border-s border-solid border-s-line-strong bg-surface text-chip font-semibold leading-5 shadow-none',
           'focus:shadow-thread',
         ],
       },
@@ -177,7 +177,7 @@ export const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
             collisionPadding={8}
             className={cn(
               'z-dialog-list max-h-[min(360px,60vh)] max-w-[min(320px,92vw)] overflow-hidden rounded-sm',
-              'bg-surface-2 shadow-pop inset-ring inset-ring-ink/11 origin-top motion-safe:animate-[filter-pop-in_140ms_ease-out]',
+              'bg-surface-2 shadow-pop inset-ring inset-ring-line-strong origin-top motion-safe:animate-pop-in',
               !hanging && 'min-w-(--radix-select-trigger-width)',
             )}
             style={hanging ? { minWidth: hanging.width } : undefined}

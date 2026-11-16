@@ -13,19 +13,25 @@ import { extendTailwindMerge } from 'tailwind-merge';
  * - `--spacing` is one step, so `p-2.5` is a number it already reads.
  * Tailwind migration T6.2 added the named text sizes (`text-caption` … `text-figure-lead`: without them a size would
  * read as a colour and drop the text colour beside it), the line heights and letter spacing, the line shadows, the
- * disabled opacity and the layers over the dialog.
+ * disabled opacity and the layers over the dialog. Tailwind migration T6.3 added the edge shadow, the sheet's curve,
+ * the shared entrances, line heights 1.25 and 1.5, the drawer's width and the shared layout values (`grid-cols-title-end`,
+ * `grid-cols-fit-card`, `top-pop`); the radii `4xs` / `3xs` are t-shirt names it reads already.
  */
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      radius: ['card', 'tile', 'panel', 'pill'],
-      shadow: ['card', 'frame', 'pop', 'thread', 'glow', 'glow-accent'],
-      ease: ['standard'],
+      radius: ['card', 'panel', 'pill'],
+      shadow: ['card', 'frame', 'pop', 'thread', 'glow', 'glow-accent', 'edge'],
+      ease: ['standard', 'sheet'],
+      animate: ['rise', 'flyin', 'drawer', 'pop-in'],
+      container: ['drawer'],
       text: ['caption', 'chip', 'block', 'item', 'page', 'figure-sm', 'figure', 'figure-lead-sm', 'figure-lead'],
-      leading: ['1-1', '1-15', '1-2', '1-3', '1-35', '1-4', '1-45', '1-55', '1-6'],
+      leading: ['1-1', '1-15', '1-2', '1-25', '1-3', '1-35', '1-4', '1-45', '1-5', '1-55', '1-6'],
       tracking: ['title', 'figure', 'head', 'number', 'code', 'caps'],
     },
     classGroups: {
+      'grid-cols': [{ 'grid-cols': ['title-end', 'fit-card'] }],
+      top: [{ top: ['pop'] }],
       z: [
         {
           z: [

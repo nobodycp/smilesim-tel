@@ -32,9 +32,9 @@ import { MethodField, ModeSeg, savableMethod } from '../auth/two-factor-policy';
  * two-step state and its reset one wrapping row 10px apart; the save at the reading start over a 1px `--rd-line` rule,
  * 4px and 12px above it. The labels and fields are the pane's (`Label tone="pane"`, `Input surface="surface"` at 13px).
  */
-const PAIR = 'grid grid-cols-[1fr_1fr] gap-2 max-md:grid-cols-[1fr]';
+const PAIR = 'grid grid-cols-2 gap-2 max-md:grid-cols-1';
 const HINT = 'm-0 text-sm text-muted';
-const LEDE = '-mt-2 mb-0 text-[12.5px] leading-[1.55] font-medium text-muted';
+const LEDE = '-mt-2 mb-0 text-chip leading-1-55 font-medium text-muted';
 const BLOCK = 'grid gap-3';
 const BLOCK_TITLE = 'text-sm font-bold text-ink-2';
 const FIELD = 'text-md';
@@ -109,7 +109,7 @@ export function UserSettingsPane({ loginName, layer, onSaved }: { loginName: str
 
   return (
     <section className="grid gap-3 border-b border-line pb-3" aria-label={t.userSettings}>
-      <h3 className="m-0 text-[13.5px] font-bold text-ink">{t.userSettings}</h3>
+      <h3 className="m-0 text-block font-bold text-ink">{t.userSettings}</h3>
       <p className={LEDE}>{t.userSettingsHint}</p>
       <Alert banner>{error || settings.error || rules.error}</Alert>
       {view ? (

@@ -180,7 +180,7 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
         </Pane>
       ) : null}
       {runs.data && runs.data.runs.length > 1 ? (
-        <Label tone="pane" className="max-w-[32rem] text-sm">
+        <Label tone="pane" className="max-w-128 text-sm">
           {t.reconEarlier}
           <Select place="desk" value={chosen} onValueChange={setRunId}>
             {runs.data.runs.map((item) => <SelectItem key={item.id} value={item.id}>{`${latinWhen(item.at)} · ${item.fileName} · ${item.open} ${t.orderOpen}`}</SelectItem>)}

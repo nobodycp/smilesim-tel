@@ -33,7 +33,7 @@ export function AuthArt() {
       className={cn(
         'relative flex min-h-full flex-col justify-end overflow-hidden p-11 text-login-ink',
         'bg-login-room bg-radial-[90%_70%_at_30%_70%] from-accent/22 to-transparent to-70%',
-        'max-[861px]:min-h-55 max-[861px]:px-6 max-[861px]:py-7',
+        'max-auth:min-h-55 max-auth:px-6 max-auth:py-7',
       )}
       aria-hidden="true"
     >
@@ -41,16 +41,16 @@ export function AuthArt() {
         className={cn(
           'absolute -start-10 -bottom-15 size-95 bg-accent-fill opacity-88 [transform:rotate(-14deg)]',
           '[clip-path:polygon(0_0,78%_0,100%_22%,100%_100%,0_100%)]',
-          'max-[861px]:-bottom-12.5 max-[861px]:size-55',
+          'max-auth:-bottom-12.5 max-auth:size-55',
           'motion-safe:animate-[gauth-tag_900ms_var(--rd-ease-out)_both]',
         )}
       />
-      <div className="absolute start-11 top-10 max-[861px]:start-6 max-[861px]:top-6">
+      <div className="absolute start-11 top-10 max-auth:start-6 max-auth:top-6">
         {branding.logo ? <BrandLogo className="max-h-11 max-w-14" onInk /> : <span className={markClass}><Wifi size={24} strokeWidth={1.9} /></span>}
       </div>
       <h2
         className={cn(
-          'relative mx-0 mt-0 mb-2 max-w-[12em] text-[30px] leading-[1.4] font-bold max-[861px]:text-[22px]',
+          'relative mx-0 mt-0 mb-2 max-w-[12em] text-8xl leading-1-4 font-bold max-auth:text-4xl',
           'motion-safe:animate-[rd-rise_600ms_200ms_var(--rd-ease-out)_both]',
         )}
       >
@@ -72,7 +72,7 @@ export function AuthBrand() {
         <span className={markClass} aria-hidden="true"><Wifi size={22} strokeWidth={1.9} /></span>
       )}
       <div>
-        <b className="block text-[20px] leading-[1.3] font-bold text-ink">{branding.name}</b>
+        <b className="block text-3xl leading-1-3 font-bold text-ink">{branding.name}</b>
         <small className="block text-sm text-muted">{branding.tagline}</small>
       </div>
     </div>

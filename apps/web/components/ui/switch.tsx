@@ -42,9 +42,9 @@ export const Switch = React.forwardRef<
     {...props}
   >
     <span
-      className="relative h-5 w-9.5 rounded-xs bg-danger transition-[background-color,translate,opacity] duration-fast ease-[ease] group-data-[state=checked]/switch:bg-success group-aria-busy/switch:opacity-disabled"
+      className="relative h-5 w-9.5 rounded-xs bg-danger transition-[background-color,translate,opacity] duration-fast ease-standard group-data-[state=checked]/switch:bg-success group-aria-busy/switch:opacity-disabled"
     >
-      <SwitchPrimitive.Thumb className="absolute start-0.75 top-0.75 size-3.5 rounded-[2px] bg-on-mark transition-[background-color,translate] duration-fast ease-[ease] data-[state=checked]:translate-x-4.5 rtl:data-[state=checked]:-translate-x-4.5" />
+      <SwitchPrimitive.Thumb className="absolute start-0.75 top-0.75 size-3.5 rounded-3xs bg-on-mark transition-[background-color,translate] duration-fast ease-standard data-[state=checked]:translate-x-4.5 rtl:data-[state=checked]:-translate-x-4.5" />
     </span>
   </SwitchPrimitive.Root>
 ));

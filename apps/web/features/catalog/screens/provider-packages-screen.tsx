@@ -52,7 +52,7 @@ type CompanyLine = { code: string; name: string; packages: number; active: numbe
  */
 const PRICE_FORM = cn(
   'mt-3.5 flex flex-wrap content-start items-end justify-start gap-2 rounded-sm bg-surface px-4.5 py-3.5 inset-ring inset-ring-line',
-  'max-[721px]:flex-col max-[721px]:items-stretch',
+  'max-touch:flex-col max-touch:items-stretch',
 );
 
 export function ProviderPackagesScreen() {
@@ -202,7 +202,7 @@ export function ProviderPackagesScreen() {
               />
             )}
             <form className={PRICE_FORM} onSubmit={savePrice}>
-              <Label tone="pane" className="min-w-0 max-w-88 flex-[1_1_16rem] max-md:w-full max-md:max-w-none max-md:flex-none">
+              <Label tone="pane" className="min-w-0 max-w-88 grow basis-64 max-md:w-full max-md:max-w-none max-md:flex-none">
                 {t.esimPrice}
                 <Input
                   surface="surface"

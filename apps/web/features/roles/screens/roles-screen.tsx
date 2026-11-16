@@ -54,7 +54,7 @@ const layerOf = (role: { layer?: string }) => role.layer || 'branch';
  *   641px), the whole row the target, a soft hairline between rows; the name 13px muted 500, ink 700 while on;
  * - the session rules' title as the grants' title, its hint 12px muted at 1.5, 4px over and 12px under it.
  */
-const CELL_SUB = 'block text-[11.5px] leading-[1.3] font-normal text-muted';
+const CELL_SUB = 'block text-caption leading-1-3 font-normal text-muted';
 const BLOCK_TITLE = 'm-0 text-base font-bold text-ink';
 const UNDER_GRANTS = 'mt-2 border-t border-line pt-3.5';
 /** The two-step block (features/auth/two-factor-policy.tsx) is placed by the form, through its handle. */
@@ -206,12 +206,12 @@ export function RolesScreen() {
                 return (
                   <div
                     key={group.key}
-                    className="grid grid-cols-[148px_minmax(0,1fr)] gap-x-4 border-t border-line py-1 max-sm:grid-cols-[minmax(0,1fr)] max-sm:pt-3 max-sm:pb-1"
+                    className="grid grid-cols-[148px_minmax(0,1fr)] gap-x-4 border-t border-line py-1 max-sm:grid-cols-1 max-sm:pt-3 max-sm:pb-1"
                     role="group"
                     aria-label={title}
                   >
                     <div className="pt-2.25 max-sm:flex max-sm:items-baseline max-sm:justify-between max-sm:pt-0">
-                      <h4 className="m-0 text-[12.5px] leading-[1.3] font-bold text-ink">{title}</h4>
+                      <h4 className="m-0 text-chip leading-1-3 font-bold text-ink">{title}</h4>
                       <span className="mt-0.5 block text-sm text-muted tabular-nums max-sm:m-0 max-sm:inline"><bdi dir="ltr">{group.codes.filter((code) => draft.grants.includes(code)).length}/{group.codes.length}</bdi></span>
                     </div>
                     <div className="grid min-w-0 max-sm:pt-1">
@@ -242,7 +242,7 @@ export function RolesScreen() {
             {layerKey && rules.data && ruleValues ? (
               <section className={cn('grid gap-0', UNDER_GRANTS)} aria-label={t.sessionRulesTitle}>
                 <h3 className={BLOCK_TITLE}>{t.sessionRulesTitle}</h3>
-                <p className="mx-0 mt-1 mb-3 text-sm leading-[1.5] text-muted">{t.layerSessionHint}</p>
+                <p className="mx-0 mt-1 mb-3 text-sm leading-1-5 text-muted">{t.layerSessionHint}</p>
                 <RuleSelects values={ruleValues} fallback={rules.data.defaults} fallbackLabel={t.followDefault} onChange={setRuleDraft} />
               </section>
             ) : null}

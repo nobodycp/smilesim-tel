@@ -148,7 +148,7 @@ export function UserPackagesTab({
           >
             {row.name}
           </strong>
-          {row.dataGb === null ? null : <bdi dir="ltr" className="m-0 text-[11.5px] font-medium text-muted tabular-nums">{row.dataGb} GB</bdi>}
+          {row.dataGb === null ? null : <bdi dir="ltr" className="m-0 text-caption font-medium text-muted tabular-nums">{row.dataGb} GB</bdi>}
         </span>
       ),
     },
@@ -240,7 +240,7 @@ export function UserPackagesTab({
         ) : companies.length === 0 ? (
           <EmptyState icon="plans">{t.noPackagesForUser}</EmptyState>
         ) : (
-          <TableSheet className="grid grid-cols-[minmax(0,1fr)] content-start">
+          <TableSheet className="grid grid-cols-1 content-start">
             {companies.map((group) => {
               const open = isOpen(group.code);
               const body = `terms-${group.code}`;
@@ -249,11 +249,11 @@ export function UserPackagesTab({
                   <button type="button" className={GROUP_HEAD} aria-expanded={open} aria-controls={body} onClick={() => toggleGroup(group.code)}>
                     <span className={CO_MARK} style={{ background: markColor(group.name) }} aria-hidden="true">{markOf(group.name)}</span>
                     <span className="grid gap-px text-start">
-                      <strong className="text-base font-extrabold">{group.name}</strong>
+                      <strong className="text-base font-bold">{group.name}</strong>
                       <span className="min-w-0 flex-1 text-sm text-muted">{summaryOf(group.packages)}</span>
                     </span>
                     <ChevronDown
-                      className="ms-auto size-4 flex-none text-muted transition-transform duration-[180ms] ease-[ease] group-aria-expanded:rotate-180"
+                      className="ms-auto size-4 flex-none text-muted transition-transform duration-base ease-standard group-aria-expanded:rotate-180"
                       aria-hidden="true"
                     />
                   </button>
@@ -305,7 +305,7 @@ function PricePair({ first, second, strong = false }: { first: number; second: n
     // The pair follows the reading direction, like its header «اشتراك / تجديد»; each amount stays left to right. One
     // line 6px apart on a shared baseline, bold tabular figures, the slash `--rd-faint`; a custom price extra bold in
     // `--rd-success`.
-    <span className={cn('inline-flex items-baseline gap-1.5 whitespace-nowrap tabular-nums', strong && 'font-extrabold text-success')} data-slot="terms-pair">
+    <span className={cn('inline-flex items-baseline gap-1.5 whitespace-nowrap tabular-nums', strong && 'font-bold text-success')} data-slot="terms-pair">
       <span className="font-bold tabular-nums" dir="ltr">{formatShekel(first)}</span>
       <span className="text-faint" aria-hidden="true">/</span>
       <span className="font-bold tabular-nums" dir="ltr">{formatShekel(second)}</span>

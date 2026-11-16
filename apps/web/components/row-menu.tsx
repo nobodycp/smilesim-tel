@@ -50,7 +50,7 @@ const triggerClass = (boxed: boolean) =>
   cn(
     'inline-flex items-center justify-center rounded-sm border-0 p-0 font-normal [&>svg]:size-4',
     boxed
-      ? 'size-8.5 bg-surface-2 text-ink inset-ring inset-ring-ink/11 hover:bg-surface-3'
+      ? 'size-8.5 bg-surface-2 text-ink inset-ring inset-ring-line-strong hover:bg-surface-3'
       : 'size-7 bg-transparent text-faint hover:bg-surface-3 hover:text-ink aria-expanded:bg-surface-3 aria-expanded:text-ink',
   );
 

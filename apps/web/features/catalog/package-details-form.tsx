@@ -38,7 +38,7 @@ const DETAILS_LIMIT = 300;
  * - the tab's form (`PackageDetailsForm`): the pane body with `.pane form`'s 8px between rows, never wider than its
  *   column; its save at the start.
  */
-const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-[721px]:min-h-11';
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-touch:min-h-11';
 
 export type DetailsDraft = { dataGb: Amount; minutes: Amount; smsCount: Amount; details: string; suspendAfter: string; esimAvailable: boolean };
 export type DetailsValues = { dataGb: number | null; smsCount: number | null; minutes: number | null; details: string; suspendAfterDays: number; esimAvailable: boolean };

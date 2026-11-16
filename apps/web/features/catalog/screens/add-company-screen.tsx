@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Desk, Pane } from '../../../components/desk';
@@ -10,6 +10,7 @@ import { Button } from '../../../components/ui/button';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
+import { RadioCard, RadioCardGroup } from '../../../components/ui/radio-card';
 import { api, type ProviderCatalogCompany } from '../../../lib/api';
 import { parseShekel, shekelField } from '../../../lib/money';
 import { useDesk } from '../../../lib/desk-session';
@@ -20,10 +21,8 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import {
   addActionsClass,
-  pickCardClass,
   pickGridClass,
   pickNameClass,
-  pickTickClass,
   queryButtonClass,
   queryLabelClass,
   queryRowClass,
@@ -144,25 +143,23 @@ export function AddCompanyScreen() {
           <div className="pane-body">
             {simulated ? <p className={paneHintClass}>{t.simulatedProvider}</p> : null}
             {offered.length === 0 ? <p className={paneHintClass}>{t.noProviderCompanies}</p> : (
-              <div className={pickGridClass} role="radiogroup" aria-label={t.providerCompanies}>
+              <RadioCardGroup
+                className={pickGridClass}
+                aria-label={t.providerCompanies}
+                value={picked?.code ?? ''}
+                onValueChange={(code) => {
+                  const next = offered.find((row) => row.code === code);
+                  if (next) pick(next);
+                }}
+              >
                 {offered.map((row) => (
-                  <button
-                    key={row.code}
-                    type="button"
-                    role="radio"
-                    aria-checked={picked?.code === row.code}
-                    className={pickCardClass}
-                    data-slot="pick-card"
-                    disabled={row.added}
-                    onClick={() => pick(row)}
-                  >
+                  <RadioCard key={row.code} value={row.code} data-slot="pick-card" disabled={row.added}>
                     <b className={pickNameClass}>{row.name}</b>
                     <span className={paneHintClass} dir="ltr">{row.code}</span>
                     {row.added ? <Badge variant="muted">{t.alreadyAdded}</Badge> : null}
-                    {picked?.code === row.code ? <Check className={pickTickClass} size={16} aria-hidden="true" /> : null}
-                  </button>
+                  </RadioCard>
                 ))}
-              </div>
+              </RadioCardGroup>
             )}
           </div>
         ) : null}
@@ -189,7 +186,7 @@ export function AddCompanyScreen() {
                   <span className={paneHintClass}>{t.simPrefixHint}</span>
                 </Label>
                 <div className={simToggleClass}>
-                  <Label tone="pane" className="m-0 flex min-h-9 cursor-pointer items-center max-[721px]:min-h-11">
+                  <Label tone="pane" className="m-0 flex min-h-9 cursor-pointer items-center max-touch:min-h-11">
                     <Checkbox checked={esim} onCheckedChange={(next) => setEsim(next === true)} />
                     {t.simEsim}
                   </Label>

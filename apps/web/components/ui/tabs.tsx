@@ -49,7 +49,7 @@ export const TabsList = React.forwardRef<
     data-slot="tabs"
     className={cn(
       'inline-flex max-w-full flex-none gap-0 self-start overflow-x-auto rounded-sm border-0 bg-transparent p-0',
-      '[scrollbar-width:none] inset-ring inset-ring-ink/11',
+      '[scrollbar-width:none] inset-ring inset-ring-line-strong',
       'max-sm:grid max-sm:max-w-none max-sm:grid-cols-3 max-sm:overflow-x-visible max-sm:not-[.desk>*]:self-stretch',
       'max-sm:has-[>:nth-child(2):last-child]:grid-cols-2 max-sm:has-[>:nth-child(4):last-child]:grid-cols-2',
       'max-sm:has-[>:only-child]:grid-cols-1',
@@ -69,7 +69,7 @@ export const TabsTrigger = React.forwardRef<
     data-slot="tab"
     className={cn(
       'inline-flex h-9 flex-none cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-none border-0 bg-transparent px-4',
-      'text-md font-semibold text-muted not-first:border-s not-first:border-s-ink/11',
+      'text-md font-semibold text-muted not-first:border-s not-first:border-s-line-strong',
       'not-disabled:hover:bg-surface-2 not-disabled:hover:text-ink',
       'aria-selected:bg-surface-2 aria-selected:font-bold aria-selected:text-ink aria-selected:shadow-thread',
       'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent',

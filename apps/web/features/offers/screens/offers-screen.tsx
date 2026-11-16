@@ -46,8 +46,8 @@ const IMAGE_BYTES = 700 * 1024;
  */
 const THUMB = 'block w-16 aspect-2/1 rounded-xs bg-surface-2 object-cover';
 const THUMB_LARGE = 'w-50';
-const PAIR = 'grid grid-cols-[1fr_1fr] gap-2 max-md:grid-cols-[1fr]';
-const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center gap-2 text-ink max-[721px]:min-h-11';
+const PAIR = 'grid grid-cols-2 gap-2 max-md:grid-cols-1';
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center gap-2 text-ink max-touch:min-h-11';
 
 type Draft = { id: string | null; title: string; body: string; image: string | null; actionLabel: string; actionHref: string; seconds: string; layers: string[]; startsAt: string; endsAt: string; active: boolean };
 const empty: Draft = { id: null, title: '', body: '', image: null, actionLabel: '', actionHref: '', seconds: '7', layers: [...LAYERS], startsAt: '', endsAt: '', active: true };
@@ -176,7 +176,7 @@ export function OffersScreen() {
             <Label tone="dialog">
               {t.offerBody}
               <Textarea
-                className="h-8.5 min-h-0 resize py-0 max-[721px]:h-11"
+                className="h-8.5 min-h-0 resize py-0 max-touch:h-11"
                 rows={3}
                 maxLength={240}
                 value={draft.body}

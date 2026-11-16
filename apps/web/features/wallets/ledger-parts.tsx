@@ -26,7 +26,7 @@ export function ReasonTag({ tone, className, ...props }: ComponentPropsWithoutRe
   return (
     <span
       data-slot="reason-tag"
-      className={cn('inline-flex h-5.5 items-center whitespace-nowrap rounded-xs px-2 text-[11.5px] font-bold', REASON_TONE[tone], className)}
+      className={cn('inline-flex h-5.5 items-center whitespace-nowrap rounded-xs px-2 text-caption font-bold', REASON_TONE[tone], className)}
       {...props}
     />
   );
@@ -46,7 +46,7 @@ export const kindCellClass = cn(
  * The second line of a table cell (legacy `[data-slot='table'] .sub`, graphite.css): its own line, 11.5px `--rd-muted`
  * at normal weight, 1.3 line height.
  */
-export const cellSubClass = 'block text-[11.5px] leading-[1.3] font-normal text-muted';
+export const cellSubClass = 'block text-caption leading-1-3 font-normal text-muted';
 
 /*
  * The page head's actions (legacy `.page-actions`, desk/frame.css): a wrapping inline row, items centred, 8px apart.
@@ -62,7 +62,7 @@ export function PageActions({ children }: { children: ReactNode }) {
 export function SectionHead({ title }: { title: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <h2 className="m-0 text-lg font-extrabold">{title}</h2>
+      <h2 className="m-0 text-lg font-bold">{title}</h2>
     </div>
   );
 }

@@ -199,9 +199,9 @@ export function TopCard({ data }: { data: OverviewPayload }) {
  * soft fill) while there are debtors (`data-warn`).
  */
 const USERS_LAYER = cn(
-  "grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 rounded-md bg-(--tone)/8 px-3 py-2.5 text-ink no-underline [grid-template-areas:'mark_count'_'label_label']",
+  "grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 rounded-sm bg-(--tone)/8 px-3 py-2.5 text-ink no-underline [grid-template-areas:'mark_count'_'label_label']",
   'inset-ring inset-ring-(--tone)/18 hover:inset-ring-(--tone)/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--tone)',
-  'transition-[box-shadow,transform] duration-[160ms] ease-out',
+  'transition-[box-shadow,transform] duration-fast ease-out',
 );
 const USERS_FLAG = 'flex items-center justify-between gap-3 border-t border-line py-2 text-sm';
 const FLAG_COUNT = 'inline-grid h-5 min-w-5 place-items-center rounded-pill px-1.25 text-xs font-bold';
@@ -222,8 +222,8 @@ export function UsersCard({ data, layer }: { data: OverviewPayload; layer: strin
         {layers.map((item) => (
           <Link key={item.key} className={USERS_LAYER} data-testid="users-layer" href={`/users?layer=${item.key}`} style={{ ['--tone' as string]: `var(${item.tone})` }}>
             <span className="inline-grid size-7 place-items-center rounded-sm bg-(--tone)/16 text-(--tone) [grid-area:mark]" aria-hidden="true">{item.icon}</span>
-            <span className="justify-self-end text-xl leading-none font-extrabold [grid-area:count]">{item.value}</span>
-            <span className="text-xs leading-[1.35] font-semibold text-muted [grid-area:label]">{item.label}</span>
+            <span className="justify-self-end text-xl leading-none font-bold [grid-area:count]">{item.value}</span>
+            <span className="text-xs leading-1-35 font-semibold text-muted [grid-area:label]">{item.label}</span>
           </Link>
         ))}
       </div>

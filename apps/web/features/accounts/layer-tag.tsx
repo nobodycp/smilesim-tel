@@ -22,7 +22,7 @@ export function LayerTag({ layer }: { layer: string }) {
   return (
     <span
       data-slot="layer-tag"
-      className={cn('inline-flex h-5.5 items-center rounded-xs px-2 text-[11.5px] font-bold whitespace-nowrap inset-ring inset-ring-current', HUE[layer])}
+      className={cn('inline-flex h-5.5 items-center rounded-xs px-2 text-caption font-bold whitespace-nowrap inset-ring inset-ring-current', HUE[layer])}
     >
       {layerName(t, layer)}
     </span>

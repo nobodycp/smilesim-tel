@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { Money, Pane } from '../../components/desk';
+import { pointerGlowClass } from '../../components/stat';
 import { TrendLine } from '../../components/trend-line';
+import { SegmentedToggle, SegmentedToggleItem } from '../../components/ui/segmented';
 import { api, type FinanceSummary } from '../../lib/api';
 import { cn } from '../../lib/cn';
 import { formatShekel } from '../../lib/money';
@@ -32,43 +34,25 @@ type Window = (typeof WINDOWS)[number];
  *   inset `--rd-line` edge, the used ones `--rd-accent` with no edge.
  */
 const BAND = cn(
-  'grid grid-cols-2 gap-3 xl:grid-cols-[1.6fr_repeat(3,minmax(0,1fr))] max-[640px]:[&>:nth-child(4)]:col-span-full [.desk_&]:flex-none',
-  'motion-safe:*:animate-[rd-rise_420ms_var(--rd-ease-out)_both]',
+  'grid grid-cols-2 gap-3 xl:grid-cols-[1.6fr_repeat(3,minmax(0,1fr))] max-sm:[&>:nth-child(4)]:col-span-full [.desk_&]:flex-none',
+  'motion-safe:*:animate-rise',
   'motion-safe:[&>:nth-child(2)]:[animation-delay:40ms] motion-safe:[&>:nth-child(3)]:[animation-delay:80ms] motion-safe:[&>:nth-child(4)]:[animation-delay:120ms]',
 );
 const FIGURE_TILE = cn(
-  'relative isolate flex min-h-28 min-w-0 flex-col gap-1.5 overflow-hidden rounded-card bg-surface px-4 py-3.5 inset-ring inset-ring-line max-[640px]:min-h-0 max-[640px]:p-3',
+  'relative isolate flex min-h-28 min-w-0 flex-col gap-1.5 overflow-hidden rounded-card bg-surface px-4 py-3.5 inset-ring inset-ring-line max-sm:min-h-0 max-sm:p-3',
   '[clip-path:polygon(0_0,calc(100%_-_var(--rd-cut))_0,100%_var(--rd-cut),100%_100%,0_100%)]',
   'rtl:[clip-path:polygon(var(--rd-cut)_0,100%_0,100%_100%,0_100%,0_var(--rd-cut))]',
-  "after:pointer-events-none after:absolute after:inset-0 after:-z-1 after:content-['']",
-  'after:bg-radial-[180px_circle_at_var(--mx,50%)_var(--my,0%)] after:from-glow after:to-transparent after:to-70%',
-  'after:opacity-0 after:transition-opacity after:duration-base after:ease-standard hover:after:opacity-100',
-  'motion-safe:transition-transform motion-safe:duration-base motion-safe:ease-out motion-safe:hover:[transform:translateY(-2px)]',
+  pointerGlowClass,
 );
 const LEAD_TILE = cn(
   FIGURE_TILE,
-  'inset-ring-accent/35 shadow-[inset_0_0_0_1px_var(--rd-line)] max-[640px]:col-span-full',
+  'inset-ring-accent/35 shadow-edge max-sm:col-span-full',
   "before:absolute before:start-0 before:end-(--rd-cut) before:top-0 before:h-0.5 before:bg-accent before:content-['']",
 );
 const TILE_LABEL = 'text-sm font-medium text-muted';
-const TILE_VALUE = 'text-[1.45rem] leading-[1.25] font-bold tracking-[-0.01em] tabular-nums max-[640px]:text-[1.2rem]';
-const LEAD_VALUE = 'text-[1.9rem] leading-[1.25] font-bold tracking-[-0.01em] tabular-nums max-[640px]:text-[1.6rem]';
-const TILE_META = 'mt-auto block text-sm leading-[1.6] text-muted';
-
-/*
- * The chart card's window switch (legacy `.period`, graphite.css): an inline row that keeps its width, 4px corners, a
- * 1px inset `--rd-line` edge, clipped; the whole row under 768px, its buttons sharing it with 6px sides. A button:
- * 34px, 12px sides, no border or fill, `--rd-muted` 12.5px semibold on one line, ink under the pointer; each after the
- * first draws a 1px `--rd-line` on its start edge; the chosen one (`aria-pressed`) sits on `--rd-surface-2` in ink
- * with the 2px crimson thread underneath; the focus mark a 2px `--rd-accent` outline inside it.
- */
-const PERIOD = 'inline-flex flex-none overflow-hidden rounded-xs inset-ring inset-ring-line max-md:w-full';
-const PERIOD_BUTTON = cn(
-  'h-8.5 cursor-pointer whitespace-nowrap border-0 bg-transparent px-3 text-[12.5px] font-semibold text-muted hover:text-ink max-md:flex-1 max-md:px-1.5',
-  'not-first:border-s not-first:border-s-line',
-  'aria-pressed:bg-surface-2 aria-pressed:text-ink aria-pressed:shadow-[inset_0_-2px_0_var(--rd-accent)]',
-  'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent',
-);
+const TILE_VALUE = 'text-figure leading-1-25 font-bold tracking-figure tabular-nums max-sm:text-figure-sm';
+const LEAD_VALUE = 'text-figure-lead leading-1-25 font-bold tracking-figure tabular-nums max-sm:text-figure-lead-sm';
+const TILE_META = 'mt-auto block text-sm leading-1-6 text-muted';
 
 /**
  * The signed-in account's wallet, as in the approved Graphite design, on «المحفظة» (it left «المالية», a statement
@@ -104,7 +88,7 @@ export function WalletHead() {
           <div className={LEAD_VALUE}><Money value={summary.balance} /></div>
           {limited ? (
             <div className="mt-1 flex gap-0.75" role="img" aria-label={`${t.usedCeiling}: ${Math.round(share * 100)}%`}>
-              {Array.from({ length: 20 }, (_, index) => <i key={index} className={cn('h-1.5 flex-1 rounded-[1px]', index < Math.round(share * 20) ? 'bg-accent' : 'bg-surface-2 inset-ring inset-ring-line')} />)}
+              {Array.from({ length: 20 }, (_, index) => <i key={index} className={cn('h-1.5 flex-1 rounded-4xs', index < Math.round(share * 20) ? 'bg-accent' : 'bg-surface-2 inset-ring inset-ring-line')} />)}
             </div>
           ) : null}
           <div className={TILE_META}>
@@ -134,13 +118,14 @@ export function WalletHead() {
             <h2 className="m-0 inline-flex items-center gap-2 text-base font-bold text-ink">{t.balanceOverTime}</h2>
             <p className="mx-0 mt-0.5 mb-0 text-sm text-muted">{t.lastDaysMeta.replace('{n}', String(days))} · {t.nowLabel} <Money value={summary.balance} /> · <Money value={change} signed /></p>
           </div>
-          <div className={PERIOD} role="group" aria-label={t.period}>
+          {/* The chart card's window switch: the period switch's look (`SegmentedToggle`, components/ui/segmented.tsx). */}
+          <SegmentedToggle aria-label={t.period}>
             {WINDOWS.map((value) => (
-              <button key={value} type="button" className={PERIOD_BUTTON} aria-pressed={days === value} onClick={() => setDays(value)}>
+              <SegmentedToggleItem key={value} pressed={days === value} onClick={() => setDays(value)}>
                 {value === 7 ? t.period7 : value === 30 ? t.period30 : t.period3m}
-              </button>
+              </SegmentedToggleItem>
             ))}
-          </div>
+          </SegmentedToggle>
         </header>
         <div className="grid content-start gap-3 px-4.5 pt-3.5 pb-4.5 *:min-w-0 [.desk_&]:min-h-0 [.desk_&]:overflow-auto">
           <TrendLine

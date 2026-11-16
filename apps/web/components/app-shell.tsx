@@ -110,11 +110,11 @@ function navLinkClass({
 }: { active?: boolean; holds?: boolean; nested?: boolean; drawer?: boolean; rail?: boolean; logout?: boolean }) {
   return cn(
     'relative flex h-10 w-full items-center gap-3 overflow-hidden rounded-sm border-0 bg-transparent px-3 py-0',
-    'text-start text-[13.5px] font-semibold text-muted [transition:background-color_140ms_ease,color_140ms_ease]',
+    'text-start text-block font-semibold text-muted [transition:background-color_var(--rd-dur-fast)_var(--rd-ease-standard),color_var(--rd-dur-fast)_var(--rd-ease-standard)]',
     'hover:bg-surface-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ink',
     '[&>svg]:size-4.75 [&>svg]:flex-none',
     nested && 'h-8.5 overflow-visible ps-5.5 text-md font-medium',
-    drawer && (nested ? 'h-10 text-[14.5px]' : 'h-11.5 text-[14.5px]'),
+    drawer && (nested ? 'h-10 text-item' : 'h-11.5 text-item'),
     active && 'text-ink',
     active && !nested && cn('bg-surface-2', THREAD),
     (active || holds) && '[&>svg]:text-accent',
@@ -128,7 +128,7 @@ function navLinkClass({
 function labelClass(rail: boolean, sidebar: boolean) {
   return cn(
     'whitespace-nowrap',
-    sidebar && 'motion-safe:[transition:opacity_180ms_ease,translate_260ms_cubic-bezier(0.32,0.72,0,1)]',
+    sidebar && 'motion-safe:[transition:opacity_var(--rd-dur-base)_var(--rd-ease-standard),translate_260ms_var(--rd-ease-sheet)]',
     rail && 'pointer-events-none translate-x-2 opacity-0 rtl:-translate-x-2',
   );
 }
@@ -393,8 +393,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           // A small diamond on the group's hairline; the current page's glows crimson.
           <span
             className={cn(
-              'absolute -start-[2.5px] size-1.75 rotate-45 rounded-[2px] bg-bg inset-ring-[1.5px] inset-ring-faint',
-              active && 'bg-accent inset-ring-0 shadow-[0_0_8px_var(--rd-accent)]',
+              'absolute -start-[2.5px] size-1.75 rotate-45 rounded-3xs bg-bg inset-ring-[1.5px] inset-ring-faint',
+              active && 'bg-accent inset-ring-0 shadow-glow-accent',
             )}
             aria-hidden="true"
           />
@@ -420,7 +420,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const sidebar = (mobile: boolean) => {
     const rail = collapsed && !mobile;
-    const name = <p className="m-0 text-lg font-bold leading-[1.35] text-ink">{branding.name}</p>;
+    const name = <p className="m-0 text-lg font-bold leading-1-35 text-ink">{branding.name}</p>;
     return (
       <>
         {/* Brand row: the saved logo or the cut-corner tile, the name and the door. */}
@@ -442,7 +442,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className={cn('min-w-0', labelClass(rail, !mobile))}>
             {/* The drawer is a dialog; the office's name is its title. */}
             {mobile ? <SheetTitle asChild>{name}</SheetTitle> : name}
-            <p className="m-0 text-xs leading-[1.35] text-muted">{role ? `${t[door.label]} · ${role}` : t[door.label]}</p>
+            <p className="m-0 text-xs leading-1-35 text-muted">{role ? `${t[door.label]} · ${role}` : t[door.label]}</p>
           </div>
           {mobile && (
             <IconButton className="ms-auto" onClick={() => setMobileOpen(false)} aria-label={t.closeMenu}>
@@ -458,7 +458,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             type="button"
             className={cn(
               'absolute -end-3.25 top-18.5 z-2 grid size-6.5 place-items-center rounded-pill border-0 bg-surface-2 p-0',
-              'text-ink-2 opacity-0 shadow-pop ring-1 ring-line [transition:opacity_160ms_ease,color_140ms_ease]',
+              'text-ink-2 opacity-0 shadow-pop ring-1 ring-line [transition:opacity_var(--rd-dur-fast)_var(--rd-ease-standard),color_var(--rd-dur-fast)_var(--rd-ease-standard)]',
               'hover:text-accent focus-visible:opacity-100 [[data-slot=sidebar]:hover_&]:opacity-100',
             )}
             onClick={toggleCollapsed}
@@ -468,7 +468,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <ChevronLeft
               {...glyph}
-              className={cn('size-3.75 [transition:rotate_320ms_cubic-bezier(0.32,0.72,0,1)]', !collapsed && 'rotate-180')}
+              className={cn('size-3.75 [transition:rotate_320ms_var(--rd-ease-sheet)]', !collapsed && 'rotate-180')}
             />
           </button>
         )}
@@ -479,7 +479,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 // A section's title; on the folded rail a hairline.
                 <p
                   className={cn(
-                    'mx-0 mt-2.5 mb-0.5 flex h-6.5 items-center overflow-hidden px-3 text-xs font-bold tracking-[0.03em] text-faint',
+                    'mx-0 mt-2.5 mb-0.5 flex h-6.5 items-center overflow-hidden px-3 text-xs font-bold tracking-number text-faint',
                     rail && "my-1.5 h-3.5 after:mx-1.5 after:h-px after:flex-1 after:bg-line after:content-['']",
                   )}
                 >
@@ -521,7 +521,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <span className={labelClass(rail, !mobile)}>{entry.label}</span>
                         <ChevronDown
                           {...glyph}
-                          className={cn('ms-auto size-3.75! [transition:rotate_260ms_cubic-bezier(0.32,0.72,0,1)]', open && 'rotate-180')}
+                          className={cn('ms-auto size-3.75! [transition:rotate_260ms_var(--rd-ease-sheet)]', open && 'rotate-180')}
                         />
                       </button>
                     )}
@@ -532,7 +532,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                         className={cn(
                           'relative grid gap-px ps-5',
                           "before:absolute before:inset-y-1.5 before:start-5.25 before:w-px before:bg-line before:content-['']",
-                          'motion-safe:animate-[side-open_260ms_cubic-bezier(0.32,0.72,0,1)]',
+                          'motion-safe:animate-[side-open_260ms_var(--rd-ease-sheet)]',
                         )}
                       >
                         {entry.items.map((item) => navLink(item, mobile, true))}
@@ -550,7 +550,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link
             href="/settings"
             className={cn(
-              'flex h-12.5 items-center gap-2.75 overflow-hidden rounded-md px-1.5 text-start hover:bg-surface-2',
+              'flex h-12.5 items-center gap-2.75 overflow-hidden rounded-sm px-1.5 text-start hover:bg-surface-2',
               rail && 'px-2',
             )}
             data-testid="side-user"
@@ -587,9 +587,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           names fade and come back as flyouts beside the icons. Under 900px the drawer takes its place. */}
       <aside
         className={cn(
-          'relative z-[calc(var(--rd-z-topbar)_+_1)] flex w-67 min-w-0 flex-none flex-col',
+          'relative z-sidebar flex w-67 min-w-0 flex-none flex-col',
           'border-e border-solid border-line bg-bg px-3 pt-3.5 pb-3 max-lg:hidden',
-          'motion-safe:[transition:width_320ms_cubic-bezier(0.32,0.72,0,1)]',
+          'motion-safe:[transition:width_320ms_var(--rd-ease-sheet)]',
           collapsed && 'w-19',
         )}
         data-testid="sidebar"
@@ -605,8 +605,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           data-slot="side-flyout"
           className={cn(
             'pointer-events-none fixed start-21.5 z-dialog w-max max-w-70 whitespace-nowrap rounded-sm bg-surface-2 px-3 py-1.75',
-            'text-[12.5px] font-semibold text-ink shadow-pop inset-ring inset-ring-line [transform:translateY(-50%)]',
-            'motion-safe:animate-[side-flyin_160ms_cubic-bezier(0.32,0.72,0,1)] motion-safe:rtl:[animation-name:side-flyin-rtl]',
+            'text-chip font-semibold text-ink shadow-pop inset-ring inset-ring-line [transform:translateY(-50%)]',
+            'motion-safe:animate-flyin motion-safe:rtl:[animation-name:side-flyin-rtl]',
             // A menu: a bridge over the gap at its start, so the pointer can travel from the icon into it.
             flyout.items &&
               "pointer-events-auto grid min-w-47.5 gap-px p-1.5 [transform:translateY(-22px)] before:absolute before:inset-y-0 before:-start-3 before:w-3 before:content-['']",
@@ -616,7 +616,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           onMouseEnter={() => setFlyout(flyout)}
           onMouseLeave={() => setFlyout(null)}
         >
-          <b className={cn('font-semibold', flyout.items && 'px-2.5 py-1.5 text-[11.5px] text-muted')}>{flyout.label}</b>
+          <b className={cn('font-semibold', flyout.items && 'px-2.5 py-1.5 text-caption text-muted')}>{flyout.label}</b>
           {flyout.items?.map((item) => (
             <Link
               key={item.href}
@@ -647,14 +647,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header
           className={cn(
             'sticky top-0 z-topbar flex min-h-16 items-center justify-between gap-3 border-b border-solid border-line',
-            'bg-bg/88 py-[0.6rem] backdrop-blur-[14px] backdrop-saturate-160 @container/topbar max-md:gap-1.5 max-md:px-4 md:px-7',
+            'bg-bg/88 py-2.5 backdrop-blur-[14px] backdrop-saturate-160 @container/topbar max-md:gap-1.5 max-md:px-4 md:px-7',
             'max-lg:flex-wrap max-lg:gap-y-1.5 max-lg:py-2',
             "after:pointer-events-none after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-accent after:opacity-35 after:content-['']",
           )}
           data-testid="topbar"
         >
           <div
-            className="flex min-w-0 flex-[1_1_auto] items-center gap-[0.65rem] max-md:flex-none max-md:gap-1.5 max-lg:contents"
+            className="flex min-w-0 flex-[1_1_auto] items-center gap-2.5 max-md:flex-none max-md:gap-1.5 max-lg:contents"
             data-testid="topbar-start"
           >
             <button type="button" className={cn(topbarIcon, 'hidden max-lg:inline-flex')} data-testid="menu-btn" onClick={() => setMobileOpen(true)} aria-label={t.openMenu}>
@@ -707,7 +707,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Bell {...glyph} />
                 {unread > 0 && (
                   // A glowing crimson dot; the count is there for screen readers (font size 0).
-                  <span className="absolute end-1.75 top-1.75 size-2 min-w-0 overflow-hidden rounded-pill bg-accent p-0 text-center text-[0px] font-bold leading-0 text-on-mark shadow-[0_0_8px_var(--rd-accent)] ring-2 ring-bg">
+                  <span className="absolute end-1.75 top-1.75 size-2 min-w-0 overflow-hidden rounded-pill bg-accent p-0 text-center text-[0px] font-bold leading-0 text-on-mark shadow-glow-accent ring-2 ring-bg">
                     {unread > 9 ? '9+' : unread}
                   </span>
                 )}
@@ -715,20 +715,20 @@ export function AppShell({ children }: { children: ReactNode }) {
               {noticeOpen && (
                 <div
                   className={cn(
-                    'absolute end-0 top-[calc(100%_+_0.6rem)] z-popover max-h-120 w-[min(22rem,80vw)] min-w-64 overflow-auto',
-                    'rounded-lg border border-solid border-panel-line bg-surface p-[0.45rem] shadow-pop',
+                    'absolute end-0 top-pop z-popover max-h-120 w-[min(22rem,80vw)] min-w-64 overflow-auto',
+                    'rounded-card border border-solid border-panel-line bg-surface p-1.75 shadow-pop',
                     'max-md:inset-x-2 max-md:w-auto max-md:max-w-none',
-                    'max-md:max-h-[min(480px,calc(100dvh_-_100%_-_0.6rem_-_var(--rd-space-2)))]',
+                    'max-md:max-h-[min(480px,calc(100dvh_-_100%_-_var(--rd-pop-gap)_-_var(--rd-space-2)))]',
                   )}
                   data-testid="notice-panel"
                   role="menu"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="m-0 px-[0.6rem] pt-[0.35rem] pb-2 font-bold">{t.notices}</p>
+                    <p className="m-0 px-2.5 pt-1.5 pb-2 font-bold">{t.notices}</p>
                     {unread > 0 && (
                       <button
                         type="button"
-                        className="flex-none cursor-pointer rounded-pill border-0 bg-transparent px-[0.6rem] py-1 text-[0.78rem] font-semibold text-muted hover:bg-surface-2 hover:text-ink"
+                        className="flex-none cursor-pointer rounded-pill border-0 bg-transparent px-2.5 py-1 text-chip font-semibold text-muted hover:bg-surface-2 hover:text-ink"
                         onClick={() => void markRead()}
                       >
                         {t.markAllRead}
@@ -736,14 +736,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                     )}
                   </div>
                   {notices.length === 0 ? (
-                    <p className="mx-0 mt-1 mb-0 rounded-card bg-surface-2 p-[0.7rem] text-[0.85rem] text-muted">{t.noNotices}</p>
+                    <p className="mx-0 mt-1 mb-0 rounded-card bg-surface-2 p-2.75 text-block text-muted">{t.noNotices}</p>
                   ) : notices.map((row) => (
                     <button
                       key={row.id}
                       type="button"
                       className={cn(
-                        'grid w-full grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 gap-y-0.5 rounded-card border-0 bg-transparent',
-                        'px-[0.7rem] py-[0.55rem] text-start text-[0.9rem] font-medium hover:bg-surface-hover',
+                        'grid w-full grid-cols-title-end items-baseline gap-x-2 gap-y-0.5 rounded-card border-0 bg-transparent',
+                        'px-2.75 py-2.25 text-start text-item font-medium hover:bg-surface-hover',
                       )}
                       data-testid="notice-item"
                       onClick={() => void openNotice(row)}
@@ -753,19 +753,19 @@ export function AppShell({ children }: { children: ReactNode }) {
                           'min-w-0 truncate',
                           // Unread: a crimson dot before the title.
                           !row.read &&
-                            "before:me-[0.4rem] before:inline-block before:size-1.5 before:rounded-pill before:bg-accent before:align-middle before:content-['']",
+                            "before:me-1.5 before:inline-block before:size-1.5 before:rounded-pill before:bg-accent before:align-middle before:content-['']",
                         )}
                       >
                         {noticeTitle(t, row)}
                       </strong>
-                      <small className="whitespace-nowrap text-[0.72rem] tabular-nums text-muted">{noticeAge(t, row.createdAt)}</small>
+                      <small className="whitespace-nowrap text-caption tabular-nums text-muted">{noticeAge(t, row.createdAt)}</small>
                       <small className="col-span-full truncate text-muted" data-testid="notice-detail">{noticeDetail(t, row)}</small>
                     </button>
                   ))}
-                  <span className="mx-1 my-[0.35rem] block h-px bg-line" />
+                  <span className="mx-1 my-1.5 block h-px bg-line" />
                   <Link
                     href="/notices"
-                    className="flex w-full items-center gap-[0.6rem] rounded-card px-[0.7rem] py-[0.55rem] text-start text-[0.9rem] font-medium hover:bg-surface-hover"
+                    className="flex w-full items-center gap-2.5 rounded-card px-2.75 py-2.25 text-start text-item font-medium hover:bg-surface-hover"
                     onClick={closeNotices}
                   >
                     {t.allNotices}
@@ -784,7 +784,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span>{shown}</span>
               <button
                 type="button"
-                className="h-7.5 cursor-pointer rounded-sm border-0 bg-accent-fill px-3 py-0 text-sm font-bold text-on-accent hover:bg-accent-fill-hover max-[721px]:min-h-11"
+                className="h-7.5 cursor-pointer rounded-sm border-0 bg-accent-fill px-3 py-0 text-sm font-bold text-on-accent hover:bg-accent-fill-hover max-touch:min-h-11"
                 onClick={leaveAccount}
               >
                 {t.returnAccount}
@@ -803,7 +803,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         // Live arrival: one card at the top corner, 4s, then it leaves. Click opens the record.
         <div
           className={cn(
-            'fixed end-4 top-18 z-shell-toast flex w-[min(22rem,calc(100vw_-_2rem))] items-stretch rounded-lg',
+            'fixed end-4 top-18 z-shell-toast flex w-[min(22rem,calc(100vw_-_2rem))] items-stretch rounded-card',
             'border border-s-3 border-solid border-panel-line border-s-accent bg-surface shadow-pop',
             'motion-safe:animate-[notice-toast-in_240ms_var(--rd-ease-out)]',
           )}
@@ -812,13 +812,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <button
             type="button"
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-[0.65rem] border-0 bg-transparent px-[0.85rem] py-[0.7rem] text-start"
+            className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 border-0 bg-transparent px-3.5 py-2.75 text-start"
             onClick={() => void openNotice(fresh)}
           >
             <Bell {...glyph} />
             <span className="grid min-w-0 gap-0.5">
-              <strong className="text-[0.9rem]">{noticeTitle(t, fresh)}</strong>
-              <small className="truncate text-[0.78rem] text-muted">{noticeDetail(t, fresh)}</small>
+              <strong className="text-item">{noticeTitle(t, fresh)}</strong>
+              <small className="truncate text-chip text-muted">{noticeDetail(t, fresh)}</small>
             </span>
           </button>
           <button type="button" className="w-11 flex-none cursor-pointer border-0 bg-transparent text-muted hover:text-ink" aria-label={t.closeMenu} onClick={dismiss}>

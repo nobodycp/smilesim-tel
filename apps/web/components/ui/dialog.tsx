@@ -42,7 +42,7 @@ export const DialogClose = DialogPrimitive.Close;
 const panelVariants = cva(
   [
     'relative flex max-h-[min(720px,calc(100dvh_-_48px))] flex-col overflow-hidden p-0',
-    'rounded-sm border-0 bg-surface shadow-pop inset-ring inset-ring-ink/11',
+    'rounded-sm border-0 bg-surface shadow-pop inset-ring inset-ring-line-strong',
     "before:block before:h-0.5 before:flex-none before:bg-accent before:content-['']",
     'motion-safe:animate-[rd-drop_200ms_var(--rd-ease-out)]',
   ],
@@ -120,7 +120,7 @@ export const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn('mt-1 mb-0 text-md font-medium leading-[1.45] text-muted', className)}
+    className={cn('mt-1 mb-0 text-md font-medium leading-1-45 text-muted', className)}
     {...props}
   />
 ));

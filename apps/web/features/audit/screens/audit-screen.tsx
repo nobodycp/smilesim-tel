@@ -41,7 +41,7 @@ const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;
  * `[data-slot='table'] .sub`).
  */
 const ROW_LINK = 'font-bold text-inherit no-underline';
-const CELL_SUB = 'block text-[11.5px] leading-[1.3] font-normal text-muted';
+const CELL_SUB = 'block text-caption leading-1-3 font-normal text-muted';
 
 export function AuditScreen() {
   const { t } = usePrefs();

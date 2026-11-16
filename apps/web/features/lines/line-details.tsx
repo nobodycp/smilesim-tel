@@ -99,7 +99,7 @@ export function LineDetails({ line, isPos, onQr }: { line: LineDetail; isPos: bo
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-6 max-[901px]:grid-cols-1 max-[901px]:gap-4">
+      <div className="grid grid-cols-2 gap-6 max-lg:grid-cols-1 max-lg:gap-4">
         <Group icon={CalendarRange} title={t.subscriptionSection}>
           <Row icon={Building2} label={t.company}>{line.companyName || '—'}</Row>
           <Row icon={Package} label={t.packageName}>{line.packageName}</Row>
@@ -130,7 +130,7 @@ function Meter({ icon: Icon, label, total }: { icon: LucideIcon; label: string; 
   const { t } = usePrefs();
   return (
     <div className="flex min-w-0 items-center gap-3">
-      <span className="relative grid size-13 flex-none place-items-center rounded-[50%] bg-accent-soft" aria-hidden="true">
+      <span className="relative grid size-13 flex-none place-items-center rounded-pill bg-accent-soft" aria-hidden="true">
         <svg className="absolute inset-0 size-full" viewBox="0 0 44 44">
           <circle className="fill-none stroke-ink/12 stroke-3 [stroke-dasharray:3_4]" cx="22" cy="22" r="19" />
         </svg>
@@ -138,7 +138,7 @@ function Meter({ icon: Icon, label, total }: { icon: LucideIcon; label: string; 
       </span>
       <span className="grid min-w-0 gap-px">
         <span className="text-xs font-semibold text-muted">{label}</span>
-        <b className="text-xl leading-[1.2] font-bold text-ink">—</b>
+        <b className="text-xl leading-1-2 font-bold text-ink">—</b>
         <small className="text-sm text-ink-2">{total === t.unlimited || total === '—' ? total : t.ofAllowance.replace('{total}', total)}</small>
       </span>
     </div>
@@ -159,7 +159,7 @@ function Row({ icon: Icon, label, wide = false, children }: { icon: LucideIcon; 
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center gap-3 rounded-sm px-3 py-2.5 transition-[background-color] duration-fast ease-[ease] hover:bg-surface-2',
+        'flex min-w-0 items-center gap-3 rounded-sm px-3 py-2.5 transition-colors duration-fast ease-standard hover:bg-surface-2',
         'max-sm:px-1 max-sm:py-2 max-sm:has-[[data-slot=copy-value]]:col-span-full',
         wide && 'col-span-full',
       )}
@@ -167,7 +167,7 @@ function Row({ icon: Icon, label, wide = false, children }: { icon: LucideIcon; 
       <span className="grid size-9 flex-none place-items-center rounded-sm bg-surface-2 text-ink-2" aria-hidden="true"><Icon size={16} strokeWidth={1.8} /></span>
       <span className="grid min-w-0 gap-0.5">
         <dt className="text-xs font-semibold text-muted">{label}</dt>
-        <dd className="m-0 min-w-0 text-md leading-[1.35] font-bold text-ink wrap-anywhere">{children}</dd>
+        <dd className="m-0 min-w-0 text-md leading-1-35 font-bold text-ink wrap-anywhere">{children}</dd>
       </span>
     </div>
   );
@@ -179,7 +179,7 @@ function CopyValue({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5" data-slot="copy-value">
-      <bdi dir="ltr" className="tracking-[0.02em] wrap-anywhere">{value}</bdi>
+      <bdi dir="ltr" className="tracking-head wrap-anywhere">{value}</bdi>
       <IconButton
         size="sm"
         tone="faint-to-ink"

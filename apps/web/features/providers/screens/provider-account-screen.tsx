@@ -41,7 +41,7 @@ const BRANCH = ['branch'];
  *   reached a `.hint` paragraph in a dialog's body).
  */
 const PAGE_ACTIONS = 'inline-flex flex-wrap items-center gap-2';
-const TAG = 'inline-flex h-5.5 items-center whitespace-nowrap rounded-xs px-2 text-[11.5px] font-bold';
+const TAG = 'inline-flex h-5.5 items-center whitespace-nowrap rounded-xs px-2 text-caption font-bold';
 const TAG_TONE = { payment: 'bg-success-soft text-success', settlement: 'bg-surface-2 text-muted', other: 'bg-warning-soft text-warning' };
 
 /** One provider's account (roadmap N7): four cards, payments and the credit limit, and the ledger with its balance. */

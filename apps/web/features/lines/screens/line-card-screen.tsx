@@ -98,16 +98,16 @@ const LINE_OP = cn(
   "focus-visible:before:pointer-events-none focus-visible:before:absolute focus-visible:before:inset-0 focus-visible:before:z-1 focus-visible:before:rounded-[inherit] focus-visible:before:inset-ring-2 focus-visible:before:inset-ring-accent focus-visible:before:content-['']",
 );
 const LINE_OP_GO = cn(
-  'absolute top-4.5 end-4 text-faint [transition:transform_220ms_var(--rd-ease-out),color_160ms_ease] max-sm:hidden',
+  'absolute top-4.5 end-4 text-faint [transition:transform_220ms_var(--rd-ease-out),color_var(--rd-dur-fast)_var(--rd-ease-standard)] max-sm:hidden',
   'ltr:[transform:scaleX(-1)] group-hover:text-accent',
   'rtl:group-hover:[transform:translateX(-4px)] ltr:group-hover:[transform:scaleX(-1)_translateX(-4px)]',
 );
 const DIALOG_COLUMN = 'grid content-start gap-3 *:min-w-0';
-const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center gap-2 text-ink max-[721px]:min-h-11';
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center gap-2 text-ink max-touch:min-h-11';
 const FIELD_HINT = 'text-sm font-medium';
 const PACK_PICK = cn(
-  'grid min-h-33 justify-items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 py-3.5 text-center text-ink',
-  '[&>img]:size-12 [&>img]:rounded-tile [&>img]:bg-surface-2 [&>img]:object-contain',
+  'grid min-h-33 justify-items-center gap-1.5 rounded-sm border border-line bg-surface px-2.5 py-3.5 text-center text-ink',
+  '[&>img]:size-12 [&>img]:rounded-card [&>img]:bg-surface-2 [&>img]:object-contain',
 );
 
 function tileIcon(item: RowAction) {
@@ -127,7 +127,7 @@ function LineOp({ icon, title, text, danger, now, onClick }: { icon: ReactNode; 
   return (
     <button type="button" className={LINE_OP} data-slot="line-op" data-testid="line-op" data-now={now ? '' : undefined} aria-label={title} onClick={onClick}>
       <span className={cn('grid size-9 place-items-center rounded-sm', danger ? 'bg-danger-soft text-danger' : 'bg-accent-soft text-accent')}>{icon}</span>
-      <b className={cn('text-[14.5px] font-bold', danger && 'text-danger')}>{title}</b>
+      <b className={cn('text-item font-bold', danger && 'text-danger')}>{title}</b>
       <span className="text-sm text-muted">{text}</span>
       <ChevronLeft className={LINE_OP_GO} size={16} aria-hidden="true" />
     </button>
@@ -236,7 +236,7 @@ export function LineCardScreen() {
     <Desk
       title={line ? (
         <span className="inline-flex flex-wrap items-center gap-3">
-          <bdi dir="ltr" className="m-0 text-[26px] font-bold tracking-[0.02em] tabular-nums" data-testid="line-number">{line.msisdn}</bdi>
+          <bdi dir="ltr" className="m-0 text-6xl font-bold tracking-head tabular-nums" data-testid="line-number">{line.msisdn}</bdi>
           {/* 13px beside the number (the legacy `.line-hero-title .ui-badge` rule). */}
           <Badge className="text-md" variant={lineTone(line.suspended ? 'suspended' : line.status)} dot>{lineStatus(t, line.suspended ? 'suspended' : line.status)}</Badge>
           {line.status === 'active' ? <LeftDays endsAt={line.endsAt} /> : null}
@@ -409,7 +409,7 @@ export function LineCardScreen() {
                   {(line.addons ?? []).map((addon) => (
                     <label
                       key={addon.id}
-                      className="m-0 grid min-h-9 cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-line-soft py-1.5 text-md font-semibold text-ink max-[721px]:min-h-11"
+                      className="m-0 grid min-h-9 cursor-pointer grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-line-soft py-1.5 text-md font-semibold text-ink max-touch:min-h-11"
                     >
                       <RadioGroupItem value={addon.id} />
                       <span>{addon.name}</span>
@@ -489,7 +489,7 @@ export function LineCardScreen() {
                       {image ? (
                         <DataImage src={image} alt="" />
                       ) : (
-                        <span className="grid size-12 place-items-center rounded-tile bg-surface-2 font-extrabold">{row.companyName.slice(0, 1)}</span>
+                        <span className="grid size-12 place-items-center rounded-card bg-surface-2 font-bold">{row.companyName.slice(0, 1)}</span>
                       )}
                       <b>{row.companyName}</b>
                       <span>{row.name}</span>
