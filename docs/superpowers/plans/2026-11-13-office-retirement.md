@@ -100,13 +100,19 @@ goes down; the backend map updated in the same commit.
   delegates `officeTask`/`officeTaskNote` → `task`/`taskNote`, the types `Prisma.OfficeTask*` → `Prisma.Task*`; raw
   SQL, constraint names and the sealing script's table list keep `OfficeTask` (database names). The fault-injection
   spec names the model `Task` (Prisma's query hooks are given the model's name). Commit: see `git log --grep 'R.10'`.
-- [~] **R.A** `auth.controller.ts` thinned; the seven unrecorded writes judged. **Partial.** Done: the two gaps are
-  recorded (`PATCH /auth/profile` as `password` when a new password is sent, else `user_contact`;
+- [x] **R.A** `auth.controller.ts` thinned; the seven unrecorded writes judged. First part (2026-11-14): the two gaps
+  are recorded (`PATCH /auth/profile` as `password` when a new password is sent, else `user_contact`;
   `DELETE /auth/two-factor` as `two_factor`; success and refusal; the action and the account only, chosen through the
   schema, never a value), the five steps declared `@NoActivity('a step: …')`; `write-without-activity` 7 → 0;
-  `own-activity.http.spec.ts` proves no password, value or code reaches a record. Not done: thinning the controller
-  (35 routes of sign-in, sessions and second steps): a structural change to security code that no test asked for;
-  left for its own slice. Commit: see `git log --grep 'R.A'`.
+  `own-activity.http.spec.ts` proves no password, value or code reaches a record. Second part (2026-11-16, the
+  owner's word): the one controller (622 lines, 35 routes) is three by who acts — `sign-in.controller.ts` (7 routes,
+  147 lines), `own-account.controller.ts` (15, 208), `account-security.controller.ts` (13, 203) — on the same
+  prefix, with the same routes, decorators, statuses, bodies, cookies and records. A handler asks the service,
+  records through `AuthRecords` and answers through `answer`; the request helpers are `auth-http.ts`. What the
+  audit's target asked and was not done, on purpose: "activity through the interceptor" (a record here needs the
+  session a route leaves, or the login name tried, which the interceptor does not have) and "0 branches" (left: the
+  two refusals before a sign-in is tried, the passkey's door and its record without a login name, and a passkey
+  removal recorded when done only — each is the behaviour as it was). Commits: `git log --grep 'R.A'`.
 - [x] **W.1, W.2** Web names. `components/office-{shell,frame}.tsx` → `app-{shell,frame}.tsx` (`AppShell`,
   `AppFrame`); `lib/office-session.tsx` → `lib/desk-session.tsx` (`DeskSession`, `DeskContext`, `DeskMe`,
   `useDesk`); API methods lose the `office` prefix (`officeLines` → `lines`, …); query keys root `'office'` → `'api'`

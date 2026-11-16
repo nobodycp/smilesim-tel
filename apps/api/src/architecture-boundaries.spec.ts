@@ -304,7 +304,7 @@ describe('the rules catch what they are for (made-up cases)', () => {
     const cases = importEdges(made({
       'modules/platform/unit-of-work.ts': "import { NoticeService } from '../notifications/notice.service';",
       'modules/notifications/notice.service.ts': '',
-      'modules/auth/auth.controller.ts': "import { PrismaActivityRecorder } from '../auditing/activity-recorder';",
+      'modules/auth/sign-in.controller.ts': "import { PrismaActivityRecorder } from '../auditing/activity-recorder';",
       'modules/auditing/activity-recorder.ts': '',
     }));
     expect(layeringViolations(cases).map((hit) => hit.text)).toEqual([

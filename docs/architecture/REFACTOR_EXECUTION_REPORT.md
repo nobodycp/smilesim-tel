@@ -29,7 +29,7 @@ below were pushed by the owner on 2026-11-16 with the UI work that followed them
 | R.8 Remaining domains | DONE | `dc59623` |
 | R.9 Umbrella removal | DONE | `71f38aa` |
 | R.10 Prisma model names | DONE | `c9f10f9` |
-| R.A Authentication | PARTIAL | `77c1cf8` |
+| R.A Authentication | DONE | `77c1cf8`, then the controller (2026-11-16) |
 | W.1, W.2 Web names | DONE | `99c50fa` |
 | R.11a HTTP security | DONE | `518f039` |
 | R.11b Route migration | DONE | `5cc9f2f` |
@@ -414,4 +414,27 @@ below were pushed by the owner on 2026-11-16 with the UI work that followed them
   batch run again with its output kept passed whole (936/936, 109 s, load 6.5 to 9.0). Not attributed to load or to
   this slice: neither is proved. Recorded in `docs/superpowers/plans/2026-11-10-open-items.md`. The full suite is
   for GitHub CI.
+
+## R.A completed: the auth controller — DONE (2026-11-16, the owner's word)
+
+- **What:** `auth.controller.ts` (622 lines, 35 routes) is three controllers on the same `auth` prefix:
+  `sign-in.controller.ts` (7 routes), `own-account.controller.ts` (15), `account-security.controller.ts` (13).
+  Every route keeps its path, its decorators (Swagger included), its status, its body and its cookie. The handlers
+  were generated from the old file: the decorators and the signature of each are its text, the body rewritten to
+  one shape (ask the service, record, answer). `auth-http.ts` holds the request helpers and `answer`;
+  `auth-records.ts` (`AuthRecords`, a provider of `AuthModule`) holds the three shapes of a record.
+- **Records, one for one:** a refusal under the request's session; a done action under the session it left when
+  the route replaces it (`password`, `two-factor/verify`, the two confirmations), else the request's; the two
+  routes an anonymous request reaches record only when a session came (`ownIfSignedIn`); a passkey removal is
+  recorded when done only, and a refused passkey sign-in only when it named an account — both as before.
+- **Specs changed, and why:** `http-security-contract.spec.ts` (24 controllers, the 35 `/auth` routes counted, the
+  three files named where the one was, the by-hand pattern reads `records.…(`), `architecture.spec.ts` (the same
+  pattern in `write-without-activity`), one fixture path in `architecture-boundaries.spec.ts`. No expectation about
+  a route, a status, a body or a record changed.
+- **Checked:** typecheck 0, lint 0; the 20 spec files of `modules/auth`, the HTTP security contract, the
+  architecture guards, `routes.http`, `permissions.http`, the registry, the response shapes and the OpenAPI specs:
+  26 files, 788 tests passed (after the guard's pattern was updated; before it the guard counted 21 routes as
+  unrecorded, which was the pattern, not the routes). On port 3000: `/api/auth/profile` 401 without a session,
+  `/api/auth/login` 401 `BAD_CREDENTIALS` for an empty body.
+- **Not done, on purpose:** the audit's "activity through the interceptor" and "0 branches" (plan, R.A).
 

@@ -64,7 +64,7 @@ function routesOf(): { routes: Route[]; controllers: { file: string; prefix: str
           path: `/${[served, match[2] ?? ''].filter(Boolean).join('/')}`,
           file,
           controller: served,
-          recorded: /@Activity\(|@NoActivity\(|\b(recordOwner|activity\.record\w*)\(/.test(handler),
+          recorded: /@Activity\(|@NoActivity\(|\b(records\.(signIn|own|ownIfSignedIn|owner)|activity\.record\w*)\(/.test(handler),
           notGuarded: classNotGuarded || /@NotDuplicateGuarded\(/.test(handler),
         });
       }
@@ -151,13 +151,18 @@ const DECLARED_STEPS: Record<string, string> = {
   'POST /auth/passkey-login/options': 'issues a challenge',
 };
 
+/** The controllers of `/auth` (slice R.A), in the order the source is walked. */
+const AUTH_CONTROLLERS = ['modules/auth/account-security.controller.ts', 'modules/auth/own-account.controller.ts', 'modules/auth/sign-in.controller.ts'];
+
 const named = (route: Route) => `${route.method} ${route.path}`;
 
 describe('the write routes, as the source has them', () => {
-  it('reads the real controllers: twenty-two of them, their prefixes, and the write routes of each', () => {
+  it('reads the real controllers: twenty-four of them, their prefixes, and the write routes of each', () => {
     // Twenty-two since slice R.8: the priced shelf and the sell prices have a controller of their own in pricing
-    // (`PackageShelfController`); the routes are the same three, under the same prefix.
-    expect(controllers).toHaveLength(22);
+    // (`PackageShelfController`); the routes are the same three, under the same prefix. Twenty-four since slice
+    // R.A: `/auth` is three controllers (sign-in, the account on itself, the owner on others), the same 35 routes.
+    expect(controllers).toHaveLength(24);
+    expect(routes.filter((route) => route.controller === 'auth')).toHaveLength(35);
     // The empty prefix is the health probe: one read, no write.
     expect([...new Set(controllers.map((controller) => controller.prefix))].sort()).toEqual(['', 'auth', 'branding', 'office']);
     // The same routes under both prefixes, one for one.
@@ -187,7 +192,7 @@ describe('the duplicate guard and the idempotency key', () => {
   it('every write route is guarded, or is stated here with its reason, and only the auth and branding controllers say otherwise', () => {
     const stray = writes.filter((route) => !guarded(route) && !(named(route) in UNGUARDED_WRITES)).map(named);
     expect(stray).toEqual([]);
-    expect([...new Set(writes.filter((route) => !guarded(route)).map((route) => route.file))].sort()).toEqual(['modules/auth/auth.controller.ts', 'modules/branding/branding.controller.ts']);
+    expect([...new Set(writes.filter((route) => !guarded(route)).map((route) => route.file))].sort()).toEqual([...AUTH_CONTROLLERS, 'modules/branding/branding.controller.ts']);
   });
 
   it('the stated list holds no route that does not exist, and none that is guarded', () => {
@@ -229,14 +234,14 @@ describe('authorization and activity follow the controller, not the path', () =>
     const others = controllers.filter((controller) => controller.prefix !== 'office');
     expect(others.map((controller) => [controller.file, controller.interceptors])).toEqual([
       ['health.controller.ts', ''],
-      ['modules/auth/auth.controller.ts', ''],
+      ...AUTH_CONTROLLERS.map((file) => [file, '']),
       ['modules/branding/branding.controller.ts', ''],
     ]);
   });
 
   it('every write route records its activity, or says why not (slice R.A: none records nothing); the five steps of sign-in say why', () => {
     expect(writes.filter((route) => !route.recorded).map(named)).toEqual([]);
-    const auth = readFileSync(join(SRC, 'modules/auth/auth.controller.ts'), 'utf8');
+    const auth = AUTH_CONTROLLERS.map((file) => readFileSync(join(SRC, file), 'utf8')).join('\n');
     for (const [route, what] of Object.entries(DECLARED_STEPS)) {
       const path = route.split(' ')[1].replace('/auth/', '');
       const declared = new RegExp(`@Post\\('${path.replace(/\//g, '\\/')}'\\)\\n\\s+@NoActivity\\('a step: ${what}`).test(auth);

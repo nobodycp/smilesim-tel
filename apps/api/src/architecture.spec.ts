@@ -186,7 +186,7 @@ describe('engineering rules (backend-engineering.mdc)', () => {
         // recorder. The handler runs to the next route's decorator.
         const end = text.slice(match.index + 1).search(/\n {2}@(Get|Post|Put|Patch|Delete)\(/);
         const handler = end < 0 ? text.slice(match.index) : text.slice(match.index, match.index + 1 + end);
-        const byHand = /\b(recordOwner|activity\.record\w*)\(/.test(handler);
+        const byHand = /\b(records\.(signIn|own|ownIfSignedIn|owner)|activity\.record\w*)\(/.test(handler);
         if (!/@Activity\(|@NoActivity\(/.test(head) && !byHand) found.push({ file, line: lineOf(text, match.index), text: head.split('\n')[0] });
       }
     }
