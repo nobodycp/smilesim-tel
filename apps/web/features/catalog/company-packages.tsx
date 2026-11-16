@@ -71,7 +71,7 @@ export function CompanyPackages({ company, provider, onProvider, loading, onEnab
       sortValue: (row) => (row.enabled ? 1 : 0),
       render: (row) => (onEnabled ? (
         <LiveSwitch label={`${row.name} · ${row.providerName}`} checked={row.enabled} disabled={busy} onChange={(next) => onEnabled(row.code, next, row.name)}>
-          <b>{row.enabled ? t.lineActive : t.stopped}</b>
+          <b className="inline-block min-w-18">{row.enabled ? t.lineActive : t.stopped}</b>
         </LiveSwitch>
       ) : (
         <Badge variant={row.enabled ? 'success' : 'muted'} dot>{row.enabled ? t.lineActive : t.stopped}</Badge>

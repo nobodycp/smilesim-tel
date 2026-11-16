@@ -70,13 +70,14 @@ export function UserOpsTab({
                   {stoppedBy ? <Badge variant="danger" dot>{t.stoppedBy.replace('{login}', stoppedBy)}</Badge> : null}
                 </div>
                 <LiveSwitch
+                  className="flex-col gap-0"
                   label={opLabel(t, key)}
                   checked={allowed}
                   disabled={!canEdit || busy || Boolean(stoppedBy)}
                   title={stoppedBy ? t.stoppedBy.replace('{login}', stoppedBy) : undefined}
                   onChange={(next) => toggle(key, next)}
                 >
-                  <b>{allowed ? t.allowed : t.stopped}</b>
+                  <b className="order-2 text-xs font-bold text-muted">{allowed ? t.allowed : t.stopped}</b>
                 </LiveSwitch>
               </article>
             );

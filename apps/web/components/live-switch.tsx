@@ -1,10 +1,14 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { cn } from '../lib/cn';
+import { Switch } from './ui/switch';
 
 /**
- * The `.live-switch` control: a `role="switch"` button with a sliding knob, saved on change: green when on, red
- * when off. Children render before the button (a visible label and state text).
+ * A saved-on-change switch with its words (Tailwind migration T2.3): the `Switch` primitive (`role="switch"`, green
+ * when on, red when off) after its children (a visible label or state text), side by side 8px apart.
+ * `data-slot="live-switch"` is its handle; `className` lays it out in its context (a column on an operation card) and
+ * comes last (`cn`).
  */
 export function LiveSwitch({
   label,
@@ -12,6 +16,7 @@ export function LiveSwitch({
   disabled = false,
   title,
   onChange,
+  className,
   children,
 }: {
   label: string;
@@ -19,22 +24,19 @@ export function LiveSwitch({
   disabled?: boolean;
   title?: string;
   onChange: (next: boolean) => void;
+  className?: string;
   children?: ReactNode;
 }) {
   return (
-    <span className="live-switch">
+    <span data-slot="live-switch" className={cn('inline-flex items-center gap-2', className)}>
       {children}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
+      <Switch
+        checked={checked}
         aria-label={label}
         title={title}
         disabled={disabled}
-        onClick={() => onChange(!checked)}
-      >
-        <span className="track"><span /></span>
-      </button>
+        onCheckedChange={onChange}
+      />
     </span>
   );
 }

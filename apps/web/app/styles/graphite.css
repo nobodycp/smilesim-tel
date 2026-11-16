@@ -50,10 +50,6 @@ input[readonly] { background-color: transparent; }
 .ui-badge-dot { width: 7px; height: 7px; border-radius: 1px; transform: rotate(45deg); box-shadow: 0 0 8px currentColor; }
 .ui-badge-muted:has(> .ui-badge-dot) .ui-badge-dot { box-shadow: none; }
 
-/* ── Switch: square track and knob ── */
-.live-switch .track { border-radius: var(--rd-radius-xs); }
-.live-switch .track span { border-radius: 2px; }
-
 /* ── Figure cards (StatRow) and fact cards: the tag's cut corner, a light under the pointer ── */
 .stat, .fact-grid > div {
   position: relative;
@@ -751,34 +747,9 @@ input[readonly] { background-color: transparent; }
 .po-row-reason, .po-row-next { margin: 0; color: var(--rd-ink-2); font-size: var(--rd-text-sm); }
 .po-row-meta { display: flex; flex-wrap: wrap; column-gap: var(--rd-space-3-5); row-gap: 2px; margin: 0; color: var(--rd-muted); font-size: var(--rd-text-sm); }
 
-/* ── «طريقة التنفيذ» cards (components/mode-cards.tsx): a crimson mark, the operation, a three-way segmented control;
-   a stopped operation's card dims. ── */
-.mode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-/* The switch spans the card in three equal parts, so a longer language («Branch task») never spills past its edge. */
-.mode-card .seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); inline-size: 100%; }
-.mode-card .seg button { padding-inline: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mode-card {
-  position: relative;
-  display: grid;
-  justify-items: start;
-  gap: 10px;
-  padding: 18px;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface);
-  box-shadow: inset 0 0 0 1px var(--rd-line);
-  clip-path: polygon(0 0, calc(100% - var(--rd-cut)) 0, 100% var(--rd-cut), 100% 100%, 0 100%);
-}
-[dir='rtl'] .mode-card { clip-path: polygon(var(--rd-cut) 0, 100% 0, 100% 100%, 0 100%, 0 var(--rd-cut)); }
-.mode-card b { font-size: 14.5px; font-weight: 700; }
-.mode-card.off { opacity: 0.55; }
-.mode-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--rd-radius-sm); background: var(--rd-accent-soft); color: var(--rd-accent); }
+/* A chosen segment of a legacy `.seg` radio group (the account's grants, the two-step rule). The «طريقة التنفيذ» cards
+   are components/mode-cards.tsx on components/ui/segmented.tsx (Tailwind migration T2.3). */
 .seg button[aria-checked='true'] { background: var(--rd-surface-2); color: var(--rd-ink); box-shadow: inset 0 -2px 0 var(--rd-accent); }
-@media (prefers-reduced-motion: no-preference) {
-  .mode-grid > * { animation: rd-rise 420ms var(--rd-ease-out) both; }
-  .mode-grid > :nth-child(2) { animation-delay: 40ms; }
-  .mode-grid > :nth-child(3) { animation-delay: 80ms; }
-  .mode-grid > :nth-child(n + 4) { animation-delay: 120ms; }
-}
 .co-mark.big { width: 46px; height: 46px; font-size: 18px; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
 [dir='rtl'] .co-mark.big { clip-path: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px); }
 .terms-group-head .co-mark { width: 32px; height: 32px; }
@@ -951,11 +922,6 @@ input[readonly] { background-color: transparent; }
 .terms-group.open .terms-group-head .terms-chevron { transform: rotate(180deg); }
 /* A stopped package's row reads dim. */
 .terms-rows tr:has([role='switch'][aria-checked='false']) td:not(.row-actions):not(:has([role='switch'])) { color: var(--rd-muted); opacity: 0.7; }
-/* The design's switch: square track, square knob. */
-.live-switch .track { width: 38px; border-radius: var(--rd-radius-xs); }
-.live-switch .track span { border-radius: 2px; background: var(--rd-on-mark); }
-[dir='ltr'] .live-switch button[aria-checked='true'] .track span { transform: translateX(18px); }
-[dir='rtl'] .live-switch button[aria-checked='true'] .track span { transform: translateX(-18px); }
 /* The package's name over its facts, and the design's 56px rows. */
 .terms-name { display: grid; gap: 1px; }
 .terms-name .hint { font-size: 11.5px; }
@@ -1014,7 +980,6 @@ input[readonly] { background-color: transparent; }
 .company-image-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2); }
 .company-image-actions .hint { flex-basis: 100%; }
 .settings-block .sim-toggle { align-content: center; }
-.settings-block .sim-toggle .live-switch { justify-content: flex-start; }
 
 
 /* ── Providers list (Graphite): how a provider's operations run, as a soft tag; its companies muted. ── */
@@ -1178,10 +1143,6 @@ input[readonly] { background-color: transparent; }
   .inline-field [data-slot='name-field'] > input { width: 100%; height: 44px; }
 }
 
-/* Where a package's run mode comes from (spec 2026-11-09-admin-review, 3): the provider, or the package's own. */
-.mode-source { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; }
-.mode-source.own { color: var(--rd-accent); }
-.mode-source .link-btn { font-size: var(--rd-text-xs); }
 .inherit-fold { border: 1px solid var(--rd-line); border-radius: var(--rd-radius-sm); background: var(--rd-surface); }
 .inherit-fold > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding: 12px 14px; cursor: pointer; list-style: none; }
 .inherit-fold > summary::-webkit-details-marker { display: none; }
@@ -1305,15 +1266,9 @@ input[readonly] { background-color: transparent; }
   .line-op-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .line-op { padding: 14px; }
   .line-op-go { display: none; }
-  .mode-card { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 10px; padding: 14px; }
-  .mode-card .mode-mark { width: 30px; height: 30px; }
-  .mode-card > .seg, .mode-card > .mode-source { grid-column: 1 / -1; }
-  .mode-card .seg button { height: 40px; }
   .donut-legend a, .donut-legend button { min-height: 40px; }
 }
 
-/* A switch beside its state word keeps one width, so «فعال» ↔ «متوقف» does not move the table's columns. */
-.data .live-switch > b { display: inline-block; min-inline-size: 4.5rem; }
 /* The boxed ⋯ beside a head's buttons (the user page) is drawn as the secondary button beside it (owner 2026-11-11). */
 .row-menu.boxed .row-menu-btn { border: 0; background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); color: var(--rd-ink); }
 .row-menu.boxed .row-menu-btn:hover { background: var(--rd-surface-3); }

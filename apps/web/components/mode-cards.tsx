@@ -1,9 +1,14 @@
 'use client';
 
 import { Zap } from 'lucide-react';
+import { cn } from '../lib/cn';
 import { usePrefs } from '../lib/prefs';
+import { Segmented, SegmentedItem } from './ui/segmented';
 
 export type RunMode = 'auto' | 'manual' | 'off';
+
+/** Where a mode comes from: a small muted line (in crimson when it is the package's own). */
+const sourceClass = 'inline-flex flex-wrap items-center gap-1.5 text-xs font-semibold text-muted max-sm:col-span-full';
 
 /**
  * How each operation runs, as cards (Graphite «طريقة التنفيذ», from design/night-desk-family): a crimson mark, the
@@ -37,39 +42,60 @@ export function ModeCards<K extends string>({
     { key: 'off', label: t.stopped },
   ];
   return (
-    <div className="mode-grid">
+    <div data-slot="mode-grid" className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
       {actions.map((action) => {
         const mode = (modes[action] ?? 'manual') as RunMode;
         return (
-          <section key={action} className={mode === 'off' ? 'mode-card off' : 'mode-card'} data-testid="mode-card">
-            <span className="mode-mark" aria-hidden="true"><Zap size={18} strokeWidth={1.9} /></span>
-            <b>{names[action]}</b>
+          <section
+            key={action}
+            className={cn(
+              'relative grid justify-items-start gap-2.5 rounded-sm bg-surface p-4.5 inset-ring inset-ring-line',
+              '[clip-path:polygon(0_0,calc(100%_-_var(--rd-cut))_0,100%_var(--rd-cut),100%_100%,0_100%)]',
+              'rtl:[clip-path:polygon(var(--rd-cut)_0,100%_0,100%_100%,0_100%,0_var(--rd-cut))]',
+              'max-sm:grid-cols-[auto_minmax(0,1fr)] max-sm:items-center max-sm:gap-x-2.5 max-sm:p-3.5',
+              'motion-safe:animate-[rd-rise_420ms_var(--rd-ease-out)_both] motion-safe:nth-2:[animation-delay:40ms]',
+              'motion-safe:nth-3:[animation-delay:80ms] motion-safe:nth-[n+4]:[animation-delay:120ms]',
+              mode === 'off' && 'opacity-55',
+            )}
+            data-testid="mode-card"
+          >
+            <span className="grid size-9 place-items-center rounded-sm bg-accent-soft text-accent max-sm:size-7.5" aria-hidden="true">
+              <Zap size={18} strokeWidth={1.9} />
+            </span>
+            <b className="text-[14.5px] font-bold">{names[action]}</b>
             {inherited ? (
               inherited.includes(action) ? (
-                <span className="mode-source inherited" data-testid="mode-source">{t.inheritedFromProvider}</span>
+                <span className={sourceClass} data-testid="mode-source">{t.inheritedFromProvider}</span>
               ) : (
-                <span className="mode-source own" data-testid="mode-source">
+                <span className={cn(sourceClass, 'text-accent')} data-testid="mode-source">
                   {t.ownMode}
                   {onInherit ? (
-                    <button type="button" className="link-btn" disabled={disabled} onClick={() => onInherit(action)}>{t.backToInherited}</button>
+                    <button
+                      type="button"
+                      className="border-0 bg-transparent p-0 text-start text-inherit text-xs hover:underline"
+                      disabled={disabled}
+                      onClick={() => onInherit(action)}
+                    >
+                      {t.backToInherited}
+                    </button>
                   ) : null}
                 </span>
               )
             ) : null}
-            <div className="seg" role="radiogroup" aria-label={`${t.runTab} ${names[action]}`}>
+            <Segmented
+              fill
+              className="max-sm:col-span-full"
+              aria-label={`${t.runTab} ${names[action]}`}
+              value={mode}
+              disabled={disabled}
+              onValueChange={(next) => onChange(action, next as RunMode)}
+            >
               {choices.map((choice) => (
-                <button
-                  key={choice.key}
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === choice.key}
-                  disabled={disabled}
-                  onClick={() => mode !== choice.key && onChange(action, choice.key)}
-                >
+                <SegmentedItem key={choice.key} value={choice.key} className="px-1.5 max-sm:h-10">
                   {choice.label}
-                </button>
+                </SegmentedItem>
               ))}
-            </div>
+            </Segmented>
           </section>
         );
       })}

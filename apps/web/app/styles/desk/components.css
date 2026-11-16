@@ -1,4 +1,5 @@
-/* Shared pieces: EmptyState and load-failed, skeletons and spinner, Stat, LiveSwitch, operation cards, outage and return bars. */
+/* Shared pieces: EmptyState and load-failed, skeletons and spinner, Stat, operation cards, outage and return bars.
+   LiveSwitch is components/ui/switch.tsx (Tailwind migration T2.3). */
 .return-bar {
   display: flex;
   align-items: center;
@@ -194,43 +195,6 @@
   font-weight: 700;
 }
 .empty .empty-text { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-md); }
-.live-switch button {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
-/* On is green, off is red, everywhere (owner, 2026-11-08). The knob is the surface colour in both themes. */
-.live-switch .track {
-  position: relative;
-  width: 34px;
-  height: 20px;
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-danger);
-}
-.live-switch button[aria-checked='true'] .track { background: var(--rd-success); }
-.live-switch .track span {
-  position: absolute;
-  top: 3px;
-  inset-inline-start: 3px;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--rd-surface);
-}
-[dir='ltr'] .live-switch button[aria-checked='true'] .track span { transform: translateX(14px); }
-[dir='rtl'] .live-switch button[aria-checked='true'] .track span { transform: translateX(-14px); }
-.live-switch { display: inline-flex; align-items: center; gap: var(--rd-space-2); }
-.live-switch .track,
-.live-switch .track span { transition: background-color var(--rd-dur-fast) ease, transform var(--rd-dur-fast) ease; }
-.live-switch button:disabled { opacity: 0.45; cursor: not-allowed; }
-/* A finger needs 44px; the track stays small inside it. */
-@media (max-width: 720px) { .live-switch button { width: 44px; height: 44px; } }
-.live-switch button:focus-visible { outline: none; border-radius: var(--rd-radius-pill); box-shadow: 0 0 0 3px var(--rd-focus); }
-
 /* Line operation stops: cards fill the pane, the switch means "allowed". */
 .op-grid {
   display: grid;
@@ -264,8 +228,6 @@
 .op-card.off .op-text h3 { color: var(--rd-muted); }
 .op-text .hint { margin: 0; font-size: var(--rd-text-sm); line-height: 1.4; color: var(--rd-muted); }
 .op-text .ui-badge { justify-self: start; margin-top: var(--rd-space-0-5); }
-.op-card .live-switch { flex-direction: column; align-items: center; gap: 0; }
-.op-card .live-switch b { order: 2; font-size: var(--rd-text-xs); font-weight: 700; color: var(--rd-muted); }
 .canvas .empty:not(.empty-state),
 .pane .empty:not(.empty-state),
 .sheet .empty:not(.empty-state) { display: block; padding: var(--rd-space-3-5); }

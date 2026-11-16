@@ -196,7 +196,7 @@ export function CompanyScreen() {
               <h3>eSIM</h3>
               <fieldset className="sim-fields" disabled={!shelf.loaded || !canEdit}>
                 <div className="sim-toggle">
-                  <LiveSwitch label={t.simEsim} checked={draft.esim} disabled={!shelf.loaded || !canEdit} onChange={(next) => change({ esim: next })}>
+                  <LiveSwitch className="justify-start" label={t.simEsim} checked={draft.esim} disabled={!shelf.loaded || !canEdit} onChange={(next) => change({ esim: next })}>
                     <b>{t.simEsim}</b>
                   </LiveSwitch>
                   <span className="hint">{t.simEsimHint}</span>
