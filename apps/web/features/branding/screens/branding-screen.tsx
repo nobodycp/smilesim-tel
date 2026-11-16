@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { BrandingDrop } from '../../../components/branding-drop';
 import { BrandingPreview } from '../../../components/branding-preview';
-import { Desk } from '../../../components/desk';
+import { Desk, Pane } from '../../../components/desk';
 import { api } from '../../../lib/api';
 import { brandingImageUrl } from '../../../lib/branding-load';
 import { darkVariant, FAVICON_SIDE, fetchAsDataUrl, LOGO_SIDE, shrinkImage } from '../../../lib/branding-image';
@@ -16,6 +16,8 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { useRequireLayer } from '../../../lib/use-require-layer';
 import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 
 // Every image is a data URL or '' (none), so an untouched image is re-sent as it was stored.
 type Draft = { siteName: string; tagline: string; logo: string; logoDark: string; favicon: string };
@@ -33,6 +35,24 @@ async function loadDraft(): Promise<Fetched<Draft>> {
   ]);
   return { ok: true, data: { siteName, tagline, logo, logoDark, favicon } };
 }
+
+/*
+ * The identity page (Tailwind migration T4.10), ported from desk/branding.css, desk/pane.css, graphite.css and
+ * responsive.css in their cascade order:
+ * - the layout: the form fills the width and the live preview keeps a 360px column beside it, 12px apart, both at the
+ *   top; one column at 960px and under (the preview then stops being sticky, components/branding-preview.tsx);
+ * - the form: a column 12px apart; its foot a wrapping row 8px apart;
+ * - a pane's head: one row, 8px apart, at least 52px high, 14px / 18px padding, a hairline under it; its title an
+ *   inline row 8px apart, 14px bold ink, no margin. Its body: a column 12px apart, 14px / 18px / 18px padding, its
+ *   rows at their own height and never wider than it; in the desk it scrolls inside the pane;
+ * - the fields: the pane's captions (`Label tone="pane"`) and fields (34px on `--rd-surface`, 13px); the two names
+ *   side by side 8px apart, one column under 768px; the hint 12px muted with no margin;
+ * - the drops: as many 16rem-or-wider columns as fit, 12px apart.
+ */
+const PANE_HEAD = 'flex min-h-13 items-center justify-between gap-2 border-b border-line bg-transparent px-4.5 py-3.5';
+const PANE_TITLE = 'm-0 inline-flex items-center gap-2 text-base font-bold text-ink';
+const PANE_BODY = 'grid content-start gap-3 px-4.5 pt-3.5 pb-4.5 *:min-w-0 [.desk_&]:min-h-0 [.desk_&]:overflow-auto';
+const FIELD = 'text-md';
 
 const same = (a: Draft, b: Draft) => (Object.keys(EMPTY) as (keyof Draft)[]).every((key) => a[key] === b[key]);
 
@@ -121,39 +141,43 @@ function BrandingEditor({
   }
 
   return (
-    <div className="brand-layout">
-      <form className="brand-form" onSubmit={save} aria-busy={busy}>
-        <section className="pane">
-          <header className="pane-head"><h2>{t.brandingNames}</h2></header>
-          <div className="pane-body">
-            <div className="pair">
-              <label>
+    <div className="grid grid-cols-[minmax(0,1fr)_360px] items-start gap-3 max-[961px]:grid-cols-[1fr]">
+      <form className="grid content-start gap-3" onSubmit={save} aria-busy={busy}>
+        <Pane>
+          <header className={PANE_HEAD}><h2 className={PANE_TITLE}>{t.brandingNames}</h2></header>
+          <div className={PANE_BODY}>
+            <div className="grid grid-cols-[1fr_1fr] gap-2 max-md:grid-cols-[1fr]">
+              <Label tone="pane">
                 {t.brandingSiteName}
-                <input
+                <Input
+                  surface="surface"
+                  className={FIELD}
                   value={draft.siteName}
                   maxLength={120}
                   placeholder={t.brand}
                   onChange={(event) => set({ siteName: event.target.value })}
                 />
-              </label>
-              <label>
+              </Label>
+              <Label tone="pane">
                 {t.brandingTagline}
-                <input
+                <Input
+                  surface="surface"
+                  className={FIELD}
                   value={draft.tagline}
                   maxLength={160}
                   placeholder={t.brandSub}
                   onChange={(event) => set({ tagline: event.target.value })}
                 />
-              </label>
+              </Label>
             </div>
           </div>
-        </section>
+        </Pane>
 
-        <section className="pane">
-          <header className="pane-head"><h2>{t.brandingImages}</h2></header>
-          <div className="pane-body">
-            <p className="hint">{t.brandingImagesHint}</p>
-            <div className="brand-drops">
+        <Pane>
+          <header className={PANE_HEAD}><h2 className={PANE_TITLE}>{t.brandingImages}</h2></header>
+          <div className={PANE_BODY}>
+            <p className="m-0 text-sm text-muted">{t.brandingImagesHint}</p>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-3">
               <BrandingDrop
                 id="brand-logo"
                 title={t.brandingLogo}
@@ -172,9 +196,9 @@ function BrandingEditor({
               />
             </div>
           </div>
-        </section>
+        </Pane>
 
-        <div className="brand-foot">
+        <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={!dirty || busy}>{t.saveChanges}</Button>
           <Button type="button" variant="secondary" disabled={!dirty || busy} onClick={() => setDraft(saved)}>
             {t.discardChanges}

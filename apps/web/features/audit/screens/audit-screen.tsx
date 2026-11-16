@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
-import { Desk, actionName, latinWhen, layerName } from '../../../components/desk';
+import { Desk, Pane, actionName, latinWhen, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
 import { Badge } from '../../../components/ui/badge';
@@ -16,6 +16,7 @@ import { pageRows, usePaged } from '../../../lib/use-paged';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
+import { LayerTag } from '../../accounts/layer-tag';
 
 // Every action the API logs (apps/api `ACTIVITY_ACTIONS`), in the order the menu shows them: sign-in, accounts,
 // money, numbers, tasks, catalog, providers. `check:copy` fails when the two lists differ.
@@ -32,6 +33,15 @@ const ACTIONS = [
 ] as const;
 
 const LAYERS = ['branch', 'main_agent', 'agent', 'pos'] as const;
+
+/*
+ * The log's cells (Tailwind migration T4.10): the actor's name and layer tag in one inline row 8px apart (graphite.css
+ * `.who-cell`; the tag is `LayerTag`, the legacy `.layer-tag`); a task link in the text's colour, 700, not underlined
+ * (desk/table.css `.row-link`); a failure's reason under its badge, a block 11.5px muted 400 at 1.3 (graphite.css
+ * `[data-slot='table'] .sub`).
+ */
+const ROW_LINK = 'font-bold text-inherit no-underline';
+const CELL_SUB = 'block text-[11.5px] leading-[1.3] font-normal text-muted';
 
 export function AuditScreen() {
   const { t } = usePrefs();
@@ -56,9 +66,9 @@ export function AuditScreen() {
       key: 'account',
       header: t.auditWho,
       render: (row) => (
-        <span className="who-cell">
+        <span className="inline-flex items-center gap-2">
           <AccountName login={row.actorLoginName} />
-          {row.actorLayer ? <span className={`layer-tag l-${row.actorLayer}`}>{layerName(t, row.actorLayer)}</span> : null}
+          {row.actorLayer ? <LayerTag layer={row.actorLayer} /> : null}
         </span>
       ),
     },
@@ -68,7 +78,7 @@ export function AuditScreen() {
       header: t.auditOn,
       render: (row) => {
         if (!row.subjectRef) return '—';
-        if (row.subjectKind === 'task') return <Link className="row-link" href={`/tasks/${row.subjectRef}`}>{t.openTask}</Link>;
+        if (row.subjectKind === 'task') return <Link className={ROW_LINK} href={`/tasks/${row.subjectRef}`}>{t.openTask}</Link>;
         return <bdi dir="ltr">{row.subjectRef}</bdi>;
       },
     },
@@ -78,11 +88,11 @@ export function AuditScreen() {
       render: (row) => (
         <>
           <Badge variant={row.result === 'fail' ? 'danger' : 'success'} dot>{row.result === 'fail' ? t.activityFailure : t.activitySuccess}</Badge>
-          {row.result === 'fail' && row.reason ? <span className="sub">{errors[row.reason] ?? row.reason}</span> : null}
+          {row.result === 'fail' && row.reason ? <span className={CELL_SUB}>{errors[row.reason] ?? row.reason}</span> : null}
         </>
       ),
     },
-    { key: 'ip', header: t.auditAddress, render: (row) => (row.ip ? <bdi dir="ltr" className="muted">{row.ip.replace(/^::ffff:/, '')}</bdi> : '—') },
+    { key: 'ip', header: t.auditAddress, render: (row) => (row.ip ? <bdi dir="ltr">{row.ip.replace(/^::ffff:/, '')}</bdi> : '—') },
   ];
 
   function clear() {
@@ -132,12 +142,12 @@ export function AuditScreen() {
       </ReportFilters>
       <StatRow>
         <Stat label={t.auditEvents} value={list.total ?? '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
-        <Stat tone="danger" label={t.failedLogins} value={failed.data ? <span className={failed.data.total ? 'tone-danger' : undefined}>{failed.data.total}</span> : '—'} meta={failed.data?.addresses !== undefined ? (failed.data.addresses === 1 ? t.fromOneAddressMeta : t.fromAddressesMeta.replace('{n}', String(failed.data.addresses))) : t.lastDaysMeta.replace('{n}', String(days))} />
+        <Stat tone="danger" label={t.failedLogins} value={failed.data ? <span className={failed.data.total ? 'text-danger' : undefined}>{failed.data.total}</span> : '—'} meta={failed.data?.addresses !== undefined ? (failed.data.addresses === 1 ? t.fromOneAddressMeta : t.fromAddressesMeta.replace('{n}', String(failed.data.addresses))) : t.lastDaysMeta.replace('{n}', String(days))} />
         <Stat label={t.priceEdits} value={prices.data ? prices.data.total : '—'} meta={t.lastDaysMeta.replace('{n}', String(days))} />
       </StatRow>
-      <section className="pane" data-testid="audit-pane">
+      <Pane data-testid="audit-pane">
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noMovements} keepHead skeleton={{ rows: 6, columns: 6 }} />
-      </section>
+      </Pane>
     </Desk>
   );
 }
