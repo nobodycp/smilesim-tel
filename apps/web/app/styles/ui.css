@@ -1,10 +1,10 @@
 /*
- * The primitives in components/ui (Badge, Select, Pagination), in plain CSS on --rd-* tokens (ADR 0003); Button is on
- * Tailwind since migration T2.1 (components/ui/button-variants.ts).
+ * The primitives in components/ui (Badge, Pagination), in plain CSS on --rd-* tokens (ADR 0003); Button is on
+ * Tailwind since migration T2.1 (components/ui/button-variants.ts), Select since T2.4 (components/ui/select.tsx).
  * Phase 5.4a moved them off Tailwind with the declarations Tailwind generated: one class per rule (specificity 0,1,0,
- * states 0,2,0), this file last in globals.css where @tailwind sat. Deliberate changes since: badge and invalid-Select
- * rings drawn in their own colour (5.4a; Tailwind never generated `ring-[var(--x)]/15`), and in 5.4b-4a no browser
- * default border on a button, the danger button as an outline, and the chevron's room kept in every select context.
+ * states 0,2,0), this file last in globals.css where @tailwind sat. Deliberate changes since: badge rings drawn in
+ * their own colour (5.4a; Tailwind never generated `ring-[var(--x)]/15`), and in 5.4b-4a no browser default border on
+ * a button and the danger button as an outline.
  * `.sr-only` lives in desk/frame.css.
  */
 
@@ -35,54 +35,6 @@ form > [data-slot='button'],
 .ui-badge-info { background-color: var(--info-bg); color: var(--info); --ui-badge-ring: color-mix(in srgb, var(--info) 15%, transparent); }
 .ui-badge-violet { background-color: var(--violet-bg); color: var(--violet); --ui-badge-ring: color-mix(in srgb, var(--violet) 15%, transparent); }
 .ui-badge-dot { height: 0.375rem; width: 0.375rem; flex-shrink: 0; border-radius: var(--rd-radius-pill); background-color: currentColor; }
-
-/* Select */
-.ui-select { position: relative; }
-.ui-select-field {
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  border-radius: var(--rd-radius-sm);
-  border-width: 1px;
-  border-color: var(--rd-line);
-  background-color: var(--rd-surface);
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
-  padding-inline-end: 2.25rem;
-  color: var(--rd-ink);
-  box-shadow: var(--rd-shadow-sm);
-  transition-property: box-shadow;
-  transition-timing-function: var(--rd-ease-standard);
-  transition-duration: var(--rd-dur-fast);
-  --ui-select-ring: var(--rd-focus);
-}
-.ui-select-field:focus {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-  border-color: var(--rd-primary-bg);
-  box-shadow: 0 0 0 2px var(--ui-select-ring), var(--rd-shadow-sm);
-}
-.ui-select-field:disabled { cursor: not-allowed; background-color: var(--rd-surface-2); opacity: 0.6; }
-.ui-select-invalid { border-color: var(--rd-danger); --ui-select-ring: color-mix(in srgb, var(--rd-danger) 25%, transparent); }
-.ui-select-invalid:focus { border-color: var(--rd-danger); }
-.ui-select-regular { height: 2.25rem; font-size: 0.875rem; line-height: 1.25rem; }
-.ui-select-compact { height: 1.75rem; font-size: var(--rd-text-sm); }
-/* Keep the chevron's room wherever a context rule (.pane select, .desk .filter-panel select, .dialog select) resets the padding. */
-.ui-select > select.ui-select-field { padding-inline-end: 2.25rem; }
-/* In a table cell the field follows the cell's alignment (centred in .data), as a bare <select> did. */
-.data td .ui-select { display: inline-block; vertical-align: middle; }
-.ui-select-chevron {
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  inset-inline-end: 0.75rem;
-  margin-top: auto;
-  margin-bottom: auto;
-  height: 1rem;
-  width: 1rem;
-  color: var(--rd-faint);
-}
 
 /* Pagination */
 .ui-pager {

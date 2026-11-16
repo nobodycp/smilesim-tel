@@ -133,3 +133,20 @@ export async function expectNames(field: Locator, names: string[]) {
   await expect(field.page().getByRole('listbox').getByRole('option')).toHaveText(names);
   await field.press('Escape');
 }
+
+/**
+ * Select (components/ui/select.tsx, Radix since Tailwind migration T2.4): open its list and pick the option whose
+ * value is `value`, as a person would (the field is a combobox button, not a native `<select>`, so Playwright's
+ * `selectOption` does not apply). The option's `data-value` is the caller's value, so the step does not depend on the
+ * option's words.
+ */
+export async function chooseOption(field: Locator, value: string) {
+  await field.click();
+  await field.page().getByRole('listbox').locator(`[role="option"][data-value="${value}"]`).click();
+  await expect(field.page().getByRole('listbox')).toHaveCount(0);
+}
+
+/** The value a Select holds (its trigger's `data-value`; `''` is «الكل»). */
+export async function expectChosen(field: Locator, value: string) {
+  await expect(field).toHaveAttribute('data-value', value);
+}

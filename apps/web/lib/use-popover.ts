@@ -8,17 +8,16 @@ export type PopoverOptions = {
    * Home and End move it between the items (the WAI-ARIA menu button pattern).
    */
   menu?: boolean;
-  /** Leave the first-item focus to the caller, for a panel that is still hidden when it mounts (RowMenu). */
-  deferFocus?: boolean;
 };
 
 /**
- * One open/close engine for every popup next to a button: the row menu, the topbar menus, the wallet pop and the
- * language menu. While open, a press outside `root` and `panel` closes it, and Escape closes it and gives the focus
- * back to `trigger`. `panel` is only needed when the panel is portalled out of `root` (RowMenu); otherwise the
- * panel is looked up inside `root`.
+ * One open/close engine for the popups next to a button that are not on Radix yet: the topbar menus, the wallet pop,
+ * the language menu and the date field (the row menu is components/ui/dropdown-menu.tsx since Tailwind migration
+ * T2.4). While open, a press outside `root` and `panel` closes it, and Escape closes it and gives the focus back to
+ * `trigger`. `panel` is only needed when the panel is not inside `root`; otherwise the panel is looked up inside
+ * `root`.
  */
-export function usePopover({ menu = false, deferFocus = false }: PopoverOptions = {}) {
+export function usePopover({ menu = false }: PopoverOptions = {}) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -55,12 +54,12 @@ export function usePopover({ menu = false, deferFocus = false }: PopoverOptions 
     };
     document.addEventListener('mousedown', onPointer);
     document.addEventListener('keydown', onKey);
-    if (menu && !deferFocus) items()[0]?.focus();
+    if (menu) items()[0]?.focus();
     return () => {
       document.removeEventListener('mousedown', onPointer);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open, menu, deferFocus]);
+  }, [open, menu]);
 
   return { open, setOpen, close, toggle, root, panel, trigger };
 }

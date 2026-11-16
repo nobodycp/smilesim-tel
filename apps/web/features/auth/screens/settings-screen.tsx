@@ -12,7 +12,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { Alert } from '../../../components/alert';
 import { useToasts } from '../../../components/toast';
 import { Badge } from '../../../components/ui/badge';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { Button } from '../../../components/ui/button';
 import { PasskeysPane, TwoFactorPane, useSignInMethods } from '../sign-in-methods';
 
@@ -154,10 +154,10 @@ export function SettingsScreen() {
               <div className="pair">
                 <label>
                   {t.city}
-                  <Select value={city} onChange={(e) => setCity(e.target.value)} autoComplete="address-level2">
-                    <option value="">{t.cityNone}</option>
+                  <Select place="pane" value={city} onValueChange={setCity} autoComplete="address-level2">
+                    <SelectItem value="">{t.cityNone}</SelectItem>
                     {cities.map((row) => (
-                      <option key={row.key} value={row.key}>{row[locale]}</option>
+                      <SelectItem key={row.key} value={row.key}>{row[locale]}</SelectItem>
                     ))}
                   </Select>
                 </label>

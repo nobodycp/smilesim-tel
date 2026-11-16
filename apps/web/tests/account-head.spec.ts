@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveApi } from './desk';
+import { chooseOption, serveApi } from './desk';
 
 const listed = {
   loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', roleName: '', parentLoginName: 'admin', balance: -5000, ceiling: 20000, frozen: false,
@@ -67,7 +67,7 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   await wallet.click();
   await page.getByRole('menuitem', { name: 'خصم' }).click();
   const back = page.getByRole('dialog');
-  await back.getByLabel('السبب').selectOption('correction');
+  await chooseOption(back.getByLabel('السبب'), 'correction');
   await back.getByLabel('المبلغ').fill('10');
   await back.getByLabel('ملاحظة').fill('شحنة مكررة');
   const sent = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/v1/wallets/pos1/deduct'));

@@ -8,7 +8,7 @@ import { Dialog } from '../../components/dialog';
 import { Stat, StatRow } from '../../components/stat';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Select } from '../../components/ui/select';
+import { Select, SelectItem } from '../../components/ui/select';
 import { api, type ReconItem, type StatementMap, type StatementPreview } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 import { useAction } from '../../lib/use-action';
@@ -101,9 +101,9 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
   const column = (label: string, key: keyof StatementMap, optional = false) => (
     <label>
       {label}
-      <Select value={map[key] == null ? '' : String(map[key])} onChange={(event) => setMap((current) => ({ ...current, [key]: event.target.value === '' ? (optional ? null : undefined) : Number(event.target.value) }))}>
-        <option value="">{optional ? t.none : '—'}</option>
-        {loaded?.preview.columns.map((name, index) => <option key={`${index}-${name}`} value={index}>{name}</option>)}
+      <Select place="pane" value={map[key] == null ? '' : String(map[key])} onValueChange={(next) => setMap((current) => ({ ...current, [key]: next === '' ? (optional ? null : undefined) : Number(next) }))}>
+        <SelectItem value="">{optional ? t.none : '—'}</SelectItem>
+        {loaded?.preview.columns.map((name, index) => <SelectItem key={`${index}-${name}`} value={String(index)}>{name}</SelectItem>)}
       </Select>
     </label>
   );
@@ -151,8 +151,8 @@ export function Reconciliation({ code, canWrite, setError, setNote }: { code: st
       {runs.data && runs.data.runs.length > 1 ? (
         <label className="recon-pick">
           {t.reconEarlier}
-          <Select value={chosen} onChange={(event) => setRunId(event.target.value)}>
-            {runs.data.runs.map((item) => <option key={item.id} value={item.id}>{`${latinWhen(item.at)} · ${item.fileName} · ${item.open} ${t.orderOpen}`}</option>)}
+          <Select place="desk" value={chosen} onValueChange={setRunId}>
+            {runs.data.runs.map((item) => <SelectItem key={item.id} value={item.id}>{`${latinWhen(item.at)} · ${item.fileName} · ${item.open} ${t.orderOpen}`}</SelectItem>)}
           </Select>
         </label>
       ) : null}

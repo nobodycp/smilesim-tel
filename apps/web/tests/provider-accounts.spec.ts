@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveApi } from './desk';
+import { chooseOption, serveApi } from './desk';
 
 const sky = { code: 'sky', name: 'سكاي', purchases: 6500, payments: 20000, settlements: -500, balance: 13000, creditLimit: 50000, held: 3500, available: 59500 };
 const lian = { code: 'lian', name: 'ليان', purchases: 2000, payments: 0, settlements: 0, balance: -2000, creditLimit: 0, held: 0, available: -2000 };
@@ -32,7 +32,7 @@ test('the branch reads its provider accounts, opens one, and records a payment a
   expect((await payment).postDataJSON()).toEqual({ kind: 'payment', amount: 10000, note: 'دفعة نوفمبر' });
 
   await page.getByRole('button', { name: 'تسجيل دفعة' }).click();
-  await dialog.getByLabel('النوع').selectOption('settlement');
+  await chooseOption(dialog.getByLabel('النوع'), 'settlement');
   await dialog.getByLabel('المبلغ').fill('-5');
   await dialog.getByLabel('ملاحظة').fill('فرق');
   const settlement = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/provider-accounts/sky/entries'));

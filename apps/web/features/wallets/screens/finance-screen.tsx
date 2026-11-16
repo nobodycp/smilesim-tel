@@ -15,7 +15,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
 import { Badge } from '../../../components/ui/badge';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { Dialog } from '../../../components/dialog';
 import { useDesk } from '../../../lib/desk-session';
 import { CsvLink } from '../../reports/report-kit';
@@ -152,27 +152,27 @@ export function FinanceScreen() {
       <FilterBar loose onClear={() => { setKind(''); setLayer(''); setQ(''); setFrom(''); setTo(''); setScope(''); }} clearLabel={t.clearFilters}>
         <label>
           {t.financeScope}
-          <Select value={scope} onChange={(event) => setScope(event.target.value)}>
-            <option value="">{t.financeScopeAll}</option>
-            <option value="money">{t.financeScopeMoney}</option>
-            <option value="operations">{t.financeScopeOperations}</option>
+          <Select value={scope} onValueChange={setScope}>
+            <SelectItem value="">{t.financeScopeAll}</SelectItem>
+            <SelectItem value="money">{t.financeScopeMoney}</SelectItem>
+            <SelectItem value="operations">{t.financeScopeOperations}</SelectItem>
           </Select>
         </label>
         <label>
           {t.kind}
-          <Select value={kind} onChange={(event) => setKind(event.target.value)}>
-            <option value="">{t.allRows}</option>
+          <Select value={kind} onValueChange={setKind}>
+            <SelectItem value="">{t.allRows}</SelectItem>
             {KINDS.map((value) => (
-              <option key={value} value={value}>{movementName(t, value)}</option>
+              <SelectItem key={value} value={value}>{movementName(t, value)}</SelectItem>
             ))}
           </Select>
         </label>
         <label>
           {t.layer}
-          <Select value={layer} onChange={(event) => setLayer(event.target.value)}>
-            <option value="">{t.allRows}</option>
+          <Select value={layer} onValueChange={setLayer}>
+            <SelectItem value="">{t.allRows}</SelectItem>
             {LAYERS.map((value) => (
-              <option key={value} value={value}>{layerName(t, value)}</option>
+              <SelectItem key={value} value={value}>{layerName(t, value)}</SelectItem>
             ))}
           </Select>
         </label>

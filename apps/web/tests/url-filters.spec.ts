@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveApi } from './desk';
+import { chooseOption, expectChosen, serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 
@@ -16,16 +16,16 @@ test('numbers read their filters from the address, write them back, and follow b
   });
   await page.goto(`${admin}/numbers?status=frozen`);
   const status = page.getByLabel('الحالة');
-  await expect(status).toHaveValue('frozen');
+  await expectChosen(status, 'frozen');
   await expect.poll(() => asked.at(-1)).toBe('frozen');
-  await status.selectOption('active');
+  await chooseOption(status, 'active');
   await expect(page).toHaveURL(/status=active/);
   await expect.poll(() => asked.at(-1)).toBe('active');
   // A status the list does not know is ignored, not sent.
   await page.goto(`${admin}/numbers?status=bogus`);
-  await expect(status).toHaveValue('');
+  await expectChosen(status, '');
   await page.goBack();
-  await expect(status).toHaveValue('active');
+  await expectChosen(status, 'active');
 });
 
 // The shell search sends `/users?q=` even from /users; the page follows the address it is on.

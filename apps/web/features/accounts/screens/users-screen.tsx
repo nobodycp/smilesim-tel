@@ -11,7 +11,7 @@ import { FilterBar } from '../../../components/filter-bar';
 import { RowMenu } from '../../../components/row-menu';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -133,7 +133,7 @@ export function UsersScreen() {
         const who = accountLabel(row.loginName, row.nickname);
         return (
           <span className="row-menus">
-            <RowMenu label={`${t.walletActions} ${who}`} items={wallet} trigger={{ className: 'row-menu-btn', content: <Wallet size={16} aria-hidden="true" />, iconOnly: true }} />
+            <RowMenu label={`${t.walletActions} ${who}`} items={wallet} trigger={{ content: <Wallet size={16} aria-hidden="true" />, iconOnly: true }} />
             <RowMenu label={`${t.rowActions} ${who}`} items={more} />
           </span>
         );
@@ -163,10 +163,10 @@ export function UsersScreen() {
         </label>
         <label>
           {t.layer}
-          <Select value={layerFilter} onChange={(event) => setFilters({ layer: event.target.value })}>
-            <option value="">{t.allRows}</option>
+          <Select value={layerFilter} onValueChange={(next) => setFilters({ layer: next })}>
+            <SelectItem value="">{t.allRows}</SelectItem>
             {layerOrder.map((value) => (
-              <option key={value} value={value}>{layerName(t, value)}</option>
+              <SelectItem key={value} value={value}>{layerName(t, value)}</SelectItem>
             ))}
           </Select>
         </label>
@@ -205,18 +205,18 @@ export function UsersScreen() {
             </label>
             <label>
               {t.layer}
-              <Select value={draft.layer || creatable[0]} onChange={(event) => setDraft((current) => ({ ...current, layer: event.target.value, parentLoginName: '' }))}>
+              <Select place="dialog" value={draft.layer || creatable[0]} onValueChange={(next) => setDraft((current) => ({ ...current, layer: next, parentLoginName: '' }))}>
                 {creatable.map((value) => (
-                  <option key={value} value={value}>{layerName(t, value)}</option>
+                  <SelectItem key={value} value={value}>{layerName(t, value)}</SelectItem>
                 ))}
               </Select>
             </label>
             {(draft.layer || creatable[0]) === 'staff' && (
               <label>
                 {t.role}
-                <Select value={draft.roleId} onChange={(event) => setDraft((current) => ({ ...current, roleId: event.target.value }))}>
-                  <option value="">—</option>
-                  {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                <Select place="dialog" value={draft.roleId} onValueChange={(next) => setDraft((current) => ({ ...current, roleId: next }))}>
+                  <SelectItem value="">—</SelectItem>
+                  {roles.map((role) => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
                 </Select>
               </label>
             )}

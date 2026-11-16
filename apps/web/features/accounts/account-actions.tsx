@@ -7,7 +7,7 @@ import { Dialog } from '../../components/dialog';
 import type { RowAction } from '../../components/row-menu';
 import { TransferDialog } from '../../components/transfer-dialog';
 import { Button } from '../../components/ui/button';
-import { Select } from '../../components/ui/select';
+import { Select, SelectItem } from '../../components/ui/select';
 import { api, type UserRow } from '../../lib/api';
 import { everyAccount } from '../../lib/directory';
 import { parseShekel, shekelField } from '../../lib/money';
@@ -200,16 +200,16 @@ export function useAccountActions({
                 <label>
                   {t.reason}
                   {op.kind === 'fund' ? (
-                    <Select value={fundReason} onChange={(event) => setFundReason(event.target.value as FundReason)}>
-                      <option value="deposit">{t.reasonDeposit}</option>
-                      <option value="correction">{t.reasonCorrection}</option>
-                      <option value="settlement">{t.reasonSettlement}</option>
+                    <Select place="dialog" value={fundReason} onValueChange={(next) => setFundReason(next as FundReason)}>
+                      <SelectItem value="deposit">{t.reasonDeposit}</SelectItem>
+                      <SelectItem value="correction">{t.reasonCorrection}</SelectItem>
+                      <SelectItem value="settlement">{t.reasonSettlement}</SelectItem>
                     </Select>
                   ) : (
-                    <Select value={deductReason} onChange={(event) => setDeductReason(event.target.value as DeductReason)}>
-                      <option value="return">{t.reasonReturn}</option>
-                      <option value="correction">{t.reasonCorrection}</option>
-                      <option value="settlement">{t.reasonSettlement}</option>
+                    <Select place="dialog" value={deductReason} onValueChange={(next) => setDeductReason(next as DeductReason)}>
+                      <SelectItem value="return">{t.reasonReturn}</SelectItem>
+                      <SelectItem value="correction">{t.reasonCorrection}</SelectItem>
+                      <SelectItem value="settlement">{t.reasonSettlement}</SelectItem>
                     </Select>
                   )}
                 </label>

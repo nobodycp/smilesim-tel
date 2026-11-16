@@ -8,7 +8,7 @@ import { Desk, latinWhen } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { Tabs } from '../../../components/tabs';
 import { Button } from '../../../components/ui/button';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { api, type NoticeRow } from '../../../lib/api';
 import { noticeAge, noticeDetail, noticeGroup, noticeTitle } from '../../../lib/notice-text';
 import { usePrefs } from '../../../lib/prefs';
@@ -110,12 +110,12 @@ export function NoticesScreen() {
         <FilterBar loose onClear={() => setGroup('')} clearLabel={t.clearFilters}>
           <label>
             {t.noticeGroup}
-            <Select value={group} onChange={(event) => setGroup(event.target.value)}>
-              <option value="">{t.allRows}</option>
+            <Select value={group} onValueChange={setGroup}>
+              <SelectItem value="">{t.allRows}</SelectItem>
               {GROUPS.map((code) => (
-                <option key={code} value={code}>
+                <SelectItem key={code} value={code}>
                   {groupLabel(code)}
-                </option>
+                </SelectItem>
               ))}
             </Select>
           </label>

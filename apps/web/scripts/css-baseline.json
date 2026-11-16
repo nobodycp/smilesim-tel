@@ -1,19 +1,19 @@
 {
   "note": "Written by `node scripts/check-css.mjs --write-baseline`. A count may only go down; the script refuses a rise.",
   "counts": {
-    "a-duplicate": 236,
+    "a-duplicate": 223,
     "b-undefined-token": 0,
     "c-fallback-on-defined-token": 0,
     "d-raw-colour": 1,
     "e-outline-removed": 3,
-    "f-font-size-half-px-or-rem": 69,
+    "f-font-size-half-px-or-rem": 68,
     "g-font-weight-800-900": 20,
     "h-media-width": 33,
-    "i-physical-property": 73,
-    "j-literal-line-height": 44,
-    "k-literal-spacing-radius": 338,
-    "l-disabled-opacity": 13,
-    "m-legacy-declarations": 6366
+    "i-physical-property": 69,
+    "j-literal-line-height": 41,
+    "k-literal-spacing-radius": 328,
+    "l-disabled-opacity": 12,
+    "m-legacy-declarations": 6187
   },
   "declarations": {
     "auth.css": 307,
@@ -31,13 +31,13 @@
     "desk/table.css": 127,
     "desk/tasks.css": 180,
     "desk/users.css": 232,
-    "dialog.css": 277,
+    "dialog.css": 198,
     "doors.css": 29,
     "forms.css": 47,
-    "graphite.css": 2120,
+    "graphite.css": 2065,
     "responsive.css": 36,
     "shell.css": 782,
-    "ui.css": 131
+    "ui.css": 86
   },
   "hits": {
     "a-duplicate": [
@@ -107,9 +107,6 @@
       "graphite.css |  | .filter-panel | display | also in desk/filters.css",
       "graphite.css |  | .filter-panel | flex-wrap | also in desk/filters.css",
       "graphite.css |  | .filter-panel | gap | also in desk/filters.css",
-      "graphite.css |  | .filter-panel>label .ui-select-field | max-width | also in graphite.css",
-      "graphite.css |  | .filter-panel>label .ui-select-field | min-width | also in graphite.css",
-      "graphite.css |  | .filter-panel>label .ui-select-field | min-width | also in graphite.css",
       "graphite.css |  | .filter-panel>label input:not([type=\"date\"]):not([type=\"checkbox\"]) | width | also in graphite.css",
       "graphite.css |  | .filters | border-radius | also in desk/filters.css",
       "graphite.css |  | .line-head | padding | also in desk/numbers.css",
@@ -145,10 +142,6 @@
       "graphite.css |  | .pane-head | padding | also in desk/pane.css",
       "graphite.css |  | .price-board | gap | also in desk/packages.css",
       "graphite.css |  | .price-board | grid-template-columns | also in desk/packages.css",
-      "graphite.css |  | .row-menu.boxed .row-menu-btn | background | also in dialog.css",
-      "graphite.css |  | .row-menu.boxed .row-menu-btn | border | also in dialog.css",
-      "graphite.css |  | .row-menu.boxed .row-menu-btn | color | also in dialog.css",
-      "graphite.css |  | .row-menu.boxed .row-menu-btn:hover | background | also in dialog.css",
       "graphite.css |  | .seg button | border-radius | also in desk/pane.css",
       "graphite.css |  | .seg button | height | also in desk/pane.css",
       "graphite.css |  | .seg button[aria-pressed=\"true\"] | background | also in desk/pane.css",
@@ -215,7 +208,6 @@
       "graphite.css |  | .wallet-chart-figures | gap | also in desk/components.css",
       "graphite.css |  | .wallet-chart-figures | margin | also in desk/components.css",
       "graphite.css | @media (max-width:720px) | .price-board | grid-template-columns | also in desk/packages.css",
-      "graphite.css | @media (max-width:767px) | .filter-bar.drawer-open .filter-panel>label .ui-select | flex | also in graphite.css",
       "responsive.css | @media (max-width:767px) | .field-row>label | max-width | also in graphite.css",
       "responsive.css | @media (max-width:899px) | .shell-path | border-block-start | also in graphite.css",
       "responsive.css | @media (max-width:899px) | .shell-path | flex | also in graphite.css",
@@ -271,12 +263,7 @@
       "ui.css |  | .ui-pager-page | font-weight | also in graphite.css",
       "ui.css |  | .ui-pager-page | height | also in graphite.css",
       "ui.css |  | .ui-pager-page | min-width | also in graphite.css",
-      "ui.css |  | .ui-pager-page[aria-current=\"page\"] | color | also in graphite.css",
-      "ui.css |  | .ui-select-field | background-color | also in graphite.css",
-      "ui.css |  | .ui-select-field | border-color | also in graphite.css",
-      "ui.css |  | .ui-select-field:focus | border-color | also in graphite.css",
-      "ui.css |  | .ui-select-field:focus | box-shadow | also in graphite.css",
-      "ui.css |  | .ui-select-field:focus | outline | also in graphite.css"
+      "ui.css |  | .ui-pager-page[aria-current=\"page\"] | color | also in graphite.css"
     ],
     "b-undefined-token": [],
     "c-fallback-on-defined-token": [],
@@ -356,8 +343,7 @@
       "shell.css |  | .side-flyout.is-menu b | font-size | 11.5px",
       "ui.css |  | .ui-badge | font-size | 11.5px",
       "ui.css |  | .ui-pager-page | font-size | 12.5px",
-      "ui.css |  | .ui-pager-size-label | font-size | 11.5px",
-      "ui.css |  | .ui-select-regular | font-size | 0.875rem"
+      "ui.css |  | .ui-pager-size-label | font-size | 11.5px"
     ],
     "g-font-weight-800-900": [
       "auth.css |  | .login-field>label | font-weight | 800",
@@ -485,11 +471,7 @@
       "ui.css |  | .ui-pager-gap | padding-left | 0.25rem",
       "ui.css |  | .ui-pager-gap | padding-right | 0.25rem",
       "ui.css |  | .ui-pager-page | padding-left | 0.5rem",
-      "ui.css |  | .ui-pager-page | padding-right | 0.5rem",
-      "ui.css |  | .ui-select-chevron | margin-bottom | auto",
-      "ui.css |  | .ui-select-chevron | margin-top | auto",
-      "ui.css |  | .ui-select-field | padding-left | 0.75rem",
-      "ui.css |  | .ui-select-field | padding-right | 0.75rem"
+      "ui.css |  | .ui-pager-page | padding-right | 0.5rem"
     ],
     "j-literal-line-height": [
       "auth.css |  | .login-lockup strong | line-height | 1.2",
@@ -513,8 +495,6 @@
       "desk/tasks.css |  | .task-tree-system-line | line-height | 1.5",
       "desk/users.css |  | .fact-card dd | line-height | 1.25",
       "dialog.css |  | .dialog-lede | line-height | 1.45",
-      "dialog.css |  | .row-menu-panel button | line-height | 1.25",
-      "dialog.css |  | .row-menu-panel | line-height | 1.25",
       "forms.css |  | h1 | line-height | 1.25",
       "graphite.css |  | .data .sub,.pack-cell .sub | line-height | 1.3",
       "graphite.css |  | .filter-panel>label,.filter-panel>label:has(input[type=\"date\"]) | line-height | 30px",
@@ -534,8 +514,7 @@
       "shell.css |  | .brand-copy p | line-height | 1.35",
       "shell.css |  | .notice-count | line-height | 1.05rem",
       "shell.css |  | .shell-search-field kbd | line-height | 1.2",
-      "shell.css |  | .user-copy | line-height | 1.15",
-      "ui.css |  | .ui-select-regular | line-height | 1.25rem"
+      "shell.css |  | .user-copy | line-height | 1.15"
     ],
     "k-literal-spacing-radius": [
       "auth.css |  | .auth | padding | 72px var(--rd-space-4) 32px",
@@ -590,8 +569,6 @@
       "desk/users.css |  | .grant-row .seg button | padding-inline | 8px",
       "desk/users.css |  | .role-chip | padding-inline | 14px",
       "dialog.css |  | .choice-set legend | margin-inline-start | -6px",
-      "dialog.css |  | .row-menu-panel button svg | padding | 6px",
-      "dialog.css |  | .row-menu-panel | gap | 2px",
       "dialog.css |  | .toast | padding-block | 11px",
       "dialog.css |  | .toast | padding-inline | 14px 8px",
       "doors.css |  | .door-card | padding | 18px var(--rd-space-4)",
@@ -644,10 +621,6 @@
       "graphite.css |  | .filter-panel>label:has(.chip-x) select | padding-inline-end | 10px",
       "graphite.css |  | .filter-panel>label:has(input[type=\"checkbox\"]) | gap | 8px",
       "graphite.css |  | .filter-panel>label:has(input[type=\"checkbox\"]) | padding-inline | 12px",
-      "graphite.css |  | .filter-pop button | gap | 8px",
-      "graphite.css |  | .filter-pop button | padding | 6px 10px",
-      "graphite.css |  | .filter-pop | gap | 1px",
-      "graphite.css |  | .filter-pop | padding | 4px",
       "graphite.css |  | .gauth form | gap | 14px",
       "graphite.css |  | .gauth-art h2 | margin | 0 0 8px",
       "graphite.css |  | .gauth-art | padding | 44px",
@@ -871,11 +844,7 @@
       "ui.css |  | .ui-pager-nav,.ui-pager-pages | gap | 0.25rem",
       "ui.css |  | .ui-pager-page | padding-left | 0.5rem",
       "ui.css |  | .ui-pager-page | padding-right | 0.5rem",
-      "ui.css |  | .ui-pager-size | gap | 0.375rem",
-      "ui.css |  | .ui-select-field | padding-inline-end | 2.25rem",
-      "ui.css |  | .ui-select-field | padding-left | 0.75rem",
-      "ui.css |  | .ui-select-field | padding-right | 0.75rem",
-      "ui.css |  | .ui-select>select.ui-select-field | padding-inline-end | 2.25rem"
+      "ui.css |  | .ui-pager-size | gap | 0.375rem"
     ],
     "l-disabled-opacity": [
       "auth.css |  | .login-room form>button.login-go:disabled | opacity | 0.72",
@@ -889,8 +858,7 @@
       "graphite.css |  | .gauth-go:disabled | opacity | 0.5",
       "graphite.css |  | .gauth-passkey:disabled | opacity | 0.5",
       "graphite.css |  | .line-op:disabled | opacity | 0.45",
-      "graphite.css |  | .pick-card:disabled | opacity | 0.55",
-      "ui.css |  | .ui-select-field:disabled | opacity | 0.6"
+      "graphite.css |  | .pick-card:disabled | opacity | 0.55"
     ]
   }
 }

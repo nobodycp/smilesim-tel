@@ -11,7 +11,7 @@ import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
 import { Button } from '../../../components/ui/button';
 import { CsvLink } from '../../reports/report-kit';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { api, type ProviderLedgerRow } from '../../../lib/api';
 import { useCrumbs } from '../../../lib/crumbs';
 import { parseShekel, shekelField } from '../../../lib/money';
@@ -176,9 +176,9 @@ export function ProviderAccountScreen() {
             <>
               <label>
                 {t.kind}
-                <Select value={kind} onChange={(event) => setKind(event.target.value as 'payment' | 'settlement')}>
-                  <option value="payment">{t.providerPayment}</option>
-                  <option value="settlement">{t.reasonSettlement}</option>
+                <Select place="dialog" value={kind} onValueChange={(next) => setKind(next as 'payment' | 'settlement')}>
+                  <SelectItem value="payment">{t.providerPayment}</SelectItem>
+                  <SelectItem value="settlement">{t.reasonSettlement}</SelectItem>
                 </Select>
               </label>
               <label>

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveApi } from './desk';
+import { chooseOption, serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const event = (id: string, result: string) => ({
@@ -17,7 +17,7 @@ test('a filter change keeps the previous rows until the new list arrives', async
   await page.goto(`${admin}/audit`);
   const rows = page.getByTestId('data-table').locator('tbody tr');
   await expect(rows).toHaveCount(2);
-  await page.getByLabel('النتيجة').selectOption('fail');
+  await chooseOption(page.getByLabel('النتيجة'), 'fail');
   // While the answer is on its way, the old rows stay and no skeleton replaces them.
   await page.waitForTimeout(400);
   expect(await rows.count()).toBe(2);

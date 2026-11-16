@@ -1,7 +1,7 @@
 // The shared page tools (useLoad, usePaged, useAction, useRequireLayer, DataTable, EmptyState, lineActions)
 // have no React harness of their own, so they are exercised through the real pages that use them.
 import { expect, test, type Locator } from '@playwright/test';
-import { serveApi } from './desk';
+import { chooseOption, serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 
@@ -159,7 +159,7 @@ test.describe('usePaged', () => {
     await expect(failed.getByRole('button', { name: 'إعادة المحاولة' })).toBeVisible();
     await expect(page.getByTestId(/^(error|banner)$/)).toHaveCount(0);
     await expect(page.getByTestId('table-skeleton')).toHaveCount(0);
-    await page.getByLabel('الحدث').selectOption('extend');
+    await chooseOption(page.getByLabel('الحدث'), 'extend');
     await expect(page.getByTestId('load-failed')).toHaveCount(0);
     await expect(page.getByTestId('empty-state')).toHaveText('لا حركات بعد.');
   });

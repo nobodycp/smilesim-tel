@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveApi } from './desk';
+import { expectChosen, serveApi } from './desk';
 
 const sky = { code: 'sky', name: 'سكاي', purchases: 6500, payments: 0, settlements: 0, balance: -6500, creditLimit: 0, held: 0, available: -6500 };
 const run = {
@@ -26,7 +26,7 @@ test('the branch uploads a statement, compares it and handles a difference', asy
   await page.getByRole('tab', { name: 'المطابقة' }).click();
   await page.locator('input[type=file]').setInputFiles({ name: 'sky.csv', mimeType: 'text/csv', buffer: Buffer.from('رقم,تاريخ,مبلغ\n0521000001,06/11/2026,35\n') });
   await expect(page.getByText('sky.csv: 4 سطراً')).toBeVisible();
-  await expect(page.getByRole('combobox', { name: 'الرقم' })).toHaveValue('0');
+  await expectChosen(page.getByRole('combobox', { name: 'الرقم' }), '0');
   const sent = page.waitForRequest((r) => r.method() === 'POST' && r.url().endsWith('/provider-accounts/sky/reconciliations'));
   await page.getByRole('button', { name: 'طابق' }).click();
   const body = (await sent).postDataJSON();

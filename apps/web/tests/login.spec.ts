@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { expectChosen } from './desk';
 
 test('login page is Arabic and sends the entered password', async ({ page }) => {
   await page.goto('/login');
@@ -56,7 +57,7 @@ test('settings reads the login name and details from the profile, not from sessi
   await page.goto('/settings');
   await expect(page.getByTestId('identity-login')).toHaveText('pos');
   await expect(page.getByLabel('الاسم الكامل')).toHaveValue('الكاشير');
-  await expect(page.getByLabel('المدينة')).toHaveValue('ramallah');
+  await expectChosen(page.getByLabel('المدينة'), 'ramallah');
   await expect(page.getByLabel('العنوان')).toHaveValue('شارع الإرسال');
   await expect(page.getByLabel('البريد', { exact: true })).toHaveValue('pos@example.com');
 });

@@ -8,7 +8,7 @@ import { Desk, Money, layerName } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { Stat, StatRow } from '../../../components/stat';
 import { Badge } from '../../../components/ui/badge';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { queryString } from '../../../lib/http';
 import { api, type BalanceReportRow, type SupplyReportRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
@@ -60,9 +60,9 @@ export function BalancesReportScreen() {
               </label>
               <label>
                 {t.layer}
-                <Select value={layer} onChange={(event) => setLayer(event.target.value)}>
-                  <option value="">{t.allRows}</option>
-                  {['main_agent', 'agent', 'pos'].map((value) => <option key={value} value={value}>{layerName(t, value)}</option>)}
+                <Select value={layer} onValueChange={setLayer}>
+                  <SelectItem value="">{t.allRows}</SelectItem>
+                  {['main_agent', 'agent', 'pos'].map((value) => <SelectItem key={value} value={value}>{layerName(t, value)}</SelectItem>)}
                 </Select>
               </label>
               <label className="check">

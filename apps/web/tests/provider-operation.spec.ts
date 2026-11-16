@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveApi } from './desk';
+import { chooseOption, serveApi } from './desk';
 
 // A task's provider operation on its ticket, the decisions people take on it and the queue of the second
 // approval (spec 2026-11-12-provider-operation-screens; ADR 0019 D6, D15, D16, D17; plan slice S.10). The answers
@@ -48,7 +48,7 @@ function sentTo(page: Page, suffix: string) {
 const panel = (page: Page) => page.getByRole('region', { name: 'عملية المزوّد' });
 const dialog = (page: Page) => page.getByRole('dialog');
 async function fillEvidence(page: Page, { reference = '', note = NOTE }: { reference?: string; note?: string } = {}) {
-  await dialog(page).getByLabel('نوع الدليل').selectOption('provider-portal');
+  await chooseOption(dialog(page).getByLabel('نوع الدليل'), 'provider-portal');
   if (reference) await dialog(page).getByLabel(/مرجع العملية عند المزوّد/).fill(reference);
   await dialog(page).getByLabel('ملاحظة القرار').fill(note);
 }

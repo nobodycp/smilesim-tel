@@ -13,7 +13,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Tabs } from '../../../components/tabs';
 import { Zap } from 'lucide-react';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
@@ -172,12 +172,12 @@ export function TasksScreen() {
         <TableSearch label={t.numberSearch} value={query} onChange={setQuery} />
         <label>
           {t.movement}
-          <Select value={action} onChange={(event) => setFilters({ action: event.target.value })}>
-            <option value="">{t.allRows}</option>
+          <Select value={action} onValueChange={(next) => setFilters({ action: next })}>
+            <SelectItem value="">{t.allRows}</SelectItem>
             {TASK_ACTIONS.map((code) => (
-              <option key={code} value={code}>
+              <SelectItem key={code} value={code}>
                 {actionName(t, code)}
-              </option>
+              </SelectItem>
             ))}
           </Select>
         </label>

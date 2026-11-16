@@ -32,12 +32,12 @@
 
 /* ── Fields: inset, a step below the surface; focus is the crimson thread ── */
 input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea,
-.ui-select-field, .pane-body textarea {
+.pane-body textarea {
   background-color: var(--rd-sunken);
   border-color: color-mix(in srgb, var(--rd-field) 70%, transparent);
 }
 input:not([type='checkbox']):not([type='radio']):not([type='file']):focus, select:focus, textarea:focus,
-.ui-select-field:focus, .pane-body textarea:focus {
+.pane-body textarea:focus {
   outline: none;
   border-color: var(--rd-accent);
   box-shadow: 0 0 0 3px var(--rd-focus);
@@ -173,7 +173,7 @@ input[readonly] { background-color: transparent; }
   white-space: nowrap;
 }
 .filter-panel > label:has(input:not([type='checkbox']):not([value=''])),
-.filter-panel > label:has(select option:checked:not([value=''])),
+.filter-panel > label:has([data-slot='select-trigger']:not([data-value=''])),
 .filter-panel > label:has(input[type='checkbox']:checked) {
   border-color: color-mix(in srgb, var(--rd-accent) 55%, transparent);
   background: var(--rd-accent-soft);
@@ -193,8 +193,6 @@ input[readonly] { background-color: transparent; }
   font-size: 12.5px;
   font-weight: 600;
 }
-.filter-panel > label .ui-select { display: flex; }
-.filter-panel > label .ui-select-field { min-width: 7rem; }
 .filter-panel > label input:not([type='date']):not([type='checkbox']) { width: 12rem; }
 /* A yes/no filter is a toggle chip: the chip lights when it is on, the box itself stays for keyboards and readers. */
 .filter-panel > label:has(input[type='checkbox']) { position: relative; align-items: center; gap: 8px; padding-inline: 12px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
@@ -241,7 +239,6 @@ input[readonly] { background-color: transparent; }
   .filter-bar.drawer-open .filter-drawer-foot { display: grid; margin-block-start: auto; padding-block-start: 12px; border-top: 1px solid var(--rd-line); }
   .filter-bar.drawer-open .filter-panel > label { height: 44px; line-height: 42px; }
   .filter-bar.drawer-open .filter-panel > label :is(input, select) { flex: 1; height: 42px; width: auto; }
-  .filter-bar.drawer-open .filter-panel > label .ui-select { flex: 1; }
   .filter-bar.drawer-open .filter-clear { margin-inline-start: 0; align-self: flex-start; }
 }
 @media (prefers-reduced-motion: no-preference) and (max-width: 767px) {
@@ -277,7 +274,7 @@ input[readonly] { background-color: transparent; }
 @media (max-width: 767px) {
   /* Stacked field rows: each field keeps its own height (a 16rem flex basis turned into 16rem of height). */
   .field-row > label, .switch-row > label { flex: none; width: 100%; max-width: none; }
-  .field-row > label :is(input, select, .ui-select) { width: 100%; }
+  .field-row > label :is(input, select) { width: 100%; }
 }
 
 /* The dialog's mark: a crimson tile with the tag's cut corner. */
@@ -510,12 +507,7 @@ input[readonly] { background-color: transparent; }
 .filter-panel > .stack > .hint { color: var(--rd-muted); font-size: 12px; font-weight: 600; }
 @media (max-width: 767px) { .filter-bar.drawer-open .filter-panel > .stack { justify-content: space-between; } }
 /* Chips are as wide as their value. */
-.filter-panel > label .ui-select { flex: none; width: auto; }
-.filter-panel > label .ui-select-field { width: auto; min-width: 0; max-width: 14rem; }
 .filter-panel > label input:not([type='date']):not([type='checkbox']) { width: 10rem; }
-@media (max-width: 767px) {
-  .filter-bar.drawer-open .filter-panel > label .ui-select, .filter-bar.drawer-open .filter-panel > label .ui-select-field { flex: 1; width: 100%; max-width: none; }
-}
 /* The drawer's foot always holds theme and language: the topbar no longer has the language. */
 .canvas .data td.when, .canvas .data td.when bdi { white-space: nowrap; max-width: none; }
 /* Period chips (operations, reports): one segmented control, the chosen period lit underneath. */
@@ -819,49 +811,14 @@ input[readonly] { background-color: transparent; }
 /* The wallet's head keeps its own height in the page's column; the statement below takes the rest. */
 .desk .wallet-band, .desk .wallet-chart, .desk > .stat-row, .desk .stat-row { flex: none; }
 
-/* ── The chip's list (FilterBar, Graphite «pop»): under the chip, raised, one 34px row per option; the chosen one in
-   crimson with a tick; drops in. ── */
-.filter-pop {
-  position: fixed;
-  z-index: calc(var(--rd-z-dialog) + 2);
-  display: grid;
-  gap: 1px;
-  max-width: min(320px, 92vw);
-  max-height: min(360px, 60vh);
-  padding: 4px;
-  overflow-y: auto;
-  border-radius: var(--rd-radius-sm);
-  background: var(--rd-surface-2);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent), var(--rd-shadow-pop);
-  scrollbar-width: thin;
-}
-.filter-pop button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: var(--rd-radius-xs);
-  background: transparent;
-  color: var(--rd-ink-2);
-  font-size: var(--rd-text-md);
-  font-weight: 500;
-  text-align: start;
-}
-.filter-pop button:hover { background: var(--rd-surface); color: var(--rd-ink); }
-.filter-pop button:focus-visible { background: var(--rd-surface); color: var(--rd-ink); outline: 2px solid var(--rd-accent); outline-offset: -2px; }
-.filter-pop button.sel { color: var(--rd-accent); font-weight: 700; }
-.filter-pop .tick { flex: none; margin-inline-start: auto; }
-@media (prefers-reduced-motion: no-preference) {
-  .filter-pop { animation: filter-pop-in 140ms ease-out; transform-origin: top; }
-}
+/* The chip's list is components/ui/select.tsx since Tailwind migration T2.4; its drop-in, read there and by NameField's
+   list, stays here until T5. */
 @keyframes filter-pop-in { from { opacity: 0; translate: 0 -4px; } }
 /* The chip itself reads like the design: the value in ink, a pointer on the whole chip. */
-.filter-panel > label:has(select) { cursor: pointer; }
+.filter-panel > label:has([data-slot='select-trigger']) { cursor: pointer; }
 .filter-panel > label select { cursor: pointer; }
 /* A chip is as wide as its value (the list shows the rest). */
-.filter-panel > label .ui-select-field, .filter-panel > label select { field-sizing: content; min-width: 4.5rem; max-width: 16rem; }
+.filter-panel > label select { field-sizing: content; min-width: 4.5rem; max-width: 16rem; }
 
 /* ── Packages page, exactly as the design ── */
 /* The shekel sign small and quiet after every figure. */
@@ -909,7 +866,6 @@ input[readonly] { background-color: transparent; }
   color: var(--rd-muted);
 }
 .chip-x:hover { background: var(--rd-accent-soft); color: var(--rd-accent); }
-.filter-panel > label:has(.chip-x) .ui-select-chevron { display: none; }
 .filter-panel > label:has(.chip-x) select { padding-inline-end: 10px; }
 /* «مسح» shows only once something is filtered. `!important`: the clear is a Button, whose `inline-flex` utility sits in a
    layer above this sheet (Tailwind migration T2.1); an important declaration in a lower layer still wins. */
@@ -1260,7 +1216,6 @@ input[readonly] { background-color: transparent; }
   .steps:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
   .steps button { justify-content: center; min-height: 40px; padding-inline: 8px; white-space: normal; text-align: center; }
   .ui-pager-page { min-width: 40px; height: 40px; }
-  .ui-select-compact, select.ui-select-field.ui-select-compact, .ui-pager .ui-select-field { height: 40px; min-height: 40px; }
   .line-pos { display: inline-flex; align-items: center; min-height: 40px; }
   .fact-grid, .desk .fact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .line-op-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -1269,9 +1224,8 @@ input[readonly] { background-color: transparent; }
   .donut-legend a, .donut-legend button { min-height: 40px; }
 }
 
-/* The boxed ⋯ beside a head's buttons (the user page) is drawn as the secondary button beside it (owner 2026-11-11). */
-.row-menu.boxed .row-menu-btn { border: 0; background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rd-ink) 11%, transparent); color: var(--rd-ink); }
-.row-menu.boxed .row-menu-btn:hover { background: var(--rd-surface-3); }
+/* The boxed ⋯ beside a head's buttons (the user page) is drawn as the secondary button beside it (owner 2026-11-11):
+   components/row-menu.tsx since Tailwind migration T2.4. */
 .file-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--rd-space-2-5); }
 .file-pick > label { cursor: pointer; }
 .file-pick > label:focus-within { outline: 2px solid var(--rd-accent); outline-offset: 2px; }

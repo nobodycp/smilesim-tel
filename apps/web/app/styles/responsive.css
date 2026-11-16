@@ -44,7 +44,6 @@
   .canvas .shortcut,
   .dialog .check,
   .dialog .seg button,
-  .row-menu-panel button,
   .toast button { min-height: 44px; }
   .toast button { min-width: 44px; }
 }

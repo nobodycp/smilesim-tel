@@ -11,7 +11,7 @@ import { DataImage } from '../../../components/data-image';
 import { markColor, markOf } from '../../../lib/company-mark';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
 import { Dialog } from '../../../components/dialog';
 import { DisconnectConfirm } from '../../../components/disconnect-confirm';
@@ -283,22 +283,22 @@ export function NumbersScreen() {
         </label>
         <label>
           {t.status}
-          <Select value={status} onChange={(event) => setFilters({ status: event.target.value })}>
-            <option value="">{t.allRows}</option>
-            <option value="active">{t.lineActive}</option>
-            <option value="expiring">{t.expiringSoon}</option>
-            <option value="frozen">{t.lineFrozen}</option>
-            <option value="disconnected">{t.lineDisconnected}</option>
-            <option value="suspended">{t.lineSuspended}</option>
+          <Select value={status} onValueChange={(next) => setFilters({ status: next })}>
+            <SelectItem value="">{t.allRows}</SelectItem>
+            <SelectItem value="active">{t.lineActive}</SelectItem>
+            <SelectItem value="expiring">{t.expiringSoon}</SelectItem>
+            <SelectItem value="frozen">{t.lineFrozen}</SelectItem>
+            <SelectItem value="disconnected">{t.lineDisconnected}</SelectItem>
+            <SelectItem value="suspended">{t.lineSuspended}</SelectItem>
           </Select>
         </label>
         {/* SIM or eSIM (spec 2026-11-11-ui-consistency-pass, D1). */}
         <label>
           {t.simType}
-          <Select value={sim} onChange={(event) => setFilters({ sim: event.target.value })}>
-            <option value="">{t.allRows}</option>
-            <option value="sim">{t.physicalSim}</option>
-            <option value="esim">{t.esim}</option>
+          <Select value={sim} onValueChange={(next) => setFilters({ sim: next })}>
+            <SelectItem value="">{t.allRows}</SelectItem>
+            <SelectItem value="sim">{t.physicalSim}</SelectItem>
+            <SelectItem value="esim">{t.esim}</SelectItem>
           </Select>
         </label>
       </FilterBar>

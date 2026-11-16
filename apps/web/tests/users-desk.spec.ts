@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { asBranch, expectFullTable, serveApi } from './desk';
+import { asBranch, chooseOption, expectFullTable, serveApi } from './desk';
 
 test('users is a full table on the branch door', async ({ page }) => {
   await asBranch(page);
@@ -55,7 +55,7 @@ test('the users table is paged by the server: filters go in the request, the nex
   await expect(page.getByTestId('data-table').locator('tbody tr').last()).toContainText('p59');
   expect(calls).toContain('GET /users?cursor=c50');
 
-  await page.getByRole('combobox', { name: 'الطبقة' }).selectOption('agent');
+  await chooseOption(page.getByRole('combobox', { name: 'الطبقة' }), 'agent');
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
   expect(calls).toContain('GET /users?layer=agent');
 

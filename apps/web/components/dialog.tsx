@@ -94,11 +94,13 @@ export function Dialog({
     const previous = document.activeElement as HTMLElement | null;
     const root = panel.current;
     const nodes = () => [...(root?.querySelectorAll<HTMLElement>(focusable) ?? [])].filter((node) => !node.hasAttribute('disabled'));
-    const field = root?.querySelector<HTMLElement>('.dialog-body input:not([type="checkbox"]):not([type="radio"]), .dialog-body select, .dialog-body textarea');
+    // A Select's field is its trigger button (components/ui/select.tsx); its hidden native select is not a field.
+    const field = root?.querySelector<HTMLElement>('.dialog-body input:not([type="checkbox"]):not([type="radio"]), .dialog-body [data-slot="select-trigger"], .dialog-body textarea');
     (field ?? nodes()[0])?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        closeRef.current();
+        // An open list or menu inside the dialog (Radix) closes first and marks the key handled; the dialog stays.
+        if (!event.defaultPrevented) closeRef.current();
         return;
       }
       if (event.key !== 'Tab') return;

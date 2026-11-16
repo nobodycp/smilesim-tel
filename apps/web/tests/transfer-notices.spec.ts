@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveApi } from './desk';
+import { chooseOption, serveApi } from './desk';
 
 const admin = 'http://admin.localhost:3910';
 const at = '2026-10-02T10:30:00.000Z';
@@ -64,7 +64,9 @@ test('the activity log names an account transfer and offers it as a filter', asy
   await expect(page.getByTestId('data-table').locator('tbody tr')).toHaveCount(1);
   await expect(page.getByTestId('data-table').locator('tbody tr').first()).toContainText('نقل حساب');
   const filter = page.getByLabel('الحدث');
-  await expect(filter.getByRole('option', { name: 'نقل حساب', exact: true })).toHaveCount(1);
-  await filter.selectOption('user_transfer');
+  await filter.click();
+  await expect(page.getByRole('listbox').getByRole('option', { name: 'نقل حساب', exact: true })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await chooseOption(filter, 'user_transfer');
   await expect.poll(() => calls.some((call) => call.startsWith('GET /audit') && call.includes('action=user_transfer'))).toBe(true);
 });

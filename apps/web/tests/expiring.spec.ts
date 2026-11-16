@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveApi } from './desk';
+import { chooseOption, serveApi } from './desk';
 
 const day = 86_400_000;
 const line = (id: string, msisdn: string, inDays: number, status = 'active') => ({
@@ -31,7 +31,7 @@ test('numbers show the days left and filter the lines ending soon; the home coun
   await expect(rows.nth(1).getByTestId(/^days-/)).toHaveText('20 يوم');
   await expect(rows.nth(2).getByTestId(/^days-/)).toHaveText('—');
 
-  await page.getByRole('combobox', { name: 'الحالة' }).selectOption('expiring');
+  await chooseOption(page.getByRole('combobox', { name: 'الحالة' }), 'expiring');
   await expect.poll(() => calls.some((call) => call.startsWith('GET /lines?') && call.includes('status=expiring'))).toBe(true);
 
   // The home's numbers donut carries «ينتهي قريباً» as a slice that links to the filter.

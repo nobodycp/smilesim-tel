@@ -5,7 +5,7 @@ import { latinWhen } from '../../components/desk';
 import { Fact, Facts } from '../../components/facts';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Select } from '../../components/ui/select';
+import { Select, SelectItem } from '../../components/ui/select';
 import { api, type ProviderAccount } from '../../lib/api';
 import { usePrefs } from '../../lib/prefs';
 
@@ -43,9 +43,9 @@ export function MatchingPane({ summary, canWrite, run, busy }: {
           <div className="field-row">
             <label>
               {t.matchSource}
-              <Select value={source} onChange={(event) => setSource(event.target.value as 'api' | 'statement')}>
-                <option value="api">{t.matchSourceApi}</option>
-                <option value="statement">{t.matchSourceStatement}</option>
+              <Select place="pane" value={source} onValueChange={(next) => setSource(next as 'api' | 'statement')}>
+                <SelectItem value="api">{t.matchSourceApi}</SelectItem>
+                <SelectItem value="statement">{t.matchSourceStatement}</SelectItem>
               </Select>
             </label>
             {source === 'statement' ? (

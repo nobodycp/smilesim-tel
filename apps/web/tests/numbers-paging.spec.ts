@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { pickName } from './desk';
+import { chooseOption, pickName } from './desk';
 
 const mock = 'http://localhost:3911';
 const desk = 'http://admin.localhost:3910';
@@ -32,7 +32,7 @@ test('numbers list pages by the total, reads the next cursor on demand, and filt
   expect(served.filter((query) => query.cursor)).toHaveLength(1);
 
   // A status filter resets the list and is sent to the server, with no cursor.
-  await page.getByLabel('الحالة').selectOption('frozen');
+  await chooseOption(page.getByLabel('الحالة'), 'frozen');
   await expect(rows).toHaveCount(3);
   await expect(page.getByRole('button', { name: '2', exact: true })).toHaveCount(0);
   expect((await log()).at(-1)).toEqual({ status: 'frozen' });

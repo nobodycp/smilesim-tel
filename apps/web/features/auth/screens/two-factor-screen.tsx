@@ -8,7 +8,7 @@ import type { TwoFactorMethod } from '../../../lib/api-types';
 import { usePrefs } from '../../../lib/prefs';
 import { Alert } from '../../../components/alert';
 import { Button } from '../../../components/ui/button';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { methodName } from '../sign-in-methods';
 import { TWO_FACTOR_METHODS, shownAmong } from '../two-factor-policy';
 
@@ -112,8 +112,8 @@ export function TwoFactorScreen() {
       {enrolling && allowed && allowed.length > 1 && (
         <label>
           {t.twoFactorMethod}
-          <Select value={method} onChange={(event) => { setMethod(event.target.value as TwoFactorMethod); setSentTo(''); setMessage(''); }}>
-            {allowed.map((key) => <option key={key} value={key}>{methodName(t, key)}</option>)}
+          <Select value={method} onValueChange={(next) => { setMethod(next as TwoFactorMethod); setSentTo(''); setMessage(''); }}>
+            {allowed.map((key) => <SelectItem key={key} value={key}>{methodName(t, key)}</SelectItem>)}
           </Select>
         </label>
       )}

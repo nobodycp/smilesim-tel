@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./button";
-import { Select } from "./select";
+import { Select, SelectItem } from "./select";
 import { usePrefs } from "../../lib/prefs";
 import { PAGE_SIZES, type PageSize } from "../../lib/document-prefs";
 
@@ -83,14 +83,14 @@ export function Pagination({
             <span className="ui-pager-size-field">
             <Select
               value={String(pageSize)}
-              onChange={(event) => onPageSizeChange?.(event.target.value === "all" ? "all" : Number(event.target.value) as PageSize)}
-              compact
+              onValueChange={(next) => onPageSizeChange?.(next === "all" ? "all" : Number(next) as PageSize)}
+              place="pager"
               aria-label={t.perPage}
             >
               {pageSizeOptions.map((option) => (
-                <option key={option} value={option}>
+                <SelectItem key={option} value={String(option)}>
                   {option === "all" ? t.allRows : option}
-                </option>
+                </SelectItem>
               ))}
             </Select>
             </span>

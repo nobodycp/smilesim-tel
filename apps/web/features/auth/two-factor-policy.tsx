@@ -1,7 +1,7 @@
 'use client';
 
 import { FilterBar } from '../../components/filter-bar';
-import { Select } from '../../components/ui/select';
+import { Select, SelectItem } from '../../components/ui/select';
 import type { TwoFactorMethod } from '../../lib/api-types';
 import { usePrefs } from '../../lib/prefs';
 import { methodName } from './sign-in-methods';
@@ -73,9 +73,9 @@ export function MethodField({ value, label, onChange, followLabel, disabled }: {
     <FilterBar loose bare>
       <label>
         {label}
-        <Select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value as TwoFactorMethod | '')}>
-          {followLabel ? <option value="">{followLabel}</option> : null}
-          {SHOWN_METHODS.map((method) => <option key={method} value={method}>{methodName(t, method)}</option>)}
+        <Select value={value} disabled={disabled} onValueChange={(next) => onChange(next as TwoFactorMethod | '')}>
+          {followLabel ? <SelectItem value="">{followLabel}</SelectItem> : null}
+          {SHOWN_METHODS.map((method) => <SelectItem key={method} value={method}>{methodName(t, method)}</SelectItem>)}
         </Select>
       </label>
     </FilterBar>

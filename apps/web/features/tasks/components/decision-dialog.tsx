@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Dialog } from '../../../components/dialog';
 import { Button } from '../../../components/ui/button';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import type { DecisionView, ProviderDecision, ProviderDecisionAnswer, ProviderDecisionBody } from '../../../lib/api-types';
 import type { Fetched } from '../../../lib/fetched';
 import { usePrefs } from '../../../lib/prefs';
@@ -110,9 +110,9 @@ export function DecisionDialog({
       >
         <label>
           {t.decEvidence}
-          <Select value={kind} required onChange={(event) => setKind(event.target.value)}>
-            <option value="">{t.decChoose}</option>
-            {EVIDENCE_KINDS.map((value) => <option key={value} value={value}>{evidenceName(t, value)}</option>)}
+          <Select place="dialog" value={kind} required onValueChange={setKind}>
+            <SelectItem value="">{t.decChoose}</SelectItem>
+            {EVIDENCE_KINDS.map((value) => <SelectItem key={value} value={value}>{evidenceName(t, value)}</SelectItem>)}
           </Select>
         </label>
         <label>

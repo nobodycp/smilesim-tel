@@ -25,7 +25,7 @@ import { UserOpsTab } from './line-ops';
 import { UserPackagesTab } from './packages-terms';
 import { onOffTone } from '../../../lib/status-tone';
 import { Badge } from '../../../components/ui/badge';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import type { LayerKey } from '../../../lib/api-types';
 import { UserSettingsPane } from '../user-settings';
 import { RowMenu } from '../../../components/row-menu';
@@ -241,8 +241,8 @@ export function AccountScreen() {
                       {row.staff && (
                         <label className="role-primary">
                           {t.role}
-                          <Select value={primary} onChange={(event) => setRoleId(event.target.value)}>
-                            {row.roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                          <Select place="pane" value={primary} onValueChange={setRoleId}>
+                            {row.roles.map((role) => <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>)}
                           </Select>
                         </label>
                       )}

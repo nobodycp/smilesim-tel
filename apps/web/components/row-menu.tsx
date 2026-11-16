@@ -1,9 +1,9 @@
 'use client';
 
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { Fragment, useRef, type ReactNode } from 'react';
 import { MoreHorizontal } from 'lucide-react';
-import { usePopover } from '../lib/use-popover';
+import { cn } from '../lib/cn';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 type RowIcon = 'edit' | 'extend' | 'undo' | 'check' | 'ban' | 'trash' | 'enter' | 'key' | 'fund' | 'move' | 'image' | 'refresh' | 'receipt';
 
@@ -37,98 +37,89 @@ function Glyph({ name }: { name: RowIcon }) {
   );
 }
 
-/** `boxed` draws the trigger as a 34px outlined button, for a page head beside other buttons. */
-/**
- * `trigger` draws a labelled button (the user page's «المحفظة») in place of the ⋯ icon; its look comes from the
- * button classes, so the menu stays one component.
+/*
+ * The row's actions behind ⋯ (or a labelled trigger), on DropdownMenu (components/ui/dropdown-menu.tsx; Radix since
+ * Tailwind migration T2.4). It opens from the trigger's inline end, into the table, on its first item; a destructive
+ * action comes after a rule. The trigger and the items keep a press inside them from reaching the row (a row can be a
+ * link). The ⋯ trigger (legacy `.row-menu-btn`, dialog.css and graphite.css): 28px, no border or fill, 6px corners,
+ * `--rd-faint`, weight 400; `--rd-surface-3` and ink under the pointer and while open. `boxed` (a page head, beside
+ * other buttons): 34px, the soft track (`--rd-surface-2`, an inset 1px ink line at 11%) in ink, `--rd-surface-3` under
+ * the pointer.
  */
-export function RowMenu({ label, items, boxed = false, trigger }: { label: string; items: RowAction[]; boxed?: boolean; trigger?: { className: string; content: ReactNode; iconOnly?: boolean } }) {
-  const { open, setOpen, toggle, root, panel, trigger: button } = usePopover({ menu: true, deferFocus: true });
-  const [box, setBox] = useState<{ top: number; left: number } | null>(null);
+const triggerClass = (boxed: boolean) =>
+  cn(
+    'inline-flex items-center justify-center rounded-sm border-0 p-0 font-normal [&>svg]:size-4',
+    boxed
+      ? 'size-8.5 bg-surface-2 text-ink inset-ring inset-ring-ink/11 hover:bg-surface-3'
+      : 'size-7 bg-transparent text-faint hover:bg-surface-3 hover:text-ink aria-expanded:bg-surface-3 aria-expanded:text-ink',
+  );
 
-  // The panel is portalled to <body>, so it is placed by hand next to its button and follows scroll and resize.
-  useEffect(() => {
-    if (!open || !button.current) return;
-    const place = () => {
-      const rect = button.current?.getBoundingClientRect();
-      if (!rect) return;
-      const width = panel.current?.offsetWidth || 160;
-      const height = panel.current?.offsetHeight || 40;
-      const rtl = document.documentElement.dir === 'rtl';
-      // Pin the menu to the trigger's inline end so it opens into the table.
-      let left = rtl ? rect.left : rect.right - width;
-      if (left + width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - 8 - width);
-      if (left < 8) left = 8;
-      let top = rect.bottom + 4;
-      if (top + height > window.innerHeight - 8 && rect.top > height + 4) top = rect.top - height - 4;
-      if (top < 8) top = 8;
-      setBox({ top, left });
-    };
-    place();
-    const frame = requestAnimationFrame(place);
-    window.addEventListener('resize', place);
-    window.addEventListener('scroll', place, true);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place, true);
-    };
-  }, [open, button, panel]);
-
-  // The panel stays hidden until it is placed; only then can its first item take the focus.
-  const placed = box !== null;
-  useEffect(() => {
-    if (open && placed) panel.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
-  }, [open, placed, panel]);
+/**
+ * `trigger` draws its own content in place of the ⋯ icon (the user page's «المحفظة», the users list's wallet icon);
+ * `className` gives it its own look (a Button's classes), otherwise it keeps the ⋯ trigger's. `iconOnly`: the content
+ * has no text, so the label names it (and is its tooltip).
+ */
+export function RowMenu({ label, items, boxed = false, trigger }: { label: string; items: RowAction[]; boxed?: boolean; trigger?: { className?: string; content: ReactNode; iconOnly?: boolean } }) {
+  // The menu opens on its first item, from the pointer too: Radix focuses the panel itself when the pointer opened
+  // it, and that first focus is handed on. Closing because an item was picked leaves the focus where the action puts
+  // it (a dialog's field), as before; Escape gives it back to the trigger.
+  const opening = useRef(false);
+  const picked = useRef(false);
 
   if (items.length === 0) return null;
   const firstDanger = items.findIndex((item) => item.danger);
   return (
-    <div className={boxed ? 'row-menu boxed' : 'row-menu'} data-testid="row-menu" ref={root}>
-      <button
-        ref={button}
-        type="button"
-        className={trigger ? trigger.className : 'row-menu-btn'}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={trigger && !trigger.iconOnly ? undefined : label}
-        title={trigger?.iconOnly ? label : undefined}
-        onMouseDown={(event) => event.stopPropagation()}
-        onClick={(event) => {
-          event.stopPropagation();
-          toggle();
+    <div className="relative inline-flex" data-testid="row-menu">
+      <DropdownMenu
+        modal={false}
+        onOpenChange={(open) => {
+          opening.current = open;
+          if (open) picked.current = false;
         }}
       >
-        {trigger ? trigger.content : <MoreHorizontal size={16} aria-hidden="true" />}
-      </button>
-      {open && createPortal(
-        <div
-          ref={panel}
-          className="row-menu-panel"
-          role="menu"
-          style={{ top: box?.top ?? -9999, left: box?.left ?? 8, visibility: box ? 'visible' : 'hidden' }}
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={trigger?.className ?? triggerClass(boxed)}
+            aria-label={trigger && !trigger.iconOnly ? undefined : label}
+            title={trigger?.iconOnly ? label : undefined}
+            onMouseDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {trigger ? trigger.content : <MoreHorizontal size={16} aria-hidden="true" />}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          side="bottom"
+          align="end"
+          onFocus={(event) => {
+            if (!opening.current || event.target !== event.currentTarget) return;
+            opening.current = false;
+            event.currentTarget.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
+          }}
+          onCloseAutoFocus={(event) => {
+            if (picked.current) event.preventDefault();
+            picked.current = false;
+          }}
         >
           {items.map((item, index) => (
             <Fragment key={`${index}:${item.label}`}>
-              {index === firstDanger && firstDanger > 0 ? <span className="row-menu-rule" role="separator" /> : null}
-              <button
-                type="button"
-                role="menuitem"
-                className={item.danger ? 'danger' : undefined}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setOpen(false);
+              {index === firstDanger && firstDanger > 0 ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuItem
+                danger={Boolean(item.danger)}
+                onClick={(event) => event.stopPropagation()}
+                onSelect={() => {
+                  picked.current = true;
                   item.onClick();
                 }}
               >
                 {item.icon ? <Glyph name={item.icon} /> : null}
                 {item.label}
-              </button>
+              </DropdownMenuItem>
             </Fragment>
           ))}
-        </div>,
-        document.body,
-      )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

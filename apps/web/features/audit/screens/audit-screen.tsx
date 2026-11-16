@@ -13,7 +13,7 @@ import { api, type ActivityRow } from '../../../lib/api';
 import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { CsvLink, Period, ReportFilters, periodFrom, type PeriodDays } from '../../reports/report-kit';
 
@@ -104,27 +104,27 @@ export function AuditScreen() {
           </label>
           <label>
             {t.auditEvent}
-            <Select value={action} onChange={(event) => setAction(event.target.value)}>
-              <option value="">{t.allRows}</option>
+            <Select value={action} onValueChange={setAction}>
+              <SelectItem value="">{t.allRows}</SelectItem>
               {ACTIONS.map((value) => (
-                <option key={value} value={value}>{actionName(t, value)}</option>
+                <SelectItem key={value} value={value}>{actionName(t, value)}</SelectItem>
               ))}
             </Select>
           </label>
           <label>
             {t.activityResult}
-            <Select value={result} onChange={(event) => setResult(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              <option value="ok">{t.activitySuccess}</option>
-              <option value="fail">{t.activityFailure}</option>
+            <Select value={result} onValueChange={setResult}>
+              <SelectItem value="">{t.allRows}</SelectItem>
+              <SelectItem value="ok">{t.activitySuccess}</SelectItem>
+              <SelectItem value="fail">{t.activityFailure}</SelectItem>
             </Select>
           </label>
           <label>
             {t.layer}
-            <Select value={layer} onChange={(event) => setLayer(event.target.value)}>
-              <option value="">{t.allRows}</option>
+            <Select value={layer} onValueChange={setLayer}>
+              <SelectItem value="">{t.allRows}</SelectItem>
               {LAYERS.map((value) => (
-                <option key={value} value={value}>{layerName(t, value)}</option>
+                <SelectItem key={value} value={value}>{layerName(t, value)}</SelectItem>
               ))}
             </Select>
           </label>

@@ -13,7 +13,7 @@ import { usePrefs } from '../../../lib/prefs';
 import { pick } from '../../../lib/fetched';
 import { pageRows, usePaged } from '../../../lib/use-paged';
 import { Badge } from '../../../components/ui/badge';
-import { Select } from '../../../components/ui/select';
+import { Select, SelectItem } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
 
 const KINDS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect', 'freeze', 'unfreeze', 'switch', 'rename', 'sim', 'esim', 'refresh', 'transfer'] as const;
@@ -91,20 +91,20 @@ export function ProviderOperationsScreen() {
           </label>
           <label>
             {t.operationColumn}
-            <Select value={kind} onChange={(event) => setKind(event.target.value)}>
-              <option value="">{t.allRows}</option>
+            <Select value={kind} onValueChange={setKind}>
+              <SelectItem value="">{t.allRows}</SelectItem>
               {KINDS.map((value) => (
-                <option key={value} value={value}>{actionName(t, value)}</option>
+                <SelectItem key={value} value={value}>{actionName(t, value)}</SelectItem>
               ))}
             </Select>
           </label>
           <label>
             {t.matchState}
-            <Select value={match} onChange={(event) => setMatch(event.target.value)}>
-              <option value="">{t.allRows}</option>
-              <option value="matched">{t.matchMatched}</option>
-              <option value="difference">{t.matchDifference}</option>
-              <option value="pending">{t.matchPending}</option>
+            <Select value={match} onValueChange={setMatch}>
+              <SelectItem value="">{t.allRows}</SelectItem>
+              <SelectItem value="matched">{t.matchMatched}</SelectItem>
+              <SelectItem value="difference">{t.matchDifference}</SelectItem>
+              <SelectItem value="pending">{t.matchPending}</SelectItem>
             </Select>
           </label>
         </FilterBar>
