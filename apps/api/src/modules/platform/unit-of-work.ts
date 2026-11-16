@@ -16,6 +16,15 @@ const log = logger('UnitOfWork');
  */
 export const TRANSACTION_LIMITS = { maxWait: 10_000, timeout: 15_000 } as const;
 
+/**
+ * A transaction on a client of the caller's own, with the stated limits: for the two callers that have a client and
+ * no unit of work (the boot seeder of the trial accounts, the command-line sealing script). Everything else goes
+ * through `UnitOfWork.runTx`, which also publishes the notices a transaction wrote.
+ */
+export function transaction<T>(prisma: PrismaClient, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  return prisma.$transaction(fn, TRANSACTION_LIMITS);
+}
+
 /** A client to read or write with: the process's own, or the one a transaction handed out (rule 1.3). */
 export type Db = Prisma.TransactionClient | PrismaClient;
 
@@ -52,10 +61,10 @@ export class UnitOfWork {
   /** Runs a transaction and publishes the notices it queued once it has committed. */
   async runTx<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     let inner: Prisma.TransactionClient | null = null;
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await transaction(this.prisma, async (tx) => {
       inner = tx;
       return fn(tx);
-    }, TRANSACTION_LIMITS);
+    });
     const rows = inner ? this.queued.get(inner) ?? [] : [];
     if (inner) this.queued.delete(inner);
     if (rows.length > 0) await this.publishQuietly(rows);

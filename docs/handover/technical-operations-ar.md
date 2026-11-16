@@ -294,12 +294,12 @@ scripts/backup/verify-latest.sh <ملف إعدادات فيه R2 للقراءة 
 
 **ترحيل رموز eSIM القديمة (Backfill):** يدوي ولا يعمل عند الإقلاع. داخل حاوية الـAPI:
 ```bash
-node dist/seal-secrets.js --dry-run     # يعدّ فقط
-node dist/seal-secrets.js               # يشفّر؛ آمن للإيقاف وإعادة التشغيل
+node dist/cli/seal-secrets.js --dry-run     # يعدّ فقط
+node dist/cli/seal-secrets.js               # يشفّر؛ آمن للإيقاف وإعادة التشغيل
 ```
 ⏳ لم يُشغَّل على أي بيئة. 🔐
 
-**تقارير قراءة فقط** داخل حاوية الـAPI: `node dist/reservation-conflicts.js` (تعارض حجوزات الشرائح قبل النشر)، و`node dist/two-factor-methods.js` (إعدادات تحقق بخطوتين تذكر SMS أو البريد).
+**تقارير قراءة فقط** داخل حاوية الـAPI: `node dist/cli/reservation-conflicts.js` (تعارض حجوزات الشرائح قبل النشر)، و`node dist/cli/two-factor-methods.js` (إعدادات تحقق بخطوتين تذكر SMS أو البريد).
 
 ## 14. المراقبة وحل الأعطال
 

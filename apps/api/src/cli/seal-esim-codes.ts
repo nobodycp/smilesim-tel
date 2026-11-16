@@ -1,5 +1,6 @@
-import { Prisma, type PrismaClient } from './generated/prisma/client';
-import { isSealed, open, seal, secretsKey } from './modules/platform/secret-box';
+import { Prisma, type PrismaClient } from '../generated/prisma/client';
+import { isSealed, open, seal, secretsKey } from '../modules/platform/secret-box';
+import { transaction } from '../modules/platform/unit-of-work';
 
 // Seals the eSIM codes that were stored before sealing on write (ADR 0019, D17; plan slice S.5b). Run by hand
 // through `src/seal-secrets.ts`, never at boot.
@@ -71,7 +72,7 @@ async function sealTable(prisma: PrismaClient, name: CodeTable, options: SealOpt
     });
     skipped += rows.length - ready.length;
     await options.beforeWrite?.(name, rows.map((row) => row.id));
-    const written = await prisma.$transaction(async (tx) => {
+    const written = await transaction(prisma, async (tx) => {
       let count = 0;
       // Raw, so nothing but the code changes: a task's `updatedAt` is not moved by this.
       for (const row of ready) count += await tx.$executeRaw`UPDATE ${table(name)} SET "esimQr" = ${row.value} WHERE "id" = ${row.id} AND "esimQr" = ${row.clear}`;

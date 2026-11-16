@@ -1,4 +1,4 @@
-import { capturedOutput } from './modules/platform/testing/captured-output';
+import { capturedOutput } from '../modules/platform/testing/captured-output';
 import { findingLines, report, type MethodFindings } from './two-factor-methods';
 
 // Spec 2026-11-12-two-factor-available-methods: the read-only report of stored SMS / email settings.

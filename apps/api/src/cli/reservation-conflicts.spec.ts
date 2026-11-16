@@ -1,5 +1,5 @@
-import { conflictLines, maskedTail, type ReservationConflict } from './modules/sales/reservation.rules';
-import { capturedOutput } from './modules/platform/testing/captured-output';
+import { conflictLines, maskedTail, type ReservationConflict } from '../modules/sales/reservation.rules';
+import { capturedOutput } from '../modules/platform/testing/captured-output';
 import { report } from './reservation-conflicts';
 
 const SERIAL = '8997201234567890123';

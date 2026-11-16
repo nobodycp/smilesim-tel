@@ -32,7 +32,7 @@ export { RESOURCE_CONTROLLER_PREFIXES } from './route-prefixes';
 export { MAX_AGOROT, PeriodQuery, agorot, code, dataUrl, id, isOn, loginName, optionalAgorot, optionalText, positiveAgorot, providerHint, queryCursor, queryDay, queryFlag, queryOneOf, queryText, text } from './schemas';
 export { isSealed, open, seal, secretsKey } from './secret-box';
 export { BRANCH_TASK_NOTE, HANDLER_FROZEN_NOTE, PROVIDER_DISPATCH_NOTE, PROVIDER_EXCEPTION_NOTES, PROVIDER_FAILED_NOTE, PROVIDER_RELEASED_NOTE, PROVIDER_UNKNOWN_NOTE, SYSTEM_SENDER_NAME } from './stored-text';
-export { UnitOfWork } from './unit-of-work';
+export { UnitOfWork, transaction } from './unit-of-work';
 export type { Db } from './unit-of-work';
 export { LAYER_ORDER } from './values';
 export { ApiZodBody } from '../../openapi/body';

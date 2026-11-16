@@ -1,4 +1,4 @@
-import { open, seal, logger, env as readEnv, wholeEnv, createPrismaClient, PrismaService, Layer } from '../platform';
+import { open, seal, logger, env as readEnv, wholeEnv, createPrismaClient, PrismaService, Layer, transaction } from '../platform';
 import { hashSessionToken, newSessionToken } from './session-token';
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { PrismaClient } from '../../generated/prisma/client';
@@ -173,7 +173,7 @@ export class PrismaAuthStore implements AuthStore, OnModuleInit, OnModuleDestroy
     if ((await this.prisma.user.count()) > 0) return false;
     const passwordHash = await hashPassword(TRIAL_PASSWORD);
     try {
-      await this.prisma.$transaction(async (tx) => {
+      await transaction(this.prisma, async (tx) => {
         const ids = new Map<string, string>();
         for (const account of buildTrialSeed()) {
           const created = await tx.user.create({

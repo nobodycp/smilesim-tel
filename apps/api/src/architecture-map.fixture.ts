@@ -50,9 +50,9 @@ export const OWNERS: readonly [pattern: RegExp, owner: Owner][] = [
   [/^modules\/registry\.ts$/, 'app'],
   // The worker's composition root (slice R.5): its one description of the money path, its timers and its stop.
   [/^worker\//, 'app'],
-  // Command-line scripts at the root (audit finding L1): composition roots whose compiled path (`node dist/<name>.js`)
-  // is in the operators' handbook; counted by `root-domain-code`.
-  [/^(reservation-conflicts|seal-esim-codes|seal-secrets|two-factor-methods)\.ts$/, 'app'],
+  // Command-line scripts (audit finding L1): composition roots run by hand as `node dist/cli/<name>.js`, the path
+  // the operators' handbook gives.
+  [/^cli\//, 'app'],
   // ── platform ──────────────────────────────────────────────────────────────────────────────────────
   [/^(config|errors|db|doors|cors|security-headers)\.ts$/, 'platform'],
   [/^openapi\//, 'platform'],

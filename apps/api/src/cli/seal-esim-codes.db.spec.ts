@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
-import { createPrismaClient } from './db';
-import { open, seal } from './modules/platform/secret-box';
-import { capturedOutput } from './modules/platform/testing/captured-output';
+import { createPrismaClient } from '../db';
+import { open, seal } from '../modules/platform/secret-box';
+import { capturedOutput } from '../modules/platform/testing/captured-output';
 import { NoSealingKey, sealEsimCodes, sealRunLines, type CodeTable } from './seal-esim-codes';
 import { run } from './seal-secrets';
 

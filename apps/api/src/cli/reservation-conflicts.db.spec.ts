@@ -1,4 +1,4 @@
-import { capturedOutput } from './modules/platform/testing/captured-output';
+import { capturedOutput } from '../modules/platform/testing/captured-output';
 import { openConflicts, report } from './reservation-conflicts';
 
 // PostgreSQL only (TEST_DATABASE_URL): the report's real query. Its name ends in `.db.spec.ts` so the CI job

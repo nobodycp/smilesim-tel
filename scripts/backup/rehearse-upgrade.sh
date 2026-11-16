@@ -26,7 +26,7 @@ manifest="${1:-}"
 id=$(sed -n 's/^id|//p' "$manifest")
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 api="$root/apps/api"
-[ -f "$api/dist/main.js" ] && [ -f "$api/dist/seal-secrets.js" ] || die "the API is not built: npm run build --workspace api"
+[ -f "$api/dist/main.js" ] && [ -f "$api/dist/cli/seal-secrets.js" ] || die "the API is not built: npm run build --workspace api"
 port="${REHEARSAL_PORT:-3991}"
 url=$(cat "$VERIFY_URL_FILE")
 case "$url" in postgresql://verify:*@127.0.0.1:*/verify) ;; *) die "the address is not a throwaway copy made by verify-restore.sh; refusing to run migrations on it" ;; esac
@@ -106,7 +106,7 @@ grep -Eq "ESIM_CODE_UNSEALABLE|Refusing to start" "$work/api.log" && die "the AP
 (
   cd "$api"
   env -i PATH="$PATH" HOME="$HOME" NODE_ENV=production DATABASE_URL="$url" REDIS_URL="redis://127.0.0.1:$((port + 1))" SECRETS_KEY="$key" \
-    node dist/seal-secrets.js --dry-run > "$work/seal.log" 2>&1
+    node dist/cli/seal-secrets.js --dry-run > "$work/seal.log" 2>&1
 ) || die "seal-secrets --dry-run failed on the copy"
 clear_lines=$(sql "select count(*) from \"Line\" where \"esimQr\" is not null and \"esimQr\" not like 'v1:%'")
 clear_tasks=$(sql "select count(*) from \"Task\" where \"esimQr\" is not null and \"esimQr\" not like 'v1:%'")

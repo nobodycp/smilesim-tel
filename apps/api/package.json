@@ -8,9 +8,9 @@
     "start": "node dist/main.js",
     "start:worker": "node dist/worker.js",
     "lint": "eslint . --max-warnings 0",
-    "seal-secrets": "node dist/seal-secrets.js",
-    "reservation-conflicts": "node dist/reservation-conflicts.js",
-    "two-factor-methods": "node dist/two-factor-methods.js"
+    "seal-secrets": "node dist/cli/seal-secrets.js",
+    "reservation-conflicts": "node dist/cli/reservation-conflicts.js",
+    "two-factor-methods": "node dist/cli/two-factor-methods.js"
   },
   "dependencies": {
     "@nestjs/common": "^12.3.2",

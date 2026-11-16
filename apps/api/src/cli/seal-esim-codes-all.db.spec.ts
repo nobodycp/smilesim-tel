@@ -2,11 +2,11 @@ import 'reflect-metadata';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
-import { createPrismaClient } from './db';
-import { LinesRepository } from './modules/sales/lines.repository';
-import { moveLineStatus } from './modules/sales/line-state';
-import { open, seal } from './modules/platform/secret-box';
-import { capturedOutput } from './modules/platform/testing/captured-output';
+import { createPrismaClient } from '../db';
+import { LinesRepository } from '../modules/sales/lines.repository';
+import { moveLineStatus } from '../modules/sales/line-state';
+import { open, seal } from '../modules/platform/secret-box';
+import { capturedOutput } from '../modules/platform/testing/captured-output';
 import { sealEsimCodes } from './seal-esim-codes';
 import { run } from './seal-secrets';
 
@@ -96,7 +96,7 @@ suite('sealing stored eSIM codes over whole tables (PostgreSQL, a database of it
     if (exists.length === 0) await admin.$executeRawUnsafe(`CREATE DATABASE "${name}"`);
     await admin.$disconnect();
     // Applies what is missing; nothing when the database is already at the last migration.
-    execFileSync('npx', ['prisma', 'migrate', 'deploy'], { cwd: join(__dirname, '..'), env: { ...process.env, DATABASE_URL: own.toString() }, stdio: 'ignore' });
+    execFileSync('npx', ['prisma', 'migrate', 'deploy'], { cwd: join(__dirname, '..', '..'), env: { ...process.env, DATABASE_URL: own.toString() }, stdio: 'ignore' });
     process.env.DATABASE_URL = own.toString();
     prisma = createPrismaClient();
     // Whatever an earlier run left: this database holds nothing but this spec's rows.
