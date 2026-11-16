@@ -33,6 +33,12 @@ its hash. Per slice: `npm run lint`, `npm run typecheck`, `npm run check:copy`, 
 - [x] **D.3b The «المدد» tab (web)** (`3c25952`). On the package sheet (`features/catalog/screens/package-sheet-screen.tsx`):
   the durations with their ladders, add, edit, remove; copy in ar, en, he. Checked on port 3000 per
   `verify-before-reply.mdc`.
+> **Paused here by the owner, 2026-11-16.** The next work is the provider integration: a package's renewal options
+> and durations are to be read from the provider's own details of the product and controlled there, instead of
+> being entered on our side, which removes many settings. D.3c onward wait for that design and are to be re-read
+> against it before any of them is built; what D.1–D.3b built stays (the duration rows are what the provider's
+> options will fill).
+
 - [ ] **D.3c Renewal picks a duration.** Price reads go through the duration rows (`pricing/rules/package-terms.ts`,
   `pricing/price-ladder.ts`; the package list returns `durations` masked by layer). `pricing/rules/prices.ts`
   `LineTerms` gains `options` (terms without them read as one option of `months`); `sales/line-pricing.ts`

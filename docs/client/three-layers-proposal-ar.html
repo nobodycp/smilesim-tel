@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smile Sim: ثلاث طبقات بدل أربع</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Readex+Pro:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one reading column. The two ladders (four rungs, three rungs) are the recurring picture. */
+:root {
+  --paper: #f5f6f4;
+  --surface: #ffffff;
+  --ink: #17211f;
+  --muted: #5a6764;
+  --line: #dfe4e1;
+  --accent: #0f6b5c;
+  --accent-soft: #e2f1ed;
+  --warn: #a8650a;
+  --warn-soft: #fbefd9;
+  --cut: #b23a2c;
+  --cut-soft: #fbe7e3;
+  --display: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #111615; --surface: #1a2120; --ink: #e9eeec; --muted: #9fadaa; --line: #2c3634;
+    --accent: #5fc7b3; --accent-soft: #173530;
+    --warn: #eab766; --warn-soft: #3a2a0e;
+    --cut: #f09285; --cut-soft: #3d1b16;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.85; }
+.page { max-width: 880px; margin-inline: auto; padding: 40px 20px 72px; display: flex; flex-direction: column; gap: 44px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.4; margin: 0; }
+h1 { font-size: 34px; font-weight: 700; }
+h2 { font-size: 24px; font-weight: 600; padding-block-end: 10px; border-block-end: 2px solid var(--accent); }
+h3 { font-size: 18px; font-weight: 600; }
+p { margin: 0; }
+section { display: flex; flex-direction: column; gap: 18px; }
+.cover { display: flex; flex-direction: column; gap: 12px; padding-block-end: 28px; border-block-end: 1px solid var(--line); }
+.eyebrow { font-family: var(--display); color: var(--accent); font-weight: 600; font-size: 15px; }
+.lede { font-size: 19px; color: var(--muted); }
+.meta { color: var(--muted); font-size: 15px; }
+
+.verdict { background: var(--surface); border: 1px solid var(--line); border-inline-start: 5px solid var(--accent); border-radius: 10px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.verdict strong { color: var(--accent); }
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.side { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.side h3 { color: var(--muted); }
+.side.new { border-color: var(--accent); }
+.side.new h3 { color: var(--accent); }
+.ladder { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.ladder li { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-family: var(--display); font-weight: 600; font-size: 16px; background: var(--paper); }
+.ladder li.merge { border-color: var(--accent); background: var(--accent-soft); }
+.ladder li.dup { border-color: var(--cut); background: var(--cut-soft); }
+.ladder li small { display: block; font-family: var(--body); font-weight: 400; font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+.reasons { margin: 0; padding: 0; list-style: none; counter-reset: r; display: flex; flex-direction: column; gap: 12px; }
+.reasons li { counter-increment: r; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; }
+.reasons li::before { content: counter(r); grid-row: span 3; font-family: var(--display); font-weight: 700; font-size: 20px; color: var(--accent); inline-size: 34px; block-size: 34px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; }
+.reasons h3 { align-self: center; }
+.reasons p { grid-column: 2; font-size: 16px; }
+.reasons p.src { color: var(--muted); font-size: 14.5px; }
+
+.wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15.5px; line-height: 1.7; }
+th, td { text-align: start; vertical-align: top; padding: 11px 14px; border-block-end: 1px solid var(--line); }
+tr:last-child td { border-block-end: 0; }
+th { font-family: var(--display); font-weight: 600; font-size: 14.5px; color: var(--muted); background: var(--paper); }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.note { background: var(--accent-soft); border-radius: 10px; padding: 14px 18px; font-size: 16px; }
+.caution { background: var(--warn-soft); border-radius: 10px; padding: 14px 18px; font-size: 16px; }
+.caution b { color: var(--warn); }
+ul.plain { margin: 0; padding-inline-start: 22px; display: flex; flex-direction: column; gap: 6px; }
+footer { color: var(--muted); font-size: 14.5px; border-block-start: 1px solid var(--line); padding-block-start: 18px; }
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  h1 { font-size: 27px; }
+  h2 { font-size: 21px; }
+  .compare { grid-template-columns: 1fr; }
+}
+@media print {
+  body { background: #fff; font-size: 12.5pt; }
+  .page { padding: 0; gap: 26px; }
+  .reasons li, .side, .verdict, .wrap { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+<header class="cover">
+  <span class="eyebrow">Smile Sim · مقترح للعميل</span>
+  <h1>ثلاث طبقات بدل أربع</h1>
+  <p class="lede">نقترح دمج «الوكيل الرئيسي» و«الوكيل» في طبقة واحدة اسمها «الوكيل»، فيصير السلم: الفرع، ثم الوكيل، ثم نقطة البيع.</p>
+  <p class="meta">12 تشرين الثاني 2026</p>
+</header>
+
+<section>
+  <div class="verdict">
+    <p><strong>الخلاصة:</strong> الطبقتان الوسطيان تعملان اليوم العمل نفسه. كل واحدة منهما تستلم رصيداً، وتضيف ربحاً، وتمرّر الرصيد لمن تحتها. وجودهما معاً يضيف محطة على طريق المال، وهامشاً على السعر، وديناً على الفرع، دون خدمة جديدة لنقطة البيع أو للمشترك.</p>
+    <p>بثلاث طبقات يبقى كل ما يهم العمل: المحافظ، والأسقف، وتسعير كل طبقة، وتقارير الأرباح، والتدقيق.</p>
+  </div>
+
+  <div class="compare">
+    <div class="side">
+      <h3>اليوم: أربع طبقات</h3>
+      <ol class="ladder">
+        <li>الفرع</li>
+        <li class="dup">الوكيل الرئيسي<small>يستلم رصيداً ويسعّر ويمرّر</small></li>
+        <li class="dup">الوكيل<small>يستلم رصيداً ويسعّر ويمرّر</small></li>
+        <li>نقطة البيع</li>
+      </ol>
+    </div>
+    <div class="side new">
+      <h3>المقترح: ثلاث طبقات</h3>
+      <ol class="ladder">
+        <li>الفرع</li>
+        <li class="merge">الوكيل<small>يستلم رصيداً ويسعّر ويمرّر، مرة واحدة</small></li>
+        <li>نقطة البيع</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>الأسباب</h2>
+  <ol class="reasons">
+    <li>
+      <h3>الطبقتان الوسطيان نسخة واحدة مكررة</h3>
+      <p>حسب خطة المشروع، الوكيل الرئيسي والوكيل لهما الصلاحيات نفسها: حساب صاحب واحد، يرى الأرقام تحته، ينفّذ العمليات عليها، يرى أرصدة من تحته ويشحنها. الفرق الوحيد أن أحدهما فوق الآخر.</p>
+      <p class="src">خطة المشروع، قسم الحسابات والصلاحيات.</p>
+    </li>
+    <li>
+      <h3>الرصيد يمر بمحطة أقل قبل أن يصل نقطة البيع</h3>
+      <p>اليوم ينزل الرصيد من الفرع إلى الوكيل الرئيسي، ثم إلى الوكيل، ثم إلى نقطة البيع. نقطة البيع لا تبيع حتى تتم التحويلات الثلاثة، وكل تحويل ينتظر شخصاً يضغطه. بثلاث طبقات تصير تحويلين، فيصل الرصيد أسرع ويقل توقف البيع بسبب وسيط غائب.</p>
+    </li>
+    <li>
+      <h3>سقف دين أقل يعني خطراً أقل على الفرع</h3>
+      <p>الوكيل الرئيسي والوكيل كلاهما يقدر ينزل بالسالب حتى سقف. هذا دينان فوق بعض على المال نفسه، والفرع في النهاية هو من موّل السلسلة. وإذا وصل الوكيل الرئيسي سقفه يتوقف تحويله لكل وكلائه، حتى لو كانت حساباتهم سليمة، ويتأخر الرصيد عن نقاط البيع تحتهم. بطبقة وسطى واحدة يراقب الفرع سقفاً واحداً لكل سلسلة ويتعامل مع صاحبه مباشرة.</p>
+    </li>
+    <li>
+      <h3>هامش أقل على السعر</h3>
+      <p>كل طبقة تبيع بسعر شرائها أو أعلى. أربع طبقات تعني ثلاثة هوامش قبل المشترك، وثلاث طبقات تعني هامشين. الفرق يذهب إما لسعر أقل للمشترك، أو لربح أكبر لنقطة البيع، أو للفرع نفسه. المثال في الجدول تحت.</p>
+    </li>
+    <li>
+      <h3>النظام اليوم يجبر على حسابات شكلية</h3>
+      <p>الفرع لا يفتح نقطة بيع إلا تحت وكيل، ولا يفتح وكيلاً إلا تحت وكيل رئيسي. والوكيل الرئيسي الذي يريد نقطة بيع مباشرة عليه أن ينشئ وكيلاً أولاً. أي موزّع يعمل مباشرة مع المحلات يحتاج حساباً وسيطاً لا يقابله شخص حقيقي، بمحفظة وسقف وقائمة أسعار يجب ضبطها.</p>
+      <p class="src">خطة المشروع: «إذا لم يكن عنده وكيل، ينشئ الوكيل أولاً».</p>
+    </li>
+    <li>
+      <h3>نقل نقطة البيع والمشترك يصير أبسط</h3>
+      <p>نقل نقطة البيع اليوم له حالتان: بين وكيلين تحت الوكيل الرئيسي نفسه، أو تحت وكيلين رئيسيين مختلفين. بعد النقل تبقى الاشتراكات القديمة محاسبياً عند السلسلة القديمة. كل طبقة إضافية تضيف جهة أخرى يجب أن تبقى تقاريرها صحيحة بعد النقل. بثلاث طبقات تبقى حالة واحدة: من وكيل إلى وكيل.</p>
+    </li>
+    <li>
+      <h3>أقل شاشات، أقل تدريب، أقل أعطال</h3>
+      <p>كل طبقة لها باب دخول، ولوحة، ومحفظة، وقائمة أسعار لكل رزمة، وتقرير أرباح، وإعداد تحقق ثنائي. حذف طبقة يحذف هذه كلها مرة واحدة: دليل أقل للشرح، وحالات أقل للاختبار قبل كل تحديث، ودعم أسرع حين يسأل أحد «أين ذهب رصيدي».</p>
+    </li>
+    <li>
+      <h3>سؤال «من المسؤول» له جواب واحد</h3>
+      <p>حين تتعطل نقطة بيع، الفرع يكلّم وكيلها مباشرة. لا يوجد وسيط ثانٍ يحوّل المسؤولية إلى من فوقه أو من تحته.</p>
+    </li>
+  </ol>
+</section>
+
+<section>
+  <h2>مثال على السعر</h2>
+  <p>أرقام توضيحية لرزمة واحدة، بالشيكل. تكلفة الفرع 20 وسعر المشترك 35 في الحالتين.</p>
+  <div class="wrap">
+    <table>
+      <thead>
+        <tr><th>الطبقة</th><th>أربع طبقات: سعر الشراء</th><th>الربح</th><th>ثلاث طبقات: سعر الشراء</th><th>الربح</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>الفرع</td><td class="num">20</td><td class="num">3</td><td class="num">20</td><td class="num">4</td></tr>
+        <tr><td>الوكيل الرئيسي</td><td class="num">23</td><td class="num">3</td><td>غير موجود</td><td>غير موجود</td></tr>
+        <tr><td>الوكيل</td><td class="num">26</td><td class="num">3</td><td class="num">24</td><td class="num">4</td></tr>
+        <tr><td>نقطة البيع</td><td class="num">29</td><td class="num">6</td><td class="num">28</td><td class="num">7</td></tr>
+        <tr><td><b>المشترك يدفع</b></td><td class="num"><b>35</b></td><td></td><td class="num"><b>35</b></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">الربح الكلي 15 شيكل في الحالتين. بأربع طبقات يُقسم على أربع جهات، وبثلاث يُقسم على ثلاث، فتأخذ كل جهة باقية أكثر دون أن يرتفع سعر المشترك. التوزيع الفعلي يحدده الفرع والوكلاء بأسعارهم.</p>
+</section>
+
+<section>
+  <h2>ما يبقى كما هو</h2>
+  <ul class="plain">
+    <li>لكل طبقة محفظة، وكل حركة مسجّلة بسببها.</li>
+    <li>الفرع يحدد سقف الوكيل، والوكيل يحدد سقف نقطة البيع.</li>
+    <li>كل طبقة تحدد سعر بيعها لمن تحتها، والبيع بأقل من سعر الشراء ممنوع.</li>
+    <li>الرقم يُفعَّل ويُملك في نقطة بيع فقط، والخصم من محفظتها وبسعرها.</li>
+    <li>تقارير الأرباح لكل طبقة، وسجل التدقيق باسم من نفّذ العملية.</li>
+    <li>موظفو الفرع وأدوارهم وصلاحياتهم.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>ما نتنازل عنه، ومتى تلزم الطبقة الرابعة</h2>
+  <p>الطبقة الرابعة تفيد في حالة واحدة: موزّع كبير عنده موزّعون فرعيون مستقلون، كل واحد منهم يدير محلاته، ويريد الموزّع الكبير أن يأخذ ربحاً من مبيعاتهم ويضبط ديونهم بنفسه.</p>
+  <div class="caution">
+    <p><b>السؤال الذي يحسم القرار:</b> كم موزّعاً من هذا النوع عندكم فعلاً اليوم؟ إذا كان العدد صفراً أو قليلاً، فالطبقة الرابعة تكلفة يدفعها كل المستخدمين كل يوم لأجل حالة نادرة. وإذا كانت أغلب السلاسل هكذا، فأربع طبقات هي الأصح ونبقيها.</p>
+  </div>
+  <p>الموزّع الكبير في نظام الثلاث طبقات يصير وكيلاً عادياً بسقف أعلى وسعر أفضل من الفرع، ومحلاته كلها تحته مباشرة.</p>
+</section>
+
+<section>
+  <h2>القرار المطلوب</h2>
+  <ul class="plain">
+    <li>الموافقة على سلم من ثلاث طبقات: الفرع، الوكيل، نقطة البيع.</li>
+    <li>تحديد مصير حسابات الوكيل الرئيسي الموجودة: تتحول إلى وكلاء، أو تُدمج مع وكلائها.</li>
+  </ul>
+  <p>بعد الموافقة نكتب خطة التحويل ونعرضها عليكم قبل أي تغيير في النظام.</p>
+</section>
+
+<footer>
+  <p>الأسباب مأخوذة من قواعد العمل المعتمدة في خطة المشروع. أرقام مثال السعر توضيحية وليست أسعاراً فعلية.</p>
+</footer>
+
+</main>
+</body>
+</html>

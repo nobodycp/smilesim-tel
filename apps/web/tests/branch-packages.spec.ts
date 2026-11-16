@@ -94,7 +94,15 @@ test('the package page edits its details', async ({ page }) => {
   // The page opens on the price chain (as in the design); the facts are on the overview.
   await page.getByRole('tab', { name: 'نظرة عامة' }).click();
   await expect(page.getByText('500 جيجا · دقائق غير محدودة')).toBeVisible();
+  // eSIM per package (spec 2026-11-09, 5) is on the start tab (spec 2026-11-16-package-page, P.1): on by default,
+  // with its price beside it; turned off here, it saves at once with the other details as they are.
+  const esim = page.getByTestId('package-esim');
+  await expect(esim.getByLabel('سعر eSIM')).toBeVisible();
+  const switched = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/details'));
+  await esim.getByRole('switch', { name: 'الرزمة متاحة كـ eSIM' }).click();
+  expect((await switched).postDataJSON()).toMatchObject({ dataGb: 500, smsCount: null, minutes: -1, details: '', esimAvailable: false });
   await page.getByRole('tab', { name: 'التفاصيل' }).click();
+  await expect(page.getByLabel('الرزمة متاحة كـ eSIM')).toHaveCount(0);
   await expect(page.getByLabel('الإنترنت (جيجا)')).toHaveValue('500');
   await expect(page.getByLabel('دقائق الاتصال')).toBeDisabled();
   await page.getByLabel('الرسائل').fill('200');
@@ -102,11 +110,10 @@ test('the package page edits its details', async ({ page }) => {
   // Suspension period (spec 2026-11-08-overview-and-reports-nav, I): 90 days when the sheet carries none.
   await expect(page.getByLabel('مدة تعليق الرقم (بالأيام)')).toHaveValue('90');
   await page.getByLabel('مدة تعليق الرقم (بالأيام)').fill('60');
-  // eSIM per package (spec 2026-11-09, 5): on by default; turned off here.
-  await page.getByLabel('الرزمة متاحة كـ eSIM').uncheck();
   const sent = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith('/v1/packages/lian-wecom-500/details'));
   await page.getByTestId('package-details-form').getByRole('button', { name: 'حفظ' }).click();
-  expect((await sent).postDataJSON()).toEqual({ dataGb: 500, smsCount: 200, minutes: -1, details: 'تجوال في الأردن', suspendAfterDays: 60, esimAvailable: false });
+  // The details leave eSIM to its switch.
+  expect((await sent).postDataJSON()).toEqual({ dataGb: 500, smsCount: 200, minutes: -1, details: 'تجوال في الأردن', suspendAfterDays: 60 });
 });
 
 test('the point of sale sees the details on the package card and the subscribe step', async ({ page }) => {

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>وضع مشروع Smile Sim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Readex+Pro:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one reading column, a status ledger look. State is shown by a coloured pill beside every item. */
+:root {
+  --paper: #f5f6f4;
+  --surface: #ffffff;
+  --ink: #17211f;
+  --muted: #5a6764;
+  --line: #dfe4e1;
+  --accent: #0f6b5c;
+  --accent-soft: #e2f1ed;
+  --done: #1b7a46;
+  --done-soft: #e3f3e9;
+  --sim: #1f62a8;
+  --sim-soft: #e4eefa;
+  --work: #a8650a;
+  --work-soft: #fbefd9;
+  --need: #b23a2c;
+  --need-soft: #fbe7e3;
+  --later: #5d5f73;
+  --later-soft: #ebecf1;
+  --display: "Readex Pro", "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --body: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #111615; --surface: #1a2120; --ink: #e9eeec; --muted: #9fadaa; --line: #2c3634;
+    --accent: #5fc7b3; --accent-soft: #173530;
+    --done: #6fd197; --done-soft: #16311f;
+    --sim: #86b8f0; --sim-soft: #172a41;
+    --work: #eab766; --work-soft: #3a2a0e;
+    --need: #f09285; --need-soft: #3d1b16;
+    --later: #b3b6cc; --later-soft: #262836;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #111615; --surface: #1a2120; --ink: #e9eeec; --muted: #9fadaa; --line: #2c3634;
+  --accent: #5fc7b3; --accent-soft: #173530;
+  --done: #6fd197; --done-soft: #16311f;
+  --sim: #86b8f0; --sim-soft: #172a41;
+  --work: #eab766; --work-soft: #3a2a0e;
+  --need: #f09285; --need-soft: #3d1b16;
+  --later: #b3b6cc; --later-soft: #262836;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--body); font-size: 17px; line-height: 1.85;
+}
+.page { max-width: 880px; margin-inline: auto; padding: 40px 20px 72px; display: flex; flex-direction: column; gap: 44px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.4; margin: 0; }
+h1 { font-size: 34px; font-weight: 700; }
+h2 { font-size: 24px; font-weight: 600; padding-block-end: 10px; border-block-end: 2px solid var(--accent); }
+h3 { font-size: 18px; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); }
+section { display: flex; flex-direction: column; gap: 18px; }
+.lede { font-size: 19px; color: var(--muted); }
+.meta { color: var(--muted); font-size: 15px; }
+.cover { display: flex; flex-direction: column; gap: 12px; padding-block-end: 28px; border-block-end: 1px solid var(--line); }
+.eyebrow { font-family: var(--display); color: var(--accent); font-weight: 600; font-size: 15px; }
+
+.toc { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.toc a { display: block; padding: 4px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); text-decoration: none; font-size: 15px; }
+.toc a:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.verdict { background: var(--surface); border: 1px solid var(--line); border-inline-start: 5px solid var(--accent); border-radius: 10px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.verdict strong { color: var(--accent); }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.tile b { display: block; font-family: var(--display); font-size: 26px; font-variant-numeric: tabular-nums; color: var(--accent); line-height: 1.3; }
+.tile span { color: var(--muted); font-size: 15px; }
+
+.pill { display: inline-block; white-space: nowrap; padding: 1px 11px; border-radius: 999px; font-size: 13.5px; font-weight: 600; line-height: 1.9; }
+.p-done { background: var(--done-soft); color: var(--done); }
+.p-sim { background: var(--sim-soft); color: var(--sim); }
+.p-work { background: var(--work-soft); color: var(--work); }
+.p-need { background: var(--need-soft); color: var(--need); }
+.p-later { background: var(--later-soft); color: var(--later); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 15px; color: var(--muted); }
+.legend div { display: flex; gap: 8px; align-items: center; }
+
+.wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 15.5px; line-height: 1.7; }
+th, td { text-align: start; vertical-align: top; padding: 11px 14px; border-block-end: 1px solid var(--line); }
+tr:last-child td { border-block-end: 0; }
+th { font-family: var(--display); font-weight: 600; font-size: 14.5px; color: var(--muted); background: var(--paper); }
+td.st { width: 1%; white-space: nowrap; }
+td b { font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.rung { background: var(--surface); border: 1px solid var(--line); border-block-start: 4px solid var(--accent); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.rung b { font-family: var(--display); font-size: 17px; }
+.rung span { font-size: 14.5px; color: var(--muted); line-height: 1.6; }
+.rung em { font-style: normal; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent); }
+
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 12px; }
+.steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; }
+.steps li::before { content: counter(s); grid-row: span 2; font-family: var(--display); font-weight: 700; font-size: 22px; color: var(--accent); inline-size: 34px; block-size: 34px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; }
+.steps h3 { align-self: center; }
+.steps p { grid-column: 2; color: var(--muted); font-size: 16px; }
+
+ul.plain { margin: 0; padding-inline-start: 22px; display: flex; flex-direction: column; gap: 6px; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 14px 18px; font-size: 16px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+.card p, .card li { font-size: 16px; }
+footer { color: var(--muted); font-size: 14.5px; border-block-start: 1px solid var(--line); padding-block-start: 18px; }
+bdi, .ltr { direction: ltr; unicode-bidi: isolate; }
+
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  h1 { font-size: 27px; } h2 { font-size: 21px; }
+  .ladder, .two { grid-template-columns: 1fr; }
+  .page { padding-block-start: 24px; gap: 36px; }
+}
+@media print {
+  :root { --paper: #fff; }
+  body { font-size: 12.5pt; }
+  .toc { display: none; }
+  .page { max-width: none; padding: 0; gap: 26px; }
+  section, .steps li, .card, tr, .verdict { break-inside: avoid; }
+  h2 { break-after: avoid; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+<header class="cover">
+  <span class="eyebrow">تقرير حالة المشروع</span>
+  <h1>نظام Smile Sim لإدارة بيع الشرائح والاشتراكات بالجملة</h1>
+  <p class="lede">أين وصل النظام، كيف يعمل، ما المكتمل وما الناقص، وما المطلوب حتى يبدأ البيع الفعلي.</p>
+  <p class="meta">تاريخ التقرير: 10 نوفمبر 2026 · بداية التطوير: 28 أكتوبر 2026 · الحالة موثّقة من الكود نفسه لا من الذاكرة</p>
+</header>
+
+<nav aria-label="محتويات التقرير">
+  <ul class="toc">
+    <li><a href="#summary">الخلاصة</a></li>
+    <li><a href="#logic">آلية العمل</a></li>
+    <li><a href="#features">الخصائص وحالتها</a></li>
+    <li><a href="#production">المطلوب للإنتاج</a></li>
+    <li><a href="#plan">خطة العمل</a></li>
+    <li><a href="#client">المطلوب منكم</a></li>
+    <li><a href="#tech">ملحق للمراجع التقني</a></li>
+  </ul>
+</nav>
+
+<section id="summary">
+  <h2>1. الخلاصة</h2>
+  <div class="verdict">
+    <p><strong>النظام مبني ويعمل من أوله إلى آخره.</strong> الحسابات بطبقاتها الأربع، المحافظ، الأسعار والأرباح، عمليات الأرقام، المهام، التقارير، حسابات المزودين والمطابقة، كلها موجودة ومجرَّبة على خادم تجريبي.</p>
+    <p><strong>الذي يفصلنا عن البيع الفعلي ليس بناء النظام، بل ربطه بالعالم الخارجي:</strong> الاتصال الآلي بالمزودين، بوابة الرسائل النصية والبريد، خادم الإنتاج وإعداداته، والنسخ الاحتياطي. إلى جانبها عدد محدود من القرارات التجارية التي ننتظرها منكم.</p>
+    <p><strong>يمكن البدء على مرحلتين.</strong> المرحلة الأولى تشغيل حقيقي بتنفيذ يدوي: كل عملية تصل موظف الفرع كمهمة، ينفّذها عند المزود ثم يغلقها، والنظام يتولى الحساب والخصم والتقارير. المرحلة الثانية تحوّل العمليات إلى تنفيذ آلي بعد ربط كل مزود.</p>
+  </div>
+  <div class="tiles">
+    <div class="tile"><b>4</b><span>طبقات حسابات، لكل طبقة بوابة دخول خاصة</span></div>
+    <div class="tile"><b>3</b><span>لغات للواجهة: العربية، الإنجليزية، العبرية</span></div>
+    <div class="tile"><b>117</b><span>خدمة برمجية في الخادم، كل واحدة بصلاحياتها</span></div>
+    <div class="tile"><b>+1,000</b><span>اختبار آلي يُشغَّل مع كل تعديل</span></div>
+  </div>
+</section>
+
+<section id="logic">
+  <h2>2. آلية العمل</h2>
+  <p>النظام يشتري الرزم والشرائح من المزودين، يفعّل الاشتراكات، ويعيد بيعها عبر سلسلة من أربع طبقات. المشترك النهائي يدفع عند نقطة البيع وليس له حساب في النظام.</p>
+
+  <h3>السلسلة والأسعار</h3>
+  <div class="ladder">
+    <div class="rung"><b>الفرع</b><span>الإدارة. يرى كل شيء، ويحدد سعر الوكيل الرئيسي.</span><span>مثال: تكلفته <em>25 ₪</em></span></div>
+    <div class="rung"><b>الوكيل الرئيسي</b><span>ينشئ وكلاء ويحدد أسعارهم.</span><span>يشتري بـ <em>30 ₪</em></span></div>
+    <div class="rung"><b>الوكيل</b><span>ينشئ نقاط بيع ويحدد أسعارها.</span><span>يشتري بـ <em>35 ₪</em></span></div>
+    <div class="rung"><b>نقطة البيع</b><span>تملك الأرقام وتبيع للمشترك بسعرها.</span><span>تشتري بـ <em>38 ₪</em> وتبيع بـ <em>45 ₪</em></span></div>
+  </div>
+  <ul class="plain">
+    <li>سعر بيع كل طبقة هو سعر شراء الطبقة التي تحتها. ربح كل طبقة هو الفرق بين السعرين، ويُحسب تلقائياً مع كل عملية.</li>
+    <li>البيع بأقل من سعر الشراء ممنوع. يمكن البيع بنفس السعر بلا ربح.</li>
+    <li>كل حساب يرى أرباحه هو فقط. الفرع يرى أرباح السلسلة كلها.</li>
+    <li>يمكن تحديد سعر خاص لحساب بعينه، وسعر خاص لأرقام بعينها.</li>
+  </ul>
+
+  <h3>المحافظ</h3>
+  <ul class="plain">
+    <li>لكل حساب محفظة. الرصيد ينزل من الأعلى إلى الأسفل فقط: الفرع يموّل الوكيل الرئيسي، وهكذا حتى نقطة البيع. لا يوجد تحويل بين حسابين في المستوى نفسه.</li>
+    <li>الأب يستطيع استرجاع مبلغ من ابنه مع ملاحظة بالسبب.</li>
+    <li>لكل حساب سقف دين يحدده من فوقه: كم يُسمح له أن ينزل بالسالب. بعد السقف تتوقف العمليات المالية.</li>
+    <li>الخصم دائماً من محفظة نقطة البيع صاحبة الرقم وبسعرها، أياً كان من نفّذ العملية. السجل يذكر من نفّذ.</li>
+    <li>عند فتح مهمة يُحجز مبلغها تلقائياً، ثم يُخصم عند الإنجاز أو يُفك عند الإلغاء.</li>
+    <li>كل حركة مسجَّلة: المبلغ، السبب، العملية، ومن قام بها.</li>
+  </ul>
+
+  <h3>عمليات الرقم</h3>
+  <div class="wrap"><table>
+    <thead><tr><th>العملية</th><th>ما يحدث</th></tr></thead>
+    <tbody>
+      <tr><td><b>تفعيل جديد</b></td><td>لصالح نقطة بيع فقط. شريحة عادية برقمها التسلسلي، أو شريحة إلكترونية (eSIM) بزيادة 5 ₪. يُخصم سعر الرزمة من نقطة البيع.</td></tr>
+      <tr><td><b>شحن وتجديد</b></td><td>يُخصم سعر نقطة البيع ويمتد الاشتراك. يمكن الدفع لعدة فترات مقدماً.</td></tr>
+      <tr><td><b>تبديل رزمة</b></td><td>يتحرك فرق السعر فقط: يُخصم إن كانت الجديدة أغلى، ويُعاد إن كانت أرخص.</td></tr>
+      <tr><td><b>فصل</b></td><td>يُعاد لنقطة البيع ما يقابل الفترات المدفوعة غير المستخدمة، مع عرض المبلغ قبل التأكيد.</td></tr>
+      <tr><td><b>تجميد وإلغاء تجميد</b></td><td>إيقاف مؤقت للرقم وإعادته.</td></tr>
+      <tr><td><b>تبديل الشريحة، طلب eSIM، عمليات إضافية</b></td><td>مثل جيجات زائدة. تُعرَّف العمليات الإضافية وأسعارها داخل كل رزمة.</td></tr>
+      <tr><td><b>نقل رقم أو حساب</b></td><td>نقل الرقم إلى حساب آخر فيأخذ أسعاره، ونقل نقطة بيع من وكيل إلى آخر بعد تصفية حسابها.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>تلقائي أم مهمة</h3>
+  <p>لكل عملية على كل رزمة طريقة تنفيذ يحددها الفرع: <b>تلقائي</b> عبر المزود، أو <b>مهمة</b> تذهب لموظفي الفرع.</p>
+  <ol class="steps">
+    <li><h3>العملية التلقائية الناجحة</h3><p>تُنفَّذ فوراً: الرقم يتغير والرصيد يُخصم في اللحظة نفسها.</p></li>
+    <li><h3>العملية اليدوية، أو التي فشلت عند المزود</h3><p>تصير مهمة برقم واضح يراه مقدّمها. لا يُخصم شيء، ويُحجز المبلغ فقط.</p></li>
+    <li><h3>موظف الفرع يأخذ المهمة</h3><p>يظهر اسمه عليها. يستطيع إضافة ملاحظات، وإرجاعها ليأخذها غيره.</p></li>
+    <li><h3>الإغلاق</h3><p>إن أُنجزت: يتغير الرقم ويُخصم المبلغ. إن رُفضت أو ألغاها مقدّمها: يُفك الحجز ولا يُخصم شيء، ويبقى السبب في السجل.</p></li>
+  </ol>
+
+  <h3>الصلاحيات والرقابة</h3>
+  <ul class="plain">
+    <li>كل حساب يرى ما تحته فقط. الفرع يرى الجميع.</li>
+    <li>موظفو الفرع لهم أدوار، والدور يحدد ما يستطيعه الموظف: التعديل، المهام، التقارير، إدارة الموظفين، دخول الحسابات.</li>
+    <li>الفرع يستطيع الدخول إلى أي حساب كأنه صاحبه، وكل ما ينفّذه يُسجَّل باسم الموظف الحقيقي مع عنوان الشبكة.</li>
+    <li>سجل نشاط كامل: من فعل ماذا ومتى، مع إمكانية التصدير.</li>
+  </ul>
+
+  <h3>المزودون</h3>
+  <ul class="plain">
+    <li>لكل مزود حساب مالي: رصيدنا عنده، مشترياتنا منه، دفعاتنا له، حد الائتمان، وكشف كامل.</li>
+    <li>المطابقة: نرفع كشف المزود (Excel) فيقارنه النظام بعملياتنا ويُظهر الناقص والمكرر والمختلف، ويُتابَع كل فرق حتى يُحل.</li>
+    <li>المزودون معزولون عن بعضهم تماماً، ولكل شركة اتصالات مزودوها ورزمها.</li>
+  </ul>
+</section>
+
+<section id="features">
+  <h2>3. الخصائص وحالتها</h2>
+  <div class="legend">
+    <div><span class="pill p-done">مكتمل</span> يعمل ومختبَر</div>
+    <div><span class="pill p-sim">مكتمل بمحاكاة</span> مبني، وينتظر ربطاً خارجياً</div>
+    <div><span class="pill p-work">قيد العمل</span> بدأ ولم ينتهِ</div>
+    <div><span class="pill p-need">يحتاج تعديلاً أو قراراً</span></div>
+    <div><span class="pill p-later">مؤجل</span> باتفاق سابق</div>
+  </div>
+
+  <h3>الحسابات والدخول</h3>
+  <div class="wrap"><table><tbody>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>أربع بوابات دخول</b> منفصلة، إنشاء الحسابات وتجميدها وحذفها ونقلها، وتغيير كلمة السر الإجباري عند أول دخول.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>التحقق الثنائي بتطبيق المصادقة</b> ومفاتيح المرور (Passkeys: الدخول ببصمة الجهاز)، مع إمكانية فرضه على طبقة كاملة.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>الجلسات:</b> عدد الجلسات المسموح ومدة الخمول لكل طبقة ولكل حساب، وعرض الجلسات وإنهاؤها.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>الأدوار وموظفو الفرع</b>، ودخول الفرع إلى حساب آخر مع تسجيل ذلك.</td></tr>
+    <tr><td class="st"><span class="pill p-sim">مكتمل بمحاكاة</span></td><td><b>التحقق الثنائي برسالة نصية أو بريد:</b> مبني كاملاً، لكن الرموز لا تُرسَل فعلياً حتى نختار بوابة الإرسال.</td></tr>
+    <tr><td class="st"><span class="pill p-need">يحتاج تعديلاً</span></td><td><b>صلاحيتا «القراءة» و«المحاسبة» للموظفين</b> معرَّفتان لكن غير مطبَّقتين بعد: أي موظف فرع يستطيع اليوم تمويل محفظة وقراءة المالية. أُجّل ذلك عمداً إلى أن تُحدَّد أدوار الموظفين (محاسب، مندوب، فني). يجب إنجازه قبل توظيف أكثر من شخص موثوق.</td></tr>
+  </tbody></table></div>
+
+  <h3>الرزم والأسعار</h3>
+  <div class="wrap"><table><tbody>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>الشركات والرزم:</b> تفاصيل الرزمة (جيجا، دقائق، رسائل)، إتاحتها كـ eSIM، مدة تعليق الرقم، إظهارها وإخفاؤها.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>سلّم الأسعار</b> لكل طبقة، الأسعار الخاصة لحساب أو لأرقام، وأي الرزم يُسمح لكل حساب ببيعها.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>طريقة تنفيذ كل عملية</b> (تلقائي أو مهمة) على مستوى المزود والشركة والرزمة، والعمليات الإضافية بأسعارها.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>الإعلانات</b> في الصفحة الرئيسية: صورة، مدة، جمهور حسب الطبقة، تواريخ.</td></tr>
+    <tr><td class="st"><span class="pill p-sim">مكتمل بمحاكاة</span></td><td><b>إضافة شركة أو رزمة من قائمة المزود:</b> الشاشة تعمل، والقائمة حالياً تجريبية حتى يُربط المزود.</td></tr>
+    <tr><td class="st"><span class="pill p-need">يحتاج قراراً</span></td><td><b>سعر بيع الفرع المباشر</b> حين يختلف سعر وكيلين رئيسيين، و<b>التبديل إلى رزمة مخفية</b>: النظام يرفضه اليوم، والقرار لكم.</td></tr>
+    <tr><td class="st"><span class="pill p-later">مؤجل</span></td><td><b>العروض داخل الرزمة</b> (شارة عرض، مدة العرض، سعر التجديد بعده) و<b>حد أعلى لسعر البيع</b>.</td></tr>
+  </tbody></table></div>
+
+  <h3>الأرقام والعمليات</h3>
+  <div class="wrap"><table><tbody>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>كل عمليات الرقم</b> المذكورة في القسم 2، بمسارها اليدوي عبر المهام.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>قائمة الأرقام</b> بالبحث والتصفية، الأيام المتبقية، «ينتهي قريباً» (3 أيام أو أقل)، والأرقام المعلّقة.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>المهام:</b> أخذ، إرجاع، إنجاز، رفض، إلغاء، ملاحظات عامة وداخلية، وإشعارات فورية.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>الحماية من التكرار:</b> الضغط مرتين لا ينفّذ العملية مرتين، ولا يُفعَّل رقم أو شريحة واحدة في طلبين معاً.</td></tr>
+    <tr><td class="st"><span class="pill p-sim">مكتمل بمحاكاة</span></td><td><b>التنفيذ التلقائي عبر المزود:</b> المسار كله مبني ويُجرَّب بمزود وهمي (نجاح أو فشل). الربط الحقيقي لم يبدأ لأنه ينتظر وثائق المزودين.</td></tr>
+    <tr><td class="st"><span class="pill p-work">قيد العمل</span></td><td><b>تسوية التفعيل على رد المزود:</b> حجز المبلغ عند الطلب وخصمه عند تأكيد المزود، ومعالجة الحالة التي لا يصل فيها رد. اكتمل التصميم وأول مرحلتين من اثنتي عشرة.</td></tr>
+    <tr><td class="st"><span class="pill p-work">قيد العمل</span></td><td><b>إشعار قبل انتهاء الاشتراك:</b> التصميم جاهز وينتظر ثلاثة قرارات (من يُبلَّغ، وشكل الإشعار، ولمن تذهب الرسالة النصية لاحقاً).</td></tr>
+    <tr><td class="st"><span class="pill p-need">يحتاج قراراً</span></td><td><b>أيام السماح قبل الفصل:</b> ذُكرت ولم يُتفق عليها، وليست في النظام.</td></tr>
+    <tr><td class="st"><span class="pill p-later">مؤجل</span></td><td><b>رابط تحديث الرقم، إدارة الرسائل، إشعارات واتساب والبريد، سجل العملاء، المخزون، طلبات الشحن مع إثبات التحويل.</b></td></tr>
+  </tbody></table></div>
+
+  <h3>المالية والتقارير</h3>
+  <div class="wrap"><table><tbody>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>المحفظة الكاملة:</b> تمويل، خصم، سقف، حجز تلقائي، كشف حساب بالأسباب، ورسم الرصيد عبر الزمن.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>الأرباح لكل طبقة</b> حسب الرزمة والفترة، وأرباح السلسلة كاملة للفرع.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>التقارير:</b> المالية، العمليات، الأرباح، الأرصدة، المزودون، وسجل النشاط. كلها بتصفية وتصدير إلى Excel (CSV).</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>الصفحة الرئيسية</b> لكل طبقة: المبيعات والتفعيلات والأرباح مع المقارنة بالفترة السابقة، الأكثر مبيعاً، الحسابات المدينة، المهام المنتظرة.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>حسابات المزودين:</b> الرصيد، الدفعات، التسويات، حد الائتمان، تنبيه عند انخفاض الرصيد أو تكرار الفشل.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>المطابقة برفع كشف Excel</b> ومتابعة الفروقات.</td></tr>
+    <tr><td class="st"><span class="pill p-sim">مكتمل بمحاكاة</span></td><td><b>المطابقة الآلية مع المزود</b> وما يحاسبنا عليه المزود فعلياً: أرقام تجريبية حتى يُربط.</td></tr>
+    <tr><td class="st"><span class="pill p-need">يحتاج تعديلاً</span></td><td><b>زر «شحن المحفظة»</b> في صفحة المحفظة ظاهر ويقول إنه قادم، ولا يعمل بعد.</td></tr>
+  </tbody></table></div>
+
+  <h3>الواجهة</h3>
+  <div class="wrap"><table><tbody>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>ثلاث لغات</b> مع اتجاه الكتابة الصحيح، ووضع فاتح وداكن، وتصميم يعمل على الجوال والحاسوب.</td></tr>
+    <tr><td class="st"><span class="pill p-done">مكتمل</span></td><td><b>هوية الموقع</b> (الشعار والاسم والأيقونة) تُغيَّر من الإعدادات، وبحث سريع عن الحسابات والأرقام والصفحات.</td></tr>
+    <tr><td class="st"><span class="pill p-need">يحتاج تعديلاً</span></td><td><b>تحسينات صغيرة معروفة:</b> بعض الروابط تعيد تحميل الصفحة كاملة، ورسالة خطأ ظاهرة تبقى بلغتها إن بُدّلت اللغة.</td></tr>
+  </tbody></table></div>
+
+  <p class="note"><b>غير مطلوب باتفاق سابق:</b> مصدر بديل لكل منتج من مزود آخر، وطلب عدة شرائح لعميل واحد في طلب واحد.</p>
+</section>
+
+<section id="production">
+  <h2>4. المطلوب قبل البيع الفعلي</h2>
+  <p>هذه القائمة كاملة. لا يوجد بند مخفي خارجها نعرفه اليوم.</p>
+  <div class="wrap"><table>
+    <thead><tr><th>المتطلب</th><th>لماذا</th><th>يتوقف على</th></tr></thead>
+    <tbody>
+      <tr><td><b>خادم إنتاج خاص ونطاق (دومين)</b></td><td>الخادم الحالي تجريبي ومشترك مع مشاريع أخرى. الإنتاج يحتاج خادماً مستقلاً بأربعة عناوين فرعية للبوابات وشهادة أمان.</td><td>العميل: الخادم والنطاق. نحن: التجهيز</td></tr>
+      <tr><td><b>إعدادات الأمان للإنتاج</b></td><td>النظام يرفض أن يعمل في الإنتاج إن نقص أحدها: مفتاح تشفير البيانات السرية، الاتصال المشفَّر، وإيقاف الحسابات التجريبية والمحاكاة.</td><td>نحن، بعد توفر الخادم</td></tr>
+      <tr><td><b>نسخ احتياطي تلقائي لقاعدة البيانات</b></td><td>غير مبني بعد. لا يصح تشغيل نظام مالي بلا نسخ يومي مجرَّب الاسترجاع.</td><td>نحن</td></tr>
+      <tr><td><b>صلاحيات الموظفين كاملة</b></td><td>تطبيق «القراءة» و«المحاسبة» حسب الأدوار التي تحددونها.</td><td>العميل: تعريف الأدوار. نحن: التنفيذ</td></tr>
+      <tr><td><b>بوابة الرسائل النصية والبريد</b></td><td>لإرسال رموز التحقق، ولاحقاً إشعارات انتهاء الاشتراك. من دونها يبقى التحقق بتطبيق المصادقة ومفاتيح المرور فقط، وهذا كافٍ للبدء.</td><td>العميل: اختيار المزود وفتح الحساب</td></tr>
+      <tr><td><b>القرارات التجارية المفتوحة</b></td><td>أربعة قرارات مذكورة في القسم 6.</td><td>العميل</td></tr>
+      <tr><td><b>إدخال البيانات الحقيقية</b></td><td>المزودون، الشركات، الرزم بأسعارها، حساب صاحب الفرع والموظفين. الحسابات التجريبية تُحذف.</td><td>العميل: البيانات. نحن: الإدخال والمراجعة</td></tr>
+      <tr><td><b>تجربة قبول</b></td><td>تمرّون أنتم وموظفوكم على كل عملية بأرقام حقيقية قليلة قبل فتح النظام للوكلاء.</td><td>الطرفان</td></tr>
+      <tr><td><b>ربط المزودين آلياً</b> <span class="pill p-later">للمرحلة الثانية</span></td><td>ليس شرطاً للبدء. من دونه تعمل كل العمليات كمهام يدوية. الربط يحتاج وثائق كل مزود وبيانات دخول تجريبية ثم حقيقية.</td><td>العميل: الوثائق والبيانات من كل مزود</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="plan">
+  <h2>5. خطة العمل المقترحة</h2>
+  <ol class="steps">
+    <li><h3>إقفال القرارات</h3><p>جلسة واحدة نحسم فيها القرارات الأربعة وأدوار الموظفين وقرارات إشعار الانتهاء. لا كود قبل أن تُكتب القاعدة وتوافقوا عليها.</p></li>
+    <li><h3>استكمال ما قبل الإطلاق</h3><p>صلاحيات الموظفين، إشعار انتهاء الاشتراك، النسخ الاحتياطي، والتعديلات الصغيرة في الواجهة. بالتوازي: تجهيز خادم الإنتاج وإعداداته.</p></li>
+    <li><h3>الإطلاق الأول: تشغيل حقيقي بتنفيذ يدوي</h3><p>إدخال البيانات الحقيقية، تجربة القبول، ثم فتح النظام تدريجياً: الفرع أولاً، ثم وكيل رئيسي واحد بنقاط بيعه، ثم الباقي.</p></li>
+    <li><h3>ربط المزود الأول</h3><p>استكمال تسوية التفعيل (المراحل العشر الباقية)، بناء الربط على بيئة المزود التجريبية، واختبار كل حالة: نجاح، رفض، انقطاع بلا رد، إلغاء. لا يُفتح على المزود الحقيقي إلا بعد اجتياز قائمة فحص مكتوبة وموافقتكم.</p></li>
+    <li><h3>بقية المزودين، ثم الخصائص المؤجلة</h3><p>كل مزود يُضاف منفصلاً بالطريقة نفسها. بعدها نرتّب معكم المؤجَّل حسب أولويتكم: العروض، الإشعارات عبر واتساب، المخزون، سجل العملاء.</p></li>
+  </ol>
+  <p class="note">المدد والتكلفة لكل مرحلة تُحدَّد في العرض المالي، لأن المرحلتين 4 و5 تعتمدان على جودة وثائق كل مزود وسرعة تجاوبه.</p>
+</section>
+
+<section id="client">
+  <h2>6. المطلوب منكم</h2>
+  <div class="two">
+    <div class="card">
+      <h3>قرارات تجارية</h3>
+      <ul class="plain">
+        <li>سعر بيع الفرع المباشر حين يختلف سعر وكيلين رئيسيين.</li>
+        <li>هل توجد أيام سماح قبل الفصل، وكم.</li>
+        <li>هل يُسمح بالتبديل إلى رزمة مخفية عن البيع.</li>
+        <li>إشعار انتهاء الاشتراك: من يُبلَّغ، وهل الرسالة النصية لاحقاً لنقطة البيع أم للمشترك.</li>
+        <li>أدوار الموظفين وما يُسمح لكل دور.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>مواد وحسابات</h3>
+      <ul class="plain">
+        <li>خادم الإنتاج والنطاق.</li>
+        <li>مزود الرسائل النصية وحساب البريد.</li>
+        <li>من كل مزود: وثائق الربط، وبيانات دخول تجريبية.</li>
+        <li>نموذج كشف Excel من كل مزود، لضبط المطابقة على أعمدته.</li>
+        <li>قائمة الرزم والأسعار الحقيقية لكل طبقة.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="tech">
+  <h2>7. ملحق للمراجع التقني</h2>
+  <p>هذا القسم لمن سيراجع المشروع فنياً. كل ما فيه يمكن التحقق منه في المستودع.</p>
+  <div class="wrap"><table><tbody>
+    <tr><td><b>البنية</b></td><td>واجهة <span class="ltr">Next.js 16 / React 19</span> وخادم <span class="ltr">NestJS 12</span> منفصلان. قاعدة بيانات <span class="ltr">PostgreSQL</span> عبر <span class="ltr">Prisma 7</span>، و<span class="ltr">Redis</span> مع <span class="ltr">BullMQ</span> للطوابير. خمس حاويات <span class="ltr">Docker</span>: الواجهة، الخادم، العامل، قاعدة البيانات، Redis.</td></tr>
+    <tr><td><b>سلامة المال</b></td><td>المبالغ أعداد صحيحة بالأغورة، بلا كسور عشرية. كل حركة مالية داخل معاملة واحدة على صفوف مقفلة وبترتيب قفل ثابت. الحجز يسبق الخصم. اختبارات تزامن على قاعدة بيانات حقيقية تثبت أن طلبين متزامنين لا يخصمان مرتين.</td></tr>
+    <tr><td><b>الحماية</b></td><td>كلمات السر بـ <span class="ltr">argon2</span>. رمز الجلسة يُخزَّن مجزَّأً (hash). أسرار التحقق الثنائي مشفَّرة بـ <span class="ltr">AES-256-GCM</span>. رفض الكتابة من موقع آخر (CSRF)، حد للطلبات لكل جلسة ولمحاولات الدخول لكل عنوان، سياسة محتوى (CSP)، وفحص الصلاحية في الخادم لكل خدمة. الخادم لا يقلع في الإنتاج بإعدادات ناقصة.</td></tr>
+    <tr><td><b>منع التكرار</b></td><td>مفتاح <span class="ltr">Idempotency-Key</span> لكل عملية كتابة، وحجز الرقم والشريحة بفهارس فريدة في قاعدة البيانات أثناء المهمة المفتوحة.</td></tr>
+    <tr><td><b>الاختبارات</b></td><td>أكثر من 1,000 اختبار للخادم في 106 ملفات، منها اختبارات تثبت صلاحية كل خدمة من الـ 117 وشكل ردّها، و122 سيناريو للواجهة. فحص آلي لقواعد الهندسة يمنع رجوع المخالفات. <span class="ltr">GitHub Actions</span> يشغّل الفحص والاختبارات والبناء مع كل دفع.</td></tr>
+    <tr><td><b>التوثيق</b></td><td>خطة القواعد التجارية مؤرَّخة، خريطتان محدَّثتان للخادم والواجهة، 19 قراراً معمارياً مكتوباً بأسبابه، ومواصفة وخطة لكل تغيير في السلوك أو المال قبل كتابة الكود. توثيق <span class="ltr">Swagger</span> للخدمات في غير الإنتاج.</td></tr>
+    <tr><td><b>الربط بالمزودين</b></td><td>واجهة واحدة (<span class="ltr">ProviderGateway</span>) خلفها اليوم مزود محاكى. سجل دائم لكل طلب يُرسَل للمزود بحالاته (مطلوب، معلّق، ناجح، فاشل، مجهول)، ونمط <span class="ltr">Outbox</span> للإرسال المضمون، واسترجاع للطلبات العالقة. مبني ومختبَر، وغير موصول بعد بمسار العمليات. المزود الحقيقي صنف جديد خلف الواجهة نفسها.</td></tr>
+    <tr><td><b>نقاط معروفة للأحجام الكبيرة</b></td><td>القوائم مقسَّمة صفحات من الخادم. يبقى: شجرة الحسابات تُحمَّل كاملة في الذاكرة لحساب الرؤية، مشتريات المزود تُجمَع في الذاكرة، والقوائم التي تتجاوز 1,000 عنصر في الفهرس تُقطع بلا تنبيه على الشاشة. لا أثر لها بالحجم الحالي، وتُعالَج قبل آلاف الحسابات.</td></tr>
+    <tr><td><b>غير موجود بعد</b></td><td>نسخ احتياطي آلي، ربط حقيقي بأي مزود، بوابة رسائل نصية أو بريد، وتطبيق صلاحيتي القراءة والمحاسبة.</td></tr>
+  </tbody></table></div>
+</section>
+
+<footer>
+  أُعدّ هذا التقرير من حالة المستودع بتاريخ 10 نوفمبر 2026. أي بند وُصف بأنه مكتمل يمكن عرضه مباشرة على النسخة التجريبية.
+</footer>
+
+</main>
+</body>
+</html>

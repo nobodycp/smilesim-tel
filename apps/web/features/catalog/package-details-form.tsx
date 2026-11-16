@@ -64,7 +64,7 @@ export function readDetails(draft: DetailsDraft): DetailsValues | null {
 }
 
 /** GB, minutes and messages, the suspension period, eSIM and the extra details. */
-export function DetailsFields({ draft, onChange }: { draft: DetailsDraft; onChange: (next: DetailsDraft) => void }) {
+export function DetailsFields({ draft, onChange, esim = true }: { draft: DetailsDraft; onChange: (next: DetailsDraft) => void; esim?: boolean }) {
   const { t } = usePrefs();
   const set = (patch: Partial<DetailsDraft>) => onChange({ ...draft, ...patch });
   const field = (label: string, key: 'dataGb' | 'minutes' | 'smsCount') => {
@@ -102,11 +102,16 @@ export function DetailsFields({ draft, onChange }: { draft: DetailsDraft; onChan
         <Input surface="surface" className="text-md" inputMode="numeric" dir="ltr" value={draft.suspendAfter} onChange={(event) => set({ suspendAfter: event.target.value })} />
         <span className={paneHintClass}>{t.suspendAfterHint}</span>
       </Label>
-      <Label tone="pane" className={CHECK_ROW}>
-        <Checkbox checked={draft.esimAvailable} onCheckedChange={(next) => set({ esimAvailable: next === true })} />
-        <span>{t.packageEsimAvailable}</span>
-      </Label>
-      <p className={paneHintClass}>{t.packageEsimHint}</p>
+      {/* The package page has eSIM on its start tab (spec 2026-11-16-package-page, P.1); «إضافة رزمة» asks here. */}
+      {esim ? (
+        <>
+          <Label tone="pane" className={CHECK_ROW}>
+            <Checkbox checked={draft.esimAvailable} onCheckedChange={(next) => set({ esimAvailable: next === true })} />
+            <span>{t.packageEsimAvailable}</span>
+          </Label>
+          <p className={paneHintClass}>{t.packageEsimHint}</p>
+        </>
+      ) : null}
       <Label tone="pane">
         {t.extraDetails}
         <Textarea className="h-10.5" rows={3} maxLength={DETAILS_LIMIT} value={draft.details} onChange={(event) => set({ details: event.target.value })} />
@@ -137,13 +142,15 @@ export function PackageDetailsForm({
       onInvalid();
       return;
     }
-    await run(() => api.setPackageDetails(sheet.code, values), { note: t.saved });
+    // eSIM is saved by its own switch on the start tab: these details leave it as it is.
+    const { esimAvailable: _esim, ...rest } = values;
+    await run(() => api.setPackageDetails(sheet.code, rest), { note: t.saved });
   }
 
   return (
     <form className="pane-body min-w-0 max-w-full content-start gap-2" data-testid="package-details-form" onSubmit={save}>
       <p className={paneHintClass}>{t.packageDetailsHint}</p>
-      <DetailsFields draft={draft} onChange={setDraft} />
+      <DetailsFields draft={draft} onChange={setDraft} esim={false} />
       <div>
         <Button type="submit" disabled={busy}>{t.save}</Button>
       </div>

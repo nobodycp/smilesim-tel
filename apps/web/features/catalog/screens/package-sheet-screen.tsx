@@ -14,7 +14,7 @@ import { Button } from '../../../components/ui/button';
 import { TableSheet } from '../../../components/ui/table';
 import { api, type CustomPriceRow, type LineRow, type Shelf } from '../../../lib/api';
 import { everyAccount } from '../../../lib/directory';
-import { formatShekel, parseShekel, shekelField } from '../../../lib/money';
+import { parseShekel, shekelField } from '../../../lib/money';
 import { usePrefs } from '../../../lib/prefs';
 import { useAction } from '../../../lib/use-action';
 import { type Fetched } from '../../../lib/fetched';
@@ -32,6 +32,7 @@ import { useCrumbs } from '../../../lib/crumbs';
 import { Tabs } from '../../../components/tabs';
 import { PackageAddons } from '../package-addons';
 import { PackageDurations } from '../package-durations';
+import { PackageEsim } from '../package-esim';
 import { PackageFacts } from '../../../components/package-facts';
 import { PackageDetailsForm } from '../package-details-form';
 import { CompanyMark } from '../../../components/company-mark';
@@ -58,7 +59,7 @@ const EMPTY_PRICES: Record<PriceKey, string> = {
   renewalSubscriberPrice: '',
 };
 
-type Seeded = { prices: typeof EMPTY_PRICES; esimPrice: string; renewals: string[]; switches: string[] };
+type Seeded = { prices: typeof EMPTY_PRICES; renewals: string[]; switches: string[] };
 
 // The form value after a reload: the server's when the user left the field as it was last loaded, else their draft.
 function follow<T>(current: T, seeded: T | undefined, next: T): T {
@@ -129,7 +130,6 @@ export function PackageSheetScreen() {
   // The price chain opens first, as in the design.
   const [tab, setTab] = useState<Tab>('prices');
   const [prices, setPrices] = useState(EMPTY_PRICES);
-  const [esimPrice, setEsimPrice] = useState('');
   const [renewals, setRenewals] = useState<string[]>([]);
   const [switches, setSwitches] = useState<string[]>([]);
   const [selectedLines, setSelectedLines] = useState<string[]>([]);
@@ -216,7 +216,6 @@ export function PackageSheetScreen() {
         renewalPosPrice: shekelField(sheet.renewalPosPrice),
         renewalSubscriberPrice: shekelField(sheet.renewalSubscriberPrice),
       },
-      esimPrice: sheet.esimPrice === null ? '' : shekelField(sheet.esimPrice),
       renewals: sheet.renewals,
       switches: sheet.switches,
     };
@@ -227,7 +226,6 @@ export function PackageSheetScreen() {
       for (const key of Object.keys(next.prices) as PriceKey[]) merged[key] = follow(current[key], before?.prices[key], next.prices[key]);
       return merged;
     });
-    setEsimPrice((current) => follow(current, before?.esimPrice, next.esimPrice));
     setRenewals((current) => follow(current, before?.renewals, next.renewals));
     setSwitches((current) => follow(current, before?.switches, next.switches));
   }, [sheet]);
@@ -250,18 +248,8 @@ export function PackageSheetScreen() {
       }
       body[key] = price;
     }
-    const esim = esimPrice.trim() ? parseShekel(esimPrice) : null;
-    if (esimPrice.trim() && esim === null) {
-      setError(apiText('بيانات غير صالحة'));
-      setNote('');
-      return;
-    }
-    await run(() => api.setChain(sheet.code, { ...body, esimPrice: esim }), { note: t.save });
+    await run(() => api.setChain(sheet.code, body), { note: t.save });
   }
-
-  const esimSourceName = sheet
-    ? sheet.esimPriceSource === 'package' ? t.esimSourcePackage : sheet.esimPriceSource === 'provider' ? t.esimSourceProvider : t.esimSourceCompany
-    : '';
 
   async function saveTargets(kind: 'renewals' | 'switches') {
     if (!sheet) return;
@@ -503,6 +491,14 @@ export function PackageSheetScreen() {
                   </div>
                   <Badge className="justify-self-start" variant={onOffTone(sheet.forSale)} dot>{sheet.forSale ? t.forSale : t.notForSale}</Badge>
                   <PackageFacts facts={sheet} />
+                  <PackageEsim
+                    key={`${sheet.code}:${sheet.esimPrice ?? ''}`}
+                    sheet={sheet}
+                    canEdit={canEditAddons}
+                    busy={busy}
+                    run={run}
+                    onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }}
+                  />
                 </div>
               )}
               {tab === 'details' && (
@@ -535,25 +531,8 @@ export function PackageSheetScreen() {
               )}
               {tab === 'prices' && (
                 <ChainBoard prices={prices} onChange={(key, value) => setPrices((current) => ({ ...current, [key]: value }))}>
-                  {/* «حفظ» saves the chain and the eSIM price beside it; re-pricing the live numbers has its own button. */}
+                  {/* «حفظ» saves the chain; the eSIM price is on the start tab, and re-pricing the live numbers has its own button. */}
                   <Button type="button" onClick={() => void saveChain()}>{t.save}</Button>
-                  <div className={FUND}>
-                    <h3 className={FUND_TITLE}>{t.esimPrice}</h3>
-                    <Label tone="pane" className={FUND_LABEL}>
-                      {t.esimPrice}
-                      <Input
-                        surface="surface"
-                        className="text-md"
-                        inputMode="decimal"
-                        value={esimPrice}
-                        placeholder={t.useInheritedPrice}
-                        onChange={(event) => setEsimPrice(event.target.value)}
-                      />
-                      <span className={paneHintClass}>
-                        {t.esimPriceFrom.replace('{price}', formatShekel(sheet.esimPriceEffective)).replace('{source}', esimSourceName)}
-                      </span>
-                    </Label>
-                  </div>
                   {/* The board's last card: its field and its button side by side from 721px, the heading across. */}
                   <div className={cn(FUND, 'min-[721px]:grid-cols-title-end')} data-testid="reprice">
                     <h3 className={cn(FUND_TITLE, 'col-span-full')}>{t.repriceTitle}</h3>
