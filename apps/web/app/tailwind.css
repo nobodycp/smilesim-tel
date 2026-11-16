@@ -927,16 +927,13 @@
 @keyframes gauth-tag { from { opacity: 0; transform: rotate(-4deg) translateY(40px); } }
 
 /* An offer package's card at the point of sale (features/catalog/screens/packages-screen.tsx; spec
-   2026-11-16-package-page, P.8). A spark leaves the middle of its burst along its own turn and shrinks away; the
-   sheen crosses the card from the reading end to the start; the gold edge breathes. The utilities that name them
-   sit under `motion-safe:`, so a seller who asks for less motion gets the gold card at rest. */
+   2026-11-16-package-page, P.8): the fireworks under the pointer. A spark leaves the middle of its burst along its
+   own turn and shrinks away. The utility that names it sits under `motion-safe:` and the card's hover. */
 @keyframes offer-spark {
   0% { opacity: 0; transform: rotate(var(--spark-turn)) translateY(0) scale(0.4); }
   12%, 55% { opacity: 1; }
   100% { opacity: 0; transform: rotate(var(--spark-turn)) translateY(calc(var(--spark-reach) * -1)) scale(0); }
 }
-@keyframes offer-sheen { from { background-position: 180% 0; } to { background-position: -80% 0; } }
-@keyframes offer-breathe { 50% { box-shadow: inset 0 0 0 2px var(--rd-warning), inset 0 0 22px -6px var(--rd-warning); } }
 
 /* The data visuals' motion (Tailwind migration T3.3), moved from desk/home.css and graphite.css with the rules that
    named them; the utilities that name them sit under `motion-safe:`. The donut's slices draw in and its middle fades

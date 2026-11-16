@@ -73,24 +73,23 @@ const CARD = cn(
   'focus-visible:inset-ring-2 focus-visible:inset-ring-accent focus-visible:outline-none',
 );
 /*
- * An offer's card (spec 2026-11-16-package-page, P.8): the gold of `--rd-warning` instead of the plain card — a
- * 2px gold edge that breathes (drawn by `OfferShow`), a wash from gold at the top start to the accent at the bottom end — with a sheen
- * that crosses it and four bursts of sparks, gold and accent (`OfferShow`). Under the pointer it keeps its wash. With less
- * motion asked for it is the gold card at rest, with no sheen and no sparks.
+ * An offer's card (spec 2026-11-16-package-page, P.8): no edge at all, a wash from the gold of `--rd-warning` at the
+ * top start to the accent at the bottom end, and a gold data ring. Under the pointer (or with keyboard focus) four
+ * bursts of fireworks go off across it (`OfferShow`); at rest, and when less motion is asked for, it is still.
  */
 const OFFER_CARD = cn(
-  'inset-ring-2 inset-ring-warning',
+  'group/offer inset-ring-0',
   'bg-[linear-gradient(135deg,var(--rd-warning-soft),var(--rd-surface)_55%,var(--rd-accent-soft))]',
   'hover:bg-[linear-gradient(135deg,var(--rd-warning-soft),var(--rd-surface-2)_55%,var(--rd-accent-soft))]',
 );
 /** Where each burst sits on the card (from the reading start and the top), and when it goes off. */
 const BURSTS = [
-  { at: 'start-[18%] top-[22%]', delay: 0 },
-  { at: 'start-[80%] top-[40%]', delay: 0.7 },
-  { at: 'start-[54%] top-[14%]', delay: 1.4 },
-  { at: 'start-[30%] top-[68%]', delay: 2.0 },
+  { at: 'start-[20%] top-[26%]', delay: 0 },
+  { at: 'start-[78%] top-[42%]', delay: 0.35 },
+  { at: 'start-[52%] top-[18%]', delay: 0.7 },
+  { at: 'start-[30%] top-[70%]', delay: 1.05 },
 ];
-const SPARKS = [0, 45, 90, 135, 180, 225, 270, 315];
+const SPARKS = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
 
 /** A company's picture: the whole picture centred, 72px high across the card, straight on the card with no plate behind it. */
 const PLATE = 'flex h-18 w-full items-center justify-center overflow-hidden p-2 max-sm:h-16';
@@ -336,20 +335,21 @@ function PosCatalog({
   );
 }
 
-/** The show on an offer's card: a breathing gold edge, a sheen that crosses it and four bursts of sparks, behind its content. Decoration only. */
+/** The fireworks on an offer's card: four bursts of sparks while the pointer is over it, behind its content. Decoration only. */
 function OfferShow() {
   return (
     <span className="pointer-events-none absolute inset-0 -z-1 overflow-hidden motion-reduce:hidden" aria-hidden="true" data-slot="offer-show">
-      {/* The gold edge breathes here, not on the card: the card's own animation is its entrance. */}
-      <span className="absolute inset-0 rounded-sm motion-safe:animate-[offer-breathe_2.8s_ease-in-out_infinite]" />
-      <span className="absolute inset-0 bg-[linear-gradient(110deg,transparent_42%,var(--rd-warning-soft)_50%,transparent_58%)] bg-size-[260%_100%] motion-safe:animate-[offer-sheen_3.4s_linear_infinite]" />
       {BURSTS.map((burst) => (
         <span key={burst.at} className={cn('absolute size-0', burst.at)}>
           {SPARKS.map((turn, index) => (
             <i
               key={turn}
-              className={cn('absolute size-1.5 rounded-pill opacity-0 motion-safe:animate-[offer-spark_2.7s_ease-out_infinite]', index % 2 ? 'bg-accent' : 'bg-warning')}
-              style={{ '--spark-turn': `${turn}deg`, '--spark-reach': index % 2 ? '22px' : '36px', animationDelay: `${burst.delay}s` } as React.CSSProperties}
+              className={cn(
+                'absolute size-2 rounded-pill opacity-0',
+                'motion-safe:group-hover/offer:animate-[offer-spark_1.6s_ease-out_infinite] motion-safe:group-focus-visible/offer:animate-[offer-spark_1.6s_ease-out_infinite]',
+                index % 2 ? 'bg-accent' : 'bg-warning',
+              )}
+              style={{ '--spark-turn': `${turn}deg`, '--spark-reach': index % 3 === 0 ? '72px' : index % 3 === 1 ? '52px' : '36px', animationDelay: `${burst.delay}s` } as React.CSSProperties}
             />
           ))}
         </span>
