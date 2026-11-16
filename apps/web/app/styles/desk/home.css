@@ -1,173 +1,14 @@
-/* The home page (Graphite, spec 2026-11-09-graphite-identity): figure band, middle and rankings rows, home grid. */
-.home { display: flex; flex: 1; flex-direction: column; gap: var(--rd-space-3-5); }
-.home > .page-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--rd-space-2);
-  margin-bottom: 0;
-}
-.home > .page-head .lede { margin: 0; }
-.home .section-label { margin: 0 0 var(--rd-space-1-5); }
-/* Overview cards (spec 2026-11-08-overview-and-reports-nav, F): a grid of panes, the sales and providers wide. */
-.overview-grid { display: grid; gap: var(--rd-space-3); grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 960px) {
-  .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-  .overview-card.wide { grid-column: 1 / -1; }
-}
-.overview-card { position: relative; overflow: hidden; }
-.overview-card .pane-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--rd-space-2); }
-.overview-card .pane-head .hint { margin: 0; }
-.overview-card .pane-body { position: relative; }
-/* The donut (status ring and legend) is components/donut.tsx since Tailwind migration T3.3. */
+/* The home page (Graphite, spec 2026-11-09-graphite-identity). The page frame, its head, the two columns, the overview
+   cards, their meters and ranked lists and «المستخدمون» are utilities in features/desk/screens/home-screen.tsx and
+   features/desk/overview.tsx since Tailwind migration T4.1; the account band's own rules are utilities in
+   features/desk/home-top.tsx. The figure band and tile rules below stay for the wallet's band
+   (features/wallets/wallet-head.tsx) until it moves. */
 
-/* Meters: tasks by status and the ranked lists share one bar. */
-.overview-meters, .overview-rank { display: grid; gap: var(--rd-space-1); margin: 0; padding: 0; list-style: none; }
-.overview-meters li > a {
-  display: grid;
-  grid-template-columns: minmax(7rem, auto) 1fr auto;
-  align-items: center;
-  gap: var(--rd-space-3);
-  padding-block: var(--rd-space-1-5);
-  padding-inline: var(--rd-space-2);
-  border-radius: var(--rd-radius-sm);
-  color: var(--rd-ink);
-}
-.overview-meters li > a:hover { background: var(--rd-surface-2); }
-.overview-meter { display: block; block-size: 8px; border-radius: var(--rd-radius-pill); background: var(--rd-surface-2); overflow: hidden; }
-.overview-meter .fill { display: block; block-size: 100%; border-radius: var(--rd-radius-pill); background: var(--rd-muted); }
-.overview-meter .fill.success { background: var(--rd-success); }
-.overview-meter .fill.warning { background: var(--rd-warning); }
-.overview-meter .fill.danger { background: var(--rd-danger); }
-.overview-rank li {
-  display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1.2fr) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--rd-space-2-5);
-  padding-block: var(--rd-space-1-5);
-  border-block-end: 1px solid var(--rd-line-soft);
-}
-.overview-rank li:last-child { border-block-end: 0; }
-.overview-rank-n { color: var(--rd-muted); font-weight: 700; }
-.overview-rank-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
-.overview-rank-value { text-align: end; white-space: nowrap; }
-
-/* Offers hero (spec 2026-11-09-offers-tasks-addons-wallet-esim, 1): text at the reading start, the picture at the
-   end; stacked on a phone. The fill in the current dot is its timer (components/offer-hero.tsx). */
-.offer-hero {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-lg);
-  background: var(--rd-surface);
-  box-shadow: var(--rd-shadow-card);
-}
-.offer-hero:focus-visible { outline: 2px solid var(--rd-ink); outline-offset: 2px; }
-.offer-slide {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--rd-space-4);
-  padding: var(--rd-space-4) var(--rd-space-5);
-  padding-block-end: calc(var(--rd-space-4) + var(--rd-space-3));
-  animation: offer-in var(--rd-dur-base) var(--rd-ease-out);
-}
-/* A text-only offer (no picture) is one column. */
-.offer-slide.text-only { grid-template-columns: minmax(0, 1fr); }
-.offer-copy { display: grid; gap: var(--rd-space-1); align-content: center; justify-items: start; }
-.offer-copy h2 { margin: 0; font-size: var(--rd-text-2xl); line-height: 1.3; }
-.offer-copy p { margin: 0; color: var(--rd-muted); font-size: var(--rd-text-md); line-height: 1.6; }
-.offer-action {
-  display: inline-flex;
-  align-items: center;
-  min-block-size: 34px;
-  margin-block-start: var(--rd-space-1-5);
-  padding-inline: var(--rd-space-3-5);
-  font-size: var(--rd-text-md);
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-accent-fill);
-  color: var(--rd-on-accent);
-  font-weight: 700;
-}
-.offer-action:hover { background: var(--rd-accent-fill-hover); }
-/* A small picture at the end on desktop, so the hero stays a strip and not half the page. */
-.offer-image { inline-size: 240px; aspect-ratio: 2 / 1; object-fit: cover; border-radius: var(--rd-radius-card); }
-.offer-arrow {
-  position: absolute;
-  inset-block-start: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 36px;
-  block-size: 36px;
-  margin-block-start: -18px;
-  border: 1px solid var(--rd-line);
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-surface);
-  color: var(--rd-ink);
-  opacity: 0;
-  transition: opacity var(--rd-dur-fast) var(--rd-ease-out);
-}
-.offer-arrow.prev { inset-inline-start: var(--rd-space-2); }
-.offer-arrow.next { inset-inline-end: var(--rd-space-2); }
-.offer-hero:hover .offer-arrow, .offer-hero:focus-within .offer-arrow { opacity: 1; }
-.offer-dots {
-  position: absolute;
-  inset-block-end: var(--rd-space-1);
-  inset-inline: 0;
-  display: flex;
-  justify-content: center;
-  gap: 0;
-}
-/* The button is a comfortable target (it grows to 44px on touch screens); the visible dot is the bar inside it. */
-.offer-dot {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: 20px;
-  min-block-size: 24px;
-  padding: 0 var(--rd-space-0-5);
-  border: 0;
-  background: transparent;
-}
-.offer-dot-bar {
-  position: relative;
-  overflow: hidden;
-  display: block;
-  inline-size: 8px;
-  block-size: 8px;
-  border-radius: var(--rd-radius-pill);
-  background: var(--rd-surface-3);
-  transition: inline-size var(--rd-dur-base) var(--rd-ease-out);
-}
-.offer-dot.is-on .offer-dot-bar { inline-size: 36px; }
-.offer-dot-fill {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  inline-size: 100%;
-  border-radius: inherit;
-  background: var(--rd-primary-bg);
-  animation-name: offer-fill;
-  animation-timing-function: linear;
-  animation-fill-mode: both;
-}
+/* The offers hero is utilities in components/offer-hero.tsx since Tailwind migration T4.1. Its keyframes stay here
+   until T5.1 moves the ones still read into app/tailwind.css: the timer's fill (`offer-fill`) and the slide's fade
+   (`offer-in`). */
 @keyframes offer-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-[dir='rtl'] .offer-dot-fill { transform-origin: right center; }
-[dir='ltr'] .offer-dot-fill { transform-origin: left center; }
 @keyframes offer-in { from { opacity: 0; } to { opacity: 1; } }
-@media (max-width: 760px) {
-  .offer-slide { grid-template-columns: minmax(0, 1fr); gap: var(--rd-space-2-5); padding: var(--rd-space-3-5); padding-block-end: calc(var(--rd-space-3-5) + var(--rd-space-4)); }
-  .offer-slide .offer-image { order: -1; inline-size: 100%; max-block-size: 160px; }
-  .offer-copy h2 { font-size: var(--rd-text-xl); }
-  .offer-arrow { display: none; }
-}
-/* With reduced motion nothing moves by itself: no fill, so no timer; dots, arrows, swipe and keys still move. */
-@media (prefers-reduced-motion: reduce) {
-  .offer-dot-fill { animation: none; transform: none; }
-  .offer-slide { animation: none; }
-}
 
 /* «الإعلانات» page. */
 .offer-thumb { display: block; inline-size: 64px; aspect-ratio: 2 / 1; object-fit: cover; border-radius: var(--rd-radius-xs); background: var(--rd-surface-2); }
@@ -221,24 +62,6 @@
 .figure-tile.lead .figure-tile-value { font-size: 1.9rem; }
 .figure-tile.lead .figure-tile-icon { background: var(--rd-accent-soft); color: var(--rd-accent); }
 
-/* ── Two columns that stack their own cards (Graphite home): the wide one at the reading start (last operations,
-   rankings, providers, board), the narrow one at the end (status, tasks, shortcuts, accounts). One column on a
-   phone; between 760 and 1099px the narrow column's cards pair up. ── */
-.home-columns { display: grid; gap: var(--rd-space-3-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
-.home-main, .home-side { display: grid; gap: var(--rd-space-3-5); align-content: start; min-width: 0; }
-.home-main > *, .home-side > * { min-width: 0; }
-@media (min-width: 640px) and (max-width: 1099px) {
-  .home-side { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
-}
-@media (min-width: 1100px) {
-  .home-columns { grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr); }
-  .home-main { grid-column: 1; grid-row: 1; }
-  .home-side { grid-column: 2; grid-row: 1; }
-}
-/* In the narrow column the donut (components/donut.tsx, utilities since Tailwind migration T3.3) is smaller and keeps
-   its legend beside it; in a card under 340px the legend goes under the ring: the card is the container it asks. */
-.home-side .overview-card { container-type: inline-size; }
-.home-ops .table-wrap, .home-ops .data-table { border: 0; }
 /* Phone: the lead figure takes the whole row, so its amount never breaks. */
 @media (max-width: 639px) {
   .figure-band > .figure-tile.lead, .figure-band > .figure-tile:nth-child(4) { grid-column: 1 / -1; }
@@ -274,74 +97,19 @@
 
 /* ── Motion: cards rise in, tiles lift (the sparkline's draw is components/sparkline.tsx since T3.3) ── */
 @media (prefers-reduced-motion: no-preference) {
-  .home > *, .figure-band > *, .home-main > *, .home-side > *, .shortcut-grid > * { animation: rd-rise 420ms var(--rd-ease-out) both; }
-  .home > :nth-child(2), .figure-band > :nth-child(2), .home-main > :nth-child(2), .home-side > :nth-child(2), .shortcut-grid > :nth-child(2) { animation-delay: 40ms; }
-  .home > :nth-child(3), .figure-band > :nth-child(3), .home-main > :nth-child(3), .home-side > :nth-child(3), .shortcut-grid > :nth-child(3) { animation-delay: 80ms; }
-  .home > :nth-child(4), .figure-band > :nth-child(4), .home-main > :nth-child(4), .home-side > :nth-child(4), .shortcut-grid > :nth-child(4) { animation-delay: 120ms; }
-  .home > :nth-child(n + 5), .home-side > :nth-child(n + 5), .shortcut-grid > :nth-child(n + 5) { animation-delay: 160ms; }
+  .figure-band > *, .shortcut-grid > * { animation: rd-rise 420ms var(--rd-ease-out) both; }
+  .figure-band > :nth-child(2), .shortcut-grid > :nth-child(2) { animation-delay: 40ms; }
+  .figure-band > :nth-child(3), .shortcut-grid > :nth-child(3) { animation-delay: 80ms; }
+  .figure-band > :nth-child(4), .shortcut-grid > :nth-child(4) { animation-delay: 120ms; }
+  .shortcut-grid > :nth-child(n + 5) { animation-delay: 160ms; }
   .figure-tile { transition: transform var(--rd-dur-base) var(--rd-ease-out); }
   .figure-tile:hover, .shortcut-tile:hover { transform: translateY(-2px); }
-  .overview-meter .fill { animation: rd-grow 700ms 150ms var(--rd-ease-out) both; transform-origin: left; }
-  [dir='rtl'] .overview-meter .fill { transform-origin: right; }
 }
-/* Lists and tiles start at the top of a stretched card instead of spreading over it. */
-.shortcut-grid, .overview-meters, .overview-rank { align-content: start; }
+/* Tiles start at the top of a stretched card instead of spreading over it. */
+.shortcut-grid { align-content: start; }
 /* A card's tabs scroll inside the card when they do not fit beside the title: components/ui/tabs.tsx and the
    overview's CARD_TABS (features/desk/overview.tsx) since Tailwind migration T2.6. */
 
-/* «المستخدمون» (spec 2026-11-09-admin-review, 8.3): a tile per layer in its colour, the ceilings in use as a bar,
-   then the debtors (with the debt) and the frozen accounts as two quiet rows. */
-.users-layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: var(--rd-space-2); }
-.users-layer {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas: "mark count" "label label";
-  align-items: center;
-  gap: var(--rd-space-1-5) var(--rd-space-2);
-  padding: var(--rd-space-2-5) var(--rd-space-3);
-  border-radius: var(--rd-radius-md);
-  background: color-mix(in srgb, var(--tone) 8%, var(--rd-surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent);
-  color: var(--rd-ink);
-  text-decoration: none;
-  transition: box-shadow 160ms var(--rd-ease-out), transform 160ms var(--rd-ease-out);
-}
-.users-layer:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 45%, transparent); }
-.users-layer:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
-.users-layer-mark {
-  grid-area: mark;
-  display: inline-grid;
-  place-items: center;
-  inline-size: 28px;
-  block-size: 28px;
-  border-radius: var(--rd-radius-sm);
-  background: color-mix(in srgb, var(--tone) 16%, transparent);
-  color: var(--tone);
-}
-.users-layer-count { grid-area: count; justify-self: end; font-size: var(--rd-text-xl); font-weight: 800; line-height: 1; }
-.users-layer-label { grid-area: label; color: var(--rd-muted); font-size: var(--rd-text-xs); font-weight: 600; line-height: 1.35; }
-.users-credit { display: grid; gap: var(--rd-space-1-5); margin-block-start: var(--rd-space-4); }
-.users-credit-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--rd-space-2); font-size: var(--rd-text-sm); color: var(--rd-muted); }
-.users-credit-figures { color: var(--rd-ink); font-weight: 700; white-space: nowrap; }
-.users-meter { block-size: 8px; border-radius: var(--rd-radius-pill); background: var(--rd-surface-2); overflow: hidden; }
-.users-meter i { display: block; block-size: 100%; border-radius: inherit; background: var(--rd-accent); }
-.users-credit-caption { display: flex; justify-content: space-between; gap: var(--rd-space-2); margin: 0; color: var(--rd-muted); font-size: var(--rd-text-xs); }
-.users-flags { display: grid; margin: var(--rd-space-3) 0 0; padding: 0; list-style: none; }
-.users-flags li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--rd-space-3);
-  padding-block: var(--rd-space-2);
-  border-block-start: 1px solid var(--rd-line);
-  font-size: var(--rd-text-sm);
-}
-.users-flag-label { display: inline-flex; align-items: center; gap: var(--rd-space-1-5); color: var(--rd-muted); }
-.users-flag-count { display: inline-grid; place-items: center; min-inline-size: 20px; block-size: 20px; padding-inline: 5px; border-radius: var(--rd-radius-pill); background: var(--rd-surface-2); color: var(--rd-ink); font-size: var(--rd-text-xs); font-weight: 700; }
-.users-flag-value { font-weight: 700; }
-.users-flags li.warn .users-flag-count { background: var(--rd-warning-soft); color: var(--rd-warning); }
-.users-flags li.warn .users-flag-value { color: var(--rd-warning); }
-@media (prefers-reduced-motion: no-preference) {
-  .users-meter i { animation: users-fill 700ms var(--rd-ease-out) both; }
-}
+/* «المستخدمون» is utilities in features/desk/overview.tsx since Tailwind migration T4.1; its bar's growth stays here
+   until T5.1 moves it into app/tailwind.css. */
 @keyframes users-fill { from { inline-size: 0; } }

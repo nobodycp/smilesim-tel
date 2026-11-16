@@ -10,7 +10,7 @@ import { cn } from '../lib/cn';
  *
  * Look (Tailwind migration T3.3, ADR 0022), ported from graphite.css: a left-to-right box 52px high that sits at the
  * bottom of its card and reaches 4px past its sides (`large`: 200px, flush); inside a home period card
- * (`.pulse-tile`) it lies along the card's lower 55%, under the words. The SVG fills it, not clipped, with a
+ * (`data-slot="pulse-tile"`) it lies along the card's lower 55%, under the words. The SVG fills it, not clipped, with a
  * crosshair; it is revealed left to right over 1100ms after 120ms. The area is a gradient of the tone (34% to 0),
  * fading in over 700ms after 500ms; the stroke 2 wide in the tone over a 6-wide blurred glow at 18%; the hover cursor a
  * dashed 1-wide `--rd-muted` line; the `large` guides 1-wide `--rd-line`. The dot is 8px round in the tone with a 3px
@@ -77,7 +77,7 @@ export function TrendLine({ values, labels, format, label, tone = 'accent', size
       className={cn(
         'relative mt-auto [direction:ltr]',
         size === 'large' ? 'mx-0 h-50' : '-mx-1 h-13',
-        '[.pulse-tile>&]:absolute [.pulse-tile>&]:inset-x-0 [.pulse-tile>&]:bottom-0 [.pulse-tile>&]:z-0 [.pulse-tile>&]:m-0 [.pulse-tile>&]:h-[55%]',
+        '[[data-slot=pulse-tile]>&]:absolute [[data-slot=pulse-tile]>&]:inset-x-0 [[data-slot=pulse-tile]>&]:bottom-0 [[data-slot=pulse-tile]>&]:z-0 [[data-slot=pulse-tile]>&]:m-0 [[data-slot=pulse-tile]>&]:h-[55%]',
       )}
       data-slot="trend-line"
       data-testid="trend-line"

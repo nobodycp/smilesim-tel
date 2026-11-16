@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Plus, Receipt } from 'lucide-react';
 import Link from 'next/link';
-import { layerName } from '../../../components/desk';
+import { Pane, layerName } from '../../../components/desk';
 import { LoadFailed } from '../../../components/load-failed';
 import { PageSkeleton, TableSkeleton } from '../../../components/loading';
 import { Tabs } from '../../../components/tabs';
@@ -19,6 +19,26 @@ import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { Alert } from '../../../components/alert';
 import { Button } from '../../../components/ui/button';
+import { riseInClass } from '../../../components/stat';
+import { cn } from '../../../lib/cn';
+
+/*
+ * The home page's frame (Tailwind migration T4.1), ported from desk/home.css, desk/frame.css, forms.css and
+ * graphite.css in their cascade order:
+ * - the page: a column 14px apart that fills the canvas; its parts rise in (8px, 420ms), the second to the fifth 40ms
+ *   after the one before, when motion is allowed (`riseInClass`);
+ * - the head: one wrapping row, the greeting and lede at the start and the actions at the end, 8px apart; the title
+ *   1.25rem with no letter spacing (`.canvas .page-head h1`; the `h1` element rule gives it no margin, bold, 1.25 line
+ *   height); the lede 13px `--rd-muted`, no margin, at most 36rem; the actions a wrapping row 8px apart;
+ * - the top row (last operations, tasks waiting): one column, 12px apart, rows at the top; 1.6fr and 1fr from 1000px;
+ * - the two columns below, 14px apart, at the top: one on a phone; from 1100px the wide one (1.65fr) at the reading
+ *   start and the narrow one (at least 320px) at the end. Each stacks its cards 14px apart from the top, never wider
+ *   than itself, rising in as the page's parts do; between 640px and 1099px the narrow column's cards pair up. A card
+ *   of the narrow column is the container its donut asks (`@container`); `data-slot="home-side"` is the column the
+ *   donut reads (components/donut.tsx).
+ */
+const HOME = cn('flex flex-1 flex-col gap-3.5', riseInClass);
+const COLUMN = cn('grid min-w-0 content-start gap-3.5 *:min-w-0', riseInClass);
 
 export function HomeScreen() {
   const { t, locale } = usePrefs();
@@ -52,13 +72,13 @@ export function HomeScreen() {
   if (!ready) return <PageSkeleton />;
 
   return (
-    <div className="home">
-      <header className="page-head home-head" data-testid="page-head">
+    <div className={HOME}>
+      <header className="flex flex-wrap items-center justify-between gap-2" data-slot="page-head" data-testid="page-head">
         <div>
-          <h1><bdi>{title}</bdi></h1>
-          {lede && <p className="lede">{lede}</p>}
+          <h1 className="m-0 text-[1.25rem] tracking-normal"><bdi>{title}</bdi></h1>
+          {lede && <p className="m-0 max-w-[36rem] text-md text-muted">{lede}</p>}
         </div>
-        <div className="page-actions">
+        <div className="flex flex-wrap items-center gap-2">
           {/* The period every card of the page follows (owner 2026-11-09). */}
           <Tabs
             label={t.period}
@@ -82,21 +102,21 @@ export function HomeScreen() {
       ) : null}
       <AccountBand summary={summary.data} home={home} overview={data} period={period} branch={branch} />
       {branch ? null : (
-        <div className="home-top-row" data-testid="home-top-row">
+        <div className="grid grid-cols-1 items-start gap-3 min-[1000px]:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]" data-testid="home-top-row">
           <LastOperations home={home} failed={broken ? board.error : ''} onRetry={() => void board.reload()} showAccount={layer !== 'pos'} />
           <WaitingTasks tasks={waiting.data?.items ?? []} open={home?.openTasks ?? waiting.data?.total ?? 0} loading={!waiting.data && !waiting.error} />
         </div>
       )}
       {/* Below the design's top, the rest of the period's overview (spec 2026-11-08-overview-and-reports-nav, F), with
           no heading and no shortcuts card (spec 2026-11-09-admin-review, 7). */}
-      {overview.error && !data ? <section className="pane"><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></section> : null}
-      <div className="home-columns">
-        <div className="home-side">
-          {data ? <LinesCard data={data} /> : loadingOverview ? <section className="pane overview-card" data-testid="overview-card"><TableSkeleton rows={5} columns={2} /></section> : null}
+      {overview.error && !data ? <Pane><LoadFailed message={overview.error} onRetry={() => void overview.reload()} /></Pane> : null}
+      <div className="grid grid-cols-1 items-start gap-3.5 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,1fr)]">
+        <div className={cn(COLUMN, '*:@container min-[640px]:max-xl:grid-cols-2 min-[640px]:max-xl:items-stretch xl:col-start-2 xl:row-start-1')} data-slot="home-side">
+          {data ? <LinesCard data={data} /> : loadingOverview ? <Pane className="relative" data-testid="overview-card"><TableSkeleton rows={5} columns={2} /></Pane> : null}
           {data ? <TasksCard data={data} /> : null}
           {data && layer !== 'pos' ? <UsersCard data={data} layer={layer} /> : null}
         </div>
-        <div className="home-main">
+        <div className={cn(COLUMN, 'xl:col-start-1 xl:row-start-1')}>
           {data ? <TopCard data={data} /> : null}
           {data && layer !== 'pos' ? <ActiveCard data={data} layer={layer} /> : null}
           {data ? <ProvidersCard data={data} /> : null}

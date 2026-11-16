@@ -5,13 +5,15 @@ import Link from 'next/link';
 import { DataTable } from '../../components/data-table';
 import { useState, type ReactNode } from 'react';
 import { AccountName } from '../../components/account-name';
-import { Money } from '../../components/desk';
+import { Money, Pane } from '../../components/desk';
 import { Donut } from '../../components/donut';
 import { EmptyState } from '../../components/empty-state';
 import { Tabs } from '../../components/tabs';
 import { Badge } from '../../components/ui/badge';
 import type { OverviewPayload, OverviewRanked } from '../../lib/api';
+import { cn } from '../../lib/cn';
 import { usePrefs } from '../../lib/prefs';
+import { PANE_BODY, PANE_HEAD, PANE_HINT, PANE_TITLE } from './home-panes';
 
 // The home page's overview cards (spec 2026-11-08-overview-and-reports-nav, F). Each card draws only what the
 // overview answered for this viewer: a layer without providers or main agents simply gets no such card or tab.
@@ -20,20 +22,42 @@ import { usePrefs } from '../../lib/prefs';
 // `.overview-card .pane-head > [role='tablist']` rule of desk/home.css, Tailwind migration T2.6).
 const CARD_TABS = 'max-sm:max-w-full max-sm:overflow-x-auto';
 
-function Card({ title, hint, action, wide, children, className = '', testId = 'overview-card' }: { title: string; hint?: string; action?: ReactNode; wide?: boolean; children: ReactNode; className?: string; testId?: string }) {
+/*
+ * An overview card (legacy `.overview-card`, desk/home.css, Tailwind migration T4.1): a pane whose head wraps (the
+ * title and its hint at the start, the tab strip at the end, 8px apart) and whose body is the positioning context of
+ * what it draws. In the home page's narrow column it is the container its donut asks (screens/home-screen.tsx).
+ */
+function Card({ title, hint, action, children, testId = 'overview-card' }: { title: string; hint?: string; action?: ReactNode; children: ReactNode; testId?: string }) {
   return (
-    <section className={`pane overview-card${wide ? ' wide' : ''}${className ? ` ${className}` : ''}`} data-testid={testId}>
-      <header className="pane-head">
+    <Pane className="relative" data-testid={testId}>
+      <header className={cn(PANE_HEAD, 'flex-wrap')}>
         <div>
-          <h2>{title}</h2>
-          {hint ? <p className="hint">{hint}</p> : null}
+          <h2 className={PANE_TITLE}>{title}</h2>
+          {hint ? <p className={PANE_HINT}>{hint}</p> : null}
         </div>
         {action}
       </header>
-      <div className="pane-body">{children}</div>
-    </section>
+      <div className={cn(PANE_BODY, 'relative')}>{children}</div>
+    </Pane>
   );
 }
+
+/*
+ * The meters (legacy `.overview-meters`, `.overview-rank`, `.overview-meter`, desk/home.css): a list of rows 4px
+ * apart that start at the top of a stretched card; the bar 8px high, a pill of `--rd-surface-2` holding a pill of
+ * its tone (`--rd-muted` unless success, warning or danger), which grows from the reading start over 700ms after
+ * 150ms when motion is allowed.
+ */
+const METER_LIST = 'm-0 grid list-none content-start gap-1 p-0';
+const METER = 'block h-2 overflow-hidden rounded-pill bg-surface-2';
+const FILL = 'block h-full rounded-pill motion-safe:origin-left motion-safe:rtl:origin-right motion-safe:animate-[rd-grow_700ms_150ms_var(--rd-ease-out)_both]';
+const FILL_TONE: Record<'warning' | 'info' | 'success' | 'danger' | 'muted', string> = {
+  success: 'bg-success',
+  warning: 'bg-warning',
+  danger: 'bg-danger',
+  info: 'bg-muted',
+  muted: 'bg-muted',
+};
 
 export function LinesCard({ data }: { data: OverviewPayload }) {
   const { t } = usePrefs();
@@ -71,13 +95,15 @@ export function TasksCard({ data }: { data: OverviewPayload }) {
   const ageText = age === null ? t.noOpenTasks : t.oldestOpenTask.replace('{time}', (age < 60 ? t.minutesAgo.replace('{n}', String(age)) : age < 1440 ? t.hoursAgo.replace('{n}', String(Math.floor(age / 60))) : t.daysAgo.replace('{n}', String(Math.floor(age / 1440)))));
   return (
     <Card title={t.overviewTasks} hint={ageText}>
-      <ul className="overview-meters">
+      <ul className={METER_LIST}>
         {rows.map((row) => (
           <li key={row.key}>
-            <Link href={row.href}>
+            {/* A row: the status, its bar and its count, 12px apart; 6px / 8px padding, 6px corners, ink, on
+                `--rd-surface-2` under the pointer. */}
+            <Link className="grid grid-cols-[minmax(7rem,auto)_1fr_auto] items-center gap-3 rounded-sm px-2 py-1.5 text-ink hover:bg-surface-2" href={row.href}>
               <Badge variant={row.tone === 'info' ? 'muted' : row.tone} dot>{row.label}</Badge>
-              <span className="overview-meter" aria-hidden="true"><span className={`fill ${row.tone}`} style={{ inlineSize: `${(row.value / all) * 100}%` }} /></span>
-              <span className="num">{row.value}</span>
+              <span className={METER} aria-hidden="true"><span className={cn(FILL, FILL_TONE[row.tone])} style={{ inlineSize: `${(row.value / all) * 100}%` }} /></span>
+              <span>{row.value}</span>
             </Link>
           </li>
         ))}
@@ -90,7 +116,7 @@ export function ProvidersCard({ data }: { data: OverviewPayload }) {
   const { t } = usePrefs();
   if (!data.providers) return null;
   return (
-    <Card title={t.overviewProviders} hint={t.overviewProvidersHint} wide>
+    <Card title={t.overviewProviders} hint={t.overviewProvidersHint}>
       {data.providers.length === 0 ? <EmptyState>{t.overviewEmpty}</EmptyState> : (
         // The office's table (owner 2026-11-11): every header sorts, as on every list.
         <DataTable
@@ -126,14 +152,16 @@ function RankedList({ rows, by }: { rows: OverviewRanked[]; by: 'count' | 'profi
   if (rows.length === 0) return <EmptyState>{t.overviewEmpty}</EmptyState>;
   const high = Math.max(1, ...rows.map((row) => Math.abs(row[by])));
   return (
-    <ol className="overview-rank" data-testid="overview-rank">
+    <ol className={METER_LIST} data-testid="overview-rank">
       {rows.map((row, index) => (
-        <li key={row.key || index}>
-          <span className="overview-rank-n num">{index + 1}</span>
-          <span className="overview-rank-label">{row.nickname !== undefined ? <AccountName login={row.label} name={row.nickname} /> : row.label}</span>
-          <span className="overview-meter" aria-hidden="true"><span className="fill success" style={{ inlineSize: `${(Math.abs(row[by]) / high) * 100}%` }} /></span>
-          <span className="overview-rank-value">
-            {by === 'count' ? <span className="num">{t.salesCountShort.replace('{n}', String(row.count))}</span> : <Money value={row.profit} signed />}
+        // A row: its place (`--rd-muted` bold), the name (bold, cut with an ellipsis), the bar and the figure at the
+        // end, 10px apart, 6px padding, a 1px `--rd-line-soft` rule under every row but the last.
+        <li key={row.key || index} className="grid grid-cols-[1.5rem_minmax(0,1.2fr)_minmax(0,1fr)_auto] items-center gap-2.5 border-b border-line-soft py-1.5 last:border-b-0">
+          <span className="font-bold text-muted">{index + 1}</span>
+          <span className="truncate font-bold">{row.nickname !== undefined ? <AccountName login={row.label} name={row.nickname} /> : row.label}</span>
+          <span className={METER} aria-hidden="true"><span className={cn(FILL, FILL_TONE.success)} style={{ inlineSize: `${(Math.abs(row[by]) / high) * 100}%` }} /></span>
+          <span className="text-end whitespace-nowrap">
+            {by === 'count' ? <span>{t.salesCountShort.replace('{n}', String(row.count))}</span> : <Money value={row.profit} signed />}
           </span>
         </li>
       ))}
@@ -158,6 +186,26 @@ export function TopCard({ data }: { data: OverviewPayload }) {
   );
 }
 
+/*
+ * «المستخدمون» (legacy `.users-*`, desk/home.css): a tile per layer in its colour (`--tone`), as many 96px-or-wider
+ * columns as fit, 8px apart; each tile its mark and count over its name (6px / 8px apart), 10px / 12px padding, 6px
+ * corners, the tone at 8% over the card's `--rd-surface` with a 1px inset edge of the tone at 18% (45% under the
+ * pointer), a 2px outline of the tone 2px out on keyboard focus. The mark 28px, 6px corners, the tone on itself at
+ * 16%; the count 16px extra bold, the name 11px `--rd-muted` 600. Then the ceilings in use, 16px under: their name and
+ * figure (12px `--rd-muted`, the figure ink bold), an 8px pill of `--rd-surface-2` holding the share in `--rd-accent`
+ * (it grows in over 700ms when motion is allowed), the ceilings' total and the share (11px `--rd-muted`). Then the
+ * debtors and the frozen accounts as two rows 12px under, 8px padding, a 1px `--rd-line` rule above each, 12px; the
+ * debtors' count a 20px pill (`--rd-surface-2`, ink, 11px bold), count and debt in `--rd-warning` (the pill on its
+ * soft fill) while there are debtors (`data-warn`).
+ */
+const USERS_LAYER = cn(
+  "grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1.5 rounded-md bg-(--tone)/8 px-3 py-2.5 text-ink no-underline [grid-template-areas:'mark_count'_'label_label']",
+  'inset-ring inset-ring-(--tone)/18 hover:inset-ring-(--tone)/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--tone)',
+  'transition-[box-shadow,transform] duration-[160ms] ease-out',
+);
+const USERS_FLAG = 'flex items-center justify-between gap-3 border-t border-line py-2 text-sm';
+const FLAG_COUNT = 'inline-grid h-5 min-w-5 place-items-center rounded-pill px-1.25 text-xs font-bold';
+
 export function UsersCard({ data, layer }: { data: OverviewPayload; layer: string }) {
   const { t } = usePrefs();
   const { users } = data;
@@ -169,32 +217,34 @@ export function UsersCard({ data, layer }: { data: OverviewPayload; layer: strin
   ];
   const usedShare = users.ceilings > 0 ? Math.min(100, Math.round((users.used / users.ceilings) * 100)) : 0;
   return (
-    <Card title={t.overviewUsers} className="users-card" testId="users-card">
-      <div className="users-layers">
+    <Card title={t.overviewUsers} testId="users-card">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-2">
         {layers.map((item) => (
-          <Link key={item.key} className="users-layer" data-testid="users-layer" href={`/users?layer=${item.key}`} style={{ ['--tone' as string]: `var(${item.tone})` }}>
-            <span className="users-layer-mark" aria-hidden="true">{item.icon}</span>
-            <span className="users-layer-count num">{item.value}</span>
-            <span className="users-layer-label">{item.label}</span>
+          <Link key={item.key} className={USERS_LAYER} data-testid="users-layer" href={`/users?layer=${item.key}`} style={{ ['--tone' as string]: `var(${item.tone})` }}>
+            <span className="inline-grid size-7 place-items-center rounded-sm bg-(--tone)/16 text-(--tone) [grid-area:mark]" aria-hidden="true">{item.icon}</span>
+            <span className="justify-self-end text-xl leading-none font-extrabold [grid-area:count]">{item.value}</span>
+            <span className="text-xs leading-[1.35] font-semibold text-muted [grid-area:label]">{item.label}</span>
           </Link>
         ))}
       </div>
-      <div className="users-credit">
-        <div className="users-credit-head">
+      <div className="mt-4 grid gap-1.5">
+        <div className="flex items-baseline justify-between gap-2 text-sm text-muted">
           <span>{t.usedCeiling}</span>
-          <span className="users-credit-figures"><Money value={users.used} /></span>
+          <span className="font-bold whitespace-nowrap text-ink"><Money value={users.used} /></span>
         </div>
-        <div className="users-meter" data-testid="users-meter" role="img" aria-label={`${t.usedCeiling}: ${usedShare}%`}><i style={{ inlineSize: `${usedShare}%` }} /></div>
-        <p className="users-credit-caption"><span>{t.usersCeilings} <Money value={users.ceilings} /></span><span className="num">{usedShare}%</span></p>
+        <div className="h-2 overflow-hidden rounded-pill bg-surface-2" data-testid="users-meter" role="img" aria-label={`${t.usedCeiling}: ${usedShare}%`}>
+          <i className="block h-full rounded-[inherit] bg-accent motion-safe:animate-[users-fill_700ms_var(--rd-ease-out)_both]" style={{ inlineSize: `${usedShare}%` }} />
+        </div>
+        <p className="m-0 flex justify-between gap-2 text-xs text-muted"><span>{t.usersCeilings} <Money value={users.ceilings} /></span><span>{usedShare}%</span></p>
       </div>
-      <ul className="users-flags">
-        <li className={users.debtors ? 'warn' : undefined} data-testid="users-debtors">
-          <span className="users-flag-label">{t.usersDebtors} <span className="users-flag-count num">{users.debtors}</span></span>
-          <span className="users-flag-value" title={t.usersDebt}><Money value={users.debt} /></span>
+      <ul className="mx-0 mt-3 mb-0 grid list-none p-0">
+        <li className={USERS_FLAG} data-testid="users-debtors" data-warn={users.debtors ? '' : undefined}>
+          <span className="inline-flex items-center gap-1.5 text-muted">{t.usersDebtors} <span className={cn(FLAG_COUNT, users.debtors ? 'bg-warning-soft text-warning' : 'bg-surface-2 text-ink')}>{users.debtors}</span></span>
+          <span className={cn('font-bold', users.debtors ? 'text-warning' : undefined)} title={t.usersDebt}><Money value={users.debt} /></span>
         </li>
-        <li>
-          <span className="users-flag-label">{t.usersFrozen}</span>
-          <span className="users-flag-value num">{users.frozen}</span>
+        <li className={USERS_FLAG}>
+          <span className="inline-flex items-center gap-1.5 text-muted">{t.usersFrozen}</span>
+          <span className="font-bold">{users.frozen}</span>
         </li>
       </ul>
     </Card>

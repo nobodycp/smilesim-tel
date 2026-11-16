@@ -50,10 +50,10 @@ test('the branch reads the full overview, switches the period, and sees its prov
   await expect(cards.nth(0)).toContainText('12');
   await expect(cards.nth(0)).toContainText('540.00');
   await expect(cards.nth(0).getByTestId('pulse-change')).toHaveText('50%');
-  await expect(cards.nth(0).getByTestId('pulse-change')).toHaveClass(/up/);
+  await expect(cards.nth(0).getByTestId('pulse-change')).toHaveAttribute('data-trend', 'up');
   await expect(cards.nth(1).getByTestId('pulse-change')).toHaveText('0%');
   await expect(cards.nth(2)).toContainText('+36.00 ₪');
-  await expect(cards.nth(2).getByTestId('pulse-change')).toHaveClass(/down/);
+  await expect(cards.nth(2).getByTestId('pulse-change')).toHaveAttribute('data-trend', 'down');
   await expect(cards.nth(2).getByTestId('pulse-change')).toHaveText('10%');
   await expect(band.getByTestId('trend-line')).toHaveCount(3);
   // The branch's home, trimmed (spec 2026-11-09-admin-review, 6.3): the three period cards alone in the band, no
@@ -84,7 +84,7 @@ test('the branch reads the full overview, switches the period, and sees its prov
   await expect(users.getByTestId('users-layer').first()).toContainText('وكلاء رئيسيون');
   await expect(users.getByTestId('users-meter').locator('i')).toHaveAttribute('style', /14%/);
   const debtors = users.getByTestId('users-debtors');
-  await expect(debtors).toHaveClass(/warn/);
+  await expect(debtors).toHaveAttribute('data-warn', '');
   await expect(debtors).toContainText('70.00');
   // Pointing at a slice puts its share in the ring's middle; leaving brings the total back.
   await legend.nth(0).hover();

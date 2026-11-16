@@ -628,47 +628,12 @@ input[readonly] { background-color: transparent; }
 /* Settings (Graphite): the account's mark, the method cards three across and the sessions count are utilities in
    features/auth/screens/settings-screen.tsx and sign-in-methods.tsx since Tailwind migration T3.2. */
 
-/* Home top (the approved design): the account band, then the last operations beside the tasks waiting. */
-.home-head .page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.account-band .figure-tile { display: flex; flex-direction: column; gap: 6px; }
+/* Home top (the approved design): the account band, the last operations, the tasks waiting and the period cards'
+   change are utilities in features/desk/home-top.tsx and screens/home-screen.tsx since Tailwind migration T4.1. The
+   ceiling ticks stay for the wallet's band (features/wallets/wallet-head.tsx). */
 .hero-bar { display: flex; gap: 3px; margin-block-start: 4px; }
 .hero-bar i { flex: 1; block-size: 6px; border-radius: 1px; background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); }
 .hero-bar i.on { background: var(--rd-accent); box-shadow: none; }
-.tone-accent { color: var(--rd-accent); }
-.home-top-row { display: grid; gap: var(--rd-space-3); grid-template-columns: minmax(0, 1fr); align-items: start; }
-@media (min-width: 1000px) { .home-top-row { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); } }
-.op-list { margin: 0; padding: 0; list-style: none; }
-.op-list li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto; align-items: center; gap: 12px; padding: 10px 18px; border-block-start: 1px solid var(--rd-line); }
-.op-list li:first-child { border-block-start: 0; }
-.op-list li:nth-child(even) { background: color-mix(in srgb, var(--rd-surface-2) 45%, transparent); }
-.op-list-main, .op-list-end { display: grid; gap: 2px; }
-.op-list-end { text-align: end; }
-.op-list-detail { color: var(--rd-muted); font-size: 12.5px; }
-.op-list .sub, .waiting-list .sub { color: var(--rd-muted); font-size: 12px; }
-.waiting-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.waiting-list a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--rd-radius-sm); background: var(--rd-surface-2); color: inherit; text-decoration: none; }
-.waiting-list a:hover { box-shadow: inset 0 0 0 1px var(--rd-line); }
-.waiting-main { display: grid; gap: 2px; flex: 1; min-inline-size: 0; }
-.home-waiting .pane-head .hint, .home-ops .pane-head [data-slot='button'] { margin-inline-start: auto; }
-.home-overview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-block-start: var(--rd-space-2); }
-@media (max-width: 640px) { .op-list li { grid-template-columns: minmax(0, 1fr) auto; } .op-list-detail { display: none; } }
-
-/* Home period cards (owner 2026-11-09): the change against the period before in the corner, the trend inside. */
-.account-band { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 1100px) { .account-band { grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr)); } }
-@media (max-width: 1099px) { .account-band > .figure-tile.lead { grid-column: 1 / -1; } }
-.pulse-tile { position: relative; overflow: hidden; isolation: isolate; min-height: 128px; }
-/* The trend lies inside the card under its figures, along the lower part (spec 2026-11-09-admin-review, 8.4); the
-   words let the pointer through to it. Its place in the card is components/trend-line.tsx since T3.3. */
-.pulse-tile > :not([data-slot='trend-line']):not(.change) { position: relative; z-index: 1; pointer-events: none; }
-.pulse-tile > .change { z-index: 1; }
-.pulse-unit { margin-inline-start: 6px; color: var(--rd-muted); font-size: 12px; font-weight: 500; }
-.change { position: absolute; inset-block-start: 12px; inset-inline-end: 14px; display: inline-flex; align-items: center; gap: 2px; height: 22px; padding-inline: 7px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
-.change.up { background: var(--rd-success-soft); color: var(--rd-success); }
-.change.down { background: var(--rd-danger-soft); color: var(--rd-danger); }
-.change.flat { background: var(--rd-surface-2); color: var(--rd-muted); }
-/* The trend inside a card is components/trend-line.tsx since Tailwind migration T3.3 (its keyframes: app/tailwind.css). */
-.waiting-age { flex: none; }
 .task-ref { display: inline-flex; align-items: center; height: 22px; padding-inline: 7px; border-radius: var(--rd-radius-xs); background: var(--rd-surface-2); box-shadow: inset 0 0 0 1px var(--rd-line); color: var(--rd-ink); font-size: 11.5px; font-weight: 700; text-decoration: none; }
 .task-ref:hover { box-shadow: inset 0 0 0 1px var(--rd-accent); }
 
@@ -681,7 +646,7 @@ input[readonly] { background-color: transparent; }
 .reason.r-plum { background: color-mix(in srgb, var(--rd-layer-main) 16%, transparent); color: var(--rd-layer-main); }
 .ledger-detail { display: grid; gap: 2px; min-inline-size: 220px; }
 .ledger-detail .sub { color: var(--rd-muted); font-size: 12px; }
-.wallet-band .figure-tile-meta, .account-band .figure-tile-meta { display: block; line-height: 1.6; }
+.wallet-band .figure-tile-meta { display: block; line-height: 1.6; }
 
 /* NameField (components/name-field.tsx): its own look is Tailwind utilities since migration T2.2. What stays are the
    rules of the places it sits in, which read its `data-slot` (the filter chip's: they stay with the chip rules, which
@@ -749,10 +714,6 @@ input[readonly] { background-color: transparent; }
   .add-actions > * { flex: 1; min-height: 44px; }
 }
 
-/* The branch's band: the period's three figures across (spec 2026-11-09-admin-review, 6.3). */
-.account-band.branch { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (min-width: 1100px) { .account-band.branch { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 767px) { .account-band.branch { grid-template-columns: minmax(0, 1fr); } }
 
 /* ── Phones (spec 2026-11-11-ui-consistency-pass, D7). ──
    A table row becomes a card under 640px: the first cell is its title across the card, every other value sits under

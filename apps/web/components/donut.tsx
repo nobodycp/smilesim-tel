@@ -41,7 +41,7 @@ const GAP = 2.5;
  * count, 8px apart, 6px / 8px padding, 6px corners, ink, on `--rd-surface-2` under the pointer (a link) or when
  * pointed at; the others dim to 55%; a link is at least 40px high at 640px and under. The dot 10px round; the change
  * 11px bold at least 3.5ch wide at the end (`--rd-success` up, `--rd-danger` down), 2px between its arrow and number;
- * the count bold at the end, at least 2ch. In the home page's narrow column (`.home-side`) the ring is 112px, the row
+ * the count bold at the end, at least 2ch. In the home page's narrow column (`data-slot="home-side"`) the ring is 112px, the row
  * does not wrap and its gap is 12px, the legend has no minimum and its lines 3px top and bottom; in a card under 341px
  * the row wraps, centred, and the legend takes a line of its own.
  */
@@ -49,7 +49,7 @@ const FADE = 'motion-safe:animate-[donut-fade_220ms_ease-out]';
 const TOTAL = cn(FADE, 'fill-ink font-extrabold tabular-nums');
 const LINE = cn(
   'grid grid-cols-[auto_1fr_auto_auto] items-center gap-2 rounded-sm px-2 py-1.5 text-ink',
-  '[.home-side_&]:py-0.75',
+  '[[data-slot=home-side]_&]:py-0.75',
 );
 const CHANGE = 'inline-flex min-w-[3.5ch] items-center justify-end gap-0.5 text-xs font-bold';
 export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: string; label: string }) {
@@ -69,11 +69,11 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
     <div
       className={cn(
         'flex flex-wrap items-center gap-4',
-        '[.home-side_&]:flex-nowrap [.home-side_&]:gap-3 [.home-side_&]:@max-[341px]:flex-wrap [.home-side_&]:@max-[341px]:justify-center',
+        '[[data-slot=home-side]_&]:flex-nowrap [[data-slot=home-side]_&]:gap-3 [[data-slot=home-side]_&]:@max-[341px]:flex-wrap [[data-slot=home-side]_&]:@max-[341px]:justify-center',
       )}
       data-slot="donut"
     >
-      <svg className={cn('size-42 flex-none [stroke-linecap:butt] [&_text]:stroke-none', '[.home-side_&]:size-28')} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={`${label}: ${slices.map((slice) => `${slice.label} ${slice.value}`).join('، ')}`}>
+      <svg className={cn('size-42 flex-none [stroke-linecap:butt] [&_text]:stroke-none', '[[data-slot=home-side]_&]:size-28')} viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={`${label}: ${slices.map((slice) => `${slice.label} ${slice.value}`).join('، ')}`}>
         <circle className="fill-none stroke-surface-2" cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} strokeWidth={STROKE} />
         {sum > 0 && slices.filter((slice) => slice.value > 0).map((slice, index, drawn) => {
           const full = (slice.value / sum) * CIRCUMFERENCE;
@@ -112,7 +112,7 @@ export function Donut({ slices, total, label }: { slices: DonutSlice[]; total: s
       <ul
         className={cn(
           'm-0 grid min-w-45 flex-1 list-none gap-1 p-0',
-          '[.home-side_&]:min-w-0 [.home-side_&]:@max-[341px]:basis-full',
+          '[[data-slot=home-side]_&]:min-w-0 [[data-slot=home-side]_&]:@max-[341px]:basis-full',
         )}
         data-testid="donut-legend"
       >

@@ -43,7 +43,7 @@ test('an offer without a picture is text only and takes the whole width', async 
   await page.goto('http://agent.localhost:3910/');
   const hero = page.getByTestId('offer-hero');
   await expect(hero.getByRole('heading', { name: 'تنبيه: صيانة الليلة' })).toBeVisible();
-  await expect(hero.getByTestId('offer-slide')).toHaveClass(/text-only/);
+  await expect(hero.getByTestId('offer-slide')).toHaveAttribute('data-text-only', '');
   await expect(hero.locator('img')).toHaveCount(0);
   // One offer: no dots and no timer.
   await expect(hero.getByRole('tab')).toHaveCount(0);
