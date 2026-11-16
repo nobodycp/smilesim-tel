@@ -8,7 +8,7 @@ export type RunLine = (work: () => Promise<Fetched<ApplyResult>>) => unknown;
 
 /**
  * The immediate operations a number allows, as `RowMenu` items. The list shows them in a row menu and the
- * line card shows the same items as `.command-list` rows, so the rules live here once:
+ * line card shows the same items as operation cards, so the rules live here once:
  *
  * - active: extend, refresh, disconnect (and freeze, when the page asks for it)
  * - frozen: unfreeze, disconnect

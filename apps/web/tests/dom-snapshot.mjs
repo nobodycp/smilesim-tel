@@ -35,8 +35,8 @@
 // The forced-state pass forces `hover`, `focus` and `active` (CDP CSS.forcePseudoState; `focus` is forced as
 // `:focus` and `:focus-visible` together, as a keyboard focus sets both) one state at a time, as a real pointer or
 // focus would: the element's ancestors get `hover`, `active` or `focus-within` too. Targets are the elements that
-// have a box and are (1) controls — button, a, input, select, textarea, [role=tab], [role=menuitem], .line-op,
-// [data-slot=company-card], .pick-card / [data-slot=pick-card], .pack-pick, .filter-pop button — all three states; (2) `[tabindex]`, `summary`,
+// have a box and are (1) controls — button, a, input, select, textarea, [role=tab], [role=menuitem], [data-slot=line-op],
+// [data-slot=company-card], .pick-card / [data-slot=pick-card], [data-slot=pack-pick], .filter-pop button — all three states; (2) `[tabindex]`, `summary`,
 // `[contenteditable]` — `focus`; (3) any other element a state rule of the loaded sheets styles through that state
 // on its own compound (`.stat:hover`, `.fact-grid > div:hover::after`, `.data tbody tr:hover td`,
 // `.users-layer:focus-visible`: the selector up to that compound, states and pseudo-elements taken off, matches
@@ -392,9 +392,9 @@ const cases = [
     { click: '.name-pop [role=option]' },
     { click: '.add-query .ui-btn:not(:disabled)', wait: '[data-slot="pick-card"]' },
   ] }],
-  ['number-card-switch', '/numbers/ln1', 'branch', false, { steps: [{ click: '.line-op:has(.lucide-layers)', wait: '.pack-pick' }] }],
+  ['number-card-switch', '/numbers/ln1', 'branch', false, { steps: [{ click: '[data-slot="line-op"]:has(.lucide-layers)', wait: '[data-slot="pack-pick"]' }] }],
   // A number-card operation dialog that holds `Facts` (the SIM swap): its `data-slot="facts"` tiles.
-  ['number-card-sim', '/numbers/ln1', 'branch', false, { steps: [{ click: '.line-op:has(.lucide-smartphone)', wait: '[data-slot="dialog"] [data-slot="facts"]' }] }],
+  ['number-card-sim', '/numbers/ln1', 'branch', false, { steps: [{ click: '[data-slot="line-op"]:has(.lucide-smartphone)', wait: '[data-slot="dialog"] [data-slot="facts"]' }] }],
   // The package sheet's offers tab: the custom-price rows with their `.price-pair` cells.
   ['company-package-offers', '/companies/cell/packages/cell-400', 'branch', false, { steps: [{ click: '[role=tab][data-tab="offers"]', wait: '.price-pair' }] }],
   // The entered-account door with no code in the fragment: its failed state and the back-to-sign-in button.
@@ -573,7 +573,7 @@ function snapHelpers() {
   window.__snap = { subtree, settle, finishAll, keyOf, forcedRows, row, keepRest, markTargets };
 }
 
-const TARGETS = 'button, a, input, select, textarea, [role=tab], [role=menuitem], .line-op, [data-slot="company-card"], .pick-card, [data-slot="pick-card"], .pack-pick, .filter-pop button';
+const TARGETS = 'button, a, input, select, textarea, [role=tab], [role=menuitem], [data-slot="line-op"], [data-slot="company-card"], .pick-card, [data-slot="pick-card"], [data-slot="pack-pick"], .filter-pop button';
 const FOCUSABLE = '[tabindex], summary, [contenteditable]';
 const ANCESTOR_STATE = { hover: 'hover', active: 'active', focus: 'focus-within' };
 // What CDP forces for each state: a keyboard focus is `:focus` and `:focus-visible` at once.

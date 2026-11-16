@@ -36,14 +36,16 @@ export function ActivationResult({ result, onClose }: { result: ApplyResult | nu
       footer={<Button type="button" onClick={leave}>{t.ok}</Button>}
     >
       {line ? (
-        <div className="stack">
+        // A column 12px apart (the legacy `.stack`); the note under it is a plain paragraph, as no legacy rule reached a
+        // `.hint` paragraph in a dialog's body (Tailwind migration T4.5).
+        <div className="grid content-start gap-3 *:min-w-0">
           {line.esimQr ? <QrTile src={line.esimQr} /> : null}
           <Facts>
             <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
             <Fact label={t.simType}>{line.esim ? t.esim : t.physicalSim}</Fact>
             <Fact label={t.simSerial}>{line.iccid ? <bdi dir="ltr">{line.iccid}</bdi> : '—'}</Fact>
           </Facts>
-          {result?.debited ? <p className="hint">{t.appliedNow}</p> : null}
+          {result?.debited ? <p>{t.appliedNow}</p> : null}
         </div>
       ) : null}
     </Dialog>

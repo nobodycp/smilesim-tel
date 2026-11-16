@@ -49,7 +49,7 @@ async function audit(page: Page, door: Door, visits: Visit[], nav: string[] | un
           await settle(page);
         }
         if (shot.dialog) {
-          await page.locator('.line-ops').getByRole('button', { name: shot.dialog, exact: true }).click();
+          await page.getByTestId('line-ops').getByRole('button', { name: shot.dialog, exact: true }).click();
           await expect(page.getByRole('dialog').locator('[data-slot="money"]')).toBeVisible();
         }
         const file = `${door}-${shot.label}`.replace(/[^\w-]+/g, '_');

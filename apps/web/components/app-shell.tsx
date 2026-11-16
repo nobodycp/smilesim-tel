@@ -195,7 +195,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Graphite: figure, fact and action cards carry a soft light under the pointer (CSS reads --mx / --my).
   useEffect(() => {
     const move = (event: PointerEvent) => {
-      const card = (event.target as Element | null)?.closest<HTMLElement>('.figure-tile, [data-slot="figure-tile"], [data-slot="pulse-tile"], .shortcut-tile, [data-slot="stat"], [data-slot="fact-card"], [data-slot="op-card"], .op-card, .op-tile, .line-op, .company-card, .pack-card');
+      const card = (event.target as Element | null)?.closest<HTMLElement>('.figure-tile, [data-slot="figure-tile"], [data-slot="pulse-tile"], .shortcut-tile, [data-slot="stat"], [data-slot="fact-card"], [data-slot="op-card"], .op-card, .op-tile, [data-slot="line-op"], .company-card, .pack-card');
       if (!card) return;
       const box = card.getBoundingClientRect();
       card.style.setProperty('--mx', `${event.clientX - box.left}px`);

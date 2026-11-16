@@ -6,11 +6,13 @@ import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react';
 import { AccountName, accountLabel } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { ActivationResult } from '../../../components/activation-result';
-import { Desk, Money, OutcomePick, applyNote, lineStatus } from '../../../components/desk';
-import { DataImage } from '../../../components/data-image';
-import { markColor, markOf } from '../../../lib/company-mark';
+import { Desk, Money, OutcomePick, Pane, applyNote, lineStatus } from '../../../components/desk';
+import { CompanyMark } from '../../../components/company-mark';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
+import { Checkbox } from '../../../components/ui/checkbox';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
 import { Dialog } from '../../../components/dialog';
@@ -34,6 +36,7 @@ import { pageRows, usePaged } from '../../../lib/use-paged';
 import { useDebouncedField, useUrlFilters } from '../../../lib/url-state';
 import { lineTone } from '../../../lib/status-tone';
 import { EXPIRING_DAYS, daysLeft } from '../../../lib/days-left';
+import { Days } from '../days';
 
 const NO_POSES: PosChoice[] = [];
 const NO_PACKAGES: PackageRow[] = [];
@@ -41,6 +44,18 @@ const NO_PACKAGES: PackageRow[] = [];
 const FILTER_KEYS = ['q', 'status', 'pack', 'provider', 'company', 'sim'] as const;
 // `expiring` is a filter, not a stored status: active lines ending within three days.
 const LINE_STATUSES = ['active', 'expiring', 'frozen', 'disconnected', 'suspended'];
+
+/*
+ * The look (Tailwind migration T4.5, ADR 0022), ported from desk/table.css, desk/pane.css, dialog.css, responsive.css
+ * and graphite.css in their cascade order:
+ * - the number cell: one row 10px apart, the number's link 800 ink at the reading start, the SIM badge beside it;
+ * - the package cell: one row 10px apart at the reading start, the company's mark (`CompanyMark`), the package's name
+ *   600 over its company 11.5px `--rd-muted` 400 at 1.3;
+ * - the activation form: a column 12px apart; the point of sale and the package side by side 8px apart (one column
+ *   under 768px); the eSIM box in a row 8px from its name, at least 36px high (44px at 720px and under), 13px ink 600.
+ */
+const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center gap-2 text-ink max-[721px]:min-h-11';
+const FIELD_HINT = 'text-sm font-medium';
 
 export function NumbersScreen() {
   const { t, locale, apiText } = usePrefs();
@@ -182,8 +197,8 @@ export function NumbersScreen() {
       header: t.number,
       kind: 'msisdn',
       render: (line) => (
-        <span className="line-cell" data-testid="line-cell">
-          <Link className="num-link" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
+        <span className="inline-flex items-center gap-2.5" data-testid="line-cell">
+          <Link className="text-start font-extrabold text-ink no-underline" href={`/numbers/${line.id}`}><bdi dir="ltr">{line.msisdn}</bdi></Link>
           <SimBadge line={{ esim: line.esim }} label={`${t.showQr} ${line.msisdn}`} busy={qr !== null && 'asking' in qr && qr.asking === line.id} onOpen={() => void openQr(line)} />
         </span>
       ),
@@ -192,15 +207,11 @@ export function NumbersScreen() {
       key: 'package',
       header: t.packageName,
       render: (line) => (
-        <span className="pack-cell">
-          {line.companyImage ? (
-            <DataImage className="co-mark" src={line.companyImage} alt="" />
-          ) : (
-            <span className="co-mark" style={{ background: markColor(line.companyName || '?') }} aria-hidden="true">{markOf(line.companyName || '?')}</span>
-          )}
+        <span className="inline-flex items-center gap-2.5 text-start">
+          <CompanyMark name={line.companyName || '?'} image={line.companyImage} />
           <span>
-            <b>{line.packageName}</b>
-            <span className="sub">{line.companyName || '—'}</span>
+            <b className="block font-semibold">{line.packageName}</b>
+            <span className="block text-[11.5px] leading-[1.3] font-normal text-muted">{line.companyName || '—'}</span>
           </span>
         </span>
       ),
@@ -224,11 +235,11 @@ export function NumbersScreen() {
       header: t.remainingDays,
       render: (line) => {
         const ends = new Date(line.endsAt).toLocaleDateString(locale === 'he' ? 'he' : locale === 'en' ? 'en' : 'ar-u-nu-latn');
-        if (line.status !== 'active') return <span className="days off" data-testid="days-off" title={ends}>—</span>;
+        if (line.status !== 'active') return <Days tone="off" data-testid="days-off" title={ends}>—</Days>;
         const days = daysLeft(line.endsAt);
-        if (days <= 0) return <span className="days out" data-testid="days-out" title={ends}>{t.lineEndedShort}</span>;
-        if (days <= EXPIRING_DAYS) return <span className="days soon" data-testid="days-soon" title={ends}>{t.expiringSoon} · <span className="num">{days}</span> {t.dayUnit}</span>;
-        return <span className="days" data-testid="days-left" title={ends}><span className="num">{days}</span> {t.dayUnit}</span>;
+        if (days <= 0) return <Days tone="out" data-testid="days-out" title={ends}>{t.lineEndedShort}</Days>;
+        if (days <= EXPIRING_DAYS) return <Days tone="soon" data-testid="days-soon" title={ends}>{t.expiringSoon} · <span>{days}</span> {t.dayUnit}</Days>;
+        return <Days tone="left" data-testid="days-left" title={ends}><span>{days}</span> {t.dayUnit}</Days>;
       },
     },
     { key: 'price', header: t.price, num: true, render: (line) => <Money value={line.posPrice} /> },
@@ -301,7 +312,7 @@ export function NumbersScreen() {
           </Select>
         </label>
       </FilterBar>
-      <section className="pane" id="lines">
+      <Pane id="lines">
         {ready && me && me.layer !== 'pos' && (
           <Dialog
             open={activateOpen}
@@ -318,17 +329,17 @@ export function NumbersScreen() {
               </>
             )}
           >
-            <form id="activate-line" className="dialog-form" onSubmit={activate}>
-              <div className="pair">
-                <label>
+            <form id="activate-line" className="grid content-start gap-3" onSubmit={activate}>
+              <div className="grid grid-cols-[1fr_1fr] gap-2 max-md:grid-cols-[1fr]">
+                <Label tone="dialog">
                   {t.pointOfSale}
                   <NameField
                     value={posLoginName || poses[0]?.loginName || ''}
                     onChange={setPosLoginName}
                     options={poses.map((pos) => ({ value: pos.loginName, label: accountLabel(pos.loginName, pos.nickname), keys: [pos.loginName] }))}
                   />
-                </label>
-                <label>
+                </Label>
+                <Label tone="dialog">
                   {t.packageName}
                   <NameField
                     value={chosen?.code || ''}
@@ -340,33 +351,33 @@ export function NumbersScreen() {
                       keys: [row.companyName, row.providerName ?? '', row.code].filter(Boolean),
                     }))}
                   />
-                </label>
+                </Label>
               </div>
               {chosen ? <PackageFacts facts={chosen} /> : null}
               {offersEsim && (
-                <label className="check">
-                  <input type="checkbox" checked={esim} onChange={(event) => setEsim(event.target.checked)} />
+                <Label className={CHECK_ROW}>
+                  <Checkbox checked={esim} onCheckedChange={(next) => setEsim(next === true)} />
                   {t.esim}
-                </label>
+                </Label>
               )}
               {activation === 'details' && (
-                <label>
+                <Label tone="dialog">
                   {t.currentNumberDetails}
-                  <input value={currentDetails} onChange={(event) => setCurrentDetails(event.target.value)} />
-                </label>
+                  <Input value={currentDetails} onChange={(event) => setCurrentDetails(event.target.value)} />
+                </Label>
               )}
               {activation === 'number' && (
-                <label>
+                <Label tone="dialog">
                   {t.number}
-                  <input value={givenNumber} onChange={(event) => setGivenNumber(event.target.value)} dir="ltr" />
-                </label>
+                  <Input value={givenNumber} onChange={(event) => setGivenNumber(event.target.value)} dir="ltr" />
+                </Label>
               )}
               {!withEsim && (
-                <label>
+                <Label tone="dialog">
                   {t.iccid}
-                  <input value={iccid} onChange={(event) => setIccid(event.target.value)} inputMode="numeric" dir="ltr" />
-                  {hasSimRules(rules) && <span className="hint">{simHint(t, rules)}</span>}
-                </label>
+                  <Input value={iccid} onChange={(event) => setIccid(event.target.value)} inputMode="numeric" dir="ltr" />
+                  {hasSimRules(rules) && <span className={FIELD_HINT}>{simHint(t, rules)}</span>}
+                </Label>
               )}
               <OutcomePick value={outcome} onChange={setOutcome} />
             </form>
@@ -389,7 +400,7 @@ export function NumbersScreen() {
           onClose={() => setEnding(null)}
           onConfirm={(line) => run(() => api.disconnectLine(line.id, verdict), applied)}
         />
-      </section>
+      </Pane>
     </Desk>
   );
 }

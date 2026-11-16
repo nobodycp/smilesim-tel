@@ -116,7 +116,7 @@ function expectNote(label: string, text: string, delta: number) {
 
 async function openCard(page: Page, door: Door, line: Line) {
   await page.goto(`${DOORS[door]}/numbers/${line.id}`);
-  await expect(page.locator('.line-number')).toHaveText(line.msisdn);
+  await expect(page.getByTestId('line-number')).toHaveText(line.msisdn);
 }
 
 async function pickOutcome(scope: Page | Locator, outcome: 'نجاح' | 'فشل') {
@@ -127,7 +127,7 @@ async function pickOutcome(scope: Page | Locator, outcome: 'نجاح' | 'فشل'
 async function onCard(page: Page, door: Door, line: Line, label: string, options: { outcome?: 'نجاح' | 'فشل'; fill?: (page: Page) => Promise<void> } = {}) {
   await openCard(page, door, line);
   if (options.outcome) await pickOutcome(page, options.outcome);
-  await page.locator('.line-ops').getByRole('button', { name: label, exact: true }).click();
+  await page.getByTestId('line-ops').getByRole('button', { name: label, exact: true }).click();
   if (options.fill) await options.fill(page);
   return outcomeText(page);
 }
@@ -139,7 +139,7 @@ const swapSimTo = (iccid: string) => async (page: Page) => {
 };
 const switchTo = (pack: Pack) => async (page: Page) => {
   const dialog = page.getByRole('dialog');
-  await dialog.locator('.pack-pick', { hasText: pack.name }).click();
+  await dialog.locator('[data-slot="pack-pick"]', { hasText: pack.name }).click();
   await dialog.getByRole('button', { name: 'تبديل الرزمة', exact: true }).click();
 };
 /** What the disconnect dialog showed before it was confirmed. */
