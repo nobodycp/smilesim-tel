@@ -25,6 +25,7 @@ import { useRequestKey } from '../../../lib/request-key';
 import { useAction } from '../../../lib/use-action';
 import { Badge } from '../../../components/ui/badge';
 import { NameField } from '../../../components/name-field';
+import { CompanyPicture } from '../../../components/company-mark';
 import { DataImage } from '../../../components/data-image';
 import { PackageFactTiles } from '../../../components/package-facts';
 import { priceFieldClass } from '../../../components/price-field';
@@ -73,14 +74,14 @@ const CARD = cn(
   'focus-visible:inset-ring-2 focus-visible:inset-ring-accent focus-visible:outline-none',
 );
 /*
- * An offer's card (spec 2026-11-16-package-page, P.8): no edge at all, a wash from the gold of `--rd-warning` at the
- * top start to the accent at the bottom end, and a gold data ring. Under the pointer (or with keyboard focus) four
+ * An offer's card (spec 2026-11-16-package-page, P.8), in the system's own colours: no edge at all, a wash of the
+ * crimson accent from the top start fading into the card, and the data ring in the accent. Under the pointer (or with keyboard focus) four
  * bursts of fireworks go off across it (`OfferShow`); at rest, and when less motion is asked for, it is still.
  */
 const OFFER_CARD = cn(
   'group/offer inset-ring-0',
-  'bg-[linear-gradient(135deg,var(--rd-warning-soft),var(--rd-surface)_55%,var(--rd-accent-soft))]',
-  'hover:bg-[linear-gradient(135deg,var(--rd-warning-soft),var(--rd-surface-2)_55%,var(--rd-accent-soft))]',
+  'bg-[linear-gradient(135deg,var(--rd-accent-soft),var(--rd-surface)_62%)]',
+  'hover:bg-[linear-gradient(135deg,var(--rd-accent-soft),var(--rd-surface-2)_62%)]',
 );
 /** Where each burst sits on the card (from the reading start and the top), and when it goes off. */
 const BURSTS = [
@@ -91,8 +92,6 @@ const BURSTS = [
 ];
 const SPARKS = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330];
 
-/** A company's picture: the whole picture centred, 72px high across the card, straight on the card with no plate behind it. */
-const PLATE = 'flex h-18 w-full items-center justify-center overflow-hidden p-2 max-sm:h-16';
 /** The line under a card's rule: the counts, 12px muted with the figure in bold ink. */
 const CARD_FOOT = 'mt-1 w-full border-t border-line pt-2 text-sm text-muted';
 const LOGO = 'size-16 rounded-panel bg-surface-2 object-contain';
@@ -229,10 +228,7 @@ function PosCatalog({
                 const image = imageOf.get(name) ?? '';
                 return (
                   <button className={cn(CARD, 'justify-items-center text-center')} data-slot="pos-company" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
-                    {/* The whole picture, centred; a company without one shows its letters there. */}
-                    <span className={PLATE}>
-                      {image ? <DataImage className="block max-h-full max-w-full object-contain" src={image} alt="" /> : <span className="grid size-16 place-items-center rounded-card text-2xl font-bold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
-                    </span>
+                    <CompanyPicture name={name} image={image} />
                     <strong className="text-lg">{name}</strong>
                     <span className={CARD_FOOT}>{counted(t.coPackages, rows.filter((row) => row.companyName === name).length)}</span>
                   </button>
@@ -249,9 +245,9 @@ function PosCatalog({
                 <button className={cn(CARD, 'justify-items-stretch text-start', row.offer && OFFER_CARD)} data-slot="pack-card" data-testid="pack-card" data-offer={row.offer ? '' : undefined} key={row.code} type="button" onClick={() => openPackage(row)}>
                   {row.offer ? <OfferShow /> : null}
                   <span className="flex items-center gap-2.5">
-                    <GbRing gb={row.dataGb} max={maxGb} unlimited={t.unlimited} gold={row.offer} />
+                    <GbRing gb={row.dataGb} max={maxGb} unlimited={t.unlimited} accent={row.offer} />
                     <span className="grid min-w-0">
-                      <strong>{row.name} {row.offer ? <Badge variant="warning">{t.offerBadge}</Badge> : null}</strong>
+                      <strong>{row.name} {row.offer ? <Badge>{t.offerBadge}</Badge> : null}</strong>
                       <span className="text-sm text-muted">{durationOf(row.months)}</span>
                     </span>
                   </span>
@@ -347,7 +343,7 @@ function OfferShow() {
               className={cn(
                 'absolute size-2 rounded-pill opacity-0',
                 'motion-safe:group-hover/offer:animate-[offer-spark_1.6s_ease-out_infinite] motion-safe:group-focus-visible/offer:animate-[offer-spark_1.6s_ease-out_infinite]',
-                index % 2 ? 'bg-accent' : 'bg-warning',
+                index % 2 ? 'bg-ink' : 'bg-accent',
               )}
               style={{ '--spark-turn': `${turn}deg`, '--spark-reach': index % 3 === 0 ? '72px' : index % 3 === 1 ? '52px' : '36px', animationDelay: `${burst.delay}s` } as React.CSSProperties}
             />
@@ -372,14 +368,14 @@ function Answer({ label, value, change, onChange }: { label: string; value: stri
  * A package's data as a ring: the share of the company's largest package drawn around the figure. Unlimited is a
  * full ring; a package that states no data has an empty one.
  */
-function GbRing({ gb, max, unlimited, gold = false }: { gb: number | null; max: number; unlimited: string; gold?: boolean }) {
+function GbRing({ gb, max, unlimited, accent = false }: { gb: number | null; max: number; unlimited: string; accent?: boolean }) {
   const share = gb === null ? 0 : gb === -1 ? 100 : Math.round((gb / max) * 100);
   return (
     <span
       className={cn(
         'grid size-16 shrink-0 place-items-center rounded-pill',
-        gold
-          ? 'bg-[conic-gradient(var(--rd-warning)_calc(var(--share)*1%),var(--rd-surface-3)_0)]'
+        accent
+          ? 'bg-[conic-gradient(var(--rd-accent)_calc(var(--share)*1%),var(--rd-surface-3)_0)]'
           : 'bg-[conic-gradient(var(--rd-ink-2)_calc(var(--share)*1%),var(--rd-surface-3)_0)]',
       )}
       style={{ '--share': share } as React.CSSProperties}

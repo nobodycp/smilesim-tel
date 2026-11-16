@@ -12,7 +12,7 @@ import { api, type Shelf } from '../../../lib/api';
 import { cn } from '../../../lib/cn';
 import { usePrefs } from '../../../lib/prefs';
 import { useRequireLayer } from '../../../lib/use-require-layer';
-import { CompanyMark } from '../../../components/company-mark';
+import { CompanyPicture } from '../../../components/company-mark';
 import { Plus } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import { useDesk } from '../../../lib/desk-session';
@@ -33,7 +33,7 @@ function counted(template: string, n: number) {
  * - the card: a grid of rows 6px apart with 18px padding (14px under 641px), 6px corners on `--rd-surface` with a 1px
  *   inset `--rd-line` edge and the tag's cut corner (`--rd-cut`) at the top inline end; `--rd-surface-2` under the
  *   pointer (140ms); the edge becomes a 2px `--rd-accent` ring while its link has keyboard focus;
- * - the top row (the mark) at the start, 6px over the name; the mark 38px with 15px letters under 641px;
+ * - the top row: the company's whole picture centred (`CompanyPicture`), 6px over the name;
  * - the name: the card's link, 15px bold ink, stretched over the whole card (its `::after`), no focus outline of its
  *   own (the card's ring shows it);
  * - the SIM rules: 12.5px `--rd-muted`;
@@ -81,9 +81,8 @@ export function CompaniesScreen() {
     const sums = totals(company);
     return (
       <article key={company.code} className={CARD} data-slot="company-card">
-        <div className="mb-1.5 flex items-start justify-between">
-          <CompanyMark name={company.name} image={company.image} size="lg" className="max-sm:size-9.5 max-sm:text-lg" />
-        </div>
+        {/* The whole picture, centred, as on the point of sale's company card (owner, 2026-11-16). */}
+        <CompanyPicture name={company.name} image={company.image} className="mb-1.5" />
         <Link className={CARD_LINK} href={`/companies/${company.code}`}>{company.name}</Link>
         <span className="text-chip text-muted">
           {company.sim && hasSimRules(company.sim)

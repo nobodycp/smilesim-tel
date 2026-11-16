@@ -42,3 +42,18 @@ export function CompanyMark({ name, image, size = 'sm', className }: {
     </span>
   );
 }
+
+/**
+ * A company's picture on a card (the point of sale's company card and the admin's): the whole picture centred, 72px
+ * high across the card (64px on a phone), straight on the card with no plate behind it and nothing cut off; a company
+ * without a picture shows its letters on a 64px tile there. `data-slot="company-picture"` is its handle.
+ */
+export function CompanyPicture({ name, image, className }: { name: string; image?: string | null; className?: string }) {
+  return (
+    <span data-slot="company-picture" className={cn('flex h-18 w-full items-center justify-center overflow-hidden p-2 max-sm:h-16', className)}>
+      {image
+        ? <DataImage className="block max-h-full max-w-full object-contain" src={image} alt="" />
+        : <span className="grid size-16 place-items-center rounded-card text-2xl font-bold text-on-mark" style={{ background: markColor(name) }} aria-hidden="true">{markOf(name)}</span>}
+    </span>
+  );
+}

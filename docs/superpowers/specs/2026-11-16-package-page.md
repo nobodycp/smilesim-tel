@@ -111,9 +111,10 @@ Owner, 2026-11-16:
 Owner, 2026-11-16: «لما تكون الرزمة عرض اعمل تأثيرات بصرية وغيّر لونها إلى لون أجمل مع تحريك وألعاب نارية على الرزمة
 نفسها».
 
-- A package marked as an offer has a gold card at the point of sale: a wash from gold to the accent and a gold
-  data ring, with **no edge and no glow** (owner, same day: «بدون إطار خارجي وبدون الظل»).
-- **Fireworks under the pointer only**: four large bursts of sparks, gold and accent, go off in turn while the
+- A package marked as an offer has its own card at the point of sale, **in the system's colours** (owner, same
+  day: «لون يتناسب مع ألوان النظام»): a wash of the crimson accent fading into the card and the data ring in the
+  accent, with **no edge and no glow** («بدون إطار خارجي وبدون الظل»).
+- **Fireworks under the pointer only**: four large bursts of sparks, accent and ink, go off in turn while the
   pointer is over the card (or it has keyboard focus), behind the card's content so nothing covers the text or
   takes a click. At rest the card is still. A touch screen has no pointer, so a phone shows the gold card alone.
 - With less motion asked for by the system, nothing moves.
