@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { AccountName } from '../../../components/account-name';
 import { PagedTable, type Column } from '../../../components/data-table';
-import { Desk, Money, actionName, taskStatus } from '../../../components/desk';
+import { Desk, Money, Pane, actionName, taskStatus } from '../../../components/desk';
 import { FilterBar } from '../../../components/filter-bar';
 import { RowMenu } from '../../../components/row-menu';
 import { TableSearch } from '../../../components/table-search';
@@ -15,6 +15,7 @@ import { Tabs } from '../../../components/tabs';
 import { Zap } from 'lucide-react';
 import { Select, SelectItem } from '../../../components/ui/select';
 import { NameField } from '../../../components/name-field';
+import { cn } from '../../../lib/cn';
 import { useApiQuery } from '../../../lib/use-api-query';
 import { sharedKeys } from '../../../lib/query';
 import { api, type PackageRow, type TaskRow } from '../../../lib/api';
@@ -33,6 +34,27 @@ const TASK_ACTIONS = ['activate', 'charge', 'extend', 'reactivate', 'disconnect'
 
 const FILTER_KEYS = ['q', 'status', 'action', 'pack', 'company', 'provider'] as const;
 const TASK_STATUSES = ['working', 'done', 'cancelled'];
+
+/*
+ * The tasks list as card rows (Tailwind migration T4.6, ADR 0022), ported from graphite.css "Tasks as card rows":
+ * - the list's card: `Pane`; its table head is for screen readers only (taken out of the flow, 1px, clipped, one line);
+ * - a row's card (the link): a row 14px apart, the text's own colour, no underline; under the pointer the operation's
+ *   name turns `--rd-accent`;
+ * - the mark: 36px, 6px corners, `--rd-accent` on its soft fill, an 8px cut corner at the top inline end;
+ * - the text: a column 3px apart that may shrink; the title a wrapping row 10px apart (the operation 14px bold ink,
+ *   then its badges); the meta a wrapping row 6px apart, 12px `--rd-muted`: the number semibold `--rd-ink-2` at
+ *   0.03em, the last note at most 24rem, cut with an ellipsis;
+ * - the actions cell: an inline row 6px apart.
+ * The filter chips stay plain `<label>` children of FilterBar (its chip rules read the panel's slot, not a class).
+ */
+const LIST_PANE = cn(
+  '[&_[data-slot=table]_thead]:absolute [&_[data-slot=table]_thead]:size-px [&_[data-slot=table]_thead]:overflow-hidden',
+  '[&_[data-slot=table]_thead]:[clip:rect(0_0_0_0)] [&_[data-slot=table]_thead]:whitespace-nowrap',
+);
+const TASK_MARK = cn(
+  'grid size-9 flex-none place-items-center rounded-sm bg-accent-soft text-accent',
+  '[clip-path:polygon(0_0,calc(100%_-_8px)_0,100%_8px,100%_100%,0_100%)] rtl:[clip-path:polygon(8px_0,100%_0,100%_100%,0_100%,0_8px)]',
+);
 
 export function TasksScreen() {
   const { t } = usePrefs();
@@ -106,20 +128,20 @@ export function TasksScreen() {
       kind: 'msisdn',
       cell: 'w-full font-normal tracking-normal',
       render: (row) => (
-        <Link className="task-card" data-testid="task-card" href={`/tasks/${row.id}`}>
-          <span className="task-mark" aria-hidden="true"><Zap size={18} strokeWidth={1.9} /></span>
-          <span className="task-main">
-            <span className="task-title">
-              <b>{actionName(t, row.action)}</b>
+        <Link className="group/task flex items-center gap-3.5 text-inherit no-underline" data-testid="task-card" href={`/tasks/${row.id}`}>
+          <span className={TASK_MARK} aria-hidden="true"><Zap size={18} strokeWidth={1.9} /></span>
+          <span className="grid min-w-0 gap-0.75">
+            <span className="flex flex-wrap items-center gap-2.5">
+              <b className="text-base font-bold text-ink group-hover/task:text-accent">{actionName(t, row.action)}</b>
               <Badge variant={taskTone(row.status)} dot>{taskStatus(t, row.status)}</Badge>
               {/* Where its provider operation stands, while the task is open: waiting, unconfirmed, an exception. */}
               {row.operationPhase && row.status === 'working' ? <Badge variant={operationTone(row.operationPhase)}>{phaseName(t, row.operationPhase)}</Badge> : null}
             </span>
-            <span className="task-meta">
-              {row.msisdn ? <bdi dir="ltr" className="task-msisdn">{row.msisdn}</bdi> : null}
+            <span className="flex flex-wrap gap-1.5 text-sm text-muted">
+              {row.msisdn ? <bdi dir="ltr" className="font-semibold tracking-[0.03em] text-ink-2">{row.msisdn}</bdi> : null}
               {[row.companyName, row.packageName].filter(Boolean).map((part) => <span key={part}>· {part}</span>)}
               <span>· <AccountName login={row.posLoginName} /></span>
-              {row.lastNote ? <span className="task-note">· {row.lastNote}</span> : null}
+              {row.lastNote ? <span className="max-w-96 overflow-hidden text-ellipsis">· {row.lastNote}</span> : null}
             </span>
           </span>
         </Link>
@@ -137,7 +159,7 @@ export function TasksScreen() {
           ...(row.canCancel ? [{ label: t.cancelTask, icon: 'ban' as const, danger: true, onClick: () => run(() => api.cancelTask(row.id), { note: t.cancelTask }) }] : []),
         ];
         return (
-          <span className="task-act">
+          <span className="inline-flex items-center gap-1.5">
             {/* The row opens the ticket; only «أخذ المهمة» earns a button of its own (as in the design). */}
             {row.canTake ? (
               <Button type="button" size="sm" onClick={() => run(() => api.takeTask(row.id), { note: t.take })}>{t.take}</Button>
@@ -196,9 +218,9 @@ export function TasksScreen() {
           <NameField value={company} allLabel={t.allRows} onChange={(next) => setFilters({ company: next, pack: '' })} options={companyOptions.map((name) => ({ value: name, label: name }))} />
         </label>
       </FilterBar>
-      <section className="pane task-list">
+      <Pane className={LIST_PANE}>
         <PagedTable list={list} columns={columns} rowKey={(row) => row.id} empty={t.noTasks} skeleton={{ rows: 5, columns: 3 }} cards={false} cellClassName="h-16" />
-      </section>
+      </Pane>
     </Desk>
   );
 }

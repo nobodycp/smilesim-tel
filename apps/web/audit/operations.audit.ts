@@ -176,10 +176,10 @@ async function newestTask(where: { lineId?: string; msisdn?: string }) {
 async function completeOnScreen(taskId: string) {
   await admin.goto(`${DOORS.admin}/tasks/${taskId}`);
   await admin.getByRole('button', { name: 'استلام', exact: true }).click();
-  await expect(admin.locator('.task-toolbar').getByRole('button', { name: 'إتمام', exact: true })).toBeVisible();
-  await admin.locator('.task-toolbar').getByRole('button', { name: 'إتمام', exact: true }).click();
+  await expect(admin.getByTestId('task-toolbar').getByRole('button', { name: 'إتمام', exact: true })).toBeVisible();
+  await admin.getByTestId('task-toolbar').getByRole('button', { name: 'إتمام', exact: true }).click();
   await admin.getByLabel('ملاحظة الإغلاق').fill('تم عند المزود');
-  await admin.locator('.task-close-row').getByRole('button', { name: 'إتمام', exact: true }).click();
+  await admin.getByTestId('task-close-row').getByRole('button', { name: 'إتمام', exact: true }).click();
   await expect.poll(async () => (await sql<{ status: string }>(`SELECT status FROM "OfficeTask" WHERE id = $1`, [taskId]))[0]?.status).toBe('done');
 }
 

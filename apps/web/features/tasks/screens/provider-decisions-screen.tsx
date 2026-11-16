@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState } from 'react';
 import { AccountName } from '../../../components/account-name';
-import { Desk, Money, actionName, latinWhen } from '../../../components/desk';
+import { Desk, Money, Pane, actionName, latinWhen } from '../../../components/desk';
 import { PagedTable, type Column } from '../../../components/data-table';
 import { Tabs } from '../../../components/tabs';
 import { Badge } from '../../../components/ui/badge';
@@ -24,6 +24,14 @@ import { decisionName, phaseName, reasonName } from '../provider-operation-names
 
 /** The queue's two parts, as the API names them (`?waiting=`). */
 type Waiting = 'approval' | 'decision';
+
+/*
+ * The queue's rows (Tailwind migration T4.6, ADR 0022), ported from graphite.css's queue rules: the list's card is
+ * `Pane` with no table head; each row a block of its own, a column 8px apart, 14px padding, its text at the reading start;
+ * its head a wrapping row 8px apart (the operation bold, its phase, the reason in 12px `--rd-ink-2`, «فتح التذكرة» pushed
+ * to the end); the meta a wrapping row 14px / 2px apart in 12px `--rd-muted`; the next step 12px `--rd-ink-2`.
+ */
+const SUB = 'm-0 text-sm text-ink-2';
 
 /**
  * The operations that wait for a person (spec 2026-11-12-provider-operation-screens, 4): in one tab the proposals a
@@ -56,14 +64,14 @@ export function ProviderDecisionsScreen() {
       header: t.poTitle,
       kind: 'block',
       render: (item) => (
-        <div className="po-row" data-testid="po-row" data-phase={item.phase ?? ''}>
-          <div className="po-row-head">
+        <div className="grid gap-2 p-3.5 text-start" data-testid="po-row" data-phase={item.phase ?? ''}>
+          <div className="flex flex-wrap items-center gap-2">
             <b>{actionName(t, item.action)}</b>
             {item.phase ? <Badge variant={operationTone(item.phase)} dot>{phaseName(t, item.phase)}</Badge> : null}
-            {item.reason ? <span className="po-row-reason">{reasonName(t, item.reason)}</span> : null}
-            <Button asChild variant="secondary" size="sm" className="po-row-open"><Link href={`/tasks/${encodeURIComponent(item.taskId)}`}>{t.openTask}</Link></Button>
+            {item.reason ? <span className={SUB}>{reasonName(t, item.reason)}</span> : null}
+            <Button asChild variant="secondary" size="sm" className="ms-auto"><Link href={`/tasks/${encodeURIComponent(item.taskId)}`}>{t.openTask}</Link></Button>
           </div>
-          <p className="po-row-meta">
+          <p className="m-0 flex flex-wrap gap-x-3.5 gap-y-0.5 text-sm text-muted">
             {item.msisdn ? <bdi dir="ltr">{item.msisdn}</bdi> : null}
             {item.packageName ? <span>{item.packageName}</span> : null}
             <span>{t.pointOfSale}: <AccountName login={item.posLoginName} /></span>
@@ -87,7 +95,7 @@ export function ProviderDecisionsScreen() {
               }}
             />
           ) : (
-            <p className="po-row-next">
+            <p className={SUB}>
               {item.blocked === 'own-task' ? t.propOwnTask : item.decisions.map((decision) => decisionName(t, decision)).join(' · ')}
             </p>
           )}
@@ -107,9 +115,9 @@ export function ProviderDecisionsScreen() {
           { key: 'decision', label: t.decQueueUndecided, count: totals?.decision },
         ]}
       />
-      <section className="pane po-queue" aria-label={waiting === 'approval' ? t.decQueueProposals : t.decQueueUndecided}>
+      <Pane className="[&_table[data-slot=table]_thead]:hidden" aria-label={waiting === 'approval' ? t.decQueueProposals : t.decQueueUndecided}>
         <PagedTable list={list} columns={columns} rowKey={(item) => item.taskId} empty={t.decQueueEmpty} skeleton={{ rows: 4, columns: 1 }} />
-      </section>
+      </Pane>
     </Desk>
   );
 }
