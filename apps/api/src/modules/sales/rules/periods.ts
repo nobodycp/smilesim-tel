@@ -6,9 +6,14 @@ import { DISCONNECT_FEE, type LineTerms, type PackageTerms, captureTerms } from 
 /** A charged or extended package month is 30 days, not a calendar month. */
 export const PERIOD_DAYS = 30;
 
-export function periodEnd(from: Date, months: number): Date {
+/** The days a period of this many months holds. */
+export function daysOf(months: number): number {
+  return PERIOD_DAYS * Math.max(1, months);
+}
+
+export function periodEnd(from: Date, days: number): Date {
   const next = new Date(from.getTime());
-  next.setUTCDate(next.getUTCDate() + PERIOD_DAYS * Math.max(1, months));
+  next.setUTCDate(next.getUTCDate() + Math.max(1, days));
   return next;
 }
 
@@ -29,8 +34,11 @@ export function windowMonthsOf(line: { months: number; windowMonths?: number }):
   return line.windowMonths ?? line.months;
 }
 
-/** A paid period still open on a line: its length, the whole days left, and what those days are worth. */
-export type OpenPeriod = { days: number; left: number; value: number; renewal: boolean };
+/**
+ * A paid period still open on a line: its length, the whole days left, what those days are worth, and what the
+ * branch paid the provider for the whole period (null on rows written before the cost was kept).
+ */
+export type OpenPeriod = { days: number; left: number; value: number; renewal: boolean; cost: number | null };
 
 /** A wallet row that bought time (or, for a switch, repriced it), as stored. */
 export type PrepaidRow = {
@@ -38,6 +46,7 @@ export type PrepaidRow = {
   packagePrice: number | null;
   periodDays: number | null;
   periodEndsAt: Date | null;
+  periodCost?: number | null;
 };
 
 const RUN_START_KINDS = new Set(['activate', 'charge', 'reactivate']);
@@ -45,22 +54,24 @@ const RENEWAL_PERIOD_KINDS = new Set(['charge', 'extend', 'reactivate']);
 
 /**
  * Paid periods still open, read from the prepaid rows newest first back to the row that started the
- * current run. The newest switch reprices every older period. Null when a row in the run has no period.
+ * current run. The newest switch reprices every older period, its price and its cost. Null when a row in the run
+ * has no period.
  */
 export function openPeriods(now: Date, rows: PrepaidRow[]): OpenPeriod[] | null {
   const open: OpenPeriod[] = [];
-  let repriced: { price: number; days: number } | null = null;
+  let repriced: { price: number; days: number; cost: number | null } | null = null;
   for (const row of rows) {
     if (!row.periodDays || row.packagePrice === null) return null;
     if (row.kind === 'switch') {
-      repriced ??= { price: row.packagePrice, days: row.periodDays };
+      repriced ??= { price: row.packagePrice, days: row.periodDays, cost: row.periodCost ?? null };
       continue;
     }
     if (!row.periodEndsAt) return null;
     if (now.getTime() < row.periodEndsAt.getTime()) {
       const left = daysLeft(now, row.periodEndsAt, row.periodDays);
-      const rate = repriced ?? { price: row.packagePrice, days: row.periodDays };
-      open.push({ days: row.periodDays, left, value: Math.round((rate.price * left) / rate.days), renewal: RENEWAL_PERIOD_KINDS.has(row.kind) });
+      const rate = repriced ?? { price: row.packagePrice, days: row.periodDays, cost: row.periodCost ?? null };
+      const cost = rate.cost === null ? null : Math.round((rate.cost * row.periodDays) / rate.days);
+      open.push({ days: row.periodDays, left, value: Math.round((rate.price * left) / rate.days), renewal: RENEWAL_PERIOD_KINDS.has(row.kind), cost });
     }
     if (RUN_START_KINDS.has(row.kind)) break;
   }
@@ -68,28 +79,31 @@ export function openPeriods(now: Date, rows: PrepaidRow[]): OpenPeriod[] | null 
 }
 
 /** The last window alone, for lines whose rows carry no periods. */
-export function lastWindow(now: Date, endsAt: Date, months: number, price: number, renewal: boolean): OpenPeriod[] {
-  const days = PERIOD_DAYS * Math.max(1, months);
+export function lastWindow(now: Date, endsAt: Date, days: number, price: number, renewal: boolean): OpenPeriod[] {
   if (now.getTime() >= endsAt.getTime()) return [];
   const left = daysLeft(now, endsAt, days);
-  return [{ days, left, value: Math.round((price * left) / days), renewal }];
+  return [{ days, left, value: Math.round((price * left) / days), renewal, cost: null }];
 }
 
 /**
  * One disconnect posting for a line with paid days left.
  * The point of sale is credited every unused paid day minus the half-shekel fee.
- * The provider cost is the used share of the running period's branch cost plus that same fee.
+ * The provider cost is the used share of the running period's branch cost plus that same fee: the cost kept on
+ * the row that bought the period, else (older rows) the one `branchCostOf` gives from the line's terms.
  * A line with no open period is not a disconnect: the subscription lapsed.
+ * `refundable` is false when the unused days are worth no more than the fee: such a disconnect is refused, and
+ * one already carried out at the provider moves no money (owner, 2026-11-15).
  */
 export function settleDisconnect(
   periods: OpenPeriod[],
   branchCostOf: (renewal: boolean) => number,
-): { amount: number; providerCost: number } | null {
+): { amount: number; providerCost: number; refundable: boolean } | null {
   const running = periods[periods.length - 1];
   if (!running) return null;
   const refund = periods.reduce((sum, period) => sum + period.value, 0);
-  const used = Math.round((branchCostOf(running.renewal) * (running.days - running.left)) / running.days);
-  return { amount: refund - DISCONNECT_FEE, providerCost: used + DISCONNECT_FEE };
+  const used = Math.round(((running.cost ?? branchCostOf(running.renewal)) * (running.days - running.left)) / running.days);
+  const refundable = refund > DISCONNECT_FEE;
+  return { amount: refundable ? refund - DISCONNECT_FEE : 0, providerCost: used + DISCONNECT_FEE, refundable };
 }
 
 export function renewStay(
@@ -97,7 +111,7 @@ export function renewStay(
   from: Date,
 ): { endsAt: Date; debit: number; terms: LineTerms } {
   return {
-    endsAt: periodEnd(from, line.months),
+    endsAt: periodEnd(from, daysOf(line.months)),
     debit: line.renewal.posPrice,
     terms: { ...line, windowMonths: line.months },
   };
@@ -114,7 +128,7 @@ export function renewOnto(
   if (!saved) return { error: 'NOT_A_RENEWAL_TARGET' as const };
   const renewal = { ...saved.renewal };
   return {
-    endsAt: periodEnd(from, saved.months),
+    endsAt: periodEnd(from, daysOf(saved.months)),
     debit: renewal.posPrice,
     terms: {
       ...captureTerms({ ...target, months: saved.months, subscription: renewal, renewal }, []),
@@ -127,11 +141,11 @@ export function renewOnto(
 export function switchOver(
   periods: OpenPeriod[],
   newPrice: number,
-  newMonths: number,
+  newDays: number,
 ): { currentValue: number; newValue: number; difference: number } {
   const days = periods.reduce((sum, period) => sum + period.left, 0);
   const currentValue = periods.reduce((sum, period) => sum + period.value, 0);
-  const newValue = Math.round((newPrice * days) / (PERIOD_DAYS * Math.max(1, newMonths)));
+  const newValue = Math.round((newPrice * days) / Math.max(1, newDays));
   return { currentValue, newValue, difference: newValue - currentValue };
 }
 

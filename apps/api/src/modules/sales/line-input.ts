@@ -1,5 +1,4 @@
 import { fail } from '../platform';
-import { PERIOD_DAYS } from './rules/periods';
 
 /** A mobile number as the resource writes it. */
 export const MSISDN = /^05\d{8}$/;
@@ -16,6 +15,6 @@ export function readQr(value: unknown): string | null | undefined {
 }
 
 /** The period a prepaid wallet entry bought. */
-export function periodOf(months: number, endsAt: Date | null) {
-  return { days: PERIOD_DAYS * Math.max(1, months), endsAt };
+export function periodOf(days: number, endsAt: Date | null) {
+  return { days: Math.max(1, days), endsAt };
 }

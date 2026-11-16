@@ -4,7 +4,7 @@ import { AccountTree } from '../access';
 import { UnitOfWork, fail } from '../platform';
 import { Injectable } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '../../generated/prisma/client';
-import { lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf } from './rules/periods';
+import { daysOf, lastWindow, openPeriods, revalue, settleDisconnect, switchOver, windowMonthsOf } from './rules/periods';
 import type { PathNode } from '../access';
 
 type Db = Prisma.TransactionClient | PrismaClient;
@@ -53,7 +53,7 @@ export class LinePricing {
     return this.ladder.stampWith(terms, path, await this.ladder.ladderRows(codes, path.map((node) => node.id), db));
   }
 
-  /** What a disconnect credits now, or null when no paid period is open. */
+  /** What a disconnect credits now (`refundable` false: nothing above the fee), or null when no paid period is open. */
   async disconnectSettlementFor(db: Db, line: PricedLine, now: Date) {
     const { terms, periods, lastPrice } = await this.openPeriodsOf(db, line, now);
     const settled = settleDisconnect(periods, (renewal) => (renewal ? terms.renewal.branchCost : terms.subscription.branchCost));
@@ -67,7 +67,7 @@ export class LinePricing {
     const last = rows[0];
     const renewal = Boolean(last && (last.kind === 'charge' || last.kind === 'extend' || last.kind === 'reactivate'));
     const lastPrice = last?.packagePrice ?? (renewal ? terms.renewal.posPrice : terms.subscription.posPrice);
-    const periods = openPeriods(now, rows) ?? lastWindow(now, line.endsAt, windowMonthsOf(terms), lastPrice, renewal);
+    const periods = openPeriods(now, rows) ?? lastWindow(now, line.endsAt, daysOf(windowMonthsOf(terms)), lastPrice, renewal);
     return { terms, periods, lastPrice };
   }
 
@@ -76,11 +76,12 @@ export class LinePricing {
     const nextTerms = packageTermsOf(target);
     // The whole ladder, as `stampFor` resolves it: the quote and the price the switched line carries are one number.
     const newPrice = await this.resolveBuyPrice(line.posId, target, 'renewal', undefined, db);
-    const money = switchOver(periods, newPrice, target.months);
-    // The branch side: each open period's cost, chosen like a disconnect, against the target's subscription cost.
-    const costs = revalue(periods, (period) => (period.renewal ? terms.renewal.branchCost : terms.subscription.branchCost));
-    const cost = switchOver(costs, nextTerms.subscription.branchCost, target.months);
-    return { ...money, newPrice, providerCost: cost.difference };
+    const money = switchOver(periods, newPrice, daysOf(target.months));
+    // The branch side: each open period's own cost (older rows: the line's terms, as a disconnect does), against
+    // the target's subscription cost.
+    const costs = revalue(periods, (period) => period.cost ?? (period.renewal ? terms.renewal.branchCost : terms.subscription.branchCost));
+    const cost = switchOver(costs, nextTerms.subscription.branchCost, daysOf(target.months));
+    return { ...money, newPrice, providerCost: cost.difference, periodCost: nextTerms.subscription.branchCost };
   }
 
   /** A number nobody holds, for an activation that names none. */

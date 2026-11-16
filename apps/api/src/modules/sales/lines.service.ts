@@ -11,7 +11,7 @@ import type { Prisma } from '../../generated/prisma/client';
 import type { Actor } from '../access';
 import type { Action } from '../catalog';
 import { renderEsimQr } from './esim-activation-code';
-import { periodEnd, renewOnto, renewStay, switchOnto, windowMonthsOf } from './rules/periods';
+import { daysOf, periodEnd, renewOnto, renewStay, switchOnto, windowMonthsOf } from './rules/periods';
 import { esimPriceOf, activateInputs, refreshMode, issueSerial, simRefusal, simRulesOf } from '../catalog';
 import { NOT_CONNECTED, PROVIDER_GATEWAY, type ProviderGateway, ProviderOperationsService } from '../providers';
 import { TasksService } from '../tasks';
@@ -139,7 +139,7 @@ export class LinesService {
       // The serial and the number, under their locks: not on a line, and not reserved by an open activation task.
       await assertClaimFree(tx, { iccid: issuedIccid, msisdn });
       const line = await this.repo
-        .createLine(tx, { msisdn, iccid: issuedIccid, esim, esimQr: storedQr, status: 'active', packageId: pkg.id, posId: pos.id, terms: terms as unknown as Prisma.InputJsonValue, endsAt: periodEnd(new Date(), pkg.months) })
+        .createLine(tx, { msisdn, iccid: issuedIccid, esim, esimQr: storedQr, status: 'active', packageId: pkg.id, posId: pos.id, terms: terms as unknown as Prisma.InputJsonValue, endsAt: periodEnd(new Date(), daysOf(pkg.months)) })
         .catch(numberTaken);
       await this.ledger.move(tx, pos.id, posDelta, actor.operatorId, 'activate', '', {
         msisdn,
@@ -149,7 +149,8 @@ export class LinesService {
         packagePrice: unit,
         providerCost: activationProviderCost(pkgTerms.subscription.branchCost, esim, esimFee),
         ...(esim ? { esimPrice: esimFee } : {}),
-        period: periodOf(pkg.months, line.endsAt),
+        period: periodOf(daysOf(pkg.months), line.endsAt),
+        periodCost: pkgTerms.subscription.branchCost,
       });
       return line;
     });
@@ -240,7 +241,14 @@ export class LinesService {
     if ((action === 'disconnect' || action === 'freeze') && line.status !== 'active') fail(400, 'INVALID');
     if (action === 'unfreeze' && line.status !== 'frozen') fail(400, 'INVALID');
     const route = await this.route(action, line.package, runsNow(line.package, action), input.outcome, line);
-    if (!route.now) return this.defer(actor, line, { action, posDelta: 0, msisdn: line.msisdn, note: route.note });
+    if (!route.now) {
+      // A disconnect that would give nothing back is refused before a task is opened for it.
+      if (action === 'disconnect') {
+        const settled = await this.pricing.disconnectSettlementFor(this.uow.prisma, line, new Date());
+        if (settled && !settled.refundable) fail(400, 'NOTHING_TO_REFUND');
+      }
+      return this.defer(actor, line, { action, posDelta: 0, msisdn: line.msisdn, note: route.note });
+    }
     if (action === 'disconnect') return this.disconnectNow(actor, line);
     await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
@@ -255,6 +263,8 @@ export class LinesService {
     await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
       const settled = await this.pricing.disconnectSettlementFor(tx, line, new Date());
+      // Unused days worth no more than the fee: nothing to give back, so the number stays as it is.
+      if (settled && !settled.refundable) fail(400, 'NOTHING_TO_REFUND');
       const sale = {
         msisdn: line.msisdn,
         lineId: line.id,
@@ -277,6 +287,7 @@ export class LinesService {
     assertRunnable(line.package, 'disconnect', line.denied);
     if (line.status !== 'active') fail(400, 'INVALID');
     const settled = await this.pricing.disconnectSettlementFor(this.uow.prisma, line, new Date());
+    if (settled && !settled.refundable) fail(400, 'NOTHING_TO_REFUND');
     return { amount: settled?.amount ?? 0, runsNow: runsNow(line.package, 'disconnect') };
   }
 
@@ -309,7 +320,7 @@ export class LinesService {
       const quote = await this.pricing.switchQuote(tx, line, next, new Date());
       const posDelta = -quote.difference;
       debited = posDelta < 0;
-      const sale = { ...saleOf(line, next, quote.newPrice), providerCost: quote.providerCost, period: periodOf(next.months, null) };
+      const sale = { ...saleOf(line, next, quote.newPrice), providerCost: quote.providerCost, period: periodOf(daysOf(next.months), null), periodCost: quote.periodCost };
       if (posDelta !== 0) await this.ledger.move(tx, line.posId, posDelta, actor.operatorId, 'switch', '', sale);
       else await this.ledger.recordOp(tx, line.posId, actor.operatorId, 'switch', sale);
       await this.repo.switchLine(tx, line.id, stamped as unknown as Prisma.InputJsonValue, next.id);
@@ -339,11 +350,13 @@ export class LinesService {
     if (!route.now) return this.defer(actor, line, { action: 'extend', nextPackageId: target?.id, posDelta, msisdn: line.msisdn, note: route.note });
     await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
+      // What the provider charges for this period, kept on the entry (rule 1.6).
+      const periodCost = providerBranchCost('extend', renewal.terms, target ?? line.package);
       await this.ledger.move(tx, line.posId, posDelta, actor.operatorId, 'extend', '', {
         ...saleOf(line, target ?? undefined, -posDelta),
-        // What the provider charges for this period, kept on the entry (rule 1.6).
-        providerCost: providerBranchCost('extend', renewal.terms, target ?? line.package),
-        period: periodOf(windowMonthsOf(renewal.terms), renewal.endsAt),
+        providerCost: periodCost,
+        period: periodOf(daysOf(windowMonthsOf(renewal.terms)), renewal.endsAt),
+        periodCost,
       });
       await this.repo.extendLine(tx, line.id, { endsAt: renewal.endsAt, terms: renewal.terms as unknown as Prisma.InputJsonValue, ...(target ? { packageId: target.id } : {}) });
     });
@@ -466,11 +479,13 @@ export class LinesService {
     if (!route.now) return this.defer(actor, line, { action: 'charge', posDelta, msisdn: line.msisdn, note: route.note });
     await this.uow.runTx(async (tx) => {
       await lockUnchanged(tx, line);
-      const endsAt = periodEnd(new Date(), line.package.months);
+      const endsAt = periodEnd(new Date(), daysOf(line.package.months));
+      const periodCost = providerBranchCost('charge', lineTermsOf(line.terms, line.package), line.package);
       await this.ledger.move(tx, line.posId, posDelta, actor.operatorId, 'charge', '', {
         ...saleOf(line, undefined, charged),
-        providerCost: providerBranchCost('charge', lineTermsOf(line.terms, line.package), line.package),
-        period: periodOf(line.package.months, endsAt),
+        providerCost: periodCost,
+        period: periodOf(daysOf(line.package.months), endsAt),
+        periodCost,
       });
       await moveLineStatus(tx, line.id, ['disconnected'], 'active', {
         endsAt,

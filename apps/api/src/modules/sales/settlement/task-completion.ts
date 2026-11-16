@@ -10,7 +10,7 @@ import { lineTermsOf, activationProviderCost, captureTerms, providerBranchCost, 
 import type { Actor } from '../../access';
 import type { Action } from '../../catalog';
 import type { Sale } from '../../wallets';
-import { periodEnd, renewOnto, renewStay, switchOnto, windowMonthsOf } from '../rules/periods';
+import { daysOf, periodEnd, renewOnto, renewStay, switchOnto, windowMonthsOf } from '../rules/periods';
 import { esimPriceOf, simRefusal, simRulesOf } from '../../catalog';
 import { LinePricing } from '../line-pricing';
 import { assertClaimFree, lockClaim, lockedTaskLine, moveLineStatus, numberTaken } from '../line-state';
@@ -202,7 +202,7 @@ export class TaskCompletion {
       packageId: task.packageId,
       posId: task.posId,
       terms: terms as unknown as Prisma.InputJsonValue,
-      endsAt: periodEnd(new Date(), pkg.months),
+      endsAt: periodEnd(new Date(), daysOf(pkg.months)),
     });
     // The price the task was opened at is the price charged, so it is the price recorded (rule 1.5). Tasks opened
     // before the price was stored fall back to today's.
@@ -217,7 +217,8 @@ export class TaskCompletion {
         providerCost: activationProviderCost(pkgTerms.subscription.branchCost, task.esim, esimPriceOf({ pkg, provider: pkg.provider, company: pkg.company }).price),
         // The fee folded into the task's debit when it was opened: what the row's amount holds beyond the package price.
         ...(task.esim ? { esimPrice: Math.max(0, -task.posDelta - packagePrice) } : {}),
-        period: periodOf(pkg.months, created.endsAt),
+        period: periodOf(daysOf(pkg.months), created.endsAt),
+        periodCost: pkgTerms.subscription.branchCost,
       },
     };
   }
@@ -227,14 +228,18 @@ export class TaskCompletion {
     const settled = await this.pricing.disconnectSettlementFor(tx, line, new Date());
     await moveLineStatus(tx, line.id, ['active'], 'disconnected');
     if (!settled) return {};
-    await this.ledger.move(tx, task.posId, settled.amount, actor.operatorId, 'disconnect', note, {
+    const sale: Sale = {
       msisdn: line.msisdn,
       lineId: line.id,
       companyName: line.package.company?.name ?? '',
       packageName: line.package.name,
       packagePrice: settled.posPrice,
       providerCost: settled.providerCost,
-    });
+    };
+    // The task may have waited until the unused days are worth no more than the fee. The number is disconnected
+    // at the provider by now, so the task still closes: it moves no money, and the entry keeps the provider's cost.
+    if (!settled.refundable) return { sale };
+    await this.ledger.move(tx, task.posId, settled.amount, actor.operatorId, 'disconnect', note, sale);
     return { posted: true, amount: settled.amount };
   }
 
@@ -257,16 +262,18 @@ export class TaskCompletion {
     const renewal = extending ? (target ? renewOnto(lineTerms, packageTermsOf(target), base) : renewStay(lineTerms, base)) : null;
     if (renewal && 'error' in renewal) fail(400, 'INVALID');
     const terms = renewal ? renewal.terms : { ...lineTerms, windowMonths: line.package.months };
-    const endsAt = renewal?.endsAt ?? periodEnd(base, line.package.months);
+    const endsAt = renewal?.endsAt ?? periodEnd(base, daysOf(line.package.months));
     const data = { endsAt, terms: terms as unknown as Prisma.InputJsonValue, ...(target ? { packageId: target.id } : {}) };
     if (extending) await this.repo.extendLine(tx, line.id, data);
     else await moveLineStatus(tx, line.id, ['disconnected'], 'active', data);
+    // What the provider charges for this period, kept on the entry (rule 1.6).
+    const periodCost = providerBranchCost(task.action, terms, target ?? line.package);
     return {
       sale: {
         ...saleOf(line, target ?? undefined, -task.posDelta),
-        // What the provider charges for this period, kept on the entry (rule 1.6).
-        providerCost: providerBranchCost(task.action, terms, target ?? line.package),
-        period: periodOf(windowMonthsOf(terms), endsAt),
+        providerCost: periodCost,
+        period: periodOf(daysOf(windowMonthsOf(terms)), endsAt),
+        periodCost,
       },
     };
   }
@@ -294,7 +301,8 @@ export class TaskCompletion {
       packageName: target.name,
       packagePrice: quote.newPrice,
       providerCost: quote.providerCost,
-      period: periodOf(target.months, null),
+      period: periodOf(daysOf(target.months), null),
+      periodCost: quote.periodCost,
     };
     // The difference is the one of today, not of the day the task opened: the days left are fewer now. It is
     // settled against the hold taken then. If the wallet cannot cover what the hold does not, this throws and the

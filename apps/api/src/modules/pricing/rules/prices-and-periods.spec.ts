@@ -1,5 +1,5 @@
 import { visibleAccountIds } from '../../access/account-visibility';
-import { openPeriods, renewOnto, renewStay, lastWindow, settleDisconnect, switchOnto, switchOver } from '../../sales/rules/periods';
+import { daysOf, openPeriods, periodEnd, renewOnto, renewStay, lastWindow, settleDisconnect, switchOnto, switchOver } from '../../sales/rules/periods';
 import { captureTerms, activationProviderCost, providerBranchCost, type PackageTerms } from './prices';
 import { chainHolds, type PriceField, type Prices } from '../../catalog/rules/package-prices';
 import { withinCeiling } from '../../wallets/ceiling';
@@ -13,8 +13,8 @@ function disconnectSettlement(input: {
   months: number;
   posPrice: number;
   branchCost: number;
-}): { amount: number; providerCost: number } | null {
-  return settleDisconnect(lastWindow(input.now, input.endsAt, input.months, input.posPrice, false), () => input.branchCost);
+}): { amount: number; providerCost: number; refundable: boolean } | null {
+  return settleDisconnect(lastWindow(input.now, input.endsAt, daysOf(input.months), input.posPrice, false), () => input.branchCost);
 }
 
 /**
@@ -29,8 +29,8 @@ function switchDifference(input: {
   newPrice: number;
   newMonths: number;
 }): { currentValue: number; newValue: number; difference: number } {
-  const window = lastWindow(input.now, input.endsAt, input.windowMonths, input.currentPrice, false);
-  return switchOver(window, input.newPrice, input.newMonths);
+  const window = lastWindow(input.now, input.endsAt, daysOf(input.windowMonths), input.currentPrice, false);
+  return switchOver(window, input.newPrice, daysOf(input.newMonths));
 }
 
 function withPrice(prices: Prices, field: PriceField, price: number): Prices {
@@ -45,9 +45,9 @@ describe('office money and price rules', () => {
     const endsAt = new Date('2026-02-14T00:00:00.000Z');
     const started = new Date(endsAt.getTime() - 30 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000);
     const settled = disconnectSettlement({ now: started, endsAt, months: 1, posPrice: 3000, branchCost: 3000 });
-    expect(settled).toEqual({ amount: 2850, providerCost: 150 });
+    expect(settled).toEqual({ amount: 2850, providerCost: 150, refundable: true });
     const nextDay = new Date(started.getTime() + 24 * 60 * 60 * 1000);
-    expect(disconnectSettlement({ now: nextDay, endsAt, months: 1, posPrice: 3000, branchCost: 3000 })).toEqual({ amount: 2750, providerCost: 250 });
+    expect(disconnectSettlement({ now: nextDay, endsAt, months: 1, posPrice: 3000, branchCost: 3000 })).toEqual({ amount: 2750, providerCost: 250, refundable: true });
     expect(disconnectSettlement({ now: endsAt, endsAt, months: 1, posPrice: 3000, branchCost: 3000 })).toBeNull();
   });
 
@@ -61,15 +61,15 @@ describe('office money and price rules', () => {
 
     it('keeps every day of a period that has not started and counts a started day as used', () => {
       expect(openPeriods(now, [extend, activate])).toEqual([
-        { days: 30, left: 30, value: 3500, renewal: true },
-        { days: 30, left: 29, value: 3190, renewal: false },
+        { days: 30, left: 30, value: 3500, renewal: true, cost: null },
+        { days: 30, left: 29, value: 3190, renewal: false, cost: null },
       ]);
     });
 
     it('refunds every unused paid day on a disconnect, less the fee, and charges only the running period', () => {
       const periods = openPeriods(now, [extend, activate]);
       const settled = settleDisconnect(periods ?? [], (renewal) => (renewal ? 2800 : 2500));
-      expect(settled).toEqual({ amount: 3500 + 3190 - 50, providerCost: 83 + 50 });
+      expect(settled).toEqual({ amount: 3500 + 3190 - 50, providerCost: 83 + 50, refundable: true });
     });
 
     it('values the open periods at the newest switch price, and a later period at its own', () => {
@@ -82,7 +82,7 @@ describe('office money and price rules', () => {
     it('stops at the activation, charge, or reactivation that started the current run', () => {
       const charge = { kind: 'charge', packagePrice: 3000, periodDays: 30, periodEndsAt: at(30) };
       const before = { kind: 'extend', packagePrice: 3500, periodDays: 30, periodEndsAt: at(20) };
-      expect(openPeriods(now, [charge, before])).toEqual([{ days: 30, left: 29, value: 2900, renewal: true }]);
+      expect(openPeriods(now, [charge, before])).toEqual([{ days: 30, left: 29, value: 2900, renewal: true, cost: null }]);
     });
 
     it('falls back when a row in the run has no period', () => {
@@ -91,7 +91,7 @@ describe('office money and price rules', () => {
 
     it('drops closed periods and settles nothing once all are closed', () => {
       expect(openPeriods(new Date(at(45).getTime() + 60 * 60 * 1000), [extend, activate])).toEqual([
-        { days: 30, left: 14, value: 1633, renewal: true },
+        { days: 30, left: 14, value: 1633, renewal: true, cost: null },
       ]);
       expect(openPeriods(at(60), [extend, activate])).toEqual([]);
       expect(settleDisconnect([], () => 2500)).toBeNull();
@@ -99,8 +99,66 @@ describe('office money and price rules', () => {
 
     it('switches over every day left in every open period', () => {
       const periods = openPeriods(now, [extend, activate]) ?? [];
-      expect(switchOver(periods, 4100, 1)).toEqual({ currentValue: 6690, newValue: 8063, difference: 1373 });
-      expect(switchOver([], 4100, 1)).toEqual({ currentValue: 0, newValue: 0, difference: 0 });
+      expect(switchOver(periods, 4100, 30)).toEqual({ currentValue: 6690, newValue: 8063, difference: 1373 });
+      expect(switchOver([], 4100, 30)).toEqual({ currentValue: 0, newValue: 0, difference: 0 });
+    });
+  });
+
+  // Slice D.1 of the package plan (spec 2026-11-15-package-durations-and-deals).
+  describe('periods of any length, each at its own cost', () => {
+    const day = 24 * 60 * 60 * 1000;
+    const start = new Date('2026-11-05T08:00:00.000Z');
+    const at = (days: number) => new Date(start.getTime() + days * day);
+    const hourIn = (days: number) => new Date(at(days).getTime() + 60 * 60 * 1000);
+
+    it('ends a period after its days, whatever its length', () => {
+      expect(periodEnd(start, 5)).toEqual(at(5));
+      expect(periodEnd(start, 15)).toEqual(at(15));
+      expect(periodEnd(start, daysOf(3))).toEqual(at(90));
+      expect(daysOf(0)).toBe(30);
+    });
+
+    it('values a five-day period and a month behind it by their own days', () => {
+      const five = { kind: 'activate', packagePrice: 500, periodDays: 5, periodEndsAt: at(5), periodCost: 400 };
+      const month = { kind: 'extend', packagePrice: 3000, periodDays: 30, periodEndsAt: at(35), periodCost: 2500 };
+      expect(openPeriods(hourIn(1), [month, five])).toEqual([
+        { days: 30, left: 30, value: 3000, renewal: true, cost: 2500 },
+        { days: 5, left: 3, value: 300, renewal: false, cost: 400 },
+      ]);
+    });
+
+    it('charges the running period at the cost its own row kept, not at the terms of a later renewal', () => {
+      // A month at a branch cost of 2500, renewed early onto three months that cost 6600: the line's terms now
+      // name the three-month cost, and the running month is still the one that cost 2500.
+      const month = { kind: 'activate', packagePrice: 3000, periodDays: 30, periodEndsAt: at(30), periodCost: 2500 };
+      const three = { kind: 'extend', packagePrice: 8000, periodDays: 90, periodEndsAt: at(120), periodCost: 6600 };
+      const settled = settleDisconnect(openPeriods(hourIn(9), [three, month]) ?? [], () => 6600);
+      expect(settled).toEqual({ amount: 8000 + 2000 - 50, providerCost: Math.round((2500 * 10) / 30) + 50, refundable: true });
+    });
+
+    it('falls back to the terms for a row written before the cost was kept', () => {
+      const month = { kind: 'activate', packagePrice: 3000, periodDays: 30, periodEndsAt: at(30) };
+      expect(settleDisconnect(openPeriods(hourIn(9), [month]) ?? [], () => 2400)?.providerCost).toBe(800 + 50);
+    });
+
+    it('reprices the cost of older periods with the newest switch', () => {
+      const month = { kind: 'activate', packagePrice: 3000, periodDays: 30, periodEndsAt: at(30), periodCost: 2500 };
+      const switched = { kind: 'switch', packagePrice: 9000, periodDays: 90, periodEndsAt: null, periodCost: 6600 };
+      expect(openPeriods(hourIn(0), [switched, month])).toEqual([{ days: 30, left: 29, value: 2900, renewal: false, cost: 2200 }]);
+    });
+
+    it('gives nothing back, and never takes, when the unused days are worth no more than the fee', () => {
+      const five = { kind: 'activate', packagePrice: 500, periodDays: 5, periodEndsAt: at(5), periodCost: 400 };
+      // The last day: no whole day is left.
+      expect(settleDisconnect(openPeriods(hourIn(4), [five]) ?? [], () => 0)).toEqual({ amount: 0, providerCost: 400 + 50, refundable: false });
+      // A day worth exactly the fee is not a refund either.
+      const cheap = { ...five, packagePrice: 250 };
+      expect(settleDisconnect(openPeriods(hourIn(3), [cheap]) ?? [], () => 0)).toMatchObject({ amount: 0, refundable: false });
+      // One agora above the fee is.
+      const dearer = { ...five, packagePrice: 255 };
+      expect(settleDisconnect(openPeriods(hourIn(3), [dearer]) ?? [], () => 0)).toMatchObject({ amount: 1, refundable: true });
+      const month = { kind: 'activate', packagePrice: 3000, periodDays: 30, periodEndsAt: at(30) };
+      expect(settleDisconnect(openPeriods(hourIn(29), [month]) ?? [], () => 2500)).toMatchObject({ amount: 0, refundable: false });
     });
   });
 

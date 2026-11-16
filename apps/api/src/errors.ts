@@ -43,6 +43,7 @@ export const ERROR_MESSAGES = {
   OPERATION_DISABLED: 'متوقف على هذه الرزمة',
   OPERATION_DENIED: 'العملية موقوفة على هذا الحساب',
   SWITCH_PACKAGE_FIRST: 'بدّل الرزمة أولاً',
+  NOTHING_TO_REFUND: 'لا يوجد ما يُسترد. انتظر انتهاء الفترة',
   SIM_DIGITS: 'رقم الشريحة أرقام فقط',
   SIM_LENGTH: 'عدد خانات الشريحة لا يطابق الشركة',
   SIM_PREFIX: 'رقم الشريحة لا يبدأ بمقدّمة الشركة',

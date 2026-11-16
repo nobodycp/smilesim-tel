@@ -2,7 +2,7 @@
 
 Living map of the API. Read this instead of re-reading `src/`. **Update it in the same commit** whenever a module, endpoint group, model, or responsibility changes (see `CLAUDE.md` → "Keep the maps current").
 
-Last verified: 2026-11-16 (the clean-up before the package plan: the task tables are `Task` and `TaskNote` (migration `20261116100000_task_table_names`); `/v1` is the only resource prefix and the duplicate guard hashes the path as sent; every module is imported through its `index.ts`; `/auth` is three controllers recording through `AuthRecords`; the command-line scripts are `src/cli/`; `UnitOfWork` states the transaction limits (10 s to start, 15 s to run) and `transaction()` beside it is the one place a transaction is opened; the single-route rules read the path as the router matches it (`routePath`); every guard count is 0). What each earlier slice changed, in order: `docs/architecture/REFACTOR_EXECUTION_REPORT.md` and the plans it names. tsc clean
+Last verified: 2026-11-16 (slice D.1 of the package plan `2026-11-15-package-durations-and-deals`: `WalletEntry.periodCost` (migration `20261116120000_wallet_entry_period_cost`) keeps what each prepaid period cost at the provider; a disconnect and a switch value the running period by its own row; a disconnect whose unused days are worth no more than the fee is refused with `NOTHING_TO_REFUND`; `sales/rules/periods.ts` counts in days (`daysOf`, `periodEnd(from, days)`); a sale whose price chain cannot be read fails instead of being stored without one. Before it: the clean-up before the package plan: the task tables are `Task` and `TaskNote` (migration `20261116100000_task_table_names`); `/v1` is the only resource prefix and the duplicate guard hashes the path as sent; every module is imported through its `index.ts`; `/auth` is three controllers recording through `AuthRecords`; the command-line scripts are `src/cli/`; `UnitOfWork` states the transaction limits (10 s to start, 15 s to run) and `transaction()` beside it is the one place a transaction is opened; the single-route rules read the path as the router matches it (`routePath`); every guard count is 0). What each earlier slice changed, in order: `docs/architecture/REFACTOR_EXECUTION_REPORT.md` and the plans it names. tsc clean
 with `noUnusedLocals`, lint clean with no size exceptions, 1098 specs (the PostgreSQL ones included), every guard in
 `src/architecture.spec.ts` at 0. History of what changed lives in git and in the plans, not on this line.
 
@@ -129,6 +129,15 @@ The rule folders (above), plus beside their domain: `transfers/transfer-rules.ts
   hold up to the hold's size and only an increase beyond it is checked against the ceiling; a disconnect's refund
   is a credit and its task holds nothing (`lines/execution-date-settlement.db.spec.ts`). Proof: `wallets/wallet-concurrency.db.spec.ts`, `lines/line-concurrency.db.spec.ts`
   (PostgreSQL, CI `db` job). `lines/activation-reservation.db.spec.ts` shows the reservations under concurrency.
+- **A period carries its own cost, and a disconnect never takes money (package plan D.1).** Every prepaid wallet row
+  (`activate`, `charge`, `extend`, `reactivate`, `switch`) stores `periodCost`: the branch's cost for the whole period it
+  bought, without the eSIM fee. `openPeriods` hands it on (`OpenPeriod.cost`; the newest switch reprices it like the
+  price), and `settleDisconnect` and `LinePricing.switchQuote` use it for the running period; rows written before it
+  fall back to the line's terms. `settleDisconnect` answers `refundable: false` when the unused days are worth no
+  more than `DISCONNECT_FEE`: the direct disconnect, its quote and the opening of its task refuse with
+  `NOTHING_TO_REFUND`; a task that waited until then still closes, with an entry of amount 0 that keeps the
+  provider's cost (the number is already disconnected at the provider). Period helpers take days: `daysOf(months)`,
+  `periodEnd(from, days)`, `lastWindow(now, endsAt, days, …)`, `switchOver(periods, price, days)`, `periodOf(days, endsAt)`.
 - **Lock order (ADR 0019):** task row → line row → the keys of a serial and a number (`lockClaim`: serial, then
   number) → provider operation → wallets in sorted order. A transaction takes only what it needs, in that order.
 - **Line state:** a status changes only through `moveLineStatus` (guarded) on a line locked with `lockLine`; a
@@ -147,7 +156,7 @@ The rule folders (above), plus beside their domain: `transfers/transfer-rules.ts
   as it is. `src/cli/seal-secrets.ts` (`npm run seal-secrets --workspace api [-- --dry-run]`) seals what is already stored: authenticator secrets, and the eSIM codes of lines and tasks through `src/cli/seal-esim-codes.ts` (batches by primary key, guarded writes, restartable, counts only). **Two-step methods that can be carried out** (spec 2026-11-12-two-factor-available-methods): `auth/message-sender.ts` `MessageSender.delivers(channel)` (`LogSender` delivers nothing); `auth/two-factor-policy.ts` `availableMethods` (the app, plus SMS / email while the sender delivers) and `enrolmentChoices`; a layer or account set to an unavailable method is refused with `METHOD_UNAVAILABLE` before anything is written or anyone is signed out; stored settings are kept and their accounts enrol with an available method. `src/two-factor-methods.ts` (`npm run two-factor-methods --workspace api`) is the read-only report of stored SMS / email settings, accounts by id only. `src/reservation-conflicts.ts` (`npm run reservation-conflicts --workspace api`) is the read-only report to run before deploying the reservation indexes; it names tasks by id, shows a serial or a number by its last four characters (`reservation.rules.ts` `maskedTail`) and a failure by `errorCode`.
 - **Config and logs:** `config.ts` only; Nest `Logger` only (`platform/log.ts`).
 
-## Data model (`prisma/schema.prisma`, 57 migrations)
+## Data model (`prisma/schema.prisma`, 66 migrations)
 
 User, Session, Role, UserRole, LayerPolicy, Wallet, WalletEntry, Provider, ProviderEntry, Company, Package,
 PackageRenewal, PackageSwitch, UserPackage, SellPrice, Line, Task, TaskNote (tables of the same names since migration `20261116100000_task_table_names`), ActivityEvent, AccessLog,

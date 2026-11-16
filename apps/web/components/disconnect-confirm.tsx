@@ -87,8 +87,8 @@ export function DisconnectConfirm({
         <div className="grid content-start gap-3 *:min-w-0">
           <Facts>
             <Fact label={t.number}><bdi dir="ltr">{line.msisdn}</bdi></Fact>
-            <Fact label={quote && quote.amount < 0 ? t.disconnectTakes : t.disconnectReturns}>
-              {quote ? <Money value={Math.abs(quote.amount)} /> : t.loading}
+            <Fact label={t.disconnectReturns}>
+              {quote ? <Money value={quote.amount} /> : t.loading}
             </Fact>
           </Facts>
           {quote && (failing || !quote.runsNow) ? <p>{t.disconnectAsTask}</p> : null}

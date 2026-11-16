@@ -452,6 +452,45 @@ suite('money of the day of execution: switch and disconnect (PostgreSQL)', () =>
     expect((await entryOf(lineId, 'disconnect')).map((row) => row.amount)).toEqual([0]);
   });
 
+  // Slice D.1 of the package plan: a disconnect never takes money, and one that would give none is refused.
+  it('refuses a disconnect, its quote and its task when the unused days are worth no more than the fee', async () => {
+    const lineId = await newLine();
+    // The last day of the period: no whole day is left to give back.
+    await passDays(lineId, LEFT);
+    for (const run of [() => service.disconnectQuote(pos, lineId), () => disconnectNow(lineId), () => openDisconnect(lineId)]) {
+      await expect(run()).rejects.toMatchObject({ status: 400, code: 'NOTHING_TO_REFUND' });
+    }
+    expect(await lineOf(lineId)).toMatchObject({ status: 'active' });
+    expect(await entryOf(lineId, 'disconnect')).toHaveLength(0);
+    expect(await prisma.task.count({ where: { lineId, action: 'disconnect' } })).toBe(0);
+    expect(await wallet()).toMatchObject({ balance: START, held: 0 });
+  });
+
+  it('closes a disconnect task that waited until nothing is left to refund without moving money', async () => {
+    const lineId = await newLine();
+    const { taskId } = await openDisconnect(lineId);
+    await passDays(lineId, LEFT);
+    await complete(taskId);
+    const [entry, ...others] = await entryOf(lineId, 'disconnect');
+    expect(others).toHaveLength(0);
+    // No debit under a disconnect: the entry records the operation and what it cost at the provider.
+    expect(entry).toMatchObject({ amount: 0, providerCost: 1800 + DISCONNECT_FEE });
+    expect(await taskOf(taskId)).toMatchObject({ status: 'done' });
+    expect(await lineOf(lineId)).toMatchObject({ status: 'disconnected' });
+    expect(await wallet()).toMatchObject({ balance: START, held: 0 });
+  });
+
+  it('keeps on each prepaid row what its period cost at the provider, and charges a disconnect by the running row', async () => {
+    const lineId = await newLine();
+    const [activation] = await entryOf(lineId, 'activate');
+    expect(activation).toMatchObject({ periodDays: 30, periodCost: 1800 });
+    // The catalog's cost changes after the sale: the running period is still the one bought at 1800.
+    await prisma.line.update({ where: { id: lineId }, data: { terms: { ...((await lineOf(lineId)).terms as object), subscription: { branchCost: 9999, mainPrice: 9999, agentPrice: 9999, posPrice: 9999, subscriberPrice: 9999 } } } });
+    await disconnectNow(lineId);
+    const [entry] = await entryOf(lineId, 'disconnect');
+    expect(entry).toMatchObject({ amount: refund(), providerCost: Math.round((1800 * 1) / 30) + DISCONNECT_FEE });
+  });
+
   it('refunds once when a disconnect task is completed twice, by several at once, or against a disconnect applied at once', async () => {
     const lineId = await newLine();
     const { taskId } = await openDisconnect(lineId);

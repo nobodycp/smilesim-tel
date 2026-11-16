@@ -150,13 +150,14 @@ export class WalletLedger {
       }));
     }
     await tx.wallet.update({ where: { userId }, data: { balance: balanceAfter } });
-    // A sale keeps its price chain; failing to read it never stops the sale (the report falls back to today's prices).
+    // A sale keeps its price chain. A chain that cannot be read stops the sale: an entry without one would be
+    // reported at today's prices, which is not what was paid.
     const ladder = !sale
       ? null
       : amount < 0
-        ? await this.saleLadder(tx, userId, kind, sale).catch(() => null)
+        ? await this.saleLadder(tx, userId, kind, sale)
         : REFUND_KINDS.has(kind)
-          ? await this.refundOf(tx, amount, sale).catch(() => null)
+          ? await this.refundOf(tx, amount, sale)
           : null;
     await tx.walletEntry.create({
       data: {
@@ -176,6 +177,7 @@ export class WalletLedger {
         esimPrice: sale?.esimPrice ?? null,
         periodDays: sale?.period?.days ?? null,
         periodEndsAt: sale?.period?.endsAt ?? null,
+        periodCost: sale?.periodCost ?? null,
         ...(ladder ? { ladder: ladder as unknown as Prisma.InputJsonValue } : {}),
       },
     });
@@ -238,6 +240,7 @@ export class WalletLedger {
         providerCost: sale.providerCost ?? 0,
         periodDays: sale.period?.days ?? null,
         periodEndsAt: sale.period?.endsAt ?? null,
+        periodCost: sale.periodCost ?? null,
       },
     });
   }

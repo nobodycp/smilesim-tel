@@ -10,6 +10,8 @@ export type Sale = {
   esimPrice?: number;
   /** The period a prepaid row bought. A switch has no end: it reprices the open periods. */
   period?: { days: number; endsAt: Date | null };
+  /** What the branch pays the provider for that whole period, without the eSIM fee: a refund reads it back. */
+  periodCost?: number;
 };
 
 /** What a wallet entry records about the sale of a line: number, package, company, and the price paid. */

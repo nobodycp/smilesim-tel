@@ -147,7 +147,7 @@ export class LinesRepository {
     return db.walletEntry.findMany({
       where: { lineId, kind: { in: kinds } },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: { kind: true, packagePrice: true, periodDays: true, periodEndsAt: true },
+      select: { kind: true, packagePrice: true, periodDays: true, periodEndsAt: true, periodCost: true },
     });
   }
 
