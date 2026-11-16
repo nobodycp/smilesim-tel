@@ -84,7 +84,7 @@ export function ProviderOperationPanel({ task, onChanged, say }: { task: TaskDet
       </dl>
 
       {operation.decisions ? (
-        <div className="grid gap-2 border-t border-dashed border-line pt-2" data-testid="po-decisions">
+        <div className="grid gap-2 border-0 border-t border-dashed border-line pt-2" data-testid="po-decisions">
           <Alert>{view.error}</Alert>
           {!view.loaded ? <p className={decisionHintClass} aria-busy="true">…</p> : null}
           {standing ? (

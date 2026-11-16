@@ -43,7 +43,7 @@ type Draft = { code: string; length: string; prefix: string; esim: boolean; esim
  * inside it.
  */
 const BLOCK_TITLE = 'm-0 text-block font-bold text-ink';
-const BLOCK_SUBTITLE = cn(BLOCK_TITLE, 'mt-2 border-t border-dashed border-line pt-3');
+const BLOCK_SUBTITLE = cn(BLOCK_TITLE, 'mt-2 border-0 border-t border-dashed border-line pt-3');
 
 function draftOf(code: string, sim: SimRules, esimPrice: number): Draft {
   return { code, length: sim.length === null ? '' : String(sim.length), prefix: sim.prefix, esim: sim.esim, esimPrice: shekelField(esimPrice) };

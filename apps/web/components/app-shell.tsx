@@ -544,7 +544,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className="mt-1.5 grid gap-0.5 border-t border-solid border-line pt-2.5">
+        <div className="mt-1.5 grid gap-0.5 border-0 border-t border-solid border-line pt-2.5">
           {/* Language and theme live in the topbar at every width (spec 2026-11-09-admin-review, 7). */}
           {/* The account at the foot of the sidebar (Graphite): opens the profile; signing out sits under it. */}
           <Link
@@ -588,7 +588,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside
         className={cn(
           'relative z-sidebar flex w-67 min-w-0 flex-none flex-col',
-          'border-e border-solid border-line bg-bg px-3 pt-3.5 pb-3 max-lg:hidden',
+          'border-0 border-e border-solid border-line bg-bg px-3 pt-3.5 pb-3 max-lg:hidden',
           'motion-safe:[transition:width_320ms_var(--rd-ease-sheet)]',
           collapsed && 'w-19',
         )}
@@ -646,7 +646,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             language, over a crimson hairline. Under 900px the path takes its own row under the icons. */}
         <header
           className={cn(
-            'sticky top-0 z-topbar flex min-h-16 items-center justify-between gap-3 border-b border-solid border-line',
+            'sticky top-0 z-topbar flex min-h-16 items-center justify-between gap-3 border-0 border-b border-solid border-line',
             'bg-bg/88 py-2.5 backdrop-blur-[14px] backdrop-saturate-160 @container/topbar max-md:gap-1.5 max-md:px-4 md:px-7',
             'max-lg:flex-wrap max-lg:gap-y-1.5 max-lg:py-2',
             "after:pointer-events-none after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-accent after:opacity-35 after:content-['']",

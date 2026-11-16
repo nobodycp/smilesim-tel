@@ -44,7 +44,7 @@ test('the user page heads with its status, actions and wallet cards', async ({ p
   // 20 ₪ held for open tasks is not spendable: available is 200 − 50 − 20.
   await expect(cards.nth(3)).toContainText('20.00 ₪');
   await expect(cards.nth(4)).toContainText('130.00 ₪');
-  await expect(cards.nth(4)).toHaveClass(/highlight/);
+  await expect(cards.nth(4)).toHaveAttribute('data-highlight');
   // Graphite: every part of the account is a tab, packages and prices first (as in the approved design).
   await expect(page.getByRole('tab')).toHaveText([/الرزم والأسعار/, /عمليات الأرقام/, 'أرقام الحساب', 'الإعدادات والصلاحيات']);
   await expect(page.getByRole('tab', { name: /الرزم والأسعار/ }).getByTestId('tab-count')).toHaveText('2');

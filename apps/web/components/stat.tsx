@@ -90,6 +90,7 @@ export function Stat({
       )}
       data-slot="stat"
       data-testid="stat"
+      data-highlight={highlight ? '' : undefined}
     >
       <span className="text-sm leading-1-3 font-semibold text-muted">{label}</span>
       {icon ? (
