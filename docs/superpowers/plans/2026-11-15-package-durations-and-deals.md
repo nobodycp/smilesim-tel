@@ -25,7 +25,7 @@ its hash. Per slice: `npm run lint`, `npm run typecheck`, `npm run check:copy`, 
   columns: they move to the rows in D.3, where a renewal first has more than one duration to choose from, and a
   package that has no row (the database specs create packages bare) reads as one duration from its columns until
   D.10. Specs: `catalog/packages/package-durations.db.spec.ts`, `testing/response-shape.spec.ts`.
-- [ ] **D.3a The branch edits durations (API).** `PUT /v1/packages/:code/durations` (unit, count and the whole
+- [x] **D.3a The branch edits durations (API)** (`e5a2263`). `PUT /v1/packages/:code/durations` (unit, count and the whole
   ladder; the same pair again replaces the prices), `DELETE /v1/packages/:code/durations/:id`;
   `catalog/packages/packages.schemas.ts` `PackageDurationBody`, `packages.service.ts` `saveDuration`,
   `removeDuration`; the mirrored duration writes the renewal columns with it and is never turned off or removed.
