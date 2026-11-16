@@ -1025,7 +1025,7 @@ suite('decisions by people on a task\'s provider operation (PostgreSQL, HTTP)', 
       expect(said(await decide('acc2', taskId, 'confirm-success', { note: SECRET_NOTE, providerRef: 'PRIVATE-REF-4471', esimCode: CODE, iccid: serial() }))).toBe('ok applied');
       const sealed = (await operation(operationId)).resultEsimCode as string;
       const private_ = [SECRET_NOTE, 'PRIVATE-REF-4471', 'provider-portal', name('acc1'), name('acc2'), 'declare-failure', 'confirm-success', 'accountLoginName', 'evidenceKind', 'suppliedEsimCode', sealed.slice(10, 40), CODE];
-      const taskKeys = ['id', 'action', 'status', 'operation', 'hold', 'posLoginName', 'submitterLoginName', 'assigneeLoginName', 'posDelta', 'msisdn', 'iccid', 'esim', 'esimQr', 'sim', 'lineStatus', 'packageName', 'companyName', 'providerName', 'note', 'resultNote', 'log', 'createdAt', 'updatedAt', 'canTake', 'canWork', 'canNote', 'canNoteInternal', 'canCancel'].sort();
+      const taskKeys = ['id', 'action', 'activationKind', 'status', 'operation', 'hold', 'posLoginName', 'submitterLoginName', 'assigneeLoginName', 'posDelta', 'msisdn', 'iccid', 'esim', 'esimQr', 'sim', 'lineStatus', 'packageName', 'companyName', 'providerName', 'note', 'resultNote', 'log', 'createdAt', 'updatedAt', 'canTake', 'canWork', 'canNote', 'canNoteInternal', 'canCancel'].sort();
       for (const who of ['pos', 'clerk', 'entered', 'other'] as const) {
         // The decision reads refuse, with nothing in the refusal but its code.
         for (const path of [`/v1/tasks/${taskId}/provider-decision`, '/v1/provider-decisions', '/v1/provider-decisions?waiting=approval']) {
