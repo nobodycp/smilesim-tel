@@ -20,7 +20,7 @@ export const catalogApi = {
     request<{ ok: true }>('PATCH', `/v1/providers/${segment(code)}/settings`, { action, mode }),
   setPackageMode: (code: string, body: Record<string, boolean | string>) =>
     request<{ ok: true }>('PATCH', `/v1/packages/${segment(code)}/mode`, body),
-  setPackageDetails: (code: string, body: { dataGb: number | null; smsCount: number | null; minutes: number | null; details: string; suspendAfterDays?: number; esimAvailable?: boolean }) =>
+  setPackageDetails: (code: string, body: { dataGb: number | null; smsCount: number | null; minutes: number | null; details: string; suspendAfterDays?: number; esimAvailable?: boolean; offer?: boolean; offerNote?: string }) =>
     request<{ ok: true }>('PATCH', `/v1/packages/${segment(code)}/details`, body),
   packageAddons: (code: string) => request<{ addons: PackageAddon[] }>('GET', `/v1/packages/${segment(code)}/addons`),
   addPackageAddon: (code: string, body: { name: string; price: number }) => request<{ addons: PackageAddon[] }>('POST', `/v1/packages/${segment(code)}/addons`, body),

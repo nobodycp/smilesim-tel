@@ -25,3 +25,7 @@ specs; checked on the running copy (port 3000) per `.cursor/rules/verify-before-
 - [x] **P.6 The point of sale's flow: one question at a time** (`efe9190c`). `apps/web/features/catalog/screens/packages-screen.tsx`
   (`PosCatalog`, `Answer`, `GbRing`), copy in ar, en, he; web tests `activation-request-key`, `packages-terms`,
   `branch-packages` follow. Prototype: `docs/prototypes/2026-11-16-activation-variants.html`.
+- [ ] **P.7 The marks, the customer's name, the cards.** API: `Package.offer`, `offerNote` and the migration,
+  `PackageDetailsBody`, the sheet, `pricing/package-shelf.service.ts` (`offer`, `offerNote`, `noDisconnect`),
+  `response-shape.spec.ts`. Web: `features/catalog/package-offer.tsx`, `packages-screen.tsx` (card shell, marks,
+  customer field, no numbering), `components/ui/checkbox.tsx`.

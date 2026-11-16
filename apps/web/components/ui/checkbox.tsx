@@ -18,7 +18,7 @@ import { cn } from '../../lib/cn';
  * Shared with radio-group.tsx.
  */
 export const choiceBoxClass = cn(
-  'inline-grid size-4.5 min-w-4.5 max-w-4.5 flex-none cursor-pointer place-content-center align-middle',
+  'inline-grid size-4.5 max-h-4.5 min-h-4.5 max-w-4.5 min-w-4.5 flex-none cursor-pointer place-content-center self-center align-middle',
   'm-0 border-[1.5px] border-solid border-field bg-surface p-0',
   'transition-[background-color,border-color] duration-fast ease-standard',
   'data-[state=checked]:border-accent-fill data-[state=checked]:bg-accent-fill',

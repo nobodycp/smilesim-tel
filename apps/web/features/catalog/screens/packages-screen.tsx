@@ -1,6 +1,6 @@
 'use client';
 
-import { MessageSquare, Phone } from 'lucide-react';
+import { Lock, MessageSquare, Phone } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { DataTable, type Column } from '../../../components/data-table';
@@ -26,7 +26,6 @@ import { useAction } from '../../../lib/use-action';
 import { Badge } from '../../../components/ui/badge';
 import { NameField } from '../../../components/name-field';
 import { DataImage } from '../../../components/data-image';
-import { pointerGlowClass } from '../../../components/stat';
 import { PackageFactTiles } from '../../../components/package-facts';
 import { priceFieldClass } from '../../../components/price-field';
 import { Checkbox } from '../../../components/ui/checkbox';
@@ -57,23 +56,36 @@ import { paneHintClass } from '../sim-fields';
  *   on a phone's card the cell takes the card's whole row and its parts wrap from the start.
  */
 const COLUMN = 'stack flex min-h-auto min-w-0 max-w-full flex-none flex-col gap-3 overflow-visible *:min-w-0';
-const CARD_GRID = 'grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3 max-sm:grid-cols-2 max-sm:gap-2';
-const CARD = cn(
-  'relative isolate grid min-h-37 gap-2.5 rounded-card border border-line bg-surface p-4 text-ink hover:border-ink',
-  pointerGlowClass,
+const CARD_GRID = cn(
+  'grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3 max-sm:grid-cols-2 max-sm:gap-2.5',
+  'motion-safe:*:animate-rise',
+  'motion-safe:[&>:nth-child(2)]:[animation-delay:40ms] motion-safe:[&>:nth-child(3)]:[animation-delay:80ms]',
+  'motion-safe:[&>:nth-child(n+4)]:[animation-delay:120ms]',
 );
+// The card is the admin's company card (features/catalog/screens/companies-screen.tsx): 6px corners on the surface
+// with a 1px inset edge and the tag's cut corner at the top inline end, `--rd-surface-2` under the pointer, a 2px
+// accent ring on keyboard focus.
+const CARD = cn(
+  'relative isolate grid cursor-pointer content-start gap-2 rounded-sm border-0 bg-surface p-4.5 text-ink inset-ring inset-ring-line max-sm:p-3.5',
+  '[clip-path:polygon(0_0,calc(100%_-_var(--rd-cut))_0,100%_var(--rd-cut),100%_100%,0_100%)]',
+  'rtl:[clip-path:polygon(var(--rd-cut)_0,100%_0,100%_100%,0_100%,0_var(--rd-cut))]',
+  'transition-colors duration-fast ease-standard hover:bg-surface-2',
+  'focus-visible:inset-ring-2 focus-visible:inset-ring-accent focus-visible:outline-none',
+);
+/** A company's picture plate: the whole picture centred, 72px high across the card. */
+const PLATE = 'flex h-18 w-full items-center justify-center overflow-hidden rounded-sm bg-surface-2 p-2 max-sm:h-16';
+/** The line under a card's rule: the counts, 12px muted with the figure in bold ink. */
+const CARD_FOOT = 'mt-1 w-full border-t border-line pt-2 text-sm text-muted';
 const LOGO = 'size-16 rounded-panel bg-surface-2 object-contain';
 const PRICE = 'm-0 text-4xl font-bold';
 const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-touch:min-h-11';
 /*
  * The point of sale's flow, one question at a time (spec 2026-11-16-package-page, P.6): the question rises in when
- * motion is allowed; its heading is centred, 22px bold; the cards fill the row from 170px; a card's digit is the key
- * that picks it; the note under the cards names the keys and is hidden on a touch screen.
+ * motion is allowed; its heading is centred, 20px bold; the cards fill the row from 190px, two in a row on a phone.
  */
 const QUESTION = 'grid gap-3 motion-safe:animate-rise';
 const ASK = 'm-0 text-center text-3xl font-bold text-balance';
-const KEY_HINT = 'text-xs font-bold text-muted tabular-nums max-touch:hidden';
-const KEYS_NOTE = 'm-0 text-center text-sm text-muted max-touch:hidden';
+
 const EYEBROW = 'm-0 text-xs font-bold tracking-head text-muted';
 /** A phone's card (a table with `data-cards` whose cells carry their names): graphite.css's price editors rules. */
 const IN_CARD_ROW = 'max-sm:[[data-cards]:has(td[data-label])_&]:col-span-full';
@@ -81,6 +93,12 @@ const SELL_CELL = cn(
   'inline-flex items-end justify-end gap-2',
   'max-sm:[[data-cards]:has(td[data-label])_&]:flex-wrap max-sm:[[data-cards]:has(td[data-label])_&]:justify-start',
 );
+
+/** A count's words with the figure in bold ink, as on the admin's company card («**6** رزمة»). */
+function counted(template: string, n: number) {
+  const [before, after] = template.split('{n}');
+  return <>{before}<b className="font-bold text-ink">{n}</b>{after}</>;
+}
 
 function PosCatalog({
   rows,
@@ -102,6 +120,7 @@ function PosCatalog({
   const [currentDetails, setCurrentDetails] = useState('');
   const [iccid, setIccid] = useState('');
   const [esim, setEsim] = useState(false);
+  const [customer, setCustomer] = useState('');
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [result, setResult] = useState<ApplyResult | null>(null);
@@ -169,20 +188,6 @@ function PosCatalog({
   const due = picked && stepIndex === 2 ? picked.price + (withEsim ? picked.esimPrice : 0) : 0;
   const balance = typeof me?.balance === 'number' ? me.balance : null;
 
-  // A digit picks the company or the package it numbers, unless the seller is typing in a field.
-  useEffect(() => {
-    if (step === 'details') return undefined;
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (!/^[1-9]$/.test(event.key) || event.ctrlKey || event.metaKey || event.altKey || target?.closest('input, textarea, [contenteditable], [role=dialog]')) return;
-      const index = Number(event.key) - 1;
-      if (step === 'companies' && names[index]) openCompany(names[index]);
-      else if (step === 'packages' && packs[index]) openPackage(packs[index]);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
   return (
     <Desk title={t.plansTitle} lede={t.plansPosLede} error={loadError || error} note={note}>
       <div className={COLUMN} data-testid="pos-flow">
@@ -201,30 +206,32 @@ function PosCatalog({
           <div className={QUESTION} key="companies">
             <h2 className={ASK}>{t.posAskCompany}</h2>
             <div className={CARD_GRID}>
-              {names.map((name, index) => {
+              {names.map((name) => {
                 const image = imageOf.get(name) ?? '';
                 return (
-                  <button className={cn(CARD, 'cursor-pointer justify-items-center text-center')} data-slot="pos-company" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
-                    {image ? <DataImage className={LOGO} src={image} alt="" /> : <span className="grid size-16 place-items-center rounded-card text-2xl font-bold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
-                    <strong>{name}</strong>
-                    {index < 9 ? <span className={KEY_HINT} aria-hidden="true">{index + 1}</span> : null}
+                  <button className={cn(CARD, 'justify-items-center text-center')} data-slot="pos-company" data-testid="company-card" key={name} type="button" onClick={() => openCompany(name)}>
+                    {/* The whole picture, centred on its plate; a company without one shows its letters there. */}
+                    <span className={PLATE}>
+                      {image ? <DataImage className="block max-h-full max-w-full object-contain" src={image} alt="" /> : <span className="grid size-16 place-items-center rounded-card text-2xl font-bold text-on-mark" style={{ background: markColor(name) }}>{markOf(name)}</span>}
+                    </span>
+                    <strong className="text-lg">{name}</strong>
+                    <span className={CARD_FOOT}>{counted(t.coPackages, rows.filter((row) => row.companyName === name).length)}</span>
                   </button>
                 );
               })}
             </div>
-            <p className={KEYS_NOTE}>{t.posPressKey}</p>
           </div>
         )}
         {step === 'packages' && (
           <div className={QUESTION} key="packages">
             <h2 className={ASK}>{t.posAskPackage}</h2>
             <div className={CARD_GRID}>
-              {packs.map((row, index) => (
+              {packs.map((row) => (
                 <button className={cn(CARD, 'justify-items-stretch text-start')} data-slot="pack-card" data-testid="pack-card" key={row.code} type="button" onClick={() => openPackage(row)}>
                   <span className="flex items-center gap-2.5">
                     <GbRing gb={row.dataGb} max={maxGb} unlimited={t.unlimited} />
                     <span className="grid min-w-0">
-                      <strong>{row.name}</strong>
+                      <strong>{row.name} {row.offer ? <Badge variant="warning">{t.offerBadge}</Badge> : null}</strong>
                       <span className="text-sm text-muted">{durationOf(row.months)}</span>
                     </span>
                   </span>
@@ -232,14 +239,14 @@ function PosCatalog({
                     {factOf(row.minutes, t.factMinutesUnlimited, t.factMinutes) ? <span className="inline-flex items-center gap-1"><Phone size={13} aria-hidden="true" />{factOf(row.minutes, t.factMinutesUnlimited, t.factMinutes)}</span> : null}
                     {factOf(row.smsCount, t.factSmsUnlimited, t.factSms) ? <span className="inline-flex items-center gap-1"><MessageSquare size={13} aria-hidden="true" />{factOf(row.smsCount, t.factSmsUnlimited, t.factSms)}</span> : null}
                   </span>
-                  <span className="flex items-end justify-between border-t border-line pt-2">
+                  {row.noDisconnect ? <span className="inline-flex items-center gap-1 text-sm font-semibold text-muted"><Lock size={13} aria-hidden="true" />{t.noDisconnectMark}</span> : null}
+                  <span className="mt-auto grid gap-0.5 border-t border-line pt-2">
                     <span className={cn(PRICE, 'text-accent')} data-testid="pack-price"><Money value={row.price} /></span>
-                    {index < 9 ? <span className={KEY_HINT} aria-hidden="true">{index + 1}</span> : null}
+                    {row.offer && row.offerNote ? <span className="text-sm text-muted">{row.offerNote}</span> : null}
                   </span>
                 </button>
               ))}
             </div>
-            <p className={KEYS_NOTE}>{t.posPressKey}</p>
           </div>
         )}
         {step === 'details' && picked && (
@@ -273,6 +280,13 @@ function PosCatalog({
                     {t.iccid}
                     <Input surface="surface" className="text-md" value={iccid} onChange={(event) => setIccid(event.target.value)} inputMode="numeric" dir="ltr" required />
                     {hasSimRules(rules) && <span className={paneHintClass}>{simHint(t, rules)}</span>}
+                  </Label>
+                )}
+                {/* The customer's name is here as a shape only (owner, 2026-11-16): the request does not carry it yet. */}
+                {picked.canActivate && (
+                  <Label tone="pane">
+                    {t.customerName}
+                    <Input surface="surface" className="text-md" value={customer} maxLength={60} placeholder={t.optional} onChange={(event) => setCustomer(event.target.value)} />
                   </Label>
                 )}
               </form>

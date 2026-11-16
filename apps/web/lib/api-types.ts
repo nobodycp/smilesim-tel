@@ -138,6 +138,11 @@ export type PackageRow = {
   /** Whether a number may be activated on it by porting, or by turning a prepaid card into a bill. */
   canPort: boolean;
   canConvert: boolean;
+  /** The package is shown as an offer, with a short line that says what the offer is. */
+  offer: boolean;
+  offerNote: string;
+  /** A number on this package cannot be disconnected (the package's disconnect is off). */
+  noDisconnect: boolean;
   companyName: string;
   sim: SimRules;
   esimPrice: number;
@@ -294,6 +299,9 @@ export type PackageSheet = {
   /** Porting and card-to-bill as ways to activate: off, a branch task, or directly to the provider. */
   portMode: ActivationKindMode;
   convertMode: ActivationKindMode;
+  /** The offer mark and its line. */
+  offer: boolean;
+  offerNote: string;
   lines: number;
   activeLines: number;
   renewals: string[];

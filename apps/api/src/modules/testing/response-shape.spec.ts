@@ -38,6 +38,8 @@ const PACKAGE_SHEET_KEYS = [
   'esimPrice', 'esimPriceEffective', 'esimPriceSource',
   // Spec 2026-11-16-package-page, P.5: porting and card-to-bill as ways to activate.
   'portMode', 'convertMode',
+  // Spec 2026-11-16-package-page, P.7: the offer mark and its line.
+  'offer', 'offerNote',
   'lines', 'activeLines', 'renewals', 'switches', 'modes',
   // Package plan D.2: the durations the package is sold and renewed for.
   'durations',
@@ -51,7 +53,7 @@ const PACKAGE_DURATION_KEYS = ['id', 'unit', 'count', 'days', 'branchCost', 'mai
 // GET /v1/packages: one row a package on sale. The price columns above the viewer and the run modes come as
 // null outside the branch (plan backend-loose-ends B.4).
 const PACKAGE_ROW_KEYS = [
-  'code', 'name', 'providerCode', 'providerName', 'activateMode', 'sellable', 'activateInput', 'canPort', 'canConvert', 'companyName', 'sim', 'esimPrice', 'dataGb', 'smsCount', 'minutes',
+  'code', 'name', 'providerCode', 'providerName', 'activateMode', 'sellable', 'activateInput', 'canPort', 'canConvert', 'offer', 'offerNote', 'noDisconnect', 'companyName', 'sim', 'esimPrice', 'dataGb', 'smsCount', 'minutes',
   'details', 'months', 'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice', 'editableField',
   'autoActivate', 'autoCharge', 'autoDisconnect', 'autoFreeze', 'autoSwitch',
   'price', 'renewalPrice', 'canActivate', 'sellPrice', 'sellRenewalPrice', 'sellDefault', 'sellRenewalDefault',

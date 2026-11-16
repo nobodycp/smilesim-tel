@@ -5,6 +5,9 @@ import { ACTION_KEYS } from '../rules/run-modes';
 // The bodies of the package routes (backend-engineering.mdc 4.1). The service parses them with `parseInput`
 // after its permission checks; the controller documents each route from the same schema.
 
+/** The longest line that says what an offer is. */
+export const OFFER_NOTE_LIMIT = 60;
+
 /** The longest extra text a package carries. */
 export const PACKAGE_DETAILS_LIMIT = 300;
 
@@ -65,6 +68,9 @@ export const PackageDetailsBody = z.object({
   // Days after the end before a line counts as suspended (spec 2026-11-08-overview-and-reports-nav, I).
   suspendAfterDays: z.number().int().min(1).max(3650).optional(),
   esimAvailable: z.boolean().optional(),
+  // The offer mark and its line (spec 2026-11-16-package-page, P.7); either may be sent alone.
+  offer: z.boolean().optional(),
+  offerNote: text(OFFER_NOTE_LIMIT).optional(),
 });
 export type PackageDetailsBody = z.input<typeof PackageDetailsBody>;
 

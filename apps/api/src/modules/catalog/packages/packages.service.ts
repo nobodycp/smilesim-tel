@@ -72,6 +72,9 @@ export class PackagesService {
       dataGb: pkg.dataGb,
       suspendAfterDays: pkg.suspendAfterDays,
       esimAvailable: pkg.esimAvailable,
+      // The offer mark and its line (spec 2026-11-16-package-page, P.7).
+      offer: pkg.offer,
+      offerNote: pkg.offerNote ?? '',
       smsCount: pkg.smsCount,
       minutes: pkg.minutes,
       details: pkg.details ?? '',
@@ -131,6 +134,8 @@ export class PackagesService {
       details: input.details || null,
       ...(input.suspendAfterDays === undefined ? {} : { suspendAfterDays: input.suspendAfterDays }),
       ...(input.esimAvailable === undefined ? {} : { esimAvailable: input.esimAvailable }),
+      ...(input.offer === undefined ? {} : { offer: input.offer }),
+      ...(input.offerNote === undefined ? {} : { offerNote: input.offerNote || null }),
     });
     return { ok: true as const };
   }

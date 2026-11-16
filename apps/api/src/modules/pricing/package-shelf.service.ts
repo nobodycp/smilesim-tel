@@ -66,6 +66,11 @@ export class PackageShelfService {
         sellable: resolvePackageMode(row.actionModes, row, 'activate') !== 'off',
         activateInput: activateInputs(row.provider.code),
         // Whether a number may be activated on it by porting, or by turning a prepaid card into a bill.
+        // What the card shows a seller before the sale (spec 2026-11-16-package-page, P.7): the offer mark with its
+        // line, and whether a number on this package can be disconnected at all (the package's disconnect is off).
+        offer: row.offer,
+        offerNote: row.offerNote ?? '',
+        noDisconnect: resolvePackageMode(row.actionModes, row, 'disconnect') === 'off',
         canPort: row.portMode !== 'off',
         canConvert: row.convertMode !== 'off',
         companyName: row.company?.name ?? '',

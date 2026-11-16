@@ -92,6 +92,20 @@ motion of the prototype.
   price on it.
 - The request, its fields and its rules do not change.
 
+### P.7 The marks on the card, the customer's name, the cards' look
+
+Owner, 2026-11-16:
+
+- **«عرض» and «لا تُفصل» show on the package card now.** «عرض» is a mark the branch sets on the package (a switch on
+  «نظرة عامة») with a short line that says what the offer is; it changes no price and no renewal — the offers of the
+  paused plan will replace it. «لا تُفصل» is true today without a new setting: it shows when the package's disconnect
+  operation is off, which is what makes a number on it impossible to disconnect.
+- **The customer's name** is a field on the subscribe step **as a shape only**: nothing is sent or kept until the
+  customer record is built (with the sale price and whether the customer paid).
+- **The cards**: the admin's company card (cut corner, inset edge), the company's whole picture centred, its name
+  and its package count; no numbering anywhere, and no digit keys.
+- The eSIM box was stretched to 44px on a phone: the checkbox keeps its square in any row.
+
 ## Non-goals
 
 - No change to prices, to the line-prices dialog's rules, or to what an eSIM costs.

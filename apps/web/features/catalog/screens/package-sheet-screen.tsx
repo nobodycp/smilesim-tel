@@ -35,6 +35,7 @@ import { PackageAddons } from '../package-addons';
 import { PackageDurations } from '../package-durations';
 import { PackageEsim } from '../package-esim';
 import { PackageLineAccounts } from '../package-line-accounts';
+import { PackageOffer } from '../package-offer';
 import { PackageFacts } from '../../../components/package-facts';
 import { PackageDetailsForm } from '../package-details-form';
 import { CompanyMark } from '../../../components/company-mark';
@@ -501,6 +502,7 @@ export function PackageSheetScreen() {
                     run={run}
                     onInvalid={() => { setError(apiText('بيانات غير صالحة')); setNote(''); }}
                   />
+                  <PackageOffer key={`${sheet.code}:${sheet.offerNote ?? ''}`} sheet={sheet} canEdit={canEditAddons} busy={busy} run={run} />
                   <PackageActivationKinds sheet={sheet} canEdit={canEditAddons} busy={busy} run={run} />
                 </div>
               )}
