@@ -1,5 +1,6 @@
 import { openGate } from '../../testing/open-gate';
 import 'reflect-metadata';
+import { Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -33,10 +34,18 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
   /** The sends scheduled for an operation: its `requested` messages (its verdicts have their own topic). */
   const sends = async (id: string) => (await prisma.outboxMessage.findMany({ where: { aggregateId: id, topic: OPERATION_REQUESTED } })).map((row) => row.sequence).sort();
   const afterLease = () => new Date(Date.now() + ATTEMPT_LEASE_MS + 1_000);
-  // Other specs hold pending operations in the same database, so the sweep always runs at the real time: an
-  // attempt is made to look abandoned by claiming it in the past, never by moving the sweep's clock forward.
+  // Other spec files hold pending operations in the same database, some of them claimed in the past on purpose, as
+  // here. So this file never runs the pass over every expired attempt (`recoverExpired`): recovering another file's
+  // attempt, with no gate, changes what that file is testing. It does what the pass does for its own provider's
+  // operations (`recoverMine`), at the real time: an attempt is made to look abandoned by claiming it in the past.
   const longAgo = () => new Date(Date.now() - ATTEMPT_LEASE_MS - 5_000);
   const whileLeased = () => new Date(Date.now() - ATTEMPT_LEASE_MS);
+  const recoverMine = async () => {
+    let changed = 0;
+    const mine = await prisma.providerOperation.findMany({ where: { providerId, status: 'pending' }, select: { id: true } });
+    for (const { id } of mine) if (await service.recover(id)) changed += 1;
+    return changed;
+  };
   /** Every table the code under test read or wrote through its client, over the whole suite. */
   const touched = new Set<string>();
 
@@ -162,7 +171,9 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     // While its lease ran, recovery left it alone.
     expect(await service.recover(id, whileLeased())).toBeNull();
     expect(await status(id)).toMatchObject({ status: 'pending' });
-    expect(await recoverExpired(service)).toBeGreaterThanOrEqual(1);
+    // The pass's own read finds it (read only: nothing of another file's is touched).
+    expect(await service.expiredPending(new Date(), 1000)).toContain(id);
+    expect(await recoverMine()).toBe(1);
     expect(await status(id)).toMatchObject({ status: 'requested', attempts: 1, lastError: 'abandoned' });
     expect(await sends(id)).toEqual([0, 1]);
     expect(gateway.calls).toHaveLength(0);
@@ -177,10 +188,10 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     // It marked the send while its lease ran, then died: the request may be at the provider.
     expect(await service.beginSend(id, attempt, whileLeased())).not.toBeNull();
     expect(await service.recover(id, whileLeased())).toBeNull();
-    expect(await recoverExpired(service)).toBeGreaterThanOrEqual(1);
+    expect(await recoverMine()).toBe(1);
     expect(await status(id)).toMatchObject({ status: 'unknown', attempts: 1, lastError: 'abandoned' });
     expect(await sends(id)).toEqual([0]);
-    await recoverExpired(service);
+    await recoverMine();
     expect(await status(id)).toMatchObject({ status: 'unknown', attempts: 1 });
     expect(await dispatcher.handle(id)).toBe('skipped');
     expect(gateway.calls).toHaveLength(0);
@@ -190,7 +201,7 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     const id = await record();
     // Worker A claims attempt 1 and stalls before the send mark.
     const stalled = (await service.claim(id, longAgo())) as number;
-    await recoverExpired(service);
+    await recoverMine();
     expect(await status(id)).toMatchObject({ status: 'requested' });
     // Worker B takes the operation again and is mid-call.
     let release: (evidence: SendEvidence) => void = () => undefined;
@@ -339,7 +350,7 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     await dispatcher.handle(id);
     const abandoned = await record();
     await service.claim(abandoned, longAgo());
-    await recoverExpired(service);
+    await recoverMine();
     // Every test above ran through the watched client: only these three tables were ever asked for.
     expect([...touched].sort()).toEqual(['OutboxMessage', 'Provider', 'ProviderOperation']);
     // And by construction: nothing under operations/ or outbox/ imports the wallets, the lines (`sales/` since slice
@@ -350,3 +361,25 @@ suite('operation dispatcher and recovery (PostgreSQL)', () => {
     for (const source of sources) expect(source).not.toMatch(/from '[^']*\/(wallets|lines|tasks|sales)\//);
   });
 });
+
+describe('recoverExpired: the pass itself', () => {
+  it('reads the expired attempts, a batch of the given size, recovers each with the gate, and counts the ones it changed', async () => {
+    const asked: { limit: number }[] = [];
+    const recovered: [string, unknown][] = [];
+    const gate = { name: 'the worker\'s gate' };
+    const operations = {
+      expiredPending: async (_now: Date, limit: number) => { asked.push({ limit }); return ['a', 'b', 'c']; },
+      // `b` was settled by a worker meanwhile: nothing to do, not counted.
+      recover: async (id: string, _now: Date, given: unknown) => { recovered.push([id, given]); return id === 'b' ? null : 'requested'; },
+    };
+    const output = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    try {
+      expect(await recoverExpired(operations as never, new Date(), 50, gate as never)).toBe(2);
+    } finally {
+      output.mockRestore();
+    }
+    expect(asked).toEqual([{ limit: 50 }]);
+    expect(recovered).toEqual([['a', gate], ['b', gate], ['c', gate]]);
+  });
+});
+

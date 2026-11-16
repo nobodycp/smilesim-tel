@@ -9,14 +9,9 @@ describe('task log stamps', () => {
     );
   });
 
-  it('parses stamped lines and keeps legacy lines on the fallback time', () => {
-    expect(parseTaskLogLine('2026-11-03T20:49:15.400Z أخذها حمزه', '2026-01-01T00:00:00.000Z')).toEqual({
-      at: '2026-11-03T20:49:15.400Z',
-      body: 'أخذها حمزه',
-    });
-    expect(parseTaskLogLine('أخذها حمزه', '2026-01-01T00:00:00.000Z')).toEqual({
-      at: '2026-01-01T00:00:00.000Z',
-      body: 'أخذها حمزه',
-    });
+  it('parses a stamped line; a line with no time is not a log line', () => {
+    expect(parseTaskLogLine('2026-11-03T20:49:15.400Z أخذها حمزه')).toEqual({ at: '2026-11-03T20:49:15.400Z', body: 'أخذها حمزه' });
+    expect(parseTaskLogLine('2026-11-03T20:49:15Z أخذها حمزه')).toEqual({ at: '2026-11-03T20:49:15Z', body: 'أخذها حمزه' });
+    expect(parseTaskLogLine('أخذها حمزه')).toBeNull();
   });
 });

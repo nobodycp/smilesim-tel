@@ -31,8 +31,8 @@ export function taskEvents(task: TaskWithNotes, log: string, resultNote: string 
     .map((line) => line.trim())
     .filter(Boolean)
     .forEach((line, index) => {
-      const parsed = parseTaskLogLine(line, task.createdAt.toISOString());
-      events.push({ id: `log-${String(index).padStart(4, '0')}`, kind: 'system', body: parsed.body, authorName: null, at: parsed.at });
+      const parsed = parseTaskLogLine(line);
+      if (parsed) events.push({ id: `log-${String(index).padStart(4, '0')}`, kind: 'system', body: parsed.body, authorName: null, at: parsed.at });
     });
   for (const note of task.notes) {
     events.push({
