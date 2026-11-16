@@ -6,7 +6,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { DuplicateGuardInterceptor, NotDuplicateGuarded } from './modules/platform/duplicate-guard.interceptor';
 import { ROUTES } from './modules/testing/routes';
-import { RESOURCE_PREFIXES, canonicalPath, resourcePaths } from './modules/platform/route-prefixes';
+import { RESOURCE_PREFIXES, resourcePaths } from './modules/platform/route-prefixes';
 
 // What protects a write route, and what a route would lose by moving (ADR 0020, slice R.0).
 //
@@ -347,14 +347,12 @@ describe('what the controller decides (the guard over HTTP)', () => {
     expect(ran.outside).toBe(2);
   });
 
-  it('a key taken before the old prefix was removed still matches: the key keeps its own form of the path (slice R.11c)', () => {
-    // The guard hashes the path in the form it had under the first prefix. A release before R.11c wrote keys in
-    // that form for `/v1/…` and `/office/…` alike; changing the form would let a write remembered by one release
-    // through a second time on the next.
-    expect(canonicalPath('/v1/lines/ID1/extend')).toBe('/office/lines/ID1/extend');
-    expect(canonicalPath('/v1/lines/ID1/extend?x=1')).toBe('/office/lines/ID1/extend?x=1');
-    // Not a resource path: as it is.
-    expect(canonicalPath('/auth/login')).toBe('/auth/login');
+  it('the key holds the path as it was sent: nothing of the old prefix is left in it (owner, 2026-11-16)', () => {
+    // Between R.11b and R.11c the guard rewrote a resource path to its `/office/…` form before hashing it, so that
+    // the two paths of a route were one write. With one prefix there is nothing to rewrite.
+    const guard = readFileSync(join(SRC, 'modules/platform/duplicate-guard.interceptor.ts'), 'utf8');
+    expect(guard).toContain('const request = hash(`${req.method} ${req.originalUrl}\\n${JSON.stringify(req.body ?? null)}`);');
+    expect(readFileSync(join(SRC, 'modules/platform/route-prefixes.ts'), 'utf8')).not.toMatch(/office'|canonicalPath/);
   });
 
   it('a controller that says it is not guarded runs every repeat: nothing is kept or replayed for it', async () => {

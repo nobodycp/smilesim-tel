@@ -153,9 +153,9 @@ goes down; the backend map updated in the same commit.
   chose to remove the old paths without the watched release. Done: `RESOURCE_PREFIXES = ['v1']`, so the `office`
   twins left the controllers and the middleware's lists by themselves; `LegacyPathCounter`, its module and its
   spec are gone; the specs call `/v1/…`, the route table proves every old path answers 404 and records nothing;
-  `scripts/backup/rehearsal-smoke.mjs` and the handover use `/v1/…`. Kept on purpose: the duplicate guard's key
-  still hashes a resource path in the form it had under the first prefix (`canonicalPath`), so a key a release
-  before R.11c stored still matches the same write after it. What the missing observation costs is in the
+  `scripts/backup/rehearsal-smoke.mjs` and the handover use `/v1/…`. The duplicate guard's key hashes the path as it was sent:
+  `canonicalPath`, which gave it its `/office/…` form, was first kept and then removed the same day on the owner's
+  word (no deployment holds keys worth keeping). What the missing observation costs is in the
   handover (section 14): a web older than R.11b does not work with this API, and a jump from a release older than
   R.11b has no order without an interruption. Commit: see `git log --grep 'R.11c'`.
 

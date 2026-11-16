@@ -461,4 +461,9 @@ below were pushed by the owner on 2026-11-16 with the UI work that followed them
   The web holds no `/office/` path (no web file changed). The full API suite and Playwright are for GitHub CI.
 - **For the plan that follows (package durations, D.5):** it names `platform/legacy-paths.ts` to count the callers
   of the routes it retires. That file is gone; D.5 needs its own counter or none.
+- **Corrected the same day (owner: nothing in the old form is to stay; the system runs on trial data only):**
+  `canonicalPath` and its `/office` form are removed; the guard hashes `req.originalUrl`. A key stored by a
+  release that had the old form does not match after this one (10 s for a same write, 24 h for an
+  `Idempotency-Key`): accepted by the owner. The contract spec pins the new line. The "did not change, on purpose"
+  point above no longer holds.
 
