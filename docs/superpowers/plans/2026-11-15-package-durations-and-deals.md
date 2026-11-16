@@ -17,11 +17,16 @@ its hash. Per slice: `npm run lint`, `npm run typecheck`, `npm run check:copy`, 
   dialog shows the refusal and loses its "taken from the wallet" label.
   Specs: `pricing/rules/prices-and-periods.spec.ts` (5- and 15-day, mixed, own cost, the floor),
   `sales/settlement/execution-date-settlement.db.spec.ts` (refusals, the late task, `periodCost` on the row).
-- [ ] **D.2 Duration rows.** `PackageDuration` model and migration, one row backfilled per package;
-  `catalog/rules/package-prices.ts` (`chainHolds` per duration), `catalog/packages/packages.service.ts` sheet
-  and list return `durations`; every price read goes through the rows, dual-written with the old columns. Same
-  numbers on every screen.
-- [ ] **D.3 Renewal picks a duration.** `pricing/rules/prices.ts` `LineTerms` v2 and `pricing/line-terms.ts`
+- [ ] **D.2 Duration rows.** `PackageDuration` model and migration, one row backfilled per package (its months at
+  its renewal prices); `catalog/rules/package-prices.ts` `mirroredDuration`, `durationDays`; the row is written
+  in the same statement as the package's columns by the seed (`catalog/shipped/catalog-seed.ts`), the provider
+  import (`providers/directory/provider-catalog.service.ts`) and `setChain`
+  (`catalog/packages/packages.service.ts`); the sheet returns `durations`. Readers still use the package's
+  columns: they move to the rows in D.3, where a renewal first has more than one duration to choose from, and a
+  package that has no row (the database specs create packages bare) reads as one duration from its columns until
+  D.10. Specs: `catalog/packages/package-durations.db.spec.ts`, `testing/response-shape.spec.ts`.
+- [ ] **D.3 Renewal picks a duration.** Price reads go through the duration rows (`pricing/rules/package-terms.ts`,
+  `pricing/price-ladder.ts`; the package list returns `durations` masked by layer). `pricing/rules/prices.ts` `LineTerms` v2 and `pricing/line-terms.ts`
   (reads v1); `sales/line-pricing.ts` `stampFor` captures `options` from the durations; renew takes a duration;
   `GET /v1/lines/:id/renewal-quote`; `Task.periodDays`, `durationUnit`, `durationCount`. `PackageRenewal` stays
   as a fallback. Web: the renewal dialog lists durations (`apps/web/features/…` numbers).

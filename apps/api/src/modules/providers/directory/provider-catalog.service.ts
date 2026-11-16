@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { publicPackageCode, chainHolds, ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../../catalog';
+import { publicPackageCode, chainHolds, mirroredDuration, ACTION_KEYS, flagsForMode, normalizeActionModes, type ActionKey, type ActionMode } from '../../catalog';
 import { CatalogProductsQuery, CompanyCreateBody, PackageCreateBody } from '../providers.schemas';
 import { ProvidersRepository } from '../providers.repository';
 import { refuseEntered, requireGrant } from '../../access';
@@ -154,6 +154,8 @@ export class ProviderCatalogService {
       actionModes: modes,
       inheritedModes,
       addons: addonRows.length ? { create: addonRows } : undefined,
+      // The package's one duration, beside the columns it mirrors (package plan D.2).
+      durations: { create: mirroredDuration(months, renewal) },
     });
     return { ok: true as const, code: created.code, companyCode: company.code };
   }

@@ -35,3 +35,27 @@ export function chainHolds(prices: Prices): boolean {
     prices.subscriberPrice >= prices.posPrice
   );
 }
+
+/** A duration's unit. A month is 30 days, as a paid period has always been. */
+export type DurationUnit = 'day' | 'month';
+export const MONTH_DAYS = 30;
+
+export function durationDays(unit: string, count: number): number {
+  return (unit === 'month' ? MONTH_DAYS : 1) * Math.max(1, count);
+}
+
+/**
+ * The one duration row every package has while its own columns still hold a duration and a renewal ladder (plan
+ * D.2 to D.10): its months at its renewal prices. Written in the same statement as those columns, so they agree.
+ */
+export function mirroredDuration(months: number, renewal: Prices): { unit: DurationUnit; count: number } & Prices {
+  return {
+    unit: 'month',
+    count: Math.max(1, months),
+    branchCost: renewal.branchCost,
+    mainPrice: renewal.mainPrice,
+    agentPrice: renewal.agentPrice,
+    posPrice: renewal.posPrice,
+    subscriberPrice: renewal.subscriberPrice,
+  };
+}

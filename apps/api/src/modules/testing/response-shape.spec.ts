@@ -37,9 +37,14 @@ const PACKAGE_SHEET_KEYS = [
   'renewalBranchCost', 'renewalMainPrice', 'renewalAgentPrice', 'renewalPosPrice', 'renewalSubscriberPrice',
   'esimPrice', 'esimPriceEffective', 'esimPriceSource',
   'lines', 'activeLines', 'renewals', 'switches', 'modes',
+  // Package plan D.2: the durations the package is sold and renewed for.
+  'durations',
   // Spec 2026-11-09-admin-review, 3: which modes follow the provider, and the provider's own.
   'inheritedModes', 'providerModes',
 ];
+
+// One duration of a package on its sheet (package plan D.2).
+const PACKAGE_DURATION_KEYS = ['id', 'unit', 'count', 'days', 'branchCost', 'mainPrice', 'agentPrice', 'posPrice', 'subscriberPrice', 'noDisconnect', 'forSale', 'enabled'];
 
 // GET /v1/packages: one row a package on sale. The price columns above the viewer and the run modes come as
 // null outside the branch (plan backend-loose-ends B.4).
@@ -248,12 +253,15 @@ describe('office response shapes', () => {
       lines: [{ status: 'active' }, { status: 'frozen' }],
       renewals: [{ target: { code: 'lian-wecom-500-3m' } }],
       switches: [{ target: { code: 'lian-wecom-500-5g' } }],
+      durations: [{ id: 'd1', packageId: 'p1', unit: 'month', count: 1, branchCost: 30, mainPrice: 30, agentPrice: 30, posPrice: 30, subscriberPrice: 30, noDisconnect: false, forSale: true, enabled: true, providerProductCode: null, position: 0, createdAt: new Date() }],
     };
     const { service, gate } = await serviceWith({ package: { findUnique: async () => pkg } });
 
     const sheet = await service.packageSheet(gate, pkg.code);
 
     expect(keysOf(sheet)).toEqual(sorted(PACKAGE_SHEET_KEYS));
+    expect(sheet.durations.map((row) => Object.keys(row).sort())).toEqual([sorted(PACKAGE_DURATION_KEYS)]);
+    expect(sheet.durations[0]).toMatchObject({ unit: 'month', count: 1, days: 30, posPrice: 30 });
     expect(sheet).toMatchObject({
       companyCode: 'wecom',
       forSale: false,
@@ -268,6 +276,7 @@ describe('office response shapes', () => {
   it('validates subscription and renewal price ladders separately', async () => {
     const pkg = {
       id: 'pkg-1',
+      months: 3,
       branchCost: 10,
       mainPrice: 10,
       agentPrice: 10,
@@ -302,6 +311,13 @@ describe('office response shapes', () => {
       renewalAgentPrice: 20,
       renewalPosPrice: 20,
       renewalSubscriberPrice: 21,
+      // The duration row that mirrors the renewal ladder is written in the same statement (package plan D.2).
+      durations: {
+        updateMany: {
+          where: { unit: 'month', count: 3 },
+          data: { branchCost: 20, mainPrice: 20, agentPrice: 20, posPrice: 20, subscriberPrice: 21 },
+        },
+      },
     });
 
     await expect(service.setChain(gate, 'lian-wecom-500', { renewalBranchCost: 21 }))

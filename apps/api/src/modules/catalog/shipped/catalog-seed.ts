@@ -4,7 +4,7 @@ import { LayerRoles } from '../../access';
 import { UnitOfWork, env, isTest } from '../../platform';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { catalog, companies, packageCode, packageName } from './shipped-catalog';
-import { AGOROT } from '../rules/package-prices';
+import { AGOROT, mirroredDuration } from '../rules/package-prices';
 import { normalizeActionModes, packageFlagsFromModes } from '../rules/run-modes';
 
 /**
@@ -78,6 +78,16 @@ export class CatalogSeed implements OnModuleInit {
               renewalAgentPrice: item.renewal.agentPrice * AGOROT,
               renewalPosPrice: item.renewal.posPrice * AGOROT,
               renewalSubscriberPrice: item.renewal.subscriberPrice * AGOROT,
+              // The package's one duration, beside the columns it mirrors (package plan D.2).
+              durations: {
+                create: mirroredDuration(item.months, {
+                  branchCost: item.renewal.branchCost * AGOROT,
+                  mainPrice: item.renewal.mainPrice * AGOROT,
+                  agentPrice: item.renewal.agentPrice * AGOROT,
+                  posPrice: item.renewal.posPrice * AGOROT,
+                  subscriberPrice: item.renewal.subscriberPrice * AGOROT,
+                }),
+              },
               ...flags,
               actionModes: normalizeActionModes(savedProvider.actionModes),
             },

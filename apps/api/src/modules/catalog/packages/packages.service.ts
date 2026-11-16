@@ -4,7 +4,7 @@ import { requireGrant } from '../../access';
 import { Injectable } from '@nestjs/common';
 import type { Actor } from '../../access';
 import type { Prisma } from '../../../generated/prisma/client';
-import { chainHolds, esimPriceOf } from '../rules/package-prices';
+import { chainHolds, durationDays, esimPriceOf } from '../rules/package-prices';
 import { ACTION_KEYS, normalizeActionModes, packageModeData, resolvePackageMode, type ActionMode } from '../rules/run-modes';
 import { PackageAddonBody, PackageAddonUpdateBody, PackageChainBody, PackageDetailsBody, PackageModeBody, PackageTargetsBody } from './packages.schemas';
 import type { Prices } from '../rules/package-prices';
@@ -93,6 +93,21 @@ export class PackagesService {
       activeLines: pkg.lines.filter((line) => line.status === 'active').length,
       renewals: pkg.renewals.map((renewal) => renewal.target.code),
       switches: pkg.switches.map((item) => item.target.code),
+      // The durations the package is sold and renewed for, each with its own prices (package plan D.2).
+      durations: pkg.durations.map((row) => ({
+        id: row.id,
+        unit: row.unit,
+        count: row.count,
+        days: durationDays(row.unit, row.count),
+        branchCost: row.branchCost,
+        mainPrice: row.mainPrice,
+        agentPrice: row.agentPrice,
+        posPrice: row.posPrice,
+        subscriberPrice: row.subscriberPrice,
+        noDisconnect: row.noDisconnect,
+        forSale: row.forSale,
+        enabled: row.enabled,
+      })),
       modes: Object.fromEntries(ACTION_KEYS.map((key) => [key, resolvePackageMode(pkg.actionModes, pkg, key)])),
       // Which of them follow the provider, and the provider's own (spec 2026-11-09-admin-review, 3).
       inheritedModes: (pkg.inheritedModes ?? []).filter((key) => (ACTION_KEYS as readonly string[]).includes(key)),
@@ -192,6 +207,8 @@ export class PackagesService {
       renewalAgentPrice: renewal.agentPrice,
       renewalPosPrice: renewal.posPrice,
       renewalSubscriberPrice: renewal.subscriberPrice,
+      // The duration row that mirrors these columns moves with them, in the same statement (package plan D.2).
+      durations: { updateMany: { where: { unit: 'month', count: Math.max(1, pkg.months) }, data: renewal } },
     });
     return { ok: true as const };
   }

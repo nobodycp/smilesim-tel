@@ -436,8 +436,38 @@ model Package {
   switches               PackageSwitch[]
   switchTargets          PackageSwitch[]  @relation("SwitchTarget")
   addons                 PackageAddon[]
+  durations              PackageDuration[]
 
   @@unique([providerId, providerProductCode])
+}
+
+/// One duration a package is sold or renewed for, with its own price ladder (spec 2026-11-15-package-durations-and-deals).
+/// Until the old columns go (plan D.10) every package has one row that mirrors `Package.months` and its renewal
+/// prices, written with them in the same statement.
+model PackageDuration {
+  id              String   @id @default(uuid())
+  packageId       String
+  package         Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  /// `day` or `month` (a CHECK in the database); a month is 30 days.
+  unit            String
+  count           Int
+  branchCost      Int
+  mainPrice       Int
+  agentPrice      Int
+  posPrice        Int
+  subscriberPrice Int
+  /// A period of this duration cannot be disconnected: buying it locks the number to the period's end (plan D.4).
+  noDisconnect    Boolean  @default(false)
+  /// May start a new number.
+  forSale         Boolean  @default(true)
+  /// May renew a number.
+  enabled         Boolean  @default(true)
+  /// The provider's own code for this duration of the product, when it has one.
+  providerProductCode String?
+  position        Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@unique([packageId, unit, count])
 }
 
 model PackageRenewal {

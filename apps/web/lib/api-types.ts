@@ -292,10 +292,27 @@ export type PackageSheet = {
   activeLines: number;
   renewals: string[];
   switches: string[];
+  /** The durations the package is sold and renewed for, each with its own prices (package plan D.2). */
+  durations: PackageDuration[];
   modes: Record<string, 'auto' | 'manual' | 'off'>;
   /** The actions that follow the provider, and the provider's own modes (spec 2026-11-09-admin-review, 3). */
   inheritedModes?: string[];
   providerModes?: Record<string, 'auto' | 'manual' | 'off'>;
+};
+/** One duration of a package: a month is 30 days; `days` is its whole length. */
+export type PackageDuration = {
+  id: string;
+  unit: 'day' | 'month';
+  count: number;
+  days: number;
+  branchCost: number;
+  mainPrice: number;
+  agentPrice: number;
+  posPrice: number;
+  subscriberPrice: number;
+  noDisconnect: boolean;
+  forSale: boolean;
+  enabled: boolean;
 };
 export type RoleRow = {
   id: string;

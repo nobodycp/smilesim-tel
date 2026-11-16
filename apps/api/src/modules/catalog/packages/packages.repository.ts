@@ -34,6 +34,7 @@ export class PackagesRepository {
         lines: { select: { status: true } },
         renewals: { include: { target: { select: { code: true } } } },
         switches: { include: { target: { select: { code: true } } } },
+        durations: { orderBy: [{ position: 'asc' }, { unit: 'asc' }, { count: 'asc' }] },
       },
     });
   }
