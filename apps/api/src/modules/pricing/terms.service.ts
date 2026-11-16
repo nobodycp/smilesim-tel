@@ -16,6 +16,7 @@ import type { PriceSource } from './rules/user-terms';
 
 type PackageFacts = { id: string; code: string; name: string; dataGb: number | null; months: number; company?: { code: string } | null } & LayerPrices;
 type TermPatch = { hidden?: boolean; price?: number | null; renewalPrice?: number | null };
+export type LineAccountRow = { loginName: string; nickname: string; parentLoginName: string; parentNickname: string; lines: number; activeLines: number; price: number };
 export type UserPackageRow = {
   code: string;
   name: string;
@@ -190,6 +191,38 @@ export class TermsService {
    * The renewable numbers of a package in a scope, grouped by the renewal price each one carries, and
    * what a new activation would pay on the scope account (`null` for the whole system: it differs per number).
    */
+  /**
+   * The points of sale that hold numbers on this package (spec 2026-11-16-package-page, P.3): how many each holds,
+   * how many of them are active, and the renewal price it would pay today. The branch's table for re-pricing the
+   * numbers of one account. Most numbers first.
+   */
+  async lineAccounts(actor: Actor, code: string): Promise<{ accounts: LineAccountRow[] }> {
+    assertBranch(actor);
+    const pkg = await this.repo.packageByCode(code);
+    if (!pkg) fail(404, 'NOT_FOUND');
+    const [accounts, counts, { terms, sells }] = await Promise.all([this.tree.accounts(), this.repo.lineCountsByPos(pkg.id), this.ladder.termsFor(pkg.id)]);
+    const byId = new Map(accounts.map((account) => [account.id, account]));
+    const rows = new Map<string, LineAccountRow>();
+    for (const count of counts) {
+      const pos = byId.get(count.posId);
+      if (!pos) continue;
+      const parent = pos.parentId ? byId.get(pos.parentId) : undefined;
+      const row = rows.get(pos.id) ?? {
+        loginName: pos.loginName,
+        nickname: pos.nickname,
+        parentLoginName: parent?.loginName ?? '',
+        parentNickname: parent?.nickname ?? '',
+        lines: 0,
+        activeLines: 0,
+        price: buyPriceFor(this.tree.pathOf(pos.id, accounts), terms, sells, pkg, 'renewal'),
+      };
+      row.lines += count._count._all;
+      if (count.status === 'active') row.activeLines += count._count._all;
+      rows.set(pos.id, row);
+    }
+    return { accounts: [...rows.values()].sort((a, b) => b.lines - a.lines || a.loginName.localeCompare(b.loginName)) };
+  }
+
   async linePrices(actor: Actor, code: string, query: { scope?: unknown }): Promise<{ current: number | null; groups: PriceGroup[] }> {
     const accounts = await this.tree.accounts();
     const scope = await this.lineScope(actor, accounts, query.scope);

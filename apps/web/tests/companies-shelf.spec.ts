@@ -125,6 +125,7 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
     }),
     'PUT /packages/lian-wecom-500/renewals': () => ({ body: { ok: true } }),
     'GET /packages/lian-wecom-500/line-prices': () => ({ body: { current: null, groups: [{ price: 3000, count: 1 }] } }),
+    'GET /packages/lian-wecom-500/line-accounts': () => ({ body: { accounts: [] } }),
     'PUT /packages/lian-wecom-500/line-prices': () => ({ body: { ok: true, lines: 1 } }),
   });
 
@@ -135,6 +136,8 @@ test('the package sheet shows both ladders, targets, and selectable numbers', as
   // One compact table: a row per layer, the subscription and the renewal side by side (spec 2026-11-11, D6).
   await expect(page.getByTestId('chain-grid').locator('tbody tr')).toHaveCount(5);
   await expect(page.getByTestId('chain-grid').locator('tbody input')).toHaveCount(10);
+  // Re-pricing the numbers already on the package has its own tab (spec 2026-11-16-package-page, P.3).
+  await page.getByRole('tab', { name: 'أرقام الحسابات' }).click();
   const reprice = page.getByTestId('reprice').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
   await reprice.getByRole('button', { name: 'عرض الأرقام' }).click();
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });

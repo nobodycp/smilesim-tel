@@ -146,14 +146,16 @@ export async function tree() {
     findFirst: async (args?: { where?: Record<string, unknown> }) => lines.find((row) => whereMatch(row, args?.where)) ?? null,
     count: async (args?: { where?: Record<string, unknown> }) => lines.filter((row) => whereMatch(row, args?.where)).length,
     groupBy: async ({ by, where, _count }: { by: string[]; where?: Record<string, unknown>; _count: { _all: true } }) => {
-      if (by.join(',') !== 'packageId' || !_count?._all) return [];
+      if (!_count?._all) return [];
       const matched = lines.filter((row) => whereMatch(row, where));
-      const tallies = new Map<string, number>();
+      // One tally per distinct value of the grouped columns: `packageId` alone, or a point of sale and a status.
+      const tallies = new Map<string, { key: Record<string, unknown>; count: number }>();
       for (const row of matched) {
-        const id = row.packageId as string;
-        tallies.set(id, (tallies.get(id) ?? 0) + 1);
+        const key = Object.fromEntries(by.map((column) => [column, row[column]]));
+        const id = JSON.stringify(key);
+        tallies.set(id, { key, count: (tallies.get(id)?.count ?? 0) + 1 });
       }
-      return [...tallies.entries()].map(([packageId, count]) => ({ packageId, _count: { _all: count } }));
+      return [...tallies.values()].map(({ key, count }) => ({ ...key, _count: { _all: count } }));
     },
     update: async ({ where, data }: { where: { id: string }; data: Data }) => Object.assign(lines.find((row) => row.id === where.id) as Row, data),
     updateMany: async ({ where, data }: { where?: Record<string, unknown>; data: Data }) => {

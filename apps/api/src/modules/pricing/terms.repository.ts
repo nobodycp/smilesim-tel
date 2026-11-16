@@ -54,6 +54,11 @@ export class TermsRepository {
     return this.uow.prisma.package.findUnique({ where: { code }, include: { company: true, provider: true } });
   }
 
+  /** How many numbers each point of sale holds on a package, by status, counted by the database. */
+  lineCountsByPos(packageId: string) {
+    return this.uow.prisma.line.groupBy({ by: ['posId', 'status'], where: { packageId }, _count: { _all: true } });
+  }
+
   /** The terms carried by the numbers a price table lists. */
   lineTermsIn(where: Prisma.LineWhereInput) {
     return this.uow.prisma.line.findMany({ where, select: { terms: true } });

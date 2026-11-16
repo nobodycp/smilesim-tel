@@ -299,6 +299,16 @@ export type PackageSheet = {
   inheritedModes?: string[];
   providerModes?: Record<string, 'auto' | 'manual' | 'off'>;
 };
+/** A point of sale that holds numbers on a package: how many, how many active, and its renewal price today. */
+export type LineAccountRow = {
+  loginName: string;
+  nickname: string;
+  parentLoginName: string;
+  parentNickname: string;
+  lines: number;
+  activeLines: number;
+  price: number;
+};
 /** One duration of a package: a month is 30 days; `days` is its whole length. */
 export type PackageDuration = {
   id: string;

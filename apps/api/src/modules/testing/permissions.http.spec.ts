@@ -78,6 +78,7 @@ const EXPECTED: [route: string, access: string][] = [
   ['GET /v1/packages/CODE1/custom-prices', 'yyynnn'],
   ['DELETE /v1/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PUT /v1/packages/CODE1/custom-prices/LOGIN1', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
+  ['GET /v1/packages/CODE1/line-accounts', 'yyynnn'],
   ['GET /v1/packages/CODE1/line-prices', 'yyyyyn'],
   ['PUT /v1/packages/CODE1/line-prices', 'yyyyyy'], // judged after the body or the lookup: covered by its domain spec
   ['PATCH /v1/packages/CODE1/mode', 'ynynnn'],

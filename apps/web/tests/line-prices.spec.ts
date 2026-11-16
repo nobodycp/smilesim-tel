@@ -180,6 +180,10 @@ function sheetRoutes(): Routes {
       body: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos', parentLoginName: 'ag1', defaultPrice: 3500, defaultRenewalPrice: 3200, price: 2900, renewalPrice: null }],
     }),
     'GET /users': () => ({ body: { users: [{ loginName: 'pos1', nickname: 'نقطة بيع', layer: 'pos' }] } }),
+    // The account-numbers tab (spec 2026-11-16-package-page, P.3).
+    'GET /packages/lian-wecom-500/line-accounts': () => ({
+      body: { accounts: [{ loginName: 'pos1', nickname: 'نقطة بيع', parentLoginName: 'ag1', parentNickname: 'وكيل', lines: 13, activeLines: 12, price: 3200 }] },
+    }),
     'GET /companies': () => ({ body: { companies: [] } }),
     'GET /lines': () => ({ body: { items: [], poses: [], nextCursor: null } }),
   };
@@ -195,11 +199,13 @@ test('the package sheet opens the table for the whole system and then for one ac
     }),
   });
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
-  await page.getByRole('tab', { name: 'الأسعار' }).click();
+  // Re-pricing the numbers already on the package has its own tab: a row per point of sale, and the whole system
+  // from the button at the top (spec 2026-11-16-package-page, P.3).
+  await page.getByRole('tab', { name: 'أرقام الحسابات' }).click();
 
   const block = page.getByTestId('reprice').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' });
-  // «كل النظام» is the field's empty state: nothing picked is the whole system.
-  await expect(block.getByRole('combobox')).toHaveAttribute('placeholder', 'كل النظام');
+  await expect(block.locator('tbody tr')).toHaveCount(1);
+  await expect(block.getByRole('button', { name: 'تعديل السعر' })).toBeVisible();
   await block.getByRole('button', { name: 'عرض الأرقام' }).click();
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
   await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(2);
@@ -225,7 +231,7 @@ test('on a phone the line prices dialog keeps its price fields at their width', 
     'GET /packages/lian-wecom-500/line-prices': () => ({ body: { current: null, groups: [{ price: 3200, count: 1 }, { price: 123456, count: 12 }] } }),
   });
   await page.goto(`${admin}/providers/lian/lian-wecom-500`);
-  await page.getByRole('tab', { name: 'الأسعار' }).click();
+  await page.getByRole('tab', { name: 'أرقام الحسابات' }).click();
   await page.getByTestId('reprice').filter({ hasText: 'سعر التجديد على الأرقام الفعالة' }).getByRole('button', { name: 'عرض الأرقام' }).click();
   const dialog = page.getByRole('dialog', { name: 'أسعار الأرقام القائمة — 500 جيجا' });
   await expect(dialog.getByTestId('line-prices-table').locator('tbody tr')).toHaveCount(2);

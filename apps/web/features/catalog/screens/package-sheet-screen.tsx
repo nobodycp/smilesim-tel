@@ -33,6 +33,7 @@ import { Tabs } from '../../../components/tabs';
 import { PackageAddons } from '../package-addons';
 import { PackageDurations } from '../package-durations';
 import { PackageEsim } from '../package-esim';
+import { PackageLineAccounts } from '../package-line-accounts';
 import { PackageFacts } from '../../../components/package-facts';
 import { PackageDetailsForm } from '../package-details-form';
 import { CompanyMark } from '../../../components/company-mark';
@@ -44,7 +45,7 @@ import { paneHintClass } from '../sim-fields';
 
 const BRANCH = ['branch'];
 const LAYER_ORDER = ['main_agent', 'agent', 'pos'];
-type Tab = 'overview' | 'details' | 'addons' | 'run' | 'prices' | 'durations' | 'renewals' | 'switches' | 'numbers' | 'offers';
+type Tab = 'overview' | 'details' | 'addons' | 'run' | 'prices' | 'durations' | 'renewals' | 'switches' | 'numbers' | 'accounts' | 'offers';
 type ShelfPackage = Shelf['companies'][number]['providers'][number]['packages'][number];
 const EMPTY_PRICES: Record<PriceKey, string> = {
   branchCost: '',
@@ -111,7 +112,6 @@ const STAT = 'grid min-w-0 gap-1 rounded-card bg-surface-2 p-3.5';
 const STAT_NAME = 'text-sm font-bold text-muted';
 const STAT_VALUE = 'text-5xl leading-1-1 font-bold tabular-nums';
 const FUND = 'grid min-w-0 grid-cols-1 items-end gap-2.5';
-const FUND_TITLE = 'm-0 text-lg font-bold text-ink';
 const FUND_LABEL = 'min-w-0 font-bold';
 const CHECK_ROW = 'm-0 flex min-h-9 cursor-pointer items-center max-touch:min-h-11';
 /** A phone's card (a table with `data-cards` whose cells carry their names): graphite.css's price editors rules. */
@@ -137,7 +137,6 @@ export function PackageSheetScreen() {
   const [offerPrice, setOfferPrice] = useState('');
   const [offerRenewal, setOfferRenewal] = useState('');
   // The scope picked in the prices tab, and the open table: one scope (a login, or `all`) at a time.
-  const [priceScope, setPriceScope] = useState('all');
   const [pricing, setPricing] = useState<{ scope: string } | null>(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -420,6 +419,7 @@ export function PackageSheetScreen() {
     { key: 'renewals', label: t.renewalsTab },
     { key: 'switches', label: t.switchesTab },
     { key: 'numbers', label: t.numbersTab },
+    { key: 'accounts', label: t.lineAccountsTab },
     { key: 'offers', label: t.offersTab },
   ];
   function targetList(kind: 'renewals' | 'switches', packages: ShelfPackage[]) {
@@ -531,24 +531,8 @@ export function PackageSheetScreen() {
               )}
               {tab === 'prices' && (
                 <ChainBoard prices={prices} onChange={(key, value) => setPrices((current) => ({ ...current, [key]: value }))}>
-                  {/* «حفظ» saves the chain; the eSIM price is on the start tab, and re-pricing the live numbers has its own button. */}
+                  {/* «حفظ» saves the chain; the eSIM price is on the start tab, and re-pricing the live numbers has its own tab. */}
                   <Button type="button" onClick={() => void saveChain()}>{t.save}</Button>
-                  {/* The board's last card: its field and its button side by side from 721px, the heading across. */}
-                  <div className={cn(FUND, 'min-[721px]:grid-cols-title-end')} data-testid="reprice">
-                    <h3 className={cn(FUND_TITLE, 'col-span-full')}>{t.repriceTitle}</h3>
-                    <Label tone="pane" className={FUND_LABEL}>
-                      {t.linePricesScope}
-                      <NameField
-                        value={priceScope === 'all' ? '' : priceScope}
-                        allLabel={t.linePricesAll}
-                        onChange={(next) => setPriceScope(next || 'all')}
-                        options={users.map((row) => ({ value: row.loginName, label: accountLabel(row.loginName, row.nickname), hint: layerName(t, row.layer), keys: [row.loginName] }))}
-                      />
-                    </Label>
-                    <div>
-                      <Button type="button" variant="secondary" onClick={() => setPricing({ scope: priceScope })}>{t.linePricesOpen}</Button>
-                    </div>
-                  </div>
                 </ChainBoard>
               )}
               {tab === 'renewals' && targetList('renewals', targetPackages)}
@@ -565,6 +549,7 @@ export function PackageSheetScreen() {
                   />
                 </TableSheet>
               )}
+              {tab === 'accounts' && <PackageLineAccounts code={sheet.code} onReprice={(scope) => setPricing({ scope })} />}
               {tab === 'offers' && (
                 <div className="pane-body">
                   <div

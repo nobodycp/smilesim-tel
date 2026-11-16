@@ -1,5 +1,5 @@
 import { queryString, request, segment } from '../../lib/http';
-import type { NewPackage, PackageAddon, PackageDuration, PackageRow, PackageSheet, ProviderCatalogCompany, ProviderCatalogProduct, ProviderRow, ProviderSettings, Shelf, SimRules } from '../../lib/api-types';
+import type { LineAccountRow, NewPackage, PackageAddon, PackageDuration, PackageRow, PackageSheet, ProviderCatalogCompany, ProviderCatalogProduct, ProviderRow, ProviderSettings, Shelf, SimRules } from '../../lib/api-types';
 
 /** The catalog calls of the office API. Composed into `api` by lib/api.ts. */
 export const catalogApi = {
@@ -27,6 +27,8 @@ export const catalogApi = {
   savePackageAddon: (code: string, id: string, body: Partial<Pick<PackageAddon, 'name' | 'price' | 'active' | 'position'>>) =>
     request<{ addons: PackageAddon[] }>('PATCH', `/v1/packages/${segment(code)}/addons/${segment(id)}`, body),
   removePackageAddon: (code: string, id: string) => request<{ addons: PackageAddon[] }>('DELETE', `/v1/packages/${segment(code)}/addons/${segment(id)}`),
+  // The points of sale that hold numbers on a package (spec 2026-11-16-package-page, P.3).
+  packageLineAccounts: (code: string) => request<{ accounts: LineAccountRow[] }>('GET', `/v1/packages/${segment(code)}/line-accounts`),
   // A package's durations (package plan D.3): the same unit and count again replaces the prices.
   savePackageDuration: (code: string, body: Pick<PackageDuration, 'unit' | 'count' | 'branchCost' | 'mainPrice' | 'agentPrice' | 'posPrice' | 'subscriberPrice'> & { enabled?: boolean }) =>
     request<{ ok: true }>('PUT', `/v1/packages/${segment(code)}/durations`, body),

@@ -481,6 +481,10 @@ export class ApiFacade {
     return this.termDesk.clearCustomPrice(await this.actor(gate), code, loginName);
   }
 
+  async lineAccounts(gate: Gate, code: string) {
+    return this.termDesk.lineAccounts(await this.actor(gate), code);
+  }
+
   async linePrices(gate: Gate, code: string, query: { scope?: unknown }) {
     return this.termDesk.linePrices(await this.actor(gate), code, query);
   }

@@ -247,6 +247,23 @@ describe('writing user terms', () => {
     expect(b).toMatchObject({ code: 'alloha-400', hidden: false, hiddenAbove: 'ma1', lines: 0 });
   });
 
+  // Spec 2026-11-16-package-page, P.3.
+  it('lists the points of sale that hold numbers on a package: how many, how many active, their price today', async () => {
+    const { service, gates, lines, line, userPackages } = await withNumbers();
+    lines.push({ ...at(line, 'ln6', 4500), posId: 'pos2' });
+    userPackages.push({ id: 'r9', packageId: 'pa', userId: 'pos2', hidden: false, price: null, renewalPrice: 4700 });
+    const { accounts } = await service.lineAccounts(gates.branch, 'alloha-150');
+    expect(accounts).toMatchObject([
+      { loginName: 'pos1', parentLoginName: 'ag1', lines: 5, activeLines: 3 },
+      { loginName: 'pos2', parentLoginName: 'ag2', lines: 1, activeLines: 1, price: 4700 },
+    ]);
+    expect(Object.keys(accounts[0]).sort()).toEqual(['activeLines', 'lines', 'loginName', 'nickname', 'parentLoginName', 'parentNickname', 'price']);
+    // A package nobody holds a number on lists nobody; only the branch reads the table.
+    expect(await service.lineAccounts(gates.branch, 'alloha-400')).toEqual({ accounts: [] });
+    await expect(service.lineAccounts(gates.ma1, 'alloha-150')).rejects.toMatchObject({ status: 403 });
+    await expect(service.lineAccounts(gates.branch, 'nope')).rejects.toMatchObject({ status: 404 });
+  });
+
   it('custom prices list the priced users only and clearing keeps a hide', async () => {
     const { service, gates, userPackages } = await tree();
     userPackages.push(row('pos1', { price: 2900 }));
